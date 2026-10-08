@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Receivers and Transmitters</title>
+  <meta name="description" content="Ham radio, visually, lesson 11: superhet and SDR block diagrams, sensitivity and noise floor, dynamic range and intercept points, amplifier classes, oscillators, PLLs and DDS, modulators and detectors, operating controls and troubleshooting." />
+  <style>
+    .chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0 6px; font: 0.85rem ui-sans-serif, system-ui, sans-serif; }
+    .chain button { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+    .chain button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .chain span { color: var(--muted); }
+    .chain-info { border-left: 3px solid var(--accent); padding: 6px 0 6px 14px; margin: 8px 0 18px; min-height: 3em; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 11</p>
+  <h1>Receivers and transmitters</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson ties together the receiver course and the earlier lessons:
+    <ul>
+      <li><a href="../../course/12-inside-the-dongle.html">Course ch. 12: a real superhet tuner</a>, and chapters <a href="../../course/05-moving-a-station.html">5–7</a> (mixing, filtering, decimation)</li>
+      <li><a href="./05-diodes-and-transistors.html#transistor">Lesson 5: transistors</a>, <a href="./04-resonance.html#filters">lesson 4: filters</a>, <a href="./10-signals-and-modes.html#mixing">lesson 10: mixing and intermod</a></li>
+    </ul>
+  </div>
+
+  <p>A <b>transceiver</b> is a receiver and a transmitter in one box, sharing the antenna, the frequency display and often many circuits. Pressing the <b>PTT</b> (push-to-talk) button, which grounds the PTT line, switches it from receive to transmit. This lesson opens the box: what each stage does, what makes a receiver good, and how a transmitter builds a clean signal.</p>
+
+  <!-- 1 -->
+  <h2 id="chain">The superheterodyne receiver, stage by stage</h2>
+  <p>Click each stage:</p>
+  <div class="chain" id="rx-chain" role="group" aria-label="Receiver stages"></div>
+  <div class="chain-info" id="rx-info" aria-live="polite"></div>
+  <p>And the transmitter, which runs much the same chain backwards:</p>
+  <div class="chain" id="tx-chain" role="group" aria-label="Transmitter stages"></div>
+  <div class="chain-info" id="tx-info" aria-live="polite"></div>
+  <p>A <b>transverter</b> converts a transceiver's input and output to another band (for example, an HF rig onto 2.4 GHz), and an <b>RF power amplifier</b> added at the output raises the power; VHF amplifiers often have a switch to set them up properly for SSB or for CW/FM.</p>
+
+  <!-- 2 -->
+  <h2 id="noise">Sensitivity: how weak a signal can you hear?</h2>
+  <p>A receiver's <b>sensitivity</b> is its ability to detect weak signals. What limits it is noise. Even a perfect receiver at room temperature hears thermal noise: <b>−174 dBm in each hertz of bandwidth</b>. So the wider your filter, the more noise comes in:</p>
+
+  <div class="scene" id="s-noise">
+    <div class="controls">
+      <label for="nz-b">Filter bandwidth <input id="nz-b" type="range" min="0" max="1" step="0.01" value="0.6"><output id="nz-bo"></output></label>
+      <label for="nz-f">Noise figure <input id="nz-f" type="range" min="0" max="20" step="0.5" value="6"><output id="nz-fo"></output></label>
+    </div>
+    <p class="readout" id="r-noise" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Noise power is proportional to bandwidth: from 50 Hz to 1000 Hz is 20 times wider, so the noise floor rises by 10 × log₁₀(20) ≈ <b>13 dB</b>. That's why a filter matched to the mode (about <b>2400 Hz for SSB</b>, a few hundred Hz for CW) gives the best signal-to-noise ratio.</li>
+    <li>A real receiver adds its own noise. Its <b>noise figure</b> is the ratio, in dB, of the noise it generates to the theoretical minimum. The <b>minimum discernible signal</b> (MDS) is the weakest signal it can detect. −100 dBm is 0.1 picowatts.</li>
+    <li>On the lower HF bands, <b>atmospheric noise</b> from the sky is far stronger than any receiver's own noise. So switching in an <b>attenuator</b> there reduces overload without costing signal-to-noise ratio: the signal and the sky noise drop together. A good HF preamplifier matters most on the quiet upper bands and above.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="dynamic">Selectivity and strong signals</h2>
+  <p><b>Selectivity</b> is the ability to separate signals close together. The real test of a receiver, though, is a very strong signal right next to a very weak one. Every amplifier and mixer becomes slightly nonlinear when pushed, and two strong signals create intermodulation products (<a class="back" href="./10-signals-and-modes.html#mixing">↩ lesson 10</a>) that grow three times faster than the signals themselves:</p>
+
+  <div class="scene" id="s-ip3">
+    <div class="controls"><label for="ip-in">Strength of two nearby signals <input id="ip-in" type="range" min="-120" max="20" step="1" value="-15"><output id="ip-ino"></output></label></div>
+    <p class="readout" id="r-ip3" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Extend the two lines and they meet at the <b>third-order intercept point</b> (IP3). A receiver with a +40 dBm intercept: two +40 dBm input signals would (theoretically) produce a third-order product as strong as the signals themselves. The higher the IP3, the better the receiver copes with strong signals.</li>
+    <li><b>Blocking dynamic range</b>: the difference in dB between the noise floor and the signal level that causes 1 dB of gain compression. Poor dynamic range shows up as <b>cross-modulation</b> (a strong station's audio riding on others) and <b>desensitization</b> (a strong nearby signal making the receiver deaf to weak ones).</li>
+    <li>The cures: a <b>preselector</b> or front-end filter rejects strong out-of-band signals; a narrow <b>roofing filter</b> early in the IF keeps strong nearby signals away from later stages; <b>attenuation before the first RF stage</b>; and choosing a <b>high IF</b> makes images easier for the front end to reject. <b>IF shift</b> slides the passband to dodge an adjacent station.</li>
+    <li><b>Reciprocal mixing</b>: a local oscillator with phase noise (a slightly smeared frequency) mixes that smear with strong nearby signals, creating noise on top of the one you want. The same happens with a noisy master clock in an SDR.</li>
+    <li>An SDR's ADC overloads when the input exceeds its <b>reference voltage</b> (<a class="back" href="../../course/03-taking-snapshots.html#ruler">↩ course ch. 3: clipping</a>). In FM, a stronger signal on the same frequency simply suppresses a weaker one: the <b>capture effect</b>.</li>
+    <li>Two repeaters close together can intermodulate in each other's final amplifiers; a properly terminated <b>circulator</b> at the transmitter output stops that.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="classes">Amplifier classes: efficiency versus faithfulness</h2>
+  <p>A transistor amplifier can conduct for the whole input cycle or only part of it. Less conduction wastes less power as heat, but distorts the waveform:</p>
+
+  <div class="scene" id="s-class">
+    <div class="controls"><label for="cl-c">Class <select id="cl-c"><option value="A">Class A</option><option value="AB">Class AB</option><option value="B">Class B</option><option value="C">Class C</option><option value="D">Class D (switching)</option></select></label></div>
+    <p class="readout" id="r-class" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Class A</b>: conducts <b>100%</b> of the time, biased halfway between saturation and cutoff. Most faithful, least efficient (25–50%).</li>
+    <li><b>Class AB</b> (usually push-pull): each device conducts for more than 180° but less than 360°. The usual linear amplifier for SSB.</li>
+    <li><b>Class C</b>: conducts for well under half the cycle. The most efficient of the classic classes (around 70%+), fine for constant-amplitude signals like <b>FM</b> and CW, where a tuned circuit restores the sine wave. Used on SSB, it causes distortion and splatter.</li>
+    <li><b>Class D</b>: switches fully on and off. A switch is at saturation or cutoff almost all the time, wasting very little, but its square-wave output needs a <b>filter to remove harmonics</b>.</li>
+    <li>A <b>linear amplifier</b> preserves the input waveform (needed for SSB). <b>Efficiency</b> is RF output power divided by DC input power.</li>
+  </ul>
+  <p>Amplifiers can accidentally oscillate. <b>Neutralization</b> cancels the internal feedback that causes self-oscillation, and <b>parasitic suppressors</b> kill unwanted VHF oscillations. A <b>grounded-grid</b> tube amplifier has a low input impedance. In transistor circuits: an <b>emitter follower</b> (common collector) keeps the output in phase with the input; figure E7-1 shows a <b>common-emitter</b> amplifier, where R1 and R2 are a voltage-divider bias and R3 provides self-bias.</p>
+  <details><summary>Figure E7-1</summary><figure><img class="fig" src="../fig/e7-1.png" alt="Figure E7-1, a common-emitter transistor amplifier"></figure></details>
+
+  <!-- 5 -->
+  <h2 id="oscillators">Oscillators and synthesizers</h2>
+  <p>An <b>oscillator</b> generates a signal at a specific frequency. Every sine-wave oscillator is an <b>amplifier and a filter in a feedback loop</b>: the amplifier makes up the losses, the filter (an LC tank, or a crystal) picks the frequency. An LC oscillator's frequency is set by its tank's inductance and capacitance (<a class="back" href="./04-resonance.html#tank">↩ lesson 4</a>). Three classic circuits: <b>Colpitts</b> (feedback through a capacitive divider), <b>Hartley</b> (a tapped inductor) and <b>Pierce</b> (through a quartz crystal).</p>
+  <ul>
+    <li>A <b>VFO</b> (variable frequency oscillator) sets the receive and transmit frequency.</li>
+    <li>Stability: crystals run on their marked frequency only with the specified parallel load capacitance; <b>NP0</b> capacitors reduce thermal drift; mechanical vibration shifting the frequency is <b>microphonics</b>, cured by mechanically isolating the oscillator. Microwave work uses ovens, GPS-disciplined references and the like (all of the above).</li>
+    <li>A <b>phase-locked loop</b> (PLL) is a servo: a phase detector compares a voltage-controlled oscillator with a stable reference, and a low-pass filter smooths the correction. It synthesizes frequencies and can demodulate FM (<a class="back" href="../../course/12-inside-the-dongle.html#pll">↩ course ch. 12, with a calculator</a>).</li>
+  </ul>
+  <p>A <b>direct digital synthesizer</b> (DDS) does it with arithmetic, exactly like the course's NCO (<a class="back" href="../../course/05-moving-a-station.html#nco">↩ course ch. 5</a>): a <b>phase accumulator</b> adds a tuning word every clock tick, a <b>lookup table</b> of amplitude values turns phase into a sample, a <b>DAC</b> makes a voltage, and a <b>low-pass filter</b> smooths the steps:</p>
+
+  <div class="scene" id="s-dds">
+    <div class="controls"><label for="dd-w">Tuning word <input id="dd-w" type="range" min="1" max="12" step="1" value="3"><output id="dd-wo"></output></label></div>
+    <p class="readout" id="r-dds" aria-live="polite"></p>
+  </div>
+  <p>A DDS tunes in tiny steps with the stability of its crystal clock. Its main impurities are <b>spurious signals at discrete frequencies</b>, from the rounding in the table and the DAC.</p>
+
+  <!-- 6 -->
+  <h2 id="modulators">Making and detecting modulation</h2>
+  <ul>
+    <li>The message before modulation (your voice's audio) occupies the <b>baseband</b>.</li>
+    <li><b>SSB:</b> a <b>balanced modulator</b> produces double-sideband RF with the carrier suppressed, and a <b>filter</b> selects one sideband. The DSP way: combine signals in <b>quadrature</b> (90° apart) using a <b>Hilbert-transform</b> filter. On receive, a <b>product detector</b> (a mixer with a local carrier) recovers the audio; the <b>RIT</b> or <b>clarifier</b> fine-tunes the receiver alone when a voice sounds too high or low (<a class="back" href="../../course/10-am-ssb-and-morse.html#ssb">↩ course ch. 10: the duck problem</a>).</li>
+    <li><b>FM:</b> a <b>reactance modulator</b> varies a capacitance to produce PM or FM; a <b>pre-emphasis</b> network boosts the treble, and de-emphasis in the receiver restores it (compatibility with phase-modulated transmitters). A <b>frequency discriminator</b> detects FM (<a class="back" href="../../course/09-fm-listening-to-the-speed.html#demod">↩ course ch. 9</a>). Received slightly off frequency, FM sounds distorted.</li>
+    <li><b>AM:</b> a <b>diode envelope detector</b> rectifies and filters.</li>
+    <li>A <b>mixer</b>'s output holds the two input frequencies plus their sum and difference; overdrive it and it generates spurious products.</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="sdr">Software-defined radio and DSP</h2>
+  <p>This whole site is a software radio, so most of this is in the course already:</p>
+  <ul>
+    <li>SDRs work with <b>I and Q</b> signals 90° apart, which lets software create or decode <b>any</b> modulation (<a class="back" href="../../course/01-spinning-arrows.html#game">↩ ch. 1</a>, <a class="back" href="../../course/02-arrows-as-numbers.html">ch. 2</a>). Filtering, modulation and demodulation are all done in software.</li>
+    <li><b>Direct sampling</b> digitizes the RF without mixing it first. The <b>sample rate</b> sets the maximum bandwidth; a signal must be sampled at <b>at least twice</b> its highest frequency (<a class="back" href="../../course/03-taking-snapshots.html#fold">↩ ch. 3</a>). The weakest signal it can resolve, without other noise, depends on the ADC's reference voltage and number of bits: 1 V in 1 mV steps needs 1000 levels, so <b>10 bits</b> (1024).</li>
+    <li>The <b>FFT</b> converts from the time domain to the frequency domain (<a class="back" href="../../course/04-winding-machine.html">↩ ch. 4</a>). <b>Decimation</b> reduces the sample rate by removing samples, after an <b>anti-aliasing filter</b> (<a class="back" href="../../course/07-throwing-away-snapshots.html">↩ ch. 7</a>).</li>
+    <li>A FIR filter's <b>taps</b> are incremental delays, each with a weight; <b>more taps</b> give a sharper response, and a FIR filter can delay all frequencies equally (<a class="back" href="../../course/06-averaging-is-filtering.html">↩ ch. 6</a>). DSP filters can take almost any bandwidth and shape; an <b>adaptive</b> filter removes noise from SSB audio.</li>
+    <li>Filter vocabulary: <b>insertion loss</b> is the attenuation inside the passband; the <b>cutoff frequency</b> is where the output drops to half power; a band-pass filter's <b>bandwidth</b> is measured between its upper and lower half-power points; <b>ultimate rejection</b> is the most it can reject outside.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="controls">At the controls, and when things go wrong</h2>
+  <ul>
+    <li>Enter frequencies with the <b>keypad or VFO knob</b>; <b>scanning</b> tunes through a range checking for activity; set <b>squelch</b> so the audio is on all the time to hear a very weak FM signal (<a class="back" href="../../course/11-numbers-to-speakers.html#squelch">↩ course ch. 11</a>); selectable <b>filter bandwidths</b> reduce noise and interference.</li>
+    <li>Digital voice: a DMR radio's settings (repeaters and talkgroups) live in a <b>code plug</b>; a group is selected by its ID code; a D-STAR radio needs <b>your call sign</b> programmed before transmitting.</li>
+    <li>Too much <b>microphone gain</b> distorts SSB. Told you're <b>over-deviating</b> on FM? Talk farther from the microphone. Distorted audio can also be RF feeding back into the transmitter: a clip-on <b>ferrite choke</b> on the microphone cable fixes that.</li>
+    <li>Low power output from a solid-state rig? Suspect <b>high SWR</b> (it protects itself, <a class="back" href="./08-feed-lines-and-swr.html#reflect">↩ lesson 8</a>).</li>
+    <li>A neighbor's broadcast radio or TV hearing you usually means <b>their</b> receiver can't reject strong signals outside its band; a <b>filter at the affected receiver's antenna input</b> helps. First, make sure your own station is working properly and doesn't interfere with your own TV on the same channel. With cable TV interference, first check that all the coax connectors are properly installed. A nearby commercial FM station overloading your 2-meter radio: install a <b>band-reject</b> filter. More on interference in <a href="./15-station-and-test-gear.html">lesson 15</a>.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2 id="budget">Link budget: will it get through?</h2>
+  <p>Add it up in decibels: transmit power (in dBm) + antenna gains − cable losses − path loss = received level. Compare with what the receiver needs (its MDS plus the signal-to-noise ratio the mode requires), and the difference is the <b>link margin</b>. The Extra exam's example: +40 dBm + 10 dBi − 3 dB − 136 dB = −89 dBm received; the receiver needs −103 + 6 = −97 dBm; margin <b>+8 dB</b>. Another: +40 + 6 + 3 − 100 = <b>−51 dBm</b>.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>E4C06: Noise floor change from 50 Hz to 1000 Hz bandwidth? <i>13 dB.</i></summary><p>20 times the bandwidth, 20 times the noise power: 10 log₁₀ 20 ≈ 13 dB. Try it in the noise scene.</p></details>
+  <details><summary>G7B04: Class A conducts what percentage of the time? <i>100%.</i></summary><p>Biased in the middle of its range, it never turns off.</p></details>
+  <details><summary>E7H09: Phase accumulator, lookup table, DAC and low-pass filter? <i>A direct digital synthesizer.</i></summary><p>The DDS scene: the wheel, the table and the staircase.</p></details>
+  <details><summary>E4D10: A third-order intercept of +40 dBm means? <i>Two +40 dBm signals would produce a third-order product as strong as either input.</i></summary><p>Where the two lines in the intercept chart meet.</p></details>
+  <details><summary>E7F06: Bits to cover 1 V in 1 mV steps? <i>10 bits.</i></summary><p>1000 steps needed; 2⁹ = 512 is too few, 2¹⁰ = 1024 is enough.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T7A,T7B,T4B">Technician T7A, T7B, T4B</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G7B,G7C,G4D">General G7B, G7C</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E4C,E4D,E7B,E7E,E7F,E7H">Extra E4C, E4D, E7B, E7E, E7F, E7H</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why use a 500 Hz filter for CW instead of a 2.4 kHz one?</summary><p>The CW signal fits in 500 Hz; the extra width only lets in noise (about 7 dB more) and other signals.</p></details>
+  <details><summary>Why can't a Class C amplifier be used for SSB?</summary><p>It only conducts for part of each cycle, so it doesn't preserve the varying amplitude of an SSB signal: distortion and splatter.</p></details>
+  <details><summary>What do a PLL and a DDS have in common, and how do they differ?</summary><p>Both make many precise frequencies from one stable reference. A PLL steers an analog oscillator until its phase follows the reference; a DDS computes the waveform sample by sample.</p></details>
+
+  <nav class="next">
+    <a href="./10-signals-and-modes.html">← Lesson 10: Signals and modes</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l11.ts"></script>
+</body>
+</html>
