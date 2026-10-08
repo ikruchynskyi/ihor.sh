@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Feed Lines and SWR</title>
+  <meta name="description" content="Ham radio, visually, lesson 8: feed lines, reflections and standing waves, SWR, antenna analyzers, cable loss, tuners, velocity factor, stubs, matching networks and the Smith chart." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 8</p>
+  <h1>Feed lines and SWR</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./07-antennas.html#dipole">Lesson 7: feed-point impedance</a> and <a href="./06-waves-and-wavelength.html#lambda">lesson 6: wavelength</a></li>
+      <li><a href="./03-capacitors-and-inductors.html#phase">Lesson 3: reactance and the impedance arrow</a>; <a href="./02-decibels-and-prefixes.html#db">lesson 2: decibels</a></li>
+    </ul>
+  </div>
+
+  <p>Between the radio and the antenna runs a <b>feed line</b>: usually coaxial cable, sometimes two parallel wires. Its job sounds simple: carry the power to the antenna without losing it or radiating it on the way. At radio frequencies, a cable is not just a wire, though. Its length is comparable to a wavelength, so the signal travels along it as a wave, and waves can bounce.</p>
+
+  <!-- 1 -->
+  <h2 id="z0">Characteristic impedance</h2>
+  <p>A long feed line has a <b>characteristic impedance</b>, Z<sub>0</sub>: the ratio of voltage to current in a wave traveling along it. It depends only on its construction, the size of the conductors, the spacing between them and the insulation, not on its length. Common values: <b>50 Ω</b> coax (by far the most common in amateur radio), 75 Ω coax (cable TV), 300 Ω twin-lead, and <b>450 Ω</b> "window line" (parallel wires held apart by plastic with windows cut out). For parallel-wire line, it's set by the distance between the conductors and their radius. Coax is popular because it's easy to use: you can run it along walls, bury it, or tape it to a tower with few special precautions.</p>
+
+  <!-- 2 -->
+  <h2 id="reflect">When the wave hits the end</h2>
+  <p>If the antenna at the end has exactly the line's impedance, the wave is absorbed completely: every bit of power goes into the antenna. If not, part of the wave <b>reflects</b> and travels back. The forward and reflected waves pass through each other and add up to a <b>standing wave</b>: fixed spots of high and low voltage along the line. Change the load:</p>
+
+  <div class="scene" id="s-wave">
+    <div class="controls">
+      <label for="wv-z">Load (antenna) impedance <input id="wv-z" type="range" min="0" max="100" step="1" value="50"><output id="wv-zo"></output></label>
+    </div>
+    <p class="readout" id="r-wave" aria-live="polite"></p>
+  </div>
+
+  <p>The size of the reflection is the <b>reflection coefficient</b>, Γ (gamma): it describes the interaction of the load with the line. How bumpy the standing wave gets is the <b>standing wave ratio</b> (SWR): the highest voltage on the line divided by the lowest. SWR is a measure of how well a load is matched to a line: <b>1:1</b> is a perfect match, and bigger numbers mean a worse mismatch. For a purely resistive load, it's simply the bigger impedance divided by the smaller: a 200 Ω load on 50 Ω line gives 4:1, and a 10 Ω load gives 5:1.</p>
+  <div class="notation">
+    <math><mi>Γ</mi><mo>=</mo><mfrac><mrow><msub><mi>Z</mi><mi>L</mi></msub><mo>−</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow><mrow><msub><mi>Z</mi><mi>L</mi></msub><mo>+</mo><msub><mi>Z</mi><mn>0</mn></msub></mrow></mfrac><mspace width="2em"/><mtext>SWR</mtext><mo>=</mo><mfrac><mrow><mn>1</mn><mo>+</mo><mo>|</mo><mi>Γ</mi><mo>|</mo></mrow><mrow><mn>1</mn><mo>−</mo><mo>|</mo><mi>Γ</mi><mo>|</mo></mrow></mfrac></math>
+    <ul><li>The fraction of power reflected is |Γ|². At 2:1, Γ = 1/3, so about 11% reflects; at 4:1, Γ = 0.6, and 36% reflects.</li></ul>
+  </div>
+  <p>Where does reflected power go? Back down the line to the transmitter, where most of it is re-reflected up to the antenna again. Modern solid-state transmitters automatically <b>reduce their power</b> when the SWR gets high, to protect their output transistors. To prevent standing waves, the antenna's feed-point impedance must match the line's characteristic impedance.</p>
+
+  <!-- 3 -->
+  <h2 id="measure">Measuring: SWR meters and antenna analyzers</h2>
+  <p>A <b>directional wattmeter</b> (or SWR meter) samples the forward and reflected waves separately, and the SWR follows from their ratio. An <b>antenna analyzer</b> is a small transmitter and meter in one: it sweeps across frequencies and shows the SWR at each, so you can see where your antenna is <b>resonant</b>. Trim your dipole and watch the dip move:</p>
+
+  <div class="scene" id="s-analyzer">
+    <div class="controls">
+      <label for="an-l">Dipole length <input id="an-l" type="range" min="31" max="35" step="0.1" value="34.2"><output id="an-lo"></output></label>
+    </div>
+    <p class="readout" id="r-analyzer" aria-live="polite"></p>
+  </div>
+
+  <p>Testing a transmitter without radiating, you use a <b>dummy load</b>: a 50 Ω non-inductive resistor on a heat sink, which turns the power into heat. And if the SWR jumps around erratically, suspect a <b>loose connection</b> in the antenna or feed line.</p>
+
+  <!-- 4 -->
+  <h2 id="loss">Loss: where the power goes</h2>
+  <p>Every cable loses some power as <b>heat</b>, in the resistance of its conductors and in its insulation. Loss is quoted in <b>decibels per 100 feet</b>, and it <b>increases with frequency</b>. Pick a cable and see what reaches the antenna:</p>
+
+  <div class="scene" id="s-loss">
+    <div class="controls">
+      <label for="ls-c">Cable <select id="ls-c"><option value="rg58">RG-58 (thin coax)</option><option value="rg213" selected>RG-213 (thick coax)</option><option value="lmr400">LMR-400 (foam coax)</option><option value="hard">½″ air hardline</option><option value="ladder">450 Ω window line</option></select></label>
+      <label for="ls-f">Frequency <input id="ls-f" type="range" min="0" max="1000" step="1" value="500"><output id="ls-fo"></output></label>
+      <label for="ls-l">Length <input id="ls-l" type="range" min="10" max="300" step="10" value="100"><output id="ls-lo"></output></label>
+      <label for="ls-s">SWR at the antenna <input id="ls-s" type="range" min="1" max="10" step="0.5" value="1"><output id="ls-so"></output></label>
+    </div>
+    <p class="readout" id="r-loss" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Thicker cable loses less: <b>RG-213</b> has less loss than <b>RG-58</b> at the same frequency. <b>Foam</b> insulation loses less than solid plastic. <b>Air-insulated hardline</b> has the lowest loss of all coax, and <b>parallel-wire line</b> is lower still.</li>
+    <li>Mismatch makes it worse: a high SWR <b>increases the loss</b> in a lossy line, because the power travels up and down it several times.</li>
+    <li>And loss hides mismatch: the reflected wave is weakened on the way back, so the SWR measured at the transmitter end looks <b>better</b> than it really is at the antenna. A very long, lossy cable can make a terrible antenna look fine.</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="tuner">What an antenna tuner does (and doesn't)</h2>
+  <p>An <b>antenna tuner</b> (antenna coupler) sits at the transmitter and transforms whatever impedance the feed line presents into the 50 Ω the transmitter wants. It matches the antenna system to the transmitter's output. But it can't fix the line beyond it: with 5:1 on the feed line, after adjusting the tuner, the transmitter sees 1:1 and the feed line <b>still has 5:1</b>, with its extra loss. The better fix, when possible, is to match at the antenna.</p>
+
+  <!-- 6 -->
+  <h2 id="velocity">Slower than light: velocity factor</h2>
+  <p>In a cable, waves travel slower than in free space, because of the insulating material (the dielectric) between the conductors. The ratio is the <b>velocity factor</b>: about 0.66 for solid polyethylene coax, 0.8–0.85 for foam, and 0.95 or more for air-insulated or open-wire line. So a cable's <b>electrical length</b> is longer than its physical length: a half wavelength of solid coax is only 66% as long as a half wavelength in air. An air-insulated line that's electrically a half wavelength at 14.10 MHz is about 300 ÷ 14.10 ÷ 2 ≈ 10.6 m long.</p>
+
+  <!-- 7 -->
+  <h2 id="stubs">Stubs: lines that act like coils and capacitors</h2>
+  <p>A piece of line that's open or shorted at the far end reflects everything, and what it looks like from the near end depends on its length in wavelengths. Slide the length:</p>
+
+  <div class="scene" id="s-stub">
+    <div class="controls">
+      <label for="sb-s"><input id="sb-s" type="checkbox" checked> Shorted at the far end (untick: open)</label>
+      <label for="sb-l">Length <input id="sb-l" type="range" min="0.01" max="0.5" step="0.005" value="0.125"><output id="sb-lo"></output></label>
+    </div>
+    <p class="readout" id="r-stub" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Shorted: ⅛ λ looks <b>inductive</b>; ¼ λ looks like a <b>very high</b> impedance (an open circuit!); ½ λ looks <b>very low</b> again (a short).</li>
+    <li>Open: ⅛ λ looks <b>capacitive</b>; ¼ λ looks <b>very low</b> (a short!); ½ λ looks open again.</li>
+    <li>A quarter-wave line <b>inverts</b> impedances, so it can match two different ones: a quarter-wave "Q-section" of impedance √(Z₁ × Z₂) matches Z₁ to Z₂. To match 100 Ω to 50 Ω: √5000 ≈ 71 Ω, so <b>75 Ω</b> coax works.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="matching">Matching at the antenna</h2>
+  <ul>
+    <li><b>Gamma match:</b> the coax shield connects to the center of the (unbroken) driven element, and the center conductor to a point a fraction of a wavelength to one side; a <b>series capacitor</b> cancels the extra inductive reactance. It's also how you shunt-feed a grounded tower at its base. The element needn't be insulated from the boom.</li>
+    <li><b>Beta or hairpin match:</b> a shorted stub across the feed point. It needs the driven element to look <b>capacitive</b> (slightly shorter than a half wave), and the element must be insulated from the boom.</li>
+    <li><b>Stub match:</b> a short length of line connected in <b>parallel</b> with the feed line at or near the feed point.</li>
+    <li><b>Wilkinson divider:</b> splits power equally between two 50 Ω loads while keeping a 50 Ω input. <b>Phasing lines</b> between multiple driven elements control a pattern (<a class="back" href="./07-antennas.html#phased">↩ lesson 7: phased arrays</a>).</li>
+    <li>At microwaves, connections are made with <b>microstrip</b>: precise printed tracks above a ground plane, with a constant impedance.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2 id="smith">The Smith chart: every impedance on one disc</h2>
+  <p>Engineers squeeze the entire impedance plane (<a class="back" href="./04-resonance.html#plane">↩ lesson 4</a>) into a circle: the <b>Smith chart</b>. The center is a perfect match; the edge is total reflection. Straight lines of the impedance plane become <b>resistance circles</b> and <b>reactance arcs</b>. Drag the load point, then move along the line toward the transmitter:</p>
+
+  <div class="scene" id="s-smith">
+    <div class="controls">
+      <label for="sm-d">Distance along the line toward the transmitter <input id="sm-d" type="range" min="0" max="0.5" step="0.005" value="0"><output id="sm-do"></output></label>
+    </div>
+    <p class="readout" id="r-smith" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The chart is <b>normalized</b>: the center represents the line's impedance (50 Ω divides every value; reassign the center to use it for 75 Ω line).</li>
+    <li>The only straight line is the <b>resistance axis</b>; the big outer circle, where the reactance arcs end, is the <b>reactance axis</b>. The <b>arcs</b> are points of constant reactance.</li>
+    <li>Moving along a line just <b>rotates</b> the point around the center at constant distance: a <b>constant-SWR circle</b> (the third family of circles added when designing matches). Half a wavelength is one full turn, which is why the edge is calibrated in <b>fractions of a wavelength</b>.</li>
+    <li>That makes it a calculator for impedance and SWR along lines, and for finding the length and position of a matching stub.</li>
+  </ul>
+  <details><summary>Figure E9-3 from the question pool</summary><figure><img class="fig" src="../fig/e9-3.png" alt="Figure E9-3, a Smith chart"></figure></details>
+
+  <!-- 10 -->
+  <h2 id="weather">Keeping it working outdoors</h2>
+  <p>Moisture is coax's enemy: water that gets into a cable ruins it. Tape outdoor connectors carefully (whatever their type), and choose cable with an <b>ultraviolet-resistant jacket</b>, because sunlight cracks ordinary plastic and lets water in. Connectors: <b>PL-259</b> (the "UHF connector", despite the name, common at HF and VHF), and <b>type N</b> for frequencies above 400 MHz.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>G9A09: 50 Ω line into a 200 Ω resistive load? <i>4:1.</i></summary><p>Bigger over smaller: 200 ÷ 50.</p></details>
+  <details><summary>G9A08: 5:1 on the line, tuner adjusted for 1:1 at the transmitter: SWR on the line? <i>Still 5:1.</i></summary><p>The tuner only transforms what the transmitter sees. Nothing changes between the tuner and the antenna.</p></details>
+  <details><summary>G9A11: How does line loss affect the SWR measured at the line's input? <i>Higher loss reduces it.</i></summary><p>The reflected wave is attenuated on its way back. Try it in the loss scene: a long, lossy cable at a high SWR.</p></details>
+  <details><summary>E9F09: A shorted quarter-wave line looks like? <i>Very high impedance.</i></summary><p>The short reflects with a half-cycle flip; after a quarter wave there and a quarter wave back, the reflected voltage arrives in step with the forward one: maximum voltage, minimum current.</p></details>
+  <details><summary>E9E06: A Q-section to match 100 Ω to 50 Ω? <i>75 Ω line.</i></summary><p>√(100 × 50) ≈ 71 Ω; 75 Ω is the standard cable closest to that.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T7C,T9B">Technician T7C, T9B</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G9A">General G9A</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E9E,E9F,E9G">Extra E9E, E9F, E9G</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>A 25 Ω antenna on 50 Ω coax: what SWR?</summary><p>50 ÷ 25 = 2:1.</p></details>
+  <details><summary>Why does doubling the frequency increase coax loss?</summary><p>Skin effect pushes the current into a thinner layer of the conductors, raising their resistance, and the insulation absorbs more at higher frequencies.</p></details>
+  <details><summary>Why might your SWR meter read a perfect 1:1 at the end of a very long, thin cable?</summary><p>Because the cable is eating the power: the reflected wave is attenuated so much on the way back that the meter barely sees it.</p></details>
+
+  <nav class="next">
+    <a href="./07-antennas.html">← Lesson 7: Antennas</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l08.ts"></script>
+</body>
+</html>
