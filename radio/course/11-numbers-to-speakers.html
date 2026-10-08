@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>From Numbers to Speakers</title>
+  <meta name="description" content="Radio from scratch, chapter 11: getting steady sound out of a browser. Two clocks that drift apart, playing at a different rate, automatic volume and squelch." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 11</p>
+  <h1>From numbers to speakers</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./08-chunks-of-a-live-stream.html#delay">Chapter 8: chunks and the audio cushion</a></li>
+      <li><a href="./03-taking-snapshots.html#strip">Chapter 3: samples are snapshots at a fixed rate</a></li>
+      <li><a href="./09-fm-listening-to-the-speed.html#demod">Chapters 9</a> and <a href="./10-am-ssb-and-morse.html#am">10</a>: where the sound comes from</li>
+    </ul>
+  </div>
+
+  <p>The demodulator hands us numbers: about 48 000 per second, each saying where the speaker cone should be. Getting them to come out of the speakers smoothly, for hours, turns out to involve four practical problems that every radio, phone and video call has to solve. None of them is hard, but each one, ignored, makes the radio sound broken.</p>
+
+  <!-- 1 -->
+  <h2 id="clocks">Two clocks that never agree</h2>
+  <p>The dongle decides how fast samples arrive, using its own crystal (28.8 MHz). The sound card decides how fast they're played, using a different crystal. No two crystals are exactly alike: they differ by some <b>parts per million</b> (ppm). 50 ppm sounds like nothing, but it means that every hour, one side gets 180 ms ahead of the other.</p>
+  <p>Chapter 8's audio cushion (<a class="back" href="./08-chunks-of-a-live-stream.html#delay">↩</a>) absorbs this, for a while. Here's the cushion over four hours:</p>
+
+  <div class="scene" id="s-clock">
+    <div class="controls">
+      <label for="ck-p">Dongle's clock vs sound card's <input id="ck-p" type="range" min="-200" max="200" step="10" value="50"><output id="ck-po"></output></label>
+    </div>
+    <p class="readout" id="r-clock" aria-live="polite"></p>
+  </div>
+
+  <p>If the dongle runs fast, sound piles up faster than it's played, until the queue is more than 600 ms long; then our player <b>drops a chunk</b>, a barely noticeable skip. If the dongle runs slow, the queue drains until it's nearly empty; then the player waits to <b>rebuild the cushion</b>, a short silence. Either way, one small glitch every hour or two. Professional systems avoid even those by measuring the drift and stretching or squeezing the sound by a tiny amount to match (another use of the rate conversion below).</p>
+
+  <!-- 2 -->
+  <h2 id="resample">Playing at a different rate</h2>
+  <p>Our sound comes out at whatever rate the last decimation gave (chapter 7): for FM at 2.4 MS/s, exactly 50 000 samples per second. The sound card might run at 44 100 or 48 000. So someone has to produce new samples <b>between</b> the ones we have, at different moments: <b>resampling</b>.</p>
+
+  <div class="scene" id="s-resample">
+    <div class="controls">
+      <label for="rs-r">New spacing (in old samples) <input id="rs-r" type="range" min="0.3" max="1.7" step="0.01" value="0.73"><output id="rs-ro"></output></label>
+    </div>
+    <p class="readout" id="r-resample" aria-live="polite"></p>
+  </div>
+
+  <p>The simplest way to guess a value between two samples is to draw a straight line between them and read off the height. It's not exact, since the real sound curves, but the closer together the samples are, the smaller the error: with 10 samples per wave it's under 5%, with 50 it's 0.2%. Our audio has well over 10 samples per wave for every note that matters, and browsers use smarter curves than straight lines. In this site's receiver, the browser's Web Audio system does the resampling: we tell it our rate, and it converts.</p>
+
+  <!-- 3 -->
+  <h2 id="agc">Automatic volume</h2>
+  <p>FM's output level depends only on how loud the music is (chapter 9), so a fixed volume works. But AM and SSB get louder and softer with the <em>signal strength</em> (chapter 10), which changes with distance, weather and every passing bus. A receiver therefore adjusts its own volume: <b>automatic gain control</b> (AGC).</p>
+
+  <div class="scene" id="s-agc">
+    <div class="controls">
+      <label for="ag-r">Release time <input id="ag-r" type="range" min="0.05" max="1.5" step="0.05" value="0.4"><output id="ag-ro"></output></label>
+    </div>
+  </div>
+
+  <p>Ours follows the loudest recent peak and divides by it. When the sound gets louder, it reacts <b>instantly</b> (the "attack"), so a sudden loud signal never blasts your ears. When the sound gets quieter, it raises the volume <b>slowly</b> (the "release"). Make the release very short and listen to the result in the picture: the quiet passages get pumped up to full volume right away, so loud and quiet parts of speech end up equally loud, and the background noise "breathes" up in every pause. Make it very long and a fade stays quiet for seconds. Around half a second is a common compromise.</p>
+
+  <!-- 4 -->
+  <h2 id="squelch">Squelch: silence between transmissions</h2>
+  <p>Two-way radio (airport towers, police, taxis, hams) is silent most of the time. A receiver tuned to an empty channel plays pure noise: a loud hiss, for minutes, between every short message. A <b>squelch</b> mutes the sound whenever the channel is too weak to contain a transmission:</p>
+
+  <div class="scene" id="s-squelch">
+    <div class="controls">
+      <label for="sq-t">Threshold <input id="sq-t" type="range" min="-16" max="-2" step="1" value="-10"><output id="sq-to"></output></label>
+    </div>
+    <div class="game">
+      <button id="sq-off">▶ Play without squelch</button>
+      <button id="sq-on">▶ Play with squelch</button>
+    </div>
+  </div>
+
+  <p>The squelch measures the channel's strength every 20 ms (the average length² of its arrows, in dB: chapter 4's power). Above the threshold, the sound is on; below it, muted. Two details make it pleasant to use:</p>
+  <ul>
+    <li><b>Smoothing:</b> the measurement is averaged over a few chunks, so a single noisy spike doesn't open it.</li>
+    <li><b>Hysteresis:</b> it opens at the threshold, but only closes again 3 dB <em>below</em> it. Without that gap, a signal hovering right at the threshold would chop the sound on and off many times a second.</li>
+  </ul>
+  <p>Set the threshold too low and noise gets through; too high and the start of weak messages is cut off. Real radios have a squelch knob for exactly this.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: the complete receiver</h2>
+  <div class="lab">
+    <p>Everything from chapters 5 to 11, playing live, with a signal meter. The airport tower is the best test of the squelch: watch the meter jump when a pilot or controller transmits.</p>
+    <div class="game">
+      <button data-preset="118.7,AM">LaGuardia tower 118.7 (AM)</button>
+      <button data-preset="162.55,NFM">NOAA weather 162.55 (narrow FM)</button>
+      <button data-preset="98.7,WFM">98.7 FM</button>
+    </div>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label for="lb-sq">Squelch threshold <input id="lb-sq" type="range" min="-70" max="0" step="1" value="-40"><output id="lb-sqo"></output></label>
+        <label for="lb-sqon"><input id="lb-sqon" type="checkbox" checked> Squelch on</label>
+        <label class="note">Mode <select id="lb-mode"><option>AM</option><option>NFM</option><option>WFM</option><option>USB</option><option>LSB</option></select></label>
+      </div>
+    </div>
+    <div id="lab11"></div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>Scheduling sound</b> (<code>LivePlayer</code> in <code>src/course/audio.ts</code>, the same logic as Spectrum Lab): each chunk is scheduled to start exactly when the previous one ends, with the cushion and the two drift rules:</p>
+<pre><code>if (this.t &lt; now + 0.05) this.t = now + 0.15;   // ran dry: rebuild a 150 ms cushion
+if (this.t &gt; now + 0.6) return;                 // too far ahead (clocks drift apart): drop this chunk
+const buf = ctx.createBuffer(1, samples.length, rate);   // we say our rate; the browser resamples
+src.start(this.t);  this.t += buf.duration;</code></pre>
+  <p><b>Automatic volume</b> (<code>Agc</code> in <code>src/dsp.ts</code>): instant attack, slow release:</p>
+<pre><code>const a = Math.abs(x[i]);
+this.env = a &gt; this.env ? a : Math.max(1e-4, this.env * this.decay);   // jump up, sink slowly
+out[i] = (x[i] * target) / this.env;</code></pre>
+  <p><b>Squelch</b> (<code>Squelch</code> in <code>src/dsp.ts</code>): power in dB, smoothed, with 3 dB of hysteresis:</p>
+<pre><code>const db = 10 * Math.log10(p / (channel.length / 2) + 1e-20);   // average power of this chunk
+this.level = 0.7 * this.level + 0.3 * db;                       // smoothing
+if (!this.open &amp;&amp; this.level &gt; this.threshold) this.open = true;
+else if (this.open &amp;&amp; this.level &lt; this.threshold - 3) this.open = false;</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch11.ts</code>:</p>
+<pre><code>clocks  10 ppm apart: the buffer drifts  36 ms per hour → first glitch after 750 min (fast dongle) or 167 min (slow dongle)
+clocks  50 ppm apart: the buffer drifts 180 ms per hour → first glitch after 150 min (fast dongle) or 33 min (slow dongle)
+clocks 200 ppm apart: the buffer drifts 720 ms per hour → first glitch after 38 min (fast dongle) or 8 min (slow dongle)
+straight-line resampling,  4 samples per wave: worst error 21.05%
+straight-line resampling, 10 samples per wave: worst error 4.89%
+straight-line resampling, 50 samples per wave: worst error 0.20%
+AGC: loud part peaks at 0.50, quiet part (10× weaker in) peaks at 0.50 once it has adjusted
+squelch: 97 chunks had a transmission, 97 were let through, 12 disagreed: at most 2 chunks (40 ms) late at each of the 6 edges, from smoothing the level
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Two clocks differ by 100 ppm. How far apart do they get in an hour?</summary><p>100 millionths of 3600 seconds: 0.36 seconds, i.e. 360 ms per hour.</p></details>
+  <details><summary>Why does AGC react instantly to loud sounds but slowly to quiet ones?</summary><p>Reacting slowly to a sudden loud signal would blast your ears for a moment. Reacting quickly to quiet moments would pump the volume up in every pause, making background noise surge.</p></details>
+  <details><summary>Why does a squelch close a little below the level where it opens?</summary><p>So a signal hovering right at the threshold doesn't make it flicker on and off. The 3 dB gap means a signal must clearly drop before the sound is cut.</p></details>
+
+  <nav class="next">
+    <a href="./10-am-ssb-and-morse.html">← Chapter 10: AM, SSB and Morse</a>
+    <a href="./12-inside-the-dongle.html">Next: Chapter 12, Inside the dongle →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch11.ts"></script>
+</body>
+</html>

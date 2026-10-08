@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Build for Your Own Dongle</title>
+  <meta name="description" content="A developer's guide: how a browser talks to an RTL-SDR over WebUSB, the USB and register protocols, the sample data, our server's API, and a minimal app to start from." />
+  <style>
+    .stack { display: grid; gap: 6px; margin: 18px 0; font: 0.88rem ui-sans-serif, system-ui, sans-serif; }
+    .stack div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: var(--card); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .stack div b { font-weight: 600; }
+    .stack div span { color: var(--muted); }
+    .stack .ours { border-color: var(--accent); }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+    .cols > div { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); font-size: 0.95rem; }
+    .cols h3 { margin: 0 0 6px; font: 600 1rem ui-sans-serif, system-ui, sans-serif; }
+    table { border-collapse: collapse; width: 100%; font: 0.86rem/1.45 ui-sans-serif, system-ui, sans-serif; margin: 12px 0 20px; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+    th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+    .table { overflow-x: auto; }
+    nav.toc { font: 0.9rem ui-sans-serif, system-ui, sans-serif; display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 18px 0 8px; }
+    .cta { display: inline-block; margin: 6px 0 18px; padding: 10px 16px; border-radius: 10px; border: 2px solid var(--accent); font: 600 0.95rem ui-sans-serif, system-ui, sans-serif; text-decoration: none; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio · developer guide</p>
+  <h1>Build for your own dongle</h1>
+  <p>Everything you need to write your own software for an RTL-SDR dongle, in a web page, with no drivers to install and no libraries: how the browser reaches USB, the protocols the dongle speaks, what the data looks like, and how to stream it from a server instead. Every snippet is taken from the working code on this site.</p>
+  <a class="cta" href="./examples/hello-dongle.html">Open the 80-line starter app →</a>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#layers">The layers</a><a href="#setup">Setup per OS</a><a href="#webusb">WebUSB API</a><a href="#usb">USB basics</a>
+    <a href="#registers">Register protocol</a><a href="#tuning">Tuning &amp; rate</a><a href="#data">The data</a><a href="#stream">Streaming</a><a href="#waterfall">The waterfall</a>
+    <a href="#network">Network API</a><a href="#code">Read the real code</a><a href="#ideas">Things to build</a><a href="#trouble">Troubleshooting</a>
+  </nav>
+
+  <h2 id="layers">The layers, from antenna to your code</h2>
+  <div class="stack">
+    <div class="ours"><b>Your web page</b><span>DSP, waterfall, audio, decoders (course chapters 4–11)</span></div>
+    <div class="ours"><b>Driver: <code>src/rtlsdr.ts</code> + <code>src/r820t.ts</code></b><span>~550 lines of TypeScript, no dependencies</span></div>
+    <div><b>WebUSB (<code>navigator.usb</code>)</b><span>built into Chrome, Edge, Opera (desktop and Android)</span></div>
+    <div><b>Operating system USB stack</b><span>needs a "generic" driver for the dongle (see setup)</span></div>
+    <div><b>RTL2832U chip</b><span>USB interface, 8-bit ADC, digital mixer and resampler</span></div>
+    <div><b>R820T2 tuner chip</b><span>amplifier, mixer, PLL; reached over I2C through the RTL2832U</span></div>
+    <div><b>Antenna</b><span>the radio waves</span></div>
+  </div>
+  <p>Or, through the network: your page → HTTP → <code>server.ts</code> on a computer with the dongle → the same driver (running in Node) → the dongle. Your page sees the same bytes either way.</p>
+
+  <h2 id="setup">Setup: what each visitor needs</h2>
+  <div class="cols">
+    <div><h3>Browser</h3><p>Chrome, Edge, Opera or another Chromium browser, on desktop or Android. Safari and Firefox don't support WebUSB; offer them the network source or file playback instead.</p></div>
+    <div><h3>A secure page</h3><p>WebUSB only exists on <code>https://</code> pages and on <code>http://localhost</code>. On a plain-HTTP network address, <code>navigator.usb</code> is missing entirely.</p></div>
+    <div><h3>macOS · ChromeOS</h3><p>Nothing to install. Plug in and connect.</p></div>
+    <div><h3>Windows</h3><p>Windows needs the generic <b>WinUSB</b> driver on the dongle, installed once with <b>Zadig</b>: Options → List All Devices → pick "Bulk-In, Interface (Interface 0)" → WinUSB → Replace Driver. If you've used SDR# before, it's already done.</p></div>
+    <div><h3>Linux</h3><p>The kernel grabs the dongle as a TV tuner. Unload it and keep it off: <code>echo 'blacklist dvb_usb_rtl28xxu' | sudo tee /etc/modprobe.d/rtl-sdr.conf</code>, and allow your user to open it with a udev rule: <code>SUBSYSTEM=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", MODE="0666"</code>.</p></div>
+    <div><h3>Android</h3><p>Chrome with a USB-OTG adapter. Android asks for permission when the page connects. Phone + dongle makes a pocket receiver.</p></div>
+  </div>
+  <p>Only one program can use a dongle at a time. If SDR#, GQRX, SDR++, <code>rtl_tcp</code> or a server SDR has it open, the page can't claim it (see <a href="#trouble">troubleshooting</a>).</p>
+
+  <h2 id="webusb">The WebUSB API in five calls</h2>
+  <p><b>1. Ask for a device.</b> The browser shows its own picker, filtered to the IDs you pass. It only opens in response to a click, so a page can't silently grab hardware.</p>
+<pre><code>button.onclick = async () =&gt; {
+  const device = await navigator.usb.requestDevice({
+    filters: [{ vendorId: 0x0bda, productId: 0x2838 }, { vendorId: 0x0bda, productId: 0x2832 }],
+  });   // rejects with NotFoundError "No device selected." if the user cancels
+};</code></pre>
+  <p>The browser remembers the permission for your site. Next visit, skip the picker: <code>const [device] = await navigator.usb.getDevices();</code></p>
+  <p><b>2. Open it and claim interface 0.</b> Claiming tells the OS "this page talks to this device now".</p>
+<pre><code>await device.open();
+if (!device.configuration) await device.selectConfiguration(1);
+await device.claimInterface(0);   // fails if another program or OS driver holds it</code></pre>
+  <p><b>3. Control transfers</b> read and write the chip's registers (next section):</p>
+<pre><code>await device.controlTransferOut(
+  { requestType: "vendor", recipient: "device", request: 0, value, index }, new Uint8Array(bytes));
+const r = await device.controlTransferIn(
+  { requestType: "vendor", recipient: "device", request: 0, value, index }, length);
+// r.data is a DataView with the bytes the chip sent back</code></pre>
+  <p><b>4. Bulk transfers</b> carry the radio samples, from endpoint 1 (written 0x81 in USB terms: "endpoint 1, direction in"):</p>
+<pre><code>const r = await device.transferIn(1, 262144);   // up to 256 KiB of samples
+const bytes = new Uint8Array(r.data.buffer);    // I, Q, I, Q, …</code></pre>
+  <p><b>5. Clean up</b>, and react to unplugging:</p>
+<pre><code>await device.releaseInterface(0); await device.close();
+navigator.usb.addEventListener("disconnect", (e) =&gt; { if (e.device === device) stopEverything(); });</code></pre>
+
+  <h2 id="usb">USB in one minute</h2>
+  <p>A USB device has <b>configurations</b> (almost always one), each with <b>interfaces</b> (a group of functions; ours is interface 0), each with <b>endpoints</b>, which are one-way channels. Two kinds matter here:</p>
+  <div class="table"><table>
+    <tr><th>Transfer type</th><th>Used for</th><th>Properties</th></tr>
+    <tr><td><b>Control</b> (endpoint 0)</td><td>Register reads/writes, setup</td><td>Small, acknowledged, carries a "setup packet" with request, value and index fields.</td></tr>
+    <tr><td><b>Bulk</b> (endpoint 0x81)</td><td>The sample stream</td><td>Large and fast, delivered whenever the bus has time. The host must keep asking, or the dongle's buffer overflows and samples are lost.</td></tr>
+  </table></div>
+  <p>The dongle needs 2.4 MS/s × 2 bytes = <b>4.8 MB/s</b>, comfortable for USB 2.0's 480 Mbit/s.</p>
+
+  <h2 id="registers">The RTL2832U register protocol</h2>
+  <p>There is no official documentation; this is what the open-source community (osmocom's librtlsdr) worked out, and what our driver implements. Every register access is a <b>vendor control transfer with request 0</b>; the <code>value</code> and <code>index</code> fields say what to touch:</p>
+  <div class="table"><table>
+    <tr><th>Target</th><th>value</th><th>index</th><th>Notes</th></tr>
+    <tr><td>USB / system block register</td><td>register address</td><td><code>block &lt;&lt; 8</code>, +<code>0x10</code> to write</td><td>Blocks: 1 = USB, 2 = system. Writes are big-endian.</td></tr>
+    <tr><td>Demodulator register</td><td><code>(addr &lt;&lt; 8) | 0x20</code></td><td><code>page</code>, +<code>0x10</code> to write</td><td>After each write, do a dummy read of page 0x0a register 1. Reads come back little-endian.</td></tr>
+    <tr><td>I2C (the tuner chip)</td><td>I2C address (0x34)</td><td><code>6 &lt;&lt; 8</code>, +<code>0x10</code> to write</td><td>First enable the I2C repeater: demod page 1 reg 1 = 0x18 (0x10 to disable).</td></tr>
+  </table></div>
+  <p>In code, all of it reduces to two helpers (<code>src/rtlsdr.ts</code>):</p>
+<pre><code>private writeReg(block: number, addr: number, val: number, len = 1) {
+  return this.out(addr, (block &lt;&lt; 8) | 0x10, RtlSdr.be(val, len));
+}
+private async demodWrite(page: number, addr: number, val: number, len = 1) {
+  await this.out((addr &lt;&lt; 8) | 0x20, 0x10 | page, RtlSdr.be(val, len));
+  await this.in((0x01 &lt;&lt; 8) | 0x20, 0x0a, 1);   // the chip expects this dummy read
+}</code></pre>
+  <p><b>Identifying the tuner:</b> with the repeater on, read register 0 of I2C address 0x34 (R820T) or 0x74 (R828D). Both answer 0x69. Note that the R820T returns every byte you read with its bits in reverse order.</p>
+  <p><b>Start-up</b> is about 30 register writes: power the demodulator, soft-reset it, load the resampler's filter, switch to SDR mode, then initialize the tuner. The full sequence, each write explained, is in <code>initBaseband()</code> and in the article <code>articles/01-talking-to-the-dongle.md</code>.</p>
+
+  <h2 id="tuning">Tuning and sample rate</h2>
+  <p><b>Frequency</b> is set in the tuner by programming its PLL: pick a divider that puts its internal oscillator between 1.77 and 3.54 GHz, then split the ratio to the 28.8 MHz crystal into an integer and a 16-bit fraction. From the driver:</p>
+<pre><code>const vcoFreq = freq * mixDiv;
+const vcoDiv = Math.floor((this.xtal + 65536 * vcoFreq) / (2 * this.xtal));
+const nint = Math.floor(vcoDiv / 65536), sdm = vcoDiv % 65536;   // integer and fraction</code></pre>
+  <p><b>Sample rate</b> is one number in the RTL2832U: the ratio between its 28.8 MHz ADC and the rate you want. Valid rates: 225–300 kS/s and 900 kS/s–3.2 MS/s; above about 2.4 MS/s most dongles start dropping samples.</p>
+<pre><code>const ratio = Math.floor((28.8e6 * 2 ** 22) / rate) &amp; 0x0ffffffc;
+await this.demodWrite(1, 0x9f, ratio &gt;&gt;&gt; 16, 2);
+await this.demodWrite(1, 0xa1, ratio &amp; 0xffff, 2);</code></pre>
+  <p><b>Gain</b> on the R820T is a ladder of LNA and mixer steps, 0 to ~48 dB, or automatic. The public API of our driver:</p>
+<pre><code>const sdr = await RtlSdr.request();     // picker + open + init
+await sdr.setSampleRate(2_400_000);     // returns the exact achieved rate
+await sdr.setCenterFrequency(98.45e6);
+await sdr.setGain(30);                  // dB, or null for automatic
+await sdr.setPpm(0);                    // crystal correction, parts per million
+await sdr.stream((bytes) =&gt; { /* … */ }); // until sdr.stop()
+await sdr.close();</code></pre>
+
+  <h2 id="data">The data: what arrives</h2>
+  <ul>
+    <li><b>Format:</b> unsigned 8-bit, interleaved: I₀ Q₀ I₁ Q₁ … Each pair is one complex sample (course chapter 2). This is the same as <code>rtl_sdr</code>'s <code>.cu8</code> files, so recordings are interchangeable.</li>
+    <li><b>To numbers:</b> <code>(byte − 127.5) / 127.5</code> gives −1…+1.</li>
+    <li><b>What you're looking at:</b> a slice of the radio band as wide as the sample rate, centered on the tuned frequency (course chapter 3). At 2.4 MS/s: center ± 1.2 MHz.</li>
+    <li><b>Artifacts to expect:</b> a spike at exactly 0 Hz (DC offset), so tune a little to one side of what you want; a faint mirror image of strong signals (I/Q imbalance); 8 bits ≈ 50 dB of range, so set the gain so strong signals don't clip.</li>
+  </ul>
+  <p>Saving a recording other tools can open is a few lines with the File System Access API (Chrome):</p>
+<pre><code>const file = await (await showSaveFilePicker({ suggestedName: "fm_98.45M_2.4M.cu8" })).createWritable();
+await sdr.stream((bytes) =&gt; file.write(bytes));   // later: sdr.stop(); await file.close();</code></pre>
+
+  <h2 id="stream">Streaming without losing samples</h2>
+  <p>The host must always have a bulk request waiting, or the dongle's small buffer overflows. So keep several transfers in flight and handle them strictly in order (<code>stream()</code> in the driver):</p>
+<pre><code>const queue = Array.from({ length: 4 }, () =&gt; dev.transferIn(1, 262144));
+while (streaming) {
+  const r = await queue.shift();                 // oldest first: samples stay in order
+  queue.push(dev.transferIn(1, 262144));         // immediately ask for more
+  onData(new Uint8Array(r.data.buffer));
+}</code></pre>
+  <p>Why "ask ahead"? The dongle has only a small buffer of its own. It fills at a steady rate no matter what your page is doing, and it's only emptied while a request from the computer is waiting. Below, a simulation with 1 ms steps. Compare the two strategies, and make the page slower:</p>
+  <div class="scene" id="s-usb">
+    <div class="controls">
+      <label for="us-naive"><input id="us-naive" type="checkbox" checked> Naive loop: ask → wait → process → ask again</label>
+      <label for="us-work">Page work <input id="us-work" type="range" min="5" max="45" step="5" value="15"><output id="us-worko"></output></label>
+    </div>
+  </div>
+  <p>With the naive loop, every time the page is busy (pink) there's no request waiting (no green), the dongle's buffer fills (blue), and once it's full (red) radio is thrown away. Occasional hiccups (here, 15% of chunks take 3× longer, like a browser pausing to tidy memory) are enough to lose data even when the page is fast on average. Untick it: with four requests queued, one is always waiting, the buffer never fills, and nothing is lost, as long as the page keeps up <em>on average</em>.</p>
+  <p>At 2.4 MS/s each 256 KiB transfer is about 55 ms of radio. Your <code>onData</code> must finish well within that on average. Heavy processing belongs in a Web Worker (post each chunk's <code>ArrayBuffer</code> as a transferable, so it moves without copying), and audio output in an AudioWorklet. Check for drops by comparing received bytes per second with 2 × the sample rate.</p>
+
+  <h2 id="waterfall">How the waterfall is drawn</h2>
+  <p>The waterfall is the most recognizable picture in radio, and it's built from everything above in seven steps, repeated ~8–18 times a second. Here's every step on one screen, fed by a pretend radio band: two steady stations and a third that keeps switching on and off (watch it appear and vanish in the waterfall).</p>
+  <div class="scene" id="s-pipe"></div>
+  <ol>
+    <li><b>Bytes from USB.</b> Raw unsigned bytes, I and Q alternating; 127.5 means zero (blue I, pink Q bars).</li>
+    <li><b>Numbers.</b> <code>(byte − 127.5) / 127.5</code>, so −1…+1. On their own they look like noise: several stations are added together (course chapter 3).</li>
+    <li><b>Window.</b> Multiply each block by a smooth bump (yellow) that fades its ends to zero, so the block's edges don't create fake frequencies (course chapter 4).</li>
+    <li><b>FFT → power.</b> How much of each frequency is present. On a normal scale, only the strongest station shows; weak ones are smaller than a pixel.</li>
+    <li><b>Decibels.</b> <code>10 × log10(power)</code> squeezes a range of a million to one into something you can see: now all three stations stand out.</li>
+    <li><b>Colors.</b> Find the noise floor (the median bin), then color each bin by how far above it is: black → blue → magenta → yellow over 35 dB.</li>
+    <li><b>Scroll.</b> Shift the whole picture down one pixel and paint the new row on top. Time runs downward: the bottom is a few seconds ago.</li>
+  </ol>
+  <p><b>Speed budget.</b> At 2.4 MS/s, a 256 KiB chunk arrives every ~55 ms. Turning it into one row costs 16 FFTs of 512 points (about 0.01 ms each in a browser) plus 512 color lookups: well under a millisecond, which leaves plenty of time for audio. Drawing happens at the screen's pace (<code>requestAnimationFrame</code>), not the data's.</p>
+  <p><b>Choosing the FFT size.</b> More bins mean finer detail in frequency but coarser in time. 512 bins across 1.024 MHz means each column is 2 kHz wide, plenty to separate FM stations 200 kHz apart. To see narrow signals (Morse, data bursts), use more bins (4096+) and average fewer blocks.</p>
+
+  <h2 id="code">Read the real code</h2>
+  <p>Three files, shown exactly as they are on this site (loaded from the source when the page is built, so they can't go out of date). <b>Click any highlighted part of the code</b> to jump to its explanation, or click an explanation to find its code.</p>
+  <h3>The starter app: the whole thing</h3>
+  <div id="cv-starter"></div>
+  <h3>The waterfall</h3>
+  <div id="cv-waterfall"></div>
+  <h3>The driver</h3>
+  <div id="cv-driver"></div>
+
+  <h2 id="network">The network source: our server's API</h2>
+  <p><code>server.ts</code> runs the same driver in Node (through the <code>usb</code> package's WebUSB implementation), owns the dongle, and serves plain HTTP. Three endpoints:</p>
+  <div class="table"><table>
+    <tr><th>Request</th><th>Does</th></tr>
+    <tr><td><code>GET /api/state</code></td><td>JSON: <code>{"tuner":"R820T","rate":1024000,"center":98450000,"gain":32.8,"listeners":1}</code></td></tr>
+    <tr><td><code>POST /api/tune</code> body <code>{"center":98450000,"gain":30}</code></td><td>Retunes the shared dongle (either field optional; <code>gain: null</code> = automatic).</td></tr>
+    <tr><td><code>GET /api/stream</code></td><td>An endless <code>application/octet-stream</code> of raw cu8 bytes at the rate in the <code>x-sample-rate</code> header. The dongle opens on the first listener and closes 5 s after the last.</td></tr>
+  </table></div>
+<pre><code># record 5 seconds from the command line
+curl -s http://your-server:8073/api/stream --max-time 5 -o capture.cu8
+# retune
+curl -X POST http://your-server:8073/api/tune -d '{"center": 100.3e6}'</code></pre>
+  <p>In a page, <code>fetch()</code> reads the stream chunk by chunk (<code>src/remote.ts</code>). Network reads arrive in odd sizes, so regroup them, and keep I/Q pairs together:</p>
+<pre><code>const reader = (await fetch("/api/stream")).body.getReader();
+for (;;) {
+  const { value, done } = await reader.read();   // a Uint8Array of any size
+  if (done) break;
+  // append to a buffer; hand on whole I/Q pairs once you have ~64 KiB
+}</code></pre>
+  <p><b>Bandwidth:</b> at 1.024 MS/s the raw stream is 2 MB/s per listener. That's fine on a home network but too much for the internet; a public server must instead send each listener only the narrow slice they're tuned to (the course's chapter 15).</p>
+  <p><b>The standard alternative:</b> <code>rtl_tcp</code>, which many SDR apps speak. On connect it sends a 12-byte header ("RTL0", tuner type, gain count as big-endian 32-bit numbers), then raw cu8 forever; commands are 5 bytes each: a command byte plus a big-endian 32-bit value (1 = frequency in Hz, 2 = sample rate, 3 = gain mode, 4 = gain in tenths of a dB). Browsers can't open raw TCP sockets, which is why our server speaks HTTP.</p>
+
+  <h2 id="ideas">Things you could build</h2>
+  <div class="cols">
+    <div><h3>A recorder</h3><p>Stream to a <code>.cu8</code> file (snippet above), then open it in Spectrum Lab, GQRX or SDR++.</p></div>
+    <div><h3>A band scanner</h3><p>Step the frequency, measure the strength of each channel, list the strong ones. Our <code>scripts/fm-scan.ts</code> does this for the FM band in ~60 lines.</p></div>
+    <div><h3>A spectrum logger</h3><p>Record the strength across a band every minute for a day: when is the band busy? Great for finding interference.</p></div>
+    <div><h3>ADS-B plane tracker</h3><p>Tune 1090 MHz at 2 MS/s and decode the short pulses aircraft send. Pure byte crunching, no audio needed.</p></div>
+    <div><h3>Weather radio alerts</h3><p>NOAA weather radio on 162.4–162.55 MHz (narrow FM), plus a squelch: notify when someone speaks.</p></div>
+    <div><h3>Your own receiver</h3><p>Follow the course: every chapter's code is the real receiver, one piece at a time.</p></div>
+  </div>
+
+  <h2 id="trouble">Troubleshooting</h2>
+  <div class="table"><table>
+    <tr><th>Symptom</th><th>Cause and fix</th></tr>
+    <tr><td>Connect button disabled, <code>navigator.usb</code> undefined</td><td>Not a secure page, or not a Chromium browser. Use https:// or localhost, in Chrome/Edge/Opera.</td></tr>
+    <tr><td>Picker shows no devices</td><td>Dongle not plugged in, or its USB IDs aren't in your filter (some dongles use 0bda:2832).</td></tr>
+    <tr><td>"Access denied" (Windows)</td><td>No WinUSB driver on the dongle. Install it with Zadig.</td></tr>
+    <tr><td>"The dongle is in use" / can't claim interface</td><td>Another program has it (SDR#, GQRX, rtl_tcp, a server SDR), or on Linux the TV driver. Close it or blacklist <code>dvb_usb_rtl28xxu</code>.</td></tr>
+    <tr><td>"Unsupported tuner"</td><td>An old E4000 / FC0012 / FC0013 dongle. Our driver supports R820T, R820T2 and R828D.</td></tr>
+    <tr><td>Samples per second below the rate you set</td><td>Too few bulk transfers in flight, or <code>onData</code> too slow. Move processing to a worker; lower the rate.</td></tr>
+    <tr><td>Only noise where a station should be</td><td>Check the spectrum first: is the station there and strong? Then check gain (clipping or too low), the antenna connection, and nearby electronics (laptops and chargers radiate at radio frequencies).</td></tr>
+    <tr><td>Errors right after reconnecting</td><td>A dongle closed moments ago can stall its first commands. Our driver resets it and retries once; if yours doesn't, wait a second before reopening.</td></tr>
+  </table></div>
+  <p class="note">Credits: the RTL2832U and R820T register knowledge comes from years of community reverse-engineering, above all osmocom's librtlsdr and the Linux kernel drivers. The implementation here is our own TypeScript.</p>
+  <nav class="next"><a href="./">← Spectrum Lab</a><a href="./course/01-spinning-arrows.html">The course: Radio from scratch →</a></nav>
+</main>
+<script type="module" src="/src/build.ts"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Radio From Scratch</title>
+  <meta name="description" content="A visual course that builds a software radio receiver from the ground up: from spinning arrows to FM you decode yourself, with live labs on a real RTL-SDR." />
+  <style>
+    .part { margin: 40px 0 10px; font: 600 0.8rem ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .ch { display: grid; grid-template-columns: 2.4em 1fr auto; gap: 4px 12px; align-items: start; padding: 14px 16px; margin: 10px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+    .ch .num { font: 700 1.3rem ui-sans-serif, system-ui, sans-serif; color: var(--accent); }
+    .ch h3 { margin: 0; font: 600 1.05rem ui-sans-serif, system-ui, sans-serif; }
+    .ch h3 a { color: var(--fg); text-decoration: none; } .ch h3 a:hover { color: var(--accent); }
+    .ch p { margin: 4px 0 0; font-size: 0.95rem; color: var(--fg); }
+    .ch .needs { font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin-top: 6px; }
+    .ch .lab { font: 0.75rem ui-sans-serif, system-ui, sans-serif; color: var(--accent); border: 0; padding: 0; margin: 0; }
+    .ch label { font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+    .ch.done { opacity: 0.65; }
+    .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 0; }
+    .bar div { height: 100%; background: var(--accent); width: 0; transition: width 0.3s; }
+    @media (prefers-reduced-motion: reduce) { .bar div { transition: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · radio</p>
+  <h1>Radio from scratch</h1>
+  <p>A visual course that builds a software radio receiver from the ground up, the way 3Blue1Brown teaches math: every idea starts as something you watch move, and formulas come last, as short labels for what you already understand. Along the way you'll build, line by line, the receiver that runs on this site, and from chapter 3 on, try each idea on real radio.</p>
+  <p>You need school math and a little curiosity. Each chapter lists what it builds on, with links back.</p>
+  <p class="note" id="progress"></p>
+  <div class="bar"><div id="bar"></div></div>
+
+  <div id="chapters"></div>
+
+  <p style="margin-top:40px">Also: <a href="../">Spectrum Lab</a> (the full app) · <a href="../learn.html">one-page quick reference</a> · <a href="../build.html">build for your own dongle</a> (developer guide).</p>
+</main>
+<script type="module">
+  import "/src/course/course.css";
+  const PARTS = [
+    ["Part I · The language of waves", [
+      ["01-spinning-arrows", "Spinning arrows", "A dot on a wheel draws a sine wave; two shadows; why radios need I and Q; adding arrows; what a radio station is.", "", false],
+      ["02-arrows-as-numbers", "Arrows as numbers", "Complex numbers without the mystery: multiplying turns and stretches; j·j = −1; e^(jθ) from tiny turns.", "1", false],
+      ["03-taking-snapshots", "Taking snapshots", "Sampling: the wagon-wheel effect, aliasing, Nyquist as a picture, and what 8 bits can measure.", "1, 2", true],
+      ["04-winding-machine", "The winding machine", "The Fourier transform as un-spinning and a center of mass; windows, decibels and the FFT.", "2, 3", true],
+    ]],
+    ["Part II · Pulling out one station", [
+      ["05-moving-a-station", "Moving a station", "Mixing: one multiplication slides the whole band; why it takes both shadows; the NCO.", "2, 4", true],
+      ["06-averaging-is-filtering", "Averaging is filtering", "Moving averages, frequency response, and the windowed-sinc filter.", "4, 5", true],
+      ["07-throwing-away-snapshots", "Throwing away snapshots", "Decimation: filter first, then keep every M-th sample, and only compute what you keep.", "3, 6", true],
+      ["08-chunks-of-a-live-stream", "Chunks of a live stream", "Live radio arrives in chunks; every step must remember the last one, or you hear clicks.", "5–7", true],
+    ]],
+    ["Part III · Getting the sound out", [
+      ["09-fm-listening-to-the-speed", "FM: listening to the speed", "The FM demodulator, noise and clicks, de-emphasis, and what's inside a real broadcast.", "1, 2, 5–7", true],
+      ["10-am-ssb-and-morse", "AM, SSB and Morse", "Sound in the arrow's length; sidebands; single sideband; Morse code and the beat tone.", "4, 5, 9", true],
+      ["11-numbers-to-speakers", "From numbers to speakers", "Two clocks that drift, playing at a different rate, automatic volume, squelch.", "3, 8–10", true],
+    ]],
+    ["Part IV · Talking to real hardware", [
+      ["12-inside-the-dongle", "Inside the dongle", "The tuner and ADC, the intermediate frequency and its image, and the PLL, with a calculator.", "3, 5–7", true],
+      ["13-usb-from-zero", "USB from zero", "Descriptors, control and bulk transfers, the exact bytes on the wire, and the browser's permissions.", "12", true],
+      ["14-writing-the-driver", "Writing the driver", "Everything the driver says to the chips, decoded in order; its source, annotated; how it's tested.", "12, 13", true],
+      ["15-the-network-source", "The network source", "Streaming over a network: odd-sized pieces and ghost stations, bandwidth, one dongle for many.", "1, 7, 13", true],
+      ["16-the-whole-receiver", "The whole receiver", "Everything on one map, how fast it runs on your computer, how it's tested, what's next.", "all", true],
+    ]],
+  ];
+  const read = (() => { try { return new Set(JSON.parse(localStorage.getItem("course-done") ?? "[]")); } catch { return new Set(); } })();
+  const save = () => { try { localStorage.setItem("course-done", JSON.stringify([...read])); } catch {} };
+  const total = PARTS.reduce((a, [, cs]) => a + cs.length, 0);
+  const progress = () => { document.getElementById("progress").textContent = `${read.size} of ${total} chapters marked done`; document.getElementById("bar").style.width = `${(read.size / total) * 100}%`; };
+  document.getElementById("chapters").innerHTML = PARTS.map(([part, cs]) => `<p class="part">${part}</p>` + cs.map(([file, title, sum, needs, hasLab]) => {
+    const n = file.slice(0, 2);
+    return `<div class="ch${read.has(file) ? " done" : ""}" data-f="${file}"><span class="num">${+n}</span>
+      <div><h3><a href="./${file}.html">${title}</a></h3><p>${sum}</p>
+      <div class="needs">${needs ? `Builds on: chapter${needs.includes(",") || needs.includes("–") ? "s" : ""} ${needs}` : "Start here: no background needed"}${hasLab ? ' · <span class="lab">includes a live lab</span>' : ""}</div></div>
+      <label><input type="checkbox" ${read.has(file) ? "checked" : ""}> done</label></div>`;
+  }).join("")).join("");
+  document.querySelectorAll(".ch input").forEach((cb) => cb.addEventListener("change", () => {
+    const row = cb.closest(".ch"), f = row.dataset.f;
+    cb.checked ? read.add(f) : read.delete(f); row.classList.toggle("done", cb.checked); save(); progress();
+  }));
+  progress();
+</script>
+</body>
+</html>

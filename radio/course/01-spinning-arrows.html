@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spinning Arrows</title>
+  <meta name="description" content="Radio from scratch, chapter 1: why every wave, every sound and every radio station is a spinning arrow." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 1</p>
+  <h1>Spinning arrows: the one picture behind all of radio</h1>
+
+  <p>Every sound you've ever heard, every radio station on the dial, every Wi-Fi packet flying through your room can be described with one simple picture: <b>an arrow spinning around a circle</b>.</p>
+  <p>That sounds like an exaggeration. Look at the wave being drawn below. It has flat tops and steep sides, nothing like a smooth circle. And yet it's made of nothing but four arrows, each one spinning at its own steady speed, attached tip to tail.</p>
+
+  <div class="scene" id="s-hook"></div>
+
+  <p>By the end of this chapter you'll understand exactly how that works, and why a radio receiver is, at heart, a machine for finding one particular spinning arrow among millions. No formulas needed yet. We'll start with a single arrow.</p>
+
+  <!-- 1 -->
+  <h2 id="wheel">A dot on a wheel draws a wave</h2>
+  <p>Picture a wheel with a dot painted on its rim. The wheel turns at a steady speed. Now ignore everything about the dot except one thing: <b>how high it is</b>.</p>
+  <p>As the wheel turns, the dot rises, reaches the top, sinks, passes the middle, bottoms out, and comes back up. Let's record that height as time goes by. Every moment, we drop a mark at the dot's current height, and the older marks slide off to the right:</p>
+
+  <div class="scene" id="s-wheel">
+    <div class="controls">
+      <label for="w-f">Speed <input id="w-f" type="range" min="0.1" max="1" step="0.05" value="0.3"><output id="w-fo"></output></label>
+      <label for="w-a">Size <input id="w-a" type="range" min="0.2" max="1" step="0.05" value="0.9"><output id="w-ao"></output></label>
+      <label for="w-p">Start position <input id="w-p" type="range" min="0" max="360" step="15" value="0"><output id="w-po"></output></label>
+    </div>
+  </div>
+
+  <p>The <em class="y">yellow</em> curve is a <b>sine wave</b>. That's all a sine wave is: the height of something going around in a circle, recorded over time. Once you see it this way, you can't unsee it.</p>
+  <p>Play with the three sliders. Each one changes the wave in exactly one way:</p>
+  <ul>
+    <li><b>Speed</b> changes how tightly packed the wave is. One full turn of the wheel draws exactly one wave (one bump up, one bump down). So a wheel turning 3 times per second draws 3 waves per second. That number is the <b>frequency</b>, measured in turns per second, which has its own name: <b>hertz</b> (Hz).</li>
+    <li><b>Size</b> changes how tall the wave is. The length of the arrow is the <b>amplitude</b>: how strong the wave is.</li>
+    <li><b>Start position</b> slides the whole wave left or right without changing its shape. Where the dot starts on the rim is called the <b>phase</b>.</li>
+  </ul>
+  <p>Frequency, amplitude, phase. Those three numbers completely describe any single wave. Radio engineers spend their whole careers talking about these three things, and you now know what each one <em>looks</em> like.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>Set the start position to 90°. The wave now starts at its peak instead of the middle. Is it a different wave, or the same wave started a little earlier?</div>
+
+  <!-- 2 -->
+  <h2 id="shadows">Every wheel casts two shadows</h2>
+  <p>We've been watching the dot's height. But the dot also moves sideways: left, right, left, right. What if we recorded that instead?</p>
+  <p>Below, the same arrow spins. Its height is traced to the right in <em class="y">yellow</em>, like before. Its sideways position is traced <em>downward</em>, in <em class="g">green</em>:</p>
+
+  <div class="scene" id="s-shadows"></div>
+
+  <p>The green curve is the same kind of wave, just turned on its side and shifted by a quarter turn. When the arrow points straight right, the green trace is at its maximum and the yellow one is at zero. A quarter turn later it's the other way round. This sideways wave has its own name, <b>cosine</b>, but it isn't really a different thing: it's the second shadow of the same wheel.</p>
+  <p>So here's an important shift in thinking. A sine wave isn't really a wiggly line. <b>It's a shadow of a circle.</b> The circle is the real thing, and each wave is one view of it. You'll see why this matters in a minute.</p>
+
+  <!-- 3 -->
+  <h2 id="game">A game: which way is it spinning?</h2>
+  <p>Here's a wheel hidden under a cover. It's spinning either counter-clockwise (↺) or clockwise (↻), and your job is to tell which, using only its shadows. Start with just the green one.</p>
+
+  <div class="scene" id="s-game">
+    <div class="game">
+      <label><input id="g-two" type="checkbox"> Also show the yellow shadow</label>
+      <span class="score" id="g-score"></span>
+      <button id="g-ccw">↺ Counter-clockwise</button>
+      <button id="g-cw">↻ Clockwise</button>
+      <button id="g-new">New wheel</button>
+      <div class="result" id="g-result" role="status">Watch the green shadow. Which way is the hidden wheel spinning?</div>
+    </div>
+  </div>
+
+  <p>Try a few rounds with one shadow. You'll find you're just guessing, and you'll stay at about 50% no matter how carefully you watch. That's not because you aren't paying attention: <b>a wheel spinning ↺ and one spinning ↻ cast exactly the same sideways shadow</b>. Both arrows sweep from the right edge to the left edge and back at the same pace. The only difference is whether they go over the top or under the bottom on the way, and the sideways shadow can't see "up" or "down".</p>
+  <p>Now turn on the second shadow. Suddenly it's easy: watch the moment green hits its far right, then see whether yellow goes up next (↺) or down next (↻). You'll get it right every time.</p>
+
+  <div class="ponder"><span class="tag">Remember this game</span>It's the whole reason radios measure every signal twice. A receiver that records only one shadow can't tell a station just above the frequency it's tuned to from one just below it: they'd look identical and land on top of each other. Recording both shadows keeps them apart. Radio people call the two shadows <b>I</b> and <b>Q</b>, and every software radio, including the one on this site, receives everything as pairs of I and Q numbers. You'll meet them properly in chapter 2.</div>
+
+  <!-- 4 -->
+  <h2 id="add">Arrows can be added</h2>
+  <p>Back to the puzzle from the beginning: how can arrows spinning in perfect circles draw a wave with flat tops and sharp corners?</p>
+  <p>Start with one arrow, then attach a second, smaller arrow to its tip. The second arrow spins at its own speed, carried along by the first, like a moon going around a planet that goes around a sun. Now watch the height of the <em>very last tip</em>:</p>
+
+  <div class="scene" id="s-add">
+    <div class="controls">
+      <label for="a-f">Second arrow speed <input id="a-f" type="range" min="1" max="8" step="1" value="3"><output id="a-fo"></output></label>
+      <label for="a-l">Second arrow length <input id="a-l" type="range" min="0" max="0.6" step="0.05" value="0.33"><output id="a-lo"></output></label>
+    </div>
+  </div>
+
+  <p>Set the second arrow's length to 0 and you get the plain sine wave from before. Bring it back and the wave develops bumps: the small fast arrow rides on top of the big slow one. The <em class="y">yellow</em> wave is literally the sum of two sine waves, the height of arrow one plus the height of arrow two.</p>
+  <p>Now look again at the opening animation. It used four arrows: speeds 1, 3, 5 and 7, each shorter than the last (1, 1/3, 1/5, 1/7). Every extra arrow squares off the wave a little more. With enough arrows, you could draw <em>any</em> shape you like, a square wave, a heartbeat, your voice.</p>
+  <p>Turn that around and you get one of the most important ideas in all of science and engineering: <b>any signal can be taken apart into spinning arrows</b>. A chord on a piano is a few arrows. The noise of a crowd is millions of them. And the airwaves over New York City right now are an enormous pile of spinning arrows, from radio stations, phones, airplanes and Wi-Fi routers, all added together in the same air.</p>
+  <p>Taking a signal apart into its arrows is called the <b>Fourier transform</b>, and chapter 4 builds a machine that does it.</p>
+
+  <!-- 5 -->
+  <h2 id="fm">So what is a radio station?</h2>
+  <p>A radio station is one arrow, spinning extremely fast. When you tune to <b>98.7 FM</b>, you're asking for the arrow that turns <b>98.7 million times per second</b>. That's the station's frequency. Every station in the city has its own speed, and that's how they share the same air without colliding: a receiver can pick out "the arrow turning 98.7 million times per second" and ignore all the others.</p>
+  <p>But an arrow spinning at a perfectly steady speed carries no information, just one steady tone. So where's the music?</p>
+  <p>On FM ("frequency modulation"), the music is put into <b>tiny changes in the arrow's speed</b>. When the music pushes up, the arrow spins a little faster; when it pulls down, a little slower. Below, the <em class="p">pink</em> line is the music, and it's controlling how fast the arrow turns:</p>
+
+  <div class="scene" id="s-fm">
+    <div class="controls">
+      <label for="fm-d">How strongly the music changes the speed <input id="fm-d" type="range" min="0" max="0.5" step="0.05" value="0.3"><output id="fm-do"></output></label>
+    </div>
+  </div>
+
+  <p>Look at the <em class="y">yellow</em> wave: its height never changes. All its peaks are equally tall. But the peaks bunch together while the music is high and spread apart while it's low. The sound is hidden entirely in the <em>spacing</em>. Set the slider to 0 and the wave becomes perfectly regular: a station with silence on it.</p>
+  <p>So now we can say exactly what an FM radio has to do:</p>
+  <ol>
+    <li>Out of all the arrows in the air, <b>find the one</b> spinning near 98.7 million turns per second, and throw away everything else.</li>
+    <li><b>Measure how its speed changes</b>, moment by moment. That speed, going up and down, <em>is</em> the music.</li>
+  </ol>
+  <p>Every chapter that follows is a piece of that machine.</p>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <p>Only now, after you've seen it, here's how people write this down. Every symbol below is something you already watched move. The colors match the animations.</p>
+  <div class="notation">
+    <math display="block">
+      <mtext>height</mtext><mo>=</mo>
+      <mi style="color:var(--blue)">A</mi><mo>·</mo><mi>sin</mi><mo>(</mo>
+      <mn>2</mn><mi>π</mi><mo>·</mo><mi style="color:var(--pink)">f</mi><mo>·</mo><mi>t</mi>
+      <mo>+</mo><mi style="color:var(--yellow)">φ</mi><mo>)</mo>
+    </math>
+    <ul>
+      <li><b style="color:var(--blue)">A</b>: the arrow's length, the <b>amplitude</b>.</li>
+      <li><b style="color:var(--pink)">f</b>: turns per second, the <b>frequency</b>.</li>
+      <li><b>t</b>: time, in seconds. So <b style="color:var(--pink)">f</b>·<b>t</b> is "how many turns so far".</li>
+      <li><b>2π</b>: converts turns into an angle. Mathematicians measure angles by the distance walked along a circle of radius 1. One full trip around is 2π ≈ 6.28 steps, so one turn = 2π. (This unit is called the <b>radian</b>.)</li>
+      <li><b style="color:var(--yellow)">φ</b> (the Greek letter "phi"): where the dot started, the <b>phase</b>.</li>
+      <li><b>sin</b>: "take the height". Its partner <b>cos</b> means "take the sideways position", the green shadow.</li>
+    </ul>
+  </div>
+  <p>That's it. The intimidating-looking formula just says: <em>an arrow of length A, turning f times per second, that started at angle φ; give me its height at time t.</em></p>
+
+  <!-- check -->
+  <h2 id="check">Check yourself</h2>
+  <details><summary>A wheel turns 3 times per second. How many peaks does its shadow draw in one second?</summary>
+    <p>Three. Each turn draws exactly one wave, so the frequency of the wave is the turning speed of the wheel: 3 Hz.</p></details>
+  <details><summary>You start the wheel a quarter turn (90°) earlier. What happens to the sine wave?</summary>
+    <p>It becomes a cosine: the same wave, shifted left by a quarter of a wave. Sine and cosine are one wheel's two shadows, a quarter turn apart.</p></details>
+  <details><summary>Why couldn't you win the game with only the sideways (green) shadow?</summary>
+    <p>A wheel and its mirror image cast the same sideways shadow: both go right-left-right at the same pace, one over the top and one under the bottom. The sideways shadow can't see up or down. (In symbols: cos(−θ) = cos(θ).) The height shadow can, so with both you always know.</p></details>
+  <details><summary>On FM, where is the music: in the height of the wave, or somewhere else?</summary>
+    <p>Somewhere else: in the spacing of the peaks, i.e. in how the arrow's spinning speed changes over time. The height stays constant. (AM radio does the opposite: steady speed, changing height.)</p></details>
+
+  <nav class="next">
+    <a href="./index.html">← All chapters</a>
+    <a href="./02-arrows-as-numbers.html">Next: Chapter 2, Arrows as numbers →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch01.ts"></script>
+</body>
+</html>

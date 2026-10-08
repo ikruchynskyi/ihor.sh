@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taking Snapshots</title>
+  <meta name="description" content="Radio from scratch, chapter 3: sampling. Why wheels spin backwards on film, what Nyquist really says, and what 8 bits can and can't measure." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 3</p>
+  <h1>Taking snapshots</h1>
+
+  <p>Until now our arrows have spun smoothly, and we could watch them every instant. A computer can't do that. It can only <b>look at the arrow every so often</b>: take a snapshot, write down two numbers (I and Q, from chapter 2), wait, take another. Each snapshot is called a <b>sample</b>, and your dongle takes up to 2.4 million of them every second.</p>
+  <p>That sounds like plenty. But snapshots can lie. You've seen it in films: a car speeds up, and its wheels seem to slow down, stop, and then spin <em>backwards</em>. Here's the same thing, slowed way down so you can follow it. The left wheel is real; the right one is what a camera taking 4 photos per second sees:</p>
+
+  <div class="scene" id="s-hook"></div>
+
+  <p>Watch the speed on the left climb steadily, while the camera's version speeds up, slows to a stop at 4 turns per second, then runs backwards. The camera isn't broken. It's doing the only thing it can. This chapter is about exactly what goes wrong, and the simple rule that keeps a radio safe from it.</p>
+
+  <!-- 1 -->
+  <h2 id="strip">Photos don't show how the arrow got there</h2>
+  <p>Let's look at the photos one at a time, like a film strip. The slider sets how far the arrow <em>really</em> turns between two photos.</p>
+
+  <div class="scene" id="s-strip">
+    <div class="controls">
+      <label for="st-r">Turns between photos <input id="st-r" type="range" min="0" max="1.5" step="0.05" value="0.1"><output id="st-ro"></output></label>
+    </div>
+    <p class="readout" id="r-strip" aria-live="polite"></p>
+  </div>
+
+  <p>Start at 0.1: the arrow creeps forward a little each photo, and the photos show exactly that. Now try these:</p>
+  <ul>
+    <li><b>0.9 turns</b>, almost a full turn. In every photo the arrow is a little <em>behind</em> where it was, so it seems to creep backwards by 0.1.</li>
+    <li><b>1.0 turn</b>: a full turn between photos. Every photo is identical. A spinning arrow looks frozen.</li>
+    <li><b>1.1 turns</b>: indistinguishable from 0.1. One whole extra turn per photo is completely invisible.</li>
+  </ul>
+  <p>A photo only records <em>where</em> the arrow is, never <em>how it got there</em>. So whoever looks at the photos can only assume the arrow took <b>the short way round</b>: never more than half a turn per photo, forwards or backwards. When the real motion fits that assumption, the photos tell the truth. When it doesn't, a different speed is pretending to be the real one. That pretending has a name: <b>aliasing</b> (an alias is a false name).</p>
+
+  <!-- 2 -->
+  <h2 id="fold">The whole story in one graph</h2>
+  <p>Let's map every possible real speed to how it looks in the photos. Horizontally: the real speed, in turns per photo. Vertically: the speed the photos seem to show. Drag the slider along and watch the white dot.</p>
+
+  <div class="scene" id="s-fold">
+    <div class="controls">
+      <label for="fo-x">Real speed <input id="fo-x" type="range" min="-1.5" max="1.5" step="0.01" value="0.3"><output id="fo-xo"></output></label>
+      <label for="fo-one"><input id="fo-one" type="checkbox"> Only one shadow (I)</label>
+    </div>
+    <p class="readout" id="r-fold" aria-live="polite"></p>
+  </div>
+
+  <p>With both shadows, the graph is a <b>sawtooth</b>. In the green zone, between −½ and +½ turn per photo, it's a straight line: what you see is what's real. Outside it, the line jumps back and repeats. Every speed outside the zone looks exactly like one inside it.</p>
+  <p>Now tick <b>Only one shadow</b>. The graph folds in half: +0.3 and −0.3 now look identical, just like chapter 1's game. The honest zone shrinks to 0 to ½.</p>
+  <p>This graph <em>is</em> the most famous rule in signal processing, usually stated as a formula. In plain words:</p>
+  <ul>
+    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab.</li>
+    <li><b>With one shadow</b>, only 0 to ½, so you need <b>twice as many photos</b> for the same range. That's why a music CD stores 44 100 samples per second: to capture sounds up to 22 050 Hz, just above the highest pitch humans hear.</li>
+  </ul>
+  <p>And here's the catch for radio: arrows outside the zone don't politely disappear. A station 1.5 MHz away would land <em>on top of</em> a station 0.9 MHz away in the other direction. So the dongle has to remove everything outside the zone <b>before</b> it takes its photos. Its chip contains a filter that does exactly that; you'll see its numbers in the code below, and learn how filters work in chapter 6.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>The dongle takes 2.4 million photos per second and you tune it to 98.0 MHz. A station at 99.5 MHz is 1.5 MHz above the center: that's 0.625 turns per photo. Where would it seem to be if nothing filtered it out?</div>
+  <p>Answer: 0.625 − 1 = −0.375 turns per photo, which is −0.9 MHz: it would pretend to be a station at 97.1 MHz, right on top of a real station there.</p>
+
+  <!-- 3 -->
+  <h2 id="freeze">A game: freeze the wheel</h2>
+  <p>A wheel is spinning at a secret speed, too fast to follow. You control how often the camera takes a photo. Find a camera speed that makes the wheel <b>stand still</b> in the photos.</p>
+
+  <div class="scene" id="s-freeze">
+    <div class="controls">
+      <label for="fz-c">Camera speed <input id="fz-c" type="range" min="0.5" max="6" step="0.01" value="1"><output id="fz-co"></output></label>
+    </div>
+    <div class="game">
+      <span class="score" id="fz-score"></span>
+      <button id="fz-new">New wheel</button>
+      <div class="result" id="r-freeze" role="status"></div>
+    </div>
+  </div>
+
+  <p>Hint: watch the faded trail of the last few photos. If it creeps forward, the wheel turns a bit more than a whole turn between photos, so take photos a little faster. If it creeps backwards, a bit less, so slow down. When the trail collapses to one arrow, the wheel is turning exactly a whole number of times between photos.</p>
+  <p>This isn't just a trick. A <b>stroboscope</b> is a light that flashes like our camera, and mechanics use one (a "timing light") to make a spinning engine part look frozen so they can read marks on it. Aliasing, used on purpose.</p>
+
+  <!-- 4 -->
+  <h2 id="ruler">Each photo is measured with a ruler</h2>
+  <p>There's a second way snapshots lose information. Each I and Q number has to be stored, and your dongle stores each one as a single <b>byte</b>: a whole number from 0 to 255. It's like measuring with a ruler that has only <b>256 marks</b>. The true value is somewhere between two marks, and gets written down as the nearest one.</p>
+  <p>Below, the <em class="b">blue</em> curve is the true signal and the <em class="y">yellow</em> dots are what gets recorded. The <em class="p">pink</em> line underneath is the error, the difference, magnified five times.</p>
+
+  <div class="scene" id="s-bits">
+    <div class="controls">
+      <label for="bi-b">Ruler <input id="bi-b" type="range" min="1" max="10" step="1" value="3"><output id="bi-bo"></output></label>
+      <label for="bi-a">Signal size <input id="bi-a" type="range" min="0.03" max="1.4" step="0.01" value="0.8"><output id="bi-ao"></output></label>
+    </div>
+    <p class="readout" id="r-bits" aria-live="polite"></p>
+  </div>
+
+  <p>Things to try:</p>
+  <ul>
+    <li><b>More marks</b>: every extra bit doubles the marks and halves the error, which makes the error about <b>6 dB</b> quieter. With 8 bits (256 marks), a full-size signal is about <b>50 dB</b>, i.e. 100 000 times, stronger than the measuring error.</li>
+    <li><b>A small signal</b> (drag the size down): it only spans a few marks, so the recording is a crude staircase and the error is almost as big as the signal itself. A weak station, much smaller than one mark, disappears completely.</li>
+    <li><b>A huge signal</b> (above 100%): the tops get cut off at the ends of the ruler. That's <b>clipping</b>, and it's even worse than the staircase: it creates fake arrows that weren't in the air.</li>
+  </ul>
+  <p>This is what the <b>gain</b> knob on a radio is for. It makes the signal bigger or smaller before it's measured. Too little gain and weak stations are lost between the marks; too much and strong stations clip. Good gain fills most of the ruler without touching the ends.</p>
+
+  <!-- 5 -->
+  <h2 id="real">What real samples look like</h2>
+  <p>Enough simulations. Below are 4000 real samples recorded from the dongle on this site's server, tuned to 98.45 MHz. Each dot is one snapshot: its I and Q drawn as a point, like chapter 2's arrow tips. The box marks the whole ruler, bytes 0 to 255 in both directions.</p>
+
+  <div class="scene" id="s-real"><p class="readout" id="r-real"></p></div>
+
+  <p>On the left, look at the shape: a <b>fuzzy ring</b>. Remember chapter 1: an FM station never changes the length of its arrow, only its speed. Here one strong station dominates everything else in this slice of the band, so its snapshots all land near one circle, at whatever angle the arrow happened to be. The fuzz is everything else (weaker stations and noise) added on top. Even in raw bytes, you can see that FM is "constant length, changing angle".</p>
+  <p>On the right, zoomed into the yellow box, the dots sit on a <b>perfect grid</b>. Those are the ruler's marks: every I and Q had to be written as a whole number, so each dot snapped to the nearest crossing. You're looking at quantization in real data.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: try it on real radio</h2>
+  <div class="lab">
+    <p>Now do it live. Connect to a dongle and watch the cloud and a count of how often each byte value occurs (the histogram on the right). The red bars at the very ends mean clipping.</p>
+    <div class="scene" id="s-lab"><p class="readout" id="r-lab" aria-live="polite"></p></div>
+    <div id="lab3"></div>
+    <ol>
+      <li>Connect, and note how many of the 256 marks are in use.</li>
+      <li>Raise the gain step by step to the maximum. Watch the cloud grow until it slams into the edges of the box and red bars appear at 0 and 255. That's clipping.</li>
+      <li>Lower it to 0 dB. The cloud shrinks to a small blob that uses only a handful of marks. Weak stations are now lost between them.</li>
+      <li>Find the gain that fills most of the box with no red bars. That's the best setting for this antenna and this spot.</li>
+    </ol>
+    <p class="note">The server's dongle is shared: if someone is listening to it, they'll hear your frequency and gain changes. "Use my USB dongle" needs Chrome, Edge or Opera on an https:// or localhost page (see <a href="../build.html">Build for your own dongle</a>).</p>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block"><msub><mi>f</mi><mtext>seen</mtext></msub><mo>=</mo><mi style="color:var(--blue)">f</mi><mo>−</mo><mi>k</mi><mo>·</mo><msub><mi style="color:var(--yellow)">f</mi><mi style="color:var(--yellow)">s</mi></msub></math>
+    <ul>
+      <li><b style="color:var(--yellow)">f<sub>s</sub></b> is the <b>sample rate</b>: photos per second. <b style="color:var(--blue)">f</b> is the real frequency (turns per second). The photos show the real frequency minus some whole number <b>k</b> of sample rates, whichever lands closest to zero. That's the sawtooth graph: subtracting a whole turn per photo changes nothing in the photos.</li>
+    </ul>
+    <math display="block"><mo>−</mo><mfrac><msub><mi>f</mi><mi>s</mi></msub><mn>2</mn></mfrac><mo>&lt;</mo><mi>f</mi><mo>≤</mo><mfrac><msub><mi>f</mi><mi>s</mi></msub><mn>2</mn></mfrac></math>
+    <ul>
+      <li>The honest zone with I and Q (the <b>Nyquist</b> range): half a turn per photo either way. With only one shadow it's 0 ≤ f ≤ f<sub>s</sub>/2, the usual "sample at least twice the highest frequency".</li>
+    </ul>
+    <math display="block"><mtext>signal-to-error</mtext><mo>≈</mo><mn>6</mn><mo>·</mo><mtext>bits</mtext><mo>+</mo><mn>1.8</mn><mtext> dB</mtext></math>
+    <ul>
+      <li>For a signal that fills the ruler. 8 bits gives about 50 dB. Every bit of headroom you leave unused costs 6 dB.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>Choosing the photo rate.</b> The dongle's chip runs its own measuring at 28.8 million samples per second, then thins that out to the rate you ask for. Our driver programs the ratio between the two (<code>src/rtlsdr.ts</code>):</p>
+<pre><code>const ratio = Math.floor((XTAL * 2 ** 22) / rate) &amp; 0x0ffffffc;   // XTAL = 28.8 MHz
+// 2.4 MS/s → ratio = 12 × 2^22 exactly: keep one sample out of every 12</code></pre>
+  <p><b>The filter that stops aliasing.</b> Before thinning out, the chip filters away everything outside the new honest zone. These are the filter's weights, written into the chip when it starts up. Chapter 6 explains what the numbers mean:</p>
+<pre><code>const FIR = [-54, -36, -41, -40, -32, -14, 14, 53, 101, 156, 215, 273, 327, 372, 404, 421];</code></pre>
+  <p><b>Reading the ruler.</b> Each byte becomes a number between −1 and +1. The steps between marks are 1/127.5 ≈ 0.0078 apart, which is exactly the grid you saw in the zoomed real data (<code>src/iq.ts</code>):</p>
+<pre><code>out[i] = (u[i] - 127.5) / 127.5;</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch03.ts</code> checks this chapter's claims and decodes the real samples:</p>
+<pre><code>9 turns/s and −1 turn/s give identical photos at 10 photos/s  (9 − 10 = −1)
++3 vs −3 turns/s: I alone identical; Q differs  → with both shadows, speeds from −5 to +5 are all distinct
+ 4 bits: signal is 25.7 dB above the measuring error  (rule of thumb: 6 dB per bit)
+ 8 bits: signal is 50.0 dB above the measuring error  (rule of thumb: 6 dB per bit)
+12 bits: signal is 74.0 dB above the measuring error  (rule of thumb: 6 dB per bit)
+sample 0: bytes (104, 151) → arrow I = -0.184, Q = 0.184
+sample 1: bytes (100, 114) → arrow I = -0.216, Q = -0.106
+sample 2: bytes (146, 104) → arrow I = 0.145, Q = -0.184
+sample 3: bytes (136, 153) → arrow I = 0.067, Q = 0.200
+4000 real samples at 1.024 MS/s: bytes 74..186, using 113 of 256 marks
+at 2.4 MS/s the dongle sends 2.4e6 × 2 bytes = 4.8 MB every second
+all checks passed</code></pre>
+
+  <!-- check -->
+  <h2 id="check">Check yourself</h2>
+  <details><summary>A camera takes 24 photos per second of a wheel turning 25 times per second. What does the film show?</summary>
+    <p>25 − 24 = 1: the wheel seems to turn slowly forward, once per second.</p></details>
+  <details><summary>At 23 turns per second instead?</summary>
+    <p>23 − 24 = −1: it seems to turn slowly <em>backwards</em>, once per second.</p></details>
+  <details><summary>Your dongle takes 1.024 million I/Q samples per second. How wide a slice of the radio band can it see honestly?</summary>
+    <p>1.024 MHz: from −0.512 to +0.512 MHz around the tuned frequency. (With only one shadow it would be half that.)</p></details>
+  <details><summary>Why is turning the gain all the way up a bad idea next to a powerful station?</summary>
+    <p>The strong station's signal overruns the ends of the ruler and clips. Clipping distorts it and creates fake signals that can cover the weak station you wanted.</p></details>
+
+  <nav class="next">
+    <a href="./02-arrows-as-numbers.html">← Chapter 2: Arrows as numbers</a>
+    <a href="./04-winding-machine.html">Next: Chapter 4, The winding machine →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch03.ts"></script>
+</body>
+</html>

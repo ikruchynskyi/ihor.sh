@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How a Software Radio Works</title>
+  <meta name="description" content="Build intuition for each step of a software-defined radio: play with it, see why the math works, read the real code, and see how it was tested." />
+  <style>
+    :root {
+      --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff;
+      --accent: #d9480f; --plot: #1c7ed6; --plot2: #d9480f; --soft: #f1eee8; --ok: #2b8a3e;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #34332f; --card: #1a1a18;
+              --accent: #ff8a4c; --plot: #4dabf7; --plot2: #ff8a4c; --soft: #22211e; --ok: #69db7c; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.65 ui-serif, Georgia, "Iowan Old Style", serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 36px 16px 96px; }
+    h1, h2, h3, .ui, label, .key, nav { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    h1 { font-size: 2.1rem; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 8px; text-wrap: balance; }
+    h2 { font-size: 1.4rem; margin: 64px 0 8px; scroll-margin-top: 16px; text-wrap: balance; }
+    h2 .n { color: var(--accent); margin-right: 8px; font-variant-numeric: tabular-nums; }
+    a { color: var(--accent); }
+    p { margin: 0 0 14px; }
+    ul, ol { padding-left: 1.3em; }
+    li { margin: 4px 0; }
+    .lede { color: var(--muted); font-size: 1.05rem; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+    .math { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; background: var(--soft); border-radius: 8px; padding: 10px 14px; margin: 10px 0 16px; overflow-x: auto; white-space: nowrap; }
+    pre { background: var(--soft); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 8px 0 12px; font-size: 0.82rem; line-height: 1.5; }
+    .box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+    .box > :last-child { margin-bottom: 0; }
+    .feel { border-left: 4px solid var(--plot); }
+    .why { border-left: 4px solid var(--accent); }
+    .code { border-left: 4px solid var(--muted); }
+    .test { border-left: 4px solid var(--ok); }
+    .label { font: 600 0.75rem ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; margin-bottom: 6px; }
+    .pipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 0.85rem ui-sans-serif, system-ui, sans-serif; margin: 16px 0; }
+    .pipe span { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+    .pipe span.sw { border-color: var(--accent); }
+    .pipe i { color: var(--muted); font-style: normal; }
+    canvas { width: 100%; display: block; border-radius: 6px; background: var(--soft); }
+    label { font-size: 0.85rem; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+    input[type=range] { flex: 1 1 200px; }
+    output { font: 600 0.88rem ui-monospace, Menlo, monospace; color: var(--fg); min-width: 10ch; }
+    .key { font-size: 0.82rem; color: var(--muted); margin: 8px 0 0; }
+    .try { font-size: 0.95rem; }
+    .try b { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.85rem; color: var(--plot); }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+    dt { font: 600 0.9rem ui-sans-serif, system-ui, sans-serif; }
+    dd { margin: 0; }
+    nav.toc { font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 18px 0; }
+    #dfo { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.9rem; font-weight: 400; min-width: 0; }
+    @media (max-width: 520px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: 8px; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="ui"><a href="./">← Spectrum Lab</a></p>
+  <h1>How a software radio works, and how this one was built</h1>
+  <p class="lede">Every step of the receiver, in the same four parts: <b>feel it</b> (play with a widget running the app's real code), <b>why it works</b> (the math), <b>the code</b> (the actual lines from our app), and <b>how it was tested</b>. No background needed beyond school trigonometry.</p>
+
+  <div class="box" style="border-left:4px solid var(--accent)">
+    <span class="label">New: the course</span>
+    <p style="margin:0">This page is a quick reference. To really understand it from the ground up, start the course: <a href="./course/"><b>Radio from scratch</b></a> (16 chapters, starting with spinning arrows).</p>
+  </div>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#big-picture">Big picture</a><a href="#built">How it's built</a><a href="#iq">0 · I/Q</a><a href="#spectrum">1 · FFT</a><a href="#mixer">2 · Mixer</a>
+    <a href="#filter">3 · Filter</a><a href="#decimate">4 · Decimate</a><a href="#demod">5 · FM</a><a href="#audio">6 · Audio</a><a href="#yourself">Build it yourself</a><a href="#words">Glossary</a>
+  </nav>
+
+  <h2 id="big-picture">The big picture</h2>
+  <p>A radio station is a signal at one frequency, for example <b>98.7 MHz</b>: 98.7 million oscillations per second. Your speakers need audio, at most ~20 thousand oscillations per second. A receiver's job is to <b>find one station among hundreds, pull it out, and turn it back into audio</b>.</p>
+  <p>An old radio did all of that with coils and capacitors. In a <b>software-defined radio</b>, a tiny bit of hardware does the first step, and everything after it is arithmetic in your computer:</p>
+  <div class="pipe">
+    <span>antenna</span><i>→</i><span>tuner: shift a 2.4 MHz slice of the band down near 0 Hz</span><i>→</i><span>ADC: measure it 2.4 million times a second</span><i>→</i>
+    <span class="sw">0 · I/Q numbers</span><i>→</i><span class="sw">1 · look (FFT)</span><i>→</i><span class="sw">2 · center the station</span><i>→</i>
+    <span class="sw">3 · cut the neighbors</span><i>→</i><span class="sw">4 · drop extra samples</span><i>→</i><span class="sw">5 · extract the audio</span><i>→</i><span class="sw">6 · play</span>
+  </div>
+  <p>The orange steps are the numbered sections of Spectrum Lab, and of this page. Each answers one question:</p>
+  <ul>
+    <li><b>0–1:</b> What's in the slice of radio band we captured?</li>
+    <li><b>2–4:</b> How do I keep only my station, as cheaply as possible?</li>
+    <li><b>5–6:</b> Where is the sound hidden in it, and how do I get it out?</li>
+  </ul>
+
+  <h2 id="built">How this app is built</h2>
+  <p>Five small files, each doing one job. Bytes flow left to right:</p>
+  <div class="pipe">
+    <span><code>r820t.ts</code> + <code>rtlsdr.ts</code><br>USB driver: talk to the dongle</span><i>→ bytes →</i>
+    <span><code>iq.ts</code><br>bytes → numbers</span><i>→</i>
+    <span class="sw"><code>dsp.ts</code><br>steps 1–6, the math</span><i>→</i>
+    <span><code>main.ts</code><br>plots, buttons, audio</span>
+  </div>
+  <p>For listening from another computer, <code>server.ts</code> runs the same driver on the Mac mini and sends the same bytes over the network to <code>remote.ts</code> in your browser. Everything after the bytes is identical.</p>
+  <p>Two design decisions shaped the code:</p>
+  <ol>
+    <li><b>Synthetic signals first.</b> <code>synth()</code> makes fake stations (FM, AM, USB) with known content. That allowed testing every step with exact expected answers before touching any hardware. The widgets below use it too.</li>
+    <li><b>Every step is a streaming block.</b> Live radio arrives in chunks of ~55 ms. A filter needs the last few dozen samples of the <em>previous</em> chunk, the mixer needs to continue its angle, and the FM demodulator needs the previous sample. If a block forgot that at each chunk edge, you'd hear a click 18 times a second. So each block is a small class that keeps its memory between <code>process()</code> calls. Processing a file is just one big chunk.</li>
+  </ol>
+  <p>The USB driver has its own write-up (how the tuner's PLL is programmed, the 19 kHz pilot test): <code>radio/articles/01-talking-to-the-dongle.md</code>.</p>
+
+  <!-- 0 -->
+  <h2 id="iq"><span class="n">0</span>I/Q: why every sample is two numbers</h2>
+  <p>The tuner shifts the band so the frequency you tuned to sits at 0 Hz. A station above it lands at a positive frequency (+300 kHz), and one below at a negative one (−300 kHz). But with <b>one</b> number per sample, +300 kHz and −300 kHz give identical samples, because cos(−x) = cos(x). The receiver couldn't tell them apart.</p>
+  <div class="box feel">
+    <span class="label">Feel it</span>
+    <canvas id="phasor" height="200" aria-label="A rotating arrow and its I and Q traces"></canvas>
+    <label for="pf">Frequency <input id="pf" type="range" min="-2" max="2" step="0.25" value="1"><output id="pfo">+1 Hz</output></label>
+    <p class="key"><b style="color:var(--plot)">blue = I</b>, the arrow's shadow on the horizontal axis · <b style="color:var(--plot2)">orange = Q</b>, its shadow on the vertical axis</p>
+    <p class="try"><b>TRY</b> Switch between +1 and −1. The blue trace doesn't change at all; only orange flips. One number (I) can't see the direction of spin; two numbers can.</p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works</span>
+    <p>Measure the signal twice per sample, with two copies of the oscillator 90° apart: <b>I</b> (cosine part) and <b>Q</b> (sine part). Treat the pair as a complex number I + jQ, a point on a plane. A pure tone is then a point going around a circle:</p>
+    <p class="math">x(t) = cos(2πft) + j·sin(2πft) = e<sup>j2πft</sup></p>
+    <p>Positive frequencies spin counter-clockwise, negative ones clockwise. That's why the spectrum on the page runs from <b>−fs/2 to +fs/2</b>: at 2.4 million complex samples per second, the full 2.4 MHz is usable.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>iq.ts</code></span>
+    <p>The dongle sends I, Q, I, Q… as bytes from 0 to 255, where 127.5 means zero. Turning them into numbers between −1 and +1 is one line:</p>
+<pre><code>for (let i = 0; i &lt; out.length; i++) out[i] = (u[i] - 127.5) / 127.5;</code></pre>
+    <p>The result stays interleaved: <code>[I0, Q0, I1, Q1, …]</code>. Every function in <code>dsp.ts</code> takes arrays in this layout.</p>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested</span>
+    <p>Bytes 0 and 255 must decode to −1 and +1, and 127/128 to about 0 (<code>dsp.test.ts</code>).</p>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="spectrum"><span class="n">1</span>Spectrum &amp; waterfall: the FFT</h2>
+  <p><b>Reading the Spectrum Lab graph:</b> horizontal is frequency relative to the center (0); in the plots, vertical is strength in decibels (+10 dB = 10× the power); in the waterfall, color is strength and each line is one moment. An FM station is a hump ~200 kHz wide. The flat rectangles beside many NYC stations are HD Radio, digital audio sent alongside the analog signal.</p>
+  <p>But how does a computer turn a list of samples into "how much of each frequency"?</p>
+  <div class="box feel">
+    <span class="label">Feel it</span>
+    <canvas id="fft" height="240" aria-label="Products of the signal and a test tone, drawn head to tail, next to the resulting spectrum"></canvas>
+    <label for="fk">Test frequency <input id="fk" type="range" min="-16" max="16" step="0.125" value="1"><output id="fko"></output></label>
+    <p class="key">The signal (32 samples) hides two tones. <b>Left:</b> each sample multiplied by a test tone spinning the opposite way, drawn as 32 small arrows head to tail. <b style="color:var(--plot2)">Orange</b> = their sum. <b>Right:</b> the length of the sum for every test frequency, which is the spectrum.</p>
+    <p class="try"><b>TRY</b> Slide slowly to 3. The arrows straighten into one long line, because you found a tone. Now find the other one (it's weaker). Then park between them: the arrows curl into a tight knot and cancel.</p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works: the Fourier transform</span>
+    <p>To ask "how much of frequency k is in this signal?", multiply the signal by a tone spinning at −k and add everything up:</p>
+    <p class="math">X[k] = Σ<sub>n</sub> x[n] · e<sup>−j2πkn/N</sup></p>
+    <p>If the signal contains frequency k, the two spins cancel exactly, every product points the same way, and the sum is large. If not, the products keep turning and cancel out. The <b>FFT</b> computes this for all N test frequencies at once, using a clever reuse of shared work: N·log N operations instead of N² (for N = 1024: ~10 000 vs ~1 000 000).</p>
+    <p><b>Why decibels:</b> a strong local station can be a million times stronger than a weak one; a log scale fits both on one graph. <b>Why a window:</b> chopping the signal into blocks makes sharp edges, which create fake frequencies; fading each block in and out (a "Hann" curve) removes them.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>powerSpectrum()</code> in <code>dsp.ts</code></span>
+<pre><code>const w = 0.5 - 0.5 * Math.cos((TAU * i) / n);   // Hann window: fade in and out
+re[i] = iq[2 * (start + i)] * w;                 // windowed I
+im[i] = iq[2 * (start + i) + 1] * w;             // windowed Q
+// … fft(re, im) …
+const j = (i + n / 2) % n;                       // "fftshift": put 0 Hz in the middle
+out[i] = 10 * Math.log10((re[j] ** 2 + im[j] ** 2) / wsum ** 2 + 1e-20);  // power in dB</code></pre>
+    <p>The FFT itself (<code>fft()</code>, ~25 lines) is the classic radix-2 version: reorder the samples by bit-reversed index, then combine pairs, then pairs of pairs, and so on.</p>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested</span>
+    <p>A tone at exactly 1/8 of the sample rate must land exactly 128 bins right of center in a 1024-point FFT.</p>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="mixer"><span class="n">2</span>Mixer: move your station to the center</h2>
+  <div class="box feel">
+    <span class="label">Feel it</span>
+    <canvas id="cmix" height="180" aria-label="The demo spectrum, shifted by the slider"></canvas>
+    <label for="mf">Shift by <input id="mf" type="range" min="-500" max="500" step="10" value="0"><output id="mfo"></output></label>
+    <p class="key">The demo signal: an FM station at +200 kHz, an AM one at −150 kHz and an SSB tone at +350 kHz. The orange line marks 0.</p>
+    <p class="try"><b>TRY</b> Shift by +200: the FM station's hump lands on the orange line. Shift by −150 to center the AM station instead. Push it far right: the spectrum wraps around the edge, because frequencies in a sampled signal live on a circle too.</p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works</span>
+    <p>Multiplying two spinning arrows <b>adds their angles</b>. So multiplying every sample by an arrow spinning at −f<sub>0</sub> subtracts f<sub>0</sub> from every frequency in the signal:</p>
+    <p class="math">e<sup>j2πft</sup> · e<sup>−j2πf₀t</sup> = e<sup>j2π(f − f₀)t</sup></p>
+    <p>Why bother centering? The filter in step 3 can then simply be "keep what's near 0", the simplest filter there is, and the demodulators in step 5 assume the station sits at 0.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>Mixer</code> in <code>dsp.ts</code></span>
+<pre><code>const c = Math.cos(ph), s = Math.sin(ph);   // the arrow at its current angle
+out[k]     = iq[k] * c - iq[k + 1] * s;     // complex multiply: real part
+out[k + 1] = iq[k] * s + iq[k + 1] * c;     //                   imaginary part
+ph += this.step;                            // step = −2π·f0/fs per sample
+if (ph &lt; -Math.PI) ph += TAU; else if (ph &gt; Math.PI) ph -= TAU;   // keep the angle small</code></pre>
+    <p>This is an <b>NCO</b> (numerically controlled oscillator). <code>ph</code> lives on the object, so the next chunk continues exactly where this one stopped. The last line matters too: an angle that grows forever slowly loses precision.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="filter"><span class="n">3</span>Low-pass filter: keep only your station</h2>
+  <p><b>Reading the Spectrum Lab graph:</b> blue is the centered spectrum, orange is the filter's response. The flat top passes your station unchanged; the comb of dips on both sides is everything the filter rejects (50 dB or more, i.e. at least 100 000× less power).</p>
+  <div class="box feel">
+    <span class="label">Feel it</span>
+    <canvas id="cfilt" height="200" aria-label="Filter weights on the left, the frequency response they produce on the right"></canvas>
+    <label for="ft">Taps <input id="ft" type="range" min="5" max="151" step="2" value="41"><output id="fto"></output></label>
+    <label for="fc">Cutoff <input id="fc" type="range" min="0.02" max="0.4" step="0.01" value="0.1"><output id="fco"></output></label>
+    <label for="fw"><input id="fw" type="checkbox" checked> Smooth the ends of the weights (Hamming window)</label>
+    <p class="try"><b>TRY</b> Raise the taps: the edge between pass and reject gets steeper. Lower the cutoff: the sinc on the left gets wider and the passband on the right narrower, because they're mirror images. Then untick the window: the rejection gets much worse (bumps around −20 dB) even with many taps.</p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works</span>
+    <p>A digital filter (FIR) is a <b>weighted moving average</b>: each output is the last N inputs times N fixed weights (the <b>taps</b>), added up.</p>
+    <p class="math">y[n] = h[0]·x[n] + h[1]·x[n−1] + … + h[N−1]·x[n−N+1]</p>
+    <p>Which weights keep the middle and block the rest? The key fact: <b>a filter's frequency response is the Fourier transform of its weights.</b> We want a response shaped like a rectangle, and the shape whose Fourier transform is a rectangle is <b>sinc(x) = sin(x)/x</b>. So the weights are samples of a sinc.</p>
+    <p>A true sinc goes on forever. Chopping it off makes ripples in the response, the same edge problem as the FFT window, so we fade its ends with a window. That's why it's called a "windowed-sinc" filter.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>firLowpass()</code> in <code>dsp.ts</code></span>
+<pre><code>let n = Math.ceil(3.3 / transitionNorm);   // steeper edge → more taps (Hamming rule of thumb)
+for (let i = 0; i &lt; n; i++) {
+  const x = i - (n - 1) / 2;               // centered index
+  const sinc = x === 0 ? 2 * cutoffNorm : Math.sin(TAU * cutoffNorm * x) / (Math.PI * x);
+  h[i] = sinc * (0.54 - 0.46 * Math.cos((TAU * i) / (n - 1)));   // × Hamming window
+}
+// then divide by the sum, so a 0 Hz signal passes at exactly 1×</code></pre>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested</span>
+    <p>At 0 Hz the response must be 0 dB (±0.1); at twice the cutoff it must be below −40 dB.</p>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="decimate"><span class="n">4</span>Decimate: drop samples you don't need</h2>
+  <p>An FM station is ~200 kHz wide, but we're carrying 2.4 million samples per second: 12× more than it needs. Keeping only every 8th sample (→ 300 thousand per second) makes every later step 8× cheaper. But throwing samples away has a trap.</p>
+  <div class="box feel">
+    <span class="label">Feel it: samples can lie</span>
+    <canvas id="alias" height="190" aria-label="A wave, its samples, and the slower wave the samples appear to show"></canvas>
+    <label for="af">Real frequency <input id="af" type="range" min="0.5" max="19.5" step="0.5" value="2"><output id="afo"></output></label>
+    <p class="key">Sampled 10 times per second. <b>grey</b> = the real wave · <b style="color:var(--plot2)">dots</b> = the samples · <b style="color:var(--plot)">blue</b> = the slowest wave through the dots, which is what the samples "look like".</p>
+    <p class="try"><b>TRY</b> Up to 5 Hz, blue matches grey. Go to 9 Hz: the dots now trace a 1 Hz wave. At 10 Hz the wave seems to stand still. This is <b>aliasing</b>, the same effect that makes car wheels spin backwards on video.</p>
+  </div>
+  <div class="box feel">
+    <span class="label">Feel it: why we filter first</span>
+    <canvas id="decim" height="170" aria-label="Spectrum after keeping every 4th sample, with or without filtering first"></canvas>
+    <label for="df"><input id="df" type="checkbox" checked> Filter before decimating</label>
+    <p class="key">The demo signal, FM station centered, then every 4th sample kept (1.024 MS/s → 256 kS/s). The shaded band is your station.</p>
+    <p class="key"><output id="dfo"></output></p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works: the Nyquist rule</span>
+    <p>To capture a signal B hertz wide with complex samples, you need at least <b>B samples per second</b>. Anything faster than half the new sample rate doesn't disappear when you drop samples: it disguises itself as a slower frequency and lands inside the new range, possibly right on your station. Once it's there, it's indistinguishable from real signal. So <b>the filter must run before the sample rate drops</b>, removing everything that could fold over.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>FirDecimator</code> in <code>dsp.ts</code></span>
+<pre><code>// Only compute the outputs we keep: every m-th one.
+for (let o = 0, j = this.next; o &lt; count; o++, j += m) {
+  let r = 0, i = 0;
+  for (let k = 0; k &lt; t; k++) {            // the weighted moving average
+    const idx = base - 2 * k;
+    r += buf[idx] * h[k];  i += buf[idx + 1] * h[k];
+  }
+  out[2 * o] = r;  out[2 * o + 1] = i;
+}
+this.hist = buf.slice(buf.length - this.hist.length);   // remember the tail for the next chunk</code></pre>
+    <p>Filtering and decimating in one loop is a classic optimization: there's no point computing the 7 out of 8 outputs we'd throw away. <code>hist</code> and <code>next</code> are the block's memory between chunks.</p>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested</span>
+    <p>The streaming test feeds the same signal in odd-sized chunks (12 345 samples) and as one buffer. The outputs must be <b>bit-identical</b>, which proves the memory between chunks is right. It passes for FM, AM and SSB.</p>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="demod"><span class="n">5</span>Demodulate: the sound is in the spin speed</h2>
+  <p><b>Reading the Spectrum Lab graph:</b> this is no longer a spectrum. It's <b>10 ms of the recovered audio over time</b>: horizontal is time, vertical is where the speaker cone should be.</p>
+  <div class="box feel">
+    <span class="label">Feel it (slow motion)</span>
+    <canvas id="fm" height="240" aria-label="An FM wave, and the audio recovered from it"></canvas>
+    <label for="mt">Audio tone <input id="mt" type="range" min="0.5" max="6" step="0.5" value="2"><output id="mto"></output></label>
+    <label for="md">Deviation <input id="md" type="range" min="1" max="10" step="1" value="6"><output id="mdo"></output></label>
+    <p class="try"><b>TRY</b> Watch the top wave: it squeezes where the audio is high and stretches where it's low. That's FM: the audio changes the frequency, never the height. Below, our <code>FmDemod</code> recovers the audio (orange) exactly on top of the original (grey). Change the deviation: the top wave squeezes more, but the recovered audio stays the same.</p>
+  </div>
+  <div class="box why">
+    <span class="label">Why it works</span>
+    <p>Frequency is how fast the arrow spins. So the audio at each moment is <b>how far the arrow turned since the previous sample</b>. Multiplying a sample by the <b>conjugate</b> (mirror image) of the previous one <em>subtracts</em> their angles, the opposite of the mixer:</p>
+    <p class="math">audio[n] = angle( x[n] · conj(x[n−1]) )</p>
+    <p>That one line is a complete FM demodulator. Bonus: it doesn't care how long the arrow is, so a strong and a weak station come out at the same volume.</p>
+    <p><b>De-emphasis:</b> FM noise grows with frequency, so broadcasters boost treble before sending and every receiver cuts it back by the same amount (a 75 µs low-pass in the Americas). The noise gets cut along with it.</p>
+    <p><b>AM</b> puts the sound in the arrow's <em>length</em> instead: audio = |x| minus its average. <b>SSB</b> sends only one half of an AM signal: shift that half to straddle 0, filter off the other half, shift back, take the real part.</p>
+  </div>
+  <div class="box code">
+    <span class="label">The code: <code>FmDemod</code> in <code>dsp.ts</code></span>
+<pre><code>const i = iq[k], q = iq[k + 1];                        // this sample
+out[k / 2] = Math.atan2(q * pi - i * pq, i * pi + q * pq);
+pi = i; pq = q;                                        // remember it for the next one</code></pre>
+    <p>Where the formula comes from: (i + jq)·(pi − jpq) = (i·pi + q·pq) + j(q·pi − i·pq). <code>atan2(imaginary, real)</code> gives that product's angle, which is the angle difference.</p>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested</span>
+    <p>Synthetic FM, AM and SSB stations carry known tones (1000, 600 and 800 Hz). Each demodulated output is checked by counting zero crossings: it must be within 5% of its tone.</p>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="audio"><span class="n">6</span>Audio: make it speaker-ready</h2>
+  <div class="box why">
+    <span class="label">What happens and why</span>
+    <p>The demodulator's output still runs at ~300 thousand samples per second and carries more than music: broadcast FM includes a <b>19 kHz pilot tone</b> (marking a stereo station), the stereo difference signal around 38 kHz, and station data (RDS) at 57 kHz. One more filter keeps 0–15 kHz, the mono audio, then one more decimation brings it to ~48–50 thousand samples per second, what sound cards expect.</p>
+    <p>In live mode an <b>AGC</b> (automatic gain control) follows the loudest recent peak and scales the audio to keep the volume steady.</p>
+  </div>
+  <div class="box test">
+    <span class="label">How it was tested, on real radio</span>
+    <p>The best end-to-end check doesn't need ears: before that last filter, a real stereo FM station must show its 19 kHz pilot as a sharp, steady tone. On 98.7 FM it stood 45–63 dB above everything around it. If tuning, sample rate, I/Q or the demodulator were wrong, it wouldn't be there.</p>
+  </div>
+
+  <h2 id="yourself">Build it yourself, in the order it was built</h2>
+  <p>Each step ends with a check that tells you it's right before you go on. Write each in Python with numpy first if that's easier, then compare with our TypeScript.</p>
+  <ol>
+    <li><b>A fake station generator.</b> A tone that spins at a chosen frequency, plus noise. <em>Check:</em> plot I and Q; they should be 90° apart.</li>
+    <li><b>The FFT.</b> <em>Check:</em> a tone at fs/8 lands exactly fs/8 right of center.</li>
+    <li><b>The mixer.</b> <em>Check:</em> the peak moves by exactly the amount you shift.</li>
+    <li><b>The windowed-sinc filter.</b> <em>Check:</em> plot its response; 0 dB in the middle, below −40 dB well outside.</li>
+    <li><b>Decimation.</b> <em>Check:</em> try it without the filter and see a neighbor fold in (like the widget above).</li>
+    <li><b>FM, AM and SSB demodulators.</b> <em>Check:</em> each recovers its fake station's tone.</li>
+    <li><b>Make every block streaming.</b> <em>Check:</em> chunked output equals whole-buffer output, bit for bit.</li>
+    <li><b>Real samples.</b> Record a station with <code>rtl_sdr</code> and load the file. <em>Check:</em> the 19 kHz pilot. Then write your own USB driver (<code>articles/01-talking-to-the-dongle.md</code>) and run the same check live.</li>
+  </ol>
+
+  <h2 id="words">Glossary</h2>
+  <dl>
+    <dt>Hz, kHz, MHz</dt><dd>Oscillations per second: 1 / 1 000 / 1 000 000.</dd>
+    <dt>Sample rate (fs)</dt><dd>Measurements per second. USB live mode: 2.4 MS/s (million samples per second); server SDR: 1.024 MS/s.</dd>
+    <dt>I/Q</dt><dd>The two halves of a complex sample (cos and sin parts). Together they tell positive from negative frequencies.</dd>
+    <dt>dB</dt><dd>A ratio on a log scale: +10 dB = 10× the power, +3 dB ≈ 2×.</dd>
+    <dt>FFT</dt><dd>Fast Fourier transform: how much of each frequency a block of samples contains.</dd>
+    <dt>FIR, taps</dt><dd>A filter that's a weighted moving average; the taps are the weights.</dd>
+    <dt>Decimation</dt><dd>Keeping every M-th sample to lower the sample rate, after filtering.</dd>
+    <dt>Aliasing</dt><dd>A frequency too fast for the sample rate disguising itself as a slower one.</dd>
+    <dt>NCO</dt><dd>Numerically controlled oscillator: a digital spinning arrow, used by the mixer.</dd>
+    <dt>Demodulation</dt><dd>Recovering the sound: from the frequency (FM), the strength (AM) or one sideband (SSB).</dd>
+  </dl>
+  <p style="margin-top:40px"><a href="./">Back to Spectrum Lab</a>: load the demo, click the three signals one by one, and match each graph to its section here.</p>
+</main>
+<script type="module" src="/src/learn.ts"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arrows as Numbers</title>
+  <meta name="description" content="Radio from scratch, chapter 2: complex numbers without the mystery. An arrow is two numbers, and multiplying arrows means turning them." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 2</p>
+  <h1>Arrows as numbers</h1>
+
+  <p>In chapter 1, the game showed that one shadow isn't enough: to know which way an arrow spins, you need both its sideways shadow and its up-down shadow. So whenever a radio measures a signal, it writes down <b>two numbers at a time</b>.</p>
+  <p>This chapter is about what you can <em>do</em> with those pairs of numbers. Adding them turns out to be easy. Multiplying them turns out to be surprising, and that surprise is the engine of every software radio.</p>
+  <p>Here's a taste. Below is one arrow, called <b>z</b>. The dots show what you get by multiplying z by itself again and again: z, z×z, z×z×z, and so on. <b>Drag the white ring</b> to change z:</p>
+
+  <div class="scene" id="s-hook"></div>
+
+  <p>Multiplying makes the dots <em>turn</em>. Shorten z a little and they spiral inward; lengthen it and they spiral outward. Normal numbers don't do this: multiply 2 by itself and you just march off to the right, 2, 4, 8, 16. Why would multiplying arrows produce rotation? By the end of this chapter, it'll feel obvious.</p>
+
+  <!-- 1 -->
+  <h2 id="two">An arrow is just two numbers</h2>
+  <p>Put an arrow's tail at the center of a grid. To tell someone where its tip is, you need two numbers: how far it goes <b>sideways</b> and how far it goes <b>up</b>. Those are exactly chapter 1's two shadows: the <em class="g">green</em> sideways shadow and the <em class="y">yellow</em> up shadow.</p>
+
+  <div class="scene" id="s-two"><p class="readout" id="r-two" aria-live="polite"></p></div>
+
+  <p>Radio engineers call these two numbers <b>I</b> (sideways) and <b>Q</b> (up). When the radio dongle sends data to your computer, that's literally what comes down the USB cable: I, Q, I, Q, I, Q, millions of times per second. Each pair is one arrow.</p>
+  <p>Notice there's a second way to describe the same arrow: by its <b>length</b> and its <b>angle</b>. Drag the arrow and watch both descriptions change together. They're two languages for one thing. Sideways-and-up is the language for adding; length-and-angle, as you're about to see, is the language for multiplying.</p>
+
+  <!-- 2 -->
+  <h2 id="add">Adding arrows: tip to tail</h2>
+  <p>You've already added arrows: in chapter 1, we attached a second arrow to the tip of the first. That's all adding is. Take arrow <em class="p">b</em>, slide it (without turning it) so its tail sits on the tip of <em class="b">a</em>, and the sum is the <em class="y">yellow</em> arrow from the center to the new tip.</p>
+
+  <div class="scene" id="s-add"><p class="readout" id="r-add" aria-live="polite"></p></div>
+
+  <p>In numbers it's as simple as it looks: the sideways parts add up and the up parts add up, separately. Nothing surprising yet.</p>
+
+  <!-- 3 -->
+  <h2 id="multiply">Multiplying arrows: turn and stretch</h2>
+  <p>What should it mean to "multiply" two arrows? Let's think about what multiplying ordinary numbers does. Multiplying by 2 <b>stretches</b>: everything gets twice as big. Multiplying by −1 <b>flips</b>: 3 becomes −3, pointing the other way. A flip is a half turn.</p>
+  <p>So multiplication of ordinary numbers is already "stretch and turn", just with very limited turning: no turn, or a half turn. Arrows can point in any direction, so the natural extension is: <b>multiplying by an arrow stretches by its length and turns by its angle</b>. In other words:</p>
+  <ul>
+    <li>the <b>lengths multiply</b>, and</li>
+    <li>the <b>angles add</b>.</li>
+  </ul>
+  <p>Drag both arrows and check it:</p>
+
+  <div class="scene" id="s-mul"><p class="readout" id="r-mul" aria-live="polite"></p></div>
+
+  <p>The small arcs near the center show the angles stacking up: the product's angle is the <em class="b">blue</em> angle plus the <em class="p">pink</em> one.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>Which arrow should you multiply by to turn something a quarter turn (90°) counter-clockwise, without stretching it? And what happens if you multiply by that arrow twice?</div>
+
+  <p>The answer to the first question is the arrow of length 1 pointing straight up. It's so useful it gets a one-letter name. Mathematicians call it <b>i</b>; radio engineers call it <b>j</b> (because "i" was already taken for electric current), and so will we.</p>
+  <p>Now the second question. Multiplying by <b>j</b> means "turn a quarter". Doing it twice means "turn a half", and turning a half means flipping: pointing the other way. So <b>j × j = −1</b>.</p>
+  <p>That's the famous "square root of minus one", and you've just seen there's nothing imaginary about it. In school it's often presented as a strange rule to memorize. It's simply what a quarter turn does when you do it twice.</p>
+
+  <!-- 4 -->
+  <h2 id="game">A game: land on the target</h2>
+  <p>The <em class="b">blue</em> arrow is fixed. Find the <em class="p">pink</em> multiplier that sends the <em class="y">yellow</em> product into the white ring. Think in turns and stretches: how far round does blue need to go, and how much longer or shorter does it need to get?</p>
+
+  <div class="scene" id="s-game">
+    <div class="game">
+      <span class="score" id="g2-score"></span>
+      <label><input id="g2-hint" type="checkbox"> Show a hint</label>
+      <button id="g2-new">New target</button>
+      <div class="result" id="r-game" role="status"></div>
+      <div class="result" id="r-hint"></div>
+    </div>
+  </div>
+
+  <p>After a few rounds you'll notice that you stop fiddling and start aiming: point the multiplier at the angle you need to turn by, and make it as long as the stretch you need. That instinct is the whole of complex multiplication.</p>
+
+  <!-- 5 -->
+  <h2 id="spin">Multiply again and again, and it spins</h2>
+  <p>Now let's go back to the opening spiral and understand it. Start with the arrow pointing at 1. Multiply it by a small "step" arrow. Then multiply the result by the same step again. And again. Each multiplication <b>turns by the step's angle</b> and <b>stretches by the step's length</b>:</p>
+
+  <div class="scene" id="s-spin">
+    <div class="controls">
+      <label for="sp-a">Each step turns by <input id="sp-a" type="range" min="-60" max="60" step="5" value="20"><output id="sp-ao"></output></label>
+      <label for="sp-r">and stretches by <input id="sp-r" type="range" min="0.9" max="1.1" step="0.01" value="1"><output id="sp-ro"></output></label>
+    </div>
+  </div>
+
+  <ul>
+    <li>Stretch exactly <b>×1.00</b>: the arrow goes round and round a circle forever. <b>This is chapter 1's spinning arrow</b>, now made from nothing but repeated multiplication.</li>
+    <li>A little less than 1: it spirals in and dies away. A little more: it spirals out and grows. Neither is what a radio wants, so the step's length must stay exactly 1.</li>
+    <li>Make the turn <b>negative</b>: it spins the other way, clockwise. That's a <b>negative frequency</b>, the thing one shadow couldn't detect in chapter 1's game.</li>
+    <li>Bigger turns per step mean faster spinning: the turn per step <em>is</em> the frequency, just counted in "degrees per snapshot" instead of "turns per second".</li>
+  </ul>
+  <p>Look at the dots on the right too: the up part (Q) of each step, one after another. It's chapter 1's sine wave again, but drawn as separate dots instead of a smooth line, because a computer only ever sees the arrow at separate moments. Those moments are called <b>samples</b>, and chapter 3 is about them.</p>
+
+  <!-- 6 -->
+  <h2 id="euler">The arrow at angle θ, built from tiny turns</h2>
+  <p>One last idea, and it explains a formula you may have seen and been confused by.</p>
+  <p>Here's a strange-sounding way to build a turn. Start at 1 and take a small step <b>sideways</b>: multiply by an arrow that's 1 to the right and a tiny bit up. Because that step is perpendicular to where you're pointing, it mostly turns you and barely stretches you. Do lots of those small steps in a row, and you curl around the circle.</p>
+  <p>Below, the total amount of "sideways" is <b>θ</b> (the Greek letter theta), shared out over <b>n</b> steps: each step multiplies by 1 + j·θ/n. The ring on the circle marks the arrow at angle θ, the place we'd like to land.</p>
+
+  <div class="scene" id="s-euler">
+    <div class="controls">
+      <label for="eu-t">θ <input id="eu-t" type="range" min="0" max="6.28" step="0.01" value="1.57"><output id="eu-to"></output></label>
+      <label for="eu-n">Steps n <input id="eu-n" type="range" min="1" max="60" step="1" value="3"><output id="eu-no"></output></label>
+    </div>
+    <p class="readout" id="r-euler" aria-live="polite"></p>
+  </div>
+
+  <p>With one big step, you overshoot badly: one big sideways jump makes the arrow much longer than 1. Now raise <b>n</b>. The steps get smaller, each one stretches less, and the path hugs the circle more and more tightly, landing almost exactly on the ring: <b>length 1, angle θ</b>.</p>
+  <p>The limit of this process, infinitely many infinitely small sideways steps, has a famous name: <b>e<sup>jθ</sup></b>. That's all e<sup>jθ</sup> means: <em>the arrow of length 1 at angle θ</em>, reached by turning smoothly. (The θ here is in radians: 6.28, i.e. 2π, is a full turn, as in chapter 1.)</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>Set θ to 3.14 (that's π, half a turn) and n to 60. Where do you land? You've just seen why e<sup>jπ</sup> = −1, the equation people call the most beautiful in mathematics. It says: turning half way round the circle flips you to the opposite side.</div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <p>Here is the notation, now that you know what each piece means. The colors match the scenes.</p>
+  <div class="notation">
+    <math display="block">
+      <mi>z</mi><mo>=</mo><mi style="color:var(--green)">I</mi><mo>+</mo><mi>j</mi><mo>·</mo><mi style="color:var(--yellow)">Q</mi>
+    </math>
+    <ul>
+      <li>An arrow is written as its <b style="color:var(--green)">sideways part</b> plus <b>j</b> times its <b style="color:var(--yellow)">up part</b>. The "j ·" just marks which number is the up one. This is called a <b>complex number</b> ("complex" in the sense of "made of two parts", not "complicated").</li>
+    </ul>
+    <math display="block">
+      <mo>(</mo><mi>a</mi><mo>+</mo><mi>j</mi><mi>b</mi><mo>)</mo><mo>·</mo><mo>(</mo><mi>c</mi><mo>+</mo><mi>j</mi><mi>d</mi><mo>)</mo>
+      <mo>=</mo>
+      <mo>(</mo><mi>a</mi><mi>c</mi><mo>−</mo><mi>b</mi><mi>d</mi><mo>)</mo><mo>+</mo><mi>j</mi><mo>(</mo><mi>a</mi><mi>d</mi><mo>+</mo><mi>b</mi><mi>c</mi><mo>)</mo>
+    </math>
+    <ul>
+      <li>This is "lengths multiply, angles add", written in the sideways-and-up language. You don't need to memorize it: multiply out the brackets like ordinary algebra, and wherever <b>j·j</b> appears, replace it with <b>−1</b> (a quarter turn twice is a flip). That single substitution is where the <b>−bd</b> comes from.</li>
+    </ul>
+    <math display="block">
+      <msup><mi>e</mi><mrow><mi>j</mi><mi>θ</mi></mrow></msup><mo>=</mo><mi style="color:var(--green)">cos</mi><mo>&#x2061;</mo><mi>θ</mi><mo>+</mo><mi>j</mi><mo>·</mo><mi style="color:var(--yellow)">sin</mi><mo>&#x2061;</mo><mi>θ</mi>
+    </math>
+    <ul>
+      <li>The arrow of length 1 at angle θ. Its <b style="color:var(--green)">sideways shadow is cos θ</b> and its <b style="color:var(--yellow)">up shadow is sin θ</b>, exactly as in chapter 1.</li>
+    </ul>
+    <math display="block">
+      <msup><mi>e</mi><mrow><mi>j</mi><mo>·</mo><mn>2</mn><mi>π</mi><mi style="color:var(--pink)">f</mi><mi>t</mi></mrow></msup>
+    </math>
+    <ul>
+      <li>Chapter 1's spinning arrow in one symbol: at time <b>t</b>, the angle is 2π·<b style="color:var(--pink)">f</b>·t, so the arrow turns <b style="color:var(--pink)">f</b> times per second. A negative <b style="color:var(--pink)">f</b> spins clockwise.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>From this chapter on, every idea ends as code: the real lines that run the receiver on this site.</p>
+  <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes from 0 to 255, alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1 (<code>src/iq.ts</code>):</p>
+<pre><code>for (let i = 0; i &lt; out.length; i++) out[i] = (u[i] - 127.5) / 127.5;
+// out = [I0, Q0, I1, Q1, I2, Q2, …]: one arrow per pair</code></pre>
+  <p><b>Multiplying arrows.</b> Here is the heart of the receiver's mixer (<code>src/dsp.ts</code>), which you'll meet properly in chapter 5. For every incoming arrow (<code>iq[k]</code>, <code>iq[k+1]</code>) it multiplies by a spinning arrow (<code>c</code>, <code>s</code>), using exactly the formula above with a = I, b = Q, c = cos, d = sin:</p>
+<pre><code>const c = Math.cos(ph), s = Math.sin(ph);   // the spinning arrow, at angle ph
+out[k]     = iq[k] * c - iq[k + 1] * s;     // sideways: ac − bd
+out[k + 1] = iq[k] * s + iq[k + 1] * c;     // up:       ad + bc
+ph += this.step;                            // turn a little further for the next sample</code></pre>
+  <p>Notice what it <em>doesn't</em> do. The spinning-arrow scene made the arrow by multiplying by a step arrow over and over, which is elegant. But a computer rounds every multiplication very slightly, and those tiny errors keep adding up: the length slowly drifts away from exactly 1, turning the circle into a very slow version of the spirals in that scene. (Chapter 5 measures it: after 10 million steps with the 32-bit numbers signal code often uses, the length is off by about 0.0006%. Tiny, but it never stops growing.) So the real code keeps a running <em>angle</em> and computes each arrow fresh from it. Same idea, nothing to accumulate.</p>
+  <p><b>Try it yourself.</b> <code>course/code/ch02.ts</code> builds arrows from scratch in about 30 lines and checks every claim in this chapter. Run it with <code>node course/code/ch02.ts</code>:</p>
+<pre><code>j · j = { I: -1, Q: 0 } → a half turn: −1
+(length 2, 30°) × (length 1.5, 45°) = (length 3.000, 75.000°)
+(1, 2) + (3, −1) = { I: 4, Q: 1 }
+1 × j × j × j × j = { I: 1, Q: 0 }
+n =      1: length 1.86210, angle 57.518°
+n =      4: length 1.33221, angle 85.760°
+n =     30: length 1.04192, angle 89.918°
+n =   1000: length 1.00123, angle 90.000°
+n = 100000: length 1.00001, angle 90.000°
+→ it settles on length 1 at exactly 90°: the arrow at angle θ, which mathematicians write e^(jθ).
+all checks passed</code></pre>
+  <p>The last five lines are the tiny-turns scene in numbers: more, smaller sideways steps land ever closer to length 1 at exactly 90°.</p>
+
+  <!-- check -->
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Multiply an arrow of length 2 at 10° by an arrow of length 3 at 80°. What do you get?</summary>
+    <p>Length 2 × 3 = 6, angle 10° + 80° = 90°: an arrow of length 6 pointing straight up, which is 6j.</p></details>
+  <details><summary>What does multiplying by −1 do to an arrow, in turning language?</summary>
+    <p>Turns it half way round (180°) without stretching. −1 is the arrow of length 1 at 180°.</p></details>
+  <details><summary>Why is j × j = −1, without using any rules?</summary>
+    <p>Multiplying by j turns a quarter. Doing it twice turns a half. Turning a half points the other way, which is what multiplying by −1 does.</p></details>
+  <details><summary>You multiply by a step arrow of length 0.99 over and over. What happens, and why can't a radio's spinning arrow do that?</summary>
+    <p>It spirals inward, losing 1% of its length every step, and soon fades to nothing. A radio's reference arrow must keep exactly the same length forever, which is also why our code recomputes it from an angle instead of multiplying repeatedly.</p></details>
+  <details><summary>An arrow turns −30° per sample. What's special about it compared with one turning +30°?</summary>
+    <p>It spins clockwise: a negative frequency. With both I and Q you can tell the two apart; with only one shadow you couldn't (chapter 1's game).</p></details>
+
+  <nav class="next">
+    <a href="./01-spinning-arrows.html">← Chapter 1: Spinning arrows</a>
+    <a href="./03-taking-snapshots.html">Next: Chapter 3, Taking snapshots →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch02.ts"></script>
+</body>
+</html>

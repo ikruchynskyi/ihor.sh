@@ -1,0 +1,21 @@
+{
+  "name": "spectrum-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test": "node src/dsp.test.ts",
+    "hw-test": "node scripts/hw-test.ts",
+    "serve": "vite build && node server.ts",
+    "course-check": "node scripts/course-check.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vite": "^7"
+  },
+  "dependencies": {
+    "usb": "^3.2.1"
+  }
+}

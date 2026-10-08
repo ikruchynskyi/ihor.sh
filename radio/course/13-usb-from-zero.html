@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>USB From Zero</title>
+  <meta name="description" content="Radio from scratch, chapter 13: how a web page talks to a USB device. Descriptors, control and bulk transfers, the exact bytes on the wire, and the browser's permission model." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 13</p>
+  <h1>USB from zero</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter needs no math. It helps to know:
+    <ul>
+      <li><a href="./12-inside-the-dongle.html#path">Chapter 12: the dongle's two chips</a> (the RTL2832U talks USB; the tuner sits behind it)</li>
+      <li><a href="./03-taking-snapshots.html#ruler">Chapter 3: what the bytes mean</a> (I, Q, I, Q…, 127.5 = zero)</li>
+      <li>Hexadecimal: numbers written in base 16, with a <code>0x</code> in front. 0x10 is 16, 0xFF is 255. Each pair of hex digits is one byte.</li>
+    </ul>
+  </div>
+
+  <p>Every chapter so far has worked on numbers that were already in the computer. Now: how do they get there? Between your web page and the dongle sit a USB cable, your operating system, and the browser. This chapter goes through each layer, using the real messages our driver sends, and ends with you talking to the dongle's chips yourself in four steps.</p>
+
+  <!-- 1 -->
+  <h2 id="tree">What a USB device says about itself</h2>
+  <p>USB has one boss: the computer, called the <b>host</b>. Devices never speak first; they only answer. When you plug something in, the host asks it a series of questions, and the device answers with <b>descriptors</b>: small, standardized blocks of facts about itself. Together they form a tree. Here's the tree of the dongle on this site's server, as it really answered (click each part):</p>
+
+  <div id="desc-tree"></div>
+
+  <p>The key word is <b>endpoint</b>: a numbered, one-way mailbox on the device. Endpoint 0 is the control channel every device has; endpoint 0x81 is where the radio samples come out. Everything a radio app does is either a message through endpoint 0 or a big read from endpoint 0x81.</p>
+
+  <!-- 2 -->
+  <h2 id="setup">A control transfer, byte by byte</h2>
+  <p>A control transfer always starts with an 8-byte <b>setup packet</b> from the host. Five fields, always in the same order:</p>
+  <ul>
+    <li><b style="color:var(--pink)">request type</b> (1 byte): direction and kind. 0x40 means "host to device, vendor-specific"; 0xC0 means "device to host, vendor-specific". "Vendor-specific" means the meaning is defined by the chip's maker, not by the USB standard.</li>
+    <li><b>request</b> (1 byte): which command. The RTL2832U uses just one, 0.</li>
+    <li><b style="color:var(--green)">value</b> and <b style="color:var(--yellow)">index</b> (2 bytes each): the command's arguments. The RTL2832U packs <em>which register</em> into them (the table in the <a href="../build.html#registers">build guide</a>).</li>
+    <li><b style="color:var(--blue)">length</b> (2 bytes): how many data bytes follow (to write) or are expected back (to read).</li>
+  </ul>
+  <p>Two-byte numbers go on the wire <b>lowest byte first</b> ("little-endian"), so 0x2000 travels as 00 20. Pick an operation:</p>
+
+  <div class="scene" id="s-packet">
+    <div class="controls">
+      <label for="sp-op">Operation <select id="sp-op"></select></label>
+    </div>
+    <div id="sp-bytes"></div>
+    <div class="sp-key"><span style="color:var(--pink)">■ request type</span><span>■ request</span><span style="color:var(--green)">■ value (low, high)</span><span style="color:var(--yellow)">■ index (low, high)</span><span style="color:var(--blue)">■ length (low, high)</span></div>
+  </div>
+
+  <p>Look at the last one: reading the tuner's ID takes <em>two</em> USB transfers. The tuner isn't on the USB bus at all; it's on the RTL2832U's internal I2C wires. So the computer first asks the RTL2832U to <em>send</em> one byte over I2C ("start at register 0"), then asks it to <em>read</em> one byte back over I2C, and that byte comes back over USB. Talking to a chip through another chip is everyday life in electronics.</p>
+
+  <!-- 3 -->
+  <h2 id="bulk">Bulk transfers and bus time</h2>
+  <p>Control transfers are small and careful. The samples need the opposite: lots of data, fast. That's what <b>bulk</b> transfers are for. The host asks endpoint 0x81 for, say, 256 KiB; the dongle answers in 512-byte packets, as fast as the bus has room, until the request is filled.</p>
+  <p>USB 2.0 ("high speed", 480 Mbit/s) divides time into slots of 125 µs, called microframes, each with room for up to 13 bulk packets of 512 bytes. How much of that does a radio stream need?</p>
+
+  <div class="scene" id="s-bus">
+    <div class="controls">
+      <label for="bs-r">Sample rate <input id="bs-r" type="range" min="0.25" max="3.2" step="0.05" value="2.4"><output id="bs-ro"></output></label>
+    </div>
+    <p class="readout" id="r-bus" aria-live="polite"></p>
+  </div>
+
+  <p>Less than a tenth of the bus. So when samples get lost, it's not because USB is full. It's because nobody was waiting for them: bulk data only moves while the host has a request pending, and the dongle's own buffer is tiny. That's why the driver always keeps several requests queued (<a href="../build.html#stream">build guide: the streaming timeline</a>).</p>
+
+  <!-- 4 -->
+  <h2 id="layers">Who's allowed to talk to the dongle?</h2>
+  <p>Between your page and the cable sit two gatekeepers:</p>
+  <ul>
+    <li><b>The operating system</b> decides which driver owns each device. A keyboard or USB stick gets a standard driver. Our dongle's interface is vendor-specific (class 255), so it needs a <em>generic</em> driver that just passes messages through. macOS does that automatically. Windows needs one installed (WinUSB, via a tool called Zadig). Linux helpfully grabs the dongle with its <em>TV tuner</em> driver, which must be switched off first. And only one program at a time can own the device, so an SDR app that has it open blocks everyone else.</li>
+    <li><b>The browser</b> protects you from web pages. A page can't see your USB devices at all until you pick one in the browser's own pop-up list, which only appears after a click. Pages also only get access on secure (https://) addresses or on <code>localhost</code>. After you've said yes once, the browser remembers the permission for that site.</li>
+  </ul>
+  <p>Once both gatekeepers agree, the page gets a <code>USBDevice</code> object, and its methods map one-to-one onto everything in this chapter: <code>open()</code>, <code>claimInterface(0)</code>, <code>controlTransferOut/In()</code> for endpoint 0, and <code>transferIn(1, length)</code> for endpoint 0x81.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: talk to your dongle's chips</h2>
+  <div class="lab">
+    <p>Four buttons, four steps, using only raw WebUSB calls: no driver. Plug in an RTL-SDR, open this page on an https:// or localhost address in Chrome, Edge or Opera, and press them in order. If the dongle is in use by something else (the server SDR, another program), step 2 will say so.</p>
+    <div class="game">
+      <button id="lb-1">1 · Pick the dongle</button>
+      <button id="lb-2">2 · Open and claim it</button>
+      <button id="lb-3">3 · Power up, open the I2C repeater</button>
+      <button id="lb-4">4 · Read the tuner's ID</button>
+    </div>
+    <pre id="lb-log" aria-live="polite"></pre>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The whole lab, as a script you can run with Node against a dongle on your computer: <code>node course/code/ch13.ts</code>. The heart of it is the setup-packet arithmetic:</p>
+<pre><code>const setup = (value, index) =&gt; ({ requestType: "vendor", recipient: "device", request: 0, value, index });
+await dev.controlTransferOut(setup(0x2000, (1 &lt;&lt; 8) | 0x10), new Uint8Array([0x09]));   // USB block (1), write
+await dev.controlTransferOut(setup(0x3000, (2 &lt;&lt; 8) | 0x10), new Uint8Array([0xe8]));   // system block (2): demod power on
+await dev.controlTransferOut(setup((1 &lt;&lt; 8) | 0x20, 0x10 | 1), new Uint8Array([0x18])); // demod page 1, reg 1: I2C repeater on
+await dev.controlTransferOut(setup(0x34, (6 &lt;&lt; 8) | 0x10), new Uint8Array([0x00]));     // I2C (6) write to 0x34: "register 0"
+const id = await dev.controlTransferIn(setup(0x34, 6 &lt;&lt; 8), 1);                         // I2C read: 0x69</code></pre>
+  <p>Its output on this site's dongle:</p>
+<pre><code>device: Nooelec NESDR SMArt v5, serial 28695281, USB 2.0, vendor 0xbda, product 0x2838
+wrote 0x09 to USB register 0x2000           (value 0x2000, index 0x110)
+read back USB register 0x2000: 0x09
+demodulator powered on
+I2C repeater on
+tuner at I2C address 0x34, register 0: 0x69 → an R820T-family tuner
+all checks passed</code></pre>
+  <p>A lesson from writing it: the first version skipped "power on the demodulator", and the I2C step failed with "endpoint stalled". A <b>stall</b> is a device's way of saying "I can't do that right now". The demodulator part of the chip is powered down until switched on, and our driver powers it down when it closes. Real hardware is full of rules like that, which is what the next chapter's driver is made of.</p>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>What does endpoint 0x81 mean?</summary><p>Endpoint number 1, in the "in" direction (device to computer): the top bit, 0x80, marks "in".</p></details>
+  <details><summary>Why does reading the tuner's ID take two USB transfers?</summary><p>The tuner isn't on USB; it's on the RTL2832U's I2C bus. The first transfer makes the RTL2832U write the register number over I2C; the second makes it read the answer over I2C and return it over USB.</p></details>
+  <details><summary>Why can't a web page quietly read your USB devices?</summary><p>The browser hides them until you choose one yourself in its pop-up list (opened only by a click), and only on secure pages.</p></details>
+  <details><summary>At 2.4 MS/s, is USB 2.0 fast enough for the dongle? So why do samples sometimes get lost?</summary><p>Easily: 4.8 MB/s is under a tenth of what the bus carries. Samples get lost when no request is waiting, because bulk data only flows while the host is asking for it.</p></details>
+
+  <nav class="next">
+    <a href="./12-inside-the-dongle.html">← Chapter 12: Inside the dongle</a>
+    <a href="./14-writing-the-driver.html">Next: Chapter 14, Writing the driver →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch13.ts"></script>
+</body>
+</html>

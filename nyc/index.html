@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Subway Bailout</title>
+  <meta name="description" content="Live MTA subway incidents with the nearest Citi Bike stations that have bikes right now." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
+            --alert: #e03131; --bike: #1c7ed6; color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: rgba(26,26,24,.95);
+              --alert: #ff6b6b; --bike: #4dabf7; }
+    }
+    html, body, #map { height: 100%; margin: 0; }
+    body { background: var(--bg); color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    #panel { position: absolute; z-index: 1000; top: 12px; left: 56px; max-width: min(340px, calc(100% - 72px));
+             max-height: calc(100% - 24px); overflow: auto; background: var(--card); border: 1px solid var(--line);
+             border-radius: 10px; padding: 12px 14px; }
+    h1 { font-size: 1.05rem; margin: 0 0 2px; }
+    .muted { color: var(--muted); font-size: 0.8rem; }
+    label { display: block; font-size: 0.85rem; }
+    details { margin-top: 8px; font-size: 0.8rem; }
+    details li { margin-bottom: 4px; }
+    button { font: inherit; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+    .leaflet-popup-content { font-size: 13px; }
+    .leaflet-popup-content ul { padding-left: 16px; margin: 4px 0; }
+    .bikes li { list-style: none; margin-left: -16px; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>Subway Bailout</h1>
+  <div class="muted">MTA subway alerts happening now. Click a red station to see the nearest Citi Bikes.</div>
+  <div class="muted" id="status">Loading…</div>
+  <div id="types" style="margin-top:8px"></div>
+  <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
+  <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import { nearest, alertsByStation } from "./nearest.js";
+
+const ALERTS = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json";
+const STATIONS = "https://data.ny.gov/resource/39hk-dx4f.json?$limit=2000";
+const BIKE_INFO = "https://gbfs.citibikenyc.com/gbfs/en/station_information.json";
+const BIKE_STATUS = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json";
+const WALK_M_PER_MIN = 80;
+const MAX_BIKE_M = 1500; // beyond this a bike is no help (e.g. Staten Island has no Citi Bike)
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
+
+const map = L.map("map").setView([40.73, -73.95], 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · MTA · Citi Bike',
+}).addTo(map);
+const alertLayer = L.layerGroup().addTo(map);
+const bikeLayer = L.layerGroup().addTo(map);
+
+let stations = new Map(); // gtfs_stop_id → { name, lat, lon, routes }
+let bikes = [];           // stations with bikes available now
+let byStation = new Map(), unplaced = [];
+const hidden = new Set(); // alert types switched off
+
+async function loadStations() {
+  const rows = await getJSON(STATIONS);
+  stations = new Map(rows.map((r) => [r.gtfs_stop_id, {
+    name: r.stop_name, routes: r.daytime_routes, lat: +r.gtfs_latitude, lon: +r.gtfs_longitude,
+  }]));
+}
+
+async function refresh() {
+  $("status").textContent = "Loading…";
+  try {
+    const [feed, info, status] = await Promise.all([getJSON(ALERTS), getJSON(BIKE_INFO), getJSON(BIKE_STATUS)]);
+    const st = new Map(status.data.stations.map((s) => [s.station_id, s]));
+    bikes = info.data.stations.flatMap((s) => {
+      const x = st.get(s.station_id);
+      if (!x || !x.is_renting || x.num_bikes_available < 1) return [];
+      return [{ name: s.name, lat: s.lat, lon: s.lon, bikes: x.num_bikes_available, ebikes: x.num_ebikes_available ?? 0 }];
+    });
+    ({ byStation, unplaced } = alertsByStation(feed, Date.now() / 1000));
+    renderTypes();
+    render();
+    $("status").textContent = `Updated ${new Date().toLocaleTimeString()} · ${bikes.length} Citi Bike stations with bikes`;
+  } catch (e) {
+    $("status").textContent = `Failed to load: ${e.message}`;
+  }
+}
+
+function renderTypes() {
+  const counts = new Map();
+  for (const list of byStation.values()) for (const a of list) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
+  // "Planned…" is scheduled work, not an incident: hide it on first load, unless that would leave the map empty.
+  if (!renderTypes.done && counts.size) {
+    const planned = [...counts.keys()].filter((t) => /^Planned/i.test(t));
+    if (planned.length < counts.size) planned.forEach((t) => hidden.add(t));
+    renderTypes.done = true;
+  }
+  $("types").innerHTML = [...counts].sort((a, b) => b[1] - a[1]).map(([t, n]) =>
+    `<label><input type="checkbox" data-t="${esc(t)}" ${hidden.has(t) ? "" : "checked"}> ${esc(t)} <span class="muted">(${n})</span></label>`).join("");
+  $("types").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
+    el.checked ? hidden.delete(el.dataset.t) : hidden.add(el.dataset.t);
+    render();
+  }));
+  $("unplacedSum").textContent = `Line-wide alerts with no station (${unplaced.length})`;
+  $("unplaced").innerHTML = unplaced.map((a) => `<li><b>${esc(a.type)}</b>: ${esc(a.header)}</li>`).join("");
+}
+
+function render() {
+  alertLayer.clearLayers();
+  bikeLayer.clearLayers();
+  for (const [id, list] of byStation) {
+    const s = stations.get(id);
+    const shown = list.filter((a) => !hidden.has(a.type));
+    if (!s || !shown.length) continue;
+    L.circleMarker([s.lat, s.lon], {
+      radius: 5 + Math.min(6, shown.length), color: css("--alert"), fillColor: css("--alert"), fillOpacity: 0.6, weight: 1,
+    }).bindPopup(() => popup(s, shown), { maxWidth: 320 })
+      .on("popupopen", () => showBikes(s))
+      .on("popupclose", () => bikeLayer.clearLayers())
+      .addTo(alertLayer);
+  }
+}
+
+const nearBikes = (s) => nearest(s, bikes, 3).filter((b) => b.meters <= MAX_BIKE_M);
+
+function popup(s, alerts) {
+  const uniq = [...new Map(alerts.map((a) => [a.header, a])).values()];
+  const near = nearBikes(s);
+  return `<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>
+    <ul>${uniq.map((a) => `<li><b>${esc(a.type)}</b>: ${esc(a.header)}</li>`).join("")}</ul>
+    <b>Nearest Citi Bikes</b>
+    <ul class="bikes">${near.length ? "" : `<li class="muted">No Citi Bike with bikes within ${MAX_BIKE_M / 1000} km</li>`}${near.map((b) => `<li>🚲 ${esc(b.name)}: ${b.bikes} bikes (${b.ebikes} e) ·
+      ${Math.round(b.meters)} m, ~${Math.max(1, Math.round(b.meters / WALK_M_PER_MIN))} min walk</li>`).join("")}</ul>`;
+}
+
+function showBikes(s) {
+  bikeLayer.clearLayers();
+  for (const b of nearBikes(s)) {
+    L.polyline([[s.lat, s.lon], [b.lat, b.lon]], { color: css("--bike"), weight: 2, dashArray: "4 4" }).addTo(bikeLayer);
+    L.circleMarker([b.lat, b.lon], { radius: 6, color: css("--bike"), fillColor: css("--bike"), fillOpacity: 0.9 })
+      .bindTooltip(`${b.name}: ${b.bikes} bikes`).addTo(bikeLayer);
+  }
+}
+
+$("refresh").addEventListener("click", refresh);
+await loadStations().catch((e) => ($("status").textContent = `Stations failed: ${e.message}`));
+await refresh();
+setInterval(() => { if (!bikeLayer.getLayers().length) refresh(); }, 60_000); // skip while a popup is open
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello Dongle</title>
+  <meta name="description" content="The smallest useful RTL-SDR web app: connect, tune, and draw a live spectrum." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --accent: #c2410c; color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #101215; --fg: #e6e8eb; --muted: #959ba5; --line: #2a2e35; --accent: #ff8a4c; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 32px 16px; }
+    h1 { margin: 0 0 4px; font-size: 1.6rem; }
+    p { color: var(--muted); margin: 0 0 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 12px 0; }
+    button, input { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg); }
+    button { border-color: var(--accent); cursor: pointer; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input { width: 7em; }
+    canvas { width: 100%; height: 240px; display: block; background: #14171d; border-radius: 10px; }
+    #log { font: 0.85rem ui-monospace, Menlo, monospace; white-space: pre-wrap; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Hello, dongle</h1>
+  <p>The smallest useful SDR web app: connect, tune, and draw a live spectrum. Read its source; it's about 80 lines. <a href="../build.html">← Back to the guide</a></p>
+  <div class="row">
+    <button id="usb">Connect USB dongle</button>
+    <button id="server" hidden>Use the server's dongle</button>
+    <label>MHz <input id="freq" type="number" step="0.1" value="98.7"></label>
+  </div>
+  <canvas id="spectrum"></canvas>
+  <p id="log">Not connected.</p>
+</main>
+<script type="module">
+  import { RtlSdr } from "../src/rtlsdr.ts";       // our WebUSB driver
+  import { RemoteSdr } from "../src/remote.ts";     // the same interface, over HTTP
+  import { powerSpectrum } from "../src/dsp.ts";    // FFT → dB (course chapter 4)
+
+  const $ = (id) => document.getElementById(id);
+  const log = (s) => ($("log").textContent = s);
+  let sdr = null;
+
+  // 1. Pick a source. requestDevice() must run inside a click: browsers only show the
+  //    USB picker in response to a user action.
+  $("usb").disabled = !("usb" in navigator) || !isSecureContext;
+  fetch("/api/state").then((r) => r.ok && ($("server").hidden = false)).catch(() => {});
+  $("usb").onclick = () => start(() => RtlSdr.request());
+  $("server").onclick = () => start(() => RemoteSdr.connect());
+
+  async function start(open) {
+    try {
+      sdr = await open();
+      if (sdr instanceof RtlSdr) await sdr.setSampleRate(1_024_000);   // 1.024 million I/Q samples per second
+      await sdr.setCenterFrequency(+$("freq").value * 1e6);
+      await sdr.setGain(30);                                         // dB, or null for automatic
+      $("freq").onchange = () => sdr.setCenterFrequency(+$("freq").value * 1e6);
+      stream();
+    } catch (e) {
+      log(`Couldn't connect: ${e.message}`);
+    }
+  }
+
+  // 2. Stream. Each chunk is raw bytes: I, Q, I, Q… with 127.5 meaning zero.
+  async function stream() {
+    let bytes = 0, t0 = 0, latest = null;
+    requestAnimationFrame(function frame() { if (latest) draw(latest); latest = null; requestAnimationFrame(frame); });
+    await sdr.stream((chunk) => {
+      if (!t0) t0 = performance.now();               // time from the first chunk, not from connecting
+      else bytes += chunk.length;
+      latest = chunk;
+      const secs = Math.max(0.001, (performance.now() - t0) / 1000);
+      log(`tuned to ${sdr.centerFrequency / 1e6} MHz · ${(bytes / 2 / secs / 1e6).toFixed(2)} million samples/s · ` +
+          `${(bytes / 1e6).toFixed(1)} MB received · first bytes: ${[...chunk.slice(0, 8)].join(" ")}`);
+    });
+  }
+
+  // 3. Turn bytes into arrows (numbers from −1 to +1), then into a spectrum, and draw it.
+  function draw(chunk) {
+    const n = 1024, iq = new Float32Array(2 * n);
+    for (let i = 0; i < 2 * n; i++) iq[i] = (chunk[i] - 127.5) / 127.5;
+    const db = powerSpectrum(iq, 0, n);                // n values in dB, lowest frequency first
+    const c = $("spectrum"), g = c.getContext("2d");
+    c.width = c.clientWidth * devicePixelRatio; c.height = c.clientHeight * devicePixelRatio;
+    g.strokeStyle = "#58c4dd"; g.lineWidth = devicePixelRatio; g.beginPath();
+    db.forEach((v, i) => {
+      const x = (i / n) * c.width, y = c.height * (1 - (v + 100) / 80);  // show −100…−20 dB
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    });
+    g.stroke();
+  }
+</script>
+</body>
+</html>

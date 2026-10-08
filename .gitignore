@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+# radio recordings: large, and made on your own machine
+*.cu8
+*.cf32
+*.raw
+*.wav
+# personal backlog with details of the home network (kept local)
+IDEAS.md

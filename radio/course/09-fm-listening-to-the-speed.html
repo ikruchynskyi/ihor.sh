@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FM: Listening to the Speed</title>
+  <meta name="description" content="Radio from scratch, chapter 9: the FM demodulator. Measure how far the arrow turns between snapshots and you have the music." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 9</p>
+  <h1>FM: listening to the speed</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./01-spinning-arrows.html#fm">Chapter 1: FM puts the music in the arrow's speed</a></li>
+      <li><a href="./02-arrows-as-numbers.html#multiply">Chapter 2: multiplying arrows adds their angles</a></li>
+      <li><a href="./05-moving-a-station.html#shift">Chapters 5</a>, <a href="./06-averaging-is-filtering.html#real">6</a> and <a href="./07-throwing-away-snapshots.html#fold">7</a>: the station centered, alone, at a sensible sample rate</li>
+    </ul>
+  </div>
+
+  <p>Everything so far has been preparation. After chapters 5 to 7, we have one station, centered at 0, with its neighbors removed, at a few hundred thousand samples per second. In chapter 5's lab you saw what's left of its arrow: it doesn't go round any more, it just <b>wobbles back and forth</b>. Chapter 1 told us what that wobble is: the music, written into the arrow's speed (<a class="back" href="./01-spinning-arrows.html#fm">↩ ch. 1</a>).</p>
+  <p>So the last real step is to <b>measure the speed</b>, sample by sample. Speed is "how far it turned since last time". So we need one thing: the angle between two consecutive snapshots.</p>
+
+  <!-- 1 -->
+  <h2 id="turn">How far did it turn?</h2>
+  <p>We could compute each snapshot's angle and subtract. But angles wrap around (from 179° to −179° is a turn of 2°, not −358°), which makes subtraction fiddly. Chapter 2 has a cleaner trick. Multiplying arrows <em>adds</em> their angles (<a class="back" href="./02-arrows-as-numbers.html#multiply">↩</a>). So to <em>subtract</em> an angle, multiply by the arrow's <b>mirror image</b>: the same arrow flipped upside down, which has the opposite angle. Mathematicians call the mirror image the <b>complex conjugate</b>.</p>
+  <p>Drag the two arrows:</p>
+
+  <div class="scene" id="s-turn"><p class="readout" id="r-turn" aria-live="polite"></p></div>
+
+  <p>The pink arrow, "now × mirrored before", always points at exactly the angle between the two. No wrapping problems: if "before" is at 179° and "now" at −179°, the pink arrow points at 2°, as it should.</p>
+  <p>And notice: we only need the pink arrow's <em>angle</em>, not its length. That turns out to be one of FM's great strengths, as you'll see in a moment.</p>
+
+  <!-- 2 -->
+  <h2 id="demod">The demodulator, step by step</h2>
+  <p>Now apply it to a whole FM signal. For every sample, multiply it by the mirrored previous sample and take the angle. Each answer is one bar below. The dashed green line is the music that was put into the signal:</p>
+
+  <div class="scene" id="s-demod">
+    <div class="controls">
+      <label for="dm-n">Noise <input id="dm-n" type="range" min="0" max="0.6" step="0.02" value="0"><output id="dm-no"></output></label>
+      <label for="dm-f"><input id="dm-f" type="checkbox"> Signal fades in and out</label>
+    </div>
+  </div>
+
+  <p>With no noise, the pink bars trace the music exactly. That's the whole FM demodulator: one multiplication and one angle per sample. (The yellow line is what's left after the audio filter that follows, a short running average: it's what you'd actually hear.) Now experiment:</p>
+  <ul>
+    <li><b>Tick "Signal fades".</b> The arrow's length now swells and shrinks (look at the dots on the left), as a real signal does when you move around. The bars don't change at all. Only the angle matters, so FM ignores changes in strength. That's why FM sounds steady in a moving car while AM fades and flutters.</li>
+    <li><b>Add a little noise</b> (up to about 0.2). The pink bars get fuzzy, but the yellow line, after the audio filter has averaged the fuzz away, still follows the music closely: you'd hear the music with a little hiss.</li>
+    <li><b>Add more</b> (0.4 and up). Suddenly some bars shoot to the top or bottom (shown in red). Look at the dots on the left: noise sometimes pushes the arrow close to the center (the red dot), and near the center a tiny push changes the angle enormously. Each wild bar is a loud <b>click</b>, and the audio filter can't average it away: one huge bar drags the yellow line far off course. FM doesn't fade gently as the signal weakens: it stays clean, then rather suddenly breaks up into crackles. Radio engineers call this the <b>threshold effect</b>.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="mpx">What's inside a real broadcast</h2>
+  <p>A real FM station sends more than one sound. Here's the spectrum (<a class="back" href="./04-winding-machine.html#spectrum">↩ ch. 4</a>) of our demodulator's output for 98.7 FM, recorded by this site's dongle: everything the station packs into the arrow's speed, from 0 to 64 kHz.</p>
+
+  <div class="scene" id="s-mpx"></div>
+
+  <ul>
+    <li><b>0–15 kHz, mono audio:</b> left plus right channels, the sound any FM radio plays.</li>
+    <li><b>19 kHz, the pilot:</b> a pure, steady tone, much too high to matter as sound. Its presence says "this station is in stereo", and its exact rhythm is used to decode the stereo part.</li>
+    <li><b>23–53 kHz, stereo:</b> left <em>minus</em> right, shifted up to around 38 kHz (exactly twice the pilot). A stereo receiver shifts it back down (chapter 5's mixing, with the pilot as the reference), then adds and subtracts it with the mono part to recover the left and right channels separately.</li>
+    <li><b>57 kHz, RDS:</b> slow digital data: the station's name, the song title, the time. It's what makes your car radio show "98.7 ESPN".</li>
+  </ul>
+  <p>Our receiver plays the mono part only. Stereo and RDS would be good projects for after the course.</p>
+
+  <!-- 4 -->
+  <h2 id="deemph">De-emphasis: why FM needs a bass boost (sort of)</h2>
+  <p>FM has a quirk. Noise in the radio signal pushes the arrow around randomly, and the demodulator turns those pushes into sound. But a push changes the arrow's <em>angle</em> by a random amount, and the demodulator reports the angle's <em>rate of change</em>, which is larger for fast jitter. So FM noise comes out <b>louder at high pitches</b>: a hiss that rises with frequency (red below).</p>
+
+  <div class="scene" id="s-deemph">
+    <div class="game">
+      <button id="de-off">▶ Noisy station, no de-emphasis</button>
+      <button id="de-on">▶ Same station, with de-emphasis</button>
+    </div>
+  </div>
+
+  <p>The fix is a deal made in the 1940s. Broadcasters deliberately <b>boost the treble</b> before transmitting (<b>pre-emphasis</b>), and every receiver <b>turns the treble down</b> by exactly the same amount (<b>de-emphasis</b>, green). The music comes out balanced, and the high-pitched hiss gets turned down along with the treble. In the Americas the amount is set by a "75 µs" time constant: −0.9 dB at 1 kHz, −14 dB at 10 kHz. Europe uses 50 µs.</p>
+  <p>De-emphasis is just a gentle low-pass filter: each output moves a small fraction of the way towards the new input (a running average with a long memory, <a class="back" href="./06-averaging-is-filtering.html#average">↩ ch. 6</a>).</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: listen to FM you decoded yourself</h2>
+  <div class="lab">
+    <p>This is the whole receiver, built from the blocks of chapters 5–9 (mixer, filter + decimator, FM demodulator, de-emphasis, audio filter), playing live radio. The picture is the demodulator's output: watch for the 19 kHz pilot. Turn de-emphasis off and listen to the hiss and the harsh treble.</p>
+    <div class="scene" id="s-lab"><p class="readout" id="r-lab" aria-live="polite"></p></div>
+    <label class="note"><input id="lb-de" type="checkbox" checked> De-emphasis</label>
+    <div id="lab9"></div>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block"><mi style="color:var(--pink)">audio</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><mi>angle</mi><mo>(</mo><mi style="color:var(--yellow)">x</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>·</mo><mover><mrow><mi style="color:var(--blue)">x</mi><mo>[</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo>]</mo></mrow><mo>‾</mo></mover><mo>)</mo></math>
+    <ul>
+      <li>The bar over x[n−1] means the conjugate: the mirror image (same sideways part, opposite up part).</li>
+      <li>The result is in radians per sample. Multiply by sample rate / 2π to get the speed in Hz.</li>
+    </ul>
+    <math display="block"><mo>(</mo><mi>a</mi><mo>+</mo><mi>j</mi><mi>b</mi><mo>)</mo><mo>(</mo><mi>c</mi><mo>−</mo><mi>j</mi><mi>d</mi><mo>)</mo><mo>=</mo><mo>(</mo><mi>a</mi><mi>c</mi><mo>+</mo><mi>b</mi><mi>d</mi><mo>)</mo><mo>+</mo><mi>j</mi><mo>(</mo><mi>b</mi><mi>c</mi><mo>−</mo><mi>a</mi><mi>d</mi><mo>)</mo></math>
+    <ul>
+      <li>Chapter 2's multiplication with the second arrow mirrored. Its angle is atan2(bc − ad, ac + bd): exactly what the code computes.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The FM demodulator in this site's receiver (<code>src/dsp.ts</code>), with the previous sample remembered between chunks (<a class="back" href="./08-chunks-of-a-live-stream.html#memory">↩ ch. 8</a>):</p>
+<pre><code>export class FmDemod {
+  private pi = 0;   // the previous sample (I and Q)
+  private pq = 0;
+  process(iq: Float32Array): Float32Array {
+    const out = new Float32Array(iq.length / 2);
+    let pi = this.pi, pq = this.pq;
+    for (let k = 0; k &lt; iq.length; k += 2) {
+      const i = iq[k], q = iq[k + 1];
+      out[k / 2] = Math.atan2(q * pi - i * pq, i * pi + q * pq);   // angle of now × mirrored before
+      pi = i; pq = q;
+    }
+    this.pi = pi; this.pq = pq;
+    return out;
+  }
+}</code></pre>
+  <p>De-emphasis (<code>Deemphasis</code>): each output moves a fraction <code>a</code> of the way towards the input; <code>a</code> comes from the 75 µs time constant and the sample rate:</p>
+<pre><code>this.a = 1 - Math.exp(-1 / (fs * tau));                     // tau = 75e-6
+for (let i = 0; i &lt; x.length; i++) out[i] = this.y += this.a * (x[i] - this.y);</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch09.ts</code>:</p>
+<pre><code>recovered tone: 997 Hz, peak speed 5000 Hz (the deviation)
+steady vs fading (down to 10% strength): outputs differ by at most 1.2e-7
+noise 0.05 × the signal: 0 clicks per second
+noise 0.20 × the signal: 0 clicks per second
+noise 0.40 × the signal: 678 clicks per second
+noise 0.70 × the signal: 5757 clicks per second
+de-emphasis at   100 Hz: -0.0 dB
+de-emphasis at  1000 Hz: -0.9 dB
+de-emphasis at  3000 Hz: -4.8 dB
+de-emphasis at 10000 Hz: -13.7 dB
+de-emphasis at 15000 Hz: -17.0 dB
+98.7 FM in the embedded samples (3.9 ms): 19 kHz pilot 24 dB above its neighbors → stereo
+all checks passed</code></pre>
+  <p>Look at the clicks: none at all with noise up to 0.2, then hundreds per second at 0.4. That's the threshold effect, in numbers.</p>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why multiply by the mirrored previous sample instead of subtracting the two angles?</summary><p>Multiplying by the mirror image subtracts the angles automatically, and the result never has a wrap-around problem: a turn from 179° to −179° comes out as 2°.</p></details>
+  <details><summary>Why does FM sound steady even when the signal strength changes?</summary><p>The demodulator uses only angles, never lengths. A weaker signal has a shorter arrow, but it turns in exactly the same way.</p></details>
+  <details><summary>Why does a weak FM station crackle instead of just getting quieter?</summary><p>Noise sometimes pushes the arrow near the center, where a tiny push changes its angle by a lot. Each such moment gives a huge wrong reading, heard as a click. Below a certain signal strength these happen many times per second.</p></details>
+  <details><summary>What does the 19 kHz pilot tell a receiver?</summary><p>That the station is in stereo, and, by its exact timing, how to decode the stereo signal around 38 kHz (twice its frequency).</p></details>
+
+  <nav class="next">
+    <a href="./08-chunks-of-a-live-stream.html">← Chapter 8: Chunks of a live stream</a>
+    <a href="./10-am-ssb-and-morse.html">Next: Chapter 10, AM, SSB and Morse →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch09.ts"></script>
+</body>
+</html>

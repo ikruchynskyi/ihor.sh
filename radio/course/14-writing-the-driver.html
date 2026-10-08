@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Writing the Driver</title>
+  <meta name="description" content="Radio from scratch, chapter 14: the driver. Everything it says to the chips, decoded in order; its source, annotated; and how it was tested." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 14</p>
+  <h1>Writing the driver</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter builds directly on:
+    <ul>
+      <li><a href="./13-usb-from-zero.html#setup">Chapter 13: control transfers and register addressing</a></li>
+      <li><a href="./12-inside-the-dongle.html#path">Chapter 12: the chips, the IF and the PLL</a></li>
+      <li><a href="./08-chunks-of-a-live-stream.html#memory">Chapter 8: why the stream must never stall</a></li>
+    </ul>
+  </div>
+
+  <p>A driver sounds mysterious. For this dongle it's two things: <b>a list of register writes in exactly the right order</b>, and the knowledge of what each one means. Chapter 13 showed single messages. This chapter shows the whole conversation, every message our driver sends from "open" to "close", and then the code that produces it.</p>
+
+  <!-- 1 -->
+  <h2 id="trace">Everything the driver says, in order</h2>
+  <p>Below, the real driver from this site runs through a typical session (open, set the sample rate, tune to 98.45 MHz, set the gain, close) against a <b>pretend dongle</b>: an object that accepts every write and answers like a real one. Every control transfer is recorded and decoded into words. It happens right now in your browser; open each phase:</p>
+
+  <label class="note"><input id="tr-hide" type="checkbox" checked> Hide the dummy reads (the chip wants one after every demodulator write)</label>
+  <div id="trace"></div>
+
+  <p>Some things to look for:</p>
+  <ul>
+    <li><b>RTL2832U start-up</b> (the biggest phase): power on the demodulator, reset it, then write the 20 resampler-filter coefficients one by one (chapter 3's anti-aliasing filter), switch to SDR mode, and turn off everything that was meant for TV.</li>
+    <li><b>Find the tuner and set up for it</b>: "start reading at register 0x00", and the answer 0x69: that's how the driver knows it's an R820T. Then the RTL2832U is told about the tuner's 3.57 MHz IF.</li>
+    <li><b>Tuner start-up</b>: four bulk writes of the 27 start-up values (7 at a time, the I2C bridge's limit), then the IF filter calibration: the PLL goes to 56 MHz, a trigger bit is pulsed, a code is read back.</li>
+    <li><b>Tune</b>: notice registers 0x14, 0x15 and 0x16 (the PLL integer and fraction from chapter 12) and the status read that checks the lock bit.</li>
+    <li>Almost every tuner phase starts with "I2C repeater on" (demod register 0x01 = 0x18) and ends with it off (0x10).</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="knowledge">How anyone knows what to write</h2>
+  <p>Neither chip has a public datasheet. The knowledge in the trace above was pieced together over years by the open-source community: people recorded what Windows TV software sent to these sticks, studied leaked reference code from the chip makers, and experimented. In 2012 they discovered the RTL2832U's undocumented "SDR mode" that ships raw samples, which is what turned a $20 TV stick into a radio receiver. The results live in osmocom's <b>librtlsdr</b> and the <b>Linux kernel's</b> drivers; our driver is a fresh TypeScript implementation of that shared knowledge.</p>
+  <p>That's also why the trace decoder above can name every register: the names come from the same community work. Writing a driver for a chip without a datasheet means reading other drivers carefully, and testing a lot.</p>
+
+  <!-- 3 -->
+  <h2 id="source">The source, annotated</h2>
+  <p>The two files, exactly as they are on this site. Click any highlighted part of the code for its explanation, or an explanation to find its code.</p>
+  <h3>The RTL2832U side: USB, registers, streaming</h3>
+  <div id="cv-driver"></div>
+  <h3>The tuner: R820T</h3>
+  <div id="cv-tuner"></div>
+
+  <!-- 4 -->
+  <h2 id="testing">Testing a driver</h2>
+  <p>Hardware code is hard to test, because the hardware isn't always there and doesn't always behave. This driver is tested at four levels, each catching different mistakes:</p>
+  <ol>
+    <li><b>A fake chip</b> (chapter 12's script): the tuner driver runs against a pretend I2C bus that records writes. Checks: does the driver write the PLL values the math says it should?</li>
+    <li><b>A recorded trace</b> (this chapter's script): the whole driver runs against a pretend dongle. Checks: does every message have a known meaning, in a sensible order? (All 216 do.)</li>
+    <li><b>The real dongle, with a test that doesn't need ears</b> (<code>npm run hw-test</code>): capture from a real station and check that our FM demodulator finds the 19 kHz stereo pilot (<a class="back" href="./09-fm-listening-to-the-speed.html#mpx">↩ ch. 9</a>). It can only be there if tuning, sample rate and I/Q handling are all right. It measures the real sample rate too, to catch dropped data.</li>
+    <li><b>Abuse</b>: open and close the dongle six times in a row, fast. This caught the nastiest bug.</li>
+  </ol>
+  <p>The bugs we actually hit while building this driver, all now handled:</p>
+  <ul>
+    <li><b>A string the dongle can't serve.</b> Its configuration has a name that its firmware returns broken. Browsers don't care, but Node's USB package crashed reading it. Fix: don't ask for it.</li>
+    <li><b>A false alarm.</b> A throughput test reported 2.307 million samples per second instead of 2.4, which looked like lost data. The timer had included closing the device. Lesson: check the measurement before the thing measured.</li>
+    <li><b>A dongle that ignores you.</b> Reopened quickly after closing, the chip sometimes stalls its first commands. librtlsdr's fix is a USB reset. But on macOS the reset makes the dongle disappear and reappear as a new device, so the driver now finds it again and starts over.</li>
+    <li><b>Registers that stall.</b> Writing a demodulator register while the demodulator is powered down stalls (chapter 13's lab hit this). Order matters: power first.</li>
+    <li><b>A stuck tuner.</b> Once, after many resets, the tuner's analog side stopped passing any signal: every byte was 126–129, even in other software. Its digital side still answered 0x69. Only unplugging it (cutting its power) fixed it. Some states can't be reached from software at all.</li>
+  </ul>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: record the trace from your own dongle</h2>
+  <div class="lab">
+    <p>The same session, but with your real dongle instead of the pretend one (Chrome, Edge or Opera, on an https:// or localhost page). The writes should match the trace above exactly; the reads are your chip's real answers.</p>
+    <div class="game"><button id="lb-rec">Pick a dongle and record</button></div>
+    <p class="readout" id="lb-status" aria-live="polite"></p>
+    <div id="lb-trace"></div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>Recording a trace is a small trick worth knowing: wrap the device in a <b>proxy</b>, an object that passes every call through to the real one but writes it down first (<code>src/course/trace.ts</code>):</p>
+<pre><code>return new Proxy(dev, {
+  get(t, k) {
+    const v = t[k];
+    if (k === "controlTransferOut") return async (s, data) =&gt; {
+      log.push({ phase: phase.name, dir: "out", value: s.value, index: s.index, data: [...new Uint8Array(data)] });
+      return v.call(t, s, data);                    // then do the real thing
+    };
+    // … the same for controlTransferIn, recording the answer …
+    return typeof v === "function" ? v.bind(t) : v;
+  },
+});</code></pre>
+  <p>The driver never knows it's being watched. <b>Try it yourself:</b> <code>node course/code/ch14.ts</code> prints the trace, phase by phase:</p>
+<pre><code>RTL2832U start-up: 86 control transfers
+   USB register 0x2000 = 0x09 · USB_SYSCTL (USB block control)
+   USB register 0x2158 = 0x00 0x02 · USB_EPA_MAXPKT (packet size)
+   USB register 0x2148 = 0x10 0x02 · USB_EPA_CTL (sample endpoint control: 0x1002 = reset FIFO, 0x0000 = run)
+   system register 0x300b = 0x22 · DEMOD_CTL_1 (demodulator clock/power)
+   system register 0x3000 = 0xe8 · DEMOD_CTL (demodulator power/ADC)
+   …
+find the tuner and set up for it: 14 control transfers
+   tuner: "start reading at register 0x00"
+   tuner: read 1 status byte (0x69)
+   …
+tuner start-up (calibration included): 56 control transfers
+   tuner registers 0x05–0x0b = 0x83 0x32 0x75 0xc0 0x40 0xd6 0x6c (bulk initialization)
+   …
+tune to 98.45 MHz: 23 control transfers
+   …
+216 control transfers in total; 0 without a known name
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does nearly every tuner operation start with demod register 0x01 = 0x18?</summary><p>That switches on the I2C repeater, the gate between the RTL2832U and the tuner's I2C wires. It's switched off again (0x10) afterwards so stray traffic can't reach the tuner.</p></details>
+  <details><summary>Why does the tuner driver keep a copy of every register it writes?</summary><p>Most of the chip's registers can't be read back. To change a few bits, the driver needs to know the rest of the byte, so it keeps its own copy (a shadow).</p></details>
+  <details><summary>How can you test that tuning works without listening to anything?</summary><p>Tune to a stereo FM station and check that the demodulated signal contains the 19 kHz pilot. Wrong tuning, a wrong sample rate or mixed-up I/Q would all destroy it.</p></details>
+
+  <nav class="next">
+    <a href="./13-usb-from-zero.html">← Chapter 13: USB from zero</a>
+    <a href="./15-the-network-source.html">Next: Chapter 15, The network source →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch14.ts"></script>
+</body>
+</html>

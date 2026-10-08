@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Throwing Away Snapshots</title>
+  <meta name="description" content="Radio from scratch, chapter 7: decimation. Once a station is isolated we only need a fraction of the samples, as long as we filter first." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 7</p>
+  <h1>Throwing away snapshots</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./03-taking-snapshots.html#fold">Chapter 3: the folding graph</a> (aliasing: too-fast arrows pretend to be slow ones)</li>
+      <li><a href="./06-averaging-is-filtering.html#weights">Chapter 6: filters</a> (a weighted average that keeps the middle of the band)</li>
+      <li><a href="./05-moving-a-station.html#shift">Chapter 5: centering a station</a></li>
+    </ul>
+  </div>
+
+  <p>After chapters 5 and 6, our station sits alone in the middle of the band. Everything else has been filtered away. But look at what we're still carrying: the dongle sends 2.4 million samples per second, enough to describe a 2.4 MHz-wide slice of radio (<a class="back" href="./03-taking-snapshots.html#fold">↩ ch. 3</a>), and our FM station is only 0.2 MHz wide. More than 90% of every sample's information is now empty space.</p>
+  <p>Every later step, the demodulator and the audio, would have to grind through all those useless samples. So the next move is to <b>keep only some of them</b>: one in every M. This is called <b>decimation</b> (from the Roman punishment of removing one in ten; we remove far more). It's simple, but it has one trap, and it's exactly the trap from chapter 3.</p>
+
+  <!-- 1 -->
+  <h2 id="fold">What keeping every M-th sample does</h2>
+  <p>Keeping one sample in M is like using a camera that takes M times fewer photos. The honest range shrinks to 1/M of what it was (<a class="back" href="./03-taking-snapshots.html#fold">↩ ch. 3: the honest zone</a>). And everything that used to be outside that new, narrower range doesn't vanish: it <b>folds</b> into it.</p>
+  <p>Here's the picture that makes it obvious. Cut the original spectrum into M slices, each as wide as the new range. Decimation <b>stacks all the slices on top of each other</b> and adds them up. The middle slice (yellow) is the one you want; every other slice gets dropped onto it.</p>
+
+  <div class="scene" id="s-fold">
+    <div class="controls">
+      <label for="fd-m">Keep <input id="fd-m" type="range" min="1" max="8" step="1" value="4"><output id="fd-mo"></output></label>
+      <label for="fd-f"><input id="fd-f" type="checkbox" checked> Filter first (chapter 6)</label>
+    </div>
+    <p class="readout" id="r-fold" aria-live="polite"></p>
+  </div>
+
+  <p>The band here is the demo from chapter 5 with its FM station centered: the AM station now at −350 kHz and a tone at +150 kHz.</p>
+  <ul>
+    <li><b>With the filter</b> (the default), every slice except the middle one is already empty. Stacking empty slices adds nothing, and the result is just your station, now described by M times fewer numbers.</li>
+    <li><b>Untick the filter</b>: the other slices still hold the AM station and the tone. Stacked on top of the middle, they land right next to your station or on top of it. And once they're mixed in, nothing later can separate them again: they're indistinguishable from real signal.</li>
+    <li><b>Push M to 6 or more</b>: the new range (170 kHz or less) becomes narrower than the station itself (200 kHz). Now even the station's own edges fold over. The filter can't save you here: you've asked for too few samples.</li>
+  </ul>
+  <p>So the rule is: <b>filter first, then decimate</b>, and choose M so the new sample rate stays comfortably above the width of what you're keeping.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>The new rate is 256 kHz (M = 4). An unfiltered neighbor sits at +350 kHz. Where does it land? (Hint: chapter 3's sawtooth subtracts whole sample rates until it fits in −128…+128 kHz.)</div>
+  <p>350 − 256 = 94 kHz. Right inside the ±100 kHz you were keeping for your station.</p>
+
+  <!-- 2 -->
+  <h2 id="skip">Only compute what you keep</h2>
+  <p>Filtering every sample and then throwing most of the results away would be wasteful. A filter's output at one moment doesn't depend on the output at the moment before; each is its own weighted average (<a class="back" href="./06-averaging-is-filtering.html#average">↩ ch. 6: the sliding bracket</a>). So just don't compute the outputs you'll throw away: slide the bracket M samples at a time.</p>
+
+  <div class="scene" id="s-skip">
+    <div class="controls">
+      <label for="sk-m">Keep every <input id="sk-m" type="range" min="1" max="8" step="1" value="4"><output id="sk-mo"></output></label>
+    </div>
+    <p class="readout" id="r-skip" aria-live="polite"></p>
+  </div>
+
+  <p>Same results, M times less work. This one idea is what makes software radio affordable on a laptop, and it's why the filter and the decimation are written as a single step in our code.</p>
+
+  <!-- 3 -->
+  <h2 id="choose">How the receiver chooses M</h2>
+  <p>Our receiver picks the biggest M that keeps the new rate at least <b>1.5 times the width</b> of the signal it's keeping. The extra half leaves room for the filter's edge (chapter 6: no filter is a perfect rectangle) so that whatever folds in lands in the margin, not on the station. It also never goes below 48 000 samples per second, the rate sound cards like, so the audio step later has an easy job:</p>
+  <ul>
+    <li><b>Broadcast FM</b> (200 kHz wide) at 2.4 MS/s: keep every 8th → 300 000 samples per second.</li>
+    <li><b>Narrow FM, AM, single sideband</b> (3–12.5 kHz wide): keep every 50th → 48 000 per second.</li>
+  </ul>
+  <p>From here on, the receiver works on 8 to 50 times fewer numbers than the dongle delivered.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: zoom in on a real station</h2>
+  <div class="lab">
+    <p>Your station, centered, then filtered to ±100 kHz and decimated. The bottom picture covers a range M times narrower, so the station fills it: decimation is also a <b>zoom</b>.</p>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label for="ld-m">Keep every <input id="ld-m" type="range" min="1" max="8" step="1" value="3"><output id="ld-mo"></output></label>
+      </div>
+    </div>
+    <div id="lab7"></div>
+    <ol>
+      <li>At M = 3 (1.024 MS/s → 341 kS/s), the station fills most of the picture, with its edges well inside.</li>
+      <li>At M = 5 (205 kS/s), the range barely fits the station. At M = 6 or more it doesn't, and the station's own edges fold over.</li>
+    </ol>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block"><mi style="color:var(--yellow)">y</mi><mo>[</mo><mi>m</mi><mo>]</mo><mo>=</mo><munder><mo>∑</mo><mi>k</mi></munder><msub><mi style="color:var(--blue)">h</mi><mi>k</mi></msub><mo>·</mo><mi>x</mi><mo>[</mo><mi style="color:var(--pink)">M</mi><mi>m</mi><mo>−</mo><mi>k</mi><mo>]</mo></math>
+    <ul>
+      <li>Chapter 6's filter, evaluated only at every <b style="color:var(--pink)">M</b>-th input position: output number m sits at input position M·m.</li>
+    </ul>
+    <math display="block"><msub><mi>f</mi><mtext>new</mtext></msub><mo>=</mo><mfrac><msub><mi>f</mi><mi>s</mi></msub><mi>M</mi></mfrac><mo>,</mo><mspace width="1em"/><mtext>keep only</mtext><mspace width="0.4em"/><mo>|</mo><mi>f</mi><mo>|</mo><mo>&lt;</mo><mfrac><msub><mi>f</mi><mtext>new</mtext></msub><mn>2</mn></mfrac><mtext> before you decimate</mtext></math>
+    <ul>
+      <li>The new rate, and the rule that the filter must remove everything outside the new honest range first.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The receiver's filter-and-decimate is one class, <code>FirDecimator</code> (<code>src/dsp.ts</code>). Its heart: a loop over only the outputs we keep, stepping M input positions each time, with chapter 6's weighted sum inside:</p>
+<pre><code>for (let o = 0, j = this.next; o &lt; count; o++, j += m) {   // j jumps m inputs per output
+  const base = (t - 1 + j) * 2;
+  let r = 0, i = 0;
+  for (let k = 0; k &lt; t; k++) {                             // chapter 6: the weighted sum
+    r += buf[base - 2 * k] * h[k];
+    i += buf[base - 2 * k + 1] * h[k];
+  }
+  out[2 * o] = r; out[2 * o + 1] = i;
+}</code></pre>
+  <p>And the receiver's choice of M and of the filter (<code>Receiver</code> in <code>src/dsp.ts</code>):</p>
+<pre><code>const m1 = Math.max(1, Math.floor(fs / Math.max(48e3, 1.5 * bw)));   // biggest M keeping ≥ 1.5 × bandwidth
+this.chanFs = fs / m1;
+// anything between chanFs − half and fs/2 would fold onto the station, so that's where the filter must reject
+this.taps = firLowpass(half / fs, Math.max(this.chanFs - 2 * half, this.chanFs * 0.1) / fs);</code></pre>
+  <p>The filter's edge is made exactly as wide as the margin we left: steep enough that nothing folds onto the station, no steeper (chapter 6: steepness costs weights).</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch07.ts</code>:</p>
+<pre><code>no filter: the +350 kHz neighbor reappears at 94 kHz  (350 − 256 = 94)
+with a 61-weight filter first: what's left of it is -74 dB
+filter-everything-then-pick and compute-only-kept agree on all 16384 outputs, with 4× less work
+WFM (  200 kHz wide): keep every  8 → 300 kS/s
+NFM ( 12.5 kHz wide): keep every 50 →  48 kS/s
+AM  (   10 kHz wide): keep every 50 →  48 kS/s
+USB (  2.8 kHz wide): keep every 50 →  48 kS/s
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why must you filter before decimating, not after?</summary><p>Decimating stacks every slice of the spectrum onto the middle one. Anything still in the other slices lands on your station and can never be separated again. Filtering afterwards is too late.</p></details>
+  <details><summary>A 300 kHz-wide signal at 2.4 MS/s. Can you keep every 10th sample?</summary><p>No: that leaves 240 kS/s, narrower than the signal itself, so its edges would fold over. Every 8th (300 kS/s) is the absolute limit; every 5th or 6th leaves a safe margin.</p></details>
+  <details><summary>Why compute only every M-th output instead of all of them?</summary><p>Each output is its own weighted average and doesn't depend on the others, so the ones you'd throw away don't need computing at all: M times less work, identical results.</p></details>
+
+  <nav class="next">
+    <a href="./06-averaging-is-filtering.html">← Chapter 6: Averaging is filtering</a>
+    <a href="./08-chunks-of-a-live-stream.html">Next: Chapter 8, Chunks of a live stream →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch07.ts"></script>
+</body>
+</html>

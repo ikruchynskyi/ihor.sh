@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Winding Machine</title>
+  <meta name="description" content="Radio from scratch, chapter 4: the Fourier transform as a machine that un-spins a signal and watches where its center of mass goes." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 4</p>
+  <h1>The winding machine</h1>
+
+  <p>In chapter 1 we built tangled shapes by chaining spinning arrows. Now the question runs the other way. Someone hands you the tangle. <b>Which arrows was it made from?</b></p>
+
+  <div class="scene" id="s-hook"></div>
+
+  <p>The yellow path was drawn by the tip of a few spinning arrows (you can see them faintly, chained together). But suppose you only had the path, sampled 400 times, as a list of I/Q numbers: exactly what a radio gives you. How fast is each hidden arrow spinning, and how long is it?</p>
+  <p>For a radio, this isn't a puzzle. It's the whole job: the air is one giant tangle, and every station is one hidden arrow inside it. The machine that untangles it is called the <b>Fourier transform</b>, and by the end of this chapter you'll have built it twice: once simply, and once fast.</p>
+
+  <!-- 1 -->
+  <h2 id="unspin">The trick: un-spin the signal</h2>
+  <p>Chapter 2 taught us that multiplying arrows <b>adds their angles</b>. So if one arrow spins at 3 turns per second and you multiply it, moment by moment, by an arrow spinning <em>backwards</em> at g turns per second, the result spins at 3 − g. The two speeds subtract.</p>
+
+  <div class="scene" id="s-unspin">
+    <div class="controls">
+      <label for="us-g">Un-spin by <input id="us-g" type="range" min="0" max="6" step="0.5" value="1"><output id="us-go"></output></label>
+    </div>
+    <p class="readout" id="r-unspin" aria-live="polite"></p>
+  </div>
+
+  <p>Slide to exactly 3, and the result <b>stops spinning</b>. It just sits there, pointing in one direction. That's the trick: <b>un-spinning by an arrow's own speed freezes it</b>. Every other speed leaves it turning.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>If a frozen arrow points in one direction, and a spinning arrow points in every direction equally often, what happens when you average all of its positions over time?</div>
+
+  <!-- 2 -->
+  <h2 id="spectrum">The winding machine</h2>
+  <p>Now apply the trick to the whole tangle at once. Pick a test speed. Un-spin every one of the 400 samples by it. Then take the <b>average</b> of all the un-spun samples, their <b>center of mass</b>, as if each sample were a little weight.</p>
+  <ul>
+    <li>Any hidden arrow spinning at the test speed <b>freezes</b>: its contribution points the same way every time, and adds up.</li>
+    <li>Every other hidden arrow <b>keeps spinning</b>: its contributions point in all directions and cancel out.</li>
+  </ul>
+  <p>So the center of mass sits near zero, <em>unless</em> the test speed matches a hidden arrow. Then it jumps out, by exactly that arrow's length. Try it, or tick <b>Sweep automatically</b> and watch:</p>
+
+  <div class="scene" id="s-wind">
+    <div class="controls">
+      <label for="wm-g">Test speed <input id="wm-g" type="range" min="-9" max="9" step="0.05" value="0.5"><output id="wm-go"></output></label>
+      <label for="wm-auto"><input id="wm-auto" type="checkbox" checked> Sweep automatically</label>
+    </div>
+  </div>
+
+  <p>On the left, the blue path is the whole second of signal, un-spun by the test speed. Most of the time it's a tangle wrapped around the middle, and the <em class="y">center of mass</em> stays close to zero. But at <b>2</b>, <b>−3</b> and <b>7</b> turns per second, the path suddenly bunches to one side and the center of mass leaps out.</p>
+  <p>On the right is how far the center of mass is from zero, for every test speed. Three spikes, at exactly the three hidden speeds, and each spike's height is that arrow's length: 1, 0.55, 0.35. We've untangled the signal.</p>
+  <p>That graph has a name: the <b>spectrum</b>. And this machine is the <b>Fourier transform</b>. It's the same picture you see in Spectrum Lab's top plot, and in every waterfall: each column is one test speed, and the brightness is how far the center of mass jumped.</p>
+
+  <!-- 3 -->
+  <h2 id="window">Speeds that fall between the cracks</h2>
+  <p>A computer can't try <em>every</em> test speed; it tries a fixed list. If it looks at a block of N samples, it tries whole numbers of turns per block: 0, 1, 2, …, plus the same negative ones. Those are the yellow dots below. The grey curve shows what every speed in between would have given.</p>
+  <p>The vertical scale here is in <b>decibels</b> (dB), a scale where each step of 20 dB means the arrow is 10× shorter. It stretches the bottom of the graph so you can see tiny leftovers, which matters because a weak station may be thousands of times weaker than a strong one next to it.</p>
+
+  <div class="scene" id="s-leak">
+    <div class="controls">
+      <label for="lk-s">Signal speed <input id="lk-s" type="range" min="2" max="4" step="0.05" value="3"><output id="lk-so"></output></label>
+      <label for="lk-w"><input id="lk-w" type="checkbox"> Fade the ends in and out (a "window")</label>
+    </div>
+  </div>
+
+  <ul>
+    <li><b>Speed exactly 3.00:</b> one dot at the top and all the others at the very bottom (zero). The signal makes exactly three whole turns in the block, so every other test speed cancels perfectly.</li>
+    <li><b>Speed 3.50</b>: now the signal makes three and a half turns in the block. No test speed freezes it, and its energy <b>leaks</b> into every dot, falling off only slowly with distance. A weak station anywhere nearby would be buried under this leakage.</li>
+    <li>Now tick <b>Fade the ends</b> and try 3.50 again. Fading the signal in and out at the start and end of each block (a gentle bump called a <b>Hann window</b>) stops the sudden jump at the block's edges, which is what caused most of the leakage. The peak gets a little wider, but the leakage far away drops dramatically.</li>
+  </ul>
+  <p>Real stations never spin at whole numbers of turns per block, so real spectrum displays always use a window. Ours does.</p>
+
+  <!-- 4 -->
+  <h2 id="fft">The fast way: the FFT</h2>
+  <p>The plain machine is slow. To test N speeds, it un-spins all N samples for each one: N × N steps. For the 1024-sample blocks behind Spectrum Lab's waterfall that's over a million steps per row, many times per second.</p>
+  <p>In 1965, Cooley and Tukey published a shortcut (Gauss had found it around 1805, but it was only printed after his death). The insight: <b>the work for different test speeds overlaps</b>. Split the samples into the even-numbered ones and the odd-numbered ones, and run the winding machine on each half separately. The answers for test speed k and for speed k + N/2 come out of the <em>same</em> two half-machines, combined once with a plus and once with a minus. Then split each half again, and again, until you're left with single samples.</p>
+
+  <div class="scene" id="s-cost">
+    <div class="controls">
+      <label for="co-n">Block size <input id="co-n" type="range" min="3" max="20" step="1" value="10"><output id="co-no"></output></label>
+    </div>
+    <p class="readout" id="r-cost" aria-live="polite"></p>
+  </div>
+
+  <p>Each crossing in the diagram is one combine step, called a <b>butterfly</b>: one multiplication by a spinning arrow, one addition and one subtraction. There are log₂N layers of them, with N/2 butterflies per layer. That's the <b>Fast Fourier Transform (FFT)</b>: identical answers, but N × log₂N steps instead of N × N. At N = 1024 it's 100 times less work, and the gap keeps growing.</p>
+
+  <!-- 5 -->
+  <h2 id="real">Your real radio, untangled</h2>
+  <p>Here are the 4000 real samples from chapter 3, the fuzzy ring recorded at 98.45 MHz, run through the winding machine (the fast version, with a window, averaged over 7 blocks):</p>
+
+  <div class="scene" id="s-real"></div>
+
+  <p>The ring from chapter 3 turns out to be mostly one arrow: <b>98.7 FM</b>, a quarter of a MHz above the center, standing far above everything else. That's why its snapshots formed a ring: one dominant arrow of nearly constant length. The smaller bumps are other stations, and the narrow spike exactly in the middle is the dongle's own leftover at 0 Hz (which is why the live radio tunes a little to one side of the station you want).</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: a live spectrum</h2>
+  <div class="lab">
+    <p>Now run the machine on live radio: every frame, the latest samples are cut into 512-sample blocks, windowed, put through our FFT, and averaged. Below the spectrum, each new spectrum becomes one row of a <b>waterfall</b>, newest on top, so you also see how the band changes over time.</p>
+    <div class="scene" id="s-lab"></div>
+    <div id="lab4"></div>
+    <ol>
+      <li>Find 98.7 FM's hump. Compare its width with the 0.2 MHz spacing between FM channels. The dongle is tuned 0.25 MHz below the station you ask for, so the station sits clear of the spike in the middle.</li>
+      <li>See the flat rectangles on both sides of the hump? That's <b>HD Radio</b>: the same station sending digital audio in two sidebands next to its analog signal. On the waterfall, the flat tops make them look like solid bars.</li>
+      <li>Type other frequencies (97.1, 100.3, 92.3) and watch different stations move into view. The axis is in real MHz.</li>
+      <li>Try a frequency with no stations nearby, like 107.0, and look at the noise floor. Then raise the gain: the noise rises too.</li>
+      <li>Look for the narrow spike in the middle that never moves: that's the dongle's own 0 Hz leftover, not a station.</li>
+    </ol>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block">
+      <mi style="color:var(--yellow)">X</mi><mo>[</mo><mi style="color:var(--pink)">k</mi><mo>]</mo><mo>=</mo>
+      <mfrac><mn>1</mn><mi>N</mi></mfrac>
+      <munderover><mo>∑</mo><mrow><mi>n</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover>
+      <mi style="color:var(--blue)">x</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>·</mo>
+      <msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>π</mi><mi style="color:var(--pink)">k</mi><mi>n</mi><mo>/</mo><mi>N</mi></mrow></msup>
+    </math>
+    <ul>
+      <li><b style="color:var(--blue)">x[n]</b>: the samples, n = 0 … N−1.</li>
+      <li><b>e<sup>−j2πkn/N</sup></b>: the un-spinning arrow (chapter 2's arrow at an angle, with a minus sign to spin backwards) at test speed <b style="color:var(--pink)">k</b> turns per block.</li>
+      <li><b>(1/N) Σ</b>: add them all up and divide by how many: the center of mass.</li>
+      <li><b style="color:var(--yellow)">X[k]</b>: where the center of mass lands, for test speed k. Its length is the strength of speed k in the signal; its angle is the hidden arrow's starting angle (its phase).</li>
+    </ul>
+    <math display="block"><mtext>strength in dB</mtext><mo>=</mo><mn>10</mn><mo>·</mo><msub><mi>log</mi><mn>10</mn></msub><mo>(</mo><mtext>power</mtext><mo>)</mo></math>
+    <ul>
+      <li>Power is the length squared. Every 10 dB is 10× the power; 3 dB is about 2×.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>The plain winding machine</b> is two loops, one over test speeds and one over samples. From <code>course/code/ch04.ts</code>:</p>
+<pre><code>for (let k = 0; k &lt; n; k++) {                 // every test speed…
+  for (let t = 0; t &lt; n; t++) {               // …un-spin every sample and add it up
+    const a = (-TAU * k * t) / n, c = Math.cos(a), s = Math.sin(a);
+    outRe[k] += re[t] * c - im[t] * s;        // chapter 2's multiplication
+    outIm[k] += re[t] * s + im[t] * c;
+  }
+}</code></pre>
+  <p><b>The FFT</b> that runs Spectrum Lab (<code>src/dsp.ts</code>). First it reorders the samples (so that each split into even and odd halves is already sitting side by side), then it runs the butterflies layer by layer. The heart of it:</p>
+<pre><code>for (let len = 2; len &lt;= n; len &lt;&lt;= 1) {        // layers: blocks of 2, 4, 8, … samples
+  for (let i = 0; i &lt; n; i += len) {
+    for (let k = 0; k &lt; len / 2; k++) {          // one butterfly:
+      const a = i + k, b = a + len / 2;
+      const tr = re[b] * cr - im[b] * ci;          //   turn the odd half's answer
+      const ti = re[b] * ci + im[b] * cr;
+      re[b] = re[a] - tr; im[b] = im[a] - ti;      //   minus → speed k + len/2
+      re[a] += tr;        im[a] += ti;             //   plus  → speed k
+      // …then turn (cr, ci) a little further for the next k
+    }
+  }
+}</code></pre>
+  <p><b>The spectrum you see</b> adds the window, the FFT and the dB conversion (<code>powerSpectrum()</code>):</p>
+<pre><code>const w = 0.5 - 0.5 * Math.cos((TAU * i) / n);       // the Hann window: fade in and out
+re[i] = iq[2 * (start + i)] * w;  im[i] = iq[2 * (start + i) + 1] * w;
+fft(re, im);
+out[i] = 10 * Math.log10((re[j] ** 2 + im[j] ** 2) / wsum ** 2 + 1e-20);   // power in dB</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch04.ts</code> builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples:</p>
+<pre><code>hidden arrows found: 2 turns/block (length 1.00), 7 turns/block (length 0.35), -3 turns/block (length 0.55)
+FFT vs plain machine on 1024 random samples: biggest difference 3.0e-6 (float rounding)
+time for 1024 samples: plain machine 15.6 ms, FFT 21 µs  (753× faster)
+real samples around 98.45 MHz: strongest station at 98.73 MHz, 25 dB above the noise floor
+all checks passed</code></pre>
+
+  <!-- check -->
+  <h2 id="check">Check yourself</h2>
+  <details><summary>You un-spin a signal by 5 turns per second, and the center of mass stays at zero. What does that tell you?</summary>
+    <p>There's no hidden arrow spinning at 5 turns per second (more precisely: nothing that freezes at that speed, so everything kept spinning and cancelled).</p></details>
+  <details><summary>The center of mass jumps out to a distance of 0.4 at test speed −2. What's hidden in the signal?</summary>
+    <p>An arrow of length 0.4 spinning clockwise at 2 turns per second (a negative frequency).</p></details>
+  <details><summary>Why does a station whose speed falls between two test speeds show up in many of them?</summary>
+    <p>No test speed freezes it, so it never fully cancels anywhere; its energy leaks across the whole list. A window (fading each block in and out) keeps that leakage near the true speed.</p></details>
+  <details><summary>How many steps does the plain machine need for 4096 samples, and how many does the FFT need?</summary>
+    <p>4096 × 4096 ≈ 16.8 million, vs 4096 × 12 ≈ 49 thousand: about 340 times less work.</p></details>
+
+  <nav class="next">
+    <a href="./03-taking-snapshots.html">← Chapter 3: Taking snapshots</a>
+    <a href="./05-moving-a-station.html">Next: Chapter 5, Moving a station →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch04.ts"></script>
+</body>
+</html>

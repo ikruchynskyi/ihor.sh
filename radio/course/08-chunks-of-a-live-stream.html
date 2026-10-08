@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chunks of a Live Stream</title>
+  <meta name="description" content="Radio from scratch, chapter 8: live radio arrives in chunks, and every step must remember the end of the previous one, or you hear clicks." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 8</p>
+  <h1>Chunks of a live stream</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses the three steps so far:
+    <ul>
+      <li><a href="./05-moving-a-station.html#nco">Chapter 5: the mixer's running angle (the NCO)</a></li>
+      <li><a href="./06-averaging-is-filtering.html#average">Chapter 6: the filter's sliding bracket</a></li>
+      <li><a href="./07-throwing-away-snapshots.html#skip">Chapter 7: keeping every M-th output</a></li>
+    </ul>
+    It also peeks ahead at the FM demodulator (chapter 9), which needs the previous sample.
+  </div>
+
+  <p>So far, every picture processed a recording: a fixed list of samples, start to finish. Live radio isn't like that. It never starts and never ends. The dongle hands over a <b>chunk</b> of samples about every 55 ms, and each chunk has to be processed and played while the next one is already arriving.</p>
+  <p>The obvious approach is to treat each chunk as its own little recording. It almost works, and the way it fails is something you can hear.</p>
+
+  <!-- 1 -->
+  <h2 id="hear">Hear the problem</h2>
+  <p>Below is a pretend FM station playing a steady tone, run through the receiver's real steps (mixer, filter + decimator, FM demodulator, audio filter) chunk by chunk. Choose which step <b>forgets</b> what it was doing at the end of each chunk, and look at, then listen to, the result:</p>
+
+  <div class="scene" id="s-chunks">
+    <div class="controls">
+      <label for="ck-f">Forget at chunk edges <select id="ck-f">
+        <option value="none">nothing (the right way)</option>
+        <option value="mixer">the mixer's angle</option>
+        <option value="filter" selected>the filters' history</option>
+        <option value="demod">the demodulator's previous sample</option>
+        <option value="all">everything</option>
+      </select></label>
+      <label for="ck-ms">Chunk length <input id="ck-ms" type="range" min="2" max="60" step="1" value="8"><output id="ck-mso"></output></label>
+    </div>
+    <div class="game">
+      <button id="ck-play">▶ Play 2 seconds (with the choice above)</button>
+      <button id="ck-play-good">▶ Play 2 seconds remembering everything</button>
+    </div>
+  </div>
+
+  <p>With "nothing", the tone is a smooth wave straight through every pink chunk boundary, and it sounds like a clean whistle. Every other choice puts a <b>glitch at every boundary</b>, and you hear it as a buzz or a crackle repeating at the chunk rate (with 8 ms chunks, 125 times per second). Real radio uses ~55 ms chunks, so the clicks would come about 18 times a second, on top of the music. Unbearable.</p>
+
+  <!-- 2 -->
+  <h2 id="memory">What each step must remember</h2>
+  <p>Each step needs a different, small piece of memory from the previous chunk:</p>
+  <ul>
+    <li><b>The mixer</b> needs its <b>running angle</b> (<a class="back" href="./05-moving-a-station.html#nco">↩ ch. 5: the NCO</a>). If it restarts at angle 0, its spinning arrow jumps to a new position at every boundary, and so does everything multiplied by it.</li>
+    <li><b>The filter</b> needs the <b>last few dozen samples</b> of the previous chunk (<a class="back" href="./06-averaging-is-filtering.html#average">↩ ch. 6: the sliding bracket</a>). Its bracket reaches back in time: the first outputs of a new chunk depend on samples from the old one. Without them, the bracket is mostly averaging empty space (zeros), so the output sags towards zero until the bracket has filled up again.</li>
+    <li><b>The decimator</b> needs to know <b>where the next kept sample falls</b> (<a class="back" href="./07-throwing-away-snapshots.html#skip">↩ ch. 7</a>). Chunks aren't a multiple of M long, so if a chunk ends 3 samples after the last kept one, the next chunk must start keeping at its own sample M−3, not at 0. Otherwise the spacing stutters.</li>
+    <li><b>The FM demodulator</b> needs the <b>previous sample</b>, because it measures how far the arrow turned since then (chapter 9). For the first sample of a chunk, "then" is in the previous chunk.</li>
+  </ul>
+  <p>The solution is unglamorous and complete: each step is a small object that <b>keeps its memory between calls</b>. Processing a chunk updates the memory; the next call carries on from it. Processing a whole file is then just processing one very big chunk, so a single implementation serves both.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>How would you <em>prove</em> that the memory is handled perfectly, without listening for clicks?</div>
+  <p>Feed the same signal both ways, once as one big buffer and once as chunks of an awkward size (say 12 345 samples, so nothing lines up), and compare every output number. They must be <b>identical, bit for bit</b>, not just close. That's the test this site's receiver passes for every mode (see "In code" below).</p>
+
+  <!-- 3 -->
+  <h2 id="delay">The price of chunks: delay</h2>
+  <p>Chunks also cost time. A chunk can't be processed until it has fully arrived, the filters add a little delay of their own (their output reflects the middle of their bracket, which is in the past), and the audio player keeps a small cushion of sound queued so that a late chunk doesn't cause a gap.</p>
+
+  <div class="scene" id="s-delay">
+    <div class="controls">
+      <label for="dl-ms">Chunk length <input id="dl-ms" type="range" min="5" max="200" step="5" value="55"><output id="dl-mso"></output></label>
+    </div>
+  </div>
+
+  <p>Smaller chunks mean less delay, but more overhead: every chunk costs a USB request, a function call per step, and a bit of bookkeeping. ~55 ms is a comfortable middle for listening. Two-way radio and live monitoring care about delay much more, and use smaller chunks.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: hear the clicks on live radio</h2>
+  <div class="lab">
+    <p>This plays the real station through the full receiver (you'll see its insides in chapter 9). Tick the box to make it forget everything at every chunk edge, and listen to what happens.</p>
+    <label class="note"><input id="lb-forget" type="checkbox"> Forget at every chunk edge</label>
+    <p class="readout" id="r-lab" aria-live="polite"></p>
+    <div id="lab8"></div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>Here is where each step keeps its memory in <code>src/dsp.ts</code>. The mixer saves its angle at the end of every call:</p>
+<pre><code>let ph = this.ph;               // pick up where the last chunk left off
+// … process this chunk …
+this.ph = ph;                   // remember for the next chunk</code></pre>
+  <p>The filter-and-decimator keeps the tail of the input (<code>hist</code>) and where the next kept output falls (<code>next</code>). It glues the remembered tail in front of each new chunk, so the bracket can reach back across the boundary:</p>
+<pre><code>const buf = new Float32Array(this.hist.length + x.length);
+buf.set(this.hist); buf.set(x, this.hist.length);            // old tail + new chunk
+// … compute outputs at positions next, next + m, next + 2m, … …
+this.next += count * m - n;                                  // where the next kept sample falls in the next chunk
+this.hist = buf.slice(buf.length - this.hist.length);        // keep the new tail</code></pre>
+  <p>The FM demodulator remembers the previous sample (<code>pi</code>, <code>pq</code>). The test that proves it all works, from <code>src/dsp.test.ts</code>:</p>
+<pre><code>const whole = new Receiver(fs, 200e3, mode, bw).process(iq).audio;
+const r = new Receiver(fs, 200e3, mode, bw);
+for (let s = 0; s &lt; iq.length; s += 2 * 12_345) parts.push(...r.process(iq.subarray(s, s + 2 * 12_345)).audio);
+assert.ok(parts.every((v, i) =&gt; v === whole[i]));   // identical, not just close</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch08.ts</code>:</p>
+<pre><code>WFM: 9753 audio samples, chunked = whole, bit for bit
+NFM: 9753 audio samples, chunked = whole, bit for bit
+AM : 9753 audio samples, chunked = whole, bit for bit
+USB: 9753 audio samples, chunked = whole, bit for bit
+LSB: 9753 audio samples, chunked = whole, bit for bit
+a mixer that forgets its angle: output jumps by up to 1.01 at chunk edges (the signal itself is 0.5 long)
+a filter that forgets: its first output is 3% of the right size, and it takes 69 samples to recover
+FM demodulator at a chunk edge: with memory 0.853 rad, forgetting 0.000 rad
+waiting for one 256 KiB chunk at 2.4 MS/s: 54.6 ms; plus filter delay and a 150 ms audio cushion
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does a filter that forgets its history produce a dip at each chunk edge?</summary><p>Its bracket reaches back into the previous chunk. Without that data it averages zeros for those positions, so the first outputs are too small until the bracket is filled with new samples.</p></details>
+  <details><summary>Your chunks are 55 ms long and something forgets at every edge. How often do you hear a click?</summary><p>About 18 times per second (1000 / 55).</p></details>
+  <details><summary>Why compare chunked and whole processing bit for bit, instead of "close enough"?</summary><p>If the memory is handled exactly right, the arithmetic is literally the same operations in the same order, so the results must be identical. Any difference at all means something at a boundary is wrong, even if it's too small to hear yet.</p></details>
+
+  <nav class="next">
+    <a href="./07-throwing-away-snapshots.html">← Chapter 7: Throwing away snapshots</a>
+    <a href="./09-fm-listening-to-the-speed.html">Next: Chapter 9, FM: listening to the speed →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch08.ts"></script>
+</body>
+</html>

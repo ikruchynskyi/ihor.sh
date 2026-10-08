@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AM, SSB and Morse</title>
+  <meta name="description" content="Radio from scratch, chapter 10: the other ways to carry sound. AM puts it in the arrow's length, single sideband keeps half of AM, and Morse code switches the arrow on and off." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 10</p>
+  <h1>AM, SSB and Morse</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./01-spinning-arrows.html#wheel">Chapter 1: amplitude (the arrow's length)</a></li>
+      <li><a href="./04-winding-machine.html#spectrum">Chapter 4: spectra</a> and <a href="./05-moving-a-station.html#copies">chapter 5: why a plain wave holds two mirror-image arrows</a></li>
+      <li><a href="./09-fm-listening-to-the-speed.html#demod">Chapter 9: the FM demodulator</a>, for comparison</li>
+    </ul>
+  </div>
+
+  <p>An arrow has two things you can change to carry a message: its <b>speed</b> and its <b>length</b>. FM (chapter 9) uses the speed. This chapter is about using the length, which is how radio started a century ago, and two clever descendants: <b>single sideband</b>, which keeps only the useful part, and <b>Morse code</b>, which just switches the arrow on and off.</p>
+  <p>You'll hear all of them on a real radio: aircraft talk to airports in AM (that's why pilots sound the way they do), radio amateurs talk across continents in single sideband, and Morse code is still alive on the ham bands.</p>
+
+  <!-- 1 -->
+  <h2 id="am">AM: the sound is in the length</h2>
+  <p><b>Amplitude modulation</b> (AM) keeps the arrow's speed steady and makes its <b>length</b> follow the sound: longer when the speaker should push out, shorter when it should pull in. The demodulator is even simpler than FM's: measure each sample's length (chapter 2: the distance from the center), and remove the constant part.</p>
+
+  <div class="scene" id="s-am">
+    <div class="controls">
+      <label for="am-d">Modulation depth <input id="am-d" type="range" min="0.1" max="1" step="0.05" value="0.6"><output id="am-do"></output></label>
+      <label for="am-f"><input id="am-f" type="checkbox"> Signal fades in and out</label>
+    </div>
+    <p class="readout" id="r-am" aria-live="polite"></p>
+  </div>
+
+  <p>Now tick <b>Signal fades</b>, and compare with chapter 9's FM demodulator (<a class="back" href="./09-fm-listening-to-the-speed.html#demod">↩</a>). There, fading changed nothing, because FM only looks at angles. Here the fade goes <b>straight into the sound</b>: the yellow line no longer matches the green one. When the signal weakens, the arrow gets shorter, and an AM receiver can't tell "shorter because the signal faded" from "shorter because the music went quiet". That's the familiar flutter of AM radio under a bridge or a power line, and the reason music moved to FM.</p>
+  <p>The readout points out AM's other weakness. The arrow always has some length, even in silence: that steady part is called the <b>carrier</b>, and it carries no sound at all, yet it takes most of the transmitter's power.</p>
+
+  <!-- 2 -->
+  <h2 id="sidebands">Sidebands, and why half of them are spare</h2>
+  <p>Look at an AM station with chapter 4's winding machine. You see the carrier in the middle, and the sound twice: once above the carrier and once below it, as exact mirror images. These are the <b>upper</b> and <b>lower sidebands</b>.</p>
+
+  <div class="scene" id="s-amspec">
+    <div class="controls">
+      <label for="as-s">Transmit <select id="as-s"><option value="am">AM: carrier + both sidebands</option><option value="usb">upper sideband only (USB)</option><option value="lsb">lower sideband only (LSB)</option></select></label>
+    </div>
+  </div>
+
+  <p>Why two copies? It's chapter 5's fact again (<a class="back" href="./05-moving-a-station.html#copies">↩</a>): a plain up-and-down wave is two arrows spinning in opposite directions. AM changes the length with a plain wave (the sound), so every tone in the sound appears as an arrow above the carrier and its mirror twin below.</p>
+  <p>Since the two sidebands carry exactly the same information, a transmitter can send <b>just one</b> and drop the carrier entirely. That's <b>single sideband</b> (SSB): roughly a sixth of the power for the same distance, and half the space on the dial. It's what radio amateurs and long-distance aviation use for voice.</p>
+
+  <!-- 3 -->
+  <h2 id="ssb">Receiving SSB, and the Donald Duck problem</h2>
+  <p>To play SSB, the receiver puts the sideband back where the sound belongs: from 0 Hz up to about 3 kHz. With the station's exact frequency at 0 (chapter 5) and the sideband kept by a filter (chapter 6), the sound is simply the I part (one shadow) of the arrows: the mirror twin we'd need for "both shadows" doesn't exist any more, so it doesn't matter that one shadow can't tell directions apart.</p>
+  <p>But there's no carrier to tell the receiver where "exactly 0" is. Tune slightly wrong, and <b>every</b> pitch moves by the same number of hertz:</p>
+
+  <div class="scene" id="s-ssb">
+    <div class="controls">
+      <label for="ss-m">Tuning error <input id="ss-m" type="range" min="-300" max="300" step="25" value="150"><output id="ss-mo"></output></label>
+    </div>
+    <p class="readout" id="r-ssb" aria-live="polite"></p>
+    <div class="game">
+      <button id="ss-play">▶ Play with this tuning error</button>
+      <button id="ss-play0">▶ Play tuned exactly</button>
+    </div>
+  </div>
+
+  <p>Moving every pitch by the same <em>number of hertz</em> is not the same as moving them all up by the same <em>musical interval</em>. A voice's overtones sit at exact multiples of its base pitch (2×, 3×, …); shifted by a fixed amount, they stop being multiples, and the voice sounds like a cartoon duck. Ham radio operators tune SSB by ear until voices sound natural.</p>
+
+  <!-- 4 -->
+  <h2 id="cw">Morse code: on and off</h2>
+  <p>The simplest message of all: switch the arrow <b>on</b> and <b>off</b>. Short on is a dot, long on is a dash. Radio people call it <b>CW</b> ("continuous wave", because the arrow itself never changes while it's on).</p>
+
+  <div class="scene" id="s-cw">
+    <div class="controls">
+      <label for="cw-p">Beat pitch <input id="cw-p" type="range" min="300" max="1000" step="50" value="700"><output id="cw-po"></output></label>
+    </div>
+    <div class="game"><button id="cw-play">▶ Play "SOS CQ"</button></div>
+  </div>
+
+  <p>There's a catch: an arrow that's on doesn't make any sound by itself. FM listens to speed changes and AM to length changes; Morse has neither. The trick is to tune the receiver slightly <em>off</em> the station, so that its arrow lands a few hundred hertz from 0 and spins at that speed: an audible tone, called the <b>beat</b>. That's exactly the SSB receiver with a deliberate tuning error. Each dot and dash becomes a beep, and you choose the pitch by choosing the error.</p>
+  <p>Morse needs the narrowest space on the dial of any mode (well under 100 Hz) and can be read by a trained ear even when it's buried in noise. That's why it's still used today.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: real AM and narrow FM</h2>
+  <div class="lab">
+    <p>The full receiver in other modes. Pick a preset (it sets the frequency and mode), then connect. The airport frequencies are only busy when planes are talking, so you may hear silence for a while; that's normal.</p>
+    <div class="game">
+      <button data-preset="lga">LaGuardia tower 118.7 (AM)</button>
+      <button data-preset="jfk">JFK tower 119.1 (AM)</button>
+      <button data-preset="noaa">NOAA weather 162.55 (narrow FM)</button>
+      <button data-preset="fm">98.7 FM (wide FM)</button>
+    </div>
+    <label class="note">Mode <select id="lb-mode"><option>AM</option><option>NFM</option><option>WFM</option><option>USB</option><option>LSB</option></select></label>
+    <p class="readout" id="r-lab" aria-live="polite"></p>
+    <div id="lab10"></div>
+    <p class="note">Listening to aircraft and weather broadcasts is legal in the US. (Ham SSB and Morse are mostly on shortwave, below 30 MHz, which this dongle's tuner can't reach.)</p>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block"><mi>x</mi><mo>(</mo><mi>t</mi><mo>)</mo><mo>=</mo><mo>(</mo><mn>1</mn><mo>+</mo><mi style="color:var(--blue)">m</mi><mo>·</mo><mi style="color:var(--green)">s</mi><mo>(</mo><mi>t</mi><mo>)</mo><mo>)</mo><mo>·</mo><msup><mi>e</mi><mrow><mi>j</mi><mn>2</mn><mi>π</mi><msub><mi>f</mi><mi>c</mi></msub><mi>t</mi></mrow></msup></math>
+    <ul>
+      <li>AM: an arrow spinning at the carrier frequency f<sub>c</sub>, with its length set to 1 + <b style="color:var(--blue)">m</b>·<b style="color:var(--green)">s(t)</b>, where s(t) is the sound and m the modulation depth.</li>
+      <li>The demodulator: |x|, the length, minus its average (the carrier).</li>
+    </ul>
+    <math display="block"><mtext>carrier share of the power</mtext><mo>=</mo><mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><msup><mi>m</mi><mn>2</mn></msup><mo>/</mo><mn>2</mn></mrow></mfrac></math>
+    <ul>
+      <li>At least two thirds, even at full modulation (m = 1).</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average, a "DC blocker"):</p>
+<pre><code>const x = Math.hypot(iq[2 * k], iq[2 * k + 1]);          // the arrow's length (chapter 2)
+out[k] = this.y1 = x - this.x1 + 0.995 * this.y1;        // remove the constant part
+this.x1 = x;</code></pre>
+  <p><b>SSB</b> (<code>SsbDemod</code>): shift the wanted sideband so it's centered on 0, filter away everything else (including the other sideband), shift it back, keep one shadow:</p>
+<pre><code>const shift = upper ? bw / 2 : -bw / 2;
+this.down = new Mixer(fs, shift);                        // chapter 5
+this.lp = new FirDecimator(firLowpass(bw / 2 / fs, bw / 4 / fs), 1, 2);   // chapter 6
+this.up = new Mixer(fs, -shift);
+// process: back = up(lp(down(iq))); out[k] = back[2 * k]   ← the I part only</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch10.ts</code>:</p>
+<pre><code>AM: recovered tone 599 Hz; at 30% signal strength the sound is 30% as loud
+FM: at 30% signal strength the sound is 100% as loud
+AM at 100% modulation: 67% of the power is in the carrier, which carries no sound
+AM at 50% modulation: 89% of the power is in the carrier, which carries no sound
+AM at 30% modulation: 96% of the power is in the carrier, which carries no sound
+SSB: tuned right → 1000 Hz; tuned 150 Hz off → 1150 Hz (every pitch shifts by the same amount)
+Morse with a 700 Hz beat: 698 Hz beep while keyed, silence between: true
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does AM flutter under a bridge while FM stays steady?</summary><p>AM reads the sound from the arrow's length, and a weaker signal makes the arrow shorter. FM reads only the angle, which doesn't change when the signal weakens.</p></details>
+  <details><summary>Why can SSB drop one sideband without losing anything?</summary><p>The two sidebands are mirror images of each other: they carry exactly the same information.</p></details>
+  <details><summary>Why does a mistuned SSB voice sound like a duck, rather than just higher or lower?</summary><p>Every pitch moves by the same number of hertz, so overtones stop being exact multiples of the base pitch. A real change of pitch would multiply all of them by the same factor instead.</p></details>
+  <details><summary>Why is a Morse signal silent unless the receiver is tuned slightly off?</summary><p>While it's on, the arrow is steady: no changing length or speed to turn into sound. Tuning off makes it spin at a few hundred hertz, which is audible.</p></details>
+
+  <nav class="next">
+    <a href="./09-fm-listening-to-the-speed.html">← Chapter 9: FM: listening to the speed</a>
+    <a href="./11-numbers-to-speakers.html">Next: Chapter 11, From numbers to speakers →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch10.ts"></script>
+</body>
+</html>

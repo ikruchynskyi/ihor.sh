@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Free NYC</title>
+  <meta name="description" content="Free and pay-what-you-wish NYC on any day: museums, gardens, zoos, ferries and perks." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff;
+            --now: #2b8a3e; --later: #1c7ed6; --accent: #d9480f; color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18;
+              --now: #69db7c; --later: #4dabf7; --accent: #ff8a4c; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; }
+    h1 { margin: 0; font-size: 1.8rem; letter-spacing: -0.02em; }
+    h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 8px; }
+    a { color: var(--accent); }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; }
+    button, input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--fg); cursor: pointer; }
+    button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+    .item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+    .item.over { opacity: 0.5; }
+    .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .name { font-weight: 600; }
+    .time { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 0.9rem; }
+    .now .time { color: var(--now); font-weight: 600; }
+    .later .time { color: var(--later); }
+    .meta { font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Free NYC</h1>
+  <div class="muted">Free and pay-what-you-wish museums, gardens, zoos and ferries on any day. Rules are hand-checked (see each link), but policies change, so confirm before you go. · <a href="./">Subway Bailout map</a></div>
+
+  <div class="bar" id="days"></div>
+  <div class="bar">
+    <input type="date" id="date" aria-label="Pick a date" />
+    <button id="locate">📍 Sort by distance</button>
+    <span class="muted" id="locStatus"></span>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<script type="module">
+import { onDay, status, timeLabel } from "./free.js";
+import { distance } from "./nearest.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+
+const rules = await fetch("./free.json").then((r) => r.json());
+let me = null;
+
+// Quick picks: today, tomorrow, and the coming Saturday/Sunday.
+const today = new Date();
+const sat = addDays(today, (6 - today.getDay() + 7) % 7);
+const picks = [["Today", today], ["Tomorrow", addDays(today, 1)], ["Saturday", sat], ["Sunday", addDays(sat, 1)]];
+$("days").innerHTML = picks.map(([l, d]) => `<button data-d="${iso(d)}">${l}</button>`).join("");
+$("days").addEventListener("click", (e) => { if (e.target.dataset.d) { $("date").value = e.target.dataset.d; render(); } });
+$("date").value = iso(today);
+$("date").addEventListener("change", render);
+
+$("locate").addEventListener("click", () => {
+  $("locStatus").textContent = "Locating…";
+  navigator.geolocation.getCurrentPosition(
+    (p) => { me = { lat: p.coords.latitude, lon: p.coords.longitude }; $("locStatus").textContent = ""; render(); },
+    (e) => { $("locStatus").textContent = `Location unavailable (${e.message})`; },
+  );
+});
+
+const ORDER = { now: 0, later: 1, allday: 2, over: 3 };
+const GROUPS = [["now", "Happening now"], ["later", "Later"], ["allday", "All day"], ["over", "Already over"]];
+
+function render() {
+  const [y, m, d] = $("date").value.split("-").map(Number);
+  const day = new Date(y, m - 1, d);
+  const isToday = iso(day) === iso(new Date());
+  document.querySelectorAll("#days button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.d === $("date").value));
+
+  const items = onDay(rules, day).map((it) => ({
+    ...it,
+    // On other days nothing is "now" or "over": timed items are just "later".
+    st: isToday ? status(it, new Date()) : (it.start || it.end ? "later" : "allday"),
+    km: me && it.lat ? distance(me, it) / 1000 : null,
+  }));
+  const places = items.filter((i) => i.kind !== "perk")
+    .sort((a, b) => ORDER[a.st] - ORDER[b.st] || (a.km ?? 0) - (b.km ?? 0) || (a.start ?? "").localeCompare(b.start ?? ""));
+  const perks = items.filter((i) => i.kind === "perk");
+
+  const card = (i) => `<div class="item ${i.st}">
+    <div class="top"><span class="name">${esc(i.name)}</span><span class="time">${i.kind === "perk" ? "" : esc(timeLabel(i))}</span></div>
+    <div class="meta">${esc(i.price)} · ${esc(i.who)}${i.km != null ? ` · ${i.km.toFixed(1)} km` : ""}</div>
+    ${i.note ? `<div class="meta">${esc(i.note)}</div>` : ""}
+    <div class="meta"><a href="${esc(i.url)}" target="_blank" rel="noopener">source</a> · checked ${esc(i.checked)}</div>
+  </div>`;
+
+  $("list").innerHTML = (isToday ? GROUPS : [["later", "Timed"], ["allday", "All day"]])
+    .map(([k, title]) => [title, places.filter((i) => i.st === k)])
+    .filter(([, l]) => l.length)
+    .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("")
+    + `<h2>Always-on perks</h2>${perks.map(card).join("")}`;
+}
+
+render();
+</script>
+</body>
+</html>

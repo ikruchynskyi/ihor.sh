@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inside the Dongle</title>
+  <meta name="description" content="Radio from scratch, chapter 12: the hardware. How a $35 dongle turns radio waves into I/Q numbers, why it mixes to an intermediate frequency, and how its PLL makes any frequency from one crystal." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 12</p>
+  <h1>Inside the dongle</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter connects the hardware to ideas you already know:
+    <ul>
+      <li><a href="./05-moving-a-station.html#copies">Chapter 5: mixing, and why one shadow makes two copies</a></li>
+      <li><a href="./06-averaging-is-filtering.html#weights">Chapter 6: filters</a> and <a href="./07-throwing-away-snapshots.html#fold">chapter 7: decimation</a></li>
+      <li><a href="./03-taking-snapshots.html#ruler">Chapter 3: sampling and the 8-bit ruler</a></li>
+    </ul>
+  </div>
+
+  <p>Since chapter 3 we've taken the I/Q numbers for granted: they arrive over USB, and we process them. This chapter opens the box. The surprise is how little in it is new. The dongle uses exactly the tools you've already learned (mixing, filtering, sampling, decimating), partly with electronics and partly with numbers, to deliver a 2.4 MHz slice of radio from anywhere between 24 and 1766 MHz.</p>
+  <p>Inside are two chips: a <b>tuner</b> (Rafael Micro R820T2), which handles the radio waves, and an <b>RTL2832U</b>, which turns them into numbers and talks USB. Between them they share one tiny component that sets the pace for everything: a <b>28.8 MHz crystal</b>.</p>
+
+  <!-- 1 -->
+  <h2 id="path">The signal's journey</h2>
+  <p>Step through the seven stages. The picture shows what the radio band looks like at each point, for the dongle tuned to 98.45 MHz (with 98.7 FM the station we care about, in yellow):</p>
+
+  <div class="scene" id="s-path">
+    <div class="controls">
+      <label for="pt-s">Stage <input id="pt-s" type="range" min="1" max="7" step="1" value="1"><output id="pt-so"></output></label>
+    </div>
+    <p class="readout" id="r-path" aria-live="polite"></p>
+  </div>
+
+  <p>Notice the pattern: <b>analog electronics do the rough work, numbers do the precise work</b>. The tuner's job is to bring a slice of radio down from 98 MHz (far too fast to digitize cheaply) to a few MHz, where an 8-bit converter can sample it. From then on, it's chapter 5 (the digital mixer), chapter 6 (a filter) and chapter 7 (decimation), done inside the RTL2832U before the data ever reaches your computer.</p>
+
+  <!-- 2 -->
+  <h2 id="image">Why an intermediate frequency, and the image problem</h2>
+  <p>Why not just build a filter that picks out 98.7 MHz directly? Because a sharp filter whose center you can move anywhere from 24 to 1766 MHz is very hard to build. A sharp filter at <em>one fixed</em> frequency is easy. So radios since the 1920s have done it the other way round: move the <em>signal</em> to a fixed frequency, the <b>intermediate frequency (IF)</b>, and filter there. This trick is called the <b>superheterodyne</b>, and it's in almost every radio ever made.</p>
+  <p>Moving the signal is done by mixing with a <b>local oscillator</b> running 3.57 MHz above the station. But there's a catch you already know: an analog mixer multiplies by a plain wave, one shadow, so everything lands in <em>two</em> places (<a class="back" href="./05-moving-a-station.html#copies">↩ ch. 5</a>). That means two different radio frequencies end up on the IF: the one you want, 3.57 MHz below the oscillator, and its mirror, 3.57 MHz <em>above</em> it. The mirror is called the <b>image</b>:</p>
+
+  <div class="scene" id="s-image">
+    <div class="controls">
+      <label for="im-f">Listen at <input id="im-f" type="range" min="88" max="108" step="0.1" value="98.4"><output id="im-fo"></output></label>
+    </div>
+    <p class="readout" id="r-image" aria-live="polite"></p>
+  </div>
+
+  <p>The defense is a <b>tracking filter</b> in front of the mixer (green): a broad filter that follows your tuning and weakens everything far away, including the image, 7.14 MHz above you. It's not very sharp (that's the whole problem), so a strong station sitting exactly on your image can still sneak through as a faint ghost. In the driver, choosing this filter's setting for each frequency band is the job of a lookup table (<code>BANDS</code> in <code>src/r820t.ts</code>).</p>
+
+  <!-- 3 -->
+  <h2 id="pll">Making any frequency from one crystal: the PLL</h2>
+  <p>The local oscillator has to run at <em>exactly</em> the right frequency: 102.02 MHz for 98.45, or 1093.32 MHz for planes at 1090. All from one 28.8 MHz crystal. The circuit that does it is a <b>phase-locked loop</b> (PLL): a fast, adjustable oscillator (the VCO) that's constantly compared with the crystal and nudged until its speed is an exact multiple of it. Think of a gear train: the crystal turns at one speed, and the gears set the ratio.</p>
+  <p>Type any frequency and see exactly how the tuner makes it. These are the same steps and numbers our driver uses:</p>
+
+  <div class="scene" id="s-pll-box">
+    <div class="controls">
+      <label for="pl-f">Listen at <input id="pl-f" type="number" value="98.45" step="0.05" style="width:8em"> MHz</label>
+    </div>
+    <div class="readout" id="r-pll" aria-live="polite"></div>
+  </div>
+
+  <ul>
+    <li>The VCO can only run between 1.77 and 3.54 GHz, a range of exactly 2×. So any oscillator frequency can be reached by running the VCO at 2, 4, 8, 16, 32 or 64 times it, and then dividing down. That's why the tuner covers 24 MHz (1.77 GHz ÷ 64, minus the IF) to 1766 MHz (3.54 GHz ÷ 2, minus the IF).</li>
+    <li>The ratio to the crystal isn't a whole number, so the PLL uses a whole part plus a 16-bit fraction (a "fractional-N" PLL). The fraction's smallest step sets the tuning resolution: tens of hertz, far finer than any station's width.</li>
+    <li>After writing the registers, the driver waits 10 ms and checks a "locked" bit. If the loop hasn't settled, it boosts the VCO's current and checks again.</li>
+  </ul>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: explore the whole range</h2>
+  <div class="lab">
+    <p>The same dongle, from aircraft to plane transponders. For each frequency, below the spectrum is how the tuner's PLL is set up to reach it (computed from where the dongle is actually tuned, 0.25 MHz below your choice).</p>
+    <div class="game">
+      <button data-go="118.7">Aircraft 118.7</button>
+      <button data-go="162.55">NOAA weather 162.55</button>
+      <button data-go="146.52">2 m ham calling 146.52</button>
+      <button data-go="446.0">70 cm ham / walkie-talkies 446</button>
+      <button data-go="1090">Plane transponders 1090</button>
+    </div>
+    <div class="scene" id="s-lab"></div>
+    <div class="readout" id="r-labpll" aria-live="polite"></div>
+    <div id="lab12"></div>
+    <p class="note">At 1090 MHz you won't see a steady hump: aircraft transponders send short bursts of pulses, a few microseconds long, which show up as flickers of energy across the band.</p>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The PLL setup, from our tuner driver (<code>setPll()</code> in <code>src/r820t.ts</code>): find the divider, split the ratio into whole and fraction, write them, check for lock:</p>
+<pre><code>let mixDiv = 2, divNum = 0;
+for (; mixDiv &lt;= 64; mixDiv &lt;&lt;= 1) {                               // smallest power of two that puts the VCO in range
+  if (freq * mixDiv &gt;= vcoMin &amp;&amp; freq * mixDiv &lt; vcoMax) { for (let d = mixDiv; d &gt; 2; d &gt;&gt;= 1) divNum++; break; }
+}
+const vcoFreq = freq * mixDiv;
+const vcoDiv = Math.floor((this.xtal + 65536 * vcoFreq) / (2 * this.xtal));   // ratio × 65536, rounded
+const nint = Math.floor(vcoDiv / 65536), sdm = vcoDiv % 65536;               // whole part, fraction
+const ni = Math.floor((nint - 13) / 4), si = nint - 4 * ni - 13;
+await this.writeReg(0x14, ni + (si &lt;&lt; 6));
+await this.writeReg(0x16, sdm &gt;&gt; 8);
+await this.writeReg(0x15, sdm &amp; 0xff);
+// … wait 10 ms, read register 2, check bit 6 ("locked")</code></pre>
+  <p><b>Testing hardware code without hardware.</b> The chapter's script runs this real driver against a <em>fake</em> tuner: an object that pretends to be the I2C bus, records every register write, and always answers "locked". Then it checks that the driver wrote exactly what the calculator above predicts. Faking the hardware like this is how drivers get tested automatically.</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch12.ts</code>:</p>
+<pre><code>   98.45 MHz: ×32, VCO 3.2646 GHz, integer 56, fraction 44419 → reg 0x14 = 0xca, off by   4.3 Hz  (driver wrote the same)
+  118.45 MHz: ×16, VCO 1.9523 GHz, integer 33, fraction 58618 → reg 0x14 = 0x5, off by -17.1 Hz  (driver wrote the same)
+   162.3 MHz: ×16, VCO 2.6539 GHz, integer 46, fraction  4915 → reg 0x14 = 0x48, off by -11.0 Hz  (driver wrote the same)
+     440 MHz: × 4, VCO 1.7743 GHz, integer 30, fraction 52656 → reg 0x14 = 0x44, off by -78.1 Hz  (driver wrote the same)
+ 1089.75 MHz: × 2, VCO 2.1866 GHz, integer 37, fraction 63078 → reg 0x14 = 0x6, off by -175.8 Hz  (driver wrote the same)
+below 24.08625 MHz there's no divider big enough: pll(20 MHz) = null
+image of 98.45 MHz: 105.59 MHz (oscillator + 3.57 lands on the same IF)
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why do radios move the signal to an intermediate frequency instead of filtering it where it is?</summary><p>A sharp filter that can be moved across a huge range is very hard to build; a sharp filter at one fixed frequency is easy. So the signal is moved to the fixed frequency instead.</p></details>
+  <details><summary>Listening at 100.0 MHz, where is the image?</summary><p>The oscillator is at 103.57 MHz; its mirror on the other side is 103.57 + 3.57 = 107.14 MHz.</p></details>
+  <details><summary>Why does the dongle's range stop at about 24 MHz at the bottom?</summary><p>The VCO can't go below 1.77 GHz, and the biggest divider is 64: 1.77 GHz ÷ 64 = 27.7 MHz for the oscillator, which is 24.1 MHz minus the 3.57 MHz IF.</p></details>
+  <details><summary>The analog mixer makes two copies. Why doesn't the digital mixer?</summary><p>The digital mixer multiplies by a full spinning arrow (both shadows, I and Q), which moves everything in one direction only. The analog mixer can only multiply by one shadow (chapter 5).</p></details>
+
+  <nav class="next">
+    <a href="./11-numbers-to-speakers.html">← Chapter 11: From numbers to speakers</a>
+    <a href="./13-usb-from-zero.html">Next: Chapter 13, USB from zero →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch12.ts"></script>
+</body>
+</html>

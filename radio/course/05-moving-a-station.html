@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moving a Station</title>
+  <meta name="description" content="Radio from scratch, chapter 5: mixing. How multiplying by one spinning arrow slides the whole radio band, and why it takes both shadows." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 5</p>
+  <h1>Moving a station</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./02-arrows-as-numbers.html#multiply">Chapter 2: multiplying arrows turns them</a> (angles add)</li>
+      <li><a href="./04-winding-machine.html#unspin">Chapter 4: un-spinning</a> and <a href="./04-winding-machine.html#spectrum">the spectrum</a></li>
+      <li><a href="./01-spinning-arrows.html#game">Chapter 1: the direction game</a> (why one shadow isn't enough)</li>
+    </ul>
+  </div>
+
+  <p>Chapter 4 gave us a picture of the whole slice of radio band the dongle captures: dozens of stations side by side. But you want to listen to <b>one</b> of them. Every step that follows (the filter that removes the neighbors, the demodulator that pulls out the sound) is easiest when the station you want sits <b>exactly in the middle, at 0</b>.</p>
+  <p>The station you want is rarely there. When you ask for 98.7 MHz, the dongle is deliberately tuned a quarter of a MHz lower (to avoid its own spike at 0 Hz, <a class="back" href="./04-winding-machine.html#real">↩ ch. 4</a>), so 98.7 shows up at +250 kHz. This chapter is about sliding it to the center.</p>
+
+  <!-- 1 -->
+  <h2 id="shift">Slide the whole band</h2>
+  <p>You already know the trick from chapter 4: multiplying by an arrow spinning backwards <b>subtracts</b> its speed from everything (<a class="back" href="./04-winding-machine.html#unspin">↩ un-spinning</a>). There, we used it to test for one speed at a time. Here we use it to <em>move</em> things: multiply the whole signal, sample by sample, by an arrow spinning backwards at 200 kHz, and every station in the band slows down by exactly 200 kHz.</p>
+  <p>On the left, in slow motion, is the arrow of the FM station at +200 kHz. On the right is the whole band. Slide:</p>
+
+  <div class="scene" id="s-shift">
+    <div class="controls">
+      <label for="sh-f">Shift by <input id="sh-f" type="range" min="-500" max="500" step="10" value="0"><output id="sh-fo"></output></label>
+    </div>
+    <p class="readout" id="r-shift" aria-live="polite"></p>
+  </div>
+
+  <p>As the shift approaches 200 kHz, the FM station's arrow slows down. At exactly 200, it stops going around and just <b>wobbles</b> back and forth. That wobble is the music (<a class="back" href="./01-spinning-arrows.html#fm">↩ ch. 1: FM is a wobble in the speed</a>). On the right, the station's hump has arrived on the pink center line.</p>
+  <p>Three things to notice:</p>
+  <ul>
+    <li><b>Everything moves together.</b> Mixing doesn't pick out one station; it slides the whole band. Picking comes next chapter, with a filter.</li>
+    <li><b>Nothing changes shape.</b> Each station keeps its width and height. Only its position changes.</li>
+    <li><b>Push it far</b> (past ±300 kHz) and stations fall off one edge and come back on the other. That's chapter 3's sawtooth (<a class="back" href="./03-taking-snapshots.html#fold">↩ the folding graph</a>): in sampled data, frequencies live on a circle.</li>
+  </ul>
+  <p>This operation is called <b>mixing</b>, or more precisely <b>frequency shifting</b>, and the spinning arrow you multiply by is the <b>local oscillator</b>.</p>
+
+  <!-- 2 -->
+  <h2 id="copies">Why it takes both shadows</h2>
+  <p>Old radios mix too, with real electronics. But a simple electronic mixer can only multiply by a plain wave going up and down: a <b>cosine</b>, one shadow of the spinning arrow (<a class="back" href="./01-spinning-arrows.html#shadows">↩ ch. 1: two shadows</a>). What happens if we do that? Tick the box:</p>
+
+  <div class="scene" id="s-copies">
+    <div class="controls">
+      <label for="cp-one"><input id="cp-one" type="checkbox"> Multiply by cos only (one shadow)</label>
+    </div>
+    <p class="readout" id="r-copies" aria-live="polite"></p>
+  </div>
+
+  <p>With only cos, <b>every station appears twice</b>: once shifted down by 200 kHz, as we wanted, and once shifted <em>up</em> by 200 kHz. Here's why. A cosine is what you get when you add an arrow spinning forward and an arrow spinning backward, at half length each: their sideways parts add, and their up-down parts cancel. (That's chapter 1's game in reverse: the sideways shadow can't tell the two directions apart, because it contains both.) So multiplying by cos is like multiplying by both arrows at once, which moves every station in both directions.</p>
+  <p>Multiplying by the <em>full</em> arrow (cos for I and sin for Q, chapter 2's complex multiplication) moves everything one way only. That's one more reason software radios work with I and Q.</p>
+  <div class="ponder"><span class="tag">Pause and ponder</span>Each copy in the one-shadow picture is about 6 dB weaker than the original. Why? (Hint: each of the two half-length arrows inside a cosine carries a quarter of the power, and 10·log10(¼) ≈ −6.)</div>
+
+  <!-- 3 -->
+  <h2 id="nco">Making the spinning arrow: the NCO</h2>
+  <p>To mix, we need a perfectly steady arrow spinning at the shift frequency, one position per sample. Chapter 2 showed one way to make it: multiply by a small step arrow again and again (<a class="back" href="./02-arrows-as-numbers.html#spin">↩ ch. 2: multiply again and again</a>). Real code uses a simpler idea: keep a <b>running angle</b>, add a fixed step to it every sample, and compute the arrow from the angle each time:</p>
+
+  <div class="scene" id="s-nco">
+    <div class="controls">
+      <label for="nc-s">Step <input id="nc-s" type="range" min="-170" max="170" step="5" value="35"><output id="nc-so"></output></label>
+    </div>
+  </div>
+
+  <p>Each dot on the dial is one sample's angle. On the right are the two shadows of each one: <em class="g">cos</em> (the I part) and <em class="y">sin</em> (the Q part). This is called a <b>numerically controlled oscillator</b> (NCO): an oscillator made of arithmetic.</p>
+  <ul>
+    <li>The <b>step</b> is the frequency, measured in "angle per sample". To shift by f₀ when taking f<sub>s</sub> samples per second, the step is 360° × f₀ / f<sub>s</sub>. For 250 kHz at 1.024 MS/s: about 88° per sample.</li>
+    <li>Whenever the angle passes 180°, the code subtracts a full turn (360°). The arrow doesn't notice (it's the same position), but the number stays small. Numbers in a computer have limited precision, and a huge, ever-growing angle would slowly lose it.</li>
+    <li>Try a step near 180°: the dots jump almost straight across the dial each time, and you can no longer tell which way it's spinning. That's the edge of the honest zone (<a class="back" href="./03-taking-snapshots.html#fold">↩ ch. 3: half a turn per photo</a>).</li>
+  </ul>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: center a real station</h2>
+  <div class="lab">
+    <p>Live radio, before and after mixing. The dongle is tuned 250 kHz below the frequency you choose, so your station starts at +250 kHz in the top picture. Mix by 250 kHz and watch it land on the pink line in the bottom picture.</p>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label for="lb-f">Mix by <input id="lb-f" type="range" min="-500" max="500" step="10" value="250"><output id="lb-fo"></output></label>
+      </div>
+    </div>
+    <div id="lab5"></div>
+    <ol>
+      <li>With the mix at 250 kHz, the station you chose sits on the pink line, with its HD Radio rectangles on both sides.</li>
+      <li>Move the slider to center a different station instead, for example the next hump over.</li>
+      <li>Set it to 0: the bottom picture is the same as the top. Mixing by nothing changes nothing.</li>
+    </ol>
+  </div>
+
+  <!-- notation -->
+  <h2>Writing it down</h2>
+  <div class="notation">
+    <math display="block">
+      <mi>y</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><mi style="color:var(--blue)">x</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>·</mo>
+      <msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>π</mi><msub><mi style="color:var(--pink)">f</mi><mn style="color:var(--pink)">0</mn></msub><mi>n</mi><mo>/</mo><msub><mi>f</mi><mi>s</mi></msub></mrow></msup>
+    </math>
+    <ul>
+      <li>Each sample <b style="color:var(--blue)">x[n]</b> is multiplied by the arrow at angle −2π f₀ n / f<sub>s</sub>: the NCO's angle at sample n, spinning backwards at <b style="color:var(--pink)">f₀</b>.</li>
+      <li>Result: every frequency f in the signal moves to f − f₀ (chapter 2: multiplying adds angles, so spin speeds subtract).</li>
+    </ul>
+    <math display="block"><mi>cos</mi><mo>&#x2061;</mo><mi>θ</mi><mo>=</mo><mfrac><mrow><msup><mi>e</mi><mrow><mi>j</mi><mi>θ</mi></mrow></msup><mo>+</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mi>θ</mi></mrow></msup></mrow><mn>2</mn></mfrac></math>
+    <ul>
+      <li>A cosine is half a forward arrow plus half a backward arrow, which is why mixing with cos alone makes two copies.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2>In code</h2>
+  <p>The whole mixer, as it runs in this site's receiver (<code>src/dsp.ts</code>):</p>
+<pre><code>export class Mixer {
+  private ph = 0;                     // the running angle, remembered between chunks
+  private step: number;
+  constructor(fs: number, freq: number) { this.step = (-TAU * freq) / fs; }   // angle per sample
+  process(iq: Float32Array): Float32Array {
+    const out = new Float32Array(iq.length);
+    let ph = this.ph;
+    for (let k = 0; k &lt; iq.length; k += 2) {
+      const c = Math.cos(ph), s = Math.sin(ph);           // the NCO's arrow for this sample
+      out[k] = iq[k] * c - iq[k + 1] * s;                 // complex multiplication (chapter 2)
+      out[k + 1] = iq[k] * s + iq[k + 1] * c;
+      ph += this.step;                                    // step the dial
+      if (ph &lt; -Math.PI) ph += TAU; else if (ph &gt; Math.PI) ph -= TAU;   // keep the angle small
+    }
+    this.ph = ph;
+    return out;
+  }
+}</code></pre>
+  <p>Two details matter. The step is <b>negative</b> (−2π f₀ / f<sub>s</sub>) because we spin backwards to move things down. And the angle is <b>saved on the object</b> at the end of each chunk, so the next chunk continues exactly where this one stopped. Chapter 8 explains why that matters for live radio.</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch05.ts</code>:</p>
+<pre><code>before mixing, stations at (kHz): [ 100, 250 ]
+after mixing by 250 kHz:         [ -150, 0 ]
+cos-only mixing by 100 kHz: copies at +150 kHz (-6.0 dB) and +350 kHz (-6.0 dB); the full arrow gives one copy at -0.0 dB
+after 10 million repeated multiplications: length off by 4.6e-10 (64-bit numbers), 5.6e-6 (32-bit numbers)
+with a running angle, every arrow is computed fresh: its length is exactly 1 every time
+all checks passed</code></pre>
+  <p>The last two lines are why the NCO keeps an angle. Multiplying by a step arrow over and over does drift: tiny with 64-bit numbers, larger with the 32-bit numbers signal code often uses, and it never stops growing. Computing each arrow fresh from the angle means errors can't pile up, at no extra cost.</p>
+
+  <h2>Check yourself</h2>
+  <details><summary>A station is at +300 kHz. You mix by 100 kHz. Where is it now?</summary><p>At +200 kHz: everything moves down by the mixing frequency.</p></details>
+  <details><summary>You mix by −150 kHz. What happens to a station at −150 kHz?</summary><p>It moves to 0: subtracting −150 means adding 150, so −150 + 150 = 0. Mixing by a negative frequency moves everything up.</p></details>
+  <details><summary>Why does mixing with cos alone produce two copies of every station?</summary><p>A cosine is half a forward-spinning arrow plus half a backward-spinning one. Multiplying by it shifts every station both down and up.</p></details>
+  <details><summary>What would happen if the NCO forgot its angle at the end of every chunk and restarted at 0?</summary><p>The local oscillator would jump back to angle 0 every ~55 ms. The shifted signal would jump too, which you'd hear as a click 18 times a second (chapter 8).</p></details>
+
+  <nav class="next">
+    <a href="./04-winding-machine.html">← Chapter 4: The winding machine</a>
+    <a href="./06-averaging-is-filtering.html">Next: Chapter 6, Averaging is filtering →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch05.ts"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Network Source</title>
+  <meta name="description" content="Radio from scratch, chapter 15: streaming a dongle over the network. Odd-sized chunks, mirror-image ghosts, bandwidth, and why a public receiver must send each listener only their slice." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 15</p>
+  <h1>The network source</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./13-usb-from-zero.html#bulk">Chapter 13: bulk streams</a> and <a href="./08-chunks-of-a-live-stream.html#memory">chapter 8: chunks</a></li>
+      <li><a href="./07-throwing-away-snapshots.html#fold">Chapter 7: decimation</a> (a narrow slice needs far fewer samples)</li>
+      <li><a href="./01-spinning-arrows.html#game">Chapter 1: the two shadows</a> (what goes wrong if I and Q swap places)</li>
+    </ul>
+  </div>
+
+  <p>One antenna on a rooftop can serve everyone. This site does exactly that: the dongle is plugged into a computer, a small server (<code>server.ts</code>) runs our driver there, and your browser receives the same bytes over the network that it would get over USB. Everything from chapter 3 on works unchanged.</p>
+  <p>Almost unchanged. A network is not a USB cable, and three new problems appear: data arrives in pieces of random size, there's far less of it to go around, and many people want the same dongle at once.</p>
+
+  <!-- 1 -->
+  <h2 id="pairs">Pieces of any size, and the mirror-image ghost</h2>
+  <p>The server sends neat 256 KiB chunks. The network doesn't care: it delivers whatever has arrived, in pieces of any size, including odd sizes. Measured on this site's server: <b>48 of 120 pieces had an odd number of bytes</b>. Remember the byte order: I, Q, I, Q… (<a class="back" href="./03-taking-snapshots.html#real">↩ ch. 3</a>). After an odd-sized piece, the next piece <em>starts with a Q</em>.</p>
+  <p>If the page decodes each piece on its own, assuming the first byte is always an I, half the stream ends up with I and Q swapped. Untick the box to see what that does:</p>
+
+  <div class="scene" id="s-pairs">
+    <div class="controls">
+      <label for="pr-keep"><input id="pr-keep" type="checkbox" checked> Keep I/Q pairs together (regroup the pieces)</label>
+    </div>
+    <p class="readout" id="r-pairs" aria-live="polite"></p>
+  </div>
+
+  <p>Swapping the two shadows (<a class="back" href="./01-spinning-arrows.html#shadows">↩ ch. 1</a>) mirrors every arrow: counter-clockwise becomes clockwise, so +200 kHz shows up at −200 kHz too. Every station gets a <b>ghost twin</b> on the opposite side of the center, just as strong. A beginner's network receiver often has exactly this bug, and it's baffling until you know to look for it.</p>
+  <p>The fix is simple: collect pieces into a buffer, and only hand on an even number of bytes, keeping any leftover byte for the start of the next batch.</p>
+
+  <!-- 2 -->
+  <h2 id="bandwidth">There's much less bandwidth to go around</h2>
+  <p>Inside a computer, 4.8 MB/s is nothing. Across the internet, it's a lot, and a server has to send it to <em>every</em> listener separately. A typical home connection uploads 10–40 megabits per second (1–5 MB/s). Slide the number of listeners:</p>
+
+  <div class="scene" id="s-ladder">
+    <div class="controls">
+      <label for="ld-n">Listeners <input id="ld-n" type="range" min="1" max="50" step="1" value="10"><output id="ld-no"></output></label>
+      <label for="ld-u">Home upload <input id="ld-u" type="range" min="5" max="1000" step="5" value="20"><output id="ld-uo"></output></label>
+    </div>
+  </div>
+
+  <p>Sending the whole band (what this site's server does today, fine inside your home) runs out after a listener or two. The rungs below it are everything you've learned, used to save bandwidth:</p>
+  <ul>
+    <li><b>Send a slice:</b> the server mixes each listener's station to the center, filters and decimates (chapters 5–7), and sends only that. A 48 kHz slice is 20× smaller than the whole band and still contains everything for AM, narrow FM or SSB. The listener's browser does the demodulation (chapters 9–11), so they can still see their slice's waterfall and switch modes instantly.</li>
+    <li><b>Send finished audio:</b> about the same size as a narrow slice (both are 48 000 pairs or samples of numbers per second), but the listener can no longer see or retune within the signal; every change needs a round trip to the server. That's why sending the slice is usually the better deal.</li>
+    <li><b>Compress the audio</b> (with a codec like Opus, what video calls use): tiny, but it adds delay and processing.</li>
+  </ul>
+  <p>Public web receivers such as KiwiSDR and OpenWebRX send each listener their own slice plus a low-resolution waterfall of the whole band. That's the plan for this site's public version too.</p>
+
+  <!-- 3 -->
+  <h2 id="channelizer">One dongle, many listeners</h2>
+  <p>A dongle has one center frequency and sees one slice of the band. Every listener must stay inside it, each with their own window:</p>
+
+  <div class="scene" id="s-chan">
+    <div class="controls">
+      <label for="ch-n">Listeners <input id="ch-n" type="range" min="1" max="5" step="1" value="3"><output id="ch-no"></output></label>
+    </div>
+  </div>
+
+  <p>For each listener, the server runs its own mixer, filter and decimator: a <b>channelizer</b>. That costs computing power per listener: at 2.4 MS/s with a 70-weight filter, roughly 350 million multiply-adds per second each (<a class="back" href="./06-averaging-is-filtering.html#real">↩ ch. 6</a>), divided by the decimation (<a class="back" href="./07-throwing-away-snapshots.html#skip">↩ ch. 7</a>). Servers with many listeners use a trick: one big FFT (<a class="back" href="./04-winding-machine.html#fft">↩ ch. 4</a>) already splits the band into thousands of narrow slices at once, and each listener's slice is assembled from the pieces they need.</p>
+  <p>One more server-side rule from this site's <code>server.ts</code>: if a listener can't keep up, the server <b>skips</b> chunks for them instead of storing them. Storing would make that listener's delay grow forever; skipping costs them a click but keeps everyone else unaffected.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: measure the stream</h2>
+  <div class="lab">
+    <p>This reads the server's raw stream directly with <code>fetch()</code>, the way <code>src/remote.ts</code> does, and shows how the pieces arrive. Watch how many have odd lengths. (Only works when the page is served by this site's server.)</p>
+    <div class="scene" id="s-lab"></div>
+    <div class="game"><button id="lb-go">Measure</button></div>
+    <p class="readout" id="lb-status" aria-live="polite"></p>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>The server</b> (<code>server.ts</code>, Node's built-in HTTP): one dongle, many listeners, and skipping instead of storing for slow ones:</p>
+<pre><code>function fanOut(chunk) {
+  for (const res of clients) {
+    if (congested.has(res)) continue;                      // this listener is behind: skip, don't pile up
+    if (!res.write(chunk)) { congested.add(res); res.once("drain", () =&gt; congested.delete(res)); }
+  }
+}</code></pre>
+  <p><b>The browser side</b> (<code>src/remote.ts</code>): read pieces, gather at least 64 KiB, hand on an even number of bytes, keep the leftover:</p>
+<pre><code>const { value, done } = await reader.read();               // a piece of any size
+pending.push(value); size += value.length;
+if (size &lt; MIN_CHUNK) continue;
+const even = size &amp; ~1;                                   // round down to whole I/Q pairs
+// … copy `even` bytes out, hand them on …
+pending = size - even ? [lastPiece.subarray(-1)] : [];    // the odd byte starts the next batch</code></pre>
+  <p><b>The API</b> (three endpoints, documented in the <a href="../build.html#network">build guide</a>): <code>GET /api/state</code>, <code>POST /api/tune</code>, <code>GET /api/stream</code>. Browsers can't open raw network sockets, so the standard <code>rtl_tcp</code> protocol many SDR apps use isn't available to a web page, which is why our server speaks plain HTTP.</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch15.ts</code>:</p>
+<pre><code>pairs kept together: station -2.1 dB, mirror at −200 kHz -101.2 dB
+pairs split       : station -8.1 dB, mirror at −200 kHz -8.1 dB
+whole band 1.024 MS/s  × 10 listeners =  20.48 MB/s does NOT fit in 2.5 MB/s
+250 kHz slice, 8-bit   × 10 listeners =   5.00 MB/s does NOT fit in 2.5 MB/s
+48 kHz slice, 8-bit    × 10 listeners =   0.96 MB/s fits in 2.5 MB/s
+Opus audio             × 10 listeners =   0.08 MB/s fits in 2.5 MB/s
+server: 120 reads, average 51.2 KiB, 2.08 MB/s (expected 2.05), 48 reads of odd length
+all checks passed</code></pre>
+  <p>With pairs split, the ghost is exactly as strong as the station: there's no way to tell which one is real.</p>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does an odd-sized network piece cause ghost stations?</summary><p>The next piece starts with a Q byte. Read as an I, it swaps the two shadows, which mirrors every station to the opposite side of the center.</p></details>
+  <details><summary>Ten listeners, each sent the whole band at 1.024 MS/s. How much upload does the server need?</summary><p>2 MB/s each, so about 20 MB/s (160 Mbit/s): far more than most homes have.</p></details>
+  <details><summary>Why does the server skip chunks for a slow listener instead of saving them for later?</summary><p>Saved chunks would make that listener fall further and further behind, with ever-growing delay and memory. Skipping costs them a moment of sound but keeps them live, and doesn't slow anyone else down.</p></details>
+
+  <nav class="next">
+    <a href="./14-writing-the-driver.html">← Chapter 14: Writing the driver</a>
+    <a href="./16-the-whole-receiver.html">Next: Chapter 16, The whole receiver →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch15.ts"></script>
+</body>
+</html>

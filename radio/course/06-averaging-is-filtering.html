@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Averaging Is Filtering</title>
+  <meta name="description" content="Radio from scratch, chapter 6: filters. Why a moving average removes fast wiggles, how weights shape what gets through, and how to design the filter that keeps only your station." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 6</p>
+  <h1>Averaging is filtering</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./04-winding-machine.html#spectrum">Chapter 4: the winding machine and the center of mass</a>, and <a href="./04-winding-machine.html#window">windows</a></li>
+      <li><a href="./05-moving-a-station.html#shift">Chapter 5: mixing a station to the center</a></li>
+      <li><a href="./04-winding-machine.html#spectrum">Decibels</a> (each −20 dB means 10× smaller)</li>
+    </ul>
+  </div>
+
+  <p>After chapter 5, the station you want sits in the middle of the band, at 0. But its neighbors are still there on both sides, and when we extract the sound (chapter 9) they'd come out as noise and crosstalk. We need a way to <b>keep what's near 0 and remove everything else</b>.</p>
+  <p>That's a <b>filter</b>, and the surprising thing is how simple the basic idea is: <b>averaging</b>. You've done it a hundred times without calling it filtering.</p>
+
+  <!-- 1 -->
+  <h2 id="average">A moving average smooths out wiggles</h2>
+  <p>Here's a signal made of a slow wave plus a fast wiggle. Let's make a new signal where each point is the <b>average of the last few input points</b>. As the yellow bracket slides along, the yellow output is drawn:</p>
+
+  <div class="scene" id="s-avg">
+    <div class="controls">
+      <label for="av-l">Average of <input id="av-l" type="range" min="1" max="20" step="1" value="6"><output id="av-lo"></output></label>
+    </div>
+  </div>
+
+  <p>With 1 sample, nothing changes. With 6, the fast wiggle is almost gone and the slow wave survives: the output lies nearly on the dashed green line, which is the slow wave alone. That's a <b>low-pass filter</b>: slow things pass, fast things don't. A moving average of temperatures over a week does the same thing: it removes the day-to-day jitter and keeps the seasonal trend.</p>
+  <div class="ponder"><span class="tag">Pause and ponder</span>Make the average much longer, 20 samples. The wiggle is gone, but something happens to the slow wave too. What, and why?</div>
+  <p>(It shrinks and shifts to the right: a 20-sample average reaches back far enough to blur even the slow wave, and since it only uses <em>past</em> samples, the output lags behind.)</p>
+
+  <!-- 2 -->
+  <h2 id="why">Why it works: averaging cancels spinning</h2>
+  <p>You've already seen the reason, in chapter 4's winding machine (<a class="back" href="./04-winding-machine.html#spectrum">↩ the center of mass</a>). Think of the input as spinning arrows. Averaging L samples of one arrow means averaging L of its positions: a <b>center of mass</b>.</p>
+  <ul>
+    <li>A <b>slow</b> arrow barely moves during those L samples, so all its positions point roughly the same way, and their average is nearly as long as the arrow. It survives.</li>
+    <li>A <b>fast</b> arrow goes all the way round during those L samples, so its positions point in every direction and average out to almost nothing. It's removed.</li>
+  </ul>
+
+  <div class="scene" id="s-why">
+    <div class="controls">
+      <label for="wy-l">Average of <input id="wy-l" type="range" min="2" max="16" step="1" value="8"><output id="wy-lo"></output></label>
+      <label for="wy-s">Arrow speed <input id="wy-s" type="range" min="0" max="0.5" step="0.005" value="0.05"><output id="wy-so"></output></label>
+    </div>
+  </div>
+
+  <p>On the left, the faint blue arrows are the L positions being averaged, and the yellow one is their average. On the right, the grey curve shows how much of the arrow survives for <em>every</em> speed. This curve is the filter's <b>frequency response</b>: what the filter does to each frequency.</p>
+  <p>Try speed 0.125 with an average of 8: exactly one full turn during the window, and the average is exactly zero. Every speed that makes a whole number of turns cancels completely: those are the dips in the curve. Between the dips, though, the curve bounces back up: a plain average lets fast things leak through in bumps. We can do better.</p>
+
+  <!-- 3 -->
+  <h2 id="weights">Weights shape what gets through</h2>
+  <p>A plain average gives every sample the same importance. A <b>weighted</b> average gives each position its own weight. That list of weights is the whole filter: engineers call them the filter's <b>taps</b> or coefficients, and the filter is called a <b>FIR filter</b> (for "finite impulse response", because it only ever looks at a finite number of samples).</p>
+  <p>Here's the beautiful part. To find what a set of weights does to each frequency, you run chapter 4's <b>winding machine on the weights themselves</b>: for each test speed, spin the weights around, and see how far their center of mass lands from zero. <b>The filter's response is the Fourier transform of its weights.</b> So if we know the response we want, we can work backwards to the weights.</p>
+
+  <div class="scene" id="s-shape">
+    <div class="controls">
+      <label for="sp-k">Shape <select id="sp-k"><option value="box">plain average</option><option value="tri">triangle</option><option value="sinc">sinc, chopped</option><option value="wsinc" selected>sinc × window</option></select></label>
+      <label for="sp-t">Weights <input id="sp-t" type="range" min="5" max="121" step="2" value="41"><output id="sp-to"></output></label>
+      <label for="sp-c">Keep <input id="sp-c" type="range" min="0.02" max="0.3" step="0.01" value="0.1"><output id="sp-co"></output></label>
+    </div>
+    <p class="readout" id="r-shape" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Plain average:</b> the bumpy response from the previous section. Notice you can't choose what to keep: the "Keep" slider does nothing, because a plain average's passband is fixed by its length.</li>
+    <li><b>Triangle:</b> fade the weights in and out. Smoother edges in the weights give smaller bumps in the response, but the cutoff is still fixed by the length.</li>
+    <li><b>Sinc, chopped:</b> what we actually want is a response shaped like a <b>rectangle</b>: everything inside ±"Keep" passes untouched, everything outside is removed. The weights whose winding gives a rectangle follow a curve called the <b>sinc</b>, sin(x)/x: a central hump with ripples dying away on both sides. Now the "Keep" slider works. But we had to chop the sinc off at some point, and that sudden edge brings ripples back (the same edge problem as chapter 4's window, <a class="back" href="./04-winding-machine.html#window">↩</a>).</li>
+    <li><b>Sinc × window:</b> fade the chopped sinc's ends smoothly to zero. The cutoff stays where you put it, and the leftovers drop to about 1/1000 of the arrow's length (−60 dB). This is the <b>windowed-sinc</b> filter, and it's what this site's receiver uses.</li>
+  </ul>
+  <p>Now drag <b>Weights</b> up and down with the windowed sinc: more weights make the edge between "keep" and "remove" steeper. Fewer weights make it gentler. That's the basic trade-off of every filter: <b>sharpness costs arithmetic.</b></p>
+
+  <!-- 4 -->
+  <h2 id="real">Filtering a real band</h2>
+  <p>Back to the demo band from chapter 5, with its FM station mixed to the center. Our receiver's filter designer takes two numbers: how wide to keep (±cutoff) and how steep the edge should be (the transition width), and works out the weights:</p>
+
+  <div class="scene" id="s-real">
+    <div class="controls">
+      <label for="rf-c">Keep <input id="rf-c" type="range" min="20" max="200" step="10" value="100"><output id="rf-co"></output></label>
+      <label for="rf-t">Edge width <input id="rf-t" type="range" min="10" max="200" step="10" value="50"><output id="rf-to"></output></label>
+    </div>
+    <p class="readout" id="r-real" aria-live="polite"></p>
+  </div>
+
+  <p>An FM station is about 200 kHz wide, so keeping ±100 kHz keeps all of it. The two neighbors drop by about 60 dB, a millionth of their power. Narrow the edge and watch the number of weights, and the cost, climb: a 20 kHz edge needs 169 weights, which at 2.4 million samples per second is about 800 million multiplications per second. That's why chapter 7 does something clever: throw away samples as you filter, so you only compute the ones you keep.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: remove the neighbors from a real station</h2>
+  <div class="lab">
+    <p>Your chosen station, centered (chapter 5), then filtered. Make the passband narrower and wider and watch the neighbors and the HD Radio sidebands disappear.</p>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label for="lf-c">Keep <input id="lf-c" type="range" min="20" max="250" step="10" value="100"><output id="lf-co"></output></label>
+      </div>
+    </div>
+    <div id="lab6"></div>
+    <ol>
+      <li>At ±100 kHz the station's analog hump survives, while its HD Radio rectangles (which start about 130 kHz from the center) are cut away.</li>
+      <li>Shrink to ±50 kHz: you start cutting into the station itself. Its music would lose its loud passages (chapter 9 explains why FM needs its full width).</li>
+      <li>Open up to ±250 kHz: now the HD Radio sidebands are kept too, and so is part of the next station.</li>
+    </ol>
+  </div>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math display="block">
+      <mi style="color:var(--yellow)">y</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo>
+      <munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover>
+      <msub><mi style="color:var(--blue)">h</mi><mi>k</mi></msub><mo>·</mo><mi>x</mi><mo>[</mo><mi>n</mi><mo>−</mo><mi>k</mi><mo>]</mo>
+    </math>
+    <ul>
+      <li>Each output <b style="color:var(--yellow)">y[n]</b> is a weighted sum of the current input and the N−1 before it. The weights <b style="color:var(--blue)">h₀ … h<sub>N−1</sub></b> are the taps. This operation (slide, multiply, add) is called <b>convolution</b>.</li>
+      <li>A plain moving average is the special case where every h<sub>k</sub> = 1/N.</li>
+    </ul>
+    <math display="block"><mi>H</mi><mo>(</mo><mi>f</mi><mo>)</mo><mo>=</mo><munder><mo>∑</mo><mi>k</mi></munder><msub><mi>h</mi><mi>k</mi></msub><mo>·</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>π</mi><mi>f</mi><mi>k</mi></mrow></msup></math>
+    <ul>
+      <li>The frequency response: chapter 4's winding machine applied to the weights. Its length at each f is how much of that frequency gets through.</li>
+    </ul>
+    <math display="block"><msub><mi>h</mi><mi>k</mi></msub><mo>=</mo><mfrac><mrow><mi>sin</mi><mo>(</mo><mn>2</mn><mi>π</mi><msub><mi>f</mi><mi>c</mi></msub><mi>x</mi><mo>)</mo></mrow><mrow><mi>π</mi><mi>x</mi></mrow></mfrac><mo>·</mo><mi>w</mi><mo>(</mo><mi>k</mi><mo>)</mo></math>
+    <ul>
+      <li>The windowed sinc, with x the distance from the middle weight, f<sub>c</sub> the cutoff and w(k) the window that fades the ends.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>Designing the filter</b> (<code>firLowpass()</code> in <code>src/dsp.ts</code>): choose how many weights from the edge width, sample the sinc, fade it with a Hamming window, and scale so a signal at 0 Hz passes at exactly 1×:</p>
+<pre><code>let n = Math.ceil(3.3 / Math.max(transitionNorm, 1e-4));   // steeper edge → more weights
+n = Math.min(511, n | 1);                                  // odd, so there's a middle weight; at most 511
+for (let i = 0; i &lt; n; i++) {
+  const x = i - (n - 1) / 2;                               // distance from the middle
+  const sinc = x === 0 ? 2 * cutoffNorm : Math.sin(TAU * cutoffNorm * x) / (Math.PI * x);
+  h[i] = sinc * (0.54 - 0.46 * Math.cos((TAU * i) / (n - 1)));   // × Hamming window
+  sum += h[i];
+}
+for (let i = 0; i &lt; n; i++) h[i] /= sum;                   // unity gain at 0 Hz</code></pre>
+  <p>Frequencies here are "normalized", in turns per sample: a cutoff of 100 kHz at 1.024 MS/s is 100 000 / 1 024 000 ≈ 0.098. The 3.3 is the Hamming window's rule of thumb: the edge width (in turns per sample) times the number of weights is about 3.3.</p>
+  <p><b>Running it</b> is the weighted sum, once per output, for I and Q separately. Chapter 7 shows the full version, which also skips outputs we don't need:</p>
+<pre><code>let r = 0, i = 0;
+for (let k = 0; k &lt; t; k++) {               // t weights
+  r += buf[base - 2 * k] * h[k];            // I part
+  i += buf[base - 2 * k + 1] * h[k];        // Q part
+}</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch06.ts</code>:</p>
+<pre><code>average of 8: speed 0.000 turns/sample → 100.0% survives
+average of 8: speed 0.050 turns/sample → 76.0% survives
+average of 8: speed 0.125 turns/sample → 0.0% survives  (a whole number of turns: cancels completely)
+average of 8: speed 0.250 turns/sample → 0.0% survives  (a whole number of turns: cancels completely)
+average of 8: speed 0.400 turns/sample → 7.7% survives
+plain average          worst leftover beyond 0.22 turns/sample: -28.7 dB
+triangle               worst leftover beyond 0.22 turns/sample: -46.9 dB
+sinc, chopped          worst leftover beyond 0.22 turns/sample: -36.5 dB
+sinc × Hamming window  worst leftover beyond 0.22 turns/sample: -62.1 dB
+station + neighbor through a 69-weight low-pass: the neighbor is now -59 dB (0.11% of its original size)
+transition 100 kHz wide → 35 weights
+transition  50 kHz wide → 69 weights
+transition  20 kHz wide → 169 weights
+transition   5 kHz wide → 511 weights (our designer caps it at 511; the rule of thumb asks for ~680)
+all checks passed</code></pre>
+  <p>Note the comparison of shapes: the triangle's leftovers are smaller than the chopped sinc's, but only because a 41-weight triangle keeps a much narrower band you can't choose. The windowed sinc is the one that lets you choose where to cut <em>and</em> keeps the leftovers small.</p>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does a moving average remove fast wiggles but keep slow ones?</summary><p>Averaging is a center of mass. A fast arrow turns all the way round within the averaging window, so its positions cancel; a slow arrow barely moves, so its positions add up.</p></details>
+  <details><summary>An average of 10 samples. Which arrow speed cancels completely: 0.05, 0.1 or 0.15 turns per sample?</summary><p>0.1: exactly one full turn in 10 samples. (0.2, 0.3, … also cancel.)</p></details>
+  <details><summary>Why don't we just use a plain average as our filter?</summary><p>You can't choose its cutoff (it's fixed by its length), and its leftovers come back in bumps that are only about 30 dB down. A windowed sinc lets you choose the cutoff and leaves about 60 dB of rejection.</p></details>
+  <details><summary>You want the edge between "keep" and "remove" twice as steep. What does that cost?</summary><p>About twice as many weights, and so twice the multiplications per sample.</p></details>
+
+  <nav class="next">
+    <a href="./05-moving-a-station.html">← Chapter 5: Moving a station</a>
+    <a href="./07-throwing-away-snapshots.html">Next: Chapter 7, Throwing away snapshots →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch06.ts"></script>
+</body>
+</html>

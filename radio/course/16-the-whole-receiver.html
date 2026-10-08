@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Whole Receiver</title>
+  <meta name="description" content="Radio from scratch, chapter 16: the complete receiver on one page, how fast it runs in your browser, how it's tested, and where to go next." />
+  <style>
+    #map { display: grid; justify-items: stretch; gap: 0; margin: 20px 0; }
+    .mp-b { display: grid; grid-template-columns: 2em 1fr auto; gap: 2px 10px; align-items: baseline; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); text-decoration: none; color: var(--fg); font: 0.92rem ui-sans-serif, system-ui, sans-serif; }
+    .mp-b:hover, .mp-b:focus-visible { border-color: var(--accent); }
+    .mp-n { grid-row: span 2; color: var(--accent); font-weight: 600; }
+    .mp-r { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+    .mp-c { grid-column: 2 / 4; color: var(--muted); font-size: 0.8rem; }
+    .mp-arrow { text-align: center; color: var(--muted); line-height: 1.2; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 16</p>
+  <h1>The whole receiver</h1>
+
+  <p>Fifteen chapters ago, a radio station was a spinning arrow. Since then you've seen how to sample it, find it among hundreds of others, move it, isolate it, thin it out, keep it flowing, turn its speed or length into sound, and play that sound steadily. You've seen the chips that capture it and the USB messages that bring it in. This chapter puts everything on one page.</p>
+
+  <!-- 1 -->
+  <h2 id="map">The map</h2>
+  <p>The complete receiver, from antenna to speaker. Each block shows how fast numbers flow through it, the chapter that explains it, and the file it lives in. Click any block to go back to its chapter.</p>
+  <div id="map"></div>
+  <p>Notice how the numbers shrink as they travel: 2.4 million pairs per second arrive, 300 thousand survive the first filter, and 50 thousand reach the speakers. The early, wide steps are simple (one multiplication per sample in the mixer); the expensive filtering happens once, and decimation makes everything after it cheap (<a class="back" href="./07-throwing-away-snapshots.html#skip">↩ ch. 7</a>).</p>
+
+  <!-- 2 -->
+  <h2 id="code-map">How the code is organized</h2>
+  <p>About 1 500 lines of TypeScript, no libraries, in a handful of files with one job each:</p>
+  <ul>
+    <li><code>src/r820t.ts</code> + <code>src/rtlsdr.ts</code>: the driver (chapter 14). Knows about USB and registers, nothing about signals.</li>
+    <li><code>src/iq.ts</code>: bytes and recording files → numbers (chapter 3).</li>
+    <li><code>src/dsp.ts</code>: every signal-processing block from chapters 4–11, as small streaming classes (chapter 8), plus their tests in <code>dsp.test.ts</code>.</li>
+    <li><code>src/waterfall.ts</code>: spectra and the scrolling picture (chapter 4, explained step by step in the <a href="../build.html#waterfall">build guide</a>).</li>
+    <li><code>src/main.ts</code>: <a href="../">Spectrum Lab</a>, the app: buttons, plots, audio.</li>
+    <li><code>server.ts</code> + <code>src/remote.ts</code>: the network source (chapter 15).</li>
+  </ul>
+  <p>The key design decision is the layering. The driver doesn't know what a radio station is; the signal blocks don't know where their numbers come from (USB, network, a file, or a test). That's why every chapter's script can feed the real code with made-up signals, and why the same blocks run in the browser, in Node, and on the server. The <a href="../build.html#code">build guide's source viewers</a> walk through the most important files line by line.</p>
+
+  <!-- 3 -->
+  <h2 id="speed">How fast is it? Measured on your computer</h2>
+  <p>A receiver has to process one second of radio in less than one second, every second, forever. How much room is there? Press the button to time each block on one second of radio at 2.4 MS/s, right here in your browser:</p>
+
+  <div class="scene" id="s-bench">
+    <div class="game"><button id="bn-go">Measure</button></div>
+    <p class="readout" id="r-bench" aria-live="polite"></p>
+  </div>
+
+  <p>On a typical laptop, the whole FM receiver uses well under a tenth of one processor core. The mixer is the biggest cost, simply because it touches every one of the 2.4 million samples (computing a cosine and a sine for each); everything after the decimation is nearly free. If it ever weren't fast enough, the standard moves are: run the signal processing in a <b>Web Worker</b> (a second thread, so drawing never waits for math), use a cheaper NCO, or let the dongle send fewer samples per second.</p>
+
+  <!-- 4 -->
+  <h2 id="testing">How the receiver is tested</h2>
+  <p>Every chapter ended with a script that checks its own claims; together they're the course's test suite (<code>npm run course-check</code> runs them all). The strategy, collected:</p>
+  <ul>
+    <li><b>Made-up signals with known answers</b> (chapters 2–11): a tone at exactly 1000 Hz must come out at 1000 Hz; a station mixed by 250 kHz must land at exactly 0.</li>
+    <li><b>Comparing two ways of doing the same thing</b>: the FFT against the plain winding machine (ch. 4); filtering-then-picking against computing only kept outputs (ch. 7); chunked against whole (ch. 8), bit for bit.</li>
+    <li><b>Fake hardware</b>: the driver against a pretend tuner and a pretend dongle (ch. 12, 14), checking every register it writes.</li>
+    <li><b>Real hardware, checked without ears</b>: the 19 kHz stereo pilot (ch. 9) proves that a real station was tuned, sampled and demodulated correctly.</li>
+    <li><b>Real data, frozen</b>: 4000 samples from this site's dongle are stored in the course (ch. 3), so tests can use real radio even when the dongle is unplugged (or stuck, which happened while writing this course).</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="next">Where to go next</h2>
+  <p>You now understand every part of a working software radio. Some projects that build directly on it, in rough order of difficulty:</p>
+  <ul>
+    <li><b>Stereo FM.</b> Lock onto the 19 kHz pilot (a phase-locked loop: chapter 12's idea, in software), double it to 38 kHz, use it to shift the stereo band down (chapter 5), and add and subtract with the mono signal (<a class="back" href="./09-fm-listening-to-the-speed.html#mpx">↩ ch. 9</a>).</li>
+    <li><b>RDS.</b> The station name and song title at 57 kHz: slow digital data (1187.5 bits per second). Your first digital demodulator.</li>
+    <li><b>Aircraft tracking (ADS-B).</b> Planes broadcast their position at 1090 MHz in bursts of on/off pulses. No audio at all: just find the pulses, decode the bits, check the checksum, and put dots on a map.</li>
+    <li><b>APRS.</b> Ham radio position reports at 144.39 MHz: tones that encode bits (AFSK), like an old modem.</li>
+    <li><b>Weather satellites.</b> Meteor-M satellites send pictures at 137 MHz as they pass overhead; you'll need to track the satellite and correct for its motion (Doppler: chapter 5's mixer, with a frequency that changes).</li>
+    <li><b>A public WebSDR.</b> This site's server, sending each listener only their slice (<a class="back" href="./15-the-network-source.html#bandwidth">↩ ch. 15</a>).</li>
+  </ul>
+  <p>For more depth: <a href="https://pysdr.org">PySDR</a> (free, the same ideas in Python), Richard Lyons' <em>Understanding Digital Signal Processing</em> (the intuition book), and Johnson, Sethares and Klein's <em>Software Receiver Design</em> (builds a full digital receiver). The <a href="../build.html">build guide</a> is the reference for writing your own app for your own dongle; <a href="../examples/hello-dongle.html">Hello, dongle</a> is an 80-line starting point.</p>
+
+  <h2 id="lab">Lab: the full app</h2>
+  <div class="lab">
+    <p>Everything in this course, in one app: <a href="../"><b>Spectrum Lab</b></a>. Load a recording or the demo signals, or connect a dongle, click a station in the waterfall, and watch it go through every stage you've learned, numbered just like the course. Each stage has a link back to a short explanation.</p>
+  </div>
+
+  <h2 id="check">Check yourself: the whole course</h2>
+  <details><summary>Why does a radio need both I and Q?</summary><p>With one shadow you can't tell a frequency above the tuned one from one below it (ch. 1); they'd land on top of each other. With both, you can, so the full sample rate is usable (ch. 3), and mixing moves things in one direction only (ch. 5).</p></details>
+  <details><summary>In one sentence each: mixing, filtering, decimating.</summary><p>Mixing multiplies by a spinning arrow to slide the whole band (ch. 5). Filtering is a weighted average that keeps the middle and removes the rest (ch. 6). Decimating keeps every M-th sample, which is only safe after filtering (ch. 7).</p></details>
+  <details><summary>FM and AM: where is the sound, and how is it recovered?</summary><p>FM: in the arrow's speed; measure the angle between consecutive samples (ch. 9). AM: in the arrow's length; measure each sample's length and remove the average (ch. 10).</p></details>
+  <details><summary>Why can't each chunk of live radio be processed on its own?</summary><p>Every block needs a little memory from the previous chunk (the mixer's angle, the filter's last samples, the demodulator's last sample); without it there's a click at every chunk edge (ch. 8).</p></details>
+  <details><summary>Your waterfall shows every station twice, mirrored around the center. What's the likely cause?</summary><p>I and Q swapped somewhere: for example, network pieces of odd length read without keeping I/Q pairs together (ch. 15).</p></details>
+
+  <nav class="next">
+    <a href="./15-the-network-source.html">← Chapter 15: The network source</a>
+    <a href="./index.html">All chapters →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch16.ts"></script>
+</body>
+</html>
