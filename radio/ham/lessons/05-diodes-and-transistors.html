@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diodes and Transistors</title>
+  <meta name="description" content="Ham radio, visually, lesson 5: semiconductors from the inside, diodes as one-way valves, rectifiers and power supplies, regulators, transistors as controlled valves, schematic symbols, ICs and connectors." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 5</p>
+  <h1>Diodes, transistors and power supplies</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./01-volts-amps-ohms.html#electrons">Lesson 1: electrons, conductors and insulators</a>, <a href="./01-volts-amps-ohms.html#ac">AC and DC</a></li>
+      <li><a href="./03-capacitors-and-inductors.html#capacitor">Lesson 3: capacitors</a> (for smoothing) and <a href="./03-capacitors-and-inductors.html#transformer">transformers</a></li>
+    </ul>
+  </div>
+
+  <p>Conductors let current through; insulators don't. <b>Semiconductors</b>, like silicon, sit in between, and that's what makes them useful: by adding tiny traces of other elements, engineers decide exactly where and when current may flow. Out of that come <b>diodes</b>, one-way valves for current, and <b>transistors</b>, valves that a small current can open and close. Every radio, power supply and computer is built from them.</p>
+
+  <!-- 1 -->
+  <h2 id="junction">Inside a diode: the PN junction</h2>
+  <p>Pure silicon conducts poorly: all its electrons are tied up in bonds. Add a pinch of an element with one extra electron per atom (a <b>donor</b> impurity) and you get <b>N-type</b> silicon, with free electrons. Add an element with one electron too few (an <b>acceptor</b>) and you get <b>P-type</b>, full of <b>holes</b>: gaps where an electron is missing, which behave like positive charges that move. Put the two side by side:</p>
+
+  <div class="scene" id="s-pn">
+    <div class="controls">
+      <label for="pn-v">Applied voltage <input id="pn-v" type="range" min="-3" max="1" step="0.05" value="0"><output id="pn-vo"></output></label>
+    </div>
+    <p class="readout" id="r-pn" aria-live="polite"></p>
+  </div>
+
+  <p>Near the boundary, electrons fall into holes and both disappear, leaving a thin <b>depletion region</b> with no free carriers at all: an insulating layer. Push from the P side (<b>forward bias</b>) and the layer thins until, at about 0.6–0.7 V for silicon, current flows freely. Push the other way (<b>reverse bias</b>) and the holes and electrons are pulled apart, the depletion region widens, and nothing flows. One direction only: that's a <b>diode</b>.</p>
+  <p>The P side is the <b>anode</b>; the N side is the <b>cathode</b>, marked by a <b>stripe</b> on the package. In the symbol, the arrow points the way conventional current flows, into the bar of the cathode.</p>
+
+  <!-- 2 -->
+  <h2 id="family">The diode family</h2>
+  <p>Every diode needs a little forward voltage before it conducts, and how much depends on what it's made of. Pick a type:</p>
+
+  <div class="scene" id="s-iv">
+    <div class="controls">
+      <label for="iv-t">Diode <select id="iv-t">
+        <option value="si">silicon junction</option><option value="ge">germanium</option><option value="sch">Schottky</option><option value="led">red LED</option><option value="zen">5.1 V Zener</option>
+      </select></label>
+      <label for="iv-v">Voltage <input id="iv-v" type="range" min="-6" max="2.5" step="0.02" value="0.7"><output id="iv-vo"></output></label>
+    </div>
+    <p class="readout" id="r-iv" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Silicon junction:</b> about <b>0.7 V</b> forward drop. The everyday rectifier.</li>
+    <li><b>Germanium:</b> about <b>0.3 V</b>. Old-fashioned, but good for detecting weak signals.</li>
+    <li><b>Schottky:</b> a <b>metal-to-semiconductor</b> junction with a <b>lower forward drop</b>, so it wastes less power as a rectifier, and it's fast enough to be a VHF/UHF mixer or detector. A <b>point-contact</b> diode (a fine wire on a crystal, the "cat's whisker") is an RF detector too.</li>
+    <li><b>LED</b> (light-emitting diode): forward current makes it glow. Its forward drop, around 2 V for red and 3 V for blue, is set by the material's <b>band gap</b>, which also sets the color. Used as indicators everywhere.</li>
+    <li><b>Zener:</b> built to break down in reverse at a precise voltage, then hold that voltage <b>constant</b> however the current varies. A <b>voltage reference</b>, and a guard: Zeners between a MOSFET's gate and source protect it from static.</li>
+    <li><b>Varactor:</b> the depletion region is an insulating gap between two conducting sides, so a reverse-biased diode is a capacitor whose value depends on the voltage: a <b>voltage-controlled capacitor</b>, used for electronic tuning.</li>
+    <li><b>PIN diode:</b> an undoped layer in the middle gives it a very <b>low junction capacitance</b>, making it a good <b>RF switch</b>; its forward DC current controls how much RF it lets through (an RF attenuator).</li>
+  </ul>
+  <p>Diodes fail from too much current because the junction gets too <b>hot</b>.</p>
+
+  <!-- 3 -->
+  <h2 id="rectifier">From AC to DC: rectifiers and filters</h2>
+  <p>A radio runs on steady DC, but the wall gives AC. A <b>power supply</b> converts it in steps: a transformer sets the voltage, diodes (a <b>rectifier</b>) let only one direction through, a capacitor smooths the bumps, and a regulator holds the result steady. Try each:</p>
+
+  <div class="scene" id="s-rect">
+    <div class="controls">
+      <label for="rc-m">Rectifier <select id="rc-m"><option value="none">none (raw AC)</option><option value="half">half-wave (1 diode)</option><option value="full" selected>full-wave (2 diodes + center tap, or a 4-diode bridge)</option></select></label>
+      <label for="rc-c">Filter capacitor <input id="rc-c" type="range" min="0" max="10" step="1" value="0"><output id="rc-co"></output></label>
+    </div>
+    <p class="readout" id="r-rect" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A <b>half-wave</b> rectifier needs only <b>one diode</b>, and passes only half of each cycle (<b>180°</b>). The other half is simply lost.</li>
+    <li>A <b>full-wave</b> rectifier flips the negative half over, using all <b>360°</b>. With a center-tapped transformer it takes <b>two diodes</b>; a <b>bridge</b> uses four. Unfiltered, its output is a series of DC pulses at <b>twice</b> the AC frequency.</li>
+    <li>The <b>filter</b>: capacitors (and sometimes inductors) store energy at each peak and release it in between, leaving only a small <b>ripple</b>. Full-wave ripple is easier to smooth, because the gaps are half as long.</li>
+    <li>Filter capacitors can hold a dangerous charge after the power is off. A <b>bleeder resistor</b> across them discharges them. When capacitors are stacked in series for high voltage, equal resistors across each one also share the voltage evenly. A <b>step-start</b> circuit lets big filter capacitors charge gradually at switch-on instead of with a huge surge.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="regulator">Holding the voltage steady: regulators</h2>
+  <p>Even after filtering, the voltage sags under load and rises with the mains. A <b>regulator</b> fixes that, in one of two ways:</p>
+
+  <div class="scene" id="s-reg">
+    <div class="controls">
+      <label for="rg-sw"><input id="rg-sw" type="checkbox"> Switchmode instead of linear</label>
+      <label for="rg-i">Load current <input id="rg-i" type="range" min="0.5" max="10" step="0.5" value="5"><output id="rg-io"></output></label>
+    </div>
+    <p class="readout" id="r-reg" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A <b>linear</b> regulator is a variable resistor that adjusts itself: a transistor (the control element) in series with the load, conducting more or less to keep the output constant, compared against a stable reference (usually a <b>Zener diode</b>). The voltage it "drops" times the current is wasted as heat: <b>(V<sub>in</sub> − V<sub>out</sub>) × I</b>. It needs a minimum difference between input and output to work, its <b>dropout voltage</b>. The common three-terminal regulator chips are <b>series</b> regulators; a <b>shunt</b> regulator instead draws extra current from the source in parallel with the load.</li>
+    <li>A <b>switchmode</b> regulator switches fully on and fully off very fast, and a filter averages the pulses. It controls the output by varying the <b>duty cycle</b> (the fraction of time it's on). A switch that's fully on or fully off wastes almost nothing, and the high switching frequency allows tiny transformers and capacitors, which is why switching supplies are lighter and cheaper. The catch for radio: those fast edges make RF noise.</li>
+  </ul>
+  <p>Batteries and the sun: battery operating time is its capacity in amp-hours divided by the average current (a 20 Ah battery at 4 A lasts about 5 hours). A solar panel makes DC; an <b>inverter</b> converts it to AC.</p>
+
+  <!-- 5 -->
+  <h2 id="transistor">Transistors: valves a small current controls</h2>
+  <p>A <b>bipolar junction transistor</b> (BJT) is a sandwich of three semiconductor regions: the <b>emitter</b>, the <b>base</b> and the <b>collector</b>. A small current into the base lets a much larger current flow from collector to emitter, like a small hand on a big valve:</p>
+
+  <div class="scene" id="s-bjt">
+    <div class="controls">
+      <label for="bj-i">Base current <input id="bj-i" type="range" min="0" max="10" step="0.1" value="2"><output id="bj-io"></output></label>
+    </div>
+    <p class="readout" id="r-bjt" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The ratio of collector current change to base current change is the transistor's <b>beta</b>: here 100. That multiplication is <b>gain</b>: a weak signal on the base becomes a strong copy at the collector. Gain means the output is bigger than the input, in voltage, current or power; transistors provide <b>power gain</b>.</li>
+    <li>A silicon NPN transistor starts to conduct when its base is about <b>0.6–0.7 V</b> above its emitter (it's a diode junction).</li>
+    <li>As a <b>switch</b>, a transistor is driven between two extremes: <b>cutoff</b> (fully off) and <b>saturation</b> (fully on). In between is the <b>active</b> region, used for amplifying.</li>
+  </ul>
+  <p>A <b>field-effect transistor</b> (FET) has a <b>gate</b>, <b>drain</b> and <b>source</b>. Instead of a base current, a <em>voltage</em> on the gate controls the current through a channel. In a <b>MOSFET</b>, the gate is separated from the channel by a thin insulating layer, so the gate draws practically no current: an FET has a much <b>higher input impedance</b> than a bipolar transistor. (That thin insulation is also why static electricity can destroy a MOSFET.) A <b>depletion-mode</b> FET conducts with no gate voltage at all; you have to apply voltage to turn it off. Before transistors there were <b>vacuum tubes</b>, where a <b>control grid</b> between the cathode and the plate does the controlling, and a <b>screen grid</b> reduces the capacitance between grid and plate.</p>
+
+  <!-- 6 -->
+  <h2 id="symbols">Reading schematics</h2>
+  <p>A <b>schematic</b> is a diagram using standard symbols. It shows how parts are <b>connected</b>, not where they physically sit. The exams show several figures; here they are, with what each numbered symbol is (from the questions that ask about them):</p>
+  <details><summary>Figure T-1</summary><figure><img src="../fig/t-1.png" alt="Figure T-1, a simple transistor circuit" class="fig"></figure><p>1 resistor · 2 transistor (it controls the flow of current) · 3 lamp · 4 battery.</p></details>
+  <details><summary>Figure T-2</summary><figure><img src="../fig/t-2.png" alt="Figure T-2, a power supply schematic" class="fig"></figure><p>3 single-pole single-throw switch · 4 transformer · 6 capacitor · 8 light-emitting diode · 9 variable resistor.</p></details>
+  <details><summary>Figure T-3</summary><figure><img src="../fig/t-3.png" alt="Figure T-3, a tuned circuit with antenna" class="fig"></figure><p>3 variable inductor · 4 antenna.</p></details>
+  <details><summary>Figure G7-1</summary><figure><img src="../fig/g7-1.png" alt="Figure G7-1, a set of component symbols" class="fig"></figure><p>1 field-effect transistor · 2 NPN junction transistor · 5 Zener diode · 6 solid-core transformer · 7 tapped inductor.</p></details>
+  <details><summary>Figures E6-1 and E6-2</summary><figure><img src="../fig/e6-1.png" alt="Figure E6-1, FET symbols" class="fig"></figure><p>E6-1: 1 P-channel junction FET · 4 N-channel dual-gate MOSFET.</p><figure><img src="../fig/e6-2.png" alt="Figure E6-2, diode and other semiconductor symbols" class="fig"></figure><p>E6-2: 6 Schottky diode.</p></details>
+  <details><summary>Figure E7-2</summary><figure><img src="../fig/e7-2.png" alt="Figure E7-2, a linear voltage regulator" class="fig"></figure><p>A <b>linear voltage regulator</b>: Q1 controls the current to keep the output voltage constant; D1 is the Zener reference, and C2 bypasses rectifier ripple around it.</p></details>
+
+  <!-- 7 -->
+  <h2 id="ics">Chips, packages and connectors</h2>
+  <ul>
+    <li>An <b>integrated circuit</b> (IC) combines many transistors and other parts in one package. An operational amplifier is an <b>analog</b> IC; <b>CMOS</b> digital logic uses much less power than older <b>TTL</b>.</li>
+    <li><b>MMICs</b> (monolithic microwave integrated circuits) are amplifier blocks for VHF to microwaves: controlled gain, low noise, and <b>50 Ω</b> in and out. They're connected with <b>microstrip</b> (a printed track over a ground plane) and powered through a resistor and/or RF choke on the output lead. A good UHF preamplifier has a noise figure around 0.5 dB.</li>
+    <li>For the highest frequencies: <b>gallium arsenide</b> (higher electron mobility, microwave circuits) and <b>gallium nitride</b> (highest frequency of the lot).</li>
+    <li><b>Packages:</b> a <b>DIP</b> (dual in-line package) has two rows of pins for through-hole mounting; its long leads are too inductive for UHF. <b>Surface-mount</b> parts have the least parasitic effects at high frequencies.</li>
+    <li><b>Connectors:</b> <b>BNC</b> (bayonet, good to about 4 GHz), <b>N</b> (moisture-resistant, to 10 GHz), <b>SMA</b> (small, threaded, several GHz), <b>RCA phono</b> (audio and DC). Ferrite cores come in different material "mixes" for different frequencies, and a ferrite bead on coax chokes off common-mode current by adding impedance in its path.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="light">Light in, electricity out</h2>
+  <ul>
+    <li>A <b>photovoltaic</b> cell (solar cell) converts light to electricity: electrons absorb the light's energy. A silicon cell gives about <b>0.5 V</b> in full sun; its <b>efficiency</b> is the fraction of light converted to current.</li>
+    <li>A <b>photoconductive</b> material's resistance <b>drops</b> when light shines on it.</li>
+    <li>An <b>optoisolator</b> is an LED shining on a phototransistor in one package: a signal crosses as light, with no electrical connection, which keeps a control circuit safely <b>isolated</b> from, say, 120 V AC. A <b>solid-state relay</b> is the same idea doing a mechanical relay's job. An <b>optical shaft encoder</b> detects rotation by interrupting a light beam with a patterned wheel (that's how many tuning knobs work).</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T6B02: What lets current flow in only one direction? <i>A diode.</i></summary><p>The PN junction: forward bias thins the depletion region; reverse bias widens it.</p></details>
+  <details><summary>G7A07: Output of an unfiltered full-wave rectifier? <i>DC pulses at twice the AC frequency.</i></summary><p>Both halves of each cycle become a bump in the same direction: two bumps per cycle.</p></details>
+  <details><summary>E6A06: What is beta? <i>The change in collector current divided by the change in base current.</i></summary><p>In the transistor scene, beta = 100: 1 mA more into the base, 100 mA more through the collector (until saturation).</p></details>
+  <details><summary>E7D13: Power dissipated by a series linear regulator? <i>Input-to-output voltage difference times output current.</i></summary><p>The regulator is a self-adjusting resistor in series with the load: all the current goes through it, with the dropped voltage across it.</p></details>
+  <details><summary>E6B04: A voltage-controlled capacitor? <i>A varactor diode.</i></summary><p>The depletion region is an insulating gap whose width depends on the reverse voltage.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T6B,T6C,T6D">Technician T6B, T6C, T6D</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G6A,G6B,G7A">General G6A, G6B, G7A</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E6A,E6B,E6E,E6F,E7D">Extra E6A, E6B, E6E, E6F, E7D</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does a silicon diode need about 0.7 V before it conducts?</summary><p>That's the push needed to collapse its depletion region, the insulating layer at the junction. The exact value depends on the material.</p></details>
+  <details><summary>A linear regulator turns 18 V into 13.8 V at 10 A. How much heat does it make?</summary><p>(18 − 13.8) × 10 = 42 W. A switchmode regulator would waste far less.</p></details>
+  <details><summary>Why is a MOSFET's input impedance so high?</summary><p>Its gate is insulated from the channel by a thin oxide layer, so (at DC) no current flows into it at all.</p></details>
+
+  <nav class="next">
+    <a href="./04-resonance.html">← Lesson 4: Resonance and Q</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l05.ts"></script>
+</body>
+</html>
