@@ -16,6 +16,10 @@
     .ch .lab { font: 0.75rem ui-sans-serif, system-ui, sans-serif; color: var(--accent); border: 0; padding: 0; margin: 0; }
     .ch label { font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); display: flex; gap: 6px; align-items: center; white-space: nowrap; }
     .ch.done { opacity: 0.65; }
+    .words { display: grid; grid-template-columns: minmax(8em, 14em) 1fr; gap: 6px 16px; font-size: 0.95rem; }
+    .words dt a { font-weight: 600; }
+    .words dd { margin: 0; }
+    @media (max-width: 560px) { .words { grid-template-columns: 1fr; } .words dd { margin-bottom: 8px; } }
     .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 0; }
     .bar div { height: 100%; background: var(--accent); width: 0; transition: width 0.3s; }
     @media (prefers-reduced-motion: reduce) { .bar div { transition: none; } }
@@ -31,6 +35,35 @@
   <div class="bar"><div id="bar"></div></div>
 
   <div id="chapters"></div>
+
+  <h2 id="words" style="margin-top:48px">Words and units</h2>
+  <p class="note">Every term the course uses, in one line. Click it to jump to where it's explained.</p>
+  <dl class="words">
+    <dt><a href="./01-spinning-arrows.html#fm">Hz, kHz, MHz, GHz</a></dt><dd>turns (or oscillations) per second: one, a thousand, a million, a billion.</dd>
+    <dt><a href="./01-spinning-arrows.html#wheel">frequency, amplitude, phase</a></dt><dd>how fast an arrow turns, how long it is, and where it started.</dd>
+    <dt><a href="./02-arrows-as-numbers.html#two">I and Q</a></dt><dd>an arrow's two shadows (sideways and up); every sample is one I/Q pair.</dd>
+    <dt><a href="./02-arrows-as-numbers.html#multiply">complex number, j</a></dt><dd>an arrow written as two numbers; j is the quarter turn, and j·j = −1.</dd>
+    <dt><a href="./03-taking-snapshots.html#fold">sample, MS/s, kS/s</a></dt><dd>one snapshot of the arrow; millions or thousands of snapshots per second.</dd>
+    <dt><a href="./03-taking-snapshots.html#fold">aliasing, Nyquist</a></dt><dd>a too-fast arrow pretending to be a slower one; the honest zone of ±half the sample rate.</dd>
+    <dt><a href="./03-taking-snapshots.html#ruler">bit, byte</a></dt><dd>a binary digit (0 or 1); 8 bits make a byte, a number from 0 to 255.</dd>
+    <dt><a href="./04-winding-machine.html#window">dB (decibel)</a></dt><dd>a ratio of strengths: +10 dB is 10× the power, +3 dB about 2×.</dd>
+    <dt><a href="./04-winding-machine.html#spectrum">spectrum, FFT, waterfall</a></dt><dd>how strong each frequency is; the fast way to compute it; spectra stacked over time.</dd>
+    <dt><a href="./04-winding-machine.html#real">DC</a></dt><dd>a constant part of a signal that doesn't spin: frequency 0.</dd>
+    <dt><a href="./05-moving-a-station.html#shift">mixing, NCO, local oscillator</a></dt><dd>sliding every frequency by multiplying by a spinning arrow; the arrow made from arithmetic.</dd>
+    <dt><a href="./06-averaging-is-filtering.html#weights">filter, FIR, taps</a></dt><dd>a weighted average that keeps some frequencies and removes others; the weights.</dd>
+    <dt><a href="./07-throwing-away-snapshots.html#fold">decimation</a></dt><dd>keeping every M-th sample, after filtering.</dd>
+    <dt><a href="./10-am-ssb-and-morse.html#am">FM, AM, SSB, CW</a></dt><dd>sound in the arrow's speed, in its length, one sideband only, Morse on/off.</dd>
+    <dt><a href="./09-fm-listening-to-the-speed.html#demod">demodulation</a></dt><dd>getting the sound back out of a station's arrow.</dd>
+    <dt><a href="./11-numbers-to-speakers.html#agc">AGC, squelch</a></dt><dd>automatic volume; muting when nobody's transmitting.</dd>
+    <dt><a href="./11-numbers-to-speakers.html#clocks">ppm</a></dt><dd>parts per million: 50 ppm is 50 millionths.</dd>
+    <dt><a href="./12-inside-the-dongle.html#image">tuner, IF, image</a></dt><dd>the chip that moves radio down to a fixed intermediate frequency; the mirror frequency that can sneak in.</dd>
+    <dt><a href="./12-inside-the-dongle.html#pll">PLL, VCO, crystal</a></dt><dd>the circuit that makes any frequency from one steady quartz crystal.</dd>
+    <dt><a href="./12-inside-the-dongle.html#path">register, I2C</a></dt><dd>a numbered setting inside a chip; the two-wire link chips use to set each other's registers.</dd>
+    <dt><a href="./13-usb-from-zero.html#setup">hexadecimal (0x…)</a></dt><dd>base-16 numbers: 0x10 is 16, 0xFF is 255.</dd>
+    <dt><a href="./13-usb-from-zero.html#tree">endpoint, control, bulk</a></dt><dd>a one-way USB mailbox; small setting messages; the big sample stream.</dd>
+    <dt><a href="./13-usb-from-zero.html#bulk">KiB, MB/s, Mbit/s</a></dt><dd>1024 bytes; megabytes per second; megabits per second (a bit is ⅛ of a byte, so 8 Mbit/s = 1 MB/s).</dd>
+    <dt><a href="./14-writing-the-driver.html#trace">driver</a></dt><dd>the code that knows which registers to write, in which order.</dd>
+  </dl>
 
   <p style="margin-top:40px">Also: <a href="../">Spectrum Lab</a> (the full app) · <a href="../learn.html">one-page quick reference</a> · <a href="../build.html">build for your own dongle</a> (developer guide).</p>
 </main>
@@ -70,7 +103,7 @@
     const n = file.slice(0, 2);
     return `<div class="ch${read.has(file) ? " done" : ""}" data-f="${file}"><span class="num">${+n}</span>
       <div><h3><a href="./${file}.html">${title}</a></h3><p>${sum}</p>
-      <div class="needs">${needs ? `Builds on: chapter${needs.includes(",") || needs.includes("–") ? "s" : ""} ${needs}` : "Start here: no background needed"}${hasLab ? ' · <span class="lab">includes a live lab</span>' : ""}</div></div>
+      <div class="needs">${needs === "all" ? "Builds on: every chapter before it" : needs ? `Builds on: chapter${needs.includes(",") || needs.includes("–") ? "s" : ""} ${needs}` : "Start here: no background needed"}${hasLab ? ' · <span class="lab">includes a live lab</span>' : ""}</div></div>
       <label><input type="checkbox" ${read.has(file) ? "checked" : ""}> done</label></div>`;
   }).join("")).join("");
   document.querySelectorAll(".ch input").forEach((cb) => cb.addEventListener("change", () => {

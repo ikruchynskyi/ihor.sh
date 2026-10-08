@@ -20,7 +20,8 @@
   </div>
 
   <p>Since chapter 3 we've taken the I/Q numbers for granted: they arrive over USB, and we process them. This chapter opens the box. The surprise is how little in it is new. The dongle uses exactly the tools you've already learned (mixing, filtering, sampling, decimating), partly with electronics and partly with numbers, to deliver a 2.4 MHz slice of radio from anywhere between 24 and 1766 MHz.</p>
-  <p>Inside are two chips: a <b>tuner</b> (Rafael Micro R820T2), which handles the radio waves, and an <b>RTL2832U</b>, which turns them into numbers and talks USB. Between them they share one tiny component that sets the pace for everything: a <b>28.8 MHz crystal</b>.</p>
+  <p>Inside are two chips: a <b>tuner</b> (Rafael Micro R820T2), which handles the radio waves, and an <b>RTL2832U</b>, which turns them into numbers and talks USB. Between them they share one tiny component that sets the pace for everything: a <b>28.8 MHz crystal</b> (a sliver of quartz that vibrates at one extremely steady rate, the chip's metronome).</p>
+  <p>Two words you'll meet from here on. Chips are controlled through <b>registers</b>: small numbered memory slots, each holding one byte, where writing a number changes a setting (one register picks the gain, three more set the tuning, and so on). And the two chips talk to each other over <b>I2C</b> ("I-squared-C"): a simple two-wire connection that lets one chip read and write another chip's registers. Our computer never talks to the tuner directly; it asks the RTL2832U to pass messages along (chapter 13).</p>
 
   <!-- 1 -->
   <h2 id="path">The signal's journey</h2>

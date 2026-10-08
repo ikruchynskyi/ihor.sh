@@ -48,7 +48,7 @@
   </div>
 
   <p>Why two copies? It's chapter 5's fact again (<a class="back" href="./05-moving-a-station.html#copies">↩</a>): a plain up-and-down wave is two arrows spinning in opposite directions. AM changes the length with a plain wave (the sound), so every tone in the sound appears as an arrow above the carrier and its mirror twin below.</p>
-  <p>Since the two sidebands carry exactly the same information, a transmitter can send <b>just one</b> and drop the carrier entirely. That's <b>single sideband</b> (SSB): roughly a sixth of the power for the same distance, and half the space on the dial. It's what radio amateurs and long-distance aviation use for voice.</p>
+  <p>Since the two sidebands carry exactly the same information, a transmitter can send <b>just one</b> and drop the carrier entirely. That's <b>single sideband</b> (SSB). Even at full modulation, an AM signal spends two thirds of its power on the carrier and splits the rest between two identical sidebands, so only about a sixth of it is the sound you actually need. An SSB transmitter puts everything into that one sideband: on paper, it gets as far as an AM transmitter about six times as strong (with real speech the advantage is smaller, but still large), and it takes half the space on the dial. It's what radio amateurs and long-distance aviation use for voice.</p>
 
   <!-- 3 -->
   <h2 id="ssb">Receiving SSB, and the Donald Duck problem</h2>
@@ -114,7 +114,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average, a "DC blocker"):</p>
+  <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average; engineers call it a "DC blocker", because the steady part is the <a class="back" href="./04-winding-machine.html#real">DC of chapter 4</a>):</p>
 <pre><code>const x = Math.hypot(iq[2 * k], iq[2 * k + 1]);          // the arrow's length (chapter 2)
 out[k] = this.y1 = x - this.x1 + 0.995 * this.y1;        // remove the constant part
 this.x1 = x;</code></pre>

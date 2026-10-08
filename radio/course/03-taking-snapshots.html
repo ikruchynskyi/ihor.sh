@@ -53,10 +53,12 @@
   <p>Now tick <b>Only one shadow</b>. The graph folds in half: +0.3 and −0.3 now look identical, just like chapter 1's game. The honest zone shrinks to 0 to ½.</p>
   <p>This graph <em>is</em> the most famous rule in signal processing, usually stated as a formula. In plain words:</p>
   <ul>
-    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab.</li>
+    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab. (Radio people write the photo rate as <b>MS/s</b>, mega-samples per second: 2.4 MS/s is 2.4 million snapshots per second; <b>kS/s</b> is thousands.)</li>
     <li><b>With one shadow</b>, only 0 to ½, so you need <b>twice as many photos</b> for the same range. That's why a music CD stores 44 100 samples per second: to capture sounds up to 22 050 Hz, just above the highest pitch humans hear.</li>
   </ul>
   <p>And here's the catch for radio: arrows outside the zone don't politely disappear. A station 1.5 MHz away would land <em>on top of</em> a station 0.9 MHz away in the other direction. So the dongle has to remove everything outside the zone <b>before</b> it takes its photos. Its chip contains a filter that does exactly that; you'll see its numbers in the code below, and learn how filters work in chapter 6.</p>
+
+  <div class="ponder"><span class="tag">Wait: 98 million turns, 2.4 million photos?</span>A station at 98.7 MHz turns 98.7 million times per second, far outside an honest zone of ±1.2 MHz. So how can the dongle photograph it at all? Because, before taking any photos, its tuner chip <b>slows every arrow down</b> by the frequency you tuned to. Tune to 98.0 MHz, and a station at 98.7 MHz now spins at only 0.7 MHz, one at 97.5 MHz at −0.5 MHz, and the photos only ever see these slow, leftover speeds. That's what "around where it's tuned" means. Chapter 5 shows how slowing arrows down works (it's one multiplication), and chapter 12 how the chip does it with electronics.</div>
 
   <div class="ponder"><span class="tag">Pause and ponder</span>The dongle takes 2.4 million photos per second and you tune it to 98.0 MHz. A station at 99.5 MHz is 1.5 MHz above the center: that's 0.625 turns per photo. Where would it seem to be if nothing filtered it out?</div>
   <p>Answer: 0.625 − 1 = −0.375 turns per photo, which is −0.9 MHz: it would pretend to be a station at 97.1 MHz, right on top of a real station there.</p>
@@ -94,7 +96,7 @@
 
   <p>Things to try:</p>
   <ul>
-    <li><b>More marks</b>: every extra bit doubles the marks and halves the error, which makes the error about <b>6 dB</b> quieter. With 8 bits (256 marks), a full-size signal is about <b>50 dB</b>, i.e. 100 000 times, stronger than the measuring error.</li>
+    <li><b>More marks</b>: every extra bit doubles the marks and halves the error, which makes the error about <b>6 dB</b> quieter. (A <b>bit</b> is one binary digit, 0 or 1; <em>n</em> bits can count 2<sup>n</sup> marks, so 8 bits, one byte, give 256. <b>Decibels</b>, dB, measure ratios of strength: every 10 dB is 10× the power, so 20 dB is 100× and 50 dB is 100 000×. Chapter 4 uses them a lot.) With 8 bits (256 marks), a full-size signal is about <b>50 dB</b>, i.e. 100 000 times, stronger than the measuring error.</li>
     <li><b>A small signal</b> (drag the size down): it only spans a few marks, so the recording is a crude staircase and the error is almost as big as the signal itself. A weak station, much smaller than one mark, disappears completely.</li>
     <li><b>A huge signal</b> (above 100%): the tops get cut off at the ends of the ruler. That's <b>clipping</b>, and it's even worse than the staircase: it creates fake arrows that weren't in the air.</li>
   </ul>

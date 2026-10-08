@@ -113,7 +113,7 @@ all checks passed</code></pre>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does nearly every tuner operation start with demod register 0x01 = 0x18?</summary><p>That switches on the I2C repeater, the gate between the RTL2832U and the tuner's I2C wires. It's switched off again (0x10) afterwards so stray traffic can't reach the tuner.</p></details>
-  <details><summary>Why does the tuner driver keep a copy of every register it writes?</summary><p>Most of the chip's registers can't be read back. To change a few bits, the driver needs to know the rest of the byte, so it keeps its own copy (a shadow).</p></details>
+  <details><summary>Why does the tuner driver keep a copy of every register it writes?</summary><p>Most of the chip's registers can't be read back. To change a few bits, the driver needs to know the rest of the byte, so it keeps its own copy. (Engineers call it a "shadow" register, which has nothing to do with chapter 1's shadows.)</p></details>
   <details><summary>How can you test that tuning works without listening to anything?</summary><p>Tune to a stereo FM station and check that the demodulated signal contains the 19 kHz pilot. Wrong tuning, a wrong sample rate or mixed-up I/Q would all destroy it.</p></details>
 
   <nav class="next">

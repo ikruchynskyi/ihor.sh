@@ -109,7 +109,7 @@ private async demodWrite(page: number, addr: number, val: number, len = 1) {
   await this.in((0x01 &lt;&lt; 8) | 0x20, 0x0a, 1);   // the chip expects this dummy read
 }</code></pre>
   <p><b>Identifying the tuner:</b> with the repeater on, read register 0 of I2C address 0x34 (R820T) or 0x74 (R828D). Both answer 0x69. Note that the R820T returns every byte you read with its bits in reverse order.</p>
-  <p><b>Start-up</b> is about 30 register writes: power the demodulator, soft-reset it, load the resampler's filter, switch to SDR mode, then initialize the tuner. The full sequence, each write explained, is in <code>initBaseband()</code> and in the article <code>articles/01-talking-to-the-dongle.md</code>.</p>
+  <p><b>Start-up</b> is about 30 register writes: power the demodulator, soft-reset it, load the resampler's filter, switch to SDR mode, then initialize the tuner. The full sequence, each write explained, is in <code>initBaseband()</code> and, decoded write by write, in <a href="./course/14-writing-the-driver.html#trace">course chapter 14</a>.</p>
 
   <h2 id="tuning">Tuning and sample rate</h2>
   <p><b>Frequency</b> is set in the tuner by programming its PLL: pick a divider that puts its internal oscillator between 1.77 and 3.54 GHz, then split the ratio to the 28.8 MHz crystal into an integer and a 16-bit fraction. From the driver:</p>

@@ -101,7 +101,7 @@
     <li><b>Synthetic signals first.</b> <code>synth()</code> makes fake stations (FM, AM, USB) with known content. That allowed testing every step with exact expected answers before touching any hardware. The widgets below use it too.</li>
     <li><b>Every step is a streaming block.</b> Live radio arrives in chunks of ~55 ms. A filter needs the last few dozen samples of the <em>previous</em> chunk, the mixer needs to continue its angle, and the FM demodulator needs the previous sample. If a block forgot that at each chunk edge, you'd hear a click 18 times a second. So each block is a small class that keeps its memory between <code>process()</code> calls. Processing a file is just one big chunk.</li>
   </ol>
-  <p>The USB driver has its own write-up (how the tuner's PLL is programmed, the 19 kHz pilot test): <code>radio/articles/01-talking-to-the-dongle.md</code>.</p>
+  <p>The USB driver has its own chapters in the course: <a href="./course/12-inside-the-dongle.html">inside the dongle</a> (how the tuner's PLL is programmed), <a href="./course/13-usb-from-zero.html">USB from zero</a> and <a href="./course/14-writing-the-driver.html">writing the driver</a> (every message, decoded, and the 19 kHz pilot test).</p>
 
   <!-- 0 -->
   <h2 id="iq"><span class="n">0</span>I/Q: why every sample is two numbers</h2>
@@ -313,7 +313,7 @@ pi = i; pq = q;                                        // remember it for the ne
     <li><b>Decimation.</b> <em>Check:</em> try it without the filter and see a neighbor fold in (like the widget above).</li>
     <li><b>FM, AM and SSB demodulators.</b> <em>Check:</em> each recovers its fake station's tone.</li>
     <li><b>Make every block streaming.</b> <em>Check:</em> chunked output equals whole-buffer output, bit for bit.</li>
-    <li><b>Real samples.</b> Record a station with <code>rtl_sdr</code> and load the file. <em>Check:</em> the 19 kHz pilot. Then write your own USB driver (<code>articles/01-talking-to-the-dongle.md</code>) and run the same check live.</li>
+    <li><b>Real samples.</b> Record a station with <code>rtl_sdr</code> and load the file. <em>Check:</em> the 19 kHz pilot. Then write your own USB driver (<a href="./course/13-usb-from-zero.html">course chapters 13–14</a> and the <a href="./build.html">build guide</a>) and run the same check live.</li>
   </ol>
 
   <h2 id="words">Glossary</h2>

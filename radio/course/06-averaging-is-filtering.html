@@ -131,7 +131,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <p><b>Designing the filter</b> (<code>firLowpass()</code> in <code>src/dsp.ts</code>): choose how many weights from the edge width, sample the sinc, fade it with a Hamming window, and scale so a signal at 0 Hz passes at exactly 1×:</p>
+  <p><b>Designing the filter</b> (<code>firLowpass()</code> in <code>src/dsp.ts</code>): choose how many weights from the edge width, sample the sinc, fade it with a Hamming window (a close cousin of chapter 4's Hann window: the same gentle bump, slightly raised at the ends), and scale so a signal at 0 Hz passes at exactly 1×:</p>
 <pre><code>let n = Math.ceil(3.3 / Math.max(transitionNorm, 1e-4));   // steeper edge → more weights
 n = Math.min(511, n | 1);                                  // odd, so there's a middle weight; at most 511
 for (let i = 0; i &lt; n; i++) {

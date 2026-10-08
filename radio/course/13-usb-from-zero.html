@@ -52,8 +52,8 @@
 
   <!-- 3 -->
   <h2 id="bulk">Bulk transfers and bus time</h2>
-  <p>Control transfers are small and careful. The samples need the opposite: lots of data, fast. That's what <b>bulk</b> transfers are for. The host asks endpoint 0x81 for, say, 256 KiB; the dongle answers in 512-byte packets, as fast as the bus has room, until the request is filled.</p>
-  <p>USB 2.0 ("high speed", 480 Mbit/s) divides time into slots of 125 µs, called microframes, each with room for up to 13 bulk packets of 512 bytes. How much of that does a radio stream need?</p>
+  <p>Control transfers are small and careful. The samples need the opposite: lots of data, fast. That's what <b>bulk</b> transfers are for. The host asks endpoint 0x81 for, say, 256 KiB (a KiB is 1024 bytes, so about 262 000 bytes); the dongle answers in 512-byte packets, as fast as the bus has room, until the request is filled.</p>
+  <p>USB 2.0 ("high speed", 480 Mbit/s: megabits per second; a byte is 8 bits, so that's 60 MB, megabytes, per second) divides time into slots of 125 µs, called microframes, each with room for up to 13 bulk packets of 512 bytes. How much of that does a radio stream need?</p>
 
   <div class="scene" id="s-bus">
     <div class="controls">
