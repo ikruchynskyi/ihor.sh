@@ -6,7 +6,7 @@ export interface Lesson { slug: string; title: string; blurb: string; groups: st
 export const LESSONS: Lesson[] = [
   { slug: "01-volts-amps-ohms", title: "Volts, amps and ohms", blurb: "Pressure, flow and resistance; Ohm's law, power, series and parallel, meters.", groups: ["T5A", "T5C", "T5D", "T7D", "G5B", "G5C"], ready: true },
   { slug: "02-decibels-and-prefixes", title: "Decibels, prefixes, RMS and PEP", blurb: "Mega to pico, the decibel ladder, what an S-meter counts, average versus peak power.", groups: ["T5B", "G5B", "G4D", "E8A"], ready: true },
-  { slug: "03-capacitors-and-inductors", title: "Capacitors and inductors", blurb: "A tank of charge and a flywheel of current; reactance, time constants, transformers.", groups: ["T5C", "T6A", "G5A", "G5C", "G6A", "E5B", "E6D"], ready: false },
+  { slug: "03-capacitors-and-inductors", title: "Capacitors and inductors", blurb: "A tank of charge and a flywheel of current; reactance, time constants, transformers.", groups: ["T5C", "T6A", "G5A", "G5C", "G6A", "E5B", "E6D"], ready: true },
   { slug: "04-resonance", title: "Resonance and Q", blurb: "The swinging LC tank, tuning, bandwidth, impedance as an arrow, filters and matching.", groups: ["T6D", "G5A", "E5A", "E5C", "E5D", "E7C"], ready: false },
   { slug: "05-diodes-and-transistors", title: "Diodes, transistors and power supplies", blurb: "One-way valves and controlled valves; rectifiers, regulators, schematics.", groups: ["T6B", "T6C", "T6D", "G6A", "G6B", "G7A", "E6A", "E6B", "E6E", "E6F", "E7D"], ready: false },
   { slug: "06-waves-and-wavelength", title: "Waves and wavelength", blurb: "What a radio wave is, 300 ÷ MHz, band names, polarization, fading.", groups: ["T3A", "T3B", "E5D"], ready: false },

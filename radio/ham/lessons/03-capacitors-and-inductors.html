@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capacitors and Inductors</title>
+  <meta name="description" content="Ham radio, visually, lesson 3: capacitors as tanks of charge and inductors as flywheels of current; time constants, reactance, phase, impedance, transformers and cores." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 3</p>
+  <h1>Capacitors and inductors</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./01-volts-amps-ohms.html#ohm">Lesson 1: Ohm's law</a>, <a href="./01-volts-amps-ohms.html#series">series and parallel</a>, <a href="./01-volts-amps-ohms.html#ac">AC</a></li>
+      <li><a href="./02-decibels-and-prefixes.html#prefixes">Lesson 2: prefixes</a> (micro, pico, milli)</li>
+      <li>For the impedance arrow: <a href="../../course/02-arrows-as-numbers.html#two">course ch. 2, arrows as two numbers</a></li>
+    </ul>
+  </div>
+
+  <p>A resistor is simple: it turns current into heat, the same way at every frequency. Radio needs parts with more personality. A <b>capacitor</b> stores energy in an electric field; an <b>inductor</b> stores it in a magnetic field. Both <em>resist change</em>, in opposite ways, and that's why their behaviour depends on frequency. That frequency dependence is what lets a radio pick one station out of thousands.</p>
+
+  <!-- 1 -->
+  <h2 id="capacitor">A capacitor: a tank that fills up</h2>
+  <p>A capacitor is two conductive surfaces (plates) separated by an insulator. No current can cross the gap. But connect a battery and electrons pile up on one plate while the other plate gives electrons away: charge is <em>stored</em>, held by the electric field across the gap. Flip the switch and watch it fill through a resistor:</p>
+
+  <div class="scene" id="s-cap">
+    <div class="controls">
+      <label for="c-sw"><input id="c-sw" type="checkbox" checked> Switch to the battery (untick to discharge)</label>
+      <label for="c-r">Resistance <input id="c-r" type="range" min="1" max="10" step="1" value="5"><output id="c-ro"></output></label>
+      <label for="c-c">Capacitance <input id="c-c" type="range" min="1" max="10" step="1" value="4"><output id="c-co"></output></label>
+    </div>
+    <p class="readout" id="r-cap" aria-live="polite"></p>
+  </div>
+
+  <p>At first the empty capacitor gulps current as if it were a short circuit. As it fills, its own voltage pushes back against the battery, and the current slows to a trickle. The voltage climbs along a curve that's fast at first and then levels off. That's the <b>water tank</b> picture: filling a tank through a narrow pipe is quick when it's empty and slow when it's nearly full.</p>
+  <p>How fast? After one <b>time constant</b>, the capacitor has charged to <b>63.2%</b> of the battery voltage (or, when discharging, dropped to <b>36.8%</b>). After five time constants, it's essentially full. The time constant is simply R × C: ohms times farads gives seconds. A bigger tank (more capacitance) or a narrower pipe (more resistance) both make it slower.</p>
+  <p>Capacitance is measured in <b>farads</b> (F). A farad is enormous, so real capacitors are in microfarads (µF), nanofarads (nF) and picofarads (pF). Two kinds you'll meet: <b>electrolytic</b> capacitors pack a lot of capacitance into a small can (for power supplies), and <b>ceramic</b> ones are cheap and small (everywhere else).</p>
+
+  <!-- 2 -->
+  <h2 id="inductor">An inductor: a flywheel for current</h2>
+  <p>An inductor is a coil of wire. Current through it builds a <b>magnetic field</b> around it, and building that field takes energy. Once built, the field wants to keep the current going. The result is a part that resists any <em>change</em> in current, like a heavy flywheel resists changes in speed:</p>
+
+  <div class="scene" id="s-ind">
+    <div class="controls">
+      <label for="i-sw"><input id="i-sw" type="checkbox" checked> Switch closed</label>
+      <label for="i-l">Inductance <input id="i-l" type="range" min="1" max="10" step="1" value="5"><output id="i-lo"></output></label>
+    </div>
+    <p class="readout" id="r-ind" aria-live="polite"></p>
+  </div>
+
+  <p>Close the switch: the current doesn't jump up, it <em>grows</em>, as the field builds (time constant L ÷ R). Open it: the field collapses and tries to keep the current flowing, producing a burst of high voltage, enough to make a spark across the switch. That "kick" is how a car's ignition coil makes 20 000 volts from a 12-volt battery.</p>
+  <p>Inductance is measured in <b>henries</b> (H); radio coils are usually microhenries (µH). A capacitor stores energy in an <b>electric</b> field; an inductor in a <b>magnetic</b> field. Remember the opposites:</p>
+  <ul>
+    <li>A capacitor resists changes in <b>voltage</b>. It passes changes (AC) and blocks steady DC.</li>
+    <li>An inductor resists changes in <b>current</b>. It passes steady DC and fights fast changes (high-frequency AC).</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="reactance">Reactance: opposition that depends on frequency</h2>
+  <p>Feed both parts AC and slide the frequency. On the left, the current that flows; on the right, each part's opposition to AC at every frequency:</p>
+
+  <div class="scene" id="s-react">
+    <div class="controls">
+      <label for="x-f">Frequency <input id="x-f" type="range" min="0" max="1" step="0.005" value="0.5"><output id="x-fo"></output></label>
+    </div>
+    <p class="readout" id="r-react" aria-live="polite"></p>
+  </div>
+
+  <p>This frequency-dependent opposition is called <b>reactance</b>, written <b>X</b>, and measured in ohms like resistance:</p>
+  <ul>
+    <li>An inductor's reactance <b>rises</b> with frequency: the faster the current tries to change, the harder the flywheel fights.</li>
+    <li>A capacitor's reactance <b>falls</b> with frequency: at high frequency, the tank never gets the chance to fill up and push back.</li>
+  </ul>
+  <p>Where the two curves cross, their oppositions are equal. That crossing is <b>resonance</b>, the heart of every tuned circuit, and the subject of <a href="./04-resonance.html">lesson 4</a>.</p>
+  <div class="notation">
+    <math><msub><mi>X</mi><mi>L</mi></msub><mo>=</mo><mn>2</mn><mi>π</mi><mi>f</mi><mi>L</mi><mspace width="2em"/><msub><mi>X</mi><mi>C</mi></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><mi>f</mi><mi>C</mi></mrow></mfrac><mspace width="2em"/><mi>τ</mi><mo>=</mo><mi>R</mi><mi>C</mi></math>
+    <ul><li>f in hertz, L in henries, C in farads, X in ohms. τ (tau) is the time constant in seconds.</li></ul>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="phase">Out of step: phase, and the impedance arrow</h2>
+  <p>Reactance has one more twist: it puts current and voltage <em>out of step</em>. In a capacitor, current flows hardest while the tank is empty, so the current peaks a quarter cycle <em>before</em> the voltage: <b>current leads voltage by 90°</b>. In an inductor it's the other way round: <b>voltage leads current by 90°</b>. (A classic memory aid: "ELI the ICE man": in an inductor, L, voltage E comes before current I; in a capacitor, C, current I comes before E.)</p>
+  <p>That's why resistance and reactance can't simply be added. Think of them as arrows at right angles (<a class="back" href="../../course/02-arrows-as-numbers.html#two">↩ course ch. 2</a>): resistance points sideways, inductive reactance points up, capacitive reactance points down. Their sum is the <b>impedance</b> arrow, Z: its length is the total opposition (still in ohms: the ratio of voltage to current), and its angle is how far voltage and current are out of step.</p>
+
+  <div class="scene" id="s-phase">
+    <div class="controls">
+      <label for="z-r">R <input id="z-r" type="range" min="0" max="1000" step="25" value="1000"><output id="z-ro"></output></label>
+      <label for="z-l">X<sub>L</sub> <input id="z-l" type="range" min="0" max="1000" step="25" value="250"><output id="z-lo"></output></label>
+      <label for="z-c">X<sub>C</sub> <input id="z-c" type="range" min="0" max="1000" step="25" value="500"><output id="z-co"></output></label>
+    </div>
+    <p class="readout" id="r-phase" aria-live="polite"></p>
+  </div>
+
+  <p>In a series circuit, the up and down arrows cancel as far as they can: the net reactance is X<sub>L</sub> − X<sub>C</sub>. If the inductor wins, the arrow tilts up and voltage leads current; if the capacitor wins, it tilts down and voltage lags. The Extra exam's examples are exactly this picture: X<sub>C</sub> = 500 Ω, R = 1 kΩ, X<sub>L</sub> = 250 Ω gives a net 250 Ω downwards against 1000 Ω sideways: an angle of 14°, voltage lagging.</p>
+  <p>Two more words from the same picture. <b>Admittance</b> is the inverse of impedance (how easily current flows rather than how hard): flip the arrow's length to 1 over it, and its angle to the opposite sign. Its up-down part is called <b>susceptance</b>, written B.</p>
+
+  <!-- 5 -->
+  <h2 id="combining">Combining capacitors and inductors</h2>
+  <p>Inductors combine like resistors: in series they add, in parallel they shrink (20 mH + 50 mH in series = 70 mH; three 10 mH in parallel = 3.3 mH). Capacitors do the <em>opposite</em>, because putting them side by side makes one bigger plate: in parallel they add (5 nF + 5 nF + 750 pF = 10.75 nF), in series they shrink (three 100 µF in series = 33.3 µF; 20 µF and 50 µF in series = 14.3 µF, by product over sum). So: to increase capacitance, add a capacitor in <b>parallel</b>; to increase inductance, add an inductor in <b>series</b>.</p>
+
+  <!-- 6 -->
+  <h2 id="transformer">Transformers: two coils sharing a field</h2>
+  <p>Wind two coils on the same core. AC in the first (the <b>primary</b>) makes a changing magnetic field, and that changing field pushes current in the second (the <b>secondary</b>): <b>mutual inductance</b>. The voltage scales with the number of turns:</p>
+
+  <div class="scene" id="s-xfmr">
+    <div class="controls">
+      <label for="t-n1">Primary turns <input id="t-n1" type="range" min="100" max="1500" step="100" value="500"><output id="t-n1o"></output></label>
+      <label for="t-n2">Secondary turns <input id="t-n2" type="range" min="100" max="1500" step="100" value="1500"><output id="t-n2o"></output></label>
+    </div>
+    <p class="readout" id="r-xfmr" aria-live="polite"></p>
+  </div>
+
+  <p>Energy can't be created, so if the voltage goes up, the current goes down by the same factor: a step-up transformer's primary carries the bigger current, which is why its primary is wound with thicker wire. Feed a 4:1 step-down transformer backwards (into its secondary) and it becomes a 1:4 step-up: the voltage is multiplied by 4.</p>
+  <p>Transformers also <b>match impedances</b>: the impedance ratio is the turns ratio <em>squared</em>. To match a 600 Ω antenna to 50 Ω coax, the impedance ratio is 12, so the turns ratio is √12 ≈ 3.5 to 1. (More on why matching matters in lesson 8.)</p>
+
+  <!-- 7 -->
+  <h2 id="cores">What's inside the coil</h2>
+  <p>Put a magnetic material inside a coil and it concentrates the field, raising the inductance. How strongly a material does that is its <b>permeability</b>, and it's what sets an inductor's value for a given number of turns. Compare a straight coil with a ring-shaped one:</p>
+
+  <div class="scene" id="s-core">
+    <div class="controls">
+      <label for="k-t"><input id="k-t" type="checkbox"> Toroid (ring-shaped core)</label>
+    </div>
+  </div>
+
+  <ul>
+    <li>A straight coil's (solenoid's) field spills out around it and can couple into nearby circuits. A <b>toroid</b>'s field stays almost entirely inside its ring: that's the main reason radio builders love toroids.</li>
+    <li><b>Ferrite</b> cores have high permeability, so they need fewer turns for a given inductance. <b>Powdered iron</b> cores are less permeable but keep their magnetic properties more stable with temperature.</li>
+    <li>A solid metal core would have currents swirling inside it (<b>eddy currents</b>) that waste power as heat; cores of thin insulated layers (laminations) prevent that. A <b>brass</b> core does the opposite of iron: it <em>decreases</em> inductance, because eddy currents in it push the field out.</li>
+    <li>Too much current drives a core into <b>saturation</b>: it can't concentrate any more magnetic flux, and the inductance collapses.</li>
+    <li>Every real coil also has a little capacitance between its turns. Above its <b>self-resonant frequency</b>, an inductor actually behaves like a capacitor. The flip side: a <b>wire-wound resistor</b> is a coil too, and its inductance makes it unpredictable at radio frequencies. <b>Ferrite beads</b> slipped over a wire add a little inductance and loss, enough to kill unwanted VHF oscillations.</li>
+    <li><b>Quartz crystals</b> are <b>piezoelectric</b>: squeeze them and they make a voltage; apply a voltage and they flex. A thin slice of quartz vibrates at one extremely precise frequency, and electrically it behaves like a series R, L and C (the vibration) in parallel with a small capacitor (its electrodes). That's the crystal that sets the pace in your dongle (<a class="back" href="../../course/12-inside-the-dongle.html#pll">↩ course ch. 12</a>).</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="drawer">The rest of the parts drawer</h2>
+  <ul>
+    <li><b>Potentiometer:</b> a resistor with a sliding contact: an adjustable resistance, the classic volume control.</li>
+    <li><b>Switches:</b> "pole" is how many separate circuits a switch controls, "throw" is how many positions each can connect to. SPST (single-pole single-throw) is a plain on/off; SPDT switches one circuit between two others.</li>
+    <li><b>Batteries:</b> nickel-cadmium, nickel-metal-hydride, lithium-ion and lead-acid are rechargeable; carbon-zinc is not. A 12 V lead-acid battery lasts longest if never discharged below about <b>10.5 V</b>. A battery with low internal resistance can deliver a high current, which a transmitter needs.</li>
+    <li><b>Fuses</b> are deliberately weak links that melt before a fault can overheat wiring: see <a href="./14-safety.html">lesson 14</a>.</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>G5A05 / G5A06: How do an inductor and a capacitor react to rising frequency? <i>Inductive reactance increases; capacitive reactance decreases.</i></summary><p>The reactance scene: the inductor's flywheel fights faster changes harder; the capacitor's tank has less time to fill and push back.</p></details>
+  <details><summary>E5B04: Time constant of two 220 µF capacitors and two 1 MΩ resistors, all in parallel? <i>220 seconds.</i></summary><p>The capacitors in parallel add to 440 µF; the resistors in parallel halve to 0.5 MΩ. τ = 0.5 × 10⁶ × 440 × 10⁻⁶ = 220 s.</p></details>
+  <details><summary>E5B09 / E5B10: Phase in a capacitor and in an inductor? <i>Current leads voltage by 90°; voltage leads current by 90°.</i></summary><p>ELI the ICE man. A capacitor's current is biggest while it's empty, before its voltage builds; an inductor's voltage is biggest while its current is still building.</p></details>
+  <details><summary>E5B11: XC 25 Ω, R 100 Ω, XL 75 Ω in series: phase angle? <i>27°, voltage leading.</i></summary><p>Net reactance 75 − 25 = 50 Ω up (inductive), against 100 Ω sideways. The arrow's angle is about 27°, tilted up, so voltage leads.</p></details>
+  <details><summary>G5C06: 500-turn primary, 1500-turn secondary, 120 V AC in? <i>360 volts.</i></summary><p>Three times the turns, three times the voltage.</p></details>
+  <details><summary>E6D10: Why a toroid instead of a straight coil? <i>It confines most of the magnetic field within the core.</i></summary><p>The core scene: the ring keeps its field inside, so it doesn't couple into neighbours.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T5C,T6A">Technician T5C, T6A</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G5A,G5C,G6A">General G5A, G5C, G6A</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E5B,E6D">Extra E5B, E6D</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Which part blocks DC but passes AC, and which does the opposite?</summary><p>A capacitor blocks steady DC (no current crosses its gap once it's full) and passes AC. An inductor passes DC freely and opposes AC, more so at higher frequencies.</p></details>
+  <details><summary>A 10 kΩ resistor and a 100 µF capacitor: how long until the capacitor reaches 63% of the battery voltage?</summary><p>One time constant: 10 000 × 0.0001 = 1 second.</p></details>
+  <details><summary>Why can't you add a 300 Ω resistance and a 400 Ω reactance to get 700 Ω?</summary><p>They're at right angles: they put current and voltage out of step in different ways. The total is the length of the arrow (300 sideways, 400 up): 500 Ω.</p></details>
+
+  <nav class="next">
+    <a href="./02-decibels-and-prefixes.html">← Lesson 2: Decibels, prefixes, RMS and PEP</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l03.ts"></script>
+</body>
+</html>
