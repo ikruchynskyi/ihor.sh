@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signals and Modes</title>
+  <meta name="description" content="Ham radio, visually, lesson 10: AM, FM, PM, SSB and CW and their bandwidths, FM deviation and modulation index, splatter and key clicks, mixing and intermodulation, digital modes and constellations, error correction, and television." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 10</p>
+  <h1>Signals and modes</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson builds on the receiver course, which explains the modes from the inside:
+    <ul>
+      <li><a href="../../course/09-fm-listening-to-the-speed.html">Course ch. 9: FM</a> and <a href="../../course/10-am-ssb-and-morse.html">ch. 10: AM, SSB and Morse</a></li>
+      <li><a href="../../course/04-winding-machine.html#spectrum">Course ch. 4: the spectrum</a>, and <a href="../../course/05-moving-a-station.html">ch. 5: mixing</a></li>
+    </ul>
+  </div>
+
+  <p>A plain, steady radio wave (a <b>carrier</b>) carries no information. To send something, you change it: its strength, its frequency or its timing (phase). That change is <b>modulation</b>, and every way of doing it has a different footprint on the dial: its <b>bandwidth</b>. Knowing the footprints tells you which mode fits where, why a narrow filter improves reception, and when your signal is spilling onto your neighbors.</p>
+
+  <!-- 1 -->
+  <h2 id="modes">The modes and their footprints</h2>
+  <p>Each signal below is generated here, sample by sample, and run through the same spectrum code as the course (<a class="back" href="../../course/04-winding-machine.html#spectrum">↩ ch. 4</a>). The horizontal axis is ±12 kHz around the carrier:</p>
+
+  <div class="scene" id="s-modes">
+    <div class="controls">
+      <label for="md-m">Mode <select id="md-m"><option value="cw">CW (Morse)</option><option value="ssb">SSB voice (upper sideband)</option><option value="am" selected>AM voice</option><option value="fm">FM voice (5 kHz deviation)</option></select></label>
+    </div>
+    <p class="readout" id="r-modes" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>CW</b> (continuous wave: Morse code, keyed on and off) is the narrowest of all, around <b>150 Hz</b> at normal speeds.</li>
+    <li><b>SSB</b> is a form of <b>amplitude modulation</b> with the carrier and one sideband removed (<a class="back" href="../../course/10-am-ssb-and-morse.html#sidebands">↩ course ch. 10</a>): about <b>3 kHz</b>, the narrowest voice mode. That's why it's used for weak-signal, long-distance voice on VHF/UHF. Below 10 MHz, hams conventionally use lower sideband; on 20 meters and up, including <b>10 meters, VHF and UHF, upper sideband</b>.</li>
+    <li><b>AM</b> sends the carrier plus both sidebands: about 6 kHz for voice. AM <b>varies the instantaneous power</b> of the signal; its <b>envelope</b> is the outline you get by connecting the peaks.</li>
+    <li><b>FM</b> varies the instantaneous <b>frequency</b>; <b>PM</b> (phase modulation) varies the phase angle, and sounds the same once received. FM voice on VHF repeaters takes <b>10 to 15 kHz</b>. Its catch compared with SSB: besides being wider, a receiver only hears the strongest of several signals on a channel at once (the capture effect).</li>
+    <li>Analog <b>fast-scan TV</b> is enormous: about <b>6 MHz</b>.</li>
+  </ul>
+  <p>Matching your receiver's filter to the mode's bandwidth gives the <b>best signal-to-noise ratio</b>: any wider and you let in noise with no signal in it (<a class="back" href="../../course/06-averaging-is-filtering.html">↩ course ch. 6: filters</a>).</p>
+
+  <!-- 2 -->
+  <h2 id="fm">FM deviation, modulation index and bandwidth</h2>
+  <p>An FM signal swings above and below its center frequency; the size of the swing is the <b>deviation</b>. You might expect its bandwidth to be just twice the deviation, but swinging creates sidebands spaced at the audio frequency, and a useful rule (Carson's rule) says the bandwidth is about 2 × (deviation + highest audio frequency):</p>
+
+  <div class="scene" id="s-fm">
+    <div class="controls">
+      <label for="fm-d">Deviation <input id="fm-d" type="range" min="0.5" max="8" step="0.5" value="5"><output id="fm-do"></output></label>
+      <label for="fm-a">Audio tone <input id="fm-a" type="range" min="0.5" max="4" step="0.5" value="3"><output id="fm-ao"></output></label>
+    </div>
+    <p class="readout" id="r-fm" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The <b>modulation index</b> is deviation ÷ modulating frequency (for any one tone). The <b>deviation ratio</b> is the same for the whole system: maximum deviation ÷ highest audio frequency. ±5 kHz with 3 kHz audio: 5 ÷ 3 = 1.67. For phase modulation, the index doesn't depend on the carrier frequency.</li>
+    <li>VHF FM transmitters often generate their signal at a lower frequency and multiply it up with a <b>multiplier</b> stage, which multiplies the deviation too. A 146.52 MHz transmitter built around a 12.21 MHz oscillator multiplies by 12, so for 5 kHz deviation the oscillator only needs to swing 5000 ÷ 12 = 416.7 Hz. A <b>reactance modulator</b> on an RF stage produces phase modulation.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="dirty">Splatter, key clicks and overmodulation</h2>
+  <p>A clean signal stays inside its footprint. Push it too hard and it spills onto neighboring frequencies:</p>
+
+  <div class="scene" id="s-dirty">
+    <div class="controls">
+      <label for="dt-m">Signal <select id="dt-m"><option value="cw">CW keying</option><option value="am">AM voice</option><option value="afsk">digital (AFSK) tones</option></select></label>
+      <label for="dt-x">Push <input id="dt-x" type="range" min="0" max="1" step="0.05" value="0.2"><output id="dt-xo"></output></label>
+    </div>
+    <p class="readout" id="r-dirty" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>CW:</b> switching the carrier on and off too abruptly (very short rise and fall times) creates <b>key clicks</b>, splatter far from your frequency. The cure is to <b>soften</b> the keying edges. A CW signal's bandwidth depends on the <b>keying speed</b> and the <b>shape</b> of its edges; roughly 4 Hz per word per minute, so 13 WPM needs about 52 Hz.</li>
+    <li><b>AM/SSB:</b> too much drive or microphone gain causes <b>overmodulation</b> and <b>flat-topping</b> (the peaks are clipped): distortion and <b>excessive bandwidth</b>.</li>
+    <li><b>Digital:</b> excessive transmit audio into the radio overdrives it, creating <b>intermodulation distortion</b> (IMD) products: on a waterfall, extra vertical lines either side of the signal. For an idling PSK signal, −30 dB IMD is the acceptable maximum.</li>
+    <li>Know your mode's <b>duty cycle</b>: FM and many digital modes transmit at full power 100% of the time, unlike speech, and can exceed a transmitter's average power rating.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="mixing">Mixing and intermodulation</h2>
+  <p>A <b>mixer</b> multiplies two signals. Its output contains their <b>sum and difference</b> frequencies: that's <b>heterodyning</b>, the heart of every superhet receiver (<a class="back" href="../../course/12-inside-the-dongle.html#image">↩ course ch. 12</a>). The <b>local oscillator</b> is the input you tune, to bring each station to the fixed IF. A station at <b>twice the IF</b> away from the one you want lands on the IF too: the <b>image response</b>.</p>
+  <p>Any circuit that isn't perfectly linear mixes too, whether you want it or not. Two strong signals in an overloaded amplifier produce <b>intermodulation</b> products:</p>
+
+  <div class="scene" id="s-imd">
+    <div class="controls">
+      <label for="im-n">Overload <input id="im-n" type="range" min="0" max="1" step="0.05" value="0.4"><output id="im-no"></output></label>
+    </div>
+    <p class="readout" id="r-imd" aria-live="polite"></p>
+  </div>
+
+  <p>The troublemakers are the <b>odd-order</b> products such as 2F1 − F2 and 2F2 − F1: they fall right next to the original signals, where no filter can remove them. (Even-order products like F1 + F2 land far away.)</p>
+
+  <!-- 5 -->
+  <h2 id="digital">Digital modes: bits on a carrier</h2>
+  <p>To send bits, a transmitter switches between a few distinct states, each called a <b>symbol</b>. Shown as dots on the arrow plane (<a class="back" href="../../course/02-arrows-as-numbers.html#two">↩ course ch. 2</a>), the states form a <b>constellation diagram</b>: the possible phase and amplitude of each symbol. Add noise and see when they start to blur:</p>
+
+  <div class="scene" id="s-const">
+    <div class="controls">
+      <label for="cs-m">Modulation <select id="cs-m"><option value="bpsk">BPSK (2 phases, 1 bit)</option><option value="qpsk" selected>QPSK (4 phases, 2 bits)</option><option value="qam16">16-QAM (4 bits)</option></select></label>
+      <label for="cs-n">Noise <input id="cs-n" type="range" min="0" max="0.5" step="0.01" value="0.08"><output id="cs-no"></output></label>
+    </div>
+    <p class="readout" id="r-const" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>FSK</b> (frequency shift keying) switches between two frequencies, called <b>mark</b> and <b>space</b>; "direct" FSK changes the oscillator's frequency with the data. <b>AFSK</b> does it with audio tones fed into an SSB or FM transmitter. <b>FT8</b> uses <b>8-tone FSK</b> in a 50 Hz bandwidth.</li>
+    <li><b>PSK</b> (phase shift keying) changes the phase. <b>QPSK</b> uses 0°, 90°, 180° and 270° to send <b>pairs of bits</b>. <b>QAM</b> varies the amplitude of two carriers 90° apart (the I and Q of the course!), so each symbol can be one of many points.</li>
+    <li>The <b>symbol rate</b> (the rate at which the waveform changes) is the same thing as <b>baud</b>. A <b>higher symbol rate needs more bandwidth</b>; to send more data without more bandwidth, use a more efficient code (more bits per symbol). <b>Gray code</b> numbers the points so neighbors differ by one bit, so a slight error costs only one bit.</li>
+    <li>Changing phase gently matters: PSK31 shapes its symbols with <b>sinusoidal pulses</b> and changes phase at the RF zero crossing, to stay narrow.</li>
+  </ul>
+  <p><b>Codes for text:</b> <b>Baudot</b> (RTTY) uses 5 bits per character with start and stop bits, and two shift codes to switch between letters and figures. <b>ASCII</b> uses 7 or 8 bits and allows upper and lower case; an added <b>parity</b> bit lets some errors be detected. PSK31 uses <b>Varicode</b>, where common characters get short codes: lowercase is quick, and capitals take longer.</p>
+  <p><b>Fixing errors:</b> <b>forward error correction</b> (FEC) sends redundant information so the receiver can repair errors itself (a coding rate of 3/4 means a quarter of the data is FEC). <b>ARQ</b> (automatic repeat request) has the receiver check each packet and answer NAK to request a retransmission; after too many failed attempts the connection is dropped.</p>
+  <p><b>Sharing a channel:</b> <b>frequency division multiplexing</b> gives each data stream its own frequency band; <b>time division multiplexing</b> gives each its own time slots (DMR fits two voice signals in one 12.5 kHz channel this way). <b>OFDM</b> sends data on many subcarriers spaced exactly so they don't interfere. <b>Spread spectrum</b> spreads a signal over a wide band, by <b>frequency hopping</b> (jumping around in a pseudorandom sequence) or <b>direct sequence</b> (a fast bit stream shifting the carrier's phase); the receiver, knowing the sequence, collects it, while ordinary signals are suppressed.</p>
+
+  <!-- 6 -->
+  <h2 id="zoo">A tour of the digital modes</h2>
+  <ul>
+    <li><b>FT8</b> (in the WSJT-X suite, alongside modes for meteor scatter, moonbounce and weak signals): works far below the noise. Its signal reports are SNR in a 2.5 kHz bandwidth, so "+3" means 3 dB above the noise in that bandwidth. <b>WSPR</b> is a low-power beacon mode for testing propagation.</li>
+    <li><b>Packet radio</b> (usually FM or PM on VHF): each frame has a <b>header</b> with routing and handling information, plus a checksum. <b>APRS</b> uses packet to put stations, weather and messages on a map in real time.</li>
+    <li><b>Digital voice</b>: DMR, D-STAR and System Fusion. <b>Mesh networks</b>: modified commercial Wi-Fi equipment forming a ham data network, where each node has an IP address, finds its neighbors by discovery protocols, and routes around a failed node.</li>
+    <li>On a <b>waterfall</b> display, frequency runs across, time runs down, and brightness is signal strength (<a class="back" href="../../build.html#waterfall">↩ how this site draws one</a>).</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="tv">Television, fast and slow</h2>
+  <ul>
+    <li><b>NTSC</b> is the analog fast-scan color TV standard of North America: <b>525 lines</b> per frame, sent <b>interlaced</b> (odd lines in one field, even lines in the next). It uses <b>vestigial sideband</b>: AM with one complete sideband and a sliver of the other, which saves bandwidth while keeping the low video frequencies faithful. Hams send fast-scan TV on 70 cm, on frequencies that match cable TV channels so ordinary TVs can receive it. Digital amateur TV (DVB-T) uses QAM and QPSK.</li>
+    <li><b>Slow-scan TV</b> (SSTV) sends a still picture as audio over a voice channel: <b>tone frequency encodes brightness</b>, specific tones mark the start of each line, color lines are sent one after another, and a <b>VIS code</b> at the start identifies the mode. Digital SSTV (via DRM) decodes from an SSB receiver. The ISS regularly transmits SSTV pictures you can receive with a cheap dongle.</li>
+  </ul>
+  <p><b>Link budget</b>, to close: the transmit power plus antenna gains minus all losses, as seen at the receiver. The <b>link margin</b> is how far that received level is above the minimum the receiver needs.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>G8B06: Bandwidth of FM with 5 kHz deviation and 3 kHz audio? <i>16 kHz.</i></summary><p>Carson's rule: 2 × (5 + 3) = 16 kHz. Set the FM scene to these values.</p></details>
+  <details><summary>E8B03: Modulation index with ±3000 Hz deviation and 1000 Hz audio? <i>3.</i></summary><p>3000 ÷ 1000.</p></details>
+  <details><summary>G8B13: Which is an odd-order IMD product of F1 and F2? <i>2F1 − F2.</i></summary><p>2 + 1 = 3, an odd order. It lands close to F1 and F2.</p></details>
+  <details><summary>E8D05: How do you reduce key clicks? <i>Increase the keying waveform's rise and fall times.</i></summary><p>Softer edges, narrower spectrum: move the CW slider in the splatter scene.</p></details>
+  <details><summary>G8A12: What is QPSK? <i>0°, 90°, 180°, 270° phase shifts, each representing a pair of bits.</i></summary><p>Four points on the constellation, two bits each.</p></details>
+  <details><summary>E8C07: Bandwidth of 9600-baud ASCII FM with a 4800 Hz shift? <i>15.36 kHz.</i></summary><p>The standard (ITU/FCC) necessary-bandwidth formula for frequency-shift keying: baud rate + 1.2 × shift = 9600 + 1.2 × 4800 = 15 360 Hz.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T8A,T8D">Technician T8A, T8D</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G8">General G8A–G8C</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E8B,E8C,E8D,E2B">Extra E8B–E8D, E2B</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why is SSB better than FM for weak-signal VHF contacts?</summary><p>It concentrates the power in a 3 kHz footprint instead of 10–15 kHz, so the receiver can use a narrow filter and let in less noise.</p></details>
+  <details><summary>Your PSK31 signal shows extra vertical lines on the waterfall. What's wrong?</summary><p>Overmodulation: the transmit audio is too high, producing IMD. Turn it down.</p></details>
+  <details><summary>Why are odd-order intermod products worse than even-order ones?</summary><p>They land right next to the signals that created them (inside your passband), while even-order ones land far away where filters remove them.</p></details>
+
+  <nav class="next">
+    <a href="./09-propagation.html">← Lesson 9: Propagation</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l10.ts"></script>
+</body>
+</html>
