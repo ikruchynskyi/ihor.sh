@@ -8,7 +8,7 @@ const el = (id: string) => document.getElementById(id)!;
 const params = new URLSearchParams(location.search);
 const id = (["T", "G", "E"].includes(params.get("pool") ?? "") ? params.get("pool") : "T") as PoolId;
 const mode = params.get("mode") === "exam" ? "exam" : "study";
-const scope = params.get("scope") ?? ""; // a subelement ("T5") or a group ("T5D")
+const scope = params.get("scope") ?? ""; // subelements or groups, comma-separated ("T5" or "T5A,T5D")
 const LETTERS = "ABCD";
 
 let pool: Pool, mem: Memory;
@@ -36,7 +36,7 @@ function card(q: Question, order: number[], meta: string) {
 
 // --- Study ------------------------------------------------------------------------------------------------------------
 function study() {
-  const inScope = (q: Question) => !scope || q.id.startsWith(scope);
+  const inScope = (q: Question) => !scope || scope.split(",").some((p) => q.id.startsWith(p));
   const queue = session(pool, mem, inScope);
   const retries = new Map<string, number>(), before = chanceNow();
   let i = 0, right = 0, answered = 0;

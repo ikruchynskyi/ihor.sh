@@ -26,6 +26,7 @@ export interface SceneOpts {
   onDrag?: () => void;
   max?: number; // keep handles within this distance of 0
   label?: string; // accessible description of the canvas
+  step?: number; // how far an arrow key moves a handle (world units; default 0.05)
 }
 
 /** A canvas that animates over time t (seconds), with play/pause and restart underneath. */
@@ -102,7 +103,7 @@ export class Scene {
     // Keyboard: arrow keys move the selected point, space switches to the next point.
     let kb = 0;
     c.addEventListener("keydown", (e) => {
-      const step = e.shiftKey ? 0.01 : 0.05, d: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+      const big = this.opts.step ?? 0.05, step = e.shiftKey ? big / 5 : big, d: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
       if (e.key === " ") { kb = (kb + 1) % hs.length; e.preventDefault(); this.redraw(); return; }
       if (!d[e.key]) return;
       e.preventDefault(); move(kb, hs[kb].x + d[e.key][0], hs[kb].y + d[e.key][1]);

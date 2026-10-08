@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Volts, Amps and Ohms</title>
+  <meta name="description" content="Ham radio, visually, lesson 1: voltage, current, resistance and power as things you can see move. Ohm's law, series and parallel, AC and DC, and how meters connect." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 1</p>
+  <h1>Volts, amps and ohms</h1>
+
+  <div class="prereq"><b>Before you start</b>No background needed. This lesson is the foundation for every other one, and for about 70 exam questions across Technician and General.</div>
+
+  <p>Every radio, from a handheld walkie-talkie to a kilowatt transmitter, runs on the same three quantities: a <b>push</b>, a <b>flow</b>, and something that <b>resists</b> the flow. Engineers call them voltage, current and resistance. Once you can see them, the formulas on the exam stop being things to memorize: they're just descriptions of what you watched happen.</p>
+
+  <!-- 1 -->
+  <h2 id="electrons">What flows: electrons</h2>
+  <p>Everything is made of atoms, and atoms have tiny charged particles called <b>electrons</b> around them. In most materials, every electron is tied to its own atom. In metals, it's different: some electrons are loose. They wander freely between the atoms, like a crowd milling around a square.</p>
+  <p>Below is a piece of copper wire, magnified enormously. The grey circles are atoms; the blue dots are the free electrons. Now connect a battery, and turn up its push:</p>
+
+  <div class="scene" id="s-wire">
+    <div class="controls">
+      <label for="w-v">Battery push (volts) <input id="w-v" type="range" min="0" max="12" step="0.5" value="0"><output id="w-vo"></output></label>
+      <label for="w-glass"><input id="w-glass" type="checkbox"> Use glass instead of copper</label>
+    </div>
+    <p class="readout" id="r-wire" aria-live="polite"></p>
+  </div>
+
+  <p>With no push, the electrons jiggle around but go nowhere on average. Add a push and the whole crowd starts to <b>drift</b> along the wire. That drift is an electric <b>current</b>: a flow of electrons. It's measured in <b>amperes</b> (amps, A): how much charge passes a point each second.</p>
+  <p>The push itself is <b>voltage</b>, measured in <b>volts</b> (V). Strictly, it's a <em>difference</em> in electrical pressure between two points, like the difference in water pressure between the two ends of a pipe. A battery keeps one terminal at a higher "pressure" than the other, and that difference is what makes electrons move.</p>
+  <p>Now tick <b>glass</b>. Its electrons are all tied to their atoms: they wiggle in place, and no push you can make here gets them to travel. That's an <b>insulator</b>. Metals are good <b>conductors</b> because they have many free electrons; glass, plastic, rubber and dry air are insulators. That's why wires are copper wrapped in plastic.</p>
+
+  <div class="ponder"><span class="tag">A surprise</span>Each electron drifts astonishingly slowly, often less than a millimeter per second. Yet a lamp lights the instant you flip the switch. How? The wire is already full of electrons; the push travels through the crowd almost at the speed of light, like a shove going down a packed line of people, while each person only shuffles a step.</div>
+
+  <!-- 2 -->
+  <h2 id="ohm">Push, flow and resistance: Ohm's law</h2>
+  <p>Below, a battery pushes current around a loop through a <b>resistor</b>, a part made to resist the flow (the yellow zigzag). On the right is the same thing as water: the height of the water in the tank is the voltage, the narrowness of the pipe is the resistance, and the stream coming out is the current.</p>
+
+  <div class="scene" id="s-ohm">
+    <div class="controls">
+      <label for="o-v">Voltage <input id="o-v" type="range" min="0" max="24" step="0.5" value="12"><output id="o-vo"></output></label>
+      <label for="o-r">Resistance <input id="o-r" type="range" min="2" max="60" step="1" value="12"><output id="o-ro"></output></label>
+    </div>
+    <p class="readout" id="r-ohm" aria-live="polite"></p>
+  </div>
+
+  <p>Play with both sliders and two things are obvious:</p>
+  <ul>
+    <li><b>More push, more flow.</b> Double the voltage and the current doubles.</li>
+    <li><b>More resistance, less flow.</b> Double the resistance and the current halves.</li>
+  </ul>
+  <p>That's all of <b>Ohm's law</b>: current equals voltage divided by resistance. Resistance is measured in <b>ohms</b> (Ω, the Greek letter omega). One volt pushes one amp through one ohm.</p>
+  <p>In formulas, voltage is written <b>E</b> (for "electromotive force", an old name that the exam still uses) or V, current is <b>I</b> (from the French <em>intensité</em>), and resistance is <b>R</b>. So:</p>
+  <div class="notation">
+    <math><mi>I</mi><mo>=</mo><mfrac><mi>E</mi><mi>R</mi></mfrac><mspace width="2em"/><mi>E</mi><mo>=</mo><mi>I</mi><mo>×</mo><mi>R</mi><mspace width="2em"/><mi>R</mi><mo>=</mo><mfrac><mi>E</mi><mi>I</mi></mfrac></math>
+    <ul><li>Three ways of writing the same fact. You only need to remember one: the other two follow by rearranging.</li></ul>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="line">Resistance is a slope</h2>
+  <p>Here's another way to see it. Plot voltage across, current up. For one resistor, every possible voltage gives a current on a <b>straight line</b> through zero. Drag the point:</p>
+
+  <div class="scene" id="s-line"><p class="readout" id="r-line" aria-live="polite"></p></div>
+
+  <p>A steep line means lots of current for little push: a <em>small</em> resistance. A flat line means a big one. Whatever two numbers you know, the third is where the line goes. Try the exam's examples: 3 amps flowing at 90 volts is a line through (90 V, 3 A), and the readout tells you it's 30 Ω.</p>
+
+  <div class="ponder"><span class="tag">Pause and ponder</span>A 12-volt source drives 4 amps through a circuit. Where's the point, and what's the resistance? (Answer: (12 V, 4 A), so R = 12 ÷ 4 = 3 Ω.)</div>
+
+  <!-- 4 -->
+  <h2 id="power">Power is a rectangle</h2>
+  <p>Voltage is how hard each bit of charge is pushed; current is how much charge goes by each second. Multiply them and you get how much <b>energy is delivered each second</b>: the <b>power</b>, measured in <b>watts</b> (W). Power is the <em>rate</em> at which energy is used.</p>
+  <p>Multiplying two numbers is the area of a rectangle. Drag the corner: width is voltage, height is current, and the area is the power that lights the lamp.</p>
+
+  <div class="scene" id="s-power"><p class="readout" id="r-power" aria-live="polite"></p></div>
+
+  <p>A car battery at 13.8 volts supplying 10 amps to a radio: the rectangle is 13.8 by 10, so the radio draws 138 watts. And backwards: to get 120 watts from 12 volts, the rectangle must be 10 amps tall.</p>
+  <p>Two handy variations come from mixing in Ohm's law. If you know the voltage and the resistance (not the current), the current is E ÷ R, so the power is E × E ÷ R. If you know the current and the resistance, the voltage is I × R, so the power is I × I × R. For example, 400 volts across an 800-ohm load: 400 × 400 ÷ 800 = 200 watts.</p>
+  <div class="notation">
+    <math><mi>P</mi><mo>=</mo><mi>I</mi><mo>×</mo><mi>E</mi><mo>=</mo><mfrac><msup><mi>E</mi><mn>2</mn></msup><mi>R</mi></mfrac><mo>=</mo><msup><mi>I</mi><mn>2</mn></msup><mo>×</mo><mi>R</mi></math>
+    <ul><li>P in watts, I in amps, E in volts, R in ohms. The last two are the first one with Ohm's law plugged in.</li></ul>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="series">Series and parallel</h2>
+  <p>Two resistors can be connected in two basic ways: one after the other, so the same current must go through both (<b>series</b>), or side by side, so the current splits between them (<b>parallel</b>). Switch between them:</p>
+
+  <div class="scene" id="s-series">
+    <div class="controls">
+      <label for="s-par"><input id="s-par" type="checkbox"> Parallel (side by side)</label>
+      <label for="s-r1">R1 <input id="s-r1" type="range" min="2" max="40" step="1" value="10"><output id="s-r1o"></output></label>
+      <label for="s-r2">R2 <input id="s-r2" type="range" min="2" max="40" step="1" value="20"><output id="s-r2o"></output></label>
+    </div>
+    <p class="readout" id="r-series" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Series:</b> there's only one path, so the <b>current is the same</b> through every part. The battery's voltage is shared out: each resistor "uses up" a slice proportional to its resistance. The resistances simply <b>add</b>: 10 Ω + 20 Ω = 30 Ω.</li>
+    <li><b>Parallel:</b> each resistor is connected straight across the battery, so the <b>voltage is the same</b> across every part. The currents through the branches <b>add up</b> to the total. And because there are now two paths, the total resistance is <em>less than the smallest one</em>: 10 Ω and 20 Ω in parallel make about 6.7 Ω.</li>
+  </ul>
+  <p>For parallel resistors, add up their "easiness" (one divided by each resistance) and turn the total back into a resistance. For two resistors there's a shortcut: product over sum, (10 × 20) ÷ (10 + 20) ≈ 6.7 Ω. And two equal resistors in parallel make exactly half of one.</p>
+  <div class="notation">
+    <math><msub><mi>R</mi><mtext>series</mtext></msub><mo>=</mo><msub><mi>R</mi><mn>1</mn></msub><mo>+</mo><msub><mi>R</mi><mn>2</mn></msub><mo>+</mo><mo>…</mo><mspace width="2em"/><mfrac><mn>1</mn><msub><mi>R</mi><mtext>parallel</mtext></msub></mfrac><mo>=</mo><mfrac><mn>1</mn><msub><mi>R</mi><mn>1</mn></msub></mfrac><mo>+</mo><mfrac><mn>1</mn><msub><mi>R</mi><mn>2</mn></msub></mfrac><mo>+</mo><mo>…</mo></math>
+    <ul><li>Example from the General exam: 10, 20 and 50 Ω in parallel: 1/10 + 1/20 + 1/50 = 0.17, and 1 ÷ 0.17 ≈ 5.9 Ω.</li></ul>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="ac">Direct and alternating current</h2>
+  <p>A battery always pushes the same way: <b>direct current</b> (DC). The outlet in your wall is different: its push reverses direction 60 times a second in North America (50 in most of the world). That's <b>alternating current</b> (AC): current that alternates between positive and negative directions.</p>
+
+  <div class="scene" id="s-ac">
+    <div class="controls">
+      <label for="a-ac"><input id="a-ac" type="checkbox" checked> Alternating</label>
+      <label for="a-f">Cycles per second <input id="a-f" type="range" min="0.2" max="3" step="0.1" value="0.6"><output id="a-fo"></output></label>
+    </div>
+  </div>
+
+  <p>With AC, the electrons don't travel around the circuit at all: they rock back and forth in place. Energy still gets delivered, just as a saw cuts wood by going back and forth. The number of complete back-and-forth cycles per second is the <b>frequency</b>, in <b>hertz</b> (Hz). If that wave looks familiar, it's the height of a spinning arrow (<a class="back" href="../../course/01-spinning-arrows.html#wheel">↩ course ch. 1</a>): radio signals are alternating currents too, just millions of times faster: kilohertz (kHz, thousands), megahertz (MHz, millions).</p>
+  <p>Resistance opposes current of every kind: direct, alternating, and the radio-frequency kind alike. Capacitors and inductors (lesson 3) are different: their opposition depends on the frequency, which is what makes tuning possible.</p>
+
+  <!-- 7 -->
+  <h2 id="meters">Measuring: how meters connect</h2>
+  <p>A <b>voltmeter</b> measures the push <em>between two points</em>, so it's connected <b>across</b> the part, in parallel. An <b>ammeter</b> measures the flow <em>through</em> a wire, so the circuit has to be opened and the meter put <b>in series</b>, so the current goes through it. A <b>multimeter</b> does both (and resistance), depending on its setting. Try each connection, including the two classic mistakes:</p>
+
+  <div class="scene" id="s-meter">
+    <div class="controls" role="radiogroup" aria-label="Meter connection">
+      <label><input type="radio" name="m" value="v" checked> Voltmeter across R</label>
+      <label><input type="radio" name="m" value="a"> Ammeter in series</label>
+      <label><input type="radio" name="m" value="bad-a"> Ammeter across R (mistake)</label>
+      <label><input type="radio" name="m" value="bad-v"> Voltmeter in series (mistake)</label>
+    </div>
+    <p class="readout" id="r-meter" aria-live="polite"></p>
+  </div>
+
+  <p>The reason the mistakes go wrong: a voltmeter is built with a <em>huge</em> resistance, so that connecting it across something barely disturbs the circuit. An ammeter is built with a <em>tiny</em> resistance, so that putting it in the path barely changes the current. Swap their places, and the voltmeter in series blocks the current, while the ammeter across the battery becomes a near short circuit, blowing its fuse or worse.</p>
+  <p>An <b>ohmmeter</b> (a multimeter on its resistance setting) works by sending a small current of its own through the part and measuring the voltage that results: Ohm's law again. Two consequences:</p>
+  <ul>
+    <li>Only measure resistance on a circuit with the <b>power off</b>: the circuit's own voltages would confuse the reading, and trying to measure a live voltage on the resistance setting can damage the meter.</li>
+    <li>Connected across a large, empty capacitor, an ohmmeter shows a resistance that <b>increases with time</b>: at first the capacitor soaks up current like a short circuit, then less and less as it fills (lesson 3).</li>
+  </ul>
+  <p><b>A note on soldering</b>, which the Technician exam groups with meters: use rosin-core solder for electronics, never acid-core (made for plumbing; the acid eats circuits). A good joint is smooth and shiny; a <b>cold joint</b>, where the parts weren't heated enough, looks rough or lumpy and may not conduct reliably.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T5A05: A difference in which of the following causes electron flow? <i>Voltage.</i></summary><p>Voltage is a difference in electrical pressure between two points; electrons drift from one to the other, like water from high to low (the first scene).</p></details>
+  <details><summary>T5D07: Current with 120 V across 80 Ω? <i>1.5 amperes.</i></summary><p>I = E ÷ R = 120 ÷ 80 = 1.5 A. On the slope picture: the line for 80 Ω, at 120 V.</p></details>
+  <details><summary>T5D13 / T5D14: Where is the current always the same? The voltage? <i>Series; parallel.</i></summary><p>In series there's one path, so the same current goes through everything. In parallel, every part is connected directly across the same two points, so they all see the same voltage.</p></details>
+  <details><summary>T5C11: Current needed for 120 W at 12 V DC? <i>10 amperes.</i></summary><p>Power is the rectangle's area: 120 = 12 × I, so I = 10 A.</p></details>
+  <details><summary>G5B05: Power with 7.0 mA through 1,250 Ω? <i>About 61 milliwatts.</i></summary><p>P = I² × R = 0.007 × 0.007 × 1250 = 0.061 W. (mA is milliamps, thousandths of an amp: lesson 2 covers the prefixes.)</p></details>
+  <details><summary>G5C04: 100 Ω and 200 Ω in parallel? <i>About 67 ohms.</i></summary><p>Product over sum: 100 × 200 ÷ 300 ≈ 67 Ω. Less than the smaller one, as parallel always is.</p></details>
+  <details><summary>T7D02 / T7D03: How do a voltmeter and an ammeter connect? <i>In parallel; in series.</i></summary><p>A voltmeter compares two points, so it goes across the part. An ammeter counts what flows through a wire, so it goes in the path.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T5A,T5C,T5D,T7D">Technician T5A, T5C, T5D, T7D</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G5B,G5C">General G5B, G5C</a>
+    </p>
+    <p class="note">Some of these also need lesson 2 (prefixes, decibels, RMS) and lesson 3 (capacitors, inductors, transformers).</p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why do metals conduct electricity and glass doesn't?</summary><p>Metals have many free electrons that can drift when pushed; in glass, every electron is bound to its atom.</p></details>
+  <details><summary>You double the voltage across a resistor. What happens to the current, and to the power?</summary><p>The current doubles (Ohm's law). The power quadruples: the rectangle is twice as wide and twice as tall.</p></details>
+  <details><summary>Three 30 Ω resistors: what's their total in series, and in parallel?</summary><p>Series: 90 Ω. Parallel: 10 Ω (three equal paths, each taking a third of the current).</p></details>
+  <details><summary>Why must an ohmmeter be used only on an unpowered circuit?</summary><p>It measures resistance by applying its own small current and reading the voltage. Any voltage already in the circuit corrupts the reading, and can damage the meter.</p></details>
+
+  <nav class="next">
+    <a href="../">← Ham radio license</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l01.ts"></script>
+</body>
+</html>
