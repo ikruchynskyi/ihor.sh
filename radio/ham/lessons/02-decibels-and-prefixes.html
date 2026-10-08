@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decibels and Prefixes</title>
+  <meta name="description" content="Ham radio, visually, lesson 2: metric prefixes as a moving decimal point, decibels as doubling steps, S-meters, RMS, peak envelope power, and where a sideband sits." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 2</p>
+  <h1>Decibels, prefixes, RMS and PEP</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul><li><a href="./01-volts-amps-ohms.html#power">Lesson 1: power</a> (watts = volts × amps) and <a href="./01-volts-amps-ohms.html#ac">alternating current</a></li></ul>
+  </div>
+
+  <p>Radio deals in numbers of wildly different sizes. A transmitter puts out 100 watts; the same signal arrives at a receiver across the country as a few millionths of a millionth of a watt. A crystal vibrates 28 800 000 times a second; a capacitor holds 0.000 000 000 1 farads. Radio people have two tools for living with this: <b>prefixes</b>, which keep the digits short, and <b>decibels</b>, which turn huge ratios into small, friendly numbers.</p>
+
+  <!-- 1 -->
+  <h2 id="prefixes">Prefixes: moving the decimal point by threes</h2>
+  <p>Every prefix means "times a thousand" or "divided by a thousand", one more time. Changing the prefix just slides the decimal point three places. Pick a quantity and slide:</p>
+
+  <div class="scene" id="s-prefix">
+    <div class="controls">
+      <label for="p-q">Example <select id="p-q">
+        <option value="1500000|Hz">1,500,000 hertz</option>
+        <option value="1.5|A">1.5 amperes</option>
+        <option value="0.000001|V">one microvolt</option>
+        <option value="0.000001|F">1,000,000 picofarads</option>
+        <option value="28400000|Hz">28,400 kHz</option>
+        <option value="2425000000|Hz">2425 MHz</option>
+      </select></label>
+      <label for="p-k">Prefix <input id="p-k" type="range" min="-4" max="3" step="1" value="0"><output id="p-ko"></output></label>
+    </div>
+    <p class="readout" id="r-prefix" aria-live="polite"></p>
+  </div>
+
+  <p>The ones you'll meet: <b>giga</b> (G, billion), <b>mega</b> (M, million), <b>kilo</b> (k, thousand), then down: <b>milli</b> (m, thousandth), <b>micro</b> (µ, millionth), <b>nano</b> (n, billionth), <b>pico</b> (p, trillionth). Watch the case: <b>M</b>Hz is mega, <b>m</b>A is milli. A one-step move makes the number 1000 times bigger or smaller, so 1.5 A is 1500 mA, 3.525 MHz is 3525 kHz, and 1,000,000 pF is 1 µF (two steps: pico → nano → micro).</p>
+
+  <!-- 2 -->
+  <h2 id="db">Decibels: counting doublings and tenfolds</h2>
+  <p>A <b>decibel</b> (dB) describes a <em>ratio</em> of two powers, not an amount. The trick is that it turns multiplying into adding. Two facts carry almost every exam question:</p>
+  <ul>
+    <li><b>+3 dB ≈ double the power</b> (−3 dB ≈ half).</li>
+    <li><b>+10 dB = ten times the power</b> (−10 dB = a tenth).</li>
+  </ul>
+  <p>Everything else is built from those. Double twice is 4×, so +6 dB. Ten times ten is 100×, so +20 dB. Drag the two powers below and watch the hops add up:</p>
+
+  <div class="scene" id="s-db">
+    <div class="controls">
+      <label for="d-a">From <input id="d-a" type="range" min="0" max="27" step="1" value="9"><output id="d-ao"></output></label>
+      <label for="d-b">To <input id="d-b" type="range" min="0" max="27" step="1" value="12"><output id="d-bo"></output></label>
+    </div>
+    <p class="readout" id="r-db" aria-live="polite"></p>
+  </div>
+
+  <p>From 5 W to 10 W is one doubling: <b>+3 dB</b>. From 12 W down to 3 W is two halvings: <b>−6 dB</b>. From 20 W to 200 W is one tenfold: <b>+10 dB</b>. Notice what the scale does: equal steps in dB are equal <em>ratios</em>, wherever you are. Going from 1 to 2 watts is the same 3 dB as going from 500 to 1000 watts.</p>
+  <p>Losses work the same way backwards. A cable that loses 1 dB delivers 10<sup>−0.1</sup> ≈ 0.79 of the power: about 21% is lost (the General exam says 20.6%). A loss of 3 dB throws away half.</p>
+  <div class="notation">
+    <math><mtext>dB</mtext><mo>=</mo><mn>10</mn><mo>×</mo><msub><mi>log</mi><mn>10</mn></msub><mrow><mo>(</mo><mfrac><msub><mi>P</mi><mtext>to</mtext></msub><msub><mi>P</mi><mtext>from</mtext></msub></mfrac><mo>)</mo></mrow></math>
+    <ul><li>log₁₀ asks "ten to the what?": log₁₀(100) = 2, so 100× is 10 × 2 = 20 dB. log₁₀(2) ≈ 0.3, so 2× is 3 dB.</li>
+      <li>You'll also see <b>dBm</b>: decibels compared with one milliwatt. 0 dBm = 1 mW, 30 dBm = 1 W, −73 dBm ≈ 50 billionths of a milliwatt.</li></ul>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="smeter">The S-meter: dB on a dial</h2>
+  <p>Most receivers have an <b>S meter</b> that shows received signal strength in "S units" from S1 to S9, then in dB above S9. On a properly calibrated meter, <b>each S unit is 6 dB</b>: four times the power. Slide the signal:</p>
+
+  <div class="scene" id="s-smeter">
+    <div class="controls">
+      <label for="m-p">Received signal <input id="m-p" type="range" min="-127" max="-33" step="1" value="-73"><output id="m-po"></output></label>
+    </div>
+    <p class="readout" id="r-smeter" aria-live="polite"></p>
+  </div>
+
+  <p>Two consequences you'll be asked about. To move a distant station's reading from S8 to S9, you must quadruple your transmitter power (6 dB): turning 100 W into 400 W buys you <em>one</em> S unit. And a signal "20 dB over S9" is 100 times more powerful than one at S9.</p>
+
+  <!-- 4 -->
+  <h2 id="rms">RMS: the AC voltage that heats like DC</h2>
+  <p>An AC voltage keeps changing, so which number is "the" voltage? There are three common answers. The <b>peak</b> is the highest point. The <b>peak-to-peak</b> is from the lowest to the highest, twice the peak. And the <b>RMS</b> value is the one that matters for power: the DC voltage that would heat a resistor exactly as much.</p>
+
+  <div class="scene" id="s-rms">
+    <div class="controls">
+      <label for="r-v">Peak voltage <input id="r-v" type="range" min="5" max="200" step="1" value="170"><output id="r-vo"></output></label>
+    </div>
+    <p class="readout" id="r-rms" aria-live="polite"></p>
+  </div>
+
+  <p>The yellow curve is the voltage. The pink curve is the power it delivers to a resistor at each moment, which goes as voltage <em>squared</em> (lesson 1: P = E²/R), so it's never negative. Its average, the dashed pink line, sits at exactly <b>half</b> of the peak power. A DC voltage that delivers that same average has to be the peak divided by √2: <b>RMS = 0.707 × peak</b>. Your wall outlet's "120 volts" is RMS: its peak is 170 V and its peak-to-peak 339 V.</p>
+  <p>RMS stands for "root mean square": square the voltage, take the mean, take the square root, exactly what the picture does. A <b>true-RMS</b> meter computes this for any waveform; cheaper meters assume a sine wave and are wrong for anything else.</p>
+
+  <!-- 5 -->
+  <h2 id="pep">Peak envelope power, and why voice is "peaky"</h2>
+  <p>A transmitter's output is a radio-frequency wave whose height (its <b>envelope</b>) follows the modulation. Two numbers describe its power: the <b>average power</b>, and the <b>peak envelope power</b> (PEP): the average power during the single strongest cycle, at the very top of the envelope. US amateur power limits are stated in PEP.</p>
+
+  <div class="scene" id="s-pep">
+    <div class="controls">
+      <label for="e-mode">Signal <select id="e-mode"><option value="carrier">steady carrier (CW key down)</option><option value="voice" selected>SSB voice</option><option value="proc">SSB voice with a speech processor</option></select></label>
+    </div>
+    <p class="readout" id="r-pep" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A <b>steady carrier</b> has a flat envelope: every cycle is as strong as the strongest, so PEP equals the average. The ratio is exactly 1.00.</li>
+    <li><b>SSB voice</b> is mostly quiet with occasional peaks (speech has pauses and soft sounds). Its PEP is set by the loudest syllable, but its average is far lower: about <b>2.5 to 1</b> for unprocessed speech, a ratio set by the characteristics of speech itself.</li>
+    <li>A <b>speech processor</b> lifts the soft parts closer to the peaks. PEP stays the same (the transmitter's limit), but the <b>average power rises</b>, so the voice sounds louder at the other end. Turned up too far, it brings distortion, splatter onto nearby frequencies and loud background noise: all the bad things at once.</li>
+  </ul>
+  <p>To compute PEP from an oscilloscope reading across a dummy load: take the peak-to-peak voltage, halve it to get the peak, multiply by 0.707 for RMS, then P = E²/R. 200 V peak-to-peak on 50 Ω: peak 100 V, RMS 70.7 V, PEP = 70.7² ÷ 50 = 100 W.</p>
+
+  <!-- 6 -->
+  <h2 id="edge">Where a sideband sits, and band edges</h2>
+  <p>On SSB, your radio displays the frequency of the (suppressed) carrier, but your signal isn't there: it occupies about 3 kHz to <em>one side</em> of it (<a class="back" href="../../course/10-am-ssb-and-morse.html#sidebands">↩ course ch. 10: sidebands</a>). Lower sideband (LSB) sits below the displayed frequency; upper sideband (USB) sits above. Drag the dial towards the edge of the band's phone segment:</p>
+
+  <div class="scene" id="s-edge">
+    <div class="controls">
+      <label for="g-usb"><input id="g-usb" type="checkbox"> Upper sideband (USB)</label>
+      <label for="g-f">Displayed frequency <input id="g-f" type="range" min="0" max="20" step="0.5" value="10"><output id="g-fo"></output></label>
+    </div>
+    <p class="readout" id="r-edge" aria-live="polite"></p>
+  </div>
+
+  <p>The rule follows from the picture: with 3 kHz LSB, keep the displayed frequency at least 3 kHz <em>above</em> the lower edge of the segment; with USB, at least 3 kHz <em>below</em> the upper edge. A 3 kHz LSB signal displayed at 7.178 MHz occupies 7.175 to 7.178 MHz; USB at 14.347 MHz occupies 14.347 to 14.350 MHz.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T5B10: 12 watts down to 3 watts is how many dB? <i>−6 dB.</i></summary><p>12 → 6 → 3 is two halvings, each −3 dB.</p></details>
+  <details><summary>T5B08: 1,000,000 picofarads equals? <i>1 microfarad.</i></summary><p>A million is two prefix steps (×1000 twice): pico → nano → micro.</p></details>
+  <details><summary>G4D07: S8 to S9 at a distant receiver needs how much more power? <i>About 4 times.</i></summary><p>One S unit is 6 dB, two doublings: 2 × 2 = 4.</p></details>
+  <details><summary>G5B08: Peak-to-peak voltage of 120 V RMS? <i>339.4 volts.</i></summary><p>Peak = 120 ÷ 0.707 = 169.7 V; peak-to-peak is twice that.</p></details>
+  <details><summary>G5B14: PEP of 500 V peak-to-peak across 50 Ω? <i>625 watts.</i></summary><p>Peak 250 V, RMS 176.8 V, and 176.8² ÷ 50 = 625 W.</p></details>
+  <details><summary>E8A06: PEP-to-average ratio of unprocessed SSB voice? <i>About 2.5 to 1.</i></summary><p>Speech is peaky: the loudest moments set PEP, while the average includes all the soft sounds and pauses.</p></details>
+  <details><summary>E8A09: How many levels can an 8-bit converter encode? <i>256.</i></summary><p>Each bit doubles the count: 2⁸ = 256. It's the ruler in <a href="../../course/03-taking-snapshots.html#ruler">course chapter 3</a>.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T5B">Technician T5B</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G5B,G4D">General G5B, G4D</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E8A">Extra E8A</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Your amplifier turns 100 W into 1000 W. How many dB, and how many S units at the other end?</summary><p>10× is 10 dB, which is a little under two S units (6 dB each).</p></details>
+  <details><summary>Why can't you just average an AC voltage to find its heating effect?</summary><p>Its plain average is zero: it's positive half the time and negative half the time. Power goes as voltage squared, which is always positive, so you average the square and take the root.</p></details>
+  <details><summary>Does a speech processor raise PEP?</summary><p>No. PEP is set by the peaks; the processor raises the average by lifting the softer sounds.</p></details>
+
+  <nav class="next">
+    <a href="./01-volts-amps-ohms.html">← Lesson 1: Volts, amps and ohms</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l02.ts"></script>
+</body>
+</html>
