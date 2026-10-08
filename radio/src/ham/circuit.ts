@@ -76,3 +76,27 @@ export function lamp(g: CanvasRenderingContext2D, x: number, y: number, glow: nu
   g.strokeStyle = C.text; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 12, 0, 2 * Math.PI); g.stroke();
   line(g, x - 8, y - 8, x + 8, y + 8, C.text, 1.5); line(g, x - 8, y + 8, x + 8, y - 8, C.text, 1.5);
 }
+
+/** A capacitor symbol (two plates) centered between a and b. */
+export function capacitor(g: CanvasRenderingContext2D, a: Pt, b: Pt, color = C.blue, name = "") {
+  const [ax, ay] = a, [bx, by] = b, len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, nx = -uy, ny = ux;
+  const mx = (ax + bx) / 2, my = (ay + by) / 2, gap = 5, half = 13;
+  g.strokeStyle = C.stage; g.lineWidth = 7; g.beginPath(); g.moveTo(mx - ux * gap, my - uy * gap); g.lineTo(mx + ux * gap, my + uy * gap); g.stroke();
+  for (const sgn of [-1, 1]) line(g, mx + ux * gap * sgn - nx * half, my + uy * gap * sgn - ny * half, mx + ux * gap * sgn + nx * half, my + uy * gap * sgn + ny * half, color, 3);
+  if (name) label(g, name, mx + nx * 26, my + ny * 26 + 4, color, "center", 12);
+}
+
+/** An inductor symbol (a row of bumps) between a and b. */
+export function inductor(g: CanvasRenderingContext2D, a: Pt, b: Pt, color = C.pink, name = "") {
+  const [ax, ay] = a, [bx, by] = b, len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, nx = -uy, ny = ux;
+  g.strokeStyle = C.stage; g.lineWidth = 7; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+  const n = 4, r = len / (2 * n), ang = Math.atan2(uy, ux);
+  g.strokeStyle = color; g.lineWidth = 2.5;
+  for (let i = 0; i < n; i++) { const cx = ax + ux * r * (2 * i + 1), cy = ay + uy * r * (2 * i + 1); g.beginPath(); g.arc(cx, cy, r, ang + Math.PI, ang, false); g.stroke(); }
+  if (name) label(g, name, (ax + bx) / 2 - nx * 22, (ay + by) / 2 - ny * 22 + 4, color, "center", 12);
+}
+
+/** A ground symbol hanging below (x, y). */
+export function ground(g: CanvasRenderingContext2D, x: number, y: number) {
+  line(g, x - 10, y, x + 10, y, C.muted, 2); line(g, x - 6, y + 4, x + 6, y + 4, C.muted, 2); line(g, x - 2, y + 8, x + 2, y + 8, C.muted, 2);
+}

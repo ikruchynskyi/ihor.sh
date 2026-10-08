@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resonance and Q</title>
+  <meta name="description" content="Ham radio, visually, lesson 4: the LC tank as a swing, resonance curves and Q, series and parallel resonance, impedance in rectangular and polar form, reactive power, skin effect, and filters." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 4</p>
+  <h1>Resonance and Q</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./03-capacitors-and-inductors.html#reactance">Lesson 3: reactance</a> (the two curves that cross) and <a href="./03-capacitors-and-inductors.html#phase">the impedance arrow</a></li>
+      <li><a href="./02-decibels-and-prefixes.html#db">Lesson 2: decibels</a> (for "half power")</li>
+    </ul>
+  </div>
+
+  <p>Push a child on a swing at just the right moment, and small pushes build a big swing. Push at the wrong rhythm and nothing much happens. That's <b>resonance</b>: a system that has its own natural rhythm responds hugely to that one rhythm and hardly at all to others. A tuning knob on a radio does exactly this, with a capacitor and an inductor instead of a swing.</p>
+
+  <!-- 1 -->
+  <h2 id="tank">The tank circuit: energy sloshing back and forth</h2>
+  <p>Charge a capacitor, then connect it across an inductor. The capacitor empties through the coil, building its magnetic field. When the capacitor is empty, the coil's field (the flywheel, <a class="back" href="./03-capacitors-and-inductors.html#inductor">↩ lesson 3</a>) keeps the current going and charges the capacitor up the other way. Then it all happens in reverse. Energy swings between the electric field and the magnetic field, like a swing trading height for speed:</p>
+
+  <div class="scene" id="s-tank">
+    <div class="controls">
+      <label for="k-l">Inductance <input id="k-l" type="range" min="1" max="100" step="1" value="50"><output id="k-lo"></output></label>
+      <label for="k-c">Capacitance <input id="k-c" type="range" min="5" max="200" step="5" value="40"><output id="k-co"></output></label>
+    </div>
+    <p class="readout" id="r-tank" aria-live="polite"></p>
+  </div>
+
+  <p>That's a <b>resonant</b> or <b>tuned circuit</b>: an inductor and a capacitor, in series or in parallel. It rings at one frequency, set by how big the "tank" and the "flywheel" are. A bigger capacitor or a bigger coil makes it slower. Its frequency is exactly where the two reactance curves of lesson 3 cross:</p>
+  <div class="notation">
+    <math><msub><mi>f</mi><mn>0</mn></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mi>L</mi><mi>C</mi></mrow></msqrt></mrow></mfrac></math>
+    <ul><li>Set X<sub>L</sub> = X<sub>C</sub>, that is 2πfL = 1 ÷ (2πfC), and solve for f. Resistance doesn't appear: it changes how long the ringing lasts, not its pitch. 50 µH with 40 pF: 1 ÷ (2π × √(50×10⁻⁶ × 40×10⁻¹²)) = 3.56 MHz.</li></ul>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="curve">Pushing the swing: the resonance curve and Q</h2>
+  <p>Now drive the circuit with a signal and sweep its frequency. Only near the natural frequency does the response build up. The resistance in the circuit is friction: it drains energy every cycle, and decides how sharp the peak is.</p>
+
+  <div class="scene" id="s-curve">
+    <div class="controls">
+      <label for="q-q">Q (less friction →) <input id="q-q" type="range" min="2" max="150" step="1" value="20"><output id="q-qo"></output></label>
+      <label for="q-f">Drive frequency <input id="q-f" type="range" min="0.8" max="1.2" step="0.002" value="1.03"><output id="q-fo"></output></label>
+    </div>
+    <p class="readout" id="r-curve" aria-live="polite"></p>
+  </div>
+
+  <p>The sharpness has a name: <b>Q</b>, for "quality". High Q means little loss: the circuit rings for many cycles on its own, the peak is tall and narrow, and it's very selective. Q also tells you the width of the peak directly. The <b>half-power bandwidth</b> (between the two points 3 dB down from the top) is the resonant frequency divided by Q: a 7.1 MHz circuit with a Q of 150 is 7.1 MHz ÷ 150 = 47.3 kHz wide.</p>
+  <p>The same trade-off appears everywhere: raising the Q of an impedance-matching circuit makes it <em>narrower</em> (less bandwidth). And in a high-Q series circuit, the voltages across the coil and the capacitor individually become much larger than the voltage you apply, Q times larger, because the energy sloshing between them builds up just like the swing.</p>
+
+  <!-- 3 -->
+  <h2 id="seriespar">Series and parallel: opposite personalities</h2>
+  <p>Where the L and C sit relative to the signal changes everything. Sweep the frequency and compare:</p>
+
+  <div class="scene" id="s-sp">
+    <div class="controls">
+      <label for="p-par"><input id="p-par" type="checkbox"> Parallel (side by side)</label>
+      <label for="p-f">Frequency <input id="p-f" type="range" min="0.6" max="1.4" step="0.005" value="1"><output id="p-fo"></output></label>
+    </div>
+    <p class="readout" id="r-sp" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Series LC:</b> at resonance the coil's and capacitor's reactances are equal and opposite, so they <b>cancel</b>. All that's left is the resistance: the impedance is at its <b>minimum</b>, approximately R, and current and voltage are in phase. A series circuit is a door that opens wide at one frequency.</li>
+    <li><b>Parallel LC:</b> at resonance, the current sloshing <em>between</em> the coil and capacitor (the circulating current) is at its <b>maximum</b>, but the two branches take turns, so the current drawn from outside is at its <b>minimum</b>. The impedance is at its <b>maximum</b>. A parallel circuit is a wall that rises at one frequency. (Strictly, at resonance both series and parallel circuits look like a pure resistance: small for series, large for parallel.)</li>
+    <li>For a parallel circuit, Q is the resistance divided by the reactance of either the coil or the capacitor (they're equal at resonance).</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="plane">Impedance on a graph: rectangular and polar</h2>
+  <p>Lesson 3 drew impedance as an arrow: resistance across, reactance up (inductive) or down (capacitive). There are two ways to write that arrow down, exactly like the two languages for arrows in <a class="back" href="../../course/02-arrows-as-numbers.html#two">course chapter 2</a>:</p>
+  <ul>
+    <li><b>Rectangular:</b> R ± jX. The "j" marks the reactance, with + for inductive and − for capacitive. So 50 − j25 Ω means 50 Ω of resistance in series with 25 Ω of capacitive reactance, and a pure 100 Ω capacitive reactance is 0 − j100.</li>
+    <li><b>Polar:</b> magnitude and angle. A pure inductance is at +90°, a pure capacitance at −90°, a pure resistance at 0° (on the horizontal axis).</li>
+  </ul>
+  <p>Pick a resistor, a part, and a frequency, and see where the circuit lands (this is the Extra exam's figure E5-1, made live):</p>
+
+  <div class="scene" id="s-plane">
+    <div class="controls">
+      <label for="z-r">Resistor <input id="z-r" type="range" min="0" max="500" step="10" value="400"><output id="z-ro"></output></label>
+      <label for="z-kind">Part <select id="z-kind"><option value="C38">38 pF capacitor</option><option value="L18">18 µH inductor</option><option value="C19">19 pF capacitor</option></select></label>
+      <label for="z-f">Frequency <input id="z-f" type="range" min="1" max="30" step="0.1" value="14"><output id="z-fo"></output></label>
+    </div>
+    <p class="readout" id="r-plane" aria-live="polite"></p>
+  </div>
+  <details><summary>Show figure E5-1 from the question pool</summary><figure style="margin:10px 0 0"><img src="../fig/e5-1.png" alt="Figure E5-1: an impedance plane with eight numbered points" style="max-width:100%;background:#fff;border-radius:8px;padding:8px"></figure></details>
+
+  <p>Graphs of frequency response usually use a <b>logarithmic</b> scale on the vertical axis (decibels), so that both the passband and the deep rejection fit on one picture. A diagram showing impedances as arrows at one frequency is a <b>phasor diagram</b>.</p>
+
+  <!-- 5 -->
+  <h2 id="power">Power that comes back, and wires that aren't ideal</h2>
+  <p>A resistor turns energy into heat for good. An ideal coil or capacitor only <em>borrows</em> energy: it stores it in its field for a quarter cycle and hands it back the next. The current and voltage are 90° apart, and on average no power is used at all. That borrowed-and-returned flow is called <b>reactive power</b>: "wattless", nonproductive power. In a circuit with 100 Ω of resistance and 100 Ω of inductive reactance drawing 1 A, only the resistor consumes anything: I² × R = 100 W.</p>
+  <p>At radio frequencies, the parts themselves stop being ideal:</p>
+
+  <div class="scene" id="s-skin">
+    <div class="controls"><label for="s-f">Frequency <input id="s-f" type="range" min="0" max="5" step="0.05" value="4"><output id="s-fo"></output></label></div>
+    <p class="readout" id="r-skin" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Skin effect:</b> at high frequencies, current crowds into a thin layer at the surface of a wire, so its effective resistance rises with frequency. It's also the main loss in film capacitors at RF.</li>
+    <li>Every wire is a small inductor: at VHF and above, keep component <b>leads short</b> to minimize their inductive reactance (and, at microwaves, the phase shift along them).</li>
+    <li>Every part has <b>parasitic</b> reactance: electrolytic capacitors have too much inductance to work at RF; coils have capacitance between their turns. A part's <b>self-resonance</b> is where its intended and parasitic reactances resonate together.</li>
+    <li>A thicker conductor is electrically "longer" than its physical length (its electrical length increases with diameter): antenna builders trim thick elements shorter for that reason.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="filters">Filters built from L and C</h2>
+  <p>Combine coils and capacitors and you get filters. The rule of thumb from lesson 3 tells you what each does: a <b>series</b> inductor blocks high frequencies, a capacitor <b>to ground</b> drains them away; swap them for a high-pass.</p>
+  <div class="scene" id="s-nets"></div>
+  <ul>
+    <li>A <b>Pi-network</b> low-pass: a capacitor from the input to ground, an inductor in series, a capacitor from the output to ground (the shape of the letter π). It's the classic transmitter output network. Add one more series inductor at the output and it's a <b>Pi-L network</b>, with even better suppression of harmonics.</li>
+    <li>A <b>T-network</b> with series capacitors and a shunt inductor is a <b>high-pass</b>.</li>
+    <li>An impedance-matching network <em>cancels the reactive part</em> of an impedance and transforms the resistive part to the value you need.</li>
+  </ul>
+  <p>Filters with the same number of parts can be tuned for different personalities. Compare three classic designs, all with the same number of parts:</p>
+
+  <div class="scene" id="s-fam">
+    <div class="controls">
+      <label for="f-b"><input id="f-b" type="checkbox" checked> Butterworth</label>
+      <label for="f-c"><input id="f-c" type="checkbox" checked> Chebyshev</label>
+      <label for="f-e"><input id="f-e" type="checkbox" checked> Elliptic</label>
+    </div>
+    <p class="readout" id="r-fam" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Butterworth:</b> perfectly flat in the passband, gentle cutoff.</li>
+    <li><b>Chebyshev:</b> allows some <b>ripple in the passband</b> in exchange for a <b>sharper cutoff</b>.</li>
+    <li><b>Elliptic:</b> ripple in both bands and <b>notches</b> in the stopband, for the sharpest cutoff of all.</li>
+  </ul>
+  <p>How sharp a filter is gets summed up by its <b>shape factor</b>: the ratio of its width far down (say −60 dB) to its width near the top (say −6 dB). A perfect brick wall would be 1; the closer to 1, the better it rejects signals in adjacent channels. Some special filters you'll see named: <b>crystal lattice</b> filters (quartz crystals, for very sharp low-level IF filters), <b>helical</b> filters (compact band-pass or notch filters at VHF/UHF), and <b>cavity</b> filters (large, extremely sharp resonators, used in the duplexer that lets a 2-meter repeater transmit and receive at once).</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T6D11: Which of these is a resonant circuit? <i>An inductor and a capacitor in series or parallel.</i></summary><p>The tank: energy swings between the coil's magnetic field and the capacitor's electric field.</p></details>
+  <details><summary>E5A10: Resonant frequency with 50 µH and 10 pF? <i>7.12 MHz.</i></summary><p>1 ÷ (2π √(50×10⁻⁶ × 10×10⁻¹²)) = 7.12 MHz. R doesn't matter for the frequency.</p></details>
+  <details><summary>E5A12: Half-power bandwidth at 3.7 MHz with Q = 118? <i>31.4 kHz.</i></summary><p>Bandwidth = f ÷ Q = 3 700 000 ÷ 118 ≈ 31 356 Hz.</p></details>
+  <details><summary>E5A06 / E5A07: Parallel LC at resonance: circulating current, and input current? <i>Maximum; minimum.</i></summary><p>The coil and capacitor pass energy back and forth between themselves (big current inside the loop), while the source only tops up losses (small current from outside).</p></details>
+  <details><summary>E5C06: What does 50 − j25 Ω represent? <i>50 Ω resistance in series with 25 Ω capacitive reactance.</i></summary><p>Rectangular form: the real part is resistance; −j means capacitive.</p></details>
+  <details><summary>E5C10: 400 Ω and 38 pF at 14 MHz: which point on E5-1? <i>Point 4.</i></summary><p>X<sub>C</sub> = 1 ÷ (2π × 14 MHz × 38 pF) ≈ 299 Ω, so the arrow is 400 across and about 300 down: set the plane scene to these values.</p></details>
+  <details><summary>E7C05: Ripple in the passband and a sharp cutoff? <i>Chebyshev.</i></summary><p>The filter-family scene: Chebyshev trades a flat passband for steepness.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T6D">Technician T6D</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G5A">General G5A</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E5A,E5C,E5D,E7C">Extra E5A, E5C, E5D, E7C</a>
+    </p>
+    <p class="note">T6D also covers components from <a href="./05-diodes-and-transistors.html">lesson 5</a>.</p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>You double the capacitance in a tuned circuit. What happens to its frequency?</summary><p>It drops by a factor of √2 (about 0.71×): frequency goes as one over the square root of L × C.</p></details>
+  <details><summary>Why does a high-Q circuit select one station better than a low-Q one?</summary><p>Its resonance peak is narrower (bandwidth = f ÷ Q), so signals a little off frequency get much less response.</p></details>
+  <details><summary>Where does an ideal capacitor's "reactive power" go?</summary><p>Nowhere: it's stored in the electric field for a quarter cycle and returned the next. Only resistance consumes power.</p></details>
+
+  <nav class="next">
+    <a href="./03-capacitors-and-inductors.html">← Lesson 3: Capacitors and inductors</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l04.ts"></script>
+</body>
+</html>
