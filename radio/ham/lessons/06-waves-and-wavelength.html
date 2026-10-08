@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Waves and Wavelength</title>
+  <meta name="description" content="Ham radio, visually, lesson 6: what a radio wave is, wavelength as 300 divided by megahertz, band names, polarization, multipath fading and absorption." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 6</p>
+  <h1>Waves and wavelength</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./01-volts-amps-ohms.html#ac">Lesson 1: alternating current</a> and frequency</li>
+      <li><a href="../../course/01-spinning-arrows.html#wheel">Course ch. 1: a wave as the shadow of a spinning arrow</a> (helpful, not required)</li>
+    </ul>
+  </div>
+
+  <p>An alternating current in a wire makes electric and magnetic fields around it that change just as fast. At radio frequencies, those changing fields don't stay put: they break away from the wire and travel outward on their own, at the speed of light. That traveling disturbance is a <b>radio wave</b>, and a wire built to launch or catch it is an <b>antenna</b>.</p>
+
+  <!-- 1 -->
+  <h2 id="em">Two fields, at right angles, at the speed of light</h2>
+  <p>A radio wave is made of two fields that keep each other going: a changing <b>electric</b> field creates a magnetic one, and a changing <b>magnetic</b> field creates an electric one. They're always at <b>right angles</b> to each other and to the direction of travel:</p>
+
+  <div class="scene" id="s-em">
+    <div class="controls">
+      <label for="em-p">Antenna <select id="em-p"><option value="v">vertical</option><option value="h">horizontal</option><option value="c">rotating (circular)</option></select></label>
+    </div>
+  </div>
+
+  <p>Yellow is the electric field, blue the magnetic field. The direction of the <b>electric</b> field defines the wave's <b>polarization</b>: a vertical antenna launches a vertically polarized wave, a horizontal one a horizontally polarized wave. In empty space, every radio wave, of any frequency, travels at the <b>speed of light</b>: about <b>300 000 000 meters per second</b>.</p>
+
+  <!-- 2 -->
+  <h2 id="lambda">Wavelength: 300 divided by megahertz</h2>
+  <p>While one cycle happens at the antenna, the wave has already run ahead by a certain distance. That distance, from one crest to the next, is the <b>wavelength</b>. The faster the cycles, the less time each takes, so the shorter the distance: wavelength gets <b>shorter as frequency rises</b>.</p>
+
+  <div class="scene" id="s-lambda">
+    <div class="controls">
+      <label for="la-f">Frequency <input id="la-f" type="range" min="0" max="1000" step="1" value="560"><output id="la-fo"></output></label>
+    </div>
+    <p class="readout" id="r-lambda" aria-live="polite"></p>
+  </div>
+
+  <p>Distance per second divided by cycles per second gives distance per cycle: 300 000 000 m/s ÷ f. Measured in megahertz, the millions cancel, leaving the one formula every ham knows by heart:</p>
+  <div class="notation">
+    <math><mi>λ</mi><mtext> (meters)</mtext><mo>=</mo><mfrac><mn>300</mn><mrow><mi>f</mi><mtext> (MHz)</mtext></mrow></mfrac></math>
+    <ul><li>λ (lambda) is the wavelength. 146 MHz → 300 ÷ 146 ≈ 2 m. 7 MHz → about 43 m.</li></ul>
+  </div>
+  <p>That's why amateur bands are named by their approximate wavelength: the "2-meter band" is 144–148 MHz, "70 centimeters" is 420–450 MHz, "40 meters" is 7.0–7.3 MHz. And the big ranges of the spectrum have names too: <b>HF</b> (high frequency) is <b>3–30 MHz</b>, <b>VHF</b> (very high) is <b>30–300 MHz</b>, <b>UHF</b> (ultra high) is <b>300–3000 MHz</b>. Each is ten times the one before.</p>
+
+  <!-- 3 -->
+  <h2 id="polarization">Polarization: matching the antennas</h2>
+  <p>A receiving antenna picks up the part of the electric field that lies along it. Turn it across the wave's polarization and the signal fades away:</p>
+
+  <div class="scene" id="s-pol">
+    <div class="controls">
+      <label for="po-a">Receiving antenna angle <input id="po-a" type="range" min="0" max="90" step="1" value="0"><output id="po-ao"></output></label>
+    </div>
+    <p class="readout" id="r-pol" aria-live="polite"></p>
+  </div>
+
+  <p>On a direct, line-of-sight VHF or UHF path, <b>cross-polarization</b> (one antenna vertical, the other horizontal) costs a lot of signal, often 20 dB or more in practice. So conventions matter: FM and repeaters use <b>vertical</b> antennas (easy on cars and handhelds), while long-distance CW and SSB on VHF/UHF use <b>horizontal</b>. On HF it matters much less: signals bent back by the ionosphere arrive with their polarization twisted into a slowly changing ellipse, so either orientation works.</p>
+
+  <!-- 4 -->
+  <h2 id="multipath">Multipath: when a signal arrives twice</h2>
+  <p>A signal can reach you directly and also bounced off a building. Where the two arrive in step they add up; where they arrive half a wavelength apart they cancel. Drive the receiver along the street:</p>
+
+  <div class="scene" id="s-multi">
+    <div class="controls">
+      <label for="mu-x">Receiver position <input id="mu-x" type="range" min="0" max="1" step="0.002" value="0.4"><output id="mu-xo"></output></label>
+      <label for="mu-f">Band <select id="mu-f"><option value="146">2 m (146 MHz)</option><option value="440">70 cm (440 MHz)</option><option value="50">6 m (50 MHz)</option></select></label>
+    </div>
+    <p class="readout" id="r-multi" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The strong and weak spots repeat about every half wavelength, so on VHF, <b>moving the antenna a few feet</b> can change the signal enormously.</li>
+    <li>Driving through that pattern, a mobile signal flutters rapidly: hams call it <b>picket fencing</b>.</li>
+    <li>For data, the echoes smear the symbols together and <b>error rates rise</b>.</li>
+    <li>Reflections can also help: if a building blocks the direct path to a repeater, point a directional antenna at something that <b>reflects</b> the signal there.</li>
+    <li>On HF, signals often arrive by several paths through the ionosphere, which shift constantly: that's the cause of irregular <b>fading</b>.</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="absorption">What gets in the way</h2>
+  <p>The shorter the wavelength, the more things in its path matter. At UHF and microwave frequencies, <b>vegetation</b> (wet leaves) absorbs signals, and <b>rain</b> and other precipitation can shorten your range. At 10 and 6 meters, wavelengths of several meters, fog and rain have <b>little effect</b>. And at HF, a whole layer of the upper atmosphere, the <b>ionosphere</b>, can bend signals back to Earth, which is how HF reaches around the world (<a href="./09-propagation.html">lesson 9</a>).</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T3B06: Formula for frequency to approximate wavelength? <i>Wavelength in meters = 300 ÷ frequency in MHz.</i></summary><p>The speed of light (300 million m/s) divided by the frequency (millions of cycles per second).</p></details>
+  <details><summary>T3B12: Which frequency travels fastest in free space? <i>All the same.</i></summary><p>Every radio wave travels at the speed of light; only the wavelength changes with frequency.</p></details>
+  <details><summary>T3A01: Why do VHF signals change a lot when the antenna moves a few feet? <i>Multipath cancels or reinforces signals.</i></summary><p>At 146 MHz half a wavelength is about a meter: the multipath scene shows peaks and nulls that close together.</p></details>
+  <details><summary>T3B02: What defines a wave's polarization? <i>The orientation of the electric field.</i></summary><p>Which is set by how the transmitting antenna is oriented.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row"><a class="btn" href="../practice.html?pool=T&mode=study&scope=T3A,T3B">Technician T3A, T3B</a></p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>What's the wavelength at 28 MHz, and what band is that?</summary><p>300 ÷ 28 ≈ 10.7 m: the 10-meter band.</p></details>
+  <details><summary>Your handheld's signal into a repeater drops when you step a meter to the side. Why?</summary><p>You moved from a spot where direct and reflected signals add up to one where they partly cancel (multipath). At 2 meters, a half wavelength is about a meter.</p></details>
+  <details><summary>Why do FM repeater users mostly use vertical antennas?</summary><p>Convention, set by what's practical on cars and handhelds; using the same polarization as everyone else avoids cross-polarization loss.</p></details>
+
+  <nav class="next">
+    <a href="./05-diodes-and-transistors.html">← Lesson 5: Diodes, transistors and power supplies</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l06.ts"></script>
+</body>
+</html>
