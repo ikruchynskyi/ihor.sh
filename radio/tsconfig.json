@@ -8,8 +8,9 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
+    "resolveJsonModule": true,
     "types": []
   },
   "include": ["src"],
-  "exclude": ["src/*.test.ts"]
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -92,7 +92,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Static files from dist/ (run `vite build` first; `npm run serve` does both).
-    const file = path.resolve(DIST, "." + (url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname)));
+    const file = path.resolve(DIST, "." + decodeURIComponent(url.pathname) + (url.pathname.endsWith("/") ? "index.html" : ""));
     if (!file.startsWith(DIST + path.sep)) return json(res, 403, { error: "Forbidden" });
     const data = await readFile(file).catch(() => null);
     if (!data) return json(res, 404, { error: "Not found" });

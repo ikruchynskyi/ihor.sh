@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ham License Prep</title>
+  <meta name="description" content="Study for the US amateur radio exams (Technician, General, Amateur Extra) with the official question pools, spaced repetition, mock exams, and visual lessons that explain the why." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · radio</p>
+  <h1>Ham radio license, visually</h1>
+  <p>In the US, anyone can earn an amateur radio license by passing a multiple-choice exam: <b>Technician</b> first, then <b>General</b>, then <b>Amateur Extra</b>, each opening more of the radio spectrum. There's no Morse test any more, and every possible question is public: the official question pools are released into the public domain, word for word.</p>
+  <p>That makes it tempting to memorize answers. This page helps you do better: practice the real questions with spaced repetition, take mock exams built exactly like the real ones, and when an answer doesn't make sense, open the visual lesson that explains it.</p>
+
+  <div class="tabs" id="tabs" role="group" aria-label="License class"></div>
+  <p class="note" id="pool-info"></p>
+
+  <div class="stat" id="stats"></div>
+  <div class="scene" id="s-dist"></div>
+  <div class="row">
+    <a class="btn" id="go-study" href="./practice.html">Study 20 questions</a>
+    <a class="btn alt" id="go-exam" href="./practice.html">Take a mock exam</a>
+  </div>
+  <details>
+    <summary>How the prediction works</summary>
+    <p>The real exam takes one random question from each group of the pool. So for every group, your chance of getting its question right is the average over its questions: about 25% for questions you've never seen (a guess), rising as you answer them correctly on separate days (40% just after a miss, then 65%, 80%, 88%, 94%, 97%). The exam score is then a sum of one weighted coin per group, and the chart shows the exact odds of every possible total. It's deliberately a little pessimistic.</p>
+    <p>The same idea picks your new questions: since every group gives exactly one exam question, learning a question from a small group raises your expected score more than one from a big group. Small groups come first, a few groups at a time.</p>
+  </details>
+
+  <h2 id="topics">By topic</h2>
+  <p class="legend"><span><i class="k0"></i>missed recently</span><span><i class="k1"></i>learning</span><span><i class="k2"></i>known</span><span><i class="k3"></i>solid</span><span><i style="background:var(--line)"></i>not seen yet</span></p>
+  <div class="subs" id="subs"></div>
+
+  <h2 id="exams">Mock exams</h2>
+  <div id="history"></div>
+
+  <h2 id="lessons-h">Learn it visually</h2>
+  <p>Short lessons in the style of the <a href="../course/">Radio from scratch</a> course: every idea as something you can move and see, with the exam questions it explains listed at the end.</p>
+  <ul id="lessons"></ul>
+
+  <h2 id="how">Taking the real exam</h2>
+  <ul>
+    <li>Exams are given by volunteer examiners (VEs), in person or online. Find a session through a VE coordinator such as the <a href="https://www.arrl.org/find-an-amateur-radio-license-exam-session">ARRL</a> or <a href="https://hamstudy.org/sessions">HamStudy's session list</a>.</li>
+    <li>Before the exam, get an FCC Registration Number (FRN) in the FCC's CORES system. After you pass, the FCC charges a $35 application fee and your call sign appears in its database, usually within days. A license lasts 10 years.</li>
+    <li>You can take several elements at one session: pass Technician, and you may try General right away.</li>
+  </ul>
+
+  <p class="note" style="margin-top:40px">Question pools: NCVEC Question Pool Committee (public domain), including all published errata; machine-readable copies via <a href="https://github.com/russolsen/ham_radio_question_pool">ham_radio_question_pool</a>. Progress is stored only in this browser. <button type="button" class="btn alt" id="reset" style="font-size:0.8rem;padding:4px 10px">Reset progress</button></p>
+</main>
+<script type="module" src="/src/ham/home.ts"></script>
+</body>
+</html>
