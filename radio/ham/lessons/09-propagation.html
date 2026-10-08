@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Propagation</title>
+  <meta name="description" content="Ham radio, visually, lesson 9: radio horizon, the ionosphere's layers by day and night, skip and the MUF, the Sun and space weather, and the special VHF modes: sporadic E, ducting, meteor scatter and moonbounce." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 9</p>
+  <h1>Propagation</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./06-waves-and-wavelength.html#lambda">Lesson 6: wavelength, HF/VHF/UHF</a> and <a href="./06-waves-and-wavelength.html#multipath">multipath</a></li>
+      <li><a href="./07-antennas.html#ground">Lesson 7: takeoff angle and height</a></li>
+    </ul>
+  </div>
+
+  <p>Why can a 5-watt radio reach Japan from New York on some days and not across town on others? Radio waves travel in straight lines, the Earth is round, and yet signals routinely go around the world. The answer is a layer of electrically charged gas, 50 to 400 km up, that the Sun creates every morning and lets fade every night. This lesson is about how signals get from here to there.</p>
+
+  <!-- 1 -->
+  <h2 id="horizon">Line of sight, and a little more</h2>
+  <p>VHF and UHF signals mostly travel in straight lines, so the Earth's curve limits them: the higher the antennas, the farther they see. Drag the heights:</p>
+
+  <div class="scene" id="s-horizon">
+    <div class="controls">
+      <label for="hz-a">Your antenna <input id="hz-a" type="range" min="5" max="1000" step="5" value="30"><output id="hz-ao"></output></label>
+      <label for="hz-b">Repeater <input id="hz-b" type="range" min="5" max="2000" step="5" value="500"><output id="hz-bo"></output></label>
+    </div>
+    <p class="readout" id="r-horizon" aria-live="polite"></p>
+  </div>
+
+  <p>The air gets thinner with height, which bends radio waves slightly downward (refraction), so the <b>radio horizon</b> is about <b>15% farther</b> than the visual one. A rule of thumb: the radio horizon in miles is about 1.41 × √(antenna height in feet), for each end. UHF simplex is rarely heard beyond it, because UHF passes straight through the ionosphere. Signals can still bend around the sharp edge of a ridge (<b>knife-edge diffraction</b>), reaching places just out of sight.</p>
+
+  <!-- 2 -->
+  <h2 id="ionosphere">The ionosphere: a mirror made by the Sun</h2>
+  <p>Ultraviolet and X-rays from the Sun knock electrons off the gas atoms high in the atmosphere. Those free electrons bend radio waves; enough of them, and the wave is bent all the way back to Earth. The <b>ionosphere</b> forms in layers, called regions: <b>D</b> (lowest, about 60–90 km), <b>E</b> (about 100 km), and <b>F</b> (200–400 km, which splits into F1 and F2 by day). Send a signal up at different angles and frequencies:</p>
+
+  <div class="scene" id="s-iono">
+    <div class="controls">
+      <label for="io-f">Frequency <input id="io-f" type="range" min="1.8" max="30" step="0.1" value="14"><output id="io-fo"></output></label>
+      <label for="io-a">Takeoff angle <input id="io-a" type="range" min="2" max="88" step="1" value="10"><output id="io-ao"></output></label>
+      <label for="io-n"><input id="io-n" type="checkbox"> Night</label>
+      <label for="io-s">Sunspots <input id="io-s" type="range" min="0" max="1" step="0.05" value="0.6"><output id="io-so"></output></label>
+    </div>
+    <p class="readout" id="r-iono" aria-live="polite"></p>
+  </div>
+
+  <p>Experiment and you'll find the rules of HF:</p>
+  <ul>
+    <li>For any path, there's a <b>maximum usable frequency</b> (MUF): above it, the signal goes straight through into space. Just <b>below the MUF</b> is the best frequency: the least absorption and the longest hops. The <b>critical frequency</b> is the highest frequency reflected for a given angle; the <b>critical angle</b> is the steepest takeoff angle that still comes back.</li>
+    <li>A <b>lower takeoff angle</b> means a <b>longer hop</b>. One hop off the F2 region, the highest, covers at most about <b>2,500 miles</b>; off the E region, about <b>1,200 miles</b>. Longer distances take several hops.</li>
+    <li>Between your ground wave and where the first hop lands is a <b>skip zone</b> where nobody hears you directly, though a little energy <b>scatters</b> in, weak and fluttery, from several paths.</li>
+    <li>By day, the <b>D region</b> absorbs low frequencies: that's why 160, 80, 60 and 40 meters are poor for distance during the day and come alive at night, when the D region disappears. That absorption sets the <b>lowest usable frequency</b> (LUF): below it, signals are absorbed before they arrive.</li>
+    <li>Pointing a low dipole straight up (<a class="back" href="./07-antennas.html#ground">↩ lesson 7</a>) gives <b>NVIS</b>: short-range coverage at high angles on MF and low HF.</li>
+    <li>HF's specialty is exactly this <b>long-distance ionospheric propagation</b>; above about 30–50 MHz, the ionosphere usually lets signals through.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="muf">A day in the life of the MUF</h2>
+  <p>The ionosphere builds up after sunrise and decays after sunset, so the MUF and LUF follow the Sun. Here's a typical day on a long east–west path; the usable window is between the two curves:</p>
+
+  <div class="scene" id="s-muf">
+    <div class="controls">
+      <label for="mf-s">Solar cycle <input id="mf-s" type="range" min="0" max="1" step="0.05" value="0.6"><output id="mf-so"></output></label>
+      <label for="mf-t">Time of day <input id="mf-t" type="range" min="0" max="24" step="0.25" value="13"><output id="mf-to"></output></label>
+    </div>
+    <p class="readout" id="r-muf" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>At the <b>peak of the sunspot cycle</b>, 10 meters and even 6 meters open for worldwide contacts via the F region, best from dawn to shortly after sunset. When solar activity is low, <b>15, 12 and 10 meters</b> are the least reliable bands.</li>
+    <li><b>20 meters</b> supports worldwide daytime propagation at <b>any point</b> in the solar cycle: it's the workhorse band.</li>
+    <li>When darkness lowers the MUF on a path, <b>switch to a lower band</b> to keep a contact going. If the LUF ever rises above the MUF, ordinary skywave on that path is impossible.</li>
+    <li>Summer on the low bands means high levels of <b>static</b> from thunderstorms. 160 meters works best over paths entirely in <b>darkness</b>.</li>
+  </ul>
+  <p>To see what's open right now, you don't need to guess: networks of automated receiving stations on the internet (such as the Reverse Beacon Network and PSK Reporter) report who heard your CW or digital signal, and where. <b>VOACAP</b> software predicts HF propagation for any path and time.</p>
+
+  <!-- 4 -->
+  <h2 id="sun">The Sun and space weather</h2>
+  <p>Everything above depends on the Sun, which is anything but steady:</p>
+
+  <div class="scene" id="s-sun">
+    <div class="controls"><label for="sn-t">Time after an eruption <input id="sn-t" type="range" min="0" max="100" step="1" value="0"><output id="sn-to"></output></label></div>
+    <p class="readout" id="r-sun" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Sunspots</b> come and go in an <b>11-year cycle</b>. More sunspots mean more ultraviolet, a denser ionosphere and higher MUFs: good propagation at higher frequencies. The <b>solar flux index</b> measures the Sun's radio emission at 10.7 cm, a daily stand-in for that activity (the 304 Å ultraviolet reading tracks it too). The Sun rotates about every 27 days, so conditions tend to repeat on a <b>26–28 day</b> cycle.</li>
+    <li>A <b>solar flare</b>'s X-rays arrive at the speed of light, in about <b>8 minutes</b>, and supercharge the D region: a <b>sudden ionospheric disturbance</b> (short-term blackout) that hits the lower frequencies hardest. Flares are classed A, B, C, M and <b>X</b>, from weakest to strongest.</li>
+    <li>A <b>coronal mass ejection</b> (CME), a cloud of charged particles, takes <b>15 hours to several days</b> to arrive. Particles from <b>coronal holes</b> also disturb HF. A sudden rise in noise across much of HF means a flare or CME impact.</li>
+    <li>When the particles hit Earth's magnetic field, it shakes: a <b>geomagnetic storm</b>. It degrades HF, especially at high latitudes and through the auroral oval. The <b>K-index</b> measures short-term (3-hour) instability; the <b>A-index</b> the longer-term (daily) average; rising values mean more disturbance. The storm scale runs G1 to <b>G5</b> (extreme). Storms are likelier when the interplanetary field's north–south component, <b>B<sub>z</sub></b>, points <b>south</b>.</li>
+    <li>The bright side: severe storms create <b>auroras</b> that reflect VHF signals. Aurora-reflected signals sound distorted and <b>raspy</b>, so CW works best.</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="vhf">VHF and UHF beyond the horizon</h2>
+  <ul>
+    <li><b>Sporadic E</b>: patches of dense ionization in the E region that appear unpredictably, giving occasional strong signals on 10, 6 and even 2 meters. Most common <b>around the solstices</b> (especially early summer), between sunrise and sunset.</li>
+    <li><b>Tropospheric ducting</b>: a <b>temperature inversion</b> (warm air above cool air, often over large bodies of water) traps VHF/UHF signals in a layer, carrying them about 100–300 miles, sometimes much farther.</li>
+    <li><b>Meteor scatter</b>: each meteor leaves a short-lived trail of ionized gas in the E region that reflects signals for a second or two. Best between 28 and 148 MHz, and <b>6 meters</b> is the favorite.</li>
+    <li><b>Moonbounce</b> (EME, Earth–Moon–Earth): reflect signals off the Moon. Any two stations that both see the Moon can work each other, up to about 12,000 miles apart. Path loss is least when the Moon is closest (<b>perigee</b>). The Moon's slight wobbling (libration) causes fluttery, irregular fading.</li>
+    <li><b>Transequatorial propagation</b> (TEP): VHF signals between points 2,000–3,000 miles apart on a path crossing the geomagnetic equator, up to about 5,000 miles, mostly in the afternoon or early evening.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="more">A few more HF effects</h2>
+  <ul>
+    <li><b>Long path</b>: a signal can go the "wrong" way around the Earth. Hearing both short and long paths gives a slightly delayed echo. It's most frequent on 40 and 20 meters.</li>
+    <li><b>Chordal hop</b>: successive refractions in the ionosphere without touching the ground in between, with less loss than normal multi-hop paths.</li>
+    <li><b>Ground wave</b> hugs the surface; it supports vertical polarization, and its range <b>decreases</b> as frequency increases (great on AM broadcast, useless on VHF).</li>
+    <li>In the ionosphere, the Earth's magnetic field splits a wave into two independently traveling, elliptically polarized "<b>ordinary</b>" and "<b>extraordinary</b>" waves. A <b>circularly polarized</b> wave is one whose fields rotate as it travels (<a class="back" href="./06-waves-and-wavelength.html#em">↩ lesson 6</a>).</li>
+    <li>The speed of a wave in any medium is set by the medium's <b>index of refraction</b>.</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>G3C05: Why are 40–160 m difficult for distance during the day? <i>The D region absorbs them.</i></summary><p>In the ionosphere scene, turn Night off and pick 3.5 MHz: the ray dies in the D layer.</p></details>
+  <details><summary>G3B03: Least attenuation for long-distance skip? <i>Just below the MUF.</i></summary><p>The closer to the MUF, the less time the wave spends in the absorbing lower layers and the longer each hop.</p></details>
+  <details><summary>G3A03 / G3A11: How long do flare radiation and a CME take to arrive? <i>About 8 minutes; 15 hours to several days.</i></summary><p>X-rays travel at the speed of light; the CME is a cloud of particles moving at "only" hundreds to thousands of km per second.</p></details>
+  <details><summary>T3C08: What causes tropospheric ducting? <i>Temperature inversions.</i></summary><p>Warm air over cool air bends signals back down, trapping them in a layer like a pipe.</p></details>
+  <details><summary>E3C06: The VHF/UHF radio horizon compared with the geographic horizon? <i>About 15% farther.</i></summary><p>The atmosphere's refraction bends signals slightly around the curve.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T3C">Technician T3C</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G3">General G3A–G3C</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E3">Extra E3A–E3C</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>It's midnight and 20 meters has gone quiet. Up or down a band?</summary><p>Down (40 meters): darkness lowers the MUF below 14 MHz, while the D region that blocks lower bands by day is gone.</p></details>
+  <details><summary>Why can you hear stations 1,500 miles away on 15 meters but not one 300 miles away?</summary><p>The 300-mile station is in your skip zone: too far for ground wave, too close for the first hop to come down.</p></details>
+  <details><summary>A K-index of 7 is reported. Good or bad news for HF?</summary><p>Bad: a big geomagnetic storm, degrading HF especially at high latitudes. Possibly good news for VHF aurora.</p></details>
+
+  <nav class="next">
+    <a href="./08-feed-lines-and-swr.html">← Lesson 8: Feed lines and SWR</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l09.ts"></script>
+</body>
+</html>
