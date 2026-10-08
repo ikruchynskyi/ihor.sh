@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Antennas</title>
+  <meta name="description" content="Ham radio, visually, lesson 7: current and voltage on a dipole, antenna lengths, radiation patterns, gain, ERP, Yagis, phased arrays, height above ground, loading, and receiving antennas." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 7</p>
+  <h1>Antennas</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./06-waves-and-wavelength.html#lambda">Lesson 6: wavelength</a> (300 ÷ MHz) and <a href="./06-waves-and-wavelength.html#polarization">polarization</a></li>
+      <li><a href="./04-resonance.html#curve">Lesson 4: resonance, Q and bandwidth</a>; <a href="./02-decibels-and-prefixes.html#db">lesson 2: decibels</a></li>
+    </ul>
+  </div>
+
+  <p>An antenna is a piece of metal shaped so that the current in it launches radio waves well (and, the same way round, catches them well). Most of what you need to know about antennas comes from one picture: what the current does along a wire half a wavelength long.</p>
+
+  <!-- 1 -->
+  <h2 id="dipole">The half-wave dipole: a wire that resonates</h2>
+  <p>Feed a wire half a wavelength long in the middle. A wave of current runs out to each end, reflects (the current has nowhere to go) and comes back. The outgoing and returning waves add up to a <b>standing wave</b>: current is biggest at the center and zero at the ends, while voltage is the opposite. The wire resonates like a guitar string:</p>
+
+  <div class="scene" id="s-dipole">
+    <div class="controls">
+      <label for="dp-x">Feed point <input id="dp-x" type="range" min="0" max="0.48" step="0.01" value="0"><output id="dp-xo"></output></label>
+    </div>
+    <p class="readout" id="r-dipole" aria-live="polite"></p>
+  </div>
+
+  <p>The <b>feed-point impedance</b> is voltage divided by current where you connect. At the center the current is high and the voltage low: about 50–75 Ω, a good match for coax. Move the feed point toward an end and the impedance <b>steadily increases</b>; feed it right at the end (an <b>end-fed half-wave</b>) and it's <b>very high</b>, a few thousand ohms. An <b>off-center-fed dipole</b> picks a point where the impedance comes out similar on several bands.</p>
+
+  <!-- 2 -->
+  <h2 id="length">How long? The 468 and 234 rules</h2>
+  <p>A half wavelength in free space is 492 ÷ f(MHz) feet, but a real wire, thicker than nothing and near other things, resonates a few percent shorter. The traditional rules of thumb build that in:</p>
+
+  <div class="scene" id="s-len">
+    <div class="controls">
+      <label for="ln-f">Frequency <input id="ln-f" type="range" min="0" max="1000" step="1" value="420"><output id="ln-fo"></output></label>
+      <label for="ln-t">Antenna <select id="ln-t"><option value="468">half-wave dipole (468 ÷ MHz)</option><option value="234">quarter-wave vertical (234 ÷ MHz)</option></select></label>
+    </div>
+    <p class="readout" id="r-len" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Half-wave dipole for 14.250 MHz: 468 ÷ 14.25 ≈ <b>33 feet</b>. For 3.550 MHz: about <b>132 feet</b>.</li>
+    <li>Quarter-wave vertical for 28.5 MHz: 234 ÷ 28.5 ≈ <b>8 feet</b>. For 146 MHz: 1.6 feet, about <b>19 inches</b>: that's why a 19-inch whip is so common on 2 meters.</li>
+    <li>A shorter antenna resonates higher: <b>shortening</b> a dipole raises its resonant frequency.</li>
+  </ul>
+  <div class="notation">
+    <math><msub><mi>L</mi><mtext>dipole</mtext></msub><mtext> (ft)</mtext><mo>≈</mo><mfrac><mn>468</mn><mrow><mi>f</mi><mtext> (MHz)</mtext></mrow></mfrac><mspace width="2em"/><msub><mi>L</mi><mtext>quarter</mtext></msub><mtext> (ft)</mtext><mo>≈</mo><mfrac><mn>234</mn><mrow><mi>f</mi><mtext> (MHz)</mtext></mrow></mfrac></math>
+    <ul><li>In meters: about 143 ÷ f for a dipole and 71 ÷ f for a quarter wave.</li></ul>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="pattern">Radiation patterns and gain</h2>
+  <p>No antenna radiates equally in every direction. A <b>radiation pattern</b> plots how strong the signal is in each direction (as seen from above it's an <b>azimuth</b> pattern; from the side, an <b>elevation</b> pattern). Pick an antenna:</p>
+
+  <div class="scene" id="s-pattern">
+    <div class="controls">
+      <label for="pt-t">Antenna <select id="pt-t">
+        <option value="dipole">half-wave dipole (wire left–right)</option>
+        <option value="vertical">quarter-wave vertical</option>
+        <option value="yagi">3-element Yagi</option>
+        <option value="loop">small loop (in the left–right plane)</option>
+      </select></label>
+    </div>
+    <p class="readout" id="r-pattern" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A <b>dipole</b> radiates strongest <b>broadside</b> (at right angles) to the wire, and nothing off its ends: a <b>figure-eight</b>.</li>
+    <li>A <b>vertical</b> (with a ground plane) is <b>omnidirectional in azimuth</b>: the same in every compass direction. So is a horizontal <b>halo</b>, in its own plane.</li>
+    <li>A <b>beam antenna</b> concentrates the signal in one direction. Its <b>main lobe</b> is the direction of maximum field strength; the <b>front-to-back ratio</b> compares the main lobe with the opposite direction; <b>front-to-side</b> compares it with 90° off; the <b>beamwidth</b> is the angle between the −3 dB points.</li>
+    <li>An electrically <b>small loop</b> has deep <b>nulls broadside</b> to the loop: point the flat face of the loop at a signal, and it disappears.</li>
+  </ul>
+  <p><b>Gain</b> is the increase in signal in a given direction compared with a reference antenna. It isn't extra power: a lossless antenna with gain radiates exactly as much total power as one without; it just puts more of it in some directions and less in others. Two references are used:</p>
+  <ul>
+    <li><b>dBi</b>: compared with an <b>isotropic radiator</b>, an imaginary lossless antenna that radiates equally in all directions.</li>
+    <li><b>dBd</b>: compared with a half-wave dipole, which itself has 2.15 dBi. So any gain in dBi is <b>2.15 dB higher</b> than the same gain in dBd: 6 dBi = 3.85 dBd.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="erp">Effective radiated power</h2>
+  <p>What a distant station experiences depends on your transmitter power, minus everything lost on the way to the antenna, plus the antenna's gain. Adding it up in decibels gives the <b>effective radiated power</b> (ERP, with gain in dBd) or <b>EIRP</b> (with gain in dBi):</p>
+
+  <div class="scene" id="s-erp">
+    <div class="controls">
+      <label for="er-p">Transmitter <input id="er-p" type="range" min="10" max="500" step="10" value="150"><output id="er-po"></output></label>
+      <label for="er-l">Total losses <input id="er-l" type="range" min="0" max="10" step="0.1" value="4.2"><output id="er-lo"></output></label>
+      <label for="er-g">Antenna gain <input id="er-g" type="range" min="0" max="15" step="0.1" value="7"><output id="er-go"></output></label>
+    </div>
+    <div class="game"><button id="er-1">E9A02</button><button id="er-2">E9A06</button><button id="er-3">E9A07 (EIRP)</button></div>
+    <p class="readout" id="r-erp" aria-live="polite"></p>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="yagi">The Yagi: one driven element and some helpers</h2>
+  <p>A <b>Yagi</b> is the classic beam antenna: a half-wave <b>driven element</b> (the one connected to the feed line) with unconnected <b>parasitic</b> elements on the same boom. They pick up the driven element's signal and re-radiate it with a slight delay, so that the waves add up in one direction and cancel in the other:</p>
+  <ul>
+    <li>The <b>reflector</b>, behind, is a little <b>longer</b> than the driven element; <b>directors</b>, in front, are a little <b>shorter</b>. Making the parasitic elements longer or shorter than resonance is how their <b>phase shift</b> is controlled.</li>
+    <li>A longer boom with more directors: <b>more gain</b> (and a narrower beam). A two-element Yagi usually uses a reflector, because that gives more gain than a director.</li>
+    <li>Element lengths and spacing are adjusted to trade off forward gain, front-to-back ratio and SWR bandwidth. <b>Thicker elements</b> widen the bandwidth.</li>
+    <li>Matching: a <b>gamma match</b> doesn't need the driven element insulated from the boom; a <b>beta</b> or <b>hairpin match</b> is a short shorted stub of transmission line at the feed point.</li>
+    <li>Two Yagis <b>stacked</b> vertically half a wavelength apart: about <b>3 dB more gain</b>, from a narrower main lobe in elevation. Two Yagis at right angles on one boom, fed 90° out of phase: <b>circular polarization</b> (popular for satellites).</li>
+    <li>For comparison on the Technician exam: of the common antennas, a Yagi offers the greatest gain.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="phased">Phased arrays: steering with timing</h2>
+  <p>You don't need parasitic elements to get directivity. Feed two verticals yourself, and choose their spacing and the phase difference between their currents. Where the two waves arrive in step they add; where they're half a cycle apart they cancel:</p>
+
+  <div class="scene" id="s-phased">
+    <div class="controls">
+      <label for="ph-d">Spacing <input id="ph-d" type="range" min="0.05" max="1" step="0.05" value="0.5"><output id="ph-do"></output></label>
+      <label for="ph-p">Phase difference <input id="ph-p" type="range" min="0" max="180" step="15" value="0"><output id="ph-po"></output></label>
+    </div>
+    <p class="readout" id="r-phased" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Half a wavelength apart, <b>in phase</b>: a figure-eight <b>broadside</b> to the line of the two antennas.</li>
+    <li>Half a wavelength apart, <b>180° out of phase</b>: a figure-eight <b>along</b> the line.</li>
+    <li>A quarter wavelength apart, <b>90° out of phase</b>: a <b>cardioid</b> (heart shape), one strong direction and one deep null.</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="ground">The ground matters</h2>
+  <p>Below an antenna, the ground acts like a mirror: the reflected wave combines with the direct one. For a horizontal dipole, the height above ground (in wavelengths) decides at what elevation angles the two add up:</p>
+
+  <div class="scene" id="s-height">
+    <div class="controls"><label for="hg-h">Height above ground <input id="hg-h" type="range" min="0.1" max="2" step="0.05" value="0.5"><output id="hg-ho"></output></label></div>
+    <p class="readout" id="r-height" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Higher up, the <b>lowest lobe's takeoff angle decreases</b>: signals leave at lower angles and travel farther per hop. Over a long downhill slope, the takeoff angle decreases in the downhill direction.</li>
+    <li>Low down (1/10 to 1/4 wavelength), most energy goes nearly straight up: perfect for <b>NVIS</b> (near vertical incidence skywave), reliable short-range contacts out to a few hundred miles, for example on 40 meters by day. Below half a wavelength high, a dipole's pattern at high angles is almost omnidirectional.</li>
+    <li>Height also changes the feed impedance: lowering a dipole toward 1/10 wavelength makes its feed point impedance steadily <b>decrease</b>.</li>
+    <li>"<b>Ground gain</b>": signal strength added by ground reflections around the antenna.</li>
+  </ul>
+  <p>Verticals depend on the ground even more, because the ground forms the other half of the antenna. A <b>quarter-wave ground-plane</b> vertical uses radial wires; sloping the radials <b>downward</b> raises its feed point impedance to about 50 Ω. A ground-mounted vertical needs <b>radials</b> laid on the surface or buried a few inches deep; its ground losses depend on <b>soil conductivity</b>, and a radial system improves its efficiency. Over <b>seawater</b>, a vertical's low-angle radiation increases dramatically. Horizontal antennas have <b>lower ground losses</b> than verticals on HF.</p>
+
+  <!-- 8 -->
+  <h2 id="short">Short antennas, loading and efficiency</h2>
+  <p>An antenna shorter than a quarter wavelength looks capacitive: its reactance is negative (<a class="back" href="./03-capacitors-and-inductors.html#phase">↩ lesson 3</a>). Adding an inductor, a <b>loading coil</b>, cancels that capacitive reactance and makes it resonant: the antenna is "electrically lengthened".</p>
+  <ul>
+    <li><b>Efficiency</b> is radiation resistance divided by total resistance: of the power going in, how much leaves as radio waves instead of heating the wire, the coil and the ground. A short antenna has a small radiation resistance (and it falls further below resonance), so every bit of loss matters. That's why loading coils need a high ratio of reactance to resistance (a high Q), and why a handheld's short flexible "rubber duck" antenna has <b>low efficiency</b>.</li>
+    <li>A loading coil near the <b>center</b> of a whip is more efficient than one at the base; <b>top loading</b> (a "hat" of wires at the top) improves efficiency further.</li>
+    <li>Loading raises the antenna's Q, and higher Q means <b>less SWR bandwidth</b> (<a class="back" href="./04-resonance.html#curve">↩ lesson 4</a>).</li>
+    <li>A <b>"screwdriver"</b> mobile antenna has a motor that slides a contact along its base loading coil, tuning it across bands.</li>
+    <li>On VHF/UHF mobiles, a <b>5/8-wavelength</b> whip has more gain than a quarter-wave (it squeezes the pattern toward the horizon). Using a handheld <b>inside a car</b> without an external antenna loses signal: the metal body shields it.</li>
+    <li><b>Traps</b> (parallel LC circuits that block one band) let one antenna work on several bands; multiband antennas in general have poor harmonic rejection. A <b>random wire</b> connected straight to the transmitter can leave significant RF current flowing on your station equipment.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2 id="zoo">A field guide to other antennas</h2>
+  <ul>
+    <li><b>Inverted V:</b> a dipole hung from a single central support, ends sloping down.</li>
+    <li><b>Folded dipole:</b> a half-wave dipole with a second parallel wire joining its ends; about <b>300 Ω</b> at the center.</li>
+    <li><b>Zepp:</b> an end-fed half-wave dipole. <b>Extended double Zepp:</b> a center-fed 1.25-wavelength dipole. <b>G5RV:</b> a wire center-fed through a specific length of open-wire line, then a balun and coax.</li>
+    <li><b>Log-periodic:</b> element lengths and spacing vary logarithmically along the boom, giving very <b>wide bandwidth</b>.</li>
+    <li><b>Long wire:</b> as the wire gets longer, more lobes form, swinging toward the wire's axis. A <b>terminating resistor</b> at the far end of a long wire or rhombic makes it unidirectional.</li>
+    <li><b>Parabolic dish:</b> its gain rises 6 dB each time the frequency doubles (the dish is twice as many wavelengths across).</li>
+    <li><b>Fresnel zone:</b> the football-shaped region around a line-of-sight path that must be clear of obstacles; it's smallest at the highest frequencies (of the exam's choices, 5.8 GHz).</li>
+    <li>Antennas are designed with computer models, usually by the <b>Method of Moments</b>: each wire is chopped into segments, each with a uniform current. Too few segments (fewer than about 10 per half wavelength) and the computed feed point impedance may be wrong. The pattern is computed for the <b>far field</b>, the region where its shape no longer changes with distance.</li>
+  </ul>
+
+  <!-- 10 -->
+  <h2 id="receive">Antennas for receiving and direction finding</h2>
+  <p>On 160 and 80 meters, atmospheric noise is so strong that a receiving antenna's <b>directivity</b> matters far more than its efficiency: the goal is to hear the station and not the noise from elsewhere. <b>Receiving directivity factor</b> (RDF) compares peak gain with the average over the whole sky.</p>
+  <ul>
+    <li>A <b>Beverage</b> is a long, low wire, at least one wavelength long, pointing toward the stations you want, for directional receiving on MF and low HF. A <b>termination resistor</b> at the far end absorbs signals from the reverse direction; its right value gives the least variation in SWR over the band.</li>
+    <li>A small <b>loop</b> for direction finding has deep nulls, but two of them (front and back), so you can't tell which of two directions a signal comes from. Adding a <b>sense antenna</b> turns the pattern into one with a single null. An <b>electrostatic shield</b> around the loop removes stray capacitive coupling and deepens the nulls. A multi-turn receiving loop's output grows with the number of turns and the area enclosed.</li>
+    <li>A <b>cardioid</b>'s single null is what makes it useful for direction finding; a terminated single-turn loop such as a <b>pennant</b> has a cardioid pattern.</li>
+  </ul>
+
+  <h2 id="figures">Reading the exam's pattern figures</h2>
+  <details><summary>Figure E9-1 (an azimuth pattern)</summary><figure><img class="fig" src="../fig/e9-1.png" alt="Figure E9-1, an azimuth radiation pattern on a polar dB grid"></figure><p>3 dB beamwidth: <b>50°</b> (between the points 3 dB below the peak). Front-to-back: <b>18 dB</b>. Front-to-side: <b>14 dB</b>.</p></details>
+  <details><summary>Figure E9-2 (an elevation pattern)</summary><figure><img class="fig" src="../fig/e9-2.png" alt="Figure E9-2, an elevation radiation pattern"></figure><p>It's an <b>elevation</b> pattern (a side view, angles above the horizon). Peak response at <b>7.5°</b>; front-to-back <b>28 dB</b>.</p></details>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T9A10: Which direction does a half-wave dipole radiate strongest? <i>Broadside to the antenna.</i></summary><p>The current is along the wire, and a moving charge radiates most at right angles to its motion: the figure-eight.</p></details>
+  <details><summary>E9A12: 6 dBi in dBd? <i>3.85 dB.</i></summary><p>A dipole already has 2.15 dBi, so subtract it: 6 − 2.15 = 3.85.</p></details>
+  <details><summary>E9A06: ERP with 200 W, losses 4 + 3.2 + 0.8 dB, 10 dBd gain? <i>317 W.</i></summary><p>Net: 10 − 8 = +2 dB. 200 × 10<sup>0.2</sup> ≈ 317 W. Press the E9A06 button in the ERP scene.</p></details>
+  <details><summary>E9C02: Two quarter-wave verticals a quarter wavelength apart, fed 90° out of phase? <i>Cardioid.</i></summary><p>Toward one side, the delay of the spacing exactly makes up for the phase difference, so they add; toward the other, the two delays add to 180° and they cancel.</p></details>
+  <details><summary>E9D09: What does a loading coil do in a short antenna? <i>Resonates it by cancelling the capacitive reactance.</i></summary><p>Inductive reactance (+j) cancels the short antenna's capacitive reactance (−j).</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T9A">Technician T9A</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G9B,G9C,G9D">General G9B, G9C, G9D</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E9A,E9B,E9C,E9D,E9H">Extra E9A–E9D, E9H</a>
+    </p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>How long is a half-wave dipole for 7.15 MHz?</summary><p>468 ÷ 7.15 ≈ 65.5 feet.</p></details>
+  <details><summary>Your dipole resonates at 7.0 MHz but you want 7.2. Lengthen or shorten?</summary><p>Shorten it: shorter antennas resonate higher.</p></details>
+  <details><summary>Does a 10 dBi antenna radiate ten times more power than an isotropic one?</summary><p>No. The total power is the same; it's ten times stronger in its best direction because it's weaker elsewhere.</p></details>
+
+  <nav class="next">
+    <a href="./06-waves-and-wavelength.html">← Lesson 6: Waves and wavelength</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l07.ts"></script>
+</body>
+</html>
