@@ -48,3 +48,27 @@ Chapters in order, each reviewed before the next: the style is set by chapter 1,
 - `build.html`: **Build for your own dongle**, a developer guide: layers, per-OS setup, the WebUSB API, USB basics, the RTL2832U register protocol, tuning and sample rate, the data format, streaming without drops, our server's HTTP API (and rtl_tcp), project ideas, troubleshooting.
 - `examples/hello-dongle.html`: an ~80-line starter app (connect over USB or the server, tune, live spectrum) that readers copy and extend.
 - `learn.html`: one-page quick reference for Spectrum Lab's steps.
+
+---
+
+# Next tracks (planned 2026-10-08)
+
+Same style throughout: picture first, notation last, a runnable script per chapter, live labs where the dongle can show it. The two receiver-course chapters below (video) extend Part III; the license track and the Handbook companion are separate tracks that link back into the receiver course wherever it already explains a topic.
+
+## Track A: Pictures over radio (video)
+Honest constraints first: US analog TV is gone (full-power stations stopped in 2009, the last low-power ones in July 2021), an analog TV channel is 6 MHz wide while the RTL-SDR captures at most ~3 MHz, and digital TV in the US (ATSC) isn't what the dongle's chip was built for. So the track teaches video with signals we *can* receive or make:
+17. **Slow-scan TV (SSTV).** A picture sent as audio tones: pitch = brightness, line by line, with a header that names the mode (Robot36, PD120…). Decode the ISS's SSTV events on 145.800 MHz (narrow FM, chapter 9) and ham SSTV. Scenes: paint a picture by sweeping a tone; sync pulses; slant from a sample-rate error (chapter 11's drifting clocks) and how to fix it. Lab: record an ISS pass, decode the picture in the browser.
+18. **How analog TV worked, and decoding it.** Scanlines and sync pulses, interlace, why 15 734 lines per second, AM with a vestigial sideband, the color subcarrier at 3.58 MHz (chroma as a spinning arrow: hue = angle, saturation = length, chapter 2 again). A built-in NTSC *transmitter* in software (any image or webcam → composite video → RF samples) and a receiver that decodes it in real time, including what happens when you only capture 3 MHz of the 6 (black-and-white, softer picture). Lab: ham amateur TV (ATV, 70 cm / 23 cm) where active, else the synthetic transmitter.
+19. **Digital pictures: weather satellites.** Meteor-M LRPT at 137 MHz: QPSK symbols, a constellation you can watch, Doppler correction, error correction, and the image building up as the satellite passes.
+
+## Track B: Ham radio licenses (Technician → General → Amateur Extra)
+US exams use public-domain NCVEC question pools: Technician 2026–2030 (409 questions, 35 on the exam), General 2023–2027 (429, 35; a new pool is due for July 2027), Amateur Extra 2024–2028 (602, 50). Pass mark 74%.
+- **Topic map:** every pool question tagged by subelement (rules, operating, propagation, practices, electrical principles, components, circuits, signals & emissions, antennas & feed lines, safety) and linked to the visual chapter that explains it. Many already exist in the receiver course (modulation, filters, SSB, mixing, sampling).
+- **New visual chapters** for what the receiver course doesn't cover: Ohm's law and power as water flow; capacitors and inductors as springs and flywheels; reactance and resonance (an animated LC tank); impedance and SWR (a standing wave you can drag); decibels and ERP; antennas (current along a dipole, radiation patterns in 3D, gain); feed lines and matching; propagation (the ionosphere layers through a day and the solar cycle, skip zones, MUF); safety (RF exposure distances calculator); and the rules, summarized as interactive band charts per license class.
+- **Practice:** quizzes drawn from the official pools, spaced repetition on weak topics, "why" explanations linking to scenes, a readiness meter per subelement, and full mock exams with the real question counts.
+
+## Track C: An ARRL Handbook visual companion
+The ARRL Handbook (100th edition) runs from fundamentals to station building in 27 chapters. The companion is *original* interactive explanations organized by its chapters (no reproduction of the book's text or figures), each pointing to the matching visual chapters:
+- **Fundamentals** (ch. 2–4): electricity, AC and reactance, resonant circuits, EM waves, components, amplifiers and op-amps, analog-digital interfacing → shared with Track B's new chapters.
+- **Radio technology** (ch. 5–17): RF techniques and matching, power sources, DSP and SDR (this course's Parts I–III), oscillators and synthesizers (PLL: ch. 12), filters (ch. 6), modulation (ch. 9–10), receiving (the whole receiver course), transmitting and power amplifiers (new: class A/B/C/D efficiency animations), transceiver design, digital modes (FT8, PSK31, RTTY, packet: new chapters with decoders), data platforms.
+- **Systems** (ch. 18–27): repeaters (offsets, tones: links to squelch, ch. 11), propagation, transmission lines, antennas, safety, construction, station assembly, test equipment (an oscilloscope and spectrum analyzer simulator), troubleshooting, RFI/EMC (finding interference with a waterfall, which this site's dongle needed in real life).
