@@ -17,7 +17,7 @@ It listens on 127.0.0.1 only; a Cloudflare tunnel publishes it:
 cloudflared tunnel login                      # once: pick the ihor.sh zone in the browser
 cloudflared tunnel create ihor-sh
 cloudflared tunnel route dns ihor-sh ihor.sh
-cloudflared tunnel run --url http://localhost:8080 ihor-sh
+# ingress lives in ~/.cloudflared/config.yml (ihor.sh, www â†’ localhost:8080)
 ```
 
 ## radio/
@@ -49,3 +49,5 @@ Small static pages built on NYC open data: **Subway Bailout** (live MTA alerts â
 ## ideas-page/
 
 The template for a browsable version of the project backlog.
+
+Both run as launchd agents that start at login and restart on crash: `~/Library/LaunchAgents/sh.ihor.server.plist` and `sh.ihor.tunnel.plist` (logs in `~/Library/Logs/ihor-*.log`). Deploy = `git pull && npm run build && launchctl kickstart -k gui/$(id -u)/sh.ihor.server`.
