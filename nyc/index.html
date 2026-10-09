@@ -30,7 +30,16 @@
     #layers label, #trip label { display: block; margin: 3px 0; }
     .legend { font-size: .75rem; }
     .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: 0; }
-    #trip input { width: 100%; }
+    #trip input:not([type]) { width: 100%; }
+    .modes { display: flex; gap: 6px; border: 0; padding: 0; margin: 6px 0; }
+    .modes legend { float: left; margin-right: 6px; align-self: center; font-size: .85rem; }
+    .modes label { flex: 1; display: grid; place-items: center; gap: 2px; padding: 6px 4px; border: 2px solid var(--line); cursor: pointer; margin: 0 !important; }
+    .modes label span { font-size: 22px; line-height: 1; }
+    .modes label b { font-size: .7rem; font-weight: normal; color: var(--muted); }
+    .modes input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .modes label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+    .modes label:has(input:checked) b { color: var(--fg); }
+    .modes label:has(input:focus-visible) { outline: 3px solid #4de1ff; outline-offset: 2px; }
     #rresults button { display: block; width: 100%; text-align: left; margin: 4px 0; font-size: .8rem; }
     .viol { font-size: .8rem; margin: 2px 0 0; }
     .grade { display: inline-grid; place-items: center; width: 26px; height: 26px; font-weight: 700; border: 2px solid currentColor; margin-right: 6px; }
@@ -56,7 +65,11 @@
     <form id="trip">
       <label>From <input id="tFrom" placeholder="Address or place, e.g. Empire State Building" autocomplete="off"></label>
       <label>To <input id="tTo" placeholder="e.g. Barclays Center" autocomplete="off"></label>
-      <label>By <select id="tMode"><option value="drive">Car</option><option value="bike">Bike</option><option value="walk">Foot</option></select></label>
+      <fieldset class="modes"><legend>By</legend>
+        <label title="Car"><input type="radio" name="tMode" value="drive" checked><span aria-hidden="true">🚗</span><b>Car</b></label>
+        <label title="Bike"><input type="radio" name="tMode" value="bike"><span aria-hidden="true">🚲</span><b>Bike</b></label>
+        <label title="Walk"><input type="radio" name="tMode" value="walk"><span aria-hidden="true">🚶</span><b>Walk</b></label>
+      </fieldset>
       <label><input type="checkbox" id="tNoFerry"> Avoid ferries</label>
       <button style="margin-top:6px">Plan</button>
     </form>
@@ -359,7 +372,7 @@ $("trip").addEventListener("submit", async (e) => {
   if (!from || !to) return;
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
-  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${$("tMode").value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
+  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
   seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
   const line = L.polyline(d.line, { color: "#ffb347", weight: 5, opacity: 0.85 }).addTo(tripLayer);
