@@ -1,0 +1,1045 @@
+{
+ "id": "n3-12",
+ "level": "N3",
+ "unit": 12,
+ "title": {
+  "ja": "ブリップのかわりに",
+  "en": "In Blip's place"
+ },
+ "scene": "The last night in Sapporo. Blip's battery dies in the cold, and Sam has to find the way back to the hotel on his own.",
+ "lines": [
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もう",
+     null,
+     "no more"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My battery is... almost..."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "だめ",
+     null,
+     "no good"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "動かない",
+     "うごかない",
+     "won't move"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "かわりに",
+     null,
+     "instead of"
+    ],
+    [
+     "ぼく",
+     null,
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "道",
+     "みち",
+     "the way"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "探す",
+     "さがす",
+     "will find"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip! ...It's no use, it won't move. Tonight I'll find the way instead of Blip."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "okay"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地図",
+     "ちず",
+     "map"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "だけ",
+     null,
+     "only"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Will you be okay? The map is only in Japanese."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "まで",
+     null,
+     "this far"
+    ],
+    [
+     "来て",
+     "きて",
+     "having come"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "に",
+     null,
+     "(on)",
+     "p"
+    ],
+    [
+     "頼る",
+     "たよる",
+     "rely"
+    ],
+    [
+     "わけにはいかない",
+     null,
+     "can't very well"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Having come this far, I can't very well lean on you."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "駅",
+     "えき",
+     "station"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "地図",
+     "ちず",
+     "map"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "とおり",
+     null,
+     "as shown"
+    ],
+    [
+     "に",
+     null,
+     "(in)",
+     "p"
+    ],
+    [
+     "行けば",
+     "いけば",
+     "if I go"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ホテル",
+     null,
+     "hotel"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着く",
+     "つく",
+     "arrive"
+    ],
+    [
+     "はず",
+     null,
+     "should"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If I follow the map at the station, I should get to the hotel."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "「",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "北",
+     "きた",
+     "north"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "三百メートル",
+     "さんびゃくメートル",
+     "300 meters"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "左",
+     "ひだり",
+     "left"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "曲がる",
+     "まがる",
+     "turn"
+    ],
+    [
+     "」",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "よし",
+     null,
+     "right"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "書いてある",
+     "かいてある",
+     "is written"
+    ],
+    [
+     "とおり",
+     null,
+     "as"
+    ],
+    [
+     "に",
+     null,
+     "(in)",
+     "p"
+    ],
+    [
+     "歩こう",
+     "あるこう",
+     "let's walk"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "\"300 meters north, turn left.\" ...Okay, let's walk exactly as it says."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ホテル",
+     null,
+     "hotel"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着いた",
+     "ついた",
+     "arrived"
+    ],
+    [
+     "ね",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一年前",
+     "いちねんまえ",
+     "a year ago"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "なら",
+     null,
+     "if it were",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぜったい",
+     null,
+     "definitely"
+    ],
+    [
+     "迷子",
+     "まいご",
+     "lost"
+    ],
+    [
+     "に",
+     null,
+     "(become)",
+     "p"
+    ],
+    [
+     "なっていた",
+     null,
+     "would have been"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Amazing! We made it to the hotel. The Sam of a year ago would definitely have gotten lost."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "かわりに",
+     null,
+     "in place of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "ぼく",
+     null,
+     "me"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "助けてくれた",
+     "たすけてくれた",
+     "helped"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In Blip's place, Japanese helped me."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "（充電中",
+     "じゅうでんちゅう",
+     "charging）"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ひとり",
+     null,
+     "alone"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "できた",
+     null,
+     "you did it"
+    ],
+    [
+     "ん",
+     null,
+     "(that)",
+     "p"
+    ],
+    [
+     "ですね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "うれしい",
+     null,
+     "happy"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "(charging) ...Sam, you did it on your own. Blip is happy."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "kawari-ni",
+   "title": "～かわりに: instead of, in place of",
+   "explain": "Noun の + かわりに (代わりに) = instead of, standing in for. After a verb it can also mean 'in exchange for': 教えるかわりに (in return for teaching).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ブリップ",
+       null,
+       "Blip"
+      ],
+      [
+       "の",
+       null,
+       "(of)",
+       "p"
+      ],
+      [
+       "かわりに",
+       null,
+       "instead of"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "ぼく",
+       null,
+       "I"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "探す",
+       "さがす",
+       "will find"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll find it instead of Blip."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "今日は先生の＿＿＿＿＿、田中さんが教えます。",
+     "hint": "Today Tanaka teaches in place of the teacher.",
+     "choices": [
+      "かわりに",
+      "とおりに",
+      "ために"
+     ],
+     "answer": 0,
+     "why": "In someone's place: のかわりに."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#kawari-ni"
+  },
+  {
+   "id": "toori",
+   "title": "～とおり(に): just as, exactly as",
+   "explain": "Verb (dictionary or past) + とおりに, or Noun の + とおりに / Noun + どおりに = exactly as: 書いてあるとおりに歩く, 地図のとおりに, 約束どおり.",
+   "examples": [
+    {
+     "t": [
+      [
+       "書いてある",
+       "かいてある",
+       "is written"
+      ],
+      [
+       "とおり",
+       null,
+       "as"
+      ],
+      [
+       "に",
+       null,
+       "(in)",
+       "p"
+      ],
+      [
+       "歩こう",
+       "あるこう",
+       "let's walk"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Let's walk exactly as it says."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "先生が言った＿＿＿＿、やってみてください。",
+     "hint": "Try doing it exactly as the teacher said.",
+     "choices": [
+      "とおりに",
+      "かわりに",
+      "ように"
+     ],
+     "answer": 0,
+     "why": "Exactly as: とおりに."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#toori"
+  },
+  {
+   "id": "wake-niwa-ikanai",
+   "title": "～わけにはいかない: can't very well",
+   "explain": "Dictionary form + わけにはいかない = you can't do it, for social or moral reasons (not ability): 頼るわけにはいかない. Negative form + わけにはいかない = have to: 行かないわけにはいかない.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ゆき",
+       null,
+       "Yuki"
+      ],
+      [
+       "に",
+       null,
+       "(on)",
+       "p"
+      ],
+      [
+       "頼る",
+       "たよる",
+       "rely"
+      ],
+      [
+       "わけにはいかない",
+       null,
+       "can't very well"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I can't very well lean on Yuki."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日は試験だから、遊びに行く＿＿＿＿＿＿＿。",
+     "hint": "I have an exam tomorrow, so I can't very well go out.",
+     "choices": [
+      "わけにはいかない",
+      "わけではない",
+      "わけがない"
+     ],
+     "answer": 0,
+     "why": "Not allowed by your own sense of duty: わけにはいかない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#wake-niwa-ikanai"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "頼",
+   "on": [
+    "ライ"
+   ],
+   "kun": [
+    "たよ.る",
+    "たの.む"
+   ],
+   "m": "rely, ask",
+   "ex": [
+    [
+     "頼る",
+     "たよる",
+     "to rely on"
+    ],
+    [
+     "頼む",
+     "たのむ",
+     "to ask"
+    ]
+   ]
+  },
+  {
+   "k": "曲",
+   "on": [
+    "キョク"
+   ],
+   "kun": [
+    "ま.がる"
+   ],
+   "m": "bend, song",
+   "ex": [
+    [
+     "曲がる",
+     "まがる",
+     "to turn"
+    ],
+    [
+     "曲",
+     "きょく",
+     "song"
+    ]
+   ]
+  },
+  {
+   "k": "助",
+   "on": [
+    "ジョ"
+   ],
+   "kun": [
+    "たす.ける"
+   ],
+   "m": "help",
+   "ex": [
+    [
+     "助ける",
+     "たすける",
+     "to help"
+    ]
+   ]
+  },
+  {
+   "k": "迷",
+   "on": [
+    "メイ"
+   ],
+   "kun": [
+    "まよ.う"
+   ],
+   "m": "lose the way",
+   "ex": [
+    [
+     "迷子",
+     "まいご",
+     "lost child"
+    ],
+    [
+     "迷う",
+     "まよう",
+     "to get lost"
+    ]
+   ]
+  },
+  {
+   "k": "北",
+   "on": [
+    "ホク"
+   ],
+   "kun": [
+    "きた"
+   ],
+   "m": "north",
+   "ex": [
+    [
+     "北",
+     "きた",
+     "north"
+    ],
+    [
+     "北海道",
+     "ほっかいどう",
+     "Hokkaido"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  3,
+  7
+ ],
+ "questions": [
+  {
+   "q": "どうしてサムさんが道を探しましたか。",
+   "en": "Why did Sam find the way himself?",
+   "choices": [
+    "ブリップの電池が切れたから",
+    "ゆきさんが忘れたから",
+    "地図が英語だったから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはどうやってホテルに着きましたか。",
+   "en": "How did Sam get to the hotel?",
+   "choices": [
+    "地図のとおりに歩いた",
+    "タクシーに乗った",
+    "ゆきさんについて行った"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップのかわりに、何がサムさんを助けましたか。",
+   "en": "What helped Sam in Blip's place?",
+   "choices": [
+    "日本語",
+    "ゆきさん",
+    "駅員"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a time you did something in someone's place (～のかわりに), followed instructions exactly (～とおりに), and couldn't very well say no (～わけにはいかない)."
+}

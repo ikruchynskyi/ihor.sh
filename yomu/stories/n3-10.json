@@ -1,0 +1,958 @@
+{
+ "id": "n3-10",
+ "level": "N3",
+ "unit": 10,
+ "title": {
+  "ja": "読みかけの本",
+  "en": "The half-read book"
+ },
+ "scene": "October. Sam is trying to finish his first Japanese novel, a gift from Yuki's mother in Osaka.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "その",
+     null,
+     "that"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "読みかけ",
+     "よみかけ",
+     "half-read"
+    ],
+    [
+     "なの",
+     null,
+     "is it"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "夏",
+     "なつ",
+     "summer"
+    ],
+    [
+     "から",
+     null,
+     "since",
+     "p"
+    ],
+    [
+     "ずっと",
+     null,
+     "all along"
+    ],
+    [
+     "机",
+     "つくえ",
+     "desk"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "on top"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is that book still half-read? It's been on your desk since summer."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "読み続けて",
+     "よみつづけて",
+     "keep reading"
+    ],
+    [
+     "いる",
+     null,
+     "am"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎晩",
+     "まいばん",
+     "every night"
+    ],
+    [
+     "十ページ",
+     "じゅうページ",
+     "ten pages"
+    ],
+    [
+     "ずつ",
+     null,
+     "each"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm still reading it! Ten pages a night."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "最初",
+     "さいしょ",
+     "at first"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "一ページ",
+     "いちページ",
+     "one page"
+    ],
+    [
+     "に",
+     null,
+     "(for)",
+     "p"
+    ],
+    [
+     "三十分",
+     "さんじゅっぷん",
+     "thirty minutes"
+    ],
+    [
+     "も",
+     null,
+     "as much as",
+     "p"
+    ],
+    [
+     "かかった",
+     null,
+     "took"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "知らない",
+     "しらない",
+     "unknown"
+    ],
+    [
+     "言葉",
+     "ことば",
+     "words"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "多すぎて",
+     "おおすぎて",
+     "too many"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "At first one page took thirty minutes. Too many words I didn't know."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "途中",
+     "とちゅう",
+     "midway"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "やめかけた",
+     null,
+     "almost quit"
+    ],
+    [
+     "こと",
+     null,
+     "time",
+     "p"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "あった",
+     null,
+     "there was"
+    ],
+    [
+     "でしょう",
+     null,
+     "right"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "There were times you almost quit, weren't there?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "お母さん",
+     "かあさん",
+     "mother"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "「",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "読み切ります",
+     "よみきります",
+     "I'll read it all"
+    ],
+    [
+     "」",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "と",
+     null,
+     "(quote)",
+     "p"
+    ],
+    [
+     "約束した",
+     "やくそくした",
+     "promised"
+    ],
+    [
+     "から",
+     null,
+     "so",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah. But I promised your mother I'd read it to the end."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "あと",
+     null,
+     "remaining"
+    ],
+    [
+     "二十ページ",
+     "にじゅうページ",
+     "twenty pages"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "読み切れる",
+     "よみきれる",
+     "can finish"
+    ],
+    [
+     "はず",
+     null,
+     "should"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Twenty pages left. You should be able to finish it tonight."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最後",
+     "さいご",
+     "the end"
+    ],
+    [
+     "まで",
+     null,
+     "until",
+     "p"
+    ],
+    [
+     "読み続ける",
+     "よみつづける",
+     "keep reading"
+    ],
+    [
+     "ぞ",
+     null,
+     "(determined)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Right. I'll keep reading to the end!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "読み終わったら",
+     "よみおわったら",
+     "when you've finished"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "母",
+     "はは",
+     "my mom"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "書いて",
+     "かいて",
+     "write"
+    ],
+    [
+     "あげて",
+     null,
+     "(for her)"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "When you've finished, write my mom a letter, okay?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "もちろん",
+     null,
+     "of course"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "書き始める",
+     "かきはじめる",
+     "start writing"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "手紙",
+     "てがみ",
+     "the letter"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "書きかけ",
+     "かきかけ",
+     "half-written"
+    ],
+    [
+     "に",
+     null,
+     "(as)",
+     "p"
+    ],
+    [
+     "なりそう",
+     null,
+     "likely to become"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "な",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Of course. I'll start writing it in Japanese. ...Though the letter might end up half-written too."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "kakeru",
+   "title": "V-stem かける / かけ: half-done, about to",
+   "explain": "Verb stem + かける = start something and leave it halfway, or nearly do it: やめかけた (almost quit). As a noun: 読みかけの本 (a half-read book).",
+   "examples": [
+    {
+     "t": [
+      [
+       "読みかけ",
+       "よみかけ",
+       "half-read"
+      ],
+      [
+       "の",
+       null,
+       "(of)",
+       "p"
+      ],
+      [
+       "本",
+       "ほん",
+       "book"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "A half-read book."
+    },
+    {
+     "t": [
+      [
+       "途中",
+       "とちゅう",
+       "midway"
+      ],
+      [
+       "で",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "やめかけた",
+       null,
+       "almost quit"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I almost quit halfway."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "飲み＿＿＿のコーヒーが冷めてしまった。",
+     "hint": "My half-drunk coffee went cold.",
+     "choices": [
+      "かけ",
+      "きり",
+      "だし"
+     ],
+     "answer": 0,
+     "why": "Half-done: stem + かけ."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#kakeru"
+  },
+  {
+   "id": "kiru",
+   "title": "V-stem きる: do completely, to the end",
+   "explain": "Verb stem + きる (切る) = do it all the way: 読み切る (read to the end), 使い切る (use it all up). Potential: 読み切れる. Negative: 食べきれない (can't finish eating).",
+   "examples": [
+    {
+     "t": [
+      [
+       "最後",
+       "さいご",
+       "the end"
+      ],
+      [
+       "まで",
+       null,
+       "until",
+       "p"
+      ],
+      [
+       "読み切ります",
+       "よみきります",
+       "I'll read it all"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll read it to the end."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "こんなにたくさん、一人では食べ＿＿＿ない。",
+     "hint": "I can't eat all of this by myself.",
+     "choices": [
+      "きれ",
+      "かけ",
+      "だせ"
+     ],
+     "answer": 0,
+     "why": "Can't finish completely: stem + きれない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#kiru"
+  },
+  {
+   "id": "tsuzukeru",
+   "title": "V-stem 続ける: keep doing",
+   "explain": "Verb stem + 続ける (つづける) = continue doing, keep on: 読み続ける. It's a ru-verb: 続けている, 続けた.",
+   "examples": [
+    {
+     "t": [
+      [
+       "毎晩",
+       "まいばん",
+       "every night"
+      ],
+      [
+       "読み続けて",
+       "よみつづけて",
+       "keep reading"
+      ],
+      [
+       "いる",
+       null,
+       "am"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I keep reading every night."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "雨が三日間降り＿＿＿＿いる。",
+     "hint": "It has kept raining for three days.",
+     "choices": [
+      "続けて",
+      "かけて",
+      "きって"
+     ],
+     "answer": 0,
+     "why": "Keep on: stem + 続ける."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#tsuzukeru"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "続",
+   "on": [
+    "ゾク"
+   ],
+   "kun": [
+    "つづ.く",
+    "つづ.ける"
+   ],
+   "m": "continue",
+   "ex": [
+    [
+     "続ける",
+     "つづける",
+     "to continue"
+    ],
+    [
+     "続く",
+     "つづく",
+     "to go on"
+    ]
+   ]
+  },
+  {
+   "k": "切",
+   "on": [
+    "セツ"
+   ],
+   "kun": [
+    "き.る"
+   ],
+   "m": "cut",
+   "ex": [
+    [
+     "切る",
+     "きる",
+     "to cut"
+    ],
+    [
+     "大切",
+     "たいせつ",
+     "important"
+    ]
+   ]
+  },
+  {
+   "k": "途",
+   "on": [
+    "ト"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "route, way",
+   "ex": [
+    [
+     "途中",
+     "とちゅう",
+     "on the way, midway"
+    ]
+   ]
+  },
+  {
+   "k": "約",
+   "on": [
+    "ヤク"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "promise, about",
+   "ex": [
+    [
+     "約束",
+     "やくそく",
+     "promise"
+    ]
+   ]
+  },
+  {
+   "k": "最",
+   "on": [
+    "サイ"
+   ],
+   "kun": [
+    "もっと.も"
+   ],
+   "m": "most",
+   "ex": [
+    [
+     "最初",
+     "さいしょ",
+     "first"
+    ],
+    [
+     "最後",
+     "さいご",
+     "last"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  6
+ ],
+ "questions": [
+  {
+   "q": "サムさんは毎晩何ページずつ読んでいますか。",
+   "en": "How many pages does Sam read each night?",
+   "choices": [
+    "十ページ",
+    "三十ページ",
+    "一ページ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてサムさんは本を最後まで読みたいのですか。",
+   "en": "Why does Sam want to finish the book?",
+   "choices": [
+    "ゆきさんのお母さんと約束したから",
+    "試験があるから",
+    "本が高かったから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "本を読み終わったら、サムさんは何をしますか。",
+   "en": "What will Sam do after finishing the book?",
+   "choices": [
+    "手紙を書く",
+    "大阪に行く",
+    "新しい本を買う"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about something you left half-done (～かけ), something you did all the way (～きる), and something you keep doing (～続ける)."
+}

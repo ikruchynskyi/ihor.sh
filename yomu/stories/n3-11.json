@@ -1,0 +1,905 @@
+{
+ "id": "n3-11",
+ "level": "N3",
+ "unit": 11,
+ "title": {
+  "ja": "雪だらけの札幌",
+  "en": "Sapporo, covered in snow"
+ },
+ "scene": "February. Sam keeps his promise and visits Yuki in Hokkaido during the Sapporo Snow Festival.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ようこそ",
+     null,
+     "welcome"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "札幌",
+     "さっぽろ",
+     "Sapporo"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "頭",
+     "あたま",
+     "head"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "雪だらけ",
+     "ゆきだらけ",
+     "covered in snow"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome to Sapporo! Sam, your head is already covered in snow."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little"
+    ],
+    [
+     "歩いた",
+     "あるいた",
+     "walked"
+    ],
+    [
+     "だけ",
+     null,
+     "only"
+    ],
+    [
+     "なのに",
+     null,
+     "even though"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I only walked a little from the airport..."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "天気予報",
+     "てんきよほう",
+     "forecast"
+    ],
+    [
+     "では",
+     null,
+     "according to",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "晴れる",
+     "はれる",
+     "be sunny"
+    ],
+    [
+     "はずだった",
+     null,
+     "was supposed to"
+    ],
+    [
+     "のに",
+     null,
+     "but",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "According to the forecast, it was supposed to be sunny today."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "北海道",
+     "ほっかいどう",
+     "Hokkaido"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "予報",
+     "よほう",
+     "forecast"
+    ],
+    [
+     "どおり",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "に",
+     null,
+     "(in)",
+     "p"
+    ],
+    [
+     "ならない",
+     null,
+     "doesn't turn out"
+    ],
+    [
+     "の",
+     null,
+     "(it's that)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hokkaido weather doesn't follow the forecast."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "寒い",
+     "さむい",
+     "cold"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "いつも",
+     null,
+     "usual"
+    ],
+    [
+     "より",
+     null,
+     "than",
+     "p"
+    ],
+    [
+     "早く",
+     "はやく",
+     "quickly"
+    ],
+    [
+     "減っている",
+     "へっている",
+     "is going down"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "So cold... Blip's battery is draining faster than usual."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "見て",
+     "みて",
+     "look"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雪まつり",
+     "ゆきまつり",
+     "Snow Festival"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "像",
+     "ぞう",
+     "statues"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "で",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "作った",
+     "つくった",
+     "made"
+    ],
+    [
+     "にしては",
+     null,
+     "for something",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "細かい",
+     "こまかい",
+     "detailed"
+    ],
+    [
+     "でしょう",
+     null,
+     "right"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Look, the Snow Festival statues! For things made of snow, they're really detailed, aren't they?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あれ",
+     null,
+     "that"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "大阪城",
+     "おおさかじょう",
+     "Osaka Castle"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "にしては",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "大きすぎる",
+     "おおきすぎる",
+     "too big"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Amazing! Is that Osaka Castle? It's way too big for something made of snow!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "自衛隊",
+     "じえいたい",
+     "the Self-Defense Forces"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "人たち",
+     "ひとたち",
+     "people"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "一か月",
+     "いっかげつ",
+     "a month"
+    ],
+    [
+     "かけて",
+     null,
+     "spending"
+    ],
+    [
+     "作る",
+     "つくる",
+     "make"
+    ],
+    [
+     "んだって",
+     null,
+     "I hear",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I hear Self-Defense Forces volunteers spend a month building them."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "来て",
+     "きて",
+     "came"
+    ],
+    [
+     "よかった",
+     null,
+     "glad"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "約束どおり",
+     "やくそくどおり",
+     "as promised"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "冬",
+     "ふゆ",
+     "winter"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "来た",
+     "きた",
+     "came"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm glad I came. As promised, I came in winter."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "darake",
+   "title": "～だらけ: covered in, full of (usually bad)",
+   "explain": "Noun + だらけ = covered with or full of something, usually unwanted: 雪だらけ, まちがいだらけ (full of mistakes), 傷だらけ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "頭",
+       "あたま",
+       "head"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "雪だらけ",
+       "ゆきだらけ",
+       "covered in snow"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Your head is covered in snow."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "この作文はまちがい＿＿＿だ。",
+     "hint": "This essay is full of mistakes.",
+     "choices": [
+      "だらけ",
+      "ばかりで",
+      "っぽい"
+     ],
+     "answer": 0,
+     "why": "Full of (unwanted things): だらけ."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#darake"
+  },
+  {
+   "id": "ni-shitewa",
+   "title": "～にしては: for (considering)",
+   "explain": "Noun or plain form + にしては = considering X, it's surprising: 雪にしては細かい (detailed, for snow). It compares against what you'd expect of X.",
+   "examples": [
+    {
+     "t": [
+      [
+       "雪",
+       "ゆき",
+       "snow"
+      ],
+      [
+       "で",
+       null,
+       "from",
+       "p"
+      ],
+      [
+       "作った",
+       "つくった",
+       "made"
+      ],
+      [
+       "にしては",
+       null,
+       "for something",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "細かい",
+       "こまかい",
+       "detailed"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "For something made of snow, it's detailed."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "初めて作った＿＿＿＿、とてもおいしい。",
+     "hint": "For a first try, it's very tasty.",
+     "choices": [
+      "にしては",
+      "について",
+      "によって"
+     ],
+     "answer": 0,
+     "why": "Better than you'd expect of X: にしては."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ni-shitewa"
+  },
+  {
+   "id": "hazu-datta",
+   "title": "～はずだった: was supposed to (but didn't)",
+   "explain": "はず + だった = it was expected, but it didn't happen: 晴れるはずだった (it was supposed to be sunny). Often followed by のに or けど.",
+   "examples": [
+    {
+     "t": [
+      [
+       "晴れる",
+       "はれる",
+       "be sunny"
+      ],
+      [
+       "はずだった",
+       null,
+       "was supposed to"
+      ],
+      [
+       "のに",
+       null,
+       "but",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It was supposed to be sunny, but…"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "電車は七時に着く＿＿＿＿＿のに、まだ来ない。",
+     "hint": "The train was supposed to arrive at seven, but it hasn't come.",
+     "choices": [
+      "はずだった",
+      "ようだった",
+      "そうだった"
+     ],
+     "answer": 0,
+     "why": "Expected but didn't happen: はずだった."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#hazu-datta"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "港",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    "みなと"
+   ],
+   "m": "harbor",
+   "ex": [
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ]
+   ]
+  },
+  {
+   "k": "減",
+   "on": [
+    "ゲン"
+   ],
+   "kun": [
+    "へ.る"
+   ],
+   "m": "decrease",
+   "ex": [
+    [
+     "減る",
+     "へる",
+     "to decrease"
+    ]
+   ]
+  },
+  {
+   "k": "細",
+   "on": [
+    "サイ"
+   ],
+   "kun": [
+    "ほそ.い",
+    "こま.かい"
+   ],
+   "m": "thin, detailed",
+   "ex": [
+    [
+     "細かい",
+     "こまかい",
+     "detailed"
+    ],
+    [
+     "細い",
+     "ほそい",
+     "thin"
+    ]
+   ]
+  },
+  {
+   "k": "像",
+   "on": [
+    "ゾウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "statue, image",
+   "ex": [
+    [
+     "像",
+     "ぞう",
+     "statue"
+    ]
+   ]
+  },
+  {
+   "k": "報",
+   "on": [
+    "ホウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "report",
+   "ex": [
+    [
+     "天気予報",
+     "てんきよほう",
+     "weather forecast"
+    ],
+    [
+     "情報",
+     "じょうほう",
+     "information"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  8
+ ],
+ "questions": [
+  {
+   "q": "天気予報では、今日はどうなるはずでしたか。",
+   "en": "According to the forecast, what was today supposed to be like?",
+   "choices": [
+    "晴れる",
+    "雪が降る",
+    "雨が降る"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "雪まつりの像はだれが作りますか。",
+   "en": "Who builds the Snow Festival statues?",
+   "choices": [
+    "自衛隊の人たち",
+    "サムさん",
+    "子どもたち"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてブリップの電池が早く減っていますか。",
+   "en": "Why is Blip's battery draining fast?",
+   "choices": [
+    "寒いから",
+    "古いから",
+    "ずっと話しているから"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe something covered in or full of something (～だらけ), praise something 'for a beginner' (～にしては), and tell Blip about a plan that didn't work out (～はずだった)."
+}

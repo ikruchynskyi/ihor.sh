@@ -1,0 +1,930 @@
+{
+ "id": "n3-09",
+ "level": "N3",
+ "unit": 9,
+ "title": {
+  "ja": "東京に比べて",
+  "en": "Compared to Tokyo"
+ },
+ "scene": "September, back in New York. Sam and Yuki wait for a delayed train at Union Square.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "に",
+     null,
+     "(with)",
+     "p"
+    ],
+    [
+     "比べて",
+     "くらべて",
+     "compared"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "うるさい",
+     null,
+     "noisy"
+    ],
+    [
+     "な",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Compared to Tokyo, the New York subway is really noisy."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "帰ってきた",
+     "かえってきた",
+     "came back"
+    ],
+    [
+     "ばかり",
+     null,
+     "only just"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "みんな",
+     null,
+     "all"
+    ],
+    [
+     "そう",
+     null,
+     "that"
+    ],
+    [
+     "言う",
+     "いう",
+     "say"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Everyone who just got back says that."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ほう",
+     null,
+     "side"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "全部",
+     "ぜんぶ",
+     "everything"
+    ],
+    [
+     "いい",
+     null,
+     "better"
+    ],
+    [
+     "わけではない",
+     null,
+     "it's not that"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "But it's not that everything is better in Tokyo."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "二十四時間",
+     "にじゅうよじかん",
+     "24 hours"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "trains"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "走っている",
+     "はしっている",
+     "run"
+    ],
+    [
+     "し",
+     null,
+     "and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どこ",
+     null,
+     "where"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "も",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "ピザ",
+     null,
+     "pizza"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "買える",
+     "かえる",
+     "can buy"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In New York the trains run 24 hours, and you can buy pizza anywhere."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ピザ",
+     null,
+     "pizza"
+    ],
+    [
+     "なんか",
+     null,
+     "something like"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "喜ぶ",
+     "よろこぶ",
+     "be happy"
+    ],
+    [
+     "の",
+     null,
+     "(question)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "子ども",
+     "こども",
+     "child"
+    ],
+    [
+     "みたい",
+     null,
+     "like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You're happy about something like pizza? Like a kid."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ピザ",
+     null,
+     "pizza"
+    ],
+    [
+     "なんか",
+     null,
+     "stuff like"
+    ],
+    [
+     "じゃない",
+     null,
+     "isn't",
+     "p"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "文化",
+     "ぶんか",
+     "culture"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's not just pizza! It's New York culture."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "に",
+     null,
+     "(with)",
+     "p"
+    ],
+    [
+     "比べて",
+     "くらべて",
+     "compared"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ネズミ",
+     null,
+     "rats"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "多い",
+     "おおい",
+     "many"
+    ],
+    [
+     "です",
+     null,
+     "are"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Compared to Japan, there are a lot of rats here."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それ",
+     null,
+     "that"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "否定できない",
+     "ひていできない",
+     "can't deny"
+    ],
+    [
+     "わね",
+     null,
+     "(I admit)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "...I can't deny that."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "oh"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "来た",
+     "きた",
+     "came"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "遅れた",
+     "おくれた",
+     "was late"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "嫌い",
+     "きらい",
+     "dislike"
+    ],
+    [
+     "な",
+     null,
+     "(that I)"
+    ],
+    [
+     "わけではない",
+     null,
+     "it's not that"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh, the train's here. It was late, but that doesn't mean I hate it."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "ni-kuraberu",
+   "title": "～に比べて: compared to",
+   "explain": "Noun + に比べて (くらべて) = compared with. The rest of the sentence says how the other thing differs. In writing: に比べ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "東京",
+       "とうきょう",
+       "Tokyo"
+      ],
+      [
+       "に",
+       null,
+       "(with)",
+       "p"
+      ],
+      [
+       "比べて",
+       "くらべて",
+       "compared"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "うるさい",
+       null,
+       "noisy"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Compared to Tokyo, it's noisy."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "去年＿＿＿＿、今年は雪が多い。",
+     "hint": "Compared to last year, there's more snow this year.",
+     "choices": [
+      "に比べて",
+      "について",
+      "によって"
+     ],
+     "answer": 0,
+     "why": "Comparing: に比べて."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ni-kuraberu"
+  },
+  {
+   "id": "wake-dewanai",
+   "title": "～わけではない: it's not that, it doesn't mean",
+   "explain": "Plain form + わけではない softens or denies a conclusion someone might draw: 嫌いなわけではない (it's not that I dislike it). 全部…わけではない = not all.",
+   "examples": [
+    {
+     "t": [
+      [
+       "全部",
+       "ぜんぶ",
+       "everything"
+      ],
+      [
+       "いい",
+       null,
+       "good"
+      ],
+      [
+       "わけではない",
+       null,
+       "it's not that"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's not that everything is better."
+    },
+    {
+     "t": [
+      [
+       "嫌い",
+       "きらい",
+       "dislike"
+      ],
+      [
+       "な",
+       null,
+       "(that)"
+      ],
+      [
+       "わけではない",
+       null,
+       "it doesn't mean"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It doesn't mean I hate it."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "高い店がいつもおいしい＿＿＿＿＿＿。",
+     "hint": "Expensive restaurants aren't always delicious.",
+     "choices": [
+      "わけではない",
+      "わけがない",
+      "わけだ"
+     ],
+     "answer": 0,
+     "why": "Denying a general conclusion: わけではない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#wake-dewanai"
+  },
+  {
+   "id": "nanka",
+   "title": "～なんか / ～なんて: something like (dismissive)",
+   "explain": "Noun + なんか makes light of it (or of yourself): ピザなんか (something like pizza), 私なんか (someone like me). なんて does the same and also shows surprise: そんなことを言うなんて.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ピザ",
+       null,
+       "pizza"
+      ],
+      [
+       "なんか",
+       null,
+       "something like"
+      ],
+      [
+       "で",
+       null,
+       "with",
+       "p"
+      ],
+      [
+       "喜ぶ",
+       "よろこぶ",
+       "be happy"
+      ],
+      [
+       "の",
+       null,
+       "(question)",
+       "p"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You're happy about something like pizza?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "私＿＿＿にはできません。",
+     "hint": "Someone like me can't do it.",
+     "choices": [
+      "なんか",
+      "こそ",
+      "さえ"
+     ],
+     "answer": 0,
+     "why": "Playing it down: なんか."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#nanka"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "比",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "くら.べる"
+   ],
+   "m": "compare",
+   "ex": [
+    [
+     "比べる",
+     "くらべる",
+     "to compare"
+    ]
+   ]
+  },
+  {
+   "k": "鉄",
+   "on": [
+    "テツ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "iron",
+   "ex": [
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ]
+   ]
+  },
+  {
+   "k": "化",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "ば.ける"
+   ],
+   "m": "change, -ization",
+   "ex": [
+    [
+     "文化",
+     "ぶんか",
+     "culture"
+    ]
+   ]
+  },
+  {
+   "k": "否",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "いな"
+   ],
+   "m": "no, deny",
+   "ex": [
+    [
+     "否定",
+     "ひてい",
+     "denial"
+    ]
+   ]
+  },
+  {
+   "k": "嫌",
+   "on": [
+    "ケン"
+   ],
+   "kun": [
+    "きら.う",
+    "いや"
+   ],
+   "m": "dislike",
+   "ex": [
+    [
+     "嫌い",
+     "きらい",
+     "dislike"
+    ],
+    [
+     "嫌",
+     "いや",
+     "unpleasant"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  8
+ ],
+ "questions": [
+  {
+   "q": "サムさんによると、ニューヨークの地下鉄は東京に比べてどうですか。",
+   "en": "According to Sam, how is the NY subway compared to Tokyo's?",
+   "choices": [
+    "うるさい",
+    "きれい",
+    "速い"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはニューヨークのどんなところがいいと言いましたか。",
+   "en": "What does Sam like about New York?",
+   "choices": [
+    "電車が二十四時間走ること",
+    "電車が遅れないこと",
+    "ネズミがいないこと"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップは何が多いと言いましたか。",
+   "en": "What does Blip say there are a lot of?",
+   "choices": [
+    "ネズミ",
+    "ピザ",
+    "電車"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Compare your city with another one (～に比べて), add a 'that doesn't mean…' (～わけではない), and tease Blip about something small (～なんか)."
+}
