@@ -113,6 +113,18 @@ export async function restaurantInspections(camis: string) {
     lat: Number(r.latitude) || null, lon: Number(r.longitude) || null, visits: [...visits.values()].slice(0, 8) };
 }
 
+// ---------- traffic cameras ----------
+let cams: { at: number; list: any[] } | null = null;
+/** NYC DOT traffic cameras (webcams.nyctmc.org): id, name, area, lat/lon, live JPEG URL. Cached 10 min. */
+export async function trafficCameras() {
+  if (!cams || cams.at < Date.now() - 10 * 60_000) {
+    const rows: any[] = await json("https://webcams.nyctmc.org/api/cameras");
+    cams = { at: Date.now(), list: rows.filter((c) => c.isOnline === "true" || c.isOnline === true)
+      .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })) };
+  }
+  return cams.list;
+}
+
 // ---------- the web ----------
 /** Web search: Tavily when its key works, DuckDuckGo's HTML results otherwise. */
 export async function webSearch(query: string) {

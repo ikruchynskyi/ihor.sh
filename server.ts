@@ -9,7 +9,7 @@ import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -221,6 +221,7 @@ const server = http.createServer(async (req, res) => {
       if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();
       return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
     }
+    if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
     if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
