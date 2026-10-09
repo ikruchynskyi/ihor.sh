@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capacitors and Time</title>
+  <meta name="description" content="Electronics from scratch, chapter 2: a capacitor as a bucket for charge, charging and discharging in real seconds, the RC time constant, a capacitor keeping an LED alive, and the RC low-pass filter on an oscilloscope." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 2</p>
+  <h1>Capacitors and time</h1>
+  <p class="lede">In chapter 1 everything happened instantly: change a resistor and the current changes right away. Add a capacitor and circuits start to have <em>memory</em> and <em>time</em>. That's how a camera flash stores a jolt, how a button press gets cleaned up, and how the radio course's filters keep one station and drop the rest.</p>
+  <div class="plain card"><b>In plain words:</b> a capacitor is two metal plates with a thin gap. It can't let current straight through, but it can <b>fill up with charge</b> like a bucket. Empty, it gulps current; as it fills, its voltage rises and pushes back, so the current slows to a trickle. Its size, in farads, is how big the bucket is. Real ones are tiny: microfarads (µF), millionths of a farad.</div>
+
+  <h2>1. Filling the bucket</h2>
+  <p>A battery charges a capacitor through a resistor. Press <b>Charge</b> and watch in real time; then <b>Discharge</b> to let it empty through the same resistor. The graph shows the capacitor's voltage.</p>
+  <canvas id="c1" width="800" height="400" aria-label="A battery charging a capacitor through a resistor, with a voltage graph"></canvas>
+  <div class="row"><button id="charge">Charge</button><button id="discharge">Discharge</button>
+    <label>R <input type="range" id="r1" min="3" max="5" step="0.01" value="4"> <span id="r1v" class="math"></span></label>
+    <label>C <input type="range" id="cap1" min="1" max="3" step="0.01" value="2.34"> <span id="c1v" class="math"></span></label></div>
+  <p class="readout" id="o1"></p>
+  <p>The curve always has the same shape, just stretched. Multiply R by C and you get the <b>time constant</b>, τ ("tau"), in seconds: after one τ the capacitor is 63% full, after five it's practically full. A bigger bucket or a narrower pipe both make it slower. That one number, R × C, is the clock of every circuit in this chapter.</p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> make the capacitor reach 63% in exactly 1 second (τ = 1 s, within 5%).</p>
+
+  <h2>2. Running on stored charge</h2>
+  <p>The battery fills a big capacitor, which also feeds an LED through a resistor. Now <b>unplug the battery</b>: the LED keeps glowing on the stored charge, then fades as the bucket empties.</p>
+  <canvas id="c2" width="800" height="400" aria-label="A capacitor keeping an LED lit after the battery is unplugged"></canvas>
+  <div class="row"><button id="unplug">Unplug the battery</button><button id="plug">Plug it back in</button>
+    <label>C <input type="range" id="cap2" min="2" max="3.7" step="0.01" value="3"> <span id="c2v" class="math"></span></label>
+    <label>LED resistor <input type="range" id="r2" min="100" max="1000" step="10" value="220"> <span id="r2v" class="math"></span></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> keep the LED visibly lit (above 1 mA) for at least 3 seconds after unplugging.</p>
+  <p>This is exactly what keeps an Arduino from resetting when a motor briefly pulls the supply down, and why a TV's power light fades after you unplug it.</p>
+
+  <h2 id="filter">3. The simplest filter</h2>
+  <p>Now feed the resistor and capacitor a wave instead of a steady battery. A slow wave gives the capacitor time to fill and empty, so the output follows the input. A fast wave flips before the bucket can respond, so the output barely moves. That's a <b>low-pass filter</b>: low frequencies pass, high ones are squashed.</p>
+  <canvas id="c3" width="800" height="400" aria-label="An RC low-pass filter with input and output on an oscilloscope"></canvas>
+  <div class="row"><label>input <select id="wave"><option value="sine">sine</option><option value="square">square</option></select></label>
+    <label>frequency <input type="range" id="f3" min="1" max="5" step="0.01" value="3"> <span id="f3v" class="math"></span></label>
+    <label>R <input type="range" id="r3" min="2" max="5" step="0.01" value="3"> <span id="r3v" class="math"></span></label>
+    <label>C <input type="range" id="cap3" min="-3" max="1" step="0.01" value="-0.8"> <span id="c3v" class="math"></span></label></div>
+  <p class="readout" id="o3"></p>
+  <p>The dividing line is the <b>cutoff frequency</b>, f<sub>c</sub> = 1 / (2π·R·C): there the output is about 71% of the input. Each ten times higher in frequency, it drops ten times further. Try a square wave too: its sharp corners are made of high frequencies, so the filter rounds them off into curves. In the radio course this same idea, done with numbers instead of parts, is how one station gets picked out of the air (<a href="/radio/course/06-averaging-is-filtering.html">Radio ch. 6: averaging is filtering</a>), and an FM radio's "75 µs de-emphasis" is exactly this circuit with R × C = 75 µs (<a href="/radio/course/09-fm-listening-to-the-speed.html">Radio ch. 9</a>).</p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> build a filter that lets a 100 Hz hum through (at least 90%) but cuts a 10 kHz whine below 10%.</p>
+  <p>Next: <b>coils and resonance</b>, where a capacitor and an inductor pass energy back and forth and a circuit starts to ring at one frequency, which is how a radio tunes.</p>
+
+  <p class="muted">Previous: <a href="./01-voltage-current-resistance.html">Voltage, current, resistance</a> · All chapters: <a href="/learn/">Learn &amp; build</a>. Simulated step by step by our own solver (<code>learn/circuit.js</code>, trapezoidal integration).</p>
+</main>
+<script type="module">
+import { stepper, simulate, RED_LED } from "/learn/circuit.js";
+import { scene, battery, resistor, capacitor, switchSym, led, scope, tag, fmtA, fmtR, C } from "/learn/schem.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const goal = (id, ok, praise) => { const el = $(id); if (ok && !el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", ` <b>✓ Done!</b> ${praise}`); say("Challenge done! " + praise.split(".")[0] + ".", "happy"); } };
+const fmtC = (f) => (f >= 1e-3 ? `${(f * 1000).toFixed(1)} mF` : f >= 1e-6 ? `${(f * 1e6).toFixed(f >= 1e-5 ? 0 : 1)} µF` : `${(f * 1e9).toFixed(0)} nF`);
+const fmtT = (s) => (s >= 1 ? `${s.toFixed(2)} s` : `${(s * 1000).toFixed(s >= 0.01 ? 0 : 1)} ms`);
+const fmtF = (f) => (f >= 1000 ? `${(f / 1000).toFixed(f >= 1e4 ? 0 : 1)} kHz` : `${f.toFixed(0)} Hz`);
+const L = 140, Rx = 660, T = 80, B = 320;
+
+// Run a stepper in real time: each frame advances real elapsed time in small steps.
+function live(build, onStep) {
+  let sim = null, last = performance.now(), t = 0, simT = 0, dtSim = 1e-3;
+  const reset = (vc) => { const { elements, dt } = build(vc); sim = stepper(elements, dt); dtSim = dt; simT = t; };
+  const tick = (now) => {
+    t += Math.min(0.05, (now - last) / 1000); last = now;
+    let r = null;
+    for (let k = 0; simT < t && k < 400; k++) { r = sim.step(); simT += dtSim; } // simulated time keeps pace with real time
+    if (r) onStep(r, t);
+    requestAnimationFrame(tick);
+  };
+  return { reset, start() { requestAnimationFrame(tick); } };
+}
+
+// 1. charging and discharging
+let mode1 = "discharge", vc1 = 0, ir1 = 0, hist = [], t63 = null;
+const R1 = () => Math.round(10 ** +$("r1").value / 100) * 100, C1 = () => +(10 ** +$("cap1").value * 1e-6).toPrecision(2);
+const sim1 = live((vc) => {
+  const tau = R1() * C1();
+  return { dt: Math.max(1e-5, tau / 100), elements: mode1 === "charge"
+    ? [{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: R1() }, { type: "C", a: 2, b: 0, farads: C1(), v0: vc }]
+    : [{ type: "R", a: 2, b: 0, ohms: R1() }, { type: "C", a: 2, b: 0, farads: C1(), v0: vc }] };
+}, (r, t) => {
+  vc1 = r.v[2]; ir1 = mode1 === "charge" ? r.i[1] : -r.i[0];
+  hist.push([t, vc1]); while (hist.length && hist[0][0] < t - Math.max(4, 6 * R1() * C1())) hist.shift();
+  if (t63 && t63.at == null && mode1 === "charge" && vc1 >= 5 * (1 - Math.exp(-1))) t63.at = t - t63.start;
+});
+const show1 = () => {
+  const tau = R1() * C1();
+  $("r1v").textContent = fmtR(R1()); $("c1v").textContent = fmtC(C1());
+  $("o1").textContent = `τ = R × C = ${fmtR(R1())} × ${fmtC(C1())} = ${fmtT(tau)} · capacitor at ${vc1.toFixed(2)} V (${Math.round((vc1 / 5) * 100)}% full) · current ${fmtA(Math.abs(ir1))}${t63?.at != null ? ` · reached 63% after ${fmtT(t63.at)}` : ""}`;
+  goal("g1", Math.abs(tau - 1) < 0.05, `R × C = 1 s: for example 10 kΩ × 100 µF, or 4.7 kΩ × 220 µF.`);
+};
+$("charge").onclick = () => { mode1 = "charge"; t63 = { start: hist.at(-1)?.[0] ?? 0, at: vc1 >= 3.16 ? 0 : null }; sim1.reset(vc1); };
+$("discharge").onclick = () => { mode1 = "discharge"; t63 = null; sim1.reset(vc1); };
+["r1", "cap1"].forEach((id) => ($(id).oninput = () => sim1.reset(vc1)));
+sim1.reset(0); sim1.start(); setInterval(show1, 200); show1();
+scene($("c1"), (g) => {
+  battery(g, L, 200, "5 V");
+  switchSym(g, 230, 300, T, mode1 === "charge", mode1 === "charge" ? "charging" : "");
+  if (mode1 === "discharge") { g.strokeStyle = C.wire; g.setLineDash([6, 6]); g.lineWidth = 3; g.beginPath(); g.moveTo(300, T); g.lineTo(300, B); g.stroke(); g.setLineDash([]); }
+  resistor(g, [340, T], [520, T], fmtR(R1()));
+  capacitor(g, Rx, T, B, fmtC(C1()), vc1 / 5);
+  tag(g, Rx + 30, 150, `${vc1.toFixed(2)} V`, C.blue);
+  // the graph, bottom left
+  const gx = 170, gy = 230, gw = 400, gh = 70;
+  g.fillStyle = "#0b0d12"; g.fillRect(gx, gy, gw, gh);
+  if (hist.length > 1) { const t0 = hist[0][0], span = Math.max(1e-6, hist.at(-1)[0] - t0); g.strokeStyle = C.blue; g.lineWidth = 2; g.beginPath(); hist.forEach(([t, v], i) => { const x = gx + ((t - t0) / span) * gw, y = gy + gh - (v / 5) * gh; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); }
+  g.strokeStyle = "rgba(244,211,94,.5)"; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(gx, gy + gh - 0.632 * gh); g.lineTo(gx + gw, gy + gh - 0.632 * gh); g.stroke(); g.setLineDash([]);
+  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; g.fillText("63%", gx + gw + 4, gy + gh - 0.632 * gh + 4); g.fillText("capacitor voltage", gx + 4, gy + 14);
+}, () => mode1 === "charge" ? [{ pts: [[L, 192], [L, T], [Rx, T], [Rx, 192]], amps: ir1 }, { pts: [[Rx, 208], [Rx, B], [L, B], [L, 208]], amps: ir1 }]
+  : [{ pts: [[Rx, 192], [Rx, T], [300, T], [300, B], [Rx, B], [Rx, 208]], amps: ir1 }]);
+
+// 2. a capacitor keeps an LED lit
+let plugged = true, s2 = { vc: 0, iled: 0 }, litFrom = null, litFor = 0;
+const C2 = () => +(10 ** +$("cap2").value * 1e-6).toPrecision(2);
+const sim2 = live((vc) => ({ dt: 1e-3, elements: [...(plugged ? [{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: 10 }] : []),
+  { type: "C", a: 2, b: 0, farads: C2(), v0: vc }, { type: "R", a: 2, b: 3, ohms: +$("r2").value }, { type: "D", a: 3, b: 0, ...RED_LED }] }),
+  (r, t) => {
+    const n = r.i.length;
+    s2 = { vc: r.v[2], iled: r.i[n - 1], icharge: plugged ? r.i[1] : 0 };
+    const now = performance.now() / 1000;
+    if (!plugged && litFrom != null) { if (s2.iled > 0.001) litFor = now - litFrom; else if (litFor) { goal("g2", litFor >= 3, `${litFor.toFixed(1)} s: a bigger capacitor or a bigger resistor stretches R × C.`); litFrom = null; } }
+  });
+$("unplug").onclick = () => { plugged = false; litFrom = performance.now() / 1000; litFor = 0; sim2.reset(s2.vc); };
+$("plug").onclick = () => { plugged = true; litFrom = null; sim2.reset(s2.vc); };
+["cap2", "r2"].forEach((id) => ($(id).oninput = () => sim2.reset(s2.vc)));
+sim2.reset(0); sim2.start();
+setInterval(() => {
+  $("c2v").textContent = fmtC(C2()); $("r2v").textContent = `${$("r2").value} Ω`;
+  $("o2").textContent = `${plugged ? "battery connected" : "running on the capacitor"} · capacitor ${s2.vc.toFixed(2)} V · LED ${fmtA(s2.iled)}${!plugged ? ` · lit for ${litFor.toFixed(1)} s` : ""}`;
+}, 150);
+scene($("c2"), (g) => {
+  if (plugged) battery(g, L, 200, "5 V"); else { g.fillStyle = "#8f98a8"; g.font = "15px ui-monospace, monospace"; g.fillText("(unplugged)", L - 40, 205); }
+  capacitor(g, 380, T, B, fmtC(C2()), s2.vc / 5);
+  resistor(g, [450, T], [590, T], `${$("r2").value} Ω`);
+  led(g, Rx, 200, Math.min(1, s2.iled / 0.02), fmtA(s2.iled));
+}, () => {
+  // The battery's current (when plugged) splits at the capacitor's top: some fills it, the rest feeds the LED.
+  // Unplugged, the capacitor's current flows back up out of it into the LED (negative = against the arrow).
+  const ic = plugged ? s2.icharge - s2.iled : -s2.iled, ib = plugged ? s2.icharge : 0;
+  return [{ pts: [[L, 192], [L, T], [380, T]], amps: ib }, { pts: [[380, B], [L, B], [L, 208]], amps: ib },
+    { pts: [[380, T], [380, 192]], amps: ic }, { pts: [[380, 208], [380, B]], amps: ic },
+    { pts: [[380, T], [Rx, T], [Rx, 188]], amps: s2.iled }, { pts: [[Rx, 212], [Rx, B], [380, B]], amps: s2.iled }];
+});
+
+// 3. the RC low-pass filter on a scope
+let s3 = null;
+const x0In = 60; // the source's x on the canvas
+function calc3() {
+  const R = Math.round(10 ** +$("r3").value), Cf = +(10 ** +$("cap3").value * 1e-6).toPrecision(2), f = +(10 ** +$("f3").value).toPrecision(2), sq = $("wave").value === "square";
+  const P = 1 / f, dt = P / 100, tau = R * Cf, steps = Math.min(30000, Math.ceil((5 * tau + 3 * P) / dt));
+  const src = sq ? (t) => ((t % P) < P / 2 ? 1 : 0) : (t) => Math.sin(2 * Math.PI * f * t);
+  const sim = simulate([{ type: "V", a: 1, b: 0, volts: src }, { type: "R", a: 1, b: 2, ohms: R }, { type: "C", a: 2, b: 0, farads: Cf, v0: sq ? 0.5 : 0 }], { dt, steps });
+  const tail = sim.v.slice(-300), vin = sim.t.slice(-300).map(src), vout = tail.map((v) => v[2]);
+  const amp = (a) => (Math.max(...a) - Math.min(...a)) / 2, gain = amp(vout) / amp(vin), fc = 1 / (2 * Math.PI * tau);
+  s3 = { R, Cf, f, vin, vout, sq };
+  $("f3v").textContent = fmtF(f); $("r3v").textContent = fmtR(R); $("c3v").textContent = fmtC(Cf);
+  $("o3").textContent = `cutoff f_c = 1 / (2π · ${fmtR(R)} · ${fmtC(Cf)}) = ${fmtF(fc)} · at ${fmtF(f)} the output is ${Math.round(gain * 100)}% of the input (${(20 * Math.log10(gain)).toFixed(1)} dB)`;
+  const pass = (fq) => 1 / Math.sqrt(1 + (fq / fc) ** 2);
+  goal("g3", pass(100) >= 0.9 && pass(10000) <= 0.1, `Cutoff ${fmtF(fc)}: 100 Hz keeps ${Math.round(pass(100) * 100)}%, 10 kHz keeps ${Math.round(pass(10000) * 100)}%.`);
+}
+["f3", "r3", "cap3"].forEach((id) => ($(id).oninput = calc3)); $("wave").onchange = calc3; calc3();
+scene($("c3"), (g) => {
+  const x0 = x0In;
+  g.strokeStyle = C.text; g.lineWidth = 3; g.beginPath(); g.arc(x0, 200, 20, 0, 7); g.stroke();
+  g.beginPath(); for (let k = 0; k <= 20; k++) { const x = x0 - 12 + k * 1.2, y = 200 - 7 * Math.sin((k / 20) * 2 * Math.PI); k ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+  resistor(g, [100, T], [250, T], fmtR(s3.R)); capacitor(g, 280, T, B, fmtC(s3.Cf));
+  g.fillStyle = C.yellow; g.font = "13px ui-monospace, monospace"; g.fillText("in", 18, 170); g.fillStyle = C.blue; g.fillText("out", 296, T - 8);
+  scope(g, 350, 60, 430, 280, [{ ys: s3.vin, color: C.yellow, label: "input" }, { ys: s3.vout, color: C.blue, label: "output" }], s3.sq ? -0.2 : -1.2, s3.sq ? 1.2 : 1.2, "last 3 cycles");
+}, () => [{ pts: [[x0In, 180], [x0In, T], [280, T]], amps: 0 }, { pts: [[280, B], [x0In, B], [x0In, 220]], amps: 0 }]);
+
+window.blipContext = () => ({ page: "Electronics chapter 2: capacitors and time", charging: { R: R1(), C: C1(), tau: R1() * C1(), vc: vc1, mode: mode1 }, ledOnCap: { C: C2(), R: +$("r2").value, plugged, litFor }, filter: s3 && { R: s3.R, C: s3.Cf, f: s3.f } });
+</script>
+</body>
+</html>

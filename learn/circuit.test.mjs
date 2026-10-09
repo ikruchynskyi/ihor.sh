@@ -1,6 +1,6 @@
 // Run: node learn/circuit.test.mjs
 import assert from "node:assert/strict";
-import { solve, RED_LED } from "./circuit.js";
+import { solve, simulate, RED_LED } from "./circuit.js";
 const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol, `${a} ≠ ${b}`);
 
 // Ohm's law: 9 V across 1 kΩ → 9 mA, and the battery delivers it
@@ -27,6 +27,26 @@ near(r.current[1] * 1 + r.v[2], 5, 1e-6);
 // reversed LED: essentially no current
 r = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: 330 }, { type: "D", a: 0, b: 2, ...RED_LED }]);
 assert.ok(Math.abs(r.current[2]) < 1e-12);
+// node numbers with gaps (node 1 unused) are fine and keep their numbers
+r = solve([{ type: "V", a: 2, b: 0, volts: 4 }, { type: "R", a: 2, b: 3, ohms: 100 }, { type: "R", a: 3, b: 0, ohms: 100 }]);
+near(r.v[3], 2); near(r.v[2], 4);
 // a floating node is reported, not silently wrong
 assert.throws(() => solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 2, b: 3, ohms: 100 }]), /floating/);
+// RC charging: 5 V, 1 kΩ, 1 µF → τ = 1 ms; after one τ the capacitor is at 63% (3.16 V), after 5τ nearly full
+let sim = simulate([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "C", a: 2, b: 0, farads: 1e-6 }], { dt: 1e-5, steps: 500 });
+near(sim.v[100][2], 5 * (1 - Math.exp(-1)), 0.01); near(sim.v[500][2], 5 * (1 - Math.exp(-5)), 0.01);
+near(sim.i[0][1], 0.005, 1e-4); // at the start the empty capacitor looks like a wire: 5 V / 1 kΩ
+// discharge from 5 V through 1 kΩ: 37% after τ
+sim = simulate([{ type: "R", a: 1, b: 0, ohms: 1000 }, { type: "C", a: 1, b: 0, farads: 1e-6, v0: 5 }], { dt: 1e-5, steps: 100 });
+near(sim.v[100][1], 5 * Math.exp(-1), 0.01);
+// LC tank: 1 mH and 1 µF ring at 1/(2π√LC) ≈ 5033 Hz, and keep ringing (no fake damping)
+sim = simulate([{ type: "L", a: 1, b: 0, henries: 1e-3 }, { type: "C", a: 1, b: 0, farads: 1e-6, v0: 1 }], { dt: 1e-6, steps: 2000 });
+const ups = []; for (let n = 1; n < sim.v.length; n++) if (sim.v[n - 1][1] < 0 && sim.v[n][1] >= 0) ups.push(sim.t[n]);
+const f = (ups.length - 1) / (ups.at(-1) - ups[0]);
+assert.ok(Math.abs(f - 1 / (2 * Math.PI * Math.sqrt(1e-9))) < 30, `LC rings at ${f.toFixed(0)} Hz`);
+assert.ok(Math.max(...sim.v.slice(1800).map((v) => v[1])) > 0.98, "amplitude kept");
+// a sine source through an RC low-pass at its cutoff comes out at 1/√2 of the input amplitude
+const fc = 1 / (2 * Math.PI * 1000 * 1e-6);
+sim = simulate([{ type: "V", a: 1, b: 0, volts: (t) => Math.sin(2 * Math.PI * fc * t) }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "C", a: 2, b: 0, farads: 1e-6 }], { dt: 2e-6, steps: 15000 });
+near(Math.max(...sim.v.slice(10000).map((v) => v[2])), Math.SQRT1_2, 0.01);
 console.log("circuit ok");

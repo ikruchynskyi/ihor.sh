@@ -4,7 +4,9 @@
 //   { type: "V", a, b, volts }     voltage source, a is the + terminal
 //   { type: "I", a, b, amps }      current source pushing current from a, through itself, into b
 //   { type: "D", a, b, is, n }     diode/LED, anode a, cathode b (Shockley equation, solved by Newton's method)
+//   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries }: only in simulate(), over time
 // solve() returns node voltages and the current through every element, measured from a to b.
+// A voltage source's volts may be a function of time (t, seconds) in simulate(): square waves, sine waves.
 // Pure, so node can test it: node learn/circuit.test.mjs
 
 const VT = 0.025852; // thermal voltage at 27 °C
@@ -24,8 +26,11 @@ function gauss(A, b) {
   return x;
 }
 
-export function solve(elements) {
-  const nodes = Math.max(0, ...elements.flatMap((e) => [e.a, e.b])); // node count, not counting ground
+export function solve(input) {
+  // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
+  const used = [...new Set(input.flatMap((e) => [e.a, e.b]).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
+  const elements = input.map((e) => ({ ...e, a: map.get(e.a) ?? 0, b: map.get(e.b) ?? 0 }));
+  const nodes = used.length; // node count, not counting ground
   const sources = elements.filter((e) => e.type === "V");
   const size = nodes + sources.length;
   const diodes = elements.filter((e) => e.type === "D");
@@ -60,7 +65,45 @@ export function solve(elements) {
     if (e.type === "D") return e.is * (Math.exp(vd / ((e.n ?? 1) * VT)) - 1);
     return -x[nodes + sources.indexOf(e)]; // MNA solves for the current into the + terminal; report it flowing out of +
   });
-  return { v, current };
+  // Report voltages under the caller's own node numbers.
+  const vOut = new Array(Math.max(0, ...used) + 1).fill(0);
+  used.forEach((n, i) => (vOut[n] = v[i + 1]));
+  return { v: vOut, current };
+}
+
+/**
+ * Step a circuit through time. Capacitors and inductors become their trapezoidal "companion models" (a resistor plus a
+ * current source that remembers the last step), the method SPICE uses; trapezoidal keeps an LC tank ringing instead of
+ * damping it. Returns { t, v: node voltages per step, i: element currents per step }.
+ */
+export function simulate(elements, { dt, steps }) {
+  const sim = stepper(elements, dt), out = { t: [], v: [], i: [] };
+  for (let n = 0; n <= steps; n++) { const r = sim.step(); out.t.push(r.t); out.v.push(r.v); out.i.push(r.i); }
+  return out;
+}
+
+/** The same, one step at a time (for circuits that run live on a page): step() advances dt and returns { t, v, i }. */
+export function stepper(elements, dt) {
+  const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: 0 }));
+  let n = 0;
+  return { step() {
+    const t = n++ * dt, flat = [], owner = [];
+    elements.forEach((e, k) => {
+      const s = state[k];
+      if (e.type === "C") { const g = (2 * e.farads) / dt; flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.b, b: e.a, amps: g * s.v + s.i }); owner.push(k, -1); }
+      else if (e.type === "L") { const g = dt / (2 * e.henries); flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.a, b: e.b, amps: s.i + g * s.v }); owner.push(k, -1); }
+      else { flat.push(e.type === "V" && typeof e.volts === "function" ? { ...e, volts: e.volts(t) } : e); owner.push(k); }
+    });
+    const r = solve(flat), cur = elements.map(() => 0);
+    flat.forEach((f, j) => { if (owner[j] >= 0) cur[owner[j]] += r.current[j]; });
+    elements.forEach((e, k) => {
+      if (e.type !== "C" && e.type !== "L") return;
+      const vab = r.v[e.a] - r.v[e.b], s = state[k];
+      cur[k] = e.type === "C" ? ((2 * e.farads) / dt) * (vab - s.v) - s.i : s.i + (dt / (2 * e.henries)) * (vab + s.v);
+      s.v = vab; s.i = cur[k];
+    });
+    return { t, v: r.v, i: cur };
+  } };
 }
 
 /** A red LED: about 1.9 V at 10 mA. */

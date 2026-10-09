@@ -76,7 +76,7 @@
   </div>
 
   <p>The fix is a deal made in the 1940s. Broadcasters deliberately <b>boost the treble</b> before transmitting (<b>pre-emphasis</b>), and every receiver <b>turns the treble down</b> by exactly the same amount (<b>de-emphasis</b>, green). The music comes out balanced, and the high-pitched hiss gets turned down along with the treble. In the Americas the amount is set by a "75 µs" <b>time constant</b> (µs: a microsecond, a millionth of a second). It's how quickly the filter reacts, and it sets where the treble cut begins: 1 ÷ (2π × 75 µs) ≈ 2.1 kHz. Below that, almost nothing changes (−0.9 dB at 1 kHz); above it the cut grows (−14 dB at 10 kHz). Europe uses 50 µs.</p>
-  <p>De-emphasis is just a gentle low-pass filter: each output moves a small fraction of the way towards the new input (a running average with a long memory, <a class="back" href="./06-averaging-is-filtering.html#average">↩ ch. 6</a>).</p>
+  <p>De-emphasis is just a gentle low-pass filter: each output moves a small fraction of the way towards the new input (a running average with a long memory, <a class="back" href="./06-averaging-is-filtering.html#average">↩ ch. 6</a>). In an old analog radio it was literally a resistor and a capacitor with R × C = 75 µs, for example 75 kΩ and 1 nF: you can build it in <a href="/learn/electronics/02-capacitors-and-time.html#filter">Electronics ch. 2</a>.</p>
 
   <!-- lab -->
   <h2 id="lab">Lab: listen to FM you decoded yourself</h2>

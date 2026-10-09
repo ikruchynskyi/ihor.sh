@@ -63,6 +63,36 @@ export function led(g, x, y, brightness, label, dead = false) {
   g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(label, x + 22, y + 5);
   if (dead) { g.fillStyle = "rgba(180,180,180,.5)"; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(x - 6 + k * 7, y - 26 - k * 9 + Math.sin(performance.now() / 300 + k) * 3, 6 + k * 2, 0, 7); g.fill(); } }
 }
+/** A capacitor (two plates) on a vertical wire at x between y1 and y2; fill 0…1 shows how charged it is. */
+export function capacitor(g, x, y1, y2, label, fill = 0) {
+  const mid = (y1 + y2) / 2;
+  clear(g, x - 30, mid - 14, 60, 28);
+  g.fillStyle = `rgba(88,196,221,${0.15 + 0.6 * Math.max(0, Math.min(1, fill))})`; g.fillRect(x - 24, mid - 7, 48, 14);
+  g.strokeStyle = C.text; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 26, mid - 8); g.lineTo(x + 26, mid - 8); g.moveTo(x - 26, mid + 8); g.lineTo(x + 26, mid + 8); g.stroke();
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(label, x + 34, mid + 5);
+}
+/** A switch on a horizontal wire from x1 to x2 at y: open, or closed. */
+export function switchSym(g, x1, x2, y, closed, label = "") {
+  clear(g, x1, y - 22, x2 - x1, 30);
+  g.strokeStyle = C.text; g.lineWidth = 3; g.fillStyle = C.text;
+  g.beginPath(); g.arc(x1 + 4, y, 4, 0, 7); g.arc(x2 - 4, y, 4, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(x1 + 4, y); g.lineTo(closed ? x2 - 4 : x2 - 10, closed ? y : y - 18); g.stroke();
+  if (label) { g.font = "13px ui-monospace, monospace"; g.fillText(label, x1, y + 22); }
+}
+/** A small oscilloscope: traces [{ ys, color, label }] over a shared time axis, values in [lo, hi]. */
+export function scope(g, x, y, w, h, traces, lo, hi, caption = "") {
+  g.fillStyle = "#0b0d12"; g.fillRect(x, y, w, h);
+  g.strokeStyle = "#232836"; g.lineWidth = 1;
+  for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(x, y + (h * k) / 4); g.lineTo(x + w, y + (h * k) / 4); g.stroke(); }
+  for (const tr of traces) {
+    g.strokeStyle = tr.color; g.lineWidth = 2.5; g.beginPath();
+    tr.ys.forEach((v, i) => { const px = x + (i / Math.max(1, tr.ys.length - 1)) * w, py = y + h - ((v - lo) / (hi - lo)) * h; i ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke();
+  }
+  g.font = "13px ui-monospace, monospace";
+  traces.forEach((tr, k) => { g.fillStyle = tr.color; g.fillText(tr.label, x + 8 + k * 150, y + 16); });
+  if (caption) { g.fillStyle = "#8f98a8"; g.fillText(caption, x + 8, y + h - 8); }
+}
 /** A voltage label in a box at (x, y). */
 export function tag(g, x, y, text, color = C.blue) { g.font = "14px ui-monospace, monospace"; const w = g.measureText(text).width + 10; g.fillStyle = "rgba(20,23,29,.85)"; g.fillRect(x - 4, y - 15, w, 21); g.strokeStyle = color; g.lineWidth = 1.5; g.strokeRect(x - 4, y - 15, w, 21); g.fillStyle = color; g.fillText(text, x + 1, y); }
 export const fmtA = (a) => (Math.abs(a) >= 1 ? `${a.toFixed(2)} A` : Math.abs(a) >= 1e-3 ? `${(a * 1000).toFixed(1)} mA` : `${(a * 1e6).toFixed(0)} µA`);

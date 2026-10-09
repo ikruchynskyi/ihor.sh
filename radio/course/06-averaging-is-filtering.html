@@ -32,7 +32,7 @@
     </div>
   </div>
 
-  <p>With 1 sample, nothing changes. With 6, the fast wiggle is almost gone and the slow wave survives: the output lies nearly on the dashed green line, which is the slow wave alone. That's a <b>low-pass filter</b>: slow things pass, fast things don't. A moving average of temperatures over a week does the same thing: it removes the day-to-day jitter and keeps the seasonal trend.</p>
+  <p>With 1 sample, nothing changes. With 6, the fast wiggle is almost gone and the slow wave survives: the output lies nearly on the dashed green line, which is the slow wave alone. That's a <b>low-pass filter</b>: slow things pass, fast things don't. A moving average of temperatures over a week does the same thing: it removes the day-to-day jitter and keeps the seasonal trend. (In hardware, a single resistor and capacitor make the same kind of filter: try it live in <a href="/learn/electronics/02-capacitors-and-time.html#filter">Electronics ch. 2</a>.)</p>
   <div class="ponder"><span class="tag">Pause and ponder</span>Make the average much longer, 20 samples. The wiggle is gone, but something happens to the slow wave too. What, and why?</div>
   <p>(It shrinks and shifts to the right: a 20-sample average reaches back far enough to blur even the slow wave, and since it only uses <em>past</em> samples, the output lags behind.)</p>
 
