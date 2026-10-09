@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meshtastic Mesh</title>
+  <meta name="description" content="A live Meshtastic LoRa mesh around New York, heard by our own node: every node on a map with signal, hops and battery, and the public channel chat, decoded from the node's serial API by our own TypeScript." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { flex: 1; display: grid; grid-template-columns: 1fr 400px; min-height: 0; }
+    #map { min-height: 300px; }
+    aside { overflow: auto; padding: 12px 14px; border-left: 3px solid var(--line, #3b4bb0); background: var(--card, #0d1226); display: flex; flex-direction: column; }
+    aside h1 { margin: 0 0 4px; }
+    #live { font: 9px "Press Start 2P", monospace; color: var(--muted); }
+    #live.on { color: #5cff9d; }
+    .muted { color: var(--muted, #9aa3cf); font-size: .85rem; }
+    .tabs2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+    #nodes, #chat { list-style: none; padding: 0; margin: 0; }
+    #nodes li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #chat { flex: 1; min-height: 160px; overflow: auto; }
+    #chat li { padding: 6px 8px; margin: 4px 0; border-left: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--bg, #000) 50%, transparent); }
+    #chat li.mine { border-left-color: var(--accent, #ffb347); }
+    #chat li.dm { border-left-color: #ff5c8a; }
+    #chat li b { cursor: pointer; }
+    #chat .t { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+    .badge { display: inline-block; min-width: 26px; padding: 1px 4px; border-radius: 4px; font: 700 11px ui-monospace, Menlo, monospace; text-align: center; color: #10131a; border: 1px solid #10131a; box-shadow: 0 0 3px #000; white-space: nowrap; }
+    #send { display: flex; gap: 6px; margin-top: 8px; }
+    #send input, #login input { flex: 1; min-width: 0; }
+    #login { display: flex; gap: 6px; }
+    #send[hidden], #login[hidden], button[hidden] { display: none !important; }
+    details.owner { margin-top: 10px; }
+    details.owner summary { cursor: pointer; }
+    @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 50vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="map" aria-label="Map of Meshtastic nodes"></div>
+  <aside>
+    <h1>Meshtastic mesh</h1>
+    <div><span id="live">CONNECTING…</span> · <span id="info" class="muted"></span></div>
+    <details><summary class="muted">What is this?</summary>
+      <p class="muted"><b>Meshtastic</b> turns cheap LoRa radios (915 MHz in the US, under a watt) into a text-messaging mesh with no phones, internet or towers. Each radio repeats what it hears, up to a few <b>hops</b>, so messages travel across the city from rooftop to rooftop. Our node sits on a desk on USB; this page shows every node it has heard and the public channel's chat.</p>
+      <p class="muted">Under the hood: the node speaks protobuf over serial, framed by the bytes <code>0x94 0xC3</code> and a length. Our server decodes it with a few dozen lines of our own TypeScript (no Meshtastic library). <b>SNR</b> is how far above the noise a signal arrived (LoRa still decodes below 0 dB, down to about −20); <b>hops</b> is how many radios relayed it. Positions are as nodes broadcast them, usually rounded on purpose.</p>
+    </details>
+    <div class="tabs2" id="tabs"></div>
+    <ul id="nodes" hidden></ul>
+    <ul id="chat" aria-live="polite"></ul>
+    <form id="send" hidden><input id="msg" maxlength="200" placeholder="Message everyone on this channel" aria-label="Message" autocomplete="off"><button>Send</button></form>
+    <details class="owner" id="ownerBox"><summary class="muted">Node owner</summary>
+      <p class="muted">The owner can send to the mesh and see direct messages sent to this node. Visitors see the public channels only.</p>
+      <form id="login"><input id="key" type="password" placeholder="owner key" aria-label="Owner key" autocomplete="current-password"><button>Sign in</button></form>
+      <button id="logout" hidden>Sign out</button>
+      <p class="muted" id="ownerMsg"></p>
+    </details>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="/src/mesh-app.ts"></script>
+</body>
+</html>

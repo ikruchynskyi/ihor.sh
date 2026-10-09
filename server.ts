@@ -14,7 +14,8 @@ import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
+import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
 
@@ -172,6 +173,18 @@ const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   appendFileSync(path.join(ROOT, ".env"), `\nSESSION_SECRET=${s}\n`);
   return s;
 })();
+// The Meshtastic node's owner signs in once with this key (made on first start, kept in .env) to send and to see
+// direct messages. The key is exchanged for an HttpOnly cookie, so it never sits in a URL.
+const MESH_KEY = process.env.MESH_OWNER_KEY || (() => {
+  const k = randomBytes(18).toString("base64url");
+  appendFileSync(path.join(ROOT, ".env"), `\nMESH_OWNER_KEY=${k}\n`);
+  return k;
+})();
+const MESH_COOKIE = createHmac("sha256", SESSION_SECRET).update(`mesh-owner:${MESH_KEY}`).digest("base64url");
+const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", MESH_COOKIE);
+let meshSentAt = 0;
+
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
 const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
@@ -266,6 +279,36 @@ const server = http.createServer(async (req, res) => {
       const d: any = await routeStops(JSON.parse(raw || "{}").line);
       return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
+    if (url.pathname === "/api/mesh/state") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(meshState(meshOwner(req))));
+    if (url.pathname === "/api/mesh/events") {
+      const owner = meshOwner(req);
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no" });
+      const put = (ev: string, data: unknown) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
+      put("state", meshState(owner));
+      const off = onMesh((ev, data) => { if (ev !== "message" || owner || isPublic(data as MeshMsg)) put(ev, data); });
+      const ping = setInterval(() => res.write(": ping\n\n"), 25_000);
+      req.on("close", () => { off(); clearInterval(ping); });
+      return;
+    }
+    if (url.pathname === "/api/mesh/owner" && req.method === "POST") {
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
+      const key = String(JSON.parse(raw || "{}").key ?? "");
+      if (key === "logout") return res.writeHead(200, { "set-cookie": "ihmesh=; Path=/api/mesh; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
+      if (!spend(`mesh-login:${req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
+      const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+      return res.writeHead(200, { "set-cookie": `ihmesh=${MESH_COOKIE}; Path=/api/mesh; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
+    }
+    if (url.pathname === "/api/mesh/send" && req.method === "POST") {
+      if (!meshOwner(req)) return json403(res, "Only the node's owner can send.");
+      if (Date.now() - meshSentAt < 5000) return json403(res, "One message every 5 seconds: it's a shared radio channel.", 429);
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
+      const { text, channel } = JSON.parse(raw || "{}");
+      try { const id = sendText(String(text ?? "").trim(), Math.max(0, Math.min(7, Number(channel) || 0))); meshSentAt = Date.now(); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ id })); }
+      catch (e) { return json403(res, (e as Error).message, 400); }
+    }
     if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
     if (url.pathname === "/api/nyc/trains") {
@@ -323,4 +366,5 @@ const server = http.createServer(async (req, res) => {
 
 startArchive();
 startEvents();
+startMesh();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));
