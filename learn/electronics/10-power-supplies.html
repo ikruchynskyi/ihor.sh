@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Power Supplies</title>
+  <meta name="description" content="Electronics from scratch, chapter 10: power supplies. How a linear regulator works (a reference, an op-amp and a transistor), dropout and heat with heatsinks, buck and boost switching converters with their inductor currents drawn live, and an efficiency budget for battery projects." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 10</p>
+  <h1>Power supplies</h1>
+  <p class="lede">Chips want a steady, exact voltage: 3.3 V, 5 V, 1.8 V. Batteries sag as they empty (chapter 5) and wall adapters ripple (chapter 4). A regulator turns whatever comes in into exactly what's needed. There are two ways, and the difference between them decides whether your battery lasts a day or a week: <b>burn off the extra</b> (linear), or <b>chop and smooth</b> (switching).</p>
+  <div class="plain card"><b>In plain words:</b> a linear regulator is a tap that a robot keeps adjusting so the output stays at 5 V; the extra pressure is wasted as heat. A switching regulator is a tap flicked fully on and off thousands of times a second, with a coil and a capacitor smoothing the flicks into a steady flow; almost nothing is wasted.</div>
+
+  <h2>1. A linear regulator: chapter 7 in a chip</h2>
+  <p>Inside a 7805 or an LDO: a precise reference voltage, an op-amp, and a transistor between input and output. The op-amp compares (a divided-down copy of) the output with the reference and drives the transistor until they match: negative feedback holding the output still. The transistor drops whatever voltage is left over, and that drop times the current is heat.</p>
+  <canvas id="c1" width="800" height="320" aria-label="Linear regulator: power in, power out, heat"></canvas>
+  <div class="row"><label>input <input type="range" id="vin1" min="3" max="24" step="0.1" value="12"> <span id="vin1v" class="math"></span></label><label>load current <input type="range" id="il1" min="0.01" max="1.5" step="0.01" value="0.5"> <span id="il1v" class="math"></span></label><label>heatsink <select id="hs"><option value="50">none (TO-220, 50 °C/W)</option><option value="20">small (20 °C/W)</option><option value="8">big (8 °C/W)</option></select></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> run 1 A at 5 V from 12 V and keep the chip under 125 °C.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>The same current flows in and out (plus a few mA for the chip itself), so</p>
+    <p class="formula">\[ P_{heat} = (V_{in} - V_{out})\, I, \qquad \eta = \frac{P_{out}}{P_{in}} = \frac{V_{out}}{V_{in}}, \qquad T_{chip} = T_{room} + P_{heat}\,(\theta_{JC} + \theta_{sink}) \]</p>
+    <p>12 V to 5 V at 1 A: 7 W of heat, 42% efficient. A TO-220 package alone (about 50 °C/W to the air) would try to reach 25 + 350 °C; it shuts down at about 150 °C first. Every linear regulator also has a <b>dropout</b>: the least \(V_{in} - V_{out}\) it needs to keep regulating, about 2 V for a 7805 and 0.1–0.3 V for an LDO ("low dropout").</p>
+  </details>
+  <div class="q" data-num="1.5" data-unit="W">
+    <p>An LDO makes 3.3 V from a 4.8 V supply at 1 A. How much heat?</p>
+    <div class="why">\((4.8 - 3.3) \times 1 = 1.5\) W, and an efficiency of 3.3/4.8 = 69%.</div>
+  </div>
+
+  <h2>2. A buck converter: chop and smooth</h2>
+  <p>Now a switch (a MOSFET, chapter 4) connects the input to a coil for a fraction \(D\) of each cycle, then a diode lets the coil keep pushing current while the switch is off. The coil's current can't jump (chapter 3), so it ramps up and down in a small triangle around the load current, and the capacitor smooths what's left. The output is the <b>average</b> of the chopped input.</p>
+  <canvas id="c2" width="800" height="440" aria-label="Buck converter waveforms: switch node, inductor current, output"></canvas>
+  <div class="row"><label>duty cycle D <input type="range" id="d2" min="0.05" max="0.95" step="0.005" value="0.42"> <span id="d2v" class="math"></span></label><label>inductor <select id="l2"><option value="4.7e-6">4.7 µH</option><option value="22e-6" selected>22 µH</option><option value="100e-6">100 µH</option></select></label><label>load <input type="range" id="i2" min="0.1" max="3" step="0.05" value="1"> <span id="i2v" class="math"></span></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> make 3.3 V from 12 V (within 0.05 V).</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>In steady state the coil's current ends each cycle where it started, so the volt-seconds across it balance: \((V_{in} - V_{out})\, D\,T = V_{out}\,(1 - D)\,T\). Solve:</p>
+    <p class="formula">\[ V_{out} = D\, V_{in}, \qquad \Delta I_L = \frac{(V_{in} - V_{out})\, D}{L\, f_{sw}} \]</p>
+    <p>An ideal buck wastes nothing: the switch is either fully on (no voltage across it) or fully off (no current through it). Real ones lose a little in the switch's resistance, the diode's drop and the coil's wire, and land at 85–95%. A bigger coil means a smaller ripple triangle; if the load current falls below half the ripple, the current hits zero each cycle ("discontinuous mode") and the simple formula stops holding.</p>
+  </details>
+  <div class="q" data-num="0.275" data-tol="0.003">
+    <p>What duty cycle makes 3.3 V from 12 V in an ideal buck?</p>
+    <div class="why">\(D = 3.3/12 = 0.275\). The chip's own feedback loop sets it, and keeps adjusting as the input and load change.</div>
+  </div>
+
+  <h2>3. A boost converter: more volts out than in</h2>
+  <p>Rearrange the same parts: the switch now shorts the coil to ground, storing energy; when it lets go, the coil's current has to keep flowing and forces itself through the diode into the output at a higher voltage, chapter 3's flyback spike, harnessed. That's how one AA cell runs a 5 V USB gadget, and how LED drivers make 30 V.</p>
+  <p class="formula">\[ V_{out} = \frac{V_{in}}{1 - D} \qquad (\text{ideal}) \]</p>
+  <div class="q" data-num="0.7" data-tol="0.005">
+    <p>A boost makes 5 V from a 1.5 V cell. What duty cycle (ideal)?</p>
+    <div class="why">\(1 - D = 1.5/5 = 0.3\), so \(D = 0.7\). The input current is higher than the output current by the same ratio: 100 mA out at 5 V needs about 333 mA from the cell, plus losses.</div>
+  </div>
+
+  <h2>4. The battery budget</h2>
+  <p>A project on a single lithium-ion cell (4.2 V full, 3.0 V empty) needs 3.3 V at 100 mA. Linear or buck? The cell's energy is fixed; what matters is how much of it reaches the circuit.</p>
+  <canvas id="c4" width="800" height="260" aria-label="Battery life with a linear regulator versus a switching one"></canvas>
+  <div class="row"><label>battery <select id="b4"><option value="li">1 Li-ion cell, 3000 mAh (3.0–4.2 V)</option><option value="9v">9 V alkaline, 550 mAh</option><option value="4aa">4 × AA, 2500 mAh (4.4–6 V)</option></select></label><label>load <select id="ld4"><option value="0.02">20 mA</option><option value="0.1" selected>100 mA</option><option value="0.5">500 mA</option></select> at 3.3 V</label></div>
+  <p class="readout" id="o4"></p>
+  <div class="q" data-answer="b">
+    <p>A 9 V battery powers a 3.3 V microcontroller through a linear regulator. Where does most of the battery's energy go?</p>
+    <ul><li data-k="a" data-says="The chip gets 3.3/9 ≈ 37% of it.">Into the microcontroller</li><li data-k="b">Into heat in the regulator (about 63%)</li><li data-k="c" data-says="A linear regulator's own consumption is a few mA: small next to the voltage it drops.">Into the regulator's own circuitry</li></ul>
+    <div class="why">(9 − 3.3)/9 = 63% is burned as heat. A buck would deliver about 90%: the same battery lasts about 2.4 times longer.</div>
+  </div>
+  <div class="code" data-title="Build it: a battery-life calculator"><textarea>
+// Energy in the battery (Wh) = capacity (Ah) × average voltage. Each regulator delivers a share of it.
+function life({ mAh, vAvg }, vOut, iOut, kind) {
+  const energyWh = (mAh / 1000) * vAvg, pOut = vOut * iOut;
+  const efficiency = kind === "linear" ? vOut / vAvg : 0.9;     // linear: Vout/Vin; buck: ≈ 90%
+  return { hours: (energyWh * efficiency) / pOut, efficiency };
+}
+const batteries = { "Li-ion 3000 mAh": { mAh: 3000, vAvg: 3.7 }, "9 V 550 mAh": { mAh: 550, vAvg: 7.8 }, "4×AA 2500 mAh": { mAh: 2500, vAvg: 5.0 } };
+const rows = [["battery", "linear (h)", "buck (h)", "buck is"]];
+for (const [name, b] of Object.entries(batteries)) {
+  const L = life(b, 3.3, 0.1, "linear"), B = life(b, 3.3, 0.1, "buck");
+  rows.push([name, +L.hours.toFixed(1), +B.hours.toFixed(1), `${(B.hours / L.hours).toFixed(2)}×`]);
+}
+table(rows);
+print("From Li-ion to 3.3 V the gap is small: the voltages are already close. From 9 V it's large.");
+</textarea></div>
+
+  <p>Chips like the AMS1117 (an LDO), the MP1584 (a buck) and the MT3608 (a boost) on tiny modules cost under a dollar; now you know what's inside each and when to reach for which. Try the <b>5 V regulated supply</b> template in the <a href="/learn/lab.html">circuit lab</a>: watch the raw DC ripple while the 7805's output stays flat, until you load it too hard. Next: light and sensors.</p>
+  <p class="muted">Previous: <a href="./09-oscillators-and-timers.html">Oscillators and timers</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", grid: "#232934", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 2.5) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+let t = 0;
+
+// ---------- 1. linear regulator ----------
+function draw1() {
+  const vin = +$("vin1").value, il = +$("il1").value, theta = +$("hs").value + 3, vout = Math.min(5, Math.max(0, vin - 2)), pin = vin * (il + 0.005), pout = vout * il, heat = pin - pout, T = 25 + heat * theta, eff = pout / pin;
+  const cv = $("c1"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  // power flow (a Sankey-ish band)
+  const scale = 200 / Math.max(pin, 1);
+  g.fillStyle = "rgba(244,211,94,.6)"; g.fillRect(40, 60, 180, pin * scale);
+  g.fillStyle = "rgba(131,193,103,.7)"; g.fillRect(420, 60, 300, pout * scale);
+  g.fillStyle = `rgba(252,98,85,${0.4 + Math.min(0.5, heat / 10)})`; g.beginPath(); g.moveTo(220, 60 + pout * scale); g.lineTo(260, 60 + pout * scale); g.lineTo(300, 290); g.lineTo(300 + heat * scale, 290); g.lineTo(260 + heat * scale, 60 + pin * scale); g.lineTo(220, 60 + pin * scale); g.fill();
+  g.fillStyle = "#1f2530"; g.fillRect(220, 40, 200, Math.max(60, pin * scale + 40)); g.strokeStyle = T > 125 ? C.red : C.text; g.lineWidth = 2; g.strokeRect(220, 40, 200, Math.max(60, pin * scale + 40));
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText("regulator", 270, 30); g.fillText(`${Math.round(T)} °C`, 280, 70 + Math.max(20, pin * scale / 2));
+  g.fillStyle = C.yellow; g.fillText(`in ${pin.toFixed(2)} W`, 44, 50); g.fillStyle = C.green; g.fillText(`out ${pout.toFixed(2)} W`, 430, 50); g.fillStyle = C.red; g.fillText(`heat ${heat.toFixed(2)} W`, 310, 285);
+  $("vin1v").textContent = `${vin.toFixed(1)} V`; $("il1v").textContent = `${il.toFixed(2)} A`;
+  $("o1").textContent = vin < 7 ? `input ${vin.toFixed(1)} V is below the 7805's 7 V minimum: output sags to ${vout.toFixed(1)} V (dropout)` : `${vin.toFixed(1)} V → 5 V at ${il.toFixed(2)} A: efficiency ${(eff * 100).toFixed(0)}%, ${heat.toFixed(2)} W of heat, chip at ${Math.round(T)} °C${T > 150 ? " → it shuts itself down" : T > 125 ? " (too hot)" : ""}`;
+  if (Math.abs(vin - 12) < 0.05 && Math.abs(il - 1) < 0.005 && T <= 125) done("g1", "7 W into a big heatsink: legal, but a buck would make no heat at all.");
+}
+for (const id of ["vin1", "il1", "hs"]) $(id).oninput = draw1; draw1();
+
+// ---------- 2. buck waveforms ----------
+const VIN = 12, FSW = 100e3;
+function draw2() {
+  const D = +$("d2").value, L = +$("l2").value, Iload = +$("i2").value, vout = D * VIN, dI = ((VIN - vout) * D) / (L * FSW), Imin = Iload - dI / 2, dcm = Imin < 0;
+  const cv = $("c2"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const cycles = 3, N = 600, X = (k) => 40 + (k / N) * (W - 60), off = (t * 0.6) % 1;
+  const phase = (k) => ((k / N) * cycles + off) % 1;
+  // switch node
+  line(g, Array.from({ length: N + 1 }, (_, k) => [X(k), 110 - (phase(k) < D ? VIN : 0) * 6]), C.yellow, 2);
+  g.strokeStyle = C.grid; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(40, 110 - vout * 6); g.lineTo(W - 20, 110 - vout * 6); g.stroke(); g.setLineDash([]);
+  // inductor current (ideal, continuous mode, clipped at 0 when discontinuous)
+  const Iy = (i) => 300 - i * (90 / Math.max(1.5, Iload + dI)), iAt = (p) => Math.max(0, p < D ? Imin + dI * (p / D) : Imin + dI - dI * ((p - D) / (1 - D)));
+  line(g, Array.from({ length: N + 1 }, (_, k) => [X(k), Iy(iAt(phase(k)))]), C.blue);
+  g.strokeStyle = C.grid; g.beginPath(); g.moveTo(40, Iy(0)); g.lineTo(W - 20, Iy(0)); g.stroke();
+  // output: flat with a tiny ripple
+  line(g, Array.from({ length: N + 1 }, (_, k) => [X(k), 410 - vout * 6 - Math.sin(phase(k) * 2 * Math.PI) * Math.min(4, dI * 2)]), C.green);
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace";
+  g.fillStyle = C.yellow; g.fillText(`switch node: 0 or ${VIN} V`, 44, 24); g.fillStyle = "#8f98a8"; g.fillText(`average = D × ${VIN} V`, W - 210, 104 - vout * 6);
+  g.fillStyle = C.blue; g.fillText(`coil current: a ${dI.toFixed(2)} A triangle around ${Iload.toFixed(2)} A`, 44, 190);
+  g.fillStyle = C.green; g.fillText(`output ${vout.toFixed(2)} V`, 44, 400 - vout * 6);
+  $("d2v").textContent = `${(D * 100).toFixed(1)}%`; $("i2v").textContent = `${Iload.toFixed(2)} A`;
+  $("o2").textContent = `Vout = ${D.toFixed(3)} × 12 V = ${vout.toFixed(2)} V · ripple ΔI = ${dI.toFixed(2)} A at ${FSW / 1000} kHz${dcm ? " · discontinuous: the coil current hits zero each cycle (light load, small coil)" : ""}`;
+  if (Math.abs(vout - 3.3) <= 0.05) done("g2", "3.3 V from 12 V, at about 90% instead of 27%.");
+}
+for (const id of ["d2", "l2", "i2"]) $(id).oninput = draw2;
+
+// ---------- 4. battery budget ----------
+const BATS = { li: { mAh: 3000, vmin: 3.0, vmax: 4.2 }, "9v": { mAh: 550, vmin: 6.5, vmax: 9.3 }, "4aa": { mAh: 2500, vmin: 4.4, vmax: 6.0 } };
+function draw4() {
+  const b = BATS[$("b4").value], I = +$("ld4").value, P = 3.3 * I, vavg = (b.vmin + b.vmax) / 2, E = (b.mAh / 1000) * vavg;
+  const linH = (b.mAh / 1000) / (I + 0.005), buckH = (E * 0.9) / P; // linear: battery current = load current; buck: energy × 90%
+  const linOk = b.vmin >= 3.3 + 0.2, cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height, mx = Math.max(linH, buckH);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const bar = (y, h, color, label) => { const w = (h / mx) * (W - 280); g.fillStyle = color; g.fillRect(200, y, w, 50); g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(label, 10, y + 30); g.fillText(`${h.toFixed(1)} h`, 210 + w, y + 30); };
+  bar(50, linH, C.red, "linear (LDO)"); bar(150, buckH, C.green, "buck (90%)");
+  if (!linOk) { g.fillStyle = C.yellow; g.font = "13px ui-monospace, monospace"; g.fillText(`(an LDO stops regulating when the battery falls below about ${(3.3 + 0.2).toFixed(1)} V)`, 200, 125); }
+  $("o4").textContent = `${(E).toFixed(1)} Wh in the battery · load ${P.toFixed(2)} W · linear ≈ ${linH.toFixed(1)} h (efficiency ≈ ${((3.3 / vavg) * 100).toFixed(0)}%), buck ≈ ${buckH.toFixed(1)} h: ${(buckH / linH).toFixed(2)}× longer`;
+}
+$("b4").onchange = $("ld4").onchange = draw4; draw4();
+
+let last = performance.now();
+(function loop(now) { t += Math.min(0.05, (now - last) / 1000); last = now; draw2(); requestAnimationFrame(loop); })(last);
+window.blipContext = () => ({ page: "Electronics chapter 10: power supplies (linear regulators and heat, buck and boost converters, battery budget)", buckDuty: +$("d2").value });
+</script>
+</body>
+</html>
