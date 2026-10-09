@@ -5,6 +5,8 @@ import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals } from "./transit.ts";
 import { deals } from "./deals.ts";
+import { callsign, repeatersNear } from "./ham.ts";
+import { geocode } from "./nycapi.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -49,6 +51,19 @@ const TOOLS: Record<string, Tool> = {
         .slice(0, 25).map((e: any) => ({ title: e.title, category: e.category, time: [e.start_time, e.end_time].filter(Boolean).join("–"), address: e.address, url: e.url }));
     },
   },
+  callsign_lookup: {
+    description: "Look up a US amateur radio callsign in the FCC database: licensee name, class, address, grid square, expiry.",
+    parameters: { callsign: { type: "string", description: "e.g. W1AW, KC2RC" } }, required: ["callsign"],
+    run: ({ callsign: c }) => callsign(String(c)),
+  },
+  repeaters_near: {
+    description: "Amateur radio repeaters near a place in the NYC region: output frequency, offset, CTCSS tone, mode, network, distance.",
+    parameters: { place: { type: "string", description: "Address or place (default Manhattan)" }, band: { type: "string", description: "Optional band", enum: ["10m", "6m", "2m", "1.25m", "70cm", "33cm", "23cm"] }, mode: { type: "string", description: "Optional mode: FM, DMR, D-STAR, YSF, P25…" } },
+    run: async ({ place, band, mode }) => {
+      const g = await geocode(String(place || "Manhattan")).catch(() => null) ?? { lat: 40.758, lon: -73.9855, label: "Manhattan" };
+      return { near: g.label, repeaters: (await repeatersNear(g.lat, g.lon, { bandName: band ?? "", mode: mode ?? "", limit: 8 })).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: r.km })) };
+    },
+  },
   deals: {
     description: "Deals in NYC on a date: designer sample sales (with address and dates) and the city's discount weeks (Restaurant Week, Broadway Week, Off-Broadway Week).",
     parameters: { date: { type: "string", description: "YYYY-MM-DD, New York date (default today)" } },
@@ -90,7 +105,7 @@ export function systemPrompt(siteMap: string) {
 Visitors talk to you through a little game-style dialog box. You see the page they're on, an excerpt of it, and sometimes a list of the objects the page shows (map markers, the selected item, a drill in progress).
 
 The site is a map of projects ("worlds"). Open now:
-- World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. There's also a CW (Morse) trainer at /radio/cw.html.
+- World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, broken elevators, traffic cameras, free events, restaurant inspections, click for address info), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
 - World 3, ORNA (the GPS RPG): questions about the game go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 8, AI at /ai/: machine learning from scratch with draggable visuals; chapter 1 "Matrices are moves" at /ai/01-matrices-are-moves.html (more chapters coming: gradients, neurons, backprop, CNNs, transformers, agents, vision).

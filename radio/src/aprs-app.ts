@@ -20,7 +20,7 @@ function upsert(st: Station) {
   stations.set(st.callsign, st);
   if (st.lat == null) return;
   const icon = L.divIcon({ className: "", html: `<div class="sym">${sym(st.symbol)}</div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
-  const popup = `<b>${esc(st.callsign)}</b> <a href="https://aprs.fi/info/a/${encodeURIComponent(st.callsign)}" target="_blank" rel="noopener">aprs.fi</a><br>${describe(st)}<br><span class="muted">${st.packets} packets · last ${ago(st.lastSeen)}</span>`;
+  const popup = `<b>${esc(st.callsign)}</b> <a href="https://aprs.fi/info/a/${encodeURIComponent(st.callsign)}" target="_blank" rel="noopener">aprs.fi</a> · <a href="../repeaters/?call=${encodeURIComponent(st.callsign.split("-")[0])}">license</a><br>${describe(st)}<br><span class="muted">${st.packets} packets · last ${ago(st.lastSeen)}</span>`;
   const got = markers.get(st.callsign);
   if (got) { got.m.setLatLng([st.lat, st.lon]).setIcon(icon).setPopupContent(popup); got.trail.setLatLngs(st.track); }
   else markers.set(st.callsign, { m: L.marker([st.lat, st.lon], { icon, title: st.callsign }).bindPopup(popup).bindTooltip(st.callsign).addTo(map), trail: L.polyline(st.track, { color: "#ff5c8a", weight: 2, opacity: 0.6 }).addTo(map) });

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Callsigns &amp; Repeaters</title>
+  <meta name="description" content="Look up any US amateur radio callsign (FCC license, class, location, grid square) and explore 1,100+ ham radio repeaters around New York on a map: frequency, offset, CTCSS tone, mode and network." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { flex: 1; display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+    #map { min-height: 300px; }
+    aside { overflow: auto; padding: 12px 14px; border-left: 3px solid var(--line, #3b4bb0); background: var(--card, #0d1226); }
+    aside h1 { margin: 0 0 4px; }
+    .muted { color: var(--muted, #9aa3cf); font-size: .85rem; }
+    form { display: flex; gap: 6px; margin: 10px 0; }
+    form input { flex: 1; text-transform: uppercase; }
+    #lic { margin: 8px 0; }
+    .filters { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 8px 0; font-size: .85rem; }
+    .filters label { white-space: nowrap; }
+    .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; }
+    #list { list-style: none; padding: 0; margin: 8px 0; }
+    #list li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #list b { font-family: ui-monospace, Menlo, monospace; }
+    .freq { font-family: ui-monospace, Menlo, monospace; }
+    @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 50vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="map"></div>
+  <aside>
+    <h1>Callsigns &amp; repeaters</h1>
+    <p class="muted">Every ham has a callsign from their license. Look one up (US licenses, from the FCC database), or explore the repeaters around New York: hilltop and rooftop stations that rebroadcast a handheld radio's signal across the whole city.</p>
+    <form id="callForm"><input id="call" placeholder="Callsign, e.g. W1AW" autocomplete="off" aria-label="Callsign"><button>Look up</button></form>
+    <div id="lic" class="muted"></div>
+    <h2 style="font-size:14px;margin:16px 0 4px">Repeaters <span id="count" class="muted"></span></h2>
+    <div class="filters" id="bands"></div>
+    <div class="filters">
+      <label>Mode <select id="mode"><option value="">All</option><option>FM</option><option>DMR</option><option>D-STAR</option><option>YSF</option><option>P25</option><option>NXDN</option></select></label>
+      <label><input type="checkbox" id="opOnly" checked> Operational only</label>
+    </div>
+    <p class="muted">Sorted by distance from the map's center. Repeater data: <a href="https://hearham.com" target="_blank" rel="noopener">HearHam</a> (community-maintained, so check before you key up).</p>
+    <ul id="list"></ul>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="/src/repeaters-app.ts"></script>
+</body>
+</html>

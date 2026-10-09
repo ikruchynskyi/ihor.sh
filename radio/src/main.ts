@@ -319,6 +319,12 @@ function onSamples(cu8: Uint8Array) {
 
 $("connect").addEventListener("click", () => (sdr ? disconnect() : connect(false)));
 $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true)));
+// ?listen=146.73 (from the repeater map): preset the listen frequency; it's used when a live source connects.
+{
+  const f = Number(new URLSearchParams(location.search).get("listen"));
+  if (f >= 24 && f <= 1766) { $<HTMLInputElement>("liveFreq").value = f.toFixed(3); liveStatus(`Ready to listen on ${f.toFixed(3)} MHz: connect the server SDR or your own dongle.`); }
+}
+
 // What Blip can do here: tune the receiver.
 (window as any).blipActions = {
   tune: { label: "tuned the radio", description: "Tune Spectrum Lab's live receiver to a frequency in MHz (e.g. 98.7 FM, 162.55 NOAA weather, 119.1 JFK tower). Sets the listen frequency if no SDR is connected yet.", parameters: { mhz: { type: "number", description: "Frequency in MHz, 24 to 1766" } },

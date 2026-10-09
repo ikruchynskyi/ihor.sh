@@ -8,6 +8,7 @@ import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 import { stationArrivals } from "./transit.ts";
 import { deals } from "./deals.ts";
+import { callsign, repeaters } from "./ham.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
@@ -187,6 +188,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/arrivals") {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();
+    }
+    if (url.pathname === "/api/radio/repeaters") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await repeaters()));
+    if (url.pathname === "/api/radio/callsign") {
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await callsign(String(url.searchParams.get("call") ?? ""))));
     }
     if (url.pathname === "/api/nyc/deals") {
       const date = url.searchParams.get("date") ?? "";
