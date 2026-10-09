@@ -16,7 +16,15 @@ export function makeMap(id: string, zoom = 9) {
 /** Connects to /api/<name>/events; shows the offline panel (with a turn-on button) whenever the receiver isn't on. */
 export function connect(name: "aprs" | "adsb", handlers: Record<string, (data: any) => void>) {
   const panel = document.getElementById("offline")!, status = document.getElementById("live")!, btn = document.getElementById("turnOn") as HTMLButtonElement, msg = document.getElementById("offMsg")!;
-  const online = (on: boolean) => { panel.hidden = on; status.textContent = on ? "● LIVE" : "OFF AIR"; status.className = on ? "on" : ""; };
+  const off = document.getElementById("turnOff") as HTMLButtonElement;
+  const online = (on: boolean) => { panel.hidden = on; off.hidden = !on; status.textContent = on ? "● LIVE" : "OFF AIR"; status.className = on ? "on" : ""; };
+  off.onclick = async () => {
+    off.disabled = true;
+    const r = await fetch("/api/receiver", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "off" }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : { error: "The radio server is offline." };
+    off.disabled = false;
+    if (!r?.ok) dispatchEvent(new CustomEvent("blip:say", { detail: { text: d.error ?? "Couldn't turn it off.", mood: "think" } }));
+  };
   const es = new EventSource(`/api/${name}/events`);
   es.addEventListener("online", () => online(true));
   es.addEventListener("offline", (e: MessageEvent) => {

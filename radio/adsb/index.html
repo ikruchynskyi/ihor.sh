@@ -29,7 +29,7 @@
   <div id="map"></div>
   <aside>
     <h1>ADS-B radar</h1>
-    <div><span id="live">CONNECTING…</span> · <span id="count" class="muted"></span></div>
+    <div><span id="live">CONNECTING…</span> · <span id="count" class="muted"></span> <button id="turnOff" hidden title="Turn the radar off (only when nobody else is watching)">■ Turn off</button></div>
     <p class="muted">Airliners broadcast who and where they are twice a second on 1090 MHz. A $30 dongle on a Mac in New York hears them, and our own decoder (no dump1090, written from scratch) turns the pulses into this map.</p>
     <div id="offline" hidden>
       <b>The receiver is off.</b> One dongle is shared with Spectrum Lab and the APRS map.

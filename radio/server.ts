@@ -190,7 +190,16 @@ const server = http.createServer(async (req, res) => {
       let body = "";
       for await (const c of req) { body += c; if (body.length > 200) return json(res, 413, {}); }
       const name = JSON.parse(body || "{}").mode;
-      if (name !== "aprs" && name !== "adsb") return json(res, 400, { error: "mode must be aprs or adsb" });
+      if (name === "off") {
+        // Only when the decoder is on and the one asking is its only viewer (or nobody watches): don't cut others off.
+        if (mode !== "aprs" && mode !== "adsb") return json(res, 200, state());
+        const others = watchers[mode].size - 1;
+        if (others > 0) return json(res, 409, { error: `${others} other ${others === 1 ? "person is" : "people are"} watching the ${DECODERS[mode].label}, so it stays on.` });
+        paused = null;
+        await release();
+        return json(res, 200, state());
+      }
+      if (name !== "aprs" && name !== "adsb") return json(res, 400, { error: "mode must be aprs, adsb or off" });
       try { await startDecoder(name); return json(res, 200, state()); } catch (e) { return json(res, 409, { error: (e as Error).message }); }
     }
 
