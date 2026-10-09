@@ -45,6 +45,7 @@
     <span class="muted" id="locStatus"></span>
   </div>
 
+  <nav class="bar" id="jump" aria-label="Sections"></nav>
   <div id="list"></div>
 </main>
 
@@ -94,17 +95,24 @@ const dealsFor = (date) => dealCache.get(date) ?? dealCache.set(date, fetch(`/ap
 const cityCache = new Map();
 const cityEvents = (date) => cityCache.get(date) ?? cityCache.set(date, fetch(`/api/nyc/city-events?from=${date}&free=1`).then((r) => (r.ok ? r.json() : [])).catch(() => [])).get(date);
 
+// Jump links to every section with its count (pop-ups, city events and sales fill in after the first paint).
+function jump() {
+  const hs = [...document.querySelectorAll("#list h2")];
+  hs.forEach((h, i) => (h.id = `s${i}`));
+  $("jump").innerHTML = hs.map((h) => `<a class="btn alt" href="#${h.id}">${esc(h.textContent)}</a>`).join(" ");
+}
 function render() {
   dealsFor($("date").value).then((d) => {
     const box = $("deals");
     if (!box || !d || (!d.sampleSales.length && !d.cityDeals.length)) return box && (box.innerHTML = "");
     const end = (iso) => new Date(iso.slice(0, 10) + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const sales = d.sampleSales.map((s) => ({ ...s, km: me && s.lat ? distance(me, s) / 1000 : null })).sort((a, b) => (a.km ?? 99) - (b.km ?? 99));
-    box.innerHTML = `<h2>Deals (${d.cityDeals.length + sales.length})</h2><div class="muted">Discount weeks from the NYC Events Calendar and designer sample sales from <a href="${esc(d.source)}" target="_blank" rel="noopener">Chicmi</a>. Not free, but cheaper than usual.</div>`
+    box.innerHTML = `<h2>Sample sales &amp; deals (${d.cityDeals.length + sales.length})</h2><div class="muted">Discount weeks from the NYC Events Calendar and designer sample sales from <a href="${esc(d.source)}" target="_blank" rel="noopener">Chicmi</a>. Not free, but cheaper than usual.</div>`
       + d.cityDeals.map((e) => `<div class="item"><div class="top"><span class="name">🎟 ${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div><div class="meta">${esc(e.summary)}</div><div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("")
       + sales.map((s) => `<div class="item"><div class="top"><span class="name">🛍 ${esc(s.name)}</span><span class="time">until ${end(s.end)}</span></div>
         <div class="meta">${esc(s.lat ? `${s.place}${s.address && s.address !== s.place ? ` · ${s.address}` : ""}` : "Online")}${s.km != null ? ` · ${s.km.toFixed(1)} km` : ""}</div>
         <div class="meta">${esc(s.summary)}</div><div class="meta"><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a></div></div>`).join("");
+    jump();
   });
   cityEvents($("date").value).then((list) => {
     const box = $("cityEvents");
@@ -114,6 +122,7 @@ function render() {
       near.map((e) => `<div class="item"><div class="top"><span class="name">${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div>
         <div class="meta">${esc(e.place)}${e.km != null ? ` · ${e.km.toFixed(1)} km` : ""}</div><div class="meta">${esc(e.summary)}</div>
         <div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("");
+    jump();
   });
   const [y, m, d] = $("date").value.split("-").map(Number);
   const day = new Date(y, m - 1, d);
@@ -164,6 +173,7 @@ function render() {
     .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("")
     + eventsBlock + `<div id="cityEvents"></div><div id="deals"></div>`
     + `<h2>Always-on perks</h2>${perks.map(card).join("")}`;
+  jump();
 }
 
 render();
