@@ -310,7 +310,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${SITE}/sitemap.xml\n`);
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
-    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();

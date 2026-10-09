@@ -16,6 +16,7 @@
     .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
     .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; align-items: center; }
     .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
     .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
   </style>
 </head>
@@ -29,26 +30,142 @@
   <p>A vector is a pair of numbers, <span class="math">(x, y)</span>, but it's easier to think of it as an arrow from the origin: go <span class="math">x</span> steps right, <span class="math">y</span> steps up. Drag the tip of the <span class="b">blue arrow</span>.</p>
   <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A draggable vector on a grid"></canvas><p class="readout" id="r1"></p></div>
   <p>In machine learning, everything becomes a vector: a pixel image is a long list of brightness values, a word becomes a list of a few hundred numbers. Same idea, just with more than two directions to walk in.</p>
+  <div class="levels">
+    <div><b>The picture</b>An arrow: how far right, how far up. Its length is how far the tip is from the start.</div>
+    <div><b>The math</b>A list of numbers \(v = (v_1, v_2, \dots, v_n)\). Its length comes from Pythagoras: \(\lVert v \rVert = \sqrt{v_1^2 + v_2^2 + \dots + v_n^2}\).</div>
+  </div>
+  <div class="q" data-num="5">
+    <p>Drag the arrow to (3, 4). How long is it? (Predict first, then check the readout under the picture.)</p>
+    <div class="why">\(\sqrt{3^2 + 4^2} = \sqrt{9 + 16} = \sqrt{25} = 5\). The arrow is the long side of a right triangle with sides 3 and 4.</div>
+  </div>
+  <div class="code" data-title="Build it: vectors are just arrays"><textarea>
+// A vector is a plain array of numbers. Length = square root of the sum of squares.
+const length = (v) => Math.sqrt(v.reduce((sum, x) => sum + x * x, 0));
+
+print("length of [3, 4] =", length([3, 4]));
+
+// The same function works in any number of dimensions.
+// A 28×28 grayscale image is a vector of 784 numbers between 0 and 1:
+const image = Array.from({ length: 28 * 28 }, () => Math.random());
+print("an image has", image.length, "numbers; its length is", length(image));
+</textarea></div>
 
   <h2>2. Adding is walking one arrow, then the other</h2>
   <p>To add two vectors, walk along the first, then from its tip along the second. Where you end up is the sum. Drag both tips.</p>
   <div class="scene"><canvas id="s2" width="800" height="600" aria-label="Adding two vectors tip to tail"></canvas><p class="readout" id="r2"></p></div>
   <p>Notice you can go around the parallelogram either way and land in the same spot: <span class="math">a + b = b + a</span>.</p>
+  <div class="levels">
+    <div><b>The picture</b>Walk \(a\), then walk \(b\). Stretching an arrow by 2 doubles each step.</div>
+    <div><b>The math</b>Add and scale coordinate by coordinate: \(a + b = (a_1 + b_1,\ a_2 + b_2)\), \(\ c\,a = (c\,a_1,\ c\,a_2)\).</div>
+  </div>
+  <p>One more operation, the most important one in this whole course: the <b>dot product</b>. Multiply matching coordinates and add them up: \(a \cdot b = a_1 b_1 + a_2 b_2\). It's one number, and it measures how much two arrows <em>point the same way</em>: big and positive when they agree, zero when they're at right angles, negative when they oppose. The readout above shows it live; drag \(b\) around \(a\) and watch the sign flip as it crosses the right angle.</p>
+  <p class="formula">\[ a \cdot b = a_1 b_1 + a_2 b_2 = \lVert a \rVert\,\lVert b \rVert \cos\theta \]</p>
+  <p>Remember this one. A neuron (chapter 3) is a dot product of inputs and weights. Attention (chapter 7) is dot products between words. A matrix, next section, is a stack of dot products.</p>
+  <div class="q" data-num="1">
+    <p>\(a = (1, 2)\) and \(b = (3, -1)\). What is \(a \cdot b\)?</p>
+    <div class="why">\(1 \cdot 3 + 2 \cdot (-1) = 3 - 2 = 1\). Small and positive: the arrows are nearly at right angles, leaning slightly the same way.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>Two arrows have a dot product of exactly 0. What do you know about them?</p>
+    <ul><li data-k="a" data-says="Not necessarily: (1, 0) and (0, 5) have dot product 0 and different lengths.">They have the same length</li><li data-k="b" data-says="Opposite arrows give a negative dot product, like (1, 0)·(−1, 0) = −1.">They point in opposite directions</li><li data-k="c">They're at a right angle (or one of them is zero)</li></ul>
+    <div class="why">\(\cos 90^\circ = 0\), so \(\lVert a \rVert \lVert b \rVert \cos\theta = 0\). Perpendicular arrows share nothing: walking along one makes no progress along the other.</div>
+  </div>
+  <div class="code" data-title="Build it: add, scale, dot"><textarea>
+const add = (a, b) => a.map((x, i) => x + b[i]);
+const scale = (c, a) => a.map((x) => c * x);
+const dot = (a, b) => a.reduce((sum, x, i) => sum + x * b[i], 0);
+const length = (v) => Math.sqrt(dot(v, v));        // a vector dotted with itself is its length squared
+
+const a = [3, 1], b = [1, 2.5];
+print("a + b =", add(a, b));
+print("2a =", scale(2, a));
+print("a · b =", dot(a, b));
+
+// The angle between them, from a·b = |a||b|cos θ
+const angle = Math.acos(dot(a, b) / (length(a) * length(b))) * 180 / Math.PI;
+print("angle between a and b:", angle.toFixed(1), "degrees");
+</textarea></div>
 
   <h2>3. A matrix moves the whole plane</h2>
   <p>Here's the big idea. Two special arrows, <span class="g">î</span> = (1, 0) and <span class="r">ĵ</span> = (0, 1), are the plane's "steps". Any vector is "x of the first step plus y of the second". Now <b>drag the tips of î and ĵ</b>. The grid follows, and so does every vector on it, because <span class="b">v</span> is still x of the new î plus y of the new ĵ.</p>
+  <div class="q" data-answer="b">
+    <p>Predict before you drag: the <b>Rotate 90°</b> button sends <span class="g">î</span> to (0, 1) and <span class="r">ĵ</span> to (−1, 0). Where does <span class="b">v</span> = (2, 1) land?</p>
+    <ul><li data-k="a" data-says="That's v with its coordinates swapped. Rotating also has to turn one of them negative.">(1, 2)</li><li data-k="b">(−1, 2)</li><li data-k="c" data-says="That's a half turn (180°), two rotations.">(−2, −1)</li><li data-k="d" data-says="That would be rotating the other way (clockwise).">(1, −2)</li></ul>
+    <div class="why">\(v\) is "2 of î plus 1 of ĵ", and that recipe survives the move: \(2\cdot(0, 1) + 1\cdot(-1, 0) = (-1, 2)\). Press the button and check.</div>
+  </div>
   <div class="scene"><canvas id="s3" width="800" height="600" aria-label="A linear transformation: drag the basis vectors and the grid follows"></canvas><p class="readout" id="r3"></p></div>
   <div class="row"><button id="rot">Rotate 90°</button><button id="shear">Shear</button><button id="flip">Flip</button><button id="squash">Squash flat</button><button id="reset3">Reset</button></div>
   <p>That's all a 2×2 matrix is: the columns say where <span class="g">î</span> and <span class="r">ĵ</span> land. Multiplying a vector by the matrix means "find where it lands". The <b>shaded square</b> started with area 1; its new area is the <b>determinant</b>. It goes negative when space gets flipped over, and zero when the plane is squashed onto a line. Then information is lost: many vectors land on the same spot, and you can't undo the move.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Write where î and ĵ land as the two columns of a matrix. Then "where does \(v = (x, y)\) land?" is</p>
+    <p class="formula">\[ \begin{pmatrix} a & b \\ c & d \end{pmatrix} \begin{pmatrix} x \\ y \end{pmatrix} = x \begin{pmatrix} a \\ c \end{pmatrix} + y \begin{pmatrix} b \\ d \end{pmatrix} = \begin{pmatrix} a x + b y \\ c x + d y \end{pmatrix} \]</p>
+    <p>Two ways to read the same arithmetic. <b>By columns</b> (high level): \(x\) steps of the new î plus \(y\) steps of the new ĵ. <b>By rows</b> (how a computer does it): each output number is a dot product of one row with \(v\): \(ax + by\) is \((a, b) \cdot (x, y)\). A matrix is a stack of dot products.</p>
+    <p>The <b>determinant</b> is the area of the square after the move, with a sign for flips: \(\det = ad - bc\). For the shear \(\begin{pmatrix} 1 & 1 \\ 0 & 1 \end{pmatrix}\): \(1\cdot 1 - 1 \cdot 0 = 1\), the square slants but keeps its area. For "squash flat" \(\begin{pmatrix} 1 & 2 \\ 0.5 & 1 \end{pmatrix}\): \(1 \cdot 1 - 2 \cdot 0.5 = 0\), the columns point the same way and the plane collapses onto a line.</p>
+    <p>Doing one move after another is <b>matrix multiplication</b>: \(B(Av) = (BA)v\), where each column of \(BA\) is \(B\) applied to a column of \(A\). Order matters: rotate-then-shear is a different move from shear-then-rotate.</p>
+  </details>
+  <div class="q" data-num="0">
+    <p>What is the determinant of \(\begin{pmatrix} 2 & 1 \\ 1 & 0.5 \end{pmatrix}\)?</p>
+    <div class="why">\(2 \cdot 0.5 - 1 \cdot 1 = 0\). The second column (1, 0.5) is half the first (2, 1), so both basis arrows land on the same line: the plane is squashed flat and the move can't be undone.</div>
+  </div>
+  <div class="code" data-title="Build it: matrix times vector, matrix times matrix"><textarea>
+// A matrix as an array of rows. Each output = dot product of a row with v.
+const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+const matVec = (M, v) => M.map((row) => dot(row, v));
+const column = (M, j) => M.map((row) => row[j]);
+// (B·A): apply B to each column of A, then put the columns back together as rows
+const matMul = (B, A) => B.map((row) => A[0].map((_, j) => dot(row, column(A, j))));
+const det = ([[a, b], [c, d]]) => a * d - b * c;
+
+const rotate = [[0, -1], [1, 0]];   // columns: î → (0, 1), ĵ → (−1, 0)
+const shear = [[1, 1], [0, 1]];
+
+print("rotate (2, 1):", matVec(rotate, [2, 1]));
+print("rotate twice:", matMul(rotate, rotate), "(a half turn)");
+print("shear then rotate:", matMul(rotate, shear));
+print("rotate then shear:", matMul(shear, rotate), "(different! order matters)");
+print("det(shear) =", det(shear), " det(rotate) =", det(rotate));
+</textarea></div>
 
   <h2>4. A neural network layer: a move, then a bend</h2>
   <p>If you stack matrices you only get another matrix: still straight lines, still a single move. Networks get their power from one tiny extra step after each matrix: a <b>bend</b>. The most common one, ReLU, just says "negative numbers become zero". Watch what it does to the moved grid: everything left of the vertical axis gets folded onto it, everything below the horizontal axis onto that.</p>
   <div class="scene"><canvas id="s4" width="800" height="600" aria-label="A layer: matrix then ReLU folds the grid"></canvas><p class="readout" id="r4"></p></div>
   <div class="row"><label><input type="checkbox" id="relu" checked> Apply the bend (ReLU)</label><button id="reset4">Reset</button></div>
   <p>Drag <span class="g">î</span> and <span class="r">ĵ</span> again: the layer is "move, then fold". Stack dozens of these, each with its own matrix, and the folds can carve space into almost any shape, like one region for "cat" and another for "dog". Training a network is searching for the matrices that put the folds in the right places. That's where we're headed: next chapter, <a href="./02-gradients.html"><b>gradients</b></a>, how a network finds which way to nudge every number.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>A real layer also adds a <b>bias</b> vector \(b\) (it shifts the plane before the fold, which the picture above leaves out), and its matrix needn't be square. A layer from \(n\) numbers to \(m\) numbers is</p>
+    <p class="formula">\[ h = \operatorname{ReLU}(W x + b), \qquad W \in \mathbb{R}^{m \times n},\ b \in \mathbb{R}^{m},\ \operatorname{ReLU}(z) = \max(0, z) \text{ for each number} \]</p>
+    <p>It has \(m \cdot n + m\) adjustable numbers, the <b>parameters</b>. A digit reader that takes 784 pixels to 128 hidden numbers to 10 scores has \(784 \cdot 128 + 128 + 128 \cdot 10 + 10 = 101{,}770\) of them.</p>
+    <p>Why the bend is essential: without it, two layers collapse into one. \(W_2 (W_1 x) = (W_2 W_1) x\), a single matrix, however many you stack. With ReLU in between, that algebra no longer works, and each layer can fold space somewhere new.</p>
+  </details>
+  <div class="q" data-answer="a">
+    <p>You stack 50 layers, each just a matrix with no bend in between. What can the stack do that one layer can't?</p>
+    <ul><li data-k="a">Nothing: it's still one matrix</li><li data-k="b" data-says="More numbers to tune, but the result multiplies out to a single matrix, so it can only make straight-line moves.">Learn curvier shapes, because it has more numbers</li><li data-k="c" data-says="Matrices never fold: straight lines stay straight, however many you multiply.">Fold the plane 50 times</li></ul>
+    <div class="why">\(W_{50} \cdots W_2 W_1 = W\), one matrix. That's why every layer in a real network ends with a bend like ReLU.</div>
+  </div>
+  <div class="q" data-num="100480" data-tol="0">
+    <p>How many parameters does one layer from 784 inputs to 128 outputs have (weights and biases)?</p>
+    <div class="why">\(784 \times 128\) weights, one per input-output pair, plus 128 biases: \(100{,}352 + 128 = 100{,}480\).</div>
+  </div>
+  <div class="code" data-title="Build it: a two-layer network's forward pass"><textarea>
+const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+const relu = (v) => v.map((z) => Math.max(0, z));
+const layer = (W, b, x) => W.map((row, i) => dot(row, x) + b[i]);    // W·x + b
+
+// 2 inputs → 3 hidden numbers → 1 output. These weights are made up; chapter 2 shows how to learn them.
+const W1 = [[1, -1], [0.5, 1], [-1, 0.5]], b1 = [0, -0.5, 0.2];
+const W2 = [[1, -2, 0.5]], b2 = [0.1];
+const net = (x) => layer(W2, b2, relu(layer(W1, b1, x)));
+
+for (const x of [[0, 0], [1, 0], [0, 1], [1, 1]]) print(x, "→", net(x));
+
+// Count the parameters of a 784 → 128 → 10 digit reader
+const params = (sizes) => sizes.slice(1).reduce((n, m, i) => n + m * sizes[i] + m, 0);
+print("784 → 128 → 10 has", params([784, 128, 10]), "parameters");
+</textarea></div>
 
   <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. Coming next in this world: gradients, a neuron from scratch, backprop you can watch, then CNNs, transformers, agents and vision.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { C, scene, grid, axes, arrow, fmt, say } from "/ai/plane.js";
 
@@ -64,7 +181,7 @@ scene("s2", (s) => {
   const sum = [a.p[0] + b.p[0], a.p[1] + b.p[1]];
   arrow(s, a.p, sum, "rgba(244,211,94,0.45)", 3); arrow(s, b.p, sum, "rgba(88,196,221,0.45)", 3);
   arrow(s, [0, 0], a.p, C.blue); arrow(s, [0, 0], b.p, C.yellow); arrow(s, [0, 0], sum, C.green, 5);
-}, () => [a, b], () => (document.getElementById("r2").textContent = `a + b = (${fmt(a.p[0])}, ${fmt(a.p[1])}) + (${fmt(b.p[0])}, ${fmt(b.p[1])}) = (${fmt(a.p[0] + b.p[0])}, ${fmt(a.p[1] + b.p[1])})`));
+}, () => [a, b], () => (document.getElementById("r2").textContent = `a + b = (${fmt(a.p[0])}, ${fmt(a.p[1])}) + (${fmt(b.p[0])}, ${fmt(b.p[1])}) = (${fmt(a.p[0] + b.p[0])}, ${fmt(a.p[1] + b.p[1])}) · a·b = ${fmt(a.p[0])}·${fmt(b.p[0])} + ${fmt(a.p[1])}·${fmt(b.p[1])} = ${fmt(a.p[0] * b.p[0] + a.p[1] * b.p[1])}`));
 
 // 3. a matrix moves the plane
 const i3 = { p: [1, 0], color: C.green }, j3 = { p: [0, 1], color: C.red }, v3 = [2, 1];
@@ -78,7 +195,7 @@ const r3 = scene("s3", (s) => {
   arrow(s, [0, 0], i3.p, C.green, 5); arrow(s, [0, 0], j3.p, C.red, 5);
 }, () => [i3, j3], () => {
   const det = i3.p[0] * j3.p[1] - j3.p[0] * i3.p[1];
-  document.getElementById("r3").textContent = `matrix [${fmt(i3.p[0])} ${fmt(j3.p[0])}; ${fmt(i3.p[1])} ${fmt(j3.p[1])}] · v = (2, 1) lands at (${fmt(2 * i3.p[0] + j3.p[0])}, ${fmt(2 * i3.p[1] + j3.p[1])}) · determinant ${fmt(det)}${det === 0 ? ": squashed flat, can't undo" : det < 0 ? ": flipped over" : ""}`;
+  document.getElementById("r3").textContent = `matrix [${fmt(i3.p[0])} ${fmt(j3.p[0])}; ${fmt(i3.p[1])} ${fmt(j3.p[1])}] · v = 2·(${fmt(i3.p[0])}, ${fmt(i3.p[1])}) + 1·(${fmt(j3.p[0])}, ${fmt(j3.p[1])}) = (${fmt(2 * i3.p[0] + j3.p[0])}, ${fmt(2 * i3.p[1] + j3.p[1])}) · determinant ${fmt(i3.p[0])}·${fmt(j3.p[1])} − ${fmt(j3.p[0])}·${fmt(i3.p[1])} = ${fmt(det)}${det === 0 ? ": squashed flat, can't undo" : det < 0 ? ": flipped over" : ""}`;
   const sign = Math.sign(det);
   if (sign !== lastSign) { say(sign === 0 ? "Squashed flat! The determinant is zero." : sign < 0 ? "Whoa, you flipped space over!" : "Right side up again.", sign === 0 ? "dizzy" : "surprised"); lastSign = sign; }
 });
