@@ -98,3 +98,29 @@ button[aria-pressed="true"] small, .btn:not(.alt) small { color: #3a2410 !import
 /* aprs-web live maps */
 #topbar h1 { font-size: 11px !important; text-shadow: none; }
 #topbar, #sidebar { background: var(--card) !important; border-color: var(--line) !important; }
+
+/* native controls, so nothing keeps the browser's default look */
+input[type="file"] { font: inherit; font-size: .85rem; color: var(--muted); max-width: 100%; }
+input[type="file"]::file-selector-button, input[type="file"]::-webkit-file-upload-button {
+  font: 9px/1.6 var(--pixel); text-transform: uppercase; color: var(--fg); background: var(--soft);
+  border: 2px solid var(--line); border-radius: 0; box-shadow: 0 4px 0 #1b2350; padding: 8px 10px; margin-right: 10px; cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover { border-color: var(--accent); }
+select {
+  appearance: none; -webkit-appearance: none; padding: 8px 30px 8px 10px !important; cursor: pointer;
+  background: #05070d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23ffb347'/%3E%3C/svg%3E") no-repeat right 10px center !important;
+  color: var(--fg) !important; border: 2px solid var(--line) !important; box-shadow: none;
+}
+select option { background: var(--card); color: var(--fg); font-family: ui-sans-serif, system-ui, sans-serif; text-transform: none; }
+input[type="number"], input[type="text"], input[type="search"], input[type="date"], input[type="time"], input[type="url"], input:not([type]), textarea {
+  font: inherit; padding: 7px 9px; outline: none; color-scheme: dark;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 1.05em; height: 1.05em; vertical-align: -2px; }
+input[type="range"] { accent-color: var(--accent); }
+details > summary { cursor: pointer; }
+details > summary::marker { color: var(--accent); }
+progress, meter { accent-color: var(--accent); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--line); }

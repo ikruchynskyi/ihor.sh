@@ -22,8 +22,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
 <style>
   :root {
-    --bg: #07090f; --panel: #0d1226; --ink: #e8edff; --dim: #7f8bc4; --line: #3b4bb0;
-    --amber: #ffb347; --pink: #ff5c8a; --cyan: #4de1ff; --green: #5cff9d;
+    /* shared names, so the reader panel's color themes apply here too */
+    --bg: #07090f; --card: #0d1226; --fg: #e8edff; --muted: #7f8bc4; --line: #3b4bb0; --accent: #ffb347;
+    --panel: var(--card); --ink: var(--fg); --dim: var(--muted); --amber: var(--accent); --pink: #ff5c8a; --cyan: #4de1ff; --green: #5cff9d;
     --pixel: "Press Start 2P", ui-monospace, monospace; --mono: "VT323", ui-monospace, monospace;
     color-scheme: dark;
   }
@@ -41,6 +42,7 @@
   .hud { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding: 12px 20px; font: 10px/1.6 var(--pixel); letter-spacing: .05em; background: rgba(7,9,15,.85); border-bottom: 4px solid var(--line); }
   .hud b { color: var(--amber); font-weight: normal; }
   .hud .score span { color: var(--green); }
+  .hud .ihor-read span { font-family: Georgia, serif; font-size: 13px; margin-right: 4px; }
   .hud button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px; cursor: pointer; }
   .hud button[aria-pressed="true"] { color: var(--green); }
 
@@ -282,6 +284,7 @@
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) for (let i = 0; i < ROWS; i++) frame();
   else setInterval(frame, 60);
 </script>
+<script type="module" src="/reader.js"></script>
 <script type="module" src="/companion.js"></script>
 </body>
 </html>

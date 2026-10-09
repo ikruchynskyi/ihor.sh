@@ -216,7 +216,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
-  if (world === "home") return res.end(data.toString().replace(`src="/companion.js"`, `src="${asset("companion.js")}"`));
+  if (world === "home") return res.end(data.toString().replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
   res.end(world && ext === ".html" ? dress(data.toString(), world, urlPath) : data);
 }
 

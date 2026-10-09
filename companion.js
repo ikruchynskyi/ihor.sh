@@ -71,8 +71,9 @@ const CSS = `
 .x { margin-left: auto; align-self: flex-start; }
 .log { flex: 1; overflow-y: auto; padding: 14px 16px 4px; min-height: 140px; }
 .msg { margin: 0 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.msg b { display: block; margin-bottom: 4px; font: 8px "Press Start 2P", monospace; color: #4de1ff; }
-.msg.you b { color: #5cff9d; }
+.msg .who { display: block; margin-bottom: 4px; font: 8px "Press Start 2P", monospace; color: #4de1ff; }
+.msg.you .who { color: #5cff9d; }
+.msg b:not(.who) { color: #fff; }
 .msg.err { color: #ff8fa8; }
 .msg a { color: #ffb347; }
 .msg code { background: #1e2650; padding: 0 4px; }
@@ -435,11 +436,21 @@ let history = [];
 try { history = JSON.parse(session.get("blip:log") || "[]"); } catch {}
 const save = () => session.set("blip:log", JSON.stringify(history.slice(-30)));
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// Links may be relative ("../nyc/free.html") or absolute; only http(s) is allowed, other sites open in a new tab.
+function link(_, text, href) {
+  try {
+    const u = new URL(href.replace(/&amp;/g, "&"), location.href);
+    if (!/^https?:$/.test(u.protocol)) return text;
+    const same = u.origin === location.origin;
+    return `<a href="${esc(same ? u.pathname + u.search + u.hash : u.href)}"${same ? "" : ' target="_blank" rel="noopener"'}>${text}</a>`;
+  } catch { return text; }
+}
 const format = (s) => esc(s)
   .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
   .replace(/`([^`]+)`/g, "<code>$1</code>")
-  .replace(/\[([^\]]+)\]\(((?:\/(?!\/)|https:\/\/)[^)\s]*)\)/g, '<a href="$2">$1</a>');
-const line = (who, html, cls = "") => `<p class="msg ${who === "YOU" ? "you" : ""} ${cls}"><b>${who}</b>${html}</p>`;
+  .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, link)
+  .replace(/^\s*[-*] /gm, "• ");
+const line = (who, html, cls = "") => `<p class="msg ${who === "YOU" ? "you" : ""} ${cls}"><b class="who">${who}</b>${html}</p>`;
 const CHIPS = ["What is this page about?", "Where should I start?", "Tell me a radio fun fact"];
 
 function renderLog() {

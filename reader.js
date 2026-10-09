@@ -7,6 +7,7 @@ const FONTS = {
   literata: { label: "Literata", css: '"Literata", Georgia, serif', google: "Literata:ital,wght@0,400;0,700;1,400" },
   lexend: { label: "Lexend", css: '"Lexend", ui-sans-serif, system-ui, sans-serif', google: "Lexend:wght@400;700" },
   system: { label: "System", css: "ui-sans-serif, system-ui, -apple-system, sans-serif" },
+  pixel: { label: "Pixel", css: '"VT323", ui-monospace, monospace', google: "VT323" },
 };
 // [text, background, card, link/accent, secondary text, borders, labels]; contrast checked: text/bg 11–21:1.
 const THEMES = {
@@ -17,12 +18,18 @@ const THEMES = {
   paper: { label: "Paper", c: ["#1f1d1a", "#fbf8f1", "#ffffff", "#a8420a", "#5c574e", "#cfc8b8", "#1e6b35"], dark: false },
   sepia: { label: "Sepia", c: ["#3a2c1a", "#f3e9d2", "#faf3e3", "#8a3f0e", "#6b5a43", "#cdbb95", "#2f5d1e"], dark: false },
 };
-const DEFAULTS = { font: "atkinson", size: 18, line: 1.7, letter: 0, theme: "arcade", headings: "pixel" };
+// The home page keeps its pixel look unless the visitor picks otherwise; articles default to Atkinson.
+const isHome = !!document.querySelector(".hud #snd");
+const DEFAULTS = isHome
+  ? { font: "pixel", size: 22, line: 1.3, letter: 0, theme: "arcade", headings: "pixel" }
+  : { font: "atkinson", size: 18, line: 1.7, letter: 0, theme: "arcade", headings: "pixel" };
 
+// Only what the visitor changed is stored, so each page keeps its own defaults for the rest.
 const KEY = "ihor-reader";
-let s = { ...DEFAULTS };
-try { s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
+let chosen = {};
+try { chosen = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch {}
+let s = { ...DEFAULTS, ...chosen };
+const set = (k, v) => { chosen[k] = v; s[k] = v; try { localStorage.setItem(KEY, JSON.stringify(chosen)); } catch {} };
 
 const loaded = new Set();
 function loadFont(key) {
@@ -44,9 +51,9 @@ function apply() {
     :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --accent: ${accent}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
     html, body { background: ${bg} !important; color: ${fg}; }
     body { font-family: ${f.css}; }
-    strong, b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
+    main strong, main b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
     ${TEXT} { font-family: ${f.css} !important; font-size: ${s.size}px !important; line-height: ${s.line} !important; letter-spacing: ${s.letter}em !important; }
-    ${t.dark ? "" : "body::after { display: none; } h1 { text-shadow: none !important; } .ihor-hud { background: " + card + " !important; }"}
+    ${t.dark ? "" : "body::after, body::before { display: none; } #wf { opacity: .12 !important; } h1 { text-shadow: none !important; } .ihor-hud { background: " + card + " !important; }"}
     ${s.headings === "plain" ? `h1, h2, h3, .eyebrow { font-family: ${f.css} !important; font-weight: 700 !important; text-shadow: none !important; letter-spacing: -0.01em !important; }
       h1 { font-size: clamp(28px, 5vw, 40px) !important; line-height: 1.15 !important; } h2 { font-size: 24px !important; line-height: 1.25 !important; } h3 { font-size: 19px !important; }` : ""}`;
 }
@@ -95,16 +102,16 @@ function render() {
   if (!open) return;
   for (const k of Object.keys(FONTS)) loadFont(k); // previews in their own fonts
   root.querySelector(".x").onclick = toggle;
-  root.querySelector(".reset").onclick = () => { s = { ...DEFAULTS }; save(); apply(); render(); };
+  root.querySelector(".reset").onclick = () => { chosen = {}; s = { ...DEFAULTS }; try { localStorage.removeItem(KEY); } catch {} apply(); render(); };
   root.querySelectorAll("[role=radio]").forEach((b) => (b.onclick = () => {
     const [k, v] = Object.entries(b.dataset)[0];
-    s[k] = v; save(); apply(); render();
+    set(k, v); apply(); render();
     root.querySelector(`[data-${k}="${v}"]`)?.focus();
   }));
   root.querySelectorAll("input[type=range]").forEach((r) => (r.oninput = () => {
-    s[r.id] = Number(r.value);
+    set(r.id, Number(r.value));
     r.previousElementSibling.querySelector("output").textContent = r.value + (r.id === "size" ? "px" : r.id === "letter" ? "em" : "");
-    save(); apply();
+    apply();
   }));
 }
 function toggle() {
@@ -115,8 +122,7 @@ function toggle() {
 }
 root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle(); });
 
-// Only pages with reading text get the button (not the maps).
-if (document.querySelector(TEXT)) {
+{
   button = document.createElement("button");
   button.className = "ihor-read";
   button.type = "button";
@@ -124,6 +130,7 @@ if (document.querySelector(TEXT)) {
   button.setAttribute("aria-label", "Reader settings: font, size, spacing and colors");
   button.innerHTML = "<span aria-hidden='true'>Aa</span> READER";
   button.onclick = toggle;
-  const hud = document.querySelector(".ihor-hud");
-  hud ? hud.querySelector("b")?.before(button) ?? hud.append(button) : document.body.append(button);
+  // Project pages: before the page title in the HUD bar. Home: before the sound toggle.
+  const anchor = document.querySelector(".ihor-hud b, .hud #snd");
+  anchor ? anchor.before(button) : document.body.append(button);
 }
