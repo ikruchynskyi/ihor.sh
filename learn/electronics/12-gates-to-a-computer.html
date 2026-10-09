@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>From Gates to a Computer</title>
+  <meta name="description" content="Electronics from scratch, chapter 12: from two transistors to a computer. A CMOS inverter, logic gates and truth tables you predict, NAND as the universal gate, binary addition with a 4-bit ripple-carry adder, a latch that remembers, flip-flops that count, and a tiny CPU you can step through." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    .bit { font: 700 20px ui-monospace, Menlo, monospace !important; width: 2.2em; height: 2.2em; padding: 0 !important; }
+    .bit.on { background: #83c167 !important; color: #10131a !important; }
+    table.tt { border-collapse: collapse; font: 16px ui-monospace, Menlo, monospace; margin: 10px 0; }
+    table.tt td, table.tt th { border: 1px solid var(--line); padding: 4px 14px; text-align: center; }
+    table.tt button { font: 700 15px ui-monospace, Menlo, monospace !important; padding: 2px 10px !important; }
+    table.tt .right { background: rgba(131,193,103,.25); } table.tt .wrong { background: rgba(252,98,85,.25); }
+    .regs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font: 15px ui-monospace, Menlo, monospace; }
+    .regs > div { padding: 8px 10px; }
+    .prog { font: 15px/1.7 ui-monospace, Menlo, monospace; padding: 8px 12px; }
+    .prog .pc { background: rgba(244,211,94,.25); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 12</p>
+  <h1>From gates to a computer</h1>
+  <p class="lede">Chapter 4's MOSFET is a switch worked by a voltage. Two of them make a gate that answers yes/no questions about its inputs. A few gates add numbers; two gates looped together remember a bit; a row of those counts; and counters, adders and memory, wired together, are a computer. This chapter climbs that ladder one rung at a time.</p>
+  <div class="plain card"><b>In plain words:</b> in digital circuits a voltage near the supply means 1 and near 0 V means 0, and nothing in between counts. Gates are tiny circuits that combine 1s and 0s by fixed rules. Everything a computer does is built from a handful of such rules, repeated billions of times.</div>
+
+  <h2>1. Two transistors make a NOT</h2>
+  <p>A CMOS inverter: a P-type MOSFET from the supply to the output, an N-type from the output to ground, both gates tied to the input. Input high: the N one turns on, the P one off, so the output is pulled to 0. Input low: the reverse. Exactly one of them is on at any time, so (apart from the instant of switching) no current flows from supply to ground. That's why a phone's billions of transistors don't melt it.</p>
+  <canvas id="c1" width="800" height="300" aria-label="A CMOS inverter with its two transistors"></canvas>
+  <div class="row"><button id="inv" class="bit">0</button><span>← click the input</span></div>
+  <p class="readout" id="o1"></p>
+
+  <h2>2. Gates and their truth tables</h2>
+  <p>Every gate is completely described by a table: each combination of inputs, and the output. Pick a gate, predict its column by clicking the outputs, then check. (That's how you really learn them.)</p>
+  <div class="row"><label>gate <select id="gsel"><option>AND</option><option>OR</option><option>NAND</option><option>NOR</option><option>XOR</option></select></label><button id="gcheck">Check my table</button><span id="gres" class="readout" style="margin:0"></span></div>
+  <table class="tt" id="tt"></table>
+  <div class="q" data-answer="c">
+    <p>Which gate outputs 1 exactly when its two inputs are <em>different</em>?</p>
+    <ul><li data-k="a" data-says="OR is also 1 when both are 1.">OR</li><li data-k="b" data-says="NAND is 1 for 00, 01 and 10: it's only 0 when both are 1.">NAND</li><li data-k="c">XOR</li></ul>
+    <div class="why">eXclusive OR: one or the other, not both. It's also binary addition of one bit without the carry: 0+0=0, 0+1=1, 1+1=0 (carry 1).</div>
+  </div>
+
+  <h2>3. NAND can build everything</h2>
+  <p>A surprising fact: with enough NAND gates you can build every other gate, and so a whole computer. NOT is a NAND with its inputs tied together. AND is a NAND followed by a NOT. OR is a NAND of the two inputs, each NOT-ed first (that's De Morgan's law: "not (not A and not B)" means "A or B").</p>
+  <p class="formula">\[ \overline{A} = \overline{A \cdot A}, \qquad A \cdot B = \overline{\overline{A \cdot B}}, \qquad A + B = \overline{\overline{A} \cdot \overline{B}} \]</p>
+  <div class="q" data-num="3" data-tol="0">
+    <p>How many NAND gates make an OR gate this way?</p>
+    <div class="why">Two to invert A and B, one to NAND the results: 3.</div>
+  </div>
+  <div class="code" id="gates" data-title="Build it: every gate from NAND"><textarea>
+const NAND = (a, b) => (a && b ? 0 : 1);
+const NOT = (a) => NAND(a, a);
+const AND = (a, b) => NOT(NAND(a, b));
+const OR = (a, b) => NAND(NOT(a), NOT(b));
+const XOR = (a, b) => AND(OR(a, b), NAND(a, b));
+const truth = (name, f) => print(name.padEnd(4), [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b]) => `${a}${b}→${f(a, b)}`).join("  "));
+truth("AND", AND); truth("OR", OR); truth("XOR", XOR); truth("NAND", NAND);
+</textarea></div>
+
+  <h2>4. Adding numbers</h2>
+  <p>In binary each place is worth twice the one to its right: 1, 2, 4, 8. Adding works like school addition: add a column, write the low bit, carry the high bit into the next column. One column is a <b>full adder</b>: sum = A XOR B XOR carry-in, carry-out = majority of the three. Chain four of them and you have a 4-bit adder. Click the bits.</p>
+  <canvas id="c4" width="800" height="300" aria-label="A 4-bit ripple-carry adder"></canvas>
+  <div class="row"><span>A</span><span id="abits"></span><span style="margin-left:18px">B</span><span id="bbits"></span></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> make every one of the four carries light up at once.</p>
+  <div class="q" data-num="13" data-tol="0">
+    <p>What decimal number is binary 1101?</p>
+    <div class="why">\(8 + 4 + 0 + 1 = 13\).</div>
+  </div>
+  <div class="code" data-uses="gates" data-title="Build it: a 4-bit adder from the gates above"><textarea>
+// A full adder from gates, then four in a chain (uses NAND/AND/OR/XOR from the block above)
+const fullAdder = (a, b, cin) => { const s1 = XOR(a, b); return { sum: XOR(s1, cin), carry: OR(AND(a, b), AND(s1, cin)) }; };
+function add4(A, B) {             // A, B: arrays of 4 bits, least significant first
+  let carry = 0; const out = [];
+  for (let i = 0; i < 4; i++) { const r = fullAdder(A[i], B[i], carry); out.push(r.sum); carry = r.carry; }
+  return { bits: out, carry };
+}
+const bits = (n) => [0, 1, 2, 3].map((i) => (n >> i) & 1), num = (b) => b.reduce((s, v, i) => s + (v << i), 0);
+for (const [x, y] of [[5, 3], [9, 6], [15, 1], [7, 7]]) { const r = add4(bits(x), bits(y)); print(`${x} + ${y} = ${num(r.bits) + 16 * r.carry}  (4 bits: ${num(r.bits)}, carry out ${r.carry})`); }
+</textarea></div>
+
+  <h2>5. A circuit that remembers</h2>
+  <p>Loop two NAND gates into each other and something new happens: the circuit holds its state after you let go. Press <b>Set</b> and Q becomes 1 and stays 1; press <b>Reset</b> and it becomes 0 and stays. That's one bit of memory, an <b>SR latch</b>. Add a gate so it only listens when a clock ticks, and it's a <b>flip-flop</b>, the building block of registers and counters.</p>
+  <canvas id="c5" width="800" height="260" aria-label="An SR latch from two cross-coupled NAND gates"></canvas>
+  <div class="row"><button id="set">Hold Set</button><button id="reset">Hold Reset</button></div>
+  <p class="readout" id="o5"></p>
+  <div class="q">
+    <p>Why does the latch keep its value when both buttons are released?</p>
+    <div class="why">Each gate's output is the other's input. With Q = 1, the lower gate sees 1 and outputs Q̄ = 0, which keeps the upper gate's output at 1: they hold each other up. The loop is stable in two states, and whichever one you last pushed it into is where it stays. That feedback (chapter 9's idea, with a decision instead of an oscillation) is what memory is.</div>
+  </div>
+
+  <h2>6. Counting</h2>
+  <p>A flip-flop wired to flip on every clock tick divides the frequency by two. Feed its output to a second one, which flips half as often, and so on. Read the outputs together and they count in binary. Chapter 9's watch divided 32,768 Hz by 2 fifteen times exactly this way.</p>
+  <canvas id="c6" width="800" height="200" aria-label="A 4-bit counter: clock and four flip-flop outputs"></canvas>
+  <div class="row"><button id="tick">Tick the clock</button><label><input type="checkbox" id="auto"> run</label></div>
+  <p class="readout" id="o6"></p>
+
+  <h2>7. A computer, very small</h2>
+  <p>Put it together: a <b>program counter</b> (a counter) points at a line of memory; the line is an instruction; the instruction tells the <b>ALU</b> (adders and gates) what to do with the <b>registers</b> (flip-flops); then the counter moves on, or jumps. That loop, fetch, decode, execute, is every processor. Here's a toy one with two registers and five instructions, running a program that multiplies 6 by 7 by adding 6 seven times.</p>
+  <div class="regs" id="regs"></div>
+  <div class="prog card" id="prog"></div>
+  <div class="row"><button id="step">Step</button><button id="run">Run</button><button id="rst">Reset</button></div>
+  <p class="readout" id="o7"></p>
+  <div class="q" data-answer="b">
+    <p>The program has no "multiply" instruction. How does it get 42?</p>
+    <ul><li data-k="a" data-says="The ALU here only adds and subtracts.">The ALU multiplies</li><li data-k="b">A loop: add 6 to A, count B down by 1, jump back while B isn't 0</li><li data-k="c" data-says="Nothing's stored ahead of time: watch the registers change step by step.">It looks it up in memory</li></ul>
+    <div class="why">Seven trips round the loop. Early computers really did multiply this way (or with shift-and-add, which is faster); modern CPUs have multiplier circuits built from many adders.</div>
+  </div>
+  <div class="code" data-title="Build it: the toy CPU in 25 lines"><textarea>
+// Instructions: ["SET", reg, n] ["ADD", reg, reg] ["DEC", reg] ["JNZ", reg, line] ["HALT"]
+const program = [["SET", "A", 0], ["SET", "B", 7], ["SET", "C", 6], ["ADD", "A", "C"], ["DEC", "B"], ["JNZ", "B", 3], ["HALT"]];
+function run(program, maxSteps = 1000) {
+  const r = { A: 0, B: 0, C: 0 }; let pc = 0, steps = 0;
+  while (steps++ < maxSteps) {
+    const [op, x, y] = program[pc];                          // fetch + decode
+    if (op === "HALT") break;
+    if (op === "SET") r[x] = y;                               // execute
+    if (op === "ADD") r[x] = (r[x] + r[y]) & 255;             // an 8-bit adder: wraps at 256
+    if (op === "DEC") r[x] = (r[x] - 1) & 255;
+    pc = op === "JNZ" && r[x] !== 0 ? y : pc + 1;             // the program counter moves on, or jumps
+  }
+  return { registers: r, steps };
+}
+print(run(program));
+// Try: compute 2^7 by doubling, or a countdown that never halts (maxSteps stops it).
+</textarea></div>
+
+  <p>Try gates in the <a href="/learn/lab.html">circuit lab</a> (Insert circuit → "Logic gate with two switches"). Next: microcontrollers, a whole computer like this one on a chip with its own memory and pins, and how it talks to other chips.</p>
+  <p class="muted">Previous: <a href="./11-light-and-sensors.html">Light and sensors</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 3) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+const hi = (b) => (b ? C.green : C.dim);
+
+// ---------- 1. CMOS inverter ----------
+let inp = 0;
+function draw1() {
+  const out = inp ? 0 : 1, cv = $("c1"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  line(g, [[400, 20], [400, 90]], C.red); line(g, [[400, 210], [400, 280]], C.dim); // supply / ground rails
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText("+V", 410, 30); g.fillText("0 V", 410, 290);
+  const fet = (y, on, label) => { g.fillStyle = on ? "rgba(131,193,103,.3)" : "rgba(74,82,98,.3)"; g.fillRect(380, y, 40, 60); g.strokeStyle = on ? C.green : C.dim; g.lineWidth = 2; g.strokeRect(380, y, 40, 60); g.fillStyle = C.text; g.fillText(`${label} ${on ? "ON" : "off"}`, 430, y + 36); };
+  fet(90, !inp, "P-MOSFET"); fet(150, !!inp, "N-MOSFET");
+  line(g, [[400, 150], [560, 150]], hi(out)); line(g, [[200, 150], [340, 150], [340, 120], [380, 120]], hi(inp)); line(g, [[340, 150], [340, 180], [380, 180]], hi(inp));
+  g.fillStyle = hi(inp); g.beginPath(); g.arc(200, 150, 10, 0, 7); g.fill(); g.fillStyle = hi(out); g.beginPath(); g.arc(560, 150, 14, 0, 7); g.fill();
+  g.fillStyle = C.text; g.fillText(`in ${inp}`, 160, 130); g.fillText(`out ${out}`, 580, 155);
+  $("inv").textContent = inp; $("inv").classList.toggle("on", !!inp);
+  $("o1").textContent = inp ? "input 1: the N-MOSFET connects the output to ground → 0" : "input 0: the P-MOSFET connects the output to the supply → 1";
+}
+$("inv").onclick = () => { inp ^= 1; draw1(); }; draw1();
+
+// ---------- 2. truth tables you predict ----------
+const FN = { AND: (a, b) => a & b, OR: (a, b) => a | b, NAND: (a, b) => 1 - (a & b), NOR: (a, b) => 1 - (a | b), XOR: (a, b) => a ^ b };
+let guess = [0, 0, 0, 0], solved = new Set();
+function drawTT() {
+  const name = $("gsel").value;
+  $("tt").innerHTML = `<tr><th>A</th><th>B</th><th>${name}</th></tr>` + [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b], k) => `<tr><td>${a}</td><td>${b}</td><td id="tt${k}"><button data-k="${k}">${guess[k]}</button></td></tr>`).join("");
+  $("gres").textContent = "";
+}
+$("tt").addEventListener("click", (e) => { const k = e.target.dataset.k; if (k == null) return; guess[+k] ^= 1; drawTT(); });
+$("gsel").onchange = () => { guess = [0, 0, 0, 0]; drawTT(); };
+$("gcheck").onclick = () => {
+  const name = $("gsel").value, f = FN[name]; let right = 0;
+  [[0, 0], [0, 1], [1, 0], [1, 1]].forEach(([a, b], k) => { const ok = guess[k] === f(a, b); right += ok; $(`tt${k}`).className = ok ? "right" : "wrong"; });
+  $("gres").textContent = right === 4 ? `✓ that's ${name}` : `${right} of 4 right`;
+  if (right === 4) { solved.add(name); if (solved.size === 5) say("All five gates, predicted perfectly!", "happy"); }
+};
+drawTT();
+
+// ---------- 4. 4-bit adder ----------
+let A = [1, 0, 1, 0], B = [1, 1, 0, 0]; // least significant first: 5 and 3
+const bitsEl = (id, arr) => { $(id).innerHTML = [3, 2, 1, 0].map((i) => `<button class="bit ${arr[i] ? "on" : ""}" data-i="${i}">${arr[i]}</button>`).join(""); };
+function draw4() {
+  bitsEl("abits", A); bitsEl("bbits", B);
+  let c = 0; const S = [], Cs = [];
+  for (let i = 0; i < 4; i++) { const s = A[i] ^ B[i] ^ c; c = (A[i] & B[i]) | (c & (A[i] ^ B[i])); S.push(s); Cs.push(c); }
+  const cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 4; i++) {
+    const x = 560 - i * 170;
+    g.fillStyle = "#1f2530"; g.strokeStyle = C.text; g.lineWidth = 2; g.fillRect(x, 100, 120, 90); g.strokeRect(x, 100, 120, 90);
+    g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(`full adder ${i}`, x + 8, 120); g.fillText(`${2 ** i}s`, x + 44, 150);
+    line(g, [[x + 35, 40], [x + 35, 100]], hi(A[i])); line(g, [[x + 85, 40], [x + 85, 100]], hi(B[i])); g.fillStyle = hi(A[i]); g.fillText(`A${i}=${A[i]}`, x + 12, 34); g.fillStyle = hi(B[i]); g.fillText(`B${i}=${B[i]}`, x + 66, 34);
+    line(g, [[x + 60, 190], [x + 60, 250]], hi(S[i])); g.fillStyle = hi(S[i]); g.fillText(`S${i}=${S[i]}`, x + 40, 272);
+    line(g, [[x, 145], [x - 50, 145]], Cs[i] ? C.yellow : C.dim, Cs[i] ? 5 : 3); g.fillStyle = Cs[i] ? C.yellow : C.dim; g.fillText(`carry ${Cs[i]}`, x - 48, 138);
+  }
+  const a = A.reduce((s, v, i) => s + v * 2 ** i, 0), b = B.reduce((s, v, i) => s + v * 2 ** i, 0), s = S.reduce((t, v, i) => t + v * 2 ** i, 0) + 16 * c;
+  $("o4").textContent = `${A.slice().reverse().join("")} + ${B.slice().reverse().join("")} = ${c}${S.slice().reverse().join("")} in binary · ${a} + ${b} = ${s}${c ? " (the last carry is a 5th bit: 4 bits only go up to 15)" : ""}`;
+  if (Cs.every((x) => x)) done("g4", "A carry rippling all the way across: that delay is why fast adders use carry-lookahead.");
+}
+for (const id of ["abits", "bbits"]) $(id).addEventListener("click", (e) => { const i = e.target.dataset.i; if (i == null) return; (id === "abits" ? A : B)[+i] ^= 1; draw4(); });
+draw4();
+
+// ---------- 5. SR latch (active-low inputs on NANDs) ----------
+let S_ = 1, R_ = 1, Q = 0;
+function draw5() {
+  // settle the loop: Q = NAND(S̄, Q̄), Q̄ = NAND(R̄, Q)
+  let Qb = 1 - Q; for (let k = 0; k < 4; k++) { Q = 1 - (S_ & Qb); Qb = 1 - (R_ & Q); }
+  const cv = $("c5"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const gate = (x, y, label) => { g.fillStyle = "#1f2530"; g.strokeStyle = C.text; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y - 30); g.lineTo(x + 40, y - 30); g.arc(x + 40, y, 30, -Math.PI / 2, Math.PI / 2); g.lineTo(x, y + 30); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.arc(x + 78, y, 6, 0, 7); g.stroke(); g.fillStyle = C.dim; g.font = "12px ui-monospace, monospace"; g.fillText(label, x + 10, y + 4); };
+  gate(320, 70, "NAND"); gate(320, 190, "NAND");
+  line(g, [[150, 55], [320, 55]], hi(S_)); line(g, [[150, 205], [320, 205]], hi(R_));
+  line(g, [[404, 70], [600, 70]], hi(Q), 4); line(g, [[404, 190], [600, 190]], hi(Qb), 4);
+  line(g, [[460, 70], [460, 110], [280, 150], [280, 175], [320, 175]], hi(Q)); line(g, [[460, 190], [460, 150], [280, 110], [280, 85], [320, 85]], hi(Qb));
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(`Set̄ = ${S_}`, 60, 60); g.fillText(`Reset̄ = ${R_}`, 50, 210); g.fillStyle = hi(Q); g.fillText(`Q = ${Q}`, 620, 75); g.fillStyle = hi(Qb); g.fillText(`Q̄ = ${Qb}`, 620, 195);
+  $("o5").textContent = !S_ ? "Set held (its line pulled to 0): Q forced to 1" : !R_ ? "Reset held: Q forced to 0" : `nothing pressed: Q stays ${Q}, remembered by the loop`;
+}
+const hold = (btn, on, off) => { for (const ev of ["pointerdown"]) btn.addEventListener(ev, () => { on(); draw5(); }); for (const ev of ["pointerup", "pointerleave"]) btn.addEventListener(ev, () => { off(); draw5(); }); };
+hold($("set"), () => (S_ = 0), () => (S_ = 1)); hold($("reset"), () => (R_ = 0), () => (R_ = 1)); draw5();
+
+// ---------- 6. counter ----------
+let count = 0, history = [];
+function tick() { count = (count + 1) % 16; history.push(count); if (history.length > 24) history.shift(); draw6(); }
+function draw6() {
+  const cv = $("c6"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const rows = [["clock", (k) => k % 2], ...[0, 1, 2, 3].map((b) => [`bit ${b} (${2 ** b}s)`, (k) => (history[Math.floor(k / 2)] >> b) & 1])];
+  const n = history.length * 2;
+  rows.forEach(([label, f], r) => {
+    g.fillStyle = C.text; g.font = "12px ui-monospace, monospace"; g.fillText(label, 6, 34 + r * 36);
+    const pts = []; for (let k = 0; k < n; k++) { const y = 40 + r * 36 - (f(k) ? 18 : 0), x0 = 120 + (k / 48) * (W - 140), x1 = 120 + ((k + 1) / 48) * (W - 140); pts.push([x0, y], [x1, y]); }
+    if (pts.length) line(g, pts, r ? C.green : C.yellow, 2);
+  });
+  $("o6").textContent = `count = ${count} = ${count.toString(2).padStart(4, "0")} in binary · each bit flips half as often as the one before`;
+}
+$("tick").onclick = tick; setInterval(() => { if ($("auto").checked) tick(); }, 400); draw6();
+
+// ---------- 7. toy CPU ----------
+const PROG = [["SET", "A", 0], ["SET", "B", 7], ["SET", "C", 6], ["ADD", "A", "C"], ["DEC", "B"], ["JNZ", "B", 3], ["HALT"]];
+const TEXT = ["SET A, 0      ; the answer starts at 0", "SET B, 7      ; how many times to add", "SET C, 6      ; what to add", "ADD A, C      ; A = A + C", "DEC B         ; B = B − 1", "JNZ B, 3      ; if B ≠ 0, jump back to line 3", "HALT"];
+let cpu, timer = null;
+const reset = () => { cpu = { A: 0, B: 0, C: 0, pc: 0, steps: 0, halted: false, last: "" }; clearInterval(timer); timer = null; drawCPU(); };
+function step() {
+  if (cpu.halted) return;
+  const [op, x, y] = PROG[cpu.pc];
+  if (op === "HALT") { cpu.halted = true; cpu.last = "halted"; say(`A = ${cpu.A}. Six times seven, by adding.`, "happy"); clearInterval(timer); timer = null; }
+  else {
+    if (op === "SET") cpu[x] = y; if (op === "ADD") cpu[x] = (cpu[x] + cpu[y]) & 255; if (op === "DEC") cpu[x] = (cpu[x] - 1) & 255;
+    cpu.last = TEXT[cpu.pc].split(";")[0].trim();
+    cpu.pc = op === "JNZ" && cpu[x] !== 0 ? y : cpu.pc + 1; cpu.steps++;
+  }
+  drawCPU();
+}
+function drawCPU() {
+  $("regs").innerHTML = ["A", "B", "C"].map((r) => `<div class="card">${r} = <b>${cpu[r]}</b><br><span class="readout" style="margin:0">${cpu[r].toString(2).padStart(8, "0")}</span></div>`).join("") + `<div class="card">program counter = <b>${cpu.pc}</b><br><span class="readout" style="margin:0">steps: ${cpu.steps}</span></div>`;
+  $("prog").innerHTML = TEXT.map((l, k) => `<div class="${k === cpu.pc && !cpu.halted ? "pc" : ""}">${k}: ${l.replace(/;.*/, (m) => `<span style="color:var(--muted)">${m}</span>`)}</div>`).join("");
+  $("o7").textContent = cpu.halted ? `halted after ${cpu.steps} steps with A = ${cpu.A}` : cpu.last ? `last: ${cpu.last}` : "press Step";
+}
+$("step").onclick = step; $("rst").onclick = reset; $("run").onclick = () => { if (!timer) timer = setInterval(step, 350); };
+reset();
+window.blipContext = () => ({ page: "Electronics chapter 12: from gates to a computer (CMOS, truth tables, NAND, adder, latch, counter, toy CPU)", cpu });
+</script>
+</body>
+</html>
