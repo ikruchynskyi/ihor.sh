@@ -19,6 +19,7 @@
     select { max-width: 100%; }
     table { border-collapse: collapse; width: 100%; font: 15px ui-monospace, Menlo, monospace; }
     td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; } th:first-child, td:first-child { text-align: left; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -32,6 +33,15 @@
   <div class="pair"><figure><canvas id="live" width="352" height="240"></canvas>live frame</figure><figure><canvas id="gray" width="352" height="240"></canvas>what a network gets: numbers per pixel</figure></div>
   <p class="readout" id="r1"></p>
   <p>A frame is about 350 × 240 pixels, each with red, green and blue values: some 250,000 numbers. That's what every method below starts from.</p>
+  <details class="deeper" open><summary>The math: from color to gray</summary>
+    <p>The right-hand picture turns three numbers per pixel into one brightness. Not a plain average: eyes are most sensitive to green and least to blue, so the standard (ITU-R BT.601) weighting is</p>
+    <p class="formula">\[ Y = 0.299\,R + 0.587\,G + 0.114\,B \]</p>
+    <p>Pure green (0, 255, 0) comes out as 150, much brighter than pure blue (0, 0, 255) at 29, which matches how they look. Many vision models skip this and take all three channels, so their first layer's filters are \(k \times k \times 3\).</p>
+  </details>
+  <div class="q" data-num="253440" data-tol="0" data-show="253,440">
+    <p>Exactly how many numbers is one 352 × 240 color frame?</p>
+    <div class="why">\(352 \times 240 \times 3 = 253{,}440\).</div>
+  </div>
 
   <h2>2. Motion, by subtraction</h2>
   <p>The simplest vision trick needs no learning at all. Take two frames a few seconds apart and subtract them, pixel by pixel. The road, buildings and sky cancel out; whatever moved lights up. Traffic engineers used this long before neural networks.</p>
@@ -39,6 +49,43 @@
   <div class="pair"><figure><canvas id="diff" width="352" height="240"></canvas>|frame 2 − frame 1|</figure><figure><canvas id="mask" width="352" height="240"></canvas>moving pixels (above threshold)</figure></div>
   <p class="readout" id="r2"></p>
   <p>It finds motion but not <em>what</em> moved: two cars side by side merge into one blob, a parked car is invisible, and swaying trees or a camera adjusting its exposure light up as false alarms. To know what's there, we need a model that has learned what cars look like.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>For each pixel, the difference image and the mask are</p>
+    <p class="formula">\[ D[r][c] = \lvert F_2[r][c] - F_1[r][c] \rvert, \qquad M[r][c] = \begin{cases} 1 & D[r][c] > \theta \\ 0 & \text{otherwise} \end{cases} \]</p>
+    <p>The threshold \(\theta\) trades noise against sensitivity: camera noise and compression wiggle pixels by a few levels, so a tiny \(\theta\) lights up the whole frame, while a big one misses dark cars on dark asphalt. To count objects, group touching 1-pixels into <b>connected components</b> (blobs) with a flood fill. That's exactly where two cars side by side become one blob.</p>
+  </details>
+  <div class="code" data-title="Build it: motion blobs from two frames"><textarea>
+// Two 12×20 "frames": a dark road with two bright cars that each moved 2 pixels right.
+const W = 20, H = 12, frame = (cars) => Array.from({ length: H }, (_, r) => Array.from({ length: W }, (_, c) =>
+  20 + Math.round(Math.random() * 6) + (cars.some(([r0, c0]) => r >= r0 && r < r0 + 3 && c >= c0 && c < c0 + 4) ? 180 : 0)));
+const F1 = frame([[2, 2], [7, 9]]), F2 = frame([[2, 4], [7, 11]]);
+
+const threshold = 40;
+const M = F1.map((row, r) => row.map((v, c) => (Math.abs(F2[r][c] - v) > threshold ? 1 : 0)));
+print(M.map((row) => row.map((v) => (v ? "█" : "·")).join("")).join("\n"));
+
+// Connected components: flood-fill each unvisited 1-pixel and everything touching it.
+function blobs(M) {
+  const seen = M.map((r) => r.map(() => false)), found = [];
+  for (let r = 0; r < M.length; r++) for (let c = 0; c < M[0].length; c++) {
+    if (!M[r][c] || seen[r][c]) continue;
+    const stack = [[r, c]]; let size = 0; seen[r][c] = true;
+    while (stack.length) {
+      const [y, x] = stack.pop(); size++;
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ny = y + dy, nx = x + dx;
+        if (M[ny]?.[nx] && !seen[ny][nx]) { seen[ny][nx] = true; stack.push([ny, nx]); }
+      }
+    }
+    found.push(size);
+  }
+  return found;
+}
+print("blobs (pixels each):", blobs(M));
+// Four blobs for two cars! Each car lights up only where it changed things: its front (now covering road) and its back
+// (road uncovered). The middle of the car is bright in both frames, so it cancels. Real counters compare against a
+// slowly updated "empty road" background instead of the previous frame. Try threshold = 3 (noise everywhere).
+</textarea></div>
 
   <h2>3. A trained detector</h2>
   <p>This is <b>COCO-SSD</b>: a convolutional network (chapter 6, but dozens of layers deep, based on MobileNet) trained on the COCO dataset of 330,000 photos labeled with 80 kinds of objects. For each image it proposes boxes and gives each one a class and a confidence: a softmax (chapter 5) per box. Loading it downloads about 5 MB once, and then it runs entirely in your browser; no image leaves your computer.</p>
@@ -46,6 +93,44 @@
   <div class="pair" style="grid-template-columns:1fr"><figure><canvas id="det" width="704" height="480"></canvas>detections</figure></div>
   <p class="readout" id="r3"></p>
   <p>Slide the confidence down and more boxes appear, including wrong ones; slide it up and real cars far away disappear. Every detector lives on that trade-off between missing things and imagining them. Detectors also produce many overlapping boxes for each object; a step called <b>non-maximum suppression</b> keeps only the most confident box among ones that overlap a lot.</p>
+  <details class="deeper" open><summary>The math: overlap, suppression, and scoring a detector</summary>
+    <p><b>Intersection over union</b> measures how much two boxes overlap, from 0 (apart) to 1 (identical):</p>
+    <p class="formula">\[ \operatorname{IoU}(A, B) = \frac{\operatorname{area}(A \cap B)}{\operatorname{area}(A \cup B)} = \frac{\operatorname{area}(A \cap B)}{\operatorname{area}(A) + \operatorname{area}(B) - \operatorname{area}(A \cap B)} \]</p>
+    <p><b>Non-maximum suppression:</b> sort boxes by confidence; keep the top one; delete every remaining box of the same class whose IoU with it is above about 0.5; repeat with the next box still standing.</p>
+    <p><b>Scoring.</b> A detection counts as right (a true positive) if it overlaps a real object with IoU ≥ 0.5. Then <b>precision</b> = right detections / all detections ("when it says car, how often is it a car?") and <b>recall</b> = right detections / all real objects ("how many of the cars did it find?"). The confidence slider above trades one for the other.</p>
+  </details>
+  <div class="q" data-num="0.3333" data-tol="0.005">
+    <p>Two boxes of the same size; one is shifted right by half its width. What is their IoU? (Decimal.)</p>
+    <div class="why">Overlap = half a box. Union = 1 + 1 − ½ = 1½ boxes. IoU = ½ ÷ 1½ = 1/3. So "half overlapping" is only 0.33, below the usual 0.5 cutoff.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>On a frame with 12 real cars the detector draws 10 boxes: 8 on cars, 2 on nothing. Precision and recall?</p>
+    <ul><li data-k="a" data-says="Swapped: precision divides by the boxes drawn, recall by the real cars.">precision 0.67, recall 0.8</li><li data-k="b" data-says="Both use the 8 right boxes on top. What's each one divided by?">precision 0.8, recall 0.8</li><li data-k="c">precision 0.8, recall 0.67</li></ul>
+    <div class="why">Precision = 8/10 = 0.8. Recall = 8/12 ≈ 0.67. Lowering the confidence threshold would raise recall and lower precision.</div>
+  </div>
+  <div class="code" data-title="Build it: IoU and non-maximum suppression"><textarea>
+// Boxes as [x, y, width, height, confidence]
+const iou = (a, b) => {
+  const w = Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0]));
+  const h = Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
+  const inter = w * h;
+  return inter / (a[2] * a[3] + b[2] * b[3] - inter);
+};
+function nms(boxes, limit = 0.5) {
+  const left = [...boxes].sort((a, b) => b[4] - a[4]), keep = [];
+  while (left.length) {
+    const best = left.shift();
+    keep.push(best);
+    for (let i = left.length - 1; i >= 0; i--) if (iou(best, left[i]) > limit) left.splice(i, 1);
+  }
+  return keep;
+}
+// A detector's raw output: three boxes on one car, two on another, and a weak stray one
+const raw = [[10, 10, 40, 30, 0.92], [12, 11, 40, 30, 0.85], [8, 9, 42, 31, 0.6], [100, 20, 50, 30, 0.88], [104, 22, 48, 28, 0.7], [60, 70, 20, 20, 0.3]];
+print("IoU of the first two:", iou(raw[0], raw[1]));
+print("half-shifted equal boxes:", iou([0, 0, 10, 10], [5, 0, 10, 10]));
+print("after NMS:"); table(nms(raw));
+</textarea></div>
 
   <h2>4. Counting the city, right now</h2>
   <p>Put the detector on a loop over many cameras and you get something no single camera gives you: a snapshot of the city. It counts objects only; at this resolution nobody can be identified, and nothing is stored.</p>
@@ -55,6 +140,7 @@
 
   <p class="muted">Previous: <a href="./08-agents.html">Agents</a> · All chapters: <a href="./">AI from scratch</a>. Detector: <a href="https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd">COCO-SSD for TensorFlow.js</a> (Apache 2.0). Cameras: <a href="https://webcams.nyctmc.org">NYC DOT</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

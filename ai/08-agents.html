@@ -19,11 +19,12 @@
     .tools div { background: var(--card); border: 1px solid var(--line); padding: 8px 10px; font-size: 15px; }
     .tools code { font-weight: 700; }
     .trace { background: #14171d; color: #d7dde5; padding: 12px 14px; font: 14px/1.6 ui-monospace, Menlo, monospace; min-height: 60px; white-space: pre-wrap; word-break: break-word; }
-    .trace .q { color: #58c4dd; } .trace .call { color: #f4d35e; } .trace .res { color: #8f98a8; } .trace .ans { color: #83c167; } .trace .warn { color: #fc6255; }
+    .trace .you { color: #58c4dd; } .trace .call { color: #f4d35e; } .trace .res { color: #8f98a8; } .trace .ans { color: #83c167; } .trace .warn { color: #fc6255; }
     .quiz button { display: block; width: 100%; text-align: left; margin: 6px 0; text-transform: none; font: 14px/1.5 ui-monospace, Menlo, monospace !important; padding: 8px 10px; }
     table { border-collapse: collapse; width: 100%; font: 15px ui-monospace, Menlo, monospace; }
     td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; }
     input[type=text] { width: 100%; max-width: 520px; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -43,9 +44,46 @@
     <div><span class="a">final answer</span></div>
   </div>
   <p>The model never touches the subway feed itself. It writes a structured request; ordinary code (the same server that runs this site) does the work and hands back data. The model's whole job is deciding <b>which</b> tool, with <b>what</b> arguments, and then reading the result correctly. Training taught it to write tool calls in a strict JSON format, the same way it learned to write sentences.</p>
+  <div class="levels">
+    <div><b>The picture</b>A conversation that grows: question, tool call, tool result, tool call, result, answer. The model rereads all of it every turn.</div>
+    <div><b>The math</b>Each turn samples the next tokens from \(p(\text{next} \mid \text{everything so far})\), chapters 5 and 7. A tool call is just text that our code recognizes, runs, and answers with more text.</div>
+  </div>
+  <div class="code" id="loop" data-title="Build it: the agent loop (with a pretend model)"><textarea>
+// A real agent sends `messages` to a language model. Here a tiny rule-based stand-in plays the model,
+// so you can see the loop itself: model → tool call → run tool → append result → model → … → answer.
+const tools = {
+  subway_arrivals: { description: "Next trains at a station", run: ({ station }) => ({ station, next: [{ line: "L", min: 3 }, { line: "4", min: 6 }] }) },
+  weather: { description: "Current weather", run: () => ({ tempC: 18, sky: "cloudy" }) },
+};
+function pretendModel(messages) {
+  const last = messages.at(-1);
+  if (last.role === "user" && /train/i.test(last.content)) return { tool: "subway_arrivals", args: { station: "Union Sq" } };
+  if (last.role === "user" && /weather|rain/i.test(last.content)) return { tool: "weather", args: {} };
+  if (last.role === "tool") return { answer: `Here's what I found: ${JSON.stringify(last.content)}` };
+  return { answer: "I can't help with that." };
+}
+
+function runAgent(question, maxRounds = 4) {
+  const messages = [{ role: "user", content: question }];
+  for (let round = 0; round < maxRounds; round++) {
+    const out = pretendModel(messages);
+    if (out.answer) { messages.push({ role: "assistant", content: out.answer }); break; }
+    if (!tools[out.tool]) { messages.push({ role: "tool", content: { error: `no tool ${out.tool}` } }); continue; }
+    messages.push({ role: "assistant", content: `call ${out.tool}(${JSON.stringify(out.args)})` });
+    messages.push({ role: "tool", content: tools[out.tool].run(out.args) });
+  }
+  return messages;
+}
+for (const m of runAgent("When is the next train at Union Sq?")) print(m.role.padEnd(9), typeof m.content === "string" ? m.content : JSON.stringify(m.content));
+</textarea></div>
 
   <h2>2. Blip's real toolbox</h2>
   <p>This is the actual list Blip is given with every question, loaded live from the server. Each tool is just a name, a description and its parameters; the descriptions are all the model knows about them, so writing them well matters as much as the code behind them.</p>
+  <div class="q" data-answer="b">
+    <p>The model keeps calling <code>weather</code> when people ask about the subway. What's the first thing to fix?</p>
+    <ul><li data-k="a" data-says="Bigger models help, but the model only knows a tool by its name and description. Check those first.">Switch to a bigger model</li><li data-k="b">The tool descriptions: they're all the model knows about when to use each tool</li><li data-k="c" data-says="Temperature changes randomness, not which tool fits.">Raise the temperature</li></ul>
+    <div class="why">Tool choice is reading comprehension: the model matches the question against names and descriptions. Vague or overlapping descriptions cause most wrong picks, and they're the cheapest thing to fix (and to check with an eval, below).</div>
+  </div>
   <div class="tools" id="tools"><p class="muted">Loading…</p></div>
 
   <h2>3. Watch Blip work</h2>
@@ -66,16 +104,64 @@
   <p class="readout" id="qr"></p>
   <p>The defenses are boring and essential: tell the model in its instructions that tool output is <em>data, never instructions</em>; give tools the least power needed (Blip's tools only read; none can buy, send or delete); check arguments in code before running anything; and keep keys on the server, never in what the model sees. On this site the API also only answers the site's own pages, with per-visitor limits.</p>
   <p><b>Bad arguments.</b> The model might ask for station "Unoin Sq" or a date in the wrong format. Tools should validate inputs and return a clear error the model can recover from, not crash.</p>
+  <details class="deeper" open><summary>The math: why long tool chains break</summary>
+    <p>If each step (pick the tool, fill the arguments, read the result) goes right with probability \(p\), and steps fail independently, a task needing \(n\) steps all right succeeds with probability</p>
+    <p class="formula">\[ P(\text{success}) = p^{\,n} \]</p>
+    <p>At \(p = 0.95\): 3 steps → 86%, 10 steps → 60%, 30 steps → 21%. Small per-step error rates compound fast. That's why good agents keep chains short, check results as they go (a failed step caught and retried is no longer a failure), and why per-step reliability matters far more than it looks.</p>
+  </details>
+  <div class="q" data-num="0.599" data-tol="0.005">
+    <p>Each step is right 95% of the time. What's the chance a 10-step task gets every step right? (Three decimals.)</p>
+    <div class="why">\(0.95^{10} \approx 0.599\). Four times out of ten, something along the way goes wrong.</div>
+  </div>
+  <div class="code" data-title="Build it: validate tool arguments"><textarea>
+// Check what the model asked for before running anything, and answer mistakes with an error it can fix.
+const STATIONS = ["Union Sq", "Times Sq-42 St", "Grand Central-42 St", "Atlantic Av-Barclays Ctr"];
+function closest(name) {                      // edit distance, so "Unoin Sq" still finds Union Sq
+  const d = (a, b) => { const m = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) m[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) m[i][j] = Math.min(m[i-1][j] + 1, m[i][j-1] + 1, m[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    return m[a.length][b.length]; };
+  return STATIONS.map((s) => [s, d(name.toLowerCase(), s.toLowerCase())]).sort((a, b) => a[1] - b[1])[0];
+}
+function subwayArrivals(args) {
+  if (typeof args?.station !== "string" || args.station.length > 60) return { error: "station must be a station name, like \"Union Sq\"" };
+  const [name, dist] = closest(args.station);
+  if (dist > 3) return { error: `unknown station "${args.station}". Did you mean "${name}"?` };
+  return { station: name, next: [{ line: "L", min: 3 }] };
+}
+for (const args of [{ station: "Union Sq" }, { station: "Unoin Sq" }, { station: "Hogwarts" }, { stop: 5 }]) print(JSON.stringify(args), "→", JSON.stringify(subwayArrivals(args)));
+</textarea></div>
 
   <h2>5. Evals: measuring an agent</h2>
   <p>"It seemed to work when I tried it" isn't a test. An <b>eval</b> is a fixed set of questions with checkable expectations, run every time you change the model, the prompt or a tool description. Here's a tiny one for tool choice: does Blip pick the right tool for each question? Run it (four live questions, about a minute).</p>
   <div class="row"><button id="eval">Run the eval</button><span class="readout" id="er" style="margin:0"></span></div>
   <table id="et"></table>
   <p>Real eval suites have hundreds of cases and check more than tool choice: did the answer match the data, did it refuse what it should refuse, did it stay under the step limit. They're how you know whether a new model or a reworded tool description made things better or just different.</p>
+  <details class="deeper" open><summary>The math: how sure is an eval score?</summary>
+    <p>An eval with \(n\) cases where \(k\) pass estimates the true pass rate as \(\hat p = k/n\). Like a poll, it has a margin of error. Its standard error is</p>
+    <p class="formula">\[ \mathrm{SE} = \sqrt{\frac{\hat p (1 - \hat p)}{n}}, \qquad \text{95\% interval} \approx \hat p \pm 1.96\, \mathrm{SE} \]</p>
+    <p>18 of 20 passing is 90% ± 13%: anything from about 77% to 100% is plausible. To tell 90% from 92% apart you need thousands of cases. So a change that moves a 20-case eval by one case is noise, not progress. Run bigger evals, or run the same eval several times (models are random, chapter 5) and compare averages.</p>
+  </details>
+  <div class="q" data-num="0.067" data-tol="0.002">
+    <p>18 of 20 eval cases pass. What's the standard error of the pass rate? (Three decimals.)</p>
+    <div class="why">\(\sqrt{0.9 \times 0.1 / 20} = \sqrt{0.0045} \approx 0.067\). Times 1.96: a margin of about ±13 percentage points.</div>
+  </div>
+  <div class="code" data-title="Build it: an eval harness with error bars"><textarea>
+// A pretend agent that picks the right tool 85% of the time. How well does a small eval measure that?
+const truth = 0.85;
+const runEval = (n) => { let k = 0; for (let i = 0; i < n; i++) if (Math.random() < truth) k++; return k; };
+const interval = (k, n) => { const p = k / n, se = Math.sqrt(p * (1 - p) / n); return [p, Math.max(0, p - 1.96 * se), Math.min(1, p + 1.96 * se)]; };
+
+const rows = [["cases", "measured", "95% low", "95% high"]];
+for (const n of [4, 20, 100, 1000, 10000]) { const k = runEval(n); rows.push([n, ...interval(k, n).map((v) => +(100 * v).toFixed(1))]); }
+table(rows);
+print("Run it a few times: the 4- and 20-case evals jump around; the 10,000-case one barely moves.");
+</textarea></div>
   <p>Last chapter: <a href="./09-vision.html"><b>vision in practice</b></a>, finding cars and people in real NYC traffic camera images.</p>
 
   <p class="muted">Previous: <a href="./07-attention.html">Attention and transformers</a> · All chapters: <a href="./">AI from scratch</a>. Blip's code is <code>blip.ts</code> in this site's repo.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);
@@ -95,11 +181,11 @@ async function ask(question) {
   return d;
 }
 async function run(question) {
-  $("trace").innerHTML = `<span class="q">you: ${esc(question)}</span>\n\nthinking…`;
+  $("trace").innerHTML = `<span class="you">you: ${esc(question)}</span>\n\nthinking…`;
   try {
     const d = await ask(question);
     const steps = (d.trace ?? []).map((t) => `<span class="call">step ${t.step} · calls ${esc(t.tool)}(${esc(JSON.stringify(t.args))})</span>\n<span class="res">  result: ${esc(t.result)}${t.result.length >= 400 ? "…" : ""}</span>`).join("\n\n");
-    $("trace").innerHTML = `<span class="q">you: ${esc(question)}</span>\n\n${steps || '<span class="res">(no tools: answered from what it already knew)</span>'}\n\n<span class="ans">Blip: ${esc(d.reply)}</span>`;
+    $("trace").innerHTML = `<span class="you">you: ${esc(question)}</span>\n\n${steps || '<span class="res">(no tools: answered from what it already knew)</span>'}\n\n<span class="ans">Blip: ${esc(d.reply)}</span>`;
   } catch (e) { $("trace").innerHTML += `\n<span class="warn">${esc(e.message)}</span>`; }
 }
 document.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => run(b.dataset.q)));

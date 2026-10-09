@@ -25,6 +25,7 @@
     .probs .top i { background: #83c167; }
     .grid8 { display: grid; grid-template-columns: repeat(4, auto); gap: 8px; }
     progress { width: 220px; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -40,6 +41,14 @@
     <figure><canvas id="img" class="px" width="28" height="28" aria-label="Your drawing as 28 by 28 pixels"></canvas>28 × 28, centered like MNIST</figure>
   </div>
   <p class="readout" id="r1">Hover over the 28 × 28 image to read its pixels.</p>
+  <div class="levels">
+    <div><b>The picture</b>A photo is a mosaic: every tile has one brightness.</div>
+    <div><b>The math</b>A matrix \(I\) with \(I[r][c] \in [0, 1]\): row \(r\), column \(c\). Color images have three of them stacked (red, green, blue), a 3-D array.</div>
+  </div>
+  <div class="q" data-num="2352" data-tol="0">
+    <p>How many numbers describe a 28 × 28 <b>color</b> image?</p>
+    <div class="why">\(28 \times 28 \times 3 = 2{,}352\): a red, a green and a blue value per pixel.</div>
+  </div>
 
   <h2>2. A filter slides over it</h2>
   <p>A <b>filter</b> (or kernel) is a tiny grid of weights, here 3 × 3. Put it on a spot of the image, multiply the 9 pixels under it by its 9 weights, add them up: that's one output number. Slide it to every position and you get a new image, the <b>feature map</b>. The filter below finds edges where the image goes from dark (left) to bright (right). Pick others, and hover the output to see the arithmetic.</p>
@@ -50,9 +59,87 @@
   </div>
   <p class="readout" id="r2">Hover over the feature map.</p>
   <p>The same 9 weights are used everywhere, so the filter finds a vertical edge wherever it is. That's the trick: <b>weight sharing</b>. A network layer has many filters side by side, each looking for its own pattern, and the next layer's filters look at <em>those</em> maps, finding edges of edges: corners, loops, strokes, and eventually whole shapes. Between layers a <b>pooling</b> step keeps only the strongest response in each 2 × 2 patch, so the network cares less about exactly where a stroke is.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Put the filter's top-left corner at row \(r\), column \(c\), multiply, add. For a \(3 \times 3\) filter \(K\):</p>
+    <p class="formula">\[ F[r][c] = \sum_{i=0}^{2} \sum_{j=0}^{2} I[r + i][c + j] \cdot K[i][j] \]</p>
+    <p>That's chapter 1's dot product again, between the filter and one patch of the image, both flattened into lists of 9. (Mathematicians would flip the filter first and call this a cross-correlation; networks skip the flip, since the filter is learned anyway.)</p>
+    <p><b>Worked example.</b> The vertical-edge filter is \(\begin{pmatrix} -1 & 0 & 1 \\ -2 & 0 & 2 \\ -1 & 0 & 1 \end{pmatrix}\). On a patch that's dark (0) on the left and bright (1) on the right: \((-1 - 2 - 1)\cdot 0 + (1 + 2 + 1) \cdot 1 = 4\), a strong response. On a flat patch, all 1: the weights add up to 0, so the response is 0. Bright on the left: −4. The sign tells the edge's direction.</p>
+    <p><b>Sizes.</b> A \(k \times k\) filter fits in \(n - k + 1\) positions along an \(n\)-pixel side: 28 − 3 + 1 = 26, which is why the feature map above is 26 × 26. Padding the border with zeros keeps the size; a <b>stride</b> \(s\) (jumping \(s\) pixels at a time) gives \(\lfloor (n - k)/s \rfloor + 1\).</p>
+  </details>
+  <div class="q" data-answer="a">
+    <p>The vertical-edge filter lands on a patch where every pixel is 0.6. What does it output?</p>
+    <ul><li data-k="a">0</li><li data-k="b" data-says="Multiply each weight by 0.6 and add: the weights add up to zero.">0.6</li><li data-k="c" data-says="That's the response to a full dark-to-bright edge (×0.6). A flat patch has no edge.">2.4</li></ul>
+    <div class="why">\(0.6 \times (\text{sum of weights}) = 0.6 \times 0 = 0\). Filters whose weights add up to zero ignore flat areas and react only to change.</div>
+  </div>
+  <div class="q" data-num="24" data-tol="0">
+    <p>The network below slides 5 × 5 filters over the 28 × 28 image (no padding, stride 1). How wide is each feature map?</p>
+    <div class="why">\(28 - 5 + 1 = 24\). Then 2 × 2 pooling halves it to 12.</div>
+  </div>
+  <div class="code" data-title="Build it: a convolution in a few lines"><textarea>
+// A 6×6 image: dark left half, bright right half
+const img = Array.from({ length: 6 }, () => [0, 0, 0, 1, 1, 1]);
+const vertical = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+
+function conv2d(I, K) {
+  const k = K.length, out = [];
+  for (let r = 0; r + k <= I.length; r++) {
+    const row = [];
+    for (let c = 0; c + k <= I[0].length; c++) {
+      let s = 0;
+      for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) s += I[r + i][c + j] * K[i][j];
+      row.push(s);
+    }
+    out.push(row);
+  }
+  return out;
+}
+const maxPool = (F) => F.filter((_, r) => r % 2 === 0).map((_, r) => F[0].filter((_, c) => c % 2 === 0).map((_, c) =>
+  Math.max(F[2 * r][2 * c], F[2 * r][2 * c + 1] ?? -Infinity, F[2 * r + 1]?.[2 * c] ?? -Infinity, F[2 * r + 1]?.[2 * c + 1] ?? -Infinity)));
+
+print("image:"); table(img);
+const F = conv2d(img, vertical);
+print("feature map (4×4): the edge lights up in the middle columns"); table(F);
+print("after 2×2 max pooling:"); table(maxPool(F));
+</textarea></div>
 
   <h2>3. Train a network that reads digits</h2>
   <p>Our network: 8 filters of 5 × 5 (learned, not hand-picked) → ReLU → 2 × 2 max pooling → one dense layer of 10 outputs → softmax (chapter 5). About 12,000 weights. It trains on digits drawn in your computer's fonts, randomly rotated, scaled and thickened, with backprop (chapter 4) written out by hand in this page. Press train and watch the filters grow from noise into stroke detectors.</p>
+  <details class="deeper" open><summary>The math: counting weights, and backprop through a filter</summary>
+    <p><b>Count.</b> 8 filters × 25 weights + 8 biases = 208. After pooling there are \(8 \times 12 \times 12 = 1{,}152\) numbers, and the dense layer maps them to 10 scores: \(1{,}152 \times 10 + 10 = 11{,}530\). Total 11,738. A plain dense layer producing the same 8 × 24 × 24 = 4,608 numbers from 784 pixels would need \(784 \times 4{,}608 \approx 3.6\) million weights. Weight sharing is a 17,000× saving, and it builds in the rule "an edge is an edge wherever it is".</p>
+    <p><b>Backward through a convolution.</b> Each filter weight \(K[i][j]\) touched every output \(F[r][c]\), multiplied by the pixel \(I[r+i][c+j]\). Chapter 4's rule "blame from every use adds up" gives</p>
+    <p class="formula">\[ \frac{\partial L}{\partial K[i][j]} = \sum_{r, c} \frac{\partial L}{\partial F[r][c]} \cdot I[r + i][c + j] \]</p>
+    <p>which is itself a convolution: of the image with the map of blame. <b>Max pooling</b> passes each blame back only to the pixel that won the max (the others didn't affect the output). <b>ReLU</b> passes it through where the input was positive and blocks it where it was zero.</p>
+  </details>
+  <div class="q" data-answer="c">
+    <p>In a 2 × 2 max pool, the four inputs are (0.1, 0.9, 0.3, 0.2). Blame 1.0 arrives at the output. How is it passed back?</p>
+    <ul><li data-k="a" data-says="Averaging is what an average pool would do. A max only depends on its winner.">0.25 to each of the four</li><li data-k="b" data-says="The others didn't change the output at all: nudging 0.1 leaves the max at 0.9.">Proportionally to their values</li><li data-k="c">All of it to the 0.9, nothing to the others</li></ul>
+    <div class="why">The output is the 0.9 input, so its slope is 1 for that input and 0 for the rest.</div>
+  </div>
+  <div class="code" data-title="Build it: learn a filter by gradient descent"><textarea>
+// Can gradient descent rediscover the vertical-edge filter? Show it random images and the feature maps
+// the real filter makes, start from random weights, and train with the formula above.
+const conv = (I, K) => I.slice(0, -2).map((_, r) => I[0].slice(0, -2).map((_, c) => {
+  let s = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) s += I[r + i][c + j] * K[i][j]; return s; }));
+const target = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+const randImg = () => Array.from({ length: 8 }, () => Array.from({ length: 8 }, Math.random));
+
+let K = Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => Math.random() - 0.5));
+const losses = [];
+for (let step = 0; step < 300; step++) {
+  const I = randImg(), want = conv(I, target), got = conv(I, K);
+  const grad = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  let L = 0;
+  got.forEach((row, r) => row.forEach((v, c) => {
+    const blame = 2 * (v - want[r][c]) / 36;               // ∂L/∂F[r][c] for mean squared error
+    L += (v - want[r][c]) ** 2 / 36;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) grad[i][j] += blame * I[r + i][c + j];
+  }));
+  K = K.map((row, i) => row.map((w, j) => w - 0.3 * grad[i][j]));
+  losses.push(L);
+}
+plot(losses, { label: "loss: learned filter vs the vertical-edge filter" });
+print("learned filter:"); table(K.map((r) => r.map((w) => +w.toFixed(2))));
+</textarea></div>
   <div class="row"><button id="train">Train (a few seconds)</button><progress id="prog" max="1" value="0"></progress><span class="readout" id="r3" style="margin:0"></span></div>
   <div class="stage">
     <figure><div class="grid8" id="filters"></div><br>the 8 learned 5 × 5 filters</figure>
@@ -69,6 +156,7 @@
 
   <p class="muted">Previous: <a href="./05-probability-and-loss.html">Probability and loss</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/convolutions">But what is a convolution?</a></p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

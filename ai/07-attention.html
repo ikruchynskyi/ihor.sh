@@ -23,6 +23,7 @@
     td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; } th:first-child, td:first-child { text-align: left; }
     .block { background: #14171d; color: #d7dde5; padding: 14px; font: 15px ui-monospace, Menlo, monospace; line-height: 2; text-align: center; }
     .block span { display: inline-block; padding: 2px 12px; border: 2px solid #4a5262; margin: 2px; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -36,6 +37,32 @@
   <div class="scene"><canvas id="s1" width="800" height="600" aria-label="Word embeddings as draggable points, with an analogy arrow"></canvas><p class="readout" id="r1"></p></div>
   <div class="row"><label><select id="a1"></select></label> − <label><select id="b1"></select></label> + <label><select id="c1"></select></label> ≈ <b id="ans1" class="math"></b></div>
   <p>Drag words around and the analogy updates. In real models these directions aren't placed by hand; they fall out of training on billions of sentences, because predicting the next word well <em>requires</em> knowing that queens and kings are alike in most ways and different in one.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>A vocabulary of \(V\) words and vectors of size \(d\) make an <b>embedding matrix</b> \(E\) with \(V\) rows and \(d\) columns. "Looking up" word number \(k\) is just taking row \(k\). (Formally: multiply a one-hot vector, all zeros except a 1 at \(k\), by \(E\). It's a matrix like any other, so backprop trains it like any other.) GPT-2 used \(V = 50{,}257\) and \(d = 768\): 38.6 million numbers just for this table.</p>
+    <p>"Close together" is measured by the angle, with <b>cosine similarity</b>, chapter 1's dot product divided by the lengths:</p>
+    <p class="formula">\[ \cos(a, b) = \frac{a \cdot b}{\lVert a \rVert\, \lVert b \rVert} \in [-1, 1] \]</p>
+    <p>The analogy is plain vector arithmetic: compute \(\text{king} - \text{man} + \text{woman}\), then find the word whose embedding has the highest cosine with the result (leaving out the three input words, which are usually closest).</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>Two embeddings point in exactly opposite directions. What is their cosine similarity?</p>
+    <ul><li data-k="a" data-says="0 is for right angles: unrelated.">0</li><li data-k="b">−1</li><li data-k="c" data-says="1 is for the same direction.">1</li></ul>
+    <div class="why">\(\cos 180^\circ = -1\). In practice opposite meanings rarely end up opposite; "hot" and "cold" are used in very similar sentences, so their embeddings are quite close.</div>
+  </div>
+  <div class="code" data-title="Build it: embeddings and an analogy"><textarea>
+// Tiny hand-made embeddings: [royalty, gender (+ female), person-ness]
+const E = { king: [0.9, -0.8, 0.9], queen: [0.9, 0.8, 0.9], man: [0.1, -0.8, 0.9], woman: [0.1, 0.8, 0.9],
+            prince: [0.7, -0.7, 0.8], princess: [0.7, 0.7, 0.8], apple: [0, 0, -0.2], castle: [0.8, 0, -0.5] };
+const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0), len = (a) => Math.sqrt(dot(a, a));
+const cos = (a, b) => dot(a, b) / (len(a) * len(b));
+const add = (a, b) => a.map((x, i) => x + b[i]), sub = (a, b) => a.map((x, i) => x - b[i]);
+
+function analogy(a, b, c) {               // a is to b as c is to ?
+  const v = add(sub(E[b], E[a]), E[c]);
+  return Object.keys(E).filter((w) => ![a, b, c].includes(w)).map((w) => [w, cos(v, E[w])]).sort((x, y) => y[1] - x[1]);
+}
+print("man → woman as king → ?", analogy("man", "woman", "king").slice(0, 3));
+print("cos(king, queen) =", cos(E.king, E.queen), " cos(king, apple) =", cos(E.king, E.apple));
+</textarea></div>
 
   <h2>2. Attention: let the other words weigh in</h2>
   <p>An embedding is the same for "bank" everywhere. Attention fixes that. Each word asks a question (its <b>query</b>), every word offers an answer tag (its <b>key</b>), and how well they match decides how much attention is paid. The word's new meaning is a <b>weighted average</b> of what the others offer (their <b>values</b>), added to its own. Click a word.</p>
@@ -46,6 +73,44 @@
   <table id="tbl"></table>
   <p>Watch "bank": next to <i>river</i>, its new position slides toward the nature side; next to <i>loan</i>, toward money. Little words like "the" have small vectors, so they barely get attention. The math in the table is chapter 5 again: scores are dot products of query and key (how much they point the same way), divided by √(size), then softmax turns them into weights that add up to 1.</p>
   <p>Now tick the <b>causal mask</b>. A language model writes left to right, so a word may only look at words before it. In "i sat by the bank of the river", "bank" can't see "river" yet and stays ambiguous. The later words carry the context forward instead, and that's one reason models need many layers.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Stack the sentence's \(n\) embeddings as rows of a matrix \(X\) (\(n \times d\)). Three learned matrices turn each word into its query, key and value:</p>
+    <p class="formula">\[ Q = X W_Q, \quad K = X W_K, \quad V = X W_V \]</p>
+    <p>Then every query is compared with every key (an \(n \times n\) table of dot products), scaled, turned into weights by softmax row by row, and used to average the values:</p>
+    <p class="formula">\[ \operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\left( \frac{Q K^{\top}}{\sqrt{d_k}} \right) V \]</p>
+    <p><b>Why \(\sqrt{d_k}\)?</b> If query and key have \(d_k\) independent random entries of size about 1, their dot product is a sum of \(d_k\) random terms, so its typical size grows like \(\sqrt{d_k}\). Without the division, big models would feed softmax huge scores, it would put all the weight on one word, and its gradient (chapter 5) would vanish. Dividing keeps scores around size 1 at any \(d_k\).</p>
+    <p><b>The causal mask</b> sets the score for every later word to \(-\infty\) before the softmax; \(e^{-\infty} = 0\), so those words get exactly zero weight.</p>
+    <p><b>Cost.</b> The \(QK^\top\) table has \(n^2\) entries: double the context, four times the work. That's why long context windows are expensive.</p>
+  </details>
+  <div class="q" data-num="8" data-tol="0">
+    <p>A head with \(d_k = 64\). What number are the scores divided by?</p>
+    <div class="why">\(\sqrt{64} = 8\).</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>With the causal mask on, how does the <b>first</b> word of a sentence attend?</p>
+    <ul><li data-k="a">100% to itself: it's the only word it may see</li><li data-k="b" data-says="The mask hides every later word, and there are no earlier ones.">Evenly to all words</li><li data-k="c" data-says="Softmax over a single score still gives that score weight 1.">It gets no attention output at all</li></ul>
+    <div class="why">Its row of scores has one finite entry (itself) and \(-\infty\) everywhere else, so softmax gives \((1, 0, 0, \dots)\).</div>
+  </div>
+  <div class="code" id="attn" data-title="Build it: attention with matrices"><textarea>
+const matmul = (A, B) => A.map((row) => B[0].map((_, j) => row.reduce((s, a, k) => s + a * B[k][j], 0)));
+const T = (A) => A[0].map((_, j) => A.map((row) => row[j]));
+const softmaxRows = (S) => S.map((r) => { const m = Math.max(...r), e = r.map((v) => Math.exp(v - m)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); });
+
+function attention(X, Wq, Wk, Wv, causal = false) {
+  const Q = matmul(X, Wq), K = matmul(X, Wk), V = matmul(X, Wv), dk = Q[0].length;
+  const scores = matmul(Q, T(K)).map((row, i) => row.map((s, j) => (causal && j > i ? -Infinity : s / Math.sqrt(dk))));
+  const weights = softmaxRows(scores);
+  return { weights, out: matmul(weights, V) };
+}
+
+// 3 words, d = 4. Random-ish projection matrices (a trained model learns these).
+const X = [[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]];
+const W = (seed) => Array.from({ length: 4 }, (_, i) => Array.from({ length: 4 }, (_, j) => Math.sin(seed + 3 * i + j)));
+const { weights, out } = attention(X, W(1), W(2), W(3));
+print("attention weights (each row adds to 1):"); table(weights);
+print("new vectors:"); table(out);
+print("with the causal mask:"); table(attention(X, W(1), W(2), W(3), true).weights);
+</textarea></div>
 
   <h2>3. A transformer is attention + a layer, stacked</h2>
   <div class="block">
@@ -56,10 +121,40 @@
     <div>last word's vector → scores for every word in the vocabulary → softmax (ch. 5) → sample the next word</div>
   </div>
   <p>That's the whole architecture. Each block lets words exchange information (attention), then lets each word think on its own (the per-word layer: matrices and bends, chapter 1). Real models run many attention <b>heads</b> in parallel per block, each with its own query, key and value matrices, so one head can track grammar while another tracks who "he" refers to. Everything is trained exactly as before: predict the next word, measure the surprise (chapter 5), backprop the blame (chapter 4), step downhill (chapter 2), on trillions of words.</p>
+  <details class="deeper" open><summary>The math: one block, and where the parameters live</summary>
+    <p>One block, for a sequence \(X\) of \(n\) vectors of size \(d\):</p>
+    <p class="formula">\[ H = X + \operatorname{Attention}(\operatorname{LN}(X)) \qquad Y = H + W_2\, \operatorname{GELU}(W_1\, \operatorname{LN}(H)) \]</p>
+    <p>The \(X + \dots\) parts are <b>residual connections</b>: each block adds a correction to its input instead of replacing it, so blame flows straight back through dozens of blocks without fading. LN is <b>layer norm</b>: shift and scale each vector to mean 0 and spread 1, which keeps numbers in a range where training is stable. GELU is a smooth ReLU.</p>
+    <p><b>Parameter count per block:</b> \(W_Q, W_K, W_V\) and an output matrix are each \(d \times d\): \(4d^2\). The per-word layer goes from \(d\) up to \(4d\) and back: \(2 \cdot 4d^2 = 8d^2\). About \(12 d^2\) per block. GPT-2 small (\(d = 768\), 12 blocks): \(12 \cdot 12 \cdot 768^2 \approx 85\) million, plus the 38.6 million embedding table: 124 million.</p>
+  </details>
+  <div class="q" data-num="7077888" data-tol="1000" data-show="about 7.08 million">
+    <p>About how many parameters are in one block with \(d = 768\), using \(12 d^2\)?</p>
+    <div class="why">\(12 \times 768^2 = 12 \times 589{,}824 = 7{,}077{,}888\).</div>
+  </div>
+  <div class="code" data-uses="attn" data-title="Build it: a whole transformer block"><textarea>
+// Uses attention() and matmul() from the block above.
+const layerNorm = (v) => { const m = v.reduce((a, b) => a + b) / v.length, s = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length + 1e-5); return v.map((x) => (x - m) / s); };
+const gelu = (x) => 0.5 * x * (1 + Math.tanh(0.7978845608 * (x + 0.044715 * x ** 3)));
+const Wr = (rows, cols, seed) => Array.from({ length: rows }, (_, i) => Array.from({ length: cols }, (_, j) => 0.5 * Math.sin(seed + 7 * i + j)));
+
+function block(X) {
+  const d = X[0].length;
+  const a = attention(X.map(layerNorm), Wr(d, d, 1), Wr(d, d, 2), Wr(d, d, 3), true).out;
+  const H = X.map((x, i) => x.map((v, j) => v + a[i][j]));                         // residual
+  const up = matmul(H.map(layerNorm), Wr(d, 4 * d, 4)).map((r) => r.map(gelu));      // d → 4d, bend
+  const down = matmul(up, Wr(4 * d, d, 5));                                          // 4d → d
+  return H.map((h, i) => h.map((v, j) => v + down[i][j]));                           // residual
+}
+const words = [[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]];
+let Y = words;
+for (let layer = 0; layer < 3; layer++) Y = block(Y);
+print("3 words after 3 blocks (same shape in, same shape out):"); table(Y.map((r) => r.map((v) => +v.toFixed(3))));
+</textarea></div>
   <p>Next: what happens when that next-word machine is allowed to call tools and act. That's <a href="./08-agents.html"><b>agents</b></a>, with Blip, the companion on this page, as the worked example.</p>
 
   <p class="muted">Previous: <a href="./06-convolutions.html">Seeing: convolutions</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/attention">Attention in transformers, visually explained</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { C, scene, axes, arrow, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

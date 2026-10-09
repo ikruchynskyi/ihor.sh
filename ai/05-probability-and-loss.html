@@ -24,6 +24,7 @@
     canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
     .samples { font: 17px ui-monospace, Menlo, monospace; line-height: 2; }
     .samples span { display: inline-block; padding: 0 6px; margin: 2px; background: #2a2f3a; color: #f4d35e; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -39,6 +40,34 @@
     <div class="row" style="margin-top:12px"><label>temperature T <input type="range" id="temp" min="0.1" max="5" step="0.05" value="1"> <span id="tv" class="math">1.00</span></label></div></div>
   <p class="readout" id="r1"></p>
   <p>Drag the scores. Only the <em>differences</em> between them matter: add the same amount to all three and nothing changes. A score 2 higher means about 7 times more likely (e² ≈ 7.4). The <b>temperature</b> divides every score first: low temperature exaggerates the differences until the top answer takes everything; high temperature flattens them toward a coin flip.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p class="formula">\[ p_i = \operatorname{softmax}(s)_i = \frac{e^{s_i / T}}{\sum_j e^{s_j / T}} \]</p>
+    <p><b>Worked example</b> with the starting scores (2, 1, −0.5) and \(T = 1\): \(e^2 = 7.389\), \(e^1 = 2.718\), \(e^{-0.5} = 0.607\). They add up to 10.714, so the probabilities are \(7.389 / 10.714 = 0.690\), then 0.254 and 0.057. Every one positive, total exactly 1.</p>
+    <p><b>Why only differences matter.</b> Add the same \(c\) to every score: each \(e^{s_i + c} = e^c \cdot e^{s_i}\), and the \(e^c\) appears on top and in every term of the bottom, so it cancels. Programs use this to stay safe: \(e^{1000}\) overflows to infinity, so they subtract the largest score first, which changes nothing mathematically and keeps every exponent ≤ 0.</p>
+    <p><b>The ratio rule.</b> \(p_i / p_j = e^{(s_i - s_j)/T}\). A score 1 higher means \(e \approx 2.7\) times likelier; 2 higher, 7.4 times. As \(T \to 0\) the ratio explodes and the top score takes all; as \(T \to \infty\) every ratio goes to 1, a uniform guess.</p>
+  </details>
+  <div class="q" data-num="0.75" data-tol="0.005">
+    <p>Two answers with scores \(0\) and \(\ln 3 \approx 1.099\), at \(T = 1\). What probability does the second one get?</p>
+    <div class="why">\(e^0 = 1\) and \(e^{\ln 3} = 3\), so \(p_2 = 3 / (1 + 3) = 0.75\). A score gap of \(\ln 3\) means "3 times as likely".</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>You add 5 to all three scores. What happens to the probabilities?</p>
+    <ul><li data-k="a" data-says="Every term gets the same factor e⁵, top and bottom, and it cancels.">The top answer gets more</li><li data-k="b">Nothing changes</li><li data-k="c" data-says="That's what a higher temperature does, not a shift.">They all move toward equal</li></ul>
+    <div class="why">Softmax only sees differences between scores. Try it with the sliders: drag all three the same amount.</div>
+  </div>
+  <div class="code" data-title="Build it: softmax, naive and safe"><textarea>
+const naive = (s) => { const e = s.map(Math.exp), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
+const softmax = (s, T = 1) => {
+  const m = Math.max(...s);                          // subtract the max: exponents ≤ 0, no overflow
+  const e = s.map((v) => Math.exp((v - m) / T)), z = e.reduce((a, b) => a + b);
+  return e.map((v) => v / z);
+};
+
+print("scores [2, 1, -0.5] →", softmax([2, 1, -0.5]));
+print("naive with big scores:", naive([1000, 999]));     // e^1000 = Infinity, Infinity/Infinity = NaN
+print("safe with big scores: ", softmax([1000, 999]));
+for (const T of [0.1, 0.5, 1, 2, 10]) print(`T = ${T}:`, softmax([2, 1, -0.5], T));
+</textarea></div>
 
   <h2>2. Loss as surprise: cross-entropy</h2>
   <p>To train, we need a number for "how wrong was that belief?". The standard answer: look only at the probability the model gave to the <b>right</b> answer, <span class="math">p</span>, and take <span class="math">−log p</span>. That's the <b>cross-entropy loss</b>, also called surprise: 100% sure and right means zero surprise; 1% on the truth means a lot.</p>
@@ -46,6 +75,20 @@
   <div class="row"><label>probability on the right answer <input type="range" id="p" min="0.005" max="1" step="0.005" value="0.6"> <span id="pv" class="math">0.60</span></label></div>
   <p class="readout" id="r2"></p>
   <p>The curve shoots up near zero. That's on purpose: a model that's <em>confidently wrong</em> gets a huge loss, so its gradient is big and it changes a lot, while a model that's unsure gets a gentle push. It's the same log loss our single neuron used in chapter 3, now for any number of answers.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>For one example whose right answer is \(y\):</p>
+    <p class="formula">\[ L = -\ln p_y \qquad \text{(averaged over the whole training set)} \]</p>
+    <p>Why a logarithm? Training data has many examples, and the probability of getting <em>all</em> of them right is a product \(p_1 p_2 p_3 \cdots\), a number that underflows to zero after a few hundred. The log turns the product into a sum, \(\ln(p_1 p_2 \cdots) = \ln p_1 + \ln p_2 + \cdots\), and the minus sign turns "maximize the probability of the data" into "minimize a loss". Minimizing cross-entropy <em>is</em> maximum likelihood.</p>
+    <p><b>Units.</b> With \(\log_2\) it's measured in bits: \(p = 1/2\) costs 1 bit, \(p = 1/4\) costs 2. A model guessing uniformly among \(V\) words has loss \(\ln V\) per word. Language models report <b>perplexity</b> \(= e^{L}\): "as unsure as choosing uniformly among this many words". A perplexity of 20 over a 50,000-word vocabulary means the model has narrowed the next word down enormously.</p>
+  </details>
+  <div class="q" data-num="2">
+    <p>The model gives the right answer probability 0.25. How many <b>bits</b> of surprise is that?</p>
+    <div class="why">\(-\log_2 0.25 = \log_2 4 = 2\). As surprising as calling two coin flips in a row.</div>
+  </div>
+  <div class="q" data-num="10.82" data-tol="0.05">
+    <p>An untrained language model spreads probability evenly over 50,000 words. What's its cross-entropy per word, in natural-log units (\(\ln\))? (Two decimals.)</p>
+    <div class="why">\(-\ln(1/50{,}000) = \ln 50{,}000 \approx 10.82\). That's where training curves of language models start; good ones end around 2 to 3.</div>
+  </div>
 
   <h2>3. Why a model "guesses": sampling</h2>
   <p>A language model is this exact machine with one answer per word in its vocabulary. Given "The cat sat on the", it gives every word a probability. Then it has to <b>pick</b> one. Always picking the top word is called greedy; it's predictable and tends to repeat itself. Instead, models usually <b>sample</b>: roll a weighted die. Try it, and try the temperature.</p>
@@ -54,11 +97,81 @@
     <button id="greedy">Greedy ×10</button><button id="sample">Sample ×20</button></div>
     <div class="samples" id="out"></div></div>
   <p>That's why the same question can get different answers, and why "temperature" is a setting in every chatbot API: near 0 it's careful and repetitive, higher it's creative and occasionally unhinged. The model doesn't "know" the next word; it knows a distribution, and the reply is one roll of the dice.</p>
+  <details class="deeper" open><summary>The math: how a computer rolls a weighted die</summary>
+    <p>Lay the probabilities end to end on a line from 0 to 1: "mat" takes the first 0.45, "floor" the next 0.18, and so on. Draw a uniform random number \(u\) between 0 and 1, and pick the word whose stretch it lands in. Each word wins with exactly its probability, because that's the length of its stretch. (This is "inverse CDF sampling"; the running total is the cumulative distribution.)</p>
+    <p>Two common tweaks: <b>top-k</b> keeps only the \(k\) likeliest words, and <b>top-p</b> (nucleus) keeps the smallest set whose probabilities add up to \(p\), say 0.9. Both cut off the long tail of unlikely words before rolling, then renormalize so what's left adds up to 1.</p>
+  </details>
+  <div class="q" data-answer="c">
+    <p>Why does greedy decoding (always the top word) tend to get stuck repeating itself?</p>
+    <ul><li data-k="a" data-says="Greedy uses the same probabilities; it just never rolls the dice.">The model's probabilities are wrong in greedy mode</li><li data-k="b" data-says="Temperature doesn't affect greedy at all: the top word stays the top word.">Its temperature is too high</li><li data-k="c">It's deterministic: once a phrase makes itself the likeliest continuation, it's picked again every time</li></ul>
+    <div class="why">Repeating text raises the probability of repeating it again (the model has just seen it), and greedy has no randomness to escape the loop.</div>
+  </div>
+  <div class="code" data-title="Build it: sampling, top-p, and checking it's fair"><textarea>
+const softmax = (s, T = 1) => { const m = Math.max(...s), e = s.map((v) => Math.exp((v - m) / T)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
+const words = ["mat", "floor", "chair", "roof", "keyboard", "moon"], logits = [3.1, 2.2, 1.6, 0.9, 1.2, -1.5];
+
+function sample(p) {
+  let u = Math.random(), i = 0;
+  while (i < p.length - 1 && u >= p[i]) { u -= p[i]; i++; }   // walk the line until u falls in a stretch
+  return i;
+}
+function topP(p, keep = 0.9) {
+  const order = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]), out = p.map(() => 0);
+  let total = 0;
+  for (const [v, i] of order) { if (total >= keep) break; out[i] = v; total += v; }
+  return out.map((v) => v / total);                         // renormalize what's left
+}
+
+const p = softmax(logits);
+const counts = words.map(() => 0);
+for (let k = 0; k < 10000; k++) counts[sample(p)]++;
+table([["word", "probability", "share of 10,000 samples", "after top-p 0.9"], ...words.map((w, i) => [w, p[i], counts[i] / 10000, topP(p)[i]])]);
+</textarea></div>
 
   <h2>4. The gradient is "what you said minus what was true"</h2>
   <p>Here's the beautiful part. Put softmax and cross-entropy together and do the backprop from chapter 4, and the gradient for each score comes out as simply</p>
   <p class="math" style="text-align:center">∂loss / ∂score(i) = p(i) − (1 if i is the right answer, else 0)</p>
   <p>The right answer's score gets pushed up by how much probability it was <em>missing</em>; every wrong answer gets pushed down by how much it <em>took</em>. Pick the right answer and train.</p>
+  <details class="deeper" open><summary>The math: where "p − y" comes from</summary>
+    <p>Write the loss with the softmax spelled out (and \(T = 1\)):</p>
+    <p class="formula">\[ L = -\ln \frac{e^{s_y}}{\sum_j e^{s_j}} = -s_y + \ln \sum_j e^{s_j} \]</p>
+    <p>Differentiate with respect to one score \(s_i\). The first term gives \(-1\) if \(i\) is the right answer, else 0. The second is the log of a sum: its slope is (slope of the sum) / (the sum) \(= e^{s_i} / \sum_j e^{s_j}\), which is exactly \(p_i\). Together:</p>
+    <p class="formula">\[ \frac{\partial L}{\partial s_i} = p_i - y_i, \qquad y_i = \begin{cases} 1 & i \text{ is right} \\ 0 & \text{otherwise} \end{cases} \]</p>
+    <p>Those numbers always add up to zero (the probabilities add to 1, and so does \(y\)): whatever the right answer gains, the wrong ones lose. Chapter 3's neuron was the two-answer case of this same formula.</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>Probabilities for (cat, dog, bird) are (0.7, 0.2, 0.1), and the right answer is dog. What's the gradient for the three scores?</p>
+    <ul><li data-k="a" data-says="That's 1 − p for each. The formula is p − y: subtract 1 only for the right answer.">(0.3, 0.8, 0.9)</li><li data-k="b">(0.7, −0.8, 0.1)</li><li data-k="c" data-says="Only the right answer gets the −1. Cat and bird keep their plain p.">(−0.3, −0.8, −0.9)</li></ul>
+    <div class="why">\(p - y = (0.7 - 0,\ 0.2 - 1,\ 0.1 - 0)\). Stepping against it lowers cat's score most, raises dog's, and lowers bird's a little. Note it adds to zero.</div>
+  </div>
+  <div class="code" data-title="Build it: a 3-class classifier from scratch (softmax regression)"><textarea>
+// Points in 3 clouds; the model: scores = W·x + b (3 scores), softmax, cross-entropy, gradient p − y.
+const centers = [[2, 0], [-1, 1.7], [-1, -1.7]];
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+const data = [];
+for (let c = 0; c < 3; c++) for (let k = 0; k < 60; k++) data.push({ x: [centers[c][0] + gauss() * 0.8, centers[c][1] + gauss() * 0.8], y: c });
+const softmax = (s) => { const m = Math.max(...s), e = s.map((v) => Math.exp(v - m)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
+
+let W = [[0, 0], [0, 0], [0, 0]], b = [0, 0, 0];
+const losses = [];
+for (let epoch = 0; epoch < 100; epoch++) {
+  const gW = [[0, 0], [0, 0], [0, 0]], gb = [0, 0, 0];
+  let L = 0;
+  for (const { x, y } of data) {
+    const p = softmax(W.map((w, i) => w[0] * x[0] + w[1] * x[1] + b[i]));
+    L -= Math.log(p[y]) / data.length;
+    for (let i = 0; i < 3; i++) {
+      const g = (p[i] - (i === y ? 1 : 0)) / data.length;   // ∂L/∂score_i
+      gW[i][0] += g * x[0]; gW[i][1] += g * x[1]; gb[i] += g;
+    }
+  }
+  W = W.map((w, i) => [w[0] - 0.5 * gW[i][0], w[1] - 0.5 * gW[i][1]]); b = b.map((v, i) => v - 0.5 * gb[i]);
+  losses.push(L);
+}
+const acc = data.filter(({ x, y }) => { const s = W.map((w, i) => w[0] * x[0] + w[1] * x[1] + b[i]); return s.indexOf(Math.max(...s)) === y; }).length / data.length;
+print("accuracy", (acc * 100).toFixed(1) + "%", " final loss", losses.at(-1).toFixed(3), " (started at ln 3 =", Math.log(3).toFixed(3) + ")");
+plot(losses, { label: "cross-entropy per epoch" });
+</textarea></div>
   <div class="stage"><div class="bars" id="tr"></div>
     <div class="row" style="margin-top:12px"><label>right answer <select id="truth"><option>cat</option><option selected>dog</option><option>bird</option></select></label><button id="step4">One training step</button><button id="reset4">Reset</button></div></div>
   <p class="readout" id="r4"></p>
@@ -66,6 +179,7 @@
 
   <p class="muted">Previous: <a href="./04-backprop.html">Backprop you can watch</a> · All chapters: <a href="./">AI from scratch</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);
