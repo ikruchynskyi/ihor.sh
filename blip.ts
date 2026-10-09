@@ -39,7 +39,13 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ station }) => {
       const found = await findStations(String(station));
       if (!found.length) return { error: `no station matches "${station}"` };
-      return Promise.all(found.slice(0, 3).map(async (s) => ({ ...(await stationArrivals(s.id, 5)), mapLink: `/nyc/#station=${s.id}` })));
+      // Plain sentences, not nested JSON: the small model misread the nested form ("0 min" when the data said 6).
+      return Promise.all(found.slice(0, 3).map(async (s) => {
+        const d = await stationArrivals(s.id, 5);
+        if (!d) return { station: s.name, note: "no arrival data" };
+        const line = (x: any) => `${x.label}: ${x.trains.length ? x.trains.map((t: any) => `${t.route} train in ${t.minutes} min`).join(", ") : "no trains listed"}`;
+        return { station: `${d.station} (${d.lines})`, next: [line(d.north), line(d.south)], mapLink: `/nyc/#station=${s.id}` };
+      }));
     },
   },
   free_events: {
