@@ -64,7 +64,7 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   trip_plan: {
-    description: "Plan a trip in NYC by car, bike or on foot: distance, time, and the live traffic cameras along the route in order.",
+    description: "Plan a trip in NYC by car, bike or on foot: distance, time (car trips include live traffic delay), and the live traffic cameras along the route in order.",
     parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike or walk", enum: ["drive", "bike", "walk"] }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
     required: ["from", "to"],
     run: async ({ from, to, mode, avoid_ferries }) => { const t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries }); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },

@@ -158,6 +158,21 @@ export async function geocode(text: string) {
 }
 
 const COSTING = { drive: "auto", bike: "bicycle", walk: "pedestrian" } as const;
+
+/** A car route with live and typical traffic from TomTom (key in .env as TOMTOM_API_KEY). */
+async function tomtomRoute(a: { lat: number; lon: number }, b: { lat: number; lon: number }, avoidFerries: boolean) {
+  const q = new URLSearchParams({ key: env("TOMTOM_API_KEY"), traffic: "true", travelMode: "car", computeTravelTimeFor: "all", sectionType: "ferry", routeRepresentation: "polyline" });
+  if (avoidFerries) q.set("avoid", "ferries");
+  const d = await json(`https://api.tomtom.com/routing/1/calculateRoute/${a.lat},${a.lon}:${b.lat},${b.lon}/json?${q}`);
+  const r = d.routes?.[0];
+  if (!r) throw new Error("no TomTom route");
+  return {
+    distance: r.summary.lengthInMeters, duration: r.summary.travelTimeInSeconds, delay: r.summary.trafficDelayInSeconds ?? 0,
+    noTraffic: r.summary.noTrafficTravelTimeInSeconds ?? r.summary.travelTimeInSeconds,
+    usesFerry: (r.sections ?? []).some((x: any) => x.sectionType === "FERRY"),
+    line: r.legs.flatMap((l: any) => l.points.map((p: any) => [p.latitude, p.longitude])) as [number, number][],
+  };
+}
 /** Valhalla's encoded polyline (6 decimal places) → [lat, lon] points. */
 function decodePolyline(str: string, precision = 6) {
   const out: [number, number][] = [];
@@ -173,15 +188,16 @@ function decodePolyline(str: string, precision = 6) {
 export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING = "drive", { avoidFerries = false } = {}) {
   const [a, b] = await Promise.all([geocode(from), geocode(to)]);
   if (!a || !b) return { error: `Couldn't find ${!a ? from : to} in NYC.` };
+  // Car trips with a TomTom key: live traffic in the time. Otherwise (and for bike/walk) Valhalla's typical speeds.
+  const tt = mode === "drive" && env("TOMTOM_API_KEY") ? await tomtomRoute(a, b, avoidFerries).catch(() => null) : null;
   const costing = COSTING[mode] ?? "auto";
   const req = { locations: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }], costing, costing_options: { [costing]: { use_ferry: avoidFerries ? 0 : 0.5 } }, units: "kilometers" };
-  const r = await fetch(`https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify(req))}`,
-    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) });
-  const trip = (await r.json()).trip;
-  if (!trip) return { error: "No route found." };
-  const usesFerry = trip.legs.some((l: any) => l.maneuvers.some((m: any) => m.type === 28)); // 28 = board a ferry
-  const route = { distance: trip.summary.length * 1000, duration: trip.summary.time };
-  const line = trip.legs.flatMap((l: any) => decodePolyline(l.shape)) as [number, number][];
+  const trip = tt ? null : (await (await fetch(`https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify(req))}`,
+    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) })).json()).trip;
+  if (!tt && !trip) return { error: "No route found." };
+  const usesFerry = tt ? tt.usesFerry : trip.legs.some((l: any) => l.maneuvers.some((m: any) => m.type === 28)); // 28 = board a ferry
+  const route = tt ?? { distance: trip.summary.length * 1000, duration: trip.summary.time };
+  const line = (tt ? tt.line : trip.legs.flatMap((l: any) => decodePolyline(l.shape))) as [number, number][];
   // Flat-earth meters are plenty at city scale.
   const M_LAT = 111_320, M_LON = 111_320 * Math.cos((a.lat * Math.PI) / 180);
   const cams = await trafficCameras().catch(() => []);
@@ -207,7 +223,8 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof COST
   const sp = mode === "drive" ? await trafficSpeeds().catch(() => null) : null;
   const traffic = sp ? { asOf: sp.asOf, stale: sp.stale, onRoute: sp.links.filter((l: any) => l.ok && l.points.filter(([la, lo]: number[]) => near(la, lo)).length >= l.points.length * 0.6)
     .map((l: any) => ({ name: l.name, mph: l.mph })).sort((x: any, y: any) => x.mph - y.mph) } : null;
-  return { from: a, to: b, mode, avoidFerries, usesFerry, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+  const eta = tt ? { source: "TomTom live traffic", delayMinutes: Math.round(tt.delay / 60), noTrafficMinutes: Math.round(tt.noTraffic / 60) } : { source: mode === "drive" ? "typical speeds (no live traffic)" : "typical speeds" };
+  return { from: a, to: b, mode, avoidFerries, usesFerry, eta, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
 }
 
