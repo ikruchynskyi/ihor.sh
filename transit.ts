@@ -232,11 +232,14 @@ async function cached<T>(key: string, ms: number, f: () => Promise<T>): Promise<
 }
 const busJson = async (u: string) => { const r = await fetch(`${BUSTIME}${u}${u.includes("?") ? "&" : "?"}key=${busKey()}`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`bustime ${r.status}`); return r.json(); };
 
-/** Bus stops in a map area (snapped to a ~550 m grid cell so neighbors share the cache). */
+/** Bus stops in one cell of a 0.0075° grid (~800 m). Bus Time answers at most 100 stops per call; the densest
+ *  cell (Midtown) has ~60, so a cell never gets cut off. The map asks cell by cell, and neighbors share the cache. */
+export const BUS_GRID = 0.0075;
 export async function busStops(lat: number, lon: number) {
-  const la = Math.round(lat * 200) / 200, lo = Math.round(lon * 200) / 200;
+  const la = +(Math.round(lat / BUS_GRID) * BUS_GRID).toFixed(4), lo = +(Math.round(lon / BUS_GRID) * BUS_GRID).toFixed(4);
   return cached(`stops:${la},${lo}`, 24 * 3600_000, async () => {
-    const d = await busJson(`/where/stops-for-location.json?lat=${la}&lon=${lo}&latSpan=0.006&lonSpan=0.008`);
+    const d = await busJson(`/where/stops-for-location.json?lat=${la}&lon=${lo}&latSpan=${BUS_GRID + 0.0005}&lonSpan=${BUS_GRID + 0.0005}`);
+    if (d.data.limitExceeded) console.log(`bus stops: cell ${la},${lo} hit the 100-stop limit`);
     return d.data.stops.map((s: any) => ({ id: s.id, name: s.name, dir: s.direction, lat: s.lat, lon: s.lon,
       routes: s.routes.map((r: any) => ({ id: r.id, name: r.shortName, color: `#${r.color || "1c7ed6"}`, text: `#${r.textColor || "FFFFFF"}`, long: r.longName })) }));
   });

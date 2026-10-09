@@ -275,6 +275,8 @@ async function toggle(k, on) {
   l.on = on;
   if (!on) return l.group.remove();
   l.group.addTo(map);
+  if (k === "buses" && map.getZoom() < 15) map.setZoom(15); // stops only show from zoom 15; moveend then loads them
+  if (k === "buses") return loadBusStops(l.group).catch(() => {});
   if (!l.loaded) { l.loaded = true; await l.load(l.group).catch((e) => ($(`n-${k}`).textContent = `(failed: ${e.message})`)); }
 }
 const DOT = 1.3; // every marker a bit bigger, so they read on a phone
@@ -392,24 +394,26 @@ setInterval(() => following && (following.vehicle ? followBus : followTrain)(fol
 
 // Buses (MTA Bus Time): stops load for the area in view once zoomed in; a stop's popup lists the next buses.
 const busBullet = (r) => `<span class="bullet bus" style="background:${esc(r.color)};color:${esc(r.text ?? "#fff")}">${esc(r.name)}</span>`;
-const busStopMarkers = new Map(), busCells = new Set();
+const busStopMarkers = new Map(), busCells = new Set(); // cells (0.0075° grid, as on the server) already loaded
+const BUS_GRID = 0.0075;
 async function loadBusStops(g) {
-  const z = map.getZoom(), b = map.getBounds();
-  if (z < 15) return ($("n-buses").textContent = "(zoom in to see stops)");
-  const cells = [];
-  for (let la = Math.floor(b.getSouth() * 200) / 200; la <= b.getNorth() + 0.005; la += 0.005)
-    for (let lo = Math.floor(b.getWest() * 200) / 200; lo <= b.getEast() + 0.005; lo += 0.005) {
-      const key = `${la.toFixed(3)},${lo.toFixed(3)}`;
-      if (!busCells.has(key)) { busCells.add(key); cells.push([la, lo]); }
-    }
-  for (const list of await Promise.all(cells.slice(0, 16).map(([la, lo]) => getJSON(`/api/nyc/bus-stops?lat=${la}&lon=${lo}`).catch(() => [])))) {
+  if (map.getZoom() < 15) return ($("n-buses").textContent = "(zoom in to see stops)");
+  const b = map.getBounds(), cells = [];
+  for (let i = Math.floor(b.getSouth() / BUS_GRID); i <= Math.ceil(b.getNorth() / BUS_GRID); i++)
+    for (let j = Math.floor(b.getWest() / BUS_GRID); j <= Math.ceil(b.getEast() / BUS_GRID); j++)
+      if (!busCells.has(`${i},${j}`)) cells.push([i, j]);
+  $("n-buses").textContent = "(loading…)";
+  await Promise.all(cells.slice(0, 60).map(async ([i, j]) => {
+    const list = await getJSON(`/api/nyc/bus-stops?lat=${(i * BUS_GRID).toFixed(4)}&lon=${(j * BUS_GRID).toFixed(4)}`).catch(() => null);
+    if (!list) return; // not marked loaded, so the next move retries it
+    busCells.add(`${i},${j}`);
     for (const st of list) {
       if (busStopMarkers.has(st.id)) continue;
       busStopMarkers.set(st.id, L.circleMarker([st.lat, st.lon], { radius: 4 * DOT, color: "#fff", weight: 1.5, fillColor: "#1c7ed6", fillOpacity: 0.95, bubblingMouseEvents: false })
         .bindTooltip(`🚌 ${esc(st.name)} (${st.routes.map((r) => r.name).join(", ")})`).bindPopup("Loading…", { maxWidth: 320 })
         .on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))).addTo(g));
     }
-  }
+  }));
   $("n-buses").textContent = `(${busStopMarkers.size} stops loaded)`;
 }
 map.on("moveend", () => { if (LAYERS.buses.on) loadBusStops(LAYERS.buses.group).catch(() => {}); });
