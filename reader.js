@@ -42,20 +42,23 @@ function loadFont(key) {
 // The page styles: reading text, colors and headings, all from the current settings.
 const style = document.createElement("style");
 document.head.append(style);
-const TEXT = "main :is(p, li, dd, dt, blockquote, figcaption, .lede)";
+// Reading text in articles, plus the side panels of the map pages.
+const TEXT = ":is(main, #panel, aside) :is(p, li, dd, dt, blockquote, figcaption, .lede, td, th, label, summary)";
 function apply() {
   const f = FONTS[s.font] ?? FONTS.atkinson, t = THEMES[s.theme] ?? THEMES.arcade;
   const [fg, bg, card, accent, muted, line, ok] = t.c;
+  const k = s.size / DEFAULTS.size; // headings grow and shrink with the text size
   loadFont(s.font);
   style.textContent = `
-    :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --accent: ${accent}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
+    :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${t.dark ? "#1b1020" : "#ffffff"}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
     html, body { background: ${bg} !important; color: ${fg}; }
     body { font-family: ${f.css}; }
     main strong, main b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
     ${TEXT} { font-family: ${f.css} !important; font-size: ${s.size}px !important; line-height: ${s.line} !important; letter-spacing: ${s.letter}em !important; }
     ${t.dark ? "" : "body::after, body::before { display: none; } #wf { opacity: .12 !important; } h1 { text-shadow: none !important; } .ihor-hud { background: " + card + " !important; }"}
     ${s.headings === "plain" ? `h1, h2, h3, .eyebrow { font-family: ${f.css} !important; font-weight: 700 !important; text-shadow: none !important; letter-spacing: -0.01em !important; }
-      h1 { font-size: clamp(28px, 5vw, 40px) !important; line-height: 1.15 !important; } h2 { font-size: 24px !important; line-height: 1.25 !important; } h3 { font-size: 19px !important; }` : ""}`;
+      h1 { font-size: calc(clamp(28px, 5vw, 40px) * ${k}) !important; line-height: 1.15 !important; } h2 { font-size: ${24 * k}px !important; line-height: 1.25 !important; } h3 { font-size: ${19 * k}px !important; }`
+    : k !== 1 ? `h1 { font-size: calc(clamp(18px, 3.4vw, 28px) * ${k}) !important; } h2 { font-size: calc(clamp(13px, 2vw, 16px) * ${k}) !important; } h3 { font-size: ${11 * k}px !important; }` : ""}`;
 }
 apply();
 
