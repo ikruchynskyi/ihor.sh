@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Attention and Transformers</title>
+  <meta name="description" content="AI from scratch, chapter 7: words as arrows you can drag, analogies as vector arithmetic, attention as a weighted average that lets 'bank' mean river or money, the causal mask, and how a transformer stacks it all to predict the next word." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .scene { margin: 18px 0 8px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; cursor: grab; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .sent { background: #14171d; padding: 18px 12px 12px; font: 20px ui-monospace, Menlo, monospace; display: flex; flex-wrap: wrap; gap: 6px; }
+    .sent button { font: inherit !important; text-transform: none; padding: 4px 10px; position: relative; }
+    .sent button.sel { outline: 2px solid #f4d35e; }
+    .sent button .w { position: absolute; left: 0; right: 0; bottom: -6px; height: 4px; background: #fc6255; transform-origin: left; }
+    table { border-collapse: collapse; width: 100%; font: 15px ui-monospace, Menlo, monospace; }
+    td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; } th:first-child, td:first-child { text-align: left; }
+    .block { background: #14171d; color: #d7dde5; padding: 14px; font: 15px ui-monospace, Menlo, monospace; line-height: 2; text-align: center; }
+    .block span { display: inline-block; padding: 2px 12px; border: 2px solid #4a5262; margin: 2px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 7</p>
+  <h1>Attention and transformers</h1>
+  <p class="lede">Every chatbot you've used is a <b>transformer</b>: a stack of two operations repeated dozens of times. One of them is chapter 3's familiar layer. The other, <b>attention</b>, is the new idea, and it's what lets a model understand that "bank" means something different next to "river" than next to "loan". Here's attention with all the numbers visible.</p>
+
+  <h2>1. Words are arrows</h2>
+  <p>A model first turns every word into a vector, its <b>embedding</b>: a list of numbers learned so that words used in similar ways end up close together. Real embeddings have hundreds or thousands of directions; here are 16 words in just two, so we can see them. Directions in this space mean something: going from <i>man</i> to <i>woman</i> is about the same move as from <i>king</i> to <i>queen</i>.</p>
+  <div class="scene"><canvas id="s1" width="800" height="600" aria-label="Word embeddings as draggable points, with an analogy arrow"></canvas><p class="readout" id="r1"></p></div>
+  <div class="row"><label><select id="a1"></select></label> − <label><select id="b1"></select></label> + <label><select id="c1"></select></label> ≈ <b id="ans1" class="math"></b></div>
+  <p>Drag words around and the analogy updates. In real models these directions aren't placed by hand; they fall out of training on billions of sentences, because predicting the next word well <em>requires</em> knowing that queens and kings are alike in most ways and different in one.</p>
+
+  <h2>2. Attention: let the other words weigh in</h2>
+  <p>An embedding is the same for "bank" everywhere. Attention fixes that. Each word asks a question (its <b>query</b>), every word offers an answer tag (its <b>key</b>), and how well they match decides how much attention is paid. The word's new meaning is a <b>weighted average</b> of what the others offer (their <b>values</b>), added to its own. Click a word.</p>
+  <div class="row"><label>sentence <select id="sent"><option value="0">i sat by the bank of the river</option><option value="1">the bank raised rates on my loan</option><option value="2">fish swim near the river bank</option></select></label>
+    <label><input type="checkbox" id="mask"> causal mask: only look back (like GPT)</label></div>
+  <div class="sent" id="words" aria-label="Click a word to see its attention"></div>
+  <div class="scene"><canvas id="s2" width="800" height="600" aria-label="The sentence's words in embedding space, attention arcs, and where the selected word moves"></canvas><p class="readout" id="r2"></p></div>
+  <table id="tbl"></table>
+  <p>Watch "bank": next to <i>river</i>, its new position slides toward the nature side; next to <i>loan</i>, toward money. Little words like "the" have small vectors, so they barely get attention. The math in the table is chapter 5 again: scores are dot products of query and key (how much they point the same way), divided by √(size), then softmax turns them into weights that add up to 1.</p>
+  <p>Now tick the <b>causal mask</b>. A language model writes left to right, so a word may only look at words before it. In "i sat by the bank of the river", "bank" can't see "river" yet and stays ambiguous. The later words carry the context forward instead, and that's one reason models need many layers.</p>
+
+  <h2>3. A transformer is attention + a layer, stacked</h2>
+  <div class="block">
+    <div>words → embeddings (+ position)</div>
+    <div>↓ ×96 in a big model</div>
+    <div><span>attention: mix in context</span> → <span>add &amp; normalize</span> → <span>layer from ch. 3: think per word</span> → <span>add &amp; normalize</span></div>
+    <div>↓</div>
+    <div>last word's vector → scores for every word in the vocabulary → softmax (ch. 5) → sample the next word</div>
+  </div>
+  <p>That's the whole architecture. Each block lets words exchange information (attention), then lets each word think on its own (the per-word layer: matrices and bends, chapter 1). Real models run many attention <b>heads</b> in parallel per block, each with its own query, key and value matrices, so one head can track grammar while another tracks who "he" refers to. Everything is trained exactly as before: predict the next word, measure the surprise (chapter 5), backprop the blame (chapter 4), step downhill (chapter 2), on trillions of words.</p>
+  <p>Next: what happens when that next-word machine is allowed to call tools and act. That's <b>agents</b>, with Blip, the companion on this page, as the worked example.</p>
+
+  <p class="muted">Previous: <a href="./06-convolutions.html">Seeing: convolutions</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/attention">Attention in transformers, visually explained</a>.</p>
+</main>
+<script type="module">
+import { C, scene, axes, arrow, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+
+// 1. a toy embedding: x ≈ "royal ↔ everyday", y ≈ "female ↔ male" for people; places and animals in their own corners.
+const E = {
+  king: [2.5, 1.5], queen: [2.5, -1.2], man: [0.5, 1.5], woman: [0.5, -1.2], prince: [2.1, 2.2], princess: [2.1, -0.5],
+  Paris: [-2.8, 2.9], France: [-1.6, 2.4], Tokyo: [-2.8, 0.9], Japan: [-1.6, 0.4],
+  dog: [-2.4, -1.4], puppy: [-3.2, -2.3], cat: [-1.2, -1.6], kitten: [-2.0, -2.5], horse: [-0.4, -2.6], foal: [-1.2, -3.5],
+};
+const handles = Object.entries(E).map(([w, p]) => ({ w, p, color: C.blue }));
+for (const id of ["a1", "b1", "c1"]) $(id).innerHTML = Object.keys(E).map((w) => `<option>${w}</option>`).join("");
+$("a1").value = "king"; $("b1").value = "man"; $("c1").value = "woman";
+const pos = (w) => handles.find((h) => h.w === w).p;
+const r1 = scene("s1", (s) => {
+  axes(s);
+  const [a, b, c] = ["a1", "b1", "c1"].map((id) => pos($(id).value)), t = [a[0] - b[0] + c[0], a[1] - b[1] + c[1]];
+  arrow(s, b, a, "rgba(244,211,94,0.6)", 3); arrow(s, c, t, C.yellow, 3);
+  const [tx, ty] = s.toPx(t); s.g.strokeStyle = C.yellow; s.g.lineWidth = 2; s.g.beginPath(); s.g.arc(tx, ty, 14, 0, 7); s.g.stroke();
+  s.g.font = "16px ui-monospace, monospace"; s.g.fillStyle = C.text;
+  for (const h of handles) { const [x, y] = s.toPx(h.p); s.g.fillText(h.w, x + 11, y + 5); }
+}, () => handles, () => {
+  const [a, b, c] = ["a1", "b1", "c1"].map((id) => pos($(id).value)), t = [a[0] - b[0] + c[0], a[1] - b[1] + c[1]];
+  const best = handles.filter((h) => ![$("a1").value, $("b1").value, $("c1").value].includes(h.w)).sort((x, y) => Math.hypot(x.p[0] - t[0], x.p[1] - t[1]) - Math.hypot(y.p[0] - t[0], y.p[1] - t[1]))[0];
+  $("ans1").textContent = best.w;
+  $("r1").textContent = `${$("a1").value} − ${$("b1").value} + ${$("c1").value} = (${t.map((v) => v.toFixed(2)).join(", ")}) · nearest word: ${best.w} (${Math.hypot(best.p[0] - t[0], best.p[1] - t[1]).toFixed(2)} away)`;
+}, { unit: 55, snap: false });
+for (const id of ["a1", "b1", "c1"]) $(id).onchange = r1;
+
+// 2. attention over a sentence, in a 2-D space: x = money (+) ↔ nature (−), y = how much the word carries meaning.
+const V = { i: [0.15, 0.45], sat: [-0.45, 0.6], by: [0.35, 0.2], the: [-0.3, 0.1], bank: [0, 1.6], of: [0.45, 0.08], river: [-2.2, 1.3], raised: [0.9, 0.6], rates: [2.0, 1.2], on: [0.3, 0.2], my: [0.6, 0.35], loan: [2.2, 1.3], fish: [-1.8, 1.1], swim: [-1.5, 0.8], near: [-0.6, 0.3] };
+const SENTS = ["i sat by the bank of the river", "the bank raised rates on my loan", "fish swim near the river bank"].map((s) => s.split(" "));
+let sel = null;
+function attention(words, q) {
+  // query · key / √2 (keys and values are the embeddings here; a real model learns separate matrices for each)
+  const scores = words.map((w, j) => ($("mask").checked && j > q ? -Infinity : (dot(V[words[q]], V[w]) * 1.6) / Math.SQRT2));
+  const m = Math.max(...scores), e = scores.map((s) => (s === -Infinity ? 0 : Math.exp(s - m))), z = e.reduce((a, b) => a + b, 0);
+  const w = e.map((v) => v / z), mix = words.reduce((acc, wd, j) => [acc[0] + w[j] * V[wd][0], acc[1] + w[j] * V[wd][1]], [0, 0]);
+  return { scores, w, out: [V[words[q]][0] + mix[0], V[words[q]][1] + mix[1]] };
+}
+const r2 = scene("s2", (s) => {
+  axes(s);
+  const words = SENTS[+$("sent").value];
+  s.g.font = "16px ui-monospace, monospace";
+  s.g.fillStyle = "#8f98a8"; s.g.fillText("← nature", 10, s.toPx([0, 0])[1] - 8); s.g.fillText("money →", s.W - 80, s.toPx([0, 0])[1] - 8);
+  if (sel != null) {
+    const { w, out } = attention(words, sel), [sx, sy] = s.toPx(V[words[sel]]);
+    words.forEach((wd, j) => { if (!w[j] || j === sel) return; const [x, y] = s.toPx(V[wd]); s.g.strokeStyle = `rgba(252,98,85,${0.15 + 0.85 * w[j]})`; s.g.lineWidth = 1 + 10 * w[j]; s.g.beginPath(); s.g.moveTo(sx, sy); s.g.quadraticCurveTo((sx + x) / 2, Math.min(sy, y) - 60, x, y); s.g.stroke(); });
+    arrow(s, V[words[sel]], out, C.yellow, 4);
+    const [ox, oy] = s.toPx(out); s.g.fillStyle = C.yellow; s.g.fillText(`${words[sel]} (here)`, ox + 10, oy - 8);
+  }
+  const placed = new Set();
+  for (const wd of words) { if (placed.has(wd)) continue; placed.add(wd); const [x, y] = s.toPx(V[wd]); s.g.fillStyle = C.blue; s.g.beginPath(); s.g.arc(x, y, 6, 0, 7); s.g.fill(); s.g.fillStyle = C.text; s.g.fillText(wd, x + 9, y + 18); }
+}, () => [], () => {
+  const words = SENTS[+$("sent").value];
+  $("words").innerHTML = words.map((w, j) => `<button data-j="${j}" class="${j === sel ? "sel" : ""}">${w}${sel != null ? `<span class="w" style="transform:scaleX(${attention(words, sel).w[j]})"></span>` : ""}</button>`).join("");
+  if (sel == null) { $("r2").textContent = "Click a word above."; $("tbl").innerHTML = ""; return; }
+  const { scores, w, out } = attention(words, sel), shift = out[0] - V[words[sel]][0];
+  $("r2").textContent = `"${words[sel]}" moves ${Math.abs(shift) < 0.15 ? "barely" : shift < 0 ? `toward nature by ${(-shift).toFixed(2)}` : `toward money by ${shift.toFixed(2)}`} · red bars under each word = attention weight`;
+  $("tbl").innerHTML = `<tr><th>word</th><th>score q·k/√2</th><th>weight (softmax)</th></tr>` + words.map((wd, j) => `<tr><td>${wd}${j === sel ? " (itself)" : ""}</td><td>${scores[j] === -Infinity ? "masked" : scores[j].toFixed(2)}</td><td>${(w[j] * 100).toFixed(1)}%</td></tr>`).join("");
+}, { unit: 110, snap: false, origin: [400, 540] });
+$("words").addEventListener("click", (e) => { const j = e.target.closest("[data-j]")?.dataset.j; if (j == null) return; sel = +j; r2(); const words = SENTS[+$("sent").value]; if (words[sel] === "bank") { const s = attention(words, sel).out[0]; say(Math.abs(s) < 0.15 ? "Bank... of what? I can't tell yet." : s < 0 ? "Bank by a river. Grassy!" : "Bank with a loan. Money!", "think"); } });
+$("sent").onchange = () => { sel = SENTS[+$("sent").value].indexOf("bank"); r2(); };
+$("mask").onchange = r2;
+sel = SENTS[0].indexOf("bank"); r2();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 7: Attention and transformers", analogy: [$("a1").value, $("b1").value, $("c1").value, $("ans1").textContent], sentence: SENTS[+$("sent").value].join(" "), selectedWord: sel == null ? null : SENTS[+$("sent").value][sel], causalMask: $("mask").checked });
+</script>
+</body>
+</html>
