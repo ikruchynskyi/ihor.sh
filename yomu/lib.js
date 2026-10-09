@@ -185,11 +185,13 @@ export async function strokes(ch, el) {
   el.innerHTML = svg.slice(svg.indexOf("<svg"));
   const paths = [...el.querySelectorAll("path")];
   el.querySelectorAll("text").forEach((t) => t.remove());
+  // Each stroke draws itself in order. (A CSS transition here raced its own start value: strokes appeared at once.)
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   paths.forEach((p, i) => {
     const len = p.getTotalLength();
-    Object.assign(p.style, { fill: "none", stroke: "currentColor", strokeWidth: "4", strokeLinecap: "round", strokeDasharray: len, strokeDashoffset: len, transition: `stroke-dashoffset ${0.45 + len / 250}s ease ${i * 0.55}s` });
+    Object.assign(p.style, { fill: "none", stroke: "currentColor", strokeWidth: "4", strokeLinecap: "round", strokeDasharray: len });
+    if (!still) p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: (0.45 + len / 250) * 1000, delay: i * 550, easing: "ease-in-out", fill: "backwards" });
   });
-  requestAnimationFrame(() => requestAnimationFrame(() => paths.forEach((p) => (p.style.strokeDashoffset = 0))));
 }
 
 // ---------- the settings bar every page shows ----------
