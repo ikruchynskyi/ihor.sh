@@ -66,6 +66,9 @@
     .arr-times button { all: unset; cursor: pointer; border-bottom: 1px dotted currentColor; } .arr-times button.first { font-weight: bold; font-size: 1.1em; }
     .arr-times button:focus-visible, .linkish:focus-visible { outline: 2px solid currentColor; }
     .linkish { all: unset; cursor: pointer; border-bottom: 1px dotted currentColor; }
+    #tripOut .opt { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 8px 10px; text-transform: none; line-height: 1.6 !important; }
+    #tripOut .opt.on { outline: 2px solid var(--accent); }
+    #tripOut .steps { padding-left: 4px; list-style: none; margin: 8px 0; } #tripOut .steps li { margin: 0 0 8px; }
     .bullet.bus { width: auto; min-width: 22px; padding: 0 5px; border-radius: 4px; font-size: 11px; }
     .bullet.sm { width: 18px; height: 18px; font-size: 10px; box-shadow: 0 0 0 1px #fff8; }
     .boat { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 3px solid; background: #fff; font-size: 12px; }
@@ -103,6 +106,7 @@
         <label title="Car"><input type="radio" name="tMode" value="drive" checked><span aria-hidden="true">🚗</span><b>Car</b></label>
         <label title="Bike"><input type="radio" name="tMode" value="bike"><span aria-hidden="true">🚲</span><b>Bike</b></label>
         <label title="Walk"><input type="radio" name="tMode" value="walk"><span aria-hidden="true">🚶</span><b>Walk</b></label>
+        <label title="Commute: subway, buses and walking"><input type="radio" name="tMode" value="transit"><span aria-hidden="true">🚇</span><b>Commute</b></label>
       </fieldset>
       <label><input type="checkbox" id="tNoFerry"> Avoid ferries</label>
       <button style="margin-top:6px">Plan</button> <button type="button" id="tClear" style="margin-top:6px">Clear</button>
@@ -610,6 +614,7 @@ $("trip").addEventListener("submit", async (e) => {
   tripLayer.clearLayers();
   const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
+  if (d.mode === "transit") return showCommute(d, 0);
   seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => ({ cameraId: c.id, name: c.name })) };
   const line = L.polyline(d.line, { color: "#4de1ff", weight: 5, opacity: 0.85 }).addTo(tripLayer);
   // Traffic on the route (car trips): each jam painted over the line by how bad it is.
@@ -635,6 +640,31 @@ $("trip").addEventListener("submit", async (e) => {
   $("tripOut").querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); openCam(d.cameras[+a.dataset.i]); }));
   $("openTrip")?.addEventListener("click", () => d.cameras.slice(0, 4).forEach(openCam));
 });
+
+// Commute (subway + bus + walking): options from Transitous; pick one to see it on the map, step by step.
+const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const legBullet = (l) => (l.mode === "SUBWAY" ? bullet(l.route) : busBullet({ name: l.route, color: l.color ?? "#1c7ed6", text: l.text }));
+const legColor = (l) => (l.mode === "SUBWAY" ? ROUTE_COLOR[l.route.replace(/X$/, "")] ?? l.color : l.color) ?? "#1c7ed6";
+function showCommute(d, pick) {
+  tripLayer.clearLayers();
+  const o = d.options[pick];
+  seen.trip = { from: d.from.label, to: d.to.label, mode: "commute", options: d.options.map((x) => `${x.minutes} min, leave ${hm(x.depart)}: ${x.legs.map((l) => (l.mode === "WALK" ? `walk ${l.minutes} min` : `${l.route} ${l.from} → ${l.to}`)).join(", ")}`) };
+  const lines = o.legs.map((l) => L.polyline(l.line, l.mode === "WALK" ? { color: "#9aa3cf", weight: 4, dashArray: "3 7" } : { color: legColor(l), weight: 6, opacity: 0.9 })
+    .bindTooltip(l.mode === "WALK" ? `Walk ${l.minutes} min` : `${esc(l.route)} toward ${esc(l.headsign)}: ${esc(l.from)} → ${esc(l.to)}`).addTo(tripLayer));
+  for (const l of o.legs.filter((x) => x.mode !== "WALK")) dot(l.line[0][0], l.line[0][1], legColor(l), 6).bindTooltip(`Board the ${esc(l.route)} at ${esc(l.from)}`).addTo(tripLayer);
+  if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${esc(d.from.label)}`).addTo(tripLayer);
+  if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${esc(d.to.label)}`).addTo(tripLayer);
+  map.fitBounds(L.featureGroup(lines).getBounds().pad(0.1), { paddingTopLeft: [Math.max(20, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 20), 20] });
+  const chips = (x) => x.legs.map((l) => (l.mode === "WALK" ? `<span class="muted">🚶${l.minutes}</span>` : legBullet(l))).join(' <span class="muted">›</span> ');
+  const step = (l, i) => l.mode === "WALK"
+    ? `<li>🚶 Walk ${l.estimated ? "~" : ""}${l.minutes} min to ${esc(i === o.legs.length - 1 ? d.to.label : o.legs[i + 1]?.from ?? "")}</li>`
+    : `<li>${legBullet(l)} <b>${esc(l.route)}</b> toward ${esc(l.headsign)}<br><span class="muted">${hm(l.depart)} ${esc(l.from)} → ${hm(l.arrive)} ${esc(l.to)} · ${l.stops} stop${l.stops > 1 ? "s" : ""}, ${l.minutes} min${l.realTime ? " · live time" : ""}</span>
+       ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`;
+  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>${x.minutes} min</b> · ${hm(x.depart)} → ${hm(x.arrive)}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}<br>${chips(x)}</button>`).join("")
+    + `<ol class="steps">${o.legs.map(step).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
+    + `<div class="muted">Routes and times: <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a> on MTA schedules (live where the MTA reports it). Walks marked ~ are estimated.</div>`;
+  $("tripOut").querySelectorAll("button[data-o]").forEach((b) => (b.onclick = () => showCommute(d, +b.dataset.o)));
+}
 
 // Restaurant inspections: search by name, results on the map, click for the history.
 const GRADE_COLOR = { A: "#4dabf7", B: "#69db7c", C: "#ffa94d" };
@@ -690,7 +720,7 @@ window.blipActions = {
     run: async ({ place, zoom }) => { const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(place)}`); if (g) { map.setView([g.lat, g.lon], Math.min(18, Math.max(11, Number(zoom) || 16))); L.popup().setLatLng([g.lat, g.lon]).setContent(esc(g.label)).openOn(map); const p = map.latLngToContainerPoint([g.lat, g.lon]), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; } } },
   open_cameras: { label: "opened cameras", description: "Open up to 4 live traffic camera windows whose name matches, e.g. 'Canal St', 'FDR', 'Atlantic Ave'.", parameters: { query: { type: "string", description: "Street or road words" } },
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
-  plan_trip: { label: "planned the trip", description: "Plan a trip on the map and list the cameras on the route.", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike or walk" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
+  plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
     run: ({ from, to, mode, avoid_ferries }) => { $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
   show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },

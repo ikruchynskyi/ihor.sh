@@ -207,6 +207,13 @@ export async function geocode(text: string) {
     const g: any = await addressInfo(text).catch(() => null);
     if (g?.found && g.lat && g.lon) return { label: g.address || text, lat: Number(g.lat), lon: Number(g.lon) };
   }
+  // Names ("Grand Central", "Jackson Heights"): Photon (OpenStreetMap) inside NYC. GeoSearch matched those to a Harlem
+  // address and a business in St. Albans. Street addresses ("350 5th Ave") stay with GeoSearch, the city's own data.
+  if (!/^\s*\d/.test(text)) {
+    const p = await json(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=1&lang=en&bbox=-74.26,40.49,-73.69,40.92`).catch(() => null);
+    const f = p?.features?.[0];
+    if (f) { const q = f.properties; return { label: [q.name, [q.housenumber, q.street].filter(Boolean).join(" "), q.district ?? q.city].filter(Boolean).join(", "), lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number }; }
+  }
   const d = await json(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(text)}&size=1`);
   const f = d.features?.[0];
   return f ? { label: f.properties.label as string, lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number } : null;
@@ -245,9 +252,10 @@ function decodePolyline(str: string, precision = 6) {
  * A route from A to B (Valhalla on valhalla1.openstreetmap.de, which can avoid ferries) and the traffic cameras
  * along it, in order: every camera within 150 m of the line, sorted by how far along the trip it is.
  */
-export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING = "drive", { avoidFerries = false } = {}) {
+export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING | "transit" = "drive", { avoidFerries = false } = {}) {
   const [a, b] = await Promise.all([geocode(from), geocode(to)]);
   if (!a || !b) return { error: `Couldn't find ${!a ? from : to} in NYC.` };
+  if (mode === "transit") return transitPlan(a, b);
   // Car trips with a TomTom key: live traffic in the time. Otherwise (and for bike/walk) Valhalla's typical speeds.
   const tt = mode === "drive" && env("TOMTOM_API_KEY") ? await tomtomRoute(a, b, avoidFerries).catch(() => null) : null;
   const costing = COSTING[mode] ?? "auto";
@@ -287,6 +295,63 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof COST
   const eta = tt ? { source: "TomTom live traffic", delayMinutes: Math.round(tt.delay / 60), noTrafficMinutes: Math.round(tt.noTraffic / 60) } : { source: mode === "drive" ? "typical speeds (no live traffic)" : "typical speeds" };
   return { from: a, to: b, mode, avoidFerries, usesFerry, eta, jams, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
+}
+
+/**
+ * Commute: subway + bus + walking options from Transitous (transitous.org), a free community MOTIS router that runs on
+ * the MTA's own GTFS feeds. Each subway leg carries the MTA realtime trip id, so the map can show that train live.
+ */
+const sig = (it: any) => it.legs.filter((l: any) => l.mode !== "WALK").map((l: any) => l.routeShortName).join(">") || "walk";
+/** A one- or two-stop bus at the very start or end of a trip (to catch a train a minute earlier) becomes a walk,
+ *  timed from the straight-line distance (×1.3 for streets, 80 m a minute). */
+function dropHops(it: any) {
+  const legs = [...it.legs];
+  let start = Date.parse(it.startTime), end = Date.parse(it.endTime);
+  const transit = () => legs.filter((l) => l.mode !== "WALK");
+  for (const atEnd of [false, true]) {
+    const t = atEnd ? transit().at(-1) : transit()[0];
+    if (transit().length < 2 || t.mode !== "BUS" || (t.intermediateStops?.length ?? 0) > 1 || t.duration > 300) continue;
+    const i = legs.indexOf(t), lo = legs[i - 1]?.mode === "WALK" ? i - 1 : i, hi = legs[i + 1]?.mode === "WALK" ? i + 1 : i;
+    const A = legs[lo].from, B = legs[hi].to, k = Math.PI / 180;
+    const m = Math.hypot((B.lon - A.lon) * k * Math.cos(A.lat * k), (B.lat - A.lat) * k) * 6371e3, sec = Math.round((m * 1.3) / 80) * 60;
+    const next = legs[hi + 1], prev = legs[lo - 1];
+    if (atEnd) end = Date.parse(prev.endTime) + sec * 1000; else start = Date.parse(next.startTime) - sec * 1000;
+    legs.splice(lo, hi - lo + 1, { mode: "WALK", from: A, to: B, duration: sec, startTime: new Date(atEnd ? end - sec * 1000 : start).toISOString(), endTime: new Date(atEnd ? end : start + sec * 1000).toISOString(),
+      legGeometry: null, line: [[A.lat, A.lon], [B.lat, B.lon]], estimated: true });
+  }
+  return { ...it, legs, startTime: new Date(start).toISOString(), endTime: new Date(end).toISOString(), duration: (end - start) / 1000, transfers: Math.max(0, transit().length - 1) };
+}
+
+async function transitPlan(a: { lat: number; lon: number; label: string }, b: { lat: number; lon: number; label: string }) {
+  const q = new URLSearchParams({ fromPlace: `${a.lat},${a.lon}`, toPlace: `${b.lat},${b.lon}`, numItineraries: "8", transitModes: "SUBWAY,BUS", directModes: "WALK" });
+  const r = await fetch(`https://api.transitous.org/api/v1/plan?${q}`, { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) return { error: `The transit router isn't answering (${r.status}). Try again in a minute.` };
+  const d = await r.json();
+  // The router optimizes arrival time only, so it suggests one-stop bus hops to catch a train a minute earlier, and
+  // NY Waterway's ferry shuttles. Keep MTA legs only, and rank by how simple a trip is to ride.
+  const mta = (it: any) => it.legs.every((l: any) => l.mode === "WALK" || /^MTA/.test(l.agencyName ?? ""));
+  const hops = (it: any) => it.legs.filter((l: any) => l.mode !== "WALK" && (l.intermediateStops?.length ?? 0) === 0 && l.duration <= 240).length;
+  const score = (it: any) => it.duration / 60 + 4 * it.transfers + 6 * hops(it);
+  const walk = (d.direct ?? []).find((x: any) => x.legs.length === 1 && x.legs[0].mode === "WALK" && x.duration <= 45 * 60);
+  // The same routes at later times are one option with its next departures.
+  const all = [...(walk ? [{ ...walk, transfers: 0 }] : []), ...(d.itineraries ?? []).filter(mta).map(dropHops)].sort((x, y) => Date.parse(x.startTime) - Date.parse(y.startTime));
+  const groups = new Map<string, any>();
+  for (const it of all) { const g = groups.get(sig(it)); if (g) g.later.push(it.startTime); else groups.set(sig(it), { ...it, later: [] }); }
+  const best = [...groups.values()].sort((x, y) => score(x) - score(y)).slice(0, 4);
+  const options = best.map((it: any) => ({
+    minutes: Math.round(it.duration / 60), transfers: it.transfers, depart: it.startTime, arrive: it.endTime, later: (it.later ?? []).slice(0, 3),
+    walkMinutes: Math.round(it.legs.filter((l: any) => l.mode === "WALK").reduce((t: number, l: any) => t + l.duration, 0) / 60),
+    legs: it.legs.map((l: any) => ({
+      mode: l.mode, route: l.routeShortName ?? "", color: l.routeColor ? `#${l.routeColor}` : null, text: l.routeTextColor ? `#${l.routeTextColor}` : "#ffffff",
+      headsign: l.headsign ?? "", from: l.from.name, to: l.to.name, depart: l.startTime, arrive: l.endTime, minutes: Math.max(1, Math.round(l.duration / 60)),
+      stops: (l.intermediateStops?.length ?? 0) + 1, realTime: !!l.realTime, estimated: !!l.estimated,
+      line: (l.line ?? decodePolyline(l.legGeometry.points, l.legGeometry.precision ?? 6)).map(([la, lo]: number[]) => [+la.toFixed(5), +lo.toFixed(5)]),
+      // "20261009_10:36_us-ny-MTA-NYCSubway_…_063600_4..S06R" → the realtime id "063600_4..S06R"; boarding stop "635S"
+      ...(l.mode === "SUBWAY" && l.tripId ? { trip: l.tripId.split("_").slice(-2).join("_"), stop: String(l.from.stopId ?? "").split("_").pop() } : {}),
+    })),
+  }));
+  if (!options.length) return { error: "No subway or bus route found between those places." };
+  return { from: a, to: b, mode: "transit", options, source: "Transitous (MTA schedules and live updates)" };
 }
 
 // ---------- the web ----------
