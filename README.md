@@ -2,6 +2,24 @@
 
 Hobby projects behind [ihor.sh](https://ihor.sh): radio, NYC, and learning in public.
 
+## The site
+
+`index.html` is the home page (projects as game worlds), `companion.js` is Blip, the companion that rides along on every page (d3-force soft body, chat through `/api/ask`), and `server.ts` serves `/`, the built radio site under `/radio/`, and `/api/ask`, answered by a local [Ollama](https://ollama.com) model.
+
+```sh
+npm run build          # builds radio/dist
+npm start              # http://localhost:8080  (env: PORT, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL)
+```
+
+It listens on 127.0.0.1 only; a Cloudflare tunnel publishes it:
+
+```sh
+cloudflared tunnel login                      # once: pick the ihor.sh zone in the browser
+cloudflared tunnel create ihor-sh
+cloudflared tunnel route dns ihor-sh ihor.sh
+cloudflared tunnel run --url http://localhost:8080 ihor-sh
+```
+
 ## radio/
 
 A software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus a course that teaches how it works.

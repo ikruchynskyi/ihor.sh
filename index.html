@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ihor.sh</title>
+<meta name="description" content="Hobby projects built and learned in public. World 1: a software radio written from scratch, with courses and ham license prep.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 10V3' stroke='%232a1405' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='3' r='2.5' fill='%23ff5c8a'/%3E%3Cellipse cx='16' cy='20' rx='13' ry='11' fill='%23ffb347' stroke='%232a1405' stroke-width='2.5'/%3E%3Ccircle cx='11' cy='19' r='2.5'/%3E%3Ccircle cx='21' cy='19' r='2.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+  :root {
+    --bg: #07090f; --panel: #0d1226; --ink: #e8edff; --dim: #7f8bc4; --line: #3b4bb0;
+    --amber: #ffb347; --pink: #ff5c8a; --cyan: #4de1ff; --green: #5cff9d;
+    --pixel: "Press Start 2P", ui-monospace, monospace; --mono: "VT323", ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 22px/1.2 var(--mono); min-height: 100vh; overflow-x: hidden; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+
+  /* the screen: waterfall behind, scanlines + vignette in front */
+  #wf { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: .5; z-index: -2; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(3,4,10,.85) 100%), linear-gradient(rgba(7,9,15,.55), rgba(7,9,15,.9)); }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 10; background: repeating-linear-gradient(rgba(0,0,0,.18) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+
+  .hud { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding: 12px 20px; font: 10px/1.6 var(--pixel); letter-spacing: .05em; background: rgba(7,9,15,.85); border-bottom: 4px solid var(--line); }
+  .hud b { color: var(--amber); font-weight: normal; }
+  .hud .score span { color: var(--green); }
+  .hud button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px; cursor: pointer; }
+  .hud button[aria-pressed="true"] { color: var(--green); }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 16px 80px; }
+
+  .title { min-height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 28px; padding: 40px 0 120px; }
+  .logo { margin: 0; font: clamp(40px, 11vw, 112px)/1 var(--pixel); color: var(--amber); letter-spacing: -.02em; text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--line); animation: flicker 6s infinite steps(1); }
+  .logo span { color: var(--ink); }
+  @keyframes flicker { 0%, 100% { opacity: 1; } 92% { opacity: .85; } 93% { opacity: 1; } 96% { opacity: .9; } }
+  .tag { margin: 0; max-width: 34ch; color: var(--dim); font-size: clamp(22px, 3vw, 28px); }
+  .start { font: 14px var(--pixel); color: var(--green); text-decoration: none; padding: 14px 18px; animation: blink 1.1s steps(2) infinite; }
+  .start:hover, .start:focus-visible { animation: none; color: var(--bg); background: var(--green); }
+  @keyframes blink { 50% { opacity: 0; } }
+  .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; color: var(--dim); font-size: 20px; }
+  kbd { font: 9px var(--pixel); color: var(--bg); background: var(--ink); padding: 4px 6px; margin-right: 6px; box-shadow: 0 3px 0 var(--dim); }
+
+  h2 { font: clamp(14px, 2.4vw, 20px)/1.4 var(--pixel); color: var(--ink); text-align: center; margin: 0 0 32px; }
+  h2::before, h2::after { content: "★"; color: var(--amber); margin: 0 14px; }
+
+  .world { position: relative; background: var(--panel); border: 4px solid var(--ink); box-shadow: inset 0 0 0 4px var(--line), 10px 10px 0 rgba(0,0,0,.55); padding: 28px; margin-bottom: 36px; }
+  .world header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .world h3 { margin: 0; font: clamp(13px, 2vw, 18px)/1.4 var(--pixel); color: var(--amber); }
+  .world h3 small { display: block; font-size: 9px; color: var(--dim); margin-bottom: 8px; }
+  .onair { font: 9px var(--pixel); color: var(--pink); }
+  .onair::before { content: "● "; animation: blink 1s steps(2) infinite; }
+  .world > p { margin: 0 0 24px; max-width: 60ch; color: #c3cbef; }
+
+  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+  .level { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none; background: #111939; border: 3px solid var(--line); transition: transform .12s steps(3), border-color .12s; }
+  .level:hover, .level:focus-visible { transform: translate(-4px, -4px); border-color: var(--amber); box-shadow: 6px 6px 0 var(--amber); outline: none; }
+  .level .lv { font: 9px var(--pixel); color: var(--dim); display: flex; justify-content: space-between; }
+  .level svg { width: 40px; height: 40px; image-rendering: pixelated; }
+  .level b { font: 11px/1.5 var(--pixel); font-weight: normal; color: var(--ink); }
+  .level span.d { color: #aab3dd; font-size: 20px; flex: 1; }
+  .level i { font: 9px var(--pixel); font-style: normal; color: var(--green); opacity: 0; }
+  .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
+
+  .locked { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+  .locked .world { margin: 0; opacity: .7; border-style: dashed; }
+  .locked .world h3 { color: var(--dim); }
+  .locked .world svg { width: 32px; height: 32px; float: right; }
+
+  footer { text-align: center; color: var(--dim); font: 9px/2 var(--pixel); padding: 40px 16px 120px; }
+
+  @media (max-width: 600px) { .world { padding: 20px 16px; } .hud { font-size: 8px; } }
+  @media (prefers-reduced-motion: reduce) { .logo, .start, .onair::before { animation: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<canvas id="wf" aria-hidden="true"></canvas>
+
+<div class="hud">
+  <b>IHOR.SH</b>
+  <span>WORLD 1 OPEN</span>
+  <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
+  <button id="snd" aria-pressed="false">SOUND OFF</button>
+</div>
+
+<main>
+  <section class="title">
+    <h1 class="logo">IHOR<span>.SH</span></h1>
+    <p class="tag">Hobby projects, built and learned in public. Each world is a project. Pick one and play, and Blip comes along.</p>
+    <a class="start" href="#worlds">▶ PRESS START</a>
+    <div class="controls">
+      <span><kbd>DRAG</kbd>throw Blip</span>
+      <span><kbd>CLICK</kbd>poke Blip</span>
+      <span><kbd>SELECT</kbd>any text to ask</span>
+    </div>
+  </section>
+
+  <section id="worlds">
+    <h2>SELECT WORLD</h2>
+
+    <article class="world">
+      <header>
+        <h3><small>WORLD 1</small>RADIO</h3>
+        <span class="onair">ON AIR</span>
+      </header>
+      <p>A software-defined radio that runs in your browser, written from scratch in TypeScript with no SDR libraries: just math and a cheap USB dongle. Plus courses that teach every piece of it, and prep for the ham radio license.</p>
+      <nav class="levels" aria-label="Radio projects">
+        <a class="level" href="/radio/" data-icon="lab" data-blip="The real receiver! Play a recording, or plug in an RTL-SDR."><span class="lv">1-1 <i>▶ PLAY</i></span><b>SPECTRUM LAB</b><span class="d">A receiver you can watch stage by stage: waterfall, mixer, filter, demodulation, audio.</span></a>
+        <a class="level" href="/radio/learn.html" data-icon="wave" data-blip="Short on time? This one's the whole radio on one page."><span class="lv">1-2 <i>▶ PLAY</i></span><b>HOW A SOFTWARE RADIO WORKS</b><span class="d">The whole receiver in plain words, one stage at a time.</span></a>
+        <a class="level" href="/radio/course/" data-icon="book" data-blip="16 chapters. It's spinning arrows all the way down."><span class="lv">1-3 <i>▶ PLAY</i></span><b>RADIO FROM SCRATCH</b><span class="d">16 interactive chapters, from a dot on a wheel to a USB driver.</span></a>
+        <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US amateur radio license.</span></a>
+        <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">A developer guide to WebUSB, the RTL2832U and the R820T tuner.</span></a>
+      </nav>
+    </article>
+
+    <div class="locked">
+      <article class="world" data-blip="Locked! Even I don't know what's in there yet.">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 2</small>???</h3></header>
+        <p>A new project is being soldered together.</p>
+      </article>
+      <article class="world" data-blip="Shhh. Top secret.">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 3</small>???</h3></header>
+        <p>Coming soon. Save your progress.</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer>© 2026 IHOR.SH · NO QUARTERS REQUIRED</footer>
+
+<script>
+  // Pixel icons: one character per pixel, "." is transparent.
+  const ICONS = {
+    lab:   ["..........", "....a.....", "....a.....", "...aa..a..", "...aaa.a..", ".a.aaa.aa.", ".aaaaaaaa.", "aaaaaaaaaa", "bbbbbbbbbb", ".........."],
+    wave:  ["..........", "..aa......", ".a..a.....", "a....a....", "a....a...a", "......a..a", ".......aa.", "..........", "bbbbbbbbbb", ".........."],
+    book:  ["..........", ".aaa..aaa.", "a...aa...a", "a.bb.a.bba", "a...aa...a", "a.bb.a.bba", "a...aa...a", "a...aa...a", ".aaa..aaa.", ".........."],
+    tower: ["b.......b.", ".b..c..b..", "b..ccc..b.", "....a.....", "...a.a....", "...aaa....", "..a.a.a...", "..aa.aa...", ".a.....a..", "aaaaaaaaa."],
+    chip:  [".a.a.a.a..", "aaaaaaaaa.", ".abbbbbba.", "aabbbbbbaa", ".abbccbba.", "aabbccbbaa", ".abbbbbba.", "aaaaaaaaa.", ".a.a.a.a..", ".........."],
+    lock:  ["..........", "...aaaa...", "..a....a..", "..a....a..", ".bbbbbbbb.", ".bbbccbbb.", ".bbbccbbb.", ".bbbbbbbb.", ".bbbbbbbb.", ".........."],
+  };
+  const COLORS = { a: "#ffb347", b: "#4de1ff", c: "#ff5c8a" };
+  const icon = (rows) => `<svg viewBox="0 0 10 10" aria-hidden="true" shape-rendering="crispEdges">${rows.flatMap((r, y) => [...r].map((ch, x) => COLORS[ch] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${COLORS[ch]}"/>` : "")).join("")}</svg>`;
+  for (const el of document.querySelectorAll("[data-icon]")) {
+    if (el.tagName === "svg") el.outerHTML = icon(ICONS[el.dataset.icon]).replace("<svg", `<svg style="width:32px;height:32px;float:right"`);
+    else el.insertAdjacentHTML("afterbegin", icon(ICONS[el.dataset.icon]));
+  }
+
+  // Safe storage: private windows and blocked site data throw.
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+
+  // Score: pokes on Blip (companion.js fires "blip:poke").
+  let pokes = 0, hi = Number(store.get("hi")) || 0;
+  const pad = (n) => String(n).padStart(3, "0");
+  document.getElementById("hi").textContent = pad(hi);
+  addEventListener("blip:poke", () => {
+    document.getElementById("pokes").textContent = pad(++pokes);
+    if (pokes > hi) { hi = pokes; store.set("hi", hi); document.getElementById("hi").textContent = pad(hi); }
+    beep(220 + pokes * 40);
+  });
+
+  // Sound: off by default, square-wave blips.
+  const snd = document.getElementById("snd");
+  let soundOn = store.get("sound") === "on", ac;
+  const showSound = () => { snd.textContent = soundOn ? "SOUND ON" : "SOUND OFF"; snd.setAttribute("aria-pressed", soundOn); };
+  showSound();
+  snd.onclick = () => { soundOn = !soundOn; store.set("sound", soundOn ? "on" : "off"); showSound(); beep(660); };
+  function beep(f, ms = 70) {
+    if (!soundOn) return;
+    ac ??= new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "square"; o.frequency.value = f; g.gain.value = 0.04;
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + ms / 1000);
+  }
+  document.querySelectorAll(".level").forEach((el, i) => { el.addEventListener("pointerenter", () => beep(440 + i * 110)); el.addEventListener("click", () => beep(880, 120)); });
+
+  // Background: a pixel waterfall. A few stations, a beacon keying "IHOR SH" in Morse, and the cursor transmits.
+  const cv = document.getElementById("wf"), g = cv.getContext("2d");
+  const COLS = 160, ROWS = 90;
+  cv.width = COLS; cv.height = ROWS;
+  const stations = [{ f: .18, w: 5, a: .7 }, { f: .42, w: 7, a: .9 }, { f: .63, w: 4, a: .55 }, { f: .86, w: 6, a: .75 }];
+  const MORSE = { I: "..", H: "....", O: "---", R: ".-.", S: "...", " ": " " };
+  const keying = [..."IHOR SH "].flatMap((c) => c === " " ? [0, 0, 0, 0] : [...MORSE[c]].flatMap((s) => s === "." ? [1, 0] : [1, 1, 1, 0]).concat([0, 0]));
+  const STOPS = [[0, 8, 12, 30], [.35, 30, 50, 140], [.6, 60, 210, 255], [.8, 255, 220, 110], [1, 255, 255, 255]];
+  const color = (v) => { v = Math.min(1, v); const i = STOPS.findIndex((s) => s[0] >= v); if (i <= 0) return STOPS[0].slice(1); const [p, q] = [STOPS[i - 1], STOPS[i]], t = (v - p[0]) / (q[0] - p[0]); return [1, 2, 3].map((k) => p[k] + (q[k] - p[k]) * t); };
+  let tick = 0, tx = { x: 0, until: 0 };
+  addEventListener("pointermove", (e) => { tx = { x: e.clientX / innerWidth, until: performance.now() + 300 }; }, { passive: true });
+  function frame() {
+    tick++;
+    g.drawImage(cv, 0, 0, COLS, ROWS - 1, 0, 1, COLS, ROWS - 1);
+    const row = g.createImageData(COLS, 1), now = performance.now();
+    for (let x = 0; x < COLS; x++) {
+      const f = x / COLS;
+      let v = Math.random() * .22;
+      for (const s of stations) v += s.a * Math.exp(-(((f - s.f - Math.sin(tick / 90 + s.w) * .004) * COLS) ** 2) / (2 * s.w * s.w)) * (.75 + Math.random() * .25);
+      if (keying[(tick >> 1) % keying.length]) v += Math.exp(-(((f - .53) * COLS) ** 2) / 1.2);
+      if (now < tx.until) v += .9 * Math.exp(-(((f - tx.x) * COLS) ** 2) / 3);
+      const [r, gg, b] = color(v);
+      row.data.set([r, gg, b, 255], x * 4);
+    }
+    g.putImageData(row, 0, 0);
+  }
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) for (let i = 0; i < ROWS; i++) frame();
+  else setInterval(frame, 60);
+</script>
+<script type="module" src="/companion.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "ihor-sh",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd radio && npm ci && npm run build",
+    "start": "node server.ts"
+  }
+}
