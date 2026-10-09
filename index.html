@@ -68,6 +68,9 @@
   .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
 
   .level.off { opacity: .45; border-style: dashed; }
+  .level .air { display: block; margin-top: 6px; font: 8px var(--pixel); font-style: normal; color: var(--dim); }
+  .level.onair .air { color: var(--green); }
+  .level.onair .air::before { content: "● "; animation: blink 1s steps(2) infinite; }
   .level.off:hover { transform: none; box-shadow: none; border-color: var(--line); }
   .chapters { margin: 0; padding: 0; list-style: none; counter-reset: ch; }
   .chapters li { counter-increment: ch; color: var(--dim); padding: 4px 0; }
@@ -121,6 +124,8 @@
         <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US amateur radio license.</span></a>
         <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">A developer guide to WebUSB, the RTL2832U and the R820T tuner.</span></a>
         <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook chapter by chapter, each section linked to an interactive lesson.</span></a>
+        <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC, decoded by Direwolf. <em class="air">CHECKING…</em></span></a>
+        <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz by dump1090. <em class="air">CHECKING…</em></span></a>
       </nav>
     </article>
 
@@ -182,6 +187,8 @@
     train: ["..aaaaaa..", ".abbabbba.", ".abbabbba.", ".aaaaaaaa.", ".acaaaaca.", ".aaaaaaaa.", "..a....a..", ".a......a.", "a........a", ".........."],
     ticket:["..........", "aaaaaaaaaa", "a..c.....a", "a.ccc..b.a", "a..c..bbba", "a......b.a", "a........a", "aaaaaaaaaa", "..........", ".........."],
     box:   ["..........", "aaaaaaaaaa", "abbbbbbbba", "aaaaaaaaaa", ".a......a.", ".a.cccc.a.", ".a......a.", ".a......a.", ".aaaaaaaa.", ".........."],
+    pin:   ["...aaaa...", "..aaaaaa..", ".aaabbaaa.", ".aabbbbaa.", ".aaabbaaa.", "..aaaaaa..", "...aaaa...", "....aa....", "....aa....", "...cccc..."],
+    plane: ["....a.....", "....a.....", "...aaa....", "..aaaaa...", ".aaaaaaa..", "aa.aaa.aa.", "....a.....", "...aaa....", "..a.a.a...", ".........."],
     lock:  ["..........", "...aaaa...", "..a....a..", "..a....a..", ".bbbbbbbb.", ".bbbccbbb.", ".bbbccbbb.", ".bbbbbbbb.", ".bbbbbbbb.", ".........."],
   };
   const COLORS = { a: "#ffb347", b: "#4de1ff", c: "#ff5c8a" };
@@ -218,6 +225,22 @@
     o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + ms / 1000);
   }
   document.querySelectorAll(".level").forEach((el, i) => { el.addEventListener("pointerenter", () => beep(440 + i * 110)); el.addEventListener("click", () => beep(880, 120)); });
+
+  // Live receivers share one dongle and run only some of the time: lit when up, greyed out when not.
+  const liveCards = document.querySelectorAll("[data-live]");
+  const offClick = (e) => { if (e.currentTarget.classList.contains("off")) e.preventDefault(); };
+  liveCards.forEach((el) => el.addEventListener("click", offClick));
+  async function checkLive() {
+    const s = await fetch("/api/radio/status").then((r) => r.json()).catch(() => ({}));
+    for (const el of liveCards) {
+      const up = !!s[el.dataset.live];
+      el.classList.toggle("off", !up); el.classList.toggle("onair", up);
+      el.setAttribute("aria-disabled", String(!up));
+      el.querySelector(".air").textContent = up ? "ON AIR NOW" : "OFF AIR";
+    }
+  }
+  checkLive();
+  setInterval(checkLive, 30000);
 
   // Background: a pixel waterfall. A few stations, a beacon keying "IHOR SH" in Morse, and the cursor transmits.
   const cv = document.getElementById("wf"), g = cv.getContext("2d");

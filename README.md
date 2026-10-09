@@ -22,6 +22,8 @@ cloudflared tunnel route dns ihor-sh ihor.sh
 
 Server, tunnel and Ollama run as LaunchDaemons that start at boot (no login needed) as the normal user, and restart on crash: `/Library/LaunchDaemons/sh.ihor.{server,tunnel,ollama}.plist` (logs in `~/Library/Logs/ihor-*.log`). Deploy = `git pull && npm run build && pkill -f "node server.ts"` (launchd starts it again).
 
+Live receivers from `~/aprs-web` are published under `/radio/aprs/` and `/radio/adsb/` (page + WebSocket proxied, themed "off the air" page when stopped). They share the one dongle with the server SDR, so start one at a time: `cd ~/aprs-web && PORT=3000 MODE=aprs npm start` (APRS) or `PORT=3001 MODE=adsb npm start` (ADS-B). The home page lights their level cards from `/api/radio/status`.
+
 ## radio/
 
 A software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus a course that teaches how it works.

@@ -92,3 +92,6 @@ body:has(> #map) { display: flex; flex-direction: column; }
 body:has(> #map) > #map { flex: 1; height: auto !important; }
 body:has(> #map) > #panel { top: 52px; }
 button[aria-pressed="true"] small, .btn:not(.alt) small { color: #3a2410 !important; }
+/* aprs-web live maps */
+#topbar h1 { font-size: 11px !important; text-shadow: none; }
+#topbar, #sidebar { background: var(--card) !important; border-color: var(--line) !important; }

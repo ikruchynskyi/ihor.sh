@@ -2,7 +2,9 @@
 // Public behind a Cloudflare tunnel, so only whitelisted paths are served (never the repo root).
 // Usage: npm run build && npm start   (env: PORT=8080, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL=http://localhost:11434)
 import http from "node:http";
+import net from "node:net";
 import { readFile, readdir } from "node:fs/promises";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 
@@ -22,7 +24,9 @@ const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".j
 const SDR_PORT = Number(process.env.SDR_PORT ?? 8073);
 const MAX_LISTENERS = 3;
 let listeners = 0;
-const COMPANION = `<script type="module" src="/companion.js"></script>`;
+// Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
+const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
+const companion = () => `<script type="module" src="${asset("companion.js")}"></script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
@@ -41,6 +45,7 @@ Visitors talk to you through a little game-style dialog box. You can see which p
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track and a handbook companion.
 - World 2, NYC: small tools on NYC open data. Subway Bailout (live MTA alerts → nearest Citi Bike) and Free NYC (free and pay-what-you-wish places by day). An archive of MTA alerts and elevator outages is being collected.
+World 1 also has two live receivers that run only some of the time (they share one dongle): /radio/aprs/ (APRS map) and /radio/adsb/ (ADS-B radar).
 Locked, coming later: World 3 Ride (bikepacking route notebook), World 4 EDC (gear catalog and advisor), World 5 Yomu (graded Japanese stories), World 6 Learn & build (math, electronics and hardware build logs).
 
 Pages on the site:
@@ -104,22 +109,81 @@ function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
   req.pipe(up);
 }
 
+// Live receivers from ~/aprs-web (Direwolf APRS, dump1090 ADS-B). They share the one dongle with the
+// server SDR, so each runs only when started by hand; while one is off, its page says so.
+const LIVE: Record<string, { port: number; title: string; what: string }> = {
+  "/radio/aprs/": { port: 3000, title: "APRS Map", what: "the APRS map (packet radio on 144.39 MHz: hams, weather stations and trackers around NYC)" },
+  "/radio/adsb/": { port: 3001, title: "ADS-B Radar", what: "the ADS-B radar (aircraft over NYC, decoded from 1090 MHz)" },
+};
+const livePrefix = (p: string) => Object.keys(LIVE).find((k) => p.startsWith(k));
+
+function proxyLive(req: http.IncomingMessage, res: http.ServerResponse, prefix: string) {
+  const { port, title, what } = LIVE[prefix];
+  const up = http.request({ host: "127.0.0.1", port, path: "/" + req.url!.slice(prefix.length), method: req.method,
+    headers: { ...req.headers, host: `127.0.0.1:${port}`, "accept-encoding": "identity" } }, async (r) => {
+    if (!String(r.headers["content-type"]).includes("text/html")) { res.writeHead(r.statusCode ?? 502, r.headers); return r.pipe(res); }
+    let html = "";
+    for await (const c of r) html += c;
+    const { "content-length": _, etag: __, ...headers } = r.headers;
+    html = html.replace(/<title>[^<]*/, `<title>${title}`);
+    if (prefix === "/radio/adsb/") html = html.replace("</body>", `<script>showTab("aircraft")</script></body>`);
+    res.writeHead(r.statusCode ?? 502, { ...headers, "cache-control": "no-store" }).end(dress(html, WORLDS.radio.label));
+  });
+  up.on("error", () => {
+    if (res.headersSent) return;
+    res.writeHead(503, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }).end(dress(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
+<style>main { max-width: 640px; margin: 0 auto; padding: 48px 16px; } </style></head><body><main>
+<p class="eyebrow">Off the air</p><h1>${title}</h1>
+<p>This receiver isn't running right now. It's ${what}, picked up live by a radio dongle on a Mac in New York.</p>
+<p class="lede">One dongle is shared by this map, the other live receiver and the server SDR in Spectrum Lab, so only one of them runs at a time. Check back later, or play with <a href="/radio/">Spectrum Lab</a> meanwhile.</p>
+<p><a href="/">◄ Back to the map</a></p></main></body></html>`, WORLDS.radio.label));
+  });
+  req.pipe(up);
+}
+
+// The page's WebSocket (live packets / aircraft) goes to the same receiver, path prefix stripped.
+function proxyLiveSocket(req: http.IncomingMessage, socket: import("node:stream").Duplex, head: Buffer) {
+  const prefix = livePrefix(req.url ?? "");
+  if (!prefix) return socket.destroy();
+  const up = net.connect(LIVE[prefix].port, "127.0.0.1", () => {
+    const lines = [`${req.method} /${req.url!.slice(prefix.length)} HTTP/1.1`];
+    for (let i = 0; i < req.rawHeaders.length; i += 2) lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+    up.write(lines.join("\r\n") + "\r\n\r\n");
+    up.write(head);
+    socket.pipe(up).pipe(socket);
+  });
+  up.on("error", () => socket.destroy());
+  socket.on("error", () => up.destroy());
+}
+
+/** Which live receivers are up right now, for the home page's level cards. */
+async function radioStatus() {
+  const up = (port: number) => new Promise<boolean>((done) => {
+    const s = net.connect(port, "127.0.0.1", () => { s.destroy(); done(true); });
+    s.on("error", () => done(false));
+    s.setTimeout(500, () => { s.destroy(); done(false); });
+  });
+  const [sdr, aprs, adsb] = await Promise.all([up(SDR_PORT), up(3000), up(3001)]);
+  return { sdr, aprs, adsb };
+}
+
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
 function dress(html: string, world: string) {
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
   return html
-    .replace("</head>", `<link rel="stylesheet" href="/theme.css"></head>`)
+    .replace("</head>", `<link rel="stylesheet" href="${asset("theme.css")}"></head>`)
     .replace(/<body[^>]*>/, (m) => m + hud)
-    .replace("</body>", `${COMPANION}</body>`);
+    .replace("</body>", `${companion()}</body>`);
 }
 
-async function serveFile(res: http.ServerResponse, file: string, world?: string) {
+async function serveFile(res: http.ServerResponse, file: string, world?: string | "home") {
   const data = await readFile(file).catch(() => null);
   if (!data) return res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
+  if (world === "home") return res.end(data.toString().replace(`src="/companion.js"`, `src="${asset("companion.js")}"`));
   res.end(world && ext === ".html" ? dress(data.toString(), world) : data);
 }
 
@@ -135,11 +199,15 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ reply }));
     }
     if (["/api/state", "/api/tune", "/api/stream"].includes(url.pathname)) return proxySdr(req, res);
+    if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
+    if (url.pathname === "/radio/aprs" || url.pathname === "/radio/adsb") return res.writeHead(301, { location: url.pathname + "/" }).end();
+    const live = livePrefix(url.pathname);
+    if (live) return proxyLive(req, res, live);
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
-    if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"));
+    if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/companion.js" || url.pathname === "/theme.css") return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
@@ -157,5 +225,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on("upgrade", proxyLiveSocket);
 startArchive();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));
