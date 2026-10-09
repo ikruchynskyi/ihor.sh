@@ -37,6 +37,7 @@ const CSS = `
 .tip { fill: #ff5c8a; stroke: #2a1405; stroke-width: 2.5; }
 .tip.on { fill: #ffd0dc; filter: drop-shadow(0 0 6px #ff5c8a); }
 .hat { pointer-events: none; }
+[hidden] { display: none !important; } /* SVG elements ignore the hidden attribute without this */
 .arm-line { fill: none; stroke: #2a1405; stroke-width: 4; stroke-linecap: round; }
 .hand { fill: #ffb347; stroke: #2a1405; stroke-width: 2.5; }
 .party .body { animation: party 0.6s linear infinite; }
@@ -121,7 +122,8 @@ root.innerHTML = `<style>${CSS}</style>
     <g class="arm" hidden><path class="arm-line"/><circle class="hand" r="5"/></g>
     <g class="hat" hidden><ellipse cx="0" cy="-6" rx="12" ry="9" fill="#ff8c1a" stroke="#2a1405" stroke-width="2.5"/><path d="M-4,-14 Q0,-6 -1,2 M4,-14 Q1,-6 2,2" stroke="#c75f00" stroke-width="1.5" fill="none"/><path d="M0,-15 q1,-5 4,-6" stroke="#2f6b1e" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <path class="body" fill="url(#skin)"/>
-    <g class="face mood-idle">${eye(-1)}${eye(1)}
+    <g class="item" aria-hidden="true"></g>
+    <g class="face mood-idle">${eye(-1)}${eye(1)}<g class="glasses" hidden fill="none" stroke="#2a1405" stroke-width="2.5"><circle cx="-10" cy="-4" r="9"/><circle cx="10" cy="-4" r="9"/><path d="M-1,-6 Q0,-8 1,-6"/></g>
       <ellipse class="cheek" cx="-17" cy="6" rx="4" ry="2.5"/><ellipse class="cheek" cx="17" cy="6" rx="4" ry="2.5"/>
       <path class="mouth"/></g>
   </g>
@@ -148,7 +150,21 @@ const looks = root.querySelectorAll(".look");
 const hat = root.querySelector(".hat");
 const arm = root.querySelector(".arm"), armLine = root.querySelector(".arm-line"), hand = root.querySelector(".hand");
 let pointAt = null; // { x, y, until }: the arm reaches toward it
-hat.hidden = new Date().getMonth() !== 9; // a pumpkin on the head all October
+hat.toggleAttribute("hidden", new Date().getMonth() !== 9); // a pumpkin on the head all October (SVG: attributes, not .hidden)
+
+// Each world gives Blip something to carry: where it goes ("head" around the top, "side" held at the right) and its drawing.
+const ITEMS = {
+  radio: { at: "head", label: "headphones", svg: `<path d="M-27,2 Q-27,-31 0,-31 Q27,-31 27,2" fill="none" stroke="#2a1405" stroke-width="4.5"/><path d="M-27,2 Q-27,-31 0,-31 Q27,-31 27,2" fill="none" stroke="#3b4bb0" stroke-width="2"/><rect x="-33" y="-7" width="11" height="18" rx="4" fill="#3b4bb0" stroke="#2a1405" stroke-width="2.5"/><rect x="22" y="-7" width="11" height="18" rx="4" fill="#3b4bb0" stroke="#2a1405" stroke-width="2.5"/>` },
+  nyc: { at: "side", label: "MetroCard", svg: `<rect x="0" y="-9" width="28" height="18" rx="2.5" fill="#fccc0a" stroke="#2a1405" stroke-width="2"/><rect x="0" y="-5" width="28" height="4" fill="#0039a6"/><text x="3" y="7" font-size="5" font-family="sans-serif" font-weight="bold" fill="#2a1405">MetroCard</text>` },
+  yomu: { at: "side", label: "calligraphy brush", svg: `<rect x="-2" y="-22" width="4" height="22" rx="2" fill="#8b5a2b" stroke="#2a1405" stroke-width="1.5"/><path d="M-3.5,0 Q-3,9 0,13 Q3,9 3.5,0 Z" fill="#1a1a1a" stroke="#2a1405" stroke-width="1.5"/><rect x="-2.6" y="-1.5" width="5.2" height="3" fill="#c0392b"/>` },
+  orna: { at: "side", label: "sword", svg: `<path d="M-2,-30 L0,-34 L2,-30 L2,-6 L-2,-6 Z" fill="#d7dde5" stroke="#2a1405" stroke-width="1.5"/><rect x="-8" y="-7" width="16" height="3.5" rx="1" fill="#c59bff" stroke="#2a1405" stroke-width="1.5"/><rect x="-1.8" y="-3.5" width="3.6" height="9" rx="1" fill="#8b5a2b" stroke="#2a1405" stroke-width="1.2"/>` },
+  ai: { at: "face", label: "glasses" },
+};
+const myItem = ITEMS[location.pathname.split("/")[1]];
+const itemEl = root.querySelector(".item"), glasses = root.querySelector(".glasses");
+if (myItem?.at === "face") glasses.removeAttribute("hidden");
+else if (myItem) itemEl.innerHTML = myItem.svg;
+if (myItem?.at === "head") hat.setAttribute("hidden", ""); // headphones and a pumpkin don't both fit
 
 // ---------- the soft body ----------
 let W = innerWidth, H = innerHeight;
@@ -222,9 +238,13 @@ function render() {
     const sx = c.x + ux * (R - 2), sy = c.y + uy * (R - 2), ex = c.x + ux * (R + 20), ey = c.y + uy * (R + 20) - 4 * Math.sin(performance.now() / 120);
     armLine.setAttribute("d", `M${sx},${sy} Q${(sx + ex) / 2 - uy * 6},${(sy + ey) / 2 + ux * 6} ${ex},${ey}`);
     hand.setAttribute("cx", ex); hand.setAttribute("cy", ey);
-    arm.hidden = false;
-  } else if (!arm.hidden) arm.hidden = true;
-  if (!hat.hidden) hat.setAttribute("transform", `translate(${c.x - 13},${d3.min(ring, (n) => n.y) + 4}) rotate(-12)`);
+    arm.removeAttribute("hidden");
+  } else if (!arm.hasAttribute("hidden")) arm.setAttribute("hidden", "");
+  if (!hat.hasAttribute("hidden")) hat.setAttribute("transform", `translate(${c.x - 13},${d3.min(ring, (n) => n.y) + 4}) rotate(-12)`);
+  if (myItem?.svg) {
+    const [x0, x1] = d3.extent(ring, (n) => n.x), w = (x1 - x0) / 2 / R;
+    itemEl.setAttribute("transform", myItem.at === "head" ? `translate(${c.x},${c.y - 2}) scale(${w.toFixed(3)})` : `translate(${x1 - 3},${c.y + 8}) rotate(${myItem.label === "MetroCard" ? -18 : 28}) scale(1.2)`);
+  }
   face.setAttribute("transform", `translate(${c.x},${c.y})`);
   const t = gaze && performance.now() < gaze.until ? gaze : mood === "think" ? { x: c.x + 20, y: c.y - 200 } : mouse.seen ? mouse : { x: c.x - 40, y: c.y + 10 };
   const dx = t.x - c.x, dy = t.y - c.y, m = Math.hypot(dx, dy) || 1, s = Math.min(1, m / 60) * 3.2;
