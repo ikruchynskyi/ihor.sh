@@ -137,3 +137,33 @@ export function callsign(rand = Math.random) {
   const prefix = rand() < 0.5 ? (["K", "W", "N"][Math.floor(rand() * 3)]) : (["K", "W", "N", "A"][Math.floor(rand() * 4)] + L());
   return prefix + D() + Array.from({ length: 1 + Math.floor(rand() * 3) }, L).join("");
 }
+
+/**
+ * Morse from a received signal: give it the keying envelope (the narrow CW channel's magnitude, from CwDemod) and it
+ * finds key-down/up times with an adaptive threshold (halfway between the noise floor and the recent peak, with a
+ * little hysteresis), then reads them like a straight key, adapting to the sender's speed.
+ */
+export class CwSignalDecoder {
+  readonly dec = new KeyDecoder(20);
+  level = 0; peak = 0; floor = 0; on = false;
+  private t = 0; // ms since start
+  constructor() { this.dec.letterGap = this.dec.wordGap = 0; } // gaps from the measured speed only
+  process(env: Float32Array, fs: number) {
+    const dt = 1000 / fs, smooth = 1 - Math.exp(-1 / (fs * 0.003)), slow = 1 / (fs * 2.5);
+    for (let k = 0; k < env.length; k++) {
+      this.level += (env[k] - this.level) * smooth;                                  // ~3 ms smoothing
+      const s = this.level;
+      if (s > this.peak) this.peak = s; else this.peak -= (this.peak - this.floor) * slow; // peak decays toward the floor
+      if (s < this.floor || this.floor === 0) this.floor = s; else this.floor += (s - this.floor) * slow * 0.3; // floor creeps up
+      const span = this.peak - this.floor, valid = this.peak > 3 * this.floor + 1e-6;
+      if (!this.on && valid && s > this.floor + 0.6 * span) { this.on = true; this.dec.down(this.t); }
+      else if (this.on && (s < this.floor + 0.4 * span || !valid)) { this.on = false; this.dec.up(this.t); }
+      this.t += dt;
+    }
+    this.dec.idle(this.t);
+  }
+  get text() { return this.dec.text + (this.dec.current ? "…" : ""); }
+  get wpm() { return 1200 / this.dec.dit; }
+  get snrDb() { return 20 * Math.log10((this.peak + 1e-9) / (this.floor + 1e-9)); }
+  clear() { this.dec.reset(); }
+}

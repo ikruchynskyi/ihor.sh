@@ -80,3 +80,15 @@ const peakBin = (x: Float32Array) => x.reduce((best, v, i) => (v > x[best] ? i :
 }
 
 console.log("dsp ok");
+// CW: a keyed carrier through the CW receiver and the signal decoder reads its text
+{
+  const { synth: syn, Receiver: Rx } = await import("./dsp.ts");
+  const { CwSignalDecoder } = await import("./cw.ts");
+  const fsT = 1.024e6, iqT = syn(fsT, 9, [{ kind: "CW", offset: 120e3, tone: 0, amp: 0.3, text: "CQ DE TEST", wpm: 20 }, { kind: "CW", offset: 121.5e3, tone: 0, amp: 0.3, text: "EEEEEE", wpm: 25 }], 0.05);
+  const rx = new Rx(fsT, 120e3, "CW", 500), d = new CwSignalDecoder();
+  for (let i = 0; i < iqT.length; i += 2 * 65536) { const o = rx.process(iqT.subarray(i, i + 2 * 65536)); d.process(o.env!, o.envFs); }
+  const words = d.dec.text.trim().split(/\s+/);
+  if (!d.dec.text.includes("DE TEST")) throw new Error(`CW decode: "${d.dec.text}"`);
+  if (Math.abs(d.wpm - 20) > 4) throw new Error(`CW speed ${d.wpm}`);
+  console.log("cw receive ok:", words.slice(0, 6).join(" "), `(${d.wpm.toFixed(1)} WPM)`);
+}

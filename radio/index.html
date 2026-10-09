@@ -78,7 +78,7 @@
     <canvas id="wf" class="wf"></canvas>
     <div class="axis" id="wfAxis"></div>
     <div class="row">
-      <label>Mode <select id="mode"><option>WFM</option><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option></select></label>
+      <label>Mode <select id="mode"><option>WFM</option><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option><option>CW</option></select></label>
       <label>Tune offset (kHz) <input id="offset" type="number" step="0.1" value="200" /></label>
       <label>Bandwidth (kHz) <input id="bw" type="number" step="0.1" value="200" /></label>
       <button id="run" class="primary">Receive</button>
@@ -118,7 +118,20 @@
     <p>Filtered again and decimated to about 48 kHz, then handed to your speakers.</p>
     <div class="row"><button id="play" class="primary" disabled>▶ Play</button><span class="stat" id="audStat"></span></div>
   </section>
+
+  <section id="cwPanel" hidden>
+    <h2><span>7</span>Decode Morse <a class="how" href="./cw.html">Learn CW →</a></h2>
+    <p>The narrow CW channel's strength, sampled about 6,000 times a second, is the keying: on, off, on. A threshold halfway between the noise floor and the recent peak turns it into key-down and key-up times, which are read like a straight key: short is a dit, three times as long a dah, and the gaps split letters and words. The speed adapts to the sender. Tune so the signal sits in the narrow band (the 700 Hz tone is centered).</p>
+    <div class="cwtext" id="cwText" aria-live="polite"></div>
+    <div class="row"><div class="cwmeter" aria-label="Signal level against the threshold"><i id="cwLevel"></i><b id="cwThr"></b></div><span class="stat" id="cwStat"></span><button id="cwClear">Clear</button></div>
+  </section>
 </main>
+<style>
+  .cwtext { font: 1.4rem/1.6 ui-monospace, Menlo, monospace; letter-spacing: .06em; min-height: 3.2em; max-height: 9.6em; overflow: auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; word-break: break-word; }
+  .cwmeter { position: relative; width: 220px; height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; }
+  .cwmeter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--plot, #4de1ff); }
+  .cwmeter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent, #ffb347); }
+</style>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

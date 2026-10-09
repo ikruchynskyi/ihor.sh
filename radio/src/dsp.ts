@@ -1,3 +1,4 @@
+import { schedule } from "./cw.ts";
 // All complex signals are interleaved Float32Array: [I0, Q0, I1, Q1, ...].
 // Frequencies are in Hz unless a name says "norm" (cycles/sample).
 
@@ -210,6 +211,44 @@ export class SsbDemod {
   }
 }
 
+/**
+ * CW (Morse): the carrier is moved to 0 Hz, decimated to a few kHz, filtered narrow (±bw/2) so only one signal
+ * survives, then mixed back up to an audio tone (`pitch`, like a receiver's BFO) and stretched back to the input rate.
+ * The narrow channel's magnitude is the keying envelope, kept in `env` (at `envFs`) for the Morse decoder.
+ */
+export class CwDemod {
+  readonly envFs: number;
+  env = new Float32Array(0);
+  private m: number;
+  private dec: FirDecimator;
+  private narrow: FirDecimator;
+  private phase = 0;
+  private step: number;
+  private last = 0;
+  constructor(fs: number, bw: number, pitch = 700) {
+    this.m = Math.max(1, Math.round(fs / 6000));
+    this.envFs = fs / this.m;
+    const keep = Math.min(2000, 0.4 * this.envFs);
+    this.dec = new FirDecimator(firLowpass(keep / fs, Math.max(this.envFs / 2 - keep, 200) / fs), this.m, 2);
+    this.narrow = new FirDecimator(firLowpass(bw / 2 / this.envFs, Math.max(bw / 4, 40) / this.envFs), 1, 2);
+    this.step = (TAU * pitch) / this.envFs;
+  }
+  process(iq: Float32Array): Float32Array {
+    const z = this.narrow.process(this.dec.process(iq)), n = z.length / 2, m = this.m;
+    this.env = new Float32Array(n);
+    const out = new Float32Array(n * m);
+    for (let k = 0; k < n; k++) {
+      const re = z[2 * k], im = z[2 * k + 1];
+      this.env[k] = Math.hypot(re, im);
+      const y = re * Math.cos(this.phase) - im * Math.sin(this.phase); // Re(z · e^{jφ}): the tone
+      this.phase = (this.phase + this.step) % TAU;
+      for (let j = 0; j < m; j++) out[k * m + j] = this.last + ((y - this.last) * (j + 1)) / m; // back to the input rate
+      this.last = y;
+    }
+    return out;
+  }
+}
+
 /** One-pole low-pass that undoes broadcast FM pre-emphasis (75 µs in the Americas). */
 export class Deemphasis {
   private a: number;
@@ -265,9 +304,10 @@ export function normalize(x: Float32Array, peak = 0.8): Float32Array {
   return x;
 }
 
-export type Mode = "WFM" | "NFM" | "AM" | "USB" | "LSB";
+export type Mode = "WFM" | "NFM" | "AM" | "USB" | "LSB" | "CW";
 
-export const DEFAULT_BW: Record<Mode, number> = { WFM: 200e3, NFM: 12.5e3, AM: 10e3, USB: 2.8e3, LSB: 2.8e3 };
+export const DEFAULT_BW: Record<Mode, number> = { WFM: 200e3, NFM: 12.5e3, AM: 10e3, USB: 2.8e3, LSB: 2.8e3, CW: 500 };
+export const CW_PITCH = 700; // Hz: the tone a CW signal is heard at
 
 /** The full receive chain: tune → filter → decimate → demodulate → audio, as a stream. */
 export class Receiver {
@@ -276,7 +316,7 @@ export class Receiver {
   readonly audioFs: number;
   private mixer: Mixer;
   private chan: FirDecimator;
-  private demod: { process(x: Float32Array): Float32Array };
+  private demod: { process(x: Float32Array): Float32Array; env?: Float32Array; envFs?: number };
   private deemph: Deemphasis | null;
   private audioFir: FirDecimator;
 
@@ -290,11 +330,11 @@ export class Receiver {
     this.mixer = new Mixer(fs, offset);
     this.chan = new FirDecimator(this.taps, m1, 2);
     this.demod = mode === "WFM" || mode === "NFM" ? new FmDemod()
-      : mode === "AM" ? new AmDemod() : new SsbDemod(this.chanFs, bw, mode === "USB");
+      : mode === "AM" ? new AmDemod() : mode === "CW" ? new CwDemod(this.chanFs, bw, CW_PITCH) : new SsbDemod(this.chanFs, bw, mode === "USB");
     this.deemph = mode === "WFM" ? new Deemphasis(this.chanFs) : null;
 
     const m2 = Math.max(1, Math.round(this.chanFs / 48e3));
-    const audioCut = mode === "WFM" ? 15e3 : Math.min(half, 0.45 * (this.chanFs / m2));
+    const audioCut = mode === "WFM" ? 15e3 : mode === "CW" ? 1500 : Math.min(half, 0.45 * (this.chanFs / m2));
     const ha = firLowpass(audioCut / this.chanFs, Math.max(this.chanFs / m2 / 2 - audioCut, 1e3) / this.chanFs);
     this.audioFir = new FirDecimator(ha, m2, 1);
     this.audioFs = this.chanFs / m2;
@@ -304,7 +344,7 @@ export class Receiver {
     const channel = this.chan.process(this.mixer.process(iq));
     const demod = this.demod.process(channel);
     const audio = this.audioFir.process(this.deemph ? this.deemph.process(demod) : demod);
-    return { channel, demod, audio };
+    return { channel, demod, audio, env: this.demod.env ?? null, envFs: this.demod.envFs ?? 0 };
   }
 }
 
@@ -315,17 +355,21 @@ export interface Stages {
   demod: Float32Array; // raw demodulator output at chanFs
   audioFs: number;
   audio: Float32Array;
+  env: Float32Array | null; // CW only: the keying envelope
+  envFs: number;
 }
 
 /** Whole-buffer convenience for files: one chunk through a fresh Receiver, then normalized. */
 export function receive(iq: Float32Array, fs: number, offset: number, mode: Mode, bw: number): Stages {
   const r = new Receiver(fs, offset, mode, bw);
-  const { channel, demod, audio } = r.process(iq);
-  return { taps: r.taps, chanFs: r.chanFs, channel, demod, audioFs: r.audioFs, audio: normalize(audio) };
+  const { channel, demod, audio, env, envFs } = r.process(iq);
+  return { taps: r.taps, chanFs: r.chanFs, channel, demod, audioFs: r.audioFs, audio: normalize(audio), env, envFs };
 }
 
 export interface SynthSignal {
-  kind: "FM" | "AM" | "USB";
+  kind: "FM" | "AM" | "USB" | "CW";
+  text?: string; // CW: what it sends (repeated)
+  wpm?: number;
   offset: number; // Hz from center
   tone: number; // modulating tone, Hz
   amp: number;
@@ -335,6 +379,7 @@ export const DEMO_SIGNALS: SynthSignal[] = [
   { kind: "FM", offset: 200e3, tone: 1000, amp: 0.5 },
   { kind: "AM", offset: -150e3, tone: 600, amp: 0.4 },
   { kind: "USB", offset: 350e3, tone: 800, amp: 0.3 },
+  { kind: "CW", offset: -320e3, tone: 0, amp: 0.25, text: "CQ DE IHOR K", wpm: 20 },
 ];
 
 /** Synthetic IQ: a few modulated carriers plus white noise. Lets the lab run with no file. */
@@ -343,12 +388,21 @@ export function synth(fs: number, seconds: number, signals: SynthSignal[], noise
   const iq = new Float32Array(2 * n);
   for (const s of signals) {
     let ph = 0;
+    // CW: an on/off keyed carrier, with 5 ms soft edges so it doesn't splatter
+    let keyed: ((t: number) => number) | null = null;
+    if (s.kind === "CW") {
+      const { tones, duration } = schedule(s.text ?? "CQ", s.wpm ?? 18), period = duration + 1500, edge = 5;
+      const gain = new Float32Array(Math.ceil(period)); // per millisecond, computed once
+      for (const [a, b] of tones) for (let ms = Math.max(0, Math.floor(a - edge)); ms < Math.min(gain.length, b + edge); ms++) gain[ms] = Math.max(gain[ms], Math.min(1, (ms - a + edge) / (2 * edge), (b + edge - ms) / (2 * edge)));
+      keyed = (t) => gain[Math.floor(((t / fs) * 1000) % period)];
+    }
     for (let t = 0; t < n; t++) {
       const m = Math.sin((TAU * s.tone * t) / fs);
       let f = s.offset, a = s.amp;
       if (s.kind === "FM") f += 75e3 * m; // broadcast deviation
       else if (s.kind === "AM") a *= 1 + 0.8 * m;
-      else f += s.tone; // USB with one tone = a single carrier tone above the suppressed carrier
+      else if (s.kind === "CW") a *= keyed!(t);
+      else if (s.kind === "USB") f += s.tone; // USB with one tone = a single carrier tone above the suppressed carrier
       ph += (TAU * f) / fs;
       iq[2 * t] += a * Math.cos(ph);
       iq[2 * t + 1] += a * Math.sin(ph);

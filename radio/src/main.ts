@@ -1,4 +1,5 @@
-import { avgSpectrum, powerSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, DEMO_SIGNALS, DEFAULT_BW, type Mode } from "./dsp.ts";
+import { avgSpectrum, powerSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, DEMO_SIGNALS, DEFAULT_BW, CW_PITCH, type Mode } from "./dsp.ts";
+import { CwSignalDecoder } from "./cw.ts";
 import { decodeCU8, decodeCF32, parseName } from "./iq.ts";
 import { RtlSdr } from "./rtlsdr.ts";
 import { RemoteSdr } from "./remote.ts";
@@ -111,7 +112,24 @@ const DEMOD_TEXT: Record<Mode, string> = {
   AM: "AM carries the audio in the <i>amplitude</i>. The envelope |x| minus its average (the carrier) is the audio.",
   USB: "Single sideband sends only the upper half of an AM signal, with no carrier. Shift that sideband to straddle 0 Hz, filter, shift back, and the real part is the audio.",
   LSB: "Same as USB, but the lower half. Below 10 MHz, hams use LSB by convention.",
+  CW: `CW (Morse) is a carrier switched on and off. Move it to 0 Hz, filter very narrow (a few hundred Hz) so neighbors vanish, then mix it up to a ${CW_PITCH} Hz tone (a receiver's "BFO") so you hear dits and dahs. The narrow channel's strength is the keying, decoded below.`,
 };
+
+// ---------- CW: the Morse panel ----------
+let cw = new CwSignalDecoder(), cwDrawn = 0;
+function cwShow() {
+  const on = $<HTMLSelectElement>("mode").value === "CW";
+  $("cwPanel").hidden = !on;
+  if (!on) return;
+  const box = $("cwText"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.textContent = cw.text || "…listening";
+  if (atEnd) box.scrollTop = box.scrollHeight;
+  const top = Math.max(cw.peak * 1.2, 1e-9);
+  $("cwLevel").style.width = `${Math.min(100, (100 * cw.level) / top)}%`;
+  $("cwThr").style.left = `${Math.min(100, (100 * (cw.floor + 0.5 * (cw.peak - cw.floor))) / top)}%`;
+  $("cwStat").textContent = `${cw.on ? "▮ key down" : "▯ key up"} · ≈${cw.wpm.toFixed(0)} WPM · signal ${cw.snrDb.toFixed(0)} dB over noise${cw.snrDb < 10 ? " (too weak to decode reliably)" : ""}`;
+}
+$("cwClear").addEventListener("click", () => { cw.clear(); cwShow(); });
 
 function run() {
   if (!iq.length) return;
@@ -141,6 +159,8 @@ function run() {
   plot($("demPlot"), [{ y: win, color: css("--plot") }]);
   $("demStat").textContent = `10 ms of demodulator output at ${(s.chanFs / 1e3).toFixed(1)} kS/s`;
 
+  if (mode === "CW" && s.env) { cw = new CwSignalDecoder(); cw.process(s.env, s.envFs); }
+  cwShow();
   audio = { data: s.audio, rate: s.audioFs };
   $<HTMLButtonElement>("play").disabled = false;
   $("audStat").textContent = `${(s.audio.length / s.audioFs).toFixed(1)} s at ${(s.audioFs / 1e3).toFixed(1)} kHz · pipeline took ${ms.toFixed(0)} ms`;
@@ -173,7 +193,7 @@ $("demo").addEventListener("click", async () => {
   $<HTMLInputElement>("rate").value = "1.024";
   $<HTMLInputElement>("center").value = "100";
   setMode("WFM", 200);
-  load(synth(1.024e6, 2, DEMO_SIGNALS), "Demo: WFM at +200 kHz, AM at −150 kHz, USB at +350 kHz");
+  load(synth(1.024e6, 8, DEMO_SIGNALS), "Demo: WFM at +200 kHz, AM at −150 kHz, USB at +350 kHz, CW (Morse) at −320 kHz");
 });
 
 $<HTMLInputElement>("file").addEventListener("change", async (e) => {
@@ -219,6 +239,7 @@ function newReceiver() {
   if (!live || !sdr) return;
   const mode = $<HTMLSelectElement>("mode").value as Mode;
   live.rx = new Receiver(fs, num("offset") * 1e3, mode, num("bw") * 1e3);
+  cw = new CwSignalDecoder(); cwShow();
   live.agc = new Agc(live.rx.audioFs);
 }
 
@@ -279,7 +300,8 @@ function onSamples(cu8: Uint8Array) {
   const x = decodeCU8(cu8);
 
   // Audio: through the streaming receiver, then scheduled back to back.
-  const a = live.agc.process(live.rx.process(x).audio);
+  const out = live.rx.process(x), a = live.agc.process(out.audio);
+  if (out.env) { cw.process(out.env, out.envFs); if (performance.now() - cwDrawn > 150) { cwDrawn = performance.now(); cwShow(); } }
   if (a.length) {
     const ctx = live.ctx, now = ctx.currentTime;
     if (live.t < now + 0.05) live.t = now + 0.15; // underrun: rebuild a small cushion
@@ -355,3 +377,10 @@ if (!("usb" in navigator)) {
 }
 
 $("demo").click();
+
+// What Blip sees here: the tuning and, in CW mode, what the Morse decoder has read so far.
+(window as any).blipContext = () => ({
+  page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: $<HTMLSelectElement>("mode").value,
+  tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), live: !!sdr,
+  cw: $<HTMLSelectElement>("mode").value === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
+});
