@@ -388,6 +388,15 @@ function frame(now) {
     if (colorBy && p.type === "wire") { g.strokeStyle = vColor(sim.voltAt(p.a) ?? 0, vlo, vhi); g.lineWidth = 0.15; g.lineCap = "round"; g.beginPath(); g.moveTo(...p.a); g.lineTo(...p.b); g.stroke(); if (st.sel) { g.strokeStyle = COL.sel; g.lineWidth = 0.05; g.stroke(); } }
     else draw(g, p, st);
   }
+  // schematic names (R1, LED1…), on the side opposite each part's value label
+  const R = refs();
+  g.fillStyle = "#8f98a8"; g.font = "0.36px ui-monospace, Menlo, monospace"; g.textBaseline = "middle";
+  for (const p of parts) {
+    const name = R.get(p.id); if (!name || p.type === "probe") continue;
+    if (PARTS[p.type].two) { const [ax, ay] = p.a, [bx, by] = p.b, ang = Math.atan2(by - ay, bx - ax), o = ["battery", "source", "switch", "button", "diode", "zener", "led", "lamp", "motor"].includes(p.type) ? -0.75 : 0.85, dx = -o * Math.sin(ang), dy = o * Math.cos(ang); /* opposite the value label */ g.textAlign = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "left" : "right") : "center"; g.fillText(name, (ax + bx) / 2 + dx, (ay + by) / 2 + dy); }
+    else { const ps = pins(p), x = Math.min(...ps.map((q) => q[0])), y = Math.min(...ps.map((q) => q[1])); g.textAlign = "left"; g.fillText(name, x + 0.2, y - 0.7); }
+  }
+  g.textAlign = "left"; g.textBaseline = "alphabetic";
   // current dots on wire pieces and two-terminal parts (conventional current, + to −)
   if (sim) {
     g.fillStyle = COL.dot;
@@ -475,7 +484,7 @@ function showPanel() {
     if (kind === "range") return `<label>${label}: <b>${v}%</b><input type="range" data-prop="${prop}" data-kind="range" min="${min}" max="${max}" value="${v}"></label>`;
     return `<label>${label} (${extra})<input type="text" data-prop="${prop}" data-kind="${kind}" data-min="${min}" data-max="${max}" value="${kind === "si" ? si(v, "").replace(/\s/g, "") : v}"></label>`;
   };
-  $("panel").innerHTML = `<h2>${d.name}</h2><p class="muted">${d.desc}${d.chapter ? ` <a href="/learn/electronics/${d.chapter}">Learn more</a>` : ""}</p>
+  $("panel").innerHTML = `<h2>${d.name} ${refs().get(p.id) ?? ""}</h2><p class="muted">${d.desc}${d.chapter ? ` <a href="/learn/electronics/${d.chapter}">Learn more</a>` : ""}</p>
     ${(d.fields ?? []).map(field).join("")}
     ${p.type === "led" && p.dead ? `<p><span class="warn">Burnt out.</span> <button id="pFix">Replace it</button></p>` : ""}
     ${p.type === "switch" ? `<p><button id="pFlip">${p.closed ? "Open it" : "Close it"}</button></p>` : ""}
@@ -558,11 +567,81 @@ try {
 showPanel();
 requestAnimationFrame(frame);
 
-window.blipContext = () => ({
-  page: "Circuit lab (students build and simulate circuits, with an oscilloscope)", speed: `${speed} simulated seconds per real second`,
-  parts: parts.filter((p) => p.type !== "wire").map((p) => { const d = PARTS[p.type]; return `${d.name}${p.v != null ? " " + si(p.v, "V") : ""}${p.type === "resistor" ? " " + si(p.ohms, "Ω") : ""}${p.farads ? " " + si(p.farads, "F") : ""}${p.color ? " " + p.color : ""}${p.dead ? " (burnt out)" : ""}${p.closed != null ? (p.closed ? " (closed)" : " (open)") : ""}${d.two ? `: ${si(sim?.cur.get(p.id) ?? 0, "A")}` : ""}`; }),
-  selected: sel().map((p) => PARTS[p.type].name), status: $("status").textContent,
-});
+// ---------- reading the circuit: reference names, a netlist, and what Blip can do here ----------
+const PREFIX = { battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
+/** Schematic reference names (R1, LED2, U1…), numbered in the order parts were added. */
+function refs() {
+  const count = {}, out = new Map();
+  for (const p of [...parts].sort((a, b) => a.id - b.id)) {
+    if (p.type === "probe") out.set(p.id, `CH${p.ch}`);
+    else if (PREFIX[p.type]) { const k = PREFIX[p.type]; count[k] = (count[k] ?? 0) + 1; out.set(p.id, `${k}${count[k]}`); }
+  }
+  return out;
+}
+const PIN2 = { battery: ["+", "−"], source: ["+", "−"], diode: ["anode", "cathode"], zener: ["anode", "cathode"], led: ["anode", "cathode"], ammeter: ["+", "−"] };
+const pinName = (p, k) => PARTS[p.type].pinNames?.[k] ?? PIN2[p.type]?.[k] ?? `${k + 1}`;
+/** Which pins are joined (through wires and T-junctions), as nets with their voltage. */
+function nets() {
+  const up = new Map(), find = (k) => { while (up.has(k) && up.get(k) !== k) k = up.get(k); return k; }, join = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) up.set(ra, rb); };
+  for (const w of parts) if (w.type === "wire") { const stops = [w.a, ...onWire(w, parts), w.b].map(key); stops.slice(1).forEach((k, i) => join(stops[i], k)); }
+  const ground = new Set(parts.filter((p) => p.type === "ground").map((p) => find(key(pins(p)[0])))), R = refs(), groups = new Map();
+  for (const p of parts) if (R.has(p.id) && p.type !== "probe") pins(p).forEach((pt, k) => { const root = find(key(pt)); if (!groups.has(root)) groups.set(root, { pts: pt, pins: [] }); groups.get(root).pins.push(`${R.get(p.id)}.${pinName(p, k)}`); });
+  let n = 0;
+  return [...groups.entries()].map(([root, g]) => {
+    const v = sim?.voltAt(g.pts);
+    return { name: ground.has(root) ? "GND" : `N${++n}`, volts: v == null ? null : +v.toFixed(3), pins: g.pins, loose: g.pins.length === 1 };
+  });
+}
+function partSummary(p, R) {
+  const d = PARTS[p.type], vals = (d.fields ?? []).map(([prop, label, kind]) => `${label} ${kind === "si" ? si(p[prop], { ohms: "Ω", farads: "F", henries: "H", v: "V", amp: "V", freq: "Hz", bv: "V", volts: "V", watts: "W" }[prop] ?? "") : p[prop]}`).join(", ");
+  const amps = sim?.cur.get(p.id) ?? 0, cur = !d.two || !sim ? "" : ["battery", "source"].includes(p.type) ? `, supplying ${si(Math.abs(amps), "A")}` : `, current ${si(amps, "A")}`;
+  return `${R.get(p.id)}: ${d.name}${vals ? ` (${vals})` : ""}${p.dead ? " BURNT OUT" : ""}${p.closed != null ? (p.closed ? " closed" : " open") : ""}${cur}`;
+}
+const screenOf = (p) => { const ps = pins(p), x = ps.reduce((s, q) => s + q[0], 0) / ps.length, y = ps.reduce((s, q) => s + q[1], 0) / ps.length, r = cv.getBoundingClientRect(); return { x: r.left + view.x + x * view.s, y: r.top + view.y + y * view.s }; };
+const byRef = (ref) => { const R = refs(), want = String(ref ?? "").trim().toUpperCase(); return parts.find((p) => R.get(p.id)?.toUpperCase() === want); };
+
+window.blipContext = () => {
+  const R = refs();
+  return {
+    page: "Circuit lab: the student's own circuit, simulated live. Parts have schematic names (R1, LED1, U1…) shown on the board; nets list which pins are connected and their voltage (GND = 0 V). Use the names when explaining, and the lab actions to show or change things.",
+    running: !!sim, speed: `${speed} simulated s per real s`, simTime: sim ? si(sim.t, "s") : null, status: $("status").textContent || "ok",
+    parts: parts.filter((p) => R.has(p.id) && p.type !== "probe").map((p) => partSummary(p, R)),
+    nets: nets().map((n) => `${n.name}${n.volts == null ? "" : ` (${n.volts} V)`}: ${n.pins.join(", ")}${n.loose ? "  ← this pin is connected to nothing" : ""}`),
+    darkLEDs: parts.filter((p) => p.type === "led" && !p.dead && sim && (sim.cur.get(p.id) ?? 0) < 2e-4).map((p) => { const drop = (sim.voltAt(p.a) ?? 0) - (sim.voltAt(p.b) ?? 0); return `${R.get(p.id)}: ${drop < -0.1 ? "in backwards" : `only ${drop.toFixed(2)} V across it, needs about ${LEDS[p.color][0]} V`}`; }),
+    scope: [...$("meas").querySelectorAll("tr")].slice(1).map((tr) => [...tr.children].slice(0, 7).map((td) => td.textContent).join(" ")).map((row) => row.replace(/^(CH\d)/, "$1:")).map((row) => `${row} (Vpp max min avg RMS freq)`),
+    selected: sel().map((p) => R.get(p.id) ?? PARTS[p.type].name),
+    groundSymbol: parts.some((p) => p.type === "ground"),
+  };
+};
+window.blipActions = {
+  insert_circuit: { label: "added a circuit", description: `Add a ready-made circuit to the board, to the right of what's there. Names: ${Object.entries(TEMPLATES).map(([k, t]) => `${k} (${t.name})`).join("; ")}.`,
+    parameters: { name: { type: "string", description: "one of the template names" } },
+    run: ({ name }) => {
+      if (!TEMPLATES[name]) return;
+      const ps = parts.flatMap(pins), x = ps.length ? Math.max(...ps.map((q) => q[0])) + 4 : 2, y = ps.length ? Math.min(...ps.map((q) => q[1])) : 2;
+      remember(); const made = instantiate(name, [x, y], newId); parts.push(...made); selected = new Set(made.map((p) => p.id));
+      const t = TEMPLATES[name]; if (t.speed) setSpeed(t.speed); tdivSet(t.div ?? "auto"); scopeClear(); changed(); fit();
+      return screenOf(made[0]);
+    } },
+  select_part: { label: "pointed at a part", description: "Select a part by its name (like R1, LED2, U1, SW1) so the student sees it and its readings; Blip points at it.",
+    parameters: { ref: { type: "string", description: "the part's name, e.g. R2" } },
+    run: ({ ref }) => { const p = byRef(ref); if (!p) return; selected = new Set([p.id]); showPanel(); return screenOf(p); } },
+  set_value: { label: "changed a value", description: "Change a part's main value: resistance for R, capacitance for C, voltage for BAT, frequency or amplitude for V (a signal source), color for LED, Zener voltage for D. Values like 4.7k, 100n, 9.",
+    parameters: { ref: { type: "string", description: "the part's name" }, value: { type: "string", description: "the new value, e.g. 330, 4.7k, 10u, blue" }, field: { type: "string", description: "optional: which property (ohms, farads, v, freq, amp, color, bv, henries)" } },
+    run: ({ ref, value, field }) => {
+      const p = byRef(ref); if (!p) return;
+      const f = (PARTS[p.type].fields ?? []).find(([prop]) => prop === field) ?? PARTS[p.type].fields?.[0]; if (!f) return;
+      const [prop, , kind, extra, min, max] = f;
+      let v = kind === "select" ? (extra.map(String).includes(String(value)) ? (isNaN(+value) ? value : +value) : null) : kind === "si" ? parseSI(value) : parseFloat(value);
+      if (v == null || (typeof v === "number" && !Number.isFinite(v))) return;
+      if (typeof v === "number" && min != null) v = Math.min(max, Math.max(min, v));
+      remember(); p[prop] = v; if (prop === "color") delete p.dead; selected = new Set([p.id]); changed();
+      return screenOf(p);
+    } },
+  toggle_switch: { label: "flipped a switch", description: "Open or close a switch by name (SW1…).", parameters: { ref: { type: "string" } },
+    run: ({ ref }) => { const p = byRef(ref); if (!p || p.type !== "switch") return; remember(); p.closed = !p.closed; changed(); return screenOf(p); } },
+};
+
 </script>
 </body>
 </html>
