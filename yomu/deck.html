@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Kanji and Words</title>
+  <meta name="description" content="Every JLPT N5, N4 and N3 kanji and word: meanings, readings, animated stroke order, example words with audio. Learn ten at a time with a quick quiz, then keep them with spaced review." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · <span id="crumb"></span></p>
+  <h1 id="title">…</h1>
+  <div id="settings"></div>
+  <p class="choices" id="tabs"></p>
+  <section class="card2" id="session"></section>
+  <p><input id="q" type="search" placeholder="Search by meaning, reading or kanji" aria-label="Search" style="width:100%;max-width:420px"> <span class="muted" id="count"></span></p>
+  <div id="detail"></div>
+  <div id="grid"></div>
+  <p><button id="more" hidden>Show more</button></p>
+</main>
+<script type="module">
+import { state, gain, settingsBar, esc, speak, strokes, romaji, toHiragana, addCard, wordCard, kanjiCard, inDeck, vocab, kanjiDeck, LEVELS, shuffle, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const level = LEVELS.includes(params.get("level")) ? params.get("level") : "N5";
+const type = params.get("type") === "words" ? "words" : "kanji";
+const items = type === "kanji" ? await kanjiDeck(level) : await vocab(level);
+const idOf = (x) => (type === "kanji" ? "k:" + x.k : "w:" + x.w);
+const card = (x) => (type === "kanji" ? kanjiCard(x) : wordCard(x));
+const meaning = (x) => (type === "kanji" ? x.m.join(", ") : x.m);
+const readingOf = (x) => (type === "kanji" ? [...x.on, ...x.kun].join("、") : x.r);
+const show = (s) => (state.settings.script === "romaji" ? romaji(toHiragana(s)) : s);
+$("crumb").textContent = `${level} ${type}`;
+$("title").textContent = `${level} ${type === "kanji" ? "kanji" : "words"} · ${items.length}`;
+$("tabs").innerHTML = LEVELS.flatMap((l) => ["kanji", "words"].map((t) => `<a class="btn" href="?level=${l}&type=${t}" ${l === level && t === type ? 'aria-current="page"' : ""}>${l} ${t}</a>`)).join(" ");
+settingsBar($("settings"), () => { render(); renderSession(); });
+
+// ---------- browse ----------
+let limit = 120;
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const list = items.filter((x) => !q || `${type === "kanji" ? x.k : x.w} ${readingOf(x)} ${romaji(toHiragana(readingOf(x)))} ${meaning(x)}`.toLowerCase().includes(q));
+  $("count").textContent = `${items.filter((x) => inDeck(idOf(x))).length}/${items.length} in your deck`;
+  $("grid").className = type === "kanji" ? "ktiles" : "vocab";
+  $("grid").innerHTML = list.slice(0, limit).map((x, i) => type === "kanji"
+    ? `<button class="ktile jp${inDeck(idOf(x)) ? " done" : ""}" data-i="${items.indexOf(x)}" title="${esc(meaning(x))}">${esc(x.k)}</button>`
+    : `<div class="${inDeck(idOf(x)) ? "done" : ""}"><span class="jp">${x.w === x.r || state.settings.script !== "kanji" ? esc(show(x.r)) : `<ruby>${esc(x.w)}<rt>${esc(x.r)}</rt></ruby>`}</span> <button class="mini" data-say="${esc(x.r)}" aria-label="Play">▶</button><br><span class="muted">${esc(x.m)}</span></div>`).join("");
+  $("more").hidden = list.length <= limit;
+  $("grid").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => detail(items[+b.dataset.i])));
+  $("grid").querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => speak(b.dataset.say)));
+}
+function detail(k) {
+  $("detail").innerHTML = `<div class="card2 kanji"><div><div class="glyph">${esc(k.k)}</div><div class="stroke" id="ks"></div></div><div>
+    <p><b>${esc(k.m.join(", "))}</b> <span class="muted">· ${k.s} strokes</span></p>
+    <p>On (Chinese) reading: <span class="jp">${esc(k.on.join("、") || "—")}</span><br>Kun (Japanese) reading: <span class="jp">${esc(k.kun.join("、") || "—")}</span></p>
+    ${k.ex.map(([w, r, m]) => `<div><span class="jp">${state.settings.script === "kanji" ? `<ruby>${esc(w)}<rt>${esc(r)}</rt></ruby>` : esc(show(r))}</span> <button class="mini" data-say="${esc(r)}">▶</button> <span class="muted">${esc(m)}</span></div>`).join("")}
+    <p><button class="mini" id="kadd">${inDeck(idOf(k)) ? "✓ In your deck" : "+ Add to review"}</button> <button class="mini" id="kre">✍ Strokes again</button></p></div></div>`;
+  strokes(k.k, $("ks"));
+  $("detail").querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => speak(b.dataset.say)));
+  $("kadd").onclick = () => { addCard(...kanjiCard(k)); gain(1); $("kadd").textContent = "✓ In your deck"; render(); };
+  $("kre").onclick = () => strokes(k.k, $("ks"));
+  $("detail").scrollIntoView({ block: "nearest" });
+}
+$("q").oninput = () => { limit = 120; render(); };
+$("more").onclick = () => { limit += 240; render(); };
+
+// ---------- learn the next ten: look, then quiz, then they join the review deck ----------
+let batch = [], phase = "idle", at = 0, misses = 0;
+function renderSession() {
+  const box = $("session");
+  if (phase === "idle") {
+    const left = items.filter((x) => !inDeck(idOf(x))).length;
+    box.innerHTML = left
+      ? `<b>Learn the next 10 ${type}</b> <span class="muted">· ${left} new left in ${level}</span><br><button id="go">Start</button>`
+      : `<b>All ${items.length} ${level} ${type} are in your deck.</b> Keep them fresh in <a href="/yomu/review.html">Review</a>.`;
+    if ($("go")) $("go").onclick = () => { batch = items.filter((x) => !inDeck(idOf(x))).slice(0, 10); phase = "look"; at = 0; misses = 0; renderSession(); };
+    return;
+  }
+  const x = batch[at];
+  if (phase === "look") {
+    box.innerHTML = `<p class="muted">Look and listen ${at + 1}/${batch.length}</p>
+      <div class="jp" style="font-size:64px;line-height:1.2">${esc(type === "kanji" ? x.k : x.w === x.r ? show(x.w) : x.w)}</div>
+      <p class="jp">${esc(show(readingOf(x)))}</p><p><b>${esc(meaning(x))}</b></p>
+      ${type === "kanji" ? `<div class="stroke" id="ls"></div>${x.ex[0] ? `<p class="jp">${esc(x.ex[0][0])} (${esc(show(x.ex[0][1]))}) · ${esc(x.ex[0][2])}</p>` : ""}` : ""}
+      <button id="next">${at + 1 < batch.length ? "Next →" : "Quiz me →"}</button>`;
+    speak(type === "kanji" ? x.ex[0]?.[1] ?? x.kun[0]?.replace(/[.-]/g, "") ?? x.on[0] : x.r);
+    if (type === "kanji") strokes(x.k, $("ls"));
+    $("next").onclick = () => { if (++at >= batch.length) { phase = "quiz"; at = 0; batch = shuffle(batch); } renderSession(); };
+    return;
+  }
+  if (phase === "quiz") {
+    const pool = items.filter((y) => y !== x);
+    const opts = shuffle([x, ...shuffle(pool).slice(0, 3)]);
+    const listenQ = type === "words" && at % 2 === 1; // every other word: hear it, pick it
+    box.innerHTML = `<p class="muted">Quiz ${at + 1}/${batch.length}</p>
+      ${listenQ ? `<button id="hear" style="font-size:22px">▶ Which word is this?</button>` : `<div class="jp" style="font-size:52px">${esc(type === "kanji" ? x.k : x.w)}</div>`}
+      <div class="choices">${opts.map((o, i) => `<button data-o="${i}" ${listenQ ? 'class="jp"' : ""}>${esc(listenQ ? (o.w === o.r ? show(o.w) : o.w) : meaning(o).split(",").slice(0, 3).join(","))}</button>`).join("")}</div><p id="fb"></p>`;
+    if (listenQ) { speak(x.r); $("hear").onclick = () => speak(x.r); }
+    box.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => {
+      const ok = opts[+b.dataset.o] === x;
+      b.classList.add(ok ? "right" : "wrong");
+      if (!ok) { misses++; batch.push(x); $("fb").innerHTML = `<span class="wrong">✗</span> ${esc(type === "kanji" ? x.k : x.w)} = ${esc(meaning(x))}`; }
+      else { addCard(...card(x)); gain(2); }
+      setTimeout(() => { if (++at >= batch.length) phase = "done"; renderSession(); }, ok ? 500 : 1800);
+    }));
+    return;
+  }
+  box.innerHTML = `<b>Done!</b> ${new Set(batch.map(idOf)).size} ${type} joined your review deck${misses ? ` (${misses} missed on the way, they'll come back sooner)` : ", no misses 🎉"}. <button id="again">Next 10</button> <a href="/yomu/review.html">Review now</a>`;
+  if (!misses) blip("Perfect round! 完璧!", "happy", 6);
+  $("again").onclick = () => { phase = "idle"; renderSession(); $("go")?.click(); };
+  phase = "idle"; render();
+}
+
+render();
+renderSession();
+window.blipContext = () => ({ page: `Yomu ${level} ${type}`, role: "You are a Japanese tutor. Give mnemonics for kanji (from their parts), example sentences, and readings in kana and romaji.", inDeck: items.filter((x) => inDeck(idOf(x))).length, total: items.length, studying: batch.map((x) => (type === "kanji" ? `${x.k} ${x.m[0]}` : `${x.w} (${x.r}) ${x.m}`)) });
+window.blipActions = {
+  say_japanese: { label: "spoke Japanese", description: "Say a Japanese word or sentence aloud.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => { speak(String(text ?? "")); } },
+};
+</script>
+</body>
+</html>

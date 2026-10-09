@@ -1,0 +1,1034 @@
+{
+ "id": "n5-01",
+ "level": "N5",
+ "unit": 1,
+ "title": {
+  "ja": "はじめまして",
+  "en": "Nice to meet you"
+ },
+ "scene": "A café near Washington Square, New York. Sam sits down next to Yuki.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はじめまして",
+     null,
+     "nice to meet you (first time)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you. I'm Sam."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はじめまして",
+     null,
+     "nice to meet you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "よろしく",
+     null,
+     "please treat me kindly"
+    ],
+    [
+     "おねがいします",
+     null,
+     "please (polite request)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you. I'm Yuki. Pleased to meet you."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "は",
+     null,
+     "topic: as for …",
+     "p"
+    ],
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question marker (?)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Are you a student, Yuki?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "大学",
+     "だいがく",
+     "university"
+    ],
+    [
+     "の",
+     null,
+     "'s / of",
+     "p"
+    ],
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I'm a student. A student at New York University."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "日本人",
+     "にほんじん",
+     "Japanese (person)"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question marker",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Are you Japanese?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本人",
+     "にほんじん",
+     "Japanese (person)"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "は",
+     null,
+     "and you? (as for Sam…)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I'm Japanese. And you, Sam?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I, me"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "アメリカ",
+     null,
+     "America"
+    ],
+    [
+     "人",
+     "じん",
+     "person (nationality)"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "じゃありません",
+     null,
+     "am not (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm American. I'm not a student."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "そうですか",
+     null,
+     "I see / is that so"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お",
+     null,
+     "(polite prefix)"
+    ],
+    [
+     "しごと",
+     null,
+     "job, work"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I see. And your job?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "エンジニア",
+     null,
+     "engineer"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "エンジニア",
+     null,
+     "engineer"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm an engineer. A radio engineer."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "へえ",
+     null,
+     "oh, wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh wow, radio!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "(beep beep)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "はじめまして",
+     null,
+     "nice to meet you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep beep! Nice to meet you!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あれ",
+     null,
+     "huh? (surprise)"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何",
+     "なん",
+     "what"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Huh? What is this?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "my ('s)",
+     "p"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's Blip. My robot."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "よろしく",
+     null,
+     "nice to meet you"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you, Blip!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "wa-desu",
+   "title": "X は Y です: X is Y",
+   "explain": "は (written ha, read wa) marks the topic: what the sentence is about. です at the end makes it a polite statement, like 'is / am / are'. Japanese drops 'I' when it's obvious: 学生です alone means 'I'm a student'.",
+   "examples": [
+    {
+     "t": [
+      [
+       "私",
+       "わたし",
+       "I"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "学生",
+       "がくせい",
+       "student"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I am a student."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ゆきさん＿学生です。",
+     "hint": "Yuki is a student.",
+     "choices": [
+      "は",
+      "の",
+      "か"
+     ],
+     "answer": 0,
+     "why": "は marks the topic: as for Yuki, (she) is a student."
+    },
+    {
+     "q": "サムさんはエンジニア＿＿。",
+     "hint": "Sam is an engineer.",
+     "choices": [
+      "です",
+      "か",
+      "の"
+     ],
+     "answer": 0,
+     "why": "です ends a polite statement."
+    }
+   ]
+  },
+  {
+   "id": "ka",
+   "title": "～ですか: asking a question",
+   "explain": "Put か at the end and a sentence becomes a question: no change in word order. Answer with はい (yes) or いいえ (no).",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本人",
+       "にほんじん",
+       "Japanese"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "か",
+       null,
+       "?",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Are you Japanese?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "学生です＿。",
+     "hint": "Are you a student?",
+     "choices": [
+      "か",
+      "は",
+      "の"
+     ],
+     "answer": 0,
+     "why": "か at the end turns it into a question."
+    }
+   ]
+  },
+  {
+   "id": "ja-arimasen",
+   "title": "～じゃありません: is not",
+   "explain": "To say 'is not', swap です for じゃありません (spoken) or ではありません (formal). You'll also hear じゃないです.",
+   "examples": [
+    {
+     "t": [
+      [
+       "学生",
+       "がくせい",
+       "student"
+      ],
+      [
+       "じゃありません",
+       null,
+       "am not"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm not a student."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "サムさんは学生＿＿＿＿。",
+     "hint": "Sam is not a student.",
+     "choices": [
+      "じゃありません",
+      "です",
+      "ですか"
+     ],
+     "answer": 0,
+     "why": "じゃありません is the polite negative of です."
+    }
+   ]
+  },
+  {
+   "id": "no",
+   "title": "A の B: A's B, B of A",
+   "explain": "の links two nouns; the first describes the second. 私のロボット = my robot, ラジオのエンジニア = radio engineer.",
+   "examples": [
+    {
+     "t": [
+      [
+       "私",
+       "わたし",
+       "I"
+      ],
+      [
+       "の",
+       null,
+       "'s",
+       "p"
+      ],
+      [
+       "ロボット",
+       null,
+       "robot"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's my robot."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ラジオ＿エンジニアです。",
+     "hint": "I'm a radio engineer.",
+     "choices": [
+      "の",
+      "は",
+      "か"
+     ],
+     "answer": 0,
+     "why": "の connects ラジオ (radio) to エンジニア (engineer)."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "私",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "わたし",
+    "わたくし"
+   ],
+   "m": "I, private",
+   "ex": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ]
+   ]
+  },
+  {
+   "k": "学",
+   "on": [
+    "ガク"
+   ],
+   "kun": [
+    "まな.ぶ"
+   ],
+   "m": "study, learning",
+   "ex": [
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "大学",
+     "だいがく",
+     "university"
+    ]
+   ]
+  },
+  {
+   "k": "生",
+   "on": [
+    "セイ",
+    "ショウ"
+   ],
+   "kun": [
+    "い.きる",
+    "う.まれる"
+   ],
+   "m": "life, birth",
+   "ex": [
+    [
+     "学生",
+     "がくせい",
+     "student"
+    ],
+    [
+     "先生",
+     "せんせい",
+     "teacher"
+    ]
+   ]
+  },
+  {
+   "k": "大",
+   "on": [
+    "ダイ",
+    "タイ"
+   ],
+   "kun": [
+    "おお.きい"
+   ],
+   "m": "big",
+   "ex": [
+    [
+     "大学",
+     "だいがく",
+     "university"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ]
+   ]
+  },
+  {
+   "k": "日",
+   "on": [
+    "ニチ",
+    "ジツ"
+   ],
+   "kun": [
+    "ひ",
+    "か"
+   ],
+   "m": "day, sun",
+   "ex": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ]
+   ]
+  },
+  {
+   "k": "本",
+   "on": [
+    "ホン"
+   ],
+   "kun": [
+    "もと"
+   ],
+   "m": "book, origin",
+   "ex": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ]
+   ]
+  },
+  {
+   "k": "人",
+   "on": [
+    "ジン",
+    "ニン"
+   ],
+   "kun": [
+    "ひと"
+   ],
+   "m": "person",
+   "ex": [
+    [
+     "日本人",
+     "にほんじん",
+     "Japanese person"
+    ],
+    [
+     "人",
+     "ひと",
+     "person"
+    ]
+   ]
+  },
+  {
+   "k": "何",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "なに",
+    "なん"
+   ],
+   "m": "what",
+   "ex": [
+    [
+     "何",
+     "なん",
+     "what"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  6,
+  12
+ ],
+ "questions": [
+  {
+   "q": "サムさんは何人ですか。",
+   "en": "What nationality is Sam?",
+   "choices": [
+    "アメリカ人",
+    "日本人",
+    "ロボット"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんは何ですか。",
+   "en": "What is Yuki?",
+   "choices": [
+    "学生",
+    "エンジニア",
+    "先生"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップは何ですか。",
+   "en": "What is Blip?",
+   "choices": [
+    "サムさんのロボット",
+    "ゆきさんの本",
+    "ラジオ"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Introduce yourself to Blip in Japanese: your name, whether you're a student, and your job or nationality."
+}

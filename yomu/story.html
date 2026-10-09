@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Story</title>
+  <meta name="description" content="A graded Japanese story with tap-to-translate words, audio, shadowing, grammar drills, kanji with stroke order, sentence building and comprehension questions. Switch between kanji with furigana, kana only and romaji." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · <span id="lvl"></span></p>
+  <h1 id="title">…</h1>
+  <p class="lede" id="scene"></p>
+  <div id="settings"></div>
+  <nav class="steps" id="steps" aria-label="Steps"></nav>
+
+  <h2 class="step" id="s-story">1. The story</h2>
+  <p class="muted">Tap any word for its reading and meaning. ▶ plays a line, 🎤 lets you say it back (Chrome checks your pronunciation; elsewhere it records you so you can compare).</p>
+  <div class="row"><button id="playAll">▶ Play the whole scene</button> <button id="readDone">I've read it ✓</button></div>
+  <div id="lines" class="jp"></div>
+
+  <h2 class="step" id="s-words">2. New words</h2>
+  <p class="muted">Add them to your review deck; Yomu brings each one back right before you'd forget it.</p>
+  <div class="vocab jp" id="vocab"></div>
+  <p><button id="addAll">+ Add all to review</button></p>
+
+  <h2 class="step" id="s-grammar">3. Grammar</h2>
+  <div id="grammar"></div>
+
+  <h2 class="step" id="s-kanji">4. Kanji</h2>
+  <p class="muted">Watch the stroke order, then try it on paper: writing is the fastest way to remember a kanji.</p>
+  <div id="kanji"></div>
+
+  <h2 class="step" id="s-build">5. Build the sentence</h2>
+  <p class="muted">Put the pieces in order. Japanese sentences end with the verb or です; particles stick to the word before them.</p>
+  <div id="build"></div>
+
+  <h2 class="step" id="s-questions">6. Did you follow?</h2>
+  <div id="questions"></div>
+
+  <h2 class="step" id="s-talk">7. Talk</h2>
+  <p id="talkText"></p>
+  <p><button id="talk">💬 Practice with Blip</button></p>
+  <p id="next"></p>
+</main>
+<div id="pop" hidden></div>
+<script type="module">
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip } from "/yomu/lib.js";
+
+const $ = (id) => document.getElementById(id);
+const id = new URLSearchParams(location.search).get("u") ?? "n5-01";
+const u = await fetch(`/yomu/stories/${encodeURIComponent(id)}.json`).then((r) => (r.ok ? r.json() : null));
+if (!u) { $("title").textContent = "Story not found"; throw new Error("no story"); }
+const catalog = await fetch("/yomu/stories/index.json").then((r) => r.json()).catch(() => []);
+document.title = `${u.title.ja} · ${u.title.en}`;
+$("lvl").textContent = `${u.level} · Unit ${u.unit}`;
+$("title").innerHTML = `<span class="jp">${esc(u.title.ja)}</span> <small class="muted">${esc(u.title.en)}</small>`;
+$("scene").textContent = u.scene;
+const progress = (state.done[id] ??= { steps: {} });
+const STEPS = [["story", "Story"], ["words", "Words"], ["grammar", "Grammar"], ["kanji", "Kanji"], ["build", "Build"], ["questions", "Questions"], ["talk", "Talk"]];
+const renderSteps = () => ($("steps").innerHTML = STEPS.map(([k, l]) => `<a href="#s-${k}" class="${progress.steps[k] ? "done" : ""}">${progress.steps[k] ? "✓ " : ""}${l}</a>`).join(""));
+function complete(step, xp) {
+  if (progress.steps[step]) return;
+  progress.steps[step] = true; save(); gain(xp); renderSteps();
+  if (STEPS.every(([k]) => progress.steps[k] || k === "talk")) { progress.finished = true; save(); blip(`Unit ${u.unit} cleared! おめでとう!`, "happy", 8); }
+}
+
+// ---------- the story ----------
+const lineHtml = (l, i) => `<div class="line" id="l${i}" data-i="${i}"><div class="who">${esc(l.who)}</div>
+  <div class="t">${renderTokens(l.t, state.settings, state.known)}</div>
+  <div class="act"><button class="mini" data-play="${i}" aria-label="Play line">▶</button><button class="mini" data-say="${i}" aria-label="Say it">🎤</button></div>
+  ${state.settings.translation ? `<div class="en">${esc(l.en)}</div>` : ""}<div class="en" id="fb${i}"></div></div>`;
+function renderLines() { $("lines").innerHTML = u.lines.map(lineHtml).join(""); }
+const lineText = (l) => plain(l.t);
+$("lines").addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (b?.dataset.play) return speak(lineText(u.lines[+b.dataset.play]));
+  if (b?.dataset.say) return shadow(+b.dataset.say, b);
+  const w = e.target.closest(".w.g");
+  if (w) showWord(u.lines[+w.closest(".line").dataset.i].t[+w.dataset.i], w);
+});
+$("lines").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches(".w.g")) e.target.click(); });
+
+// Shadowing: say the line back. Chrome's speech recognition scores it; other browsers record for self-comparison.
+let recorder = null;
+async function shadow(i, btn) {
+  const l = u.lines[i], fb = $(`fb${i}`);
+  if (canListen()) {
+    fb.textContent = "Listening… say the line";
+    btn.disabled = true;
+    const heard = await listen();
+    btn.disabled = false;
+    if (!heard) return (fb.textContent = "I didn't catch that. Try again, a little louder?");
+    const score = Math.max(...heard.split(" / ").map((h) => similarity(h, kanaLine(l.t)) || similarity(h, lineText(l))));
+    fb.innerHTML = `Heard: <span class="jp">${esc(heard.split(" / ")[0])}</span> · <b class="${score > 0.75 ? "right" : "wrong"}">${Math.round(score * 100)}% match</b>`;
+    if (score > 0.75) { gain(3); blip(pick(["上手！ (jōzu: skillful!)", "いいですね！", "Nice pronunciation!"]), "happy", 4); }
+    return;
+  }
+  if (!navigator.mediaDevices) return (fb.textContent = "This browser can't record audio.");
+  if (recorder) { recorder.stop(); return; }
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+  if (!stream) return (fb.textContent = "Microphone not available.");
+  const chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (ev) => chunks.push(ev.data);
+  recorder.onstop = () => { stream.getTracks().forEach((t) => t.stop()); recorder = null; btn.textContent = "🎤"; fb.innerHTML = `<audio controls src="${URL.createObjectURL(new Blob(chunks))}"></audio> compare with ▶`; };
+  recorder.start(); btn.textContent = "■"; fb.textContent = "Recording… press ■ to stop";
+}
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+// Play the whole scene, karaoke-style.
+let playing = false;
+$("playAll").onclick = async () => {
+  if (playing) { playing = false; speechSynthesis.cancel(); return; }
+  playing = true; $("playAll").textContent = "■ Stop";
+  for (let i = 0; i < u.lines.length && playing; i++) {
+    document.querySelectorAll(".line.now").forEach((x) => x.classList.remove("now"));
+    $(`l${i}`).classList.add("now"); $(`l${i}`).scrollIntoView({ block: "center", behavior: "smooth" });
+    await speak(lineText(u.lines[i]));
+  }
+  document.querySelectorAll(".line.now").forEach((x) => x.classList.remove("now"));
+  playing = false; $("playAll").textContent = "▶ Play the whole scene";
+  complete("story", 10);
+};
+$("readDone").onclick = () => { complete("story", 10); location.hash = "#s-words"; };
+
+// Word popover: reading, romaji, meaning, audio, review, "I know it" (which hides its furigana in that mode).
+function showWord(raw, el) {
+  const t = tok(raw), pop = $("pop"), r = el.getBoundingClientRect();
+  pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div><div>${esc(t.g)}</div>
+    <div class="row"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}<button class="mini" id="pClose">✕</button></div>`;
+  pop.hidden = false;
+  pop.style.left = `${Math.min(innerWidth - 310, r.left + scrollX)}px`; pop.style.top = `${r.bottom + scrollY + 6}px`;
+  $("pPlay").onclick = () => speak(reading(t));
+  $("pClose").onclick = () => (pop.hidden = true);
+  if ($("pAdd")) $("pAdd").onclick = () => { addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("pAdd").textContent = "✓ Added"; gain(1); };
+  if ($("pKnow")) $("pKnow").onclick = () => { state.known[t.s] = !state.known[t.s]; save(); $("pKnow").textContent = state.known[t.s] ? "✓ Known" : "I know it"; renderLines(); };
+}
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = true; });
+
+// ---------- words ----------
+const words = [...new Map(u.lines.flatMap((l) => l.t.map(tok)).filter((t) => t.g && t.k !== "p" && t.k !== "x").map((t) => [t.s, t])).values()];
+$("vocab").innerHTML = words.map((t, i) => `<div><span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join("");
+$("vocab").addEventListener("click", (e) => { const i = e.target.closest("[data-w]")?.dataset.w; if (i != null) speak(reading(words[+i])); });
+$("addAll").onclick = () => { for (const t of words) addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("addAll").textContent = `✓ ${words.length} words in your review deck`; complete("words", 10); };
+
+// ---------- quizzes (grammar and questions share this) ----------
+function quiz(container, items, step, xp) {
+  let right = 0, answered = 0;
+  container.insertAdjacentHTML("beforeend", items.map((q, i) => `<div class="card2 card" data-q="${i}"><div class="jp" style="font-size:1.2rem">${esc(q.q)}</div>${q.hint || q.en ? `<div class="muted">${esc(q.hint ?? q.en)}</div>` : ""}
+    <div class="choices">${q.choices.map((c, j) => `<button data-c="${j}">${esc(c)}</button>`).join("")}</div><div class="fb"></div></div>`).join(""));
+  container.querySelectorAll("[data-q]").forEach((box) => box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-c]");
+    if (!b || box.dataset.done) return;
+    const q = items[+box.dataset.q], ok = +b.dataset.c === q.answer;
+    box.dataset.done = "1"; answered++; if (ok) right++;
+    b.classList.add(ok ? "right" : "wrong");
+    box.querySelector(".fb").innerHTML = `<b class="${ok ? "right" : "wrong"}">${ok ? "Correct!" : `Not quite: ${esc(q.choices[q.answer])}`}</b> ${esc(q.why ?? "")}`;
+    if (answered === items.length) { complete(step, xp); blip(right === items.length ? "Perfect! 満点 (manten)!" : `${right}/${items.length}. Read the explanation and try the next one!`, right === items.length ? "happy" : "think", right === items.length ? 6 : 0); }
+  }));
+}
+for (const g of u.grammar) {
+  const box = document.createElement("div");
+  box.className = "card2 card";
+  box.innerHTML = `<h3>${esc(g.title)}</h3><p>${esc(g.explain)}</p>${g.examples.map((ex) => `<div class="ex"><span class="t" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-ex="${esc(plain(ex.t))}">▶</button><div class="muted">${esc(ex.en)}</div></div>`).join("")}`;
+  $("grammar").append(box);
+}
+$("grammar").addEventListener("click", (e) => { const t = e.target.closest("[data-ex]")?.dataset.ex; if (t) speak(t); });
+quiz($("grammar"), u.grammar.flatMap((g) => g.quiz), "grammar", 15);
+
+// ---------- kanji ----------
+$("kanji").innerHTML = u.kanji.map((k, i) => `<div class="card2 card kanji"><div><div class="glyph">${esc(k.k)}</div><div class="stroke" id="st${i}"></div><button class="mini" data-stroke="${i}">✍ Strokes</button></div>
+  <div><b>${esc(k.m)}</b><div class="muted">on: <span class="jp">${esc(k.on.join("、"))}</span> · kun: <span class="jp">${esc(k.kun.join("、"))}</span></div>
+  <div class="jp" style="margin-top:6px">${k.ex.map((x) => `<ruby>${esc(x[0])}<rt>${esc(x[1])}</rt></ruby> <span class="muted">${esc(x[2])}</span>`).join(" · ")}</div>
+  <button class="mini" data-kadd="${i}">+ Review</button></div></div>`).join("") + `<p class="muted">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> by Ulrich Apel, CC BY-SA 3.0.</p>`;
+let strokesSeen = 0;
+$("kanji").addEventListener("click", (e) => {
+  const s = e.target.closest("[data-stroke]")?.dataset.stroke, a = e.target.closest("[data-kadd]")?.dataset.kadd;
+  if (s != null) { strokes(u.kanji[+s].k, $(`st${s}`)); if (++strokesSeen >= Math.min(3, u.kanji.length)) complete("kanji", 10); }
+  if (a != null) { const k = u.kanji[+a]; addCard(`k:${k.k}`, { word: k.k, front: k.k, reading: [...k.on, ...k.kun].join("、"), meaning: k.m, kind: "kanji" }); e.target.textContent = "✓ Added"; gain(1); }
+});
+
+// ---------- build the sentence ----------
+let builtOk = 0;
+for (const li of u.build ?? []) {
+  const l = u.lines[li], pieces = l.t.map(tok).filter((t) => t.k !== "x");
+  const order = pieces.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const box = document.createElement("div");
+  box.className = "card2 card";
+  box.innerHTML = `<div class="muted">${esc(l.en)}</div><div class="slots"></div><div class="pool"></div><button class="mini check">Check</button> <span class="fb"></span>`;
+  const slots = box.querySelector(".slots"), pool = box.querySelector(".pool");
+  const label = (t) => (state.settings.script === "romaji" ? romaji(reading(t), t.k === "p") : state.settings.script === "kana" ? reading(t) : t.s);
+  pool.innerHTML = order.map((i) => `<button data-p="${i}">${esc(label(pieces[i]))}</button>`).join("");
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-p]");
+    if (b) { (b.parentElement === pool ? slots : pool).append(b); return; }
+    if (e.target.closest(".check")) {
+      const got = [...slots.children].map((x) => +x.dataset.p), ok = got.length === pieces.length && got.every((v, i) => pieces[v].s === pieces[i].s);
+      box.querySelector(".fb").innerHTML = ok ? '<b class="right">正解! (seikai: correct)</b>' : '<b class="wrong">Not yet: listen and try again</b>';
+      if (ok) { speak(plain(l.t)); if (++builtOk === (u.build ?? []).length) complete("build", 15); }
+      else speak(plain(l.t));
+    }
+  });
+  $("build").append(box);
+}
+
+quiz($("questions"), u.questions, "questions", 15);
+
+// ---------- talk with Blip ----------
+$("talkText").textContent = u.talk;
+$("talk").onclick = () => {
+  complete("talk", 10);
+  dispatchEvent(new CustomEvent("blip:say", { detail: { text: "こんにちは！ Talk to me in Japanese: click me to open the chat.", mood: "happy", hop: 6 } }));
+  document.getElementById("blip")?.shadowRoot?.querySelector(".blip")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+};
+window.blipContext = () => ({
+  page: `Yomu Japanese course, ${u.level} unit ${u.unit}: ${u.title.ja} (${u.title.en})`,
+  role: "Be a patient Japanese conversation partner at this learner's level. Reply mostly in simple Japanese using this unit's words and grammar, then the same in romaji and English. Gently correct one mistake at a time and ask a follow-up question.",
+  unitWords: words.map((t) => `${t.s} (${reading(t)}): ${t.g}`), grammar: u.grammar.map((g) => g.title), displayMode: state.settings.script,
+});
+window.blipActions = {
+  say_japanese: { label: "said it in Japanese", description: "Read a Japanese phrase aloud with the browser's Japanese voice.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => speak(String(text ?? "")) },
+};
+
+// ---------- next unit ----------
+const i = catalog.findIndex((c) => c.id === id), nxt = catalog[i + 1];
+$("next").innerHTML = nxt ? `Next: <a href="/yomu/story.html?u=${nxt.id}">${esc(nxt.level)} unit ${nxt.unit}: <span class="jp">${esc(nxt.title.ja)}</span> (${esc(nxt.title.en)}) →</a>` : `<a href="/yomu/">Back to the map</a>`;
+
+settingsBar($("settings"), () => location.reload()); // every section re-renders in the new script
+renderLines(); renderSteps();
+</script>
+</body>
+</html>

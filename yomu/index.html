@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu: learn Japanese</title>
+  <meta name="description" content="Learn Japanese from zero to JLPT N3 with graded stories, every N5–N3 grammar point, all 612 kanji and 3,500 words, kana drills, spaced repetition, listening and speaking practice. Kanji, kana or romaji, your choice." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow">World 4 · 読む yomu = to read</p>
+  <h1>Yomu: Japanese from zero to N3</h1>
+  <p class="lede">Learn by reading little stories about Yuki, Sam and Blip in New York. Every word can be tapped, every line can be heard and said back. Behind the stories sits the whole JLPT N5–N3 syllabus: kana, grammar, kanji and words, with spaced review so nothing slips away.</p>
+  <div id="settings"></div>
+
+  <section class="card2" id="start"></section>
+  <section class="card2" id="today"></section>
+
+  <h2>Your path</h2>
+  <div id="path"></div>
+
+  <p class="muted credits">Kanji: <a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">KANJIDIC</a> (EDRDG, CC BY-SA 4.0) · JLPT levels: <a href="http://www.tanos.co.uk/jlpt/">Jonathan Waller's JLPT resources</a> · word lists: <a href="https://github.com/jamsinclair/open-anki-jlpt-decks">open-anki-jlpt-decks</a> · stroke order: <a href="https://kanjivg.tagaini.net/">KanjiVG</a> (CC BY-SA 3.0) · grammar path follows <a href="https://guidetojapanese.org/learn/grammar">Tae Kim's Guide to Japanese</a>; each point links to his chapter for a deeper read. Progress is kept in this browser only.</p>
+</main>
+<script type="module">
+import { state, save, settingsBar, esc, dueCards, LEVELS, vocab, kanjiDeck, grammarDeck, GOJUON, inDeck, learned, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"), () => {});
+const stories = await fetch("/yomu/stories/index.json").then((r) => r.json());
+
+// Where to start: from scratch, a placement test, or jump to a level.
+function renderStart() {
+  const s = state.start;
+  $("start").innerHTML = s
+    ? `<b>Starting point:</b> ${s.kana ? "kana known" : "learning kana"}, from <b>${esc(s.level)}</b>${s.how ? ` <span class="muted">(${esc(s.how)})</span>` : ""}. <button class="mini" id="reset">Change</button>`
+    : `<h2 style="margin-top:0">Where do you want to start?</h2>
+      <div class="choices">
+        <button data-start="scratch">I'm brand new: start with hiragana</button>
+        <a class="btn" href="/yomu/placement.html">Take a 5-minute placement test</a>
+        <button data-start="N5">I can read kana: start N5</button>
+        <button data-start="N4">Start at N4</button>
+        <button data-start="N3">Start at N3</button>
+      </div><p class="muted">Nothing is locked: you can open any lesson any time. The starting point just decides what Yomu suggests next.</p>`;
+  $("start").querySelectorAll("[data-start]").forEach((b) => (b.onclick = () => {
+    const v = b.dataset.start;
+    state.start = v === "scratch" ? { level: "N5", kana: false, how: "from scratch" } : { level: v, kana: true, how: "chosen" };
+    save(); renderStart(); renderPath();
+  }));
+  if ($("reset")) $("reset").onclick = () => { state.start = null; save(); renderStart(); };
+}
+
+// Today: due reviews and the suggested next step.
+async function renderToday() {
+  const due = dueCards().length;
+  const next = await nextStep();
+  $("today").innerHTML = `<b>Today</b> · ${due ? `<a href="/yomu/review.html">${due} card${due === 1 ? "" : "s"} to review</a>` : "no reviews due"} · next: <a href="${next.href}">${esc(next.label)}</a>`;
+}
+async function nextStep() {
+  if (!state.start?.kana && Object.keys(state.srs).filter((k) => k.startsWith("a:")).length < 46) return { href: "/yomu/kana.html", label: "Hiragana" };
+  const from = LEVELS.indexOf(state.start?.level ?? "N5");
+  for (const lvl of LEVELS.slice(from)) {
+    const u = stories.find((s) => s.level === lvl && !state.done[s.id]?.finished);
+    if (u) return { href: `/yomu/story.html?u=${u.id}`, label: `${lvl} story ${u.unit}: ${u.title.ja}` };
+    const g = (await grammarDeck(lvl)).find((p) => !inDeck("g:" + p.id));
+    if (g) return { href: `/yomu/grammar.html?level=${lvl}#${g.id}`, label: `${lvl} grammar: ${g.pattern}` };
+  }
+  return { href: "/yomu/review.html", label: "Review" };
+}
+
+async function renderPath() {
+  const kanaIn = Object.keys(state.srs).filter((k) => k.startsWith("a:")).length;
+  const total = GOJUON.filter(Boolean).length * 2;
+  const bar = (n, of) => `<span class="bar" title="${n} of ${of}"><i style="width:${Math.round((100 * n) / Math.max(1, of))}%"></i></span> ${n}/${of}`;
+  let html = `<div class="stage${!state.start?.kana ? " here" : ""}"><h3>Stage 0 · Kana <span class="jp">ひらがな・カタカナ</span></h3>
+    <p>The two Japanese alphabets: 46 sounds each. Learn them with charts, stroke order, audio and drills. ${bar(kanaIn, total)} in review.</p>
+    <a class="btn" href="/yomu/kana.html">Hiragana</a> <a class="btn" href="/yomu/kana.html?set=katakana">Katakana</a></div>`;
+  for (const lvl of LEVELS) {
+    const [words, kanji, grammar] = await Promise.all([vocab(lvl), kanjiDeck(lvl), grammarDeck(lvl)]);
+    const count = (list, id) => list.filter((x) => inDeck(id(x))).length;
+    const units = stories.filter((s) => s.level === lvl);
+    html += `<div class="stage${state.start?.kana && state.start.level === lvl ? " here" : ""}"><h3>${lvl} <span class="muted">${{ N5: "basic sentences, everyday words", N4: "everyday conversation, plain speech", N3: "real-life Japanese, nuance and news" }[lvl]}</span></h3>
+      ${units.length ? `<ol class="units">${units.map((u) => `<li class="${state.done[u.id]?.finished ? "done" : ""}"><a href="/yomu/story.html?u=${u.id}"><span class="jp">${esc(u.title.ja)}</span> · ${esc(u.title.en)}</a> <span class="muted">${esc(u.grammar.join(" · "))}</span></li>`).join("")}</ol>` : `<p class="muted">Stories for ${lvl} are being written; meanwhile everything below is ready.</p>`}
+      <div class="decks">
+        <a href="/yomu/grammar.html?level=${lvl}">Grammar<br>${bar(count(grammar, (g) => "g:" + g.id), grammar.length)}</a>
+        <a href="/yomu/deck.html?level=${lvl}&type=kanji">Kanji<br>${bar(count(kanji, (k) => "k:" + k.k), kanji.length)}</a>
+        <a href="/yomu/deck.html?level=${lvl}&type=words">Words<br>${bar(count(words, (w) => "w:" + w.w), words.length)}</a>
+      </div></div>`;
+  }
+  $("path").innerHTML = html;
+}
+
+renderStart();
+renderToday();
+renderPath();
+if (!state.start) blip("こんにちは! Pick where to start: from zero, or take the placement test.", "happy", 1);
+
+window.blipContext = () => ({ page: "Yomu hub (Japanese course N5–N3)", role: "You are a friendly Japanese tutor. Answer in English with Japanese examples (kanji + reading + romaji). Suggest the next lesson on this site.", start: state.start, xp: state.xp, streakDays: state.streak.days, reviewDue: dueCards().length, storiesFinished: Object.keys(state.done).filter((k) => state.done[k].finished) });
+</script>
+</body>
+</html>

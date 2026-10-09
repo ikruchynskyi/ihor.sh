@@ -1,0 +1,1007 @@
+{
+ "id": "n5-02",
+ "level": "N5",
+ "unit": 2,
+ "title": {
+  "ja": "これは何ですか",
+  "en": "What is this?"
+ },
+ "scene": "Yuki visits Sam's apartment in Queens. Every shelf is full of radios.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, amazing!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "これ",
+     null,
+     "this (near me)"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何",
+     "なん",
+     "what"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What is this?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "それ",
+     null,
+     "that (near you)"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "SDR",
+     null,
+     "SDR (software-defined radio)"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ソフトウェア",
+     null,
+     "software"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's an SDR. A software radio."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あれ",
+     null,
+     "that (over there)"
+    ],
+    [
+     "も",
+     null,
+     "also, too",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is that over there a radio too?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あれ",
+     null,
+     "that (over there)"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "じゃありません",
+     null,
+     "is not"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, that's not a radio. It's an antenna."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "この",
+     null,
+     "this … (+ noun)"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "の",
+     null,
+     "'s (one)",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is this book yours, Sam?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "my",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "の",
+     null,
+     "about",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, it's my book. A book about radio."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "その",
+     null,
+     "that … (+ noun, near you)"
+    ],
+    [
+     "時計",
+     "とけい",
+     "clock, watch"
+    ],
+    [
+     "は",
+     null,
+     "and …?",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "And that watch?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "時計",
+     "とけい",
+     "watch"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "母",
+     "はは",
+     "my mother"
+    ],
+    [
+     "の",
+     null,
+     "'s (one)",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "This is a Japanese watch. It's my mother's."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "あの",
+     null,
+     "that … (+ noun, over there)"
+    ],
+    [
+     "かさ",
+     null,
+     "umbrella"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "の",
+     null,
+     "'s (one)",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is that umbrella over there yours, Yuki?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "my",
+     "p"
+    ],
+    [
+     "かさ",
+     null,
+     "umbrella"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, it's my umbrella. Thank you."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, are you a radio too?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "(beep beep)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! Blip is a radio too. Beep beep!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "ko-so-a",
+   "title": "これ・それ・あれ: this, that, that over there",
+   "explain": "Japanese points with three words: これ (near me), それ (near you), あれ (far from both of us). The question word is どれ (which one).",
+   "examples": [
+    {
+     "t": [
+      [
+       "それ",
+       null,
+       "that"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "アンテナ",
+       null,
+       "antenna"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "That (near you) is an antenna."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "（far from both）＿＿はラジオじゃありません。",
+     "hint": "That over there is not a radio.",
+     "choices": [
+      "あれ",
+      "これ",
+      "それ"
+     ],
+     "answer": 0,
+     "why": "あれ points at something far from both speakers."
+    }
+   ]
+  },
+  {
+   "id": "kono",
+   "title": "この・その・あの + noun",
+   "explain": "Before a noun, use この / その / あの instead: この本 (this book), その時計 (that watch), あの かさ (that umbrella over there). これ stands alone; この always needs a noun.",
+   "examples": [
+    {
+     "t": [
+      [
+       "この",
+       null,
+       "this"
+      ],
+      [
+       "本",
+       "ほん",
+       "book"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "私",
+       "わたし",
+       "I"
+      ],
+      [
+       "の",
+       null,
+       "mine",
+       "p"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "This book is mine."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "＿＿時計は母のです。",
+     "hint": "This watch is my mother's.",
+     "choices": [
+      "この",
+      "これ",
+      "あれ"
+     ],
+     "answer": 0,
+     "why": "Before a noun (時計), use この."
+    }
+   ]
+  },
+  {
+   "id": "no-pronoun",
+   "title": "～の: whose (the noun can disappear)",
+   "explain": "サムさんのです means 'it's Sam's': the thing itself is understood. だれの (whose) asks who owns it.",
+   "examples": [
+    {
+     "t": [
+      [
+       "これ",
+       null,
+       "this"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "母",
+       "はは",
+       "mother"
+      ],
+      [
+       "の",
+       null,
+       "'s",
+       "p"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "This is my mother's."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "このかさはゆきさん＿です。",
+     "hint": "This umbrella is Yuki's.",
+     "choices": [
+      "の",
+      "は",
+      "も"
+     ],
+     "answer": 0,
+     "why": "の = 's; the umbrella is understood."
+    }
+   ]
+  },
+  {
+   "id": "mo",
+   "title": "～も: also, too",
+   "explain": "も replaces は (or が) to mean 'also': ブリップもラジオです = Blip is a radio too.",
+   "examples": [
+    {
+     "t": [
+      [
+       "私",
+       "わたし",
+       "I"
+      ],
+      [
+       "も",
+       null,
+       "also",
+       "p"
+      ],
+      [
+       "学生",
+       "がくせい",
+       "student"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm a student too."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "あれ＿ラジオですか。",
+     "hint": "Is that a radio too?",
+     "choices": [
+      "も",
+      "の",
+      "か"
+     ],
+     "answer": 0,
+     "why": "も = also."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "時",
+   "on": [
+    "ジ"
+   ],
+   "kun": [
+    "とき"
+   ],
+   "m": "time, hour",
+   "ex": [
+    [
+     "時計",
+     "とけい",
+     "watch, clock"
+    ],
+    [
+     "何時",
+     "なんじ",
+     "what time"
+    ]
+   ]
+  },
+  {
+   "k": "母",
+   "on": [
+    "ボ"
+   ],
+   "kun": [
+    "はは"
+   ],
+   "m": "mother",
+   "ex": [
+    [
+     "母",
+     "はは",
+     "(my) mother"
+    ]
+   ]
+  },
+  {
+   "k": "本",
+   "on": [
+    "ホン"
+   ],
+   "kun": [
+    "もと"
+   ],
+   "m": "book, origin",
+   "ex": [
+    [
+     "本",
+     "ほん",
+     "book"
+    ]
+   ]
+  },
+  {
+   "k": "今",
+   "on": [
+    "コン",
+    "キン"
+   ],
+   "kun": [
+    "いま"
+   ],
+   "m": "now",
+   "ex": [
+    [
+     "今",
+     "いま",
+     "now"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  4,
+  8
+ ],
+ "questions": [
+  {
+   "q": "SDRは何ですか。",
+   "en": "What is an SDR?",
+   "choices": [
+    "ソフトウェアのラジオ",
+    "アンテナ",
+    "時計"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "時計はだれのですか。",
+   "en": "Whose is the watch?",
+   "choices": [
+    "サムさんのお母さんの",
+    "ゆきさんの",
+    "ブリップの"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "かさはだれのですか。",
+   "en": "Whose is the umbrella?",
+   "choices": [
+    "ゆきさんの",
+    "サムさんの",
+    "母の"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Point at three things around you and ask Blip これは何ですか。Then say whose they are with ～のです."
+}

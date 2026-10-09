@@ -1,0 +1,853 @@
+{
+ "id": "n5-08",
+ "level": "N5",
+ "unit": 8,
+ "title": {
+  "ja": "今、何をしていますか",
+  "en": "What are you doing right now?"
+ },
+ "scene": "Sunday evening. Yuki calls Sam; he sounds very excited.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "もしもし",
+     null,
+     "hello (on the phone)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "Mr."
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "していますか",
+     null,
+     "are (you) doing?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hello, Sam. What are you doing right now?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "うちゅう",
+     null,
+     "space"
+    ],
+    [
+     "ステーション",
+     null,
+     "station"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "声",
+     "こえ",
+     "voice"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞いています",
+     "きいています",
+     "am listening"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Right now I'm listening to the space station's voice!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "えっ",
+     null,
+     "what?"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "true, real"
+    ],
+    [
+     "ですか",
+     null,
+     "is it?"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What, really?!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Ms."
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a moment"
+    ],
+    [
+     "待ってください",
+     "まってください",
+     "please wait"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. Yuki, wait a moment, please."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あっ",
+     null,
+     "ah!"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "picture"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "来ました",
+     "きました",
+     "came"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "SSTV",
+     null,
+     "SSTV (pictures over radio)"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "picture"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh! A picture just came in! An SSTV picture."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "その",
+     null,
+     "that"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "picture"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見せてください",
+     "みせてください",
+     "please show (me)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Amazing! Please show me the picture."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいですよ",
+     null,
+     "sure"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "メール",
+     null,
+     "email"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "送ります",
+     "おくります",
+     "will send"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sure. I'll send it by email."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "picture"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "プリントしています",
+     null,
+     "is printing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip is printing the picture right now."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "明日",
+     "あした",
+     "tomorrow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "学校",
+     "がっこう",
+     "school"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "友だち",
+     "ともだち",
+     "friends"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "見せます",
+     "みせます",
+     "will show"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you! Tomorrow I'll show it to my friends at school."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Ms."
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつか",
+     null,
+     "someday"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "聞きませんか",
+     "ききませんか",
+     "won't you listen?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, would you like to listen together sometime?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ぜひ",
+     null,
+     "definitely"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "楽しみ",
+     "たのしみ",
+     "looking forward to it"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Definitely! I'm looking forward to it."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "te-form",
+   "title": "The て-form: the Swiss army knife",
+   "explain": "Many patterns are built on the て-form. Ru-verbs drop る and add て: 食べる → 食べて, 見る → 見て. U-verbs change by ending: 聞く → 聞いて, 待つ → 待って, 読む → 読んで, 送る → 送って. Irregular: する → して, 来る → 来て, and 行く → 行って.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ちょっと",
+       null,
+       "a moment"
+      ],
+      [
+       "待ってください",
+       "まってください",
+       "please wait"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Please wait a moment."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "聞く → ＿＿＿",
+     "hint": "the て-form of 聞く (listen)",
+     "choices": [
+      "聞いて",
+      "聞きて",
+      "聞って"
+     ],
+     "answer": 0,
+     "why": "く → いて."
+    },
+    {
+     "q": "読む → ＿＿＿",
+     "hint": "the て-form of 読む (read)",
+     "choices": [
+      "読んで",
+      "読みて",
+      "読って"
+     ],
+     "answer": 0,
+     "why": "む → んで."
+    }
+   ]
+  },
+  {
+   "id": "teiru",
+   "title": "～ています: is doing (right now)",
+   "explain": "て-form + います = an action in progress: 聞いています (I'm listening). It also describes ongoing states: 東京に住んでいます (I live in Tokyo).",
+   "examples": [
+    {
+     "t": [
+      [
+       "今",
+       "いま",
+       "now"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "聞いています",
+       "きいています",
+       "am listening"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm listening to the radio now."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ブリップは今、写真をプリント＿＿＿＿。",
+     "hint": "Blip is printing the picture now.",
+     "choices": [
+      "しています",
+      "します",
+      "しました"
+     ],
+     "answer": 0,
+     "why": "In progress: ～ています."
+    }
+   ]
+  },
+  {
+   "id": "tekudasai",
+   "title": "～てください: please do",
+   "explain": "て-form + ください = a polite request: 待ってください (please wait), 見せてください (please show me).",
+   "examples": [
+    {
+     "t": [
+      [
+       "写真",
+       "しゃしん",
+       "picture"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "見せてください",
+       "みせてください",
+       "please show"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Please show me the picture."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ちょっと待＿＿ください。",
+     "hint": "Please wait a moment.",
+     "choices": [
+      "って",
+      "て",
+      "んで"
+     ],
+     "answer": 0,
+     "why": "待つ → 待って."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "今",
+   "on": [
+    "コン",
+    "キン"
+   ],
+   "kun": [
+    "いま"
+   ],
+   "m": "now",
+   "ex": [
+    [
+     "今",
+     "いま",
+     "now"
+    ]
+   ]
+  },
+  {
+   "k": "来",
+   "on": [
+    "ライ"
+   ],
+   "kun": [
+    "く.る",
+    "き.ます"
+   ],
+   "m": "come",
+   "ex": [
+    [
+     "来ました",
+     "きました",
+     "came"
+    ]
+   ]
+  },
+  {
+   "k": "校",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "school",
+   "ex": [
+    [
+     "学校",
+     "がっこう",
+     "school"
+    ]
+   ]
+  },
+  {
+   "k": "写",
+   "on": [
+    "シャ"
+   ],
+   "kun": [
+    "うつ.す"
+   ],
+   "m": "copy, photograph",
+   "ex": [
+    [
+     "写真",
+     "しゃしん",
+     "photo"
+    ]
+   ]
+  },
+  {
+   "k": "明",
+   "on": [
+    "メイ"
+   ],
+   "kun": [
+    "あか.るい"
+   ],
+   "m": "bright (tomorrow)",
+   "ex": [
+    [
+     "明日",
+     "あした",
+     "tomorrow"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  3,
+  5
+ ],
+ "questions": [
+  {
+   "q": "サムさんは今、何をしていますか。",
+   "en": "What is Sam doing?",
+   "choices": [
+    "うちゅうステーションの声を聞いています",
+    "映画を見ています",
+    "ラーメンを食べています"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "写真は何で送りますか。",
+   "en": "How will he send the picture?",
+   "choices": [
+    "メールで",
+    "電車で",
+    "ブリップで"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんは明日、どこで写真を見せますか。",
+   "en": "Where will Yuki show the picture?",
+   "choices": [
+    "学校で",
+    "公園で",
+    "家で"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip what you're doing right now (～ています), then ask Blip politely to do something (～てください)."
+}

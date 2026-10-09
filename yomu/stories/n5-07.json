@@ -1,0 +1,907 @@
+{
+ "id": "n5-07",
+ "level": "N5",
+ "unit": 7,
+ "title": {
+  "ja": "いっしょに見ませんか",
+  "en": "Want to watch it together?"
+ },
+ "scene": "Sam works up the courage to invite Yuki to a movie.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Ms."
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "映画",
+     "えいが",
+     "movie"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ませんか",
+     "みませんか",
+     "won't you watch? (invitation)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, would you like to see a movie with me on Saturday?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いいですね",
+     null,
+     "sounds good"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なん",
+     "what"
+    ],
+    [
+     "の",
+     null,
+     "kind of",
+     "p"
+    ],
+    [
+     "映画",
+     "えいが",
+     "movie"
+    ],
+    [
+     "ですか",
+     null,
+     "is it?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sounds nice. What kind of movie?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "アニメ",
+     null,
+     "anime"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A Japanese anime."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "アニメ",
+     null,
+     "anime"
+    ],
+    [
+     "が",
+     null,
+     "(object of liking)",
+     "p"
+    ],
+    [
+     "好き",
+     "すき",
+     "like"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何時",
+     "なんじ",
+     "what time"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "会いましょうか",
+     "あいましょうか",
+     "shall we meet?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I like anime too. What time shall we meet?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "三時",
+     "さんじ",
+     "three o'clock"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どうですか",
+     null,
+     "how about?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How about three?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "三時",
+     "さんじ",
+     "three o'clock"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little (difficult)…"
+    ],
+    [
+     "…",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "四時",
+     "よじ",
+     "four o'clock"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どうですか",
+     null,
+     "how about?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Three is a bit… How about four?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいですよ",
+     null,
+     "that's fine"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "well then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "四時",
+     "よじ",
+     "four o'clock"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "会いましょう",
+     "あいましょう",
+     "let's meet"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sure. Let's meet at four, then."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "映画",
+     "えいが",
+     "movie"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "後",
+     "あと",
+     "after"
+    ],
+    [
+     "で",
+     null,
+     "(after that)",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラーメン",
+     null,
+     "ramen"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べたいです",
+     "たべたいです",
+     "want to eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "After the movie, I want to eat ramen."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいですね",
+     null,
+     "great"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ラーメン",
+     null,
+     "ramen"
+    ],
+    [
+     "が",
+     null,
+     "(object of wanting)",
+     "p"
+    ],
+    [
+     "食べたいです",
+     "たべたいです",
+     "want to eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Great! I want ramen too."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "電気",
+     "でんき",
+     "electricity"
+    ],
+    [
+     "が",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べたいです",
+     "たべたいです",
+     "want to eat"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip wants to eat electricity!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あはは",
+     null,
+     "haha"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "well then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Haha. See you Saturday!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "masenka",
+   "title": "～ませんか: won't you…? (invitation)",
+   "explain": "Turning ます into ませんか makes a polite invitation: 見ませんか (would you like to watch?). Literally 'won't you watch?', it leaves room to say no.",
+   "examples": [
+    {
+     "t": [
+      [
+       "いっしょに",
+       null,
+       "together"
+      ],
+      [
+       "映画",
+       "えいが",
+       "movie"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "見ませんか",
+       "みませんか",
+       "would you like to watch?"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Would you like to watch a movie together?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "いっしょにラーメンを食べ＿＿＿＿。",
+     "hint": "Would you like to eat ramen together?",
+     "choices": [
+      "ませんか",
+      "ましょう",
+      "たいです"
+     ],
+     "answer": 0,
+     "why": "ませんか = invitation."
+    }
+   ]
+  },
+  {
+   "id": "mashou",
+   "title": "～ましょう: let's",
+   "explain": "ましょう means 'let's (do it)': 会いましょう (let's meet). ましょうか asks 'shall we?': 何時に会いましょうか.",
+   "examples": [
+    {
+     "t": [
+      [
+       "四時",
+       "よじ",
+       "four o'clock"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "会いましょう",
+       "あいましょう",
+       "let's meet"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Let's meet at four."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "じゃあ、四時に会い＿＿＿＿。",
+     "hint": "Then let's meet at four.",
+     "choices": [
+      "ましょう",
+      "ませんか",
+      "ました"
+     ],
+     "answer": 0,
+     "why": "ましょう = let's."
+    }
+   ]
+  },
+  {
+   "id": "tai",
+   "title": "～たいです: want to",
+   "explain": "Swap ます for たい to say you want to do it: 食べます → 食べたいです. It works like an い-adjective (食べたくないです = don't want to). The object can take が or を.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ラーメン",
+       null,
+       "ramen"
+      ],
+      [
+       "が",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "食べたいです",
+       "たべたいです",
+       "want to eat"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I want to eat ramen."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "日本へ行き＿＿＿＿。",
+     "hint": "I want to go to Japan.",
+     "choices": [
+      "たいです",
+      "ます",
+      "ましょう"
+     ],
+     "answer": 0,
+     "why": "行きます → 行きたいです."
+    }
+   ]
+  },
+  {
+   "id": "chotto",
+   "title": "～はちょっと…: saying no politely",
+   "explain": "Japanese rarely says a flat 'no' to an invitation. ちょっと… (a little…) trailing off is enough: 三時はちょっと… = three doesn't really work for me.",
+   "examples": [
+    {
+     "t": [
+      [
+       "三時",
+       "さんじ",
+       "three o'clock"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "ちょっと",
+       null,
+       "a bit…"
+      ],
+      [
+       "…",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Three is a bit (difficult)…"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "Someone invites you on Sunday, but you're busy. You say: 日曜日は＿＿＿…",
+     "hint": "Sunday is a bit…",
+     "choices": [
+      "ちょっと",
+      "とても",
+      "いっしょに"
+     ],
+     "answer": 0,
+     "why": "ちょっと… is the polite way to decline."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "土",
+   "on": [
+    "ド",
+    "ト"
+   ],
+   "kun": [
+    "つち"
+   ],
+   "m": "earth, soil (Saturday)",
+   "ex": [
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ]
+   ]
+  },
+  {
+   "k": "曜",
+   "on": [
+    "ヨウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "weekday",
+   "ex": [
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ]
+   ]
+  },
+  {
+   "k": "見",
+   "on": [
+    "ケン"
+   ],
+   "kun": [
+    "み.る"
+   ],
+   "m": "see, look",
+   "ex": [
+    [
+     "見ます",
+     "みます",
+     "see, watch"
+    ]
+   ]
+  },
+  {
+   "k": "三",
+   "on": [
+    "サン"
+   ],
+   "kun": [
+    "み.つ"
+   ],
+   "m": "three",
+   "ex": [
+    [
+     "三時",
+     "さんじ",
+     "three o'clock"
+    ]
+   ]
+  },
+  {
+   "k": "四",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "よ",
+    "よん"
+   ],
+   "m": "four",
+   "ex": [
+    [
+     "四時",
+     "よじ",
+     "four o'clock"
+    ]
+   ]
+  },
+  {
+   "k": "電",
+   "on": [
+    "デン"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "electricity",
+   "ex": [
+    [
+     "電気",
+     "でんき",
+     "electricity, light"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ]
+   ]
+  },
+  {
+   "k": "後",
+   "on": [
+    "ゴ",
+    "コウ"
+   ],
+   "kun": [
+    "あと",
+    "うし.ろ"
+   ],
+   "m": "after, behind",
+   "ex": [
+    [
+     "後で",
+     "あとで",
+     "later, after"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  6
+ ],
+ "questions": [
+  {
+   "q": "二人は何曜日に映画を見ますか。",
+   "en": "On which day will they watch the movie?",
+   "choices": [
+    "土曜日",
+    "日曜日",
+    "月曜日"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "何時に会いますか。",
+   "en": "What time will they meet?",
+   "choices": [
+    "四時",
+    "三時",
+    "二時"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "映画の後で、何を食べたいですか。",
+   "en": "What do they want to eat after?",
+   "choices": [
+    "ラーメン",
+    "ピザ",
+    "電気"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Invite Blip to do something with you (～ませんか), agree on a time (～ましょう), and say what you want to do (～たいです)."
+}

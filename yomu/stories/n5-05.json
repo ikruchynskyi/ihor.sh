@@ -1,0 +1,970 @@
+{
+ "id": "n5-05",
+ "level": "N5",
+ "unit": 5,
+ "title": {
+  "ja": "ニューヨークはどんな町ですか",
+  "en": "What kind of city is New York?"
+ },
+ "scene": "Yuki's cousin is visiting from Tokyo. Yuki asks Sam what New York is like.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どんな",
+     null,
+     "what kind of"
+    ],
+    [
+     "町",
+     "まち",
+     "town, city"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, what kind of city is New York?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "町",
+     "まち",
+     "city"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "にぎやか",
+     null,
+     "lively"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's a big city. Very lively."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "静か",
+     "しずか",
+     "quiet"
+    ],
+    [
+     "な",
+     null,
+     "(な-adjective + noun)"
+    ],
+    [
+     "所",
+     "ところ",
+     "place"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Tokyo is big too. But there are also quiet places."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "New York's subway is old."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そして",
+     null,
+     "and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "きれい",
+     null,
+     "clean, pretty"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Tokyo's subway is new. And it's clean."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ピザ",
+     null,
+     "pizza"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "おいしい",
+     null,
+     "tasty"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is New York pizza good?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "おいしい",
+     null,
+     "tasty"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そして",
+     null,
+     "and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安い",
+     "やすい",
+     "cheap"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, really good! And cheap."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "アパート",
+     null,
+     "apartment"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "高い",
+     "たかい",
+     "expensive"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Are apartments expensive?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "高い",
+     "たかい",
+     "expensive"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "my",
+     "p"
+    ],
+    [
+     "アパート",
+     null,
+     "apartment"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "広くない",
+     "ひろくない",
+     "not spacious"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, very. My apartment isn't big."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "アパート",
+     null,
+     "apartment"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radios"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "a lot"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "But it's a great apartment! There are lots of radios."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あはは",
+     null,
+     "haha"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "おもしろい",
+     null,
+     "interesting, fun"
+    ],
+    [
+     "町",
+     "まち",
+     "city"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Haha. New York is a fun city, isn't it."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "i-adj",
+   "title": "い-adjectives: 大きい, 高い, おいしい",
+   "explain": "Most adjectives end in い and work like verbs: 大きいです (it's big). Put them straight before a noun: 大きい町 (a big city).",
+   "examples": [
+    {
+     "t": [
+      [
+       "大きい",
+       "おおきい",
+       "big"
+      ],
+      [
+       "町",
+       "まち",
+       "city"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's a big city."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ピザは＿＿＿＿です。",
+     "hint": "The pizza is tasty.",
+     "choices": [
+      "おいしい",
+      "おいしいな",
+      "おいしの"
+     ],
+     "answer": 0,
+     "why": "い-adjectives go straight before です."
+    }
+   ]
+  },
+  {
+   "id": "na-adj",
+   "title": "な-adjectives: 静か, きれい, にぎやか",
+   "explain": "A second group of adjectives needs な before a noun: 静かな所 (a quiet place), but no な before です: 静かです. きれい ends in い but is a な-adjective!",
+   "examples": [
+    {
+     "t": [
+      [
+       "静か",
+       "しずか",
+       "quiet"
+      ],
+      [
+       "な",
+       null,
+       "(+ noun)"
+      ],
+      [
+       "所",
+       "ところ",
+       "place"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's a quiet place."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "きれい＿町です。",
+     "hint": "It's a pretty town.",
+     "choices": [
+      "な",
+      "い",
+      "の"
+     ],
+     "answer": 0,
+     "why": "きれい is a な-adjective: な before a noun."
+    }
+   ]
+  },
+  {
+   "id": "kunai",
+   "title": "～くないです: not (い-adjectives)",
+   "explain": "To negate an い-adjective, swap the last い for くない: 高い → 高くないです (not expensive). The odd one: いい → よくないです.",
+   "examples": [
+    {
+     "t": [
+      [
+       "広くない",
+       "ひろくない",
+       "not spacious"
+      ],
+      [
+       "です",
+       null,
+       "is / am / are (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's not spacious."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "アパートは高＿＿＿です。",
+     "hint": "The apartment isn't expensive.",
+     "choices": [
+      "くない",
+      "いない",
+      "じゃない"
+     ],
+     "answer": 0,
+     "why": "高い → 高くない."
+    }
+   ]
+  },
+  {
+   "id": "totemo",
+   "title": "とても / あまり～ない: very / not very",
+   "explain": "とても = very (with a positive): とてもおいしいです. あまり = not very, only with a negative: あまり高くないです.",
+   "examples": [
+    {
+     "t": [
+      [
+       "とても",
+       null,
+       "very"
+      ],
+      [
+       "おいしい",
+       null,
+       "tasty"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's very tasty."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "＿＿＿高くないです。",
+     "hint": "It's not very expensive.",
+     "choices": [
+      "あまり",
+      "とても",
+      "たくさん"
+     ],
+     "answer": 0,
+     "why": "あまり pairs with a negative."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "高",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    "たか.い"
+   ],
+   "m": "tall, expensive",
+   "ex": [
+    [
+     "高い",
+     "たかい",
+     "expensive, tall"
+    ]
+   ]
+  },
+  {
+   "k": "東",
+   "on": [
+    "トウ"
+   ],
+   "kun": [
+    "ひがし"
+   ],
+   "m": "east",
+   "ex": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ]
+   ]
+  },
+  {
+   "k": "京",
+   "on": [
+    "キョウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "capital",
+   "ex": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ]
+   ]
+  },
+  {
+   "k": "安",
+   "on": [
+    "アン"
+   ],
+   "kun": [
+    "やす.い"
+   ],
+   "m": "cheap, peaceful",
+   "ex": [
+    [
+     "安い",
+     "やすい",
+     "cheap"
+    ]
+   ]
+  },
+  {
+   "k": "町",
+   "on": [
+    "チョウ"
+   ],
+   "kun": [
+    "まち"
+   ],
+   "m": "town",
+   "ex": [
+    [
+     "町",
+     "まち",
+     "town, city"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  6
+ ],
+ "questions": [
+  {
+   "q": "ニューヨークはどんな町ですか。",
+   "en": "What's New York like?",
+   "choices": [
+    "大きくて、にぎやかな町",
+    "静かな町",
+    "小さい町"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ニューヨークのピザはどうですか。",
+   "en": "How's New York pizza?",
+   "choices": [
+    "おいしくて、安い",
+    "高い",
+    "あまりおいしくない"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんのアパートは広いですか。",
+   "en": "Is Sam's apartment spacious?",
+   "choices": [
+    "いいえ、広くないです",
+    "はい、とても広いです",
+    "はい、安いです"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe your town to Blip with adjectives: big or small, lively or quiet, expensive or cheap. Use とても and あまり."
+}

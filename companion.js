@@ -457,6 +457,8 @@ addEventListener("blip:point", (e) => point(e.detail?.element ?? e.detail, e.det
 
 // More page hooks: blip:ping (antenna flash + radio ring), blip:key {on} (antenna light, e.g. in time with Morse),
 // blip:look {x, y, ms} (eyes go there).
+// Pages can open the chat with a question: dispatchEvent(new CustomEvent("blip:ask", { detail: { text } })).
+addEventListener("blip:ask", (e) => openDialog(String(e.detail?.text ?? "")));
 addEventListener("blip:ping", () => { if (!hidden) ping(); });
 addEventListener("blip:key", (e) => tipEl.classList.toggle("on", !!e.detail?.on));
 addEventListener("blip:look", (e) => { const { x, y, ms = 1500 } = e.detail ?? {}; if (Number.isFinite(x) && Number.isFinite(y)) gaze = { x, y, until: performance.now() + ms }; });
@@ -547,7 +549,7 @@ const pageObjects = () => { try { return typeof window.blipContext === "function
 const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", callsign_lookup: "looked up the callsign", ferry_arrivals: "checked the ferries", orna_shops: "checked the guild shops", repeaters_near: "found repeaters", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
 // Blip remembers where you've been (this browser only) and greets you per world.
-const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", orna: "ORNA" };
+const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", yomu: "Yomu", orna: "ORNA" };
 const progress = (() => { try { return JSON.parse(local.get("blip:progress") || "{}"); } catch { return {}; } })();
 progress.pages ??= {}; progress.worlds ??= {};
 {

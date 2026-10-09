@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Kana</title>
+  <meta name="description" content="Learn hiragana and katakana: charts with audio and animated stroke order, then drills for reading, listening and recognizing, plus real words to read. Spaced review keeps them fresh." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Stage 0</p>
+  <h1 id="title">Hiragana</h1>
+  <p class="lede" id="intro"></p>
+  <div id="settings"></div>
+  <p class="choices"><a class="btn" href="?set=hiragana">ひらがな Hiragana</a> <a class="btn" href="?set=katakana">カタカナ Katakana</a></p>
+
+  <h2>1. The chart</h2>
+  <p class="muted">Tap a character to hear it and watch its strokes. Tick the rows you want to drill (start with the first two or three).</p>
+  <div class="kana-wrap">
+    <div id="chart"></div>
+    <aside class="card2 kana-focus" id="focus"><p class="muted">Tap a character.</p></aside>
+  </div>
+  <h3>Voiced sounds <span class="muted">(゛ and ゜ marks)</span></h3>
+  <div id="dakuten"></div>
+  <h3>Combined sounds <span class="muted">(small ゃ ゅ ょ)</span></h3>
+  <div id="yoon"></div>
+  <p><button id="addRows">+ Add ticked rows to review</button> <span id="added" class="muted"></span></p>
+
+  <h2>2. Drill</h2>
+  <div class="choices" role="group" aria-label="Drill type">
+    <button data-mode="read">👀 Read it: type the romaji</button>
+    <button data-mode="listen">👂 Listen: pick the character</button>
+    <button data-mode="find">🔎 Find it: romaji → character</button>
+    <button data-mode="words">📖 Read real words</button>
+  </div>
+  <div class="card2" id="drill"><p class="muted">Pick a drill. It uses the rows you ticked (or the first three rows).</p></div>
+
+  <h2>3. Tips</h2>
+  <ul>
+    <li>Say each sound out loud as you see it; your ear and eye learn together.</li>
+    <li>Write each new character five times on paper, following the stroke order. Hand memory is strong.</li>
+    <li>Small っ doubles the next consonant (きって kitte), ー stretches a vowel in katakana (コーヒー koohii), and small ゃゅょ merge with the sound before (きゃ kya).</li>
+    <li>は, へ and を are read wa, e and o when they're particles.</li>
+  </ul>
+</main>
+<script type="module">
+import { state, save, gain, settingsBar, esc, speak, strokes, GOJUON, DAKUTEN, YOON, toKatakana, romaji, addCard, grade, vocab, shuffle, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+const kata = new URLSearchParams(location.search).get("set") === "katakana";
+const conv = (k) => (kata ? toKatakana(k) : k);
+$("title").textContent = kata ? "Katakana" : "Hiragana";
+$("intro").textContent = kata
+  ? "Katakana writes foreign words (コーヒー coffee, ニューヨーク New York), names and sound effects. Same sounds as hiragana, sharper shapes."
+  : "Hiragana is the basic Japanese alphabet: grammar endings, particles and any word without kanji. 46 characters, each one a syllable.";
+settingsBar($("settings"), () => {});
+
+const rows = [];
+for (let i = 0; i < GOJUON.length; i += 5) rows.push(GOJUON.slice(i, i + 5));
+const ticked = new Set((state.kanaRows?.[kata ? "k" : "h"]) ?? [0, 1, 2]);
+const cell = (pair) => (pair ? `<button class="kc" data-k="${esc(conv(pair[0]))}" data-r="${pair[1]}"><span class="jp">${esc(conv(pair[0]))}</span><small>${pair[1]}</small></button>` : `<span class="kc empty"></span>`);
+$("chart").innerHTML = rows.map((r, i) => `<div class="krow"><label><input type="checkbox" data-row="${i}" ${ticked.has(i) ? "checked" : ""}></label>${r.map(cell).join("")}</div>`).join("");
+const grid = (list, per) => { let h = ""; for (let i = 0; i < list.length; i += per) h += `<div class="krow"><span></span>${list.slice(i, i + per).map(cell).join("")}</div>`; return h; };
+$("dakuten").innerHTML = grid(DAKUTEN, 5);
+$("yoon").innerHTML = grid(YOON, 6);
+document.querySelectorAll("[data-row]").forEach((c) => (c.onchange = () => {
+  c.checked ? ticked.add(+c.dataset.row) : ticked.delete(+c.dataset.row);
+  (state.kanaRows ??= {})[kata ? "k" : "h"] = [...ticked]; save();
+}));
+
+const pairs = () => [...ticked].sort((a, b) => a - b).flatMap((i) => rows[i].filter(Boolean)).map(([k, r]) => [conv(k), r]);
+const allBasic = GOJUON.filter(Boolean).map(([k, r]) => [conv(k), r]);
+
+document.querySelectorAll(".kc[data-k]").forEach((b) => (b.onclick = () => focus(b.dataset.k, b.dataset.r)));
+function focus(k, r) {
+  speak(k);
+  $("focus").innerHTML = `<div class="big jp" style="font-size:72px;line-height:1">${esc(k)}</div><div><b>${esc(r)}</b></div><div class="stroke" id="kstroke"></div>
+    <div class="row"><button class="mini" id="again">▶ Again</button> <button class="mini" id="redraw">✍ Strokes</button></div>`;
+  if ([...k].length === 1) strokes(k, $("kstroke")); else $("kstroke").innerHTML = "";
+  $("again").onclick = () => speak(k);
+  $("redraw").onclick = () => strokes(k[0], $("kstroke"));
+}
+
+$("addRows").onclick = () => {
+  const list = pairs();
+  for (const [k, r] of list) addCard("a:" + k, { word: k, front: k, reading: r, meaning: r, kind: "kana" });
+  $("added").textContent = `✓ ${list.length} characters in your review deck`;
+  gain(list.length);
+};
+
+// ---------- drills ----------
+let mode = null, cur = null, queue = [], score = { right: 0, total: 0, run: 0 };
+document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => start(b.dataset.mode)));
+async function start(m) {
+  mode = m; score = { right: 0, total: 0, run: 0 };
+  if (m === "words") {
+    const n5 = await vocab("N5");
+    const re = kata ? /^[ァ-ヶー]+$/ : /^[ぁ-ゖー]+$/;
+    queue = shuffle(n5.filter((w) => re.test(w.w) && w.w.length <= 6)).slice(0, 15).map((w) => [w.w, romaji(w.w), w.m]);
+  } else queue = shuffle([...pairs(), ...pairs()]);
+  next();
+}
+function record(k, ok) {
+  score.total++; if (ok) { score.right++; score.run++; gain(1); } else { score.run = 0; queue.splice(Math.min(queue.length, 3), 0, cur); } // missed ones come back soon
+  if (mode !== "words" && state.srs["a:" + k]) grade("a:" + k, ok ? 2 : 0);
+  if (score.run && score.run % 10 === 0) blip(`${score.run} in a row! すごい!`, "happy", 4);
+}
+function next() {
+  const box = $("drill");
+  cur = queue.shift();
+  const [k, r, meaning] = cur ?? [];
+  if (!k) { box.innerHTML = `<p>Done: <b>${score.right}/${score.total}</b> right. ${score.right === score.total ? "Perfect! 🎉" : "Run it again to lock in the misses."}</p><button id="again2">Again</button>`; $("again2").onclick = () => start(mode); return; }
+  const head = `<p class="muted">${score.right}/${score.total} · ${queue.length + 1} left${score.run > 2 ? ` · 🔥 ${score.run}` : ""}</p>`;
+  if (mode === "read" || mode === "words") {
+    box.innerHTML = `${head}<div class="jp" style="font-size:${mode === "words" ? 44 : 72}px">${esc(k)}</div>
+      <form id="f"><input id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="romaji" aria-label="Romaji"> <button>Check</button></form><p id="fb"></p>`;
+    $("ans").focus();
+    $("f").onsubmit = (e) => {
+      e.preventDefault();
+      const a = $("ans").value.trim().toLowerCase().replace(/\s+/g, "");
+      const ok = a === r || a === r.replace(/ou/g, "o").replace(/uu/g, "u") || (r === "wo" && a === "o") || (r === "shi" && a === "si") || (r === "chi" && a === "ti") || (r === "tsu" && a === "tu") || (r === "fu" && a === "hu");
+      record(k, ok); speak(k);
+      $("fb").innerHTML = `${ok ? '<span class="right">✓</span>' : `<span class="wrong">✗</span> it's <b>${esc(r)}</b>`}${meaning ? ` · ${esc(meaning)}` : ""}`;
+      $("f").onsubmit = (e2) => { e2.preventDefault(); next(); };
+      $("ans").placeholder = "Enter for next"; $("ans").value = "";
+    };
+  } else {
+    const opts = shuffle([[k, r], ...shuffle(allBasic.filter(([x]) => x !== k)).slice(0, 3)]);
+    box.innerHTML = `${head}${mode === "listen" ? `<button id="hear" style="font-size:24px">▶ Hear it</button>` : `<div style="font-size:48px"><b>${esc(r)}</b></div>`}
+      <div class="choices">${opts.map(([x]) => `<button class="jp" data-o="${esc(x)}" style="font-size:32px !important">${esc(x)}</button>`).join("")}</div><p id="fb"></p>`;
+    if (mode === "listen") { speak(k); $("hear").onclick = () => speak(k); }
+    box.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => {
+      const ok = b.dataset.o === k;
+      record(k, ok);
+      b.classList.add(ok ? "right" : "wrong");
+      $("fb").innerHTML = ok ? '<span class="right">✓</span>' : `<span class="wrong">✗</span> it was <span class="jp">${esc(k)}</span> (${esc(r)})`;
+      if (!ok) speak(k);
+      setTimeout(next, ok ? 600 : 1600);
+    }));
+  }
+}
+
+window.blipContext = () => ({ page: `Yomu ${kata ? "katakana" : "hiragana"} trainer`, role: "You are a patient Japanese tutor. Give mnemonics for kana shapes, explain sounds, and quiz the visitor if asked.", drill: mode, score, rowsTicked: pairs().map(([k]) => k).join("") });
+window.blipActions = {
+  say_japanese: { label: "spoke Japanese", description: "Say a Japanese word or kana aloud in the page's Japanese voice.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => { speak(String(text ?? "")); } },
+};
+</script>
+</body>
+</html>

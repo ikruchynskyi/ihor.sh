@@ -1,0 +1,185 @@
+[
+ {
+  "id": "n5-01",
+  "level": "N5",
+  "unit": 1,
+  "title": {
+   "ja": "はじめまして",
+   "en": "Nice to meet you"
+  },
+  "grammar": [
+   "X は Y です: X is Y",
+   "～ですか: asking a question",
+   "～じゃありません: is not",
+   "A の B: A's B, B of A"
+  ],
+  "kanji": [
+   "私",
+   "学",
+   "生",
+   "大",
+   "日",
+   "本",
+   "人",
+   "何"
+  ]
+ },
+ {
+  "id": "n5-02",
+  "level": "N5",
+  "unit": 2,
+  "title": {
+   "ja": "これは何ですか",
+   "en": "What is this?"
+  },
+  "grammar": [
+   "これ・それ・あれ: this, that, that over there",
+   "この・その・あの + noun",
+   "～の: whose (the noun can disappear)",
+   "～も: also, too"
+  ],
+  "kanji": [
+   "時",
+   "母",
+   "本",
+   "今"
+  ]
+ },
+ {
+  "id": "n5-03",
+  "level": "N5",
+  "unit": 3,
+  "title": {
+   "ja": "毎朝",
+   "en": "Every morning"
+  },
+  "grammar": [
+   "～ます / ～ません: polite verbs (present)",
+   "～を: the object of the action",
+   "～に (time) and ～へ (direction)",
+   "～で: where an action happens"
+  ],
+  "kanji": [
+   "毎",
+   "時",
+   "食",
+   "行",
+   "読",
+   "聞",
+   "六",
+   "間"
+  ]
+ },
+ {
+  "id": "n5-04",
+  "level": "N5",
+  "unit": 4,
+  "title": {
+   "ja": "きのう、公園へ行きました",
+   "en": "Yesterday I went to the park"
+  },
+  "grammar": [
+   "～ました / ～ませんでした: past tense",
+   "～でした: was (nouns and な-adjectives)",
+   "～と: with (someone)",
+   "～で: by (means, tool)"
+  ],
+  "kanji": [
+   "友",
+   "天",
+   "気",
+   "車",
+   "新"
+  ]
+ },
+ {
+  "id": "n5-05",
+  "level": "N5",
+  "unit": 5,
+  "title": {
+   "ja": "ニューヨークはどんな町ですか",
+   "en": "What kind of city is New York?"
+  },
+  "grammar": [
+   "い-adjectives: 大きい, 高い, おいしい",
+   "な-adjectives: 静か, きれい, にぎやか",
+   "～くないです: not (い-adjectives)",
+   "とても / あまり～ない: very / not very"
+  ],
+  "kanji": [
+   "高",
+   "東",
+   "京",
+   "安",
+   "町"
+  ]
+ },
+ {
+  "id": "n5-06",
+  "level": "N5",
+  "unit": 6,
+  "title": {
+   "ja": "部屋に何がありますか",
+   "en": "What's in the room?"
+  },
+  "grammar": [
+   "あります / います: there is",
+   "Place に Thing が あります",
+   "上・下・中・となり: positions",
+   "Counting: ～つ, ～人, ～匹"
+  ],
+  "kanji": [
+   "上",
+   "下",
+   "中",
+   "五",
+   "一",
+   "名"
+  ]
+ },
+ {
+  "id": "n5-07",
+  "level": "N5",
+  "unit": 7,
+  "title": {
+   "ja": "いっしょに見ませんか",
+   "en": "Want to watch it together?"
+  },
+  "grammar": [
+   "～ませんか: won't you…? (invitation)",
+   "～ましょう: let's",
+   "～たいです: want to",
+   "～はちょっと…: saying no politely"
+  ],
+  "kanji": [
+   "土",
+   "曜",
+   "見",
+   "三",
+   "四",
+   "電",
+   "後"
+  ]
+ },
+ {
+  "id": "n5-08",
+  "level": "N5",
+  "unit": 8,
+  "title": {
+   "ja": "今、何をしていますか",
+   "en": "What are you doing right now?"
+  },
+  "grammar": [
+   "The て-form: the Swiss army knife",
+   "～ています: is doing (right now)",
+   "～てください: please do"
+  ],
+  "kanji": [
+   "今",
+   "来",
+   "校",
+   "写",
+   "明"
+  ]
+ }
+]

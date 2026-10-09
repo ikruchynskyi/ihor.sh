@@ -3,7 +3,7 @@
 // Usage: npm run build && npm start   (env: PORT=8080, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL=http://localhost:11434)
 import http from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 import { stationArrivals, ferryBoard } from "./transit.ts";
@@ -24,6 +24,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   radio: { dir: RADIO, label: "World 1 · Radio" },
   nyc: { dir: path.join(ROOT, "nyc"), label: "World 2 · NYC" },
   ai: { dir: path.join(ROOT, "ai"), label: "World 3 · AI" },
+  yomu: { dir: path.join(ROOT, "yomu"), label: "World 4 · Yomu" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
@@ -34,6 +35,8 @@ const MAX_LISTENERS = 3;
 let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
+// The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.
+const versioned = (html: string) => html.replace(/(["'])(\/[a-z]+\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(path.join(ROOT, p)) ? `${q}${asset(p.slice(1))}${q}` : m));
 const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
@@ -142,7 +145,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
-  res.end(world && ext === ".html" ? dress(data.toString(), world, urlPath) : data);
+  res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath) : data);
 }
 
 const server = http.createServer(async (req, res) => {

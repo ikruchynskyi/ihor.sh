@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Review</title>
+  <meta name="description" content="Spaced review for your Japanese: kana, words, kanji and grammar come back right before you'd forget them. Recall, listen, say it out loud, grade yourself." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Review</p>
+  <h1>Review</h1>
+  <p class="lede">Try to recall before you flip. Be honest with the grade: <b>Again</b> brings it back in a minute, <b>Easy</b> pushes it days away. Ten minutes a day beats an hour a week.</p>
+  <div id="settings"></div>
+  <p class="muted" id="stats"></p>
+  <section class="card2 review" id="card"></section>
+</main>
+<script type="module">
+import { state, gain, grade, dueCards, settingsBar, esc, speak, listen, canListen, similarity, romaji, toHiragana, hasKanji, grammarDeck, cloze, choiceLabel, plain, shuffle, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+const grammar = Object.fromEntries((await grammarDeck()).map((g) => [g.id, g]));
+settingsBar($("settings"), () => show());
+let queue = shuffle(dueCards()), done = 0, extra = false;
+const show = () => (queue.length ? render() : finish());
+const kana = (s) => (state.settings.script === "romaji" ? romaji(toHiragana(s)) : s);
+
+function stats() {
+  const all = Object.values(state.srs);
+  $("stats").textContent = `${queue.length} to go · ${done} done this session · deck: ${all.length} cards (${all.filter((c) => c.interval >= 21).length} learned)`;
+}
+function finish() {
+  stats();
+  const total = Object.keys(state.srs).length;
+  $("card").innerHTML = total
+    ? `<p><b>All caught up!</b> ${done ? `${done} reviews done. ` : ""}Come back tomorrow, or practice a few extra.</p><button id="extra">Practice 10 random cards</button> <a href="/yomu/">Back to the path</a>`
+    : `<p>Your deck is empty. Add kana, words, kanji or grammar from the <a href="/yomu/">path</a> and they'll show up here.</p>`;
+  if ($("extra")) $("extra").onclick = () => { extra = true; queue = shuffle(Object.entries(state.srs).map(([id, c]) => ({ id, ...c }))).slice(0, 10); show(); };
+  if (done >= 10) blip(`${done} reviews! お疲れさま!`, "happy", 5);
+}
+
+function render() {
+  stats();
+  const c = queue[0];
+  if (c.kind === "grammar" && grammar[c.gid]) return renderGrammar(c, grammar[c.gid]);
+  const sayable = c.kind === "kanji" ? null : c.reading;
+  $("card").innerHTML = `<p class="muted">${esc(c.kind)}${c.kind === "word" ? " · what does it mean, how is it read?" : c.kind === "kanji" ? " · meaning and readings?" : " · how is it read?"}</p>
+    <div class="front jp">${esc(c.kind === "word" && state.settings.script === "romaji" && !hasKanji(c.front) ? kana(c.front) : c.front)}</div>
+    <div id="back" hidden><p class="jp" style="font-size:1.4rem">${esc(kana(c.reading ?? ""))}</p>${c.kind !== "kana" ? `<p><b>${esc(c.meaning ?? "")}</b></p>` : ""}</div>
+    <div class="row" id="acts"><button id="flip">Show answer (space)</button>${canListen() && sayable ? ` <button id="say">🎤 Say it</button>` : ""}</div>
+    <p id="fb"></p>
+    <div class="row grades" id="grades" hidden><button data-g="0">Again</button><button data-g="1">Hard</button><button data-g="2">Good</button><button data-g="3">Easy</button></div>`;
+  const flip = () => { $("back").hidden = false; $("grades").hidden = false; $("flip").hidden = true; if (sayable) speak(sayable); else if (c.kind === "kanji") speak(c.reading.split("、").pop().replace(/[.-]/g, "")); };
+  $("flip").onclick = flip;
+  if ($("say")) $("say").onclick = async () => { $("fb").textContent = "Listening…"; const heard = await listen(); const s = heard ? Math.max(...heard.split(" / ").map((h) => similarity(h, sayable))) : 0; $("fb").innerHTML = heard ? `Heard <span class="jp">${esc(heard)}</span> · ${s > 0.8 ? '<span class="right">great!</span>' : s > 0.5 ? "close" : '<span class="wrong">try again</span>'}` : "Didn't catch that."; if (s > 0.8) flip(); };
+  $("grades").querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => answer(c, +b.dataset.g)));
+}
+
+function renderGrammar(c, g) {
+  const ex = g.examples[Math.floor(Math.random() * g.examples.length)];
+  $("card").innerHTML = `<p class="muted">grammar · fill the blank</p><div class="jp" style="font-size:1.4rem">${cloze(ex, state.settings)}</div>${state.settings.translation ? `<p class="muted">${esc(ex.en)}</p>` : ""}
+    <div class="choices">${shuffle(ex.choices).map((ch) => `<button class="jp" data-c="${esc(ch)}">${esc(choiceLabel(ch, state.settings))}</button>`).join("")}</div><p id="fb"></p>`;
+  $("card").querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => {
+    const ok = b.dataset.c === ex.answer;
+    b.classList.add(ok ? "right" : "wrong");
+    $("card").querySelector(".jp").innerHTML = cloze(ex, state.settings, choiceLabel(ex.answer, state.settings));
+    speak(plain(ex.t));
+    $("fb").innerHTML = `${ok ? '<span class="right">✓</span>' : '<span class="wrong">✗</span>'} <b class="jp">${esc(g.pattern)}</b>: ${esc(g.meaning)}. ${ok ? "" : esc(g.explain)} <a href="/yomu/grammar.html?level=${g.level}#${g.id}">open</a><br><button id="nx">Next</button>`;
+    $("card").querySelectorAll("[data-c]").forEach((x) => (x.disabled = true));
+    $("nx").onclick = () => answer(c, ok ? 2 : 0);
+    $("nx").focus();
+  }));
+}
+
+function answer(c, g) {
+  if (!extra) grade(c.id, g);
+  queue.shift(); done++;
+  if (g === 0) queue.splice(Math.min(queue.length, 4), 0, c); // again: back in a few cards
+  gain(g ? 1 : 0);
+  show();
+}
+
+addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.key === " " && $("flip") && !$("flip").hidden) { e.preventDefault(); $("flip").click(); }
+  else if (/^[1-4]$/.test(e.key) && $("grades") && !$("grades").hidden) $("grades").querySelector(`[data-g="${+e.key - 1}"]`).click();
+});
+show();
+
+window.blipContext = () => ({ page: "Yomu review (spaced repetition)", role: "You are a Japanese tutor. If asked about the current card, explain it with a mnemonic and an example sentence.", currentCard: queue[0] ? { kind: queue[0].kind, front: queue[0].front, reading: queue[0].reading, meaning: queue[0].meaning } : null, left: queue.length, done });
+window.blipActions = {
+  say_japanese: { label: "spoke Japanese", description: "Say a Japanese word or sentence aloud.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => { speak(String(text ?? "")); } },
+};
+</script>
+</body>
+</html>

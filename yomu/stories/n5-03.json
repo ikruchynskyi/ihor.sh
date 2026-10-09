@@ -1,0 +1,1020 @@
+{
+ "id": "n5-03",
+ "level": "N5",
+ "unit": 3,
+ "title": {
+  "ja": "毎朝",
+  "en": "Every morning"
+ },
+ "scene": "Yuki and Sam compare their mornings over video chat.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "Mr./Ms. (polite title)"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "毎朝",
+     "まいあさ",
+     "every morning"
+    ],
+    [
+     "何時",
+     "なんじ",
+     "what time"
+    ],
+    [
+     "に",
+     null,
+     "at (time)",
+     "p"
+    ],
+    [
+     "起きます",
+     "おきます",
+     "get up"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, what time do you get up every morning?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "六時",
+     "ろくじ",
+     "six o'clock"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "起きます",
+     "おきます",
+     "get up"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I get up at six."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はやい",
+     null,
+     "early"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "ね",
+     null,
+     "right? (shared feeling)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "朝ごはん",
+     "あさごはん",
+     "breakfast"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べます",
+     "たべます",
+     "eat"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's early! Do you eat breakfast?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パン",
+     null,
+     "bread"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べます",
+     "たべます",
+     "eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "コーヒー",
+     null,
+     "coffee"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "飲みます",
+     "のみます",
+     "drink"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I eat bread. I drink coffee."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "朝ごはん",
+     "あさごはん",
+     "breakfast"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べません",
+     "たべません",
+     "don't eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I don't eat breakfast."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ええっ",
+     null,
+     "what?!"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうして",
+     null,
+     "why"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What? Why?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "時間",
+     "じかん",
+     "time"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "ありません",
+     null,
+     "there isn't"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I don't have time."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "そうですか",
+     null,
+     "I see"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎朝",
+     "まいあさ",
+     "every morning"
+    ],
+    [
+     "どこ",
+     null,
+     "where"
+    ],
+    [
+     "へ",
+     null,
+     "to (direction)",
+     "p"
+    ],
+    [
+     "行きます",
+     "いきます",
+     "go"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I see. Where do you go every morning?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大学",
+     "だいがく",
+     "university"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きます",
+     "いきます",
+     "go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "図書館",
+     "としょかん",
+     "library"
+    ],
+    [
+     "で",
+     null,
+     "at (place of action)",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "読みます",
+     "よみます",
+     "read"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I go to the university. I read books at the library."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "家",
+     "いえ",
+     "home, house"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "仕事",
+     "しごと",
+     "work"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I work at home."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "毎朝",
+     "まいあさ",
+     "every morning"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞きます",
+     "ききます",
+     "listen"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip listens to the radio every morning!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞きます",
+     "ききます",
+     "listen to"
+    ],
+    [
+     "か",
+     null,
+     "?",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What do you listen to?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "よほう",
+     null,
+     "forecast"
+    ],
+    [
+     "です",
+     null,
+     "is / am / are (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "(beep)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The weather forecast. Beep."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "masu",
+   "title": "～ます / ～ません: polite verbs (present)",
+   "explain": "Polite verbs end in ます (do / will do) or ません (don't / won't). Japanese has one present form for both habits and the future: 食べます = I eat / I will eat.",
+   "examples": [
+    {
+     "t": [
+      [
+       "パン",
+       null,
+       "bread"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "食べます",
+       "たべます",
+       "eat"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I eat bread."
+    },
+    {
+     "t": [
+      [
+       "朝ごはん",
+       "あさごはん",
+       "breakfast"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "食べません",
+       "たべません",
+       "don't eat"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I don't eat breakfast."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "コーヒーを飲み＿＿。",
+     "hint": "I don't drink coffee.",
+     "choices": [
+      "ません",
+      "ます",
+      "ですか"
+     ],
+     "answer": 0,
+     "why": "ません is the polite negative of ます."
+    }
+   ]
+  },
+  {
+   "id": "wo",
+   "title": "～を: the object of the action",
+   "explain": "を (written wo, read o) marks what the action is done to: パンを食べます (eat bread), 本を読みます (read a book).",
+   "examples": [
+    {
+     "t": [
+      [
+       "本",
+       "ほん",
+       "book"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "読みます",
+       "よみます",
+       "read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I read a book."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ラジオ＿聞きます。",
+     "hint": "I listen to the radio.",
+     "choices": [
+      "を",
+      "に",
+      "へ"
+     ],
+     "answer": 0,
+     "why": "を marks the thing listened to."
+    }
+   ]
+  },
+  {
+   "id": "ni-he",
+   "title": "～に (time) and ～へ (direction)",
+   "explain": "に after a specific time: 六時に (at six). へ (read e) after a destination: 大学へ行きます. You'll also hear 大学に行きます: に works for destinations too.",
+   "examples": [
+    {
+     "t": [
+      [
+       "六時",
+       "ろくじ",
+       "six o'clock"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "起きます",
+       "おきます",
+       "get up"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I get up at six."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "七時＿起きます。",
+     "hint": "I get up at seven.",
+     "choices": [
+      "に",
+      "を",
+      "で"
+     ],
+     "answer": 0,
+     "why": "に marks a point in time."
+    },
+    {
+     "q": "大学＿行きます。",
+     "hint": "I go to the university.",
+     "choices": [
+      "へ",
+      "を",
+      "で"
+     ],
+     "answer": 0,
+     "why": "へ marks the direction / destination."
+    }
+   ]
+  },
+  {
+   "id": "de-place",
+   "title": "～で: where an action happens",
+   "explain": "で marks the place where you do something: 図書館で本を読みます (I read at the library). Compare に/へ, which mark where you go.",
+   "examples": [
+    {
+     "t": [
+      [
+       "家",
+       "いえ",
+       "home"
+      ],
+      [
+       "で",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "仕事",
+       "しごと",
+       "work"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "します",
+       null,
+       "do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I work at home."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "図書館＿本を読みます。",
+     "hint": "I read books at the library.",
+     "choices": [
+      "で",
+      "へ",
+      "を"
+     ],
+     "answer": 0,
+     "why": "Reading happens at the library: で."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "毎",
+   "on": [
+    "マイ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "every",
+   "ex": [
+    [
+     "毎朝",
+     "まいあさ",
+     "every morning"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ]
+   ]
+  },
+  {
+   "k": "時",
+   "on": [
+    "ジ"
+   ],
+   "kun": [
+    "とき"
+   ],
+   "m": "time, o'clock",
+   "ex": [
+    [
+     "六時",
+     "ろくじ",
+     "six o'clock"
+    ],
+    [
+     "時間",
+     "じかん",
+     "time"
+    ]
+   ]
+  },
+  {
+   "k": "食",
+   "on": [
+    "ショク"
+   ],
+   "kun": [
+    "た.べる"
+   ],
+   "m": "eat, food",
+   "ex": [
+    [
+     "食べます",
+     "たべます",
+     "eat"
+    ]
+   ]
+  },
+  {
+   "k": "行",
+   "on": [
+    "コウ",
+    "ギョウ"
+   ],
+   "kun": [
+    "い.く"
+   ],
+   "m": "go",
+   "ex": [
+    [
+     "行きます",
+     "いきます",
+     "go"
+    ]
+   ]
+  },
+  {
+   "k": "読",
+   "on": [
+    "ドク"
+   ],
+   "kun": [
+    "よ.む"
+   ],
+   "m": "read",
+   "ex": [
+    [
+     "読みます",
+     "よみます",
+     "read"
+    ]
+   ]
+  },
+  {
+   "k": "聞",
+   "on": [
+    "ブン"
+   ],
+   "kun": [
+    "き.く"
+   ],
+   "m": "hear, listen, ask",
+   "ex": [
+    [
+     "聞きます",
+     "ききます",
+     "listen"
+    ]
+   ]
+  },
+  {
+   "k": "六",
+   "on": [
+    "ロク"
+   ],
+   "kun": [
+    "む"
+   ],
+   "m": "six",
+   "ex": [
+    [
+     "六時",
+     "ろくじ",
+     "six o'clock"
+    ]
+   ]
+  },
+  {
+   "k": "間",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    "あいだ",
+    "ま"
+   ],
+   "m": "interval, between",
+   "ex": [
+    [
+     "時間",
+     "じかん",
+     "time"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  8
+ ],
+ "questions": [
+  {
+   "q": "サムさんは何時に起きますか。",
+   "en": "What time does Sam get up?",
+   "choices": [
+    "六時",
+    "七時",
+    "八時"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんは朝ごはんを食べますか。",
+   "en": "Does Yuki eat breakfast?",
+   "choices": [
+    "いいえ、食べません",
+    "はい、パンを食べます",
+    "はい、コーヒーを飲みます"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんはどこで本を読みますか。",
+   "en": "Where does Yuki read?",
+   "choices": [
+    "図書館で",
+    "家で",
+    "大学へ"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about your morning: what time you get up (～時に起きます), what you eat and drink, and where you go."
+}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Placement Test</title>
+  <meta name="description" content="A five-minute adaptive Japanese placement test: kana, then N5, N4 and N3 words, kanji and grammar. It stops when it finds your level and sets where your Yomu course starts." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Placement</p>
+  <h1>Where are you now?</h1>
+  <p class="lede">A few questions per stage: kana, then N5, N4 and N3 words, kanji and grammar. It stops at the first stage that's too hard. Don't guess: “I don't know” helps it place you right.</p>
+  <div id="settings"></div>
+  <section class="card2" id="box"></section>
+</main>
+<script type="module">
+import { state, save, settingsBar, esc, GOJUON, toKatakana, vocab, kanjiDeck, grammarDeck, cloze, choiceLabel, shuffle, LEVELS, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"), () => {});
+const PASS = 0.75;
+
+// Each stage: a list of questions { prompt (HTML), choices [text], answer }.
+async function stage(name) {
+  if (name === "kana") {
+    const basic = GOJUON.filter(Boolean);
+    return shuffle(basic).slice(0, 8).map(([k, r], i) => {
+      const kk = i % 2 ? toKatakana(k) : k;
+      return { prompt: `<div class="jp" style="font-size:64px">${esc(kk)}</div><p class="muted">How is this read?</p>`, choices: shuffle([r, ...shuffle(basic.filter(([, x]) => x !== r)).slice(0, 3).map(([, x]) => x)]), answer: r };
+    });
+  }
+  const [words, kanji, grammar] = await Promise.all([vocab(name), kanjiDeck(name), grammarDeck(name)]);
+  const kw = kanji.filter((k) => k.ex.length);
+  const qs = [];
+  for (const w of shuffle(words.filter((w) => w.w !== w.r)).slice(0, 3))
+    qs.push({ prompt: `<div class="jp" style="font-size:40px">${esc(w.w)}</div><p class="muted">What does it mean?</p>`, choices: shuffle([w.m, ...shuffle(words.filter((x) => x.m !== w.m)).slice(0, 3).map((x) => x.m)]).map((m) => m.split(",").slice(0, 2).join(",")), answer: w.m.split(",").slice(0, 2).join(",") });
+  for (const k of shuffle(kw).slice(0, 2)) {
+    const [w, r] = k.ex[0];
+    qs.push({ prompt: `<div class="jp" style="font-size:40px">${esc(w)}</div><p class="muted">How is it read?</p>`, choices: shuffle([r, ...shuffle(words.filter((x) => x.r !== r && x.r.length >= r.length - 1 && x.r.length <= r.length + 1)).slice(0, 3).map((x) => x.r)]), answer: r });
+  }
+  for (const g of shuffle(grammar).slice(0, 3)) {
+    const ex = g.examples[0];
+    qs.push({ prompt: `<div class="jp" style="font-size:1.4rem">${cloze(ex, { ...state.settings, script: "kanji", furigana: "all" })}</div><p class="muted">${esc(ex.en)}</p>`, choices: ex.choices, answer: ex.answer, jp: true });
+  }
+  return shuffle(qs);
+}
+
+const order = ["kana", ...LEVELS];
+let si = 0, qs = [], qi = 0, right = 0;
+const results = {};
+async function begin() {
+  $("box").innerHTML = '<p class="muted">Loading…</p>';
+  qs = await stage(order[si]); qi = 0; right = 0; ask();
+}
+function ask() {
+  const q = qs[qi];
+  $("box").innerHTML = `<p class="muted">Stage: <b>${order[si] === "kana" ? "Kana" : order[si]}</b> · ${qi + 1}/${qs.length}</p>${q.prompt}
+    <div class="choices">${q.choices.map((c, i) => `<button data-i="${i}" class="${q.jp ? "jp" : ""}">${esc(q.jp ? choiceLabel(c, state.settings) : c)}</button>`).join("")}<button data-i="-1">I don't know</button></div>`;
+  $("box").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => {
+    if (+b.dataset.i >= 0 && q.choices[+b.dataset.i] === q.answer) right++;
+    if (++qi < qs.length) return ask();
+    const score = right / qs.length;
+    results[order[si]] = score;
+    if (score >= PASS && ++si < order.length) { blip(`${order[si - 1] === "kana" ? "Kana" : order[si - 1]} passed! Next stage…`, "happy", 2); return begin(); }
+    done(score >= PASS ? null : order[si]);
+  }));
+}
+function done(failedAt) {
+  const kana = (results.kana ?? 0) >= PASS;
+  const level = !kana ? "N5" : failedAt && failedAt !== "kana" ? failedAt : failedAt ? "N5" : "N3";
+  state.start = { level, kana, how: "placement test" }; save();
+  const lines = Object.entries(results).map(([k, v]) => `<li>${k === "kana" ? "Kana" : k}: ${Math.round(v * 100)}% ${v >= PASS ? "✓" : ""}</li>`).join("");
+  const advice = !kana ? "Start with hiragana: a week of drills and you'll read your first story."
+    : !failedAt ? "You passed everything up to N3! Use the N3 grammar list and decks to fill gaps, and keep reviewing."
+    : level === "N5" ? "Start at <b>N5</b> with the first story. Your kana is solid!" : `Start at <b>${level}</b>. Skim earlier levels' grammar lists to fill any gaps.`;
+  $("box").innerHTML = `<h2 style="margin-top:0">Your starting point: ${kana ? level : "kana"}</h2><ul>${lines}</ul><p>${advice}</p>
+    <a class="btn" href="${kana ? "/yomu/" : "/yomu/kana.html"}">Go</a> <button id="again">Retake</button>`;
+  $("again").onclick = () => { si = 0; for (const k in results) delete results[k]; begin(); };
+  blip(kana ? `You start at ${level}. がんばって!` : "Let's start with hiragana!", "happy", 6);
+}
+$("box").innerHTML = `<p>About 30 questions at most. Ready?</p><button id="go">Start the test</button>`;
+$("go").onclick = begin;
+window.blipContext = () => ({ page: "Yomu placement test", role: "Don't give away answers while the test is running; encourage the visitor and explain results afterwards.", stage: order[si], results });
+</script>
+</body>
+</html>

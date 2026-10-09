@@ -124,7 +124,8 @@ The site is a map of projects ("worlds"). Open now:
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, broken elevators, traffic cameras, free events, restaurant inspections, click for address info), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
 - Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: machine learning from scratch with draggable visuals; chapter 1 "Matrices are moves" at /ai/01-matrices-are-moves.html (more chapters coming: gradients, neurons, backprop, CNNs, transformers, agents, vision).
-Planned (locked): World 4 Yomu (Japanese from zero to JLPT N3 with graded stories), 5 Ride (bikepacking), 6 EDC (gear), 7 Learn & build.
+- World 4, Yomu at /yomu/: Japanese from zero to JLPT N3. Graded stories (N5 now; N4 and N3 coming) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); all N5–N3 kanji and words /yomu/deck.html; spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
+Planned (locked): 5 Ride (bikepacking), 6 EDC (gear), 7 Learn & build.
 
 Pages on the site:
 ${siteMap}

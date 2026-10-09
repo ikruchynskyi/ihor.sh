@@ -1,0 +1,904 @@
+{
+ "id": "n5-06",
+ "level": "N5",
+ "unit": 6,
+ "title": {
+  "ja": "部屋に何がありますか",
+  "en": "What's in the room?"
+ },
+ "scene": "Yuki looks around Sam's radio room. Something is hiding under the bed.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radios"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "many"
+    ],
+    [
+     "ありますね",
+     null,
+     "there are, aren't there"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, there are so many radios in the room."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "五つ",
+     "いつつ",
+     "five (things)"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, there are five."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "テーブル",
+     null,
+     "table"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "top, on"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "ありますか",
+     null,
+     "is there?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What's on the table?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "パソコン",
+     null,
+     "computer"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A computer and an antenna."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "Mr."
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どこ",
+     null,
+     "where"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "いますか",
+     null,
+     "is (he)? (living things)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Where is Blip?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ベッド",
+     null,
+     "bed"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "下",
+     "した",
+     "under"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "います",
+     null,
+     "is (living)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Under the bed."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "います",
+     null,
+     "am"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "(beep)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm here! Beep!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あ",
+     null,
+     "oh"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ねこ",
+     null,
+     "cat"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "いますね",
+     null,
+     "there is, isn't there"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh, there's a cat too."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一匹",
+     "いっぴき",
+     "one (small animal)"
+    ],
+    [
+     "います",
+     null,
+     "there is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "名前",
+     "なまえ",
+     "name"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "Radio"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, one. Her name is Radio."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ねこ",
+     null,
+     "cat"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "名前",
+     "なまえ",
+     "name"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "Radio"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The cat is called Radio too?!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "大好き",
+     "だいすき",
+     "love"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. Because I love radio."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "aru-iru",
+   "title": "あります / います: there is",
+   "explain": "Both mean 'there is / to be (somewhere)'. あります for things and plants, います for people and animals (and robots that act alive!).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ねこ",
+       null,
+       "cat"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "います",
+       null,
+       "there is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There's a cat."
+    },
+    {
+     "t": [
+      [
+       "本",
+       "ほん",
+       "book"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "あります",
+       null,
+       "there is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There's a book."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ベッドの下にブリップが＿＿＿。",
+     "hint": "Blip is under the bed.",
+     "choices": [
+      "います",
+      "あります",
+      "です"
+     ],
+     "answer": 0,
+     "why": "Blip moves like a living thing: います."
+    },
+    {
+     "q": "テーブルの上に本が＿＿＿＿。",
+     "hint": "There's a book on the table.",
+     "choices": [
+      "あります",
+      "います",
+      "します"
+     ],
+     "answer": 0,
+     "why": "A book is a thing: あります."
+    }
+   ]
+  },
+  {
+   "id": "ni-ga",
+   "title": "Place に Thing が あります",
+   "explain": "The place takes に, the thing takes が: 部屋にラジオがあります (in the room there is a radio). To ask where something is: ～はどこにありますか.",
+   "examples": [
+    {
+     "t": [
+      [
+       "部屋",
+       "へや",
+       "room"
+      ],
+      [
+       "に",
+       null,
+       "in",
+       "p"
+      ],
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "あります",
+       null,
+       "there is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There's a radio in the room."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "部屋＿ねこがいます。",
+     "hint": "There's a cat in the room.",
+     "choices": [
+      "に",
+      "で",
+      "を"
+     ],
+     "answer": 0,
+     "why": "Where something exists: に."
+    }
+   ]
+  },
+  {
+   "id": "position",
+   "title": "上・下・中・となり: positions",
+   "explain": "Position words follow the object with の: テーブルの上 (on the table), ベッドの下 (under the bed), かばんの中 (in the bag), 窓のとなり (next to the window).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ベッド",
+       null,
+       "bed"
+      ],
+      [
+       "の",
+       null,
+       "of",
+       "p"
+      ],
+      [
+       "下",
+       "した",
+       "under"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "います",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's under the bed."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "テーブルの＿＿にパソコンがあります。",
+     "hint": "There's a computer on the table.",
+     "choices": [
+      "上",
+      "下",
+      "中"
+     ],
+     "answer": 0,
+     "why": "上 = on top."
+    }
+   ]
+  },
+  {
+   "id": "counters",
+   "title": "Counting: ～つ, ～人, ～匹",
+   "explain": "Japanese counts with counters. General things: 一つ ひとつ, 二つ ふたつ, 三つ みっつ … 五つ いつつ. People: 一人 ひとり, 二人 ふたり, 三人 さんにん. Small animals: 一匹 いっぴき, 二匹 にひき.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "五つ",
+       "いつつ",
+       "five"
+      ],
+      [
+       "あります",
+       null,
+       "there are"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There are five radios."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ねこが＿＿＿います。",
+     "hint": "There is one cat.",
+     "choices": [
+      "一匹",
+      "一つ",
+      "一人"
+     ],
+     "answer": 0,
+     "why": "Cats are small animals: 匹."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "上",
+   "on": [
+    "ジョウ"
+   ],
+   "kun": [
+    "うえ",
+    "あ.がる"
+   ],
+   "m": "up, above",
+   "ex": [
+    [
+     "上",
+     "うえ",
+     "on top"
+    ]
+   ]
+  },
+  {
+   "k": "下",
+   "on": [
+    "カ",
+    "ゲ"
+   ],
+   "kun": [
+    "した",
+    "さ.がる"
+   ],
+   "m": "down, below",
+   "ex": [
+    [
+     "下",
+     "した",
+     "under"
+    ]
+   ]
+  },
+  {
+   "k": "中",
+   "on": [
+    "チュウ"
+   ],
+   "kun": [
+    "なか"
+   ],
+   "m": "inside, middle",
+   "ex": [
+    [
+     "中",
+     "なか",
+     "inside"
+    ]
+   ]
+  },
+  {
+   "k": "五",
+   "on": [
+    "ゴ"
+   ],
+   "kun": [
+    "いつ.つ"
+   ],
+   "m": "five",
+   "ex": [
+    [
+     "五つ",
+     "いつつ",
+     "five (things)"
+    ]
+   ]
+  },
+  {
+   "k": "一",
+   "on": [
+    "イチ"
+   ],
+   "kun": [
+    "ひと.つ"
+   ],
+   "m": "one",
+   "ex": [
+    [
+     "一つ",
+     "ひとつ",
+     "one (thing)"
+    ],
+    [
+     "一匹",
+     "いっぴき",
+     "one (animal)"
+    ]
+   ]
+  },
+  {
+   "k": "名",
+   "on": [
+    "メイ",
+    "ミョウ"
+   ],
+   "kun": [
+    "な"
+   ],
+   "m": "name",
+   "ex": [
+    [
+     "名前",
+     "なまえ",
+     "name"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  3,
+  5
+ ],
+ "questions": [
+  {
+   "q": "部屋にラジオがいくつありますか。",
+   "en": "How many radios are there?",
+   "choices": [
+    "五つ",
+    "一つ",
+    "三つ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップはどこにいましたか。",
+   "en": "Where was Blip?",
+   "choices": [
+    "ベッドの下",
+    "テーブルの上",
+    "部屋の外"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ねこの名前は何ですか。",
+   "en": "What's the cat's name?",
+   "choices": [
+    "ラジオ",
+    "ブリップ",
+    "ゆき"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe your room to Blip: what's on the desk, under the bed, how many of something there are, and whether there's a pet."
+}

@@ -1,0 +1,817 @@
+{
+ "id": "n5-04",
+ "level": "N5",
+ "unit": 4,
+ "title": {
+  "ja": "きのう、公園へ行きました",
+  "en": "Yesterday I went to the park"
+ },
+ "scene": "Monday. Sam asks Yuki about her weekend.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "Ms."
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "きのう",
+     null,
+     "yesterday"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "しましたか",
+     null,
+     "did (you) do?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, what did you do yesterday?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "セントラルパーク",
+     null,
+     "Central Park"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きました",
+     "いきました",
+     "went"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I went to Central Park with a friend."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "何",
+     "なん",
+     "what"
+    ],
+    [
+     "で",
+     null,
+     "by (means)",
+     "p"
+    ],
+    [
+     "行きましたか",
+     "いきましたか",
+     "did (you) go?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How did you get there?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "自転車",
+     "じてんしゃ",
+     "bicycle"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "行きました",
+     "いきました",
+     "went"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "By bike."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいですね",
+     null,
+     "that's nice"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どうでしたか",
+     null,
+     "how was (it)?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice. How was the weather?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "でした",
+     null,
+     "was"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The weather was really good."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "公園",
+     "こうえん",
+     "park"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "しましたか",
+     null,
+     "did (you) do?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What did you do in the park?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "写真",
+     "しゃしん",
+     "photo"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "とりました",
+     null,
+     "took"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それから",
+     null,
+     "after that"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アイスクリーム",
+     null,
+     "ice cream"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べました",
+     "たべました",
+     "ate"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I took photos. Then I ate ice cream."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どこへも",
+     null,
+     "(to) nowhere (with a negative)"
+    ],
+    [
+     "行きませんでした",
+     "いきませんでした",
+     "didn't go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I didn't go anywhere."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "えっ",
+     null,
+     "huh?"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうしてですか",
+     null,
+     "why?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Huh, why?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "作りました",
+     "つくりました",
+     "made"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I built an antenna with Blip."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "(beep)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A new antenna! Beep!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "すごいですね",
+     null,
+     "that's amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's amazing!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "mashita",
+   "title": "～ました / ～ませんでした: past tense",
+   "explain": "For the past, ます becomes ました (did) and ません becomes ませんでした (didn't). 行きます → 行きました → 行きませんでした.",
+   "examples": [
+    {
+     "t": [
+      [
+       "公園",
+       "こうえん",
+       "park"
+      ],
+      [
+       "へ",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行きました",
+       "いきました",
+       "went"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I went to the park."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "きのう、アイスクリームを食べ＿＿＿。",
+     "hint": "I ate ice cream yesterday.",
+     "choices": [
+      "ました",
+      "ます",
+      "ません"
+     ],
+     "answer": 0,
+     "why": "Past: ました."
+    },
+    {
+     "q": "どこへも行き＿＿＿＿＿。",
+     "hint": "I didn't go anywhere.",
+     "choices": [
+      "ませんでした",
+      "ました",
+      "ます"
+     ],
+     "answer": 0,
+     "why": "Past negative: ませんでした."
+    }
+   ]
+  },
+  {
+   "id": "deshita",
+   "title": "～でした: was (nouns and な-adjectives)",
+   "explain": "です in the past is でした: いい天気でした (it was nice weather). どうでしたか asks 'how was it?'.",
+   "examples": [
+    {
+     "t": [
+      [
+       "いい",
+       null,
+       "good"
+      ],
+      [
+       "天気",
+       "てんき",
+       "weather"
+      ],
+      [
+       "でした",
+       null,
+       "was"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It was nice weather."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "きのうはいい天気＿＿＿。",
+     "hint": "Yesterday the weather was nice.",
+     "choices": [
+      "でした",
+      "です",
+      "ました"
+     ],
+     "answer": 0,
+     "why": "です → でした."
+    }
+   ]
+  },
+  {
+   "id": "to",
+   "title": "～と: with (someone)",
+   "explain": "と after a person means 'together with': 友だちと行きました. Between nouns it also means 'and': パンとコーヒー.",
+   "examples": [
+    {
+     "t": [
+      [
+       "友だち",
+       "ともだち",
+       "friend"
+      ],
+      [
+       "と",
+       null,
+       "with",
+       "p"
+      ],
+      [
+       "行きました",
+       "いきました",
+       "went"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I went with a friend."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ブリップ＿アンテナを作りました。",
+     "hint": "I built an antenna with Blip.",
+     "choices": [
+      "と",
+      "で",
+      "を"
+     ],
+     "answer": 0,
+     "why": "と = together with."
+    }
+   ]
+  },
+  {
+   "id": "de-means",
+   "title": "～で: by (means, tool)",
+   "explain": "で after a vehicle or tool means 'by / with': 自転車で (by bike), 電車で (by train), はしで (with chopsticks). 何で asks 'by what means?'.",
+   "examples": [
+    {
+     "t": [
+      [
+       "自転車",
+       "じてんしゃ",
+       "bicycle"
+      ],
+      [
+       "で",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "行きました",
+       "いきました",
+       "went"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I went by bike."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "電車＿行きます。",
+     "hint": "I go by train.",
+     "choices": [
+      "で",
+      "と",
+      "へ"
+     ],
+     "answer": 0,
+     "why": "で marks the means of transport."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "友",
+   "on": [
+    "ユウ"
+   ],
+   "kun": [
+    "とも"
+   ],
+   "m": "friend",
+   "ex": [
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ]
+   ]
+  },
+  {
+   "k": "天",
+   "on": [
+    "テン"
+   ],
+   "kun": [
+    "あま"
+   ],
+   "m": "heaven, sky",
+   "ex": [
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ]
+   ]
+  },
+  {
+   "k": "気",
+   "on": [
+    "キ",
+    "ケ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "spirit, air",
+   "ex": [
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "元気",
+     "げんき",
+     "well, healthy"
+    ]
+   ]
+  },
+  {
+   "k": "車",
+   "on": [
+    "シャ"
+   ],
+   "kun": [
+    "くるま"
+   ],
+   "m": "car, vehicle",
+   "ex": [
+    [
+     "自転車",
+     "じてんしゃ",
+     "bicycle"
+    ],
+    [
+     "車",
+     "くるま",
+     "car"
+    ]
+   ]
+  },
+  {
+   "k": "新",
+   "on": [
+    "シン"
+   ],
+   "kun": [
+    "あたら.しい"
+   ],
+   "m": "new",
+   "ex": [
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  3
+ ],
+ "questions": [
+  {
+   "q": "ゆきさんはだれと公園へ行きましたか。",
+   "en": "Who did Yuki go to the park with?",
+   "choices": [
+    "友だち",
+    "サムさん",
+    "ブリップ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんは何で行きましたか。",
+   "en": "How did she get there?",
+   "choices": [
+    "自転車で",
+    "電車で",
+    "車で"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはきのう何をしましたか。",
+   "en": "What did Sam do yesterday?",
+   "choices": [
+    "アンテナを作りました",
+    "公園へ行きました",
+    "アイスクリームを食べました"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip what you did last weekend: where you went (～へ行きました), with whom (～と), how (～で), and what you ate."
+}

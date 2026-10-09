@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Grammar</title>
+  <meta name="description" content="Every JLPT N5, N4 and N3 grammar point in order: a plain-English explanation, example sentences with audio and furigana, a quick fill-in quiz, and a link to the matching chapter of Tae Kim's guide." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Grammar</p>
+  <h1>Grammar <span id="lvlTitle"></span></h1>
+  <p class="lede">The full JLPT grammar path, one point at a time. Open a point, read it, listen to the examples, then pass the quick quiz: it goes into your review deck and comes back as a fill-in-the-blank before you'd forget it.</p>
+  <div id="settings"></div>
+  <p class="choices" id="levels"></p>
+  <p><input id="q" type="search" placeholder="Search: ても, conditional, want…" aria-label="Search grammar" style="width:100%;max-width:420px"> <span class="muted" id="count"></span></p>
+  <div id="list"></div>
+</main>
+<script type="module">
+import { state, save, gain, settingsBar, esc, speak, renderTokens, plain, cloze, choiceLabel, addCard, grammarCard, grammarDeck, inDeck, LEVELS, blip } from "/yomu/lib.js";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const level = LEVELS.includes(params.get("level")) ? params.get("level") : state.start?.level ?? "N5";
+$("lvlTitle").textContent = `· ${level}`;
+$("levels").innerHTML = LEVELS.map((l) => `<a class="btn" href="?level=${l}" ${l === level ? 'aria-current="page"' : ""}>${l}</a>`).join(" ");
+const points = await grammarDeck(level);
+settingsBar($("settings"), render);
+
+function render() {
+  const q = $("q").value.trim().toLowerCase();
+  const shown = points.filter((p) => !q || `${p.pattern} ${p.meaning} ${p.explain}`.toLowerCase().includes(q));
+  $("count").textContent = `${points.filter((p) => inDeck("g:" + p.id)).length}/${points.length} learned`;
+  $("list").innerHTML = shown.map((p) => `<details class="gp${inDeck("g:" + p.id) ? " done" : ""}" id="${p.id}">
+    <summary><span class="num">${p.n}</span> <b class="jp">${esc(p.pattern)}</b> <span class="muted">${esc(p.meaning)}</span>${inDeck("g:" + p.id) ? " ✓" : ""}</summary>
+    <div class="gbody" data-id="${p.id}"></div></details>`).join("");
+  $("list").querySelectorAll("details").forEach((d) => d.addEventListener("toggle", () => d.open && fill(d.querySelector(".gbody"))));
+  const target = location.hash && document.getElementById(location.hash.slice(1));
+  if (target) { target.open = true; target.scrollIntoView({ block: "start" }); }
+}
+
+function fill(box) {
+  const p = points.find((x) => x.id === box.dataset.id);
+  box.innerHTML = `<p>${esc(p.explain)}</p>
+    ${p.examples.map((ex, i) => `<div class="ex"><span class="t jp" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-play="${i}" aria-label="Play">▶</button>${state.settings.translation ? `<div class="muted">${esc(ex.en)}</div>` : ""}</div>`).join("")}
+    <h4>Quick check</h4>
+    ${p.examples.map((ex, i) => `<div class="quiz" data-q="${i}"><div class="jp" style="font-size:1.2rem">${cloze(ex, state.settings)}</div><div class="muted">${esc(ex.en)}</div>
+      <div class="choices">${ex.choices.map((c) => `<button class="jp" data-c="${esc(c)}">${esc(choiceLabel(c, state.settings))}</button>`).join("")}</div></div>`).join("")}
+    <p id="res-${p.id}"></p>
+    <p class="muted"><a href="${p.more}" target="_blank" rel="noopener">Read more: Tae Kim's guide ↗</a> · <a href="#" data-ask>Ask Blip about this</a></p>`;
+  box.querySelectorAll("[data-play]").forEach((b) => (b.onclick = () => speak(plain(p.examples[+b.dataset.play].t))));
+  const got = new Set();
+  box.querySelectorAll(".quiz").forEach((qz) => qz.querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => {
+    const ex = p.examples[+qz.dataset.q], ok = b.dataset.c === ex.answer;
+    b.classList.add(ok ? "right" : "wrong");
+    if (!ok) return speak("ちがう"), blip(`Not quite: it's ${ex.answer}.`, "thinking");
+    qz.querySelector(".jp").innerHTML = cloze(ex, state.settings, choiceLabel(ex.answer, state.settings));
+    speak(plain(ex.t)); got.add(qz.dataset.q);
+    if (got.size === p.examples.length && !inDeck("g:" + p.id)) {
+      addCard(...grammarCard(p)); gain(5);
+      $(`res-${p.id}`).innerHTML = `<span class="right">✓ Learned! It's in your review deck now.</span>`;
+      box.closest("details").classList.add("done");
+      $("count").textContent = `${points.filter((x) => inDeck("g:" + x.id)).length}/${points.length} learned`;
+    }
+  })));
+  box.querySelector("[data-ask]").onclick = (e) => { e.preventDefault(); dispatchEvent(new CustomEvent("blip:ask", { detail: { text: `Explain ${p.pattern} (${p.meaning}) with 3 more examples, and when NOT to use it.` } })); };
+}
+
+$("q").oninput = render;
+render();
+
+window.blipContext = () => {
+  const open = [...document.querySelectorAll("details[open]")].map((d) => points.find((p) => p.id === d.id)).filter(Boolean);
+  return { page: `Yomu grammar ${level}`, role: "You are a Japanese grammar tutor. Explain simply, give examples with kanji, kana reading and English, and contrast with similar patterns.", openPoints: open.map((p) => `${p.pattern}: ${p.meaning}`), learned: points.filter((p) => inDeck("g:" + p.id)).length, total: points.length };
+};
+window.blipActions = {
+  say_japanese: { label: "spoke Japanese", description: "Say a Japanese sentence aloud in the page's Japanese voice.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => { speak(String(text ?? "")); } },
+  open_point: { label: "opened a grammar point", description: "Open a grammar point on this page by search words (e.g. 'てもいい', 'conditional').", parameters: { query: { type: "string", description: "Words to find" } },
+    run: ({ query }) => { const q = String(query ?? "").toLowerCase(); const p = points.find((x) => `${x.pattern} ${x.meaning}`.toLowerCase().includes(q)); if (p) { const d = document.getElementById(p.id); d.open = true; d.scrollIntoView({ block: "center" }); return d; } } },
+};
+</script>
+</body>
+</html>
