@@ -22,25 +22,28 @@ export function spacing(wpm: number, eff = wpm) {
   return { dit, charGap: (3 * ta) / 19, wordGap: (7 * ta) / 19 };
 }
 
-/** Key-down intervals [startMs, endMs) for `text`, starting at 0. Unknown characters are skipped. */
+/** Key-down intervals [startMs, endMs) for `text`, starting at 0, and when each character starts and ends (spaces too,
+ *  so a page can reveal the text as it plays). Unknown characters are skipped. */
 export function schedule(text: string, wpm: number, eff = wpm) {
   const { dit, charGap, wordGap } = spacing(wpm, eff);
-  const tones: [number, number][] = [];
+  const tones: [number, number][] = [], chars: { c: string; at: number; end: number }[] = [];
   let t = 0;
   const words = text.toUpperCase().trim().split(/\s+/).filter(Boolean);
   words.forEach((word, wi) => {
-    const chars = [...word].filter((c) => CODE[c]);
-    chars.forEach((c, ci) => {
+    const letters = [...word].filter((c) => CODE[c]);
+    letters.forEach((c, ci) => {
+      chars.push({ c, at: t, end: 0 });
       [...CODE[c]].forEach((el, ei) => {
         const len = el === "." ? dit : 3 * dit;
         tones.push([t, t + len]);
         t += len + (ei < CODE[c].length - 1 ? dit : 0);
       });
-      if (ci < chars.length - 1) t += charGap;
+      chars[chars.length - 1].end = t;
+      if (ci < letters.length - 1) t += charGap;
     });
-    if (wi < words.length - 1) t += wordGap;
+    if (wi < words.length - 1) { t += wordGap; chars.push({ c: " ", at: t, end: t }); }
   });
-  return { tones, duration: t };
+  return { tones, chars, duration: t };
 }
 
 /**

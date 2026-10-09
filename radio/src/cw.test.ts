@@ -53,3 +53,6 @@ assert.match(g, /^([KMU]{5} ){4}[KMU]{5}$/);
 for (let i = 0; i < 50; i++) assert.match(callsign(rand), /^[AKNW][A-Z]?\d[A-Z]{1,3}$/);
 
 console.log("cw ok");
+// character timing, for revealing text as it plays
+{ const s = schedule("EE T", 20); assert.deepEqual(s.chars.map((c) => [c.c, c.at, c.end]), [["E", 0, 60], ["E", 240, 300], [" ", 720, 720], ["T", 720, 900]]); }
+console.log("cw timing ok");

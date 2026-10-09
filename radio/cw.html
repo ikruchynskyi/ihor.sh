@@ -34,6 +34,21 @@
     .chart button { padding: 10px 6px !important; text-transform: none !important; }
     .chart b { display: block; font: 1.4rem ui-monospace, Menlo, monospace; }
     .chart span { font: 0.9rem ui-monospace, Menlo, monospace; color: var(--accent); letter-spacing: 0.15em; }
+    .player { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px !important; margin: 10px 0; }
+    .player kbd { font-size: 0.7rem; opacity: 0.75; margin-left: 4px; }
+    .prog { flex: 1 1 120px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+    .prog div { height: 100%; width: 0; background: var(--accent); }
+    .newletter { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .newletter .big { margin: 0; }
+    .steps { font: 0.92rem/1.6 ui-sans-serif, system-ui, sans-serif; margin: 10px 0 0; }
+    .reveal { font: 1.3rem/1.5 ui-monospace, Menlo, monospace; letter-spacing: 0.12em; min-height: 1.5em; color: var(--muted); margin: 6px 0; }
+    .reveal b { color: var(--accent); }
+    .sent { font: 1.4rem/1.6 ui-monospace, Menlo, monospace; letter-spacing: 0.08em; min-height: 1.6em; word-break: break-all; margin: 8px 0; }
+    .sent .done { color: var(--green); } .sent .now { color: var(--accent); text-decoration: underline; } .sent .todo { color: var(--muted); }
+    .tabs.small button { flex: 1 1 200px; }
+    .chart i { display: block; height: 4px; margin-top: 6px; background: var(--line); border-radius: 2px; overflow: hidden; }
+    .chart i u { display: block; height: 100%; }
+    .settings-box summary { cursor: pointer; font: 0.95rem ui-sans-serif, system-ui, sans-serif; margin-top: 18px; }
     kbd { font: 0.8rem ui-monospace, Menlo, monospace; padding: 1px 6px; border: 1px solid var(--line); }
   </style>
 </head>
@@ -46,10 +61,74 @@
   <div class="tabs" id="modes" role="tablist" aria-label="Trainer mode">
     <button data-mode="learn" aria-pressed="true">Learn<small>Koch lessons, one letter at a time</small></button>
     <button data-mode="copy">Copy<small>Listen and type what you hear</small></button>
-    <button data-mode="send">Send<small>Key the text, see what you sent</small></button>
-    <button data-mode="chart">Chart<small>Every character, click to hear</small></button>
+    <button data-mode="send">Send<small>Type or key your own Morse</small></button>
+    <button data-mode="chart">Chart<small>Every character and your score on it</small></button>
   </div>
 
+  <div class="player card" id="player" aria-label="Player">
+    <button class="btn" id="go" title="Enter">▶ <span id="goLabel">Play</span> <kbd>Enter</kbd></button>
+    <button class="btn alt" id="stopBtn" title="Esc">■ Stop <kbd>Esc</kbd></button>
+    <button class="btn alt" id="replay" title="Shift+Enter">↻ Replay <kbd>⇧ Enter</kbd></button>
+    <div class="prog"><div id="progBar"></div></div>
+    <span class="score" id="progText">ready</span>
+  </div>
+
+  <section class="pane" id="learn">
+    <h2>Lesson <span id="lessonNo"></span></h2>
+    <div class="koch" id="koch" aria-label="Characters in the Koch order"></div>
+    <div class="newletter"><div><div class="big" id="newChar"></div><div class="pattern" id="newPattern"></div></div>
+      <div><button class="btn alt" id="hearNew">▶ Hear the new letter</button><p class="score">Lesson <select id="lessonPick"></select></p></div></div>
+    <ol class="steps"><li>Press <kbd>Enter</kbd>: 5 groups of 5 letters play.</li><li>Type what you hear as it plays. Missed one? Skip it and keep going.</li><li>Press <kbd>Enter</kbd> to check, and <kbd>Enter</kbd> again for the next drill. 90% unlocks a new letter.</li></ol>
+  </section>
+
+  <section class="pane" id="copy" hidden>
+    <div class="row">
+      <label class="score">Practice <select id="copySource"><option value="koch">My Koch letters</option><option value="weak">My weakest letters</option><option value="letters">All letters</option><option value="numbers">Letters and numbers</option><option value="words">Common words</option><option value="calls">Callsigns</option><option value="qso">QSO phrases</option><option value="own">My own text</option></select></label>
+    </div>
+    <textarea class="copy" id="ownText" rows="2" hidden placeholder="Type or paste any text, then press Play. It won't be shown while it plays." spellcheck="false"></textarea>
+    <p class="score">Press <kbd>Enter</kbd> to play, type what you hear, <kbd>Enter</kbd> to check.</p>
+  </section>
+
+  <div id="answer">
+    <label class="score"><input type="checkbox" id="reveal"> Show the letters as they play (training wheels)</label>
+    <div class="reveal" id="revealLine" aria-hidden="true"></div>
+    <input class="copy" id="copyInput" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="What you heard" placeholder="type what you hear">
+    <div class="result" id="result" aria-live="polite"></div>
+  </div>
+
+  <section class="pane" id="send" hidden>
+    <div class="tabs small" id="sendHow" role="tablist" aria-label="How to send">
+      <button data-how="type" aria-pressed="true">⌨ Type it<small>Your keyboard becomes a keyer: type, it sends</small></button>
+      <button data-how="key">🔑 Key it<small>Send by hand with a key, mouse or touch</small></button>
+    </div>
+    <div id="typeBox">
+      <input class="copy" id="typeInput" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="type here, it's sent as you type" aria-label="Text to send in Morse">
+      <div class="sent" id="sentLine" aria-live="off"></div>
+      <p class="score">Letters go out in Morse as you type, in order. <kbd>Backspace</kbd> takes back what hasn't gone out yet, <kbd>Esc</kbd> stops and clears, <kbd>Enter</kbd> starts a new line. Try your callsign, or <i>CQ CQ DE</i> and your name.</p>
+    </div>
+    <div id="keyBox" hidden>
+      <div class="row">
+        <label class="score">Send <select id="sendSource"><option value="koch">My Koch letters</option><option value="words">Common words</option><option value="calls">Callsigns</option><option value="qso">QSO phrases</option><option value="free">Anything (free keying)</option></select></label>
+        <button class="btn alt" id="newTarget">New text</button><button class="btn alt" id="clearSend">Clear</button>
+      </div>
+      <div class="target" id="target"></div>
+      <div class="decoded" id="decoded" aria-live="polite"></div>
+      <div class="pad" id="pad" tabindex="0" role="button" aria-label="Morse key"><div><b>KEY</b><span id="padHelp"></span></div></div>
+      <p class="score"><kbd>Enter</kbd> checks what you sent against the text, <kbd>⇧ Enter</kbd> plays the text so you hear how it should sound.</p>
+      <div class="result" id="sendResult" aria-live="polite"></div>
+      <details><summary>Using a real key</summary>
+        <p>Most USB Morse key adapters show up as a <b>mouse</b> (left button = dit or straight key, right button = dah) or as a <b>keyboard</b> (Ctrl keys, <kbd>[</kbd> <kbd>]</kbd>, or <kbd>Z</kbd> <kbd>X</kbd>). This page listens to all of them while "Key it" is open, so plug it in and key away. A straight key also works on <kbd>Space</kbd>; paddles on <kbd>Z</kbd>/<kbd>X</kbd>, <kbd>[</kbd>/<kbd>]</kbd> or left/right <kbd>Ctrl</kbd>. If dits and dahs come out swapped, tick <b>Swap paddles</b>.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="pane" id="chart" hidden>
+    <p class="score">Press any letter or number on your keyboard, or click a card, to hear it. The bar under each one is how often you copied it right in drills (shown after a few tries).</p>
+    <div class="chart" id="chartGrid"></div>
+    <div class="row"><button class="btn alt" id="resetStats">Reset my scores</button></div>
+  </section>
+
+  <details class="settings-box"><summary>Settings: <span id="setSum"></span></summary>
   <section class="settings card" aria-label="Settings">
     <label>Character speed <output id="wpmOut"></output><input id="wpm" type="range" min="5" max="40" step="1"></label>
     <label>Effective speed (Farnsworth) <output id="effOut"></output><input id="eff" type="range" min="3" max="40" step="1"></label>
@@ -58,48 +137,7 @@
     <label>Key <select id="keyType"><option value="straight">Straight key</option><option value="iambicB">Iambic paddles (mode B)</option><option value="iambicA">Iambic paddles (mode A)</option></select></label>
     <label><span><input id="swap" type="checkbox"> Swap paddles</span></label>
   </section>
-
-  <section class="pane" id="learn">
-    <h2>Lesson <span id="lessonNo"></span></h2>
-    <div class="koch" id="koch" aria-label="Characters in the Koch order"></div>
-    <div class="big" id="newChar"></div>
-    <div class="pattern" id="newPattern"></div>
-    <div class="row"><button class="btn alt" id="hearNew">▶ Hear the new letter</button><button class="btn" id="startLesson">▶ Start the drill</button><label class="score">Lesson <select id="lessonPick"></select></label></div>
-    <p class="score">The drill plays 5 groups of 5 letters. Type as you hear, don't stop on a missed letter. 90% unlocks the next one.</p>
-    <input class="copy" id="lessonCopy" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="What you heard">
-    <div class="row"><button class="btn" id="checkLesson">Check</button><button class="btn alt" id="replayLesson">Replay</button></div>
-    <div class="result" id="lessonResult" aria-live="polite"></div>
-  </section>
-
-  <section class="pane" id="copy" hidden>
-    <div class="row">
-      <label class="score">Practice <select id="copySource"><option value="koch">My Koch letters</option><option value="letters">All letters</option><option value="numbers">Letters and numbers</option><option value="words">Common words</option><option value="calls">Callsigns</option><option value="qso">QSO phrases</option></select></label>
-      <button class="btn" id="playCopy">▶ Play</button><button class="btn alt" id="replayCopy">Replay</button>
-    </div>
-    <input class="copy" id="copyInput" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="What you heard">
-    <div class="row"><button class="btn" id="checkCopy">Check</button></div>
-    <div class="result" id="copyResult" aria-live="polite"></div>
-  </section>
-
-  <section class="pane" id="send" hidden>
-    <div class="row">
-      <label class="score">Send <select id="sendSource"><option value="koch">My Koch letters</option><option value="words">Common words</option><option value="calls">Callsigns</option><option value="qso">QSO phrases</option><option value="free">Anything (free keying)</option></select></label>
-      <button class="btn alt" id="newTarget">New text</button><button class="btn alt" id="hearTarget">▶ Hear it</button><button class="btn alt" id="clearSend">Clear</button>
-    </div>
-    <div class="target" id="target"></div>
-    <div class="decoded" id="decoded" aria-live="polite"></div>
-    <div class="pad" id="pad" tabindex="0" role="button" aria-label="Morse key"><div><b>KEY</b><span id="padHelp"></span></div></div>
-    <div class="row"><button class="btn" id="checkSend">Check</button></div>
-    <div class="result" id="sendResult" aria-live="polite"></div>
-    <details><summary>Using a real key</summary>
-      <p>Most USB Morse key adapters show up as a <b>mouse</b> (left button = dit or straight key, right button = dah) or as a <b>keyboard</b> (Ctrl keys, <kbd>[</kbd> <kbd>]</kbd>, or <kbd>Z</kbd> <kbd>X</kbd>). This page listens to all of them while the Send tab is open, so plug it in and key away. A straight key also works on <kbd>Space</kbd>; paddles on <kbd>Z</kbd>/<kbd>X</kbd>, <kbd>[</kbd>/<kbd>]</kbd> or left/right <kbd>Ctrl</kbd>. If dits and dahs come out swapped, tick <b>Swap paddles</b>.</p>
-    </details>
-  </section>
-
-  <section class="pane" id="chart" hidden>
-    <p class="score">Characters in the order you'll learn them. Click to hear one at your character speed.</p>
-    <div class="chart" id="chartGrid"></div>
-  </section>
+  </details>
 
   <h2>Why it's taught this way</h2>
   <p>If you learn Morse from a chart of dots and dashes, you end up counting them in your head, and you hit a wall around 10 words per minute. The Koch method avoids that: every letter is played at the speed you'll eventually use (20 WPM is a good target), so you learn its <em>sound</em> as a whole, like a word. <b>Farnsworth spacing</b> stretches only the gaps between letters, giving you thinking time without slowing the letters down; close the gap as you improve.</p>
