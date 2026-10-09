@@ -2,8 +2,9 @@
 //   iq   — raw samples for Spectrum Lab listeners (/api/stream)
 //   aprs — our AFSK modem on 144.39 MHz, stations pushed to /api/aprs/events
 //   adsb — our Mode S decoder on 1090 MHz, aircraft pushed to /api/adsb/events
-// A decoder starts on request when nobody listens to raw samples; raw listeners take the dongle back from
-// a decoder nobody watches. Plain HTTP: on the internet it sits behind ihor.sh's proxy.
+// A decoder starts on request when nobody listens to raw samples. Spectrum Lab (raw samples) always wins:
+// it pauses a running decoder, which resumes by itself afterwards if anyone is still watching it.
+// Plain HTTP: on the internet it sits behind ihor.sh's proxy.
 // Usage: npm run serve   (env: PORT=8073, RATE=1024000, REF_LAT/REF_LON = receiver location)
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -29,6 +30,7 @@ const DECODERS = {
 type Decoder = keyof typeof DECODERS;
 let mode: "idle" | "iq" | Decoder = "idle";
 let lastSwitch = 0, decoderIdle: NodeJS.Timeout | undefined;
+let paused: Decoder | null = null; // a decoder Spectrum Lab interrupted, to resume when it's done
 const watchers: Record<Decoder, Set<http.ServerResponse>> = { aprs: new Set(), adsb: new Set() };
 let aprsRx: AprsReceiver | null = null;
 const stations = new Stations();
@@ -89,6 +91,15 @@ function ensureSdr(want: "iq" | Decoder = "iq"): Promise<RtlSdr> {
     return (sdr = s);
   })().finally(() => (opening = null));
   return opening;
+}
+
+/** Spectrum Lab is done: give the dongle back to the decoder it interrupted, if someone still watches it. */
+async function resumeOrRelease() {
+  const d = paused;
+  paused = null;
+  if (clients.size) return;
+  if (d && watchers[d].size) { await ensureSdr(d); push(d, "online", { mode: d }); scheduleDecoderIdle(); }
+  else await release();
 }
 
 /** Start a decoder for a visitor. Throws a message they can read when the dongle can't be given to it. */
@@ -170,8 +181,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === "/api/stream") {
       clearTimeout(idle);
-      if ((mode === "aprs" || mode === "adsb") && watchers[mode].size)
-        return json(res, 503, { error: `The dongle is busy: ${watchers[mode].size} watching the ${DECODERS[mode].label}. Try again later.` });
+      if (mode === "aprs" || mode === "adsb") { paused = mode; push(mode, "offline", { mode: "iq", reason: "spectrum" }); }
       await ensureSdr("iq");
       res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(sdr!.sampleRate) });
       clients.add(res);
@@ -179,7 +189,7 @@ const server = http.createServer(async (req, res) => {
       req.on("close", () => {
         clients.delete(res); congested.delete(res);
         console.log(`listener left (${clients.size})`);
-        if (!clients.size) idle = setTimeout(release, IDLE_MS);
+        if (!clients.size) idle = setTimeout(resumeOrRelease, IDLE_MS);
       });
       return;
     }

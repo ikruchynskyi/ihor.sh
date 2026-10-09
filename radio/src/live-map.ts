@@ -19,7 +19,11 @@ export function connect(name: "aprs" | "adsb", handlers: Record<string, (data: a
   const online = (on: boolean) => { panel.hidden = on; status.textContent = on ? "● LIVE" : "OFF AIR"; status.className = on ? "on" : ""; };
   const es = new EventSource(`/api/${name}/events`);
   es.addEventListener("online", () => online(true));
-  es.addEventListener("offline", () => online(false));
+  es.addEventListener("offline", (e: MessageEvent) => {
+    online(false);
+    const why = JSON.parse(e.data || "{}");
+    msg.textContent = why.reason === "spectrum" ? "Paused: someone is listening in Spectrum Lab. This map comes back on its own when they're done." : "";
+  });
   for (const [ev, fn] of Object.entries(handlers)) es.addEventListener(ev, (e: MessageEvent) => fn(JSON.parse(e.data)));
   es.onerror = () => { status.textContent = "RECONNECTING…"; status.className = ""; };
   btn.onclick = async () => {
