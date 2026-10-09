@@ -19,6 +19,7 @@
     .goal.done { border-color: #2f9e44; }
     .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
     .warn { color: #e03131; font-weight: 600; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -35,6 +36,15 @@
     <label>coil <input type="range" id="l1" min="0" max="1.3" step="0.01" value="1"> <span id="l1v" class="math"></span></label></div>
   <p class="readout" id="o1"></p>
   <p>Without the diode, opening the switch gives the coil's current nowhere to go. It forces it anyway: the voltage shoots up, often to hundreds or thousands of volts, until a spark jumps the switch's gap. That's exactly how a car's ignition coil makes the spark for its spark plugs, and how a relay coil can kill the transistor that drives it. The fix is one diode across the coil, the <b>flyback diode</b>: it gives the current a loop to run around in until it dies out quietly. You'll see it again next chapter, next to every MOSFET that drives a motor or a relay.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>A coil is the capacitor's mirror image. A capacitor's voltage can't jump (it takes current to change it); a coil's <b>current</b> can't jump (it takes voltage to change it):</p>
+    <p class="formula">\[ V = L \frac{dI}{dt} \]</p>
+    <p>Closing the switch: the current ramps as \(I(t) = \frac{V}{R}(1 - e^{-tR/L})\), with time constant \(\tau = L/R\). Opening it: the current wants to drop from, say, 0.5 A to zero in a microsecond. With \(L = 10\) mH that's \(V = 0.01 \times 0.5 / 10^{-6} = 5{,}000\) V. Nothing limits that voltage except a spark, or a diode that gives the current a path to keep flowing and die away gently.</p>
+  </details>
+  <div class="q" data-num="5000" data-unit="V">
+    <p>A 10 mH coil carrying 0.5 A is cut off in 1 µs. How big is the voltage spike, \(L \, \Delta I / \Delta t\)?</p>
+    <div class="why">\(0.01 \times 0.5 / 0.000001 = 5{,}000\) V. That's how a car's ignition coil makes a spark from 12 V.</div>
+  </div>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> switch the coil off without a spark.</p>
 
   <h2>2. An LC tank: energy sloshing back and forth</h2>
@@ -46,6 +56,30 @@
     <label>losses <input type="range" id="r2" min="0" max="20" step="0.5" value="1"> <span id="r2v" class="math"></span></label></div>
   <p class="readout" id="o2"></p>
   <p>It rings at one frequency, set only by L and C: <span class="math">f = 1 / (2π √(L·C))</span>. Bigger parts swing slower, just as a longer pendulum does. Every real circuit has some resistance, which steals a little energy each swing, so the ringing dies away; turn "losses" up and it dies faster. The parts here are huge (henries and millifarads) so you can watch it at walking pace; a radio's tuned circuit uses millionths of a henry and trillionths of a farad and rings millions of times a second.</p>
+  <details class="deeper" open><summary>The math: where \(1/(2\pi\sqrt{LC})\) comes from</summary>
+    <p>In the loop the coil's voltage equals the capacitor's, and the coil's current is what drains the capacitor, \(I = -C\,dV/dt\). Combine with \(V = L\,dI/dt\):</p>
+    <p class="formula">\[ \frac{d^2 V}{dt^2} = -\frac{1}{LC} V \]</p>
+    <p>"Acceleration proportional to minus position" is the equation of a pendulum or a mass on a spring, and its solution is a sine wave, \(V = V_0 \cos(\omega t)\) with \(\omega = 1/\sqrt{LC}\) radians per second, so \(f = 1/(2\pi\sqrt{LC})\). The energy swaps between the capacitor, \(\tfrac12 C V^2\), and the coil, \(\tfrac12 L I^2\), and their sum stays constant, exactly like a pendulum trading height for speed.</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>You make the capacitor 4 times bigger. What happens to the ringing frequency?</p>
+    <ul><li data-k="a" data-says="It's under a square root, so 4× becomes 2×, and it's in the denominator.">It drops to a quarter</li><li data-k="b">It halves</li><li data-k="c" data-says="A bigger bucket takes longer to fill and empty: slower, not faster.">It doubles</li></ul>
+    <div class="why">\(f \propto 1/\sqrt{C}\): \(\sqrt 4 = 2\), so half the frequency. To tune an FM radio across 88–108 MHz (a ratio of 1.23), the capacitor only needs to change by \(1.23^2 \approx 1.5\) times.</div>
+  </div>
+  <div class="q" data-num="1.59" data-tol="0.02" data-unit="MHz">
+    <p>A 10 µH coil and a 1 nF capacitor. What frequency do they ring at, in MHz?</p>
+    <div class="why">\(\sqrt{10^{-5} \times 10^{-9}} = 10^{-7}\); \(1/(2\pi \times 10^{-7}) \approx 1.59\) MHz, the top of the AM broadcast band.</div>
+  </div>
+  <div class="code" data-title="Build it: ring a tank, and count its frequency"><textarea>
+const { simulate } = await import("/learn/circuit.js");
+const L = 10e-6, C = 1e-9, f0 = 1 / (2 * Math.PI * Math.sqrt(L * C)), dt = 1 / (f0 * 100);
+const out = simulate([{ type: "C", a: 1, b: 0, farads: C, v0: 5 }, { type: "L", a: 1, b: 0, henries: L }], { dt, steps: 1000 });
+const v = out.v.map((n) => n[1]);
+let crossings = 0;
+for (let k = 1; k < v.length; k++) if (v[k - 1] < 0 && v[k] >= 0) crossings++;     // one per cycle
+print("formula:", (f0 / 1e6).toFixed(4), "MHz   counted:", (crossings / (1000 * dt) / 1e6).toFixed(4), "MHz");
+plot(v.slice(0, 400).map((y, k) => [k * dt * 1e6, y]), { label: "capacitor voltage, µs" });
+</textarea></div>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> make it ring at exactly 1 swing per second (1.00 Hz, within 3%).</p>
 
   <h2>3. Tuning a radio</h2>
@@ -54,6 +88,9 @@
   <div class="row"><label>tuning capacitor <input type="range" id="tune" min="-1.1" max="0" step="0.002" value="-0.6"> <span id="tv" class="math"></span></label></div>
   <p class="readout" id="o3"></p>
   <p>The sharper the tuned circuit (less resistance, a higher "Q"), the better it rejects the neighbors. Real receivers stack several tuned circuits, and the radio course does the same thing in software: <a href="/radio/course/05-moving-a-station.html">moving a station</a> to zero and <a href="/radio/course/06-averaging-is-filtering.html">filtering the rest away</a>.</p>
+  <details class="deeper"><summary>The math: Q, the sharpness of a tuned circuit</summary>
+    <p>For a series RLC, the quality factor is \(Q = \frac{1}{R}\sqrt{L/C}\), and the band it lets through (to the 71% points) is \(f_0 / Q\) wide. With \(Q = 100\) at 1 MHz, the passband is 10 kHz, about one AM station. Halve the resistance and the passband halves. Q also counts how many cycles a tank rings before its energy fades: roughly \(Q / \pi\) cycles to lose most of it.</p>
+  </details>
   <p class="goal" id="g3">🎯 <b>Challenge:</b> tune in the 1000 Hz station so it comes through at least 90%, with both neighbors below 30%.</p>
 
   <h2>4. How long should an antenna be?</h2>
@@ -64,11 +101,16 @@
     <label>your quarter-wave whip <input type="range" id="cut" min="2" max="100" step="0.1" value="40"> <span id="cutv" class="math"></span></label></div>
   <p class="readout" id="o4"></p>
   <p>The yellow wave on the dipole is the current: biggest at the middle where the cable connects, zero at the tips. That's what "resonant" means for an antenna. Real wire is a little slower than light in space, so antennas are cut about 5% shorter than the pure math says. The <a href="/radio/adsb/">ADS-B radar</a> on this site listens at 1090 MHz, and a 6.5 cm whip is all it needs.</p>
+  <div class="q" data-num="1.5" data-tol="0.03" data-unit="m">
+    <p>Half-wave dipole for 100 MHz: how long, end to end, before the "real wire is slower" trim? (\(c = 3 \times 10^8\) m/s.)</p>
+    <div class="why">\(\lambda = 3\times10^8 / 10^8 = 3\) m, half of it 1.5 m. Trimmed by about 5% for real wire: ≈1.43 m.</div>
+  </div>
   <p class="goal" id="g4">🎯 <b>Challenge:</b> cut a quarter-wave whip for ADS-B at 1090 MHz (within 3%).</p>
   <p>Next: <a href="./04-diodes-and-transistors.html"><b>diodes and transistors</b></a>, the parts that let a tiny signal control a big current, and the flyback diode in its natural habitat.</p>
 
   <p class="muted">Previous: <a href="./02-capacitors-and-time.html">Capacitors and time</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Try things in the <a href="/learn/lab.html">circuit lab</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { simulate, RED_LED } from "/learn/circuit.js";
 import { scene, live, battery, resistor, inductor, capacitor, switchSym, diode, scope, tag, fmtA, fmtR, C } from "/learn/schem.js";

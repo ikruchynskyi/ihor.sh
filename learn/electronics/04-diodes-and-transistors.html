@@ -19,6 +19,7 @@
     .goal.done { border-color: #2f9e44; }
     .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
     .warn { color: #e03131; font-weight: 600; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -34,6 +35,15 @@
   <div class="row"><label>battery <input type="range" id="v1" min="0" max="5" step="0.01" value="2"> <span id="v1v" class="math"></span></label><button id="flip1">Flip the battery</button></div>
   <p class="readout" id="o1"></p>
   <p>The curve on the right is the diode's whole personality: almost nothing flows until about 0.6 V, then a little more voltage brings a lot more current. That's why the voltage across a conducting silicon diode is nearly always 0.6–0.8 V, whatever the current, and why chapter 1's LED (a diode that glows) needed a resistor. Backwards, it blocks.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>The same Shockley equation as chapter 1's LED, \(I = I_s(e^{V/(nV_T)} - 1)\), with a silicon diode's much larger \(I_s\) (about \(10^{-14}\) A) and \(n \approx 1\). Solve it for the voltage:</p>
+    <p class="formula">\[ V = n V_T \ln\!\left(\frac{I}{I_s} + 1\right) \]</p>
+    <p>A logarithm grows very slowly: 1 mA gives about 0.60 V, 10 mA 0.66 V, 100 mA 0.72 V. Each ten times more current adds only \(nV_T \ln 10 \approx 60\) mV. That's why "a silicon diode drops 0.6–0.7 V" is such a good rule over a thousand-fold range of currents.</p>
+  </details>
+  <div class="q" data-num="60" data-tol="2" data-unit="mV">
+    <p>With \(n = 1\) and \(V_T = 26\) mV, how much more voltage does a diode need for 10× the current? (mV)</p>
+    <div class="why">\(26 \times \ln 10 = 26 \times 2.303 \approx 60\) mV.</div>
+  </div>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> push exactly 10 mA forwards through the diode (within 0.3 mA).</p>
 
   <h2>2. Turning AC into DC</h2>
@@ -42,6 +52,32 @@
   <div class="row"><label>smoothing capacitor <input type="range" id="cap2" min="0" max="3" step="0.01" value="0"> <span id="c2v" class="math"></span></label><label>load <input type="range" id="r2" min="2.3" max="4" step="0.01" value="3"> <span id="r2v" class="math"></span></label></div>
   <p class="readout" id="o2"></p>
   <p>The leftover wobble is called <b>ripple</b>. A bigger capacitor, or a lighter load, makes it smaller. Your phone charger does this (with four diodes, a "bridge", to use both halves of the wave), then a switching regulator cleans up the rest.</p>
+  <details class="deeper" open><summary>The math: sizing the smoothing capacitor</summary>
+    <p>Between peaks the capacitor alone feeds the load current \(I\) for about one period \(1/f\) (half-wave) and sags by \(\Delta V = Q/C = I/(f C)\):</p>
+    <p class="formula">\[ V_{\text{ripple}} \approx \frac{I}{f\, C} \quad (\text{half-wave}), \qquad \frac{I}{2 f C} \quad (\text{bridge}) \]</p>
+    <p>100 mA from 60 Hz with 1000 µF: \(0.1 / (60 \times 0.001) = 1.67\) V of ripple, half that with a bridge. That's why mains supplies use big electrolytic capacitors, and why a bridge rectifier is the default.</p>
+  </details>
+  <div class="q" data-num="0.83" data-tol="0.02" data-unit="V">
+    <p>A bridge rectifier at 60 Hz, 1000 µF, 100 mA load. Ripple, in volts?</p>
+    <div class="why">\(0.1 / (2 \times 60 \times 0.001) \approx 0.83\) V. The bridge refills the capacitor twice per cycle.</div>
+  </div>
+  <div class="code" data-title="Build it: a rectifier with a smoothing capacitor"><textarea>
+const { simulate } = await import("/learn/circuit.js");
+const f = 60, dt = 1 / (f * 400);
+const rect = (C) => simulate([
+  { type: "V", a: 1, b: 0, volts: (t) => 12 * Math.sin(2 * Math.PI * f * t) },    // 12 V peak AC
+  { type: "D", a: 1, b: 2, is: 1e-14, n: 1 },                                        // one silicon diode
+  { type: "C", a: 2, b: 0, farads: C },
+  { type: "R", a: 2, b: 0, ohms: 100 },                                              // ≈ 110 mA load
+], { dt, steps: 400 * 6 }).v.map((v) => v[2]);
+for (const C of [220e-6, 1000e-6, 4700e-6]) {
+  const tail = rect(C).slice(-800);
+  print(`${C * 1e6} µF: output ${Math.min(...tail).toFixed(2)}–${Math.max(...tail).toFixed(2)} V, ripple ${(Math.max(...tail) - Math.min(...tail)).toFixed(2)} V (formula ≈ ${(0.11 / (f * C)).toFixed(2)} V)`);
+}
+// The formula assumes the ripple is small next to the output (the load current stays about the same):
+// it's good at 4700 µF, rough at 1000 µF, and overestimates at 220 µF, where the output sags so far the load draws less.
+plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000 µF, ms" });
+</textarea></div>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> get the ripple below 10% with the 1 kΩ load.</p>
 
   <h2>3. A MOSFET switches a motor</h2>
@@ -51,6 +87,14 @@
     <label><input type="checkbox" id="fly3" checked> flyback diode</label><button id="new3" hidden>New MOSFET</button></div>
   <p class="readout" id="o3"></p>
   <p>The motor is a coil (chapter 3), so every time the MOSFET switches off, the coil's current needs somewhere to go. With the flyback diode it loops back through the motor. Untick it and watch the drain voltage spike: the MOSFET's own breakdown ("avalanche") absorbs the energy, rated at around 40 V here, and enough of those hits kill it.</p>
+  <details class="deeper" open><summary>The math: PWM and heat in the switch</summary>
+    <p>Switching on for a fraction \(D\) (the <b>duty cycle</b>) of each period gives the motor an average voltage \(D \cdot V\): 25% of 12 V acts like 3 V. Because the motor's coil smooths the current (chapter 3), it sees a steady average, not the pulses.</p>
+    <p>When fully on, a MOSFET acts like a small resistance \(R_{DS(on)}\), and it heats by \(P = I^2 R_{DS(on)}\). 2 A through 0.05 Ω is 0.2 W: barely warm. The danger is the half-on state, next section.</p>
+  </details>
+  <div class="q" data-num="0.2" data-unit="W">
+    <p>A fully-on MOSFET with \(R_{DS(on)} = 0.05\) Ω carries 2 A. How much heat?</p>
+    <div class="why">\(I^2 R = 4 \times 0.05 = 0.2\) W.</div>
+  </div>
   <p class="goal" id="g3">🎯 <b>Challenge:</b> run the motor at about half speed (40–60% of full current) with PWM.</p>
 
   <h2>4. Why your 3.3 V chip needs a "logic-level" MOSFET</h2>
@@ -61,9 +105,15 @@
   <p class="readout" id="o4"></p>
   <p class="goal" id="g4">🎯 <b>Challenge:</b> from an ESP32's 3.3 V pin, switch the full 1 A load with the MOSFET wasting under 0.1 W.</p>
   <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot. Next: <b>op-amps</b>, where transistors are used in between on purpose, to amplify.</p>
+  <div class="q" data-answer="c">
+    <p>A MOSFET is half on: 6 V across it and 1 A through it. Fully on, 0.05 V across it at the same 1 A. How do the heats compare?</p>
+    <ul><li data-k="a" data-says="Heat is V × I across the switch: compare 6 W with 0.05 W.">About the same</li><li data-k="b" data-says="Check the numbers: 6 × 1 versus 0.05 × 1.">Half on is twice as hot</li><li data-k="c">Half on is 120 times hotter (6 W vs 0.05 W)</li></ul>
+    <div class="why">\(6 \times 1 = 6\) W, enough to burn a small package without a heatsink, against \(0.05 \times 1 = 0.05\) W. Fully on or fully off, never in between.</div>
+  </div>
 
   <p class="muted">Previous: <a href="./03-coils-and-resonance.html">Coils, resonance and antennas</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Try things in the <a href="/learn/lab.html">circuit lab</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { solve, simulate } from "/learn/circuit.js";
 import { scene, live, battery, resistor, capacitor, diode, mosfetSym, motor, acSource, scope, tag, fmtA, fmtR, C } from "/learn/schem.js";

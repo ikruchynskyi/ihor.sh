@@ -18,6 +18,7 @@
     .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
     .goal.done { border-color: #2f9e44; }
     .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -35,6 +36,31 @@
     <label>C <input type="range" id="cap1" min="1" max="3" step="0.01" value="2.34"> <span id="c1v" class="math"></span></label></div>
   <p class="readout" id="o1"></p>
   <p>The curve always has the same shape, just stretched. Multiply R by C and you get the <b>time constant</b>, τ ("tau"), in seconds: after one τ the capacitor is 63% full, after five it's practically full. A bigger bucket or a narrower pipe both make it slower. That one number, R × C, is the clock of every circuit in this chapter.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>A capacitor stores charge in proportion to its voltage, \(Q = C V\), so the current into it is \(I = C \, dV/dt\): how fast the voltage climbs. The resistor sets that current from the voltage still left across it, \(I = (V_s - V)/R\). Put them together:</p>
+    <p class="formula">\[ RC \frac{dV}{dt} = V_s - V \quad\Longrightarrow\quad V(t) = V_s \left(1 - e^{-t / RC}\right) \]</p>
+    <p>The speed of filling is proportional to how far it still has to go, the same law as coffee cooling down. With \(\tau = RC\): after \(\tau\), \(1 - e^{-1} = 63\%\); after \(2\tau\), 86%; \(3\tau\), 95%; \(5\tau\), 99.3%. Units work out by themselves: ohms × farads = seconds. 10 kΩ × 100 µF = 1 s.</p>
+  </details>
+  <div class="q" data-num="1" data-unit="s">
+    <p>10 kΩ and 100 µF. What is the time constant τ?</p>
+    <div class="why">\(10{,}000 \times 0.0001 = 1\) s. It's 63% full after a second and practically full after five.</div>
+  </div>
+  <div class="q" data-num="95" data-tol="0.6" data-unit="%">
+    <p>How full is the capacitor after 3 τ? (Percent, nearest whole number.)</p>
+    <div class="why">\(1 - e^{-3} = 1 - 0.0498 \approx 95\%\).</div>
+  </div>
+  <div class="code" data-title="Build it: simulate the charging curve, and check it against the formula"><textarea>
+const { simulate } = await import("/learn/circuit.js");
+const R = 10e3, C = 100e-6, dt = 0.01;                 // τ = 1 s, steps of 10 ms
+const out = simulate([
+  { type: "V", a: 1, b: 0, volts: 5 },
+  { type: "R", a: 1, b: 2, ohms: R },
+  { type: "C", a: 2, b: 0, farads: C },
+], { dt, steps: 500 });
+const v = out.v.map((nodes) => nodes[2]);               // entry k is the voltage after k+1 steps
+plot(v.map((y, k) => [k * dt, y]), { label: "capacitor voltage over 5 s" });
+for (const t of [1, 2, 3, 5]) print(`t = ${t} s: simulated ${v[Math.round(t / dt) - 1].toFixed(3)} V, formula ${(5 * (1 - Math.exp(-t / (R * C)))).toFixed(3)} V`);
+</textarea></div>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> make the capacitor reach 63% in exactly 1 second (τ = 1 s, within 5%).</p>
 
   <h2>2. Running on stored charge</h2>
@@ -46,6 +72,10 @@
   <p class="readout" id="o2"></p>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> keep the LED visibly lit (above 1 mA) for at least 3 seconds after unplugging.</p>
   <p>This is exactly what keeps an Arduino from resetting when a motor briefly pulls the supply down, and why a TV's power light fades after you unplug it.</p>
+  <div class="q">
+    <p>The LED fades slowly at first and then seems to switch off fairly suddenly, even though the capacitor's voltage falls smoothly. Why?</p>
+    <div class="why">An LED needs about 1.8 V to conduct at all (chapter 1's steep curve). While the capacitor is well above that, the current falls gradually. Once its voltage nears 1.8 V, the current collapses by a factor of ~7 for every 0.1 V, so the light seems to cut out even though a little charge is still left.</div>
+  </div>
 
   <h2 id="filter">3. The simplest filter</h2>
   <p>Now feed the resistor and capacitor a wave instead of a steady battery. A slow wave gives the capacitor time to fill and empty, so the output follows the input. A fast wave flips before the bucket can respond, so the output barely moves. That's a <b>low-pass filter</b>: low frequencies pass, high ones are squashed.</p>
@@ -56,12 +86,39 @@
     <label>C <input type="range" id="cap3" min="-3" max="1" step="0.01" value="-0.8"> <span id="c3v" class="math"></span></label></div>
   <p class="readout" id="o3"></p>
   <p>The dividing line is the <b>cutoff frequency</b>, f<sub>c</sub> = 1 / (2π·R·C): there the output is about 71% of the input. Each ten times higher in frequency, it drops ten times further. Try a square wave too: its sharp corners are made of high frequencies, so the filter rounds them off into curves. In the radio course this same idea, done with numbers instead of parts, is how one station gets picked out of the air (<a href="/radio/course/06-averaging-is-filtering.html">Radio ch. 6: averaging is filtering</a>), and an FM radio's "75 µs de-emphasis" is exactly this circuit with R × C = 75 µs (<a href="/radio/course/09-fm-listening-to-the-speed.html">Radio ch. 9</a>).</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>For a sine wave of frequency \(f\), a capacitor behaves like a resistance that shrinks as frequency rises, its <b>reactance</b> \(X_C = 1/(2\pi f C)\). The RC filter is then a voltage divider (chapter 1) between \(R\) and \(X_C\), except that the two are 90° out of step, so they add like the sides of a right triangle:</p>
+    <p class="formula">\[ \frac{V_{\text{out}}}{V_{\text{in}}} = \frac{X_C}{\sqrt{R^2 + X_C^2}} = \frac{1}{\sqrt{1 + (f / f_c)^2}}, \qquad f_c = \frac{1}{2 \pi R C} \]</p>
+    <p>At \(f = f_c\): \(1/\sqrt 2 = 0.707\), the 71%. Far above it, \(f / f_c\) dominates and the gain is about \(f_c / f\): ten times the frequency, a tenth of the output. In decibels (\(20 \log_{10}\)), that's −3 dB at the cutoff and −20 dB per decade beyond.</p>
+  </details>
+  <div class="q" data-num="159" data-tol="1" data-unit="Hz">
+    <p>1 kΩ and 1 µF. What's the cutoff frequency? (Nearest hertz.)</p>
+    <div class="why">\(1 / (2\pi \times 1000 \times 10^{-6}) = 1/0.00628 \approx 159\) Hz.</div>
+  </div>
+  <div class="q" data-num="0.1" data-tol="0.005">
+    <p>Well above the cutoff, at \(f = 10 f_c\), roughly what fraction of the input gets through?</p>
+    <div class="why">\(1/\sqrt{1 + 100} \approx 0.0995\), about a tenth. That's −20 dB.</div>
+  </div>
+  <div class="code" data-title="Build it: measure the filter at many frequencies (a Bode plot)"><textarea>
+const { simulate } = await import("/learn/circuit.js");
+const R = 1000, C = 1e-6, fc = 1 / (2 * Math.PI * R * C);
+const gainAt = (f) => {
+  const dt = 1 / (f * 200), steps = 200 * 12;                      // 12 cycles, 200 steps each
+  const out = simulate([{ type: "V", a: 1, b: 0, volts: (t) => Math.sin(2 * Math.PI * f * t) }, { type: "R", a: 1, b: 2, ohms: R }, { type: "C", a: 2, b: 0, farads: C }], { dt, steps });
+  const tail = out.v.slice(-400).map((v) => v[2]);                   // last 2 cycles, after it settles
+  return (Math.max(...tail) - Math.min(...tail)) / 2;
+};
+const rows = [["f (Hz)", "simulated gain", "formula", "dB"]];
+for (const f of [16, 50, 159, 500, 1590, 5000]) { const g = gainAt(f); rows.push([f, +g.toFixed(3), +(1 / Math.sqrt(1 + (f / fc) ** 2)).toFixed(3), +(20 * Math.log10(g)).toFixed(1)]); }
+table(rows);
+</textarea></div>
   <p class="goal" id="g3">🎯 <b>Challenge:</b> build a filter that lets a 100 Hz hum through (at least 90%) but cuts a 10 kHz whine below 10%.</p>
   <p>Build the capacitor circuits yourself, with a switch, in the <a href="/learn/lab.html">circuit lab</a> (try its "Charge a capacitor with a switch" example).</p>
   <p>Next: <a href="./03-coils-and-resonance.html"><b>coils and resonance</b></a>, where a capacitor and an inductor pass energy back and forth and a circuit starts to ring at one frequency, which is how a radio tunes.</p>
 
   <p class="muted">Previous: <a href="./01-voltage-current-resistance.html">Voltage, current, resistance</a> · All chapters: <a href="/learn/">Learn &amp; build</a>. Simulated step by step by our own solver (<code>learn/circuit.js</code>, trapezoidal integration).</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { simulate, RED_LED } from "/learn/circuit.js";
 import { scene, live, battery, resistor, capacitor, switchSym, led, scope, tag, fmtA, fmtR, C } from "/learn/schem.js";

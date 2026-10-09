@@ -19,6 +19,7 @@
     .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
     .goal.done { border-color: #2f9e44; }
     .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -36,6 +37,34 @@
   <p class="readout" id="o1"></p>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> make exactly 10 mA flow from a 5 V battery. Which resistor does it take?</p>
   <p>Where does the energy go? Into heat in the resistor: <span class="math">power = V × I</span>, in watts. A common through-hole resistor is rated for ¼ W. Turn the resistance down with a high voltage and watch it go past that: in real life it smells, then smokes.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p><b>Units first</b>, because most mistakes are unit mistakes: 1 mA = 0.001 A, 1 kΩ = 1000 Ω. A handy shortcut: volts ÷ kilohms = milliamps. 5 V across 1 kΩ is 5 mA.</p>
+    <p><b>Power three ways.</b> Power is voltage times current, \(P = V I\). Put Ohm's law into it and you get two more forms, each handy when you know different things:</p>
+    <p class="formula">\[ P = V I = I^2 R = \frac{V^2}{R} \]</p>
+    <p>Example: 9 V across 330 Ω. \(P = 9^2 / 330 = 81 / 330 = 0.245\) W, right at a ¼ W resistor's limit: it will run hot. Halve the voltage and the power drops to a quarter, because \(V\) is squared.</p>
+  </details>
+  <div class="q" data-num="0.245" data-tol="0.005" data-unit="W">
+    <p>A 9 V battery across a 330 Ω resistor. How much power turns into heat?</p>
+    <div class="why">\(V^2 / R = 81 / 330 \approx 0.245\) W. A ¼ W resistor would be at its limit; use a ½ W one, or a bigger resistance.</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>You double the battery voltage across the same resistor. What happens to the heat?</p>
+    <ul><li data-k="a" data-says="Current doubles too, and power is voltage times current.">It doubles</li><li data-k="b">It goes up 4 times</li><li data-k="c" data-says="The resistance didn't change, so the current follows the voltage.">It stays the same</li></ul>
+    <div class="why">\(P = V^2 / R\): twice the voltage, twice the current, four times the power.</div>
+  </div>
+  <div class="code" id="solver" data-title="Build it: solve circuits in code with this site's solver"><textarea>
+// The simulator behind every picture on this page, as a library. Nodes are numbered; 0 is ground.
+// Elements: V (voltage source), R (resistor), D (diode/LED), C, L, … between nodes a and b.
+const { solve } = await import("/learn/circuit.js");
+
+const r = solve([
+  { type: "V", a: 1, b: 0, volts: 5 },        // battery: + at node 1, − at ground
+  { type: "R", a: 1, b: 0, ohms: 1000 },      // 1 kΩ from node 1 back to ground
+]);
+print("voltage at node 1:", r.v[1], "V");
+print("current through the resistor:", r.current[1] * 1000, "mA");
+print("power:", 5 * r.current[1], "W");
+</textarea></div>
 
   <h2>2. In series: a voltage divider</h2>
   <p>Two resistors in a row share the same current, and they split the battery's voltage in proportion to their size. The middle point sits at</p>
@@ -46,9 +75,47 @@
   <p class="readout" id="o2"></p>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> with two plain resistors, make the middle point exactly 1.00 V.</p>
   <p>This is how a microcontroller reads most simple sensors. A light-dependent resistor (LDR) drops from about 100 kΩ in the dark to about 1 kΩ in sunlight; put it in a divider and the middle voltage tracks the light. The chip's analog-to-digital converter (ADC) turns that voltage into a number, here 0 to 4095 for 3.3 V like an ESP32. Tick the box and change the light.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Why the divider formula holds: both resistors carry the same current, \(I = V / (R_1 + R_2)\) (in series, resistances add). The middle point sits \(I R_2\) above ground:</p>
+    <p class="formula">\[ V_{\text{out}} = I R_2 = V \cdot \frac{R_2}{R_1 + R_2} \]</p>
+    <p><b>The catch: loading.</b> Connect something to the middle point, say a 10 kΩ input, and it sits in parallel with \(R_2\), lowering it, so \(V_{\text{out}}\) sags. Rule of thumb: whatever reads the divider should have at least 10× the resistance of \(R_2\). Microcontroller inputs (millions of ohms) are fine; driving a motor from a divider is not. Try it in the code below.</p>
+  </details>
+  <div class="q" data-num="3" data-unit="V">
+    <p>9 V across \(R_1 = 10\) kΩ on top and \(R_2 = 5\) kΩ on the bottom. What's the middle voltage?</p>
+    <div class="why">\(9 \times 5 / (10 + 5) = 3\) V. \(R_2\) is a third of the total, so it gets a third of the voltage.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>The LDR is the <b>bottom</b> resistor. The room gets brighter. What happens to the voltage the ADC reads?</p>
+    <ul><li data-k="a">It goes down</li><li data-k="b" data-says="Brighter light lowers the LDR's resistance, and it's the bottom resistor.">It goes up</li><li data-k="c" data-says="R₂ changes, so its share of the voltage changes.">It doesn't change</li></ul>
+    <div class="why">More light, less resistance in \(R_2\), smaller share \(R_2 / (R_1 + R_2)\). Swap the LDR to the top position and the reading goes up with light instead.</div>
+  </div>
+  <div class="code" data-title="Build it: a divider, and what a load does to it"><textarea>
+const { solve } = await import("/learn/circuit.js");
+const divider = (load) => solve([
+  { type: "V", a: 1, b: 0, volts: 9 },
+  { type: "R", a: 1, b: 2, ohms: 10000 },
+  { type: "R", a: 2, b: 0, ohms: 5000 },
+  ...(load ? [{ type: "R", a: 2, b: 0, ohms: load }] : []),
+]).v[2];
+print("no load:", divider(0).toFixed(3), "V  (formula: 9 × 5/15 = 3)");
+for (const load of [1e6, 100e3, 50e3, 10e3, 1e3]) print(`with a ${load / 1000} kΩ load: ${divider(load).toFixed(3)} V`);
+</textarea></div>
 
   <h2>3. In parallel: the current splits</h2>
   <p>Side by side, each resistor gets the full battery voltage and takes its own current, V / R. The battery supplies the sum. Electrons don't get lost at a junction: what flows in flows out (that's Kirchhoff's current law). The more paths, the lower the total resistance.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Each branch takes \(V / R_i\); the battery supplies the sum. Calling the total \(V / R_{\text{total}}\) and dividing out \(V\):</p>
+    <p class="formula">\[ \frac{1}{R_{\text{total}}} = \frac{1}{R_1} + \frac{1}{R_2} + \frac{1}{R_3} + \cdots \qquad \text{two of them: } R_{\text{total}} = \frac{R_1 R_2}{R_1 + R_2} \]</p>
+    <p>The total is always smaller than the smallest branch: adding a path can only make it easier to flow. Two equal resistors in parallel give half; ten equal ones, a tenth.</p>
+  </details>
+  <div class="q" data-num="500" data-unit="Ω">
+    <p>Two 1 kΩ resistors side by side. What's the total resistance?</p>
+    <div class="why">\(1000 \cdot 1000 / (1000 + 1000) = 500\) Ω: two equal paths, twice the flow for the same push.</div>
+  </div>
+  <div class="q">
+    <p>A 1 kΩ and a 1 MΩ resistor in parallel. Without calculating: is the total closer to 1 kΩ or to 500 Ω, and why?</p>
+    <div class="why">Very close to 1 kΩ (999 Ω). The 1 MΩ path carries a thousandth of the current: almost all of it takes the easy path. A huge resistor in parallel barely matters; a tiny one dominates.</div>
+  </div>
   <canvas id="c3" width="800" height="400" aria-label="Three resistors in parallel with branch currents"></canvas>
   <div class="row"><label>R₁ <input type="range" id="p1" min="2" max="4.5" step="0.01" value="3"> <span id="p1v" class="math"></span></label><label>R₂ <input type="range" id="p2" min="2" max="4.5" step="0.01" value="3.3"> <span id="p2v" class="math"></span></label><label><input type="checkbox" id="p3on" checked> R₃ <input type="range" id="p3" min="2" max="4.5" step="0.01" value="3.7"> <span id="p3v" class="math"></span></label></div>
   <p class="readout" id="o3"></p>
@@ -62,10 +129,31 @@
   <p class="readout" id="o4"></p>
   <p class="goal" id="g4">🎯 <b>Challenge:</b> light the LED at 10 mA from the 9 V battery, without burning it.</p>
   <p>The rule of thumb is the loop again: the resistor takes whatever voltage the LED doesn't, so <span class="math">R = (V<sub>supply</sub> − V<sub>LED</sub>) / I</span>. From 5 V for a red LED at 10 mA: (5 − 1.9) / 0.010 = 310 Ω, so the nearest standard value, 330 Ω. The solver here models the LED with the Shockley diode equation, which is why the current climbs so steeply near 2 V.</p>
+  <details class="deeper" open><summary>The math: why the LED's current shoots up</summary>
+    <p>The solver uses the <b>Shockley diode equation</b>:</p>
+    <p class="formula">\[ I = I_s \left( e^{V / (n V_T)} - 1 \right), \qquad V_T = \frac{kT}{q} \approx 26 \text{ mV at room temperature} \]</p>
+    <p>\(I_s\) is a tiny leakage (here \(1.2 \times 10^{-18}\) A) and \(n \approx 2\) for this LED, so \(n V_T \approx 52\) mV. Every extra 52 mV multiplies the current by \(e \approx 2.7\); every extra 0.1 V, by \(e^{0.1/0.052} \approx 6.8\). Between 1.8 V and 2.2 V the current grows about 2,000 times. That's why you never set an LED's current with its voltage: a tiny voltage error is a huge current error. A resistor turns that steep curve into a gentle one you can control.</p>
+  </details>
+  <div class="q" data-num="30" data-unit="Ω">
+    <p>A blue LED drops about 3.0 V. From a 3.3 V supply, what resistor gives 10 mA?</p>
+    <div class="why">\((3.3 - 3.0) / 0.010 = 30\) Ω. With only 0.3 V of margin, small changes in the LED's voltage swing the current a lot; blue and white LEDs on 3.3 V are touchy.</div>
+  </div>
+  <div class="code" data-title="Build it: sweep the resistor"><textarea>
+const { solve, RED_LED } = await import("/learn/circuit.js");
+const rows = [["resistor (Ω)", "LED current (mA)", "LED voltage (V)", "resistor power (mW)"]];
+for (const R of [100, 220, 330, 470, 1000, 2200]) {
+  const r = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: R }, { type: "D", a: 2, b: 0, ...RED_LED }]);
+  const i = r.current[1];
+  rows.push([R, +(i * 1000).toFixed(2), +r.v[2].toFixed(3), +(i * i * R * 1000).toFixed(1)]);
+}
+table(rows);
+print("The LED's voltage barely moves (≈1.8–2.0 V) while its current changes 20×: that's the steep curve.");
+</textarea></div>
   <p>Want to try your own? Build any of these in the <a href="/learn/lab.html">circuit lab</a>. Next: <a href="./02-capacitors-and-time.html"><b>capacitors and time</b></a>, the RC circuit, which is also the simplest filter in the radio course.</p>
 
   <p class="muted">All chapters: <a href="/learn/">Learn &amp; build</a>. Circuits solved by our own modified nodal analysis (<code>learn/circuit.js</code>).</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { solve, RED_LED } from "/learn/circuit.js";
 import { scene, battery, resistor, led, tag, fmtA, fmtR, C } from "/learn/schem.js";

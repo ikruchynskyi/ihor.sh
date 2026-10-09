@@ -7,6 +7,7 @@
 //     <div class="why">the explanation, shown once it's answered</div>
 //   </div>
 //   <div class="q" data-num="0.25" data-tol="0.01">…</div>  a number to type (tol: how close counts, default 1%)
+//   <div class="q"><p>Why…?</p><div class="why">…</div></div>  an open question: think first, then reveal
 //
 //   <div class="code" id="sgd" data-uses="other-id"><textarea>print(1 + 1)</textarea></div>
 //     runs in the page with print(...), plot(ys or [[x, y]…], {label}) and table(rows); data-uses runs another
@@ -31,6 +32,7 @@ const css = `
 .q .num input { width: 9em; font: inherit; padding: 6px 8px; }
 .q .why { display: none; border-top: 1px dashed var(--line); margin-top: 10px; padding-top: 8px; }
 .q.solved .why, .q.shown .why { display: block; }
+.q .think { margin-top: 6px; }
 .q .giveup { font-size: 0.85em; background: none !important; border: none !important; color: var(--muted) !important; text-decoration: underline; cursor: pointer; padding: 0 !important; box-shadow: none !important; }
 .code { margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
 .code .bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
@@ -82,6 +84,12 @@ function setupQuestion(q) {
     btn.onclick = check; inp.onkeydown = (e) => { if (e.key === "Enter") check(); };
     const ask = [...q.querySelectorAll(":scope > p")].at(-1); ask ? ask.after(row) : q.prepend(row);
     row.after(says);
+  }
+  else { // an open question: think, then reveal
+    const b = document.createElement("button"); b.className = "think keep"; b.textContent = "I've thought about it: show me";
+    b.onclick = () => { q.classList.add("solved"); b.remove(); };
+    q.querySelector(".why")?.before(b);
+    return;
   }
   if (why) {
     const give = document.createElement("button"); give.className = "giveup keep"; give.textContent = "show me the answer";
