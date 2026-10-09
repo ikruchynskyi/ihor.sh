@@ -8,6 +8,6 @@ dist/
 *.wav
 # personal backlog with details of the home network (kept local)
 IDEAS.md
-data/
+/data/
 .env
 __pycache__/
