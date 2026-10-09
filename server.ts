@@ -8,6 +8,11 @@ import path from "node:path";
 const PORT = Number(process.env.PORT ?? 8080);
 const ROOT = import.meta.dirname;
 const RADIO = path.join(ROOT, "radio", "dist");
+// Project worlds: URL prefix → folder served under it, and the label shown in the HUD bar.
+const WORLDS: Record<string, { dir: string; label: string }> = {
+  radio: { dir: RADIO, label: "World 1 · Radio" },
+  nyc: { dir: path.join(ROOT, "nyc"), label: "World 2 · NYC" },
+};
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
@@ -16,17 +21,21 @@ const COMPANION = `<script type="module" src="/companion.js"></script>`;
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
   const lines = ["/ — home: the project select screen"];
-  for (const f of (await readdir(RADIO, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
-    const title = (await readFile(path.join(RADIO, f), "utf8")).match(/<title>([^<]*)/)?.[1]?.trim();
-    lines.push(`/radio/${f.replace(/index\.html$/, "")} — ${title ?? f}`);
-  }
+  for (const [name, { dir }] of Object.entries(WORLDS))
+    for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
+      const title = (await readFile(path.join(dir, f), "utf8")).match(/<title>([^<]*)/)?.[1]?.trim();
+      lines.push(`/${name}/${f.replace(/index\.html$/, "")} — ${title ?? f}`);
+    }
   return lines.join("\n");
 }
 
 const SYSTEM = `You are Blip, a small jelly robot with a radio antenna who lives on ihor.sh, a personal site of hobby projects by Ihor, built and learned in public.
 Visitors talk to you through a little game-style dialog box. You can see which page they're on and an excerpt of it.
 
-Right now the site has one world, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works and a US ham license prep track. More worlds (projects) are coming.
+The site is a map of projects ("worlds"). Open now:
+- World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track and a handbook companion.
+- World 2, NYC: small tools on NYC open data. Subway Bailout (live MTA alerts → nearest Citi Bike) and Free NYC (free and pay-what-you-wish places by day). An archive of MTA alerts and elevator outages is being collected.
+Locked, coming later: World 3 Ride (bikepacking route notebook), World 4 EDC (gear catalog and advisor), World 5 Yomu (graded Japanese stories), World 6 Learn & build (math, electronics and hardware build logs).
 
 Pages on the site:
 ${await siteMap()}
@@ -76,13 +85,23 @@ async function ask(body: any): Promise<string> {
   return reply || "…static. Try again?";
 }
 
-async function serveFile(res: http.ServerResponse, file: string, inject: boolean) {
+// Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
+function dress(html: string, world: string) {
+  const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
+  const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
+  return html
+    .replace("</head>", `<link rel="stylesheet" href="/theme.css"></head>`)
+    .replace(/<body[^>]*>/, (m) => m + hud)
+    .replace("</body>", `${COMPANION}</body>`);
+}
+
+async function serveFile(res: http.ServerResponse, file: string, world?: string) {
   const data = await readFile(file).catch(() => null);
   if (!data) return res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
-  res.end(inject && ext === ".html" ? data.toString().replace("</body>", `${COMPANION}</body>`) : data);
+  res.end(world && ext === ".html" ? dress(data.toString(), world) : data);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -96,14 +115,16 @@ const server = http.createServer(async (req, res) => {
       const reply = await ask(JSON.parse(raw));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ reply }));
     }
-    if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), false);
-    if (url.pathname === "/companion.js") return serveFile(res, path.join(ROOT, "companion.js"), false);
-    if (url.pathname === "/radio") return res.writeHead(301, { location: "/radio/" }).end();
-    if (url.pathname.startsWith("/radio/")) {
-      const rel = decodeURIComponent(url.pathname.slice("/radio".length));
-      const file = path.resolve(RADIO, "." + rel + (rel.endsWith("/") ? "index.html" : ""));
-      if (!file.startsWith(RADIO + path.sep)) return res.writeHead(403).end();
-      return serveFile(res, file, true);
+    if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"));
+    if (url.pathname === "/companion.js" || url.pathname === "/theme.css") return serveFile(res, path.join(ROOT, url.pathname));
+    const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
+    const world = WORLDS[name];
+    if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();
+    if (world) {
+      const rel = decodeURIComponent(rest);
+      const file = path.resolve(world.dir, "." + rel + (rel.endsWith("/") ? "index.html" : ""));
+      if (!file.startsWith(world.dir + path.sep)) return res.writeHead(403).end();
+      return serveFile(res, file, world.label);
     }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {

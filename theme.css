@@ -1,0 +1,94 @@
+/* ihor.sh game theme. server.ts links it after each page's own styles, so these rules re-skin every
+   project page (radio, nyc) without touching their sources. Pages share variable names, so most of
+   the work is remapping them; the rest gives cards, buttons and headings the pixel look. */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
+
+:root:root {
+  --bg: #07090f; --fg: #e8edff; --muted: #9aa3cf; --line: #3b4bb0; --card: #0d1226; --soft: #111939; --grid: #1a2140;
+  --accent: #ffb347; --plot: #4de1ff; --plot2: #ffb347; --ok: #5cff9d;
+  --blue: #58c4dd; --yellow: #f4d35e; --green: #83c167; --red: #fc6255; --pink: #ff5c8a;
+  --alert: #ff5c8a; --bike: #4de1ff; --now: #5cff9d; --later: #4de1ff;
+  --pixel: "Press Start 2P", ui-monospace, monospace;
+  color-scheme: dark;
+}
+html { background: #07090f; }
+body {
+  background: radial-gradient(ellipse at 50% 0%, #131a3a 0%, transparent 60%), var(--bg);
+  background-attachment: fixed;
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2147482000; background: repeating-linear-gradient(rgba(0,0,0,.16) 0 1px, transparent 1px 3px); }
+::selection { background: var(--accent); color: #1b1020; }
+:focus-visible { outline: 3px solid #4de1ff !important; outline-offset: 2px; }
+
+/* HUD bar injected at the top of every page */
+.ihor-hud { position: sticky; top: 0; z-index: 2147481000; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 10px 16px; font: 9px/1.6 var(--pixel); letter-spacing: .04em; background: rgba(7,9,15,.92); border-bottom: 4px solid var(--line); text-transform: uppercase; }
+.ihor-hud a { color: var(--accent); text-decoration: none; }
+.ihor-hud a:hover { color: #fff; }
+.ihor-hud span { color: var(--muted); }
+.ihor-hud b { color: #fff; font-weight: normal; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+@media (max-width: 600px) { .ihor-hud b { display: none; } }
+
+/* type: pixel headings, readable body */
+h1, h2, h3 { font-family: var(--pixel) !important; font-weight: normal; letter-spacing: 0 !important; text-wrap: balance; }
+h1 { font-size: clamp(18px, 3.4vw, 28px) !important; line-height: 1.5 !important; color: var(--accent); text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--line); }
+h2 { font-size: clamp(13px, 2vw, 16px) !important; line-height: 1.6 !important; color: var(--fg); }
+h3 { font-size: 11px !important; line-height: 1.6 !important; color: var(--accent); }
+h2 .n, h2 span { color: var(--accent); }
+.eyebrow { font: 9px/1.8 var(--pixel) !important; color: var(--ok) !important; letter-spacing: .04em; }
+p, li { color: inherit; }
+.lede, .muted { color: var(--muted); }
+a { color: var(--accent); }
+a:hover { color: #fff; }
+code, kbd, pre { background: #1e2650; color: #dfe6ff; border-radius: 0 !important; }
+hr { border: 0; border-top: 3px dashed var(--line); }
+strong, b { color: #fff; }
+
+/* boxes: square pixel panels with a hard drop shadow */
+section, .card, .item, .sub, details, .callout, .note, .box, fieldset, .panel, #panel, .tabs button, .game, .scene, figure.scene {
+  border-radius: 0 !important;
+}
+main section, .card, .item, .sub, #panel, .callout, .note, .box {
+  background: var(--card);
+  border: 3px solid var(--line) !important;
+  box-shadow: 6px 6px 0 rgba(0,0,0,.55);
+}
+canvas, svg, img, video, iframe { border-radius: 0 !important; }
+table { border-collapse: collapse; }
+th { font: 9px/1.6 var(--pixel); color: var(--accent); text-align: left; }
+th, td { border-bottom: 2px solid var(--line); }
+
+/* controls: chunky arcade buttons */
+button, .btn, input[type="button"], input[type="submit"], select {
+  font-family: var(--pixel) !important; font-size: 9px !important; line-height: 1.6 !important; letter-spacing: .02em;
+  border-radius: 0 !important; text-transform: uppercase;
+}
+button, .btn, input[type="button"], input[type="submit"] {
+  background: var(--soft); color: var(--fg); border: 2px solid var(--line) !important;
+  box-shadow: 0 4px 0 #1b2350; cursor: pointer; padding: 10px 12px;
+}
+button:hover, .btn:hover { border-color: var(--accent) !important; color: #fff; }
+button:active, .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b2350; }
+button[aria-pressed="true"], .btn:not(.alt), button.primary {
+  background: var(--accent) !important; color: #1b1020 !important; border-color: var(--accent) !important; box-shadow: 0 4px 0 #b86b1e;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+input:not([type]), input[type="text"], input[type="number"], input[type="search"], input[type="date"], input[type="url"], textarea, select {
+  background: #05070d; color: var(--fg); border: 2px solid var(--line); border-radius: 0 !important;
+}
+input[type="range"] { accent-color: var(--accent); }
+.tabs button { text-transform: none; text-align: left; }
+.tabs button small { font-family: ui-sans-serif, system-ui, sans-serif; text-transform: none; }
+
+/* page-family touches */
+nav.next a, nav.toc a { text-decoration: none; }
+nav.next a { font: 9px/1.8 var(--pixel); }
+.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); }
+.leaflet-container { background: #07090f !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card) !important; color: var(--fg) !important; border-radius: 0 !important; border: 2px solid var(--line); }
+.leaflet-bar a { background: var(--card) !important; color: var(--fg) !important; border-radius: 0 !important; }
+body:has(> #map) { display: flex; flex-direction: column; }
+body:has(> #map) > #map { flex: 1; height: auto !important; }
+body:has(> #map) > #panel { top: 52px; }
+button[aria-pressed="true"] small, .btn:not(.alt) small { color: #3a2410 !important; }
