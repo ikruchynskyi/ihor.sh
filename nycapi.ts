@@ -1,6 +1,7 @@
 // NYC data behind the map pages and Blip's tools. Every call runs on the server, so the keys in .env
 // (NYC API portal, Socrata) never reach the browser.
 //   address:     NYC Planning GeoSearch (point → address) + NYC Geoclient v2 (address → districts, BBL, BIN…)
+//   map click:   address + businesses there (OpenStreetMap via Photon, DCWP licenses w7w3-xahh, restaurant inspections)
 //   events:      NYC Events Calendar API (nyc.gov), cached 30 min
 //   restaurants: DOHMH restaurant inspections on NYC Open Data (Socrata 43nn-pn8j)
 
@@ -34,14 +35,44 @@ export async function addressInfo(input: string) {
   return { input, found: true, address: [street, r.firstBoroughName].filter(Boolean).join(", "), ...out };
 }
 
-/** A map click: the nearest address (GeoSearch), then its Geoclient record. */
+/** A map click: the nearest address (GeoSearch) and who is there: OpenStreetMap shops and places within ~50 m,
+ *  NYC-licensed businesses in that building (DCWP) and restaurants with their latest inspection grade (DOHMH). */
 export async function pointInfo(lat: number, lon: number) {
   const d = await json(`https://geosearch.planninglabs.nyc/v2/reverse?point.lat=${lat}&point.lon=${lon}&size=1`);
   const p = d.features?.[0]?.properties;
   if (!p) return { lat, lon, found: false };
   const query = p.housenumber ? `${p.housenumber} ${p.street} ${p.borough}` : p.label;
-  const info = await addressInfo(query).catch(() => ({}));
-  return { lat, lon, place: p.label, ...info };
+  const info: any = await addressInfo(query).catch(() => ({}));
+  const bin = info["BIN (building)"]?.replace(/\D/g, "");
+  const [osm, licensed, food] = await Promise.all([osmPlaces(lat, lon).catch(() => []), bin ? licensedAt(bin).catch(() => []) : [], bin ? restaurantsAt(bin).catch(() => []) : []]);
+  const seen = new Set<string>(), key = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/(inc|llc|corp)$/, "");
+  const businesses = [...food, ...osm, ...licensed].filter((b) => !seen.has(key(b.name)) && seen.add(key(b.name)));
+  return { lat, lon, found: true, place: p.label, address: p.housenumber ? `${titleCase(`${p.housenumber.replace(/\s+GARAGE$/i, "")} ${p.street}`).replace(/\bB'way\b/, "Broadway")}, ${p.borough}` : p.label.replace(/, (NY, )?USA$/, ""), neighborhood: info.neighborhood ?? p.neighbourhood ?? null, zip: info.ZIP ?? p.postalcode ?? null, businesses };
+}
+
+const titleCase = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/(^|[\s/-])[a-z]/g, (c) => c.toUpperCase());
+/** Named shops, cafés, offices… within 50 m (OpenStreetMap via Photon's reverse geocoder). */
+export async function osmPlaces(lat: number, lon: number) {
+  const tags = ["shop", "amenity", "office", "tourism", "leisure", "craft", "healthcare"].map((t) => `&osm_tag=${t}`).join("");
+  const d = await json(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=30&radius=0.05${tags}`);
+  return (d.features as any[]).map((f) => f.properties).filter((p) => p.name && !/^(bench|bicycle_parking|parking|waste_basket|post_box|telephone|atm|fountain|bicycle_rental|toilets|drinking_water)$/.test(p.osm_value))
+    .map((p) => ({ name: p.name, kind: `${p.osm_value.replace(/_/g, " ")}${p.osm_key === "shop" ? " shop" : ""}`, address: p.housenumber ? `${p.housenumber} ${p.street ?? ""}`.trim() : p.street ?? null, source: "OpenStreetMap" }));
+}
+/** Businesses with an active NYC consumer-protection license in the building (BIN). */
+async function licensedAt(bin: string) {
+  const rows: any[] = await json(`https://data.cityofnewyork.us/resource/w7w3-xahh.json?${new URLSearchParams({ bin, license_status: "Active", $limit: "25" })}`);
+  return rows.map((r) => ({ name: titleCase(r.dba_trade_name || r.business_name), kind: r.business_category, address: `${r.address_building ?? ""} ${titleCase(r.address_street_name ?? "")}`.trim(), source: "NYC license" }));
+}
+/** Restaurants in the building (BIN) with their latest inspection grade. */
+async function restaurantsAt(bin: string) {
+  const rows: any[] = await soda({ bin, $select: "camis, dba, cuisine_description, building, street, grade, inspection_date", $order: "inspection_date DESC", $limit: "200" });
+  const out = new Map<string, any>();
+  for (const r of rows) {
+    const cur = out.get(r.camis) ?? { name: titleCase(r.dba), kind: `restaurant · ${r.cuisine_description ?? ""}`.replace(/ · $/, ""), address: `${r.building ?? ""} ${titleCase(r.street ?? "")}`.trim(), camis: r.camis, grade: null, source: "Health inspections" };
+    cur.grade ??= r.grade ?? null;
+    out.set(r.camis, cur);
+  }
+  return [...out.values()];
 }
 
 // ---------- events calendar ----------

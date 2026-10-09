@@ -26,6 +26,7 @@
     button { font: inherit; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
     .leaflet-popup-content { font-size: 13px; }
     .leaflet-popup-content ul { padding-left: 16px; margin: 4px 0; }
+    .leaflet-popup-content ul.biz { max-height: 240px; overflow-y: auto; }
     .bikes li { list-style: none; margin-left: -16px; }
     #layers label, #trip label { display: block; margin: 3px 0; }
     .phead { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
@@ -509,7 +510,7 @@ async function showInspections(popup, r) {
     <p class="viol muted">Earlier: ${d.visits.slice(1, 5).map((x) => `${x.date} ${x.grade ?? ""} ${x.score ?? ""}`).join(" · ") || "none"}</p>`);
 }
 
-// Click on an empty spot: what's here (address, districts, precinct) from NYC Geoclient.
+// Click on an empty spot: the address and the businesses there (shops, licensed businesses, restaurants with grades).
 map.on("click", async (e) => {
   if (picking) {
     const id = picking;
@@ -519,12 +520,15 @@ map.on("click", async (e) => {
     else if (id === "tFrom") setPicking("tTo"); // next: the destination
     return;
   }
-  const p = L.popup().setLatLng(e.latlng).setContent("Looking up…").openOn(map);
+  const p = L.popup({ maxWidth: 340 }).setLatLng(e.latlng).setContent("Looking up…").openOn(map);
   const d = await getJSON(`/api/nyc/point?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
   if (!d?.found) return p.setContent("No NYC address found here.");
-  seen.here = d;
-  const skip = new Set(["lat", "lon", "input", "found", "place", "address"]);
-  p.setContent(`<b>${esc(d.address || d.place)}</b><ul>${Object.entries(d).filter(([k]) => !skip.has(k)).map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join("")}</ul>`);
+  seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})`) };
+  const list = d.businesses.slice(0, 25);
+  p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>
+    ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
+      <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data</span>` : `<p class="muted">No businesses listed here.</p>`}`);
+  p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
 });
 
 // What Blip can do on this page when you ask it to.
