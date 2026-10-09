@@ -125,6 +125,30 @@ export async function trafficCameras() {
   return cams.list;
 }
 
+// ---------- traffic speeds ----------
+let speeds: { at: number; data: any } | null = null;
+/** NYC DOT real-time link speeds (Socrata i4gi-tjb9): the latest reading per road segment. Cached 2 min. */
+export async function trafficSpeeds() {
+  if (speeds && speeds.at > Date.now() - 2 * 60_000) return speeds.data;
+  const auth = env("SOCRATA_KEY_ID") ? { Authorization: "Basic " + Buffer.from(`${env("SOCRATA_KEY_ID")}:${env("SOCRATA_KEY_SECRET")}`).toString("base64") } : {};
+  const base = "https://data.cityofnewyork.us/resource/i4gi-tjb9.json";
+  const [{ last }] = await json(`${base}?$select=max(data_as_of) as last`, auth);
+  const since = new Date(new Date(last + "Z").getTime() - 15 * 60_000).toISOString().slice(0, 19);
+  const rows: any[] = await json(`${base}?${new URLSearchParams({ $where: `data_as_of >= '${since}'`, $order: "data_as_of DESC", $limit: "5000", $select: "link_id, link_name, borough, speed, status, data_as_of, link_points" })}`, auth);
+  const byLink = new Map<string, any>();
+  for (const r of rows) if (!byLink.has(r.link_id)) byLink.set(r.link_id, r);
+  // data_as_of is New York local time without a zone; compare in NY time to judge freshness
+  const nyNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const ageMin = Math.round((nyNow.getTime() - new Date(last).getTime()) / 60_000);
+  const links = [...byLink.values()].map((r) => ({
+    id: r.link_id, name: r.link_name, borough: r.borough, mph: Number(r.speed), ok: r.status !== "-101" && Number(r.speed) > 0,
+    points: String(r.link_points ?? "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2 && p.every(Number.isFinite) && p[0] > 40 && p[0] < 41.2),
+  })).filter((l) => l.points.length > 1);
+  const data = { asOf: last, ageMinutes: ageMin, stale: ageMin > 30, links };
+  speeds = { at: Date.now(), data };
+  return data;
+}
+
 // ---------- trip planner ----------
 /** First match for an address or place in NYC (NYC Planning GeoSearch). */
 export async function geocode(text: string) {
@@ -162,7 +186,16 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof PROF
     if (best.off <= 150) along.push({ cam: c, ...best });
   }
   along.sort((x, y) => x.at - y.at);
-  return { from: a, to: b, mode, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+  // Road segments with live speeds that the route follows (most of their points within 60 m of it).
+  const near = (lat: number, lon: number) => line.some(([y, x], i) => i && (() => {
+    const [y1, x1] = [line[i - 1][0] * M_LAT, line[i - 1][1] * M_LON], [y2, x2] = [y * M_LAT, x * M_LON], [py, px] = [lat * M_LAT, lon * M_LON];
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1, t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / len ** 2));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1))) < 60;
+  })());
+  const sp = mode === "drive" ? await trafficSpeeds().catch(() => null) : null;
+  const traffic = sp ? { asOf: sp.asOf, stale: sp.stale, onRoute: sp.links.filter((l: any) => l.ok && l.points.filter(([la, lo]: number[]) => near(la, lo)).length >= l.points.length * 0.6)
+    .map((l: any) => ({ name: l.name, mph: l.mph })).sort((x: any, y: any) => x.mph - y.mph) } : null;
+  return { from: a, to: b, mode, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
 }
 

@@ -9,7 +9,7 @@ import { startArchive, summary } from "./archive.ts";
 import { stationArrivals } from "./transit.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, tripPlan } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -180,6 +180,7 @@ const server = http.createServer(async (req, res) => {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();
     }
+    if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
     if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
     if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {

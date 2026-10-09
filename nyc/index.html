@@ -196,11 +196,12 @@ const LAYERS = {
   citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
   cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
+  speeds: { label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
   city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -231,6 +232,18 @@ async function loadOutages(g) {
       .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString()}` : ""}</span>`).addTo(g);
   }
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
+}
+
+// Traffic speeds: NYC DOT's live speed per road segment, colored like a traffic map. Says so when the feed is stale.
+const mph = (v, ok) => (!ok ? "#7f8bc4" : v < 15 ? "#ff5c8a" : v < 30 ? "#ffb347" : "#5cff9d");
+async function loadSpeeds(g) {
+  const d = await getJSON("/api/nyc/speeds");
+  g.clearLayers();
+  for (const l of d.links) L.polyline(l.points, { color: mph(l.mph, l.ok), weight: 5, opacity: d.stale ? 0.35 : 0.85, renderer: bikeCanvas, bubblingMouseEvents: false })
+    .bindTooltip(`${l.name}: ${l.ok ? `${Math.round(l.mph)} mph` : "no data"}`).addTo(g);
+  const when = new Date(d.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  $("n-speeds").innerHTML = `(${d.links.length} roads, ${d.stale ? `⚠ feed last updated ${when}` : `as of ${when}`})<br><span class="legend"><i style="background:#5cff9d"></i>30+ mph <i style="background:#ffb347"></i>15–30 <i style="background:#ff5c8a"></i>under 15 <i style="background:#7f8bc4"></i>no data</span>`;
+  seen.speeds = { asOf: d.asOf, stale: d.stale, slowest: d.links.filter((l) => l.ok).sort((a, b) => a.mph - b.mph).slice(0, 8).map((l) => `${l.name}: ${Math.round(l.mph)} mph`) };
 }
 
 // Citi Bike: every station colored by what you can do there right now (legend under the checkbox).
@@ -354,7 +367,10 @@ $("trip").addEventListener("submit", async (e) => {
   const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
   for (const c of d.cameras) L.marker([c.lat, c.lon], { icon: camIcon, title: c.name }).on("click", () => openCam(c)).addTo(tripLayer);
   map.fitBounds(line.getBounds().pad(0.1));
-  $("tripOut").innerHTML = `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
+  const tr = d.traffic, slow = tr?.onRoute.filter((l) => l.mph < 20) ?? [];
+  const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</div>`
+    : `<div class="muted">${tr.onRoute.length} road segments with live speeds on the way${slow.length ? `; slow: ${slow.slice(0, 4).map((l) => `${esc(l.name)} ${Math.round(l.mph)} mph`).join(", ")}` : ", all moving"}.</div>`;
+  $("tripOut").innerHTML = trafficHtml + `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
     ${d.cameras.length ? `<button id="openTrip" style="display:block;margin:6px 0">Open the first 4 cameras</button>` : ""}
     <ol style="padding-left:18px;margin:4px 0">${d.cameras.map((c, i) => `<li><a href="#" data-i="${i}">${esc(c.name)}</a> <span class="muted">km ${c.kmAlong}</span></li>`).join("")}</ol>`;
   $("tripOut").querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); openCam(d.cameras[+a.dataset.i]); }));
@@ -405,7 +421,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds };
 };
 
 $("refresh").addEventListener("click", refresh);
