@@ -74,6 +74,7 @@ const CSS = `
 .msg .who { display: block; margin-bottom: 4px; font: 8px "Press Start 2P", monospace; color: #4de1ff; }
 .msg.you .who { color: #5cff9d; }
 .msg b:not(.who) { color: #fff; }
+.msg .used { display: block; margin-top: 6px; font-size: 16px; color: #7f8bc4; }
 .msg.err { color: #ff8fa8; }
 .msg a { color: #ffb347; }
 .msg code { background: #1e2650; padding: 0 4px; }
@@ -482,9 +483,14 @@ $(".new").onclick = () => { history = []; save(); renderLog(); input.focus(); };
 root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); });
 form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 
+// Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
+const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
+const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", free_events: "checked free events", city_events: "checked the city calendar",
+  restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
 const pageInfo = () => ({
   url: location.pathname,
   title: document.title,
+  context: pageObjects(),
   text: (document.querySelector("main, article") ?? document.body).innerText.replace(/\n\s*\n+/g, "\n").slice(0, 6000),
 });
 
@@ -506,6 +512,7 @@ async function send(q) {
     history.push({ role: "assistant", content: data.reply }); save();
     clearInterval(pinging);
     await typeOut(out, data.reply);
+    if (data.tools?.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${[...new Set(data.tools)].map((t) => TOOL_LABEL[t] ?? t).join(" · ")}</span>`);
     setMood("happy", 1500);
   } catch (err) {
     history.pop(); save(); input.value = q;
