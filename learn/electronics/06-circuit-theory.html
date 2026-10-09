@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Circuit Theory Toolkit</title>
+  <meta name="description" content="Electronics from scratch, chapter 6: solving any circuit by hand. Kirchhoff's current and voltage laws as water and hills, nodal analysis as a matrix (exactly what the site's simulator does), Thevenin equivalents and maximum power, superposition, and AC as spinning arrows: phasors and impedance." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; touch-action: none; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 6</p>
+  <h1>The circuit-theory toolkit</h1>
+  <p class="lede">Every circuit on this site is solved by a program. This chapter shows how, so you can do it yourself on paper: two laws that hold everywhere, a recipe that turns any circuit into a matrix, a trick that shrinks any circuit to one battery and one resistor, and the idea that makes AC as easy as DC: treating waves as spinning arrows.</p>
+  <div class="plain card"><b>In plain words:</b> charge doesn't pile up anywhere (what flows into a point flows out), and voltage is like height (go around any loop and you end up where you started). Everything else in circuit theory is careful bookkeeping of those two facts.</div>
+
+  <h2>1. What flows in flows out</h2>
+  <p>A junction where four wires meet. Set three of the currents (arrows pointing in are positive); the fourth has no choice.</p>
+  <canvas id="c1" width="800" height="360" aria-label="A junction of four wires with current arrows"></canvas>
+  <div class="row"><label>I₁ <input type="range" id="i1" min="-5" max="5" step="0.1" value="3"></label><label>I₂ <input type="range" id="i2" min="-5" max="5" step="0.1" value="-1"></label><label>I₃ <input type="range" id="i3" min="-5" max="5" step="0.1" value="1.5"></label></div>
+  <p class="readout" id="o1"></p>
+  <div class="levels">
+    <div><b>The picture</b>Water in pipes: a junction can't store water, so the flow into it equals the flow out of it.</div>
+    <div><b>The math</b>Kirchhoff's current law (KCL): \(\sum_k I_k = 0\) at every node, counting currents in as + and out as −.</div>
+  </div>
+  <div class="q" data-num="2" data-unit="mA">
+    <p>Into a node: 5 mA and 2 mA. Out of it: 9 mA through one wire. How much current flows <b>in</b> through the fourth wire?</p>
+    <div class="why">In = out: \(5 + 2 + I_4 = 9\), so \(I_4 = 2\) mA flowing in. (Had the answer come out negative, it would have meant the current actually flows out: the sign tells you the direction.)</div>
+  </div>
+
+  <h2>2. Voltage is height</h2>
+  <p>Think of every point in a circuit as having a height: its voltage. A battery is an escalator, lifting charge up by its voltage; each resistor is a ramp back down, by \(I \cdot R\). Walk all the way around the loop and you're back where you started, so the climbs and drops cancel. Here's a battery and two resistors, drawn with voltage as height.</p>
+  <canvas id="c2" width="800" height="380" aria-label="A circuit loop drawn as a landscape: the battery lifts, the resistors descend"></canvas>
+  <div class="row"><label>battery <input type="range" id="vb" min="1" max="12" step="0.1" value="9"></label><label>R₁ <input type="range" id="r1" min="100" max="5000" step="10" value="1000"></label><label>R₂ <input type="range" id="r2" min="100" max="5000" step="10" value="2000"></label></div>
+  <p class="readout" id="o2"></p>
+  <div class="levels">
+    <div><b>The picture</b>A hike around a loop: however you go up and down, you end at the height you started from.</div>
+    <div><b>The math</b>Kirchhoff's voltage law (KVL): \(\sum_k V_k = 0\) around any closed loop, counting rises + and drops −.</div>
+  </div>
+  <div class="q" data-num="6" data-unit="V">
+    <p>9 V battery, R₁ = 1 kΩ, R₂ = 2 kΩ in a loop. How much voltage drops across R₂?</p>
+    <div class="why">Current \(I = 9 / 3000 = 3\) mA; \(V_2 = 3\text{ mA} \times 2\text{ kΩ} = 6\) V. Check with KVL: \(+9 - 3 - 6 = 0\). ✓</div>
+  </div>
+
+  <h2>3. Any circuit is a matrix</h2>
+  <p>The two laws are enough to solve any circuit, and there's a recipe that never fails, called <b>nodal analysis</b>. It's exactly what the simulator behind every picture on this site does, a few thousand times a second.</p>
+  <ol>
+    <li>Pick one node as ground (0 V). Call the other node voltages \(v_1, v_2, \dots\): those are the unknowns.</li>
+    <li>At each unknown node, write KCL, with every resistor current written as (voltage here − voltage there) / R.</li>
+    <li>You get one linear equation per node: a matrix equation \(G\,v = i\). Solve it.</li>
+  </ol>
+  <p>Example: a 10 V source feeds node 1 through 1 kΩ; node 1 goes to ground through 2 kΩ and to node 2 through 1 kΩ; node 2 goes to ground through 3 kΩ. Change the resistors and watch the matrix and the answer update.</p>
+  <canvas id="c3" width="800" height="300" aria-label="A two-node circuit with its voltages"></canvas>
+  <div class="row"><label>R<sub>a</sub> <input type="range" id="ra" min="100" max="5000" step="100" value="1000"></label><label>R<sub>b</sub> <input type="range" id="rb" min="100" max="5000" step="100" value="2000"></label><label>R<sub>c</sub> <input type="range" id="rc" min="100" max="5000" step="100" value="1000"></label><label>R<sub>d</sub> <input type="range" id="rd" min="100" max="5000" step="100" value="3000"></label></div>
+  <p class="formula" id="mat"></p>
+  <p class="readout" id="o3"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>KCL at node 1 (currents leaving the node add up to zero):</p>
+    <p class="formula">\[ \frac{v_1 - 10}{R_a} + \frac{v_1}{R_b} + \frac{v_1 - v_2}{R_c} = 0 \]</p>
+    <p>and at node 2:</p>
+    <p class="formula">\[ \frac{v_2 - v_1}{R_c} + \frac{v_2}{R_d} = 0 \]</p>
+    <p>Collect the \(v\)'s, writing \(G = 1/R\) (conductance, in siemens):</p>
+    <p class="formula">\[ \begin{pmatrix} G_a + G_b + G_c & -G_c \\ -G_c & G_c + G_d \end{pmatrix} \begin{pmatrix} v_1 \\ v_2 \end{pmatrix} = \begin{pmatrix} 10\,G_a \\ 0 \end{pmatrix} \]</p>
+    <p>A pattern you can write without thinking: each diagonal entry is the sum of conductances touching that node; each off-diagonal entry is minus the conductance between two nodes; the right side is current pushed in by sources. Diodes and transistors make the equations non-linear: the simulator guesses, linearizes around the guess, solves this same kind of matrix, and repeats (Newton's method, chapter 2 of the AI course).</p>
+  </details>
+  <div class="code" data-title="Build it: nodal analysis from scratch"><textarea>
+// Resistors between nodes (0 = ground) and current sources into nodes. Returns node voltages.
+function solve(n, resistors, sources) {
+  const G = Array.from({ length: n }, () => new Array(n).fill(0)), I = new Array(n).fill(0);
+  for (const [a, b, ohms] of resistors) {
+    const g = 1 / ohms;
+    if (a) G[a - 1][a - 1] += g;
+    if (b) G[b - 1][b - 1] += g;
+    if (a && b) { G[a - 1][b - 1] -= g; G[b - 1][a - 1] -= g; }
+  }
+  for (const [node, amps] of sources) I[node - 1] += amps;
+  // Gaussian elimination with partial pivoting
+  for (let c = 0; c < n; c++) {
+    const p = G.slice(c).reduce((best, row, k) => (Math.abs(row[c]) > Math.abs(G[best][c]) ? k + c : best), c);
+    [G[c], G[p]] = [G[p], G[c]]; [I[c], I[p]] = [I[p], I[c]];
+    for (let r = c + 1; r < n; r++) { const f = G[r][c] / G[c][c]; for (let k = c; k < n; k++) G[r][k] -= f * G[c][k]; I[r] -= f * I[c]; }
+  }
+  const v = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) v[r] = (I[r] - G[r].slice(r + 1).reduce((s, g, k) => s + g * v[r + 1 + k], 0)) / G[r][r];
+  return v;
+}
+// The example: a 10 V source through 1 kΩ is the same as 10 mA pushed into node 1 with 1 kΩ to ground
+// (a source transformation; that's how a voltage source fits into G·v = i).
+const v = solve(2, [[1, 0, 1000], [1, 0, 2000], [1, 2, 1000], [2, 0, 3000]], [[1, 10 / 1000]]);
+print("v1 =", v[0].toFixed(4), "V   v2 =", v[1].toFixed(4), "V");
+</textarea></div>
+
+  <h2>4. Any circuit, seen from two terminals, is one battery and one resistor</h2>
+  <p>This is Thevenin's theorem, and it's the most useful shortcut in electronics. However complicated a circuit of sources and resistors is, from the outside, at two terminals, it behaves exactly like one voltage source \(V_{th}\) with one resistor \(R_{th}\) in series. Below, a voltage divider is the "black box". Turn the load and watch the operating point slide along a straight line.</p>
+  <canvas id="c4" width="800" height="360" aria-label="Load line: voltage versus current at the output of a divider, and the power curve"></canvas>
+  <div class="row"><label>load R<sub>L</sub> <input type="range" id="rl" min="0" max="1" step="0.001" value="0.5"> <span id="rlv" class="math"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> find the load that gets the most power out of the box.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Two measurements give both numbers. Open circuit (no load): the output is \(V_{th}\). Short circuit (a wire): the current is \(I_{sc} = V_{th}/R_{th}\). So</p>
+    <p class="formula">\[ R_{th} = \frac{V_{oc}}{I_{sc}} \]</p>
+    <p>For a divider of 12 V with \(R_1 = R_2 = 1\) kΩ: \(V_{th} = 6\) V, and \(R_{th}\) is \(R_1\) and \(R_2\) in parallel, 500 Ω (turn every source off, meaning batteries become wires, and look back into the terminals).</p>
+    <p>With a load \(R_L\): \(I = V_{th}/(R_{th} + R_L)\) and the power in the load is</p>
+    <p class="formula">\[ P_L = \frac{V_{th}^2\, R_L}{(R_{th} + R_L)^2} \]</p>
+    <p>Its slope is zero at \(R_L = R_{th}\) (set the derivative to zero, chapter 2 of the AI course): <b>maximum power transfer</b>, delivering \(V_{th}^2 / 4R_{th}\). At that point half the power is wasted in \(R_{th}\), so power supplies aim for \(R_L \gg R_{th}\) instead; antennas and audio amplifiers match to get the most out.</p>
+  </details>
+  <div class="q" data-num="3" data-unit="mA">
+    <p>A box measures 9 V open-circuit and 3 kΩ inside. What current flows into a 0 Ω short?</p>
+    <div class="why">\(I_{sc} = 9 / 3000 = 3\) mA. Equivalently, a meter on its current range across the terminals would read 3 mA.</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>A 50 Ω antenna feeds a receiver. For the most signal power, what should the receiver's input resistance be?</p>
+    <ul><li data-k="a" data-says="Zero ohms draws the most current but gets no voltage: zero power.">0 Ω</li><li data-k="b">50 Ω</li><li data-k="c" data-says="A huge resistance gets the full voltage but almost no current: almost no power.">As high as possible</li></ul>
+    <div class="why">Maximum power transfer: \(R_L = R_{th}\). That's why radio gear is "50 Ω everywhere" (radio course, chapter 12).</div>
+  </div>
+
+  <h2>5. Superposition: one source at a time</h2>
+  <p>In a circuit of resistors (linear parts), the effect of several sources is the sum of each one's effect alone, with the others turned off (voltage sources replaced by wires, current sources by gaps). It's why you can think about a signal and its DC bias separately: an amplifier's input is "1.65 V of DC plus a small audio wave", and each can be analyzed on its own.</p>
+  <div class="q" data-num="7" data-unit="V">
+    <p>Two equal resistors from a +10 V source and a +4 V source meet at a middle point. With only the 10 V source (4 V replaced by a wire) the middle is at 5 V; with only the 4 V one, 2 V. What's the middle voltage with both?</p>
+    <div class="why">\(5 + 2 = 7\) V, the average of 10 and 4, as you'd expect for equal resistors.</div>
+  </div>
+
+  <h2>6. AC: waves are spinning arrows</h2>
+  <p>For a sine wave, Ohm's law needs one more idea: <b>timing</b>. In a capacitor, current flows most while the voltage is changing fastest, so the current wave peaks a quarter cycle <em>before</em> the voltage wave. The trick (the same one the <a href="/radio/course/01-spinning-arrows.html">radio course</a> starts with) is to draw each wave as an arrow spinning around a circle: the wave is its shadow, and timing differences are just angles between arrows. Below, an RC low-pass filter: the resistor's and capacitor's voltages are arrows at right angles, and they add like chapter 1's vectors to make the input.</p>
+  <canvas id="c6" width="800" height="400" aria-label="Phasors: spinning arrows for the input, resistor and capacitor voltages, with their waves"></canvas>
+  <div class="row"><label>frequency (× the cutoff) <input type="range" id="fq" min="-1.5" max="1.5" step="0.01" value="0"> <span id="fqv" class="math"></span></label><label><input type="checkbox" id="spin" checked> spin</label></div>
+  <p class="readout" id="o6"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>A sine wave \(V\cos(\omega t + \varphi)\) is the shadow of an arrow of length \(V\) at angle \(\varphi\), spinning at \(\omega = 2\pi f\). Write the arrow as a complex number, \(V e^{j\varphi}\) (radio course chapter 2; engineers write \(j\) for \(\sqrt{-1}\)). Then every part has an <b>impedance</b>, a complex resistance:</p>
+    <p class="formula">\[ Z_R = R, \qquad Z_C = \frac{1}{j\omega C}, \qquad Z_L = j\omega L \]</p>
+    <p>Dividing by \(j\) turns an arrow back a quarter turn: that's the capacitor's current leading its voltage. Now Ohm's law and the divider formula work exactly as for DC, with complex numbers. The RC low-pass:</p>
+    <p class="formula">\[ \frac{V_{out}}{V_{in}} = \frac{Z_C}{R + Z_C} = \frac{1}{1 + j\omega RC} = \frac{1}{1 + j\, f/f_c} \]</p>
+    <p>Its length is \(1/\sqrt{1 + (f/f_c)^2}\), chapter 2's formula, and its angle is \(-\arctan(f/f_c)\): at the cutoff the output lags by exactly 45°.</p>
+  </details>
+  <div class="q" data-num="-45" data-tol="1" data-unit="°">
+    <p>At the cutoff frequency, what's the phase of the RC low-pass output relative to its input?</p>
+    <div class="why">\(1/(1 + j)\) has angle \(-45°\): the two arrows (resistor and capacitor voltages) are equal and at right angles, so the output sits halfway round.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>What is the impedance of a 1 µF capacitor at 0 Hz (DC)?</p>
+    <ul><li data-k="a">Infinite: it blocks DC</li><li data-k="b" data-says="That's at very high frequency, where 1/(ωC) → 0.">Zero</li><li data-k="c" data-says="Its impedance depends on frequency: 1/(2πfC).">1 MΩ</li></ul>
+    <div class="why">\(1/(\omega C)\) with \(\omega = 0\) is infinite. At high frequency it's nearly a wire. "Passes AC, blocks DC" in one formula.</div>
+  </div>
+  <div class="code" data-title="Build it: AC analysis with complex numbers"><textarea>
+// A tiny complex-number kit: [re, im]
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const div = (a, b) => { const d = b[0] ** 2 + b[1] ** 2; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+const abs = (a) => Math.hypot(...a), deg = (a) => (Math.atan2(a[1], a[0]) * 180) / Math.PI;
+
+const R = 1000, C = 1e-6, fc = 1 / (2 * Math.PI * R * C);
+const Zc = (f) => div([1, 0], [0, 2 * Math.PI * f * C]);          // 1 / (jωC)
+const H = (f) => div(Zc(f), add([R, 0], Zc(f)));                     // the divider, with complex impedances
+const rows = [["f (Hz)", "|H|", "dB", "phase (°)"]];
+for (const f of [10, fc / 2, fc, 2 * fc, 10 * fc, 100 * fc]) rows.push([+f.toFixed(1), +abs(H(f)).toFixed(3), +(20 * Math.log10(abs(H(f)))).toFixed(1), +deg(H(f)).toFixed(1)]);
+table(rows);
+// Try: an RLC series circuit, Z = R + jωL + 1/(jωC). Where is |Z| smallest?
+</textarea></div>
+
+  <p>Every chapter from here on uses these tools: op-amps (next) are analyzed with KCL and one extra rule, filters with impedances, power supplies with Thevenin. Build any of these circuits in the <a href="/learn/lab.html">circuit lab</a> and check the numbers with its meters and scope.</p>
+  <p class="muted">Previous: <a href="./05-real-parts.html">Real parts</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", pink: "#ff5c8a" };
+const si = (x, u) => { const P = [[1e3, "k"], [1, ""], [1e-3, "m"], [1e-6, "µ"]]; if (!x) return `0 ${u}`; const [m, p] = P.find(([m]) => Math.abs(x) >= m * 0.9995) ?? P.at(-1); return `${+(x / m).toPrecision(3)} ${p}${u}`; };
+const arrowTo = (g, x1, y1, x2, y2, color, w = 4) => { const a = Math.atan2(y2 - y1, x2 - x1); g.strokeStyle = g.fillStyle = color; g.lineWidth = w; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); if (Math.hypot(x2 - x1, y2 - y1) > 8) { g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - 14 * Math.cos(a - 0.4), y2 - 14 * Math.sin(a - 0.4)); g.lineTo(x2 - 14 * Math.cos(a + 0.4), y2 - 14 * Math.sin(a + 0.4)); g.fill(); } };
+let t = 0;
+
+// ---------- 1. KCL ----------
+function draw1() {
+  const I = [+$("i1").value, +$("i2").value, +$("i3").value]; I.push(-(I[0] + I[1] + I[2]));
+  const cv = $("c1"), g = cv.getContext("2d"), W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const dirs = [[-1, 0], [0, -1], [1, 0], [0, 1]], names = ["I₁", "I₂", "I₃", "I₄"];
+  dirs.forEach(([dx, dy], k) => {
+    g.strokeStyle = C.wire; g.lineWidth = 6; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + dx * 300, cy + dy * 150); g.stroke();
+    const mag = Math.abs(I[k]), into = I[k] > 0, len = 30 + mag * 18, mx = cx + dx * 160, my = cy + dy * 90;
+    if (mag > 0.05) { const s = into ? -1 : 1; arrowTo(g, mx - (s * dx * len) / 2, my - (s * dy * len) / 2, mx + (s * dx * len) / 2, my + (s * dy * len) / 2, k === 3 ? C.yellow : C.blue, 3 + mag * 1.5); }
+    // flowing dots
+    g.fillStyle = k === 3 ? C.yellow : C.blue;
+    for (let d = 0; d < 1; d += 0.12) { const f = (((d + (t * I[k]) / 8) % 1) + 1) % 1, r = 1 - f; g.beginPath(); g.arc(cx + dx * 300 * r, cy + dy * 150 * r, 4, 0, 7); g.fill(); }
+    g.fillStyle = C.text; g.font = "18px ui-monospace, monospace"; g.fillText(`${names[k]} = ${I[k].toFixed(1)} mA`, cx + dx * 220 - 50, cy + dy * 120 + (dy ? 0 : -18));
+  });
+  g.fillStyle = C.text; g.beginPath(); g.arc(cx, cy, 9, 0, 7); g.fill();
+  $("o1").textContent = `${I.slice(0, 3).map((v) => v.toFixed(1)).join(" + ")} + I₄ = 0  →  I₄ = ${I[3].toFixed(1)} mA (${I[3] >= 0 ? "flowing in" : "flowing out"})`;
+}
+
+// ---------- 2. KVL as heights ----------
+function draw2() {
+  const V = +$("vb").value, R1 = +$("r1").value, R2 = +$("r2").value, I = V / (R1 + R2), V1 = I * R1, V2 = I * R2;
+  const cv = $("c2"), g = cv.getContext("2d"), W = cv.width, H = cv.height, base = H - 60, Y = (v) => base - (v / 12) * (H - 110);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  // the path: ground → battery up → wire → R1 down → wire → R2 down → wire back
+  const pts = [[60, 0], [160, 0], [160, V], [300, V], [440, V - V1], [520, V - V1], [660, 0], [740, 0]];
+  g.fillStyle = "rgba(88,196,221,.12)"; g.beginPath(); g.moveTo(60, base); for (const [x, v] of pts) g.lineTo(x, Y(v)); g.lineTo(740, base); g.fill();
+  g.strokeStyle = C.blue; g.lineWidth = 4; g.beginPath(); pts.forEach(([x, v], k) => (k ? g.lineTo(x, Y(v)) : g.moveTo(x, Y(v)))); g.stroke();
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace";
+  g.fillText(`battery: up ${V.toFixed(1)} V`, 170, Y(V / 2)); g.fillText(`R₁: down ${V1.toFixed(2)} V`, 330, Y(V - V1 / 2) - 10); g.fillText(`R₂: down ${V2.toFixed(2)} V`, 560, Y(V2 / 2) - 10);
+  g.fillStyle = C.dim; g.fillText("0 V (ground)", 62, base + 22);
+  // a hiker
+  const path = [], seg = (a, b, n) => { for (let k = 0; k < n; k++) path.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]); };
+  for (let k = 1; k < pts.length; k++) seg(pts[k - 1], pts[k], 40);
+  const [hx, hv] = path[Math.floor(((t * 30) % path.length + path.length) % path.length)];
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(hx, Y(hv) - 9, 9, 0, 7); g.fill();
+  $("o2").textContent = `I = ${V.toFixed(1)} / (${R1} + ${R2}) = ${si(I, "A")} · +${V.toFixed(2)} − ${V1.toFixed(2)} − ${V2.toFixed(2)} = ${(V - V1 - V2).toFixed(2)} V around the loop`;
+}
+
+// ---------- 3. nodal analysis ----------
+function draw3() {
+  const [Ra, Rb, Rc, Rd] = ["ra", "rb", "rc", "rd"].map((id) => +$(id).value), [Ga, Gb, Gc, Gd] = [Ra, Rb, Rc, Rd].map((r) => 1 / r);
+  const a = Ga + Gb + Gc, b = -Gc, c = -Gc, d = Gc + Gd, rhs = 10 * Ga, det = a * d - b * c, v1 = (rhs * d) / det, v2 = (-c * rhs) / det;
+  const cv = $("c3"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const node = (x, y, v, name) => { g.fillStyle = C.yellow; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(`${name} = ${v.toFixed(2)} V`, x - 40, y - 16); };
+  const res = (x1, y1, x2, y2, label) => { g.strokeStyle = C.wire; g.lineWidth = 3; const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, horiz = y1 === y2; g.beginPath(); g.moveTo(x1, y1); horiz ? g.lineTo(mx - 30, y1) : g.lineTo(x1, my - 30); g.stroke(); g.beginPath(); for (let k = 0; k <= 8; k++) horiz ? g.lineTo(mx - 30 + k * 7.5, y1 + (k === 0 || k === 8 ? 0 : k % 2 ? 9 : -9)) : g.lineTo(x1 + (k === 0 || k === 8 ? 0 : k % 2 ? 9 : -9), my - 30 + k * 7.5); g.stroke(); g.beginPath(); horiz ? g.moveTo(mx + 30, y1) : g.moveTo(x1, my + 30); g.lineTo(x2, y2); g.stroke(); g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(label, horiz ? mx - 26 : x1 + 14, horiz ? y1 + 30 : my + 4); };
+  g.strokeStyle = C.wire; g.lineWidth = 3; g.beginPath(); g.moveTo(80, 250); g.lineTo(720, 250); g.stroke();
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText("10 V", 40, 160); g.strokeStyle = C.text; g.beginPath(); g.arc(80, 165, 18, 0, 7); g.stroke(); g.beginPath(); g.moveTo(80, 183); g.lineTo(80, 250); g.moveTo(80, 147); g.lineTo(80, 80); g.stroke();
+  res(80, 80, 330, 80, `Ra ${si(Ra, "Ω")}`); res(330, 80, 330, 250, `Rb ${si(Rb, "Ω")}`); res(330, 80, 600, 80, `Rc ${si(Rc, "Ω")}`); res(600, 80, 600, 250, `Rd ${si(Rd, "Ω")}`);
+  node(330, 80, v1, "v₁"); node(600, 80, v2, "v₂"); g.fillStyle = C.dim; g.fillText("ground, 0 V", 360, 275);
+  const f = (x) => (x * 1000).toFixed(3);
+  $("mat").textContent = `[ ${f(a)}  ${f(b)} ; ${f(c)}  ${f(d)} ] mS · [v₁ ; v₂] = [ ${f(rhs)} ; 0 ] mA`;
+  $("o3").textContent = `v₁ = ${v1.toFixed(3)} V, v₂ = ${v2.toFixed(3)} V (determinant ${(det * 1e6).toFixed(3)} mS²)`;
+}
+
+// ---------- 4. Thevenin and the load line ----------
+const VTH = 6, RTH = 500;
+const RL = () => 10 ** (1 + 3.5 * +$("rl").value); // 10 Ω … 31.6 kΩ
+let solvedMax = false;
+function draw4() {
+  const rl = RL(), I = VTH / (RTH + rl), V = I * rl, P = V * I, Pmax = (VTH * VTH) / (4 * RTH);
+  const cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  // left: load line V = Vth − I·Rth
+  const L = { x: 50, y: 30, w: 330, h: 280 }, Ix = (i) => L.x + (i / (VTH / RTH)) * L.w, Vy = (v) => L.y + L.h - (v / VTH) * L.h;
+  g.strokeStyle = C.dim; g.lineWidth = 2; g.beginPath(); g.moveTo(L.x, L.y); g.lineTo(L.x, L.y + L.h); g.lineTo(L.x + L.w, L.y + L.h); g.stroke();
+  g.strokeStyle = C.blue; g.lineWidth = 3; g.beginPath(); g.moveTo(Ix(0), Vy(VTH)); g.lineTo(Ix(VTH / RTH), Vy(0)); g.stroke();
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(Ix(I), Vy(V), 8, 0, 7); g.fill();
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(`open: ${VTH} V`, L.x + 6, Vy(VTH) - 6); g.fillText(`short: ${si(VTH / RTH, "A")}`, Ix(VTH / RTH) - 90, Vy(0) - 8); g.fillText("output voltage vs current", L.x + 40, L.y + L.h + 26);
+  // right: power vs load (log axis)
+  const Rg = { x: 430, y: 30, w: 330, h: 280 }, Rx = (r) => Rg.x + ((Math.log10(r) - 1) / 3.5) * Rg.w, Py = (p) => Rg.y + Rg.h - (p / Pmax) * Rg.h * 0.95;
+  g.strokeStyle = C.dim; g.beginPath(); g.moveTo(Rg.x, Rg.y); g.lineTo(Rg.x, Rg.y + Rg.h); g.lineTo(Rg.x + Rg.w, Rg.y + Rg.h); g.stroke();
+  g.strokeStyle = C.green; g.lineWidth = 3; g.beginPath(); for (let k = 0; k <= 200; k++) { const r = 10 ** (1 + (3.5 * k) / 200), p = (VTH / (RTH + r)) ** 2 * r; k ? g.lineTo(Rx(r), Py(p)) : g.moveTo(Rx(r), Py(p)); } g.stroke();
+  g.strokeStyle = "rgba(244,211,94,.35)"; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(Rx(RTH), Rg.y); g.lineTo(Rx(RTH), Rg.y + Rg.h); g.stroke(); g.setLineDash([]);
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(Rx(rl), Py(P), 8, 0, 7); g.fill();
+  g.fillStyle = C.text; g.fillText("power in the load vs R_L (log)", Rg.x + 50, Rg.y + Rg.h + 26); g.fillText("R_th", Rx(RTH) - 14, Rg.y - 6);
+  $("rlv").textContent = si(rl, "Ω");
+  $("o4").textContent = `Thevenin: ${VTH} V with ${RTH} Ω inside · R_L = ${si(rl, "Ω")}: ${si(I, "A")}, ${V.toFixed(2)} V, ${si(P, "W")} (max ${si(Pmax, "W")} at R_L = R_th)`;
+  if (!solvedMax && Math.abs(Math.log(rl / RTH)) < 0.06) { solvedMax = true; $("g4").classList.add("done"); $("g4").insertAdjacentHTML("beforeend", " ✓"); say("Matched! R_L = R_th gets the most power out.", "happy"); }
+}
+
+// ---------- 6. phasors ----------
+function draw6() {
+  const r = 10 ** +$("fq").value, H0 = [1 / (1 + r * r), -r / (1 + r * r)], mag = Math.hypot(...H0), ph = Math.atan2(H0[1], H0[0]);
+  const cv = $("c6"), g = cv.getContext("2d"), W = cv.width, H = cv.height, cx = 200, cy = H / 2, R = 140, w = $("spin").checked ? t * 1.2 : 0;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = C.dim; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke(); g.beginPath(); g.moveTo(cx - R - 20, cy); g.lineTo(cx + R + 20, cy); g.moveTo(cx, cy - R - 20); g.lineTo(cx, cy + R + 20); g.stroke();
+  // Vin = 1 at angle w; Vc = H·Vin; Vr = Vin − Vc (perpendicular to Vc)
+  const rot = (re, im, a) => [re * Math.cos(a) - im * Math.sin(a), re * Math.sin(a) + im * Math.cos(a)];
+  const vin = rot(1, 0, w), vc = rot(H0[0], H0[1], w), vr = [vin[0] - vc[0], vin[1] - vc[1]], P = ([x, y]) => [cx + x * R, cy - y * R];
+  arrowTo(g, cx, cy, ...P(vc), C.blue, 5); arrowTo(g, ...P(vc), ...P(vin), C.red, 4); arrowTo(g, cx, cy, ...P(vin), C.yellow, 3);
+  // waves: the shadows (real parts) over time
+  const X0 = 400, Wd = 370;
+  g.strokeStyle = C.dim; g.beginPath(); g.moveTo(X0, cy); g.lineTo(X0 + Wd, cy); g.stroke();
+  for (const [z, color] of [[[1, 0], C.yellow], [H0, C.blue], [[1 - H0[0], -H0[1]], C.red]]) {
+    g.strokeStyle = color; g.lineWidth = 2.5; g.beginPath();
+    for (let k = 0; k <= 200; k++) { const a = w - (k / 200) * 4 * Math.PI, y = z[0] * Math.cos(a) - z[1] * Math.sin(a); k ? g.lineTo(X0 + (k / 200) * Wd, cy - y * R) : g.moveTo(X0, cy - y * R); }
+    g.stroke();
+  }
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace";
+  g.fillStyle = C.yellow; g.fillText("V_in", 30, 30); g.fillStyle = C.blue; g.fillText("V_C (the output)", 90, 30); g.fillStyle = C.red; g.fillText("V_R", 260, 30);
+  $("fqv").textContent = `${r.toFixed(2)} f_c`;
+  $("o6").textContent = `f = ${r.toFixed(2)} × f_c: output ${(mag * 100).toFixed(1)}% of the input (${(20 * Math.log10(mag)).toFixed(1)} dB), lagging ${(-ph * 180 / Math.PI).toFixed(1)}° · V_R ⟂ V_C, and V_R + V_C = V_in`;
+}
+
+for (const id of ["i1", "i2", "i3"]) $(id).oninput = draw1;
+for (const id of ["vb", "r1", "r2"]) $(id).oninput = draw2;
+for (const id of ["ra", "rb", "rc", "rd"]) $(id).oninput = draw3;
+$("rl").oninput = draw4; $("fq").oninput = draw6;
+draw3(); draw4();
+let last = performance.now();
+(function loop(now) { t += Math.min(0.05, (now - last) / 1000); last = now; draw1(); draw2(); draw6(); requestAnimationFrame(loop); })(last);
+
+window.blipContext = () => ({ page: "Electronics chapter 6: circuit theory toolkit (KCL, KVL, nodal analysis, Thevenin, superposition, phasors and impedance)", theveninLoad: $("rlv").textContent });
+</script>
+</body>
+</html>
