@@ -28,6 +28,15 @@
     .leaflet-popup-content ul { padding-left: 16px; margin: 4px 0; }
     .bikes li { list-style: none; margin-left: -16px; }
     #layers label, #trip label { display: block; margin: 3px 0; }
+    .phead { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+    .phead h1 { margin: 0 !important; }
+    #fold { padding: 4px 10px !important; font-size: 14px !important; }
+    #panel.folded #pbody { display: none; }
+    #panel.folded { max-height: none; }
+    @media (max-width: 700px) {
+      #panel { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; max-width: none !important; max-height: 50vh !important; }
+      #panel .phead h1 { font-size: 14px !important; text-shadow: none !important; }
+    }
     .legend { font-size: .75rem; }
     .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: 0; }
     #trip input:not([type]) { width: 100%; }
@@ -59,7 +68,8 @@
 <body>
 <div id="map"></div>
 <div id="panel">
-  <h1>NYC Live Map</h1>
+  <div class="phead"><h1>NYC Live Map</h1><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
+  <div id="pbody">
   <div class="muted">Subway Bailout: MTA alerts happening now. Click a red station to see the nearest Citi Bikes. Turn on cameras, events and restaurant inspections below.</div>
   <div class="muted" id="status">Loading…</div>
   <div id="types" style="margin-top:8px"></div>
@@ -86,6 +96,7 @@
     <div id="rresults" class="muted"></div>
     <div class="muted" style="margin-top:6px">Tip: click anywhere on the map to see what's there (address, districts, precinct).</div>
   </details>
+  </div>
 </div>
 <div id="cams" aria-live="polite"></div>
 
@@ -539,6 +550,11 @@ window.blipContext = () => {
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
 };
+
+// The panel folds away (and starts folded on phones, where it would cover the map).
+const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
+$("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
+if (matchMedia("(max-width: 700px)").matches) fold(true);
 
 $("refresh").addEventListener("click", refresh);
 await loadStations().catch((e) => ($("status").textContent = `Stations failed: ${e.message}`));

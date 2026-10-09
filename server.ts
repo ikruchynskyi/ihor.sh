@@ -23,8 +23,8 @@ const RADIO = path.join(ROOT, "radio", "dist");
 const WORLDS: Record<string, { dir: string; label: string }> = {
   radio: { dir: RADIO, label: "World 1 · Radio" },
   nyc: { dir: path.join(ROOT, "nyc"), label: "World 2 · NYC" },
-  ai: { dir: path.join(ROOT, "ai"), label: "World 8 · AI" },
-  orna: { dir: path.join(ROOT, "orna"), label: "World 3 · ORNA" },
+  ai: { dir: path.join(ROOT, "ai"), label: "World 3 · AI" },
+  orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Each listener is

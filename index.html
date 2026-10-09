@@ -105,7 +105,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>4 OF 8 WORLDS OPEN</span>
+  <span>3 OF 7 WORLDS OPEN + BONUS</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -165,50 +165,37 @@
 
     <article class="world">
       <header>
-        <h3><small>WORLD 3</small>ORNA</h3>
-        <span class="onair">BOT ONLINE</span>
-      </header>
-      <p>Orna is a GPS RPG: the map around you becomes the game world, with dungeons, towers and raids on real streets. This world collects tools and guides for it, starting with a bot that answers questions about the game.</p>
-      <nav class="levels" aria-label="ORNA projects">
-        <a class="level" href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener" data-icon="chat" data-blip="Ask the bot about items, classes and raids. It opens in Telegram."><span class="lv">3-1 <i>▶ OPEN</i></span><b>ASK THE ORNA BOT</b><span class="d">@IrishmooshBot on Telegram answers questions about the game. Opens Telegram's web client (or <span style="text-decoration:underline">t.me/IrishmooshBot</span> in the app).</span></a>
-        <a class="level" href="/orna/" data-icon="box" data-blip="Need 300 Adamantine? I'll find the guild and count the proofs."><span class="lv">3-2 <i>▶ PLAY</i></span><b>GUILD SHOP PLANNER</b><span class="d">What every guild sells today, the next date for any material, and the proofs it costs.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Locked: guides built from the game data."><span class="lv">3-3</span><b>GUIDES &amp; CODEX</b><span class="d">Items, materials and classes, searchable, with build tips.</span></div>
-      </nav>
-    </article>
-
-    <article class="world">
-      <header>
-        <h3><small>WORLD 8</small>AI</h3>
+        <h3><small>WORLD 3</small>AI</h3>
         <span class="onair">NEW</span>
       </header>
       <p>Machine learning from scratch, 3Blue1Brown style: the math made visible, then neural networks, agents and computer vision, every chapter something you drag and poke.</p>
       <nav class="levels" aria-label="AI chapters">
-        <a class="level" href="/ai/01-matrices-are-moves.html" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">8-1 <i>▶ PLAY</i></span><b>MATRICES ARE MOVES</b><span class="d">Vectors, matrices as moves of space, the determinant, and a network layer as move-then-fold.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Next up: rolling downhill to learn."><span class="lv">8-2</span><b>GRADIENTS</b><span class="d">Which way is downhill, and gradient descent.</span></div>
-        <div class="level off" data-icon="lock" data-blip="One neuron learning live."><span class="lv">8-3</span><b>A NEURON FROM SCRATCH</b><span class="d">Weights, bias and a bend, learning to separate points.</span></div>
-        <div class="level off" data-icon="lock" data-blip="Blame, passed backwards."><span class="lv">8-4</span><b>BACKPROP YOU CAN WATCH</b><span class="d">The chain rule as a relay through a small network.</span></div>
-        <a class="level" href="/ai/" data-icon="book" data-blip="All nine chapters of the AI world."><span class="lv">8-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">Convolutions, transformers, agents and vision are on the way.</span></a>
+        <a class="level" href="/ai/01-matrices-are-moves.html" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>MATRICES ARE MOVES</b><span class="d">Vectors, matrices as moves of space, the determinant, and a network layer as move-then-fold.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Next up: rolling downhill to learn."><span class="lv">3-2</span><b>GRADIENTS</b><span class="d">Which way is downhill, and gradient descent.</span></div>
+        <div class="level off" data-icon="lock" data-blip="One neuron learning live."><span class="lv">3-3</span><b>A NEURON FROM SCRATCH</b><span class="d">Weights, bias and a bend, learning to separate points.</span></div>
+        <div class="level off" data-icon="lock" data-blip="Blame, passed backwards."><span class="lv">3-4</span><b>BACKPROP YOU CAN WATCH</b><span class="d">The chain rule as a relay through a small network.</span></div>
+        <a class="level" href="/ai/" data-icon="book" data-blip="All nine chapters of the AI world."><span class="lv">3-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">Convolutions, transformers, agents and vision are on the way.</span></a>
       </nav>
     </article>
 
     <div class="locked">
+      <article class="world" data-blip="よむ means 'read'. That's all the Japanese I know.">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 4</small>YOMU</h3></header>
+        <p>Japanese through a graded serial story: every chapter adds a few new words, checked by a validator.</p>
+        <ol class="chapters"><li>Graded serial story</li><li>Tap-to-gloss + review</li><li>Shadowing mode</li></ol>
+      </article>
       <article class="world" data-blip="A bike world. I don't have legs, so I'll ride in the basket.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 4</small>RIDE</h3></header>
+        <header><h3><small>WORLD 5</small>RIDE</h3></header>
         <p>Bikepacking × AI: drop in GPX files and trip reports, get a day-by-day plan that knows where the water runs out.</p>
         <ol class="chapters"><li>Route notebook</li><li>Bike + train escapes from NYC</li><li>Gear graph</li></ol>
       </article>
       <article class="world" data-blip="Flashlights! Knives! Tiny screwdrivers! Locked for now.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 5</small>EDC</h3></header>
+        <header><h3><small>WORLD 6</small>EDC</h3></header>
         <p>Everyday-carry and geek tools: a daily feed that becomes a cited catalog, a knowledge base and a gift advisor.</p>
         <ol class="chapters"><li>Daily gear feed</li><li>Tools catalog</li><li>Knowledge base</li><li>Advisor + gift mode</li></ol>
-      </article>
-      <article class="world" data-blip="よむ means 'read'. That's all the Japanese I know.">
-        <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 6</small>YOMU</h3></header>
-        <p>Japanese through a graded serial story: every chapter adds a few new words, checked by a validator.</p>
-        <ol class="chapters"><li>Graded serial story</li><li>Tap-to-gloss + review</li><li>Shadowing mode</li></ol>
       </article>
       <article class="world" data-blip="A skill tree! Every node unlocks another world.">
         <svg data-icon="lock" aria-hidden="true"></svg>
@@ -216,6 +203,20 @@
         <p>Math, electronics and hardware build logs, every lesson applied to the other worlds.</p>
         <ol class="chapters"><li>Skill tree</li><li>Track A: math, stats, ML</li><li>Track B: electronics to drivers</li><li>Hardware builds</li></ol>
       </article>
+    </div>
+
+    <div style="margin-top:36px">
+      <article class="world">
+      <header>
+        <h3><small>BONUS</small>ORNA</h3>
+        <span class="onair">BOT ONLINE</span>
+      </header>
+      <p>Orna is a GPS RPG: the map around you becomes the game world, with dungeons, towers and raids on real streets. This world collects tools and guides for it, starting with a bot that answers questions about the game.</p>
+      <nav class="levels" aria-label="ORNA projects">
+        <a class="level" href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener" data-icon="chat" data-blip="Ask the bot about items, classes and raids. It opens in Telegram."><span class="lv">B-1 <i>▶ OPEN</i></span><b>ASK THE ORNA BOT</b><span class="d">@IrishmooshBot on Telegram answers questions about the game. Opens Telegram's web client (or <span style="text-decoration:underline">t.me/IrishmooshBot</span> in the app).</span></a>
+        <a class="level" href="/orna/" data-icon="box" data-blip="Need 300 Adamantine? I'll find the guild and count the proofs."><span class="lv">B-2 <i>▶ PLAY</i></span><b>GUILD SHOP PLANNER</b><span class="d">What every guild sells today, the next date for any material, and the proofs it costs.</span></a>
+      </nav>
+    </article>
     </div>
   </section>
 </main>
