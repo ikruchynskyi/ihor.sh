@@ -1,7 +1,7 @@
 // Run: node free.test.js
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { onDay, status, timeLabel } from "./free.js";
+import { onDay, onDate, status, timeLabel } from "./free.js";
 
 const rules = JSON.parse(readFileSync(new URL("./free.json", import.meta.url)));
 const names = (d) => onDay(rules, d).map((x) => x.name);
@@ -37,3 +37,11 @@ for (const r of rules) {
   if (r.kind !== "perk") assert.ok(Number.isFinite(r.lat) && Number.isFinite(r.lon), r.name);
 }
 console.log("free ok");
+// Feed events: weekly recurrence and listed occurrences decide the day, not just the date range.
+const weekly = { start_date: "2026-10-01", end_date: "2026-10-31", recurring_days: "Thu", start_time: "18:00", end_time: "20:00" };
+assert.deepEqual(onDate(weekly, "2026-10-08", new Date(2026, 9, 8)), { start: "18:00", end: "20:00" });
+assert.equal(onDate(weekly, "2026-10-09", new Date(2026, 9, 9)), null);
+const listed = { start_date: "2026-10-01", end_date: "2026-10-31", occurrences: "2026-10-03|12:00|14:00", start_time: "", end_time: "" };
+assert.deepEqual(onDate(listed, "2026-10-03", new Date(2026, 9, 3)), { start: "12:00", end: "14:00" });
+assert.equal(onDate(listed, "2026-10-04", new Date(2026, 9, 4)), null);
+console.log("onDate ok");

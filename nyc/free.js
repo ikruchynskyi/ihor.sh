@@ -23,6 +23,19 @@ export function onDay(rules, date) {
   return out;
 }
 
+// A feed event (NYC for FREE) on `date` ("YYYY-MM-DD", `day` the same as a Date): listed occurrences first, then
+// "every Thu"-style recurrence, else its date range. Returns its { start, end } that day, or null. Shared by Free NYC and the map.
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export function onDate(e, date, day) {
+  if (e.occurrences) {
+    const hit = e.occurrences.split(",").map((o) => o.split("|")).find(([d]) => d === date);
+    return hit ? { start: hit[1] || e.start_time, end: hit[2] || e.end_time } : null;
+  }
+  if (date < e.start_date || date > e.end_date) return null;
+  if (e.recurring_days && !e.recurring_days.split(/[ ,]+/).includes(WEEKDAYS[day.getDay()])) return null;
+  return { start: e.start_time, end: e.end_time };
+}
+
 const mins = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 
 /** "now" | "later" | "over" | "allday", relative to `now` (only meaningful when date is today). */

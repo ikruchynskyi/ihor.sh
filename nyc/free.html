@@ -49,7 +49,7 @@
 </main>
 
 <script type="module">
-import { onDay, status, timeLabel } from "./free.js";
+import { onDay, onDate, status, timeLabel } from "./free.js";
 import { distance } from "./nearest.js";
 
 const $ = (id) => document.getElementById(id);
@@ -82,18 +82,6 @@ $("locate").addEventListener("click", () => {
     (e) => { $("locStatus").textContent = `Location unavailable (${e.message})`; },
   );
 });
-
-// When an event happens on `date`: listed occurrences first, then "every Thu"-style recurrence, else its date range.
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-function onDate(e, date, day) {
-  if (e.occurrences) {
-    const hit = e.occurrences.split(",").map((o) => o.split("|")).find(([d]) => d === date);
-    return hit && { start: hit[1] || e.start_time, end: hit[2] || e.end_time };
-  }
-  if (date < e.start_date || date > e.end_date) return null;
-  if (e.recurring_days && !e.recurring_days.split(/[ ,]+/).includes(WEEKDAYS[day.getDay()])) return null;
-  return { start: e.start_time, end: e.end_time };
-}
 
 const ORDER = { now: 0, later: 1, allday: 2, over: 3 };
 const GROUPS = [["now", "Happening now"], ["later", "Later"], ["allday", "All day"], ["over", "Already over"]];
