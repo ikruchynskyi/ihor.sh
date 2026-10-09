@@ -140,9 +140,9 @@ export async function ask(body: any, system: string) {
   const last = history.at(-1);
   if (!last || last.role !== "user") throw new Error("bad request");
   const page = body?.page ?? {};
-  const objects = str(page.context, 5000);
+  const objects = str(page.context, 5000), visited = str(page.visited, 300);
   last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}">\n${str(page.text, 6000)}\n</page>\n`
-    + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + `\n${last.content}`;
+    + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + (visited ? `<visitor_has_explored>${visited}</visitor_has_explored>\n` : "") + `\n${last.content}`;
 
   const messages: Msg[] = [{ role: "system", content: system }, ...history];
   const used: string[] = [], extra = pageTools(page), pageNames = new Set(extra.map((t: any) => t.function.name));

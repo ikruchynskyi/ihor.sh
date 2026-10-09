@@ -37,6 +37,8 @@ const CSS = `
 .tip { fill: #ff5c8a; stroke: #2a1405; stroke-width: 2.5; }
 .tip.on { fill: #ffd0dc; filter: drop-shadow(0 0 6px #ff5c8a); }
 .hat { pointer-events: none; }
+.arm-line { fill: none; stroke: #2a1405; stroke-width: 4; stroke-linecap: round; }
+.hand { fill: #ffb347; stroke: #2a1405; stroke-width: 2.5; }
 .party .body { animation: party 0.6s linear infinite; }
 @keyframes party { to { filter: hue-rotate(360deg); } }
 .shadow { fill: rgba(0,0,0,.35); }
@@ -116,6 +118,7 @@ root.innerHTML = `<style>${CSS}</style>
   <g class="fx"></g>
   <g class="blip" tabindex="0" role="button" aria-label="Blip, the site companion. Press Enter to ask a question.">
     <path class="antenna"/><circle class="tip" r="5"/>
+    <g class="arm" hidden><path class="arm-line"/><circle class="hand" r="5"/></g>
     <g class="hat" hidden><ellipse cx="0" cy="-6" rx="12" ry="9" fill="#ff8c1a" stroke="#2a1405" stroke-width="2.5"/><path d="M-4,-14 Q0,-6 -1,2 M4,-14 Q1,-6 2,2" stroke="#c75f00" stroke-width="1.5" fill="none"/><path d="M0,-15 q1,-5 4,-6" stroke="#2f6b1e" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <path class="body" fill="url(#skin)"/>
     <g class="face mood-idle">${eye(-1)}${eye(1)}
@@ -143,6 +146,8 @@ const [stage, bodyEl, antennaEl, tipEl, face, mouth, shadow, fx, blipEl, bubble,
   [".stage", ".body", ".antenna", ".tip", ".face", ".mouth", ".shadow", ".fx", ".blip", ".bubble", ".tab"].map($);
 const looks = root.querySelectorAll(".look");
 const hat = root.querySelector(".hat");
+const arm = root.querySelector(".arm"), armLine = root.querySelector(".arm-line"), hand = root.querySelector(".hand");
+let pointAt = null; // { x, y, until }: the arm reaches toward it
 hat.hidden = new Date().getMonth() !== 9; // a pumpkin on the head all October
 
 // ---------- the soft body ----------
@@ -212,6 +217,13 @@ function render() {
   bodyEl.setAttribute("d", outline(ring));
   antennaEl.setAttribute("d", `M${top.x},${top.y}Q${stalk.x},${stalk.y} ${tip.x},${tip.y}`);
   tipEl.setAttribute("cx", tip.x); tipEl.setAttribute("cy", tip.y);
+  if (pointAt && performance.now() < pointAt.until) {
+    const dx = pointAt.x - c.x, dy = pointAt.y - c.y, m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m;
+    const sx = c.x + ux * (R - 2), sy = c.y + uy * (R - 2), ex = c.x + ux * (R + 20), ey = c.y + uy * (R + 20) - 4 * Math.sin(performance.now() / 120);
+    armLine.setAttribute("d", `M${sx},${sy} Q${(sx + ex) / 2 - uy * 6},${(sy + ey) / 2 + ux * 6} ${ex},${ey}`);
+    hand.setAttribute("cx", ex); hand.setAttribute("cy", ey);
+    arm.hidden = false;
+  } else if (!arm.hidden) arm.hidden = true;
   if (!hat.hidden) hat.setAttribute("transform", `translate(${c.x - 13},${d3.min(ring, (n) => n.y) + 4}) rotate(-12)`);
   face.setAttribute("transform", `translate(${c.x},${c.y})`);
   const t = gaze && performance.now() < gaze.until ? gaze : mood === "think" ? { x: c.x + 20, y: c.y - 200 } : mouse.seen ? mouse : { x: c.x - 40, y: c.y + 10 };
@@ -432,6 +444,17 @@ addEventListener("blip:say", (e) => {
   if (text) say(String(text).slice(0, 140), { ms: ms ?? 3000 });
 });
 
+/** Walk toward a spot on screen (or an element) and point at it with an arm for a few seconds. */
+function point(target, ms = 3500) {
+  const r = target instanceof Element ? target.getBoundingClientRect() : null;
+  const x = r ? r.left + r.width / 2 : target?.x, y = r ? r.top + r.height / 2 : target?.y;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || hidden) return;
+  walkTo(Math.min(W - 60, Math.max(60, x + (x > W / 2 ? -90 : 90)))); // stand beside it, not on it
+  pointAt = { x, y, until: performance.now() + ms };
+  gaze = { x, y, until: performance.now() + ms };
+}
+addEventListener("blip:point", (e) => point(e.detail?.element ?? e.detail, e.detail?.ms));
+
 // More page hooks: blip:ping (antenna flash + radio ring), blip:key {on} (antenna light, e.g. in time with Morse),
 // blip:look {x, y, ms} (eyes go there).
 addEventListener("blip:ping", () => { if (!hidden) ping(); });
@@ -523,13 +546,35 @@ form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
 const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
+// Blip remembers where you've been (this browser only) and greets you per world.
+const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI" };
+const progress = (() => { try { return JSON.parse(local.get("blip:progress") || "{}"); } catch { return {}; } })();
+progress.pages ??= {}; progress.worlds ??= {};
+{
+  const world = location.pathname.split("/")[1];
+  const firstWorld = WORLD_NAMES[world] && !progress.worlds[world];
+  progress.pages[location.pathname] = (progress.pages[location.pathname] ?? 0) + 1;
+  if (WORLD_NAMES[world]) progress.worlds[world] = (progress.worlds[world] ?? 0) + 1;
+  const keys = Object.keys(progress.pages);
+  if (keys.length > 80) delete progress.pages[keys[0]];
+  local.set("blip:progress", JSON.stringify(progress));
+  const line = firstWorld ? `First time in the ${WORLD_NAMES[world]} world! Ask me anything here.`
+    : WORLD_NAMES[world] && progress.worlds[world] === 3 ? `Third visit to ${WORLD_NAMES[world]}. You're a regular now!` : null;
+  if (line) setTimeout(() => { if (!dialogOpen && !hidden) say(line, { ms: 4000 }); }, 2500);
+}
+
 // Pages can also offer actions Blip may perform on them: window.blipActions = { name: { description, parameters, run(args) } }.
 const pageActions = () => Object.entries(window.blipActions ?? {}).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
 async function perform(actions) {
   for (const { name, args } of actions ?? []) {
     const a = window.blipActions?.[name];
     if (!a) continue;
-    try { await a.run(args ?? {}); hop(4); ping(); } catch (e) { console.warn("Blip action failed:", name, e); }
+    try {
+      const result = await a.run(args ?? {});
+      hop(4); ping();
+      // An action can return what it changed (an element or {x, y}); Blip goes and points at it.
+      if (result instanceof Element || (result && Number.isFinite(result.x))) setTimeout(() => point(result), 300);
+    } catch (e) { console.warn("Blip action failed:", name, e); }
   }
 }
 const pageInfo = () => ({
@@ -537,6 +582,7 @@ const pageInfo = () => ({
   title: document.title,
   context: pageObjects(),
   actions: pageActions(),
+  visited: Object.keys(progress.worlds).map((w) => `${WORLD_NAMES[w] ?? w} (${progress.worlds[w]} visits)`).join(", "),
   text: (document.querySelector("main, article") ?? document.body).innerText.replace(/\n\s*\n+/g, "\n").slice(0, 6000),
 });
 

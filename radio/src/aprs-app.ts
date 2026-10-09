@@ -52,5 +52,5 @@ setInterval(renderLists, 30_000); // keep "x min ago" fresh
 (window as any).blipContext = () => ({ page: "APRS map (packet radio on 144.39 MHz from our own modem)", stations: [...stations.values()].slice(-30).map((s) => ({ callsign: s.callsign, type: s.type, lat: s.lat, lon: s.lon, comment: s.comment, weather: s.wx, lastSeen: s.lastSeen })), lastPackets: log.slice(-10).map((p) => p.raw) });
 (window as any).blipActions = {
   focus_station: { label: "found the station", description: "Center the APRS map on a station by callsign and open its details.", parameters: { callsign: { type: "string", description: "e.g. W2LRC or N0CALL-9" } },
-    run: ({ callsign }: { callsign: string }) => { const m = markers.get(String(callsign ?? "").toUpperCase().trim()); if (m) { map.setView(m.m.getLatLng(), 12); m.m.openPopup(); } } },
+    run: ({ callsign }: { callsign: string }) => { const m = markers.get(String(callsign ?? "").toUpperCase().trim()); if (m) { map.setView(m.m.getLatLng(), 12); m.m.openPopup(); const p = map.latLngToContainerPoint(m.m.getLatLng()), r = document.getElementById("map")!.getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; } } },
 };
