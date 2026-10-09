@@ -49,8 +49,8 @@
 </main>
 
 <script type="module">
-import { onDay, onDate, status, timeLabel } from "./free.js";
-import { distance } from "./nearest.js";
+import { onDay, onDate, status, timeLabel } from "/nyc/free.js";
+import { distance } from "/nyc/nearest.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
