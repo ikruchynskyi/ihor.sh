@@ -263,6 +263,12 @@ $("chartGrid").innerHTML = [...KOCH, ...Object.keys(CODE).filter((c) => !KOCH.in
   .map((c) => `<button data-c="${esc(c)}" aria-label="Play ${esc(c)}"><b>${esc(c)}</b><span>${CODE[c].replace(/\./g, "·").replace(/-/g, "—")}</span></button>`).join("");
 $("chartGrid").addEventListener("click", (e) => { const c = (e.target as HTMLElement).closest("button")?.dataset.c; if (c) play(c, S.wpm, S.wpm); });
 
+// ---------- what Blip can do here ----------
+(window as any).blipActions = {
+  play_morse: { label: "played Morse", description: "Play text in Morse code at the visitor's speed settings (letters, numbers, . , ? / =).", parameters: { text: { type: "string", description: "What to send, e.g. CQ or a word" } },
+    run: ({ text }: { text: string }) => play(String(text ?? "").toUpperCase().slice(0, 80)) },
+};
+
 // ---------- what Blip sees here ----------
 (window as any).blipContext = () => ({
   page: "CW trainer", mode, settings: { characterWpm: S.wpm, effectiveWpm: Math.min(S.eff, S.wpm), toneHz: S.tone, key: S.keyType },

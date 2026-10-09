@@ -319,6 +319,12 @@ function onSamples(cu8: Uint8Array) {
 
 $("connect").addEventListener("click", () => (sdr ? disconnect() : connect(false)));
 $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true)));
+// What Blip can do here: tune the receiver.
+(window as any).blipActions = {
+  tune: { label: "tuned the radio", description: "Tune Spectrum Lab's live receiver to a frequency in MHz (e.g. 98.7 FM, 162.55 NOAA weather, 119.1 JFK tower). Sets the listen frequency if no SDR is connected yet.", parameters: { mhz: { type: "number", description: "Frequency in MHz, 24 to 1766" } },
+    run: async ({ mhz }: { mhz: number }) => { const f = Number(mhz); if (!(f >= 24 && f <= 1766)) return; $<HTMLInputElement>("liveFreq").value = f.toFixed(3); await tuneTo(f * 1e6); } },
+};
+
 // Leaving the page ends the stream, so the server stops counting this listener at once.
 addEventListener("pagehide", () => { if (sdr) disconnect(); });
 // The server button is lit while a dongle server answers (server.ts here, or ihor.sh's proxy to it)

@@ -10,7 +10,7 @@ import { stationArrivals } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -161,7 +161,7 @@ const server = http.createServer(async (req, res) => {
       return proxySdr(req, res);
     }
     if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
-    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip"].includes(url.pathname)) {
+    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode"].includes(url.pathname)) {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
@@ -172,6 +172,7 @@ const server = http.createServer(async (req, res) => {
         return send(await pointInfo(lat, lon), 3600);
       }
       if (url.pathname === "/api/nyc/restaurants") return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20)), 3600);
+      if (url.pathname === "/api/nyc/geocode") return send(await geocode(String(q.get("q") ?? "").slice(0, 120)), 3600);
       if (url.pathname === "/api/nyc/trip") return send(await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0" }), 120);
       if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
       const from = q.get("from") ?? "", to = q.get("to") ?? from;

@@ -99,6 +99,7 @@ Planned (locked): World 4 Ride (bikepacking), 5 EDC (gear), 6 Yomu (graded Japan
 Pages on the site:
 ${siteMap}
 
+Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 
 How to answer:
@@ -113,10 +114,18 @@ How to answer:
 type Msg = { role: string; content: string; tool_calls?: any[]; tool_name?: string };
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
 
-async function chat(messages: Msg[], withTools: boolean) {
+/** Actions the visitor's page offers (window.blipActions): validated, and run on the page, not here. */
+function pageTools(page: any) {
+  const list = Array.isArray(page?.actions) ? page.actions.slice(0, 12) : [];
+  return list.filter((a: any) => typeof a?.name === "string" && /^[a-z_]{1,40}$/.test(a.name) && !TOOLS[a.name] && typeof a.description === "string")
+    .map((a: any) => ({ type: "function", function: { name: a.name, description: `On the visitor's page: ${a.description.slice(0, 300)}`,
+      parameters: { type: "object", properties: Object.fromEntries(Object.entries(a.parameters ?? {}).slice(0, 8).map(([k, v]: [string, any]) => [k, { type: ["string", "number", "boolean"].includes(v?.type) ? v.type : "string", description: String(v?.description ?? "").slice(0, 200) }])), required: [] } } }));
+}
+
+async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = []) {
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(120_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: "low", options: { num_predict: 1500 }, messages, ...(withTools ? { tools: toolSpecs } : {}) }),
+    body: JSON.stringify({ model: MODEL, stream: false, think: "low", options: { num_predict: 1500 }, messages, ...(withTools ? { tools: [...toolSpecs, ...extraTools] } : {}) }),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   return (await r.json()).message as Msg;
@@ -136,20 +145,22 @@ export async function ask(body: any, system: string) {
     + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + `\n${last.content}`;
 
   const messages: Msg[] = [{ role: "system", content: system }, ...history];
-  const used: string[] = [];
+  const used: string[] = [], extra = pageTools(page), pageNames = new Set(extra.map((t: any) => t.function.name));
+  const actions: { name: string; args: unknown }[] = [];
   for (let step = 0; step < MAX_STEPS; step++) {
-    const msg = await chat(messages, true);
-    if (!msg.tool_calls?.length) return { reply: (msg.content ?? "").trim() || "…static. Try again?", tools: used };
+    const msg = await chat(messages, true, extra);
+    if (!msg.tool_calls?.length) return { reply: (msg.content ?? "").trim() || "…static. Try again?", tools: used, actions };
     messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
     for (const call of msg.tool_calls) {
       const name = call.function?.name, tool = TOOLS[name];
-      used.push(name);
+      if (!pageNames.has(name)) used.push(name);
       let out: unknown;
+      if (pageNames.has(name)) { actions.push({ name, args: call.function.arguments ?? {} }); messages.push({ role: "tool", tool_name: name, content: JSON.stringify({ ok: true, note: "done on the visitor's page" }) }); continue; }
       try { out = tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
       catch (e) { out = { error: (e as Error).message }; }
       messages.push({ role: "tool", tool_name: name, content: JSON.stringify(out).slice(0, 8000) });
     }
   }
   const final = await chat(messages, false); // out of steps: answer with what we have
-  return { reply: (final.content ?? "").trim() || "…static. Try again?", tools: used };
+  return { reply: (final.content ?? "").trim() || "…static. Try again?", tools: used, actions };
 }

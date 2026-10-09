@@ -523,10 +523,20 @@ form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
 const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
+// Pages can also offer actions Blip may perform on them: window.blipActions = { name: { description, parameters, run(args) } }.
+const pageActions = () => Object.entries(window.blipActions ?? {}).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
+async function perform(actions) {
+  for (const { name, args } of actions ?? []) {
+    const a = window.blipActions?.[name];
+    if (!a) continue;
+    try { await a.run(args ?? {}); hop(4); ping(); } catch (e) { console.warn("Blip action failed:", name, e); }
+  }
+}
 const pageInfo = () => ({
   url: location.pathname,
   title: document.title,
   context: pageObjects(),
+  actions: pageActions(),
   text: (document.querySelector("main, article") ?? document.body).innerText.replace(/\n\s*\n+/g, "\n").slice(0, 6000),
 });
 
@@ -548,7 +558,9 @@ async function send(q) {
     history.push({ role: "assistant", content: data.reply }); save();
     clearInterval(pinging);
     await typeOut(out, data.reply);
-    if (data.tools?.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${[...new Set(data.tools)].map((t) => TOOL_LABEL[t] ?? t).join(" · ")}</span>`);
+    const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => window.blipActions?.[a.name]?.label ?? a.name.replace(/_/g, " "))])];
+    if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
+    perform(data.actions);
     setMood("happy", 1500);
   } catch (err) {
     history.pop(); save(); input.value = q;
