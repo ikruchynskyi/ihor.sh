@@ -713,6 +713,10 @@ map.on("popupopen", (e) => {
 // The panel folds away (and starts folded on phones, where it would cover the map).
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 $("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
+// The disclaimer sits right of the panel on wide screens; the panel's width changes with the reader's text size.
+const placeDisclaimer = () => { $("disclaimer").style.left = matchMedia("(max-width: 700px)").matches ? "" : `${Math.round($("panel").getBoundingClientRect().right + 10)}px`; };
+addEventListener("resize", placeDisclaimer);
+new ResizeObserver(placeDisclaimer).observe($("panel"));
 if (matchMedia("(max-width: 700px)").matches) fold(true);
 
 $("refresh").addEventListener("click", refresh);

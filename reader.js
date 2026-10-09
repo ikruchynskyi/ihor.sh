@@ -21,12 +21,6 @@ const THEMES = {
   notebook: { label: "Notebook", world: "AI", c: ["#1f1d2e", "#f7f6fc", "#ffffff", "#5b2d9e", "#4a4866", "#d9d6ea", "#155e4f"], dark: false, font: "lexend", headings: "plain" },
   workbench: { label: "Workbench", world: "EDC", c: ["#22201c", "#f3f2ee", "#ffffff", "#8a2e10", "#4d4944", "#d6d3cd", "#14532d"], dark: false, font: "mono", headings: "plain" },
   trail: { label: "Trail", world: "Ride", c: ["#232a1e", "#f5f3ea", "#fffdf5", "#36500d", "#4b5041", "#d6d2bf", "#7c2d12"], dark: false, font: "atkinson", headings: "plain" },
-  blueprint: { label: "Blueprint", world: "Learn", c: ["#eaf2ff", "#0b2747", "#0f3460", "#ffd166", "#b0c7e6", "#4672a8", "#8ef0c0"], dark: true, font: "atkinson", headings: "plain" },
-  phosphor: { label: "Phosphor", c: ["#a6ffbf", "#03110a", "#071d10", "#ffd166", "#78c992", "#1f6b3a", "#ffd166"], dark: true },
-  amber: { label: "Amber CRT", c: ["#ffd08a", "#120c05", "#1c1409", "#ffe7c2", "#c9a26a", "#6b4a1c", "#ffe7c2"], dark: true },
-  contrast: { label: "High contrast", c: ["#ffffff", "#000000", "#000000", "#ffff00", "#d0d0d0", "#ffffff", "#00ff66"], dark: true },
-  paper: { label: "Paper", c: ["#1f1d1a", "#fbf8f1", "#ffffff", "#a8420a", "#5c574e", "#cfc8b8", "#1e6b35"], dark: false },
-  sepia: { label: "Sepia", c: ["#3a2c1a", "#f3e9d2", "#faf3e3", "#8a3f0e", "#6b5a43", "#cdbb95", "#2f5d1e"], dark: false },
 };
 // The home page keeps its pixel look unless the visitor picks otherwise; articles default to Atkinson.
 const isHome = !!document.querySelector(".hud #snd");
@@ -60,7 +54,9 @@ const onAccent = (a) => (1.05 / (lum(a) + 0.05) > (lum(a) + 0.05) / (lum("#1b102
 function apply() {
   const f = FONTS[s.font] ?? FONTS.atkinson, t = THEMES[s.theme] ?? THEMES.arcade;
   const [fg, bg, card, accent, muted, line, ok] = t.c;
-  const k = s.size / DEFAULTS.size; // headings grow and shrink with the text size
+  // The size slider zooms whole content areas, so buttons, <details>, cards and headings all scale together
+  // (font-size rules alone missed everything with its own px size). The HUD bar and the maps stay as they are.
+  const base = isHome && s.font !== "pixel" ? 17 : DEFAULTS.size, k = s.size / base;
   loadFont(s.font);
   style.textContent = `
     :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${onAccent(accent)}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
@@ -68,11 +64,12 @@ function apply() {
     body { font-family: ${f.css}; } ${isHome && s.font !== "pixel" ? "body { font-size: 17px; }" : ""}
     ${s.headings === "plain" ? `:root:root { --pixel: ${f.css}; --px: 1.55; }` : ""} /* the pixel font's small labels, in a readable font a size up */
     main strong, main b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
-    ${TEXT} { font-family: ${f.css} !important; font-size: ${s.size}px !important; line-height: ${s.line} !important; letter-spacing: ${s.letter}em !important; }
+    ${k !== 1 ? `:is(main, #panel, aside) { zoom: ${k.toFixed(3)}; }` : ""}
+    ${TEXT} { font-family: ${f.css} !important; font-size: ${base}px !important; line-height: ${s.line} !important; letter-spacing: ${s.letter}em !important; }
     ${t.dark ? "" : "body::after, body::before { display: none; } #wf { opacity: .12 !important; } h1 { text-shadow: none !important; } .leaflet-control-layers-toggle { filter: none !important; } .ihor-hud { background: " + card + " !important; }"}
     ${s.headings === "plain" ? `h1, h2, h3, .eyebrow { font-family: ${f.css} !important; font-weight: 700 !important; text-shadow: none !important; letter-spacing: -0.01em !important; }
-      h1:not(.logo) { font-size: calc(clamp(28px, 5vw, 40px) * ${k}) !important; line-height: 1.15 !important; } .logo { text-shadow: none !important; } h2 { font-size: ${24 * k}px !important; line-height: 1.25 !important; } h3 { font-size: ${19 * k}px !important; }`
-    : k !== 1 ? `h1 { font-size: calc(clamp(18px, 3.4vw, 28px) * ${k}) !important; } h2 { font-size: calc(clamp(13px, 2vw, 16px) * ${k}) !important; } h3 { font-size: ${11 * k}px !important; }` : ""}`;
+      h1:not(.logo) { font-size: clamp(28px, 5vw, 40px) !important; line-height: 1.15 !important; } .logo { text-shadow: none !important; } h2 { font-size: 24px !important; line-height: 1.25 !important; } h3 { font-size: 19px !important; }`
+    : ""}`;
 }
 apply();
 
