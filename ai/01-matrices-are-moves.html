@@ -45,59 +45,12 @@
   <p>If you stack matrices you only get another matrix: still straight lines, still a single move. Networks get their power from one tiny extra step after each matrix: a <b>bend</b>. The most common one, ReLU, just says "negative numbers become zero". Watch what it does to the moved grid: everything left of the vertical axis gets folded onto it, everything below the horizontal axis onto that.</p>
   <div class="scene"><canvas id="s4" width="800" height="600" aria-label="A layer: matrix then ReLU folds the grid"></canvas><p class="readout" id="r4"></p></div>
   <div class="row"><label><input type="checkbox" id="relu" checked> Apply the bend (ReLU)</label><button id="reset4">Reset</button></div>
-  <p>Drag <span class="g">î</span> and <span class="r">ĵ</span> again: the layer is "move, then fold". Stack dozens of these, each with its own matrix, and the folds can carve space into almost any shape, like one region for "cat" and another for "dog". Training a network is searching for the matrices that put the folds in the right places. That's where we're headed: next chapter, <b>gradients</b>, how a network finds which way to nudge every number.</p>
+  <p>Drag <span class="g">î</span> and <span class="r">ĵ</span> again: the layer is "move, then fold". Stack dozens of these, each with its own matrix, and the folds can carve space into almost any shape, like one region for "cat" and another for "dog". Training a network is searching for the matrices that put the folds in the right places. That's where we're headed: next chapter, <a href="./02-gradients.html"><b>gradients</b></a>, how a network finds which way to nudge every number.</p>
 
   <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. Coming next in this world: gradients, a neuron from scratch, backprop you can watch, then CNNs, transformers, agents and vision.</p>
 </main>
 <script type="module">
-// A tiny toolkit: a plane drawn on a canvas, draggable arrow tips, and a transformable grid.
-const C = { stage: "#14171d", grid: "#2a2f3a", axis: "#4a5262", text: "#d7dde5", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", fill: "rgba(244,211,94,0.18)" };
-const UNIT = 60;
-
-function scene(id, draw, handles, onChange) {
-  const cv = document.getElementById(id), g = cv.getContext("2d");
-  const W = cv.width, H = cv.height, toPx = ([x, y]) => [W / 2 + x * UNIT, H / 2 - y * UNIT], toW = (px, py) => [(px - W / 2) / UNIT, (H / 2 - py) / UNIT];
-  let drag = null;
-  const pos = (e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
-  cv.addEventListener("pointerdown", (e) => {
-    const [px, py] = pos(e);
-    drag = handles().find((h) => { const [hx, hy] = toPx(h.p); return Math.hypot(hx - px, hy - py) < 26; }) ?? null;
-    if (drag) { cv.setPointerCapture(e.pointerId); e.preventDefault(); }
-  });
-  cv.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    const [x, y] = toW(...pos(e));
-    drag.p[0] = Math.round(x * 4) / 4; drag.p[1] = Math.round(y * 4) / 4; // snap to quarters: friendlier numbers
-    render();
-  });
-  cv.addEventListener("pointerup", () => { drag = null; });
-  function render() {
-    g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
-    draw({ g, W, H, toPx });
-    for (const h of handles()) { const [x, y] = toPx(h.p); g.beginPath(); g.arc(x, y, 9, 0, 7); g.fillStyle = h.color; g.fill(); }
-    onChange?.();
-  }
-  render();
-  return render;
-}
-
-function grid({ g, W, H, toPx }, m = [[1, 0], [0, 1]], bend = false, color = C.grid) {
-  const f = ([x, y]) => { let p = [m[0][0] * x + m[0][1] * y, m[1][0] * x + m[1][1] * y]; if (bend) p = p.map((v) => Math.max(0, v)); return toPx(p); };
-  g.strokeStyle = color; g.lineWidth = 1.5;
-  for (let k = -12; k <= 12; k++) for (const [a, b] of [[[k, -12], [k, 12]], [[-12, k], [12, k]]]) {
-    g.beginPath();
-    for (let t = 0; t <= 48; t++) { const p = [a[0] + ((b[0] - a[0]) * t) / 48, a[1] + ((b[1] - a[1]) * t) / 48]; const [x, y] = f(p); t ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.stroke();
-  }
-}
-function axes({ g, W, H }) { g.strokeStyle = C.axis; g.lineWidth = 2; g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.stroke(); }
-function arrow({ g, toPx }, from, to, color, width = 4) {
-  const [x1, y1] = toPx(from), [x2, y2] = toPx(to), a = Math.atan2(y2 - y1, x2 - x1);
-  g.strokeStyle = g.fillStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
-  if (Math.hypot(x2 - x1, y2 - y1) > 6) { g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - 14 * Math.cos(a - 0.4), y2 - 14 * Math.sin(a - 0.4)); g.lineTo(x2 - 14 * Math.cos(a + 0.4), y2 - 14 * Math.sin(a + 0.4)); g.fill(); }
-}
-const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(2)).toString();
-const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+import { C, scene, grid, axes, arrow, fmt, say } from "/ai/plane.js";
 
 // 1. a vector
 const v1 = { p: [3, 2], color: C.blue };

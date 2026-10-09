@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gradients: Which Way Is Downhill</title>
+  <meta name="description" content="AI from scratch, chapter 2: the derivative as a slope you can drag, gradient descent rolling a ball into a valley, the gradient as an arrow on a landscape, and learning as walking downhill on a loss surface." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .scene { margin: 18px 0 8px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; cursor: grab; }
+    canvas.wide { aspect-ratio: 2 / 1; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 2</p>
+  <h1>Gradients: which way is downhill</h1>
+  <p class="lede">Last chapter ended with a promise: training a network means finding the right numbers for its matrices. There are millions of them, so nobody tries them one by one. Instead, the network measures how wrong it is and asks a simple question: <em>if I nudge this number a little, does it get better or worse?</em> That question has a name, the derivative, and the whole of deep learning is built on asking it very fast.</p>
+
+  <h2>1. A slope is "how much does it change?"</h2>
+  <p>Here's a bumpy curve. The <span class="y">yellow line</span> joins your point to another point a step <span class="math">h</span> to the right: it rises some amount over a run of <span class="math">h</span>. Drag the <span class="b">blue point</span> along the curve, and shrink <span class="math">h</span>.</p>
+  <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A curve with a draggable point and a secant line that becomes the tangent"></canvas><p class="readout" id="r1"></p></div>
+  <div class="row"><label>step h <input type="range" id="h" min="0.01" max="2" step="0.01" value="1.5"></label></div>
+  <p>As <span class="math">h</span> shrinks, the line stops cutting the curve and just touches it: that's the <b>tangent</b>, and its slope is the <b>derivative</b>. Zoom in on any smooth curve far enough and it looks straight; the derivative is the slope of that straight bit. Positive means "going up to the right", negative means "going down", zero means you're at a flat spot: the top of a hill or the bottom of a valley.</p>
+
+  <h2>2. Rolling downhill</h2>
+  <p>Say the curve measures how wrong we are, and we want the lowest point. We can't see the whole curve (in a real network it lives in a million dimensions), but we can always measure the slope where we stand. So: <b>take a step against the slope</b>. If the ground tilts up to the right, step left. Repeat.</p>
+  <p class="math" style="text-align:center">x ← x − (learning rate) × slope</p>
+  <div class="scene"><canvas id="s2" width="800" height="600" aria-label="A ball doing gradient descent on a curve"></canvas><p class="readout" id="r2"></p></div>
+  <div class="row"><button id="step">Step</button><button id="run">Roll</button><button id="drop">Drop somewhere else</button>
+    <label>learning rate <input type="range" id="lr" min="0.01" max="1.2" step="0.01" value="0.15"> <span id="lrv" class="math">0.15</span></label></div>
+  <p>Play with the learning rate. Small, and the ball crawls. Big, and it overshoots, bouncing from wall to wall, or flies off entirely. Drop it on the right and it settles in the <b>shallow valley</b>, never finding the deeper one: gradient descent only knows the ground under its feet. Choosing the step size, and getting out of shallow valleys, is half the craft of training networks.</p>
+
+  <h2>3. Two inputs: the gradient is an arrow</h2>
+  <p>Now the "wrongness" depends on two numbers, so it's a landscape, drawn here like a map: dark is low, bright is high, and the lines are contours of equal height. At any spot you can ask two questions: how steep is it going right, and how steep going up? Those two slopes together make an arrow, the <b>gradient</b>. Drag the point.</p>
+  <div class="scene"><canvas id="s3" width="800" height="600" aria-label="A contour map with a draggable point and its gradient arrow"></canvas><p class="readout" id="r3"></p></div>
+  <p>The <span class="r">red arrow</span> (the gradient) always points straight uphill, the steepest way up, and it's always perpendicular to the contour line you're standing on. Its length says how steep. The <span class="g">green arrow</span> is the opposite: steepest downhill. That's the direction gradient descent walks.</p>
+
+  <h2>4. Learning is walking downhill</h2>
+  <p>Here's the whole idea of training, in miniature. On the left: some points, and a line <span class="math">y = w·x + b</span> that should fit them. How wrong the line is (the average squared vertical miss, called the <b>loss</b>) depends on two numbers, <span class="math">w</span> and <span class="math">b</span>. On the right: that loss as a landscape over every possible <span class="math">(w, b)</span>. Each training step is one step downhill on the right, and the line on the left gets better.</p>
+  <div class="scene"><canvas id="s4" class="wide" width="1000" height="500" aria-label="Fitting a line by gradient descent on its loss landscape"></canvas><p class="readout" id="r4"></p></div>
+  <div class="row"><button id="train">Train</button><button id="step4">One step</button><button id="shuffle4">New points</button><button id="reset4">Start over</button>
+    <label>learning rate <input type="range" id="lr4" min="0.005" max="0.15" step="0.005" value="0.05"> <span id="lr4v" class="math">0.05</span></label></div>
+  <p>Drag the points on the left and the landscape on the right reshapes itself: the loss depends on the data. Drag the <span class="y">yellow dot</span> on the right to start the line somewhere else. A real network is this exact loop with millions of numbers instead of two: measure the loss, compute its gradient, step downhill, repeat. The only hard part left is computing the gradient for millions of numbers at once, efficiently. That's <b>backpropagation</b>, and it's coming up after we build a single neuron.</p>
+
+  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/gradient-descent">gradient descent</a> and <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a>. Previous: <a href="./01-matrices-are-moves.html">Matrices are moves</a>.</p>
+</main>
+<script type="module">
+import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// The curve for sections 1–2: a deep valley on the left, a shallow one on the right.
+const f = (x) => 0.08 * x ** 4 - 0.75 * x ** 2 + 0.35 * x + 2.2;
+const df = (x) => 0.32 * x ** 3 - 1.5 * x + 0.35;
+const curve = ({ g, W, toPx, toW }, color = C.blue) => {
+  g.strokeStyle = color; g.lineWidth = 3; g.beginPath();
+  for (let px = 0; px <= W; px += 3) { const x = toW(px, 0)[0], [cx, cy] = toPx([x, f(x)]); px ? g.lineTo(cx, cy) : g.moveTo(cx, cy); }
+  g.stroke();
+};
+const opts = { unit: 80, origin: [400, 520], snap: false };
+
+// 1. slope: secant → tangent
+const p1 = { p: [1.6, f(1.6)], color: C.blue, fix: (p) => { p[0] = Math.max(-4.5, Math.min(4.5, p[0])); p[1] = f(p[0]); } };
+const r1 = scene("s1", (s) => {
+  axes(s); curve(s, "#3a4f6e");
+  const h = +$("h").value, x = p1.p[0], q = [x + h, f(x + h)], m = (q[1] - p1.p[1]) / h;
+  const line = (slope, color, w) => { s.g.strokeStyle = color; s.g.lineWidth = w; s.g.beginPath(); const [a, b] = [s.toPx([x - 3, p1.p[1] - 3 * slope]), s.toPx([x + 3, p1.p[1] + 3 * slope])]; s.g.moveTo(...a); s.g.lineTo(...b); s.g.stroke(); };
+  line(df(x), "rgba(131,193,103,0.5)", 2); line(m, C.yellow, 3);
+  const [qx, qy] = s.toPx(q); s.g.fillStyle = C.yellow; s.g.beginPath(); s.g.arc(qx, qy, 6, 0, 7); s.g.fill();
+}, () => [p1], () => {
+  const x = p1.p[0], h = +$("h").value, m = (f(x + h) - f(x)) / h;
+  $("r1").textContent = `x = ${fmt(+x.toFixed(2))} · rise/run over h = ${h.toFixed(2)}: ${m.toFixed(3)} · true slope (derivative): ${df(x).toFixed(3)}`;
+}, opts);
+$("h").oninput = r1;
+
+// 2. gradient descent on the curve
+let ball = 2.6, trail = [], timer = null;
+const r2 = scene("s2", (s) => {
+  axes(s); curve(s);
+  s.g.fillStyle = "rgba(244,211,94,0.35)"; for (const x of trail) { const [a, b] = s.toPx([x, f(x)]); s.g.beginPath(); s.g.arc(a, b, 4, 0, 7); s.g.fill(); }
+  const [bx, by] = s.toPx([ball, f(ball)]); s.g.fillStyle = C.yellow; s.g.beginPath(); s.g.arc(bx, by - 10, 10, 0, 7); s.g.fill();
+  arrow(s, [ball, f(ball) + 0.6], [ball - Math.max(-1.5, Math.min(1.5, df(ball))), f(ball) + 0.6], C.green, 3);
+}, () => [], () => ($("r2").textContent = Math.abs(ball) > 6 ? "The ball flew off: the learning rate is too big." : `x = ${ball.toFixed(3)} · slope ${df(ball).toFixed(3)} · height ${f(ball).toFixed(3)}${Math.abs(df(ball)) < 0.01 ? " · flat: a valley bottom" : ""}`), opts);
+const step2 = () => {
+  if (Math.abs(ball) > 6) return stop2();
+  trail.push(ball); trail = trail.slice(-40);
+  ball -= +$("lr").value * df(ball); r2();
+  if (Math.abs(df(ball)) < 0.005) { stop2(); say(ball < 0 ? "The deep valley! Lowest point found." : "Stuck in the shallow valley. Try dropping me on the left.", ball < 0 ? "happy" : "think"); }
+  if (Math.abs(ball) > 6) { stop2(); say("Too big a step: I flew off the map!", "dizzy"); }
+};
+const stop2 = () => { clearInterval(timer); timer = null; $("run").textContent = "Roll"; };
+$("step").onclick = step2;
+$("run").onclick = () => (timer ? stop2() : ((timer = setInterval(step2, 120)), ($("run").textContent = "Stop")));
+$("drop").onclick = () => { stop2(); ball = Math.random() * 8 - 4; trail = []; r2(); };
+$("lr").oninput = () => ($("lrv").textContent = $("lr").value);
+
+// A landscape helper: shade f2 on a coarse grid, with contour lines.
+function landscape(s, F, lo, hi) {
+  const { g, W, H, toW } = s, step = 5;
+  for (let py = 0; py < H; py += step) for (let px = 0; px < W; px += step) {
+    const v = Math.max(0, Math.min(1, (F(...toW(px + step / 2, py + step / 2)) - lo) / (hi - lo))), t = Math.sqrt(v);
+    const band = v < 0.9 && Math.abs(((v * 12) % 1) - 0.5) > 0.46; // no contours where they'd bunch into a smear
+    g.fillStyle = band ? "rgba(255,255,255,0.22)" : `rgb(${20 + 70 * t},${30 + 90 * t},${60 + 120 * t})`;
+    g.fillRect(px, py, step, step);
+  }
+}
+
+// 3. the gradient on a 2-D landscape
+const F3 = (x, y) => 0.18 * (x - 0.8) ** 2 + 0.45 * (y + 0.3) ** 2 + 0.6 * Math.sin(x * 0.9) * Math.cos(y * 0.8);
+const grad = (F, x, y, e = 1e-4) => [(F(x + e, y) - F(x - e, y)) / (2 * e), (F(x, y + e) - F(x, y - e)) / (2 * e)];
+const p3 = { p: [-2.5, 2], color: C.blue };
+scene("s3", (s) => {
+  landscape(s, F3, -0.8, 6);
+  const [gx, gy] = grad(F3, ...p3.p), k = 0.9;
+  arrow(s, p3.p, [p3.p[0] + gx * k, p3.p[1] + gy * k], C.red, 4);
+  arrow(s, p3.p, [p3.p[0] - gx * k, p3.p[1] - gy * k], C.green, 4);
+}, () => [p3], () => {
+  const [gx, gy] = grad(F3, ...p3.p);
+  $("r3").textContent = `at (${p3.p[0].toFixed(2)}, ${p3.p[1].toFixed(2)}): height ${F3(...p3.p).toFixed(2)} · gradient (∂f/∂x, ∂f/∂y) = (${gx.toFixed(2)}, ${gy.toFixed(2)}) · steepness ${Math.hypot(gx, gy).toFixed(2)}`;
+}, { unit: 60, snap: false });
+
+// 4. fitting a line: points on the left, the loss over (w, b) on the right, one canvas split in two
+const pts = [];
+const newPoints = () => { pts.length = 0; const w = 0.4 + Math.random() * 0.8, b = -1 + Math.random() * 2; for (let i = 0; i < 7; i++) { const x = -3 + i + Math.random() * 0.6; pts.push({ p: [x, w * x + b + (Math.random() - 0.5) * 1.6], color: C.blue }); } };
+newPoints();
+const wb = { p: [-1.5, 2.5], color: C.yellow }, path4 = [];
+const loss = (w, b) => pts.reduce((t, { p: [x, y] }) => t + (w * x + b - y) ** 2, 0) / pts.length;
+const lossGrad = (w, b) => pts.reduce(([gw, gb], { p: [x, y] }) => { const e = w * x + b - y; return [gw + (2 * e * x) / pts.length, gb + (2 * e) / pts.length]; }, [0, 0]);
+// Two planes on one canvas: left (data) centered at (250, 250), right (w, b) centered at (750, 250).
+const cv4 = $("s4"), g4 = cv4.getContext("2d"), U = 55;
+const L = { toPx: ([x, y]) => [250 + x * U, 250 - y * U], toW: (px, py) => [(px - 250) / U, (250 - py) / U] };
+const R = { toPx: ([w, b]) => [750 + w * 70, 250 - b * 70], toW: (px, py) => [(px - 750) / 70, (250 - py) / 70] };
+function render4() {
+  g4.fillStyle = C.stage; g4.fillRect(0, 0, 1000, 500);
+  g4.save(); g4.beginPath(); g4.rect(500, 0, 500, 500); g4.clip();
+  landscape({ g: g4, W: 1000, H: 500, toW: (px, py) => (px < 500 ? [0, 0] : R.toW(px, py)) }, (w, b) => Math.log1p(loss(w, b)), 0, 4);
+  g4.fillStyle = "rgba(244,211,94,0.4)"; for (const q of path4) { const [x, y] = R.toPx(q); g4.beginPath(); g4.arc(x, y, 3, 0, 7); g4.fill(); }
+  g4.restore();
+  g4.fillStyle = C.stage; g4.fillRect(0, 0, 500, 500);
+  g4.strokeStyle = C.axis; g4.lineWidth = 2; g4.beginPath(); g4.moveTo(0, 250); g4.lineTo(500, 250); g4.moveTo(250, 0); g4.lineTo(250, 500); g4.moveTo(500, 0); g4.lineTo(500, 500); g4.stroke();
+  const [w, b] = wb.p;
+  g4.strokeStyle = "rgba(252,98,85,0.6)"; g4.lineWidth = 2;
+  for (const { p: [x, y] } of pts) { const [a, c] = L.toPx([x, y]), [, d] = L.toPx([x, w * x + b]); g4.beginPath(); g4.moveTo(a, c); g4.lineTo(a, d); g4.stroke(); }
+  g4.strokeStyle = C.yellow; g4.lineWidth = 3; g4.beginPath(); g4.moveTo(...L.toPx([-5, -5 * w + b])); g4.lineTo(...L.toPx([5, 5 * w + b])); g4.stroke();
+  for (const { p } of pts) { const [x, y] = L.toPx(p); g4.fillStyle = C.blue; g4.beginPath(); g4.arc(x, y, 8, 0, 7); g4.fill(); }
+  const [cx, cy] = R.toPx(wb.p); g4.fillStyle = C.yellow; g4.beginPath(); g4.arc(cx, cy, 9, 0, 7); g4.fill();
+  g4.fillStyle = C.text; g4.font = "15px ui-monospace, monospace"; g4.fillText("data: y = w·x + b", 12, 22); g4.fillText("loss over (w, b)", 512, 22); g4.fillText("w →", 960, 244); g4.fillText("b ↑", 756, 18);
+  const [gw, gb] = lossGrad(w, b);
+  $("r4").textContent = `w = ${w.toFixed(3)}, b = ${b.toFixed(3)} · loss ${loss(w, b).toFixed(3)} · gradient (${gw.toFixed(2)}, ${gb.toFixed(2)})`;
+}
+let drag4 = null;
+const pos4 = (e) => { const r = cv4.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 1000, ((e.clientY - r.top) / r.height) * 500]; };
+cv4.addEventListener("pointerdown", (e) => {
+  const [px, py] = pos4(e), near = (q, P) => { const [x, y] = P.toPx(q); return Math.hypot(x - px, y - py) < 22; };
+  drag4 = px > 500 ? (near(wb.p, R) ? { o: wb, P: R } : null) : (pts.find((q) => near(q.p, L)) && { o: pts.find((q) => near(q.p, L)), P: L });
+  if (drag4) { cv4.setPointerCapture(e.pointerId); stop4(); }
+});
+cv4.addEventListener("pointermove", (e) => { if (!drag4) return; drag4.o.p = drag4.P.toW(...pos4(e)); if (drag4.o === wb) path4.length = 0; render4(); });
+cv4.addEventListener("pointerup", () => (drag4 = null));
+let t4 = null;
+const step4 = () => {
+  const [gw, gb] = lossGrad(...wb.p), lr = +$("lr4").value;
+  path4.push([...wb.p]); wb.p = [wb.p[0] - lr * gw, wb.p[1] - lr * gb]; render4();
+  if (Math.hypot(gw, gb) < 0.01) { stop4(); say("The line fits! Gradient is nearly zero: we're at the bottom.", "happy"); }
+  if (!Number.isFinite(wb.p[0]) || Math.abs(wb.p[0]) > 50) { stop4(); wb.p = [-1.5, 2.5]; path4.length = 0; render4(); say("Learning rate too big: the numbers exploded!", "dizzy"); }
+};
+const stop4 = () => { clearInterval(t4); t4 = null; $("train").textContent = "Train"; };
+$("train").onclick = () => (t4 ? stop4() : ((t4 = setInterval(step4, 80)), ($("train").textContent = "Stop")));
+$("step4").onclick = step4;
+$("shuffle4").onclick = () => { stop4(); newPoints(); path4.length = 0; render4(); };
+$("reset4").onclick = () => { stop4(); wb.p = [-1.5, 2.5]; path4.length = 0; render4(); };
+$("lr4").oninput = () => ($("lr4v").textContent = $("lr4").value);
+render4();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 2: Gradients", slopePoint: p1.p[0], ballX: ball, learningRate: +$("lr").value, gradientAt: p3.p, lineFit: { w: wb.p[0], b: wb.p[1], loss: loss(...wb.p) } });
+</script>
+</body>
+</html>
