@@ -141,7 +141,7 @@ function render() {
     L.circleMarker([s.lat, s.lon], {
       radius: 5 + Math.min(6, shown.length), color: css("--alert"), fillColor: css("--alert"), fillOpacity: 0.6, weight: 1, bubblingMouseEvents: false,
     }).bindPopup(() => popup(s, shown), { maxWidth: 320 })
-      .on("popupopen", () => showBikes(s))
+      .on("popupopen", async (ev) => { showBikes(s); const html = await arrivalsHtml(id); if (ev.popup.isOpen()) ev.popup.setContent(popup(s, shown) + html); })
       .on("popupclose", () => bikeLayer.clearLayers())
       .addTo(alertLayer);
   }
@@ -173,13 +173,14 @@ function showBikes(s) {
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
+  stations: { label: "🚇 All stations: click for next trains", on: false, group: L.layerGroup(), load: loadAllStations },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
   cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
   city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -210,6 +211,20 @@ async function loadOutages(g) {
       .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString()}` : ""}</span>`).addTo(g);
   }
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
+}
+
+// Next trains: MTA real-time arrivals through /api/nyc/arrivals, shown in a station's popup.
+async function arrivalsHtml(id) {
+  const d = await getJSON(`/api/nyc/arrivals?stop=${encodeURIComponent(id)}`).catch(() => null);
+  if (!d) return `<p class="muted">No arrival times right now.</p>`;
+  seen.arrivals = d;
+  const dir = (x) => `<p class="viol"><b>${esc(x.label)}</b>: ${x.trains.length ? x.trains.map((t) => `${esc(t.route)} ${t.minutes ? t.minutes + " min" : "now"}`).join(" · ") : "no trains listed"}</p>`;
+  return `<div class="muted" style="margin-top:6px">Next trains</div>${dir(d.north)}${dir(d.south)}`;
+}
+async function loadAllStations(g) {
+  for (const [id, s] of stations) dot(s.lat, s.lon, "#9aa3cf", 3).bindTooltip(`${s.name} (${s.routes})`).bindPopup("Loading…", { maxWidth: 300 })
+    .on("popupopen", async (ev) => ev.popup.setContent(`<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>${await arrivalsHtml(id)}`)).addTo(g);
+  $("n-stations").textContent = `(${stations.size})`;
 }
 
 async function loadCameras(g) {
@@ -304,7 +319,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals };
 };
 
 $("refresh").addEventListener("click", refresh);

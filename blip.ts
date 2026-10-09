@@ -3,6 +3,7 @@
 import { addressInfo, cityEvents, findRestaurants, restaurantInspections, webSearch } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
+import { findStations, stationArrivals } from "./transit.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -27,6 +28,15 @@ const TOOLS: Record<string, Tool> = {
       return { alertsActive: s.counts.alertsNow, outagesNow: s.counts.outagesNow, alertTypes: s.types, alerts,
         outages: (s.outagesNow as any[]).filter((o) => !l || String(o.trains).split("/").includes(l)).slice(0, 15)
           .map((o) => ({ station: o.station, trains: o.trains, what: o.kind === "EL" ? "elevator" : "escalator", serving: o.serving, reason: o.reason })) };
+    },
+  },
+  subway_arrivals: {
+    description: "Next subway trains at a station, both directions, in minutes (MTA real-time feeds).",
+    parameters: { station: { type: "string", description: "Station name, e.g. 'Union Sq', '42 St-Port Authority', 'Bedford Av'" } }, required: ["station"],
+    run: async ({ station }) => {
+      const found = await findStations(String(station));
+      if (!found.length) return { error: `no station matches "${station}"` };
+      return Promise.all(found.slice(0, 3).map((s) => stationArrivals(s.id, 5)));
     },
   },
   free_events: {

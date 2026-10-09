@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "cd radio && npm ci && npm run build",
-    "start": "node server.ts"
+    "start": "node server.ts",
+    "check": "node check.ts"
   }
 }

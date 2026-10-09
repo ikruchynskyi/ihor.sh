@@ -495,7 +495,7 @@ form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
-const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", free_events: "checked free events", city_events: "checked the city calendar",
+const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
 const pageInfo = () => ({
   url: location.pathname,

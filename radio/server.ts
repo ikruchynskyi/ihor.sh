@@ -157,6 +157,17 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, state());
     }
 
+    // Owner-only (this Mac): drop every Spectrum Lab listener and map viewer and release the dongle. ihor.sh never forwards it.
+    if (url.pathname === "/api/admin/free" && req.method === "POST") {
+      if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "")) return json(res, 403, { error: "local only" });
+      const dropped = { listeners: clients.size, aprs: watchers.aprs.size, adsb: watchers.adsb.size };
+      for (const c of [...clients, ...watchers.aprs, ...watchers.adsb]) c.destroy();
+      clients.clear(); watchers.aprs.clear(); watchers.adsb.clear();
+      paused = null; clearTimeout(idle); clearTimeout(decoderIdle);
+      await release();
+      return json(res, 200, { dropped, ...state() });
+    }
+
     if (url.pathname === "/api/receiver" && req.method === "POST") {
       let body = "";
       for await (const c of req) { body += c; if (body.length > 200) return json(res, 413, {}); }

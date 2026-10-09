@@ -6,6 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
+import { stationArrivals } from "./transit.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras } from "./nycapi.ts";
@@ -157,6 +158,28 @@ const server = http.createServer(async (req, res) => {
       return proxySdr(req, res);
     }
     if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
+    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events"].includes(url.pathname)) {
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
+      const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
+      const day = /^\d{4}-\d{2}-\d{2}$/;
+      if (url.pathname === "/api/nyc/point") {
+        const lat = Number(q.get("lat")), lon = Number(q.get("lon"));
+        if (!(lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();
+        return send(await pointInfo(lat, lon), 3600);
+      }
+      if (url.pathname === "/api/nyc/restaurants") return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20)), 3600);
+      if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
+      const from = q.get("from") ?? "", to = q.get("to") ?? from;
+      if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();
+      return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
+    }
+    if (url.pathname === "/api/nyc/arrivals") {
+      const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
+      return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();
+    }
+    if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
+    if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
