@@ -27,7 +27,8 @@
     .leaflet-popup-content { font-size: 13px; }
     .leaflet-popup-content ul { padding-left: 16px; margin: 4px 0; }
     .bikes li { list-style: none; margin-left: -16px; }
-    #layers label { display: block; margin: 3px 0; }
+    #layers label, #trip label { display: block; margin: 3px 0; }
+    #trip input { width: 100%; }
     #rresults button { display: block; width: 100%; text-align: left; margin: 4px 0; font-size: .8rem; }
     .viol { font-size: .8rem; margin: 2px 0 0; }
     .grade { display: inline-grid; place-items: center; width: 26px; height: 26px; font-weight: 700; border: 2px solid currentColor; margin-right: 6px; }
@@ -49,6 +50,15 @@
   <div id="types" style="margin-top:8px"></div>
   <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
+  <details open><summary>Trip planner: cameras on your route</summary>
+    <form id="trip">
+      <label>From <input id="tFrom" placeholder="Address or place, e.g. Empire State Building" autocomplete="off"></label>
+      <label>To <input id="tTo" placeholder="e.g. Barclays Center" autocomplete="off"></label>
+      <label>By <select id="tMode"><option value="drive">Car</option><option value="bike">Bike</option><option value="walk">Foot</option></select></label>
+      <button style="margin-top:6px">Plan</button>
+    </form>
+    <div id="tripOut" class="muted"></div>
+  </details>
   <details open><summary>More on the map</summary>
     <div id="layers"></div>
     <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
@@ -180,7 +190,7 @@ const LAYERS = {
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -275,6 +285,30 @@ function openCam(c) {
   });
 }
 
+// Trip planner: route from the server (OSRM + GeoSearch) and the traffic cameras along it, in order.
+const tripLayer = L.layerGroup().addTo(map);
+$("trip").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const from = $("tFrom").value.trim(), to = $("tTo").value.trim();
+  if (!from || !to) return;
+  $("tripOut").textContent = "Planning…";
+  tripLayer.clearLayers();
+  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${$("tMode").value}`).catch((err) => ({ error: err.message }));
+  if (d.error) return ($("tripOut").textContent = d.error);
+  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
+  const line = L.polyline(d.line, { color: "#ffb347", weight: 5, opacity: 0.85 }).addTo(tripLayer);
+  dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
+  dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
+  const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
+  for (const c of d.cameras) L.marker([c.lat, c.lon], { icon: camIcon, title: c.name }).on("click", () => openCam(c)).addTo(tripLayer);
+  map.fitBounds(line.getBounds().pad(0.1));
+  $("tripOut").innerHTML = `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
+    ${d.cameras.length ? `<button id="openTrip" style="display:block;margin:6px 0">Open the first 4 cameras</button>` : ""}
+    <ol style="padding-left:18px;margin:4px 0">${d.cameras.map((c, i) => `<li><a href="#" data-i="${i}">${esc(c.name)}</a> <span class="muted">km ${c.kmAlong}</span></li>`).join("")}</ol>`;
+  $("tripOut").querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); openCam(d.cameras[+a.dataset.i]); }));
+  $("openTrip")?.addEventListener("click", () => d.cameras.slice(0, 4).forEach(openCam));
+});
+
 // Restaurant inspections: search by name, results on the map, click for the history.
 const GRADE_COLOR = { A: "#4dabf7", B: "#69db7c", C: "#ffa94d" };
 $("rsearch").addEventListener("submit", async (e) => {
@@ -319,7 +353,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip };
 };
 
 $("refresh").addEventListener("click", refresh);

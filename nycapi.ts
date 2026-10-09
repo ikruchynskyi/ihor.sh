@@ -125,6 +125,47 @@ export async function trafficCameras() {
   return cams.list;
 }
 
+// ---------- trip planner ----------
+/** First match for an address or place in NYC (NYC Planning GeoSearch). */
+export async function geocode(text: string) {
+  const d = await json(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(text)}&size=1`);
+  const f = d.features?.[0];
+  return f ? { label: f.properties.label as string, lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number } : null;
+}
+
+const PROFILE = { drive: "car", bike: "bike", walk: "foot" } as const;
+/**
+ * A route from A to B (OSRM on routing.openstreetmap.de) and the traffic cameras along it, in order:
+ * every camera within 150 m of the line, sorted by how far along the trip it is.
+ */
+export async function tripPlan(from: string, to: string, mode: keyof typeof PROFILE = "drive") {
+  const [a, b] = await Promise.all([geocode(from), geocode(to)]);
+  if (!a || !b) return { error: `Couldn't find ${!a ? from : to} in NYC.` };
+  const r = await fetch(`https://routing.openstreetmap.de/routed-${PROFILE[mode] ?? "car"}/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`,
+    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(20_000) });
+  const route = (await r.json()).routes?.[0];
+  if (!route) return { error: "No route found." };
+  const line: [number, number][] = route.geometry.coordinates.map(([lon, lat]: number[]) => [lat, lon]);
+  // Flat-earth meters are plenty at city scale.
+  const M_LAT = 111_320, M_LON = 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  const cams = await trafficCameras().catch(() => []);
+  const along: { cam: any; at: number; off: number }[] = [];
+  for (const c of cams) {
+    let best = { off: Infinity, at: 0 }, walked = 0;
+    for (let i = 1; i < line.length; i++) {
+      const [y1, x1] = [line[i - 1][0] * M_LAT, line[i - 1][1] * M_LON], [y2, x2] = [line[i][0] * M_LAT, line[i][1] * M_LON], [py, px] = [c.lat * M_LAT, c.lon * M_LON];
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1, t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / len ** 2));
+      const off = Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+      if (off < best.off) best = { off, at: walked + t * len };
+      walked += len;
+    }
+    if (best.off <= 150) along.push({ cam: c, ...best });
+  }
+  along.sort((x, y) => x.at - y.at);
+  return { from: a, to: b, mode, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+    cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
+}
+
 // ---------- the web ----------
 /** Web search: Tavily when its key works, DuckDuckGo's HTML results otherwise. */
 export async function webSearch(query: string) {
