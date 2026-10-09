@@ -178,7 +178,9 @@ export function similarity(a, b) {
 export async function strokes(ch, el) {
   const code = ch.codePointAt(0).toString(16).padStart(5, "0");
   el.innerHTML = '<span class="muted">…</span>';
-  const svg = await fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${code}.svg`).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+  // jsDelivr refuses a few files (週, 判, 参); GitHub's raw URL has them all.
+  const get = (u) => fetch(u).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+  const svg = (await get(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${code}.svg`)) || (await get(`https://raw.githubusercontent.com/KanjiVG/kanjivg/master/kanji/${code}.svg`));
   if (!svg) { el.innerHTML = '<span class="muted">No stroke data</span>'; return; }
   el.innerHTML = svg.slice(svg.indexOf("<svg"));
   const paths = [...el.querySelectorAll("path")];

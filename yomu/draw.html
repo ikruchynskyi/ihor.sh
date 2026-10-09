@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Draw a Kanji</title>
+  <meta name="description" content="Draw a kanji with your finger or mouse and see which one it is, in any stroke order. Then practice writing kanji from their meaning. Covers all N5–N3 kanji." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .pad { display: grid; grid-template-columns: minmax(0, 340px) 1fr; gap: 18px; align-items: start; }
+    @media (max-width: 640px) { .pad { grid-template-columns: 1fr; } }
+    #ink { width: 100%; aspect-ratio: 1; touch-action: none; background: var(--card); border: 2px solid var(--line); cursor: crosshair; display: block; }
+    .cands { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; min-height: 56px; }
+    .cands button { font-size: 30px !important; line-height: 1 !important; padding: 8px 10px; text-transform: none; font-family: inherit !important; }
+    .cands button.best { outline: 2px solid var(--accent); }
+    #info .big { font-size: 64px; line-height: 1; }
+    #info .so { width: 120px; height: 120px; float: right; }
+    .modes { display: flex; gap: 6px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Draw</p>
+  <h1>Draw a kanji</h1>
+  <p class="lede">Draw with your finger or mouse. Any stroke order works: it compares your strokes and the overall shape against all 612 N5–N3 kanji.</p>
+  <div class="modes" role="radiogroup" aria-label="Mode">
+    <button id="mLook" aria-pressed="true">Look up</button><button id="mPractice" aria-pressed="false">Practice writing</button>
+  </div>
+  <p id="task" class="jp" hidden></p>
+  <div class="pad">
+    <div>
+      <canvas id="ink" aria-label="Drawing pad: draw a kanji here"></canvas>
+      <p><button id="undo">Undo stroke</button> <button id="clear">Clear</button> <button id="check" hidden>Check</button> <span class="muted" id="count"></span></p>
+    </div>
+    <div>
+      <div class="muted" id="hint">Draw, and the likeliest kanji show up here after each stroke.</div>
+      <div class="cands jp" id="cands"></div>
+      <div id="info" class="card2"></div>
+    </div>
+  </div>
+  <p class="muted">Stroke data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0).</p>
+</main>
+<script type="module">
+import { state, gain, esc, speak, strokes, addCard, kanjiCard, inDeck, LEVELS, blip, data } from "/yomu/lib.js";
+import { references, recognize } from "/yomu/handwriting.js";
+const $ = (id) => document.getElementById(id);
+const [kanji, refs] = await Promise.all([data("kanji"), data("strokes").then(references)]);
+const byK = new Map(kanji.map((k) => [k.k, k]));
+
+// ---------- the pad ----------
+const cv = $("ink"), g = cv.getContext("2d");
+let ink = [], cur = null;
+function fit() {
+  const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.width * dpr;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+function draw() {
+  const w = cv.getBoundingClientRect().width, css = getComputedStyle(document.documentElement);
+  g.clearRect(0, 0, w, w);
+  g.strokeStyle = css.getPropertyValue("--line"); g.lineWidth = 1; g.setLineDash([4, 6]);
+  g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, w); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = css.getPropertyValue("--fg") || "#fff"; g.lineWidth = Math.max(4, w / 45); g.lineCap = g.lineJoin = "round";
+  for (const s of [...ink, ...(cur ? [cur] : [])]) { g.beginPath(); s.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); if (s.length === 1) g.lineTo(s[0][0] + 0.1, s[0][1]); g.stroke(); }
+  $("count").textContent = ink.length ? `${ink.length} stroke${ink.length > 1 ? "s" : ""}` : "";
+}
+const at = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); cur = [at(e)]; draw(); });
+cv.addEventListener("pointermove", (e) => { if (cur) { cur.push(at(e)); draw(); } });
+const end = () => { if (!cur) return; ink.push(cur); cur = null; draw(); if (mode === "look") guess(); };
+cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+$("undo").onclick = () => { ink.pop(); draw(); mode === "look" ? guess() : null; };
+$("clear").onclick = () => { ink = []; draw(); $("cands").innerHTML = ""; if (mode === "look") $("info").innerHTML = ""; };
+addEventListener("resize", fit);
+fit();
+
+// ---------- look up ----------
+function guess() {
+  const list = recognize(ink, refs, 10);
+  $("cands").innerHTML = list.map((r, i) => `<button class="${i ? "" : "best"}" data-k="${esc(r.k)}" aria-label="${esc(r.k)}: ${esc(byK.get(r.k)?.m[0] ?? "")}">${esc(r.k)}</button>`).join("");
+  $("hint").textContent = list.length ? "Tap a kanji to see it. Not there? Add strokes, or undo the last one." : "Draw, and the likeliest kanji show up here after each stroke.";
+}
+$("cands").addEventListener("click", (e) => { const k = e.target.closest("[data-k]")?.dataset.k; if (k) show(k); });
+function show(k) {
+  const x = byK.get(k);
+  if (!x) return;
+  $("info").innerHTML = `<div class="so jp" id="so"></div><div class="big jp">${esc(x.k)}</div>
+    <p><b>${esc(x.m.slice(0, 3).join(", "))}</b> <span class="muted">· N${x.n} · ${x.s} strokes</span></p>
+    <p class="jp">${x.on.length ? `音 ${esc(x.on.join("、"))}` : ""} ${x.kun.length ? ` 訓 ${esc(x.kun.join("、"))}` : ""}</p>
+    <ul class="jp">${x.ex.slice(0, 3).map(([w, r, m]) => `<li>${esc(w)} <span class="muted">${esc(r)} · ${esc(m)}</span> <button class="mini" data-say="${esc(w)}">▶</button></li>`).join("")}</ul>
+    <button id="add">${inDeck("k:" + x.k) ? "✓ In your review deck" : "+ Add to review"}</button>`;
+  strokes(x.k, $("so"));
+  $("add").onclick = () => { addCard(...kanjiCard(x)); gain(1); $("add").textContent = "✓ In your review deck"; };
+}
+$("info").addEventListener("click", (e) => { const t = e.target.closest("[data-say]")?.dataset.say; if (t) speak(t); });
+
+// ---------- practice: draw the kanji for a meaning, from your level ----------
+let mode = "look", target = null;
+const level = state.start?.level ?? "N5";
+function nextTask() {
+  const pool = kanji.filter((k) => `N${k.n}` === level || inDeck("k:" + k.k));
+  target = pool[Math.floor(Math.random() * pool.length)];
+  $("task").innerHTML = `Draw the kanji for <b>${esc(target.m[0])}</b> <span class="muted">(${esc([...target.kun, ...target.on].slice(0, 2).join("、"))} · ${target.s} strokes)</span>`;
+  ink = []; draw(); $("cands").innerHTML = ""; $("info").innerHTML = "";
+}
+$("check").onclick = () => {
+  if (!ink.length) return;
+  const list = recognize(ink, refs, 3).map((r) => r.k), ok = list.includes(target.k);
+  $("cands").innerHTML = list.map((k) => `<button class="${k === target.k ? "best" : ""}" data-k="${esc(k)}">${esc(k)}</button>`).join("");
+  if (ok) { gain(3); blip(`${target.k}! Nice writing.`, "happy", 3); }
+  else blip(`Close! It's ${target.k}. Watch the strokes, then try again.`, "think");
+  show(target.k);
+  $("info").insertAdjacentHTML("afterbegin", `<p class="${ok ? "right" : "wrong"}"><b>${ok ? "Correct!" : "Not quite."}</b> <button id="again">Next kanji →</button></p>`);
+  $("again").onclick = nextTask;
+};
+const setMode = (m) => {
+  mode = m;
+  $("mLook").setAttribute("aria-pressed", m === "look"); $("mPractice").setAttribute("aria-pressed", m === "practice");
+  $("task").hidden = $("check").hidden = m === "look";
+  $("hint").hidden = m === "practice";
+  m === "practice" ? nextTask() : $("clear").click();
+};
+$("mLook").onclick = () => setMode("look");
+$("mPractice").onclick = () => setMode("practice");
+
+window.blipContext = () => ({ page: "Yomu: draw a kanji", role: "You are a friendly Japanese tutor. Help with kanji: meaning, readings, stroke order tips, example words.",
+  mode, drawnStrokes: ink.length, candidates: [...$("cands").querySelectorAll("[data-k]")].map((b) => b.dataset.k), practiceTarget: mode === "practice" ? target?.k : undefined });
+</script>
+</body>
+</html>
