@@ -67,7 +67,7 @@
     <button id="tplBtn" title="Insert a ready-made circuit">＋ Insert circuit…</button>
     <span class="sep"></span>
     <button id="undo" title="Undo (Ctrl+Z)">↶</button><button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
-    <button id="rotBtn" title="Rotate selection (R)">⟳</button><button id="dupBtn" title="Duplicate selection (Ctrl+D)">⧉</button><button id="delBtn" title="Delete selection (Del)">✕</button>
+    <button id="rotBtn" title="Rotate the selected part, or the one you're placing (R)">⟳ Rotate</button><button id="dupBtn" title="Duplicate selection (Ctrl+D)">⧉ Duplicate</button><button id="delBtn" title="Delete selection (Del)">✕ Delete</button>
     <span class="sep"></span>
     <button id="play" title="Pause / run (Space)">❚❚ Pause</button>
     <label class="muted">speed <select id="speed" aria-label="Simulation speed"></select></label>
@@ -267,7 +267,7 @@ addEventListener("keydown", (e) => {
   if (mod) return;
   if (e.key === "Escape") { if (tool === "wire" && placing) placing = null; else setTool("select"); setStatus(""); }
   else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); del(); }
-  else if (k === "r") { if (tool === "place" && placing?.kind === "part") placing.rot = (placing.rot + 1) % 4; else rot(); }
+  else if (k === "r") rot();
   else if (k === "w") setTool("wire");
   else if (e.key === " ") { e.preventDefault(); $("play").click(); }
   else if (e.key === "+" || e.key === "=") $("zin").click();
@@ -275,7 +275,16 @@ addEventListener("keydown", (e) => {
   else if (k === "f") fit();
 });
 function del() { if (!selected.size) return; remember(); parts = parts.filter((p) => !selected.has(p.id)); selected.clear(); changed(); }
-function rot() { if (!selected.size) return; remember(); for (const p of sel()) rotate(p); changed(); }
+// Rotate the selection; wires that ended on a pin follow that pin to its new place.
+function rot() {
+  if (tool === "place" && placing?.kind === "part") { placing.rot = (placing.rot + 1) % 4; return; }
+  if (!selected.size) { setStatus(`<span class="muted">Select a part first (click it), then rotate. While placing a new part, <kbd>R</kbd> turns it before you drop it.</span>`); return; }
+  remember();
+  const moves = new Map();
+  for (const p of sel()) { const before = pins(p); rotate(p); pins(p).forEach((pt, k) => moves.set(key(before[k]), pt)); }
+  for (const w of parts) if (w.type === "wire" && !selected.has(w.id)) for (const end of ["a", "b"]) { const to = moves.get(key(w[end])); if (to) w[end] = to; }
+  changed();
+}
 function duplicate() { if (!selected.size) return; remember(); const copies = sel().map((p) => { const c = { ...structuredClone(p), id: newId() }; shift(c, 2, 2); delete c.dead; if (c.type === "probe") c.ch = freeChannel(); return c; }); parts.push(...copies); selected = new Set(copies.map((c) => c.id)); changed(); }
 $("delBtn").onclick = del; $("rotBtn").onclick = rot; $("dupBtn").onclick = duplicate;
 
@@ -452,7 +461,7 @@ function showPanel() {
   const list = sel();
   if (!list.length) {
     $("panel").innerHTML = `<h2>How to build</h2>
-      <p>1. Pick a part above, then click the board to drop it. <kbd>R</kbd> turns it, before or after.</p>
+      <p>1. Pick a part above, then click the board to drop it. To turn a part: press <kbd>R</kbd> (or ⟳ Rotate) while placing it, or click it to select and then <kbd>R</kbd>.</p>
       <p>2. <b>Wire</b> (<kbd>W</kbd>): click from pin to pin; it keeps going until <kbd>Esc</kbd>. A pin landing on a wire joins it (a dot marks the joint). <span style="color:#e03131">Red rings</span> are pins connected to nothing.</p>
       <p>3. Add a <b>⏚ ground</b> and <b>⌁ scope probes</b>, or start from <b>＋ Insert circuit</b>.</p>
       <p class="muted">Drag parts to move them (wires follow), drag empty space to pan, wheel to zoom, Shift-drag to select several. Click a switch to flip it; hold a push button down. Hover any point for its voltage. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Space</kbd> pauses.</p>`;

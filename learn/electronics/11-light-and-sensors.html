@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Light and Sensors</title>
+  <meta name="description" content="Electronics from scratch, chapter 11: measuring the world. Photodiodes and a transimpedance amplifier, optocouplers for isolation, an NTC thermistor through a divider into an ADC and back to degrees, ADC resolution as a staircase, and a Wheatstone bridge reading a strain gauge." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 11</p>
+  <h1>Light and sensors</h1>
+  <p class="lede">A sensor turns something in the world (light, heat, force, a magnet) into something electrical: a current, a voltage, a change of resistance. Then a circuit turns that into a voltage a chip can read, and an ADC turns the voltage into a number. This chapter follows that chain for a few classic sensors, and shows the math that turns the number back into degrees or grams.</p>
+  <div class="plain card"><b>In plain words:</b> almost every sensor is "a part whose value changes with the world" plus "a circuit from earlier chapters that turns that change into a voltage": a divider, an op-amp, a bridge. The last step is arithmetic in code.</div>
+
+  <h2>1. Light into current: the photodiode</h2>
+  <p>A diode (chapter 4) with a window: each photon that lands in its junction can knock loose one electron, so light makes a tiny current flow backwards through it, proportional to the light. Tiny means microamps. An op-amp turns it into a usable voltage: the photodiode's current has to go through the feedback resistor (golden rule 2), so \(V_{out} = I \cdot R_f\). It's called a <b>transimpedance amplifier</b>, and every optical mouse, fiber receiver and light meter has one.</p>
+  <canvas id="c1" width="800" height="260" aria-label="Photodiode current and the amplifier's output versus light"></canvas>
+  <div class="row"><label>light <input type="range" id="lux" min="0" max="5" step="0.01" value="2.5"> <span id="luxv" class="math"></span></label><label>R<sub>f</sub> <select id="rf1"><option value="10000" selected>10 kΩ</option><option value="100000">100 kΩ</option><option value="1000000">1 MΩ</option></select></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> pick R<sub>f</sub> so ordinary room light (about 300 lux) reads between 1 and 3 V.</p>
+  <div class="q" data-num="2" data-unit="V">
+    <p>A photodiode gives 20 µA; R<sub>f</sub> = 100 kΩ. What's the output voltage?</p>
+    <div class="why">\(20\,\mu A \times 100\text{ kΩ} = 2\) V.</div>
+  </div>
+
+  <h2>2. Optocouplers: a signal across a gap</h2>
+  <p>Put an LED and a phototransistor face to face in one package, with nothing but plastic between them. Current in the LED makes light, the light makes current on the other side, but no wire connects the two. That's <b>isolation</b>: a microcontroller can switch a mains-powered circuit, or read a signal from a noisy motor, without the two sharing a ground. The ratio of output to input current is the <b>current transfer ratio</b> (CTR), typically 50–200%, and it falls as the LED ages.</p>
+  <div class="q" data-answer="c">
+    <p>Why use an optocoupler between a microcontroller and a circuit connected to mains voltage?</p>
+    <ul><li data-k="a" data-says="It has some gain (CTR), but that's not the reason: a transistor could amplify too.">To amplify the signal</li><li data-k="b" data-says="Speed is actually worse through an optocoupler than a wire.">To make the signal faster</li><li data-k="c">So no conductive path exists between the two: a fault on the mains side can't reach the low-voltage side (or you)</li></ul>
+    <div class="why">Isolation ratings of 3,000–5,000 V are common. The light crosses the gap; the danger doesn't.</div>
+  </div>
+
+  <h2>3. Temperature: a thermistor, a divider and an ADC</h2>
+  <p>An NTC thermistor is a resistor whose resistance <b>falls</b> as it warms, steeply and predictably. Put it in a voltage divider (chapter 1) with a fixed 10 kΩ, read the middle with a 12-bit ADC on 3.3 V, and you have a thermometer. Move the temperature and follow the chain.</p>
+  <canvas id="c3" width="800" height="300" aria-label="NTC thermistor resistance, divider voltage and ADC reading versus temperature"></canvas>
+  <div class="row"><label>temperature <input type="range" id="tc" min="-20" max="100" step="0.5" value="25"> <span id="tcv" class="math"></span></label></div>
+  <p class="readout" id="o3"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>The <b>Beta equation</b> describes an NTC with temperatures in kelvin (\(T_0 = 298.15\) K = 25 °C, where it measures \(R_0\), and a constant \(B\) from the datasheet, here 3950):</p>
+    <p class="formula">\[ R(T) = R_0\, e^{B\left(\frac{1}{T} - \frac{1}{T_0}\right)} \]</p>
+    <p>With the thermistor on the bottom of the divider: \(V = 3.3 \cdot \frac{R}{R + 10\text{k}}\), and the ADC reports \(n = \text{round}(4095 \cdot V / 3.3)\). Going back, in code: \(R = 10\text{k} \cdot \frac{n}{4095 - n}\), then solve the Beta equation for \(T\):</p>
+    <p class="formula">\[ \frac{1}{T} = \frac{1}{T_0} + \frac{1}{B} \ln\frac{R}{R_0} \]</p>
+  </details>
+  <div class="q" data-num="2048" data-tol="2">
+    <p>At 25 °C the thermistor is exactly 10 kΩ, equal to the fixed resistor. What does the 12-bit ADC read?</p>
+    <div class="why">Half of 3.3 V, so half of full scale: \(4095/2 \approx 2048\).</div>
+  </div>
+  <div class="code" data-title="Build it: ADC counts → degrees"><textarea>
+// The reverse of the chain above: what firmware on an ESP32 or Arduino does with each reading.
+const R0 = 10000, B = 3950, T0 = 298.15, RFIX = 10000, FULL = 4095;
+function celsius(counts) {
+  const R = RFIX * counts / (FULL - counts);                 // divider, thermistor at the bottom
+  const invT = 1 / T0 + Math.log(R / R0) / B;                // the Beta equation, solved for T
+  return 1 / invT - 273.15;
+}
+for (const n of [3500, 2900, 2048, 1200, 400]) print(`ADC ${n} → ${celsius(n).toFixed(1)} °C`);
+// Each count near room temperature is worth how much? (the resolution)
+print("one count at 25 °C ≈", (celsius(2047) - celsius(2048)).toFixed(3), "°C");
+</textarea></div>
+
+  <h2>4. How fine can an ADC see?</h2>
+  <p>An ADC with \(N\) bits splits its range into \(2^N\) steps, so every voltage gets rounded to the nearest step, exactly as the radio course's 8-bit dongle does with radio samples. Slide the bits and watch the staircase approach the real curve.</p>
+  <canvas id="c4" width="800" height="280" aria-label="A smooth signal and its ADC staircase for a chosen number of bits"></canvas>
+  <div class="row"><label>bits <input type="range" id="bits" min="1" max="12" step="1" value="3"> <span id="bitsv" class="math"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <div class="q" data-num="0.806" data-tol="0.005" data-unit="mV">
+    <p>A 12-bit ADC on a 3.3 V range. How big is one step (LSB), in millivolts?</p>
+    <div class="why">\(3300 / 4096 \approx 0.806\) mV. An Arduino Uno's 10-bit ADC on 5 V: 4.9 mV per step.</div>
+  </div>
+
+  <h2>5. Tiny changes: the Wheatstone bridge</h2>
+  <p>A strain gauge (the heart of every kitchen scale) is a zig-zag of foil whose resistance changes by about 0.1% at full load: 350 Ω becomes 350.35 Ω. Measured on its own that's hopeless, buried under the 2.5 V across it. The trick is a <b>bridge</b>: two dividers side by side, made to balance at zero load, so their difference starts at exactly 0 V and only the change shows.</p>
+  <canvas id="c5" width="800" height="300" aria-label="A Wheatstone bridge with a strain gauge and its output"></canvas>
+  <div class="row"><label>load on the scale <input type="range" id="kg" min="0" max="5" step="0.01" value="1"> <span id="kgv" class="math"></span></label></div>
+  <p class="readout" id="o5"></p>
+  <details class="deeper"><summary>The math</summary>
+    <p>With one gauge \(R(1 + x)\) in a bridge of equal resistors on supply \(V\):</p>
+    <p class="formula">\[ V_{out} = V\left(\frac{R(1+x)}{R + R(1+x)} - \frac{1}{2}\right) \approx \frac{V\,x}{4} \]</p>
+    <p>A 0.1% change (\(x = 0.001\)) on 5 V gives about 1.25 mV: small, but starting from zero, so an amplifier with a gain of 1000 (the HX711 chip in cheap scales has 128 plus a 24-bit ADC) turns it into a clean reading.</p>
+  </details>
+  <div class="q" data-num="1.25" data-tol="0.03" data-unit="mV">
+    <p>A bridge on 5 V; one gauge changes by 0.1%. About what's the output?</p>
+    <div class="why">\(V x / 4 = 5 \times 0.001 / 4 = 1.25\) mV.</div>
+  </div>
+
+  <p>Every one of these is a circuit you've already met: a diode, a divider, an op-amp, a bridge of dividers. Next: logic, where voltages stop being measurements and become ones and zeros (coming soon).</p>
+  <p class="muted">Previous: <a href="./10-power-supplies.html">Power supplies</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", grid: "#232934", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 2.5) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+
+// ---------- 1. photodiode ----------
+const SENS = 0.08e-6; // ponytail: ≈ 0.08 µA per lux, a typical small photodiode
+function draw1() {
+  const lux = 10 ** +$("lux").value - 1, rf = +$("rf1").value, I = lux * SENS, V = Math.min(3.2, I * rf);
+  const cv = $("c1"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  // rays
+  g.strokeStyle = `rgba(244,211,94,${Math.min(1, 0.15 + lux / 2000)})`; g.lineWidth = 2; for (let k = 0; k < 7; k++) { g.beginPath(); g.moveTo(30 + k * 18, 20); g.lineTo(130 + k * 6, 110); g.stroke(); }
+  g.fillStyle = C.text; g.beginPath(); g.moveTo(130, 110); g.lineTo(180, 140); g.lineTo(130, 170); g.closePath(); g.fill(); g.fillRect(180, 110, 5, 60);
+  g.font = "14px ui-monospace, monospace"; g.fillText(`${I < 1e-6 ? (I * 1e9).toFixed(0) + " nA" : (I * 1e6).toFixed(2) + " µA"}`, 120, 200);
+  // output meter
+  g.strokeStyle = C.dim; g.strokeRect(560, 30, 60, 200); g.fillStyle = V >= 3.2 ? C.red : C.green; g.fillRect(565, 230 - (V / 3.3) * 200, 50, (V / 3.3) * 200);
+  g.fillStyle = C.text; g.fillText(`${V.toFixed(2)} V`, 630, 236 - (V / 3.3) * 200); g.fillText("3.3 V", 630, 36); g.fillText("V = I × R_f", 330, 140);
+  $("luxv").textContent = `${lux.toFixed(0)} lux`;
+  $("o1").textContent = `${lux.toFixed(0)} lux × 0.08 µA/lux = ${(I * 1e6).toFixed(2)} µA × ${rf / 1000} kΩ = ${(I * rf).toFixed(3)} V${I * rf > 3.2 ? " → saturated at the rail" : ""}`;
+  const room = 300 * SENS * rf;
+  if (room >= 1 && room <= 3) done("g1", "100 kΩ: room light lands mid-scale, and brighter light still has headroom.");
+}
+$("lux").oninput = $("rf1").onchange = draw1; draw1();
+
+// ---------- 3. thermistor chain ----------
+const R0 = 10000, B = 3950, T0 = 298.15;
+const Rntc = (c) => R0 * Math.exp(B * (1 / (c + 273.15) - 1 / T0));
+function draw3() {
+  const c = +$("tc").value, R = Rntc(c), V = (3.3 * R) / (R + 10000), n = Math.round((4095 * V) / 3.3);
+  const back = 1 / (1 / T0 + Math.log((10000 * n) / (4095 - n) / R0) / B) - 273.15;
+  const cv = $("c3"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (cc) => 50 + ((cc + 20) / 120) * (W - 80), Yv = (v) => 260 - (v / 3.3) * 220;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = C.dim; g.lineWidth = 1.5; g.beginPath(); g.moveTo(50, 20); g.lineTo(50, 260); g.lineTo(W - 30, 260); g.stroke();
+  line(g, Array.from({ length: 121 }, (_, k) => { const cc = -20 + k; const r = Rntc(cc); return [X(cc), Yv((3.3 * r) / (r + 10000))]; }), C.blue);
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(c), Yv(V), 8, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; for (const cc of [-20, 0, 25, 50, 75, 100]) g.fillText(`${cc}°`, X(cc) - 8, 278); g.fillText("divider voltage", 56, 30); g.fillText("3.3", 22, Yv(3.3) + 4);
+  $("tcv").textContent = `${c.toFixed(1)} °C`;
+  $("o3").textContent = `${c.toFixed(1)} °C → NTC ${(R / 1000).toFixed(2)} kΩ → ${V.toFixed(3)} V → ADC ${n} → firmware says ${back.toFixed(2)} °C`;
+}
+$("tc").oninput = draw3; draw3();
+
+// ---------- 4. ADC staircase ----------
+function draw4() {
+  const bits = +$("bits").value, steps = 2 ** bits, cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height, N = 400;
+  const sig = (k) => 1.65 + 1.4 * Math.sin((k / N) * 2 * Math.PI) + 0.25 * Math.sin((k / N) * 7 * Math.PI);
+  const Y = (v) => H - 20 - (v / 3.3) * (H - 40), X = (k) => 30 + (k / N) * (W - 50), q = (v) => Math.round((v / 3.3) * (steps - 1)) * (3.3 / (steps - 1));
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  if (bits <= 6) { g.strokeStyle = C.grid; g.lineWidth = 1; for (let s = 0; s < steps; s++) { const y = Y((s * 3.3) / (steps - 1)); g.beginPath(); g.moveTo(30, y); g.lineTo(W - 20, y); g.stroke(); } }
+  line(g, Array.from({ length: N + 1 }, (_, k) => [X(k), Y(sig(k))]), C.blue, 2);
+  const pts = []; for (let k = 0; k <= N; k++) { const v = q(sig(k)); if (k) pts.push([X(k), Y(pts.at(-1) ? q(sig(k - 1)) : v)]); pts.push([X(k), Y(v)]); }
+  line(g, pts, C.yellow, 2);
+  let err = 0; for (let k = 0; k <= N; k++) err = Math.max(err, Math.abs(q(sig(k)) - sig(k)));
+  $("bitsv").textContent = `${bits} (${steps} levels)`;
+  $("o4").textContent = `${bits} bits: ${steps} levels, one step = ${((3.3 / steps) * 1000).toFixed(bits > 8 ? 2 : 0)} mV, worst rounding error ${(err * 1000).toFixed(bits > 8 ? 2 : 0)} mV`;
+}
+$("bits").oninput = draw4; draw4();
+
+// ---------- 5. Wheatstone bridge ----------
+function draw5() {
+  const kg = +$("kg").value, x = (kg / 5) * 0.001, R = 350, V = 5, Rg = R * (1 + x), va = (V * Rg) / (R + Rg), vb = V / 2, out = va - vb;
+  const cv = $("c5"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const P = { top: [250, 40], left: [150, 150], right: [350, 150], bot: [250, 260] };
+  const seg = (a, b, label, hot) => { g.strokeStyle = hot ? C.yellow : "#8f98a8"; g.lineWidth = 3; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke(); g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; const left = a[0] < 250 || b[0] < 250; g.textAlign = left ? "right" : "left"; g.fillText(label, (a[0] + b[0]) / 2 + (left ? -14 : 14), (a[1] + b[1]) / 2); g.textAlign = "left"; };
+  seg(P.top, P.left, "350 Ω"); seg(P.left, P.bot, `gauge ${Rg.toFixed(3)} Ω`, true); seg(P.top, P.right, "350 Ω"); seg(P.right, P.bot, "350 Ω");
+  for (const p of Object.values(P)) { g.fillStyle = C.text; g.beginPath(); g.arc(...p, 5, 0, 7); g.fill(); }
+  g.fillText("5 V", 238, 26); g.fillText("0 V", 238, 285);
+  g.strokeStyle = C.green; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(...P.left); g.lineTo(...P.right); g.stroke(); g.setLineDash([]);
+  g.fillStyle = C.green; g.font = "18px ui-monospace, monospace"; g.fillText(`${(out * 1000).toFixed(3)} mV`, 450, 130); g.font = "13px ui-monospace, monospace"; g.fillText(`× 128 (HX711) = ${(out * 128 * 1000).toFixed(1)} mV`, 450, 160);
+  $("kgv").textContent = `${kg.toFixed(2)} kg`;
+  $("o5").textContent = `${kg.toFixed(2)} kg → gauge +${(x * 100).toFixed(3)}% → bridge output ${(out * 1000).toFixed(3)} mV (≈ V·x/4 = ${((V * x) / 4 * 1000).toFixed(3)} mV), starting from exactly 0 at no load`;
+}
+$("kg").oninput = draw5; draw5();
+window.blipContext = () => ({ page: "Electronics chapter 11: light and sensors (photodiode + transimpedance, optocoupler, NTC thermistor + ADC, ADC resolution, Wheatstone bridge)", temperature: +$("tc").value });
+</script>
+</body>
+</html>
