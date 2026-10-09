@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A Neuron From Scratch</title>
+  <meta name="description" content="AI from scratch, chapter 3: a single artificial neuron as a weighted sum and a bend, its weights as an arrow you drag, learning to separate two clouds of points live, and the XOR problem one neuron can't solve." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .scene { margin: 18px 0 8px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; cursor: grab; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .formula { text-align: center; font-family: ui-monospace, Menlo, monospace; font-size: 1.05em; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 3</p>
+  <h1>A neuron from scratch</h1>
+  <p class="lede">An artificial neuron is almost embarrassingly simple: multiply each input by a weight, add them up with a bias, and push the total through a bend. That's it. Yet put enough of them together and they recognize faces and write code. Let's build one, look at what it sees, and watch it learn.</p>
+
+  <h2>1. A weighted sum and a bend</h2>
+  <p>Our neuron looks at a point with two numbers, <span class="math">(x₁, x₂)</span>. It computes</p>
+  <p class="formula">z = w₁·x₁ + w₂·x₂ + b &nbsp;&nbsp;→&nbsp;&nbsp; output = σ(z) = 1 / (1 + e<sup>−z</sup>)</p>
+  <p>The bend σ (the sigmoid) squashes any number into 0…1, so the output reads like "how sure am I that this point is <span class="b">blue</span>?". The two weights form an arrow, <span class="y">w</span>. <b>Drag its tip</b>, slide the bias, and drag the <span class="g">green probe point</span>.</p>
+  <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A neuron's output over the plane, with a draggable weight arrow and probe point"></canvas><p class="readout" id="r1"></p></div>
+  <div class="row"><label>bias b <input type="range" id="bias" min="-6" max="6" step="0.1" value="0"> <span id="bv" class="math">0</span></label></div>
+  <p>Look at the shading: the neuron splits the plane with a straight line, where <span class="math">z = 0</span> and it's exactly 50% sure. That line is always <b>perpendicular to the weight arrow</b>. The arrow points toward "more blue", its length says how sharp the switch is (a long arrow means a crisp edge, a short one a fuzzy blur), and the bias slides the line back and forth without turning it. Remember chapter 1: <span class="math">w₁·x₁ + w₂·x₂</span> is a matrix with one row. A neuron is a tiny layer.</p>
+
+  <h2>2. Watch it learn</h2>
+  <p>Here are two clouds of points. We want the neuron to say "blue" for blue points and "red" for red ones. Its loss (how wrong it is) is the <b>log loss</b>: for each point, how surprised the neuron is by the right answer. Training is chapter 2's loop: compute the gradient of the loss with respect to <span class="math">w₁, w₂, b</span>, step downhill, repeat.</p>
+  <div class="scene"><canvas id="s2" width="800" height="600" aria-label="A neuron learning to separate two clouds of points"></canvas><p class="readout" id="r2"></p></div>
+  <div class="row"><button id="train2">Train</button><button id="reset2">Forget everything</button><button id="new2">New clouds</button><span class="muted">Drag points around · click empty space to add a blue point, shift-click (or long-press) for red</span></div>
+  <p>Notice what the gradient does here, in plain words: every misclassified point pulls the line toward itself and pushes the weight arrow toward its own side. Points the neuron already gets right, with confidence, barely pull at all. That's the whole of learning for one neuron: lots of small nudges from its mistakes.</p>
+
+  <h2>3. What one neuron can't do</h2>
+  <p>Now a pattern a child can see: blue in two opposite corners, red in the other two (it's called <b>XOR</b>). Train the single neuron on it.</p>
+  <div class="scene"><canvas id="s3" width="800" height="600" aria-label="The XOR pattern: one neuron fails, a small network succeeds"></canvas><p class="readout" id="r3"></p></div>
+  <div class="row"><button id="train3">Train one neuron</button><button id="net3">Train a hidden layer (4 neurons)</button><button id="reset3">Reset</button></div>
+  <p>It can't. However it turns its line, one straight cut can't put opposite corners together, so it gets stuck around half right. This exact problem stalled neural network research for a decade in the 1970s. The fix is the one from chapter 1: <b>stack layers</b>. Four neurons in a hidden layer each make their own cut; a final neuron combines their answers, and now the boundary can bend around the corners. Press the second button and watch it curve.</p>
+  <p>But how did that hidden layer learn? Each of its neurons had to figure out its share of the blame for the final answer, through the neuron after it. Passing blame backwards like that is <b>backpropagation</b>: the next chapter.</p>
+
+  <p class="muted">Previous: <a href="./02-gradients.html">Gradients</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">Neural Networks</a> series.</p>
+</main>
+<script type="module">
+import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const sig = (z) => 1 / (1 + Math.exp(-z));
+const BLUE = [88, 196, 221], RED = [252, 98, 85];
+
+// Shade the plane by p(blue) = out(x, y), with the 50% line drawn where it flips.
+function shade({ g, W, H, toW }, out) {
+  const step = 8;
+  for (let py = 0; py < H; py += step) for (let px = 0; px < W; px += step) {
+    const p = out(...toW(px + step / 2, py + step / 2)), c = BLUE.map((v, i) => v * p + RED[i] * (1 - p));
+    g.fillStyle = `rgba(${c.map(Math.round).join(",")},${0.18 + 0.32 * Math.abs(p - 0.5) * 2})`;
+    g.fillRect(px, py, step, step);
+  }
+}
+const dot = ({ g, toPx }, p, color, r = 8) => { const [x, y] = toPx(p); g.fillStyle = color; g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke(); };
+const opts = { unit: 60, snap: false };
+
+// 1. one neuron, hand-tuned
+const w1 = { p: [1.5, 1], color: C.yellow }, probe = { p: [1, -2], color: C.green };
+const r1 = scene("s1", (s) => {
+  const b = +$("bias").value;
+  shade(s, (x, y) => sig(w1.p[0] * x + w1.p[1] * y + b)); axes(s);
+  arrow(s, [0, 0], w1.p, C.yellow, 4);
+}, () => [w1, probe], () => {
+  const b = +$("bias").value, z = w1.p[0] * probe.p[0] + w1.p[1] * probe.p[1] + b;
+  $("r1").textContent = `z = ${w1.p[0].toFixed(2)}·${probe.p[0].toFixed(2)} + ${w1.p[1].toFixed(2)}·${probe.p[1].toFixed(2)} + ${b.toFixed(1)} = ${z.toFixed(2)} → σ(z) = ${sig(z).toFixed(3)}: ${sig(z) > 0.5 ? "blue" : "red"}, ${Math.round(Math.abs(sig(z) - 0.5) * 200)}% sure`;
+}, opts);
+$("bias").oninput = () => { $("bv").textContent = $("bias").value; r1(); };
+
+// A neuron that learns by gradient descent on the log loss.
+const neuron = () => ({ w: [0.1, -0.1], b: 0 });
+const predict = (n, x, y) => sig(n.w[0] * x + n.w[1] * y + n.b);
+function trainStep(n, data, lr = 0.3) {
+  let gw0 = 0, gw1 = 0, gb = 0, loss = 0;
+  for (const { p: [x, y], label } of data) {
+    const q = predict(n, x, y), e = q - label; // d(log loss)/dz = p − label: the neuron's surprise
+    gw0 += e * x; gw1 += e * y; gb += e;
+    loss -= label ? Math.log(q + 1e-9) : Math.log(1 - q + 1e-9);
+  }
+  const k = lr / data.length;
+  n.w[0] -= k * gw0; n.w[1] -= k * gw1; n.b -= k * gb;
+  return loss / data.length;
+}
+const accuracy = (f, data) => data.filter(({ p, label }) => (f(...p) > 0.5) === !!label).length / data.length;
+
+// 2. two clouds
+let data2 = [], n2 = neuron(), loss2 = null, t2 = null;
+const cloud = (cx, cy, label, n = 14) => Array.from({ length: n }, () => ({ p: [cx + (Math.random() - 0.5) * 3, cy + (Math.random() - 0.5) * 3], label, color: label ? C.blue : C.red }));
+const new2 = () => { const a = Math.random() * 6.28; data2 = [...cloud(2.2 * Math.cos(a), 2.2 * Math.sin(a), 1), ...cloud(-2.2 * Math.cos(a), -2.2 * Math.sin(a), 0)]; };
+new2();
+const r2 = scene("s2", (s) => {
+  shade(s, (x, y) => predict(n2, x, y)); axes(s);
+  arrow(s, [0, 0], n2.w.map((v) => Math.max(-6, Math.min(6, v))), C.yellow, 4);
+}, () => data2, () => ($("r2").textContent = `w = (${n2.w[0].toFixed(2)}, ${n2.w[1].toFixed(2)}), b = ${n2.b.toFixed(2)} · ${loss2 == null ? "untrained" : `log loss ${loss2.toFixed(3)}`} · ${Math.round(accuracy((x, y) => predict(n2, x, y), data2) * 100)}% right`), opts);
+const stop2 = () => { clearInterval(t2); t2 = null; $("train2").textContent = "Train"; };
+$("train2").onclick = () => {
+  if (t2) return stop2();
+  $("train2").textContent = "Stop";
+  let n = 0;
+  t2 = setInterval(() => { for (let i = 0; i < 5; i++) loss2 = trainStep(n2, data2); r2(); if (++n === 120) { stop2(); say(accuracy((x, y) => predict(n2, x, y), data2) === 1 ? "Every point on the right side!" : "Mostly right. Some points sit in the other cloud.", "happy"); } }, 30);
+};
+$("reset2").onclick = () => { stop2(); n2 = neuron(); loss2 = null; r2(); };
+$("new2").onclick = () => { stop2(); new2(); n2 = neuron(); loss2 = null; r2(); };
+// Click empty space: add a point (shift or long-press: red).
+const cv2 = $("s2");
+let pressAt = 0;
+cv2.addEventListener("pointerdown", () => (pressAt = Date.now()));
+cv2.addEventListener("click", (e) => {
+  const r = cv2.getBoundingClientRect(), px = ((e.clientX - r.left) / r.width) * 800, py = ((e.clientY - r.top) / r.height) * 600, p = [(px - 400) / 60, (300 - py) / 60];
+  if (data2.some((d) => Math.hypot(d.p[0] - p[0], d.p[1] - p[1]) < 0.4)) return; // that was a drag
+  const red = e.shiftKey || Date.now() - pressAt > 450;
+  data2.push({ p, label: red ? 0 : 1, color: red ? C.red : C.blue }); r2();
+});
+
+// 3. XOR: one neuron vs a 2-4-1 network
+const xor = [];
+for (const [cx, cy, label] of [[-2, 2, 1], [2, -2, 1], [2, 2, 0], [-2, -2, 0]]) xor.push(...cloud(cx, cy, label, 10).map((d) => ({ ...d, p: [cx + (d.p[0] - cx) * 0.55, cy + (d.p[1] - cy) * 0.55] })));
+let n3 = neuron(), net = null, t3 = null, mode3 = "none";
+// A tiny network: 4 tanh neurons, then one sigmoid. Gradients by hand (that's the next chapter's story).
+const newNet = () => ({ W: Array.from({ length: 4 }, () => [Math.random() * 2 - 1, Math.random() * 2 - 1]), B: [0, 0, 0, 0].map(() => Math.random() - 0.5), V: [0, 0, 0, 0].map(() => Math.random() * 2 - 1), c: 0 });
+const netOut = (m, x, y) => { const h = m.W.map((w, i) => Math.tanh(w[0] * x + w[1] * y + m.B[i])); return { h, p: sig(h.reduce((t, v, i) => t + v * m.V[i], m.c)) }; };
+function netStep(m, data, lr = 0.5) {
+  const gW = m.W.map(() => [0, 0]), gB = [0, 0, 0, 0], gV = [0, 0, 0, 0];
+  let gc = 0, loss = 0;
+  for (const { p: [x, y], label } of data) {
+    const { h, p } = netOut(m, x, y), e = p - label;
+    loss -= label ? Math.log(p + 1e-9) : Math.log(1 - p + 1e-9);
+    gc += e;
+    h.forEach((hv, i) => { gV[i] += e * hv; const back = e * m.V[i] * (1 - hv * hv); gW[i][0] += back * x; gW[i][1] += back * y; gB[i] += back; });
+  }
+  const k = lr / data.length;
+  m.c -= k * gc; m.V = m.V.map((v, i) => v - k * gV[i]); m.B = m.B.map((v, i) => v - k * gB[i]); m.W = m.W.map((w, i) => [w[0] - k * gW[i][0], w[1] - k * gW[i][1]]);
+  return loss / data.length;
+}
+let loss3 = null;
+const f3 = (x, y) => (mode3 === "net" ? netOut(net, x, y).p : predict(n3, x, y));
+const r3 = scene("s3", (s) => { shade(s, f3); axes(s); }, () => xor, () => ($("r3").textContent = mode3 === "none" ? "untrained" : `${mode3 === "net" ? "hidden layer of 4 + 1 output" : "one neuron"} · log loss ${loss3.toFixed(3)} · ${Math.round(accuracy(f3, xor) * 100)}% right`), opts);
+const stop3 = () => { clearInterval(t3); t3 = null; };
+const run3 = (which) => {
+  stop3(); mode3 = which;
+  if (which === "net") net = newNet(); else n3 = neuron();
+  let n = 0;
+  t3 = setInterval(() => {
+    for (let i = 0; i < 10; i++) loss3 = which === "net" ? netStep(net, xor) : trainStep(n3, xor);
+    r3();
+    if (++n === 150) { stop3(); const a = accuracy(f3, xor); say(which === "net" ? (a > 0.95 ? "Curved around the corners! Layers win." : "Almost. Train it again: it starts from random weights.") : "Stuck near half. One straight line can't do XOR.", which === "net" ? "happy" : "think"); }
+  }, 30);
+};
+$("train3").onclick = () => run3("one");
+$("net3").onclick = () => run3("net");
+$("reset3").onclick = () => { stop3(); mode3 = "none"; r3(); };
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 3: A neuron from scratch", handTuned: { w: w1.p, b: +$("bias").value }, learned: { w: n2.w, b: n2.b, accuracy: accuracy((x, y) => predict(n2, x, y), data2) }, xor: { mode: mode3, accuracy: mode3 === "none" ? null : accuracy(f3, xor) } });
+</script>
+</body>
+</html>
