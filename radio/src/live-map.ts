@@ -26,6 +26,11 @@ export function connect(name: "aprs" | "adsb", handlers: Record<string, (data: a
     if (!r?.ok) dispatchEvent(new CustomEvent("blip:say", { detail: { text: d.error ?? "Couldn't turn it off.", mood: "think" } }));
   };
   const es = new EventSource(`/api/${name}/events`);
+  // Tell the server we're still here, and that we left: otherwise a closed tab could keep counting as a viewer.
+  let viewerId = "";
+  es.addEventListener("hello", (e: MessageEvent) => { viewerId = JSON.parse(e.data).id; });
+  setInterval(() => { if (viewerId) fetch(`/api/viewer?id=${viewerId}&action=alive`, { method: "POST" }).catch(() => {}); }, 30_000);
+  addEventListener("pagehide", () => { if (viewerId) navigator.sendBeacon(`/api/viewer?id=${viewerId}&action=leave`); es.close(); });
   es.addEventListener("online", () => online(true));
   es.addEventListener("offline", (e: MessageEvent) => {
     online(false);

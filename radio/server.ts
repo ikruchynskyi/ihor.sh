@@ -32,6 +32,10 @@ let mode: "idle" | "iq" | Decoder = "idle";
 let lastSwitch = 0, decoderIdle: NodeJS.Timeout | undefined;
 let paused: Decoder | null = null; // a decoder Spectrum Lab interrupted, to resume when it's done
 const watchers: Record<Decoder, Set<http.ServerResponse>> = { aprs: new Set(), adsb: new Set() };
+// Viewers check in every 30 s and say goodbye when they leave; a tunnel doesn't always pass a closed
+// connection on, so anyone silent for 90 s is dropped too.
+const viewerIds = new Map<string, { res: http.ServerResponse; seen: number }>();
+setInterval(() => { for (const [id, v] of viewerIds) if (Date.now() - v.seen > 90_000) { viewerIds.delete(id); v.res.destroy(); } }, 15_000);
 let aprsRx: AprsReceiver | null = null;
 const stations = new Stations();
 const tracker = new Tracker(REF.lat, REF.lon);
@@ -203,17 +207,28 @@ const server = http.createServer(async (req, res) => {
       try { await startDecoder(name); return json(res, 200, state()); } catch (e) { return json(res, 409, { error: (e as Error).message }); }
     }
 
+    // A viewer checking in (alive) or leaving the page (leave, sent as a beacon on pagehide).
+    if (url.pathname === "/api/viewer" && req.method === "POST") {
+      const v = viewerIds.get(String(url.searchParams.get("id")));
+      if (v && url.searchParams.get("action") === "leave") { viewerIds.delete(String(url.searchParams.get("id"))); v.res.destroy(); }
+      else if (v) v.seen = Date.now();
+      return json(res, v ? 200 : 404, {});
+    }
+
     const ev = url.pathname.match(/^\/api\/(aprs|adsb)\/events$/);
     if (ev) {
       const name = ev[1] as Decoder;
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive", "x-accel-buffering": "no" });
       watchers[name].add(res);
+      const viewerId = crypto.randomUUID();
+      viewerIds.set(viewerId, { res, seen: Date.now() });
+      res.write(`event: hello\ndata: ${JSON.stringify({ id: viewerId })}\n\n`);
       clearTimeout(decoderIdle);
       res.write(`event: ${mode === name ? "online" : "offline"}\ndata: ${JSON.stringify({ mode })}\n\n`);
       if (name === "aprs") res.write(`event: snapshot\ndata: ${JSON.stringify({ stations: [...stations.map.values()], log: stations.log.slice(-100) })}\n\n`);
       else res.write(`event: aircraft\ndata: ${JSON.stringify(tracker.current())}\n\n`);
       const ping = setInterval(() => res.write(": ping\n\n"), 20_000); // keeps proxies from closing a quiet stream
-      req.on("close", () => { clearInterval(ping); watchers[name].delete(res); scheduleDecoderIdle(); });
+      req.on("close", () => { clearInterval(ping); viewerIds.delete(viewerId); watchers[name].delete(res); scheduleDecoderIdle(); });
       return;
     }
 

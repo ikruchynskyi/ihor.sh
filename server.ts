@@ -153,6 +153,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
     }
     if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events"].includes(url.pathname)) return proxySdr(req, res);
+    if (url.pathname === "/api/viewer" && req.method === "POST") return proxySdr(req, res);
     if (url.pathname === "/api/receiver" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));

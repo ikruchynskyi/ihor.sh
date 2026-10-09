@@ -319,6 +319,8 @@ function onSamples(cu8: Uint8Array) {
 
 $("connect").addEventListener("click", () => (sdr ? disconnect() : connect(false)));
 $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true)));
+// Leaving the page ends the stream, so the server stops counting this listener at once.
+addEventListener("pagehide", () => { if (sdr) disconnect(); });
 // The server button is lit while a dongle server answers (server.ts here, or ihor.sh's proxy to it)
 // and greyed out while it's offline; it re-checks so it lights up when the server starts.
 async function checkServer() {
