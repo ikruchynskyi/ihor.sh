@@ -56,12 +56,25 @@ export class KeyDecoder {
   current = ""; // dots and dashes of the character being keyed
   private downAt = 0;
   private lastUp = 0;
-  constructor(wpm: number) { this.dit = ditMs(wpm); }
+  /** The least silence (ms) that ends a letter / a word. Farnsworth spacing stretches these, which gives a
+   *  sender on a keyboard or paddles time between letters. */
+  letterGap = 0;
+  wordGap = 0;
+  constructor(wpm: number, eff = wpm) { this.dit = ditMs(wpm); this.setSpeed(wpm, eff); }
+  /** Gaps halfway between what separates elements and letters, and between letters and words, at this spacing. */
+  setSpeed(wpm: number, eff = wpm) {
+    const { dit, charGap, wordGap } = spacing(wpm, eff);
+    this.dit = dit; this.letterGap = (dit + charGap) / 2; this.wordGap = (charGap + wordGap) / 2;
+  }
 
+  private held = false; // a key (or a keyer's element) is sounding: silence isn't being counted
   /** Straight key: the key went down at `t` ms. */
-  down(t: number) { this.gap(t); this.downAt = t; }
+  down(t: number) { this.gap(t); this.downAt = t; this.held = true; }
+  /** Paddle keyer: an element starts sounding at `t` ms (it's added when it ends, with element()). */
+  start(t: number) { this.gap(t); this.held = true; }
   /** Straight key: the key went up at `t` ms. Returns the element it was read as. */
   up(t: number) {
+    this.held = false;
     const d = t - this.downAt;
     const el = d < 2 * this.dit ? "." : "-";
     // adapt to the sender: a dit is one unit, a dah three
@@ -69,22 +82,23 @@ export class KeyDecoder {
     return this.element(el, t);
   }
   /** Paddle keyer: a whole element that ended at `t` ms. */
-  element(el: "." | "-", t: number) { this.current += el; this.lastUp = t; return el; }
+  element(el: "." | "-", t: number) { this.held = false; this.current += el; this.lastUp = t; return el; }
 
   /** Close the character / add a space if the silence since the last element is long enough. */
   gap(t: number) {
-    if (!this.current) return;
+    if (!this.current || this.held) return;
     const silent = t - this.lastUp;
-    if (silent >= 2 * this.dit) {
+    if (silent >= Math.max(2 * this.dit, this.letterGap)) {
       this.text += DECODE[this.current] ?? "*";
       this.current = "";
-      if (silent >= 5 * this.dit) this.text += " ";
+      if (silent >= Math.max(5 * this.dit, this.wordGap)) this.text += " ";
     }
   }
   /** Call regularly while idle so the last character (and word) appear without waiting for the next key-down. */
   idle(t: number) {
+    if (this.held) return;
     this.gap(t);
-    if (!this.current && this.text && !this.text.endsWith(" ") && t - this.lastUp >= 5 * this.dit) this.text += " ";
+    if (!this.current && this.text && !this.text.endsWith(" ") && t - this.lastUp >= Math.max(5 * this.dit, this.wordGap)) this.text += " ";
   }
   reset() { this.text = ""; this.current = ""; }
 }

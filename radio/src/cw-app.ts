@@ -72,7 +72,7 @@ for (const [k, fmt] of Object.entries(sliders)) {
     (S as any)[k] = Number(el.value);
     if (k === "wpm" && S.eff > S.wpm) { S.eff = S.wpm; $<HTMLInputElement>("eff").value = String(S.eff); }
     for (const [k2, f2] of Object.entries(sliders)) $(`${k2}Out`).textContent = f2((S as any)[k2]);
-    dec.dit = ditMs(S.wpm); save(); setSum();
+    dec.setSpeed(S.wpm, Math.min(S.eff, S.wpm)); gapInfo(); save(); setSum();
   });
 }
 $<HTMLSelectElement>("keyType").value = S.keyType;
@@ -240,7 +240,7 @@ $("sendHow").addEventListener("click", (e) => { const b = (e.target as HTMLEleme
 
 // ---------- send, way 2: key it by hand ----------
 let target = "";
-const dec = new KeyDecoder(S.wpm);
+const dec = new KeyDecoder(S.wpm, Math.min(S.eff, S.wpm)); // letter gaps follow the Farnsworth spacing: lower "effective speed" = more time between letters
 function newTarget() {
   target = textFor($<HTMLSelectElement>("sendSource").value);
   $("target").textContent = target || "Free keying: send anything, it's decoded below.";
@@ -261,10 +261,12 @@ function renderDecoded() {
 }
 setInterval(() => { if (mode === "send" && S.how === "key") { dec.idle(performance.now()); renderDecoded(); } }, 40);
 
+const gapInfo = () => { const el = document.getElementById("gapInfo"); if (el) el.innerHTML = `A pause longer than <b>${(dec.letterGap / 1000).toFixed(2)} s</b> ends a letter, longer than <b>${(dec.wordGap / 1000).toFixed(2)} s</b> a word (set by the speeds above: lower the effective speed for more time).`; };
 function padHelp() {
+  gapInfo();
   $("padHelp").innerHTML = S.keyType === "straight"
     ? "Hold to key: mouse button, touch, <kbd>Space</kbd>, or your USB key"
-    : "Paddles: left/right mouse button, <kbd>Z</kbd>/<kbd>X</kbd>, <kbd>[</kbd>/<kbd>]</kbd>, left/right <kbd>Ctrl</kbd>; on touch, left/right half of this pad";
+    : "Paddles: <kbd>Z</kbd> = dit, <kbd>X</kbd> = dah (or <kbd>[</kbd>/<kbd>]</kbd>, left/right <kbd>Ctrl</kbd>, left/right mouse button, left/right half of this pad). Tap them in rhythm (C is X Z X Z), or hold both to alternate. Pausing longer than a letter gap starts a new letter: slow the <b>effective speed</b> for more time";
 }
 padHelp();
 
@@ -293,7 +295,7 @@ function nextElement() {
   paddles.memDit = paddles.memDah = false;
   const el: "." | "-" | null = wantDit && wantDah ? (paddles.last === "." ? "-" : ".") : wantDit ? "." : wantDah ? "-" : null;
   if (!el) { paddles.busy = false; pad.classList.remove("down"); return; }
-  paddles.busy = true; paddles.last = el;
+  paddles.busy = true; paddles.last = el; dec.start(performance.now());
   const dit = ditMs(S.wpm);
   pad.classList.add("down"); keyOn();
   setTimeout(() => {

@@ -56,3 +56,15 @@ console.log("cw ok");
 // character timing, for revealing text as it plays
 { const s = schedule("EE T", 20); assert.deepEqual(s.chars.map((c) => [c.c, c.at, c.end]), [["E", 0, 60], ["E", 240, 300], [" ", 720, 720], ["T", 720, 900]]); }
 console.log("cw timing ok");
+// paddles at 20 WPM with Farnsworth 10: a person tapping X Z X Z ~250 ms apart still makes one C
+{ const d = new KeyDecoder(20, 10); let t = 0;
+  for (const el of ["-", ".", "-", "."] as const) { t += el === "." ? 60 : 180; d.element(el, t); t += 250; d.gap(t); }
+  d.idle(t + 2000); assert.equal(d.text.trim(), "C", `farnsworth paddles: ${d.text}`);
+  const tight = new KeyDecoder(20); t = 0;
+  for (const el of ["-", ".", "-", "."] as const) { t += el === "." ? 60 : 180; tight.element(el, t); t += 250; tight.gap(t); }
+  tight.idle(t + 2000); assert.notEqual(tight.text.trim(), "C"); }
+console.log("cw paddle gaps ok");
+// the idle check never ends a letter while an element is still sounding (a long dah, or a held straight key)
+{ const d = new KeyDecoder(20, 10); d.element("-", 180); d.start(500); d.idle(900); assert.equal(d.text, "", "split mid-element"); d.element(".", 1000); d.idle(3000); assert.equal(d.text.trim(), "N"); }
+{ const d = new KeyDecoder(20); d.down(0); d.up(180); d.down(240); d.idle(800); assert.equal(d.text, "", "straight key split while held"); }
+console.log("cw held ok");
