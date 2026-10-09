@@ -1,0 +1,978 @@
+{
+ "id": "n3-01",
+ "level": "N3",
+ "unit": 1,
+ "title": {
+  "ja": "もっと寝ればよかった",
+  "en": "I should have slept more"
+ },
+ "scene": "The morning after Sam lands in Tokyo. Yuki meets him at Kaminarimon in Asakusa. Sam barely slept.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "おはよう",
+     null,
+     "good morning"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "顔",
+     "かお",
+     "face"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "疲れている",
+     "つかれている",
+     "tired"
+    ],
+    [
+     "みたい",
+     null,
+     "looks like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "okay"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Morning! Sam, you look tired. Are you okay?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "時差ぼけ",
+     "じさぼけ",
+     "jet lag"
+    ],
+    [
+     "で",
+     null,
+     "because of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぜんぜん",
+     null,
+     "at all"
+    ],
+    [
+     "眠れなかった",
+     "ねむれなかった",
+     "couldn't sleep"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I couldn't sleep at all because of jet lag."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "で",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "寝ればよかった",
+     "ねればよかった",
+     "should have slept"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I should have slept on the plane."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "十四時間",
+     "じゅうよじかん",
+     "fourteen hours"
+    ],
+    [
+     "も",
+     null,
+     "as many as"
+    ],
+    [
+     "映画",
+     "えいが",
+     "movies"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ていた",
+     "みていた",
+     "were watching"
+    ],
+    [
+     "んでしょう",
+     null,
+     "right?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "眠い",
+     "ねむい",
+     "sleepy"
+    ],
+    [
+     "わけだ",
+     null,
+     "no wonder"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You watched movies for fourteen hours, right? No wonder you're sleepy."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "それに",
+     null,
+     "besides"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little"
+    ],
+    [
+     "風邪気味",
+     "かぜぎみ",
+     "coming down with a cold"
+    ],
+    [
+     "なんだ",
+     null,
+     "(it's that)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Plus I think I'm coming down with a cold."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "あまり",
+     null,
+     "not much"
+    ],
+    [
+     "歩かないで",
+     "あるかないで",
+     "without walking"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆっくり",
+     null,
+     "slowly"
+    ],
+    [
+     "見よう",
+     "みよう",
+     "let's look around"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then let's not walk too much today and take it slow."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "見て",
+     "みて",
+     "look"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あの",
+     null,
+     "that"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "赤い",
+     "あかい",
+     "red"
+    ],
+    [
+     "ちょうちん",
+     null,
+     "lantern"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "photos"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "見た",
+     "みた",
+     "saw"
+    ],
+    [
+     "の",
+     null,
+     "(one)",
+     "p"
+    ],
+    [
+     "と",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "同じ",
+     "おなじ",
+     "same"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Look! That big red lantern is the same as the one in the photos!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "子どもっぽい",
+     "こどもっぽい",
+     "childish"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "頭",
+     "あたま",
+     "head"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "top"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "乗せよう",
+     "のせよう",
+     "I'll put"
+    ],
+    [
+     "かな",
+     null,
+     "maybe"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's childish, but maybe I'll put Blip on my head."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "多い",
+     "おおい",
+     "many"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "迷子",
+     "まいご",
+     "lost"
+    ],
+    [
+     "に",
+     null,
+     "(become)",
+     "p"
+    ],
+    [
+     "ならないで",
+     null,
+     "don't become"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "There are lots of people, so don't get lost."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "迷子",
+     "まいご",
+     "lost"
+    ],
+    [
+     "に",
+     null,
+     "(become)",
+     "p"
+    ],
+    [
+     "なったら",
+     null,
+     "if I get"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "道",
+     "みち",
+     "the way"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "教えてくれる",
+     "おしえてくれる",
+     "will show me"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If I get lost, Blip will show me the way."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "ba-yokatta",
+   "title": "～ばよかった: I should have",
+   "explain": "ば-form + よかった looks back with regret: 'if only I had'. 寝る → 寝れば → 寝ればよかった. The negative regrets something you did: 言わなければよかった (I shouldn't have said it).",
+   "examples": [
+    {
+     "t": [
+      [
+       "飛行機",
+       "ひこうき",
+       "plane"
+      ],
+      [
+       "で",
+       null,
+       "on",
+       "p"
+      ],
+      [
+       "寝ればよかった",
+       "ねればよかった",
+       "should have slept"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I should have slept on the plane."
+    },
+    {
+     "t": [
+      [
+       "あんなに",
+       null,
+       "that much"
+      ],
+      [
+       "食べなければよかった",
+       "たべなければよかった",
+       "shouldn't have eaten"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I shouldn't have eaten so much."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "もっと早く寝＿＿＿＿＿。",
+     "hint": "I should have gone to bed earlier.",
+     "choices": [
+      "ればよかった",
+      "たらいい",
+      "てもいい"
+     ],
+     "answer": 0,
+     "why": "Regret about the past: ～ばよかった."
+    },
+    {
+     "q": "あんなこと言わ＿＿＿よかった。",
+     "hint": "I shouldn't have said that.",
+     "choices": [
+      "なければ",
+      "ないで",
+      "なくて"
+     ],
+     "answer": 0,
+     "why": "The ば-form of 言わない is 言わなければ."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ba-yokatta"
+  },
+  {
+   "id": "wake",
+   "title": "～わけだ: no wonder, that's why",
+   "explain": "Plain form + わけだ draws the conclusion from a reason you just heard: 14 hours of movies → 眠いわけだ (no wonder you're sleepy). After a noun or な-adjective use なわけだ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "映画",
+       "えいが",
+       "movies"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "見ていた",
+       "みていた",
+       "were watching"
+      ],
+      [
+       "の",
+       null,
+       "(it's that)",
+       "p"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "眠い",
+       "ねむい",
+       "sleepy"
+      ],
+      [
+       "わけだ",
+       null,
+       "no wonder"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You were watching movies? No wonder you're sleepy."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "十四時間も映画を見ていたの？眠い＿＿＿だ。",
+     "hint": "You watched movies for 14 hours? No wonder you're sleepy.",
+     "choices": [
+      "わけ",
+      "はず",
+      "ため"
+     ],
+     "answer": 0,
+     "why": "わけだ: the result makes sense now. はずだ is what you expect beforehand."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#wake"
+  },
+  {
+   "id": "gimi",
+   "title": "～気味 / ～っぽい: a touch of, -ish",
+   "explain": "気味 (ぎみ) after a noun or verb stem = a slight, usually unwanted condition: 風邪気味 (a bit of a cold), 疲れ気味 (a bit tired). っぽい = -ish, a trait or look: 子どもっぽい (childish), 忘れっぽい (forgetful).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ちょっと",
+       null,
+       "a little"
+      ],
+      [
+       "風邪気味",
+       "かぜぎみ",
+       "a touch of a cold"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I've got a touch of a cold."
+    },
+    {
+     "t": [
+      [
+       "子どもっぽい",
+       "こどもっぽい",
+       "childish"
+      ],
+      [
+       "けど",
+       null,
+       "but"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "楽しい",
+       "たのしい",
+       "fun"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's childish, but fun."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "最近、ちょっと疲れ＿＿＿だ。",
+     "hint": "Lately I'm a bit tired.",
+     "choices": [
+      "気味",
+      "っぽい",
+      "らしい"
+     ],
+     "answer": 0,
+     "why": "A slight unwanted condition: 気味."
+    },
+    {
+     "q": "ブリップは忘れ＿＿＿。",
+     "hint": "Blip is forgetful.",
+     "choices": [
+      "っぽい",
+      "気味",
+      "すぎ"
+     ],
+     "answer": 0,
+     "why": "A trait: 忘れっぽい."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#gimi"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "顔",
+   "on": [
+    "ガン"
+   ],
+   "kun": [
+    "かお"
+   ],
+   "m": "face",
+   "ex": [
+    [
+     "顔",
+     "かお",
+     "face"
+    ],
+    [
+     "笑顔",
+     "えがお",
+     "smile"
+    ]
+   ]
+  },
+  {
+   "k": "疲",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "つか.れる"
+   ],
+   "m": "tired",
+   "ex": [
+    [
+     "疲れる",
+     "つかれる",
+     "to get tired"
+    ]
+   ]
+  },
+  {
+   "k": "眠",
+   "on": [
+    "ミン"
+   ],
+   "kun": [
+    "ねむ.い",
+    "ねむ.る"
+   ],
+   "m": "sleep",
+   "ex": [
+    [
+     "眠い",
+     "ねむい",
+     "sleepy"
+    ],
+    [
+     "眠る",
+     "ねむる",
+     "to sleep"
+    ]
+   ]
+  },
+  {
+   "k": "寝",
+   "on": [
+    "シン"
+   ],
+   "kun": [
+    "ね.る"
+   ],
+   "m": "lie down, sleep",
+   "ex": [
+    [
+     "寝る",
+     "ねる",
+     "to go to bed"
+    ]
+   ]
+  },
+  {
+   "k": "頭",
+   "on": [
+    "トウ",
+    "ズ"
+   ],
+   "kun": [
+    "あたま"
+   ],
+   "m": "head",
+   "ex": [
+    [
+     "頭",
+     "あたま",
+     "head"
+    ],
+    [
+     "頭痛",
+     "ずつう",
+     "headache"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  4
+ ],
+ "questions": [
+  {
+   "q": "サムさんはどうして眠れなかったのですか。",
+   "en": "Why couldn't Sam sleep?",
+   "choices": [
+    "時差ぼけで",
+    "ホテルがうるさくて",
+    "映画がこわくて"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは飛行機で何をしていましたか。",
+   "en": "What did Sam do on the plane?",
+   "choices": [
+    "映画を見ていた",
+    "ずっと寝ていた",
+    "漢字を勉強していた"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "迷子になったら、だれが道を教えてくれますか。",
+   "en": "If Sam gets lost, who will show him the way?",
+   "choices": [
+    "ブリップ",
+    "ゆきさん",
+    "駅の人"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip something you should have done differently this week (～ばよかった), then react to a fact Blip tells you with ～わけだ."
+}

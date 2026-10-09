@@ -148,8 +148,9 @@ $("addAll").onclick = () => { for (const t of words) addCard(`w:${t.s}`, { word:
 // ---------- quizzes (grammar and questions share this) ----------
 function quiz(container, items, step, xp) {
   let right = 0, answered = 0;
+  const shuffled = (n) => [...Array(n).keys()].sort(() => Math.random() - 0.5); // sources list the right answer first
   container.insertAdjacentHTML("beforeend", items.map((q, i) => `<div class="card2 card" data-q="${i}"><div class="jp" style="font-size:1.2rem">${esc(q.q)}</div>${q.hint || q.en ? `<div class="muted">${esc(q.hint ?? q.en)}</div>` : ""}
-    <div class="choices">${q.choices.map((c, j) => `<button data-c="${j}">${esc(c)}</button>`).join("")}</div><div class="fb"></div></div>`).join(""));
+    <div class="choices">${shuffled(q.choices.length).map((j) => `<button data-c="${j}">${esc(q.choices[j])}</button>`).join("")}</div><div class="fb"></div></div>`).join(""));
   container.querySelectorAll("[data-q]").forEach((box) => box.addEventListener("click", (e) => {
     const b = e.target.closest("[data-c]");
     if (!b || box.dataset.done) return;
@@ -163,7 +164,7 @@ function quiz(container, items, step, xp) {
 for (const g of u.grammar) {
   const box = document.createElement("div");
   box.className = "card2 card";
-  box.innerHTML = `<h3>${esc(g.title)}</h3><p>${esc(g.explain)}</p>${g.examples.map((ex) => `<div class="ex"><span class="t" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-ex="${esc(plain(ex.t))}">▶</button><div class="muted">${esc(ex.en)}</div></div>`).join("")}`;
+  box.innerHTML = `<h3>${esc(g.title)}</h3><p>${esc(g.explain)}${g.lesson ? ` <a href="/yomu/${g.lesson}">Full lesson + drill →</a>` : ""}</p>${g.examples.map((ex) => `<div class="ex"><span class="t" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-ex="${esc(plain(ex.t))}">▶</button><div class="muted">${esc(ex.en)}</div></div>`).join("")}`;
   $("grammar").append(box);
 }
 $("grammar").addEventListener("click", (e) => { const t = e.target.closest("[data-ex]")?.dataset.ex; if (t) speak(t); });

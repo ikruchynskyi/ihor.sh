@@ -1,0 +1,998 @@
+{
+ "id": "n3-05",
+ "level": "N3",
+ "unit": 5,
+ "title": {
+  "ja": "お邪魔させていただきます",
+  "en": "Thank you for having me"
+ },
+ "scene": "Osaka. Yuki's parents invite Sam to dinner at their home. Sam has practiced his keigo all week.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はじめまして",
+     null,
+     "nice to meet you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "と",
+     null,
+     "(as)",
+     "p"
+    ],
+    [
+     "申します",
+     "もうします",
+     "am called (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お邪魔させていただきます",
+     "じゃまさせていただきます",
+     "thank you for having me"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you. My name is Sam. Thank you for having me."
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "よく",
+     null,
+     "kindly"
+    ],
+    [
+     "いらっしゃいました",
+     null,
+     "you came (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お上がりください",
+     "あがりください",
+     "come in (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome. Please, come in."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "失礼します",
+     "しつれいします",
+     "excuse me (coming in)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "招待してくださって",
+     "しょうたいしてくださって",
+     "for inviting me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとうございます",
+     null,
+     "thank you very much"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Excuse me. Thank you very much for inviting me today."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "お世話になりました",
+     "せわになりました",
+     "was looked after"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for looking after Yuki in New York."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "not at all"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆきさん",
+     null,
+     "Yuki"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "おかげで",
+     null,
+     "thanks to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "話せるようになりました",
+     "はなせるようになりました",
+     "became able to speak"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Not at all. Thanks to Yuki, I've become able to speak Japanese."
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "お酒",
+     "さけ",
+     "sake"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "お飲みになります",
+     "のみになります",
+     "drink (honorific)"
+    ],
+    [
+     "か",
+     null,
+     "?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, do you drink sake?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "なら",
+     null,
+     "if it's",
+     "p"
+    ],
+    [
+     "大丈夫です",
+     "だいじょうぶです",
+     "I'm fine"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いただきます",
+     null,
+     "I'll have some (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, a little is fine. I'll have some."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "お父さん",
+     "とうさん",
+     "Dad"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "飲ませすぎないで",
+     "のませすぎないで",
+     "don't make him drink too much"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "台風",
+     "たいふう",
+     "typhoon"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "せいで",
+     null,
+     "because of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "旅行",
+     "りょこう",
+     "trip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "大変だった",
+     "たいへんだった",
+     "was rough"
+    ],
+    [
+     "の",
+     null,
+     "(it's that)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Dad, don't make him drink too much. The typhoon made his trip rough."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "たこ焼き",
+     "やき",
+     "takoyaki"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大阪",
+     "おおさか",
+     "Osaka"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "味",
+     "あじ",
+     "flavor"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "召し上がってください",
+     "めしあがってください",
+     "please eat (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, please have some takoyaki. Taste Osaka!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ごあいさつさせていただきます",
+     null,
+     "allow me to greet you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Allow me to greet you too! I'm Blip!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "まで",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "敬語",
+     "けいご",
+     "keigo"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "できる",
+     null,
+     "can do"
+    ],
+    [
+     "の",
+     null,
+     "(question)",
+     "p"
+    ],
+    [
+     "か",
+     null,
+     "!"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even the robot can do keigo!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "sasete-itadaku",
+   "title": "～させていただく: I'll (humbly) do",
+   "explain": "Causative て-form + いただく = 'I receive your permission to do'. It's a very humble way to announce your own action: お邪魔させていただきます, 説明させていただきます. Overused in business, but at someone's home it shows respect.",
+   "examples": [
+    {
+     "t": [
+      [
+       "お邪魔させていただきます",
+       "じゃまさせていただきます",
+       "I'll humbly come in"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Thank you for having me (lit. I'll humbly intrude)."
+    },
+    {
+     "t": [
+      [
+       "説明させていただきます",
+       "せつめいさせていただきます",
+       "allow me to explain"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Allow me to explain."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "では、説明＿＿＿＿＿＿ます。",
+     "hint": "Then allow me to explain.",
+     "choices": [
+      "させていただき",
+      "していただき",
+      "させてくださり"
+     ],
+     "answer": 0,
+     "why": "Your own action, with humble permission: させていただく. していただく would mean someone else does it for you."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#sasete-itadaku"
+  },
+  {
+   "id": "o-ni-naru",
+   "title": "お～になる / お～する: raise them, lower yourself",
+   "explain": "お + stem + になる raises the other person's action: お飲みになる (you drink), お帰りになる. お + stem + する lowers your own: お持ちします (I'll carry it). Some verbs have special forms: いらっしゃる, 召し上がる, 申す.",
+   "examples": [
+    {
+     "t": [
+      [
+       "お酒",
+       "さけ",
+       "sake"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "お飲みになります",
+       "のみになります",
+       "drink (honorific)"
+      ],
+      [
+       "か",
+       null,
+       "?"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Do you drink sake?"
+    },
+    {
+     "t": [
+      [
+       "荷物",
+       "にもつ",
+       "bag"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "お持ちします",
+       "もちします",
+       "I'll carry (humble)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Let me carry your bag."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "先生は何時にお帰り＿＿＿＿＿か。",
+     "hint": "What time will the teacher go home?",
+     "choices": [
+      "になります",
+      "します",
+      "いたします"
+     ],
+     "answer": 0,
+     "why": "Someone else's action, raised: お～になる."
+    },
+    {
+     "q": "荷物、お持ち＿＿＿。",
+     "hint": "Let me carry your bag.",
+     "choices": [
+      "します",
+      "になります",
+      "ください"
+     ],
+     "answer": 0,
+     "why": "Your own action, lowered: お～する."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#o-ni-naru"
+  },
+  {
+   "id": "okage-sei",
+   "title": "～おかげで / ～せいで: thanks to / because of (blame)",
+   "explain": "Same shape (plain form, or Noun の + おかげで / せいで), opposite feeling: おかげで for good results, せいで for bad ones.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ゆきさん",
+       null,
+       "Yuki"
+      ],
+      [
+       "の",
+       null,
+       "(of)",
+       "p"
+      ],
+      [
+       "おかげで",
+       null,
+       "thanks to"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "話せるようになった",
+       "はなせるようになった",
+       "became able to speak"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Thanks to Yuki, I can speak now."
+    },
+    {
+     "t": [
+      [
+       "台風",
+       "たいふう",
+       "typhoon"
+      ],
+      [
+       "の",
+       null,
+       "(of)",
+       "p"
+      ],
+      [
+       "せいで",
+       null,
+       "because of"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "大変だった",
+       "たいへんだった",
+       "was rough"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Because of the typhoon, it was rough."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "雨の＿＿＿、試合が中止になった。",
+     "hint": "Because of the rain, the game was canceled.",
+     "choices": [
+      "せいで",
+      "おかげで",
+      "ついでに"
+     ],
+     "answer": 0,
+     "why": "A bad result: せいで."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#okage-sei"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "申",
+   "on": [
+    "シン"
+   ],
+   "kun": [
+    "もう.す"
+   ],
+   "m": "say (humble)",
+   "ex": [
+    [
+     "申す",
+     "もうす",
+     "to be called (humble)"
+    ],
+    [
+     "申し込む",
+     "もうしこむ",
+     "to apply"
+    ]
+   ]
+  },
+  {
+   "k": "酒",
+   "on": [
+    "シュ"
+   ],
+   "kun": [
+    "さけ",
+    "さか"
+   ],
+   "m": "sake, alcohol",
+   "ex": [
+    [
+     "お酒",
+     "おさけ",
+     "sake, alcohol"
+    ],
+    [
+     "日本酒",
+     "にほんしゅ",
+     "Japanese sake"
+    ]
+   ]
+  },
+  {
+   "k": "夫",
+   "on": [
+    "フ"
+   ],
+   "kun": [
+    "おっと"
+   ],
+   "m": "husband, man",
+   "ex": [
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "夫",
+     "おっと",
+     "husband"
+    ]
+   ]
+  },
+  {
+   "k": "招",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [
+    "まね.く"
+   ],
+   "m": "invite",
+   "ex": [
+    [
+     "招く",
+     "まねく",
+     "to invite"
+    ],
+    [
+     "招待",
+     "しょうたい",
+     "invitation"
+    ]
+   ]
+  },
+  {
+   "k": "礼",
+   "on": [
+    "レイ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "thanks, bow",
+   "ex": [
+    [
+     "失礼",
+     "しつれい",
+     "rude; excuse me"
+    ],
+    [
+     "お礼",
+     "おれい",
+     "thanks"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  4,
+  6
+ ],
+ "questions": [
+  {
+   "q": "サムさんはだれのおかげで日本語が話せるようになりましたか。",
+   "en": "Thanks to whom can Sam speak Japanese?",
+   "choices": [
+    "ゆきさん",
+    "ブリップ",
+    "お父さん"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "お父さんはサムさんに何を聞きましたか。",
+   "en": "What did the father ask Sam?",
+   "choices": [
+    "お酒を飲むかどうか",
+    "仕事は何か",
+    "いつ帰るか"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてサムさんの旅行は大変でしたか。",
+   "en": "Why was Sam's trip rough?",
+   "choices": [
+    "台風のせいで",
+    "お金がなくて",
+    "道に迷って"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Role-play: Blip is a friend's parent. Introduce yourself humbly (と申します), thank them (おかげで), and answer an honorific question (お～になりますか)."
+}

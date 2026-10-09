@@ -1,0 +1,933 @@
+{
+ "id": "n3-03",
+ "level": "N3",
+ "unit": 3,
+ "title": {
+  "ja": "台風で新幹線が止まった",
+  "en": "The typhoon stopped the bullet train"
+ },
+ "scene": "Tokyo Station. A typhoon is coming, and the departure board keeps turning red.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "に",
+     null,
+     "(by)",
+     "p"
+    ],
+    [
+     "よると",
+     null,
+     "according to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "台風",
+     "たいふう",
+     "typhoon"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "午後",
+     "ごご",
+     "afternoon"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "来る",
+     "くる",
+     "comes"
+    ],
+    [
+     "らしい",
+     null,
+     "apparently"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "According to the news, the typhoon is supposed to reach Tokyo this afternoon."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "見て",
+     "みて",
+     "look"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ],
+    [
+     "行き",
+     "ゆき",
+     "bound for"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "新幹線",
+     "しんかんせん",
+     "bullet trains"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "全部",
+     "ぜんぶ",
+     "all"
+    ],
+    [
+     "止まっている",
+     "とまっている",
+     "are stopped"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Look. All the bullet trains to Kyoto are stopped."
+  },
+  {
+   "who": "駅員",
+   "t": [
+    [
+     "台風",
+     "たいふう",
+     "typhoon"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ため",
+     null,
+     "because of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本日",
+     "ほんじつ",
+     "today"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "運転",
+     "うんてん",
+     "service"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "中止せざるを得ません",
+     "ちゅうしせざるをえません",
+     "we have no choice but to cancel"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Due to the typhoon, we have no choice but to cancel today's service."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "えっ",
+     null,
+     "what"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "残念",
+     "ざんねん",
+     "too bad"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ホテル",
+     null,
+     "hotel"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "予約してある",
+     "よやくしてある",
+     "is booked"
+    ],
+    [
+     "のに",
+     null,
+     "even though",
+     "p"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What? Too bad! The Kyoto hotel is already booked..."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "仕方がない",
+     "しかたがない",
+     "it can't be helped"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "もう",
+     null,
+     "one more"
+    ],
+    [
+     "一泊する",
+     "いっぱくする",
+     "stay a night"
+    ],
+    [
+     "しかない",
+     null,
+     "only option"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It can't be helped. We'll just have to stay one more night in Tokyo."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "予約",
+     "よやく",
+     "reservation"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "明日",
+     "あした",
+     "tomorrow"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "変えてもらう",
+     "かえてもらう",
+     "have it changed"
+    ],
+    [
+     "しかない",
+     null,
+     "only option"
+    ],
+    [
+     "な",
+     null,
+     "(I guess)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then I guess all I can do is have the reservation moved to tomorrow."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "電話",
+     "でんわ",
+     "phone call"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "かける",
+     null,
+     "will make"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "敬語",
+     "けいご",
+     "keigo"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "難しい",
+     "むずかしい",
+     "difficult"
+    ],
+    [
+     "でしょう",
+     null,
+     "right"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'll make the call. Keigo is still hard for you, right?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "強くて",
+     "つよくて",
+     "strong and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "飛ばされそう",
+     "とばされそう",
+     "about to be blown away"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The wind outside is so strong, Blip's about to be blown away!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ホテル",
+     null,
+     "hotel"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ながら",
+     "みながら",
+     "while watching"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラーメン",
+     null,
+     "ramen"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べよう",
+     "たべよう",
+     "let's eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Tonight let's eat ramen at the hotel while we watch the news."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "ni-yoru-to",
+   "title": "～によると: according to",
+   "explain": "Source + によると names where you heard it, and the sentence usually ends with hearsay: ～そうだ, ～らしい, ～ということだ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ニュース",
+       null,
+       "news"
+      ],
+      [
+       "に",
+       null,
+       "(by)",
+       "p"
+      ],
+      [
+       "よると",
+       null,
+       "according to"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "台風",
+       "たいふう",
+       "typhoon"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "来る",
+       "くる",
+       "comes"
+      ],
+      [
+       "そうだ",
+       null,
+       "I hear"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "According to the news, a typhoon is coming."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "天気予報＿＿＿＿＿、明日は雪だそうだ。",
+     "hint": "According to the forecast, it'll snow tomorrow.",
+     "choices": [
+      "によると",
+      "にとって",
+      "について"
+     ],
+     "answer": 0,
+     "why": "Naming the source: によると, paired with そうだ."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ni-yoru-to"
+  },
+  {
+   "id": "zaru-wo-enai",
+   "title": "V-ざるを得ない: have no choice but to",
+   "explain": "ない-stem + ざるを得ない (ざるをえない) = circumstances force you. 行く → 行かざるを得ない; する is irregular: せざるを得ない. It's formal: announcements and the news love it.",
+   "examples": [
+    {
+     "t": [
+      [
+       "運転",
+       "うんてん",
+       "service"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "中止せざるを得ない",
+       "ちゅうしせざるをえない",
+       "have no choice but to cancel"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "We have no choice but to cancel the service."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "台風なので、運転を中止＿＿＿＿＿＿。",
+     "hint": "Because of the typhoon, we have no choice but to cancel.",
+     "choices": [
+      "せざるを得ない",
+      "しざるを得ない",
+      "するざるを得ない"
+     ],
+     "answer": 0,
+     "why": "する is irregular: せざるを得ない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#zaru-wo-enai"
+  },
+  {
+   "id": "shika-nai-v",
+   "title": "V-るしかない: the only thing to do is",
+   "explain": "Dictionary form + しかない = there's no other option. More casual than ざるを得ない.",
+   "examples": [
+    {
+     "t": [
+      [
+       "もう",
+       null,
+       "one more"
+      ],
+      [
+       "一泊する",
+       "いっぱくする",
+       "stay a night"
+      ],
+      [
+       "しかない",
+       null,
+       "it's the only way"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "We'll just have to stay one more night."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "終電がないから、歩く＿＿＿＿。",
+     "hint": "The last train's gone, so we can only walk.",
+     "choices": [
+      "しかない",
+      "だけない",
+      "ばかりない"
+     ],
+     "answer": 0,
+     "why": "Nothing else to do: dictionary form + しかない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#shika-nai-v"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "変",
+   "on": [
+    "ヘン"
+   ],
+   "kun": [
+    "か.わる",
+    "か.える"
+   ],
+   "m": "change, strange",
+   "ex": [
+    [
+     "変える",
+     "かえる",
+     "to change"
+    ],
+    [
+     "大変",
+     "たいへん",
+     "tough"
+    ]
+   ]
+  },
+  {
+   "k": "難",
+   "on": [
+    "ナン"
+   ],
+   "kun": [
+    "むずか.しい"
+   ],
+   "m": "difficult",
+   "ex": [
+    [
+     "難しい",
+     "むずかしい",
+     "difficult"
+    ]
+   ]
+  },
+  {
+   "k": "飛",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "と.ぶ"
+   ],
+   "m": "fly",
+   "ex": [
+    [
+     "飛ぶ",
+     "とぶ",
+     "to fly"
+    ],
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ]
+   ]
+  },
+  {
+   "k": "得",
+   "on": [
+    "トク"
+   ],
+   "kun": [
+    "え.る"
+   ],
+   "m": "gain",
+   "ex": [
+    [
+     "得る",
+     "える",
+     "to obtain"
+    ],
+    [
+     "得意",
+     "とくい",
+     "good at"
+    ]
+   ]
+  },
+  {
+   "k": "残",
+   "on": [
+    "ザン"
+   ],
+   "kun": [
+    "のこ.る"
+   ],
+   "m": "remain",
+   "ex": [
+    [
+     "残念",
+     "ざんねん",
+     "too bad"
+    ],
+    [
+     "残る",
+     "のこる",
+     "to remain"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  4,
+  8
+ ],
+ "questions": [
+  {
+   "q": "ニュースによると、台風はいつ東京に来ますか。",
+   "en": "According to the news, when does the typhoon reach Tokyo?",
+   "choices": [
+    "午後",
+    "夜中",
+    "明日の朝"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "今日、二人はどうしますか。",
+   "en": "What will the two of them do today?",
+   "choices": [
+    "東京にもう一泊する",
+    "バスで京都へ行く",
+    "大阪へ飛ぶ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "だれがホテルに電話をかけますか。",
+   "en": "Who will call the hotel?",
+   "choices": [
+    "ゆきさん",
+    "サムさん",
+    "駅員"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a time you had no choice (～しかなかった / ～ざるを得なかった), and pass on a piece of news with ～によると."
+}

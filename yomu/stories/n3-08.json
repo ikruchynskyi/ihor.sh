@@ -1,0 +1,983 @@
+{
+ "id": "n3-08",
+ "level": "N3",
+ "unit": 8,
+ "title": {
+  "ja": "また会えますように",
+  "en": "Hope we meet again"
+ },
+ "scene": "Narita Airport, the last day. Sam's bag is full of radio parts and snacks. Yuki came to see him off.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "忘れ物",
+     "わすれもの",
+     "anything forgotten"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ない",
+     null,
+     "none"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パスポート",
+     null,
+     "passport"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Forgetting anything? Passport?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ある",
+     null,
+     "got it"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ずっと",
+     null,
+     "the whole time"
+    ],
+    [
+     "案内してくれて",
+     "あんないしてくれて",
+     "for guiding me"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Got it. Thank you for showing me around the whole time."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "こちら",
+     null,
+     "I"
+    ],
+    [
+     "こそ",
+     null,
+     "(it's me who)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "旅行する",
+     "りょこうする",
+     "travel"
+    ],
+    [
+     "たびに",
+     null,
+     "every time"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "こと",
+     null,
+     "things"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "気がつく",
+     "きがつく",
+     "notice"
+    ],
+    [
+     "の",
+     null,
+     "(it's that)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, thank YOU. Every time I travel with you, I notice something new."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ぼく",
+     null,
+     "me"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "話す",
+     "はなす",
+     "speak"
+    ],
+    [
+     "たびに",
+     null,
+     "every time"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自分",
+     "じぶん",
+     "myself"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "変わる",
+     "かわる",
+     "change"
+    ],
+    [
+     "気がする",
+     "きがする",
+     "feel like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Me too. Every time I speak Japanese, I feel like I change a little."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "次",
+     "つぎ",
+     "next time"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "冬",
+     "ふゆ",
+     "winter"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "来て",
+     "きて",
+     "come"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "北海道",
+     "ほっかいどう",
+     "Hokkaido"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見せたい",
+     "みせたい",
+     "want to show"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Come in winter next time. I want to show you the snow in Hokkaido."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "ゆきさん",
+     null,
+     "Yuki"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "名前",
+     "なまえ",
+     "name"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "同じ",
+     "おなじ",
+     "same"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "気がついた",
+     "きがついた",
+     "noticed"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Snow (yuki) and your name are the same! I just noticed."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "遅すぎる",
+     "おそすぎる",
+     "way too late"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Took you long enough!"
+  },
+  {
+   "who": "アナウンス",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "行き",
+     "ゆき",
+     "bound for"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "お客様",
+     "きゃくさま",
+     "passengers"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "五番",
+     "ごばん",
+     "No. 5"
+    ],
+    [
+     "ゲート",
+     null,
+     "gate"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お越しください",
+     "こしください",
+     "please proceed"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Passengers for New York, please proceed to Gate 5."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "飛行機",
+     "ひこうき",
+     "plane"
+    ],
+    [
+     "で",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今度",
+     "こんど",
+     "this time"
+    ],
+    [
+     "こそ",
+     null,
+     "for sure",
+     "p"
+    ],
+    [
+     "寝て",
+     "ねて",
+     "sleep"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "On the plane, this time make sure you sleep, Sam."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "みんな",
+     null,
+     "everyone"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "会えます",
+     "あえます",
+     "can meet"
+    ],
+    [
+     "ように",
+     null,
+     "I hope"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah. I hope I can see everyone again."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "tabi-ni",
+   "title": "～たびに: every time",
+   "explain": "Dictionary form or Noun の + たびに = whenever A happens, B happens. B is usually a change or a feeling: 旅行のたびに (every trip).",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本語",
+       "にほんご",
+       "Japanese"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "話す",
+       "はなす",
+       "speak"
+      ],
+      [
+       "たびに",
+       null,
+       "every time"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "少し",
+       "すこし",
+       "a little"
+      ],
+      [
+       "変わる",
+       "かわる",
+       "change"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Every time I speak Japanese, I change a little."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "この歌を聞く＿＿＿、ニューヨークを思い出す。",
+     "hint": "Every time I hear this song, I remember New York.",
+     "choices": [
+      "たびに",
+      "うちに",
+      "とたん"
+     ],
+     "answer": 0,
+     "why": "Whenever A, B: たびに."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#tabi-ni"
+  },
+  {
+   "id": "koso",
+   "title": "～こそ: this one, for sure",
+   "explain": "こそ spotlights one word as THE one: 今度こそ (this time for sure), こちらこそ (no, thank YOU). It replaces は/が/を.",
+   "examples": [
+    {
+     "t": [
+      [
+       "今度",
+       "こんど",
+       "this time"
+      ],
+      [
+       "こそ",
+       null,
+       "for sure",
+       "p"
+      ],
+      [
+       "寝て",
+       "ねて",
+       "sleep"
+      ],
+      [
+       "ね",
+       null,
+       "okay"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "This time, make sure you sleep."
+    },
+    {
+     "t": [
+      [
+       "こちら",
+       null,
+       "me"
+      ],
+      [
+       "こそ",
+       null,
+       "(it's me)",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "ありがとう",
+       null,
+       "thank you"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "No, thank YOU."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "A：ありがとう。B：こちら＿＿、ありがとう。",
+     "hint": "A: Thanks. B: No, thank YOU.",
+     "choices": [
+      "こそ",
+      "さえ",
+      "ばかり"
+     ],
+     "answer": 0,
+     "why": "こちらこそ: it's me who should say it."
+    },
+    {
+     "q": "今年＿＿、日本へ行きたい。",
+     "hint": "This year, for sure, I want to go to Japan.",
+     "choices": [
+      "こそ",
+      "さえ",
+      "しか"
+     ],
+     "answer": 0,
+     "why": "This one for sure: こそ."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#koso"
+  },
+  {
+   "id": "you-ni-wish",
+   "title": "～ますように: I hope, may …",
+   "explain": "ます-form + ように, said like a wish or prayer: また会えますように (I hope we meet again). People write these on wooden ema plaques at shrines. Negative: 雨が降りませんように.",
+   "examples": [
+    {
+     "t": [
+      [
+       "また",
+       null,
+       "again"
+      ],
+      [
+       "会えます",
+       "あえます",
+       "can meet"
+      ],
+      [
+       "ように",
+       null,
+       "I hope"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I hope we can meet again."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日、雨が降り＿＿＿ように。",
+     "hint": "I hope it doesn't rain tomorrow.",
+     "choices": [
+      "ません",
+      "ない",
+      "なく"
+     ],
+     "answer": 0,
+     "why": "Wishes use the ます-form: 降りませんように."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#you-ni-wish"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "忘",
+   "on": [
+    "ボウ"
+   ],
+   "kun": [
+    "わす.れる"
+   ],
+   "m": "forget",
+   "ex": [
+    [
+     "忘れる",
+     "わすれる",
+     "to forget"
+    ],
+    [
+     "忘れ物",
+     "わすれもの",
+     "something left behind"
+    ]
+   ]
+  },
+  {
+   "k": "遅",
+   "on": [
+    "チ"
+   ],
+   "kun": [
+    "おく.れる",
+    "おそ.い"
+   ],
+   "m": "late, slow",
+   "ex": [
+    [
+     "遅い",
+     "おそい",
+     "late, slow"
+    ],
+    [
+     "遅れる",
+     "おくれる",
+     "to be late"
+    ]
+   ]
+  },
+  {
+   "k": "越",
+   "on": [
+    "エツ"
+   ],
+   "kun": [
+    "こ.す",
+    "こ.える"
+   ],
+   "m": "cross, go over",
+   "ex": [
+    [
+     "お越しください",
+     "おこしください",
+     "please come"
+    ],
+    [
+     "引っ越す",
+     "ひっこす",
+     "to move house"
+    ]
+   ]
+  },
+  {
+   "k": "番",
+   "on": [
+    "バン"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "number, turn",
+   "ex": [
+    [
+     "五番",
+     "ごばん",
+     "number five"
+    ],
+    [
+     "番号",
+     "ばんごう",
+     "number"
+    ]
+   ]
+  },
+  {
+   "k": "様",
+   "on": [
+    "ヨウ"
+   ],
+   "kun": [
+    "さま"
+   ],
+   "m": "Mr./Ms., manner",
+   "ex": [
+    [
+     "お客様",
+     "おきゃくさま",
+     "customer"
+    ],
+    [
+     "様子",
+     "ようす",
+     "situation"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  6,
+  9
+ ],
+ "questions": [
+  {
+   "q": "ゆきさんは次、いつサムさんに来てほしいですか。",
+   "en": "When does Yuki want Sam to come next?",
+   "choices": [
+    "冬",
+    "夏",
+    "春"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは何に気がつきましたか。",
+   "en": "What did Sam notice?",
+   "choices": [
+    "雪とゆきさんの名前が同じこと",
+    "パスポートがないこと",
+    "ゲートが違うこと"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップはサムさんに飛行機で何をしてほしいですか。",
+   "en": "What does Blip want Sam to do on the plane?",
+   "choices": [
+    "寝ること",
+    "映画を見ること",
+    "勉強すること"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Say goodbye to Blip as if at the airport: thank it (こちらこそ), say what happens every time you study (～たびに), and make a wish (～ますように)."
+}

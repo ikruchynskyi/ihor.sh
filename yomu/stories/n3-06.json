@@ -1,0 +1,992 @@
+{
+ "id": "n3-06",
+ "level": "N3",
+ "unit": 6,
+ "title": {
+  "ja": "京都で迷子になった",
+  "en": "Lost in Kyoto"
+ },
+ "scene": "Kyoto, finally. Sam wanders off alone up Fushimi Inari's thousand red gates. His phone is at 3%.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "鳥居",
+     "とりい",
+     "torii gates"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "数えている",
+     "かぞえている",
+     "was counting"
+    ],
+    [
+     "うちに",
+     null,
+     "while"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どこ",
+     null,
+     "where"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "いる",
+     null,
+     "am"
+    ],
+    [
+     "か",
+     null,
+     "(whether)",
+     "p"
+    ],
+    [
+     "わからなくなった",
+     null,
+     "lost track"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "While I was counting the torii gates, I lost track of where I was."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "地図",
+     "ちず",
+     "map"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ようとした",
+     "みようとした",
+     "tried to look at"
+    ],
+    [
+     "とたん",
+     null,
+     "the moment"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "スマホ",
+     null,
+     "phone"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "切れた",
+     "きれた",
+     "died"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The moment I tried to check the map, my phone battery died!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "あと",
+     null,
+     "remaining"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "山",
+     "やま",
+     "mountain"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "暗くなる",
+     "くらくなる",
+     "gets dark"
+    ],
+    [
+     "の",
+     null,
+     "(the)",
+     "p"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "早い",
+     "はやい",
+     "early"
+    ],
+    [
+     "よ",
+     null,
+     "(warning)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My battery is almost out too... It gets dark early on the mountain."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すみません",
+     null,
+     "excuse me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "駅",
+     "えき",
+     "station"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "戻りたい",
+     "もどりたい",
+     "want to go back"
+    ],
+    [
+     "んですが",
+     null,
+     "(but…)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Excuse me, I'd like to get back to the station."
+  },
+  {
+   "who": "おばあさん",
+   "t": [
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "道",
+     "みち",
+     "path"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "まっすぐ",
+     null,
+     "straight"
+    ],
+    [
+     "下れば",
+     "くだれば",
+     "if you go down"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "駅",
+     "えき",
+     "station"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着く",
+     "つく",
+     "arrive"
+    ],
+    [
+     "に違いない",
+     "にちがいない",
+     "surely"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Go straight down this path and you're sure to reach the station."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとうございます",
+     null,
+     "thank you very much"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あの",
+     null,
+     "that"
+    ],
+    [
+     "お茶屋",
+     "ちゃや",
+     "tea shop"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "充電させてもらえる",
+     "じゅうでんさせてもらえる",
+     "can let me charge"
+    ],
+    [
+     "か",
+     null,
+     "(whether)",
+     "p"
+    ],
+    [
+     "聞いてみよう",
+     "きいてみよう",
+     "I'll ask"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you! I'll ask if that tea shop will let me charge my phone."
+  },
+  {
+   "who": "店の人",
+   "t": [
+    [
+     "どうぞ",
+     null,
+     "go ahead"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "充電",
+     "じゅうでん",
+     "charging"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "終わり次第",
+     "おわりしだい",
+     "as soon as it's done"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お知らせします",
+     "しらせします",
+     "I'll let you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Go ahead. I'll let you know as soon as it's charged."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "もしもし",
+     null,
+     "hello"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一時間",
+     "いちじかん",
+     "an hour"
+    ],
+    [
+     "も",
+     null,
+     "as much as"
+    ],
+    [
+     "連絡",
+     "れんらく",
+     "contact"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "なくて",
+     null,
+     "wasn't and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心配した",
+     "しんぱいした",
+     "was worried"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hello, Sam? I hadn't heard from you for an hour, I was worried!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ごめん",
+     null,
+     "sorry"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "鳥居",
+     "とりい",
+     "gates"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "きれいすぎて",
+     null,
+     "too beautiful"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "気がついたら",
+     "きがついたら",
+     "when I noticed"
+    ],
+    [
+     "山",
+     "やま",
+     "mountain"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "top"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "いた",
+     null,
+     "was"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sorry. The gates were so beautiful that before I knew it I was at the top of the mountain."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "らしい",
+     null,
+     "so like you"
+    ],
+    [
+     "ね",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "駅",
+     "えき",
+     "station"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "待っている",
+     "まっている",
+     "will wait"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "気をつけて",
+     "きをつけて",
+     "be careful"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's so you. I'll wait at the station, so be careful."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "uchi-ni-change",
+   "title": "V-ているうちに: while (and before you knew it)",
+   "explain": "ている + うちに = during an ongoing action, something changed without you noticing: 数えているうちにわからなくなった. Compare N4 うちに: do it while you still can.",
+   "examples": [
+    {
+     "t": [
+      [
+       "数えている",
+       "かぞえている",
+       "was counting"
+      ],
+      [
+       "うちに",
+       null,
+       "while"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "わからなくなった",
+       null,
+       "lost track"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "While I was counting, I lost track."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "話している＿＿＿、だんだん眠くなった。",
+     "hint": "While we were talking, I got sleepy.",
+     "choices": [
+      "うちに",
+      "とたん",
+      "ついでに"
+     ],
+     "answer": 0,
+     "why": "A change that crept in during an action: ているうちに."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#uchi-ni-change"
+  },
+  {
+   "id": "totan",
+   "title": "V-たとたん: the moment …",
+   "explain": "Past form + とたん(に) = right as A happened, B happened, usually a surprise you didn't choose.",
+   "examples": [
+    {
+     "t": [
+      [
+       "見ようとした",
+       "みようとした",
+       "tried to look"
+      ],
+      [
+       "とたん",
+       null,
+       "the moment"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "電池",
+       "でんち",
+       "battery"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "切れた",
+       "きれた",
+       "died"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The moment I tried to look, the battery died."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "外に出た＿＿＿、雨が降り出した。",
+     "hint": "The moment I went out, it started to rain.",
+     "choices": [
+      "とたん",
+      "うちに",
+      "たびに"
+     ],
+     "answer": 0,
+     "why": "Right at that moment, unexpectedly: たとたん."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#totan"
+  },
+  {
+   "id": "ni-chigainai",
+   "title": "～に違いない: must be, surely",
+   "explain": "Plain form + に違いない = I'm convinced. Nouns and な-adjectives attach directly: 本当に違いない. Stronger and more written than だろう.",
+   "examples": [
+    {
+     "t": [
+      [
+       "駅",
+       "えき",
+       "station"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "着く",
+       "つく",
+       "arrive"
+      ],
+      [
+       "に違いない",
+       "にちがいない",
+       "surely"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You're sure to reach the station."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "電気がついている。だれかいる＿＿＿＿＿。",
+     "hint": "The light's on. Someone must be there.",
+     "choices": [
+      "に違いない",
+      "わけがない",
+      "ことにする"
+     ],
+     "answer": 0,
+     "why": "A confident guess: に違いない."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ni-chigainai"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "数",
+   "on": [
+    "スウ"
+   ],
+   "kun": [
+    "かず",
+    "かぞ.える"
+   ],
+   "m": "number, count",
+   "ex": [
+    [
+     "数える",
+     "かぞえる",
+     "to count"
+    ],
+    [
+     "数",
+     "かず",
+     "number"
+    ]
+   ]
+  },
+  {
+   "k": "暗",
+   "on": [
+    "アン"
+   ],
+   "kun": [
+    "くら.い"
+   ],
+   "m": "dark",
+   "ex": [
+    [
+     "暗い",
+     "くらい",
+     "dark"
+    ]
+   ]
+  },
+  {
+   "k": "戻",
+   "on": [
+    "レイ"
+   ],
+   "kun": [
+    "もど.る"
+   ],
+   "m": "return",
+   "ex": [
+    [
+     "戻る",
+     "もどる",
+     "to go back"
+    ]
+   ]
+  },
+  {
+   "k": "違",
+   "on": [
+    "イ"
+   ],
+   "kun": [
+    "ちが.う"
+   ],
+   "m": "differ",
+   "ex": [
+    [
+     "違う",
+     "ちがう",
+     "to differ"
+    ],
+    [
+     "間違い",
+     "まちがい",
+     "mistake"
+    ]
+   ]
+  },
+  {
+   "k": "連",
+   "on": [
+    "レン"
+   ],
+   "kun": [
+    "つ.れる"
+   ],
+   "m": "link, take along",
+   "ex": [
+    [
+     "連絡",
+     "れんらく",
+     "contact"
+    ],
+    [
+     "連れる",
+     "つれる",
+     "to take along"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  3,
+  9
+ ],
+ "questions": [
+  {
+   "q": "サムさんはどうして迷子になりましたか。",
+   "en": "How did Sam get lost?",
+   "choices": [
+    "鳥居を数えているうちに",
+    "電車をまちがえて",
+    "地図を忘れて"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "スマホの電池はいつ切れましたか。",
+   "en": "When did the phone die?",
+   "choices": [
+    "地図を見ようとしたとき",
+    "駅に着いたとき",
+    "ゆきさんに電話したとき"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんはどこで待っていますか。",
+   "en": "Where is Yuki waiting?",
+   "choices": [
+    "駅",
+    "お茶屋",
+    "山の上"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a time something happened the moment you did something (～たとたん), and make a confident guess about something with ～に違いない."
+}
