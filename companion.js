@@ -114,19 +114,23 @@ document.body.append(host);
 const root = host.attachShadow({ mode: "open" });
 root.innerHTML = `<style>${CSS}</style>
 <svg class="stage">
-  <defs><radialGradient id="skin" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffe08a"/><stop offset=".55" stop-color="#ffb347"/><stop offset="1" stop-color="#f0782a"/></radialGradient></defs>
+  <defs><radialGradient id="skin" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffe08a"/><stop offset=".55" stop-color="#ffb347"/><stop offset="1" stop-color="#f0782a"/></radialGradient><clipPath id="bodyclip"><path class="clipbody"/></clipPath></defs>
   <ellipse class="shadow" rx="30" ry="5"/>
   <g class="fx"></g>
   <g class="blip" tabindex="0" role="button" aria-label="Blip, the site companion. Press Enter to ask a question.">
     <path class="antenna"/><circle class="tip" r="5"/>
     <g class="arm" hidden><path class="arm-line"/><circle class="hand" r="5"/></g>
     <g class="hat" hidden><ellipse cx="0" cy="-6" rx="12" ry="9" fill="#ff8c1a" stroke="#2a1405" stroke-width="2.5"/><path d="M-4,-14 Q0,-6 -1,2 M4,-14 Q1,-6 2,2" stroke="#c75f00" stroke-width="1.5" fill="none"/><path d="M0,-15 q1,-5 4,-6" stroke="#2f6b1e" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+    <g class="behind"></g><g class="hair"></g>
     <path class="body" fill="url(#skin)"/>
-    <g class="item" aria-hidden="true"></g>
+    <g clip-path="url(#bodyclip)"><g class="costume"></g></g>
+    <g class="item" aria-hidden="true"></g><g class="held"></g>
     <g class="face mood-idle">${eye(-1)}${eye(1)}<g class="glasses" hidden fill="none" stroke="#2a1405" stroke-width="2.5"><circle cx="-10" cy="-4" r="9"/><circle cx="10" cy="-4" r="9"/><path d="M-1,-6 Q0,-8 1,-6"/></g>
       <ellipse class="cheek" cx="-17" cy="6" rx="4" ry="2.5"/><ellipse class="cheek" cx="17" cy="6" rx="4" ry="2.5"/>
-      <path class="mouth"/></g>
+      <path class="mouth"/><g class="face-over"></g></g>
+    <g class="hat2"></g>
   </g>
+  <g class="act"></g>
 </svg>
 <div class="bubble" hidden></div>
 <button class="tab" hidden>▲ BLIP</button>
@@ -139,8 +143,9 @@ root.innerHTML = `<style>${CSS}</style>
       <button class="x" aria-label="Close">X</button>
     </header>
     <div class="log" aria-live="polite"></div>
+    <div class="wardrobe" hidden></div>
     <form><span class="caret" aria-hidden="true">▶</span><input aria-label="Your question" autocomplete="off" maxlength="500" placeholder="Ask me anything about this page…"><button>SEND</button></form>
-    <footer><span>ESC CLOSE</span><a href="/">⌂ HOME</a><button type="button" class="new">NEW CHAT</button><button type="button" class="hide">HIDE BLIP</button></footer>
+    <footer><span>ESC CLOSE</span><a href="/">⌂ HOME</a><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
   </section>
 </div>`;
 const $ = (s) => root.querySelector(s);
@@ -150,6 +155,7 @@ const looks = root.querySelectorAll(".look");
 const hat = root.querySelector(".hat");
 const arm = root.querySelector(".arm"), armLine = root.querySelector(".arm-line"), hand = root.querySelector(".hand");
 let pointAt = null; // { x, y, until }: the arm reaches toward it
+let wardrobe = null; // costumes, hats, things to hold and tricks (blip-wardrobe.js), set up once Blip can move
 hat.toggleAttribute("hidden", new Date().getMonth() !== 9); // a pumpkin on the head all October (SVG: attributes, not .hidden)
 
 // Each world gives Blip something to carry: where it goes ("head" around the top, "side" held at the right) and its drawing.
@@ -248,6 +254,7 @@ function render() {
     itemEl.setAttribute("transform", myItem.at === "head" ? `translate(${c.x},${c.y - 2}) scale(${w.toFixed(3)})` : `translate(${x1 - 3},${c.y + 8}) rotate(${myItem.label === "MetroCard" ? -18 : 28}) scale(1.2)`);
   }
   face.setAttribute("transform", `translate(${c.x},${c.y})`);
+  if (wardrobe) { const [x0, x1] = d3.extent(ring, (n) => n.x); wardrobe.render(c, d3.min(ring, (n) => n.y), x1, (x1 - x0) / 2 / R); }
   const t = gaze && performance.now() < gaze.until ? gaze : mood === "think" ? { x: c.x + 20, y: c.y - 200 } : mouse.seen ? mouse : { x: c.x - 40, y: c.y + 10 };
   const dx = t.x - c.x, dy = t.y - c.y, m = Math.hypot(dx, dy) || 1, s = Math.min(1, m / 60) * 3.2;
   pupil.x += (dx / m * s - pupil.x) * 0.25; pupil.y += (dy / m * s - pupil.y) * 0.25;
@@ -317,16 +324,34 @@ function land(v) {
 }
 let greeted = !firstVisit;
 
+// ---------- the wardrobe ----------
+const isOctober = new Date().getMonth() === 9;
+try {
+  const { setup } = await import("/blip-wardrobe.js");
+  wardrobe = setup({
+    root, stage, bodyEl, face, fx, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, ping,
+    W: () => W, H: () => H,
+    layers: { behind: $(".behind"), hair: $(".hair"), costume: $(".costume"), clip: $(".clipbody"), faceOver: $(".face-over"), hat: $(".hat2"), held: $(".held"), act: $(".act") },
+    // A chosen hat replaces the October pumpkin and a world's headgear; a chosen item replaces the world's item.
+    onLook: (look) => {
+      const hatOn = look.hat !== "none";
+      hat.toggleAttribute("hidden", hatOn || !isOctober || myItem?.at === "head");
+      itemEl.toggleAttribute("hidden", (look.item !== "world" && myItem?.at === "side") || (hatOn && myItem?.at === "head"));
+    },
+  });
+} catch (e) { console.warn("Blip's wardrobe didn't load:", e); }
+
 // ---------- idle life ----------
 let lastInput = performance.now(), nextIdle = performance.now() + (firstVisit ? 6000 : 4000), asleep = false, dialogOpen = false, dragging = false, hidden = false, asked = false, zzz;
 function idle() {
   const r = Math.random();
   if (!asked || r < 0.1) { asked = true; return say("Have a question?", { ms: 6000, cta: "▶ ASK ME", onClick: () => openDialog() }); }
   if (reduced) return blink();
+  if (wardrobe && r < 0.24) return wardrobe.trick();
   if (r < 0.4) return walkTo(Math.random() * W);
   if (r < 0.52) { hop(6); return setMood("happy", 900); }
   if (r < 0.66) return scan();
-  if (r < 0.82) return say(pick(QUIPS), { ms: 4000 });
+  if (r < 0.82) return say(wardrobe?.quip() ?? pick(QUIPS), { ms: 4000 });
   gaze = { x: Math.random() * W, y: Math.random() * H * 0.7, until: performance.now() + 1500 };
 }
 function sleep() {
@@ -563,6 +588,7 @@ $(".x").onclick = closeDialog;
 $(".scrim").onclick = closeDialog;
 $(".hide").onclick = hide;
 $(".new").onclick = () => { history = []; save(); renderLog(); input.focus(); };
+$(".wear").onclick = () => { const w = $(".wardrobe"); w.hidden = !w.hidden; if (!w.hidden && wardrobe) wardrobe.panel(w); };
 // Keys typed into Blip stay in Blip: pages with keyboard shortcuts (Space, R, 1–4…) never see them.
 root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); e.stopPropagation(); });
 for (const type of ["keyup", "keypress"]) root.addEventListener(type, (e) => e.stopPropagation());
@@ -590,10 +616,11 @@ progress.pages ??= {}; progress.worlds ??= {};
 }
 
 // Pages can also offer actions Blip may perform on them: window.blipActions = { name: { description, parameters, run(args) } }.
-const pageActions = () => Object.entries(window.blipActions ?? {}).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
+const allActions = () => ({ ...(wardrobe?.actions ?? {}), ...(window.blipActions ?? {}) });
+const pageActions = () => Object.entries(allActions()).map(([name, a]) => ({ name, description: a.description, parameters: a.parameters ?? {} }));
 async function perform(actions) {
   for (const { name, args } of actions ?? []) {
-    const a = window.blipActions?.[name];
+    const a = allActions()[name];
     if (!a) continue;
     try {
       const result = await a.run(args ?? {});
@@ -630,7 +657,7 @@ async function send(q) {
     history.push({ role: "assistant", content: data.reply }); save();
     clearInterval(pinging);
     await typeOut(out, data.reply);
-    const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => window.blipActions?.[a.name]?.label ?? a.name.replace(/_/g, " "))])];
+    const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => allActions()[a.name]?.label ?? a.name.replace(/_/g, " "))])];
     if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
     perform(data.actions);
     setMood("happy", 1500);
