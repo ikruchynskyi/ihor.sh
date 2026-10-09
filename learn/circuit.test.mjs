@@ -49,4 +49,7 @@ assert.ok(Math.max(...sim.v.slice(1800).map((v) => v[1])) > 0.98, "amplitude kep
 const fc = 1 / (2 * Math.PI * 1000 * 1e-6);
 sim = simulate([{ type: "V", a: 1, b: 0, volts: (t) => Math.sin(2 * Math.PI * fc * t) }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "C", a: 2, b: 0, farads: 1e-6 }], { dt: 2e-6, steps: 15000 });
 near(Math.max(...sim.v.slice(10000).map((v) => v[2])), Math.SQRT1_2, 0.01);
+// with gmin, an unconnected resistor doesn't break the rest of the circuit
+r = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 0, ohms: 1000 }, { type: "R", a: 2, b: 3, ohms: 100 }], { gmin: 1e-9 });
+near(r.current[1], 0.005, 1e-8); near(r.current[2], 0, 1e-12);
 console.log("circuit ok");

@@ -26,7 +26,9 @@ function gauss(A, b) {
   return x;
 }
 
-export function solve(input) {
+// opts.gmin: a tiny conductance from every node to ground (as SPICE does), so a half-built circuit with an
+// unconnected part still solves (that part just sits at 0 V) instead of throwing.
+export function solve(input, { gmin = 0 } = {}) {
   // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
   const used = [...new Set(input.flatMap((e) => [e.a, e.b]).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
   const elements = input.map((e) => ({ ...e, a: map.get(e.a) ?? 0, b: map.get(e.b) ?? 0 }));
@@ -40,6 +42,7 @@ export function solve(input) {
     const stamp = (r, c, g) => { if (r && c) A[r - 1][c - 1] += g; };
     const conduct = (a, b2, g) => { stamp(a, a, g); stamp(b2, b2, g); stamp(a, b2, -g); stamp(b2, a, -g); };
     const inject = (node, amps) => { if (node) b[node - 1] += amps; };
+    if (gmin) for (let n = 1; n <= nodes; n++) stamp(n, n, gmin);
     for (const e of elements) {
       if (e.type === "R") conduct(e.a, e.b, 1 / e.ohms);
       else if (e.type === "I") { inject(e.a, -e.amps); inject(e.b, e.amps); }
@@ -83,7 +86,7 @@ export function simulate(elements, { dt, steps }) {
 }
 
 /** The same, one step at a time (for circuits that run live on a page): step() advances dt and returns { t, v, i }. */
-export function stepper(elements, dt) {
+export function stepper(elements, dt, opts = {}) {
   const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: 0 }));
   let n = 0;
   return { step() {
@@ -94,7 +97,7 @@ export function stepper(elements, dt) {
       else if (e.type === "L") { const g = dt / (2 * e.henries); flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.a, b: e.b, amps: s.i + g * s.v }); owner.push(k, -1); }
       else { flat.push(e.type === "V" && typeof e.volts === "function" ? { ...e, volts: e.volts(t) } : e); owner.push(k); }
     });
-    const r = solve(flat), cur = elements.map(() => 0);
+    const r = solve(flat, opts), cur = elements.map(() => 0);
     flat.forEach((f, j) => { if (owner[j] >= 0) cur[owner[j]] += r.current[j]; });
     elements.forEach((e, k) => {
       if (e.type !== "C" && e.type !== "L") return;
