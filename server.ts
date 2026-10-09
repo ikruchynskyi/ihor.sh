@@ -170,7 +170,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   return s;
 })();
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const METERED = ["/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -242,6 +242,13 @@ const server = http.createServer(async (req, res) => {
       const id = String(url.searchParams.get("route") ?? "");
       if (!/^[A-Z ]{3,12}_[A-Z0-9+-]{1,10}$/.test(id)) return res.writeHead(400).end();
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await busRoute(id)));
+    }
+    if (url.pathname === "/api/nyc/camera-image") { // a traffic camera frame, same-origin so pages can read its pixels
+      const id = String(url.searchParams.get("id") ?? "");
+      if (!/^[0-9a-f-]{36}$/.test(id)) return res.writeHead(400).end();
+      const r = await fetch(`https://webcams.nyctmc.org/api/cameras/${id}/image`, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+      if (!r?.ok) return res.writeHead(502).end();
+      return res.writeHead(200, { "content-type": r.headers.get("content-type") ?? "image/jpeg", "cache-control": "public, max-age=2" }).end(Buffer.from(await r.arrayBuffer()));
     }
     if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
