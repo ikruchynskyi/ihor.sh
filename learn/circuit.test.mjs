@@ -66,4 +66,14 @@ r = sw(10); assert.ok(r.v[2] < 0.1 && Math.abs(r.current[3] - 1) < 0.01, `on: dr
 // a weak gate drive (just above threshold) leaves it half on, in saturation: Id = k/2·(Vgs − vth)²
 r = sw(2.5); near(r.current[3], (2 / 2) * 0.25, 1e-6); assert.ok(r.v[2] > 8);
 assert.deepEqual(mosfet({ vth: 2, k: 1 }, 1, 5).id, 0);
+// op-amp, inverting amplifier: 1 V in, 1 kΩ in, 10 kΩ feedback, ±15 V rails → −10 V out
+const inv = (rf) => solve([{ type: "V", a: 1, b: 0, volts: 1 }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "R", a: 2, b: 3, ohms: rf }, { type: "OA", p: 0, n: 2, o: 3, vp: 15, vn: -15 }]);
+r = inv(10000); near(r.v[3], -10, 0.01); near(r.v[2], 0, 0.001);
+r = inv(100000); near(r.v[3], -15, 0.01); // −100 V asked for: it stops at the −15 V limit
+// non-inverting gain 2 with the rails taken from supply nodes
+r = solve([{ type: "V", a: 4, b: 0, volts: 12 }, { type: "V", a: 5, b: 0, volts: -12 }, { type: "V", a: 1, b: 0, volts: 2 }, { type: "R", a: 3, b: 2, ohms: 1000 }, { type: "R", a: 2, b: 0, ohms: 1000 }, { type: "OA", p: 1, n: 2, o: 3, vpNode: 4, vnNode: 5 }]);
+near(r.v[3], 4, 0.01);
+// a 5.1 V Zener from 12 V through 1 kΩ holds about 5.1 V
+r = solve([{ type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "D", a: 0, b: 2, is: 1e-14, n: 1, bv: 5.1 }]);
+assert.ok(r.v[2] > 5.1 && r.v[2] < 5.25, `zener at ${r.v[2]}`);
 console.log("circuit ok");

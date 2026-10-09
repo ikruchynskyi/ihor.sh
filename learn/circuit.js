@@ -4,6 +4,9 @@
 //   { type: "V", a, b, volts }     voltage source, a is the + terminal
 //   { type: "I", a, b, amps }      current source pushing current from a, through itself, into b
 //   { type: "D", a, b, is, n }     diode/LED, anode a, cathode b (Shockley equation, solved by Newton's method)
+//   { type: "D", …, bv }            with bv: a Zener diode that also conducts backwards above bv volts
+//   { type: "OA", p, n, o, vp, vn, gain } op-amp: output node o follows gain·(v(p) − v(n)), saturating smoothly
+//                                     between output limits vp and vn (volts), or 1.5 V inside supply nodes vpNode/vnNode
 //   { type: "M", a, b, g, vth, k }   n-channel MOSFET: drain a, source b, gate g (square-law model, Newton like diodes)
 //   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries, i0 }: only in simulate()/stepper(), over time
 // solve() returns node voltages and the current through every element, measured from a to b.
@@ -13,12 +16,21 @@
 const VT = 0.025852; // thermal voltage at 27 °C
 
 /** Square-law n-channel MOSFET: drain current and its slopes. Off below vth; a resistor-like "linear" region at small Vds;
- *  saturation (current set by the gate) above Vgs − vth. Vds < 0 is treated as 0 (no body diode here). */
-export function mosfet({ vth = 2, k = 1 }, vgs, vds) {
-  const ov = vgs - vth;
-  if (ov <= 0 || vds <= 0) return { id: 0, gm: 0, gds: 1e-9 };
+ *  saturation (current set by the gate) above Vgs − vth. Symmetric for Vds < 0 (no body diode modeled). */
+export function mosfet(e, vgs, vds) {
+  // Drain and source swap roles when vds goes negative (a MOSFET is symmetric): id(vgs, vds) = −F(vgs − vds, −vds).
+  if (vds < 0) { const r = mosfet(e, vgs - vds, -vds); return { id: -r.id, gm: -r.gm, gds: r.gm + r.gds }; }
+  const { vth = 2, k = 1 } = e, ov = vgs - vth;
+  if (ov <= 0) return { id: 0, gm: 0, gds: 1e-9 };
   if (vds < ov) return { id: k * (ov * vds - vds * vds / 2), gm: k * vds, gds: k * (ov - vds) + 1e-9 };
   return { id: (k / 2) * ov * ov, gm: k * ov, gds: 1e-9 };
+}
+
+/** Op-amp transfer: the output swings between the rails, steeply (gain) around v(p) = v(n). */
+function opamp(e, x, v) {
+  const hi = e.vpNode != null ? v[e.vpNode] - 1.5 : e.vp ?? 12, lo = e.vnNode != null ? v[e.vnNode] + 1.5 : e.vn ?? -12; // outputs stop ~1.5 V short of the rails
+  const mid = (hi + lo) / 2, half = Math.max(0.01, (hi - lo) / 2), A = e.gain ?? 1e5, t = Math.tanh((A * x) / half);
+  return { f: mid + half * t, g: A * (1 - t * t) + 1e-9 };
 }
 
 /** Solve A·x = b by Gaussian elimination with partial pivoting (A is modified in place). */
@@ -40,15 +52,20 @@ function gauss(A, b) {
 // unconnected part still solves (that part just sits at 0 V) instead of throwing.
 export function solve(input, { gmin = 0 } = {}) {
   // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
-  const used = [...new Set(input.flatMap((e) => [e.a, e.b, ...(e.type === "M" ? [e.g] : [])]).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
-  const elements = input.map((e) => ({ ...e, a: map.get(e.a) ?? 0, b: map.get(e.b) ?? 0, ...(e.type === "M" ? { g: map.get(e.g) ?? 0 } : {}) }));
+  const pins = (e) => (e.type === "OA" ? [e.p, e.n, e.o, e.vpNode, e.vnNode].filter((x) => x != null) : [e.a, e.b, ...(e.type === "M" ? [e.g] : [])]);
+  const used = [...new Set(input.flatMap(pins).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
+  const re = (n) => (n == null ? n : map.get(n) ?? 0);
+  const elements = input.map((e) => e.type === "OA" ? { ...e, p: re(e.p), n: re(e.n), o: re(e.o), vpNode: re(e.vpNode), vnNode: re(e.vnNode) }
+    : { ...e, a: re(e.a), b: re(e.b), ...(e.type === "M" ? { g: re(e.g) } : {}) });
   const nodes = used.length; // node count, not counting ground
-  const sources = elements.filter((e) => e.type === "V");
+  const sources = elements.filter((e) => e.type === "V" || e.type === "OA"); // each adds a current unknown
   const size = nodes + sources.length;
-  const diodes = elements.filter((e) => e.type === "D" || e.type === "M"); // the parts that need Newton's method
-  let v = new Array(nodes + 1).fill(0), x = null;
+  const diodes = elements.filter((e) => e.type === "D" || e.type === "M" || e.type === "OA"); // the parts that need Newton's method
+  let v = new Array(nodes + 1).fill(0), x = null, limited = false;
+  const lastVd = new Map(); // per diode: the junction voltage used last time (for junction limiting)
   for (let iter = 0; iter < (diodes.length ? 400 : 1); iter++) {
     const A = Array.from({ length: size }, () => new Array(size).fill(0)), b = new Array(size).fill(0);
+    limited = false;
     const stamp = (r, c, g) => { if (r && c) A[r - 1][c - 1] += g; };
     const conduct = (a, b2, g) => { stamp(a, a, g); stamp(b2, b2, g); stamp(a, b2, -g); stamp(b2, a, -g); };
     const inject = (node, amps) => { if (node) b[node - 1] += amps; };
@@ -59,30 +76,57 @@ export function solve(input, { gmin = 0 } = {}) {
       else if (e.type === "D") {
         // Linearize around the last guess: a conductance g in parallel with a current source.
         // (vd is capped only to keep exp() finite; capping it near the answer, e.g. at 2 V, stops Newton from converging)
-        const nvt = (e.n ?? 1) * VT, vd = Math.min(v[e.a] - v[e.b], 100 * nvt), id = e.is * (Math.exp(vd / nvt) - 1), g = e.is / nvt * Math.exp(vd / nvt) + 1e-12;
+        const nvt = (e.n ?? 1) * VT;
+        // SPICE's junction limiting (pnjlim): a big jump in the diode's voltage is replaced by a logarithmic step,
+        // so Newton can't overshoot the exponential. Node voltages themselves move freely.
+        let vd = v[e.a] - v[e.b];
+        const old = lastVd.get(e) ?? 0, vcrit = nvt * Math.log(nvt / (Math.SQRT2 * e.is));
+        if (vd > vcrit && Math.abs(vd - old) > 2 * nvt) { vd = old > 0 ? old + nvt * Math.log(1 + (vd - old) / nvt) : nvt * Math.log(vd / nvt); limited = true; }
+        if (e.bv && -vd - e.bv > 0 && Math.abs(vd - old) > 2 * nvt) { const r = -vd - e.bv, ro = -old - e.bv; vd = -e.bv - (ro > 0 ? ro + nvt * Math.log(1 + (r - ro) / nvt) : nvt * Math.log(r / nvt)); limited = true; }
+        lastVd.set(e, vd);
+        let id = e.is * (Math.exp(vd / nvt) - 1), g = (e.is / nvt) * Math.exp(vd / nvt) + 1e-12;
+        if (e.bv) { const r = 1e-3 * Math.exp(Math.min(-(vd + e.bv) / nvt, 100)); id -= r; g += r / nvt; } // Zener: 1 mA backwards at bv (SPICE's IBV), steeply more past it
         conduct(e.a, e.b, g); inject(e.a, -(id - g * vd)); inject(e.b, id - g * vd);
       } else if (e.type === "M") {
         // Linearize Id(Vgs, Vds) around the last guess: Id ≈ Id0 + gm·ΔVgs + gds·ΔVds, a conductance plus a controlled source.
-        const vgs = v[e.g] - v[e.b], vds = v[e.a] - v[e.b], { id, gm, gds } = mosfet(e, vgs, vds);
+        // Limit how far the gate and drain voltages may move per iteration (SPICE does the same for FETs).
+        const old = lastVd.get(e) ?? { vgs: 0, vds: 0 }, clampTo = (x, o, d) => Math.max(o - d, Math.min(o + d, x));
+        let vgs = v[e.g] - v[e.b], vds = v[e.a] - v[e.b];
+        const lg = clampTo(vgs, old.vgs, 1), ld = clampTo(vds, old.vds, 2);
+        if (lg !== vgs || ld !== vds) limited = true;
+        vgs = lg; vds = ld; lastVd.set(e, { vgs, vds });
+        const { id, gm, gds } = mosfet(e, vgs, vds);
         conduct(e.a, e.b, gds + 1e-12);
         stamp(e.a, e.g, gm); stamp(e.a, e.b, -gm); stamp(e.b, e.g, -gm); stamp(e.b, e.b, gm);
         const ieq = id - gm * vgs - gds * vds;
         inject(e.a, -ieq); inject(e.b, ieq);
       }
     }
-    sources.forEach((s, k) => { const row = nodes + k; if (s.a) { A[row][s.a - 1] += 1; A[s.a - 1][row] += 1; } if (s.b) { A[row][s.b - 1] -= 1; A[s.b - 1][row] -= 1; } b[row] = s.volts; });
+    sources.forEach((s, k) => {
+      const row = nodes + k;
+      if (s.type === "OA") {
+        // v(o) = f(v(p) − v(n)), linearized around the last guess: v(o) − g·v(p) + g·v(n) = f0 − g·x0
+        const x0 = v[s.p] - v[s.n], { f, g } = opamp(s, x0, v);
+        if (s.o) { A[row][s.o - 1] += 1; A[s.o - 1][row] += 1; }
+        if (s.p) A[row][s.p - 1] -= g; if (s.n) A[row][s.n - 1] += g;
+        b[row] = f - g * x0;
+        return;
+      }
+      if (s.a) { A[row][s.a - 1] += 1; A[s.a - 1][row] += 1; } if (s.b) { A[row][s.b - 1] -= 1; A[s.b - 1][row] -= 1; } b[row] = s.volts;
+    });
     x = gauss(A, b);
     const next = [0, ...x.slice(0, nodes)];
-    // Newton can overshoot on the steep diode curve: limit each step, stop once nothing moves.
+    // Stop once nothing moves (the steep diode curve is tamed inside the diode itself, by junction limiting).
     const delta = Math.max(0, ...next.map((nv, i) => Math.abs(nv - v[i])));
-    v = diodes.length ? next.map((nv, i) => v[i] + Math.max(-0.3, Math.min(0.3, nv - v[i]))) : next;
-    if (diodes.length && delta < 1e-9) break;
+    v = next;
+    if (diodes.length && delta < 1e-9 && !limited) break;
   }
   const current = elements.map((e) => {
     const vd = v[e.a] - v[e.b];
     if (e.type === "R") return vd / e.ohms;
     if (e.type === "I") return e.amps;
-    if (e.type === "D") return e.is * (Math.exp(vd / ((e.n ?? 1) * VT)) - 1);
+    if (e.type === "D") { const nvt = (e.n ?? 1) * VT; return e.is * (Math.exp(Math.min(vd, 100 * nvt) / nvt) - 1) - (e.bv ? 1e-3 * Math.exp(Math.min(-(vd + e.bv) / nvt, 100)) : 0); }
+    if (e.type === "OA") return -x[nodes + sources.indexOf(e)]; // the output's current
     if (e.type === "M") return mosfet(e, v[e.g] - v[e.b], vd).id;
     return -x[nodes + sources.indexOf(e)]; // MNA solves for the current into the + terminal; report it flowing out of +
   });
