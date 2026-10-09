@@ -349,19 +349,22 @@
     if (e.key === "Enter" && e.target.matches?.(".level.off, .locked .world")) dispatchEvent(new CustomEvent("blip:say", { detail: { text: "Locked for now! It's on the plan, though.", mood: "think", hop: 4 } }));
   });
 
-  // Background: a pixel waterfall. A few stations, a beacon keying "IHOR SH" in Morse, and the cursor transmits.
+  // Background: one pixel canvas, a different animation per theme (reader.js sets <html data-theme>).
+  // Arcade: a radio waterfall with a beacon keying "IHOR SH" in Morse, and the cursor transmits.
   const cv = document.getElementById("wf"), g = cv.getContext("2d");
   const COLS = 160, ROWS = 90;
   cv.width = COLS; cv.height = ROWS;
+  const rgb = (h) => (h.trim().match(/[0-9a-f]{2}/gi) ?? ["00", "00", "00"]).map((x) => parseInt(x, 16));
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n);
   const stations = [{ f: .18, w: 5, a: .7 }, { f: .42, w: 7, a: .9 }, { f: .63, w: 4, a: .55 }, { f: .86, w: 6, a: .75 }];
   const MORSE = { I: "..", H: "....", O: "---", R: ".-.", S: "...", " ": " " };
   const keying = [..."IHOR SH "].flatMap((c) => c === " " ? [0, 0, 0, 0] : [...MORSE[c]].flatMap((s) => s === "." ? [1, 0] : [1, 1, 1, 0]).concat([0, 0]));
-  const STOPS = [[0, 8, 12, 30], [.35, 30, 50, 140], [.6, 60, 210, 255], [.8, 255, 220, 110], [1, 255, 255, 255]];
+  const ARCADE = [[0, 8, 12, 30], [.35, 30, 50, 140], [.6, 60, 210, 255], [.8, 255, 220, 110], [1, 255, 255, 255]];
+  let STOPS = ARCADE;
   const color = (v) => { v = Math.min(1, v); const i = STOPS.findIndex((s) => s[0] >= v); if (i <= 0) return STOPS[0].slice(1); const [p, q] = [STOPS[i - 1], STOPS[i]], t = (v - p[0]) / (q[0] - p[0]); return [1, 2, 3].map((k) => p[k] + (q[k] - p[k]) * t); };
   let tick = 0, tx = { x: 0, until: 0 };
   addEventListener("pointermove", (e) => { tx = { x: e.clientX / innerWidth, until: performance.now() + 300 }; }, { passive: true });
-  function frame() {
-    tick++;
+  function waterfall() {
     g.drawImage(cv, 0, 0, COLS, ROWS - 1, 0, 1, COLS, ROWS - 1);
     const row = g.createImageData(COLS, 1), now = performance.now();
     for (let x = 0; x < COLS; x++) {
@@ -375,7 +378,76 @@
     }
     g.putImageData(row, 0, 0);
   }
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) for (let i = 0; i < ROWS; i++) frame();
+  // The others draw with the theme's own colors on a slowly fading screen.
+  let C = {}, state = {};
+  const fade = (a) => { g.fillStyle = `rgba(${C.bg.join(",")},${a})`; g.fillRect(0, 0, COLS, ROWS); };
+  const px = (x, y, c, a = 1) => { g.fillStyle = `rgba(${c.join(",")},${a})`; g.fillRect(Math.round(x), Math.round(y), 1, 1); };
+  const rnd = (n) => Math.floor(Math.random() * n);
+  const SCENES = {
+    arcade: { init() { STOPS = ARCADE; }, frame: waterfall },
+    amber: { init() { const [b, l, a, f] = [C.bg, C.line, C.accent, C.fg]; STOPS = [[0, ...b], [.35, ...l], [.7, ...a], [1, ...f]]; }, frame: waterfall },
+    matrix: { // digital rain: bright heads falling down each column, trails fading behind
+      init() { state.drops = Array.from({ length: COLS }, () => ({ y: rnd(ROWS), v: .3 + Math.random() * .7 })); },
+      frame() { fade(.12); state.drops.forEach((d, x) => { d.y += d.v; if (d.y > ROWS + rnd(40)) d.y = -rnd(20); px(x, d.y, C.ok); px(x, d.y - 1, C.fg, .8); }); },
+    },
+    washi: { // petals drifting down and sideways
+      init() { state.p = Array.from({ length: 40 }, () => ({ x: rnd(COLS), y: rnd(ROWS), s: Math.random() * 6.28 })); },
+      frame() { fade(.2); for (const p of state.p) { p.y += .25; p.x += .15 + Math.sin(tick / 20 + p.s) * .3; if (p.y > ROWS) { p.y = -2; p.x = rnd(COLS); } px(p.x, p.y, C.accent); px(p.x + 1, p.y, C.accent, .5); } },
+    },
+    subway: { // trains sliding along colored lines
+      init() {
+        const colors = ["#0039a6", "#ff6319", "#6cbe45", "#fccc0a", "#ee352e", "#00933c", "#b933ad", "#a7a9ac"].map(rgb);
+        state.lines = colors.map((c, i) => ({ c, y: 8 + i * 10, x: rnd(COLS), v: (i % 2 ? -1 : 1) * (.4 + Math.random() * .5) }));
+      },
+      frame() { fade(.25); for (const l of state.lines) { for (let x = 0; x < COLS; x += 2) px(x, l.y, l.c, .25); l.x = (l.x + l.v + COLS) % COLS; for (let k = 0; k < 8; k++) px((l.x - k * Math.sign(l.v) + COLS) % COLS, l.y, l.c, 1 - k / 10); } },
+    },
+    neural: { // a small neural net: signals travel from layer to layer
+      init() {
+        state.layers = [4, 6, 6, 3].map((n, i, a) => Array.from({ length: n }, (_, j) => ({ x: 20 + i * (120 / (a.length - 1)), y: (j + 1) * ROWS / (n + 1) })));
+        state.sig = [];
+      },
+      frame() {
+        fade(.15);
+        const L = state.layers;
+        if (tick % 4 === 0) { const i = rnd(L.length - 1); state.sig.push({ a: L[i][rnd(L[i].length)], b: L[i + 1][rnd(L[i + 1].length)], t: 0 }); }
+        for (const layer of L) for (const n of layer) { px(n.x, n.y, C.accent); px(n.x + 1, n.y, C.accent); px(n.x, n.y + 1, C.accent); px(n.x + 1, n.y + 1, C.accent); }
+        state.sig = state.sig.filter((s) => (s.t += .03) < 1);
+        for (const s of state.sig) px(s.a.x + (s.b.x - s.a.x) * s.t, s.a.y + (s.b.y - s.a.y) * s.t, C.ok);
+      },
+    },
+    blueprint: { // circuit traces with current pulses running along them
+      init() {
+        state.traces = Array.from({ length: 14 }, () => { let x = rnd(COLS), y = rnd(ROWS); const pts = [[x, y]]; for (let k = 0; k < 6; k++) { k % 2 ? (y = Math.max(0, Math.min(ROWS - 1, y + rnd(40) - 20))) : (x = Math.max(0, Math.min(COLS - 1, x + rnd(60) - 30))); pts.push([x, y]); } return { pts, t: Math.random() }; });
+        state.traces.forEach((tr) => (tr.cells = tr.pts.slice(1).flatMap(([x, y], i) => { const [x0, y0] = tr.pts[i], n = Math.max(Math.abs(x - x0), Math.abs(y - y0), 1); return Array.from({ length: n }, (_, k) => [x0 + ((x - x0) * k) / n, y0 + ((y - y0) * k) / n]); })));
+      },
+      frame() { fade(.3); for (const tr of state.traces) { for (const [x, y] of tr.cells) px(x, y, C.line, .6); tr.t = (tr.t + .01) % 1; const i = Math.floor(tr.t * tr.cells.length); for (let k = 0; k < 4; k++) { const c = tr.cells[i - k]; if (c) px(c[0], c[1], C.accent, 1 - k / 4); } } },
+    },
+    forest: { // topographic contour lines, drifting slowly
+      init() {},
+      frame() {
+        if (tick % 2) return;
+        fade(1);
+        const t = tick / 400;
+        for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+          const h = Math.sin(x / 23 + t) + Math.cos(y / 17 - t * .7) + Math.sin((x + y) / 31 + t * .5);
+          if (Math.abs((h * 3) % 1) < .08) px(x, y, (Math.round(h * 3) % 4 ? C.line : C.accent));
+        }
+      },
+    },
+  };
+  let theme = "";
+  function frame() {
+    const now = document.documentElement.dataset.theme || "arcade";
+    if (now !== theme) {
+      theme = SCENES[now] ? now : "arcade";
+      C = Object.fromEntries(["bg", "fg", "accent", "line", "ok"].map((k) => [k, rgb(cssVar(`--${k}`) || "#000000")]));
+      g.fillStyle = `rgb(${C.bg.join(",")})`; g.fillRect(0, 0, COLS, ROWS);
+      state = {}; SCENES[theme].init();
+    }
+    tick++;
+    SCENES[theme].frame();
+  }
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { for (let i = 0; i < ROWS; i++) frame(); new MutationObserver(() => { for (let i = 0; i < ROWS; i++) frame(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); }
   else setInterval(frame, 60);
 </script>
 <script type="module" src="/reader.js"></script>

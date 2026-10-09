@@ -13,14 +13,14 @@ const FONTS = {
 // [text, background, card, link/accent, secondary text, borders, labels]; contrast checked: text/bg 11–21:1.
 // A theme also brings a font and heading style (picking one sets them; the visitor can still change both after).
 const THEMES = {
-  arcade: { label: "Arcade", c: ["#e8edff", "#07090f", "#0d1226", "#ffb347", "#aab3e0", "#3b4bb0", "#5cff9d"], dark: true },
-  matrix: { label: "Matrix", world: "terminal", c: ["#33ff66", "#000000", "#02140a", "#b6ff4d", "#22c55e", "#14532d", "#d9ffe0"], dark: true, font: "mono", headings: "plain" },
-  radio: { label: "Radio", world: "Radio", c: ["#1d2a33", "#fbf6e9", "#fffdf6", "#7a4200", "#444f56", "#d9cfb5", "#1a5560"], dark: false, font: "atkinson", headings: "plain" },
-  washi: { label: "Washi", world: "Yomu", c: ["#2a2626", "#faf7f0", "#ffffff", "#96202a", "#524d49", "#ddd3c3", "#1f5e3a"], dark: false, font: "literata", headings: "plain" },
-  subway: { label: "Subway", world: "NYC", c: ["#16181d", "#ffffff", "#f3f4f6", "#0039a6", "#4b5260", "#d4d7de", "#00632a"], dark: false, font: "atkinson", headings: "plain" },
-  notebook: { label: "Notebook", world: "AI", c: ["#1f1d2e", "#f7f6fc", "#ffffff", "#5b2d9e", "#4a4866", "#d9d6ea", "#155e4f"], dark: false, font: "lexend", headings: "plain" },
-  workbench: { label: "Workbench", world: "EDC", c: ["#22201c", "#f3f2ee", "#ffffff", "#8a2e10", "#4d4944", "#d6d3cd", "#14532d"], dark: false, font: "mono", headings: "plain" },
-  trail: { label: "Trail", world: "Ride", c: ["#232a1e", "#f5f3ea", "#fffdf5", "#36500d", "#4b5041", "#d6d2bf", "#7c2d12"], dark: false, font: "atkinson", headings: "plain" },
+  arcade: { label: "Arcade", kind: "dark", c: ["#e8edff", "#07090f", "#0d1226", "#ffb347", "#aab3e0", "#3b4bb0", "#5cff9d"], dark: true },
+  matrix: { label: "Matrix", kind: "dark", world: "terminal", c: ["#33ff66", "#000000", "#02140a", "#b6ff4d", "#22c55e", "#14532d", "#d9ffe0"], dark: true, font: "mono", headings: "plain" },
+  subway: { label: "Subway", kind: "light", world: "NYC", c: ["#16181d", "#ffffff", "#f3f4f6", "#0039a6", "#4b5260", "#d4d7de", "#00632a"], dark: false, font: "atkinson", headings: "plain" },
+  washi: { label: "Washi", kind: "light", world: "Yomu", c: ["#2a2626", "#faf7f0", "#ffffff", "#96202a", "#524d49", "#ddd3c3", "#1f5e3a"], dark: false, font: "literata", headings: "plain" },
+  amber: { label: "Amber CRT", kind: "color", world: "Radio", c: ["#ffd08a", "#120c05", "#1c1409", "#ffe7c2", "#c9a26a", "#6b4a1c", "#ffe7c2"], dark: true, font: "mono", headings: "plain" },
+  neural: { label: "Neural", kind: "color", world: "AI", c: ["#ece6ff", "#1c1236", "#261a48", "#7ef0c8", "#b9addb", "#5a479a", "#ffd166"], dark: true, font: "lexend", headings: "plain" },
+  forest: { label: "Forest", kind: "color", world: "Ride", c: ["#f1ead8", "#14291e", "#1b3627", "#ffb26b", "#bfcfb8", "#3f6b4f", "#ffd166"], dark: true, font: "atkinson", headings: "plain" },
+  blueprint: { label: "Blueprint", kind: "color", world: "Learn", c: ["#eaf2ff", "#0b2747", "#0f3460", "#ffd166", "#b0c7e6", "#4672a8", "#8ef0c0"], dark: true, font: "atkinson", headings: "plain" },
 };
 // The home page keeps its pixel look unless the visitor picks otherwise; articles default to Atkinson.
 const isHome = !!document.querySelector(".hud #snd");
@@ -58,6 +58,7 @@ function apply() {
   // (font-size rules alone missed everything with its own px size). The HUD bar and the maps stay as they are.
   const base = isHome && s.font !== "pixel" ? 17 : DEFAULTS.size, k = s.size / base;
   loadFont(s.font);
+  document.documentElement.dataset.theme = THEMES[s.theme] ? s.theme : "arcade"; // the home page picks its animated background from this
   style.textContent = `
     :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${onAccent(accent)}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
     html, body { background: ${bg} !important; color: ${fg}; } ${isHome ? "body { background: transparent !important; } /* keeps the waterfall canvas visible */" : ""}
@@ -66,7 +67,7 @@ function apply() {
     main strong, main b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
     ${k !== 1 ? `:is(main, #panel, aside) { zoom: ${k.toFixed(3)}; }` : ""}
     ${TEXT} { font-family: ${f.css} !important; font-size: ${base}px !important; line-height: ${s.line} !important; letter-spacing: ${s.letter}em !important; }
-    ${t.dark ? "" : "body::after, body::before { display: none; } #wf { opacity: .12 !important; } h1 { text-shadow: none !important; } .leaflet-control-layers-toggle { filter: none !important; } .ihor-hud { background: " + card + " !important; }"}
+    ${t.dark ? "" : "body::after, body::before { display: none; } #wf { opacity: .3 !important; } h1 { text-shadow: none !important; } .leaflet-control-layers-toggle { filter: none !important; } .ihor-hud { background: " + card + " !important; }"}
     ${s.headings === "plain" ? `h1, h2, h3, .eyebrow { font-family: ${f.css} !important; font-weight: 700 !important; text-shadow: none !important; letter-spacing: -0.01em !important; }
       h1:not(.logo) { font-size: clamp(28px, 5vw, 40px) !important; line-height: 1.15 !important; } .logo { text-shadow: none !important; } h2 { font-size: 24px !important; line-height: 1.25 !important; } h3 { font-size: 19px !important; }`
     : ""}`;
@@ -102,7 +103,7 @@ function panelHTML() {
   </style>
   <section class="panel" role="dialog" aria-label="Reader settings">
     <header><h2>${isHome ? "THEME" : "READER"}</h2><button class="x" aria-label="Close reader settings">X</button></header>
-    <h3>THEME</h3>${pick("theme", THEMES, s.theme, (k, t) => `<span class="sw"><i style="background:${t.c[1]};color:${t.c[0]};border-color:${t.c[3]}">Aa</i>${t.label}${t.world ? ` <small>${t.world}</small>` : ""}</span>`)}
+    ${["dark", "light", "color"].map((kind) => `<h3>${kind.toUpperCase()}</h3>${pick("theme", Object.fromEntries(Object.entries(THEMES).filter(([, t]) => t.kind === kind)), s.theme, (k, t) => `<span class="sw"><i style="background:${t.c[1]};color:${t.c[0]};border-color:${t.c[3]}">Aa</i>${t.label}${t.world ? ` <small>${t.world}</small>` : ""}</span>`)}`).join("")}
     <h3>FONT</h3>${pick("font", FONTS, s.font, (k, o) => `<span style='font-family:${o.css.replace(/"/g, "&quot;")}'>${o.label}</span>`)}
     <h3><label for="size">SIZE</label><output>${s.size}px</output></h3><input id="size" type="range" min="14" max="28" step="1" value="${s.size}">
     <h3><label for="line">LINE SPACING</label><output>${s.line}</output></h3><input id="line" type="range" min="1.3" max="2.3" step="0.1" value="${s.line}">
