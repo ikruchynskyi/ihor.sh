@@ -27,6 +27,9 @@ body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-in
 .ihor-hud a { color: var(--accent); text-decoration: none; }
 .ihor-hud a:hover { color: #fff; }
 .ihor-hud span { color: var(--muted); }
+.ihor-hud .ihor-read { margin-left: auto; padding: 6px 10px !important; font-size: 8px !important; }
+.ihor-hud .ihor-read span { font-family: Georgia, serif; font-size: 13px; text-transform: none; margin-right: 4px; }
+.ihor-hud .ihor-read + b { margin-left: 0; }
 .ihor-hud b { color: #fff; font-weight: normal; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
 @media (max-width: 600px) { .ihor-hud b { display: none; } }
 
@@ -56,7 +59,7 @@ main section, .card, .item, .sub, #panel, .callout, .note, .box {
 }
 canvas, svg, img, video, iframe { border-radius: 0 !important; }
 table { border-collapse: collapse; }
-th { font: 9px/1.6 var(--pixel); color: var(--accent); text-align: left; }
+th { font-weight: 700; color: var(--accent); text-align: left; }
 th, td { border-bottom: 2px solid var(--line); }
 
 /* controls: chunky arcade buttons */

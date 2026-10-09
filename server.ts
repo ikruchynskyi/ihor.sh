@@ -27,7 +27,7 @@ const MAX_LISTENERS = 3;
 let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
-const companion = () => `<script type="module" src="${asset("companion.js")}"></script>`;
+const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
@@ -210,7 +210,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
-    if (url.pathname === "/companion.js" || url.pathname === "/theme.css") return serveFile(res, path.join(ROOT, url.pathname));
+    if (["/companion.js", "/theme.css", "/reader.js"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();
