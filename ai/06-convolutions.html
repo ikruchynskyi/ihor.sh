@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seeing: Convolutions</title>
+  <meta name="description" content="AI from scratch, chapter 6: an image as a grid of numbers, filters sliding over it to find edges, and a small convolutional network trained right in your browser that reads the digits you draw." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .stage { background: #14171d; color: #d7dde5; padding: 14px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    .stage figure { margin: 0; text-align: center; font: 13px ui-monospace, Menlo, monospace; color: #8f98a8; }
+    canvas.px { image-rendering: pixelated; width: 224px; height: 224px; background: #000; display: block; }
+    canvas.pad { width: 280px; height: 280px; touch-action: none; cursor: crosshair; }
+    canvas.small { width: 84px; height: 84px; }
+    .kern { display: grid; grid-template-columns: repeat(3, 44px); gap: 2px; font: 13px ui-monospace, Menlo, monospace; }
+    .kern span { background: #2a2f3a; text-align: center; padding: 4px 0; }
+    .probs { display: grid; grid-template-columns: 22px 1fr 54px; gap: 4px 8px; align-items: center; font: 15px ui-monospace, Menlo, monospace; min-width: 240px; flex: 1; }
+    .probs i { display: block; height: 16px; background: #f4d35e; }
+    .probs .top i { background: #83c167; }
+    .grid8 { display: grid; grid-template-columns: repeat(4, auto); gap: 8px; }
+    progress { width: 220px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 6</p>
+  <h1>Seeing: convolutions</h1>
+  <p class="lede">A photo of a cat and the same photo shifted one pixel to the left are, number by number, completely different. Yet they're obviously the same cat. A plain network from chapter 3 would have to learn "cat" separately at every position. Convolutional networks don't: they slide one small detector across the whole image. This chapter builds one and trains it, right here in your browser, to read digits you draw.</p>
+
+  <h2>1. A picture is a grid of numbers</h2>
+  <p>Draw a digit in the box. To a network it's 28 × 28 = 784 numbers between 0 (black) and 1 (white), the same size as the classic MNIST dataset of handwritten digits. Hover over the small copy to see the numbers.</p>
+  <div class="stage">
+    <figure><canvas id="pad" class="pad" width="280" height="280" aria-label="Drawing pad: draw a digit"></canvas>draw here · <button id="clear">Clear</button> <button id="sample">A sample</button></figure>
+    <figure><canvas id="img" class="px" width="28" height="28" aria-label="Your drawing as 28 by 28 pixels"></canvas>28 × 28, centered like MNIST</figure>
+  </div>
+  <p class="readout" id="r1">Hover over the 28 × 28 image to read its pixels.</p>
+
+  <h2>2. A filter slides over it</h2>
+  <p>A <b>filter</b> (or kernel) is a tiny grid of weights, here 3 × 3. Put it on a spot of the image, multiply the 9 pixels under it by its 9 weights, add them up: that's one output number. Slide it to every position and you get a new image, the <b>feature map</b>. The filter below finds edges where the image goes from dark (left) to bright (right). Pick others, and hover the output to see the arithmetic.</p>
+  <div class="row"><label>filter <select id="kname"><option value="vert">vertical edges</option><option value="horiz">horizontal edges</option><option value="diag">diagonal edges</option><option value="blur">blur</option><option value="sharp">sharpen</option></select></label></div>
+  <div class="stage">
+    <figure><div class="kern" id="kern"></div><br>the filter</figure>
+    <figure><canvas id="conv" class="px" width="26" height="26" aria-label="The feature map: the image convolved with the filter"></canvas>feature map (blue −, orange +)</figure>
+  </div>
+  <p class="readout" id="r2">Hover over the feature map.</p>
+  <p>The same 9 weights are used everywhere, so the filter finds a vertical edge wherever it is. That's the trick: <b>weight sharing</b>. A network layer has many filters side by side, each looking for its own pattern, and the next layer's filters look at <em>those</em> maps, finding edges of edges: corners, loops, strokes, and eventually whole shapes. Between layers a <b>pooling</b> step keeps only the strongest response in each 2 × 2 patch, so the network cares less about exactly where a stroke is.</p>
+
+  <h2>3. Train a network that reads digits</h2>
+  <p>Our network: 8 filters of 5 × 5 (learned, not hand-picked) → ReLU → 2 × 2 max pooling → one dense layer of 10 outputs → softmax (chapter 5). About 12,000 weights. It trains on digits drawn in your computer's fonts, randomly rotated, scaled and thickened, with backprop (chapter 4) written out by hand in this page. Press train and watch the filters grow from noise into stroke detectors.</p>
+  <div class="row"><button id="train">Train (a few seconds)</button><progress id="prog" max="1" value="0"></progress><span class="readout" id="r3" style="margin:0"></span></div>
+  <div class="stage">
+    <figure><div class="grid8" id="filters"></div><br>the 8 learned 5 × 5 filters</figure>
+    <figure><div class="grid8" id="maps"></div><br>their feature maps for your drawing</figure>
+  </div>
+
+  <h2>4. Draw, and it reads</h2>
+  <p>Draw a digit in the box at the top (or below, it's the same drawing) and the network gives its probabilities. Draw big, roughly centered, with one continuous shape like the printed digits it learned from.</p>
+  <div class="stage">
+    <figure><canvas id="pad2" class="pad" width="280" height="280" aria-label="Drawing pad (same drawing as above)"></canvas><button id="clear2">Clear</button></figure>
+    <div class="probs" id="probs"><span></span><span class="muted">Train the network first (section 3).</span><span></span></div>
+  </div>
+  <p>It will make mistakes, especially on digits drawn very differently from fonts: it has only ever seen typefaces. Real digit readers train on tens of thousands of real handwritten samples (MNIST has 60,000), with more layers. But it's the same machine: filters that slide, pooling that forgives, a softmax that votes, and gradient descent that tunes every weight. Next: what happens when the input isn't a grid but a sentence: <b>attention and transformers</b>.</p>
+
+  <p class="muted">Previous: <a href="./05-probability-and-loss.html">Probability and loss</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/convolutions">But what is a convolution?</a></p>
+</main>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const S = 28;
+
+// ---------- drawing: one drawing, two pads ----------
+let strokes = [];
+const pads = [$("pad"), $("pad2")];
+function paintPads() {
+  for (const c of pads) {
+    const g = c.getContext("2d");
+    g.fillStyle = "#000"; g.fillRect(0, 0, 280, 280);
+    g.strokeStyle = "#fff"; g.lineWidth = 22; g.lineCap = g.lineJoin = "round";
+    for (const s of strokes) { g.beginPath(); s.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); if (s.length === 1) g.lineTo(s[0][0] + 0.1, s[0][1]); g.stroke(); }
+  }
+}
+for (const c of pads) {
+  let cur = null;
+  const at = (e) => { const r = c.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * 280, ((e.clientY - r.top) / r.height) * 280]; };
+  c.addEventListener("pointerdown", (e) => { c.setPointerCapture(e.pointerId); cur = [at(e)]; strokes.push(cur); paintPads(); });
+  c.addEventListener("pointermove", (e) => { if (cur) { cur.push(at(e)); paintPads(); } });
+  c.addEventListener("pointerup", () => { cur = null; update(); });
+}
+$("clear").onclick = $("clear2").onclick = () => { strokes = []; paintPads(); update(); };
+
+// Any canvas → 28×28 floats, MNIST style: crop to the ink, fit into 20×20 keeping shape, center in 28×28.
+const work = document.createElement("canvas"); work.width = work.height = S;
+function toInput(src, size) {
+  const g = src.getContext("2d", { willReadFrequently: true }), d = g.getImageData(0, 0, size, size).data;
+  let x0 = size, y0 = size, x1 = -1, y1 = -1;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (d[(y * size + x) * 4] > 40) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  const out = new Float32Array(S * S);
+  if (x1 < 0) return out;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, k = 20 / Math.max(w, h), wg = work.getContext("2d", { willReadFrequently: true });
+  wg.fillStyle = "#000"; wg.fillRect(0, 0, S, S); wg.imageSmoothingEnabled = true;
+  wg.drawImage(src, x0, y0, w, h, (S - w * k) / 2, (S - h * k) / 2, w * k, h * k);
+  const p = wg.getImageData(0, 0, S, S).data;
+  for (let i = 0; i < S * S; i++) out[i] = p[i * 4] / 255;
+  return out;
+}
+// Paint a map of values onto a small canvas: grayscale, or blue/orange for signed values.
+function paint(c, arr, w, h, signed = false) {
+  const g = c.getContext("2d"), im = g.createImageData(w, h);
+  let m = 1e-6; for (const v of arr) m = Math.max(m, Math.abs(v));
+  for (let i = 0; i < w * h; i++) {
+    const v = arr[i] / (signed ? m : Math.max(1, m)), o = i * 4;
+    if (signed) { im.data[o] = v > 0 ? 255 * v : 0; im.data[o + 1] = v > 0 ? 140 * v : 120 * -v; im.data[o + 2] = v < 0 ? 255 * -v : 0; }
+    else im.data[o] = im.data[o + 1] = im.data[o + 2] = 255 * v;
+    im.data[o + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+}
+
+// ---------- 2. hand-picked 3×3 filters ----------
+const KERNELS = { vert: [-1, 0, 1, -2, 0, 2, -1, 0, 1], horiz: [-1, -2, -1, 0, 0, 0, 1, 2, 1], diag: [0, 1, 2, -1, 0, 1, -2, -1, 0], blur: [1, 2, 1, 2, 4, 2, 1, 2, 1].map((v) => v / 16), sharp: [0, -1, 0, -1, 5, -1, 0, -1, 0] };
+let input = new Float32Array(S * S), conv3 = new Float32Array(26 * 26);
+function convolve3() {
+  const k = KERNELS[$("kname").value];
+  $("kern").innerHTML = k.map((v) => `<span>${Number.isInteger(v) ? v : v.toFixed(3)}</span>`).join("");
+  for (let i = 0; i < 26; i++) for (let j = 0; j < 26; j++) { let s = 0; for (let u = 0; u < 3; u++) for (let v = 0; v < 3; v++) s += k[u * 3 + v] * input[(i + u) * S + j + v]; conv3[i * 26 + j] = s; }
+  paint($("conv"), conv3, 26, 26, true);
+}
+$("kname").onchange = convolve3;
+const cellAt = (c, n, e) => { const r = c.getBoundingClientRect(); return [Math.floor(((e.clientY - r.top) / r.height) * n), Math.floor(((e.clientX - r.left) / r.width) * n)]; };
+$("img").addEventListener("pointermove", (e) => { const [i, j] = cellAt($("img"), S, e); if (i >= 0 && j >= 0 && i < S && j < S) $("r1").textContent = `pixel (row ${i}, column ${j}) = ${input[i * S + j].toFixed(2)}`; });
+$("conv").addEventListener("pointermove", (e) => {
+  const [i, j] = cellAt($("conv"), 26, e), k = KERNELS[$("kname").value];
+  if (i < 0 || j < 0 || i >= 26 || j >= 26) return;
+  const terms = []; for (let u = 0; u < 3; u++) for (let v = 0; v < 3; v++) if (k[u * 3 + v]) terms.push(`${+k[u * 3 + v].toFixed(3)}×${input[(i + u) * S + j + v].toFixed(2)}`);
+  $("r2").textContent = `output (${i}, ${j}) = ${terms.join(" + ")} = ${conv3[i * 26 + j].toFixed(2)}`;
+});
+
+// ---------- 3. a small CNN, by hand: conv 8×5×5 → ReLU → maxpool 2 → dense 10 → softmax ----------
+const F = 8, K = 5, C = S - K + 1, P = C / 2, N = F * P * P; // C = 24, P = 12, N = 1152
+const randn = () => Math.sqrt(-2 * Math.log(Math.random() + 1e-9)) * Math.cos(2 * Math.PI * Math.random());
+const net = { K: Float32Array.from({ length: F * K * K }, () => randn() * Math.sqrt(2 / (K * K))), b: new Float32Array(F), W: Float32Array.from({ length: 10 * N }, () => randn() * Math.sqrt(1 / N)), c: new Float32Array(10), trained: false };
+const conv = new Float32Array(F * C * C), pool = new Float32Array(N), arg = new Int32Array(N), logits = new Float32Array(10);
+function forward(x) {
+  for (let f = 0; f < F; f++) for (let i = 0; i < C; i++) for (let j = 0; j < C; j++) {
+    let s = net.b[f];
+    for (let u = 0; u < K; u++) { const row = (i + u) * S + j, kr = f * 25 + u * 5; for (let v = 0; v < K; v++) s += net.K[kr + v] * x[row + v]; }
+    conv[(f * C + i) * C + j] = s > 0 ? s : 0;
+  }
+  for (let f = 0; f < F; f++) for (let i = 0; i < P; i++) for (let j = 0; j < P; j++) {
+    let best = -1, at = 0;
+    for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) { const q = (f * C + 2 * i + a) * C + 2 * j + b; if (conv[q] > best) { best = conv[q]; at = q; } }
+    const n = (f * P + i) * P + j; pool[n] = best; arg[n] = at;
+  }
+  let m = -Infinity;
+  for (let k = 0; k < 10; k++) { let s = net.c[k]; const r = k * N; for (let n = 0; n < N; n++) s += net.W[r + n] * pool[n]; logits[k] = s; m = Math.max(m, s); }
+  let z = 0; const p = new Float32Array(10);
+  for (let k = 0; k < 10; k++) { p[k] = Math.exp(logits[k] - m); z += p[k]; }
+  for (let k = 0; k < 10; k++) p[k] /= z;
+  return p;
+}
+const dpool = new Float32Array(N);
+function trainOne(x, label, lr) {
+  const p = forward(x);
+  dpool.fill(0);
+  for (let k = 0; k < 10; k++) {
+    const d = p[k] - (k === label ? 1 : 0), r = k * N; // chapter 5: p − truth
+    net.c[k] -= lr * d;
+    for (let n = 0; n < N; n++) { dpool[n] += net.W[r + n] * d; net.W[r + n] -= lr * d * pool[n]; }
+  }
+  // Blame flows only to the pixel that won each pooling window, and only where ReLU was open.
+  for (let n = 0; n < N; n++) {
+    if (!dpool[n] || pool[n] <= 0) continue;
+    const q = arg[n], f = Math.floor(q / (C * C)), i = Math.floor((q % (C * C)) / C), j = q % C, d = dpool[n] * lr;
+    net.b[f] -= d;
+    for (let u = 0; u < K; u++) for (let v = 0; v < K; v++) net.K[f * 25 + u * 5 + v] -= d * x[(i + u) * S + j + v];
+  }
+  return -Math.log(p[label] + 1e-9);
+}
+
+// Training data: digits in this computer's fonts, randomly turned, sized and thickened.
+const FONTS = ["Arial", "Helvetica", "Georgia", "Times New Roman", "Courier New", "Verdana", "Trebuchet MS", "Tahoma", "Gill Sans", "Futura", "Menlo", "Avenir", "sans-serif", "serif", "monospace"];
+const big = document.createElement("canvas"); big.width = big.height = 84;
+function synth(d) {
+  const g = big.getContext("2d", { willReadFrequently: true });
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = "#000"; g.fillRect(0, 0, 84, 84);
+  g.translate(42 + (Math.random() - 0.5) * 6, 42 + (Math.random() - 0.5) * 6); g.rotate((Math.random() - 0.5) * 0.45); g.scale(1 + (Math.random() - 0.5) * 0.3, 1 + (Math.random() - 0.5) * 0.3);
+  g.font = `${Math.random() < 0.5 ? "bold " : ""}56px "${FONTS[Math.floor(Math.random() * FONTS.length)]}"`;
+  g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = g.strokeStyle = "#fff"; g.lineWidth = 2 + Math.random() * 7; g.lineJoin = "round";
+  g.fillText(String(d), 0, 2); g.strokeText(String(d), 0, 2);
+  return toInput(big, 84);
+}
+let training = false;
+$("train").onclick = async () => {
+  if (training) return;
+  training = true; $("train").disabled = true;
+  const test = Array.from({ length: 300 }, (_, i) => [synth(i % 10), i % 10]);
+  const total = 9000;
+  let seen = 0, lossAvg = 2.3;
+  const t0 = performance.now();
+  while (seen < total) {
+    const chunkEnd = Math.min(total, seen + 150);
+    for (; seen < chunkEnd; seen++) { const d = Math.floor(Math.random() * 10), lr = 0.01 * (1 - seen / total) + 0.002; lossAvg = 0.98 * lossAvg + 0.02 * trainOne(synth(d), d, lr); }
+    $("prog").value = seen / total;
+    $("r3").textContent = `${seen.toLocaleString()} / ${total.toLocaleString()} examples · loss ${lossAvg.toFixed(3)}`;
+    showFilters(); net.trained = true; update();
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  let right = 0;
+  for (const [x, d] of test) { const p = forward(x); right += p.indexOf(Math.max(...p)) === d; }
+  $("r3").textContent = `done in ${((performance.now() - t0) / 1000).toFixed(0)} s · ${Math.round((right / test.length) * 100)}% right on 300 new font digits it never saw`;
+  training = false; $("train").disabled = false; $("train").textContent = "Train more";
+  say(`Trained! ${Math.round((right / test.length) * 100)}% on new digits. Now draw one for it.`, "happy");
+};
+const fc = [], mc = [];
+for (let f = 0; f < F; f++) {
+  const a = document.createElement("canvas"); a.width = a.height = K; a.className = "px small"; $("filters").append(a); fc.push(a);
+  const b = document.createElement("canvas"); b.width = b.height = C; b.className = "px small"; $("maps").append(b); mc.push(b);
+}
+function showFilters() { for (let f = 0; f < F; f++) paint(fc[f], net.K.subarray(f * 25, f * 25 + 25), K, K, true); }
+function showMaps() { for (let f = 0; f < F; f++) paint(mc[f], conv.subarray(f * C * C, (f + 1) * C * C), C, C); }
+
+// ---------- everything that depends on the drawing ----------
+function update() {
+  input = strokes.length ? toInput($("pad"), 280) : new Float32Array(S * S);
+  paint($("img"), input, S, S);
+  convolve3();
+  const p = forward(input);
+  showMaps();
+  if (!net.trained || !strokes.length) { if (net.trained) $("probs").innerHTML = `<span></span><span class="muted">Draw a digit.</span><span></span>`; return; }
+  const best = p.indexOf(Math.max(...p));
+  $("probs").innerHTML = [...p].map((v, k) => `<span>${k}</span><span class="${k === best ? "top" : ""}"><i style="width:${v * 100}%"></i></span><span>${(v * 100).toFixed(1)}%</span>`).join("");
+}
+$("sample").onclick = () => {
+  const g = $("pad").getContext("2d");
+  strokes = [[[90, 60], [200, 60], [130, 230]]]; // a 7
+  paintPads(); update();
+};
+showFilters();
+$("sample").click();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 6: Convolutions", filter: $("kname").value, trained: net.trained, prediction: net.trained && strokes.length ? [...forward(input)].map((v, k) => [k, +v.toFixed(3)]).sort((a, b) => b[1] - a[1]).slice(0, 3) : null });
+</script>
+</body>
+</html>
