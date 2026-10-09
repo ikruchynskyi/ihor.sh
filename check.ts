@@ -5,7 +5,7 @@ const URLS = [
   "/", "/robots.txt", "/sitemap.xml", "/theme.css", "/reader.js", "/companion.js", "/og.png",
   "/radio/", "/radio/course/", "/radio/ham/", "/radio/cw.html", "/radio/sstv.html", "/radio/aprs/", "/radio/adsb/", "/radio/repeaters/", "/api/radio/repeaters", "/api/radio/callsign?call=W1AW",
   "/nyc/", "/nyc/free.html", "/nyc/archive.html", "/ai/", "/ai/01-matrices-are-moves.html", "/yomu/", "/yomu/kana.html", "/yomu/grammar.html?level=N4", "/yomu/deck.html?level=N3&type=kanji", "/yomu/review.html", "/yomu/placement.html", "/yomu/story.html?u=n5-01", "/yomu/data/grammar.json", "/orna/", "/api/orna/today", "/api/orna/plan?material=Adamantine&count=300",
-  "/api/radio/status", "/api/state", "/api/nyc/archive", "/api/nyc/events", "/api/nyc/cameras", "/api/nyc/speeds", "/api/nyc/deals", "/api/nyc/ferry", "/api/nyc/arrivals?stop=R20",
+  "/api/radio/status", "/api/state", "/api/nyc/archive", "/api/nyc/events", "/api/nyc/cameras", "/api/nyc/speeds", "/api/nyc/deals", "/api/nyc/ferry", "/api/nyc/arrivals?stop=R20", "/api/nyc/trains", "/api/nyc/boats",
   "/api/nyc/point?lat=40.75&lon=-73.98", "/api/nyc/restaurants?q=katz", `/api/nyc/city-events?from=${today}&free=1`,
 ];
 let failed = 0;

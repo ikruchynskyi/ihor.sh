@@ -20,8 +20,8 @@ export function fields(buf: Uint8Array): Field[] {
     const key = varint(), field = Math.floor(key / 8), wire = key & 7;
     if (wire === 0) out.push([field, varint()]);
     else if (wire === 2) { const len = varint(); out.push([field, buf.subarray(i, i + len)]); i += len; }
-    else if (wire === 1) i += 8;
-    else if (wire === 5) i += 4;
+    else if (wire === 1) { out.push([field, new DataView(buf.buffer, buf.byteOffset + i, 8).getFloat64(0, true)]); i += 8; }
+    else if (wire === 5) { out.push([field, new DataView(buf.buffer, buf.byteOffset + i, 4).getFloat32(0, true)]); i += 4; } // floats: vehicle GPS
     else throw new Error(`protobuf wire type ${wire}`);
   }
   return out;
@@ -48,6 +48,21 @@ export function arrivals(feed: Uint8Array): Arrival[] {
   return out;
 }
 
+export interface Vehicle { trip: string; route: string; stop: string; status: number; time: number; lat?: number; lon?: number; label?: string }
+/** Every vehicle in one feed: FeedMessage.entity → vehicle (status 0 incoming at, 1 stopped at, 2 in transit to). */
+export function vehicles(feed: Uint8Array): Vehicle[] {
+  const out: Vehicle[] = [];
+  for (const entity of sub(fields(feed), 2)) {
+    const vp = sub(fields(entity), 4)[0];
+    if (!vp) continue;
+    const v = fields(vp), trip = fields(sub(v, 1)[0] ?? new Uint8Array()), pos = sub(v, 2)[0], desc = sub(v, 8)[0];
+    const p = pos ? fields(pos) : [];
+    out.push({ trip: text(trip, 1), route: text(trip, 5), stop: text(v, 7), status: num(v, 4) ?? 2, time: num(v, 5) ?? 0,
+      ...(pos ? { lat: num(p, 1), lon: num(p, 2) } : {}), ...(desc ? { label: text(fields(desc), 2) } : {}) });
+  }
+  return out;
+}
+
 // ---------- stations and cache ----------
 type Station = { id: string; name: string; lines: string; north: string; south: string; lat: number; lon: number };
 let stations: Map<string, Station> | null = null;
@@ -57,15 +72,19 @@ async function loadStations() {
   stations = new Map(rows.map((r) => [r.gtfs_stop_id, { id: r.gtfs_stop_id, name: r.stop_name, lines: r.daytime_routes, north: r.north_direction_label || "Northbound", south: r.south_direction_label || "Southbound", lat: +r.gtfs_latitude, lon: +r.gtfs_longitude }]));
   return stations;
 }
-let cache: { at: number; byStop: Map<string, Arrival[]> } | null = null;
+let cache: { at: number; byStop: Map<string, Arrival[]>; byTrip: Map<string, Arrival[]>; vehicles: Vehicle[] } | null = null;
 async function board() {
   if (cache && Date.now() - cache.at < 30_000) return cache;
-  const all = (await Promise.all(FEEDS.map(async (u) => {
-    try { return arrivals(new Uint8Array(await (await fetch(u, { signal: AbortSignal.timeout(15_000) })).arrayBuffer())); } catch { return []; }
-  }))).flat();
-  const byStop = new Map<string, Arrival[]>();
-  for (const a of all) (byStop.get(a.stop) ?? byStop.set(a.stop, []).get(a.stop)!).push(a);
-  return (cache = { at: Date.now(), byStop });
+  const feeds = await Promise.all(FEEDS.map(async (u) => {
+    try { const b = new Uint8Array(await (await fetch(u, { signal: AbortSignal.timeout(15_000) })).arrayBuffer()); return { a: arrivals(b), v: vehicles(b) }; } catch { return { a: [], v: [] }; }
+  }));
+  const byStop = new Map<string, Arrival[]>(), byTrip = new Map<string, Arrival[]>();
+  for (const a of feeds.flatMap((f) => f.a)) {
+    (byStop.get(a.stop) ?? byStop.set(a.stop, []).get(a.stop)!).push(a);
+    (byTrip.get(a.trip) ?? byTrip.set(a.trip, []).get(a.trip)!).push(a);
+  }
+  for (const list of byTrip.values()) list.sort((x, y) => x.time - y.time);
+  return (cache = { at: Date.now(), byStop, byTrip, vehicles: feeds.flatMap((f) => f.v) });
 }
 
 /** Next trains at a station (parent GTFS id like "A27"), by direction, in minutes from now. */
@@ -75,7 +94,7 @@ export async function stationArrivals(id: string, limit = 6) {
   if (!s) return null;
   const now = Date.now() / 1000;
   const dir = (suffix: "N" | "S") => (b.byStop.get(id + suffix) ?? []).filter((a) => a.time > now - 30).sort((x, y) => x.time - y.time).slice(0, limit)
-    .map((a) => ({ route: a.route, minutes: Math.max(0, Math.round((a.time - now) / 60)) }));
+    .map((a) => ({ route: a.route, minutes: Math.max(0, Math.round((a.time - now) / 60)), trip: a.trip }));
   return { station: s.name, id, lines: s.lines, updated: Math.round(b.at / 1000), north: { label: s.north, trains: dir("N") }, south: { label: s.south, trains: dir("S") } };
 }
 
@@ -86,10 +105,66 @@ export async function findStations(q: string) {
   return [...(await loadStations()).values()].filter((s) => norm(s.name).includes(n)).slice(0, 6);
 }
 
+// ---------- where each train is now ----------
+// The subway reports no GPS, only "stopped at X" or "heading to X" plus the predicted arrival there. So a moving
+// train is drawn on its line's shape (static GTFS), walked back from X by the distance it covers in the time left.
+
+const SUBWAY_STATIC = "https://rrgtfsfeeds.s3.amazonaws.com/gtfs_subway.zip";
+const TRAIN_M_PER_S = 9; // ponytail: one average speed for every line; per-segment run times (stop_times.txt) if it looks off
+type Pt = [lat: number, lon: number];
+let subwayStatic: { at: number; shapes: Map<string, Pt[]>; stops: Map<string, { name: string; lat: number; lon: number }> } | null = null;
+async function loadSubwayStatic() {
+  if (subwayStatic && subwayStatic.at > Date.now() - 24 * 3600_000) return subwayStatic;
+  const zip = path.join(os.tmpdir(), "subway-gtfs.zip");
+  await writeFile(zip, new Uint8Array(await (await fetch(SUBWAY_STATIC, { signal: AbortSignal.timeout(60_000) })).arrayBuffer()));
+  const [shapeRows, stopRows] = await Promise.all(["shapes.txt", "stops.txt"].map((f) => unzip(zip, f).then(csv)));
+  const shapes = new Map<string, Pt[]>();
+  for (const r of shapeRows) (shapes.get(r.shape_id) ?? shapes.set(r.shape_id, []).get(r.shape_id)!).push([+r.shape_pt_lat, +r.shape_pt_lon]); // rows come in sequence order
+  return (subwayStatic = { at: Date.now(), shapes, stops: new Map(stopRows.map((r) => [r.stop_id, { name: r.stop_name, lat: +r.stop_lat, lon: +r.stop_lon }])) });
+}
+const meters = (a: Pt, b: Pt) => { const k = Math.PI / 180, x = (b[1] - a[1]) * k * Math.cos(((a[0] + b[0]) / 2) * k), y = (b[0] - a[0]) * k; return Math.hypot(x, y) * 6371e3; };
+const closest = (pts: Pt[], p: Pt) => pts.reduce((best, q, i) => (meters(q, p) < meters(pts[best], p) ? i : best), 0);
+/** The point `d` meters back along `pts` from index `i`, and the index it lands on. */
+export function walkBack(pts: Pt[], i: number, d: number): { at: Pt; i: number } {
+  while (i > 0) {
+    const step = meters(pts[i - 1], pts[i]);
+    if (step >= d) { const f = d / step; return { at: [pts[i][0] + (pts[i - 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i - 1][1] - pts[i][1]) * f], i: i - 1 }; }
+    d -= step; i--;
+  }
+  return { at: pts[0], i: 0 };
+}
+// Realtime trip ids end in the shape, sometimes shortened: "057400_L..N" ↔ shape "L..N01R".
+const shapeFor = (shapes: Map<string, Pt[]>, trip: string) => { const key = trip.slice(trip.indexOf("_") + 1); return shapes.get(key) ?? [...shapes].find(([id]) => id.startsWith(key))?.[1]; };
+
+/** Every running train: where it is now (estimated), where it's headed, and (with `toStop`) the track ahead to that stop. */
+export async function trainPositions(onlyTrip?: string, toStop?: string) {
+  const [st, b] = await Promise.all([loadSubwayStatic(), board()]);
+  const now = Date.now() / 1000;
+  const out = [];
+  for (const v of b.vehicles) {
+    if (onlyTrip && v.trip !== onlyTrip) continue;
+    const next = st.stops.get(v.stop), ahead = (b.byTrip.get(v.trip) ?? []).filter((a) => a.time > now - 30);
+    if (!next) continue;
+    const eta = ahead.find((a) => a.stop === v.stop)?.time ?? now, last = st.stops.get(ahead.at(-1)?.stop ?? v.stop);
+    const shape = shapeFor(st.shapes, v.trip), at: Pt = [next.lat, next.lon];
+    let pos = { at, i: shape ? closest(shape, at) : 0 };
+    if (shape && v.status !== 1 && eta > now) pos = walkBack(shape, pos.i, (eta - now) * TRAIN_M_PER_S);
+    const where = v.status === 1 ? `at ${next.name}` : `${eta - now < 60 ? "arriving at" : "heading to"} ${next.name}`;
+    const t: any = { trip: v.trip, route: v.route, lat: +pos.at[0].toFixed(5), lon: +pos.at[1].toFixed(5), where, to: last?.name ?? "" };
+    if (toStop && shape) {
+      const s = st.stops.get(toStop);
+      if (s) t.path = [pos.at, ...shape.slice(pos.i + 1, closest(shape, [s.lat, s.lon]) + 1)].map(([a, o]) => [+a.toFixed(5), +o.toFixed(5)]);
+    }
+    out.push(t);
+  }
+  return { updated: Math.round(b.at / 1000), trains: out };
+}
+
 // ---------- NYC Ferry: static GTFS (stops, routes, trips) + real-time trip updates ----------
 
 const FERRY_STATIC = "http://nycferry.connexionz.net/rtt/public/resource/gtfs.zip";
 const FERRY_RT = "http://nycferry.connexionz.net/rtt/public/utility/gtfsrealtime.aspx/tripupdate";
+const FERRY_VP = "http://nycferry.connexionz.net/rtt/public/utility/gtfsrealtime.aspx/vehicleposition";
 
 /** A small CSV reader (quoted fields, no embedded newlines: enough for GTFS). */
 export function csv(textIn: string) {
@@ -119,8 +194,24 @@ export async function ferryBoard(limit = 4) {
   return st.stops.map((s) => {
     const next = ferryRt!.list.filter((a) => a.stop === s.stop_id && a.time > now - 30).sort((a, b) => a.time - b.time).slice(0, limit).map((a) => {
       const r = st.routes.get(a.route || st.tripRoute.get(a.trip) || "");
-      return { route: r?.route_long_name ?? "NYC Ferry", short: r?.route_short_name ?? "", color: r?.route_color ? `#${r.route_color}` : "#4de1ff", minutes: Math.max(0, Math.round((a.time - now) / 60)) };
+      return { route: r?.route_long_name ?? "NYC Ferry", short: r?.route_short_name ?? "", color: r?.route_color ? `#${r.route_color}` : "#4de1ff", minutes: Math.max(0, Math.round((a.time - now) / 60)), trip: a.trip };
     });
     return { id: s.stop_id, name: s.stop_name, lat: Number(s.stop_lat), lon: Number(s.stop_lon), accessible: s.wheelchair_boarding === "1", next };
+  });
+}
+
+let ferryVp: { at: number; list: Vehicle[] } | null = null;
+/** Every NYC Ferry boat out now, from its GPS. */
+export async function ferryBoats() {
+  const st = await loadFerryStatic();
+  if (!ferryVp || ferryVp.at < Date.now() - 15_000)
+    ferryVp = { at: Date.now(), list: vehicles(new Uint8Array(await (await fetch(FERRY_VP, { signal: AbortSignal.timeout(15_000) })).arrayBuffer())) };
+  await ferryBoard(); // refreshes the trip predictions, which name each boat's next landing (the GPS feed doesn't)
+  const stops = new Map(st.stops.map((s) => [s.stop_id, s.stop_name])), now = Date.now() / 1000;
+  return ferryVp.list.filter((v) => v.lat).map((v) => {
+    const r = st.routes.get(v.route || st.tripRoute.get(v.trip) || "");
+    const next = v.stop || ferryRt!.list.filter((a) => a.trip === v.trip && a.time > now - 30).sort((a, b) => a.time - b.time)[0]?.stop;
+    return { trip: v.trip, boat: v.label ?? "", lat: +v.lat!.toFixed(5), lon: +v.lon!.toFixed(5), route: r?.route_long_name ?? "NYC Ferry", short: r?.route_short_name ?? "", color: r?.route_color ? `#${r.route_color}` : "#4de1ff",
+      where: next ? `${v.status === 1 ? "at" : "heading to"} ${stops.get(next)}` : "between trips", seen: v.time };
   });
 }

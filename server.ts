@@ -6,7 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
-import { stationArrivals, ferryBoard } from "./transit.ts";
+import { stationArrivals, ferryBoard, ferryBoats, trainPositions } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
@@ -191,6 +191,11 @@ const server = http.createServer(async (req, res) => {
       return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
+    if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
+    if (url.pathname === "/api/nyc/trains") {
+      const q = url.searchParams, trip = String(q.get("trip") ?? "").slice(0, 40) || undefined;
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await trainPositions(trip, trip && String(q.get("stop") ?? "").slice(0, 6))));
+    }
     if (url.pathname === "/api/nyc/arrivals") {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();

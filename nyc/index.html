@@ -63,7 +63,11 @@
     .arr-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
     .bullet { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: bold 12px/1 Helvetica, Arial, sans-serif; flex: none; }
     .arr-times { display: flex; gap: 10px; align-items: baseline; }
-    .arr-times b { font-weight: normal; } .arr-times b.first { font-weight: bold; font-size: 1.1em; }
+    .arr-times button { all: unset; cursor: pointer; border-bottom: 1px dotted currentColor; } .arr-times button.first { font-weight: bold; font-size: 1.1em; }
+    .arr-times button:focus-visible, .linkish:focus-visible { outline: 2px solid currentColor; }
+    .linkish { all: unset; cursor: pointer; border-bottom: 1px dotted currentColor; }
+    .bullet.sm { width: 15px; height: 15px; font-size: 9px; box-shadow: 0 0 0 1px #fff8; }
+    .boat { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 3px solid; background: #fff; font-size: 12px; }
     .arr-times small { opacity: .6; }
     .grade { display: inline-grid; place-items: center; width: 26px; height: 26px; font-weight: 700; border: 2px solid currentColor; margin-right: 6px; }
     /* floating camera windows */
@@ -233,8 +237,9 @@ const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_Yo
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
   stations: { label: "🚇 All stations: click for next trains", on: true, group: L.layerGroup(), load: loadAllStations },
+  trains: { label: "🚆 Live trains", on: false, group: L.layerGroup(), load: loadTrains },
   citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
-  ferry: { label: "⛴ NYC Ferry: next boats", on: false, group: L.layerGroup(), load: loadFerry },
+  ferry: { label: "⛴ NYC Ferry: boats + next departures", on: false, group: L.layerGroup(), load: loadFerry },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
   cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
   speeds: { label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
@@ -244,7 +249,7 @@ const LAYERS = {
   c311: { label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -290,17 +295,21 @@ async function loadSpeeds(g) {
 }
 
 // NYC Ferry: every landing with its next boats (real-time), colored by the first route due.
+const boatMarkers = new Map(); // trip → marker
 async function loadFerry(g) {
-  const list = await getJSON("/api/nyc/ferry");
+  const [list, boats] = await Promise.all([getJSON("/api/nyc/ferry"), getJSON("/api/nyc/boats").catch(() => [])]);
   g.clearLayers();
+  boatMarkers.clear();
+  for (const b of boats) boatMarkers.set(b.trip, L.marker([b.lat, b.lon], { icon: L.divIcon({ className: "", html: `<div class="boat" style="border-color:${b.color}">⛴</div>`, iconSize: [22, 22] }), zIndexOffset: 500 })
+    .bindTooltip(`${esc(b.short)} ${esc(b.where)}`).bindPopup(`<b>⛴ ${esc(b.route)}</b><br>${esc(b.where)}<br><span class="muted">boat ${esc(b.boat)} · GPS ${new Date(b.seen * 1000).toLocaleTimeString()}</span>`).addTo(g));
   for (const s of list) {
     const c = s.next[0]?.color ?? "#7f8bc4";
-    dot(s.lat, s.lon, c, 7).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
+    dot(s.lat, s.lon, c, 7).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${boatMarkers.has(n.trip) ? `<button class="linkish" data-trip="${esc(n.trip)}" title="Where is this boat now?">${n.minutes ? n.minutes + " min" : "now"}</button>` : n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
   }
   $("n-ferry").textContent = `(${list.length} landings, ${list.filter((s) => s.next.length).length} with boats coming)`;
   seen.ferry = list.filter((s) => s.next.length).slice(0, 15).map((s) => `${s.name}: ${s.next.map((n) => `${n.short} ${n.minutes} min`).join(", ")}`);
 }
-setInterval(() => { if (LAYERS.ferry.on) loadFerry(LAYERS.ferry.group).catch(() => {}); }, 60_000);
+setInterval(() => { if (LAYERS.ferry.on && !map.getContainer().querySelector(".leaflet-popup")) loadFerry(LAYERS.ferry.group).catch(() => {}); }, 30_000); // not under an open popup
 
 // Citi Bike: every station colored by what you can do there right now (legend under the checkbox).
 const BIKE_COLORS = { ok: "#5cff9d", few: "#ffb347", none: "#ff5c8a", off: "#7f8bc4" };
@@ -328,13 +337,47 @@ async function arrivalsHtml(id) {
   const d = await getJSON(`/api/nyc/arrivals?stop=${encodeURIComponent(id)}`).catch(() => null);
   if (!d) return `<p class="muted">No arrival times right now.</p>`;
   seen.arrivals = d;
-  const dir = (x) => {
+  const dir = (x, stop) => {
     const byRoute = new Map();
-    for (const t of x.trains) (byRoute.get(t.route) ?? byRoute.set(t.route, []).get(t.route)).push(t.minutes);
-    return `<div class="arr-dir"><div class="arr-head">${esc(x.label)}</div>${byRoute.size ? [...byRoute].map(([r, mins]) => `<div class="arr-row">${bullet(r)}<span class="arr-times">${mins.map((m, i) => `<b class="${i ? "" : "first"}">${m ? m : "now"}</b>`).join("")}<small>min</small></span></div>`).join("") : `<div class="muted">No trains listed</div>`}</div>`;
+    for (const t of x.trains) (byRoute.get(t.route) ?? byRoute.set(t.route, []).get(t.route)).push(t);
+    return `<div class="arr-dir"><div class="arr-head">${esc(x.label)}</div>${byRoute.size ? [...byRoute].map(([r, ts]) => `<div class="arr-row">${bullet(r)}<span class="arr-times">${ts.map((t, i) => `<button class="${i ? "" : "first"}" data-trip="${esc(t.trip)}" data-stop="${stop}" title="Where is this train now?">${t.minutes ? t.minutes : "now"}</button>`).join("")}<small>min</small></span></div>`).join("") : `<div class="muted">No trains listed</div>`}</div>`;
   };
-  return `<div class="arr"><div class="arr-title">Next trains <span class="muted">live</span></div>${dir(d.north)}${dir(d.south)}</div>`;
+  return `<div class="arr"><div class="arr-title">Next trains <span class="muted">live · tap a time to see the train</span></div>${dir(d.north, id + "N")}${dir(d.south, id + "S")}</div>`;
 }
+
+// Where is that train or boat now? Tap a time on a board → the vehicle and the track ahead to your stop, redrawn every 15 s.
+// Trains are estimated (the MTA reports only "at / heading to a station"); boats are their own GPS.
+const vehicleLayer = L.layerGroup().addTo(map);
+let following = null; // { trip, stop }
+async function followTrain(t, fit) {
+  const d = (await getJSON(`/api/nyc/trains?trip=${encodeURIComponent(t.trip)}&stop=${encodeURIComponent(t.stop)}`).catch(() => ({ trains: [] }))).trains[0];
+  if (following !== t) return; // switched to another train meanwhile
+  vehicleLayer.clearLayers();
+  if (!d) { following = null; seen.following = null; return L.popup().setLatLng(map.getCenter()).setContent("That train hasn't left its first station yet, so it has no position.").openOn(map); }
+  const color = ROUTE_COLOR[d.route.replace(/X$/, "")] ?? "#808183";
+  const path = d.path?.length > 1 ? L.polyline(d.path, { color, weight: 6, opacity: 0.8, dashArray: "8 6" }).addTo(vehicleLayer) : null;
+  L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "", html: bullet(d.route), iconSize: [22, 22] }), zIndexOffset: 1000 })
+    .bindTooltip(`${esc(d.route)} to ${esc(d.to)}: ${esc(d.where)}<br><span class="muted">estimated · tap the train to stop following</span>`, { permanent: true, direction: "top", offset: [0, -12] })
+    .on("click", () => { following = null; seen.following = null; vehicleLayer.clearLayers(); }).addTo(vehicleLayer);
+  seen.following = { train: d.route, to: d.to, now: d.where };
+  if (fit) { map.closePopup(); path ? map.fitBounds(path.getBounds(), { paddingTopLeft: [Math.max(60, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 40), 60], paddingBottomRight: [60, 60], maxZoom: 15 }) : map.setView([d.lat, d.lon], 15); }
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-trip]");
+  if (b?.dataset.stop) followTrain((following = { trip: b.dataset.trip, stop: b.dataset.stop }), true);
+  else if (b) { const m = boatMarkers.get(b.dataset.trip); if (m) { map.closePopup(); map.setView(m.getLatLng(), 14); m.openPopup(); } }
+});
+setInterval(() => following && followTrain(following, false), 15_000);
+
+// Every running train, estimated the same way.
+async function loadTrains(g) {
+  const d = await getJSON("/api/nyc/trains");
+  g.clearLayers();
+  for (const t of d.trains) L.marker([t.lat, t.lon], { icon: L.divIcon({ className: "", html: bullet(t.route).replace('class="bullet"', 'class="bullet sm"'), iconSize: [15, 15] }) })
+    .bindTooltip(`${esc(t.route)} to ${esc(t.to)}: ${esc(t.where)}`).addTo(g);
+  $("n-trains").textContent = `(${d.trains.length} running, estimated)`;
+}
+setInterval(() => { if (LAYERS.trains.on) loadTrains(LAYERS.trains.group).catch(() => {}); }, 30_000);
 const stationMarkers = new Map();
 async function loadAllStations(g) {
   for (const [id, s] of stations) {
@@ -569,7 +612,7 @@ window.blipActions = {
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
   plan_trip: { label: "planned the trip", description: "Plan a trip on the map and list the cameras on the route.", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike or walk" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
     run: ({ from, to, mode, avoid_ferries }) => { $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), citibike, ferry (next boats), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -582,7 +625,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, followingTrain: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
 };
 
 // Popups pan clear of the panel, which floats over the map's left side.
