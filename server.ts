@@ -13,6 +13,7 @@ import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
+import { routeStops } from "./ride.ts";
 import { randomBytes } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
@@ -28,6 +29,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   nyc: { dir: path.join(ROOT, "nyc"), label: "World 2 · NYC" },
   ai: { dir: path.join(ROOT, "ai"), label: "World 3 · AI" },
   yomu: { dir: path.join(ROOT, "yomu"), label: "World 4 · Yomu" },
+  ride: { dir: path.join(ROOT, "ride"), label: "World 5 · Ride" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
@@ -170,7 +172,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   return s;
 })();
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const METERED = ["/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -249,6 +251,12 @@ const server = http.createServer(async (req, res) => {
       const r = await fetch(`https://webcams.nyctmc.org/api/cameras/${id}/image`, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
       if (!r?.ok) return res.writeHead(502).end();
       return res.writeHead(200, { "content-type": r.headers.get("content-type") ?? "image/jpeg", "cache-control": "public, max-age=2" }).end(Buffer.from(await r.arrayBuffer()));
+    }
+    if (url.pathname === "/api/ride/stops" && req.method === "POST") {
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 40_000) return res.writeHead(413).end(); }
+      const d: any = await routeStops(JSON.parse(raw || "{}").line);
+      return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
     if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
