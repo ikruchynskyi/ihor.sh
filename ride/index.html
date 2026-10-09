@@ -61,6 +61,9 @@
       <div class="tabs" id="tabs" role="tablist" aria-label="Days"></div>
       <canvas id="prof" width="900" height="130" aria-label="Elevation profile"></canvas>
       <div id="dayBox"></div>
+      <h2>Stops in view</h2>
+      <p class="hint" id="nearHint"></p>
+      <div id="nearBox"></div>
       <h2>Your stops</h2>
       <p class="hint">Add your own: a lunch spot, a friend's house, a known water tap. They go into the GPX as waypoints. Drag them on the map to move them.</p>
       <div class="row"><button id="addStop">+ Add a stop (then click the map)</button></div>
@@ -215,7 +218,7 @@ function render() {
   const total = pts.at(-1).km, up = climb(pts);
   $("summary").textContent = `${total.toFixed(1)} km · ${up.up.toLocaleString()} m up · ${days.length} day${days.length > 1 ? "s" : ""} · ${found.water.length} water points, ${found.food.length} food stops, ${found.camp.length} places to sleep, ${found.train.length} stations along the way`;
   $("tabs").innerHTML = `<button data-day="" aria-pressed="${S.day == null}">Whole trip</button>` + days.map((_, i) => `<button data-day="${i}" aria-pressed="${S.day === i}" style="border-color:${COLORS[i % COLORS.length]}">Day ${i + 1}</button>`).join("");
-  drawMap(); drawProfile(); renderDay(); renderMine();
+  drawMap(); drawProfile(); renderDay(); renderMine(); renderNear();
 }
 function drawMap(fit = false) {
   routeLayer.clearLayers(); Object.values(groups).forEach((g) => g.clearLayers());
@@ -234,7 +237,8 @@ function drawMap(fit = false) {
   for (const k of ["water", "food", "camp", "train", "repair"]) for (const st of found[k]) {
     if (st.km < lo - (k === "camp" ? 6 : 0) || st.km > hi + (k === "camp" ? 6 : 0)) continue;
     L.circleMarker([st.lat, st.lon], { radius: 5, color: "#fff", weight: 1, fillColor: KCOLOR[k], fillOpacity: 1 })
-      .bindPopup(`<b>${esc(st.name)}</b><br>${KNAME[k]} · km ${st.km.toFixed(1)}, ${st.off} m off the route${st.hours ? `<br>hours: ${esc(st.hours)}` : ""}${k === "camp" ? `<br><button data-endat="${st.km}">End a day here</button>` : ""}`).addTo(groups[k]);
+      .bindPopup(`<b>${esc(st.name)}</b><br>${KNAME[k]} · km ${st.km.toFixed(1)}, ${st.off} m off the route${st.hours ? `<br>hours: ${esc(st.hours)}` : ""}<br>${actions(st, false)}`)
+      .on("popupopen", (e) => e.popup.getElement().addEventListener("click", (ev) => { const a = ev.target.closest("[data-act]")?.dataset.act; if (a) { map.closePopup(); act(a, st); } })).addTo(groups[k]);
   }
   S.mine.forEach((m, j) => L.marker([m.lat, m.lon], { draggable: true, title: m.name, icon: L.divIcon({ className: "", html: `<div style="font-size:20px;filter:drop-shadow(0 0 2px #000)">⭐</div>`, iconSize: [20, 20] }) })
     .bindTooltip(esc(m.name)).on("dragend", (ev) => { const ll = ev.target.getLatLng(); S.mine[j] = { ...S.mine[j], lat: ll.lat, lon: ll.lng }; save(); renderMine(); }).addTo(groups.mine));
@@ -251,7 +255,37 @@ function moveDayEnd(i, idx) {
   S.day = i; $("status").textContent = ""; save(); render(); drawMap(true);
 }
 const endDayAtKm = (km) => { const idx = pts.findIndex((p) => p.km >= km), i = S.day ?? Math.max(0, days.findIndex(([, en]) => pts[en].km >= km)); moveDayEnd(Math.min(i, days.length - 1), idx); };
-map.on("popupopen", (e) => { const b = e.popup.getElement().querySelector("[data-endat]"); if (b) b.onclick = () => { map.closePopup(); endDayAtKm(+b.dataset.endat); }; });
+
+// What you can do with a stop, from its popup or the "in view" list.
+const actions = (st, show = true) => `${show ? `<button data-act="go">show</button> ` : ""}<button data-act="via" title="Re-plan the route so it goes through here">+ add to route</button> <button data-act="star" title="Keep it as one of your stops (a GPX waypoint)">⭐ save</button>${st.kind === "camp" && days.length > 1 ? ` <button data-act="end">end a day here</button>` : ""}`;
+function act(a, st) {
+  if (a === "go") map.setView([st.lat, st.lon], Math.max(map.getZoom(), 16));
+  if (a === "end") endDayAtKm(st.km);
+  if (a === "star") { S.mine.push({ lat: st.lat, lon: st.lon, name: (st.name || KNAME[st.kind].slice(3)).slice(0, 60) }); save(); render(); }
+  if (a === "via") {
+    if (S.pts.length >= 12) { $("status").textContent = "That's 12 points, the most a route can have. Remove a via point first."; return; }
+    const at = 1 + S.pts.slice(1, -1).filter((p) => kmOf(p) < st.km).length; // keep the vias in the order you ride them
+    S.pts.splice(at, 0, { label: st.name || KNAME[st.kind].slice(3), lat: st.lat, lon: st.lon });
+    renderPts(); save(); plan();
+  }
+}
+
+// Stops in the part of the map you're looking at (zoomed in), so a long trip doesn't list thousands.
+const NEAR_ZOOM = 12;
+let nearList = [];
+function renderNear() {
+  if (!found || !pts.length) return;
+  if (map.getZoom() < NEAR_ZOOM) { nearList = []; $("nearBox").innerHTML = ""; $("nearHint").textContent = "Zoom the map in to a town or a stretch of the route to list the water, food, beds and stations there."; return; }
+  const b = map.getBounds(), [lo, hi] = S.day == null ? [0, Infinity] : [pts[days[S.day][0]].km - 6, pts[days[S.day][1]].km + 6];
+  nearList = ["water", "food", "camp", "train", "repair"].flatMap((k) => found[k].filter((st) => st.km >= lo && st.km <= hi && b.contains([st.lat, st.lon])).map((st) => ({ ...st, kind: k })));
+  $("nearHint").textContent = nearList.length ? `${nearList.length} in view${S.day != null ? ` (day ${S.day + 1})` : ""}. Move or zoom the map to see others.` : "Nothing mapped in this part of the map. Move along the route.";
+  $("nearBox").innerHTML = ["water", "food", "camp", "train", "repair"].map((k) => {
+    const items = nearList.map((st, j) => [st, j]).filter(([st]) => st.kind === k);
+    return items.length ? `<details open><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.map(([x, j]) => `<li data-n="${j}">km ${x.km.toFixed(1)} · ${esc(x.name)}${x.off > 50 ? ` <span class="hint">${x.off} m off</span>` : ""}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>` : ""} ${actions(x)}</li>`).join("")}</ul></details>` : "";
+  }).join("");
+}
+map.on("moveend", renderNear);
+$("nearBox").addEventListener("click", (e) => { const a = e.target.closest("[data-act]")?.dataset.act, n = e.target.closest("[data-n]")?.dataset.n; if (a && n != null) act(a, nearList[+n]); });
 function selectDay(i) { S.day = i; save(); render(); drawMap(true); }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (!b) return; selectDay(b.dataset.day === "" ? null : +b.dataset.day); });
 
@@ -262,7 +296,6 @@ async function renderDay() {
   for (const i of which) {
     const d = dayInfo(i), w = await forecast(d.mid.lat, d.mid.lon, d.date.toLocaleDateString("en-CA"));
     const gapW = longestGap(d.water, d.km0, d.km1), gapF = longestGap(d.food, d.km0, d.km1), gapH = (gapW.km / speed) * breaks, lasts = carry / drink;
-    const list = (k, items, endBtn = false) => items.length ? `<details><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.slice(0, 40).map((x) => `<li>km ${x.km.toFixed(1)} · ${esc(x.name)}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>` : ""} <button data-go="${x.lat},${x.lon}">show</button>${endBtn ? ` <button data-endat="${x.km}">end the day here</button>` : ""}</li>`).join("")}</ul></details>` : "";
     html.push(`<article class="day card" style="--c:${COLORS[i % COLORS.length]}">
       <b>Day ${i + 1} · ${d.date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</b> <span class="hint">km ${d.km0.toFixed(0)}–${d.km1.toFixed(0)}</span>
       <p><b>${d.dist.toFixed(1)} km</b> · ${d.c.up} m up · ~${Math.floor(d.hours)} h ${Math.round((d.hours % 1) * 60)} min with breaks · leave ${hm(d.start)}, arrive ~${hm(d.end)}
@@ -271,7 +304,7 @@ async function renderDay() {
       <p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without food: ${gapF.km.toFixed(0)} km</p>
       <p>${i === days.length - 1 ? "🏁 Finish." : d.camps.length ? `⛺ Sleep near the end: ${d.camps.slice(0, 3).map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">⛺ No mapped campsite or lodging within 6 km of this day's end.</span> Drag the 🏁 flag, or pick a place below.`}</p>
       <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>
-      ${S.day != null ? `${list("water", d.water)}${list("food", d.food)}${i < days.length - 1 ? list("camp", found.camp.filter((x) => x.km > d.km0 + 5 && x.km < pts.at(-1).km - 2), true) : ""}${list("train", d.trains)}${list("repair", d.repair)}` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}
+      ${S.day != null ? `<p class="hint">${d.water.length} water points, ${d.food.length} food stops, ${d.repair.length} bike shops on this day. Zoom the map in to list them below.</p>` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}
     </article>`);
   }
   $("dayBox").innerHTML = html.join("");
