@@ -50,7 +50,7 @@ function gauss(A, b) {
 
 // opts.gmin: a tiny conductance from every node to ground (as SPICE does), so a half-built circuit with an
 // unconnected part still solves (that part just sits at 0 V) instead of throwing.
-export function solve(input, { gmin = 0 } = {}) {
+export function solve(input, { gmin = 0, state } = {}) {
   // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
   const pins = (e) => (e.type === "OA" ? [e.p, e.n, e.o, e.vpNode, e.vnNode].filter((x) => x != null) : [e.a, e.b, ...(e.type === "M" ? [e.g] : [])]);
   const used = [...new Set(input.flatMap(pins).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
@@ -62,15 +62,21 @@ export function solve(input, { gmin = 0 } = {}) {
   const size = nodes + sources.length;
   const diodes = elements.filter((e) => e.type === "D" || e.type === "M" || e.type === "OA"); // the parts that need Newton's method
   let v = new Array(nodes + 1).fill(0), x = null, limited = false;
-  const lastVd = new Map(); // per diode: the junction voltage used last time (for junction limiting)
+  // A warm start (state from the previous time step): begin Newton at last step's answer, with each junction's memory.
+  // Element k keeps its slot, so this only makes sense for the same circuit step after step (as stepper() does).
+  if (state?.v) used.forEach((n, i) => (v[i + 1] = state.v[n] ?? 0));
+  const lastVd = state ? (state.junction ??= new Map()) : new Map(); // per diode/FET (by index): the voltages used last time
+  let iterCount = 0;
   for (let iter = 0; iter < (diodes.length ? 400 : 1); iter++) {
+    iterCount = iter + 1;
     const A = Array.from({ length: size }, () => new Array(size).fill(0)), b = new Array(size).fill(0);
     limited = false;
     const stamp = (r, c, g) => { if (r && c) A[r - 1][c - 1] += g; };
     const conduct = (a, b2, g) => { stamp(a, a, g); stamp(b2, b2, g); stamp(a, b2, -g); stamp(b2, a, -g); };
     const inject = (node, amps) => { if (node) b[node - 1] += amps; };
     if (gmin) for (let n = 1; n <= nodes; n++) stamp(n, n, gmin);
-    for (const e of elements) {
+    for (let k = 0; k < elements.length; k++) {
+      const e = elements[k];
       if (e.type === "R") conduct(e.a, e.b, 1 / e.ohms);
       else if (e.type === "I") { inject(e.a, -e.amps); inject(e.b, e.amps); }
       else if (e.type === "D") {
@@ -80,21 +86,21 @@ export function solve(input, { gmin = 0 } = {}) {
         // SPICE's junction limiting (pnjlim): a big jump in the diode's voltage is replaced by a logarithmic step,
         // so Newton can't overshoot the exponential. Node voltages themselves move freely.
         let vd = v[e.a] - v[e.b];
-        const old = lastVd.get(e) ?? 0, vcrit = nvt * Math.log(nvt / (Math.SQRT2 * e.is));
+        const old = lastVd.get(k) ?? 0, vcrit = nvt * Math.log(nvt / (Math.SQRT2 * e.is));
         if (vd > vcrit && Math.abs(vd - old) > 2 * nvt) { vd = old > 0 ? old + nvt * Math.log(1 + (vd - old) / nvt) : nvt * Math.log(vd / nvt); limited = true; }
         if (e.bv && -vd - e.bv > 0 && Math.abs(vd - old) > 2 * nvt) { const r = -vd - e.bv, ro = -old - e.bv; vd = -e.bv - (ro > 0 ? ro + nvt * Math.log(1 + (r - ro) / nvt) : nvt * Math.log(r / nvt)); limited = true; }
-        lastVd.set(e, vd);
+        lastVd.set(k, vd);
         let id = e.is * (Math.exp(vd / nvt) - 1), g = (e.is / nvt) * Math.exp(vd / nvt) + 1e-12;
         if (e.bv) { const r = 1e-3 * Math.exp(Math.min(-(vd + e.bv) / nvt, 100)); id -= r; g += r / nvt; } // Zener: 1 mA backwards at bv (SPICE's IBV), steeply more past it
         conduct(e.a, e.b, g); inject(e.a, -(id - g * vd)); inject(e.b, id - g * vd);
       } else if (e.type === "M") {
         // Linearize Id(Vgs, Vds) around the last guess: Id ≈ Id0 + gm·ΔVgs + gds·ΔVds, a conductance plus a controlled source.
         // Limit how far the gate and drain voltages may move per iteration (SPICE does the same for FETs).
-        const old = lastVd.get(e) ?? { vgs: 0, vds: 0 }, clampTo = (x, o, d) => Math.max(o - d, Math.min(o + d, x));
+        const old = lastVd.get(k) ?? { vgs: 0, vds: 0 }, clampTo = (x, o, d) => Math.max(o - d, Math.min(o + d, x));
         let vgs = v[e.g] - v[e.b], vds = v[e.a] - v[e.b];
         const lg = clampTo(vgs, old.vgs, 1), ld = clampTo(vds, old.vds, 2);
         if (lg !== vgs || ld !== vds) limited = true;
-        vgs = lg; vds = ld; lastVd.set(e, { vgs, vds });
+        vgs = lg; vds = ld; lastVd.set(k, { vgs, vds });
         const { id, gm, gds } = mosfet(e, vgs, vds);
         conduct(e.a, e.b, gds + 1e-12);
         stamp(e.a, e.g, gm); stamp(e.a, e.b, -gm); stamp(e.b, e.g, -gm); stamp(e.b, e.b, gm);
@@ -133,7 +139,8 @@ export function solve(input, { gmin = 0 } = {}) {
   // Report voltages under the caller's own node numbers.
   const vOut = new Array(Math.max(0, ...used) + 1).fill(0);
   used.forEach((n, i) => (vOut[n] = v[i + 1]));
-  return { v: vOut, current };
+  if (state) state.v = vOut;
+  return { v: vOut, current, iterations: iterCount };
 }
 
 /**
@@ -153,6 +160,7 @@ export function simulate(elements, { dt, steps }) {
 export function stepper(elements, dt, opts = {}) {
   const be = opts.method === "euler";
   const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: e.type === "L" ? e.i0 ?? 0 : 0 })); // a coil can start with current flowing (i0)
+  const warm = {}; // Newton starts each step from the last one's answer
   let n = 0;
   return { step() {
     const t = n++ * dt, flat = [], owner = [];
@@ -162,7 +170,7 @@ export function stepper(elements, dt, opts = {}) {
       else if (e.type === "L") { const g = dt / ((be ? 1 : 2) * e.henries); flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.a, b: e.b, amps: s.i + (be ? 0 : g * s.v) }); owner.push(k, -1); }
       else { flat.push(e.type === "V" && typeof e.volts === "function" ? { ...e, volts: e.volts(t) } : e); owner.push(k); }
     });
-    const r = solve(flat, opts), cur = elements.map(() => 0);
+    const r = solve(flat, { ...opts, state: warm }), cur = elements.map(() => 0);
     flat.forEach((f, j) => { if (owner[j] >= 0) cur[owner[j]] += r.current[j]; });
     elements.forEach((e, k) => {
       if (e.type !== "C" && e.type !== "L") return;

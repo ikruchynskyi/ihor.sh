@@ -4,261 +4,555 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Circuit Lab</title>
-  <meta name="description" content="A circuit lab in your browser: place batteries, resistors, LEDs, capacitors and switches on a grid, wire them up, and watch the current flow, solved live. Burn out LEDs, short a battery, save and share your circuits." />
+  <meta name="description" content="A circuit lab for students of electronics: build circuits from batteries, signal generators, resistors, capacitors, coils, diodes, LEDs, MOSFETs, op-amps, 555 timers, regulators and logic gates; watch current flow, probe them with a 4-channel oscilloscope, drop in ready-made templates, and share them. Simulated live by our own circuit solver." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 120px; }
-    .wrap { display: grid; grid-template-columns: 1fr 260px; gap: 14px; align-items: start; }
-    @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; } }
-    #board { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; background: #14171d; touch-action: none; cursor: crosshair; }
-    .tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .tools button[aria-pressed="true"] { outline: 2px solid var(--accent); }
-    #panel { padding: 12px 14px; font-size: 15px; }
-    #panel label { display: block; margin: 8px 0 2px; }
-    #panel input[type=text], #panel select { width: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 1400px; margin: 0 auto; padding: 14px 14px 80px; }
+    h1 { margin: 4px 0 2px; font-size: 1.5rem; }
+    .lede { margin: 0 0 8px; color: var(--muted); max-width: 900px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+    .bar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+    .bar button, .bar select { font-size: 12px !important; padding: 5px 8px !important; }
+    .bar button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+    .palette { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; }
+    .palette .grp { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .palette .grp > span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: 2px; }
+    .palette button { font-size: 12px !important; padding: 4px 7px !important; text-transform: none !important; }
+    .palette button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+    .work { display: grid; grid-template-columns: 1fr 300px; gap: 10px; align-items: start; }
+    @media (max-width: 900px) { .work { grid-template-columns: 1fr; } }
+    #boardBox { position: relative; }
+    #board { display: block; width: 100%; height: min(64vh, 640px); background: #14171d; touch-action: none; border-radius: 6px; }
+    #board.place { cursor: crosshair; } #board.pan { cursor: grabbing; }
+    .overlay { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 4px; }
+    .overlay button { font-size: 12px !important; padding: 3px 8px !important; opacity: .9; }
+    #clock { position: absolute; right: 10px; top: 8px; font: 12px ui-monospace, Menlo, monospace; color: #8f98a8; pointer-events: none; }
+    #panel { padding: 10px 12px; font-size: 14px; max-height: min(64vh, 640px); overflow: auto; }
+    #panel h2 { font-size: 1.05rem; margin: 0 0 4px; }
+    #panel label { display: block; margin: 8px 0 2px; font-size: 13px; color: var(--muted); }
+    #panel input[type=text], #panel select { width: 100%; box-sizing: border-box; }
+    #panel input[type=range] { width: 100%; }
+    .read { font: 13px/1.6 ui-monospace, Menlo, monospace; margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+    .note { font-size: 13px; padding: 6px 8px; border-left: 3px solid var(--accent); margin: 8px 0; }
     .warn { color: #e03131; font-weight: 600; }
-    .muted { color: var(--muted); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .scopeBox { margin-top: 10px; padding: 10px; }
+    .scopeHead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .scopeHead label { font-size: 13px; color: var(--muted); }
+    .scopeHead select { font-size: 12px !important; padding: 3px 6px !important; }
+    #scope { display: block; width: 100%; height: 260px; background: #0b0e13; border-radius: 6px; margin-top: 8px; }
+    #meas { font: 12px/1.6 ui-monospace, Menlo, monospace; border-collapse: collapse; margin-top: 6px; width: 100%; }
+    #meas td, #meas th { padding: 2px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+    #meas th { color: var(--muted); font-weight: 400; }
+    #meas td:first-child, #meas th:first-child { text-align: left; }
+    #meas select { font-size: 11px !important; padding: 1px 4px !important; }
+    #status { min-height: 1.5em; margin: 6px 0 0; font-size: 14px; }
+    dialog { max-width: 760px; border-radius: 10px; }
+    .tlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+    .tlist button { text-align: left; text-transform: none !important; font-size: 13px !important; line-height: 1.35 !important; padding: 8px !important; }
+    .tlist button small { display: block; color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; margin-top: 3px; }
+    kbd { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics</p>
   <h1>Circuit lab</h1>
-  <p class="lede">Build your own circuits and watch them work. Pick a part, click where it starts and where it ends on the grid; wire things together; the yellow dots show the current, solved live. Try burning out an LED, shorting a battery, or charging a capacitor through a switch.</p>
-  <div class="tools" role="toolbar" aria-label="Parts">
-    <button data-tool="select" aria-pressed="true">↖ Select</button><button data-tool="wire">─ Wire</button><button data-tool="battery">🔋 Battery</button><button data-tool="resistor">⏛ Resistor</button>
-    <button data-tool="led">💡 LED</button><button data-tool="capacitor">⊣⊢ Capacitor</button><button data-tool="switch">⏻ Switch</button>
-    <span style="flex:1"></span>
-    <select id="example" aria-label="Load an example"><option value="">Load an example…</option><option value="led">LED + resistor</option><option value="divider">Voltage divider</option><option value="rc">Charge a capacitor with a switch</option><option value="parallel">Two LEDs in parallel</option><option value="short">Short circuit (careful)</option></select>
-    <button id="share">Copy share link</button><button id="clear">Clear</button>
+  <p class="lede">Build a circuit, watch the current flow, and put a scope on it. Pick a part and click to drop it (<kbd>R</kbd> turns it), wire pins together, or insert a ready-made circuit. Everything is simulated live by the same solver as the <a href="/learn/">electronics chapters</a>.</p>
+
+  <div class="bar" role="toolbar" aria-label="Tools">
+    <button data-tool="select" aria-pressed="true" title="Select, move, flip switches (Esc)">↖ Select</button>
+    <button data-tool="wire" title="Draw wires: click, click, … Esc to stop (W)">─ Wire</button>
+    <button id="tplBtn" title="Insert a ready-made circuit">＋ Insert circuit…</button>
+    <span class="sep"></span>
+    <button id="undo" title="Undo (Ctrl+Z)">↶</button><button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+    <button id="rotBtn" title="Rotate selection (R)">⟳</button><button id="dupBtn" title="Duplicate selection (Ctrl+D)">⧉</button><button id="delBtn" title="Delete selection (Del)">✕</button>
+    <span class="sep"></span>
+    <button id="play" title="Pause / run (Space)">❚❚ Pause</button>
+    <label class="muted">speed <select id="speed" aria-label="Simulation speed"></select></label>
+    <label class="muted"><input type="checkbox" id="vcolor"> color by voltage</label>
+    <span class="sep"></span>
+    <button id="share">Share link</button><button id="export">Export</button><button id="import">Import</button><input type="file" id="file" accept=".json,application/json" hidden><button id="clear">Clear</button>
   </div>
-  <div class="wrap">
-    <canvas id="board" width="960" height="600" aria-label="Circuit board: a grid to place parts on"></canvas>
-    <aside id="panel" class="card">
-      <b id="ptitle">How to build</b>
-      <div id="pbody">
-        <p>1. Pick a part above. 2. Click a grid point where it starts, then where it ends (parts are 3 squares long; wires any length). 3. Join everything with wires into a loop through a battery.</p>
-        <p class="muted">Select a part to change its value. <b>R</b> rotates it, <b>Delete</b> removes it. Click a switch to flip it. Hover anywhere to read the voltage there.</p>
+  <div class="palette" id="palette" aria-label="Parts"></div>
+
+  <div class="work">
+    <div>
+      <div id="boardBox">
+        <canvas id="board" aria-label="Circuit board"></canvas>
+        <div id="clock"></div>
+        <div class="overlay"><button id="zin" title="Zoom in (+)">＋</button><button id="zout" title="Zoom out (−)">−</button><button id="fit" title="Fit the circuit (F)">Fit</button></div>
       </div>
-      <p id="status" class="muted"></p>
-    </aside>
+      <p id="status" aria-live="polite"></p>
+      <section class="scopeBox card" aria-label="Oscilloscope">
+        <div class="scopeHead">
+          <b>Oscilloscope</b>
+          <label>time/div <select id="tdiv"></select></label>
+          <label>trigger <select id="trig"><option value="auto">CH1 rising</option><option value="off">free run</option></select></label>
+          <button id="hold" title="Freeze the trace">Hold</button>
+          <span class="muted" id="scopeHint">Drop a <b>scope probe</b> (Meters) on any point to see its voltage over time.</span>
+        </div>
+        <canvas id="scope" aria-label="Oscilloscope traces"></canvas>
+        <table id="meas"></table>
+      </section>
+    </div>
+    <aside id="panel" class="card" aria-live="polite"></aside>
   </div>
-  <p class="muted">Solved by the same simulator as the <a href="/learn/">electronics chapters</a>: modified nodal analysis with diodes and capacitors stepped through time. Batteries have 0.1 Ω inside them, like real ones. Your circuit is saved in this browser.</p>
+  <p class="muted">Models: Shockley diodes and LEDs (they burn out above 30 mA), square-law MOSFETs, op-amps with gain 100,000 that saturate 1.5 V from their rails, a behavioral 555 (5 kΩ divider, two comparators, a flip-flop), a 78xx regulator with 2 V dropout, 5 V CMOS logic. Batteries have 0.1 Ω inside, sources 1 Ω. Your circuit is saved in this browser.</p>
 </main>
+
+<dialog id="tpl"><form method="dialog">
+  <h2 style="margin-top:0">Insert a circuit</h2>
+  <p class="muted">It's added to your board where you click next (Esc cancels). Probes come with it, so the scope shows it straight away.</p>
+  <div class="tlist" id="tlist"></div>
+  <p><button value="cancel">Close</button></p>
+</form></dialog>
+
 <script type="module">
-import { stepper, RED_LED } from "/learn/circuit.js";
+import { PARTS, COL, PROBE_COLORS, LEDS, pins, shift, rotate, distTo, draw, si, parseSI } from "/learn/lab/parts.js";
+import { simulation, onWire, measure } from "/learn/lab/engine.js";
+import { TEMPLATES, instantiate } from "/learn/lab/templates.js";
 const $ = (id) => document.getElementById(id);
 const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
-const cv = $("board"), g = cv.getContext("2d"), W = cv.width, H = cv.height, S = 30; // grid spacing in canvas px
-const COL = { stage: "#14171d", grid: "#2a2f3a", wire: "#8f98a8", text: "#d7dde5", sel: "#f4d35e", dot: "#f4d35e", blue: "#58c4dd" };
-const LEDS = { red: [1.9, "#ff4b3e"], green: [2.1, "#3ddc84"], blue: [3.0, "#4d7cff"], white: [3.1, "#f5f5ff"] };
-const ledParams = (color) => ({ is: 0.01 / Math.exp(LEDS[color][0] / (2 * 0.025852)), n: 2 });
-const DEF = { battery: { v: 9 }, resistor: { ohms: 1000 }, led: { color: "red" }, capacitor: { uf: 1000 }, switch: { closed: false } };
-const UNIT = { battery: "V", resistor: "Ω", capacitor: "µF" };
-
-// ---------- the circuit: parts with two grid endpoints ----------
-let parts = [], nextId = 1, tool = "select", pending = null, sel = null, hover = null;
 const key = ([x, y]) => `${x},${y}`;
-const add = (type, a, b, props = {}) => { const p = { id: nextId++, type, a, b, ...structuredClone(DEF[type] ?? {}), ...props }; parts.push(p); return p; };
+
+// ---------- state ----------
+let parts = [], nextId = 1, tool = "select", placing = null, selected = new Set(), hover = null;
+let sim = null, running = true, speed = 1, dirty = true, memory = { capV: new Map(), indI: new Map() };
+const newId = () => nextId++;
+const byId = (id) => parts.find((p) => p.id === id);
+const sel = () => parts.filter((p) => selected.has(p.id));
+
+// ---------- undo / redo ----------
+const undoStack = [], redoStack = [];
+const snapshot = () => JSON.stringify(parts);
+function remember() { undoStack.push(snapshot()); if (undoStack.length > 200) undoStack.shift(); redoStack.length = 0; }
+function restore(json) { parts = JSON.parse(json); nextId = Math.max(0, ...parts.map((p) => p.id)) + 1; selected = new Set([...selected].filter((id) => byId(id))); changed(); }
+$("undo").onclick = () => { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); };
+$("redo").onclick = () => { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); };
+
+// ---------- the palette ----------
+const ICON = { ground: "⏚", switch: "⏻", button: "⊙", battery: "🔋", source: "∿", resistor: "⏛", pot: "⊸", capacitor: "⊣⊢", inductor: "ᘏ", diode: "▷|", zener: "▷Z", led: "💡", nmos: "⊿", lamp: "◎", motor: "Ⓜ", ammeter: "Ⓐ", probe: "⌁", opamp: "▷±", timer555: "555", reg7805: "78xx", and: "&", nand: "⊼", or: "≥1", nor: "⊽", xor: "⊕", not: "¬" };
+const CATS = ["Basic", "Sources", "Passive", "Semiconductors", "Output", "Meters", "ICs", "Logic"];
+$("palette").innerHTML = CATS.map((c) => `<div class="grp"><span>${c}</span>${Object.entries(PARTS).filter(([k, d]) => d.cat === c && k !== "wire").map(([k, d]) => `<button data-part="${k}" title="${d.name}: ${d.desc.replace(/"/g, "&quot;")}">${ICON[k] ?? ""} ${d.name}</button>`).join("")}</div>`).join("");
+$("palette").addEventListener("click", (e) => { const b = e.target.closest("[data-part]"); if (b) startPlacing(b.dataset.part); });
+const cv = $("board"), g = cv.getContext("2d");
+function setTool(t) { tool = t; placing = null; document.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.tool === t)); document.querySelectorAll("[data-part]").forEach((b) => b.setAttribute("aria-pressed", "false")); cv.classList.toggle("place", t === "wire"); }
+document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => setTool(b.dataset.tool)));
+const freeChannel = () => { const used = parts.filter((p) => p.type === "probe").map((p) => p.ch); return [1, 2, 3, 4].find((c) => !used.includes(c)) ?? 1; };
+function startPlacing(type) {
+  setTool("select"); tool = "place";
+  const props = structuredClone(PARTS[type].props ?? {});
+  if (type === "probe") props.ch = freeChannel();
+  placing = { kind: "part", type, props, rot: 0 };
+  document.querySelectorAll("[data-part]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.part === type));
+  cv.classList.add("place");
+  setStatus(`<span class="muted">Click to drop the ${PARTS[type].name.toLowerCase()}. <kbd>R</kbd> turns it, <kbd>Esc</kbd> stops.</span>`);
+}
+/** The part(s) that would be placed with the first pin at grid point pt. */
+function ghostPart(pt) {
+  if (placing.kind === "template") return instantiate(placing.name, pt, () => -1);
+  const d = PARTS[placing.type];
+  if (d.two) { const dir = [[1, 0], [0, 1], [-1, 0], [0, -1]][placing.rot % 4]; return [{ id: -1, type: placing.type, ...placing.props, a: pt, b: [pt[0] + dir[0] * d.len, pt[1] + dir[1] * d.len] }]; }
+  return [{ id: -1, type: placing.type, ...placing.props, at: pt, rot: placing.rot }];
+}
+
+// ---------- templates ----------
+$("tlist").innerHTML = Object.entries(TEMPLATES).map(([k, t]) => `<button value="${k}">${t.name}<small>${t.desc}</small></button>`).join("");
+$("tplBtn").onclick = () => $("tpl").showModal();
+$("tpl").addEventListener("close", () => {
+  const name = $("tpl").returnValue;
+  if (!TEMPLATES[name]) return;
+  setTool("select"); tool = "place"; placing = { kind: "template", name }; cv.classList.add("place");
+  setStatus(`<span class="muted">Click on the board to place “${TEMPLATES[name].name}”.</span>`);
+});
+
+// ---------- view: zoom and pan (grid units ↔ screen pixels) ----------
+let view = { s: 26, x: 30, y: 30 }, dpr = 1;
+function resize() { dpr = devicePixelRatio || 1; const r = cv.getBoundingClientRect(); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+new ResizeObserver(resize).observe(cv); resize();
+const toGrid = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left - view.x) / view.s, (e.clientY - r.top - view.y) / view.s]; };
+const snap = ([x, y]) => [Math.round(x), Math.round(y)];
+function zoomAt(f, cx, cy) { const s = Math.min(80, Math.max(8, view.s * f)); view.x = cx - ((cx - view.x) * s) / view.s; view.y = cy - ((cy - view.y) * s) / view.s; view.s = s; }
+function fit() {
+  const r = cv.getBoundingClientRect();
+  if (!parts.length || !r.width) { view = { s: 26, x: 30, y: 30 }; return; }
+  const ps = parts.flatMap(pins), xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+  const w = Math.max(...xs) - Math.min(...xs) + 4, h = Math.max(...ys) - Math.min(...ys) + 4;
+  view.s = Math.min(44, Math.max(10, Math.min(r.width / w, r.height / h)));
+  view.x = (r.width - (Math.max(...xs) + Math.min(...xs)) * view.s) / 2; view.y = (r.height - (Math.max(...ys) + Math.min(...ys)) * view.s) / 2;
+}
+cv.addEventListener("wheel", (e) => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+$("zin").onclick = () => { const r = cv.getBoundingClientRect(); zoomAt(1.25, r.width / 2, r.height / 2); };
+$("zout").onclick = () => { const r = cv.getBoundingClientRect(); zoomAt(0.8, r.width / 2, r.height / 2); };
+$("fit").onclick = fit;
+
+// ---------- pointer ----------
+let drag = null; // { kind: "move" | "pan" | "end" | "box" | "button", … }
+const hitPart = (pt) => parts.map((p) => [p, distTo(p, pt)]).filter(([p, d]) => d < (PARTS[p.type].two ? 0.45 : 0.6))
+  .sort((a, b) => a[1] - b[1] || (a[0].type === "wire") - (b[0].type === "wire"))[0]?.[0] ?? null;
+const straight = (a, b) => (Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]) ? [b[0], a[1]] : [a[0], b[1]]);
+cv.addEventListener("pointerdown", (e) => {
+  cv.setPointerCapture(e.pointerId);
+  const exact = toGrid(e), pt = snap(exact);
+  if (e.button === 1 || e.button === 2) { if (tool === "wire") { placing = null; return; } drag = { kind: "pan", sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y }; cv.classList.add("pan"); return; }
+  if (tool === "place") {
+    remember();
+    const made = ghostPart(pt).map((p) => ({ ...p, id: newId() }));
+    parts.push(...made); selected = new Set(made.map((p) => p.id));
+    if (placing.kind === "template") { const t = TEMPLATES[placing.name]; if (t.speed) setSpeed(t.speed); tdivSet(t.div ?? "auto"); scopeClear(); setTool("select"); say(t.desc.split(". ")[0] + ".", "happy"); setStatus(""); }
+    else if (placing.type === "probe") placing.props.ch = freeChannel();
+    changed(); return;
+  }
+  if (tool === "wire") {
+    if (!placing) { placing = { kind: "wire", a: pt }; return; }
+    const b = e.shiftKey ? pt : straight(placing.a, pt);
+    if (key(b) !== key(placing.a)) { remember(); parts.push({ id: newId(), type: "wire", a: placing.a, b }); changed(); placing = { kind: "wire", a: b }; }
+    return;
+  }
+  // the select tool
+  const one = sel()[0];
+  if (selected.size === 1 && one?.type === "wire") for (const end of ["a", "b"]) if (Math.hypot(exact[0] - one[end][0], exact[1] - one[end][1]) < 0.4) { remember(); drag = { kind: "end", part: one, end }; return; }
+  const hit = hitPart(exact);
+  if (hit?.type === "button") { hit.closed = true; dirty = true; drag = { kind: "button", part: hit }; return; }
+  if (hit) {
+    if (e.shiftKey) selected.has(hit.id) ? selected.delete(hit.id) : selected.add(hit.id);
+    else if (!selected.has(hit.id)) selected = new Set([hit.id]);
+    drag = { kind: "move", last: pt, moved: false, hit };
+    showPanel(); return;
+  }
+  if (e.shiftKey) { drag = { kind: "box", from: exact, to: exact }; return; }
+  if (selected.size) { selected.clear(); showPanel(); }
+  drag = { kind: "pan", sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y }; cv.classList.add("pan");
+});
+cv.addEventListener("pointermove", (e) => {
+  const exact = toGrid(e), pt = snap(exact);
+  hover = pt;
+  if (!drag) return;
+  if (drag.kind === "pan") { view.x = drag.vx + e.clientX - drag.sx; view.y = drag.vy + e.clientY - drag.sy; }
+  else if (drag.kind === "end") { if (key(drag.part[drag.end]) !== key(pt)) { drag.part[drag.end] = pt; dirty = true; } }
+  else if (drag.kind === "box") drag.to = exact;
+  else if (drag.kind === "move") {
+    const dx = pt[0] - drag.last[0], dy = pt[1] - drag.last[1];
+    if (!dx && !dy) return;
+    if (!drag.moved) { remember(); drag.moved = true; }
+    moveSelection(dx, dy); drag.last = pt;
+  }
+});
+cv.addEventListener("pointerup", () => {
+  if (drag?.kind === "button") { drag.part.closed = false; dirty = true; }
+  if (drag?.kind === "move" && !drag.moved && drag.hit?.type === "switch") { remember(); drag.hit.closed = !drag.hit.closed; changed(); }
+  if (drag?.kind === "box") { const [x0, x1] = [drag.from[0], drag.to[0]].sort((a, b) => a - b), [y0, y1] = [drag.from[1], drag.to[1]].sort((a, b) => a - b); selected = new Set(parts.filter((p) => pins(p).every(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1)).map((p) => p.id)); showPanel(); }
+  if (drag?.kind === "end" || (drag?.kind === "move" && drag.moved)) changed();
+  drag = null; cv.classList.remove("pan");
+});
+cv.addEventListener("pointerleave", () => { hover = null; });
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+/** Moves the selection; wire ends that touched a moved pin come along (rubber-banding). */
+function moveSelection(dx, dy) {
+  const moving = sel(), pts = new Set(moving.flatMap(pins).map(key));
+  for (const p of moving) shift(p, dx, dy);
+  for (const w of parts) if (w.type === "wire" && !selected.has(w.id)) for (const end of ["a", "b"]) if (pts.has(key(w[end]))) w[end] = [w[end][0] + dx, w[end][1] + dy];
+  dirty = true;
+}
+
+// ---------- keyboard ----------
+addEventListener("keydown", (e) => {
+  if (e.target.closest?.("input, select, textarea, dialog")) return;
+  const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+  if (mod && k === "z") { e.preventDefault(); (e.shiftKey ? $("redo") : $("undo")).click(); return; }
+  if (mod && k === "y") { e.preventDefault(); $("redo").click(); return; }
+  if (mod && k === "d") { e.preventDefault(); duplicate(); return; }
+  if (mod) return;
+  if (e.key === "Escape") { if (tool === "wire" && placing) placing = null; else setTool("select"); setStatus(""); }
+  else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); del(); }
+  else if (k === "r") { if (tool === "place" && placing?.kind === "part") placing.rot = (placing.rot + 1) % 4; else rot(); }
+  else if (k === "w") setTool("wire");
+  else if (e.key === " ") { e.preventDefault(); $("play").click(); }
+  else if (e.key === "+" || e.key === "=") $("zin").click();
+  else if (e.key === "-") $("zout").click();
+  else if (k === "f") fit();
+});
+function del() { if (!selected.size) return; remember(); parts = parts.filter((p) => !selected.has(p.id)); selected.clear(); changed(); }
+function rot() { if (!selected.size) return; remember(); for (const p of sel()) rotate(p); changed(); }
+function duplicate() { if (!selected.size) return; remember(); const copies = sel().map((p) => { const c = { ...structuredClone(p), id: newId() }; shift(c, 2, 2); delete c.dead; if (c.type === "probe") c.ch = freeChannel(); return c; }); parts.push(...copies); selected = new Set(copies.map((c) => c.id)); changed(); }
+$("delBtn").onclick = del; $("rotBtn").onclick = rot; $("dupBtn").onclick = duplicate;
 
 // ---------- simulation ----------
-let sim = null, simT = 0, realT = 0, last = performance.now(), result = null, nodeOf = new Map(), capV = new Map(), problem = "";
-function build() {
-  problem = "";
-  const bats = parts.filter((p) => p.type === "battery");
-  if (!bats.length) { sim = null; result = null; return; }
-  nodeOf = new Map([[key(bats[0].b), 0]]); // the first battery's − is ground
-  let n = 1;
-  const node = (pt) => { const k = key(pt); if (!nodeOf.has(k)) nodeOf.set(k, n++); return nodeOf.get(k); };
-  const els = [], owner = [];
-  for (const p of parts) {
-    const a = node(p.a), b = node(p.b);
-    if (p.type === "wire") { // a part's end touching the middle of a wire joins it there (a T-junction), so split the wire at those points
-      const stops = [p.a, ...onWire(p), p.b];
-      for (let k = 1; k < stops.length; k++) { els.push({ type: "R", a: node(stops[k - 1]), b: node(stops[k]), ohms: 1e-3 }); owner.push(k === 1 ? p.id : -2); }
-      continue;
-    }
-    else if (p.type === "resistor") { els.push({ type: "R", a, b, ohms: Math.max(0.01, p.ohms) }); owner.push(p.id); }
-    else if (p.type === "battery") { const mid = n++; els.push({ type: "V", a: mid, b, volts: p.v }, { type: "R", a: mid, b: a, ohms: 0.1 }); owner.push(-1, p.id); } // current through the internal 0.1 Ω, from + into the circuit
-    else if (p.type === "led") { if (p.dead) { els.push({ type: "R", a, b, ohms: 1e9 }); owner.push(p.id); } else { els.push({ type: "D", a, b, ...ledParams(p.color) }); owner.push(p.id); } }
-    else if (p.type === "capacitor") { els.push({ type: "C", a, b, farads: p.uf * 1e-6, v0: capV.get(p.id) ?? 0 }); owner.push(p.id); }
-    else if (p.type === "switch") { els.push({ type: "R", a, b, ohms: p.closed ? 1e-3 : 1e9 }); owner.push(p.id); }
-  }
-  sim = { st: stepper(els, 2e-4, { gmin: 1e-9 }), owner, els, hasCap: parts.some((p) => p.type === "capacitor") };
-  simT = realT;
-  save();
-}
-function stepSim(dtReal) {
-  if (!sim) return;
-  realT += dtReal;
-  let r = null;
-  try {
-    if (!sim.hasCap) r = sim.st.step(); // nothing changes with time: one solve per frame
-    else for (let k = 0; simT < realT && k < 120; k++) { r = sim.st.step(); simT += 2e-4; }
-    if (sim.hasCap && simT < realT) simT = realT; // too slow to keep up: let time slip rather than freeze
-  } catch (e) { problem = e.message; return; }
-  if (!r) return;
-  const cur = new Map();
-  sim.owner.forEach((id, k) => { if (id > 0) cur.set(id, (cur.get(id) ?? 0) + r.i[k]); });
-  result = { v: r.v, cur };
-  for (const p of parts) {
-    if (p.type === "capacitor") capV.set(p.id, (r.v[nodeOf.get(key(p.a))] ?? 0) - (r.v[nodeOf.get(key(p.b))] ?? 0));
-    if (p.type === "led" && !p.dead && (cur.get(p.id) ?? 0) > 0.03) { p.dead = true; say("Pop! Over 30 mA burnt that LED out. Add a resistor.", "dizzy"); build(); if (sel === p) showPanel(); }
-  }
-  const short = parts.find((p) => p.type === "battery" && Math.abs(cur.get(p.id) ?? 0) > 3);
-  problem = short ? `Short circuit: about ${(Math.abs(cur.get(short.id))).toFixed(0)} A from the ${short.v} V battery. A real one would get hot fast.` : "";
-}
-// Endpoints of other parts lying strictly inside a wire, ordered from its start.
-function onWire(w) {
-  const [ax, ay] = w.a, [bx, by] = w.b, len = Math.abs(bx - ax) + Math.abs(by - ay), seen = new Set();
-  return parts.flatMap((p) => (p === w ? [] : [p.a, p.b])).filter(([x, y]) => {
-    const t = ax === bx ? (x === ax ? (y - ay) / (by - ay || 1) : -1) : ay === by ? (y === ay ? (x - ax) / (bx - ax || 1) : -1) : -1;
-    const k = `${x},${y}`; if (t <= 0 || t >= 1 || seen.has(k)) return false; seen.add(k); return true;
-  }).sort((p, q) => Math.abs(p[0] - ax) + Math.abs(p[1] - ay) - (Math.abs(q[0] - ax) + Math.abs(q[1] - ay)));
-}
-const voltAt = (pt) => (result && nodeOf.has(key(pt)) ? result.v[nodeOf.get(key(pt))] : null);
+const SPEEDS = [[1, "real time"], [0.5, "½×"], [0.1, "1/10"], [0.01, "1/100"], [1e-3, "1/1,000"], [1e-4, "1/10,000"], [1e-5, "1/100,000"], [1e-6, "1/1,000,000"]];
+$("speed").innerHTML = SPEEDS.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+function setSpeed(v) { speed = SPEEDS.reduce((b, s) => (Math.abs(Math.log(s[0] / v)) < Math.abs(Math.log(b / v)) ? s[0] : b), 1); $("speed").value = String(speed); dirty = true; }
+$("speed").onchange = () => { speed = +$("speed").value; dirty = true; scopeClear(); };
+$("play").onclick = () => { running = !running; $("play").textContent = running ? "❚❚ Pause" : "▶ Run"; };
+const burn = new Map(); // LED id → simulated seconds spent over its limit
+function changed() { dirty = true; save(); showPanel(); }
+function rebuild() { dirty = false; sim = simulation(parts, { speed, memory, onSample: scopeSample }); if (!sim) scopeClear(); }
 
-// ---------- drawing ----------
-const px = ([x, y]) => [x * S, y * S];
-const offsets = new Map();
-function drawPart(p, dt) {
-  const [x1, y1] = px(p.a), [x2, y2] = px(p.b), len = Math.hypot(x2 - x1, y2 - y1), ang = Math.atan2(y2 - y1, x2 - x1);
-  g.save(); g.translate(x1, y1); g.rotate(ang);
-  const isSel = sel === p, line = isSel ? COL.sel : COL.wire, amps = result?.cur.get(p.id) ?? 0;
-  g.strokeStyle = line; g.lineWidth = 3; g.lineCap = "round";
-  const lead = (from, to) => { g.beginPath(); g.moveTo(from, 0); g.lineTo(to, 0); g.stroke(); };
-  const m = len / 2;
-  if (p.type === "wire") lead(0, len);
-  else if (p.type === "resistor") { lead(0, m - 24); lead(m + 24, len); g.beginPath(); for (let k = 0; k <= 8; k++) g.lineTo(m - 24 + k * 6, k === 0 || k === 8 ? 0 : k % 2 ? 8 : -8); g.stroke(); const P = amps * amps * p.ohms; if (P > 0.25) { g.fillStyle = `rgba(252,98,85,${Math.min(0.6, P / 2)})`; g.beginPath(); g.arc(m, 0, 20, 0, 7); g.fill(); } }
-  else if (p.type === "battery") { lead(0, m - 5); lead(m + 6, len); g.strokeStyle = COL.text; g.lineWidth = 3; g.beginPath(); g.moveTo(m - 5, -16); g.lineTo(m - 5, 16); g.stroke(); g.lineWidth = 6; g.beginPath(); g.moveTo(m + 6, -9); g.lineTo(m + 6, 9); g.stroke(); g.fillStyle = COL.text; g.font = "13px ui-monospace, monospace"; g.fillText("+", m - 20, -10); }
-  else if (p.type === "capacitor") { lead(0, m - 5); lead(m + 5, len); g.strokeStyle = COL.text; g.lineWidth = 4; g.beginPath(); g.moveTo(m - 5, -14); g.lineTo(m - 5, 14); g.moveTo(m + 5, -14); g.lineTo(m + 5, 14); g.stroke(); }
-  else if (p.type === "switch") { lead(0, m - 14); lead(m + 14, len); g.fillStyle = COL.text; g.beginPath(); g.arc(m - 14, 0, 3.5, 0, 7); g.arc(m + 14, 0, 3.5, 0, 7); g.fill(); g.strokeStyle = COL.text; g.beginPath(); g.moveTo(m - 14, 0); g.lineTo(m + 14, p.closed ? 0 : -14); g.stroke(); }
-  else if (p.type === "led") {
-    lead(0, m - 10); lead(m + 10, len);
-    const bright = p.dead ? 0 : Math.min(1, Math.max(0, amps) / 0.02);
-    if (bright > 0.02) { const grd = g.createRadialGradient(m, 0, 2, m, 0, 18 + 30 * bright); grd.addColorStop(0, LEDS[p.color][1]); grd.addColorStop(1, "rgba(0,0,0,0)"); g.globalAlpha = 0.3 + 0.7 * bright; g.fillStyle = grd; g.beginPath(); g.arc(m, 0, 18 + 30 * bright, 0, 7); g.fill(); g.globalAlpha = 1; }
-    g.fillStyle = p.dead ? "#333" : LEDS[p.color][1]; g.strokeStyle = COL.text; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(m - 10, -11); g.lineTo(m - 10, 11); g.lineTo(m + 10, 0); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(m + 10, -11); g.lineTo(m + 10, 11); g.stroke();
-    if (p.dead) { g.fillStyle = "rgba(170,170,170,.5)"; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(m - 4 + k * 5, -18 - k * 7 + Math.sin(performance.now() / 300 + k) * 2, 5 + k, 0, 7); g.fill(); } }
-  }
-  // current dots, conventional direction (a → b is positive)
-  if (Math.abs(amps) > 1e-6) {
-    const speed = Math.sign(amps) * Math.min(400, Math.sqrt(Math.abs(amps) * 1000) * 40), off = ((offsets.get(p.id) ?? 0) + speed * dt + 22 * 1000) % 22;
-    offsets.set(p.id, off); g.fillStyle = COL.dot;
-    for (let d = off; d < len; d += 22) { g.beginPath(); g.arc(d, 0, 3, 0, 7); g.fill(); }
-  }
-  g.restore();
-  // value label
-  const label = p.type === "battery" ? `${p.v} V` : p.type === "resistor" ? fmtR(p.ohms) : p.type === "capacitor" ? `${p.uf} µF` : p.type === "led" ? (p.dead ? "burnt" : `${p.color}`) : p.type === "switch" ? (p.closed ? "on" : "off") : "";
-  if (label) { g.fillStyle = isSel ? COL.sel : COL.text; g.font = "13px ui-monospace, monospace"; const vert = Math.abs(x2 - x1) < 1; g.fillText(label, (x1 + x2) / 2 + (vert ? 16 : -g.measureText(label).width / 2), (y1 + y2) / 2 + (vert ? 4 : -18)); }
+// ---------- oscilloscope ----------
+const TDIV = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
+$("tdiv").innerHTML = `<option value="auto">auto</option>` + TDIV.map((v) => `<option value="${v}">${si(v, "s")}</option>`).join("");
+const VDIV = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+let tdiv = "auto", hold = false, buf = { 1: [], 2: [], 3: [], 4: [] }, chanNode = {}, vdiv = { 1: "auto", 2: "auto", 3: "auto", 4: "auto" };
+const tdivSet = (v) => { tdiv = v; $("tdiv").value = String(v); };
+$("tdiv").onchange = () => { tdiv = $("tdiv").value === "auto" ? "auto" : +$("tdiv").value; };
+$("hold").onclick = () => { hold = !hold; $("hold").setAttribute("aria-pressed", hold); $("hold").textContent = hold ? "Holding" : "Hold"; };
+const curTdiv = () => (tdiv === "auto" ? TDIV.find((v) => v >= speed * 0.2) ?? 1 : tdiv);
+function scopeClear() { buf = { 1: [], 2: [], 3: [], 4: [] }; }
+function scopeSample(t, v) { if (hold) return; for (const ch of [1, 2, 3, 4]) { const n = chanNode[ch]; if (n != null) buf[ch].push([t, v[n] ?? 0]); } }
+function scopeTrim() {
+  const keep = curTdiv() * 30;
+  for (const ch of [1, 2, 3, 4]) { const b = buf[ch]; if (b.length > 2000 && b.at(-1)[0] - b[0][0] > keep) { const cut = b.findIndex((s) => s[0] > b.at(-1)[0] - keep); if (cut > 0) b.splice(0, cut); } if (b.length > 150000) b.splice(0, b.length - 150000); }
 }
-const fmtR = (r) => (r >= 1e6 ? `${+(r / 1e6).toPrecision(3)} MΩ` : r >= 1000 ? `${+(r / 1000).toPrecision(3)} kΩ` : `${+r.toPrecision(3)} Ω`);
-const fmtA = (a) => (Math.abs(a) >= 1 ? `${a.toFixed(2)} A` : Math.abs(a) >= 1e-3 ? `${(a * 1000).toFixed(1)} mA` : `${(a * 1e6).toFixed(0)} µA`);
+const niceV = (x) => VDIV.find((v) => v * 3.6 >= x) ?? 50;
+const sc = $("scope"), sg = sc.getContext("2d");
+function drawScope() {
+  const r = sc.getBoundingClientRect(); if (sc.width !== Math.round(r.width * dpr)) { sc.width = Math.round(r.width * dpr); sc.height = Math.round(r.height * dpr); }
+  const W = sc.width, H = sc.height, td = curTdiv(), win = td * 10;
+  sg.fillStyle = "#0b0e13"; sg.fillRect(0, 0, W, H);
+  sg.strokeStyle = "#1f2733"; sg.lineWidth = 1;
+  for (let i = 0; i <= 10; i++) { sg.beginPath(); sg.moveTo((i * W) / 10, 0); sg.lineTo((i * W) / 10, H); sg.stroke(); }
+  for (let i = 0; i <= 8; i++) { sg.beginPath(); sg.moveTo(0, (i * H) / 8); sg.lineTo(W, (i * H) / 8); sg.stroke(); }
+  sg.strokeStyle = "#2c3644"; sg.beginPath(); sg.moveTo(0, H / 2); sg.lineTo(W, H / 2); sg.stroke();
+  sg.fillStyle = "#8f98a8"; sg.font = `${12 * dpr}px ui-monospace, monospace`; sg.fillText(`${si(td, "s")}/div`, W - 92 * dpr, H - 8 * dpr);
+  const chans = [1, 2, 3, 4].filter((c) => chanNode[c] != null && buf[c].length > 1);
+  $("scopeHint").hidden = chans.length > 0;
+  if (!chans.length) { if ($("meas").innerHTML) { $("meas").innerHTML = ""; $("meas").dataset.html = ""; } return; }
+  // trigger: the latest upward crossing of CH1's midpoint that leaves half a window after it
+  const b1 = buf[chans[0]], tEnd = b1.at(-1)[0];
+  let t0 = tEnd - win;
+  if ($("trig").value === "auto") {
+    const m = measure(b1.filter((s) => s[0] > tEnd - win * 3));
+    if (m && m.vpp > 1e-3) {
+      const lvl = (m.max + m.min) / 2;
+      for (let k = b1.length - 1; k > 0; k--) {
+        const [ta, va] = b1[k - 1], [tb, vb] = b1[k];
+        if (ta < tEnd - win * 3) break;
+        if (tb > tEnd - win / 2) continue;
+        if (va < lvl && vb >= lvl) { t0 = ta + ((lvl - va) / (vb - va || 1)) * (tb - ta) - win / 2; break; }
+      }
+    }
+  }
+  const rows = [];
+  for (const ch of chans) {
+    const s = buf[ch].filter(([t]) => t >= t0 && t <= t0 + win), m = measure(s), color = PROBE_COLORS[(ch - 1) % 4];
+    if (!m) continue;
+    m.freq = measure(buf[ch].filter(([t]) => t >= tEnd - win * 3))?.freq ?? m.freq; // a longer stretch than the screen, so 1–2 visible cycles still give a frequency
+    const vd = vdiv[ch] === "auto" ? niceV(Math.max(Math.abs(m.max), Math.abs(m.min), 0.01)) : vdiv[ch];
+    sg.strokeStyle = color; sg.lineWidth = 2 * dpr; sg.beginPath();
+    const step = Math.max(1, Math.floor(s.length / (W * 2)));
+    for (let k = 0; k < s.length; k += step) { const x = ((s[k][0] - t0) / win) * W, y = H / 2 - (s[k][1] / vd) * (H / 8); k ? sg.lineTo(x, y) : sg.moveTo(x, y); }
+    sg.stroke();
+    sg.fillStyle = color; sg.fillText(`CH${ch}  ${si(vd, "V")}/div`, 8 * dpr, (16 + 16 * (ch - 1)) * dpr);
+    rows.push(`<tr><td style="color:${color}">CH${ch}</td><td>${si(m.vpp, "V")}</td><td>${si(m.max, "V")}</td><td>${si(m.min, "V")}</td><td>${si(m.avg, "V")}</td><td>${si(m.rms, "V")}</td><td>${m.freq ? si(m.freq, "Hz") : "—"}</td><td><select data-vdiv="${ch}" aria-label="volts per division, channel ${ch}"><option value="auto">auto</option>${VDIV.map((v) => `<option value="${v}" ${vdiv[ch] === v ? "selected" : ""}>${si(v, "V")}</option>`).join("")}</select></td></tr>`);
+  }
+  const html = `<tr><th>ch</th><th>Vpp</th><th>max</th><th>min</th><th>average</th><th>RMS</th><th>frequency</th><th>V/div</th></tr>${rows.join("")}`;
+  if (frame.n % 10 === 0 && html !== $("meas").dataset.html && !$("meas").contains(document.activeElement)) { $("meas").innerHTML = html; $("meas").dataset.html = html; }
+}
+$("meas").addEventListener("change", (e) => { const ch = e.target.dataset.vdiv; if (ch) vdiv[ch] = e.target.value === "auto" ? "auto" : +e.target.value; });
+
+// ---------- drawing the board ----------
+const offsets = new Map();
+let tReal = 0;
+const vColor = (v, lo, hi) => { const f = Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1))); return `hsl(${220 - 220 * f}, 80%, ${52 + 8 * f}%)`; };
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  stepSim(dt);
-  g.fillStyle = COL.stage; g.fillRect(0, 0, W, H);
-  g.fillStyle = COL.grid; for (let x = S; x < W; x += S) for (let y = S; y < H; y += S) g.fillRect(x - 1, y - 1, 2, 2);
-  for (const p of parts) drawPart(p, dt);
-  // joints where 3+ ends meet, and the ghost of the part being placed
-  const ends = new Map(); for (const p of parts) for (const pt of [p.a, p.b]) ends.set(key(pt), (ends.get(key(pt)) ?? 0) + 1);
-  for (const w of parts) if (w.type === "wire") for (const pt of onWire(w)) ends.set(key(pt), (ends.get(key(pt)) ?? 0) + 2); // a T-junction
-  g.fillStyle = COL.wire; for (const [k, c] of ends) if (c >= 3) { const [x, y] = k.split(",").map(Number); g.beginPath(); g.arc(x * S, y * S, 5, 0, 7); g.fill(); }
-  if (pending && hover) { const b = endFor(pending.type, pending.a, hover); g.setLineDash([5, 5]); g.strokeStyle = COL.sel; g.lineWidth = 2; g.beginPath(); g.moveTo(...px(pending.a)); g.lineTo(...px(b)); g.stroke(); g.setLineDash([]); }
-  if (hover) { g.strokeStyle = COL.blue; g.lineWidth = 1.5; g.beginPath(); g.arc(hover[0] * S, hover[1] * S, 7, 0, 7); g.stroke(); const v = voltAt(hover); if (v != null) { const t = `${v.toFixed(2)} V`; g.fillStyle = "rgba(20,23,29,.9)"; g.fillRect(hover[0] * S + 10, hover[1] * S - 26, g.measureText(t).width + 10, 20); g.fillStyle = COL.blue; g.font = "13px ui-monospace, monospace"; g.fillText(t, hover[0] * S + 15, hover[1] * S - 11); } }
-  $("status").innerHTML = problem ? `<span class="warn">${problem}</span>` : !parts.some((p) => p.type === "battery") ? "Add a battery to power the circuit." : "";
+  frame.n = (frame.n ?? 0) + 1;
+  const dt = Math.min(0.05, (now - (frame.last ?? now)) / 1000); frame.last = now; tReal += dt;
+  if (dirty) rebuild();
+  chanNode = {};
+  if (sim) for (const p of parts) if (p.type === "probe") { const n = sim.net.nodeOf.get(key(pins(p)[0])); if (n != null) chanNode[p.ch] = n; }
+  if (sim && running && !sim.error) { sim.advance(dt); scopeTrim(); checkLimits(dt * speed); }
+  const W = cv.width, H = cv.height;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = COL.stage; g.fillRect(0, 0, W, H);
+  g.setTransform(dpr * view.s, 0, 0, dpr * view.s, dpr * view.x, dpr * view.y);
+  const gx0 = Math.floor(-view.x / view.s) - 1, gy0 = Math.floor(-view.y / view.s) - 1, gx1 = gx0 + W / dpr / view.s + 2, gy1 = gy0 + H / dpr / view.s + 2;
+  if (view.s > 9) { g.fillStyle = COL.grid; for (let x = gx0; x < gx1; x++) for (let y = gy0; y < gy1; y++) g.fillRect(x - 0.05, y - 0.05, 0.1, 0.1); }
+  const colorBy = $("vcolor").checked && sim, vs = sim ? sim.v.filter(Number.isFinite) : [], vlo = Math.min(0, ...vs), vhi = Math.max(0.1, ...vs);
+  for (const p of parts) {
+    const amps = sim?.cur.get(p.id) ?? 0, st = { sel: selected.has(p.id), amps, t: tReal };
+    if (p.type === "led") st.glow = p.dead ? 0 : Math.min(1, Math.max(0, amps) / 0.02);
+    if (p.type === "lamp") { const R = (p.volts * p.volts) / p.watts; st.glow = Math.min(1, (amps * amps * R) / p.watts); }
+    if (p.type === "resistor") { const P = amps * amps * p.ohms; st.heat = P > p.watts ? Math.min(0.6, P / p.watts / 3) : 0; }
+    if (p.type === "motor") { p._spin = (p._spin ?? 0) + amps * dt * 8; st.spin = p._spin; }
+    if (p.type === "nmos") st.on = Math.abs(amps) > 1e-3;
+    const s = sim?.net.states.get(p.id); if (s) { st.q = s.q; st.y = s.y; }
+    if (colorBy && p.type === "wire") { g.strokeStyle = vColor(sim.voltAt(p.a) ?? 0, vlo, vhi); g.lineWidth = 0.15; g.lineCap = "round"; g.beginPath(); g.moveTo(...p.a); g.lineTo(...p.b); g.stroke(); if (st.sel) { g.strokeStyle = COL.sel; g.lineWidth = 0.05; g.stroke(); } }
+    else draw(g, p, st);
+  }
+  // current dots on wire pieces and two-terminal parts (conventional current, + to −)
+  if (sim) {
+    g.fillStyle = COL.dot;
+    const dots = (id, a, b, amps) => {
+      if (Math.abs(amps) < 1e-6) return;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]); if (!len) return;
+      const v = Math.sign(amps) * Math.min(6, Math.sqrt(Math.abs(amps) * 1000) * 0.6), off = ((((offsets.get(id) ?? 0) + v * dt) % 0.8) + 0.8) % 0.8;
+      offsets.set(id, off);
+      for (let d = off; d < len; d += 0.8) { g.beginPath(); g.arc(a[0] + ((b[0] - a[0]) * d) / len, a[1] + ((b[1] - a[1]) * d) / len, 0.1, 0, 7); g.fill(); }
+    };
+    for (const [id, list] of sim.net.segs) for (const s of list) dots(`w${id}:${s.idx}`, s.from, s.to, sim.wire.get(s.idx) ?? 0);
+    for (const p of parts) if (PARTS[p.type].two && p.type !== "wire") dots(p.id, p.a, p.b, sim.cur.get(p.id) ?? 0);
+  }
+  // joints (3+ ends, or a pin on a wire) and loose pins (red rings)
+  const ends = new Map(), owner = new Map(), optional = new Set();
+  for (const p of parts) pins(p).forEach((pt, k) => { ends.set(key(pt), (ends.get(key(pt)) ?? 0) + 1); owner.set(key(pt), p); if (PARTS[p.type].optional?.includes(k)) optional.add(key(pt)); });
+  for (const w of parts) if (w.type === "wire") for (const pt of onWire(w, parts)) ends.set(key(pt), (ends.get(key(pt)) ?? 0) + 2);
+  for (const [k, c] of ends) {
+    const [x, y] = k.split(",").map(Number);
+    if (c >= 3) { g.fillStyle = COL.wire; g.beginPath(); g.arc(x, y, 0.17, 0, 7); g.fill(); }
+    else if (c === 1 && !optional.has(k) && !["ground", "probe"].includes(owner.get(k)?.type)) { g.strokeStyle = "rgba(252,98,85,.85)"; g.lineWidth = 0.06; g.beginPath(); g.arc(x, y, 0.17, 0, 7); g.stroke(); }
+  }
+  // say why a wired-up LED stays dark, right next to it; ammeters show their reading
+  if (sim) for (const p of parts) {
+    if (p.type === "led" && (sim.cur.get(p.id) ?? 0) > 2e-4) p._lit = tReal;
+    if (p.type === "led" && !p.dead && tReal - (p._lit ?? -9) > 1.5 && (ends.get(key(p.a)) ?? 0) > 1 && (ends.get(key(p.b)) ?? 0) > 1 && (sim.cur.get(p.id) ?? 0) < 2e-4) { // dark for a while, not just blinking
+      const drop = (sim.voltAt(p.a) ?? 0) - (sim.voltAt(p.b) ?? 0);
+      tagAt(p.b, drop < -0.1 ? "in backwards" : `${drop.toFixed(2)} V < ${LEDS[p.color][0]} V needed`, "#fc6255");
+    }
+    if (p.type === "ammeter") tagAt(p.b, si(sim.cur.get(p.id) ?? 0, "A"), COL.green);
+  }
+  if (hover && tool === "place" && placing) { g.globalAlpha = 0.55; for (const p of ghostPart(hover)) draw(g, p, { sel: true, t: tReal }); g.globalAlpha = 1; }
+  if (tool === "wire" && placing?.a && hover) { g.setLineDash([0.2, 0.2]); g.strokeStyle = COL.sel; g.lineWidth = 0.07; g.beginPath(); g.moveTo(...placing.a); g.lineTo(...straight(placing.a, hover)); g.stroke(); g.setLineDash([]); }
+  if (drag?.kind === "box") { g.strokeStyle = COL.blue; g.lineWidth = 0.04; g.setLineDash([0.2, 0.15]); g.strokeRect(drag.from[0], drag.from[1], drag.to[0] - drag.from[0], drag.to[1] - drag.from[1]); g.setLineDash([]); }
+  // the multimeter: hover any point to read its voltage
+  if (hover && sim && tool !== "place") {
+    const v = sim.voltAt(hover);
+    g.strokeStyle = COL.blue; g.lineWidth = 0.05; g.beginPath(); g.arc(hover[0], hover[1], 0.25, 0, 7); g.stroke();
+    if (v != null) tagAt(hover, si(v, "V"), COL.blue, true);
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  $("clock").textContent = sim ? `t = ${si(sim.t, "s", 4)}${sim.lag ? " · can't keep up: lower the speed" : ""}${running ? "" : " · paused"}` : "";
+  drawScope();
+  if (sim?.error) setStatus(`<span class="warn">The simulation stopped: ${sim.error}. Undo the last change, or check for a loop of only sources and wires.</span>`);
   requestAnimationFrame(frame);
 }
-
-// ---------- editing ----------
-const gridAt = (e) => { const r = cv.getBoundingClientRect(); return [Math.round((((e.clientX - r.left) / r.width) * W) / S), Math.round((((e.clientY - r.top) / r.height) * H) / S)]; };
-// Parts are 3 squares long, straight; wires go straight horizontally or vertically.
-function endFor(type, a, toward) {
-  const dx = toward[0] - a[0], dy = toward[1] - a[1], horiz = Math.abs(dx) >= Math.abs(dy);
-  if (type === "wire") return horiz ? [toward[0], a[1]] : [a[0], toward[1]];
-  const s = horiz ? Math.sign(dx) || 1 : Math.sign(dy) || 1;
-  return horiz ? [a[0] + 3 * s, a[1]] : [a[0], a[1] + 3 * s];
+function tagAt([x, y], text, color, above = false) {
+  g.save(); g.setTransform(dpr, 0, 0, dpr, dpr * (view.x + x * view.s), dpr * (view.y + y * view.s));
+  g.font = "12px ui-monospace, Menlo, monospace"; const w = g.measureText(text).width + 10, ty = above ? -28 : 8;
+  g.fillStyle = "rgba(20,23,29,.92)"; g.fillRect(10, ty, w, 19); g.strokeStyle = color; g.lineWidth = 1; g.strokeRect(10, ty, w, 19); g.fillStyle = color; g.fillText(text, 15, ty + 14); g.restore();
 }
-const distToPart = (p, [x, y]) => { const [ax, ay] = p.a, [bx, by] = p.b, l2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1, t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2)); return Math.hypot(x - (ax + t * (bx - ax)), y - (ay + t * (by - ay))); };
-cv.addEventListener("pointermove", (e) => { const r = cv.getBoundingClientRect(); hover = [((e.clientX - r.left) / r.width) * W / S, ((e.clientY - r.top) / r.height) * H / S].map(Math.round); });
-cv.addEventListener("pointerleave", () => (hover = null));
-cv.addEventListener("click", (e) => {
-  const pt = gridAt(e);
-  if (tool === "select") {
-    const r = cv.getBoundingClientRect(), exact = [((e.clientX - r.left) / r.width) * W / S, ((e.clientY - r.top) / r.height) * H / S];
-    const hit = parts.map((p) => [p, distToPart(p, exact)]).filter(([, d]) => d < 0.45).sort((a, b) => a[1] - b[1])[0]?.[0] ?? null;
-    if (hit?.type === "switch" && sel === hit) { hit.closed = !hit.closed; build(); }
-    sel = hit; showPanel(); return;
+
+// ---------- limits: burnt LEDs, short circuits, hot resistors ----------
+function checkLimits(simDt) {
+  let problem = "";
+  for (const p of parts) {
+    const a = sim.cur.get(p.id) ?? 0;
+    if (p.type === "led" && !p.dead) {
+      const over = a > 0.03 ? (burn.get(p.id) ?? 0) + simDt : 0; burn.set(p.id, over);
+      if (over > 0.05) { p.dead = true; dirty = true; say(`Pop! ${si(a, "A")} burnt out that ${p.color} LED (they take about 20 mA). Add a bigger resistor.`, "dizzy"); save(); if (selected.has(p.id)) showPanel(); }
+    }
+    if ((p.type === "battery" || p.type === "source") && Math.abs(a) > 3) problem = `Short circuit: about ${si(Math.abs(a), "A")} from the ${p.type === "battery" ? si(p.v, "V") + " battery" : "source"}. A real one would get very hot.`;
+    if (p.type === "resistor" && a * a * p.ohms > p.watts * 2 && !problem) problem = `A ${si(p.ohms, "Ω")} resistor is burning ${si(a * a * p.ohms, "W")}, more than twice its ${p.watts} W rating.`;
   }
-  if (!pending) { pending = { type: tool, a: pt }; return; }
-  const b = endFor(tool, pending.a, pt);
-  if (key(b) !== key(pending.a)) { sel = add(tool, pending.a, b); build(); showPanel(); }
-  pending = null;
-});
-addEventListener("keydown", (e) => {
-  if (e.target.closest?.("input, select, textarea")) return; // the panel's buttons dispatch these on window
-  if ((e.key === "Delete" || e.key === "Backspace") && sel) { parts = parts.filter((p) => p !== sel); sel = null; build(); showPanel(); e.preventDefault(); }
-  if ((e.key === "r" || e.key === "R") && sel) { const [ax, ay] = sel.a, dx = sel.b[0] - ax, dy = sel.b[1] - ay; sel.b = [ax - dy, ay + dx]; build(); }
-  if (e.key === "Escape") { pending = null; setTool("select"); }
-});
-function setTool(t) { tool = t; pending = null; document.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.tool === t)); }
-document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => setTool(b.dataset.tool)));
-
-// the side panel: what's selected, and its value
-const parseVal = (s) => { const m = String(s).trim().match(/^([\d.]+)\s*([kKmMuµ]?)/); if (!m) return NaN; return +m[1] * ({ k: 1e3, K: 1e3, M: 1e6, m: 1e-3, u: 1e-6, "µ": 1e-6 }[m[2]] ?? 1); };
-function showPanel() {
-  if (!sel) { $("ptitle").textContent = "How to build"; $("pbody").innerHTML = `<p>1. Pick a part above. 2. Click a grid point where it starts, then where it ends. 3. Join everything with wires into a loop through a battery.</p><p class="muted">Select a part to change its value. <b>R</b> rotates it, <b>Delete</b> removes it. Click a selected switch to flip it.</p>`; return; }
-  const p = sel, amps = result?.cur.get(p.id) ?? 0, va = voltAt(p.a), vb = voltAt(p.b), drop = va != null && vb != null ? va - vb : null;
-  $("ptitle").textContent = { wire: "Wire", battery: "Battery", resistor: "Resistor", led: "LED", capacitor: "Capacitor", switch: "Switch" }[p.type];
-  const field = p.type === "battery" ? `<label>voltage (V) <input type="text" id="val" value="${p.v}"></label>`
-    : p.type === "resistor" ? `<label>resistance (Ω, e.g. 330, 4.7k, 1M) <input type="text" id="val" value="${fmtR(p.ohms).replace(/ Ω$/, "").replace(" ", "")}"></label>`
-    : p.type === "capacitor" ? `<label>capacitance (µF) <input type="text" id="val" value="${p.uf}"></label>`
-    : p.type === "led" ? `<label>color <select id="val">${Object.keys(LEDS).map((c) => `<option ${c === p.color ? "selected" : ""}>${c}</option>`).join("")}</select></label>${p.dead ? `<p><span class="warn">Burnt out.</span> <button id="fix">Replace it</button></p>` : ""}`
-    : p.type === "switch" ? `<p><button id="flip">${p.closed ? "Open it" : "Close it"}</button></p>` : "";
-  $("pbody").innerHTML = `${field}<p class="muted" id="live"></p><p><button id="rot">Rotate (R)</button> <button id="del">Delete</button></p>`;
-  const v = $("val");
-  if (v) v.onchange = () => { if (p.type === "led") p.color = v.value; else { const n = p.type === "resistor" ? parseVal(v.value) : parseFloat(v.value); if (!(n > 0)) return; if (p.type === "battery") p.v = Math.min(48, n); if (p.type === "resistor") p.ohms = n; if (p.type === "capacitor") p.uf = Math.min(100000, n); } build(); };
-  $("fix") && ($("fix").onclick = () => { p.dead = false; build(); showPanel(); });
-  $("flip") && ($("flip").onclick = () => { p.closed = !p.closed; build(); showPanel(); });
-  $("rot").onclick = () => dispatchEvent(new KeyboardEvent("keydown", { key: "r" }));
-  $("del").onclick = () => dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+  if (tool !== "place") setStatus(problem ? `<span class="warn">${problem}</span>` : sim.net.ground === "source" ? `<span class="muted">No ground symbol yet: the first source's − end counts as 0 V. Add a ⏚ Ground to choose.</span>` : "");
 }
+const setStatus = (html) => { if ($("status").innerHTML !== html) $("status").innerHTML = html; };
+
+// ---------- the inspector ----------
+function showPanel() {
+  const list = sel();
+  if (!list.length) {
+    $("panel").innerHTML = `<h2>How to build</h2>
+      <p>1. Pick a part above, then click the board to drop it. <kbd>R</kbd> turns it, before or after.</p>
+      <p>2. <b>Wire</b> (<kbd>W</kbd>): click from pin to pin; it keeps going until <kbd>Esc</kbd>. A pin landing on a wire joins it (a dot marks the joint). <span style="color:#e03131">Red rings</span> are pins connected to nothing.</p>
+      <p>3. Add a <b>⏚ ground</b> and <b>⌁ scope probes</b>, or start from <b>＋ Insert circuit</b>.</p>
+      <p class="muted">Drag parts to move them (wires follow), drag empty space to pan, wheel to zoom, Shift-drag to select several. Click a switch to flip it; hold a push button down. Hover any point for its voltage. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, <kbd>Space</kbd> pauses.</p>`;
+    return;
+  }
+  if (list.length > 1) { $("panel").innerHTML = `<h2>${list.length} parts selected</h2><p><button id="pRot">Rotate</button> <button id="pDup">Duplicate</button> <button id="pDel">Delete</button></p><p class="muted">Drag any of them to move them all together.</p>`; panelButtons(); return; }
+  const p = list[0], d = PARTS[p.type];
+  const field = ([prop, label, kind, extra, min, max]) => {
+    const v = p[prop];
+    if (kind === "select") return `<label>${label}<select data-prop="${prop}" data-kind="select">${extra.map((o) => `<option value="${o}" ${String(o) === String(v) ? "selected" : ""}>${o}</option>`).join("")}</select></label>`;
+    if (kind === "range") return `<label>${label}: <b>${v}%</b><input type="range" data-prop="${prop}" data-kind="range" min="${min}" max="${max}" value="${v}"></label>`;
+    return `<label>${label} (${extra})<input type="text" data-prop="${prop}" data-kind="${kind}" data-min="${min}" data-max="${max}" value="${kind === "si" ? si(v, "").replace(/\s/g, "") : v}"></label>`;
+  };
+  $("panel").innerHTML = `<h2>${d.name}</h2><p class="muted">${d.desc}${d.chapter ? ` <a href="/learn/electronics/${d.chapter}">Learn more</a>` : ""}</p>
+    ${(d.fields ?? []).map(field).join("")}
+    ${p.type === "led" && p.dead ? `<p><span class="warn">Burnt out.</span> <button id="pFix">Replace it</button></p>` : ""}
+    ${p.type === "switch" ? `<p><button id="pFlip">${p.closed ? "Open it" : "Close it"}</button></p>` : ""}
+    <div class="read" id="live">…</div><div id="why"></div>
+    <p><button id="pRot">Rotate</button> <button id="pDup">Duplicate</button> <button id="pDel">Delete</button></p>`;
+  $("panel").querySelectorAll("[data-prop]").forEach((el) => {
+    const apply = () => {
+      const prop = el.dataset.prop, kind = el.dataset.kind;
+      let v = kind === "select" ? (isNaN(+el.value) ? el.value : +el.value) : kind === "range" ? +el.value : kind === "si" ? parseSI(el.value) : parseFloat(el.value);
+      if (typeof v === "number" && !Number.isFinite(v)) { el.style.outline = "2px solid #e03131"; return; }
+      if (el.dataset.min != null && el.dataset.min !== "undefined" && typeof v === "number") v = Math.min(+el.dataset.max, Math.max(+el.dataset.min, v));
+      el.style.outline = ""; remember(); p[prop] = v;
+      if (kind === "range") el.previousElementSibling.textContent = `${v}%`;
+      if (prop === "color") delete p.dead;
+      dirty = true; save();
+      if (kind !== "range") showPanel();
+    };
+    el.addEventListener(el.dataset.kind === "range" ? "input" : "change", apply);
+  });
+  $("pFix") && ($("pFix").onclick = () => { remember(); delete p.dead; changed(); });
+  $("pFlip") && ($("pFlip").onclick = () => { remember(); p.closed = !p.closed; changed(); });
+  panelButtons();
+}
+function panelButtons() { $("pRot").onclick = rot; $("pDup").onclick = duplicate; $("pDel").onclick = del; }
 setInterval(() => {
-  if (!sel || !$("live")) return;
-  const amps = result?.cur.get(sel.id) ?? 0, va = voltAt(sel.a), vb = voltAt(sel.b), drop = va != null && vb != null ? Math.abs(va - vb) : 0;
-  $("live").textContent = `current ${fmtA(Math.abs(amps))} · voltage across ${drop.toFixed(2)} V${sel.type === "resistor" ? ` · heat ${(amps * amps * sel.ohms * 1000).toFixed(0)} mW${amps * amps * sel.ohms > 0.25 ? " (over ¼ W!)" : ""}` : ""}`;
+  const list = sel(); if (list.length !== 1 || !$("live")) return;
+  const p = list[0], d = PARTS[p.type], ps = pins(p), vs = ps.map((pt) => sim?.voltAt(pt) ?? null), a = sim?.cur.get(p.id) ?? 0;
+  let html = "", why = "";
+  if (!sim) html = "Not running: add a battery, a source or an IC.";
+  else if (d.two) {
+    const drop = (vs[0] ?? 0) - (vs[1] ?? 0);
+    html = `current ${si(a, "A")}<br>voltage across ${si(drop, "V")}<br>power ${si(Math.abs(drop * a), "W")}`;
+    if (p.type === "resistor") html += `<br>rating ${p.watts} W${a * a * p.ohms > p.watts ? ' <span class="warn">over!</span>' : ""}`;
+    if (p.type === "capacitor") html += `<br>stored energy ${si(0.5 * p.farads * drop * drop, "J")}`;
+    if (p.type === "led" && !p.dead) {
+      const need = LEDS[p.color][0];
+      why = a > 0.0005 ? (a > 0.025 ? `<p class="note warn">${si(a, "A")} is close to the limit (about 30 mA). Use a bigger resistor.</p>` : "")
+        : drop < -0.1 ? `<p class="note">It's in backwards: current only flows from the triangle (anode, +) to the bar (cathode, −). Rotate it twice.</p>`
+        : `<p class="note">Too little voltage to light: it has <b>${drop.toFixed(2)} V</b>, and a ${p.color} LED needs about <b>${need} V</b> before any current flows. If it shares a point with a lower-voltage LED (red needs only 1.9 V), that LED holds the point down. Give each LED its own resistor.</p>`;
+    }
+  } else html = d.pins.map((_, k) => `${d.pinNames?.[k] ?? `pin ${k + 1}`}: ${vs[k] == null ? "—" : si(vs[k], "V")}`).join("<br>");
+  const s = sim?.net.states.get(p.id); if (s && "q" in s) html += `<br>output ${s.q ? "HIGH" : "low"}`;
+  if ($("live").innerHTML !== html) $("live").innerHTML = html;
+  if ($("why").innerHTML !== why) $("why").innerHTML = why;
 }, 200);
 
-// ---------- examples, saving, sharing ----------
-const EX = {
-  led: () => { add("battery", [4, 6], [4, 9], { v: 9 }); add("wire", [4, 6], [4, 4]); add("wire", [4, 4], [9, 4]); add("resistor", [9, 4], [12, 4], { ohms: 470 }); add("wire", [12, 4], [16, 4]); add("led", [16, 4], [16, 7]); add("wire", [16, 7], [16, 12]); add("wire", [16, 12], [4, 12]); add("wire", [4, 12], [4, 9]); },
-  divider: () => { add("battery", [4, 6], [4, 9], { v: 5 }); add("wire", [4, 6], [4, 4]); add("wire", [4, 4], [14, 4]); add("resistor", [14, 4], [14, 7], { ohms: 10000 }); add("resistor", [14, 7], [14, 10], { ohms: 10000 }); add("wire", [14, 10], [14, 12]); add("wire", [14, 12], [4, 12]); add("wire", [4, 12], [4, 9]); },
-  rc: () => { add("battery", [4, 6], [4, 9], { v: 9 }); add("wire", [4, 6], [4, 4]); add("switch", [4, 4], [7, 4]); add("resistor", [7, 4], [10, 4], { ohms: 2200 }); add("wire", [10, 4], [15, 4]); add("capacitor", [15, 4], [15, 7], { uf: 1000 }); add("wire", [15, 7], [15, 12]); add("wire", [15, 12], [4, 12]); add("wire", [4, 12], [4, 9]);
-    add("resistor", [20, 4], [20, 7], { ohms: 1000 }); add("led", [20, 7], [20, 10], { color: "green" }); add("wire", [15, 4], [20, 4]); add("wire", [20, 10], [20, 12]); add("wire", [20, 12], [15, 12]); },
-  parallel: () => { add("battery", [4, 6], [4, 9], { v: 5 }); add("wire", [4, 6], [4, 4]); add("wire", [4, 4], [8, 4]); add("resistor", [8, 4], [11, 4], { ohms: 150 }); add("wire", [11, 4], [22, 4]); add("led", [16, 4], [16, 7], { color: "red" }); add("led", [22, 4], [22, 7], { color: "blue" }); add("wire", [16, 7], [16, 12]); add("wire", [22, 7], [22, 12]); add("wire", [22, 12], [4, 12]); add("wire", [4, 12], [4, 9]); },
-  short: () => { add("battery", [4, 6], [4, 9], { v: 9 }); add("wire", [4, 6], [4, 4]); add("wire", [4, 4], [10, 4]); add("wire", [10, 4], [10, 12]); add("wire", [10, 12], [4, 12]); add("wire", [4, 12], [4, 9]); },
-};
-function load(list) { parts = []; nextId = 1; capV.clear(); for (const p of list) add(p.type, p.a, p.b, p); sel = null; showPanel(); build(); }
-function loadExample(name) { parts = []; nextId = 1; capV.clear(); EX[name](); sel = null; showPanel(); build(); if (name === "parallel") say("Same resistor, two colors: the red one hogs the current. Each LED needs its own resistor!", "think"); if (name === "rc") say("Click the switch twice to close it, and watch the capacitor fill.", "happy"); }
-$("example").onchange = () => { if ($("example").value) loadExample($("example").value); $("example").value = ""; };
-$("clear").onclick = () => { parts = []; sel = null; showPanel(); build(); };
-const pack = () => parts.map(({ id, dead, ...p }) => p);
-function save() { try { localStorage.setItem("ihor-circuit", JSON.stringify(pack())); } catch {} }
+// ---------- saving, sharing, files ----------
+const KEY = "ihor-circuit-v2";
+const pack = () => ({ v: 2, speed, parts: parts.map(({ _spin, _lit, ...p }) => p) });
+function save() { try { localStorage.setItem(KEY, JSON.stringify(pack())); } catch {} }
+const V1 = { battery: (p) => ({ type: "battery", a: p.a, b: p.b, v: p.v }), resistor: (p) => ({ type: "resistor", a: p.a, b: p.b, ohms: p.ohms }), led: (p) => ({ type: "led", a: p.a, b: p.b, color: p.color }), capacitor: (p) => ({ type: "capacitor", a: p.a, b: p.b, farads: (p.uf ?? 100) * 1e-6 }), switch: (p) => ({ type: "switch", a: p.a, b: p.b, closed: !!p.closed }), wire: (p) => ({ type: "wire", a: p.a, b: p.b }) };
+function load(data) {
+  const list = Array.isArray(data) ? data.map((p) => V1[p.type]?.(p)).filter(Boolean) : data?.parts ?? [];
+  parts = list.filter((p) => PARTS[p?.type]).map((p, i) => ({ ...structuredClone(PARTS[p.type].props ?? {}), ...p, id: i + 1 }));
+  nextId = parts.length + 1; selected.clear(); memory = { capV: new Map(), indI: new Map() }; burn.clear();
+  setSpeed(data?.speed ?? 1); scopeClear(); changed(); requestAnimationFrame(fit);
+}
+const encode = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))), decode = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
 $("share").onclick = async () => {
-  const url = `${location.origin}${location.pathname}#c=${btoa(unescape(encodeURIComponent(JSON.stringify(pack()))))}`;
+  const url = `${location.origin}${location.pathname}#c2=${encode(pack())}`;
   try { await navigator.clipboard.writeText(url); $("share").textContent = "Link copied ✓"; } catch { prompt("Copy this link:", url); }
-  setTimeout(() => ($("share").textContent = "Copy share link"), 2000);
+  setTimeout(() => ($("share").textContent = "Share link"), 2000);
 };
+$("export").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(pack(), null, 1)], { type: "application/json" })); a.download = "circuit.json"; a.click(); URL.revokeObjectURL(a.href); };
+$("import").onclick = () => $("file").click();
+$("file").onchange = async () => { const f = $("file").files[0]; if (!f) return; try { remember(); load(JSON.parse(await f.text())); } catch { setStatus(`<span class="warn">That file isn't a circuit.</span>`); } $("file").value = ""; };
+$("clear").onclick = () => { if (!parts.length) return; remember(); parts = []; selected.clear(); scopeClear(); changed(); setStatus("Cleared. <b>Ctrl+Z</b> brings it back."); };
+
 try {
-  const fromHash = location.hash.startsWith("#c=") ? JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(3))))) : null;
-  const saved = JSON.parse(localStorage.getItem("ihor-circuit") || "null");
-  if (Array.isArray(fromHash)) load(fromHash); else if (Array.isArray(saved) && saved.length) load(saved); else loadExample("led");
-} catch { loadExample("led"); }
+  const h = location.hash;
+  if (h.startsWith("#c2=")) load(decode(h.slice(4)));
+  else if (h.startsWith("#c=")) load(decode(h.slice(3)));
+  else {
+    const saved = JSON.parse(localStorage.getItem(KEY) || "null") ?? JSON.parse(localStorage.getItem("ihor-circuit") || "null");
+    if (saved && (saved.parts?.length || saved.length)) load(saved);
+    else { parts = instantiate("led", [2, 2], newId); changed(); requestAnimationFrame(fit); }
+  }
+} catch { parts = instantiate("led", [2, 2], newId); changed(); }
+showPanel();
 requestAnimationFrame(frame);
 
-window.blipContext = () => ({ page: "Circuit lab (build your own circuit)", parts: parts.map((p) => `${p.type}${p.v ? " " + p.v + " V" : ""}${p.ohms ? " " + fmtR(p.ohms) : ""}${p.uf ? " " + p.uf + " µF" : ""}${p.color ? " " + p.color : ""}${p.dead ? " (burnt out)" : ""}${p.type === "switch" ? (p.closed ? " (closed)" : " (open)") : ""}: current ${fmtA(Math.abs(result?.cur.get(p.id) ?? 0))}`), problem });
+window.blipContext = () => ({
+  page: "Circuit lab (students build and simulate circuits, with an oscilloscope)", speed: `${speed} simulated seconds per real second`,
+  parts: parts.filter((p) => p.type !== "wire").map((p) => { const d = PARTS[p.type]; return `${d.name}${p.v != null ? " " + si(p.v, "V") : ""}${p.type === "resistor" ? " " + si(p.ohms, "Ω") : ""}${p.farads ? " " + si(p.farads, "F") : ""}${p.color ? " " + p.color : ""}${p.dead ? " (burnt out)" : ""}${p.closed != null ? (p.closed ? " (closed)" : " (open)") : ""}${d.two ? `: ${si(sim?.cur.get(p.id) ?? 0, "A")}` : ""}`; }),
+  selected: sel().map((p) => PARTS[p.type].name), status: $("status").textContent,
+});
 </script>
 </body>
 </html>
