@@ -1,0 +1,881 @@
+{
+ "id": "n4-11",
+ "level": "N4",
+ "unit": 11,
+ "title": {
+  "ja": "毎朝読むようにしている",
+  "en": "I make a point of reading every morning"
+ },
+ "scene": "Sunday morning at the café. Yuki catches Sam reading the news on his phone. In Japanese.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "読めるようになった",
+     "よめるようになった",
+     "became able to read"
+    ],
+    [
+     "の",
+     null,
+     "(question)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, you can read Japanese news now?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "全部",
+     "ぜんぶ",
+     "all of it"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "無理",
+     "むり",
+     "impossible"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎朝",
+     "まいあさ",
+     "every morning"
+    ],
+    [
+     "一つ",
+     "ひとつ",
+     "one"
+    ],
+    [
+     "読むようにしている",
+     "よむようにしている",
+     "make a point of reading"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Not all of it yet. But I make a point of reading one article every morning."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "えらい",
+     null,
+     "impressive"
+    ],
+    [
+     "ね",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "大変じゃない",
+     "たいへんじゃない",
+     "isn't it tough"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Impressive. Isn't the kanji tough?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "最近",
+     "さいきん",
+     "lately"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "知らない",
+     "しらない",
+     "unknown"
+    ],
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "も",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "意味",
+     "いみ",
+     "meaning"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "わかるようになった",
+     null,
+     "came to understand"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Lately I've started to get the meaning even of kanji I don't know."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "部首",
+     "ぶしゅ",
+     "radicals"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "覚えた",
+     "おぼえた",
+     "learned"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "でしょう",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それなら",
+     null,
+     "if so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もっと",
+     null,
+     "more"
+    ],
+    [
+     "読めるはず",
+     "よめるはず",
+     "should be able to read"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's because you learned the radicals, right? Then you should be able to read even more."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あと",
+     null,
+     "also"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "寝る",
+     "ねる",
+     "sleep"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "スマホ",
+     null,
+     "phone"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ないようにしている",
+     "みないようにしている",
+     "try not to look at"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Also, I try not to look at my phone before bed."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "昨日",
+     "きのう",
+     "yesterday"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "夜",
+     "よる",
+     "night"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "二時",
+     "にじ",
+     "two o'clock"
+    ],
+    [
+     "まで",
+     null,
+     "until",
+     "p"
+    ],
+    [
+     "ゲーム",
+     null,
+     "games"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "していた",
+     null,
+     "was doing"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "But last night Sam was playing games until two."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "早く",
+     "はやく",
+     "early"
+    ],
+    [
+     "寝るようにする",
+     "ねるようにする",
+     "will make sure to sleep"
+    ],
+    [
+     "よ",
+     null,
+     "(promise)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip! ...Tonight I'll make sure to go to bed early."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "試験",
+     "しけん",
+     "the exam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "七月",
+     "しちがつ",
+     "July"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "はず",
+     null,
+     "should be"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "がんばって",
+     null,
+     "do your best"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The exam should be in July, so do your best."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "you-ni-naru",
+   "title": "V-るようになる: come to (be able to)",
+   "explain": "Dictionary or potential form + ようになる = a change that happened over time: 読めるようになった (I've become able to read). For stopping: なくなる.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ニュース",
+       null,
+       "news"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "読めるようになった",
+       "よめるようになった",
+       "became able to read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I've become able to read the news."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "毎日練習して、泳げる＿＿＿なりました。",
+     "hint": "I practiced every day and became able to swim.",
+     "choices": [
+      "ように",
+      "ために",
+      "ことに"
+     ],
+     "answer": 0,
+     "why": "A change over time: ようになる."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#you-ni-naru"
+  },
+  {
+   "id": "you-ni-suru",
+   "title": "V-るようにする: make a point of",
+   "explain": "Dictionary form + ようにする = make an effort to do it. ないようにする = try not to. ようにしている = a habit you keep up.",
+   "examples": [
+    {
+     "t": [
+      [
+       "毎朝",
+       "まいあさ",
+       "every morning"
+      ],
+      [
+       "読むようにしている",
+       "よむようにしている",
+       "make a point of reading"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I make a point of reading every morning."
+    },
+    {
+     "t": [
+      [
+       "スマホ",
+       null,
+       "phone"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "見ないようにしている",
+       "みないようにしている",
+       "try not to look at"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I try not to look at my phone."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "健康のために、毎日歩く＿＿＿しています。",
+     "hint": "For my health, I make a point of walking every day.",
+     "choices": [
+      "ように",
+      "ことに",
+      "ために"
+     ],
+     "answer": 0,
+     "why": "A habit you work at: ようにしている."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#you-ni-suru"
+  },
+  {
+   "id": "hazu",
+   "title": "～はずだ: should be, is expected to",
+   "explain": "Plain form + はず = it should be so, judging from what you know (not a wild guess). Nouns take の: 七月のはず; な-adjectives take な. はずがない = it can't be.",
+   "examples": [
+    {
+     "t": [
+      [
+       "もっと",
+       null,
+       "more"
+      ],
+      [
+       "読めるはず",
+       "よめるはず",
+       "should be able to read"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You should be able to read more."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "田中さんは今日来る＿＿です。メールが来ました。",
+     "hint": "Tanaka should come today. I got an email.",
+     "choices": [
+      "はず",
+      "べき",
+      "そう"
+     ],
+     "answer": 0,
+     "why": "Expected, from what you know: はず."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#hazu"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "意",
+   "on": [
+    "イ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "mind, meaning",
+   "ex": [
+    [
+     "意味",
+     "いみ",
+     "meaning"
+    ]
+   ]
+  },
+  {
+   "k": "味",
+   "on": [
+    "ミ"
+   ],
+   "kun": [
+    "あじ"
+   ],
+   "m": "taste",
+   "ex": [
+    [
+     "意味",
+     "いみ",
+     "meaning"
+    ],
+    [
+     "味",
+     "あじ",
+     "flavor"
+    ]
+   ]
+  },
+  {
+   "k": "試",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "ため.す"
+   ],
+   "m": "try, test",
+   "ex": [
+    [
+     "試験",
+     "しけん",
+     "exam"
+    ]
+   ]
+  },
+  {
+   "k": "験",
+   "on": [
+    "ケン"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "test",
+   "ex": [
+    [
+     "試験",
+     "しけん",
+     "exam"
+    ],
+    [
+     "経験",
+     "けいけん",
+     "experience"
+    ]
+   ]
+  },
+  {
+   "k": "知",
+   "on": [
+    "チ"
+   ],
+   "kun": [
+    "し.る"
+   ],
+   "m": "know",
+   "ex": [
+    [
+     "知る",
+     "しる",
+     "to know"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  5,
+  7
+ ],
+ "questions": [
+  {
+   "q": "サムさんは毎朝何をするようにしていますか。",
+   "en": "What does Sam make a point of doing every morning?",
+   "choices": [
+    "ニュースを一つ読む",
+    "漢字を十書く",
+    "早く起きる"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは寝る前に何をしないようにしていますか。",
+   "en": "What does Sam try not to do before bed?",
+   "choices": [
+    "スマホを見る",
+    "コーヒーを飲む",
+    "ゲームを買う"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "試験はいつのはずですか。",
+   "en": "When should the exam be?",
+   "choices": [
+    "七月",
+    "八月",
+    "来週"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip something you've become able to do (～ようになった), a habit you keep (～ようにしている), and something that should happen soon (～はずだ)."
+}

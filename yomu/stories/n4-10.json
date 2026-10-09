@@ -1,0 +1,910 @@
+{
+ "id": "n4-10",
+ "level": "N4",
+ "unit": 10,
+ "title": {
+  "ja": "ラジオを作っているところ",
+  "en": "In the middle of building a radio"
+ },
+ "scene": "Saturday afternoon. Yuki drops by while Sam is building a radio kit that just arrived from Japan.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "こんにちは",
+     null,
+     "hello"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "している",
+     null,
+     "are doing"
+    ],
+    [
+     "の",
+     null,
+     "(question)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hi. What are you doing?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "今",
+     "いま",
+     "right now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "作っているところ",
+     "つくっているところ",
+     "in the middle of making"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "昨日",
+     "きのう",
+     "yesterday"
+    ],
+    [
+     "届いたばかり",
+     "とどいたばかり",
+     "only just arrived"
+    ],
+    [
+     "の",
+     null,
+     "(that)",
+     "p"
+    ],
+    [
+     "キット",
+     null,
+     "kit"
+    ],
+    [
+     "なんだ",
+     null,
+     "it's"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm in the middle of building a radio. It's a kit that only arrived yesterday."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "説明書",
+     "せつめいしょ",
+     "instructions"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "英語",
+     "えいご",
+     "English"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Are the instructions in English?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ううん",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "字",
+     "じ",
+     "letters"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "小さくて",
+     "ちいさくて",
+     "small and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "読みにくい",
+     "よみにくい",
+     "hard to read"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, Japanese. The letters are tiny and hard to read."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "見せて",
+     "みせて",
+     "show me"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "に",
+     null,
+     "(at)",
+     "p"
+    ],
+    [
+     "「",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "はんだ付け",
+     "はんだづけ",
+     "soldering"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "」",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "と",
+     null,
+     "(quote)",
+     "p"
+    ],
+    [
+     "書いてある",
+     "かいてある",
+     "is written"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let me see. ...Ah, here it says \"solder this.\""
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ちょうど",
+     null,
+     "just now"
+    ],
+    [
+     "そこ",
+     null,
+     "that part"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "やったところ",
+     null,
+     "just did"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "はんだごて",
+     null,
+     "soldering iron"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "軽くて",
+     "かるくて",
+     "light and"
+    ],
+    [
+     "使いやすい",
+     "つかいやすい",
+     "easy to use"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I just did that part. This soldering iron is light and easy to use."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "手伝う",
+     "てつだう",
+     "will help"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あつっ",
+     null,
+     "ow, hot"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip will help too! ...Ow, hot!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それ",
+     null,
+     "that"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "使ったばかり",
+     "つかったばかり",
+     "just used"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "熱い",
+     "あつい",
+     "hot"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, I just used that, so it's still hot!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "できたら",
+     null,
+     "when it's done"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞こう",
+     "きこう",
+     "let's listen"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "When it's done, let's listen to Japanese radio."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "tokoro",
+   "title": "V-るところ / ているところ / たところ: about to / in the middle of / just did",
+   "explain": "ところ (a place) also marks a moment. Dictionary form + ところ = about to; ている + ところ = right in the middle of it; た + ところ = just finished.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "作っているところ",
+       "つくっているところ",
+       "in the middle of making"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm in the middle of building a radio."
+    },
+    {
+     "t": [
+      [
+       "ちょうど",
+       null,
+       "just now"
+      ],
+      [
+       "やったところ",
+       null,
+       "just did"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I just did it."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "今から出かける＿＿＿です。",
+     "hint": "I'm just about to go out.",
+     "choices": [
+      "ところ",
+      "ばかり",
+      "まま"
+     ],
+     "answer": 0,
+     "why": "About to: dictionary form + ところ."
+    },
+    {
+     "q": "今、ごはんを食べて＿＿ところです。",
+     "hint": "I'm in the middle of eating.",
+     "choices": [
+      "いる",
+      "いた",
+      "いく"
+     ],
+     "answer": 0,
+     "why": "In the middle of: ているところ."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#tokoro"
+  },
+  {
+   "id": "bakari",
+   "title": "V-たばかり: only just did",
+   "explain": "た-form + ばかり = it only just happened, as the speaker feels it (it can be days ago). たところ is stricter: this very moment.",
+   "examples": [
+    {
+     "t": [
+      [
+       "昨日",
+       "きのう",
+       "yesterday"
+      ],
+      [
+       "届いたばかり",
+       "とどいたばかり",
+       "only just arrived"
+      ],
+      [
+       "の",
+       null,
+       "(that)",
+       "p"
+      ],
+      [
+       "キット",
+       null,
+       "kit"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "A kit that only arrived yesterday."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "日本に来た＿＿＿なので、まだ日本語が下手です。",
+     "hint": "I've only just come to Japan, so my Japanese is still poor.",
+     "choices": [
+      "ばかり",
+      "ところ",
+      "まま"
+     ],
+     "answer": 0,
+     "why": "Only just (it feels recent): たばかり."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#bakari"
+  },
+  {
+   "id": "yasui-nikui",
+   "title": "V-やすい / V-にくい: easy to / hard to",
+   "explain": "Verb stem + やすい = easy to do; + にくい = hard to do. Both change like い-adjectives: 読みにくくて.",
+   "examples": [
+    {
+     "t": [
+      [
+       "字",
+       "じ",
+       "letters"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "小さくて",
+       "ちいさくて",
+       "small and"
+      ],
+      [
+       "読みにくい",
+       "よみにくい",
+       "hard to read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The letters are small and hard to read."
+    },
+    {
+     "t": [
+      [
+       "軽くて",
+       "かるくて",
+       "light and"
+      ],
+      [
+       "使いやすい",
+       "つかいやすい",
+       "easy to use"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's light and easy to use."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "このペンは書き＿＿＿。",
+     "hint": "This pen is easy to write with.",
+     "choices": [
+      "やすい",
+      "にくい",
+      "すぎ"
+     ],
+     "answer": 0,
+     "why": "Easy to: stem + やすい."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#yasui-nikui"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "作",
+   "on": [
+    "サク"
+   ],
+   "kun": [
+    "つく.る"
+   ],
+   "m": "make",
+   "ex": [
+    [
+     "作る",
+     "つくる",
+     "to make"
+    ]
+   ]
+  },
+  {
+   "k": "昨",
+   "on": [
+    "サク"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "previous",
+   "ex": [
+    [
+     "昨日",
+     "きのう",
+     "yesterday"
+    ]
+   ]
+  },
+  {
+   "k": "英",
+   "on": [
+    "エイ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "England, excellent",
+   "ex": [
+    [
+     "英語",
+     "えいご",
+     "English"
+    ]
+   ]
+  },
+  {
+   "k": "軽",
+   "on": [
+    "ケイ"
+   ],
+   "kun": [
+    "かる.い"
+   ],
+   "m": "light (weight)",
+   "ex": [
+    [
+     "軽い",
+     "かるい",
+     "light"
+    ]
+   ]
+  },
+  {
+   "k": "手",
+   "on": [
+    "シュ"
+   ],
+   "kun": [
+    "て"
+   ],
+   "m": "hand",
+   "ex": [
+    [
+     "手",
+     "て",
+     "hand"
+    ],
+    [
+     "手伝う",
+     "てつだう",
+     "to help"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  3,
+  7
+ ],
+ "questions": [
+  {
+   "q": "サムさんは今、何をしていますか。",
+   "en": "What is Sam doing right now?",
+   "choices": [
+    "ラジオを作っています",
+    "ラジオを聞いています",
+    "説明書を書いています"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "説明書はどうして読みにくいですか。",
+   "en": "Why are the instructions hard to read?",
+   "choices": [
+    "字が小さいから",
+    "英語だから",
+    "長いから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてはんだごてはまだ熱いですか。",
+   "en": "Why is the soldering iron still hot?",
+   "choices": [
+    "使ったばかりだから",
+    "こわれたから",
+    "新しいから"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip what you're in the middle of (～ているところ), something you only just did (～たばかり), and one thing that's easy or hard to do (～やすい / ～にくい)."
+}

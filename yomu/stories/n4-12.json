@@ -1,0 +1,841 @@
+{
+ "id": "n4-12",
+ "level": "N4",
+ "unit": 12,
+ "title": {
+  "ja": "来てほしいんだけど",
+  "en": "I'd like you to come"
+ },
+ "scene": "Sam's ham radio club meets on Thursday night. He wants Yuki there to say hello to Japan on the air.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "木曜日",
+     "もくようび",
+     "Thursday"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "無線",
+     "むせん",
+     "ham radio"
+    ],
+    [
+     "クラブ",
+     null,
+     "club"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "来てほしい",
+     "きてほしい",
+     "want you to come"
+    ],
+    [
+     "んだけど",
+     null,
+     "(asking)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, I'd like you to come to my ham radio club on Thursday."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "何時",
+     "なんじ",
+     "what time"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行けるかどうか",
+     "いけるかどうか",
+     "whether I can go"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "予定",
+     "よてい",
+     "schedule"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見てみる",
+     "みてみる",
+     "I'll check"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What time? I'll check my schedule to see whether I can make it."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "七時",
+     "しちじ",
+     "seven"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "六時半",
+     "ろくじはん",
+     "six thirty"
+    ],
+    [
+     "までに",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "来てくれる",
+     "きてくれる",
+     "could you come"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "話す",
+     "はなす",
+     "talk"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It starts at seven, but could you come by six thirty? We're going to talk to Japan."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "つながるかどうか",
+     null,
+     "whether it connects"
+    ],
+    [
+     "わからない",
+     null,
+     "don't know"
+    ],
+    [
+     "でしょう",
+     null,
+     "right"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "With Japan? You don't know whether it'll really connect, right?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "変わる",
+     "かわる",
+     "it changes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "つながったら",
+     null,
+     "if it connects"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "あいさつ",
+     null,
+     "hello"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "してほしい",
+     null,
+     "want you to do"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah, it depends on the weather. But if it connects, I'd like you to say hello in Japanese."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "okay"
+    ],
+    [
+     "よ",
+     null,
+     "sure"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "仕事",
+     "しごと",
+     "work"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "六時",
+     "ろくじ",
+     "six"
+    ],
+    [
+     "までに",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "終わる",
+     "おわる",
+     "finishes"
+    ],
+    [
+     "はず",
+     null,
+     "should"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sure. My work should be over by six."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "マイク",
+     null,
+     "microphone"
+    ],
+    [
+     "で",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "話してもいい",
+     "はなしてもいい",
+     "may talk"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can Blip talk on the microphone too?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "だめ",
+     null,
+     "no"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "免許",
+     "めんきょ",
+     "license"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "ない",
+     null,
+     "don't have"
+    ],
+    [
+     "と",
+     null,
+     "if",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "話してはいけない",
+     "はなしてはいけない",
+     "mustn't talk"
+    ],
+    [
+     "んだ",
+     null,
+     "(you see)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No. Without a license you're not allowed to talk on the air."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "には",
+     null,
+     "(as for)",
+     "p"
+    ],
+    [
+     "聞いていてほしい",
+     "きいていてほしい",
+     "want you to listen"
+    ],
+    [
+     "な",
+     null,
+     "I'd like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then, Blip, I'd like you to just listen."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "hoshii-te",
+   "title": "V-てほしい: I want you to",
+   "explain": "て-form + ほしい = I want someone else to do it. The person takes に: ゆきに来てほしい. ～てほしいんだけど softens it into a request.",
+   "examples": [
+    {
+     "t": [
+      [
+       "クラブ",
+       null,
+       "club"
+      ],
+      [
+       "に",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "来てほしい",
+       "きてほしい",
+       "want you to come"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I want you to come to the club."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "母に料理を教えて＿＿＿。",
+     "hint": "I want my mom to teach me to cook.",
+     "choices": [
+      "ほしい",
+      "たい",
+      "みる"
+     ],
+     "answer": 0,
+     "why": "Someone else acts: てほしい. たい is for yourself."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#hoshii-te"
+  },
+  {
+   "id": "ka-dou-ka",
+   "title": "～かどうか: whether or not",
+   "explain": "Plain form + かどうか = whether or not, inside a bigger sentence: 行けるかどうかわからない. With a question word, use just か: 何時か.",
+   "examples": [
+    {
+     "t": [
+      [
+       "行けるかどうか",
+       "いけるかどうか",
+       "whether I can go"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "見てみる",
+       "みてみる",
+       "I'll check"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll check whether I can go."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日晴れる＿＿＿＿、わかりません。",
+     "hint": "I don't know whether it'll be sunny tomorrow.",
+     "choices": [
+      "かどうか",
+      "のに",
+      "ので"
+     ],
+     "answer": 0,
+     "why": "Whether or not: かどうか."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#ka-dou-ka"
+  },
+  {
+   "id": "made-ni",
+   "title": "～までに: by (a deadline)",
+   "explain": "まで = until (keeps going); までに = by, no later than. 六時までに来て (come by six) vs 六時まで待つ (wait until six).",
+   "examples": [
+    {
+     "t": [
+      [
+       "六時半",
+       "ろくじはん",
+       "six thirty"
+      ],
+      [
+       "までに",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "来てくれる",
+       "きてくれる",
+       "could you come"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Could you come by six thirty?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "金曜日＿＿＿レポートを出してください。",
+     "hint": "Please hand in the report by Friday.",
+     "choices": [
+      "までに",
+      "まで",
+      "から"
+     ],
+     "answer": 0,
+     "why": "A deadline: までに."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#made-ni"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "終",
+   "on": [
+    "シュウ"
+   ],
+   "kun": [
+    "お.わる"
+   ],
+   "m": "end",
+   "ex": [
+    [
+     "終わる",
+     "おわる",
+     "to end"
+    ]
+   ]
+  },
+  {
+   "k": "事",
+   "on": [
+    "ジ"
+   ],
+   "kun": [
+    "こと"
+   ],
+   "m": "thing, matter",
+   "ex": [
+    [
+     "仕事",
+     "しごと",
+     "work"
+    ],
+    [
+     "事",
+     "こと",
+     "thing"
+    ]
+   ]
+  },
+  {
+   "k": "当",
+   "on": [
+    "トウ"
+   ],
+   "kun": [
+    "あ.たる"
+   ],
+   "m": "hit, right",
+   "ex": [
+    [
+     "本当",
+     "ほんとう",
+     "true"
+    ]
+   ]
+  },
+  {
+   "k": "曜",
+   "on": [
+    "ヨウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "weekday",
+   "ex": [
+    [
+     "木曜日",
+     "もくようび",
+     "Thursday"
+    ]
+   ]
+  },
+  {
+   "k": "変",
+   "on": [
+    "ヘン"
+   ],
+   "kun": [
+    "か.わる"
+   ],
+   "m": "change",
+   "ex": [
+    [
+     "変わる",
+     "かわる",
+     "to change"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  5
+ ],
+ "questions": [
+  {
+   "q": "クラブは何時からですか。",
+   "en": "What time does the club start?",
+   "choices": [
+    "七時",
+    "六時半",
+    "六時"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはゆきさんに何をしてほしいですか。",
+   "en": "What does Sam want Yuki to do?",
+   "choices": [
+    "日本語であいさつする",
+    "マイクを買う",
+    "ブリップと話す"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてブリップはマイクで話してはいけませんか。",
+   "en": "Why can't Blip talk on the microphone?",
+   "choices": [
+    "免許がないから",
+    "声が小さいから",
+    "日本語ができないから"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Ask Blip to do two things for you (～てほしい), say you're not sure whether you can come (～かどうか), and set a deadline (～までに)."
+}

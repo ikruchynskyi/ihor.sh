@@ -1,0 +1,928 @@
+{
+ "id": "n4-09",
+ "level": "N4",
+ "unit": 9,
+ "title": {
+  "ja": "電車が止まったので",
+  "en": "Because the train stopped"
+ },
+ "scene": "A rainy spring evening. Sam is on his way to dinner with Yuki in Brooklyn when the L train stops.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "もしもし",
+     null,
+     "hello"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ごめん",
+     null,
+     "sorry"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "止まった",
+     "とまった",
+     "stopped"
+    ],
+    [
+     "ので",
+     null,
+     "so",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "遅れる",
+     "おくれる",
+     "I'll be late"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hello, Yuki? Sorry, the train stopped, so I'll be late."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "え",
+     null,
+     "what"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "昨日",
+     "きのう",
+     "yesterday"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "止まった",
+     "とまった",
+     "stopped"
+    ],
+    [
+     "のに",
+     null,
+     "even though",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What, again? It already stopped yesterday!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "駅員",
+     "えきいん",
+     "station staff"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "聞いてみた",
+     "きいてみた",
+     "tried asking"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつ",
+     null,
+     "when"
+    ],
+    [
+     "動く",
+     "うごく",
+     "will move"
+    ],
+    [
+     "か",
+     null,
+     "(whether)",
+     "p"
+    ],
+    [
+     "わからない",
+     null,
+     "don't know"
+    ],
+    [
+     "んだって",
+     null,
+     "they say"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I tried asking the staff, but they say they don't know when it'll move."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "バス",
+     null,
+     "bus"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "来てみたら",
+     "きてみたら",
+     "why not try coming"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地図",
+     "ちず",
+     "map"
+    ],
+    [
+     "で",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "調べてみる",
+     "しらべてみる",
+     "I'll look it up"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Why not try coming by bus? I'll look it up on the map."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "B48",
+     null,
+     "B48"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "バス",
+     null,
+     "bus"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "五分",
+     "ごふん",
+     "five minutes"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "来る",
+     "くる",
+     "comes"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The B48 bus comes in five minutes."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thanks"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "強い",
+     "つよい",
+     "strong"
+    ],
+    [
+     "ので",
+     null,
+     "so",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "バス停",
+     "ばすてい",
+     "bus stop"
+    ],
+    [
+     "まで",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "走る",
+     "はしる",
+     "will run"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thanks. It's raining hard, so I'll run to the bus stop."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "かさ",
+     null,
+     "umbrella"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "持ってきた",
+     "もってきた",
+     "brought"
+    ],
+    [
+     "のに",
+     null,
+     "even though",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "使わない",
+     "つかわない",
+     "doesn't use"
+    ],
+    [
+     "の",
+     null,
+     "(question)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We brought an umbrella, so why aren't you using it, Sam?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "oh"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "忘れてた",
+     "わすれてた",
+     "forgot"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "使ってみる",
+     "つかってみる",
+     "I'll try using it"
+    ],
+    [
+     "よ",
+     null,
+     "(you know)"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh, I forgot. I'll use it..."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "レストラン",
+     null,
+     "restaurant"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "予約してある",
+     "よやくしてある",
+     "is booked"
+    ],
+    [
+     "ので",
+     null,
+     "so",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "it's fine"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆっくり",
+     null,
+     "take your time"
+    ],
+    [
+     "来て",
+     "きて",
+     "come"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The restaurant is booked, so it's fine. Take your time."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "node",
+   "title": "～ので: because (softer)",
+   "explain": "Plain form + ので gives a reason more softly than から, so it suits apologies and excuses. Nouns and な-adjectives take な: 日曜日なので.",
+   "examples": [
+    {
+     "t": [
+      [
+       "電車",
+       "でんしゃ",
+       "train"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "止まった",
+       "とまった",
+       "stopped"
+      ],
+      [
+       "ので",
+       null,
+       "so",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "遅れる",
+       "おくれる",
+       "I'll be late"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The train stopped, so I'll be late."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "雨が強い＿＿、タクシーで行きます。",
+     "hint": "It's raining hard, so I'll take a taxi.",
+     "choices": [
+      "ので",
+      "のに",
+      "まで"
+     ],
+     "answer": 0,
+     "why": "A soft reason: ので."
+    },
+    {
+     "q": "今日は日曜日＿＿＿、休みです。",
+     "hint": "Today is Sunday, so I'm off.",
+     "choices": [
+      "なので",
+      "だので",
+      "ので"
+     ],
+     "answer": 0,
+     "why": "Noun + なので."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#node"
+  },
+  {
+   "id": "noni",
+   "title": "～のに: even though (and I'm not happy about it)",
+   "explain": "Plain form + のに = even though, with surprise or a complaint. Ending a sentence with のに sounds like 'and yet…!'. Nouns and な-adjectives: なのに.",
+   "examples": [
+    {
+     "t": [
+      [
+       "かさ",
+       null,
+       "umbrella"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "持ってきた",
+       "もってきた",
+       "brought"
+      ],
+      [
+       "のに",
+       null,
+       "even though",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "使わない",
+       "つかわない",
+       "don't use"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You brought an umbrella, but you don't use it."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "たくさん勉強した＿＿、試験に落ちた。",
+     "hint": "I studied a lot, but I failed the exam.",
+     "choices": [
+      "のに",
+      "ので",
+      "から"
+     ],
+     "answer": 0,
+     "why": "An unexpected, unwelcome result: のに."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#noni"
+  },
+  {
+   "id": "te-miru",
+   "title": "V-てみる: try doing",
+   "explain": "て-form + みる = do it and see how it goes. ～てみたら？ = why not try it?",
+   "examples": [
+    {
+     "t": [
+      [
+       "駅員",
+       "えきいん",
+       "staff"
+      ],
+      [
+       "に",
+       null,
+       "(to)",
+       "p"
+      ],
+      [
+       "聞いてみた",
+       "きいてみた",
+       "tried asking"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I tried asking the staff."
+    },
+    {
+     "t": [
+      [
+       "バス",
+       null,
+       "bus"
+      ],
+      [
+       "で",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "来てみたら",
+       "きてみたら",
+       "why not try coming"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Why not try coming by bus?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "このラーメン、食べ＿＿＿？",
+     "hint": "Want to try this ramen?",
+     "choices": [
+      "てみる",
+      "ておく",
+      "てある"
+     ],
+     "answer": 0,
+     "why": "Try it and see: てみる."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#te-miru"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "動",
+   "on": [
+    "ドウ"
+   ],
+   "kun": [
+    "うご.く"
+   ],
+   "m": "move",
+   "ex": [
+    [
+     "動く",
+     "うごく",
+     "to move"
+    ],
+    [
+     "自動",
+     "じどう",
+     "automatic"
+    ]
+   ]
+  },
+  {
+   "k": "強",
+   "on": [
+    "キョウ"
+   ],
+   "kun": [
+    "つよ.い"
+   ],
+   "m": "strong",
+   "ex": [
+    [
+     "強い",
+     "つよい",
+     "strong"
+    ],
+    [
+     "勉強",
+     "べんきょう",
+     "study"
+    ]
+   ]
+  },
+  {
+   "k": "走",
+   "on": [
+    "ソウ"
+   ],
+   "kun": [
+    "はし.る"
+   ],
+   "m": "run",
+   "ex": [
+    [
+     "走る",
+     "はしる",
+     "to run"
+    ]
+   ]
+  },
+  {
+   "k": "持",
+   "on": [
+    "ジ"
+   ],
+   "kun": [
+    "も.つ"
+   ],
+   "m": "hold",
+   "ex": [
+    [
+     "持つ",
+     "もつ",
+     "to hold"
+    ],
+    [
+     "持ってくる",
+     "もってくる",
+     "to bring"
+    ]
+   ]
+  },
+  {
+   "k": "使",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "つか.う"
+   ],
+   "m": "use",
+   "ex": [
+    [
+     "使う",
+     "つかう",
+     "to use"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  5
+ ],
+ "questions": [
+  {
+   "q": "どうしてサムさんは遅れますか。",
+   "en": "Why will Sam be late?",
+   "choices": [
+    "電車が止まったので",
+    "雨が強いので",
+    "道がわからないので"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんはサムさんに何をしてみたらと言いましたか。",
+   "en": "What did Yuki suggest Sam try?",
+   "choices": [
+    "バスで来ること",
+    "タクシーで来ること",
+    "歩いて来ること"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはかさを持っていましたか。",
+   "en": "Did Sam have an umbrella?",
+   "choices": [
+    "はい、でも使わなかった",
+    "いいえ、なかった",
+    "はい、ずっと使っていた"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Call Blip to say you'll be late and why (～ので), complain about something with ～のに, and suggest Blip try something (～てみたら？)."
+}
