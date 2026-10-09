@@ -105,7 +105,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>6 OF 7 WORLDS OPEN + BONUS</span>
+  <span>7 OF 7 WORLDS OPEN + BONUS</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -225,14 +225,17 @@
       </nav>
     </article>
 
-    <div class="locked">
-      <article class="world" data-blip="A skill tree! Every node unlocks another world.">
-        <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 7</small>LEARN & BUILD</h3></header>
-        <p>Math, electronics and hardware build logs, every lesson applied to the other worlds.</p>
-        <ol class="chapters"><li>Skill tree</li><li>Track A: math, stats, ML</li><li>Track B: electronics to drivers</li><li>Hardware builds</li></ol>
-      </article>
-    </div>
+    <article class="world">
+      <header>
+        <h3><small>WORLD 7</small>LEARN &amp; BUILD</h3>
+      </header>
+      <p>Electronics from scratch with circuits you can tune, solved live by our own circuit simulator, plus the math and hardware tracks that feed every other world.</p>
+      <nav class="levels" aria-label="Learn and build">
+        <a class="level" href="/learn/electronics/01-voltage-current-resistance.html" data-icon="lab" data-blip="Don't connect that LED without a resistor! Or do, and watch."><span class="lv">7-1 <i>▶ PLAY</i></span><b>VOLTAGE, CURRENT, RESISTANCE</b><span class="d">Ohm's law with moving current, dividers reading a light sensor, parallel branches, and an LED you can burn out.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Capacitors are tiny buckets of charge."><span class="lv">7-2</span><b>CAPACITORS AND TIME</b><span class="d">RC charging curves and the simplest filter.</span></div>
+        <a class="level" href="/learn/" data-icon="book" data-blip="The whole skill tree."><span class="lv">7-★ <i>▶ OPEN</i></span><b>ALL TRACKS</b><span class="d">Electronics, math and ML, radio, and the build logs.</span></a>
+      </nav>
+    </article>
 
     <div style="margin-top:36px">
       <article class="world">

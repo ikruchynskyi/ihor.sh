@@ -32,6 +32,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   yomu: { dir: path.join(ROOT, "yomu"), label: "World 4 · Yomu" },
   ride: { dir: path.join(ROOT, "ride"), label: "World 5 · Ride" },
   edc: { dir: path.join(ROOT, "edc"), label: "World 6 · EDC" },
+  learn: { dir: path.join(ROOT, "learn"), label: "World 7 · Learn & build" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };

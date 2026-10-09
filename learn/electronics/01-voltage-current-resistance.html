@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voltage, Current, Resistance</title>
+  <meta name="description" content="Electronics from scratch, chapter 1: voltage, current and resistance as live circuits you can tune. Ohm's law, power and heat, voltage dividers and reading a light sensor, parallel branches, and the resistor every LED needs." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .warn { color: #e03131; font-weight: 600; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 1</p>
+  <h1>Voltage, current, resistance</h1>
+  <p class="lede">Three words do almost all the work in electronics. <b>Voltage</b> is the push, measured in volts. <b>Current</b> is how much charge flows each second, in amps. <b>Resistance</b> is how hard a part makes it to flow, in ohms. Every circuit below is solved live by the same method circuit simulators use; the yellow dots move as fast as the current they carry.</p>
+  <div class="plain card"><b>In plain words:</b> think of water in a closed loop of pipe. The <b>battery is a pump</b>: voltage is how hard it pushes. <b>Current is how much water flows</b> past any point each second, and it's the same all the way around the loop. A <b>resistor is a narrow section of pipe</b>: the narrower it is, the less flows for the same push. Nothing gets used up as it goes around; the pump's push is spent squeezing through the narrow parts, and that effort turns into heat.</div>
+
+  <h2>1. Ohm's law</h2>
+  <p>A battery pushes current around a loop through one resistor. Double the push and the current doubles; double the resistance and it halves:</p>
+  <p class="math" style="text-align:center">current = voltage ÷ resistance &nbsp;&nbsp; (I = V / R)</p>
+  <canvas id="c1" width="800" height="400" aria-label="A battery and a resistor with current flowing"></canvas>
+  <div class="row"><label>battery <input type="range" id="v1" min="0" max="12" step="0.1" value="9"> <span id="v1v" class="math"></span></label><label>resistor <input type="range" id="r1" min="1" max="5" step="0.01" value="3"> <span id="r1v" class="math"></span></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> make exactly 10 mA flow from a 5 V battery. Which resistor does it take?</p>
+  <p>Where does the energy go? Into heat in the resistor: <span class="math">power = V × I</span>, in watts. A common through-hole resistor is rated for ¼ W. Turn the resistance down with a high voltage and watch it go past that: in real life it smells, then smokes.</p>
+
+  <h2>2. In series: a voltage divider</h2>
+  <p>Two resistors in a row share the same current, and they split the battery's voltage in proportion to their size. The middle point sits at</p>
+  <p class="math" style="text-align:center">V<sub>out</sub> = V × R₂ / (R₁ + R₂)</p>
+  <canvas id="c2" width="800" height="400" aria-label="Two resistors in series, the middle voltage labeled"></canvas>
+  <div class="row"><label>R₁ <input type="range" id="ra" min="2" max="5" step="0.01" value="4"> <span id="rav" class="math"></span></label><label>R₂ <input type="range" id="rb" min="2" max="5" step="0.01" value="4"> <span id="rbv" class="math"></span></label>
+    <label><input type="checkbox" id="ldr"> R₂ is a light sensor (LDR)</label><label id="lightl" hidden>light <input type="range" id="light" min="0" max="100" value="60"></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> with two plain resistors, make the middle point exactly 1.00 V.</p>
+  <p>This is how a microcontroller reads most simple sensors. A light-dependent resistor (LDR) drops from about 100 kΩ in the dark to about 1 kΩ in sunlight; put it in a divider and the middle voltage tracks the light. The chip's analog-to-digital converter (ADC) turns that voltage into a number, here 0 to 4095 for 3.3 V like an ESP32. Tick the box and change the light.</p>
+
+  <h2>3. In parallel: the current splits</h2>
+  <p>Side by side, each resistor gets the full battery voltage and takes its own current, V / R. The battery supplies the sum. Electrons don't get lost at a junction: what flows in flows out (that's Kirchhoff's current law). The more paths, the lower the total resistance.</p>
+  <canvas id="c3" width="800" height="400" aria-label="Three resistors in parallel with branch currents"></canvas>
+  <div class="row"><label>R₁ <input type="range" id="p1" min="2" max="4.5" step="0.01" value="3"> <span id="p1v" class="math"></span></label><label>R₂ <input type="range" id="p2" min="2" max="4.5" step="0.01" value="3.3"> <span id="p2v" class="math"></span></label><label><input type="checkbox" id="p3on" checked> R₃ <input type="range" id="p3" min="2" max="4.5" step="0.01" value="3.7"> <span id="p3v" class="math"></span></label></div>
+  <p class="readout" id="o3"></p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> draw 20 mA from the battery in total (within 1 mA).</p>
+
+  <h2>4. Every LED needs a resistor</h2>
+  <p>An LED isn't a resistor: below about 1.8 V (for red) almost nothing flows, and just above it the current shoots up steeply. Connect it straight to a battery and the current is limited only by the battery and wires: it flashes once and dies. A resistor in series sets the current. Pick a supply, then a resistor, and aim for about 10 mA.</p>
+  <canvas id="c4" width="800" height="400" aria-label="An LED with a series resistor"></canvas>
+  <div class="row"><span>supply</span><button data-vs="3.3">3.3 V</button><button data-vs="5">5 V</button><button data-vs="9">9 V</button>
+    <label>resistor <input type="range" id="rl" min="0" max="2000" step="10" value="330"> <span id="rlv" class="math"></span></label><button id="newled" hidden>New LED</button></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> light the LED at 10 mA from the 9 V battery, without burning it.</p>
+  <p>The rule of thumb is the loop again: the resistor takes whatever voltage the LED doesn't, so <span class="math">R = (V<sub>supply</sub> − V<sub>LED</sub>) / I</span>. From 5 V for a red LED at 10 mA: (5 − 1.9) / 0.010 = 310 Ω, so the nearest standard value, 330 Ω. The solver here models the LED with the Shockley diode equation, which is why the current climbs so steeply near 2 V.</p>
+  <p>Next: <b>capacitors and time</b>, the RC circuit, which is also the simplest filter in the radio course.</p>
+
+  <p class="muted">All chapters: <a href="/learn/">Learn &amp; build</a>. Circuits solved by our own modified nodal analysis (<code>learn/circuit.js</code>).</p>
+</main>
+<script type="module">
+import { solve, RED_LED } from "/learn/circuit.js";
+import { scene, battery, resistor, led, tag, fmtA, fmtR, C } from "/learn/schem.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const logR = (id) => Math.round(10 ** +$(id).value / 10) * 10 || 10;
+const L = 140, R = 660, T = 80, B = 320;
+// Each section has one small goal; when it's met the box turns green (once) and Blip cheers.
+const goal = (id, ok, praise) => { const el = $(id); if (ok && !el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", ` <b>✓ Done!</b> ${praise}`); say("Challenge done! " + praise.split(".")[0] + ".", "happy"); } };
+
+// 1. Ohm's law
+let s1;
+const calc1 = () => { const V = +$("v1").value, Rr = logR("r1"); s1 = { V, R: Rr, r: solve([{ type: "V", a: 1, b: 0, volts: V }, { type: "R", a: 1, b: 0, ohms: Rr }]) }; const I = s1.r.current[1], P = V * I;
+  $("v1v").textContent = `${V.toFixed(1)} V`; $("r1v").textContent = fmtR(Rr);
+  $("o1").innerHTML = `I = ${V.toFixed(1)} V ÷ ${fmtR(Rr)} = <b>${fmtA(I)}</b> · power = ${V.toFixed(1)} V × ${fmtA(I)} = ${P >= 1 ? P.toFixed(2) + " W" : (P * 1000).toFixed(0) + " mW"}${P > 0.25 ? ' <span class="warn">· over a ¼ W resistor\'s rating: it would overheat</span>' : ""}`;
+  if (P > 1) say("That resistor is way too hot!", "dizzy");
+  goal("g1", Math.abs(V - 5) < 0.05 && Math.abs(I - 0.01) < 0.0004, "500 Ω: 5 V ÷ 0.010 A. Ohm's law, rearranged: R = V / I."); };
+["v1", "r1"].forEach((id) => ($(id).oninput = calc1)); calc1();
+scene($("c1"), (g) => { battery(g, L, 200, `${s1.V.toFixed(1)} V`); const P = s1.V * s1.r.current[1]; resistor(g, [R, T], [R, B], fmtR(s1.R), P / 0.25); tag(g, R + 30, 130, fmtA(s1.r.current[1]), C.yellow); },
+  () => [{ pts: [[L, 192], [L, T], [R, T], [R, B], [L, B], [L, 208]], amps: s1.r.current[1] }]);
+
+// 2. divider (+ LDR)
+let s2;
+const calc2 = () => {
+  $("lightl").hidden = !$("ldr").checked;
+  const R1 = logR("ra"), R2 = $("ldr").checked ? Math.round(100000 * 0.01 ** (+$("light").value / 100)) : logR("rb"), V = 3.3;
+  s2 = { R1, R2, r: solve([{ type: "V", a: 1, b: 0, volts: V }, { type: "R", a: 1, b: 2, ohms: R1 }, { type: "R", a: 2, b: 0, ohms: R2 }]) };
+  const vo = s2.r.v[2], adc = Math.round((vo / 3.3) * 4095);
+  $("rav").textContent = fmtR(R1); $("rbv").textContent = $("ldr").checked ? `LDR ${fmtR(R2)}` : fmtR(R2);
+  goal("g2", !$("ldr").checked && Math.abs(vo - 1) < 0.02, `R₂ is about 30% of the total, because 1 V is 30% of 3.3 V.`);
+  $("o2").innerHTML = `V<sub>out</sub> = 3.3 V × ${fmtR(R2)} / (${fmtR(R1)} + ${fmtR(R2)}) = <b>${vo.toFixed(2)} V</b> · current ${fmtA(s2.r.current[1])} through both · ADC reads <b>${adc}</b> / 4095${$("ldr").checked ? ` (${+$("light").value > 60 ? "bright" : +$("light").value > 25 ? "dim" : "dark"})` : ""}`;
+};
+["ra", "rb", "light"].forEach((id) => ($(id).oninput = calc2)); $("ldr").onchange = calc2; calc2();
+scene($("c2"), (g) => { battery(g, L, 200, "3.3 V"); resistor(g, [R, T], [R, 200], `R₁ ${fmtR(s2.R1)}`); resistor(g, [R, 200], [R, B], `${$("ldr").checked ? "LDR" : "R₂"} ${fmtR(s2.R2)}`);
+  g.fillStyle = C.blue; g.beginPath(); g.arc(R, 200, 6, 0, 7); g.fill(); g.strokeStyle = C.blue; g.lineWidth = 2; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(R, 200); g.lineTo(480, 200); g.stroke(); g.setLineDash([]);
+  tag(g, 330, 205, `V_out ${s2.r.v[2].toFixed(2)} V → ADC`, C.blue); },
+  () => [{ pts: [[L, 192], [L, T], [R, T], [R, B], [L, B], [L, 208]], amps: s2.r.current[1] }]);
+
+// 3. parallel
+let s3;
+const X = [330, 495, 660];
+const calc3 = () => {
+  const on3 = $("p3on").checked, Rs = [logR("p1"), logR("p2"), logR("p3")], els = [{ type: "V", a: 1, b: 0, volts: 6 }, { type: "R", a: 1, b: 0, ohms: Rs[0] }, { type: "R", a: 1, b: 0, ohms: Rs[1] }];
+  if (on3) els.push({ type: "R", a: 1, b: 0, ohms: Rs[2] });
+  s3 = { Rs, on3, r: solve(els) };
+  ["p1", "p2", "p3"].forEach((id, k) => ($(`${id}v`).textContent = fmtR(Rs[k])));
+  const I = s3.r.current, total = I[0], req = 6 / total;
+  goal("g3", Math.abs(total - 0.02) < 0.001, "The branch currents add up: 6 V ÷ 20 mA = 300 Ω in total.");
+  $("o3").innerHTML = `6 V across each: ${[1, 2, 3].filter((k) => I[k] != null).map((k) => `I${"₁₂₃"[k - 1]} = ${fmtA(I[k])}`).join(" + ")} = <b>${fmtA(total)}</b> from the battery · together they act like one ${fmtR(req)} resistor (smaller than any of them)`;
+};
+["p1", "p2", "p3"].forEach((id) => ($(id).oninput = calc3)); $("p3on").onchange = calc3; calc3();
+scene($("c3"), (g) => { battery(g, L, 200, "6 V"); X.forEach((x, k) => { if (k < 2 || s3.on3) resistor(g, [x, T], [x, B], `R${"₁₂₃"[k]} ${fmtR(s3.Rs[k])}`); }); X.forEach((x, k) => { if (s3.r.current[k + 1] != null) tag(g, x - 70, 115, fmtA(s3.r.current[k + 1]), C.yellow); }); },
+  () => {
+    const I = [1, 2, 3].map((k) => s3.r.current[k] ?? 0), tot = I.reduce((a, b) => a + b, 0);
+    return [{ pts: [[L, 192], [L, T], [X[0], T]], amps: tot }, { pts: [[X[0], T], [X[1], T]], amps: I[1] + I[2] }, { pts: [[X[1], T], [X[2], T]], amps: I[2] },
+      ...X.map((x, k) => ({ pts: [[x, T], [x, B]], amps: I[k] })), { pts: [[X[2], B], [X[1], B]], amps: I[2] }, { pts: [[X[1], B], [X[0], B]], amps: I[1] + I[2] }, { pts: [[X[0], B], [L, B], [L, 208]], amps: tot }];
+  });
+
+// 4. LED + resistor
+let vs = 5, dead = false, s4;
+const calc4 = () => {
+  const Rr = +$("rl").value;
+  // No resistor: a battery's own internal resistance (~1 Ω) and the wires are all that limit the current.
+  s4 = { R: Rr, r: solve([{ type: "V", a: 1, b: 0, volts: vs }, { type: "R", a: 1, b: 2, ohms: Math.max(1, Rr) }, { type: "D", a: 2, b: 0, ...RED_LED }]) };
+  const I = dead ? 0 : s4.r.current[2], ideal = Math.round((vs - 1.9) / 0.01);
+  $("rlv").textContent = Rr ? `${Rr} Ω` : "none";
+  goal("g4", !dead && vs === 9 && Math.abs(I - 0.01) < 0.001, "About 710 Ω: (9 − 1.9) V ÷ 0.010 A.");
+  if (!dead && I > 0.03) { dead = true; $("newled").hidden = false; say("Pop! Too much current. That LED is gone.", "dizzy"); }
+  $("o4").innerHTML = dead ? `<span class="warn">The LED burnt out: about ${fmtA(s4.r.current[2])} would have flowed (red LEDs are rated about 20–30 mA).</span> Use about ${ideal} Ω for 10 mA from ${vs} V.`
+    : `LED current <b>${fmtA(I)}</b> at ${s4.r.v[2].toFixed(2)} V · the resistor drops ${(vs - s4.r.v[2]).toFixed(2)} V · for 10 mA from ${vs} V use about ${ideal} Ω${I < 0.002 ? " · very dim" : I > 0.02 ? ' · <span class="warn">above the usual 20 mA rating</span>' : " · a good current"}`;
+};
+$("rl").oninput = calc4;
+document.querySelectorAll("[data-vs]").forEach((b) => (b.onclick = () => { vs = +b.dataset.vs; calc4(); }));
+$("newled").onclick = () => { dead = false; $("newled").hidden = true; $("rl").value = 330; calc4(); };
+calc4();
+scene($("c4"), (g) => { battery(g, L, 200, `${vs} V`); if (s4.R) resistor(g, [320, T], [500, T], `${s4.R} Ω`); led(g, R, 200, dead ? 0 : Math.min(1, s4.r.current[2] / 0.02), dead ? "burnt out" : fmtA(s4.r.current[2]), dead); tag(g, R + 26, 150, `${(dead ? 0 : s4.r.v[2]).toFixed(2)} V`, C.blue); },
+  () => [{ pts: [[L, 192], [L, T], [R, T], [R, 188]], amps: dead ? 0 : s4.r.current[2] }, { pts: [[R, 212], [R, B], [L, B], [L, 208]], amps: dead ? 0 : s4.r.current[2] }]);
+
+window.blipContext = () => ({ page: "Electronics chapter 1: voltage, current, resistance", ohm: { volts: s1.V, ohms: s1.R, amps: s1.r.current[1] }, divider: { R1: s2.R1, R2: s2.R2, vout: s2.r.v[2], ldr: $("ldr").checked }, led: { supply: vs, resistor: s4.R, amps: s4.r.current[2], burnt: dead } });
+</script>
+</body>
+</html>
