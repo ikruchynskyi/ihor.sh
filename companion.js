@@ -56,48 +56,48 @@ const CSS = `
 .mouth.happy, .mouth.surprised { fill: #6b1d2a; }
 .ring { fill: none; stroke: #ff5c8a; stroke-width: 2; vector-effect: non-scaling-stroke; transform-box: fill-box; transform-origin: center; animation: ring 1.1s ease-out forwards; }
 @keyframes ring { to { transform: scale(7); opacity: 0; } }
-.z { font: 12px "Press Start 2P", monospace; fill: #cfe3ff; animation: z 2.2s ease-out forwards; }
+.z { font: calc(12px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); fill: #cfe3ff; animation: z 2.2s ease-out forwards; }
 @keyframes z { to { transform: translate(16px, -46px); opacity: 0; } }
 
-.bubble { position: fixed; left: 0; top: 0; max-width: min(250px, calc(100vw - 32px)); padding: 6px 12px 8px; background: #fff8e7; color: #1b1020; font: 21px/1 "VT323", monospace; pointer-events: none; box-shadow: 0 -3px 0 #1b1020, 0 3px 0 #1b1020, -3px 0 0 #1b1020, 3px 0 0 #1b1020, 4px 7px 0 rgba(0,0,0,.35); }
+.bubble { position: fixed; left: 0; top: 0; max-width: min(260px, calc(100vw - 32px)); padding: 6px 12px 8px; background: #fff8e7; color: #1b1020; font: var(--reader-size, 21px)/1.15 var(--reader-font, "VT323", monospace); pointer-events: none; box-shadow: 0 -3px 0 #1b1020, 0 3px 0 #1b1020, -3px 0 0 #1b1020, 3px 0 0 #1b1020, 4px 7px 0 rgba(0,0,0,.35); }
 .bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 9px; height: 9px; margin-left: -4px; background: #fff8e7; box-shadow: 3px 0 0 #1b1020, -3px 0 0 #1b1020, 0 3px 0 #1b1020; }
 .bubble.clickable { pointer-events: auto; cursor: pointer; }
 .bubble.clickable:hover { background: #fff; }
 .rest { visibility: hidden; }
-.cta { display: block; margin-top: 6px; font: 8px "Press Start 2P", monospace; color: #d6336c; animation: blink 1s steps(2) infinite; }
+.cta { display: block; margin-top: 6px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: #d6336c; animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
 .scrim { position: fixed; inset: 0; background: rgba(5,8,20,.45); pointer-events: auto; }
-.panel { position: fixed; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); max-height: min(72vh, 640px); display: flex; flex-direction: column; background: #0d1226; color: #e8edff; pointer-events: auto; font: 21px/1.2 "VT323", monospace; border: 4px solid #e8edff; box-shadow: inset 0 0 0 4px #3b4bb0, 10px 10px 0 rgba(0,0,0,.55); animation: rise .2s steps(4); }
+.panel { position: fixed; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); max-height: min(72vh, 640px); display: flex; flex-direction: column; background: var(--card, #0d1226); color: var(--fg, #e8edff); pointer-events: auto; font: var(--reader-size, 21px)/var(--reader-line, 1.2) var(--reader-font, "VT323", monospace); letter-spacing: var(--reader-letter, 0); border: 4px solid var(--fg, #e8edff); box-shadow: inset 0 0 0 4px var(--line, #3b4bb0), 10px 10px 0 rgba(0,0,0,.55); animation: rise .2s steps(4); }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } }
-.panel header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 4px solid #3b4bb0; }
-.panel h2 { margin: 0; font: 12px "Press Start 2P", monospace; color: #ffb347; }
-.panel header p { margin: 4px 0 0; font: 8px/1.4 "Press Start 2P", monospace; color: #7f8bc4; }
+.panel header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 4px solid var(--line, #3b4bb0); }
+.panel h2 { margin: 0; font: calc(12px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--accent, #ffb347); }
+.panel header p { margin: 4px 0 0; font: calc(8px * var(--px, 1))/1.4 var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
 .portrait { width: 40px; height: 40px; flex: none; }
 .x { margin-left: auto; align-self: flex-start; }
 .log { flex: 1; overflow-y: auto; padding: 14px 16px 4px; min-height: 140px; }
 .msg { margin: 0 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.msg .who { display: block; margin-bottom: 4px; font: 8px "Press Start 2P", monospace; color: #4de1ff; }
-.msg.you .who { color: #5cff9d; }
-.msg b:not(.who) { color: #fff; }
-.msg .used { display: block; margin-top: 6px; font-size: 16px; color: #7f8bc4; }
+.msg .who { display: block; margin-bottom: 4px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--accent, #4de1ff); }
+.msg.you .who { color: var(--ok, #5cff9d); }
+.msg b:not(.who) { color: var(--fg, #fff); }
+.msg .used { display: block; margin-top: 6px; font-size: .8em; color: var(--muted, #7f8bc4); }
 .msg.err { color: #ff8fa8; }
-.msg a { color: #ffb347; }
-.msg code { background: #1e2650; padding: 0 4px; }
+.msg a { color: var(--accent, #ffb347); }
+.msg code { background: var(--bg, #1e2650); padding: 0 4px; }
 .dots::after { content: "."; animation: dots 1.2s steps(3) infinite; }
 @keyframes dots { 33% { content: ".."; } 66% { content: "..."; } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-form { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 4px solid #3b4bb0; }
-.caret { color: #5cff9d; animation: blink 1s steps(2) infinite; }
+form { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 4px solid var(--line, #3b4bb0); }
+.caret { color: var(--ok, #5cff9d); animation: blink 1s steps(2) infinite; }
 input { flex: 1; min-width: 0; background: none; border: 0; color: inherit; font: inherit; outline: none; caret-color: #5cff9d; }
-input::placeholder { color: #5d679b; }
-button { font: 9px "Press Start 2P", monospace; color: #1b1020; background: #ffb347; border: 0; padding: 10px 12px; box-shadow: 0 4px 0 #b86b1e; cursor: pointer; }
+input::placeholder { color: var(--muted, #5d679b); opacity: .8; }
+button { font: calc(9px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--on-accent, #1b1020); background: var(--accent, #ffb347); border: 0; padding: 10px 12px; box-shadow: 0 4px 0 rgba(0,0,0,.35); cursor: pointer; }
 button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b86b1e; }
 button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-offset: 2px; }
-.chips button { color: #e8edff; background: #1e2650; box-shadow: 0 4px 0 #3b4bb0; text-align: left; line-height: 1.5; }
-.panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: 8px "Press Start 2P", monospace; color: #7f8bc4; }
-.panel footer a, .panel footer button { color: #7f8bc4; background: none; box-shadow: none; padding: 4px 0; text-decoration: none; font: inherit; }
-.panel footer a:hover, .panel footer button:hover { color: #ffb347; }
+.chips button { color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); text-align: left; line-height: 1.5; }
+.panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
+.panel footer a, .panel footer button { color: var(--muted, #7f8bc4); background: none; box-shadow: none; padding: 4px 0; text-decoration: none; font: inherit; }
+.panel footer a:hover, .panel footer button:hover { color: var(--accent, #ffb347); }
 .tab { position: fixed; right: 12px; bottom: 0; pointer-events: auto; }
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
 `;

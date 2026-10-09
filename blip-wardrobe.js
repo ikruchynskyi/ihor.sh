@@ -93,11 +93,11 @@ const CSS = `
 .webline { stroke: #f1f3f5; stroke-width: 1.6; fill: none; }
 .beam { stroke: #b8fbff; stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 6px #7ef7ff); animation: beam .45s ease-out forwards; }
 @keyframes beam { to { opacity: 0; stroke-width: 1; } }
-.wardrobe { padding: 8px 16px 4px; border-top: 4px solid #3b4bb0; max-height: 40vh; overflow: auto; }
-.wardrobe h3 { margin: 8px 0 6px; font: 8px "Press Start 2P", monospace; color: #7f8bc4; }
+.wardrobe { padding: 8px 16px 4px; border-top: 4px solid var(--line, #3b4bb0); max-height: 40vh; overflow: auto; }
+.wardrobe h3 { margin: 8px 0 6px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
 .wardrobe .opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.wardrobe .opts button { font: 8px "Press Start 2P", monospace; padding: 7px 8px; color: #e8edff; background: #1e2650; box-shadow: 0 3px 0 #3b4bb0; }
-.wardrobe .opts button[aria-pressed="true"] { background: #ffb347; color: #1b1020; box-shadow: 0 3px 0 #b86b1e; }
+.wardrobe .opts button { font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); padding: 7px 8px; color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 3px 0 var(--line, #3b4bb0); }
+.wardrobe .opts button[aria-pressed="true"] { background: var(--accent, #ffb347); color: var(--on-accent, #1b1020); box-shadow: 0 3px 0 rgba(0,0,0,.35); }
 `;
 
 /** Wires the wardrobe into Blip. api: { root, stage, bodyEl, face, layers: { behind, costume, clip, faceOver, hat, held, act }, nodes, ring, core, R, centroid, say, setMood, hop, walkTo, spawn, ping, world, H(), W(), mood() } */

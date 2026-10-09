@@ -60,7 +60,9 @@ function apply() {
   loadFont(s.font);
   document.documentElement.dataset.theme = THEMES[s.theme] ? s.theme : "arcade"; // the home page picks its animated background from this
   style.textContent = `
-    :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${onAccent(accent)}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"}; }
+    :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${onAccent(accent)}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"};
+      /* for panels in shadow DOM (Blip's chat, this reader panel): custom properties cross the boundary */
+      --reader-font: ${f.css}; --reader-size: ${s.font === "pixel" ? s.size + 3 : s.size}px; --reader-line: ${s.font === "pixel" ? Math.max(1.15, s.line - 0.3) : s.line}; --reader-letter: ${s.letter}em; }
     html, body { background: ${bg} !important; color: ${fg}; } ${isHome ? "body { background: transparent !important; } /* keeps the waterfall canvas visible */" : ""}
     body { font-family: ${f.css}; } ${isHome && s.font !== "pixel" ? "body { font-size: 17px; }" : ""}
     ${s.headings === "plain" ? `:root:root { --pixel: ${f.css}; --px: 1.55; }` : ""} /* the pixel font's small labels, in a readable font a size up */
@@ -84,21 +86,21 @@ const pick = (name, opts, cur, render) => `<div class="row" role="radiogroup" ar
 function panelHTML() {
   return `<style>
     :host { all: initial; }
-    .panel { width: min(330px, calc(100vw - 24px)); max-height: calc(100vh - 70px); overflow: auto; padding: 14px 16px 16px; background: #0d1226; color: #e8edff;
-      border: 4px solid #e8edff; box-shadow: inset 0 0 0 4px #3b4bb0, 8px 8px 0 rgba(0,0,0,.55); font: 15px/1.4 ui-sans-serif, system-ui, sans-serif; }
+    .panel { width: min(360px, calc(100vw - 24px)); max-height: calc(100vh - 70px); overflow: auto; padding: 14px 16px 16px; background: var(--card, #0d1226); color: var(--fg, #e8edff);
+      border: 4px solid var(--fg, #e8edff); box-shadow: inset 0 0 0 4px var(--line, #3b4bb0), 8px 8px 0 rgba(0,0,0,.55); font: calc(var(--reader-size, 18px) * .85)/1.4 var(--reader-font, ui-sans-serif, system-ui, sans-serif); }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    h2 { margin: 0; font: 11px "Press Start 2P", monospace; color: #ffb347; }
-    h3 { margin: 14px 0 6px; font: 8px "Press Start 2P", monospace; color: #9aa3cf; display: flex; justify-content: space-between; }
-    h3 output { font: inherit; color: #e8edff; }
+    h2 { margin: 0; font: calc(11px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--accent, #ffb347); }
+    h3 { margin: 14px 0 6px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #9aa3cf); display: flex; justify-content: space-between; }
+    h3 output { font: inherit; color: var(--fg, #e8edff); }
     .row { display: flex; flex-wrap: wrap; gap: 6px; }
-    button { font: inherit; color: #e8edff; background: #111939; border: 2px solid #3b4bb0; padding: 6px 9px; cursor: pointer; }
-    button[aria-checked="true"] { border-color: #ffb347; box-shadow: 0 0 0 2px #ffb347; }
+    button { font: inherit; color: var(--fg, #e8edff); background: var(--bg, #111939); border: 2px solid var(--line, #3b4bb0); padding: 6px 9px; cursor: pointer; }
+    button[aria-checked="true"] { border-color: var(--accent, #ffb347); box-shadow: 0 0 0 2px var(--accent, #ffb347); }
     button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-offset: 2px; }
     .sw { display: inline-flex; align-items: center; gap: 6px; }
     .sw small { opacity: .65; font-size: 11px; }
     .sw i { width: 22px; height: 22px; display: grid; place-items: center; font: 700 12px ui-sans-serif, sans-serif; font-style: normal; border: 1px solid #fff4; }
-    input[type=range] { width: 100%; accent-color: #ffb347; }
-    .x, .reset { font: 8px "Press Start 2P", monospace; padding: 8px; }
+    input[type=range] { width: 100%; accent-color: var(--accent, #ffb347); }
+    .x, .reset { font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); padding: 8px; }
     .reset { margin-top: 16px; width: 100%; }
   </style>
   <section class="panel" role="dialog" aria-label="Reader settings">
