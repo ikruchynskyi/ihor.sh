@@ -3,7 +3,7 @@
 // Usage: npm run build && npm start   (env: PORT=8080, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL=http://localhost:11434)
 import http from "node:http";
 import net from "node:net";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
@@ -168,24 +168,56 @@ async function radioStatus() {
   return { sdr, aprs, adsb };
 }
 
+// Search and sharing: a fuller title, canonical URL, Open Graph/Twitter cards and JSON-LD breadcrumbs.
+const SITE = "https://ihor.sh";
+const attr = (s: string) => s.replace(/"/g, "&quot;");
+function seo(html: string, world: string, urlPath: string) {
+  const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "ihor.sh";
+  const desc = html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "";
+  const url = SITE + urlPath.replace(/index\.html$/, "");
+  const worldName = world.split(" · ")[1] ?? world, worldUrl = `${SITE}/${urlPath.split("/")[1]}/`;
+  const crumbs = [["ihor.sh", `${SITE}/`], [worldName, worldUrl], ...(url === worldUrl ? [] : [[title, url]])];
+  const ld = JSON.stringify([
+    { "@context": "https://schema.org", "@type": "WebPage", name: title, description: desc, url, inLanguage: "en",
+      isPartOf: { "@type": "WebSite", name: "ihor.sh", url: `${SITE}/` } },
+    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map(([name, item], i) => ({ "@type": "ListItem", position: i + 1, name, item })) },
+  ]).replace(/</g, "\\u003c");
+  const full = `${title} · ${worldName} · ihor.sh`;
+  return html.replace(/<title>[^<]*<\/title>/, `<title>${full}</title>`).replace("</head>", `<link rel="canonical" href="${attr(url)}">
+<meta property="og:type" content="article"><meta property="og:site_name" content="ihor.sh"><meta property="og:title" content="${attr(full)}">
+<meta property="og:description" content="${desc}"><meta property="og:url" content="${attr(url)}"><meta property="og:image" content="${SITE}/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">${ld}</script></head>`);
+}
+
+async function sitemap() {
+  const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime]];
+  for (const [name, { dir }] of Object.entries(WORLDS))
+    for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort())
+      urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
+    .map(([u, d]) => `  <url><loc>${u}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
+}
+
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
-function dress(html: string, world: string) {
+function dress(html: string, world: string, urlPath = "") {
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
+  if (urlPath) html = seo(html, world, urlPath);
   return html
     .replace("</head>", `<link rel="stylesheet" href="${asset("theme.css")}"></head>`)
     .replace(/<body[^>]*>/, (m) => m + hud)
     .replace("</body>", `${companion()}</body>`);
 }
 
-async function serveFile(res: http.ServerResponse, file: string, world?: string | "home") {
+async function serveFile(res: http.ServerResponse, file: string, world?: string | "home", urlPath = "") {
   const data = await readFile(file).catch(() => null);
   if (!data) return res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace(`src="/companion.js"`, `src="${asset("companion.js")}"`));
-  res.end(world && ext === ".html" ? dress(data.toString(), world) : data);
+  res.end(world && ext === ".html" ? dress(data.toString(), world, urlPath) : data);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -210,7 +242,9 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
-    if (["/companion.js", "/theme.css", "/reader.js"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${SITE}/sitemap.xml\n`);
+    if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
+    if (["/companion.js", "/theme.css", "/reader.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();
@@ -218,7 +252,7 @@ const server = http.createServer(async (req, res) => {
       const rel = decodeURIComponent(rest);
       const file = path.resolve(world.dir, "." + rel + (rel.endsWith("/") ? "index.html" : ""));
       if (!file.startsWith(world.dir + path.sep)) return res.writeHead(403).end();
-      return serveFile(res, file, world.label);
+      return serveFile(res, file, world.label, url.pathname);
     }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
