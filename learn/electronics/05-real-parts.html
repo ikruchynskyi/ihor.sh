@@ -199,7 +199,7 @@ const done = (id, ok, msg) => { const el = $(id); if (ok && !el.classList.contai
 const COLORS = [["black", "#111"], ["brown", "#7a4a1d"], ["red", "#e03131"], ["orange", "#f08c00"], ["yellow", "#fcc419"], ["green", "#2f9e44"], ["blue", "#1c7ed6"], ["violet", "#9c36b5"], ["grey", "#868e96"], ["white", "#f1f3f5"]];
 const MULT = [...COLORS.map(([n, c], i) => [n, c, 10 ** i]), ["gold", "#d4a72c", 0.1], ["silver", "#c0c0c0", 0.01]].filter((m, i) => i <= 6 || i >= 10);
 const TOL = [["gold", "#d4a72c", 5], ["silver", "#c0c0c0", 10], ["brown", "#7a4a1d", 1], ["red", "#e03131", 2]];
-let band = [4, 7, 2, 0]; // yellow violet red gold
+let band = [1, 0, 2, 0]; // brown black red gold: 1 kΩ
 $("bands").innerHTML = ["1st digit", "2nd digit", "multiplier", "tolerance"].map((l, k) => `<label>${l}<select data-b="${k}">${(k < 2 ? COLORS : k === 2 ? MULT : TOL).map(([n], i) => `<option value="${i}">${n}</option>`).join("")}</select></label>`).join("");
 const value = () => (10 * band[0] + band[1]) * MULT[band[2]][2];
 function draw1() {
@@ -211,7 +211,7 @@ function draw1() {
   const xs = [270, 320, 370, 520], cols = [COLORS[band[0]][1], COLORS[band[1]][1], MULT[band[2]][1], TOL[band[3]][1]];
   xs.forEach((x, k) => { g.fillStyle = cols[k]; g.fillRect(x - 14, H / 2 - 55 + (k ? 0 : 6), 28, 110 - (k ? 0 : 12)); });
   g.fillStyle = C.text; g.font = "16px ui-monospace, monospace"; g.textAlign = "center";
-  ["digit", "digit", "×10ⁿ", "±%"].forEach((t, k) => g.fillText(t, xs[k], H / 2 + 85));
+  ["1st", "2nd", "×10ⁿ", "±%"].forEach((t, k) => g.fillText(t, xs[k], H / 2 + 85));
   const v = value(), tol = TOL[band[3]][2];
   $("o1").textContent = `${10 * band[0] + band[1]} × ${MULT[band[2]][2]} = ${si(v, "Ω")} ±${tol}%: anywhere from ${si(v * (1 - tol / 100), "Ω")} to ${si(v * (1 + tol / 100), "Ω")}`;
   done("g1", v === 4700 && tol === 5, "4k7, the most famous pull-up in electronics!");
