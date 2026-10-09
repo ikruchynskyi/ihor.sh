@@ -178,9 +178,12 @@ export async function ask(body: any, system: string) {
   const messages: Msg[] = [{ role: "system", content: system }, ...history];
   const used: string[] = [], extra = pageTools(page), pageNames = new Set(extra.map((t: any) => t.function.name));
   const actions: { name: string; args: unknown }[] = [];
+  // With body.trace, every step comes back too (the AI world's agents chapter replays them).
+  const trace: { step: number; tool: string; args: unknown; result: string }[] | undefined = body?.trace ? [] : undefined;
+  const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps: MAX_STEPS } : {}) });
   for (let step = 0; step < MAX_STEPS; step++) {
     const msg = await chat(messages, true, extra);
-    if (!msg.tool_calls?.length) return { reply: (msg.content ?? "").trim() || "…static. Try again?", tools: used, actions };
+    if (!msg.tool_calls?.length) return done(msg.content ?? "");
     messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
     for (const call of msg.tool_calls) {
       const name = call.function?.name, tool = TOOLS[name];
@@ -190,8 +193,12 @@ export async function ask(body: any, system: string) {
       try { out = tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
       catch (e) { out = { error: (e as Error).message }; }
       messages.push({ role: "tool", tool_name: name, content: JSON.stringify(out).slice(0, 8000) });
+      trace?.push({ step: step + 1, tool: name, args: call.function.arguments ?? {}, result: JSON.stringify(out).slice(0, 400) });
     }
   }
   const final = await chat(messages, false); // out of steps: answer with what we have
-  return { reply: (final.content ?? "").trim() || "…static. Try again?", tools: used, actions };
+  return done(final.content ?? "");
 }
+
+/** Blip's toolbox as the model sees it: names, descriptions and parameters (for the agents chapter). */
+export const toolCatalog = () => Object.entries(TOOLS).map(([name, t]: [string, any]) => ({ name, description: t.description, parameters: Object.keys(t.parameters ?? {}) }));

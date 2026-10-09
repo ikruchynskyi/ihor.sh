@@ -56,7 +56,7 @@
     <div>last word's vector → scores for every word in the vocabulary → softmax (ch. 5) → sample the next word</div>
   </div>
   <p>That's the whole architecture. Each block lets words exchange information (attention), then lets each word think on its own (the per-word layer: matrices and bends, chapter 1). Real models run many attention <b>heads</b> in parallel per block, each with its own query, key and value matrices, so one head can track grammar while another tracks who "he" refers to. Everything is trained exactly as before: predict the next word, measure the surprise (chapter 5), backprop the blame (chapter 4), step downhill (chapter 2), on trillions of words.</p>
-  <p>Next: what happens when that next-word machine is allowed to call tools and act. That's <b>agents</b>, with Blip, the companion on this page, as the worked example.</p>
+  <p>Next: what happens when that next-word machine is allowed to call tools and act. That's <a href="./08-agents.html"><b>agents</b></a>, with Blip, the companion on this page, as the worked example.</p>
 
   <p class="muted">Previous: <a href="./06-convolutions.html">Seeing: convolutions</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/attention">Attention in transformers, visually explained</a>.</p>
 </main>

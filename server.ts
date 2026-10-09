@@ -11,7 +11,7 @@ import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
-import { ask, systemPrompt } from "./blip.ts";
+import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { randomBytes } from "node:crypto";
 import { appendFileSync } from "node:fs";
@@ -243,6 +243,7 @@ const server = http.createServer(async (req, res) => {
       if (!/^[A-Z ]{3,12}_[A-Z0-9+-]{1,10}$/.test(id)) return res.writeHead(400).end();
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await busRoute(id)));
     }
+    if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
     if (url.pathname === "/api/nyc/trains") {
       const q = url.searchParams, trip = String(q.get("trip") ?? "").slice(0, 40) || undefined;
