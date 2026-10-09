@@ -16,7 +16,16 @@ let shown: (Repeater & { km: number })[] = [], lastLicense: any = null;
 $("bands").innerHTML = Object.entries(BANDS).map(([b, c]) => `<label><input type="checkbox" data-b="${b}" ${on.has(b) ? "checked" : ""}><span class="swatch" style="background:${c}"></span>${b}</label>`).join("");
 $("bands").addEventListener("change", (e) => { const b = (e.target as HTMLInputElement).dataset.b!; (e.target as HTMLInputElement).checked ? on.add(b) : on.delete(b); render(); });
 $("mode").onchange = render; $("opOnly").onchange = render;
-map.on("moveend", renderList);
+// Repeaters for the area on screen, anywhere in the world (reloaded after panning or zooming).
+let loadTimer: ReturnType<typeof setTimeout> | undefined, total = 0;
+async function loadArea() {
+  const b = map.getBounds();
+  const d = await fetch(`/api/radio/repeaters?bbox=${[b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((v: number) => v.toFixed(3)).join(",")}`).then((r) => r.json()).catch(() => null);
+  if (!d) return;
+  all = d.repeaters; total = d.total;
+  render();
+}
+map.on("moveend", () => { clearTimeout(loadTimer); loadTimer = setTimeout(loadArea, 250); });
 
 const fmtOff = (o: number) => (o > 0 ? `+${o}` : `${o}`);
 function popup(r: Repeater) {
@@ -38,7 +47,7 @@ function renderList() {
   const c = map.getCenter();
   shown = all.filter((r) => on.has(r.band) && (!$<HTMLInputElement>("opOnly").checked || r.operational) && (!$<HTMLSelectElement>("mode").value || r.mode.toUpperCase().includes($<HTMLSelectElement>("mode").value)))
     .map((r) => ({ ...r, km: Math.hypot((r.lat - c.lat) * 111, (r.lon - c.lng) * 84) })).sort((a, b) => a.km - b.km);
-  $("count").textContent = `(${shown.length})`;
+  $("count").textContent = `(${shown.length}${total > all.length ? ` of the nearest ${all.length}; zoom in for all ${total}` : ""})`;
   $("list").innerHTML = shown.slice(0, 60).map((r, i) => `<li data-i="${i}"><span class="swatch" style="background:${BANDS[r.band]}"></span><b>${esc(r.callsign)}</b> <span class="freq">${r.outputMHz.toFixed(3)}</span> <span class="muted">${fmtOff(r.offsetMHz)} ${r.toneUp ? `· ${esc(r.toneUp)} Hz` : ""} · ${esc(r.mode)} · ${r.km.toFixed(1)} km · ${esc(r.city)}</span></li>`).join("");
 }
 $("list").addEventListener("click", (e) => {
@@ -61,7 +70,8 @@ async function lookup(call: string) {
   lastLicense = d;
   licLayer.clearLayers();
   if (!d.found) { $("lic").textContent = d.note ?? "Not found."; return; }
-  const rpts = all.filter((r) => r.callsign.toUpperCase() === d.callsign);
+  const near = d.lat ? await fetch(`/api/radio/repeaters?bbox=${d.lat - 1},${d.lon - 1.3},${d.lat + 1},${d.lon + 1.3}`).then((r) => r.json()).catch(() => null) : null;
+  const rpts = (near?.repeaters ?? all).filter((r: Repeater) => r.callsign.toUpperCase() === d.callsign);
   $("lic").innerHTML = `<b>${esc(d.callsign)}</b> · ${esc(d.name)}<br>${d.type === "CLUB" ? `Club station${d.trustee ? `, trustee ${esc(d.trustee)}` : ""}` : `${esc(d.licenseClass)} license`}<br>
     ${esc(d.address)}<br>Grid ${esc(d.grid)} · expires ${esc(d.expires)}${d.previous ? ` · previously ${esc(d.previous)}` : ""}<br>
     ${rpts.length ? `Runs ${rpts.length} repeater${rpts.length > 1 ? "s" : ""} on this map. ` : ""}<a href="${esc(d.uls)}" target="_blank" rel="noopener">FCC ULS record</a> · <a href="https://aprs.fi/#!call=${encodeURIComponent(d.callsign)}" target="_blank" rel="noopener">on aprs.fi</a>`;
@@ -74,10 +84,9 @@ async function lookup(call: string) {
 }
 $("callForm").addEventListener("submit", (e) => { e.preventDefault(); lookup($<HTMLInputElement>("call").value); });
 
-all = await fetch("/api/radio/repeaters").then((r) => r.json()).catch(() => []);
-render();
 const q = new URLSearchParams(location.search).get("call");
-if (q) lookup(q);
+if (q) await lookup(q); // moves the map; the area then loads
+await loadArea();
 
 (window as any).blipActions = {
   lookup_callsign: { label: "looked up the callsign", description: "Look up a US callsign and show the licensee's location on this map.", parameters: { callsign: { type: "string", description: "e.g. W1AW" } }, run: ({ callsign }: { callsign: string }) => lookup(String(callsign ?? "")) },
@@ -88,5 +97,5 @@ if (q) lookup(q);
       render();
     } },
 };
-(window as any).blipContext = () => ({ page: "Callsigns & repeaters (NYC region)", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
+(window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area)", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
   nearestRepeaters: shown.slice(0, 12).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: +r.km.toFixed(1) })) });

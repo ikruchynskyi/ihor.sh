@@ -22,8 +22,6 @@ export async function callsign(call: string) {
   };
 }
 
-// Region kept from HearHam's worldwide list: NYC plus a few hours' drive.
-const BOX = { s: 39.5, n: 42.3, w: -76, e: -71.5 };
 let cache: { at: number; list: Repeater[] } | null = null;
 export interface Repeater {
   id: number; callsign: string; lat: number; lon: number; city: string; mode: string; outputMHz: number; offsetMHz: number; inputMHz: number;
@@ -36,7 +34,7 @@ export function band(mhz: number) {
 export async function repeaters() {
   if (!cache || cache.at < Date.now() - 24 * 3600_000) {
     const all: any[] = await json("https://hearham.com/api/repeaters/v1");
-    const list = all.filter((r) => r.latitude > BOX.s && r.latitude < BOX.n && r.longitude > BOX.w && r.longitude < BOX.e && r.frequency).map((r) => {
+    const list = all.filter((r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude) && r.frequency).map((r) => {
       const out = r.frequency / 1e6, off = (r.offset ?? 0) / 1e6;
       return {
         id: r.id, callsign: r.callsign ?? "", lat: r.latitude, lon: r.longitude, city: r.city ?? "", mode: r.mode ?? "FM",
@@ -51,9 +49,23 @@ export async function repeaters() {
   return cache.list;
 }
 
+/** Repeaters inside a map box (worldwide), nearest to its center first, at most `limit`. */
+export async function repeatersIn(s: number, w: number, n: number, e: number, limit = 2500) {
+  const cLat = (s + n) / 2, cLon = (w + e) / 2, kx = Math.cos((cLat * Math.PI) / 180);
+  const inBox = (await repeaters()).filter((r) => r.lat >= s && r.lat <= n && (w <= e ? r.lon >= w && r.lon <= e : r.lon >= w || r.lon <= e));
+  const d = (r: Repeater) => (r.lat - cLat) ** 2 + ((r.lon - cLon) * kx) ** 2;
+  return { total: inBox.length, repeaters: inBox.length > limit ? inBox.sort((a, b) => d(a) - d(b)).slice(0, limit) : inBox };
+}
+
 /** Repeaters nearest to a point (for Blip), optionally one band or mode. */
 export async function repeatersNear(lat: number, lon: number, { bandName = "", mode = "", limit = 10 } = {}) {
-  const km = (r: Repeater) => Math.hypot((r.lat - lat) * 111, (r.lon - lon) * 84);
+  const kx = 111 * Math.cos((lat * Math.PI) / 180), km = (r: Repeater) => Math.hypot((r.lat - lat) * 111, (r.lon - lon) * kx);
   return (await repeaters()).filter((r) => r.operational && (!bandName || r.band === bandName) && (!mode || r.mode.toLowerCase().includes(mode.toLowerCase())))
     .map((r) => ({ ...r, km: +km(r).toFixed(1) })).sort((a, b) => a.km - b.km).slice(0, limit);
+}
+
+/** Any place in the world → coordinates (OpenStreetMap Nominatim; light use with a user agent, per its policy). */
+export async function placeAnywhere(q: string) {
+  const d: any[] = await json(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+  return d[0] ? { label: d[0].display_name as string, lat: Number(d[0].lat), lon: Number(d[0].lon) } : null;
 }

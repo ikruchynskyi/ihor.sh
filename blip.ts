@@ -5,8 +5,7 @@ import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals } from "./transit.ts";
 import { deals } from "./deals.ts";
-import { callsign, repeatersNear } from "./ham.ts";
-import { geocode } from "./nycapi.ts";
+import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -57,10 +56,11 @@ const TOOLS: Record<string, Tool> = {
     run: ({ callsign: c }) => callsign(String(c)),
   },
   repeaters_near: {
-    description: "Amateur radio repeaters near a place in the NYC region: output frequency, offset, CTCSS tone, mode, network, distance.",
+    description: "Amateur radio repeaters near any place in the world: output frequency, offset, CTCSS tone, mode, network, distance.",
     parameters: { place: { type: "string", description: "Address or place (default Manhattan)" }, band: { type: "string", description: "Optional band", enum: ["10m", "6m", "2m", "1.25m", "70cm", "33cm", "23cm"] }, mode: { type: "string", description: "Optional mode: FM, DMR, D-STAR, YSF, P25…" } },
     run: async ({ place, band, mode }) => {
-      const g = await geocode(String(place || "Manhattan")).catch(() => null) ?? { lat: 40.758, lon: -73.9855, label: "Manhattan" };
+      const g = await placeAnywhere(String(place || "Manhattan, New York")).catch(() => null);
+      if (!g) return { error: `Couldn't find "${place}".` };
       return { near: g.label, repeaters: (await repeatersNear(g.lat, g.lon, { bandName: band ?? "", mode: mode ?? "", limit: 8 })).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: r.km })) };
     },
   },
