@@ -6,7 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
-import { stationArrivals, ferryBoard, ferryBoats, trainPositions } from "./transit.ts";
+import { stationArrivals, ferryBoard, ferryBoats, trainPositions, busStops, busArrivals, busRoute } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
@@ -191,6 +191,21 @@ const server = http.createServer(async (req, res) => {
       return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
+    if (url.pathname === "/api/nyc/bus-stops") {
+      const lat = Number(url.searchParams.get("lat")), lon = Number(url.searchParams.get("lon"));
+      if (!(lat > 40.4 && lat < 41.0 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await busStops(lat, lon)));
+    }
+    if (url.pathname === "/api/nyc/bus-arrivals") {
+      const stop = String(url.searchParams.get("stop") ?? "");
+      if (!/^MTA_\d{1,7}$/.test(stop)) return res.writeHead(400).end();
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(await busArrivals(stop)));
+    }
+    if (url.pathname === "/api/nyc/bus-route") {
+      const id = String(url.searchParams.get("route") ?? "");
+      if (!/^[A-Z ]{3,12}_[A-Z0-9+-]{1,10}$/.test(id)) return res.writeHead(400).end();
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await busRoute(id)));
+    }
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
     if (url.pathname === "/api/nyc/trains") {
       const q = url.searchParams, trip = String(q.get("trip") ?? "").slice(0, 40) || undefined;

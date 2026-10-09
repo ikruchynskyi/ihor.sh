@@ -1,6 +1,6 @@
 // Run: node transit.test.ts
 import assert from "node:assert/strict";
-import { arrivals, csv, fields, vehicles, walkBack } from "./transit.ts";
+import { arrivals, csv, decodePolyline, fields, vehicles, walkBack } from "./transit.ts";
 
 // protobuf: field 1 varint 150 → 08 96 01; field 2 string "hi" → 12 02 68 69
 assert.deepEqual(fields(Uint8Array.from([0x08, 0x96, 0x01, 0x12, 0x02, 0x68, 0x69])).map(([k, v]) => [k, v instanceof Uint8Array ? [...v] : v]), [[1, 150], [2, [0x68, 0x69]]]);
@@ -23,4 +23,6 @@ const line: [number, number][] = [[40.7, -74], [40.7 + 1000 / 111195, -74]];
 const back = walkBack(line, 1, 500);
 assert.ok(Math.abs(back.at[0] - (40.7 + 500 / 111195)) < 1e-6 && back.i === 0);
 assert.deepEqual(walkBack(line, 1, 5000).at, line[0]);
+// Google's own example polyline
+assert.deepEqual(decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@"), [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]);
 console.log("transit ok");

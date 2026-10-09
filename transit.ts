@@ -215,3 +215,60 @@ export async function ferryBoats() {
       where: next ? `${v.status === 1 ? "at" : "heading to"} ${stops.get(next)}` : "between trips", seen: v.time };
   });
 }
+
+// ---------- MTA buses: Bus Time (key in .env as MTA_BUSTIME_KEY) ----------
+// Stops come from the OneBusAway API by map area, arrivals from SIRI stop monitoring (with each bus's GPS),
+// and route lines from stops-for-route (Google-encoded polylines).
+const BUSTIME = "https://bustime.mta.info/api";
+const busKey = () => process.env.MTA_BUSTIME_KEY ?? "";
+const memo = new Map<string, { at: number; v: any }>();
+async function cached<T>(key: string, ms: number, f: () => Promise<T>): Promise<T> {
+  const hit = memo.get(key);
+  if (hit && Date.now() - hit.at < ms) return hit.v;
+  const v = await f();
+  if (memo.size > 5000) memo.clear(); // ponytail: crude cap, an LRU if memory ever matters
+  memo.set(key, { at: Date.now(), v });
+  return v;
+}
+const busJson = async (u: string) => { const r = await fetch(`${BUSTIME}${u}${u.includes("?") ? "&" : "?"}key=${busKey()}`, { signal: AbortSignal.timeout(15_000) }); if (!r.ok) throw new Error(`bustime ${r.status}`); return r.json(); };
+
+/** Bus stops in a map area (snapped to a ~550 m grid cell so neighbors share the cache). */
+export async function busStops(lat: number, lon: number) {
+  const la = Math.round(lat * 200) / 200, lo = Math.round(lon * 200) / 200;
+  return cached(`stops:${la},${lo}`, 24 * 3600_000, async () => {
+    const d = await busJson(`/where/stops-for-location.json?lat=${la}&lon=${lo}&latSpan=0.006&lonSpan=0.008`);
+    return d.data.stops.map((s: any) => ({ id: s.id, name: s.name, dir: s.direction, lat: s.lat, lon: s.lon,
+      routes: s.routes.map((r: any) => ({ id: r.id, name: r.shortName, color: `#${r.color || "1c7ed6"}`, text: `#${r.textColor || "FFFFFF"}`, long: r.longName })) }));
+  });
+}
+
+/** Next buses at a stop: route, destination, minutes, stops away, and where the bus is now. */
+export async function busArrivals(stop: string) {
+  return cached(`arr:${stop}`, 20_000, async () => {
+    const d = await busJson(`/siri/stop-monitoring.json?OperatorRef=MTA&MonitoringRef=${encodeURIComponent(stop)}&MaximumStopVisits=8&StopMonitoringDetailLevel=minimum`);
+    const now = Date.now(), visits = d.Siri.ServiceDelivery.StopMonitoringDelivery?.[0]?.MonitoredStopVisit ?? [];
+    return visits.map((v: any) => {
+      const j = v.MonitoredVehicleJourney, c = j.MonitoredCall ?? {}, t = c.ExpectedArrivalTime ?? c.AimedArrivalTime;
+      return { route: j.PublishedLineName, routeId: j.LineRef, to: j.DestinationName, vehicle: j.VehicleRef,
+        minutes: t ? Math.max(0, Math.round((Date.parse(t) - now) / 60_000)) : null, away: c.Extensions?.Distances?.PresentableDistance ?? "",
+        lat: j.VehicleLocation?.Latitude, lon: j.VehicleLocation?.Longitude, occupancy: j.Occupancy ?? "" };
+    });
+  });
+}
+
+/** Google's encoded polyline format → [lat, lon] points. */
+export function decodePolyline(s: string): [number, number][] {
+  const out: [number, number][] = [];
+  let i = 0, lat = 0, lon = 0;
+  const next = () => { let r = 0, shift = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << shift; shift += 5; } while (b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; };
+  while (i < s.length) { lat += next(); lon += next(); out.push([lat / 1e5, lon / 1e5]); }
+  return out;
+}
+/** A bus route's line on the map. */
+export async function busRoute(id: string) {
+  return cached(`route:${id}`, 24 * 3600_000, async () => {
+    const d = await busJson(`/where/stops-for-route/${encodeURIComponent(id)}.json?includePolylines=true&version=2`);
+    const r = d.data.references.routes.find((x: any) => x.id === id) ?? {};
+    return { id, name: r.shortName ?? id, color: `#${r.color || "1c7ed6"}`, long: r.longName ?? "", lines: d.data.entry.polylines.map((p: any) => decodePolyline(p.points).map(([a, o]) => [+a.toFixed(5), +o.toFixed(5)])) };
+  });
+}
