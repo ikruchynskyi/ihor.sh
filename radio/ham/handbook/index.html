@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Handbook Companion</title>
+  <meta name="description" content="A visual companion to the ARRL Handbook: every chapter and section, linked to an interactive explanation you can play with while you read." />
+  <style>
+    .ch-head { display: flex; gap: 10px; align-items: baseline; grid-column: 1 / -1; }
+    .ch-head .n { font-weight: 700; color: var(--accent); min-width: 1.6em; }
+    .ch-head .cov { margin-left: auto; font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+    .secs { list-style: none; padding: 0; margin: 8px 0 4px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
+    .secs li { display: grid; grid-template-columns: 3em 1fr; gap: 2px 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+    .secs .sn { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+    .chips a { font-size: 0.75rem; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--line); text-decoration: none; color: var(--fg); }
+    .chips a.k-lesson { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+    .chips a.k-course { border-color: color-mix(in srgb, var(--blue) 60%, var(--line)); }
+    .chips a.k-lab { border-color: color-mix(in srgb, var(--green) 70%, var(--line)); background: color-mix(in srgb, var(--green) 10%, transparent); }
+    .key { font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 16px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Companion</p>
+  <h1>A visual companion to the ARRL Handbook</h1>
+  <p>The ARRL Handbook is the classic reference for radio electronics: a thousand pages from Ohm's law to antenna arrays. It's thorough, but a printed page can't move. This companion follows the Handbook chapter by chapter and section by section, and points each one to an interactive explanation on this site: the <a href="../">license lessons</a>, the <a href="../../course/">Radio from scratch</a> course, and labs written for topics that needed something new. Read a section, then come here and play with it.</p>
+  <p class="note">Organized by the table of contents of the 100th edition (section titles only, for orientation). All explanations here are this site's own. Sections without a link (references, projects, some construction topics) are best read in the book itself.</p>
+  <div class="key"><span><a href="#" style="pointer-events:none;border:1px solid var(--accent);border-radius:10px;padding:0 8px;color:var(--fg);text-decoration:none">Lesson</a> license lesson</span><span><a href="#" style="pointer-events:none;border:1px solid var(--blue);border-radius:10px;padding:0 8px;color:var(--fg);text-decoration:none">Course</a> receiver course</span><span><a href="#" style="pointer-events:none;border:1px solid var(--green);border-radius:10px;padding:0 8px;color:var(--fg);text-decoration:none">Lab</a> companion lab</span></div>
+  <p class="row"><a class="btn" href="./rf-design.html">RF design labs</a><a class="btn alt" href="./workshop.html">Workshop labs</a></p>
+  <div id="toc"></div>
+  <h2 id="online">The Handbook's online extras</h2>
+  <ul>
+    <li><b>Space communications</b>: <a href="../lessons/13-operating.html#satellites">satellites and Doppler</a>, <a href="../lessons/09-propagation.html#vhf">moonbounce</a>.</li>
+    <li><b>Digital communications</b> and <b>digital basics</b>: <a href="../lessons/10-signals-and-modes.html#digital">constellations and codes</a>, <a href="../lessons/16-logic-and-op-amps.html#gates">logic gates</a>.</li>
+    <li><b>Image communications</b>: <a href="../lessons/10-signals-and-modes.html#tv">fast- and slow-scan TV</a>.</li>
+    <li><b>Radio mathematics</b>: <a href="../../course/02-arrows-as-numbers.html">complex numbers as arrows</a>, <a href="../lessons/02-decibels-and-prefixes.html#db">decibels</a>, <a href="../../course/04-winding-machine.html">the Fourier transform</a>.</li>
+  </ul>
+</main>
+<script type="module" src="/src/ham/handbook/index.ts"></script>
+</body>
+</html>

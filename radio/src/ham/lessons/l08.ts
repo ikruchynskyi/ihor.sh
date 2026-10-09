@@ -1,6 +1,7 @@
 // Lesson 8: feed lines. Standing waves, an antenna analyzer, cable loss with mismatch, stubs, and a live Smith chart.
 import "../ham.css";
 import { C, Scene, controls, val, label, line, circle } from "../../course/anim.ts";
+import { smithGrid } from "../smith.ts";
 
 const el = (id: string) => document.getElementById(id)!;
 const sel = (id: string) => (el(id) as HTMLSelectElement).value;
@@ -118,13 +119,7 @@ const gamma = (r: number, x: number, z0 = 50): [number, number] => { const nr = 
   const hd = { x: 0.5, y: 0.3, color: C.yellow }; // the load, as a reflection coefficient
   const s = new Scene(el("s-smith"), (g, w, h) => {
     const R0 = Math.min(w / 2, h / 2) - 24, cx = w / 2, cy = h / 2, P = (gr: number, gi: number): [number, number] => [cx + gr * R0, cy - gi * R0];
-    g.save(); g.beginPath(); g.arc(cx, cy, R0, 0, TAU); g.clip();
-    for (const r of [0.2, 0.5, 1, 2, 5]) circle(g, cx + (r / (1 + r)) * R0, cy, R0 / (1 + r), "#2f3846", 1);
-    for (const x of [0.2, 0.5, 1, 2, 5]) for (const sg of [1, -1]) circle(g, cx + R0, cy - (sg / x) * R0, R0 / x, sg > 0 ? "#3a2f3c" : "#2a3540", 1);
-    g.restore();
-    circle(g, cx, cy, R0, C.axis, 2); line(g, cx - R0, cy, cx + R0, cy, C.axis, 1.5);
-    label(g, "0", cx - R0 + 4, cy - 4, C.muted, "left", 9); label(g, "∞", cx + R0 - 10, cy - 4, C.muted, "left", 9); label(g, "50 Ω", cx + 4, cy - 4, C.muted, "left", 9);
-    label(g, "+j (inductive)", cx, cy - R0 - 6, C.pink, "center", 10); label(g, "−j (capacitive)", cx, cy + R0 + 16, C.blue, "center", 10);
+    smithGrid(g, cx, cy, R0);
     const mag = Math.hypot(hd.x, hd.y), d = val("sm-d"), ang = Math.atan2(hd.y, hd.x) - 4 * Math.PI * d;
     circle(g, cx, cy, mag * R0, C.green, 1.5);
     const [lx, ly] = P(hd.x, hd.y), [qx, qy] = P(mag * Math.cos(ang), mag * Math.sin(ang));

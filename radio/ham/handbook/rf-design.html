@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RF Design Labs</title>
+  <meta name="description" content="Interactive labs for radio design topics: heat sinking, L-network impedance matching on a Smith chart, noise figure cascades, simulated versus real filters, phase noise and reciprocal mixing, and amplifier predistortion." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">Handbook companion</a> · Labs</p>
+  <h1>RF design labs</h1>
+  <p>Six ideas that radio designers use every day, each as something you can push around. They go a step beyond the license lessons, filling gaps for readers working through a radio engineering text like the ARRL Handbook. Each lab says which earlier lessons it builds on.</p>
+
+  <!-- 1 -->
+  <h2 id="heat">Getting the heat out</h2>
+  <p>Every watt a transistor wastes becomes heat at its <b>junction</b>, and the heat has to flow out through a chain of materials, each with a <b>thermal resistance</b> in °C per watt: junction to case, case to heat sink (through the insulating pad and grease), heat sink to air. Like resistors in series (<a class="back" href="../lessons/01-volts-amps-ohms.html#series">↩ lesson 1</a>), temperature rises add up:</p>
+  <div class="scene" id="s-heat">
+    <div class="controls">
+      <label for="ht-p">Power wasted <input id="ht-p" type="range" min="5" max="150" step="5" value="60"><output id="ht-po"></output></label>
+      <label for="ht-s">Heat sink <select id="ht-s"><option value="4">small, no fan (4 °C/W)</option><option value="1.2" selected>large finned (1.2 °C/W)</option><option value="0.4">large with fan (0.4 °C/W)</option></select></label>
+    </div>
+    <p class="readout" id="r-heat" aria-live="polite"></p>
+  </div>
+  <p>The junction temperature is the air temperature plus power × (sum of thermal resistances). Silicon is usually rated to 150–175 °C at the junction, and lifetime falls fast as you approach it. That's why a linear amplifier, which wastes about half its input (<a class="back" href="../lessons/11-receivers-and-transmitters.html#classes">↩ amplifier classes</a>), needs a big heat sink and a fan.</p>
+
+  <!-- 2 -->
+  <h2 id="matching">Designing a matching network</h2>
+  <p>Two reactive parts, a series one and a shunt one, can transform any load to 50 Ω. On a Smith chart (<a class="back" href="../lessons/08-feed-lines-and-swr.html#smith">↩ lesson 8</a>), adding a series reactance moves the point along a circle of constant resistance; adding a shunt one moves it along a circle of constant conductance. The design is a path from the load to the center:</p>
+  <div class="scene" id="s-match">
+    <div class="controls">
+      <label for="mt-r">Load resistance <input id="mt-r" type="range" min="5" max="400" step="5" value="200"><output id="mt-ro"></output></label>
+      <label for="mt-x">Load reactance <input id="mt-x" type="range" min="-300" max="300" step="5" value="-100"><output id="mt-xo"></output></label>
+      <label for="mt-s">Solution <select id="mt-s"><option value="0">1</option><option value="1">2</option></select></label>
+    </div>
+    <p class="readout" id="r-match" aria-live="polite"></p>
+  </div>
+  <p>There are always two solutions: one tends to be a low-pass network (series inductor, shunt capacitor), handy for cleaning up harmonics; the other a high-pass. The bigger the ratio between the two resistances, the higher the network's Q, and the narrower the band it matches over (<a class="back" href="../lessons/04-resonance.html#curve">↩ lesson 4</a>). Transmitter output networks (the Pi and Pi-L of <a class="back" href="../lessons/04-resonance.html#filters">lesson 4</a>) are this idea with a third part to choose the Q.</p>
+
+  <!-- 3 -->
+  <h2 id="cascade">Noise figure: the first stage decides</h2>
+  <p>Every stage of a receiver adds noise. But noise added after a stage with gain counts for less, because the signal has already been amplified. The total noise figure follows the Friis formula: the first stage's noise figure, plus each later stage's excess noise divided by all the gain before it. Move the preamplifier around:</p>
+  <div class="scene" id="s-cascade">
+    <div class="controls">
+      <label for="cs-p"><input id="cs-p" type="checkbox" checked> Preamp at the antenna (untick: in the shack, after the coax)</label>
+      <label for="cs-l">Coax loss <input id="cs-l" type="range" min="0" max="6" step="0.5" value="3"><output id="cs-lo"></output></label>
+      <label for="cs-n">Preamp noise figure <input id="cs-n" type="range" min="0.3" max="4" step="0.1" value="0.6"><output id="cs-no"></output></label>
+    </div>
+    <p class="readout" id="r-cascade" aria-live="polite"></p>
+  </div>
+  <p>A lossy cable in front of the receiver adds its whole loss to the noise figure (a passive loss of L dB has a noise figure of L dB). A low-noise preamp <em>before</em> the loss hides it. That's why VHF/UHF weak-signal stations put the preamp at the top of the mast. On low HF, as lesson 11 showed, the sky noise is so strong that none of this matters (<a class="back" href="../lessons/11-receivers-and-transmitters.html#noise">↩</a>).</p>
+
+  <!-- 4 -->
+  <h2 id="simulation">The simulated filter and the real one</h2>
+  <p>Circuit simulators are wonderful, but they only know what you tell them. Here's a 5-element low-pass filter for 40 meters (a classic transmitter harmonic filter), simulated with ideal parts, and then with the small parasitics every real part has: inductance in capacitor leads, capacitance between coil turns, resistance in the wire (<a class="back" href="../lessons/04-resonance.html#power">↩ lesson 4: parts aren't ideal</a>):</p>
+  <div class="scene" id="s-sim">
+    <div class="controls">
+      <label for="sm-p"><input id="sm-p" type="checkbox" checked> Include parasitics</label>
+      <label for="sm-l">Capacitor lead inductance <input id="sm-l" type="range" min="0" max="40" step="1" value="12"><output id="sm-lo"></output></label>
+    </div>
+    <p class="readout" id="r-sim" aria-live="polite"></p>
+  </div>
+  <p>The ideal filter keeps rejecting forever. The real one comes back up at VHF: each capacitor with its lead inductance becomes a series-resonant circuit, and each coil with its turn-to-turn capacitance becomes parallel-resonant, so above those frequencies the parts stop behaving like what's printed on them. Real designs keep leads short, use chip parts, and are checked on a network analyzer; at microwaves, designers move to electromagnetic simulation of the actual copper.</p>
+
+  <!-- 5 -->
+  <h2 id="phase-noise">Phase noise and reciprocal mixing</h2>
+  <p>No oscillator is perfectly pure: its energy is spread into skirts on either side, its <b>phase noise</b>, measured in dB below the carrier per hertz (dBc/Hz) at some offset. In a receiver, the local oscillator's skirts mix with any strong signal nearby and paint noise over the frequency you're listening to (<a class="back" href="../lessons/11-receivers-and-transmitters.html#dynamic">↩ reciprocal mixing</a>):</p>
+  <div class="scene" id="s-pn">
+    <div class="controls">
+      <label for="pn-o">LO quality <select id="pn-o"><option value="-125">typical synthesizer (−125 dBc/Hz at 10 kHz)</option><option value="-145">excellent (−145 dBc/Hz)</option><option value="-105">noisy (−105 dBc/Hz)</option></select></label>
+      <label for="pn-s">Strong neighbor <input id="pn-s" type="range" min="-60" max="0" step="2" value="-20"><output id="pn-so"></output></label>
+      <label for="pn-d">Its distance <input id="pn-d" type="range" min="0" max="1" step="0.01" value="0.5"><output id="pn-do"></output></label>
+    </div>
+    <p class="readout" id="r-pn" aria-live="polite"></p>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="predistortion">Straightening an amplifier: predistortion</h2>
+  <p>A power amplifier near its limit compresses its peaks, which creates intermodulation splatter (<a class="back" href="../lessons/10-signals-and-modes.html#mixing">↩ lesson 10</a>). Modern SDR transmitters measure the amplifier's curve and bend the signal the <em>opposite</em> way before it gets there, so the two distortions cancel. Here's a two-tone test through a compressing amplifier, computed for real:</p>
+  <div class="scene" id="s-pd">
+    <div class="controls">
+      <label for="pd-d">Drive <input id="pd-d" type="range" min="0.2" max="1.2" step="0.05" value="0.9"><output id="pd-do"></output></label>
+      <label for="pd-on"><input id="pd-on" type="checkbox"> Adaptive predistortion</label>
+    </div>
+    <p class="readout" id="r-pd" aria-live="polite"></p>
+  </div>
+  <p>Predistortion can only straighten the curve up to the amplifier's maximum output: drive past saturation and nothing can undo the clipping. That's why it pairs with limiting the peaks (and why the two-tone test, <a class="back" href="../lessons/15-station-and-test-gear.html#scope">↩ lesson 15</a>, is the standard way to check a linear amplifier).</p>
+
+  <nav class="next">
+    <a href="./">← Handbook companion</a>
+    <a href="./workshop.html">Workshop labs →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/handbook/rf.ts"></script>
+</body>
+</html>

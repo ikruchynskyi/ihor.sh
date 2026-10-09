@@ -74,3 +74,25 @@ assert.ok(!check(10.12, 10.123, "phone", "E").ok, "G1A02: no phone on 30 m");
 assert.ok(check(28.0, 29.7, "cw", "G").ok, "G1A07: General CW on all of 10 m");
 assert.ok(!check(50.05, 50.053, "phone", "T").ok && !check(144.05, 144.053, "phone", "T").ok, "T1B07: 50.0–50.1 and 144.0–144.1 are CW only");
 console.log("band plan agrees with the pool");
+
+// Every L-network solution really transforms its load to 50 Ω.
+const { lMatch, zIn } = await import("./match.ts");
+for (const [R, X] of [[200, 0], [10, 0], [100, 80], [25, -40], [300, -150], [5, 30], [60, -20]]) {
+  const sols = lMatch(R, X);
+  assert.ok(sols.length >= 1, `no match for ${R}+j${X}`);
+  for (const n of sols) { const [r, x] = zIn(R, X, n); assert.ok(Math.abs(r - 50) < 1e-6 && Math.abs(x) < 1e-6, `${R}+j${X} → ${r}+j${x}`); }
+}
+console.log("L-networks match to 50 Ω");
+
+// Every Handbook companion link points at a real page and anchor.
+const { chapters, resolve } = await import("./handbook/map.ts");
+const { existsSync } = await import("node:fs");
+const chs = chapters();
+assert.equal(chs.length, 27);
+for (const c of chs) for (const s of c.sections) for (const key of s.links) {
+  const { href } = resolve(key), [file, anchor] = href.split("#");
+  const path = new URL(`../../ham/handbook/${file.endsWith("/") ? file + "index.html" : file}`, import.meta.url);
+  assert.ok(existsSync(path), `${s.num}: ${href} missing`);
+  if (anchor) assert.ok(readFileSync(path, "utf8").includes(`id="${anchor}"`), `${s.num}: #${anchor} missing in ${file}`);
+}
+console.log(`handbook map: ${chs.reduce((a, c) => a + c.sections.length, 0)} sections, all links resolve`);

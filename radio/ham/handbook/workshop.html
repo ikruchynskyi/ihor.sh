@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workshop Labs</title>
+  <meta name="description" content="Interactive labs for the practical side of radio: why baluns stop common-mode current on coax, and a troubleshooting game where you find a dead stage in a receiver with as few probes as possible." />
+  <style>
+    .stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 0; font: 0.85rem ui-sans-serif, system-ui, sans-serif; }
+    .stages button { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; min-width: 6.5em; }
+    .stages button.ok { border-color: var(--green); }
+    .stages button.bad { border-color: var(--red); }
+    .stages span { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">Handbook companion</a> · Labs</p>
+  <h1>Workshop labs</h1>
+  <p>Two hands-on ideas: a feed line that radiates when it shouldn't, and the method that finds a fault in any radio.</p>
+
+  <!-- 1 -->
+  <h2 id="balun">Baluns and common-mode current</h2>
+  <p>Coax works by keeping two equal and opposite currents together: one on the center conductor, one on the <em>inside</em> of the shield. Their fields cancel outside, so the cable doesn't radiate (<a class="back" href="../lessons/08-feed-lines-and-swr.html#z0">↩ lesson 8</a>). But a dipole is <b>balanced</b> (symmetrical) and coax is <b>unbalanced</b>: at the feed point, the outside of the shield is a third path, connected to one half of the antenna. Some current takes it, the <b>common-mode</b> current, and the feed line itself becomes part of the antenna. Make the setup lopsided (a slanting feed line, an object near one half) and see what happens:</p>
+  <div class="scene" id="s-balun">
+    <div class="controls">
+      <label for="bl-a">Asymmetry <input id="bl-a" type="range" min="0" max="1" step="0.05" value="0.5"><output id="bl-ao"></output></label>
+      <label for="bl-b"><input id="bl-b" type="checkbox"> Choke balun at the feed point</label>
+    </div>
+    <p class="readout" id="r-balun" aria-live="polite"></p>
+  </div>
+  <p>Common-mode current on the feed line distorts the antenna's pattern, brings RF into the shack (hot microphones, RF burns, <a class="back" href="../lessons/15-station-and-test-gear.html#rfi">↩ interference</a>), and picks up household noise on receive. A <b>choke balun</b> (coax wound through ferrite cores, or coiled) presents a high impedance to current on the outside of the shield while leaving the inside current untouched. Ferrite beads on other cables do the same job for interference (<a class="back" href="../lessons/03-capacitors-and-inductors.html#cores">↩ lesson 3</a>).</p>
+
+  <!-- 2 -->
+  <h2 id="troubleshoot">Troubleshooting: find the dead stage</h2>
+  <p>This receiver has gone silent. One stage has failed. You have a signal generator on the antenna input and an oscilloscope probe: click a stage to check whether the signal is still good at its <b>output</b>. Find the fault in as few probes as you can.</p>
+  <div class="stages" id="tb-stages" role="group" aria-label="Receiver stages to probe"></div>
+  <div class="game"><button id="tb-new">New fault</button><span class="score" id="tb-score"></span></div>
+  <p class="readout" id="r-tb" aria-live="polite" style="margin-bottom:22px"></p>
+  <p>The efficient strategy is <b>half-splitting</b>: probe the middle of the chain. If the signal is good there, the fault is after it; if not, before it. Each probe halves the suspects, so 8 stages need at most 3 probes. It's the same idea as a binary search, and it works on any system that's a chain: a receiver, a feed line with connectors, a power distribution. Before reaching for a probe, though, the professional order is: check the obvious (power, cables, settings), look for burned parts and loose connectors, and know what the signal should look like at each point (<a class="back" href="../lessons/11-receivers-and-transmitters.html#chain">↩ the receiver chain</a>).</p>
+
+  <nav class="next">
+    <a href="./rf-design.html">← RF design labs</a>
+    <a href="./">Handbook companion →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/handbook/workshop.ts"></script>
+</body>
+</html>
