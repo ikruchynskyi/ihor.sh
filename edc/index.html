@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EDC Gear Feed</title>
+  <meta name="description" content="Everyday-carry and geek tools news in one feed: knife, flashlight, carry and maker sources archived every three hours, the same story grouped across sources, brands and categories tagged, and what's trending this month." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 10px 0; align-items: center; }
+    .grid { display: grid; grid-template-columns: 1fr 280px; gap: 22px; align-items: start; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    .story { padding: 10px 12px; margin: 0 0 8px; }
+    .story a.t { font-weight: 600; text-decoration: none; }
+    .story .meta { font-size: 14px; color: var(--muted); }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; margin: 2px 4px 0 0; border: 1px solid var(--line); border-radius: 10px; }
+    .also { font-size: 14px; }
+    .trend { display: grid; grid-template-columns: 1fr 34px 46px; gap: 4px; font-size: 15px; align-items: center; }
+    .trend i { display: block; height: 10px; background: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    td { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · EDC</p>
+  <h1>EDC &amp; geek tools feed</h1>
+  <p class="lede">Knives, flashlights, multitools, bags and maker tools from a dozen sources, read every three hours and kept in our own archive from day one. The same story from several sources shows up once, with every source listed; brands and categories are tagged so you can see what's trending. Headlines and links only: read the articles on their own sites.</p>
+  <div class="row" id="cats" role="radiogroup" aria-label="Category"></div>
+  <div class="row"><label>show <select id="days"><option value="1">today</option><option value="3">3 days</option><option value="7" selected>this week</option><option value="30">this month</option></select></label> <span class="muted" id="count"></span></div>
+  <div class="grid">
+    <section id="stories" aria-live="polite"><p class="muted">Loading…</p></section>
+    <aside>
+      <h2>Trending brands</h2>
+      <p class="muted" style="font-size:14px">Mentions in the last 30 days (bar) vs the 30 before (number).</p>
+      <div id="trends"></div>
+      <h2>Sources</h2>
+      <table id="sources"></table>
+      <p class="muted" style="font-size:14px" id="since"></p>
+    </aside>
+  </div>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const CATS = [["", "All"], ["knives", "🔪 Knives"], ["lights", "🔦 Lights"], ["multitools", "🛠 Multitools"], ["carry", "🎒 Carry"], ["pens", "✒️ Pens"], ["watches", "⌚ Watches"], ["tech", "🔋 Tech"], ["tools", "🧰 Tools"]];
+let cat = "";
+$("cats").innerHTML = CATS.map(([k, l]) => `<button role="radio" aria-checked="${k === cat}" data-c="${k}">${l}</button>`).join("");
+const ago = (t) => { const s = Date.now() / 1000 - t; return s < 3600 ? `${Math.max(1, Math.round(s / 60))} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
+async function load() {
+  const d = await fetch(`/api/edc/feed?days=${$("days").value}&cat=${cat}`).then((r) => r.json());
+  $("count").textContent = `${d.stories.length} stories`;
+  $("stories").innerHTML = d.stories.length ? d.stories.map((s) => `<article class="story card">
+      <a class="t" href="${esc(s.link)}" target="_blank" rel="noopener">${esc(s.title)}</a>
+      <div class="meta">${esc(s.source)} · ${ago(s.published)}${s.teaser ? ` · ${esc(s.teaser.slice(0, 140))}${s.teaser.length > 140 ? "…" : ""}` : ""}</div>
+      ${s.also.length ? `<div class="also">also covered by ${s.also.map((a) => `<a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.source)}</a>`).join(", ")}</div>` : ""}
+      <div>${[...s.brands.map((b) => `<span class="chip">${esc(b)}</span>`), ...s.cats.map((c) => `<span class="chip">${esc(c)}</span>`)].join("")}</div></article>`).join("")
+    : `<p class="muted">Nothing here yet for this filter. The archive started recently and grows every three hours.</p>`;
+  const max = Math.max(1, ...d.trends.map((t) => t.n));
+  $("trends").innerHTML = d.trends.map((t) => `<div class="trend"><span>${esc(t.brand)} <i style="width:${(t.n / max) * 100}%"></i></span><b>${t.n}</b><span class="muted">${t.n > t.before ? "▲" : t.n < t.before ? "▼" : "="} ${t.before}</span></div>`).join("") || `<p class="muted">Not enough data yet.</p>`;
+  $("sources").innerHTML = d.sources.map((s) => `<tr><td><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a></td><td>${s.items}</td><td title="${esc(s.last?.note ?? "")}">${s.last ? (s.last.ok ? "✓" : "✗") : "…"}</td></tr>`).join("");
+  $("since").textContent = d.since ? `Archiving since ${new Date(d.since * 1000).toLocaleDateString()} · ${d.total.toLocaleString()} items kept` : "";
+  window.edcSeen = d.stories.slice(0, 20).map((s) => `${s.title} (${s.source}${s.brands.length ? `; ${s.brands.join(", ")}` : ""})`);
+}
+$("cats").addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (!b) return; cat = b.dataset.c; $("cats").querySelectorAll("[data-c]").forEach((x) => x.setAttribute("aria-checked", x.dataset.c === cat)); load(); });
+$("days").onchange = load;
+load();
+window.blipContext = () => ({ page: "EDC & geek tools feed", category: cat || "all", days: +$("days").value, topStories: window.edcSeen ?? [] });
+</script>
+</body>
+</html>

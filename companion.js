@@ -159,6 +159,7 @@ const ITEMS = {
   yomu: { at: "side", label: "calligraphy brush", svg: `<rect x="-2" y="-22" width="4" height="22" rx="2" fill="#8b5a2b" stroke="#2a1405" stroke-width="1.5"/><path d="M-3.5,0 Q-3,9 0,13 Q3,9 3.5,0 Z" fill="#1a1a1a" stroke="#2a1405" stroke-width="1.5"/><rect x="-2.6" y="-1.5" width="5.2" height="3" fill="#c0392b"/>` },
   orna: { at: "side", label: "sword", svg: `<path d="M-2,-30 L0,-34 L2,-30 L2,-6 L-2,-6 Z" fill="#d7dde5" stroke="#2a1405" stroke-width="1.5"/><rect x="-8" y="-7" width="16" height="3.5" rx="1" fill="#c59bff" stroke="#2a1405" stroke-width="1.5"/><rect x="-1.8" y="-3.5" width="3.6" height="9" rx="1" fill="#8b5a2b" stroke="#2a1405" stroke-width="1.2"/>` },
   ai: { at: "face", label: "glasses" },
+  edc: { at: "side", label: "flashlight", svg: `<rect x="-3.5" y="-24" width="7" height="20" rx="2" fill="#4a5262" stroke="#2a1405" stroke-width="1.5"/><rect x="-5" y="-30" width="10" height="7" rx="1.5" fill="#2a2f3a" stroke="#2a1405" stroke-width="1.5"/><path d="M-5,-31 L-12,-44 L12,-44 L5,-31 Z" fill="#fff6b0" opacity=".75"/>` },
   ride: { at: "head", label: "bike helmet", svg: `<path d="M-27,-4 Q-27,-36 0,-36 Q27,-36 27,-4 Z" fill="#2f9e44" stroke="#2a1405" stroke-width="2.5"/><path d="M-14,-33 L-10,-12 M0,-36 L0,-12 M14,-33 L10,-12" stroke="#1e6b35" stroke-width="3"/><path d="M-29,-4 L29,-4" stroke="#2a1405" stroke-width="3" stroke-linecap="round"/>` },
 };
 const myItem = ITEMS[location.pathname.split("/")[1]];
@@ -570,7 +571,7 @@ const pageObjects = () => { try { return typeof window.blipContext === "function
 const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", callsign_lookup: "looked up the callsign", ferry_arrivals: "checked the ferries", orna_shops: "checked the guild shops", repeaters_near: "found repeaters", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
 // Blip remembers where you've been (this browser only) and greets you per world.
-const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", yomu: "Yomu", ride: "Ride", orna: "ORNA" };
+const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", yomu: "Yomu", ride: "Ride", edc: "EDC", orna: "ORNA" };
 const progress = (() => { try { return JSON.parse(local.get("blip:progress") || "{}"); } catch { return {}; } })();
 progress.pages ??= {}; progress.worlds ??= {};
 {

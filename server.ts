@@ -6,6 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
+import { startEdc, edcFeed } from "./edc.ts";
 import { stationArrivals, ferryBoard, ferryBoats, trainPositions, busStops, busArrivals, busRoute } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
@@ -30,6 +31,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   ai: { dir: path.join(ROOT, "ai"), label: "World 3 · AI" },
   yomu: { dir: path.join(ROOT, "yomu"), label: "World 4 · Yomu" },
   ride: { dir: path.join(ROOT, "ride"), label: "World 5 · Ride" },
+  edc: { dir: path.join(ROOT, "edc"), label: "World 6 · EDC" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
@@ -258,6 +260,10 @@ const server = http.createServer(async (req, res) => {
       const d: any = await routeStops(JSON.parse(raw || "{}").line);
       return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
+    if (url.pathname === "/api/edc/feed") {
+      const days = Math.min(60, Math.max(1, Number(url.searchParams.get("days")) || 7)), cat = String(url.searchParams.get("cat") ?? "").replace(/[^a-z]/g, "").slice(0, 12);
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(edcFeed(days, cat)));
+    }
     if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));
     if (url.pathname === "/api/nyc/boats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=15" }).end(JSON.stringify(await ferryBoats()));
     if (url.pathname === "/api/nyc/trains") {
@@ -314,5 +320,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 startArchive();
+startEdc();
 startEvents();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));
