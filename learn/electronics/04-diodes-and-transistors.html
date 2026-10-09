@@ -104,7 +104,7 @@ plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000
     <label>gate voltage <input type="range" id="vg4" min="0" max="12" step="0.1" value="3.3"> <span id="vg4v" class="math"></span></label></div>
   <p class="readout" id="o4"></p>
   <p class="goal" id="g4">🎯 <b>Challenge:</b> from an ESP32's 3.3 V pin, switch the full 1 A load with the MOSFET wasting under 0.1 W.</p>
-  <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot. Next: <b>op-amps</b>, where transistors are used in between on purpose, to amplify.</p>
+  <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot. Next: <a href="./05-real-parts.html"><b>real parts</b></a>: reading color codes and datasheets, and choosing values and ratings that survive the real world.</p>
   <div class="q" data-answer="c">
     <p>A MOSFET is half on: 6 V across it and 1 A through it. Fully on, 0.05 V across it at the same 1 A. How do the heats compare?</p>
     <ul><li data-k="a" data-says="Heat is V × I across the switch: compare 6 W with 0.05 W.">About the same</li><li data-k="b" data-says="Check the numbers: 6 × 1 versus 0.05 × 1.">Half on is twice as hot</li><li data-k="c">Half on is 120 times hotter (6 W vs 0.05 W)</li></ul>

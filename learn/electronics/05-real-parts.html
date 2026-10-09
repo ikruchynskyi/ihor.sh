@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Real Parts</title>
+  <meta name="description" content="Electronics from scratch, chapter 5: the parts you actually buy. Resistor color codes and why values come in 4.7k and 2.2k (E-series), tolerance and power ratings, capacitor types and markings and why a ceramic loses capacitance under voltage, batteries' capacity and internal resistance, wire gauge and voltage drop, and how to read a datasheet." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; touch-action: none; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    .bands { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .bands label { font-size: 14px; color: var(--muted); display: grid; gap: 2px; }
+    .types { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 14px 0; }
+    .types > div { padding: 10px 12px; font-size: 15px; line-height: 1.5; }
+    .types b { display: block; font-size: 16px; }
+    table.ds { border-collapse: collapse; width: 100%; font: 14px/1.5 ui-monospace, Menlo, monospace; margin: 12px 0; }
+    table.ds th, table.ds td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+    table.ds caption { text-align: left; font-weight: 700; padding: 4px 0; }
+    .score { font-size: 15px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 5</p>
+  <h1>Real parts</h1>
+  <p class="lede">So far every resistor was exactly 1,000 Ω and every battery a perfect 9 V. Real parts are labeled in colors and codes, come only in certain values, are off by a few percent, have limits on heat and voltage, and sag under load. This chapter is the bridge from the simulator to the parts drawer: how to read them, choose them, and not cook them.</p>
+  <div class="plain card"><b>In plain words:</b> every part has a <b>value</b> (what it does), a <b>tolerance</b> (how wrong the value may be), and <b>ratings</b> (how much it can take before it's damaged). A good design works across the whole tolerance and stays well inside the ratings.</div>
+
+  <h2>1. Reading a resistor's colors</h2>
+  <p>Resistors are too small to print numbers on, so they carry colored bands. Read them from the end with the bands bunched together: <b>digit, digit, multiplier, tolerance</b>. Black 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9 (one mnemonic: "Better Be Right Or Your Great Big Venture Goes Wrong"). Change the bands, or play the decoding game.</p>
+  <canvas id="c1" width="800" height="260" aria-label="A resistor with four color bands"></canvas>
+  <div class="bands" id="bands"></div>
+  <p class="readout" id="o1"></p>
+  <div class="row"><button id="game">🎲 Decode a random resistor</button><input type="text" id="guess" placeholder="its value, e.g. 4.7k" aria-label="Your answer" style="width:9em"><button id="check1">Check</button><span class="score" id="s1"></span></div>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> set the bands to 4.7 kΩ, 5%.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Two digits make a number from 10 to 99; the multiplier band says how many zeros follow, a power of ten:</p>
+    <p class="formula">\[ R = (10\,d_1 + d_2) \times 10^{m} \ \Omega \]</p>
+    <p>Yellow, violet, red: \((4, 7) \to 47\), red = 2 zeros, so \(47 \times 10^2 = 4{,}700\) Ω, written 4.7 kΩ or 4k7 (the letter replaces the decimal point, so a smudge can't move it). Gold and silver as multipliers mean ×0.1 and ×0.01, for values under 10 Ω. Precision resistors use five bands: three digits, then the multiplier.</p>
+  </details>
+  <div class="q" data-num="560" data-unit="Ω">
+    <p>Green, blue, brown, gold. What's the resistance?</p>
+    <div class="why">Green 5, blue 6 → 56; brown = ×10¹ → 560 Ω, ±5% (gold).</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>You want 10 kΩ. Which bands?</p>
+    <ul><li data-k="a" data-says="Brown-black-red is 10 × 100 = 1 kΩ.">brown, black, red</li><li data-k="b">brown, black, orange</li><li data-k="c" data-says="Brown-black-yellow is 10 × 10,000 = 100 kΩ.">brown, black, yellow</li></ul>
+    <div class="why">10 × 10³ = 10,000 Ω. Orange = 3 zeros.</div>
+  </div>
+
+  <h2>2. Why 4.7k and not 5k: the E-series</h2>
+  <p>Shops don't sell every value. A resistor marked 1 kΩ ±10% could really be anything from 900 to 1,100 Ω, so making a 1,050 Ω part is pointless. Instead the values are spaced so that their tolerance bands just touch, covering every possible value with as few parts as possible. On a <b>log scale</b> (each step multiplies, so 1, 10, 100 are evenly spaced), those values are evenly spaced. Pick a series and move the target.</p>
+  <canvas id="c2" width="800" height="260" aria-label="Standard resistor values on a logarithmic scale with tolerance bands"></canvas>
+  <div class="row"><label>series <select id="ser"><option value="6">E6 (±20%)</option><option value="12" selected>E12 (±10%)</option><option value="24">E24 (±5%)</option></select></label>
+    <label>I want <input type="range" id="want" min="0" max="1" step="0.001" value="0.52"> <span id="wantv" class="math"></span></label></div>
+  <p class="readout" id="o2"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>The E\(n\) series puts \(n\) values in each decade (1 to 10), each one the same ratio times the one before:</p>
+    <p class="formula">\[ r = 10^{1/n}, \qquad \text{values} \approx 10^{k/n},\ k = 0, 1, \dots, n-1 \]</p>
+    <p>For E12, \(r = 10^{1/12} \approx 1.21\): 1.0, 1.21, 1.47, 1.78, 2.15, 2.61, 3.16, 3.83, 4.64, 5.62, 6.81, 8.25, rounded to two digits (with a few historic tweaks): 1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2. A ±10% band around each reaches about halfway to its neighbor (the gap is 21%), which is exactly why E12 goes with 10% parts. E24 (\(r = 1.10\)) pairs with 5%, E96 with 1%.</p>
+  </details>
+  <div class="q" data-num="1.47" data-tol="0.01">
+    <p>In the E6 series, each value is how many times the previous one? (Two decimals.)</p>
+    <div class="why">\(10^{1/6} \approx 1.468\): 1.0, 1.5, 2.2, 3.3, 4.7, 6.8. Those six are the values you'll see most in old kits.</div>
+  </div>
+  <div class="q">
+    <p>Your calculation says 5.2 kΩ for a pull-up resistor. What do you buy, and does it matter?</p>
+    <div class="why">The nearest E12 values are 4.7 kΩ and 5.6 kΩ; either works, because a pull-up's value is rarely critical (anything from 2k to 10k would do). When it is critical, like a precise divider, choose 1% parts from E96, or combine two resistors. Good designs are built so that standard values and their tolerances don't matter.</div>
+  </div>
+  <div class="code" data-title="Build it: generate a series and pick the nearest value"><textarea>
+// The rounded E12 values (the formula gives 1.21, 1.47, …; the standard keeps two historic tweaks)
+const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+const formula = Array.from({ length: 12 }, (_, k) => +(10 ** (k / 12)).toFixed(2));
+print("10^(k/12):", formula);
+
+function nearest(ohms, series = E12) {
+  const decade = 10 ** Math.floor(Math.log10(ohms));
+  const options = [...series, 10].map((v) => v * decade);
+  return options.reduce((best, v) => (Math.abs(Math.log(v / ohms)) < Math.abs(Math.log(best / ohms)) ? v : best));
+}
+for (const want of [5200, 333, 91000, 15.5]) {
+  const got = nearest(want);
+  print(`want ${want} Ω → buy ${got} Ω (${((got / want - 1) * 100).toFixed(1)}% off)`);
+}
+</textarea></div>
+
+  <h2>3. Power ratings: how hot does it get?</h2>
+  <p>A resistor turns \(P = V^2/R\) into heat, and its body can only shed so much. The common small one is rated ¼ W: at that power it runs roughly 70–100 °C above the room. Choose the voltage and resistance, then a package.</p>
+  <canvas id="c3" width="800" height="240" aria-label="A resistor heating up with power"></canvas>
+  <div class="row"><label>voltage across it <input type="range" id="pv" min="0" max="24" step="0.1" value="9"> <span id="pvv" class="math"></span></label>
+    <label>resistance <select id="pr"><option>47</option><option>100</option><option selected>330</option><option>1000</option><option>4700</option></select> Ω</label>
+    <label>rated <select id="pw"><option value="0.125">⅛ W</option><option value="0.25" selected>¼ W</option><option value="0.5">½ W</option><option value="1">1 W</option><option value="2">2 W</option></select></label></div>
+  <p class="readout" id="o3"></p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> 12 V across 100 Ω. Choose the smallest package that stays under half its rating.</p>
+  <details class="deeper"><summary>The math: thermal resistance</summary>
+    <p>A part's temperature rise is proportional to the power it sheds: \(\Delta T = P \cdot \theta\), where \(\theta\) (theta, in °C per watt) is its <b>thermal resistance</b>, the heat version of Ohm's law. A ¼ W through-hole resistor has \(\theta\) around 300 °C/W in still air: 0.25 W → 75 °C above the room. That's why the rule of thumb is to run parts at <b>half their rating or less</b>: cooler parts last longer and drift less. The same law sizes heatsinks for regulators and MOSFETs.</p>
+  </details>
+  <div class="q" data-num="1.44" data-unit="W">
+    <p>12 V across 100 Ω. How many watts?</p>
+    <div class="why">\(12^2 / 100 = 1.44\) W. A ¼ W resistor would burn; a 2 W one runs at 72% of its rating, still warm. A 3 W or 5 W part is the comfortable choice.</div>
+  </div>
+
+  <h2>4. Capacitors aren't all alike</h2>
+  <div class="types">
+    <div class="card"><b>Ceramic (MLCC)</b>Tiny, cheap, no polarity, pF to tens of µF. Great for decoupling and filters. Catch: high-value ones (X5R, X7R) lose much of their capacitance when you put DC on them.</div>
+    <div class="card"><b>Aluminum electrolytic</b>Lots of µF for the money, for power supplies. Polarized: the stripe is −, and backwards they bulge or pop. Some resistance inside (ESR), they dry out with heat.</div>
+    <div class="card"><b>Film</b>Stable and accurate, for timing and audio, and for mains (X/Y safety types). Bigger for the same value.</div>
+    <div class="card"><b>Tantalum</b>Compact and stable, polarized. When they fail they can short and burn, so they're used with a margin on voltage.</div>
+  </div>
+  <p>Ceramic and film capacitors are marked in a code like a resistor's, in picofarads: two digits and a number of zeros. "104" is 10 followed by 4 zeros pF = 100,000 pF = 100 nF = 0.1 µF, the most common capacitor in electronics.</p>
+  <p>Now the trap with ceramics. A 10 µF, 6.3 V X5R capacitor in a small package, at its rated voltage, can be down to 2–4 µF. Slide the DC voltage across it:</p>
+  <canvas id="c4" width="800" height="260" aria-label="A ceramic capacitor's capacitance falling with DC voltage"></canvas>
+  <div class="row"><label>DC across it <input type="range" id="bv" min="0" max="6.3" step="0.05" value="3.3"> <span id="bvv" class="math"></span></label><label>package <select id="pk"><option value="0.85">0402 (tiny)</option><option value="0.8">0603</option><option value="0.7" selected>0805</option><option value="0.5">1206 (bigger)</option></select></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="muted">The curve is a typical shape for X5R parts; every datasheet has its own measured one, and it's worth looking at.</p>
+  <div class="q" data-num="47" data-unit="nF">
+    <p>A ceramic capacitor is marked "473". How many nanofarads?</p>
+    <div class="why">47 followed by 3 zeros = 47,000 pF = 47 nF.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>An electrolytic capacitor is rated 16 V. Which supply is the right one to use it on?</p>
+    <ul><li data-k="a" data-says="16 V is the maximum, with no margin for spikes or ripple. Leave room.">16 V</li><li data-k="b" data-says="That's above its rating: it can fail, sometimes violently.">24 V</li><li data-k="c">5 V or 9 V: well under the rating</li></ul>
+    <div class="why">Rule of thumb: use a capacitor at no more than about 50–80% of its rated voltage. Electrolytics last much longer that way.</div>
+  </div>
+
+  <h2>5. Batteries sag</h2>
+  <p>A battery is a perfect voltage source with a small resistor inside it. The more current you draw, the more voltage is lost across that inner resistor, and the more the battery warms up. Choose a battery and load it.</p>
+  <canvas id="c5" width="800" height="300" aria-label="Battery voltage versus load current"></canvas>
+  <div class="row"><label>battery <select id="bat"></select></label><label>load current <input type="range" id="bi" min="0" max="1" step="0.001" value="0.2"> <span id="biv" class="math"></span></label></div>
+  <p class="readout" id="o5"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p class="formula">\[ V_{\text{out}} = E - I\,r, \qquad P_{\text{inside}} = I^2 r, \qquad t \approx \frac{\text{capacity (mAh)}}{I\ (\text{mA})} \]</p>
+    <p>\(E\) is the battery's "open circuit" voltage, \(r\) its internal resistance. A CR2032 coin cell (3 V, about 15 Ω inside) drawing 100 mA loses 1.5 V inside: half its voltage gone. That's why coin cells run watches and sensors, not motors. A lithium-ion 18650 cell has about 0.05 Ω and can give 10 A while losing only 0.5 V.</p>
+    <p>Runtime from capacity is optimistic at high current: chemistry can't keep up, and usable capacity shrinks (Peukert's law). Datasheets give capacity at a gentle rate, like 20 hours.</p>
+  </details>
+  <div class="q" data-num="7.5" data-unit="V">
+    <p>A 9 V battery with 1.5 Ω inside powers a 1 A motor. What voltage reaches the motor?</p>
+    <div class="why">\(9 - 1 \times 1.5 = 7.5\) V. The other 1.5 V is lost inside, as 1.5 W of heat in the battery. That's why 9 V batteries are a poor choice for motors.</div>
+  </div>
+  <div class="q" data-num="40" data-unit="h">
+    <p>A 2,000 mAh battery powers a circuit drawing 50 mA. About how many hours?</p>
+    <div class="why">\(2000 / 50 = 40\) h, at that gentle current close to what you'd really get.</div>
+  </div>
+
+  <h2>6. Wires have resistance too</h2>
+  <p>A wire is a long, thin resistor: \(R = \rho L / A\), resistivity times length over cross-section. In thin wires over long runs, that adds up: LED strips at the end of a long run get dim, and a motor at the end of thin wire gets less than it should. Wire sizes in the US are AWG: every 3 gauges smaller number doubles the copper area.</p>
+  <canvas id="c6" width="800" height="200" aria-label="Voltage lost along a wire"></canvas>
+  <div class="row"><label>gauge <select id="awg"></select></label><label>length (one way) <input type="range" id="wl" min="0.2" max="30" step="0.1" value="5"> <span id="wlv" class="math"></span></label><label>current <input type="range" id="wi" min="0.1" max="10" step="0.1" value="2"> <span id="wiv" class="math"></span></label></div>
+  <p class="readout" id="o6"></p>
+  <div class="q" data-answer="a">
+    <p>A 12 V LED strip draws 4 A at the end of 10 m of 22 AWG wire (there and back: 20 m). Roughly what happens?</p>
+    <ul><li data-k="a">The wire drops about 4 V and gets warm; the strip is dim</li><li data-k="b" data-says="Copper isn't perfect: 22 AWG is about 0.053 Ω per meter.">Nothing: wires have no resistance</li><li data-k="c" data-says="A fuse protects against short circuits; this is a slow, steady loss.">The fuse blows</li></ul>
+    <div class="why">20 m × 0.053 Ω/m ≈ 1.06 Ω; × 4 A ≈ 4.2 V lost and about 17 W of heat in the wire. Use thicker wire (16 AWG: ≈0.26 Ω, 1 V) or feed the strip from both ends.</div>
+  </div>
+
+  <h2>7. Reading a datasheet</h2>
+  <p>Every part has a datasheet, and the two tables that matter first are these. Here's a typical red 5 mm LED:</p>
+  <table class="ds"><caption>Absolute maximum ratings (never exceed, not even for a moment)</caption>
+    <tr><th>parameter</th><th>value</th></tr>
+    <tr><td>continuous forward current</td><td>30 mA</td></tr><tr><td>peak forward current (1/10 duty, 0.1 ms pulses)</td><td>100 mA</td></tr><tr><td>reverse voltage</td><td>5 V</td></tr><tr><td>power dissipation</td><td>75 mW</td></tr><tr><td>operating temperature</td><td>−40 to +85 °C</td></tr></table>
+  <table class="ds"><caption>Electrical characteristics (at 25 °C, I<sub>F</sub> = 20 mA)</caption>
+    <tr><th>parameter</th><th>min</th><th>typ</th><th>max</th></tr>
+    <tr><td>forward voltage V<sub>F</sub></td><td>1.8 V</td><td>2.0 V</td><td>2.4 V</td></tr><tr><td>luminous intensity</td><td>200 mcd</td><td>350 mcd</td><td>—</td></tr><tr><td>peak wavelength</td><td>—</td><td>630 nm</td><td>—</td></tr></table>
+  <p><b>Absolute maximum</b> is the edge of the cliff: the part survives up to there, but isn't promised to work well. <b>Characteristics</b> are what to design with, and the <b>min/max</b> columns, not "typical", are what a design must survive: some LEDs from the same bag will need 2.4 V.</p>
+  <div class="q" data-answer="b">
+    <p>You design for 20 mA from 5 V using the typical V<sub>F</sub> of 2.0 V: R = (5 − 2.0) / 0.020 = 150 Ω. What's the current through an LED with the maximum V<sub>F</sub> of 2.4 V?</p>
+    <ul><li data-k="a" data-says="The resistor sees 5 − 2.4 = 2.6 V, not 3 V.">20 mA, the same</li><li data-k="b">About 17 mA: a bit dimmer, still fine</li><li data-k="c" data-says="A higher forward voltage leaves less for the resistor, so less current.">About 25 mA</li></ul>
+    <div class="why">(5 − 2.4) / 150 ≈ 17.3 mA. And with the minimum 1.8 V: 21.3 mA, still under 30 mA. A design that checks both ends of the range is a design that works with every part in the bag.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>The LED is in a circuit where it may see 9 V backwards (say, a battery inserted the wrong way). What does the datasheet tell you?</p>
+    <ul><li data-k="a" data-says="Reverse voltage is listed under absolute maximum: 5 V.">Nothing: LEDs are diodes, they block reverse voltage</li><li data-k="b" data-says="It's not about current: the limit is 5 V reverse.">It's fine below 30 mA</li><li data-k="c">9 V exceeds the 5 V reverse rating: add a diode in series, or across it backwards</li></ul>
+    <div class="why">LEDs are poor at blocking: most are rated for only 5 V reverse. A regular silicon diode (1N4148, 75–100 V reverse) in series protects it.</div>
+  </div>
+
+  <p>Build any of these in the <a href="/learn/lab.html">circuit lab</a>: its resistors have power ratings and glow when overloaded, and its LEDs burn out above 30 mA. Next: the circuit-theory toolkit, how to solve any circuit by hand (Kirchhoff, Thevenin, and AC as spinning arrows).</p>
+  <p class="muted">Previous: <a href="./04-diodes-and-transistors.html">Diodes and transistors</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", grid: "#262b35", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255" };
+const si = (x, u) => { const P = [[1e9, "G"], [1e6, "M"], [1e3, "k"], [1, ""], [1e-3, "m"], [1e-6, "µ"], [1e-9, "n"], [1e-12, "p"]]; if (!x) return `0 ${u}`; const [m, p] = P.find(([m]) => Math.abs(x) >= m * 0.9995) ?? P.at(-1); return `${+(x / m).toPrecision(3)} ${p}${u}`; };
+const done = (id, ok, msg) => { const el = $(id); if (ok && !el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+
+// ---------- 1. color bands ----------
+const COLORS = [["black", "#111"], ["brown", "#7a4a1d"], ["red", "#e03131"], ["orange", "#f08c00"], ["yellow", "#fcc419"], ["green", "#2f9e44"], ["blue", "#1c7ed6"], ["violet", "#9c36b5"], ["grey", "#868e96"], ["white", "#f1f3f5"]];
+const MULT = [...COLORS.map(([n, c], i) => [n, c, 10 ** i]), ["gold", "#d4a72c", 0.1], ["silver", "#c0c0c0", 0.01]].filter((m, i) => i <= 6 || i >= 10);
+const TOL = [["gold", "#d4a72c", 5], ["silver", "#c0c0c0", 10], ["brown", "#7a4a1d", 1], ["red", "#e03131", 2]];
+let band = [4, 7, 2, 0]; // yellow violet red gold
+$("bands").innerHTML = ["1st digit", "2nd digit", "multiplier", "tolerance"].map((l, k) => `<label>${l}<select data-b="${k}">${(k < 2 ? COLORS : k === 2 ? MULT : TOL).map(([n], i) => `<option value="${i}">${n}</option>`).join("")}</select></label>`).join("");
+const value = () => (10 * band[0] + band[1]) * MULT[band[2]][2];
+function draw1() {
+  document.querySelectorAll("[data-b]").forEach((s) => (s.value = band[s.dataset.b]));
+  const cv = $("c1"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "#aab"; g.lineWidth = 6; g.beginPath(); g.moveTo(40, H / 2); g.lineTo(W - 40, H / 2); g.stroke();
+  g.fillStyle = "#d8c3a0"; g.beginPath(); g.roundRect(200, H / 2 - 55, 400, 110, 50); g.fill();
+  const xs = [270, 320, 370, 520], cols = [COLORS[band[0]][1], COLORS[band[1]][1], MULT[band[2]][1], TOL[band[3]][1]];
+  xs.forEach((x, k) => { g.fillStyle = cols[k]; g.fillRect(x - 14, H / 2 - 55 + (k ? 0 : 6), 28, 110 - (k ? 0 : 12)); });
+  g.fillStyle = C.text; g.font = "16px ui-monospace, monospace"; g.textAlign = "center";
+  ["digit", "digit", "×10ⁿ", "±%"].forEach((t, k) => g.fillText(t, xs[k], H / 2 + 85));
+  const v = value(), tol = TOL[band[3]][2];
+  $("o1").textContent = `${10 * band[0] + band[1]} × ${MULT[band[2]][2]} = ${si(v, "Ω")} ±${tol}%: anywhere from ${si(v * (1 - tol / 100), "Ω")} to ${si(v * (1 + tol / 100), "Ω")}`;
+  done("g1", v === 4700 && tol === 5, "4k7, the most famous pull-up in electronics!");
+}
+$("bands").addEventListener("change", (e) => { band[+e.target.dataset.b] = +e.target.value; draw1(); });
+let secret = null, score = [0, 0];
+const parse = (s) => { const m = String(s).trim().replace(",", ".").match(/^([\d.]+)\s*([kKmMR]?)([\d]*)/); if (!m) return NaN; const mult = { k: 1e3, K: 1e3, M: 1e6, m: 1e6, R: 1, "": 1 }[m[2]]; return m[3] ? +`${m[1]}.${m[3]}` * mult : +m[1] * mult; };
+$("game").onclick = () => { const E12 = [10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82], v = E12[Math.floor(Math.random() * 12)]; band = [Math.floor(v / 10), v % 10, 1 + Math.floor(Math.random() * 5), Math.floor(Math.random() * 2)]; secret = value(); draw1(); $("o1").textContent = "What's this one? Type its value."; $("guess").value = ""; $("guess").focus(); };
+const check1 = () => { if (secret == null) return; const ok = Math.abs(parse($("guess").value) - secret) < secret * 0.001; score[1]++; if (ok) score[0]++; $("s1").textContent = `${ok ? "✓ right" : `✗ it was ${si(secret, "Ω")}`} · ${score[0]}/${score[1]}`; draw1(); secret = null; };
+$("check1").onclick = check1; $("guess").onkeydown = (e) => { if (e.key === "Enter") check1(); };
+draw1();
+
+// ---------- 2. E-series on a log scale ----------
+const SERIES = { 6: [1.0, 1.5, 2.2, 3.3, 4.7, 6.8], 12: [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2], 24: [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1] };
+const TOLS = { 6: 0.2, 12: 0.1, 24: 0.05 };
+function draw2() {
+  const n = +$("ser").value, vals = SERIES[n], tol = TOLS[n], want = 10 ** +$("want").value;
+  const cv = $("c2"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (v) => 40 + Math.log10(v) * (W - 80);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = C.dim; g.lineWidth = 2; g.beginPath(); g.moveTo(40, 150); g.lineTo(W - 40, 150); g.stroke();
+  vals.forEach((v, k) => {
+    const y = 120 - (k % 2) * 26;
+    g.fillStyle = k % 2 ? "rgba(88,196,221,.28)" : "rgba(244,211,94,.28)"; g.fillRect(X(v * (1 - tol)), y - 10, X(v * (1 + tol)) - X(v * (1 - tol)), 20);
+    g.fillStyle = C.text; g.beginPath(); g.arc(X(v), 150, 5, 0, 7); g.fill();
+    g.font = "13px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(v.toFixed(1), X(v), 175 + (k % 2) * 16);
+  });
+  g.fillText("10", X(10) - 4, 175);
+  const best = [...vals, 10].reduce((b, v) => (Math.abs(Math.log(v / want)) < Math.abs(Math.log(b / want)) ? v : b));
+  g.strokeStyle = C.red; g.lineWidth = 2; g.beginPath(); g.moveTo(X(want), 60); g.lineTo(X(want), 150); g.stroke();
+  g.fillStyle = C.red; g.fillText("you want", X(want), 52);
+  g.fillStyle = C.green; g.beginPath(); g.arc(X(best), 150, 8, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.textAlign = "left"; g.fillText("log scale: each step multiplies by the same ratio; bands = ± tolerance", 40, H - 16);
+  $("wantv").textContent = `${want.toFixed(2)} (× any power of 10)`;
+  $("o2").textContent = `E${n}: ratio ${(10 ** (1 / n)).toFixed(3)} per step · nearest ${best.toFixed(1)}, ${((best / want - 1) * 100).toFixed(1)}% off, within its ±${tol * 100}% anyway`;
+}
+$("ser").onchange = $("want").oninput = draw2; draw2();
+
+// ---------- 3. heat ----------
+function draw3() {
+  const V = +$("pv").value, R = +$("pr").value, rated = +$("pw").value, P = (V * V) / R, theta = 75 / rated, T = 25 + P * theta; // ponytail: θ ≈ 75 °C at rated power, a typical figure
+  const cv = $("c3"), g = cv.getContext("2d"), W = cv.width, H = cv.height, frac = P / rated;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const size = 40 + 30 * Math.log2(rated / 0.125 + 1);
+  const glow = Math.min(1, Math.max(0, (T - 60) / 200));
+  if (glow > 0) { const grd = g.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, size * 2); grd.addColorStop(0, `rgba(252,98,85,${glow})`); grd.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = grd; g.fillRect(0, 0, W, H); }
+  g.strokeStyle = "#aab"; g.lineWidth = 4; g.beginPath(); g.moveTo(80, H / 2); g.lineTo(W - 80, H / 2); g.stroke();
+  g.fillStyle = `rgb(${216 + 39 * glow},${195 - 120 * glow},${160 - 120 * glow})`; g.beginPath(); g.roundRect(W / 2 - size, H / 2 - size / 3, size * 2, (size * 2) / 3, size / 3); g.fill();
+  if (T > 200) { g.fillStyle = "rgba(170,170,170,.5)"; for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(W / 2 - 20 + k * 14, H / 2 - size / 3 - 20 - k * 12 + Math.sin(performance.now() / 300 + k) * 4, 10 + k * 3, 0, 7); g.fill(); } }
+  g.fillStyle = C.text; g.font = "16px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(`${Math.round(T)} °C`, W / 2, H / 2 + size / 3 + 30);
+  $("pvv").textContent = `${V.toFixed(1)} V`;
+  $("o3").textContent = `P = V²/R = ${V.toFixed(1)}² / ${R} = ${si(P, "W")} · ${(frac * 100).toFixed(0)}% of its ${rated} W rating · about ${Math.round(T)} °C${frac > 1 ? ": over its rating, it will burn" : frac > 0.5 ? ": hot, choose a bigger one" : ": comfortable"}`;
+  done("g3", Math.abs(V - 12) < 0.05 && R === 100 && rated === 3, "3 W: 1.44 W is under half of it. Running cool means running long.");
+}
+for (const id of ["pv", "pr", "pw"]) $(id).oninput = draw3;
+$("pw").insertAdjacentHTML("beforeend", `<option value="3">3 W</option><option value="5">5 W</option>`);
+setInterval(draw3, 100);
+
+// ---------- 4. DC bias on a ceramic ----------
+function draw4() {
+  const V = +$("bv").value, k = +$("pk").value, C0 = 10, rated = 6.3;
+  const cap = (v) => C0 * (1 - k * (v / rated)); // ponytail: a typical X5R shape; real curves come from the datasheet
+  const cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (v) => 60 + (v / rated) * (W - 100), Y = (c) => H - 40 - (c / C0) * (H - 80);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = C.dim; g.lineWidth = 2; g.beginPath(); g.moveTo(60, 30); g.lineTo(60, H - 40); g.lineTo(W - 40, H - 40); g.stroke();
+  g.strokeStyle = C.blue; g.lineWidth = 3; g.beginPath(); for (let v = 0; v <= rated; v += 0.05) { v ? g.lineTo(X(v), Y(cap(v))) : g.moveTo(X(v), Y(cap(v))); } g.stroke();
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(V), Y(cap(V)), 8, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.font = "13px ui-monospace, monospace"; g.fillText("10 µF", 8, Y(10) + 4); g.fillText("0", 44, H - 44); g.fillText("DC volts →", W - 120, H - 14); g.fillText(`${rated} V`, X(rated) - 16, H - 24);
+  $("bvv").textContent = `${V.toFixed(2)} V`;
+  $("o4").textContent = `at ${V.toFixed(1)} V this "10 µF" capacitor is about ${cap(V).toFixed(1)} µF (${Math.round(100 * cap(V) / C0)}%). A bigger package or a higher voltage rating keeps more.`;
+}
+$("bv").oninput = $("pk").onchange = draw4; draw4();
+
+// ---------- 5. batteries ----------
+const BATS = { "AA alkaline": { e: 1.5, r: 0.15, mah: 2500 }, "9 V alkaline": { e: 9, r: 1.5, mah: 550 }, "CR2032 coin cell": { e: 3, r: 15, mah: 225 }, "18650 Li-ion": { e: 3.7, r: 0.05, mah: 3000 }, "LiPo 2S pack": { e: 7.4, r: 0.03, mah: 2200 }, "Car battery": { e: 12.6, r: 0.01, mah: 60000 } };
+$("bat").innerHTML = Object.keys(BATS).map((k) => `<option>${k}</option>`).join("");
+function draw5() {
+  const b = BATS[$("bat").value], imax = Math.min(20, b.e / b.r), I = +$("bi").value * imax * 0.8, V = b.e - I * b.r;
+  const cv = $("c5"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (i) => 60 + (i / (imax * 0.8)) * (W - 100), Y = (v) => H - 40 - (v / b.e) * (H - 80);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.strokeStyle = C.dim; g.lineWidth = 2; g.beginPath(); g.moveTo(60, 30); g.lineTo(60, H - 40); g.lineTo(W - 40, H - 40); g.stroke();
+  g.strokeStyle = C.green; g.lineWidth = 3; g.beginPath(); g.moveTo(X(0), Y(b.e)); g.lineTo(X(imax * 0.8), Y(b.e - imax * 0.8 * b.r)); g.stroke();
+  g.strokeStyle = "rgba(252,98,85,.6)"; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(X(I), Y(b.e)); g.lineTo(X(I), Y(V)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(I), Y(V), 8, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.font = "13px ui-monospace, monospace"; g.fillText(`${b.e} V`, 14, Y(b.e) + 4); g.fillText("current →", W - 100, H - 14); g.fillText(si(imax * 0.8, "A"), X(imax * 0.8) - 30, H - 24);
+  g.fillStyle = C.red; g.fillText(`lost inside: ${(I * b.r).toFixed(2)} V`, X(I) + 10, (Y(b.e) + Y(V)) / 2);
+  $("biv").textContent = si(I, "A");
+  $("o5").textContent = `${b.e} V − ${si(I, "A")} × ${b.r} Ω = ${V.toFixed(2)} V at the terminals · ${si(I * I * b.r, "W")} heating the battery · roughly ${I > 0 ? (b.mah / (I * 1000)).toFixed(1) : "∞"} h from ${b.mah} mAh (less at high current)`;
+}
+$("bat").onchange = $("bi").oninput = draw5; draw5();
+
+// ---------- 6. wire gauge ----------
+const AWG = { 10: 0.00328, 12: 0.00521, 14: 0.00829, 16: 0.0132, 18: 0.0210, 20: 0.0333, 22: 0.0530, 24: 0.0842, 26: 0.134, 28: 0.213 }; // Ω per meter, copper at 20 °C
+$("awg").innerHTML = Object.keys(AWG).map((k) => `<option ${k === "22" ? "selected" : ""}>${k}</option>`).join("");
+function draw6() {
+  const r = AWG[$("awg").value], L = +$("wl").value, I = +$("wi").value, R = r * 2 * L, drop = I * R, Vs = 12;
+  const cv = $("c6"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const thick = Math.max(2, 18 - (+$("awg").value - 10) * 0.8);
+  for (let x = 60; x < W - 60; x += 4) { const f = (x - 60) / (W - 120), v = Vs - (drop * f) / 2; g.fillStyle = `hsl(${(v / Vs) * 120}, 70%, 50%)`; g.fillRect(x, 80 - thick / 2, 4, thick); g.fillRect(x, 130 - thick / 2, 4, thick); }
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("12 V supply", 6, 60); g.fillText(`load gets ${(Vs - drop).toFixed(2)} V`, W - 190, 60);
+  g.fillStyle = "#8f98a8"; g.fillText(`${L} m there + ${L} m back`, W / 2 - 80, 175);
+  $("wlv").textContent = `${L.toFixed(1)} m`; $("wiv").textContent = `${I.toFixed(1)} A`;
+  $("o6").textContent = `R = ${r.toFixed(4)} Ω/m × ${(2 * L).toFixed(1)} m = ${R.toFixed(3)} Ω · drop ${drop.toFixed(2)} V (${((drop / Vs) * 100).toFixed(1)}% of 12 V) · ${(I * I * R).toFixed(1)} W warming the wire`;
+}
+for (const id of ["awg", "wl", "wi"]) $(id).oninput = draw6; draw6();
+
+window.blipContext = () => ({ page: "Electronics chapter 5: Real parts (color codes, E-series, power ratings, capacitor types, batteries, wire gauge, datasheets)", resistor: `${si(value(), "Ω")} ±${TOL[band[3]][2]}%`, battery: $("bat").value });
+</script>
+</body>
+</html>
