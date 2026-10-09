@@ -1,5 +1,6 @@
 // Chapter 7: throwing away snapshots. Decimation: filter, then keep every M-th sample.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, line, label, dot } from "./anim.ts";
 import { avgSpectrum, mix, synth, DEMO_SIGNALS, firLowpass, FirDecimator, Mixer } from "../dsp.ts";
 import { spectrumOfIQ } from "../waterfall.ts";

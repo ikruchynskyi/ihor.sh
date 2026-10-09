@@ -1,5 +1,6 @@
 // Chapter 16: the whole receiver. The map, a benchmark in your own browser, and what's next.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, label, line } from "./anim.ts";
 import { synth, Mixer, FirDecimator, FmDemod, Deemphasis, firLowpass, Agc } from "../dsp.ts";
 import { spectrumOfIQ } from "../waterfall.ts";

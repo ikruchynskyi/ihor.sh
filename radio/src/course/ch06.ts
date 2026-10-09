@@ -1,5 +1,6 @@
 // Chapter 6: averaging is filtering. Moving averages, frequency response, windowed sinc.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, line, label, dot, circle, arrow } from "./anim.ts";
 import { mix, avgSpectrum, synth, DEMO_SIGNALS, firLowpass, freqResponse, FirDecimator, Mixer } from "../dsp.ts";
 import { spectrumOfIQ } from "../waterfall.ts";

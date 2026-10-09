@@ -1,5 +1,6 @@
 // Chapter 17: pictures over radio (SSTV). A row played as tones, line anatomy, the VIS header, hearing pitch, slant.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, label, line, arrow } from "./anim.ts";
 import { playOnce } from "./audio.ts";
 import { MODES, encode, SstvDecoder, lineMs, durationS, type Mode, type Seg } from "../sstv.ts";

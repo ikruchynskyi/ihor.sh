@@ -1,5 +1,6 @@
 // Chapter 11: from numbers to speakers. Clocks that drift, rate conversion, automatic volume, squelch.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, line, label, dot } from "./anim.ts";
 import { Agc, Squelch, AmDemod, Receiver, type Mode } from "../dsp.ts";
 import { playOnce, LivePlayer } from "./audio.ts";

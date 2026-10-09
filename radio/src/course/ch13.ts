@@ -1,5 +1,6 @@
 // Chapter 13: USB from zero. Descriptors, setup packets, bus time, and raw WebUSB calls.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, line, label } from "./anim.ts";
 
 const el = (id: string) => document.getElementById(id)!;

@@ -60,8 +60,9 @@
 
   <div class="ponder"><span class="tag">Wait: 98 million turns, 2.4 million photos?</span>A station at 98.7 MHz turns 98.7 million times per second, far outside an honest zone of ±1.2 MHz. So how can the dongle photograph it at all? Because, before taking any photos, its tuner chip <b>slows every arrow down</b> by the frequency you tuned to. Tune to 98.0 MHz, and a station at 98.7 MHz now spins at only 0.7 MHz, one at 97.5 MHz at −0.5 MHz, and the photos only ever see these slow, leftover speeds. That's what "around where it's tuned" means. Chapter 5 shows how slowing arrows down works (it's one multiplication), and chapter 12 how the chip does it with electronics.</div>
 
-  <div class="ponder"><span class="tag">Pause and ponder</span>The dongle takes 2.4 million photos per second and you tune it to 98.0 MHz. A station at 99.5 MHz is 1.5 MHz above the center: that's 0.625 turns per photo. Where would it seem to be if nothing filtered it out?</div>
-  <p>Answer: 0.625 − 1 = −0.375 turns per photo, which is −0.9 MHz: it would pretend to be a station at 97.1 MHz, right on top of a real station there.</p>
+  <div class="q" data-num="97.1" data-tol="0.05" data-unit="MHz"><p>The dongle takes 2.4 million photos per second and you tune it to 98.0 MHz. A station at 99.5 MHz is 1.5 MHz above the center: that's 0.625 turns per photo. Where would it seem to be if nothing filtered it out? (Give the frequency it would pretend to be, in MHz.)</p>
+    <div class="why">0.625 − 1 = −0.375 turns per photo, which is −0.9 MHz: it would pretend to be a station at 97.1 MHz, right on top of a real station there.</div>
+  </div>
 
   <!-- 3 -->
   <h2 id="freeze">A game: freeze the wheel</h2>

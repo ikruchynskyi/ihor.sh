@@ -1,5 +1,6 @@
 // Chapter 12: inside the dongle. The analog front end, the image problem, and the PLL.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, line, label } from "./anim.ts";
 import { spectrumOf } from "../waterfall.ts";
 import { spectrum } from "./plots.ts";

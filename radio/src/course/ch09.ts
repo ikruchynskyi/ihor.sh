@@ -1,5 +1,6 @@
 // Chapter 9: FM, listening to the speed. The demodulator, its noise, de-emphasis, and what's in a broadcast.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, arrow, circle, dot, line, label, grid, toPx, type Plane, type Handle } from "./anim.ts";
 import { synth, Mixer, FirDecimator, FmDemod, Deemphasis, firLowpass, Agc, fft } from "../dsp.ts";
 import { MPX } from "./data/mpx.ts";

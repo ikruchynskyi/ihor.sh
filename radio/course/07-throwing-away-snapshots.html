@@ -43,8 +43,9 @@
   </ul>
   <p>So the rule is: <b>filter first, then decimate</b>, and choose M so the new sample rate stays comfortably above the width of what you're keeping.</p>
 
-  <div class="ponder"><span class="tag">Pause and ponder</span>The new rate is 256 kHz (M = 4). An unfiltered neighbor sits at +350 kHz. Where does it land? (Hint: chapter 3's sawtooth subtracts whole sample rates until it fits in −128…+128 kHz.)</div>
-  <p>350 − 256 = 94 kHz. Right inside the ±100 kHz you were keeping for your station.</p>
+  <div class="q" data-num="94" data-tol="0.5" data-unit="kHz"><p>The new rate is 256 kHz (M = 4). An unfiltered neighbor sits at +350 kHz. Where does it land? (Hint: chapter 3's sawtooth subtracts whole sample rates until it fits in −128…+128 kHz.)</p>
+    <div class="why">350 − 256 = 94 kHz. Right inside the ±100 kHz you were keeping for your station.</div>
+  </div>
 
   <!-- 2 -->
   <h2 id="skip">Only compute what you keep</h2>

@@ -1,5 +1,6 @@
 // Chapter 1: spinning arrows. Every scene is the same idea seen from a new angle.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, arrow, circle, dot, line, label, curve } from "./anim.ts";
 
 const el = (id: string) => document.getElementById(id)!;

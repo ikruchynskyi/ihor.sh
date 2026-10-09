@@ -1,5 +1,6 @@
 // Chapter 3: taking snapshots. Sampling, aliasing, Nyquist, and 8-bit measurements.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, arrow, circle, dot, line, label } from "./anim.ts";
 import { captureBytes, CAPTURE } from "./data/capture.ts";
 import { lab } from "./lab.ts";

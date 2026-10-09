@@ -1,5 +1,6 @@
 // Chapter 2: arrows as numbers. Every scene lives on the same "arrow plane".
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, arrow, circle, dot, line, label, grid, toPx, type Plane, type Handle } from "./anim.ts";
 
 const el = (id: string) => document.getElementById(id)!;

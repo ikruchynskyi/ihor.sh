@@ -1,5 +1,6 @@
 // Chapter 14: writing the driver. The real driver's conversation with the chips, and its source.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { RtlSdr } from "../rtlsdr.ts";
 import { recording, fakeDongle, decode, type Entry } from "./trace.ts";
 import { codeView } from "../codeview.ts";

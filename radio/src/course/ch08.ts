@@ -1,5 +1,6 @@
 // Chapter 8: chunks of a live stream. Every block must remember the end of the previous chunk.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, line, label } from "./anim.ts";
 import { synth, Mixer, FirDecimator, FmDemod, Deemphasis, firLowpass, Receiver } from "../dsp.ts";
 import { playOnce, LivePlayer } from "./audio.ts";

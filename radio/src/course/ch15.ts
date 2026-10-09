@@ -1,5 +1,6 @@
 // Chapter 15: the network source. Odd-sized chunks, bandwidth, channelizing, and a live measurement.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, line, label } from "./anim.ts";
 import { synth, DEMO_SIGNALS, avgSpectrum } from "../dsp.ts";
 

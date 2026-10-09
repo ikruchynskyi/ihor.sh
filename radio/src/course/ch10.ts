@@ -1,5 +1,6 @@
 // Chapter 10: AM, SSB and Morse. Sound in the arrow's length, in one sideband, or in on/off keying.
 import "./course.css";
+import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, arrow, circle, line, label } from "./anim.ts";
 import { SsbDemod, Receiver, Agc, avgSpectrum, type Mode } from "../dsp.ts";
 import { playOnce, LivePlayer } from "./audio.ts";
