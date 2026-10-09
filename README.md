@@ -20,6 +20,8 @@ cloudflared tunnel route dns ihor-sh ihor.sh
 # ingress lives in ~/.cloudflared/config.yml (ihor.sh, www â†’ localhost:8080)
 ```
 
+Server, tunnel and Ollama run as LaunchDaemons that start at boot (no login needed) as the normal user, and restart on crash: `/Library/LaunchDaemons/sh.ihor.{server,tunnel,ollama}.plist` (logs in `~/Library/Logs/ihor-*.log`). Deploy = `git pull && npm run build && pkill -f "node server.ts"` (launchd starts it again).
+
 ## radio/
 
 A software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus a course that teaches how it works.
@@ -49,5 +51,3 @@ Small static pages built on NYC open data: **Subway Bailout** (live MTA alerts â
 ## ideas-page/
 
 The template for a browsable version of the project backlog.
-
-Both run as launchd agents that start at login and restart on crash: `~/Library/LaunchAgents/sh.ihor.server.plist` and `sh.ihor.tunnel.plist` (logs in `~/Library/Logs/ihor-*.log`). Deploy = `git pull && npm run build && launchctl kickstart -k gui/$(id -u)/sh.ihor.server`.
