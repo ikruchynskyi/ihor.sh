@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>On the Air</title>
+  <meta name="description" content="Ham radio, visually, lesson 13: operating. Repeaters, offsets and tones, calling CQ, phonetics and Q signals, nets and emergencies, satellites and Doppler, grid squares, contests and DX, and the digital modes in practice." />
+  <style>
+    .tool { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 14px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; margin: 8px 0; }
+    .tool label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+    .tool input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+    .out { font: 1rem ui-sans-serif, system-ui, sans-serif; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); margin: 8px 0 20px; min-height: 1.6em; }
+    .qtable { display: grid; grid-template-columns: 4.5em 1fr; gap: 4px 12px; font-size: 0.95rem; margin-bottom: 18px; }
+    .qtable b { font-family: ui-monospace, Menlo, monospace; color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 13</p>
+  <h1>On the air</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./12-rules-and-bands.html">Lesson 12: rules and bands</a>; <a href="./10-signals-and-modes.html#digital">lesson 10: digital modes</a>; <a href="./09-propagation.html">lesson 9: propagation</a></li>
+    </ul>
+  </div>
+
+  <p>The rules say what you may do; operating practice says how to do it well. Most of it is courtesy and efficiency: listen first, keep it short, make it easy for the other station. This lesson walks through a ham's day: the local repeater, an HF contact, a net, a satellite pass.</p>
+
+  <!-- 1 -->
+  <h2 id="repeater">Repeaters: borrowing a mountaintop</h2>
+  <p>A <b>repeater</b> sits somewhere high, listens on one frequency (its <b>input</b>) and simultaneously retransmits what it hears on another (its <b>output</b>), extending a handheld's range from a few miles to dozens. The difference between the two is the <b>offset</b>: <b>±600 kHz</b> on 2 meters, <b>±5 MHz</b> on 70 cm. Most repeaters also ignore any signal that doesn't carry their access tone. Set up your radio to use this one (output 146.940 MHz, −600 kHz offset, 100.0 Hz tone):</p>
+
+  <div class="scene" id="s-rpt">
+    <div class="controls">
+      <label for="rp-o">Offset <select id="rp-o"><option value="0">none (simplex)</option><option value="-0.6" selected>−600 kHz</option><option value="0.6">+600 kHz</option></select></label>
+      <label for="rp-t"><input id="rp-t" type="checkbox"> Send the 100.0 Hz tone (CTCSS)</label>
+      <label for="rp-r"><input id="rp-r" type="checkbox"> Reverse</label>
+    </div>
+    <p class="readout" id="r-rpt" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The sub-audible tone is <b>CTCSS</b> (continuous tone-coded squelch system): it opens the repeater's squelch. If you can hear a repeater but can't get in, check the offset and the tone (or just that you're out of range): all of these are possible causes.</li>
+    <li><b>Reverse</b> swaps your radio's frequencies so you listen on the repeater's input: if you can hear the other station there directly, you can move to <b>simplex</b> (both stations on one frequency) and free the repeater. That's why band plans set aside simplex channels; the national 2-meter FM simplex calling frequency is <b>146.520 MHz</b>.</li>
+    <li><b>DTMF</b> (the two-tone "touch tone" signals) sends commands to repeaters, such as connecting to <b>IRLP</b>, which links repeaters over the internet. <b>EchoLink</b> lets you transmit through a repeater from a computer or phone (after registering your call sign with proof of license); a station connecting radio to the internet is a <b>gateway</b>. Linked repeater networks retransmit a signal on all their repeaters at once.</li>
+    <li>On a digital (DMR) repeater, the radio's <b>color code</b> is the repeater's access code, and <b>talkgroups</b> (selected by their ID) organize traffic so you only hear the group you joined.</li>
+  </ul>
+  <p>Using a repeater: to call a station you know, say their call sign, then yours. To show you're available, say your call sign followed by "<b>listening</b>". On FM, if your audio drops out on voice peaks, you're talking too loudly; if you're over-deviating, talk farther from the mic.</p>
+
+  <!-- 2 -->
+  <h2 id="phonetics">Say it so it can't be misheard</h2>
+  <p>Over a noisy channel, B, D, E, P, T and V all sound alike. The <b>NATO phonetic alphabet</b> fixes that; use it for call signs and unusual words. Type yours:</p>
+  <div class="tool"><label for="ph-in">Call sign or word<input id="ph-in" value="KF1XXX" maxlength="24" autocomplete="off"></label></div>
+  <div class="out" id="ph-out" aria-live="polite"></div>
+
+  <p>And the most common <b>Q signals</b>, three-letter shorthand from the days of Morse (with a question mark, each becomes a question):</p>
+  <div class="qtable">
+    <b>CQ</b><span>Calling any station.</span>
+    <b>QRL?</b><span>Is this frequency in use? (Always ask before calling.)</span>
+    <b>QRM</b><span>Interference from other stations. <b>QRN</b>: troubled by static (natural noise).</span>
+    <b>QRS</b><span>Send more slowly. (If someone sends QRS?, they're asking you to slow down: send slower.)</span>
+    <b>QRV</b><span>I am ready to receive.</span>
+    <b>QSL</b><span>I have received and understood. (Also the postcard that confirms a contact.)</span>
+    <b>QSY</b><span>Changing frequency.</span>
+    <b>QRP</b><span>Low-power operation (usually 5 W or less).</span>
+  </div>
+  <p>Morse extras: <b>KN</b> at the end of a transmission means "only the station I'm working, go ahead"; <b>AR</b> ends a formal message; a "C" after an RST signal report means chirpy, unstable. <b>Zero beat</b> means matching your transmit frequency exactly to the station you hear. <b>Full break-in</b> (QSK) lets you hear between your own dots and dashes. Answer a CQ no faster than it was sent, and no faster than you can comfortably copy.</p>
+
+  <!-- 3 -->
+  <h2 id="hf">An HF contact, step by step</h2>
+  <ol>
+    <li><b>Pick a frequency</b> following the voluntary <b>band plan</b> (it's not law, but everyone uses it: for example, FT8 lives around 14.074 MHz, most 20-meter digital modes between 14.070 and 14.100). No one owns a frequency, except that emergency traffic always has priority.</li>
+    <li><b>Listen</b>, then ask: on CW, send <b>QRL?</b> with your call; on phone, "Is this frequency in use?" and your call. Leave room for neighbors: about 150–500 Hz for CW, 2–3 kHz for SSB.</li>
+    <li><b>Call CQ</b>: "CQ CQ CQ, this is KF1XXX, KF1XXX", then listen, and repeat. "CQ DX" means the caller wants stations far away (from the lower 48 states: anyone outside them).</li>
+    <li><b>Answering</b>: their call sign, then yours. Exchange <b>signal reports</b> early so each side can adjust. To break into a conversation on phone, say your call sign once.</li>
+    <li>Voice on HF is <b>SSB</b> (narrow and power-efficient): <b>lower sideband</b> on 160, 75/80 and 40 meters, <b>upper sideband</b> on 20 meters and up, on 17 and 12 meters, and on VHF/UHF, purely by long-standing convention. Set the mic gain so the ALC just works. <b>VOX</b> switches to transmit when you speak, for hands-free operation.</li>
+    <li>If propagation changes and another conversation starts to overlap, sort it out amicably; no one has priority. Keep a <b>log</b>: not required, but it helps if the FCC asks about your station.</li>
+  </ol>
+  <p>Reaching far: a directional antenna for a <b>long-path</b> contact points 180° from the short-path heading. An <b>azimuthal projection map</b>, centered on your location, shows true bearings and distances to everywhere. And there's the <b>Volunteer Monitor Program</b>: hams formally enlisted to monitor for rule violations and encourage self-regulation (for example, by comparing beam headings to find a station holding a repeater on).</p>
+
+  <!-- 4 -->
+  <h2 id="grid">Grid squares</h2>
+  <p>Hams give their location as a <b>grid locator</b>: letters and numbers naming a rectangle on the map (Maidenhead locator). VHF contests and FT8 exchange them. Try any coordinates:</p>
+  <div class="tool">
+    <label for="gr-lat">Latitude<input id="gr-lat" type="number" step="0.0001" value="40.7484"></label>
+    <label for="gr-lon">Longitude<input id="gr-lon" type="number" step="0.0001" value="-73.9857"></label>
+  </div>
+  <div class="out" id="gr-out" aria-live="polite"></div>
+
+  <!-- 5 -->
+  <h2 id="contests">Contests and DX</h2>
+  <ul>
+    <li><b>Contesting</b>: contacting as many stations as possible in a set time. Send only the minimum: call sign and the contest exchange, still identifying as the rules require. Contests stay off <b>30 meters</b> (and the other "WARC" bands). In VHF/UHF contests, the activity is in the weak-signal segments near the calling frequencies; with FT8/FT4 there, the <b>grid square</b> replaces the signal report.</li>
+    <li>In a <b>pileup</b>, send your full call sign once or twice. DX stations often transmit and receive on different frequencies (<b>split</b>) to spread the callers out, hear better, and keep their own frequency clear.</li>
+    <li>Logs travel as <b>ADIF</b> files; contest logs are submitted in <b>Cabrillo</b> format; contacts are confirmed through <b>Logbook of The World</b> (LoTW) or paper QSL cards, which a DX station's <b>QSL manager</b> may handle. Operating a remote station located in the US needs no extra indicator after your call. The delay between your action and the transmitter's response is <b>latency</b>.</li>
+    <li><b>Radio direction finding</b> locates noise sources and jammers; a <b>hidden transmitter hunt</b> ("fox hunt") turns it into a game, with a directional antenna (<a class="back" href="./07-antennas.html#receive">↩ lesson 7</a>).</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="emergency">Nets, traffic and emergencies</h2>
+  <ul>
+    <li>A <b>net</b> is an on-air meeting run by a <b>net control station</b>, who calls it to order and directs the stations checking in. Transmit only when directed (unless reporting an emergency). Good nets have a backup frequency.</li>
+    <li><b>Traffic</b> is formal messages. A radiogram's <b>preamble</b> holds the information to track it; its <b>check</b> is the number of words in the text. Spell unusual words phonetically.</li>
+    <li><b>ARES</b> (Amateur Radio Emergency Service): licensed volunteers who registered their skills and equipment for public service. <b>RACES</b> is an FCC Part 97 service for civil-defense communications, requiring certification by a civil-defense agency; only FCC-licensed amateurs may be its control operators, and its drills are limited to 1 hour a week without special authorization.</li>
+    <li><b>Winlink</b> carries email over radio, with addresses based on call signs, through gateway stations (Remote Message Servers), using protocols like <b>VARA</b> and PACTOR. <b>AREDN</b> mesh networks provide high-speed data for emergencies and events.</li>
+    <li>The FCC rules always apply, even in emergencies, but they themselves allow any means of communication, including outside your license privileges, when there's an <b>immediate threat to human life or property</b> and no other means is available. If a station in distress breaks into your contact: stop, acknowledge them, and find out what help is needed.</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="satellites">Working satellites</h2>
+  <p>Amateur satellites and the ISS pass overhead several times a day. A <b>low Earth orbit</b> (LEO) satellite circles the Earth in about <b>100 minutes</b> and is in view for ten minutes or so. As it approaches, its signal is higher in frequency; as it recedes, lower: the <b>Doppler shift</b>. Watch a pass:</p>
+
+  <div class="scene" id="s-sat">
+    <div class="controls"><label for="sa-e">Pass height (max elevation) <input id="sa-e" type="range" min="10" max="88" step="1" value="55"><output id="sa-eo"></output></label></div>
+    <p class="readout" id="r-sat" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A tracking program (fed with <b>Keplerian elements</b>, the numbers describing the orbit) predicts passes, points your antenna, and corrects for Doppler. An <b>ascending pass</b> goes from south to north. A <b>geostationary</b> satellite appears to stay still in the sky.</li>
+    <li>A satellite's <b>mode</b> names its uplink and downlink bands: <b>U/V</b> means up on 70 cm, down on 2 m. "L band" and "S band" are 23 cm and 13 cm.</li>
+    <li>Many satellites use a <b>linear transponder</b>, which relays a whole slice of band (SSB, CW, data, anything); an <b>inverting</b> one mixes it with a local oscillator and transmits the difference, flipping the slice (upper sideband up becomes lower sideband down). Use only enough uplink power: your downlink should be about as strong as the satellite's <b>beacon</b>, which sends telemetry about the satellite's health (anyone may receive it). Too much power takes the transponder's power away from everyone else.</li>
+    <li>A spinning satellite's signal fades as its antennas rotate (<b>spin fading</b>); <b>circularly polarized</b> antennas reduce that and Faraday rotation. <b>Store-and-forward</b> satellites hold digital messages for later download. Technicians and up may work the ISS; satellites carry FM, SSB, CW and data.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="digital">Digital modes in practice</h2>
+  <ul>
+    <li><b>FT8</b>: 15-second cycles, so your computer clock must be accurate to about a second; answer a CQ on a clear frequency in the <b>alternate</b> time slot; always USB (as are JT65, JT9 and FT4). FT4 uses four tones. These WSJT-X modes decode far below the noise; <b>Q65</b> (averaging several receive cycles) is designed for moonbounce, <b>MSK144</b> for meteor scatter; <b>WSPR</b> is a beacon mode with no keyboard chat; FST4 offers several speeds for weak signals.</li>
+    <li><b>RTTY</b>: FSK with a <b>170 Hz</b> shift, sent as AFSK on <b>LSB</b> by convention. If you can't decode an apparently well-tuned signal, the shift, the baud rate or the sidebands could be wrong (all of these). Direct FSK keys the transmitter's VFO; AFSK feeds tones into the microphone input.</li>
+    <li><b>PACTOR</b> links exactly two stations (you can't join a contact) and can transfer binary files; PACTOR IV is the fastest of the common HF modes under good conditions. Interference makes PACTOR or VARA slow down, resend, or drop the link.</li>
+    <li><b>PSK31</b> uses variable-length character codes; FT8 has the narrowest bandwidth of the common modes. Data emissions below 30 MHz are generally FSK.</li>
+    <li><b>APRS</b> uses the <b>AX.25</b> packet protocol, sending beacons as Unnumbered Information frames, relayed by <b>digipeaters</b>; the path WIDE3-1 asks for three hops with one remaining. APRS tracks balloons in real time.</li>
+    <li><b>ALE</b> (automatic link establishment) scans a list of frequencies and wakes the radio when its call sign is heard. EME contacts take turns in timed transmissions.</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T2A01 / T2A03: Common repeater offsets? <i>±600 kHz on 2 m; ±5 MHz on 70 cm.</i></summary><p>Set the repeater scene to the right offset and tone to get in.</p></details>
+  <details><summary>T2B01: What does the reverse function do? <i>Listens on the repeater's input frequency.</i></summary><p>If you hear the other station directly there, you can use simplex instead.</p></details>
+  <details><summary>T8B07: What is Doppler shift? <i>A change in frequency caused by relative motion between satellite and station.</i></summary><p>In the satellite scene, the downlink starts high, crosses zero shift at closest approach, and ends low.</p></details>
+  <details><summary>G2A01: Most common voice mode at 14 MHz and up? <i>Upper sideband.</i></summary><p>Convention: LSB below 10 MHz, USB above.</p></details>
+  <details><summary>E2E06: Length of an FT8 transmission cycle? <i>15 seconds.</i></summary><p>Stations alternate between even and odd 15-second slots, hence the clock accuracy requirement.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T2,T8B,T8C">Technician T2, T8B, T8C</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G2">General G2</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E2A,E2C,E2D,E2E">Extra E2A, E2C–E2E</a>
+    </p>
+  </div>
+
+  <nav class="next">
+    <a href="./12-rules-and-bands.html">← Lesson 12: Rules and bands</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l13.ts"></script>
+</body>
+</html>
