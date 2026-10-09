@@ -341,7 +341,7 @@ UNITS = [
    "quiz": [{"q": "朝食は七時から＿＿＿＿＿＿。", "hint": "You can have breakfast from seven (honorific).", "choices": ["召し上がれます", "いただけます", "食べさせます"], "answer": 0, "why": "The guest eats: honorific 召し上がる."}]},
   {"id": "humble", "title": "謙譲語: lowering yourself",
    "explain": "Staff lower their own actions: お待ちしております (we've been waiting), 拝見します (I'll look), いたします (I'll do), 申します (my name is). おる = humble いる.",
-   "examples": [("お待ちしておりました=we've been expecting you|。", "We've been expecting you."), ("パスポート=passport|^を=(object)|拝見{はいけん}します=I'll look|。", "May I see your passport?")],
+   "examples": [("お待ちしておりました{おまちしておりました}=we've been expecting you|。", "We've been expecting you."), ("パスポート=passport|^を=(object)|拝見{はいけん}します=I'll look|。", "May I see your passport?")],
    "quiz": [{"q": "パスポートを＿＿＿＿します。", "hint": "I'll (humbly) look at your passport.", "choices": ["拝見", "ご覧", "見せ"], "answer": 0, "why": "Your own action, humble: 拝見する."}]},
   {"id": "gozaimasu", "title": "ございます: very polite 'is / there is'",
    "explain": "ございます = あります, でございます = です, used in shops and hotels.",
