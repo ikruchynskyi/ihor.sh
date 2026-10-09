@@ -32,22 +32,114 @@
   <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A neuron's output over the plane, with a draggable weight arrow and probe point"></canvas><p class="readout" id="r1"></p></div>
   <div class="row"><label>bias b <input type="range" id="bias" min="-6" max="6" step="0.1" value="0"> <span id="bv" class="math">0</span></label></div>
   <p>Look at the shading: the neuron splits the plane with a straight line, where <span class="math">z = 0</span> and it's exactly 50% sure. That line is always <b>perpendicular to the weight arrow</b>. The arrow points toward "more blue", its length says how sharp the switch is (a long arrow means a crisp edge, a short one a fuzzy blur), and the bias slides the line back and forth without turning it. Remember chapter 1: <span class="math">w₁·x₁ + w₂·x₂</span> is a matrix with one row. A neuron is a tiny layer.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Written with chapter 1's dot product, the neuron is</p>
+    <p class="formula">\[ z = w \cdot x + b, \qquad \hat p = \sigma(z) = \frac{1}{1 + e^{-z}} \]</p>
+    <p>Why the edge is a straight line perpendicular to \(w\): the edge is where \(z = 0\), i.e. \(w \cdot x = -b\). Take two points \(p\) and \(q\) on it. Then \(w \cdot p = w \cdot q = -b\), so \(w \cdot (p - q) = 0\): the edge's direction \(p - q\) is at right angles to \(w\). The edge sits at distance \(|b| / \lVert w \rVert\) from the origin.</p>
+    <p>Why a long arrow makes a crisp edge: walk a distance \(d\) away from the edge along \(w\)'s direction and \(z\) grows by \(\lVert w \rVert\, d\). Double \(w\) and the sigmoid's S-curve is squeezed into half the width.</p>
+    <p>And why the sigmoid: it turns "how far past the edge" into a probability. \(\sigma(0) = 0.5\), \(\sigma(2) \approx 0.88\), \(\sigma(-2) \approx 0.12\), \(\sigma(5) \approx 0.993\). It also has a slope that's easy to compute from its own output: \(\sigma'(z) = \sigma(z)\,(1 - \sigma(z))\). We'll need that in a minute.</p>
+  </details>
+  <div class="q" data-num="2">
+    <p>Weights \(w = (2, -1)\), bias \(b = 1\), point \(x = (1, 1)\). What is \(z\)?</p>
+    <div class="why">\(z = 2 \cdot 1 + (-1) \cdot 1 + 1 = 2\).</div>
+  </div>
+  <div class="q" data-num="0.88" data-tol="0.01">
+    <p>…and the neuron's output \(\sigma(z) = 1/(1 + e^{-2})\)? (Two decimals; \(e^{-2} \approx 0.135\).)</p>
+    <div class="why">\(1 / 1.135 \approx 0.88\): 88% sure the point is blue.</div>
+  </div>
+  <div class="code" data-title="Build it: one neuron"><textarea>
+const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+const neuron = (w, b, x) => sigmoid(w[0] * x[0] + w[1] * x[1] + b);
+
+const w = [2, -1], b = 1;
+for (const x of [[1, 1], [0, 0], [-1, 1], [3, 0]]) print(x, "→", neuron(w, b, x).toFixed(3));
+
+// Same edge, sharper: multiply w and b by 5. Points on the edge stay at 0.5, the rest go to 0 or 1.
+for (const x of [[1, 1], [-1, 1]]) print("sharper", x, "→", neuron([10, -5], 5, x).toFixed(3));
+</textarea></div>
 
   <h2>2. Watch it learn</h2>
   <p>Here are two clouds of points. We want the neuron to say "blue" for blue points and "red" for red ones. Its loss (how wrong it is) is the <b>log loss</b>: for each point, how surprised the neuron is by the right answer. Training is chapter 2's loop: compute the gradient of the loss with respect to <span class="math">w₁, w₂, b</span>, step downhill, repeat.</p>
   <div class="scene"><canvas id="s2" width="800" height="600" aria-label="A neuron learning to separate two clouds of points"></canvas><p class="readout" id="r2"></p></div>
   <div class="row"><button id="train2">Train</button><button id="reset2">Forget everything</button><button id="new2">New clouds</button><span class="muted">Drag points around · click empty space to add a blue point, shift-click (or long-press) for red</span></div>
   <p>Notice what the gradient does here, in plain words: every misclassified point pulls the line toward itself and pushes the weight arrow toward its own side. Points the neuron already gets right, with confidence, barely pull at all. That's the whole of learning for one neuron: lots of small nudges from its mistakes.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Label blue points \(y = 1\) and red ones \(y = 0\). The <b>log loss</b> of one point is the surprise at the truth:</p>
+    <p class="formula">\[ L = -\big[\, y \ln \hat p + (1 - y) \ln (1 - \hat p) \,\big] \]</p>
+    <p>For a blue point that's \(-\ln \hat p\); for a red one, \(-\ln(1 - \hat p)\). To train we need \(\partial L / \partial w\). Go in two hops (the chain rule):</p>
+    <p class="formula">\[ \frac{\partial L}{\partial \hat p} = -\frac{y}{\hat p} + \frac{1 - y}{1 - \hat p}, \qquad \frac{\partial \hat p}{\partial z} = \hat p (1 - \hat p) \]</p>
+    <p>Multiply them and almost everything cancels:</p>
+    <p class="formula">\[ \frac{\partial L}{\partial z} = \hat p - y, \qquad \frac{\partial L}{\partial w} = (\hat p - y)\, x, \qquad \frac{\partial L}{\partial b} = \hat p - y \]</p>
+    <p>That's the pull you see in the picture, as a formula. \(\hat p - y\) is "how wrong", between −1 and 1. A blue point the neuron calls 20% blue has \(\hat p - y = -0.8\): a strong pull, and the step \(w \leftarrow w - \eta (\hat p - y) x\) moves \(w\) <em>toward</em> \(x\). A blue point at 99% has −0.01: barely any pull. Averaged over all points, that's one training step.</p>
+  </details>
+  <div class="q" data-num="-0.8">
+    <p>A blue point (\(y = 1\)) at \(x = (2, 1)\); the neuron says \(\hat p = 0.2\). What is \(\partial L / \partial z\)?</p>
+    <div class="why">\(\hat p - y = 0.2 - 1 = -0.8\). Then \(\partial L/\partial w = -0.8 \cdot (2, 1) = (-1.6, -0.8)\), and stepping against it adds a multiple of (2, 1) to \(w\): the weight arrow turns toward the point.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>A red point (\(y = 0\)) that the neuron is 99% sure is red (\(\hat p = 0.01\)). How much does it pull on the weights?</p>
+    <ul><li data-k="a" data-says="Its error is p̂ − y = 0.01: tiny, not big.">A lot: every point counts equally</li><li data-k="b" data-says="It pulls in the right direction, just very gently.">It pushes the line the wrong way</li><li data-k="c">Almost nothing: \(\hat p - y = 0.01\)</li></ul>
+    <div class="why">Points that are already right and confident contribute almost nothing to the gradient. Learning is driven by the mistakes and the near-misses.</div>
+  </div>
+  <div class="code" data-title="Build it: train a neuron from scratch"><textarea>
+// Two clouds of points: blue (y = 1) around (1, 1), red (y = 0) around (-1, -1)
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+const data = [];
+for (let i = 0; i < 100; i++) {
+  data.push({ x: [1 + gauss() * 0.7, 1 + gauss() * 0.7], y: 1 });
+  data.push({ x: [-1 + gauss() * 0.7, -1 + gauss() * 0.7], y: 0 });
+}
+const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+
+let w = [0, 0], b = 0;
+const lr = 0.5, losses = [];
+for (let epoch = 0; epoch < 60; epoch++) {
+  let gw = [0, 0], gb = 0, L = 0;
+  for (const { x, y } of data) {
+    const p = sigmoid(w[0] * x[0] + w[1] * x[1] + b);
+    L += -(y * Math.log(p) + (1 - y) * Math.log(1 - p)) / data.length;
+    const err = p - y;                       // ∂L/∂z
+    gw[0] += err * x[0] / data.length; gw[1] += err * x[1] / data.length; gb += err / data.length;
+  }
+  w = [w[0] - lr * gw[0], w[1] - lr * gw[1]]; b -= lr * gb;
+  losses.push(L);
+}
+const correct = data.filter(({ x, y }) => (sigmoid(w[0] * x[0] + w[1] * x[1] + b) > 0.5) === (y === 1)).length;
+print("w =", w, " b =", b.toFixed(3), " accuracy", (100 * correct / data.length).toFixed(1) + "%");
+plot(losses, { label: "log loss per epoch" });
+</textarea></div>
 
   <h2>3. What one neuron can't do</h2>
   <p>Now a pattern a child can see: blue in two opposite corners, red in the other two (it's called <b>XOR</b>). Train the single neuron on it.</p>
   <div class="scene"><canvas id="s3" width="800" height="600" aria-label="The XOR pattern: one neuron fails, a small network succeeds"></canvas><p class="readout" id="r3"></p></div>
   <div class="row"><button id="train3">Train one neuron</button><button id="net3">Train a hidden layer (4 neurons)</button><button id="reset3">Reset</button></div>
   <p>It can't. However it turns its line, one straight cut can't put opposite corners together, so it gets stuck around half right. This exact problem stalled neural network research for a decade in the 1970s. The fix is the one from chapter 1: <b>stack layers</b>. Four neurons in a hidden layer each make their own cut; a final neuron combines their answers, and now the boundary can bend around the corners. Press the second button and watch it curve.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>Why no line works: suppose \(w_1 x_1 + w_2 x_2 + b\) is positive at (0, 1) and (1, 0) (blue) and negative at (0, 0) and (1, 1) (red). Add the two blue inequalities: \(w_1 + w_2 + 2b > 0\). Add the two red ones: \(w_1 + w_2 + 2b < 0\). Both can't be true. No weights exist.</p>
+    <p>With a hidden layer it's easy, even by hand. XOR is "OR, but not AND", so build those as neurons with big weights (a big weight makes the sigmoid act like a switch):</p>
+    <p class="formula">\[ h_1 = \sigma(20x_1 + 20x_2 - 10)\ \ (\text{OR}), \quad h_2 = \sigma(-20x_1 - 20x_2 + 30)\ \ (\text{NAND}), \quad \hat p = \sigma(20h_1 + 20h_2 - 30)\ \ (\text{AND}) \]</p>
+    <p>The hidden layer moves the four corners to new positions \((h_1, h_2)\) where one straight line does separate them: (0,0) → (0, 1), (1,1) → (1, 0), and both blue corners → (1, 1). That's chapter 1's picture again: move and fold space until the answer is a straight cut.</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>In the hand-built network, where does the corner (1, 1) end up in the hidden layer, \((h_1, h_2)\)?</p>
+    <ul><li data-k="a" data-says="h₂ is NAND: for (1, 1) it's −20 − 20 + 30 = −10, so σ(−10) ≈ 0.">(1, 1)</li><li data-k="b">(1, 0)</li><li data-k="c" data-says="h₁ is OR: 20 + 20 − 10 = 30, σ(30) ≈ 1.">(0, 1)</li></ul>
+    <div class="why">\(h_1 = \sigma(30) \approx 1\), \(h_2 = \sigma(-10) \approx 0\). The output neuron (AND) then gets \(20 + 0 - 30 = -10\): red, correctly.</div>
+  </div>
+  <div class="code" data-title="Build it: XOR, wired by hand"><textarea>
+const σ = (z) => 1 / (1 + Math.exp(-z));
+const xor = ([x1, x2]) => {
+  const h1 = σ(20 * x1 + 20 * x2 - 10);      // OR
+  const h2 = σ(-20 * x1 - 20 * x2 + 30);     // NAND
+  return { h: [+h1.toFixed(2), +h2.toFixed(2)], out: +σ(20 * h1 + 20 * h2 - 30).toFixed(3) };
+};
+for (const x of [[0, 0], [0, 1], [1, 0], [1, 1]]) print(x, "→ hidden", xor(x).h, "→", xor(x).out);
+// Next chapter: how a network finds weights like these by itself (backprop).
+</textarea></div>
   <p>But how did that hidden layer learn? Each of its neurons had to figure out its share of the blame for the final answer, through the neuron after it. Passing blame backwards like that is <a href="./04-backprop.html"><b>backpropagation</b></a>: the next chapter.</p>
 
   <p class="muted">Previous: <a href="./02-gradients.html">Gradients</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">Neural Networks</a> series.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

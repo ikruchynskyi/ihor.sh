@@ -22,6 +22,7 @@
     .elabel { fill: #f4d35e; font-size: 12px; text-anchor: middle; }
     table { border-collapse: collapse; width: 100%; font: 15px ui-monospace, Menlo, monospace; }
     td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; } th:first-child, td:first-child { text-align: left; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -36,6 +37,14 @@
   <div class="row"><label>x <input type="range" id="x1" min="-2" max="2" step="0.01" value="0.5"> <span id="x1v" class="math">0.50</span></label><label>nudge Δx <input type="range" id="dx" min="0" max="0.2" step="0.001" value="0.05"> <span id="dxv" class="math">0.050</span></label></div>
   <p class="readout" id="r1"></p>
   <p>Each machine stretches the nudge by its own slope: ×3, then ×1, then ×2·(its input). The final nudge is the product of all three, so the derivative of the whole chain is the <b>product of the local slopes</b>. That's the chain rule. Notice we can compute it either way: start at <span class="math">x</span> and multiply forward, or start at the end and multiply backward. Backward turns out to be the magic trick.</p>
+  <div class="levels">
+    <div><b>The picture</b>Each machine stretches a small nudge by its own slope. Stretches multiply.</div>
+    <div><b>The math</b>The chain rule: for \(c(b(a(x)))\), \(\dfrac{dc}{dx} = \dfrac{dc}{db} \cdot \dfrac{db}{da} \cdot \dfrac{da}{dx}\).</div>
+  </div>
+  <div class="q" data-num="21">
+    <p>Set \(x = 0.5\). Then \(a = 3x = 1.5\), \(b = a + 2 = 3.5\), \(c = b^2\). What is \(dc/dx\)? (Multiply the three local slopes.)</p>
+    <div class="why">\(3 \times 1 \times 2b = 3 \times 1 \times 7 = 21\). A nudge of 0.01 in \(x\) moves \(c\) by about 0.21. Check it with the sliders.</div>
+  </div>
 
   <h2>2. A tiny network, forward and backward</h2>
   <p>Here's one neuron feeding another, computing a prediction <span class="math">ŷ</span> for an input <span class="math">x = 1.5</span>, and the loss: how far <span class="math">ŷ</span> is from the target <span class="math">y = 0.8</span>, squared. Dashed boxes are the weights we can change. Press <b>Forward</b> to compute values left to right, then <b>Backward</b> to pass blame right to left.</p>
@@ -43,20 +52,129 @@
   <div class="row"><button id="fwd">Forward</button><button id="bwd" disabled>Backward</button><button id="upd" disabled>Step downhill</button><button id="auto">Train 50 steps</button><button id="reset">Reset</button></div>
   <p class="readout" id="r2"></p>
   <p>Read the red numbers right to left. The loss starts with blame 1 (it's what we measure). Each node hands blame to the nodes it came from, multiplied by the <span style="color:#d4a72c">local slope</span> on the arrow between them: how much it moves when that input moves. A node used twice would add up the blame from both uses. When the pass reaches a weight, its red number is exactly <span class="math">∂loss/∂weight</span>: chapter 2's gradient. "Step downhill" moves every weight against its gradient, and the next forward pass has a smaller loss.</p>
+  <details class="deeper" open><summary>The math, every number</summary>
+    <p><b>Forward</b>, with \(w_1 = 0.6,\ b_1 = -0.2,\ w_2 = -0.9,\ b_2 = 0.3,\ x = 1.5,\ y = 0.8\):</p>
+    <p class="formula">\[ z = 0.6 \cdot 1.5 - 0.2 = 0.7,\quad h = \tanh 0.7 = 0.604,\quad \hat y = -0.9 \cdot 0.604 + 0.3 = -0.244,\quad L = (-0.244 - 0.8)^2 = 1.090 \]</p>
+    <p><b>Backward</b>. Start with \(\partial L / \partial L = 1\) and multiply by each local slope as you go left:</p>
+    <p class="formula">\[ \frac{\partial L}{\partial \hat y} = 2(\hat y - y) = -2.088 \]</p>
+    <p class="formula">\[ \frac{\partial L}{\partial w_2} = -2.088 \cdot h = -1.262, \qquad \frac{\partial L}{\partial b_2} = -2.088 \cdot 1, \qquad \frac{\partial L}{\partial h} = -2.088 \cdot w_2 = 1.879 \]</p>
+    <p class="formula">\[ \frac{\partial L}{\partial z} = 1.879 \cdot (1 - h^2) = 1.879 \cdot 0.635 = 1.193 \qquad (\tanh' z = 1 - \tanh^2 z) \]</p>
+    <p class="formula">\[ \frac{\partial L}{\partial w_1} = 1.193 \cdot x = 1.789, \qquad \frac{\partial L}{\partial b_1} = 1.193 \]</p>
+    <p>Notice the bookkeeping: each node needs only the blame arriving from its right and its own local slope, which uses values saved from the forward pass. No node needs to know anything about the rest of the graph. That locality is why backprop can be written once, as a library, and work for any network.</p>
+    <p>Two rules cover every graph. Along a path, slopes <b>multiply</b>. Where a value feeds into several places, the blames coming back from each place <b>add up</b> (because a nudge to it moves all of them at once).</p>
+  </details>
+  <div class="q" data-answer="c">
+    <p>Press Forward, Backward, then "Step downhill" with a learning rate of 0.1. Which way does \(w_1\) move, and roughly by how much?</p>
+    <ul><li data-k="a" data-says="The gradient ∂L/∂w₁ is +1.789, and the step goes against the gradient.">Up by about 0.18</li><li data-k="b" data-says="The step is the learning rate times the gradient: 0.1 × 1.789.">Down by about 1.8</li><li data-k="c">Down by about 0.18</li></ul>
+    <div class="why">\(w_1 \leftarrow 0.6 - 0.1 \cdot 1.789 \approx 0.42\). Smaller \(w_1\) means smaller \(h\), and since \(w_2\) is negative, a larger \(\hat y\): closer to the target 0.8.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>A value \(u\) feeds two later nodes. Backward brings blame 0.5 from one and −2 from the other. What is \(\partial L/\partial u\)?</p>
+    <ul><li data-k="a">−1.5: blames from every use add</li><li data-k="b" data-says="Multiplying is for slopes along one path. Separate uses add.">−1: they multiply</li><li data-k="c" data-says="Every use matters: a nudge to u moves both later nodes at once.">0.5: only the first use counts</li></ul>
+    <div class="why">Nudge \(u\) by \(\varepsilon\): the first use changes the loss by \(0.5\varepsilon\), the second by \(-2\varepsilon\), together \(-1.5\varepsilon\).</div>
+  </div>
+  <div class="code" id="engine" data-title="Build it: an autograd engine in 40 lines (like micrograd)"><textarea>
+// Every number remembers how it was made, so it can pass blame back to what made it.
+class Value {
+  constructor(data, parents = [], op = "") { this.data = data; this.grad = 0; this.parents = parents; this.op = op; this.backStep = () => {}; }
+  add(o) { o = o instanceof Value ? o : new Value(o);
+    const out = new Value(this.data + o.data, [this, o], "+");
+    out.backStep = () => { this.grad += out.grad; o.grad += out.grad; };            // slope 1 to each input
+    return out; }
+  mul(o) { o = o instanceof Value ? o : new Value(o);
+    const out = new Value(this.data * o.data, [this, o], "*");
+    out.backStep = () => { this.grad += o.data * out.grad; o.grad += this.data * out.grad; };  // slope = the other one
+    return out; }
+  sub(o) { return this.add(o instanceof Value ? o.mul(-1) : -o); }
+  pow(n) { const out = new Value(this.data ** n, [this], "^");
+    out.backStep = () => { this.grad += n * this.data ** (n - 1) * out.grad; };
+    return out; }
+  tanh() { const t = Math.tanh(this.data), out = new Value(t, [this], "tanh");
+    out.backStep = () => { this.grad += (1 - t * t) * out.grad; };
+    return out; }
+  backward() {
+    // Visit nodes so that each one comes after everything it depends on, then walk that list backwards.
+    const order = [], seen = new Set();
+    const visit = (v) => { if (seen.has(v)) return; seen.add(v); v.parents.forEach(visit); order.push(v); };
+    visit(this);
+    this.grad = 1;                     // ∂L/∂L
+    for (const v of order.reverse()) v.backStep();
+  }
+}
+
+// The network from the picture above:
+const w1 = new Value(0.6), b1 = new Value(-0.2), w2 = new Value(-0.9), b2 = new Value(0.3);
+const x = 1.5, y = 0.8;
+const h = w1.mul(x).add(b1).tanh();
+const yhat = w2.mul(h).add(b2);
+const L = yhat.sub(y).pow(2);
+L.backward();
+print("loss", L.data);
+print("∂L/∂w1", w1.grad, " ∂L/∂b1", b1.grad, " ∂L/∂w2", w2.grad, " ∂L/∂b2", b2.grad);
+</textarea></div>
 
   <h2>3. Did backprop get it right? Nudge and see</h2>
   <p>The slow, obvious way to get a gradient: nudge one weight by a tiny ε, rerun the forward pass, and see how much the loss changed. Real libraries use this as a test.</p>
   <div class="row"><button id="check">Check by nudging each weight</button></div>
   <table id="tbl" aria-live="polite"></table>
+  <details class="deeper"><summary>The math: how exact is "nudge and see"?</summary>
+    <p>The one-sided nudge \(\frac{L(w + \varepsilon) - L(w)}{\varepsilon}\) is off by an amount proportional to \(\varepsilon\). The centered one, \(\frac{L(w + \varepsilon) - L(w - \varepsilon)}{2\varepsilon}\), is off by an amount proportional to \(\varepsilon^2\): with \(\varepsilon = 10^{-4}\), about \(10^{-8}\). Libraries compare it with backprop using a <b>relative error</b>, \(\frac{|g_{\text{backprop}} - g_{\text{nudge}}|}{|g_{\text{backprop}}| + |g_{\text{nudge}}|}\); below about \(10^{-7}\) means the backward code is right. Bigger means a bug, usually a forgotten <code>+=</code> or a wrong local slope.</p>
+  </details>
+  <div class="code" data-uses="engine" data-title="Build it: check the engine by nudging"><textarea>
+// Uses the Value class from the block above (it runs first, quietly).
+const lossAt = (p) => {
+  const h = new Value(p.w1).mul(1.5).add(p.b1).tanh();
+  return new Value(p.w2).mul(h).add(p.b2).sub(0.8).pow(2).data;
+};
+const p = { w1: 0.6, b1: -0.2, w2: -0.9, b2: 0.3 };
+const eps = 1e-4;
+const params = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, new Value(v)]));
+const hh = params.w1.mul(1.5).add(params.b1).tanh();
+params.w2.mul(hh).add(params.b2).sub(0.8).pow(2).backward();
+const rows = [["weight", "backprop", "nudge", "relative error"]];
+for (const k of Object.keys(p)) {
+  const up = lossAt({ ...p, [k]: p[k] + eps }), down = lossAt({ ...p, [k]: p[k] - eps });
+  const num = (up - down) / (2 * eps), g = params[k].grad;
+  rows.push([k, g, num, Math.abs(g - num) / (Math.abs(g) + Math.abs(num))]);
+}
+table(rows);
+</textarea></div>
 
   <h2>4. Why this is the trick that made deep learning</h2>
   <p>Nudging works, but it needs one extra forward pass <em>per weight</em>. Backprop gets every gradient from one forward and one backward pass, about the cost of three forward passes, however many weights there are.</p>
   <div class="row"><label>weights in the network <input type="range" id="n" min="1" max="12" step="0.1" value="6"></label></div>
   <p class="readout" id="r4"></p>
   <p>That gap is why networks with billions of weights can be trained at all. Everything since, convolutions for images and attention for language, is new shapes of graphs with the same forward and backward passes running through them. Next: what the loss should actually be when a network has to choose between answers, <a href="./05-probability-and-loss.html"><b>probability and loss</b></a>.</p>
+  <div class="q" data-num="1000001" data-tol="0" data-show="1,000,001">
+    <p>A network has a million weights. How many forward passes does the "nudge each weight" method need for one full gradient (one for the starting loss, plus one per nudged weight)?</p>
+    <div class="why">\(1 + 10^6\). Backprop gets the same million numbers for about the cost of 3 forward passes: a forward, and a backward that does roughly twice a forward's arithmetic. For GPT-sized models (\(10^{11}\) weights) that's the difference between possible and not.</div>
+  </div>
+  <div class="code" data-uses="engine" data-title="Build it: train a network on XOR with your engine"><textarea>
+// A 2 → 4 → 1 network built from Values, trained with the engine above. Chapter 3's XOR, learned from scratch.
+const rnd = () => new Value(Math.random() * 2 - 1);
+const W1 = Array.from({ length: 4 }, () => [rnd(), rnd()]), B1 = Array.from({ length: 4 }, rnd);
+const W2 = Array.from({ length: 4 }, rnd), B2 = rnd();
+const params = [...W1.flat(), ...B1, ...W2, B2];
+const net = ([a, b]) => {
+  const h = W1.map(([wa, wb], i) => wa.mul(a).add(wb.mul(b)).add(B1[i]).tanh());
+  return h.reduce((s, hi, i) => s.add(hi.mul(W2[i])), B2).tanh();      // output in −1…1
+};
+const data = [[[0, 0], -1], [[0, 1], 1], [[1, 0], 1], [[1, 1], -1]];
+const losses = [];
+for (let step = 0; step < 300; step++) {
+  const L = data.reduce((s, [x, y]) => s.add(net(x).sub(y).pow(2)), new Value(0));
+  params.forEach((p) => (p.grad = 0));    // forget last step's blame
+  L.backward();
+  params.forEach((p) => (p.data -= 0.05 * p.grad));
+  losses.push(L.data);
+}
+plot(losses, { label: "loss while learning XOR" });
+for (const [x, y] of data) print(x, "→", net(x).data.toFixed(3), " (want", y + ")");
+</textarea></div>
 
   <p class="muted">Previous: <a href="./03-a-neuron.html">A neuron from scratch</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/backpropagation-calculus">Backpropagation calculus</a> and Andrej Karpathy's micrograd.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

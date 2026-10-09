@@ -17,6 +17,7 @@
     .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
     .math { font-family: ui-monospace, Menlo, monospace; }
     .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .formula { text-align: center; }
   </style>
 </head>
 <body>
@@ -30,6 +31,30 @@
   <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A curve with a draggable point and a secant line that becomes the tangent"></canvas><p class="readout" id="r1"></p></div>
   <div class="row"><label>step h <input type="range" id="h" min="0.01" max="2" step="0.01" value="1.5"></label></div>
   <p>As <span class="math">h</span> shrinks, the line stops cutting the curve and just touches it: that's the <b>tangent</b>, and its slope is the <b>derivative</b>. Zoom in on any smooth curve far enough and it looks straight; the derivative is the slope of that straight bit. Positive means "going up to the right", negative means "going down", zero means you're at a flat spot: the top of a hill or the bottom of a valley.</p>
+  <div class="levels">
+    <div><b>The picture</b>The slope of the line that just touches the curve: how many units it rises per unit you walk right.</div>
+    <div><b>The math</b>\(f'(x) = \lim_{h \to 0} \dfrac{f(x + h) - f(x)}{h}\): rise over run, with the run shrunk to nothing.</div>
+  </div>
+  <p>For simple functions the limit can be worked out once, by hand, and gives rules you can reuse. Take \(f(x) = x^2\):</p>
+  <p class="formula">\[ \frac{(x+h)^2 - x^2}{h} = \frac{x^2 + 2xh + h^2 - x^2}{h} = 2x + h \;\xrightarrow{\;h \to 0\;}\; 2x \]</p>
+  <p>So the slope of \(x^2\) at any \(x\) is \(2x\). The same algebra gives the rules every library uses: \((x^n)' = n x^{n-1}\), \((e^x)' = e^x\), \((\ln x)' = 1/x\), and slopes of sums add up. A computer can also skip the algebra and just try a small \(h\), which is what the code below does. Watch what happens when \(h\) gets <em>too</em> small.</p>
+  <div class="q" data-num="7">
+    <p>\(f(x) = x^2\) at \(x = 3\), with a step \(h = 1\). What's the slope of the yellow line (the secant), \(\frac{f(4) - f(3)}{1}\)?</p>
+    <div class="why">\(\frac{16 - 9}{1} = 7\). That's \(2x + h = 6 + 1\). Shrink \(h\) to 0.1 and you get 6.1, then 6.01: it closes in on the true slope, \(2 \cdot 3 = 6\).</div>
+  </div>
+  <div class="code" data-title="Build it: a derivative by nudging"><textarea>
+const f = (x) => x * x;
+const slope = (f, x, h) => (f(x + h) - f(x)) / h;
+
+// True answer: 2x = 6 at x = 3. Shrink h and watch the estimate close in... then fall apart.
+for (const h of [1, 0.1, 0.01, 1e-4, 1e-8, 1e-12, 1e-15]) print("h =", h, " slope ≈", slope(f, 3, h));
+
+// Why it falls apart: computers keep ~16 significant digits. f(3 + 1e-15) and f(3) agree
+// in almost all of them, so their difference is mostly rounding noise.
+// The fix used in practice: the centered difference, accurate to h² instead of h.
+const centered = (f, x, h) => (f(x + h) - f(x - h)) / (2 * h);
+print("centered, h = 1e-5:", centered(f, 3, 1e-5));
+</textarea></div>
 
   <h2>2. Rolling downhill</h2>
   <p>Say the curve measures how wrong we are, and we want the lowest point. We can't see the whole curve (in a real network it lives in a million dimensions), but we can always measure the slope where we stand. So: <b>take a step against the slope</b>. If the ground tilts up to the right, step left. Repeat.</p>
@@ -38,11 +63,65 @@
   <div class="row"><button id="step">Step</button><button id="run">Roll</button><button id="drop">Drop somewhere else</button>
     <label>learning rate <input type="range" id="lr" min="0.01" max="1.2" step="0.01" value="0.15"> <span id="lrv" class="math">0.15</span></label></div>
   <p>Play with the learning rate. Small, and the ball crawls. Big, and it overshoots, bouncing from wall to wall, or flies off entirely. Drop it on the right and it settles in the <b>shallow valley</b>, never finding the deeper one: gradient descent only knows the ground under its feet. Choosing the step size, and getting out of shallow valleys, is half the craft of training networks.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>The update rule, with \(\eta\) (eta) for the learning rate:</p>
+    <p class="formula">\[ x_{k+1} = x_k - \eta\, f'(x_k) \]</p>
+    <p>Try it on the simplest valley, \(f(x) = x^2\), whose slope is \(2x\). Then \(x_{k+1} = x_k - \eta \cdot 2x_k = (1 - 2\eta)\,x_k\). Every step multiplies \(x\) by the same factor \((1 - 2\eta)\), and that factor tells the whole story:</p>
+    <ul>
+      <li>\(\eta = 0.1\): factor 0.8. From \(x = 5\): 4, 3.2, 2.56, … shrinking smoothly to 0.</li>
+      <li>\(\eta = 0.5\): factor 0. Lands at the bottom in one step (lucky: only works because we know the curve exactly).</li>
+      <li>\(\eta = 0.9\): factor −0.8. Overshoots to the other side each time, but still shrinks: the bouncing you saw above.</li>
+      <li>\(\eta = 1\): factor −1. Bounces 5, −5, 5, −5 forever.</li>
+      <li>\(\eta > 1\): \(|1 - 2\eta| > 1\), each bounce is bigger than the last, and \(x\) flies off.</li>
+    </ul>
+    <p>The steeper the valley's walls curve (the bigger the second derivative), the smaller \(\eta\) must be. Real loss landscapes curve differently in different directions, which is why methods like Adam adapt the step size per parameter.</p>
+  </details>
+  <div class="q" data-num="4">
+    <p>\(f(x) = x^2\), learning rate 0.1, and you're at \(x = 5\). Where is the ball after one step?</p>
+    <div class="why">The slope at 5 is \(2 \cdot 5 = 10\). Step: \(5 - 0.1 \cdot 10 = 4\).</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>Same valley, \(f(x) = x^2\). Which learning rate makes the ball bounce between 5 and −5 forever?</p>
+    <ul><li data-k="a" data-says="0.1 gives a factor of 0.8: it slides smoothly down.">0.1</li><li data-k="b" data-says="0.5 gives a factor of 0: it lands at the bottom in one step.">0.5</li><li data-k="c">1</li><li data-k="d" data-says="2 gives a factor of −3: each bounce three times bigger, it flies off.">2</li></ul>
+    <div class="why">Factor \(1 - 2 \cdot 1 = -1\): every step lands at minus where it was.</div>
+  </div>
+  <div class="code" data-title="Build it: gradient descent"><textarea>
+const f = (x) => x * x, df = (x) => 2 * x;     // the valley and its slope
+
+function descend(lr, x = 5, steps = 25) {
+  const path = [x];
+  for (let k = 0; k < steps; k++) { x = x - lr * df(x); path.push(x); }
+  return path;
+}
+
+for (const lr of [0.1, 0.5, 0.9, 1.0]) {
+  const path = descend(lr);
+  print(`learning rate ${lr}: x after 25 steps = ${path.at(-1).toPrecision(3)}`);
+  plot(path, { label: `x at each step, learning rate ${lr}` });
+}
+// Try 1.05, and a bumpy curve like f = x**4 - 3*x**2 + x (slope 4x³ - 6x + 1) from different starts.
+</textarea></div>
 
   <h2>3. Two inputs: the gradient is an arrow</h2>
   <p>Now the "wrongness" depends on two numbers, so it's a landscape, drawn here like a map: dark is low, bright is high, and the lines are contours of equal height. At any spot you can ask two questions: how steep is it going right, and how steep going up? Those two slopes together make an arrow, the <b>gradient</b>. Drag the point.</p>
   <div class="scene"><canvas id="s3" width="800" height="600" aria-label="A contour map with a draggable point and its gradient arrow"></canvas><p class="readout" id="r3"></p></div>
   <p>The <span class="r">red arrow</span> (the gradient) always points straight uphill, the steepest way up, and it's always perpendicular to the contour line you're standing on. Its length says how steep. The <span class="g">green arrow</span> is the opposite: steepest downhill. That's the direction gradient descent walks.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>With two inputs, take the slope in each direction while holding the other one fixed. These are <b>partial derivatives</b>, written with a curly \(\partial\). Stacked together they're the gradient:</p>
+    <p class="formula">\[ \nabla f(x, y) = \left( \frac{\partial f}{\partial x},\ \frac{\partial f}{\partial y} \right) \]</p>
+    <p>Example: \(f(x, y) = x^2 + 3y^2\). Treat \(y\) as a constant and differentiate in \(x\): \(\partial f/\partial x = 2x\). Treat \(x\) as constant: \(\partial f/\partial y = 6y\). At the point (1, 1) the gradient is (2, 6): the ground rises three times faster going north than going east.</p>
+    <p><b>Why the gradient points steepest uphill</b> (this is chapter 1's dot product paying off). Walk a tiny step in a direction \(u\) of length 1. The height changes by about \(\nabla f \cdot u = \lVert \nabla f \rVert \cos\theta\). That's largest when \(\theta = 0\), walking straight along the gradient; zero when you walk at right angles to it, which is along the contour line, where the height doesn't change; and most negative straight against it.</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>\(f(x, y) = x^2 + 3y^2\). What is the gradient at the point (2, −1)?</p>
+    <ul><li data-k="a" data-says="Those are the coordinates squared. Differentiate each part: x² → 2x, 3y² → 6y.">(4, 3)</li><li data-k="b">(4, −6)</li><li data-k="c" data-says="Check the sign of the y part: 6 · (−1) is negative.">(4, 6)</li><li data-k="d" data-says="That's the slope pattern of x² + y². The y term has a 3 in front, so its slope is 6y.">(4, −2)</li></ul>
+    <div class="why">\((2x, 6y) = (2 \cdot 2,\ 6 \cdot (-1)) = (4, -6)\). Downhill is the opposite: \((-4, 6)\), mostly toward \(y = 0\), where the steep \(3y^2\) wall is.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>Why is the gradient always at right angles to the contour line you're standing on?</p>
+    <ul><li data-k="a">Along the contour the height doesn't change, so \(\nabla f \cdot u = 0\) for that direction, and a zero dot product means a right angle</li><li data-k="b" data-says="The picture is drawn to match the math, not the other way round. There's a reason in the dot product.">It's a convention of how contour maps are drawn</li><li data-k="c" data-says="It holds for every smooth landscape, round or not.">Only because these valleys are round</li></ul>
+    <div class="why">The change in height along a direction \(u\) is \(\nabla f \cdot u\). Along a contour it's zero by definition, and (chapter 1) a zero dot product means perpendicular.</div>
+  </div>
 
   <h2>4. Learning is walking downhill</h2>
   <p>Here's the whole idea of training, in miniature. On the left: some points, and a line <span class="math">y = w·x + b</span> that should fit them. How wrong the line is (the average squared vertical miss, called the <b>loss</b>) depends on two numbers, <span class="math">w</span> and <span class="math">b</span>. On the right: that loss as a landscape over every possible <span class="math">(w, b)</span>. Each training step is one step downhill on the right, and the line on the left gets better.</p>
@@ -50,9 +129,48 @@
   <div class="row"><button id="train">Train</button><button id="step4">One step</button><button id="shuffle4">New points</button><button id="reset4">Start over</button>
     <label>learning rate <input type="range" id="lr4" min="0.005" max="0.15" step="0.005" value="0.05"> <span id="lr4v" class="math">0.05</span></label></div>
   <p>Drag the points on the left and the landscape on the right reshapes itself: the loss depends on the data. Drag the <span class="y">yellow dot</span> on the right to start the line somewhere else. A real network is this exact loop with millions of numbers instead of two: measure the loss, compute its gradient, step downhill, repeat. The only hard part left is computing the gradient for millions of numbers at once, efficiently. That's <b>backpropagation</b>, and it's coming up right after we <a href="./03-a-neuron.html">build a single neuron</a>.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>With \(N\) points \((x_i, y_i)\), the line predicts \(\hat y_i = w x_i + b\) and misses by \(r_i = \hat y_i - y_i\) (the <b>residual</b>). The loss is the mean squared error:</p>
+    <p class="formula">\[ L(w, b) = \frac{1}{N} \sum_{i=1}^{N} (w x_i + b - y_i)^2 \]</p>
+    <p>Differentiate one term at a time. The outside is "something squared", with slope 2·(something); the inside \(w x_i + b - y_i\) has slope \(x_i\) in \(w\) and 1 in \(b\). Multiply the two (the chain rule, chapter 4's main character):</p>
+    <p class="formula">\[ \frac{\partial L}{\partial w} = \frac{2}{N} \sum_i r_i\, x_i \qquad \frac{\partial L}{\partial b} = \frac{2}{N} \sum_i r_i \]</p>
+    <p>Read them in plain words. If the line sits too high on average (residuals positive), \(\partial L/\partial b > 0\), so a step downhill lowers \(b\). If it's too high mostly where \(x\) is large, \(\partial L / \partial w > 0\) and the slope \(w\) comes down. Each point pulls the line toward itself, weighted by how badly it's missed.</p>
+  </details>
+  <div class="q" data-answer="b">
+    <p>The line sits above every point. One gradient step later, what happens to the bias \(b\)?</p>
+    <ul><li data-k="a" data-says="All residuals are positive, so ∂L/∂b = (2/N)·Σ rᵢ is positive. Stepping against it...">It goes up</li><li data-k="b">It goes down</li><li data-k="c" data-says="It only stays put when the residuals average out to zero.">It stays the same</li></ul>
+    <div class="why">\(\partial L/\partial b = \frac{2}{N}\sum r_i > 0\), and the step is \(b \leftarrow b - \eta \cdot (\text{positive})\): the line moves down toward the points.</div>
+  </div>
+  <div class="code" data-title="Build it: fit a line by gradient descent"><textarea>
+// Points scattered around y = 2x + 1
+const xs = [0, 1, 2, 3, 4, 5], ys = [1.2, 2.8, 5.3, 6.9, 9.1, 10.8];
+const N = xs.length;
+
+let w = 0, b = 0;
+const lr = 0.02, losses = [];
+for (let step = 0; step < 500; step++) {
+  let L = 0, dw = 0, db = 0;
+  for (let i = 0; i < N; i++) {
+    const r = w * xs[i] + b - ys[i];   // residual
+    L += r * r / N;
+    dw += 2 * r * xs[i] / N;           // ∂L/∂w
+    db += 2 * r / N;                   // ∂L/∂b
+  }
+  w -= lr * dw; b -= lr * db;
+  losses.push(L);
+}
+print("learned: y =", w.toFixed(3), "x +", b.toFixed(3), "  final loss", losses.at(-1).toFixed(4));
+plot(losses.slice(0, 120), { label: "loss over the first 120 steps" });
+
+// For a straight line there's also an exact answer (least squares), so we can check:
+const mx = xs.reduce((a, c) => a + c) / N, my = ys.reduce((a, c) => a + c) / N;
+const wExact = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+print("exact:   y =", wExact.toFixed(3), "x +", (my - wExact * mx).toFixed(3));
+</textarea></div>
 
   <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/gradient-descent">gradient descent</a> and <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a>. Previous: <a href="./01-matrices-are-moves.html">Matrices are moves</a>.</p>
 </main>
+<script type="module" src="/learn-kit.js"></script>
 <script type="module">
 import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);
