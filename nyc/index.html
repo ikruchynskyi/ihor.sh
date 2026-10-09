@@ -219,9 +219,10 @@ const LAYERS = {
   city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
   sales: { label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
+  c311: { label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -319,6 +320,21 @@ async function loadPopups(g) {
   for (const e of list) dot(e.lat, e.lon, "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.start_time, e.end_time].filter(Boolean).join("–"))}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a>`).addTo(g);
   $("n-popups").textContent = `(${list.length})`;
 }
+
+// 311: what neighbors reported lately, for the area on screen (reloads when you pan; needs a zoomed-in view).
+const C311 = (t) => /noise/i.test(t) ? "#c59bff" : /heat|water|plumb/i.test(t) ? "#ff9f1c" : /park|vehicle|blocked/i.test(t) ? "#4de1ff" : /sanit|dirty|rodent|trash|litter/i.test(t) ? "#83c167" : "#ff5c8a";
+async function load311(g) {
+  const b = map.getBounds();
+  if (b.getNorth() - b.getSouth() > 0.2 || b.getEast() - b.getWest() > 0.3) { g.clearLayers(); $("n-c311").textContent = "(zoom in to see reports)"; return; }
+  const d = await getJSON(`/api/nyc/311?bbox=${[b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((v) => v.toFixed(4)).join(",")}`);
+  g.clearLayers();
+  for (const r of d.items) L.circleMarker([r.lat, r.lon], { renderer: bikeCanvas, radius: 4, color: C311(r.type), fillColor: C311(r.type), fillOpacity: 0.8, weight: 1, bubblingMouseEvents: false })
+    .bindPopup(`<b>${esc(r.type)}</b><br>${esc(r.what)}<br><span class="muted">${esc(r.address)} · ${new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${esc(r.status)} (${esc(r.agency)})</span>`).addTo(g);
+  const top = Object.entries(d.items.reduce((m, r) => ((m[r.type] = (m[r.type] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  $("n-c311").innerHTML = `(${d.items.length} here, data up to ${new Date(d.asOf).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })})<br><span class="legend"><i style="background:#c59bff"></i>noise <i style="background:#ff9f1c"></i>heat/water <i style="background:#4de1ff"></i>parking <i style="background:#83c167"></i>sanitation <i style="background:#ff5c8a"></i>other</span>`;
+  seen.c311 = { inView: d.items.length, topTypes: top.map(([t, n]) => `${t}: ${n}`) };
+}
+map.on("moveend", () => { if (LAYERS.c311.on) load311(LAYERS.c311.group).catch(() => {}); });
 
 async function loadSales(g) {
   const d = await getJSON(`/api/nyc/deals?date=${today}`);
@@ -494,7 +510,7 @@ window.blipActions = {
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
   plan_trip: { label: "planned the trip", description: "Plan a trip on the map and list the cameras on the route.", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike or walk" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
     run: ({ from, to, mode, avoid_ferries }) => { $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), citibike, outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), citibike, outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -507,7 +523,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311 };
 };
 
 $("refresh").addEventListener("click", refresh);

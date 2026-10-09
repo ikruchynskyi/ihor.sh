@@ -125,6 +125,19 @@ export async function trafficCameras() {
   return cams.list;
 }
 
+// ---------- 311 ----------
+/** 311 service requests from the newest 48 hours of published data (it lags about a day), inside a map box. */
+export async function complaints311(s: number, w: number, n: number, e: number) {
+  const auth = env("SOCRATA_KEY_ID") ? { Authorization: "Basic " + Buffer.from(`${env("SOCRATA_KEY_ID")}:${env("SOCRATA_KEY_SECRET")}`).toString("base64") } : {};
+  const base = "https://data.cityofnewyork.us/resource/erm2-nwe9.json";
+  const [{ last }] = await json(`${base}?$select=max(created_date) as last`, auth);
+  const since = new Date(new Date(last + "Z").getTime() - 48 * 3600_000).toISOString().slice(0, 19);
+  const rows: any[] = await json(`${base}?${new URLSearchParams({
+    $select: "unique_key, created_date, complaint_type, descriptor, incident_address, latitude, longitude, status, agency",
+    $where: `created_date >= '${since}' AND within_box(location, ${n}, ${w}, ${s}, ${e})`, $order: "created_date DESC", $limit: "600" })}`, auth);
+  return { asOf: last, items: rows.filter((r) => r.latitude).map((r) => ({ id: r.unique_key, at: r.created_date, type: r.complaint_type, what: r.descriptor ?? "", address: r.incident_address ?? "", status: r.status, agency: r.agency, lat: Number(r.latitude), lon: Number(r.longitude) })) };
+}
+
 // ---------- traffic speeds ----------
 let speeds: { at: number; data: any } | null = null;
 /** NYC DOT real-time link speeds (Socrata i4gi-tjb9): the latest reading per road segment. Cached 2 min. */
