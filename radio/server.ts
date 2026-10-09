@@ -9,7 +9,7 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { openDongle } from "./scripts/node-usb.ts";
+import { openDongle, resetDongle, looksStalled } from "./scripts/node-usb.ts";
 import type { RtlSdr } from "./src/rtlsdr.ts";
 import { decodeCU8 } from "./src/iq.ts";
 import { AprsReceiver, Stations } from "./src/aprs.ts";
@@ -59,8 +59,26 @@ function push(name: Decoder, event: string, data: unknown) {
   for (const res of watchers[name]) res.write(msg);
 }
 
+// Stall watchdog: now and then, check that the dongle sends samples and not a replayed buffer; if it
+// does, USB-reset it and reopen in the same mode (listeners and viewers stay connected).
+let chunkCount = 0, recovering = false;
+async function recover() {
+  if (recovering) return;
+  recovering = true;
+  const want = mode === "idle" ? "iq" : mode;
+  console.error(`dongle stalled (replaying a buffer) in ${want} mode: resetting it`);
+  try {
+    await release();
+    console.log(`USB reset: ${(await resetDongle()) ? "ok" : "failed"}`);
+    await new Promise((r) => setTimeout(r, 2500)); // re-enumeration
+    if (want !== "iq" || clients.size) { await ensureSdr(want); if (want !== "iq") push(want, "online", { mode: want }); }
+  } catch (e) { console.error("recovery failed:", (e as Error).message); }
+  finally { recovering = false; }
+}
+
 /** Every chunk from the dongle goes where the current mode needs it. */
 function onChunk(chunk: Uint8Array) {
+  if (++chunkCount % 64 === 8 && !recovering && looksStalled(chunk)) { recover(); return; }
   if (mode === "iq") return fanOut(chunk);
   if (mode === "aprs" && aprsRx) for (const p of aprsRx.process(decodeCU8(chunk))) push("aprs", "packet", { packet: p, station: stations.add(p) });
   if (mode === "adsb") {

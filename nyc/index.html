@@ -57,6 +57,7 @@
       <label>From <input id="tFrom" placeholder="Address or place, e.g. Empire State Building" autocomplete="off"></label>
       <label>To <input id="tTo" placeholder="e.g. Barclays Center" autocomplete="off"></label>
       <label>By <select id="tMode"><option value="drive">Car</option><option value="bike">Bike</option><option value="walk">Foot</option></select></label>
+      <label><input type="checkbox" id="tNoFerry"> Avoid ferries</label>
       <button style="margin-top:6px">Plan</button>
     </form>
     <div id="tripOut" class="muted"></div>
@@ -350,7 +351,7 @@ function openCam(c) {
   });
 }
 
-// Trip planner: route from the server (OSRM + GeoSearch) and the traffic cameras along it, in order.
+// Trip planner: route from the server (Valhalla + GeoSearch) and the traffic cameras along it, in order.
 const tripLayer = L.layerGroup().addTo(map);
 $("trip").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -358,9 +359,9 @@ $("trip").addEventListener("submit", async (e) => {
   if (!from || !to) return;
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
-  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${$("tMode").value}`).catch((err) => ({ error: err.message }));
+  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${$("tMode").value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
-  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
+  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
   const line = L.polyline(d.line, { color: "#ffb347", weight: 5, opacity: 0.85 }).addTo(tripLayer);
   dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
   dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
@@ -370,7 +371,7 @@ $("trip").addEventListener("submit", async (e) => {
   const tr = d.traffic, slow = tr?.onRoute.filter((l) => l.mph < 20) ?? [];
   const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</div>`
     : `<div class="muted">${tr.onRoute.length} road segments with live speeds on the way${slow.length ? `; slow: ${slow.slice(0, 4).map((l) => `${esc(l.name)} ${Math.round(l.mph)} mph`).join(", ")}` : ", all moving"}.</div>`;
-  $("tripOut").innerHTML = trafficHtml + `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
+  $("tripOut").innerHTML = trafficHtml + (d.usesFerry ? `<div class="muted">⛴ This route includes a ferry${d.avoidFerries ? " (there's no way around it)" : ""}.</div>` : "") + `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
     ${d.cameras.length ? `<button id="openTrip" style="display:block;margin:6px 0">Open the first 4 cameras</button>` : ""}
     <ol style="padding-left:18px;margin:4px 0">${d.cameras.map((c, i) => `<li><a href="#" data-i="${i}">${esc(c.name)}</a> <span class="muted">km ${c.kmAlong}</span></li>`).join("")}</ol>`;
   $("tripOut").querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); openCam(d.cameras[+a.dataset.i]); }));

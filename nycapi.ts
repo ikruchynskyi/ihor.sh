@@ -157,19 +157,31 @@ export async function geocode(text: string) {
   return f ? { label: f.properties.label as string, lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number } : null;
 }
 
-const PROFILE = { drive: "car", bike: "bike", walk: "foot" } as const;
+const COSTING = { drive: "auto", bike: "bicycle", walk: "pedestrian" } as const;
+/** Valhalla's encoded polyline (6 decimal places) → [lat, lon] points. */
+function decodePolyline(str: string, precision = 6) {
+  const out: [number, number][] = [];
+  let i = 0, lat = 0, lon = 0;
+  const next = () => { let r = 0, shift = 0, b; do { b = str.charCodeAt(i++) - 63; r |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20); return r & 1 ? ~(r >> 1) : r >> 1; };
+  while (i < str.length) { lat += next(); lon += next(); out.push([lat / 10 ** precision, lon / 10 ** precision]); }
+  return out;
+}
 /**
- * A route from A to B (OSRM on routing.openstreetmap.de) and the traffic cameras along it, in order:
- * every camera within 150 m of the line, sorted by how far along the trip it is.
+ * A route from A to B (Valhalla on valhalla1.openstreetmap.de, which can avoid ferries) and the traffic cameras
+ * along it, in order: every camera within 150 m of the line, sorted by how far along the trip it is.
  */
-export async function tripPlan(from: string, to: string, mode: keyof typeof PROFILE = "drive") {
+export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING = "drive", { avoidFerries = false } = {}) {
   const [a, b] = await Promise.all([geocode(from), geocode(to)]);
   if (!a || !b) return { error: `Couldn't find ${!a ? from : to} in NYC.` };
-  const r = await fetch(`https://routing.openstreetmap.de/routed-${PROFILE[mode] ?? "car"}/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`,
-    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(20_000) });
-  const route = (await r.json()).routes?.[0];
-  if (!route) return { error: "No route found." };
-  const line: [number, number][] = route.geometry.coordinates.map(([lon, lat]: number[]) => [lat, lon]);
+  const costing = COSTING[mode] ?? "auto";
+  const req = { locations: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }], costing, costing_options: { [costing]: { use_ferry: avoidFerries ? 0 : 0.5 } }, units: "kilometers" };
+  const r = await fetch(`https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify(req))}`,
+    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) });
+  const trip = (await r.json()).trip;
+  if (!trip) return { error: "No route found." };
+  const usesFerry = trip.legs.some((l: any) => l.maneuvers.some((m: any) => m.type === 28)); // 28 = board a ferry
+  const route = { distance: trip.summary.length * 1000, duration: trip.summary.time };
+  const line = trip.legs.flatMap((l: any) => decodePolyline(l.shape)) as [number, number][];
   // Flat-earth meters are plenty at city scale.
   const M_LAT = 111_320, M_LON = 111_320 * Math.cos((a.lat * Math.PI) / 180);
   const cams = await trafficCameras().catch(() => []);
@@ -195,7 +207,7 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof PROF
   const sp = mode === "drive" ? await trafficSpeeds().catch(() => null) : null;
   const traffic = sp ? { asOf: sp.asOf, stale: sp.stale, onRoute: sp.links.filter((l: any) => l.ok && l.points.filter(([la, lo]: number[]) => near(la, lo)).length >= l.points.length * 0.6)
     .map((l: any) => ({ name: l.name, mph: l.mph })).sort((x: any, y: any) => x.mph - y.mph) } : null;
-  return { from: a, to: b, mode, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+  return { from: a, to: b, mode, avoidFerries, usesFerry, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
 }
 
