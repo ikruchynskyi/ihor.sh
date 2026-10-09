@@ -563,7 +563,9 @@ $(".x").onclick = closeDialog;
 $(".scrim").onclick = closeDialog;
 $(".hide").onclick = hide;
 $(".new").onclick = () => { history = []; save(); renderLog(); input.focus(); };
-root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); });
+// Keys typed into Blip stay in Blip: pages with keyboard shortcuts (Space, R, 1–4…) never see them.
+root.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDialog(); e.stopPropagation(); });
+for (const type of ["keyup", "keypress"]) root.addEventListener(type, (e) => e.stopPropagation());
 form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
