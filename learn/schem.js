@@ -92,6 +92,34 @@ export function diode(g, x, y, up = true, label = "") {
   g.beginPath(); g.moveTo(x - 12, y + 10 * s); g.lineTo(x + 12, y + 10 * s); g.stroke();
   if (label) { g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(label, x - 16 - g.measureText(label).width, y + 5); }
 }
+/** An n-channel MOSFET with drain up (x, y − 30), source down (x, y + 30) and the gate coming in from the left (x − 50, y). */
+export function mosfetSym(g, x, y, label = "", on = false, dead = false) {
+  clear(g, x - 50, y - 30, 64, 60);
+  g.strokeStyle = dead ? "#555" : C.text; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(x - 50, y); g.lineTo(x - 18, y); g.moveTo(x - 18, y - 16); g.lineTo(x - 18, y + 16); g.stroke(); // gate wire and plate
+  g.strokeStyle = dead ? "#555" : on ? C.green : C.text;
+  g.beginPath(); for (const dy of [-14, 0, 14]) { g.moveTo(x - 10, y + dy - 6); g.lineTo(x - 10, y + dy + 6); } g.stroke(); // the channel, in three pieces
+  g.strokeStyle = dead ? "#555" : C.text;
+  g.beginPath(); g.moveTo(x - 10, y - 14); g.lineTo(x, y - 14); g.lineTo(x, y - 30); g.moveTo(x - 10, y + 14); g.lineTo(x, y + 14); g.lineTo(x, y + 30); g.moveTo(x - 10, y); g.lineTo(x, y); g.lineTo(x, y + 14); g.stroke();
+  g.fillStyle = dead ? "#555" : C.text; g.beginPath(); g.moveTo(x - 10, y); g.lineTo(x - 4, y - 4); g.lineTo(x - 4, y + 4); g.fill();
+  if (label) { g.font = "13px ui-monospace, monospace"; g.fillText(label, x + 8, y + 4); }
+  if (dead) { g.fillStyle = "rgba(170,170,170,.5)"; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(x - 10 + k * 6, y - 34 - k * 8 + Math.sin(performance.now() / 300 + k) * 2, 5 + k, 0, 7); g.fill(); } }
+}
+/** A motor: a circle with an M and a spinning spoke (angle in radians), on a vertical wire at x. */
+export function motor(g, x, y, angle, label = "") {
+  clear(g, x - 26, y - 26, 52, 52);
+  g.strokeStyle = C.text; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 22, 0, 7); g.stroke();
+  g.strokeStyle = C.yellow; g.lineWidth = 2; g.beginPath(); for (let k = 0; k < 3; k++) { const a = angle + (k * 2 * Math.PI) / 3; g.moveTo(x, y); g.lineTo(x + 16 * Math.cos(a), y + 16 * Math.sin(a)); } g.stroke();
+  g.fillStyle = C.text; g.font = "bold 13px ui-monospace, monospace"; g.fillText("M", x - 5, y + 5);
+  if (label) { g.font = "13px ui-monospace, monospace"; g.fillText(label, x + 30, y + 5); }
+}
+/** An AC source (a circle with a sine wave) on a vertical wire at x. */
+export function acSource(g, x, y, label = "") {
+  clear(g, x - 22, y - 22, 44, 44);
+  g.strokeStyle = C.text; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 20, 0, 7); g.stroke();
+  g.beginPath(); for (let k = 0; k <= 20; k++) { const px = x - 12 + k * 1.2, py = y - 7 * Math.sin((k / 20) * 2 * Math.PI); k ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke();
+  if (label) { g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(label, x + 28, y + 5); }
+}
 /** A switch on a horizontal wire from x1 to x2 at y: open, or closed. */
 export function switchSym(g, x1, x2, y, closed, label = "") {
   clear(g, x1, y - 22, x2 - x1, 30);
@@ -120,14 +148,13 @@ export const fmtA = (a) => (Math.abs(a) >= 1 ? `${a.toFixed(2)} A` : Math.abs(a)
 export const fmtR = (r) => (r >= 1e6 ? `${(r / 1e6).toFixed(1)} MΩ` : r >= 1000 ? `${(r / 1000).toFixed(r >= 1e4 ? 0 : 1)} kΩ` : `${Math.round(r)} Ω`);
 
 // Run a stepper in real time: each frame advances real elapsed time in small steps.
-export function live(build, onStep) {
+export function live(build, onStep, opts = {}) {
   let sim = null, last = performance.now(), t = 0, simT = 0, dtSim = 1e-3;
-  const reset = (vc) => { const { elements, dt } = build(vc); sim = stepper(elements, dt, { gmin: 1e-9 }); dtSim = dt; simT = t; };
+  const reset = (vc) => { const { elements, dt } = build(vc); sim = stepper(elements, dt, { gmin: 1e-9, ...opts }); dtSim = dt; simT = t; };
   const tick = (now) => {
     t += Math.min(0.05, (now - last) / 1000); last = now;
-    let r = null;
-    for (let k = 0; simT < t && k < 400; k++) { r = sim.step(); simT += dtSim; } // simulated time keeps pace with real time
-    if (r) onStep(r, t);
+    // Simulated time keeps pace with real time, and every step is reported (a 5 ms spike must not fall between frames).
+    for (let k = 0; simT < t && k < 400; k++) { const r = sim.step(); simT += dtSim; onStep(r, simT); }
     requestAnimationFrame(tick);
   };
   return { reset, start() { requestAnimationFrame(tick); } };

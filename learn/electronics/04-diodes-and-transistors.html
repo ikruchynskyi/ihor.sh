@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diodes and Transistors</title>
+  <meta name="description" content="Electronics from scratch, chapter 4: the diode as a one-way valve and its curve, turning AC into smooth DC, a MOSFET switching a motor from a microcontroller pin with PWM and a flyback diode, and why 3.3 V chips need logic-level MOSFETs." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .warn { color: #e03131; font-weight: 600; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 4</p>
+  <h1>Diodes and transistors</h1>
+  <p class="lede">Resistors, capacitors and coils only ever react to what you do to them. This chapter's parts make decisions. A <b>diode</b> lets current flow one way and not the other. A <b>transistor</b> lets a tiny signal, like a 3.3 V pin on a microcontroller, switch a big current, like a motor's. Every chip in every computer is billions of transistors doing exactly the switching you'll do below.</p>
+  <div class="plain card"><b>In plain words:</b> a diode is a <b>one-way valve</b> (a check valve) for current: forwards it opens once you push past about 0.7 V, backwards it stays shut. A MOSFET transistor is a <b>tap with a handle</b>: the gate is the handle, and turning it takes almost no effort, while the water through the tap can be a flood.</div>
+
+  <h2>1. A one-way valve</h2>
+  <p>Push current through a diode with the battery, then flip the battery around.</p>
+  <canvas id="c1" width="800" height="400" aria-label="A battery, resistor and diode, with the diode's current curve"></canvas>
+  <div class="row"><label>battery <input type="range" id="v1" min="0" max="5" step="0.01" value="2"> <span id="v1v" class="math"></span></label><button id="flip1">Flip the battery</button></div>
+  <p class="readout" id="o1"></p>
+  <p>The curve on the right is the diode's whole personality: almost nothing flows until about 0.6 V, then a little more voltage brings a lot more current. That's why the voltage across a conducting silicon diode is nearly always 0.6–0.8 V, whatever the current, and why chapter 1's LED (a diode that glows) needed a resistor. Backwards, it blocks.</p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> push exactly 10 mA forwards through the diode (within 0.3 mA).</p>
+
+  <h2>2. Turning AC into DC</h2>
+  <p>The wall socket gives alternating current: a sine wave that goes positive, then negative, 60 times a second. Electronics want steady DC. One diode keeps only the positive halves (a <b>rectifier</b>). Then a capacitor from chapter 2 fills up on each bump and keeps the load going between them.</p>
+  <canvas id="c2" width="800" height="400" aria-label="A half-wave rectifier with a smoothing capacitor, on a scope"></canvas>
+  <div class="row"><label>smoothing capacitor <input type="range" id="cap2" min="0" max="3" step="0.01" value="0"> <span id="c2v" class="math"></span></label><label>load <input type="range" id="r2" min="2.3" max="4" step="0.01" value="3"> <span id="r2v" class="math"></span></label></div>
+  <p class="readout" id="o2"></p>
+  <p>The leftover wobble is called <b>ripple</b>. A bigger capacitor, or a lighter load, makes it smaller. Your phone charger does this (with four diodes, a "bridge", to use both halves of the wave), then a switching regulator cleans up the rest.</p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> get the ripple below 10% with the 1 kΩ load.</p>
+
+  <h2>3. A MOSFET switches a motor</h2>
+  <p>A microcontroller pin can only give a few milliamps at 3.3 V; a motor wants an amp at 12 V. A MOSFET joins them: the pin drives its gate, and the motor's current goes through it. Turn the pin on and off, then try <b>PWM</b>: switching it on and off fast, where the fraction of time it's on sets the speed.</p>
+  <canvas id="c3" width="800" height="400" aria-label="A microcontroller pin driving a MOSFET that switches a motor, with a scope of the drain voltage"></canvas>
+  <div class="row"><button id="pin">Pin ON</button><label>PWM duty <input type="range" id="duty" min="0" max="100" step="1" value="0"> <span id="dv" class="math"></span></label>
+    <label><input type="checkbox" id="fly3" checked> flyback diode</label><button id="new3" hidden>New MOSFET</button></div>
+  <p class="readout" id="o3"></p>
+  <p>The motor is a coil (chapter 3), so every time the MOSFET switches off, the coil's current needs somewhere to go. With the flyback diode it loops back through the motor. Untick it and watch the drain voltage spike: the MOSFET's own breakdown ("avalanche") absorbs the energy, rated at around 40 V here, and enough of those hits kill it.</p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> run the motor at about half speed (40–60% of full current) with PWM.</p>
+
+  <h2>4. Why your 3.3 V chip needs a "logic-level" MOSFET</h2>
+  <p>The gate has a <b>threshold</b>: below it the MOSFET is off, a little above it it's only half on, and it needs a few volts more to switch fully on. A half-on MOSFET is a resistor carrying the full current, and it gets hot (power = voltage across it × current). Pick a MOSFET and a gate voltage.</p>
+  <canvas id="c4" width="800" height="400" aria-label="Gate voltage against drain current and heat for two MOSFETs"></canvas>
+  <div class="row"><label>MOSFET <select id="type4"><option value="std">standard (threshold 4 V)</option><option value="logic">logic-level (threshold 1.5 V)</option></select></label>
+    <label>gate voltage <input type="range" id="vg4" min="0" max="12" step="0.1" value="3.3"> <span id="vg4v" class="math"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> from an ESP32's 3.3 V pin, switch the full 1 A load with the MOSFET wasting under 0.1 W.</p>
+  <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot. Next: <b>op-amps</b>, where transistors are used in between on purpose, to amplify.</p>
+
+  <p class="muted">Previous: <a href="./03-coils-and-resonance.html">Coils, resonance and antennas</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Try things in the <a href="/learn/lab.html">circuit lab</a>.</p>
+</main>
+<script type="module">
+import { solve, simulate } from "/learn/circuit.js";
+import { scene, live, battery, resistor, capacitor, diode, mosfetSym, motor, acSource, scope, tag, fmtA, fmtR, C } from "/learn/schem.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const goal = (id, ok, praise) => { const el = $(id); if (ok && !el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", ` <b>✓ Done!</b> ${praise}`); say("Challenge done! " + praise.split(".")[0] + ".", "happy"); } };
+const fmtC = (f) => (f >= 1e-3 ? `${(f * 1000).toFixed(1)} mF` : f >= 1e-6 ? `${(f * 1e6).toFixed(0)} µF` : "none");
+const SI = { is: 1e-14, n: 1 }; // a silicon diode: about 0.7 V at 10 mA
+const L = 140, T = 80, B = 320;
+
+// 1. the diode and its curve
+let flipped = false, s1;
+function calc1() {
+  const V = +$("v1").value * (flipped ? -1 : 1), r = solve([{ type: "V", a: 1, b: 0, volts: V }, { type: "R", a: 1, b: 2, ohms: 100 }, { type: "D", a: 2, b: 0, ...SI }]);
+  s1 = { V, I: r.current[2], vd: r.v[2] };
+  $("v1v").textContent = `${V.toFixed(2)} V`;
+  $("o1").textContent = flipped ? `backwards: ${fmtA(Math.abs(s1.I))} (blocked) · the whole ${Math.abs(V).toFixed(2)} V sits across the diode` : `forwards: ${fmtA(s1.I)} · ${s1.vd.toFixed(3)} V across the diode, ${(V - s1.vd).toFixed(2)} V across the 100 Ω`;
+  goal("g1", !flipped && Math.abs(s1.I - 0.01) < 0.0003, `About 1.71 V: 0.71 V for the diode plus 1.0 V for the 100 Ω resistor.`);
+}
+$("v1").oninput = calc1; $("flip1").onclick = () => { flipped = !flipped; calc1(); };
+calc1();
+scene($("c1"), (g) => {
+  battery(g, L, 200, `${Math.abs(s1.V).toFixed(1)} V${flipped ? " (flipped)" : ""}`); resistor(g, [210, T], [340, T], "100 Ω"); diode(g, 400, 200, false, "");
+  // the I–V curve
+  const gx = 470, gy = 50, gw = 300, gh = 280, X = (v) => gx + ((v + 1) / 2) * gw, Y = (i) => gy + gh - Math.min(1, i / 0.03) * gh;
+  g.fillStyle = "#0b0d12"; g.fillRect(gx, gy, gw, gh);
+  g.strokeStyle = "#232836"; g.beginPath(); g.moveTo(X(0), gy); g.lineTo(X(0), gy + gh); g.stroke();
+  g.strokeStyle = C.blue; g.lineWidth = 2.5; g.beginPath(); for (let v = -1; v <= 0.85; v += 0.005) { const i = SI.is * (Math.exp(v / 0.025852) - 1); v === -1 ? g.moveTo(X(v), Y(Math.max(0, i))) : g.lineTo(X(v), Y(Math.max(0, i))); } g.stroke();
+  const vd = flipped ? -Math.min(1, Math.abs(s1.V)) : s1.vd; g.fillStyle = C.yellow; g.beginPath(); g.arc(X(vd), Y(Math.max(0, s1.I)), 7, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; g.fillText("current (to 30 mA)", gx + 6, gy + 16); g.fillText("−1 V", gx + 2, gy + gh - 4); g.fillText("0", X(0) + 3, gy + gh - 4); g.fillText("+1 V", gx + gw - 32, gy + gh - 4); g.fillText("0.7 V", X(0.7) - 16, gy + gh - 18);
+}, () => [{ pts: [[L, 192], [L, T], [400, T], [400, 188]], amps: s1.I }, { pts: [[400, 212], [400, B], [L, B], [L, 208]], amps: s1.I }]);
+
+// 2. rectifier + smoothing
+let s2;
+function calc2() {
+  const Cf = +$("cap2").value ? +(10 ** +$("cap2").value * 1e-6).toPrecision(2) : 0, R = Math.round(10 ** +$("r2").value / 10) * 10, f = 60, dt = 1 / f / 200;
+  const src = (t) => 10 * Math.sin(2 * Math.PI * f * t);
+  const els = [{ type: "V", a: 1, b: 0, volts: src }, { type: "D", a: 1, b: 2, ...SI }, { type: "R", a: 2, b: 0, ohms: R }, ...(Cf ? [{ type: "C", a: 2, b: 0, farads: Cf }] : [])];
+  const sim = simulate(els, { dt, steps: 200 * 8 }), n = 400, vin = sim.t.slice(-n).map(src), vout = sim.v.slice(-n).map((v) => v[2]);
+  const hi = Math.max(...vout), lo = Math.min(...vout), ripple = hi > 0 ? (hi - lo) / hi : 1;
+  s2 = { Cf, R, vin, vout, ripple, avg: vout.reduce((a, b) => a + b, 0) / n };
+  $("c2v").textContent = fmtC(Cf); $("r2v").textContent = fmtR(R);
+  $("o2").textContent = `10 V peak AC in · output averages ${s2.avg.toFixed(2)} V · ripple ${Math.round(ripple * 100)}% (from ${lo.toFixed(2)} to ${hi.toFixed(2)} V)`;
+  goal("g2", R === 1000 && ripple < 0.1, `Around 220 µF or more: the capacitor carries the load through each gap.`);
+}
+["cap2", "r2"].forEach((id) => ($(id).oninput = calc2)); calc2();
+scene($("c2"), (g) => {
+  acSource(g, 80, 200, "60 Hz"); g.save(); g.translate(180, T); g.rotate(-Math.PI / 2); diode(g, 0, 0, false); g.restore(); // lying along the wire, pointing right
+  resistor(g, [300, T], [300, B], fmtR(s2.R)); if (s2.Cf) capacitor(g, 240, T, B, fmtC(s2.Cf));
+  scope(g, 360, 40, 420, 320, [{ ys: s2.vin, color: "#8f98a8", label: "AC in" }, { ys: s2.vout, color: C.yellow, label: "DC out" }], -11, 11, "two cycles");
+}, () => [{ pts: [[80, 180], [80, T], [300, T]], amps: 0 }, { pts: [[300, B], [80, B], [80, 220]], amps: 0 }, ...(s2.Cf ? [{ pts: [[240, T], [240, 192]], amps: 0 }, { pts: [[240, 208], [240, B]], amps: 0 }] : [])]);
+
+// 3. MOSFET + motor + PWM, live
+let pinOn = false, dead = false, energyHits = 0, angle = 0, s3 = { id: 0, vd: 12, iL: 0 }, hist3 = [];
+const PWM_HZ = 4; // slow enough to see each pulse
+const gateAt = (t) => { const d = +$("duty").value / 100; return d > 0 ? ((t * PWM_HZ) % 1 < d ? 3.3 : 0) : pinOn ? 3.3 : 0; };
+const sim3 = live((st) => ({ dt: 5e-4, elements: [
+  { type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 1, b: 2, ohms: 12 }, { type: "L", a: 2, b: 3, henries: 0.2, i0: st.iL },
+  ...(dead ? [] : [{ type: "M", a: 3, b: 0, g: 4, vth: 1.5, k: 4 }]),
+  { type: "V", a: 4, b: 0, volts: (t) => gateAt(st.t0 + t) },
+  ...($("fly3").checked ? [{ type: "D", a: 3, b: 1, is: 1e-12, n: 1 }] : []),
+  // the MOSFET's avalanche: above about 40 V on the drain it conducts (and takes the hit)
+  { type: "D", a: 3, b: 5, is: 1e-12, n: 1 }, { type: "V", a: 5, b: 0, volts: 40 },
+] }), (r, t) => {
+  const n = r.i.length, iAval = r.i[n - 2];
+  s3 = { id: dead ? 0 : r.i[3], vd: r.v[3], iL: r.i[2], t };
+  if (iAval > 0.01 && !$("fly3").checked && !dead) { energyHits += 1; if (energyHits > 3000) { dead = true; $("new3").hidden = false; say("The MOSFET died from too many voltage spikes. Put the flyback diode back!", "dizzy"); sim3.reset({ iL: 0, t0: t }); } }
+  hist3.push([t, r.v[3], r.i[2]]); while (hist3.length && hist3[0][0] < t - 1.5) hist3.shift();
+  angle += s3.iL * 0.25;
+}, { method: "euler" }); // a coil switched off hard: backward Euler doesn't ring
+let simStart = 0;
+sim3.reset({ iL: 0, t0: 0 }); sim3.start();
+$("pin").onclick = () => { pinOn = !pinOn; $("pin").textContent = pinOn ? "Pin OFF" : "Pin ON"; $("duty").value = 0; };
+$("fly3").onchange = () => sim3.reset({ iL: s3.iL, t0: s3.t ?? 0 });
+$("new3").onclick = () => { dead = false; energyHits = 0; $("new3").hidden = true; sim3.reset({ iL: 0, t0: s3.t ?? 0 }); };
+setInterval(() => {
+  const d = +$("duty").value, avg = hist3.length ? hist3.reduce((a, h) => a + h[2], 0) / hist3.length : 0, full = 12 / 12;
+  $("dv").textContent = d ? `${d}%` : "off";
+  const spike = hist3.length ? Math.max(...hist3.map((h) => h[1])) : 0;
+  $("o3").innerHTML = `${dead ? '<span class="warn">MOSFET dead (shorted by avalanche damage).</span> ' : ""}motor current ${fmtA(Math.abs(s3.iL))} (average ${Math.round((avg / full) * 100)}% of full) · drain ${s3.vd.toFixed(1)} V${spike > 20 ? ` · <span class="warn">spikes to ${spike.toFixed(0)} V on switch-off</span>` : ""}`;
+  goal("g3", d > 0 && avg / full > 0.4 && avg / full < 0.6 && hist3.length > 100, `${d}% duty gives about ${Math.round((avg / full) * 100)}% of full current: PWM is an average.`);
+}, 200);
+scene($("c3"), (g) => {
+  battery(g, L, 200, "12 V"); motor(g, 500, 140, angle, "motor"); mosfetSym(g, 500, 250, dead ? "dead" : "MOSFET", gateAt(s3.t ?? 0) > 1 && !dead, dead);
+  if ($("fly3").checked) diode(g, 590, 140, true, "");
+  g.fillStyle = "#2a2f3a"; g.fillRect(260, 230, 120, 40); g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("ESP32 pin", 268, 254); tag(g, 392, 245, `${gateAt(s3.t ?? 0).toFixed(1)} V`, gateAt(s3.t ?? 0) > 1 ? C.green : "#8f98a8");
+  if (hist3.length > 1) { const t0 = hist3[0][0]; scope(g, 610, 40, 180, 140, [{ ys: hist3.map((h) => h[1]), color: C.red, label: "drain V" }], 0, 45); }
+}, () => [{ pts: [[L, 192], [L, T], [500, T], [500, 118]], amps: s3.iL }, { pts: [[500, 162], [500, 220]], amps: s3.iL - (s3.iL - s3.id) }, { pts: [[500, 280], [500, B], [L, B], [L, 208]], amps: s3.id },
+  ...($("fly3").checked ? [{ pts: [[500, 200], [590, 200], [590, T], [500, T]], amps: s3.iL - s3.id }] : []), { pts: [[380, 250], [450, 250]], amps: 0 }]);
+
+// 4. logic level: gate voltage vs heat
+let s4;
+const MOS = { std: { vth: 4, k: 10 }, logic: { vth: 1.5, k: 10 } }; // fully on: about 0.05 Ω
+function calc4() {
+  const m = MOS[$("type4").value], vg = +$("vg4").value;
+  const r = solve([{ type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 1, b: 2, ohms: 12 }, { type: "V", a: 3, b: 0, volts: vg }, { type: "M", a: 2, b: 0, g: 3, ...m }]);
+  const id = r.current[3], vds = r.v[2], heat = id * vds;
+  s4 = { m, vg, id, vds, heat };
+  $("vg4v").textContent = `${vg.toFixed(1)} V`;
+  $("o4").innerHTML = `${id < 0.001 ? "off" : vds > 1 ? "half on" : "fully on"} · load current ${fmtA(id)} of 1 A · ${vds.toFixed(2)} V left across the MOSFET · it turns ${(heat).toFixed(2)} W into heat${heat > 1 ? ' <span class="warn">: hot! it needs a heatsink or more gate voltage</span>' : ""}`;
+  goal("g4", Math.abs(vg - 3.3) < 0.05 && id > 0.97 && heat < 0.1, `A logic-level MOSFET is fully on at 3.3 V; the standard one barely starts.`);
+}
+["vg4"].forEach((id) => ($(id).oninput = calc4)); $("type4").onchange = calc4; calc4();
+scene($("c4"), (g) => {
+  const gx = 60, gy = 40, gw = 680, gh = 300, X = (v) => gx + (v / 12) * gw, Y = (i) => gy + gh - Math.min(1.05, i) / 1.05 * gh;
+  g.fillStyle = "#0b0d12"; g.fillRect(gx, gy, gw, gh);
+  for (const [key, col] of [["std", C.blue], ["logic", C.green]]) {
+    g.strokeStyle = col; g.lineWidth = key === $("type4").value ? 3 : 1.5; g.beginPath();
+    for (let v = 0; v <= 12; v += 0.05) { const r = solve([{ type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 1, b: 2, ohms: 12 }, { type: "V", a: 3, b: 0, volts: v }, { type: "M", a: 2, b: 0, g: 3, ...MOS[key] }]); v ? g.lineTo(X(v), Y(r.current[3])) : g.moveTo(X(v), Y(r.current[3])); }
+    g.stroke();
+  }
+  g.strokeStyle = "#f4d35e88"; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(X(3.3), gy); g.lineTo(X(3.3), gy + gh); g.stroke(); g.setLineDash([]);
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(s4.vg), Y(s4.id), 8, 0, 7); g.fill();
+  g.font = "13px ui-monospace, monospace"; g.fillStyle = C.green; g.fillText("logic-level", X(1.6), Y(0.6)); g.fillStyle = C.blue; g.fillText("standard", X(5.4), Y(0.6)); g.fillStyle = "#8f98a8"; g.fillText("3.3 V pin", X(3.3) + 4, gy + 16); g.fillText("load current (to 1 A)", gx + 6, gy + 16); g.fillText("gate voltage →", gx + gw - 110, gy + gh - 6);
+}, () => []);
+
+window.blipContext = () => ({ page: "Electronics chapter 4: diodes and transistors", diode: s1, rectifier: s2 && { capacitor: s2.Cf, load: s2.R, ripple: s2.ripple }, motor: { pin: pinOn, duty: +$("duty").value, flyback: $("fly3").checked, mosfetDead: dead, current: s3.iL }, logicLevel: s4 && { type: $("type4").value, gate: s4.vg, heatW: s4.heat } });
+</script>
+</body>
+</html>

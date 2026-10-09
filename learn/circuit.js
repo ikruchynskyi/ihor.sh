@@ -4,12 +4,22 @@
 //   { type: "V", a, b, volts }     voltage source, a is the + terminal
 //   { type: "I", a, b, amps }      current source pushing current from a, through itself, into b
 //   { type: "D", a, b, is, n }     diode/LED, anode a, cathode b (Shockley equation, solved by Newton's method)
+//   { type: "M", a, b, g, vth, k }   n-channel MOSFET: drain a, source b, gate g (square-law model, Newton like diodes)
 //   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries, i0 }: only in simulate()/stepper(), over time
 // solve() returns node voltages and the current through every element, measured from a to b.
 // A voltage source's volts may be a function of time (t, seconds) in simulate(): square waves, sine waves.
 // Pure, so node can test it: node learn/circuit.test.mjs
 
 const VT = 0.025852; // thermal voltage at 27 °C
+
+/** Square-law n-channel MOSFET: drain current and its slopes. Off below vth; a resistor-like "linear" region at small Vds;
+ *  saturation (current set by the gate) above Vgs − vth. Vds < 0 is treated as 0 (no body diode here). */
+export function mosfet({ vth = 2, k = 1 }, vgs, vds) {
+  const ov = vgs - vth;
+  if (ov <= 0 || vds <= 0) return { id: 0, gm: 0, gds: 1e-9 };
+  if (vds < ov) return { id: k * (ov * vds - vds * vds / 2), gm: k * vds, gds: k * (ov - vds) + 1e-9 };
+  return { id: (k / 2) * ov * ov, gm: k * ov, gds: 1e-9 };
+}
 
 /** Solve A·x = b by Gaussian elimination with partial pivoting (A is modified in place). */
 function gauss(A, b) {
@@ -30,12 +40,12 @@ function gauss(A, b) {
 // unconnected part still solves (that part just sits at 0 V) instead of throwing.
 export function solve(input, { gmin = 0 } = {}) {
   // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
-  const used = [...new Set(input.flatMap((e) => [e.a, e.b]).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
-  const elements = input.map((e) => ({ ...e, a: map.get(e.a) ?? 0, b: map.get(e.b) ?? 0 }));
+  const used = [...new Set(input.flatMap((e) => [e.a, e.b, ...(e.type === "M" ? [e.g] : [])]).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
+  const elements = input.map((e) => ({ ...e, a: map.get(e.a) ?? 0, b: map.get(e.b) ?? 0, ...(e.type === "M" ? { g: map.get(e.g) ?? 0 } : {}) }));
   const nodes = used.length; // node count, not counting ground
   const sources = elements.filter((e) => e.type === "V");
   const size = nodes + sources.length;
-  const diodes = elements.filter((e) => e.type === "D");
+  const diodes = elements.filter((e) => e.type === "D" || e.type === "M"); // the parts that need Newton's method
   let v = new Array(nodes + 1).fill(0), x = null;
   for (let iter = 0; iter < (diodes.length ? 400 : 1); iter++) {
     const A = Array.from({ length: size }, () => new Array(size).fill(0)), b = new Array(size).fill(0);
@@ -51,6 +61,13 @@ export function solve(input, { gmin = 0 } = {}) {
         // (vd is capped only to keep exp() finite; capping it near the answer, e.g. at 2 V, stops Newton from converging)
         const nvt = (e.n ?? 1) * VT, vd = Math.min(v[e.a] - v[e.b], 100 * nvt), id = e.is * (Math.exp(vd / nvt) - 1), g = e.is / nvt * Math.exp(vd / nvt) + 1e-12;
         conduct(e.a, e.b, g); inject(e.a, -(id - g * vd)); inject(e.b, id - g * vd);
+      } else if (e.type === "M") {
+        // Linearize Id(Vgs, Vds) around the last guess: Id ≈ Id0 + gm·ΔVgs + gds·ΔVds, a conductance plus a controlled source.
+        const vgs = v[e.g] - v[e.b], vds = v[e.a] - v[e.b], { id, gm, gds } = mosfet(e, vgs, vds);
+        conduct(e.a, e.b, gds + 1e-12);
+        stamp(e.a, e.g, gm); stamp(e.a, e.b, -gm); stamp(e.b, e.g, -gm); stamp(e.b, e.b, gm);
+        const ieq = id - gm * vgs - gds * vds;
+        inject(e.a, -ieq); inject(e.b, ieq);
       }
     }
     sources.forEach((s, k) => { const row = nodes + k; if (s.a) { A[row][s.a - 1] += 1; A[s.a - 1][row] += 1; } if (s.b) { A[row][s.b - 1] -= 1; A[s.b - 1][row] -= 1; } b[row] = s.volts; });
@@ -66,6 +83,7 @@ export function solve(input, { gmin = 0 } = {}) {
     if (e.type === "R") return vd / e.ohms;
     if (e.type === "I") return e.amps;
     if (e.type === "D") return e.is * (Math.exp(vd / ((e.n ?? 1) * VT)) - 1);
+    if (e.type === "M") return mosfet(e, v[e.g] - v[e.b], vd).id;
     return -x[nodes + sources.indexOf(e)]; // MNA solves for the current into the + terminal; report it flowing out of +
   });
   // Report voltages under the caller's own node numbers.
@@ -86,15 +104,18 @@ export function simulate(elements, { dt, steps }) {
 }
 
 /** The same, one step at a time (for circuits that run live on a page): step() advances dt and returns { t, v, i }. */
+// opts.method "euler" (backward Euler) instead of trapezoidal: it damps a little, but it doesn't ring when a coil is
+// suddenly switched into a near-open circuit (a MOSFET turning off), which trapezoidal does.
 export function stepper(elements, dt, opts = {}) {
+  const be = opts.method === "euler";
   const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: e.type === "L" ? e.i0 ?? 0 : 0 })); // a coil can start with current flowing (i0)
   let n = 0;
   return { step() {
     const t = n++ * dt, flat = [], owner = [];
     elements.forEach((e, k) => {
       const s = state[k];
-      if (e.type === "C") { const g = (2 * e.farads) / dt; flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.b, b: e.a, amps: g * s.v + s.i }); owner.push(k, -1); }
-      else if (e.type === "L") { const g = dt / (2 * e.henries); flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.a, b: e.b, amps: s.i + g * s.v }); owner.push(k, -1); }
+      if (e.type === "C") { const g = (be ? 1 : 2) * e.farads / dt; flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.b, b: e.a, amps: g * s.v + (be ? 0 : s.i) }); owner.push(k, -1); }
+      else if (e.type === "L") { const g = dt / ((be ? 1 : 2) * e.henries); flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.a, b: e.b, amps: s.i + (be ? 0 : g * s.v) }); owner.push(k, -1); }
       else { flat.push(e.type === "V" && typeof e.volts === "function" ? { ...e, volts: e.volts(t) } : e); owner.push(k); }
     });
     const r = solve(flat, opts), cur = elements.map(() => 0);
@@ -102,7 +123,8 @@ export function stepper(elements, dt, opts = {}) {
     elements.forEach((e, k) => {
       if (e.type !== "C" && e.type !== "L") return;
       const vab = r.v[e.a] - r.v[e.b], s = state[k];
-      cur[k] = e.type === "C" ? ((2 * e.farads) / dt) * (vab - s.v) - s.i : s.i + (dt / (2 * e.henries)) * (vab + s.v);
+      cur[k] = be ? (e.type === "C" ? (e.farads / dt) * (vab - s.v) : s.i + (dt / e.henries) * vab)
+        : e.type === "C" ? ((2 * e.farads) / dt) * (vab - s.v) - s.i : s.i + (dt / (2 * e.henries)) * (vab + s.v);
       s.v = vab; s.i = cur[k];
     });
     return { t, v: r.v, i: cur };
