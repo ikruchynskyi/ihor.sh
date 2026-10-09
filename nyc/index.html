@@ -56,6 +56,15 @@
     .modes label:has(input:focus-visible) { outline: 3px solid #4de1ff; outline-offset: 2px; }
     #rresults button { display: block; width: 100%; text-align: left; margin: 4px 0; font-size: .8rem; }
     .viol { font-size: .8rem; margin: 2px 0 0; }
+    .arr { margin-top: 8px; border-top: 1px solid #333a5c; padding-top: 6px; }
+    .arr-title { font-weight: bold; margin-bottom: 4px; }
+    .arr-dir { margin: 6px 0; }
+    .arr-head { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; opacity: .75; margin-bottom: 3px; }
+    .arr-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+    .bullet { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: bold 12px/1 Helvetica, Arial, sans-serif; flex: none; }
+    .arr-times { display: flex; gap: 10px; align-items: baseline; }
+    .arr-times b { font-weight: normal; } .arr-times b.first { font-weight: bold; font-size: 1.1em; }
+    .arr-times small { opacity: .6; }
     .grade { display: inline-grid; place-items: center; width: 26px; height: 26px; font-weight: 700; border: 2px solid currentColor; margin-right: 6px; }
     /* floating camera windows */
     #cams { position: fixed; inset: 0; pointer-events: none; z-index: 1500; }
@@ -87,7 +96,7 @@
         <label title="Walk"><input type="radio" name="tMode" value="walk"><span aria-hidden="true">🚶</span><b>Walk</b></label>
       </fieldset>
       <label><input type="checkbox" id="tNoFerry"> Avoid ferries</label>
-      <button style="margin-top:6px">Plan</button>
+      <button style="margin-top:6px">Plan</button> <button type="button" id="tClear" style="margin-top:6px">Clear</button>
     </form>
     <div id="tripOut" class="muted"></div>
   </details>
@@ -223,7 +232,7 @@ function showBikes(s) {
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
-  stations: { label: "🚇 All stations: click for next trains", on: false, group: L.layerGroup(), load: loadAllStations },
+  stations: { label: "🚇 All stations: click for next trains", on: true, group: L.layerGroup(), load: loadAllStations },
   citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
   ferry: { label: "⛴ NYC Ferry: next boats", on: false, group: L.layerGroup(), load: loadFerry },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
@@ -311,16 +320,28 @@ function loadCitiBike(g) {
 }
 
 // Next trains: MTA real-time arrivals through /api/nyc/arrivals, shown in a station's popup.
+// MTA bullet colors by trunk line.
+const ROUTE_COLOR = { A: "#0039a6", C: "#0039a6", E: "#0039a6", B: "#ff6319", D: "#ff6319", F: "#ff6319", M: "#ff6319", G: "#6cbe45", J: "#996633", Z: "#996633", L: "#a7a9ac",
+  N: "#fccc0a", Q: "#fccc0a", R: "#fccc0a", W: "#fccc0a", 1: "#ee352e", 2: "#ee352e", 3: "#ee352e", 4: "#00933c", 5: "#00933c", 6: "#00933c", 7: "#b933ad", S: "#808183", GS: "#808183", FS: "#808183", H: "#808183", SI: "#0039a6" };
+const bullet = (r) => `<span class="bullet" style="background:${ROUTE_COLOR[r.replace(/X$/, "")] ?? "#808183"};color:${/^[NQRW]$/.test(r) ? "#000" : "#fff"}">${esc(r.replace(/^(GS|FS|H)$/, "S"))}</span>`;
 async function arrivalsHtml(id) {
   const d = await getJSON(`/api/nyc/arrivals?stop=${encodeURIComponent(id)}`).catch(() => null);
   if (!d) return `<p class="muted">No arrival times right now.</p>`;
   seen.arrivals = d;
-  const dir = (x) => `<p class="viol"><b>${esc(x.label)}</b>: ${x.trains.length ? x.trains.map((t) => `${esc(t.route)} ${t.minutes ? t.minutes + " min" : "now"}`).join(" · ") : "no trains listed"}</p>`;
-  return `<div class="muted" style="margin-top:6px">Next trains</div>${dir(d.north)}${dir(d.south)}`;
+  const dir = (x) => {
+    const byRoute = new Map();
+    for (const t of x.trains) (byRoute.get(t.route) ?? byRoute.set(t.route, []).get(t.route)).push(t.minutes);
+    return `<div class="arr-dir"><div class="arr-head">${esc(x.label)}</div>${byRoute.size ? [...byRoute].map(([r, mins]) => `<div class="arr-row">${bullet(r)}<span class="arr-times">${mins.map((m, i) => `<b class="${i ? "" : "first"}">${m ? m : "now"}</b>`).join("")}<small>min</small></span></div>`).join("") : `<div class="muted">No trains listed</div>`}</div>`;
+  };
+  return `<div class="arr"><div class="arr-title">Next trains <span class="muted">live</span></div>${dir(d.north)}${dir(d.south)}</div>`;
 }
+const stationMarkers = new Map();
 async function loadAllStations(g) {
-  for (const [id, s] of stations) dot(s.lat, s.lon, "#9aa3cf", 3).bindTooltip(`${s.name} (${s.routes})`).bindPopup("Loading…", { maxWidth: 300 })
-    .on("popupopen", async (ev) => ev.popup.setContent(`<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>${await arrivalsHtml(id)}`)).addTo(g);
+  for (const [id, s] of stations) {
+    const m = dot(s.lat, s.lon, "#9aa3cf", 3).bindTooltip(`${s.name} (${s.routes})`).bindPopup("Loading…", { maxWidth: 300 })
+      .on("popupopen", async (ev) => ev.popup.setContent(`<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>${await arrivalsHtml(id)}`)).addTo(g);
+    stationMarkers.set(id, m);
+  }
   $("n-stations").textContent = `(${stations.size})`;
 }
 
@@ -449,6 +470,15 @@ async function placePin(id, latlng) {
 ["tFrom", "tTo"].forEach((id) => $(id).addEventListener("input", () => { picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }));
 const tripEnd = (id) => (picked[id] && $(id).value === picked[id].label ? `${picked[id].lat},${picked[id].lon}` : $(id).value.trim());
 
+// Clear: route, pins, both fields and the result list.
+$("tClear").onclick = () => {
+  tripLayer.clearLayers();
+  for (const id of ["tFrom", "tTo"]) { $(id).value = ""; picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }
+  setPicking(null);
+  $("tripOut").textContent = "";
+  seen.trip = null;
+};
+
 $("trip").addEventListener("submit", async (e) => {
   e.preventDefault();
   const from = tripEnd("tFrom"), to = tripEnd("tTo");
@@ -457,7 +487,7 @@ $("trip").addEventListener("submit", async (e) => {
   tripLayer.clearLayers();
   const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
-  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
+  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => ({ cameraId: c.id, name: c.name })) };
   const line = L.polyline(d.line, { color: "#4de1ff", weight: 5, opacity: 0.85 }).addTo(tripLayer);
   // Traffic on the route (car trips): each jam painted over the line by how bad it is.
   const JAM = { 1: ["#ffd166", "slow"], 2: ["#ff9f1c", "heavy"], 3: ["#ff5c8a", "jammed"], 4: ["#b3002d", "closed or stopped"] };
@@ -548,13 +578,19 @@ window.blipActions = {
 // What Blip sees on this page when you ask it something.
 window.blipContext = () => {
   const b = map.getBounds();
-  const visible = [...byStation].flatMap(([id, list]) => { const s = stations.get(id); return s && b.contains([s.lat, s.lon]) ? [{ station: s.name, lines: s.routes, alerts: [...new Set(list.filter((a) => !hidden.has(a.type)).map((a) => `${a.type}: ${a.header}`))].slice(0, 3) }] : []; }).filter((x) => x.alerts.length).slice(0, 25);
+  const visible = [...byStation].flatMap(([id, list]) => { const s = stations.get(id); return s && b.contains([s.lat, s.lon]) ? [{ stationId: id, station: s.name, lines: s.routes, alerts: [...new Set(list.filter((a) => !hidden.has(a.type)).map((a) => `${a.type}: ${a.header}`))].slice(0, 3) }] : []; }).filter((x) => x.alerts.length).slice(0, 25);
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
-    alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
+    linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
 };
 
+// Popups pan clear of the panel, which floats over the map's left side.
+map.on("popupopen", (e) => {
+  const r = $("panel").getBoundingClientRect(), m = $("map").getBoundingClientRect();
+  e.popup.options.autoPanPaddingTopLeft = [Math.max(10, r.right - m.left + 10), 10];
+  setTimeout(() => e.popup.isOpen() && e.popup._adjustPan?.(), 300); // re-pan with the padding (after any setView animation)
+});
 // The panel folds away (and starts folded on phones, where it would cover the map).
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 $("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
@@ -563,6 +599,30 @@ if (matchMedia("(max-width: 700px)").matches) fold(true);
 $("refresh").addEventListener("click", refresh);
 await loadStations().catch((e) => ($("status").textContent = `Stations failed: ${e.message}`));
 for (const [k, l] of Object.entries(LAYERS)) if (l.on) toggle(k, true);
+
+// Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom], #place=<address>, #cam=<camera id>.
+async function focusHash() {
+  const [key, val = ""] = decodeURIComponent(location.hash.slice(1)).split("=");
+  if (key === "station" && stations.get(val)) {
+    const cb = document.querySelector('#layers input[data-l="stations"]');
+    if (!LAYERS.stations.on) { cb.checked = true; await toggle("stations", true); }
+    while (!stationMarkers.get(val)) await new Promise((r) => setTimeout(r, 100));
+    const s = stations.get(val);
+    map.setView([s.lat, s.lon], Math.max(map.getZoom(), 15));
+    stationMarkers.get(val).openPopup();
+  } else if (key === "at") {
+    const [lat, lon, z] = val.split(",").map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) { map.setView([lat, lon], z || 17); map.fire("click", { latlng: L.latLng(lat, lon) }); }
+  } else if (key === "place" && val) {
+    const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(val)}`).catch(() => null);
+    if (g) { map.setView([g.lat, g.lon], 17); map.fire("click", { latlng: L.latLng(g.lat, g.lon) }); }
+  } else if (key === "cam") {
+    const c = (await getJSON("/api/nyc/cameras")).find((x) => x.id === val);
+    if (c) { map.setView([c.lat, c.lon], 16); openCam(c); }
+  }
+}
+addEventListener("hashchange", focusHash);
+if (location.hash) focusHash();
 await refresh();
 setInterval(() => { if (!bikeLayer.getLayers().length) refresh(); }, 60_000); // skip while a popup is open
 </script>
