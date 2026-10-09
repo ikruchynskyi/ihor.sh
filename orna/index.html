@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orna Guild Shop Planner</title>
+  <meta name="description" content="Orna RPG guild shop planner: which guild sells which crafting material today, the next date for any material at every guild, and how many guild proofs (Coral, Tower Shards…) your amount costs, with calendar reminders." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 28px 16px 96px; }
+    .guilds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+    .guild { padding: 10px 12px; }
+    .guild b { display: block; } .guild small { color: var(--muted); }
+    .guild ul { margin: 6px 0 0; padding-left: 18px; }
+    .guild li a { text-decoration: underline dotted; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
+    form label { display: grid; gap: 4px; font-size: .9rem; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .lang { float: right; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · Orna</p>
+  <h1>Guild shop planner</h1>
+  <p class="lede">In <a href="https://playorna.com" target="_blank" rel="noopener">Orna</a>, each guild's shop sells a few crafting materials a day, paid in that guild's own proofs. This finds the next day each guild sells what you need and what it will cost. The same planner runs in the Telegram bot <a href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener">@IrishmooshBot</a>, which can also read your screenshots.</p>
+  <button class="lang" id="lang" aria-pressed="false">Українською</button>
+  <h2>On sale today <span class="muted" id="today"></span></h2>
+  <div class="guilds" id="guilds"></div>
+
+  <h2>Plan a purchase</h2>
+  <form id="planForm">
+    <label>Material <input id="mat" list="mats" placeholder="e.g. Adamantine" autocomplete="off" required></label>
+    <datalist id="mats"></datalist>
+    <label>How many <input id="qty" type="number" min="1" step="1" value="100"></label>
+    <button>Plan</button>
+  </form>
+  <div id="plan"></div>
+  <p class="muted">Dates come from the community "Material Forecast" sheet; proof costs use OrnaCodex's formula (tier × 10 + rarity × 5, scaled per currency). Days are New York dates. Not affiliated with Northern Forge Studios.</p>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+let uk = false, names = [], lastPlan = null, lastToday = null;
+const label = (en) => (uk ? names.find((n) => n.en === en)?.uk ?? en : en);
+const cal = (p, g) => {
+  const d = g.date.replace(/-/g, ""), next = new Date(Date.parse(g.date) + 86400_000).toISOString().slice(0, 10).replace(/-/g, "");
+  const text = `Orna: buy ${p.count || ""} ${p.material} at ${g.guild}`.replace(/\s+/g, " ");
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&dates=${d}/${next}&details=${encodeURIComponent(g.proofs ? `${g.proofs} ${g.currency}` : "")}`;
+};
+function renderToday() {
+  const t = lastToday;
+  $("today").textContent = t.date;
+  $("guilds").innerHTML = t.guilds.map((g) => `<div class="guild card"><b>${esc(g.guild)}</b><small>${esc(g.currency)}</small>
+    <ul>${g.materials.length ? g.materials.map((m) => `<li><a href="#plan" data-m="${esc(m)}">${esc(label(m))}</a></li>`).join("") : '<li class="muted">nothing today</li>'}</ul></div>`).join("");
+}
+function renderPlan() {
+  const p = lastPlan;
+  if (!p) return;
+  if (p.error) return ($("plan").innerHTML = `<p>${esc(p.error)}</p>`);
+  $("plan").innerHTML = `<p><b>${esc(label(p.material))}</b>${uk ? "" : p.uk ? ` <span class="muted">(${esc(p.uk)})</span>` : ""} · ${p.tier ? `tier ${p.tier}, ${esc(p.rarity)}, base rate 100:${p.baseRate}` : "tier unknown, so no proof counts"}</p>
+    <table><tr><th>Guild</th><th>Next on sale</th><th>Cost for ${p.count || "?"}</th><th></th></tr>${p.guilds.map((g) => `<tr><td>${esc(g.guild)}</td>
+      <td>${esc(new Date(g.date + "T12:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }))} <span class="muted">${g.inDays ? `in ${g.inDays} d` : "today"}</span></td>
+      <td>${g.proofs != null ? `${g.proofs.toLocaleString()} ${esc(g.currency)}` : "–"}</td><td><a href="${cal(p, g)}" target="_blank" rel="noopener">📅 remind me</a></td></tr>`).join("")}</table>`;
+}
+async function plan(material, count) {
+  $("mat").value = material; if (count) $("qty").value = count;
+  lastPlan = await fetch(`/api/orna/plan?material=${encodeURIComponent(material)}&count=${Number($("qty").value) || 0}`).then((r) => r.json());
+  renderPlan();
+  return $("plan");
+}
+$("planForm").addEventListener("submit", (e) => { e.preventDefault(); plan($("mat").value); });
+$("guilds").addEventListener("click", (e) => { const m = e.target.closest("a[data-m]")?.dataset.m; if (m) { e.preventDefault(); plan(m).then((el) => el.scrollIntoView({ behavior: "smooth", block: "start" })); } });
+$("lang").onclick = () => { uk = !uk; $("lang").textContent = uk ? "English" : "Українською"; $("lang").setAttribute("aria-pressed", String(uk)); renderToday(); renderPlan(); };
+
+[lastToday, names] = await Promise.all([fetch("/api/orna/today").then((r) => r.json()), fetch("/api/orna/materials").then((r) => r.json())]);
+$("mats").innerHTML = names.map((n) => `<option value="${esc(n.en)}">${esc(n.uk ?? "")}</option>`).join("");
+renderToday();
+
+window.blipActions = {
+  plan_material: { label: "planned the purchase", description: "Plan buying an Orna crafting material: next date at each guild and the proofs it costs.", parameters: { material: { type: "string", description: "Material name, English or Ukrainian" }, count: { type: "number", description: "How many" } },
+    run: ({ material, count }) => plan(String(material ?? ""), Number(count) || 0) },
+};
+window.blipContext = () => ({ page: "Orna guild shop planner", today: lastToday, lastPlan });
+</script>
+</body>
+</html>

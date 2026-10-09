@@ -6,6 +6,7 @@ import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
+import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -73,6 +74,11 @@ const TOOLS: Record<string, Tool> = {
       return (q ? all.filter((s) => s.name.toLowerCase().includes(q)) : all.filter((s) => s.next.length)).slice(0, 12).map((s) => ({ landing: s.name, next: s.next.map((n) => `${n.route} in ${n.minutes} min`) }));
     },
   },
+  orna_shops: {
+    description: "Orna RPG guild shops: with a material, each guild's next sale date and the guild proofs an amount costs; without one, what every guild sells today.",
+    parameters: { material: { type: "string", description: "Crafting material (English or Ukrainian), optional" }, count: { type: "number", description: "How many, optional" } },
+    run: ({ material, count }) => (material ? ornaPlan(String(material), Number(count) || 0) : ornaToday()),
+  },
   deals: {
     description: "Deals in NYC on a date: designer sample sales (with address and dates) and the city's discount weeks (Restaurant Week, Broadway Week, Off-Broadway Week).",
     parameters: { date: { type: "string", description: "YYYY-MM-DD, New York date (default today)" } },
@@ -116,7 +122,7 @@ Visitors talk to you through a little game-style dialog box. You see the page th
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, broken elevators, traffic cameras, free events, restaurant inspections, click for address info), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
-- World 3, ORNA (the GPS RPG): questions about the game go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
+- World 3, ORNA (the GPS RPG): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 8, AI at /ai/: machine learning from scratch with draggable visuals; chapter 1 "Matrices are moves" at /ai/01-matrices-are-moves.html (more chapters coming: gradients, neurons, backprop, CNNs, transformers, agents, vision).
 Planned (locked): World 4 Ride (bikepacking), 5 EDC (gear), 6 Yomu (graded Japanese), 7 Learn & build.
 

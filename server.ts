@@ -9,6 +9,7 @@ import { startArchive, summary } from "./archive.ts";
 import { stationArrivals, ferryBoard } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
+import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
@@ -23,6 +24,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   radio: { dir: RADIO, label: "World 1 · Radio" },
   nyc: { dir: path.join(ROOT, "nyc"), label: "World 2 · NYC" },
   ai: { dir: path.join(ROOT, "ai"), label: "World 8 · AI" },
+  orna: { dir: path.join(ROOT, "orna"), label: "World 3 · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Each listener is
@@ -190,6 +192,10 @@ const server = http.createServer(async (req, res) => {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();
     }
+    if (url.pathname === "/api/orna/today") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await ornaToday()));
+    if (url.pathname === "/api/orna/materials") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await materialNames()));
+    if (url.pathname === "/api/orna/plan") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" })
+      .end(JSON.stringify(await ornaPlan(String(url.searchParams.get("material") ?? "").slice(0, 60), Math.min(1e6, Math.max(0, Number(url.searchParams.get("count")) || 0)))));
     if (url.pathname === "/api/radio/repeaters") {
       const [bs, bw, bn, be] = String(url.searchParams.get("bbox") ?? "39.5,-76,42.3,-71.5").split(",").map(Number);
       if (![bs, bw, bn, be].every(Number.isFinite)) return res.writeHead(400).end();

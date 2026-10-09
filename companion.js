@@ -544,10 +544,10 @@ form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
-const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", callsign_lookup: "looked up the callsign", ferry_arrivals: "checked the ferries", repeaters_near: "found repeaters", free_events: "checked free events", city_events: "checked the city calendar",
+const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", callsign_lookup: "looked up the callsign", ferry_arrivals: "checked the ferries", orna_shops: "checked the guild shops", repeaters_near: "found repeaters", free_events: "checked free events", city_events: "checked the city calendar",
   restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
 // Blip remembers where you've been (this browser only) and greets you per world.
-const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI" };
+const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", orna: "ORNA" };
 const progress = (() => { try { return JSON.parse(local.get("blip:progress") || "{}"); } catch { return {}; } })();
 progress.pages ??= {}; progress.worlds ??= {};
 {
