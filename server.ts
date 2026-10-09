@@ -4,6 +4,7 @@
 import http from "node:http";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { startArchive, summary } from "./archive.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const ROOT = import.meta.dirname;
@@ -115,6 +116,10 @@ const server = http.createServer(async (req, res) => {
       const reply = await ask(JSON.parse(raw));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ reply }));
     }
+    if (url.pathname === "/api/nyc/archive") {
+      const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
+    }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"));
     if (url.pathname === "/companion.js" || url.pathname === "/theme.css") return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
@@ -133,4 +138,5 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+startArchive();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));

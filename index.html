@@ -67,6 +67,11 @@
   .level i { font: 9px var(--pixel); font-style: normal; color: var(--green); opacity: 0; }
   .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
 
+  .level.off { opacity: .45; border-style: dashed; }
+  .level.off:hover { transform: none; box-shadow: none; border-color: var(--line); }
+  .chapters { margin: 0; padding: 0; list-style: none; counter-reset: ch; }
+  .chapters li { counter-increment: ch; color: var(--dim); padding: 4px 0; }
+  .chapters li::before { content: "■ " counter(ch) " "; font: 8px var(--pixel); color: var(--line); }
   .locked { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
   .locked .world { margin: 0; opacity: .7; border-style: dashed; }
   .locked .world h3 { color: var(--dim); }
@@ -83,7 +88,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>WORLD 1 OPEN</span>
+  <span>2 OF 6 WORLDS OPEN</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -115,19 +120,50 @@
         <a class="level" href="/radio/course/" data-icon="book" data-blip="16 chapters. It's spinning arrows all the way down."><span class="lv">1-3 <i>▶ PLAY</i></span><b>RADIO FROM SCRATCH</b><span class="d">16 interactive chapters, from a dot on a wheel to a USB driver.</span></a>
         <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US amateur radio license.</span></a>
         <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">A developer guide to WebUSB, the RTL2832U and the R820T tuner.</span></a>
+        <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook chapter by chapter, each section linked to an interactive lesson.</span></a>
+      </nav>
+    </article>
+
+    <article class="world">
+      <header>
+        <h3><small>WORLD 2</small>NYC</h3>
+        <span class="onair">LIVE DATA</span>
+      </header>
+      <p>Small tools built on New York City open data: what's broken on the subway right now, what's free today, and an archive of MTA alerts that nobody else keeps.</p>
+      <nav class="levels" aria-label="NYC projects">
+        <a class="level" href="/nyc/" data-icon="train" data-blip="Train stuck? I'll find you a Citi Bike."><span class="lv">2-1 <i>▶ PLAY</i></span><b>SUBWAY BAILOUT</b><span class="d">Live MTA alerts on a map. Click a station to see the nearest Citi Bikes.</span></a>
+        <a class="level" href="/nyc/free.html" data-icon="ticket" data-blip="Free museums, gardens and ferries. Every rule has a source."><span class="lv">2-2 <i>▶ PLAY</i></span><b>FREE NYC</b><span class="d">Free and pay-what-you-wish museums, gardens and ferries on any day.</span></a>
+        <a class="level" href="/nyc/archive.html" data-icon="box" data-blip="I'm recording every subway alert and broken elevator. Nobody else keeps these!"><span class="lv">2-3 <i>▶ PLAY</i></span><b>MTA ARCHIVE</b><span class="d">Every subway alert and elevator outage, recorded as they happen.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Locked: street fairs, parades and an evening planner."><span class="lv">2-4</span><b>EVENING PLANNER</b><span class="d">Events + subway alerts + Citi Bike + weather.</span></div>
+        <div class="level off" data-icon="lock" data-blip="Locked: job posts with ghost-job and scam flags."><span class="lv">2-5</span><b>JOBS RADAR</b><span class="d">Deduped NYC jobs with explainable ghost and scam flags.</span></div>
+        <div class="level off" data-icon="lock" data-blip="Locked: is that sale real? Price history will tell."><span class="lv">2-6</span><b>REAL-DEAL TRACKER</b><span class="d">Grocery and store prices with our own price history.</span></div>
       </nav>
     </article>
 
     <div class="locked">
-      <article class="world" data-blip="Locked! Even I don't know what's in there yet.">
+      <article class="world" data-blip="A bike world. I don't have legs, so I'll ride in the basket.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 2</small>???</h3></header>
-        <p>A new project is being soldered together.</p>
+        <header><h3><small>WORLD 3</small>RIDE</h3></header>
+        <p>Bikepacking × AI: drop in GPX files and trip reports, get a day-by-day plan that knows where the water runs out.</p>
+        <ol class="chapters"><li>Route notebook</li><li>Bike + train escapes from NYC</li><li>Gear graph</li></ol>
       </article>
-      <article class="world" data-blip="Shhh. Top secret.">
+      <article class="world" data-blip="Flashlights! Knives! Tiny screwdrivers! Locked for now.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 3</small>???</h3></header>
-        <p>Coming soon. Save your progress.</p>
+        <header><h3><small>WORLD 4</small>EDC</h3></header>
+        <p>Everyday-carry and geek tools: a daily feed that becomes a cited catalog, a knowledge base and a gift advisor.</p>
+        <ol class="chapters"><li>Daily gear feed</li><li>Tools catalog</li><li>Knowledge base</li><li>Advisor + gift mode</li></ol>
+      </article>
+      <article class="world" data-blip="よむ means 'read'. That's all the Japanese I know.">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 5</small>YOMU</h3></header>
+        <p>Japanese through a graded serial story: every chapter adds a few new words, checked by a validator.</p>
+        <ol class="chapters"><li>Graded serial story</li><li>Tap-to-gloss + review</li><li>Shadowing mode</li></ol>
+      </article>
+      <article class="world" data-blip="A skill tree! Every node unlocks another world.">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 6</small>LEARN & BUILD</h3></header>
+        <p>Math, electronics and hardware build logs, every lesson applied to the other worlds.</p>
+        <ol class="chapters"><li>Skill tree</li><li>Track A: math, stats, ML</li><li>Track B: electronics to drivers</li><li>Hardware builds</li></ol>
       </article>
     </div>
   </section>
@@ -143,6 +179,9 @@
     book:  ["..........", ".aaa..aaa.", "a...aa...a", "a.bb.a.bba", "a...aa...a", "a.bb.a.bba", "a...aa...a", "a...aa...a", ".aaa..aaa.", ".........."],
     tower: ["b.......b.", ".b..c..b..", "b..ccc..b.", "....a.....", "...a.a....", "...aaa....", "..a.a.a...", "..aa.aa...", ".a.....a..", "aaaaaaaaa."],
     chip:  [".a.a.a.a..", "aaaaaaaaa.", ".abbbbbba.", "aabbbbbbaa", ".abbccbba.", "aabbccbbaa", ".abbbbbba.", "aaaaaaaaa.", ".a.a.a.a..", ".........."],
+    train: ["..aaaaaa..", ".abbabbba.", ".abbabbba.", ".aaaaaaaa.", ".acaaaaca.", ".aaaaaaaa.", "..a....a..", ".a......a.", "a........a", ".........."],
+    ticket:["..........", "aaaaaaaaaa", "a..c.....a", "a.ccc..b.a", "a..c..bbba", "a......b.a", "a........a", "aaaaaaaaaa", "..........", ".........."],
+    box:   ["..........", "aaaaaaaaaa", "abbbbbbbba", "aaaaaaaaaa", ".a......a.", ".a.cccc.a.", ".a......a.", ".a......a.", ".aaaaaaaa.", ".........."],
     lock:  ["..........", "...aaaa...", "..a....a..", "..a....a..", ".bbbbbbbb.", ".bbbccbbb.", ".bbbccbbb.", ".bbbbbbbb.", ".bbbbbbbb.", ".........."],
   };
   const COLORS = { a: "#ffb347", b: "#4de1ff", c: "#ff5c8a" };

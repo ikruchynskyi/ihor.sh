@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MTA Archive</title>
+  <meta name="description" content="Every NYC subway alert and elevator/escalator outage, recorded every 5 minutes: which lines get disrupted most, and which elevators break most.">
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #d9480f;
+            --unplanned: #e8507a; --planned: #5b7cfa; color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 28px 16px 96px; }
+    h2 { margin: 40px 0 6px; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 20px 0; }
+    .tile { padding: 14px 16px; }
+    .tile b { display: block; font: 26px/1.3 "Press Start 2P", ui-monospace, monospace; color: var(--fg); }
+    .tile span { color: var(--muted); font-size: .85rem; }
+    .chart { padding: 16px; position: relative; }
+    .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin: 0 0 12px; }
+    .legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+    .rows { display: grid; grid-template-columns: 34px 1fr 40px; gap: 6px 10px; align-items: center; }
+    .bullet { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; vertical-align: middle; place-items: center; font: 700 14px ui-sans-serif, system-ui, sans-serif; color: #fff; }
+    .bullet.dark { color: #111; }
+    .track { display: flex; gap: 2px; height: 16px; }
+    .track i, .cols i { display: block; min-width: 0; }
+    .val { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; text-align: right; }
+    .cols { display: flex; align-items: flex-end; gap: 3px; height: 160px; border-bottom: 2px solid var(--line); }
+    .cols div { flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%; justify-content: flex-start; cursor: default; }
+    .cols div:hover i, .rows .track:hover i { filter: brightness(1.25); }
+    .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .8rem; margin-top: 6px; }
+    #tip { position: fixed; pointer-events: none; z-index: 10; padding: 8px 10px; background: #05070d; color: #e8edff; border: 2px solid var(--line); font-size: .85rem; line-height: 1.4; max-width: 260px; }
+    .alert { padding: 12px 14px; margin: 10px 0; }
+    .alert p { margin: 6px 0 0; }
+    .alert p .bullet { width: 20px; height: 20px; font-size: 11px; }
+    .alert .when { color: var(--muted); font-size: .85rem; }
+    .live { color: #5cff9d; font-size: .8rem; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; font-size: .9rem; }
+    th, td { padding: 8px 8px 8px 0; vertical-align: top; text-align: left; }
+    td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+    .empty { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">NYC · subway history</p>
+  <h1>MTA Archive</h1>
+  <p class="lede">The MTA only shows what's broken <em>right now</em>. Every 5 minutes this page records every subway alert and every elevator and escalator outage, so over time it can answer what nobody else publishes: how often does my line get disrupted, and which elevators break most?</p>
+  <p class="muted" id="coverage">Loading the archive…</p>
+
+  <div class="tiles">
+    <div class="tile card"><b id="t-alerts">–</b><span>subway alerts active now</span></div>
+    <div class="tile card"><b id="t-out">–</b><span>elevators &amp; escalators out now</span></div>
+    <div class="tile card"><b id="t-seen">–</b><span>alerts recorded, last 30 days</span></div>
+    <div class="tile card"><b id="t-days">–</b><span>days recorded so far</span></div>
+  </div>
+
+  <h2>Alerts by line</h2>
+  <p class="muted">Every alert seen in the last 30 days that names the line. One alert can name several lines.</p>
+  <div class="chart card">
+    <div class="legend"><span><i style="background:var(--unplanned)"></i>Unplanned (delays, reroutes, reduced service)</span><span><i style="background:var(--planned)"></i>Planned work</span></div>
+    <div class="rows" id="by-line"></div>
+    <details><summary>Show as a table</summary><div class="scroll"><table id="by-line-table"></table></div></details>
+  </div>
+
+  <h2>Alerts per day</h2>
+  <p class="muted">New alerts by the day we first saw them (New York time). This fills in as the archive grows.</p>
+  <div class="chart card">
+    <div class="legend"><span><i style="background:var(--unplanned)"></i>Unplanned</span><span><i style="background:var(--planned)"></i>Planned work</span></div>
+    <div class="cols" id="by-day" role="img"></div>
+    <div class="axis"><span id="d-first"></span><span id="d-last"></span></div>
+  </div>
+
+  <h2>Latest unplanned alerts</h2>
+  <div id="recent"></div>
+
+  <h2>Elevators &amp; escalators out now</h2>
+  <p class="muted">Elevators first: for many riders a broken elevator means the station doesn't exist.</p>
+  <div class="scroll card chart"><table id="out"></table></div>
+
+  <h2>Broke down the most</h2>
+  <p class="muted">Equipment with the most downtime we observed in the last 30 days, not counting planned work. An outage already in progress when the archive started counts from the MTA's start date, clipped to the window.</p>
+  <div class="scroll card chart"><table id="worst"></table></div>
+
+  <h2>How this works</h2>
+  <p>A small job on the server fetches the MTA's public feeds every 5 minutes: <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json">subway alerts</a> and <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fnyct_ene.json">elevator and escalator outages</a>. Each alert and outage is stored once with the first and last time we saw it, so "how long did it last" is accurate to about 5 minutes. Gaps happen when the server or the feed is down; the poll log keeps track of them.</p>
+  <p class="muted">Data: MTA. This page is not affiliated with the MTA.</p>
+</main>
+<div id="tip" hidden></div>
+
+<script>
+  // Official MTA line colors; express variants (6X, 7X, FX) share their line's color.
+  const LINE = { 1: "#EE352E", 2: "#EE352E", 3: "#EE352E", 4: "#00933C", 5: "#00933C", 6: "#00933C", 7: "#B933AD",
+    A: "#0039A6", C: "#0039A6", E: "#0039A6", B: "#FF6319", D: "#FF6319", F: "#FF6319", M: "#FF6319", G: "#6CBE45",
+    J: "#996633", Z: "#996633", L: "#A7A9AC", N: "#FCCC0A", Q: "#FCCC0A", R: "#FCCC0A", W: "#FCCC0A",
+    GS: "#808183", FS: "#808183", H: "#808183", S: "#808183", SI: "#0039A6", SIR: "#0039A6" };
+  const LABEL = { GS: "S", FS: "S", H: "S", SI: "SIR", "6X": "6", "7X": "7", FX: "F" };
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const bullet = (r) => {
+    const c = LINE[r] ?? LINE[r.replace(/X$/, "")] ?? "#808183";
+    return `<span class="bullet ${["#FCCC0A", "#A7A9AC"].includes(c) ? "dark" : ""}" style="background:${c}" title="${esc(r)} line">${esc(LABEL[r] ?? r)}</span>`;
+  };
+  const fmt = (t) => new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const day = (t) => new Date(t * 1000).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
+  const dur = (s) => s < 3600 ? `${Math.max(5, Math.round(s / 60))} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${Math.round(s / 86400)} days`;
+  const ago = (t) => dur(Date.now() / 1000 - t) + " ago";
+
+  const tip = document.getElementById("tip");
+  function hover(el, html) {
+    const show = (e) => { tip.innerHTML = html; tip.hidden = false; const r = el.getBoundingClientRect(); tip.style.left = Math.min(innerWidth - 270, (e?.clientX ?? r.x) + 12) + "px"; tip.style.top = (e?.clientY ?? r.bottom) + 12 + "px"; };
+    el.addEventListener("pointermove", show); el.addEventListener("focus", () => show());
+    el.addEventListener("pointerleave", () => (tip.hidden = true)); el.addEventListener("blur", () => (tip.hidden = true));
+    el.tabIndex = 0;
+  }
+
+  async function load() {
+    const d = await fetch("/api/nyc/archive").then((r) => r.json());
+    const days = Math.max(1, Math.ceil((d.now - d.coverage.first) / 86400));
+    document.getElementById("coverage").textContent = d.coverage.first
+      ? `Recording since ${day(d.coverage.first)} · ${d.coverage.polls} feed checks (${d.coverage.polls - d.coverage.ok} failed) · last check ${ago(Math.max(d.lastAlerts, d.lastOutages))}`
+      : "The archive is starting up. Check back in a few minutes.";
+    document.getElementById("t-alerts").textContent = d.counts.alertsNow;
+    document.getElementById("t-out").textContent = d.counts.outagesNow;
+    document.getElementById("t-seen").textContent = d.counts.alertsSeen;
+    document.getElementById("t-days").textContent = days;
+
+    // Alerts by line: unplanned first (it's the interesting part), then planned, sorted by unplanned.
+    const lines = Object.entries(d.byRoute).sort((a, b) => b[1].unplanned - a[1].unplanned || (b[1].planned + b[1].unplanned) - (a[1].planned + a[1].unplanned));
+    const max = Math.max(1, ...lines.map(([, v]) => v.planned + v.unplanned));
+    const rows = document.getElementById("by-line");
+    rows.innerHTML = lines.map(([r, v]) => `${bullet(r)}<div class="track" data-r="${esc(r)}">` +
+      `<i style="flex:0 0 ${v.unplanned / max * 100}%;background:var(--unplanned)"></i><i style="flex:0 0 ${v.planned / max * 100}%;background:var(--planned)"></i></div>` +
+      `<span class="val">${v.planned + v.unplanned}</span>`).join("") || `<p class="empty">No alerts recorded yet.</p>`;
+    rows.querySelectorAll(".track").forEach((el) => { const v = d.byRoute[el.dataset.r]; hover(el, `<b>${esc(el.dataset.r)} line</b><br>${v.unplanned} unplanned · ${v.planned} planned work`); });
+    document.getElementById("by-line-table").innerHTML = `<tr><th>Line</th><th>Unplanned</th><th>Planned</th></tr>` +
+      lines.map(([r, v]) => `<tr><td>${esc(r)}</td><td class="n">${v.unplanned}</td><td class="n">${v.planned}</td></tr>`).join("");
+
+    // Alerts per day: the last 30 days, empty days included so gaps read as gaps.
+    const cols = document.getElementById("by-day"), keys = [];
+    for (let i = 29; i >= 0; i--) keys.push(new Date((d.now - i * 86400) * 1000).toLocaleDateString("en-CA", { timeZone: "America/New_York" }));
+    const dmax = Math.max(1, ...keys.map((k) => (d.byDay[k]?.planned ?? 0) + (d.byDay[k]?.unplanned ?? 0)));
+    cols.innerHTML = keys.map((k) => { const v = d.byDay[k] ?? { planned: 0, unplanned: 0 };
+      return `<div data-k="${k}"><i style="height:${v.unplanned / dmax * 100}%;background:var(--unplanned)"></i><i style="height:${v.planned / dmax * 100}%;background:var(--planned)"></i></div>`; }).join("");
+    cols.querySelectorAll("div").forEach((el) => { const v = d.byDay[el.dataset.k] ?? { planned: 0, unplanned: 0 };
+      hover(el, `<b>${new Date(el.dataset.k + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</b><br>${v.unplanned} unplanned · ${v.planned} planned work`); });
+    cols.setAttribute("aria-label", `New alerts per day for the last 30 days, peaking at ${dmax}.`);
+    const short = (k) => new Date(k + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    document.getElementById("d-first").textContent = short(keys[0]);
+    document.getElementById("d-last").textContent = short(keys.at(-1));
+
+    document.getElementById("recent").innerHTML = d.recent.map((a) => `<div class="alert card">
+      ${[...new Set((a.routes ? a.routes.split(",") : []).map((r) => LABEL[r] ? r.replace(/X$/, "") : r))].map(bullet).join(" ")} <b>${esc(a.type)}</b>
+      ${a.active ? `<span class="live">● ACTIVE</span>` : ""}
+      <p>${esc(a.header).replace(/\[(\w{1,3})\]/g, (m, r) => LINE[r] || LINE[r.replace(/X$/, "")] ? bullet(r) : m)}</p>
+      <p class="when">First seen ${fmt(a.first_seen)}${a.active ? "" : ` · lasted about ${dur(a.last_seen - a.first_seen)}`}</p></div>`).join("") || `<p class="empty">No unplanned alerts recorded yet.</p>`;
+
+    const kind = (k) => (k === "EL" ? "Elevator" : "Escalator");
+    const out = [...d.outagesNow].sort((a, b) => (a.kind === "EL" ? 0 : 1) - (b.kind === "EL" ? 0 : 1) || a.start - b.start);
+    document.getElementById("out").innerHTML = `<tr><th>Station</th><th>What</th><th>Why</th><th>Out since</th><th>Back (est.)</th></tr>` +
+      out.map((o) => `<tr><td><b>${esc(o.station)}</b><br>${o.trains.split("/").map((t) => LINE[t] ? bullet(t) : esc(t)).join(" ")}</td>
+        <td>${kind(o.kind)}${o.ada ? " (accessible route)" : ""}<br><span class="muted">${esc(o.serving)}</span></td>
+        <td>${esc(o.reason)}</td><td class="n">${o.start ? day(o.start) : "–"}<br><span class="muted">${o.start ? dur(d.now - o.start) : ""}</span></td>
+        <td class="n">${o.est_return ? day(o.est_return) : "–"}</td></tr>`).join("");
+
+    document.getElementById("worst").innerHTML = d.worst.length ? `<tr><th>Station</th><th>What</th><th>Outages</th><th>Down</th></tr>` +
+      d.worst.map((w) => `<tr><td><b>${esc(w.station)}</b> <span class="muted">${esc(w.trains)}</span></td><td>${kind(w.kind)} <span class="muted">${esc(w.equipment)}</span><br><span class="muted">${esc(w.serving)}</span></td>
+        <td class="n">${w.outages}</td><td class="n">${dur(w.down_s)}</td></tr>`).join("") : `<tr><td class="empty">Not enough history yet.</td></tr>`;
+  }
+  load().catch(() => { document.getElementById("coverage").textContent = "Couldn't load the archive. Try again in a minute."; });
+</script>
+</body>
+</html>

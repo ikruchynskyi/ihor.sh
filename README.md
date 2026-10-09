@@ -4,7 +4,7 @@ Hobby projects behind [ihor.sh](https://ihor.sh): radio, NYC, and learning in pu
 
 ## The site
 
-`index.html` is the home page (projects as game worlds), `companion.js` is Blip, the companion that rides along on every page (d3-force soft body, chat through `/api/ask`), and `server.ts` serves `/`, the built radio site under `/radio/`, and `/api/ask`, answered by a local [Ollama](https://ollama.com) model.
+`index.html` is the home page (projects as game worlds), `theme.css` is the game look the server adds to every project page, `companion.js` is Blip, the companion that rides along on every page (d3-force soft body, chat through `/api/ask`), and `server.ts` serves `/`, the built radio site under `/radio/`, and `/api/ask`, answered by a local [Ollama](https://ollama.com) model.
 
 ```sh
 npm run build          # builds radio/dist
@@ -46,7 +46,7 @@ WebUSB needs Chrome, Edge or Opera on an `https://` or `localhost` page.
 
 ## nyc/
 
-Small static pages built on NYC open data: **Subway Bailout** (live MTA alerts → nearest Citi Bike stations) and **Free NYC** (free and pay-what-you-wish museums, gardens and ferries on any day). Open `nyc/index.html` through any static file server.
+Small pages built on NYC open data: **Subway Bailout** (live MTA alerts → nearest Citi Bike stations), **Free NYC** (free and pay-what-you-wish museums, gardens and ferries on any day) and the **MTA Archive** (`archive.html`). `archive.ts` polls the MTA alert and elevator/escalator outage feeds every 5 minutes into `data/mta.db` (SQLite, not in git), because that history can't be backfilled; the page reads it from `/api/nyc/archive`.
 
 ## ideas-page/
 
