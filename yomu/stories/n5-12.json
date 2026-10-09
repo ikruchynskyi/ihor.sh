@@ -1,0 +1,808 @@
+{
+ "id": "n5-12",
+ "level": "N5",
+ "unit": 12,
+ "title": {
+  "ja": "週末は何をするつもりですか",
+  "en": "What are your plans for the weekend?"
+ },
+ "scene": "Friday afternoon at the café. Yuki has a plan; Sam has to work.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "週末",
+     "しゅうまつ",
+     "weekend"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "つもり",
+     null,
+     "plan to"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "か",
+     null,
+     "?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, what are you planning to do this weekend?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "仕事",
+     "しごと",
+     "work"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行かなければなりません",
+     "いかなければなりません",
+     "have to go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "On Saturday I have to go to work."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "九時",
+     "くじ",
+     "nine o'clock"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "五時",
+     "ごじ",
+     "five o'clock"
+    ],
+    [
+     "まで",
+     null,
+     "until",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "From nine to five."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大変",
+     "たいへん",
+     "tough"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "huh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's tough. And Sunday?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "休み",
+     "やすみ",
+     "day off"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何も",
+     "なにも",
+     "nothing"
+    ],
+    [
+     "しなくてもいいです",
+     null,
+     "don't have to do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sunday is my day off. I don't have to do anything."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "川",
+     "かわ",
+     "river"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "近く",
+     "ちかく",
+     "near"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "歩きませんか",
+     "あるきませんか",
+     "won't you walk"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "公園",
+     "こうえん",
+     "park"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "つもり",
+     null,
+     "plan to"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then why don't we walk along the river together? I'm planning to go to the park in the morning."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいですね",
+     null,
+     "sounds good"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "早く",
+     "はやく",
+     "early"
+    ],
+    [
+     "起きなければなりませんか",
+     "おきなければなりませんか",
+     "do I have to get up"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sounds good. But do I have to get up early?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "早く",
+     "はやく",
+     "early"
+    ],
+    [
+     "起きなくてもいいです",
+     "おきなくてもいいです",
+     "don't have to get up"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "十一時",
+     "じゅういちじ",
+     "eleven o'clock"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, you don't have to get up early. It's from eleven."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "週末",
+     "しゅうまつ",
+     "weekend"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "充電",
+     "じゅうでん",
+     "charging"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "しなければなりません",
+     null,
+     "have to do"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip has to charge on the weekend too..."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "tsumori",
+   "title": "V-るつもり: plan to, intend to",
+   "explain": "Dictionary form + つもりです = I intend to. Ask someone's plans with 何をするつもりですか. Not planning to: 行かないつもりです.",
+   "examples": [
+    {
+     "t": [
+      [
+       "公園",
+       "こうえん",
+       "park"
+      ],
+      [
+       "に",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行く",
+       "いく",
+       "go"
+      ],
+      [
+       "つもり",
+       null,
+       "plan to"
+      ],
+      [
+       "です",
+       null,
+       "am"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm planning to go to the park."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "来年、日本へ行く＿＿＿＿です。",
+     "hint": "I plan to go to Japan next year.",
+     "choices": [
+      "つもり",
+      "こと",
+      "ほう"
+     ],
+     "answer": 0,
+     "why": "A plan: dictionary form + つもり."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#tsumori"
+  },
+  {
+   "id": "nakute-wa",
+   "title": "V-なければならない: have to",
+   "explain": "ない-form minus い + ければならない (polite: なければなりません) = must, have to. In speech it shortens to なきゃ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "仕事",
+       "しごと",
+       "work"
+      ],
+      [
+       "に",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行かなければなりません",
+       "いかなければなりません",
+       "have to go"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I have to go to work."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日は六時に起き＿＿＿＿＿なりません。",
+     "hint": "Tomorrow I have to get up at six.",
+     "choices": [
+      "なければ",
+      "なくても",
+      "ないで"
+     ],
+     "answer": 0,
+     "why": "Have to: なければならない."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#nakute-wa"
+  },
+  {
+   "id": "nakute-mo-ii",
+   "title": "V-なくてもいい: don't have to",
+   "explain": "ない-form minus い + くてもいい = it's okay not to, you don't have to. It answers a なければなりませんか question.",
+   "examples": [
+    {
+     "t": [
+      [
+       "早く",
+       "はやく",
+       "early"
+      ],
+      [
+       "起きなくてもいいです",
+       "おきなくてもいいです",
+       "don't have to get up"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You don't have to get up early."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日は来＿＿＿＿いいです。",
+     "hint": "You don't have to come tomorrow.",
+     "choices": [
+      "なくても",
+      "なければ",
+      "ては"
+     ],
+     "answer": 0,
+     "why": "No need: なくてもいい."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#nakute-mo-ii"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "休",
+   "on": [
+    "キュウ"
+   ],
+   "kun": [
+    "やす.む"
+   ],
+   "m": "rest",
+   "ex": [
+    [
+     "休み",
+     "やすみ",
+     "day off"
+    ],
+    [
+     "休む",
+     "やすむ",
+     "to rest"
+    ]
+   ]
+  },
+  {
+   "k": "川",
+   "on": [
+    "セン"
+   ],
+   "kun": [
+    "かわ"
+   ],
+   "m": "river",
+   "ex": [
+    [
+     "川",
+     "かわ",
+     "river"
+    ]
+   ]
+  },
+  {
+   "k": "九",
+   "on": [
+    "キュウ",
+    "ク"
+   ],
+   "kun": [
+    "ここの"
+   ],
+   "m": "nine",
+   "ex": [
+    [
+     "九時",
+     "くじ",
+     "nine o'clock"
+    ]
+   ]
+  },
+  {
+   "k": "土",
+   "on": [
+    "ド"
+   ],
+   "kun": [
+    "つち"
+   ],
+   "m": "earth, Saturday",
+   "ex": [
+    [
+     "土曜日",
+     "どようび",
+     "Saturday"
+    ]
+   ]
+  },
+  {
+   "k": "仕",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "つか.える"
+   ],
+   "m": "serve, do",
+   "ex": [
+    [
+     "仕事",
+     "しごと",
+     "work, job"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  4
+ ],
+ "questions": [
+  {
+   "q": "サムさんは土曜日に何をしなければなりませんか。",
+   "en": "What does Sam have to do on Saturday?",
+   "choices": [
+    "仕事に行く",
+    "公園に行く",
+    "早く寝る"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "日曜日、二人はどこを歩きますか。",
+   "en": "Where will they walk on Sunday?",
+   "choices": [
+    "川の近く",
+    "博物館の中",
+    "駅の前"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは日曜日に早く起きなければなりませんか。",
+   "en": "Does Sam have to get up early on Sunday?",
+   "choices": [
+    "いいえ、起きなくてもいいです",
+    "はい、六時に",
+    "はい、九時に"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip your plans for the weekend (～つもりです), one thing you have to do (～なければなりません) and one thing you don't (～なくてもいいです)."
+}

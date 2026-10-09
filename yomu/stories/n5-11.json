@@ -1,0 +1,819 @@
+{
+ "id": "n5-11",
+ "level": "N5",
+ "unit": 11,
+ "title": {
+  "ja": "音楽を聞きながら",
+  "en": "While listening to music"
+ },
+ "scene": "Sam's apartment in Queens. Yuki finds him studying kanji with the radio on.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "して",
+     null,
+     "doing"
+    ],
+    [
+     "いますか",
+     null,
+     "are you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, what are you doing?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞きながら",
+     "ききながら",
+     "while listening"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "勉強しています",
+     "べんきょうしています",
+     "am studying"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm studying kanji while listening to the radio."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "か",
+     null,
+     "?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is it Japanese radio?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "週末",
+     "しゅうまつ",
+     "weekends"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞いたり",
+     "きいたり",
+     "listen and so on"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "歌",
+     "うた",
+     "songs"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "歌ったり",
+     "うたったり",
+     "sing and so on"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. On weekends I listen to the Japanese news, sing songs, that kind of thing."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "歌",
+     "うた",
+     "singing"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam's singing is a little..."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "heh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "ずつ",
+     null,
+     "at a time"
+    ],
+    [
+     "書いたほうがいいです",
+     "かいたほうがいいです",
+     "had better write"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "書くと",
+     "かくと",
+     "when you write"
+    ],
+    [
+     "覚えます",
+     "おぼえます",
+     "remember"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Heh. But you'd better write a little every day. You remember kanji when you write them."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "そうですね",
+     null,
+     "you're right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "聞きながら",
+     "ききながら",
+     "while listening"
+    ],
+    [
+     "書きます",
+     "かきます",
+     "will write"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You're right. Then I'll write while I listen to the radio."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "寝る",
+     "ねる",
+     "sleep"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もう",
+     null,
+     "again"
+    ],
+    [
+     "一度",
+     "いちど",
+     "once"
+    ],
+    [
+     "見たほうがいいです",
+     "みたほうがいいです",
+     "had better look"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "And you'd better look at them once more before you go to sleep."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "nagara",
+   "title": "V-stem ながら: while doing",
+   "explain": "Verb stem (the ます-form without ます) + ながら = doing two things at once: 聞きながら書く. The main action is the second verb.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "聞きながら",
+       "ききながら",
+       "while listening"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "勉強します",
+       "べんきょうします",
+       "study"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I study while listening to the radio."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "音楽を聞き＿＿＿、走ります。",
+     "hint": "I run while listening to music.",
+     "choices": [
+      "ながら",
+      "たり",
+      "から"
+     ],
+     "answer": 0,
+     "why": "Two things at once: stem + ながら."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#nagara"
+  },
+  {
+   "id": "tari",
+   "title": "V-たり V-たりする: things like … and …",
+   "explain": "た-form + り, twice, then する = do things such as A and B (a sample, not a full list).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ニュース",
+       null,
+       "news"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "聞いたり",
+       "きいたり",
+       "listen, etc."
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "歌",
+       "うた",
+       "songs"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "歌ったり",
+       "うたったり",
+       "sing, etc."
+      ],
+      [
+       "します",
+       null,
+       "do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I do things like listen to the news and sing."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "週末は本を読んだり、テレビを見＿＿＿します。",
+     "hint": "On weekends I read books, watch TV and so on.",
+     "choices": [
+      "たり",
+      "ながら",
+      "て"
+     ],
+     "answer": 0,
+     "why": "A sample of activities: たり…たりする."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#tari"
+  },
+  {
+   "id": "hou-ga-ii",
+   "title": "V-たほうがいい: you'd better",
+   "explain": "た-form + ほうがいい = it's better to, a friendly piece of advice. For 'better not': ないほうがいい.",
+   "examples": [
+    {
+     "t": [
+      [
+       "毎日",
+       "まいにち",
+       "every day"
+      ],
+      [
+       "書いたほうがいいです",
+       "かいたほうがいいです",
+       "had better write"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You'd better write every day."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "早く寝＿＿＿＿がいいですよ。",
+     "hint": "You'd better go to bed early.",
+     "choices": [
+      "たほう",
+      "るほう",
+      "てほう"
+     ],
+     "answer": 0,
+     "why": "Advice: た-form + ほうがいい."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#hou-ga-ii"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "書",
+   "on": [
+    "ショ"
+   ],
+   "kun": [
+    "か.く"
+   ],
+   "m": "write",
+   "ex": [
+    [
+     "書く",
+     "かく",
+     "to write"
+    ],
+    [
+     "図書館",
+     "としょかん",
+     "library"
+    ]
+   ]
+  },
+  {
+   "k": "歌",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "うた",
+    "うた.う"
+   ],
+   "m": "song, sing",
+   "ex": [
+    [
+     "歌",
+     "うた",
+     "song"
+    ],
+    [
+     "歌う",
+     "うたう",
+     "to sing"
+    ]
+   ]
+  },
+  {
+   "k": "聞",
+   "on": [
+    "ブン"
+   ],
+   "kun": [
+    "き.く"
+   ],
+   "m": "hear, ask",
+   "ex": [
+    [
+     "聞く",
+     "きく",
+     "to listen"
+    ]
+   ]
+  },
+  {
+   "k": "週",
+   "on": [
+    "シュウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "week",
+   "ex": [
+    [
+     "週末",
+     "しゅうまつ",
+     "weekend"
+    ],
+    [
+     "毎週",
+     "まいしゅう",
+     "every week"
+    ]
+   ]
+  },
+  {
+   "k": "少",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [
+    "すこ.し",
+    "すく.ない"
+   ],
+   "m": "a little, few",
+   "ex": [
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  7
+ ],
+ "questions": [
+  {
+   "q": "サムさんは何をしながら勉強していますか。",
+   "en": "What is Sam doing while he studies?",
+   "choices": [
+    "ラジオを聞いています",
+    "テレビを見ています",
+    "ごはんを食べています"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんによると、漢字はどうしたら覚えますか。",
+   "en": "According to Yuki, how do you remember kanji?",
+   "choices": [
+    "書くと",
+    "歌うと",
+    "寝ると"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "寝る前に、サムさんは何をしたほうがいいですか。",
+   "en": "What should Sam do before bed?",
+   "choices": [
+    "漢字をもう一度見る",
+    "ラジオを聞く",
+    "歌を歌う"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip two things you do while doing something else (～ながら), what you do on weekends (～たり～たりします), and give Blip one piece of advice (～たほうがいい)."
+}

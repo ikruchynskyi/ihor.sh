@@ -1,0 +1,986 @@
+{
+ "id": "n5-09",
+ "level": "N5",
+ "unit": 9,
+ "title": {
+  "ja": "行ったことがありますか",
+  "en": "Have you ever been?"
+ },
+ "scene": "Saturday. Sam and Yuki meet in front of the natural history museum.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "博物館",
+     "はくぶつかん",
+     "museum"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行った",
+     "いった",
+     "went"
+    ],
+    [
+     "ことがあります",
+     null,
+     "have (done)"
+    ],
+    [
+     "か",
+     null,
+     "?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, have you ever been to this museum?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "子ども",
+     "こども",
+     "child"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "とき",
+     null,
+     "time"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "一回",
+     "いっかい",
+     "once"
+    ],
+    [
+     "行った",
+     "いった",
+     "went"
+    ],
+    [
+     "ことがあります",
+     null,
+     "have (done)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I went once when I was a kid."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "恐竜",
+     "きょうりゅう",
+     "dinosaurs"
+    ],
+    [
+     "が",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "大好き",
+     "だいすき",
+     "love"
+    ],
+    [
+     "です",
+     null,
+     "(am)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "博物館",
+     "はくぶつかん",
+     "museum"
+    ],
+    [
+     "より",
+     null,
+     "than",
+     "p"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I love dinosaurs. It's bigger than the museum in Tokyo, isn't it?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "博物館",
+     "はくぶつかん",
+     "museums"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "大きすぎます",
+     "おおきすぎます",
+     "are too big"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一日",
+     "いちにち",
+     "one day"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "全部",
+     "ぜんぶ",
+     "all"
+    ],
+    [
+     "見ることができません",
+     "みることができません",
+     "can't see"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "New York's museums are too big. You can't see everything in one day."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "恐竜",
+     "きょうりゅう",
+     "dinosaurs"
+    ],
+    [
+     "より",
+     null,
+     "than",
+     "p"
+    ],
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "恐竜",
+     "きょうりゅう",
+     "dinosaurs"
+    ],
+    [
+     "より",
+     null,
+     "than",
+     "p"
+    ],
+    [
+     "若い",
+     "わかい",
+     "young"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip is smaller than a dinosaur. But younger than the dinosaurs!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "heh"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "宇宙",
+     "うちゅう",
+     "space"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "ショー",
+     null,
+     "show"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見た",
+     "みた",
+     "saw"
+    ],
+    [
+     "ことがあります",
+     null,
+     "have (done)"
+    ],
+    [
+     "か",
+     null,
+     "?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Heh. Sam, have you ever seen the space show?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありません",
+     null,
+     "I haven't"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "見たいです",
+     "みたいです",
+     "want to see"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "チケット",
+     null,
+     "tickets"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "高すぎますか",
+     "たかすぎますか",
+     "are they too expensive"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, I haven't. I want to see it! Are the tickets too expensive?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "fine"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "買います",
+     "かいます",
+     "will buy"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's fine. Today I'm buying."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thanks"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ショー",
+     null,
+     "show"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "コーヒー",
+     null,
+     "coffee"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "飲みましょう",
+     "のみましょう",
+     "let's drink"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぼく",
+     null,
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "買います",
+     "かいます",
+     "will buy"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thanks. Then let's have coffee before the show. I'm buying that."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "koto-ga-aru",
+   "title": "V-たことがある: have done (ever)",
+   "explain": "Past plain form + ことがある = you've had the experience. Ask with ～たことがありますか (have you ever…?). Answer はい、あります or いいえ、ありません.",
+   "examples": [
+    {
+     "t": [
+      [
+       "行った",
+       "いった",
+       "went"
+      ],
+      [
+       "ことがあります",
+       null,
+       "have (done)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I've been there."
+    },
+    {
+     "t": [
+      [
+       "見た",
+       "みた",
+       "saw"
+      ],
+      [
+       "ことがあります",
+       null,
+       "have (done)"
+      ],
+      [
+       "か",
+       null,
+       "?"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Have you ever seen it?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "日本へ行った＿＿があります。",
+     "hint": "I've been to Japan.",
+     "choices": [
+      "こと",
+      "もの",
+      "とき"
+     ],
+     "answer": 0,
+     "why": "Experience: たことがある."
+    },
+    {
+     "q": "すしを食べたことが＿＿＿か。",
+     "hint": "Have you ever eaten sushi?",
+     "choices": [
+      "あります",
+      "います",
+      "します"
+     ],
+     "answer": 0,
+     "why": "ことがある uses ある."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#koto-ga-aru"
+  },
+  {
+   "id": "yori",
+   "title": "A は B より: A is more … than B",
+   "explain": "A は B より + adjective = A is more (adjective) than B. Japanese has no word for 'more' here: より does it all.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ブリップ",
+       null,
+       "Blip"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "恐竜",
+       "きょうりゅう",
+       "dinosaur"
+      ],
+      [
+       "より",
+       null,
+       "than",
+       "p"
+      ],
+      [
+       "小さい",
+       "ちいさい",
+       "small"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Blip is smaller than a dinosaur."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "電車はバス＿＿速いです。",
+     "hint": "The train is faster than the bus.",
+     "choices": [
+      "より",
+      "から",
+      "まで"
+     ],
+     "answer": 0,
+     "why": "Comparing: より = than."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#yori"
+  },
+  {
+   "id": "sugiru",
+   "title": "～すぎる: too (much)",
+   "explain": "い-adjective minus い + すぎる: 高い → 高すぎる. な-adjective + すぎる: しずかすぎる. Verb stem + すぎる: 食べすぎる (eat too much). It changes like a ru-verb: すぎます, すぎました.",
+   "examples": [
+    {
+     "t": [
+      [
+       "高すぎます",
+       "たかすぎます",
+       "too expensive"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It's too expensive."
+    },
+    {
+     "t": [
+      [
+       "食べすぎました",
+       "たべすぎました",
+       "ate too much"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I ate too much."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "このかばんは大き＿＿＿＿。",
+     "hint": "This bag is too big.",
+     "choices": [
+      "すぎます",
+      "ですぎ",
+      "くすぎ"
+     ],
+     "answer": 0,
+     "why": "Drop the い and add すぎる."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#sugiru"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "子",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "こ"
+   ],
+   "m": "child",
+   "ex": [
+    [
+     "子ども",
+     "こども",
+     "child"
+    ]
+   ]
+  },
+  {
+   "k": "小",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [
+    "ちい.さい",
+    "こ"
+   ],
+   "m": "small",
+   "ex": [
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ]
+   ]
+  },
+  {
+   "k": "前",
+   "on": [
+    "ゼン"
+   ],
+   "kun": [
+    "まえ"
+   ],
+   "m": "before, front",
+   "ex": [
+    [
+     "前",
+     "まえ",
+     "before, in front"
+    ],
+    [
+     "名前",
+     "なまえ",
+     "name"
+    ]
+   ]
+  },
+  {
+   "k": "見",
+   "on": [
+    "ケン"
+   ],
+   "kun": [
+    "み.る"
+   ],
+   "m": "see",
+   "ex": [
+    [
+     "見る",
+     "みる",
+     "to see"
+    ]
+   ]
+  },
+  {
+   "k": "全",
+   "on": [
+    "ゼン"
+   ],
+   "kun": [
+    "まった.く"
+   ],
+   "m": "all",
+   "ex": [
+    [
+     "全部",
+     "ぜんぶ",
+     "all"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  6
+ ],
+ "questions": [
+  {
+   "q": "サムさんはこの博物館に行ったことがありますか。",
+   "en": "Has Sam been to this museum before?",
+   "choices": [
+    "はい、子どものときに",
+    "いいえ、ありません",
+    "はい、毎週行きます"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ゆきさんは何が大好きですか。",
+   "en": "What does Yuki love?",
+   "choices": [
+    "恐竜",
+    "コーヒー",
+    "ラジオ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ショーの前に二人は何をしますか。",
+   "en": "What will they do before the show?",
+   "choices": [
+    "コーヒーを飲みます",
+    "ごはんを食べます",
+    "写真をとります"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Ask Blip if it has ever done three things (～たことがありますか), and compare two places you know with より."
+}

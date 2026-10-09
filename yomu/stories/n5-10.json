@@ -1,0 +1,870 @@
+{
+ "id": "n5-10",
+ "level": "N5",
+ "unit": 10,
+ "title": {
+  "ja": "写真をとってもいいですか",
+  "en": "May I take a photo?"
+ },
+ "scene": "Inside the museum. Sam wants a photo of everything; a guard is watching.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すみません",
+     null,
+     "excuse me"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "photo"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "とっても",
+     null,
+     "even if (I) take"
+    ],
+    [
+     "いいですか",
+     null,
+     "is it okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Excuse me. May I take a photo here?"
+  },
+  {
+   "who": "係{かかり}の人{ひと}",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とってもいいです",
+     null,
+     "you may take"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "フラッシュ",
+     null,
+     "flash"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "使ってはいけません",
+     "つかってはいけません",
+     "must not use"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, you may. But you must not use the flash."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わかりました",
+     null,
+     "understood"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あの",
+     null,
+     "that"
+    ],
+    [
+     "恐竜",
+     "きょうりゅう",
+     "dinosaur"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "さわっても",
+     null,
+     "even if (I) touch"
+    ],
+    [
+     "いいですか",
+     null,
+     "is it okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Got it. May I touch that dinosaur?"
+  },
+  {
+   "who": "係{かかり}の人{ひと}",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "さわってはいけません",
+     null,
+     "must not touch"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, you must not touch it. It's very old."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "入る",
+     "はいる",
+     "go in"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ルール",
+     null,
+     "rules"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "読みましょう",
+     "よみましょう",
+     "let's read"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, let's read the rules before we go in."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "okay"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "食べ物",
+     "たべもの",
+     "food"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "だめ",
+     null,
+     "not allowed"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "声",
+     "こえ",
+     "voice"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "話してはいけません",
+     "はなしてはいけません",
+     "must not talk"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Okay... No food. You must not talk loudly."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ロボット",
+     null,
+     "robots"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "入っても",
+     "はいっても",
+     "even if (they) enter"
+    ],
+    [
+     "いいですか",
+     null,
+     "is it okay"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Are robots allowed in?"
+  },
+  {
+   "who": "係{かかり}の人{ひと}",
+   "t": [
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "いいです",
+     null,
+     "is fine"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "走ってはいけません",
+     "はしってはいけません",
+     "must not run"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "...Small robots are fine. But no running."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よかった",
+     null,
+     "what a relief"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "帰る",
+     "かえる",
+     "go home"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "みんな",
+     null,
+     "everyone"
+    ],
+    [
+     "で",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "写真",
+     "しゃしん",
+     "photo"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "とりましょう",
+     null,
+     "let's take"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What a relief. Then before we go home, let's take a photo of all of us!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "te-mo-ii",
+   "title": "V-てもいい: may I, it's okay to",
+   "explain": "て-form + もいい = it's okay to do. Ask permission with ～てもいいですか. Yes: はい、いいです / どうぞ. No: すみません、ちょっと…",
+   "examples": [
+    {
+     "t": [
+      [
+       "写真",
+       "しゃしん",
+       "photo"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "とっても",
+       null,
+       "even if (I) take"
+      ],
+      [
+       "いいですか",
+       null,
+       "is it okay"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "May I take a photo?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ここに座っ＿＿いいですか。",
+     "hint": "May I sit here?",
+     "choices": [
+      "ても",
+      "ては",
+      "たら"
+     ],
+     "answer": 0,
+     "why": "Permission: てもいい."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#te-mo-ii"
+  },
+  {
+   "id": "te-wa-ikenai",
+   "title": "V-てはいけない: must not",
+   "explain": "て-form + はいけない = you must not. It's the strong 'no' on signs and from staff. In speech ては often becomes ちゃ: さわっちゃだめ.",
+   "examples": [
+    {
+     "t": [
+      [
+       "フラッシュ",
+       null,
+       "flash"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "使ってはいけません",
+       "つかってはいけません",
+       "must not use"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You must not use the flash."
+    },
+    {
+     "t": [
+      [
+       "さわってはいけません",
+       null,
+       "must not touch"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Don't touch it."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ここで食べ＿＿いけません。",
+     "hint": "You must not eat here.",
+     "choices": [
+      "ては",
+      "ても",
+      "たり"
+     ],
+     "answer": 0,
+     "why": "Prohibition: てはいけない."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#te-wa-ikenai"
+  },
+  {
+   "id": "mae-ni",
+   "title": "V-る前に: before doing",
+   "explain": "Dictionary form + 前に = before. Even when the sentence is in the past, the verb before 前に stays in dictionary form: 寝る前に読みました. With nouns: ショーの前に.",
+   "examples": [
+    {
+     "t": [
+      [
+       "入る",
+       "はいる",
+       "go in"
+      ],
+      [
+       "前",
+       "まえ",
+       "before"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "ルール",
+       null,
+       "rules"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "読みましょう",
+       "よみましょう",
+       "let's read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Let's read the rules before we go in."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "寝る＿＿＿、本を読みます。",
+     "hint": "I read before I go to sleep.",
+     "choices": [
+      "前に",
+      "後で",
+      "ながら"
+     ],
+     "answer": 0,
+     "why": "Before: dictionary form + 前に."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#mae-ni"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "入",
+   "on": [
+    "ニュウ"
+   ],
+   "kun": [
+    "はい.る",
+    "い.れる"
+   ],
+   "m": "enter",
+   "ex": [
+    [
+     "入る",
+     "はいる",
+     "to enter"
+    ],
+    [
+     "入口",
+     "いりぐち",
+     "entrance"
+    ]
+   ]
+  },
+  {
+   "k": "古",
+   "on": [
+    "コ"
+   ],
+   "kun": [
+    "ふる.い"
+   ],
+   "m": "old",
+   "ex": [
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ]
+   ]
+  },
+  {
+   "k": "読",
+   "on": [
+    "ドク"
+   ],
+   "kun": [
+    "よ.む"
+   ],
+   "m": "read",
+   "ex": [
+    [
+     "読む",
+     "よむ",
+     "to read"
+    ]
+   ]
+  },
+  {
+   "k": "話",
+   "on": [
+    "ワ"
+   ],
+   "kun": [
+    "はな.す"
+   ],
+   "m": "talk",
+   "ex": [
+    [
+     "話す",
+     "はなす",
+     "to speak"
+    ]
+   ]
+  },
+  {
+   "k": "帰",
+   "on": [
+    "キ"
+   ],
+   "kun": [
+    "かえ.る"
+   ],
+   "m": "return home",
+   "ex": [
+    [
+     "帰る",
+     "かえる",
+     "to go home"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  4
+ ],
+ "questions": [
+  {
+   "q": "博物館で写真をとってもいいですか。",
+   "en": "May you take photos in the museum?",
+   "choices": [
+    "はい、でもフラッシュはだめです",
+    "いいえ、だめです",
+    "はい、何でもいいです"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうして恐竜にさわってはいけませんか。",
+   "en": "Why mustn't you touch the dinosaur?",
+   "choices": [
+    "とても古いから",
+    "高いから",
+    "こわいから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップは何をしてはいけませんか。",
+   "en": "What mustn't Blip do?",
+   "choices": [
+    "走ること",
+    "話すこと",
+    "写真をとること"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Role-play: Blip is a museum guard. Ask permission for three things (～てもいいですか); Blip answers with いいです or ～てはいけません."
+}
