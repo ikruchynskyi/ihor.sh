@@ -148,8 +148,22 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath) : data);
 }
 
+// The API answers only the site's own pages: ihor.sh and its subdomains (localhost while developing). Browsers send
+// Sec-Fetch-Site (older ones Origin/Referer) by themselves; direct calls from scripts and other servers get 403.
+// ponytail: a non-browser client can fake these headers, so this stops casual reuse, not a determined scraper. The
+// costly endpoints keep their per-IP limits; a signed per-page token is the upgrade if someone fakes them for real.
+const SITE_ORIGINS = /^(?:https:\/\/(?:[a-z0-9-]+\.)*ihor\.sh|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?)$/;
+export function fromSite(h: http.IncomingHttpHeaders) {
+  const fetchSite = h["sec-fetch-site"];
+  if (fetchSite) return fetchSite === "same-origin" || fetchSite === "same-site"; // same-site: an ihor.sh subdomain
+  for (const v of [h.origin, h.referer]) { try { if (v && SITE_ORIGINS.test(new URL(String(v)).origin)) return true; } catch {} }
+  return false;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
+  if (url.pathname.startsWith("/api/") && !fromSite(req.headers))
+    return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "This API serves ihor.sh pages only." }));
   try {
     if (url.pathname === "/api/ask" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);

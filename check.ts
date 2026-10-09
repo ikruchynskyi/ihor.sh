@@ -10,8 +10,11 @@ const URLS = [
 ];
 let failed = 0;
 await Promise.all(URLS.map(async (u) => {
-  const r = await fetch(BASE + u, { signal: AbortSignal.timeout(30_000) }).catch((e) => ({ status: 0, statusText: e.message }) as Response);
+  const r = await fetch(BASE + u, { headers: { referer: BASE + "/" }, signal: AbortSignal.timeout(30_000) }) // as the site's own pages.catch((e) => ({ status: 0, statusText: e.message }) as Response);
   if (r.status !== 200) { failed++; console.log(`✗ ${r.status} ${u}`); }
 }));
+// The API refuses callers that aren't the site's pages.
+const direct = await fetch(BASE + "/api/nyc/events", { signal: AbortSignal.timeout(30_000) }).catch(() => null);
+if (direct?.status !== 403) { failed++; console.log(`✗ /api/nyc/events without the site's headers answered ${direct?.status}, expected 403`); }
 console.log(failed ? `${failed} of ${URLS.length} failed` : `all ${URLS.length} OK`);
 process.exit(failed ? 1 : 0);
