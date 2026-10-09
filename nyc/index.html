@@ -36,10 +36,10 @@
     .grade { display: inline-grid; place-items: center; width: 26px; height: 26px; font-weight: 700; border: 2px solid currentColor; margin-right: 6px; }
     /* floating camera windows */
     #cams { position: fixed; inset: 0; pointer-events: none; z-index: 1500; }
-    .cam { position: absolute; width: 320px; pointer-events: auto; background: var(--card); border: 3px solid var(--line); box-shadow: 6px 6px 0 rgba(0,0,0,.5); }
+    .cam { position: absolute; width: 320px; height: 272px; min-width: 180px; min-height: 140px; display: flex; flex-direction: column; pointer-events: auto; background: var(--card); border: 3px solid var(--line); box-shadow: 6px 6px 0 rgba(0,0,0,.5); touch-action: none; }
     .cam header { display: flex; gap: 8px; align-items: center; padding: 4px 6px; cursor: move; font-size: .8rem; touch-action: none; user-select: none; }
     .cam header b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cam img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; }
+    .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
     .cam-icon { font-size: 14px; line-height: 1; filter: drop-shadow(0 0 2px #000); }
   </style>
 </head>
@@ -303,9 +303,33 @@ function openCam(c) {
   const img = w.querySelector("img"), tick = setInterval(() => (img.src = `${c.image}?t=${Date.now()}`), 4000);
   w.querySelector("button").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); };
   w.addEventListener("pointerdown", () => (w.style.zIndex = ++camZ));
+  // Resize from any edge or corner: within 8 px of the border the cursor shows the direction.
+  const EDGE = 8;
+  const edges = (e) => {
+    const r = w.getBoundingClientRect();
+    return { n: e.clientY - r.top < EDGE, s: r.bottom - e.clientY < EDGE, w: e.clientX - r.left < EDGE, e: r.right - e.clientX < EDGE };
+  };
+  const cursorFor = (d) => ((d.n && d.w) || (d.s && d.e) ? "nwse-resize" : (d.n && d.e) || (d.s && d.w) ? "nesw-resize" : d.n || d.s ? "ns-resize" : d.w || d.e ? "ew-resize" : "");
+  w.addEventListener("pointermove", (e) => { if (!w.dataset.resizing) w.style.cursor = cursorFor(edges(e)); });
+  w.addEventListener("pointerdown", (e) => {
+    const d = edges(e);
+    if (!(d.n || d.s || d.w || d.e)) return;
+    e.preventDefault(); e.stopPropagation();
+    w.style.zIndex = ++camZ;
+    w.setPointerCapture(e.pointerId); w.dataset.resizing = "1";
+    const r0 = { x: e.clientX, y: e.clientY, left: w.offsetLeft, top: w.offsetTop, width: w.offsetWidth, height: w.offsetHeight };
+    w.onpointermove = (m) => {
+      const dx = m.clientX - r0.x, dy = m.clientY - r0.y;
+      if (d.e) w.style.width = `${Math.max(180, r0.width + dx)}px`;
+      if (d.s) w.style.height = `${Math.max(140, r0.height + dy)}px`;
+      if (d.w) { const nw = Math.max(180, r0.width - dx); w.style.width = `${nw}px`; w.style.left = `${r0.left + r0.width - nw}px`; }
+      if (d.n) { const nh = Math.max(140, r0.height - dy); w.style.height = `${nh}px`; w.style.top = `${r0.top + r0.height - nh}px`; }
+    };
+    w.onpointerup = () => { w.onpointermove = null; delete w.dataset.resizing; };
+  }, true); // capture: the border wins over the title bar's move handler
   const head = w.querySelector("header");
   head.addEventListener("pointerdown", (e) => {
-    if (e.target.tagName === "BUTTON") return;
+    if (e.target.tagName === "BUTTON" || w.dataset.resizing) return;
     const sx = e.clientX - w.offsetLeft, sy = e.clientY - w.offsetTop;
     head.setPointerCapture(e.pointerId);
     head.onpointermove = (m) => { w.style.left = `${Math.max(0, Math.min(innerWidth - 60, m.clientX - sx))}px`; w.style.top = `${Math.max(0, Math.min(innerHeight - 40, m.clientY - sy))}px`; };
