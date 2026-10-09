@@ -94,7 +94,8 @@ baseMaps(map, { overlays: Object.fromEntries(Object.entries(groups).map(([k, g])
 let S = { pts: [{ label: "", lat: null, lon: null }, { label: "", lat: null, lon: null }], pins: [], mine: [], route: null, day: null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("ride-plan") || "{}")); } catch {}
 const save = () => { try { localStorage.setItem("ride-plan", JSON.stringify(S)); } catch {} };
-let found = null, days = [], picking = null; // picking: { kind: "pt", i } or { kind: "stop" }
+let found = null, days = [], picking = null;
+let stopsRaw = [], loadedKm = [], loading = Promise.resolve(); // stops fetched so far, and which stretches of the route (km) they cover // picking: { kind: "pt", i } or { kind: "stop" }
 const sat = new Date(); sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7 || 7));
 $("date").value = S.date ?? sat.toLocaleDateString("en-CA");
 for (const id of ["time", "speed", "breaks", "maxKm", "maxUp", "water", "drink", "bike", "hills"]) if (S[id] != null) $(id).value = S[id];
@@ -146,7 +147,7 @@ async function plan() {
   try {
     const d = await getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: S.pts.map((p) => [p.lat, p.lon]), bike: $("bike").value, hills: +$("hills").value }) });
     S.route = { name: `${S.pts[0].label.split(",")[0]} → ${S.pts.at(-1).label.split(",")[0]}`, points: d.points };
-    S.pins = []; S.day = null; found = null; drawMap.fitted = false;
+    S.pins = []; S.day = null; resetStops(); drawMap.fitted = false;
     await analyze();
   } catch (e) { $("status").textContent = e.message; }
   $("plan").disabled = false;
@@ -160,20 +161,58 @@ $("file").onchange = async () => {
   const a = g.points[0], b = g.points.at(-1);
   S.pts = [{ label: "start of the GPX", lat: a.lat, lon: a.lon }, { label: "end of the GPX", lat: b.lat, lon: b.lon }];
   S.mine.push(...g.waypoints.map((w) => ({ lat: w.lat, lon: w.lon, name: w.name ?? "waypoint" })));
-  S.pins = []; S.day = null; found = null; drawMap.fitted = false; renderPts(); await analyze();
+  S.pins = []; S.day = null; resetStops(); drawMap.fitted = false; renderPts(); await analyze();
 };
 
 // stops along the route, from the server's OpenStreetMap query (once per route)
 const KIND = (t) => t.amenity === "drinking_water" || t.amenity === "water_point" || t.man_made === "water_tap" ? "water"
   : t.railway === "station" ? "train" : /camp_site|hostel|motel|hotel|guest_house|alpine_hut|wilderness_hut/.test(t.tourism ?? "") ? "camp"
   : t.amenity === "bicycle_repair_station" || t.shop === "bicycle" ? "repair" : "food";
-async function fetchStops(pts) {
-  const step = Math.max(1, Math.round(pts.length / Math.max(2, Math.min(400, pts.at(-1).km / 0.8))));
-  const d = await getJSON("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: pts.filter((_, i) => i % step === 0 || i === pts.length - 1).slice(0, 400).map((p) => [p.lat, p.lon]) }) });
-  const all = d.elements.map((e) => ({ lat: e.lat, lon: e.lon, kind: KIND(e.tags), name: e.tags.name ?? e.tags.amenity ?? e.tags.shop ?? e.tags.tourism ?? e.tags.railway ?? "", hours: e.tags.opening_hours ?? "" }));
-  const by = (k, off) => along(pts, all.filter((s) => s.kind === k), off);
-  return { water: by("water", 400), food: by("food", 400), camp: by("camp", 3000), train: by("train", 3000), repair: by("repair", 400) };
+// Stops load on demand: the whole route at once only when it's short; otherwise the day you open, or the stretch
+// you're zoomed into. Each request covers at most 250 km (one Overpass query, well under a minute), sampled every
+// 0.8 km so the 400 m search circles overlap and nothing between samples is missed.
+const SHORT_KM = 150, CHUNK_KM = 250;
+const emptyStops = () => ({ water: [], food: [], camp: [], train: [], repair: [] });
+function resetStops() { stopsRaw = []; loadedKm = []; found = emptyStops(); }
+/** The parts of [a, b] not loaded yet. */
+function uncovered(a, b) {
+  const out = []; let x = a;
+  for (const [s0, s1] of [...loadedKm].sort((p, q) => p[0] - q[0])) { if (s1 < x) continue; if (s0 > x) out.push([x, Math.min(s0, b)]); x = Math.max(x, s1); if (x >= b) break; }
+  if (x < b) out.push([x, b]);
+  return out.filter(([p, q]) => q - p > 0.5);
 }
+const covered = (a, b) => uncovered(Math.max(0, a), Math.min(pts.at(-1)?.km ?? 0, b)).length === 0;
+function rebuildFound() {
+  const all = stopsRaw.map((e) => ({ lat: e.lat, lon: e.lon, kind: KIND(e.tags), name: e.tags.name ?? e.tags.amenity ?? e.tags.shop ?? e.tags.tourism ?? e.tags.railway ?? "", hours: e.tags.opening_hours ?? "" }));
+  const by = (k, off) => along(pts, all.filter((x) => x.kind === k), off);
+  found = { water: by("water", 400), food: by("food", 400), camp: by("camp", 3000), train: by("train", 3000), repair: by("repair", 400) };
+}
+/** Make sure stops between km a and b are loaded (queued, so overlapping requests don't double up). */
+function loadStops(a, b) {
+  loading = loading.then(async () => {
+    a = Math.max(0, a); b = Math.min(pts.at(-1).km, b);
+    const todo = uncovered(a, b).flatMap(([p, q]) => Array.from({ length: Math.ceil((q - p) / CHUNK_KM) }, (_, k) => [p + k * CHUNK_KM, Math.min(q, p + (k + 1) * CHUNK_KM)]));
+    if (!todo.length) return;
+    const seen = new Set(stopsRaw.map((e) => `${e.lat.toFixed(5)},${e.lon.toFixed(5)}`));
+    let failed = 0;
+    for (const [k, [p, q]] of todo.entries()) {
+      const line = []; let next = p;
+      for (const pt of pts) if (pt.km >= next && pt.km <= q + 0.5) { line.push([pt.lat, pt.lon]); next = pt.km + 0.8; }
+      if (line.length < 2) { loadedKm.push([p, q]); continue; }
+      $("status").textContent = `Finding water, food, beds and stations for km ${Math.round(p)}–${Math.round(q)}${todo.length > 1 ? ` (part ${k + 1} of ${todo.length})` : ""} from OpenStreetMap…`;
+      try {
+        const d = await getJSON("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: line.slice(0, 400) }) });
+        for (const e of d.elements) { const key = `${e.lat.toFixed(5)},${e.lon.toFixed(5)}`; if (!seen.has(key)) { seen.add(key); stopsRaw.push(e); } }
+        loadedKm.push([p, q]);
+      } catch (e) { failed++; }
+    }
+    rebuildFound();
+    $("status").textContent = failed ? `OpenStreetMap is busy: ${failed} stretch${failed > 1 ? "es" : ""} couldn't be searched. Open the day or zoom in again in a minute to retry.` : "";
+    render();
+  });
+  return loading;
+}
+
 const wx = new Map();
 function forecast(lat, lon, date) {
   const key = `${lat.toFixed(2)},${lon.toFixed(2)},${date}`;
@@ -189,14 +228,14 @@ async function analyze() {
   pts = S.route.points.map(([lat, lon, ele]) => ({ lat, lon, ...(ele != null ? { ele } : {}) }));
   measure(pts);
   $("out").hidden = false;
-  if (!found) {
-    $("status").textContent = "Finding water, food, campsites and stations along the route (OpenStreetMap; up to a minute when its servers are busy)…";
-    try { found = await fetchStops(pts); $("status").textContent = ""; } catch (e) { found = { water: [], food: [], camp: [], train: [], repair: [] }; $("status").textContent = `${e.message} The plan has no stops yet.`; }
-  }
+  if (!found) resetStops();
+  const total = pts.at(-1).km, short = total <= SHORT_KM;
+  if (short) await loadStops(0, total); // short trips: everything now; long ones: as days are opened or the map zoomed in
   const opts = { maxKm: +$("maxKm").value, maxClimb: +$("maxUp").value };
-  // Unpinned day ends snap to a campsite nearby; pinned ones (dragged or chosen) stay put.
+  // Unpinned day ends snap to a campsite nearby (when the stops are known); pinned ones (dragged or chosen) stay put.
   days = planDays(pts, opts, S.pins);
-  if (!S.pins.length) days = snapToCamps(pts, days, found.camp);
+  if (!S.pins.length && short) days = snapToCamps(pts, days, found.camp);
+  if (!short && !stopsRaw.length) $("status").textContent = `A ${Math.round(total)} km trip: stops (water, food, beds) load for each day you open, or wherever you zoom in on the map.`;
   if (S.day != null && S.day >= days.length) S.day = null;
   save(); render();
 }
@@ -216,7 +255,8 @@ function dayInfo(i) {
 function render() {
   $("title").textContent = S.route.name;
   const total = pts.at(-1).km, up = climb(pts);
-  $("summary").textContent = `${total.toFixed(1)} km · ${up.up.toLocaleString()} m up · ${days.length} day${days.length > 1 ? "s" : ""} · ${found.water.length} water points, ${found.food.length} food stops, ${found.camp.length} places to sleep, ${found.train.length} stations along the way`;
+  const all = covered(0, total), done = loadedKm.reduce((a, [p, q]) => a + q - p, 0);
+  $("summary").textContent = `${total.toFixed(1)} km · ${up.up.toLocaleString()} m up · ${days.length} day${days.length > 1 ? "s" : ""} · ${found.water.length} water points, ${found.food.length} food stops, ${found.camp.length} places to sleep, ${found.train.length} stations ${all ? "along the way" : `found so far (${Math.round(Math.min(done, total))} of ${Math.round(total)} km checked)`}`;
   $("tabs").innerHTML = `<button data-day="" aria-pressed="${S.day == null}">Whole trip</button>` + days.map((_, i) => `<button data-day="${i}" aria-pressed="${S.day === i}" style="border-color:${COLORS[i % COLORS.length]}">Day ${i + 1}</button>`).join("");
   drawMap(); drawProfile(); renderDay(); renderMine(); renderNear();
 }
@@ -284,9 +324,14 @@ function renderNear() {
     return items.length ? `<details open><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.map(([x, j]) => `<li data-n="${j}">km ${x.km.toFixed(1)} · ${esc(x.name)}${x.off > 50 ? ` <span class="hint">${x.off} m off</span>` : ""}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>` : ""} ${actions(x)}</li>`).join("")}</ul></details>` : "";
   }).join("");
 }
-map.on("moveend", renderNear);
+map.on("moveend", () => {
+  renderNear();
+  if (!pts.length || map.getZoom() < NEAR_ZOOM) return;
+  const b = map.getBounds().pad(0.2), inView = pts.filter((p) => b.contains([p.lat, p.lon]));
+  if (inView.length) loadStops(Math.min(...inView.map((p) => p.km)) - 1, Math.max(...inView.map((p) => p.km)) + 1);
+});
 $("nearBox").addEventListener("click", (e) => { const a = e.target.closest("[data-act]")?.dataset.act, n = e.target.closest("[data-n]")?.dataset.n; if (a && n != null) act(a, nearList[+n]); });
-function selectDay(i) { S.day = i; save(); render(); drawMap(true); }
+function selectDay(i) { S.day = i; save(); render(); drawMap(true); if (i != null) loadStops(pts[days[i][0]].km - 6, pts[days[i][1]].km + 6); }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (!b) return; selectDay(b.dataset.day === "" ? null : +b.dataset.day); });
 
 async function renderDay() {
@@ -301,9 +346,9 @@ async function renderDay() {
       <p><b>${d.dist.toFixed(1)} km</b> · ${d.c.up} m up · ~${Math.floor(d.hours)} h ${Math.round((d.hours % 1) * 60)} min with breaks · leave ${hm(d.start)}, arrive ~${hm(d.end)}
         ${d.sun ? (d.end > d.sun.set ? `<span class="warn">· ${Math.round((d.end - d.sun.set) / 60000)} min after sunset (${hm(d.sun.set)})</span>` : `<span class="ok">· before sunset (${hm(d.sun.set)})</span>`) : ""}</p>
       <p>${w ? `🌡 ${Math.round(w.lo)}–${Math.round(w.hi)} °C · rain ${w.rain ?? "?"}% · wind ${Math.round(w.wind)} km/h` : `<span class="hint">Forecast appears within 16 days of the ride.</span>`}</p>
-      <p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without food: ${gapF.km.toFixed(0)} km</p>
+      ${covered(d.km0 - 6, d.km1 + 6) ? `<p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without food: ${gapF.km.toFixed(0)} km</p>
       <p>${i === days.length - 1 ? "🏁 Finish." : d.camps.length ? `⛺ Sleep near the end: ${d.camps.slice(0, 3).map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">⛺ No mapped campsite or lodging within 6 km of this day's end.</span> Drag the 🏁 flag, or pick a place below.`}</p>
-      <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>
+      <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>` : `<p class="hint">💧🥖⛺🚆 Water, food, beds and stations for this day aren't loaded yet.${S.day === i ? " Loading…" : ` <button data-day="${i}">Open day ${i + 1} to load them</button>`}</p>`}
       ${S.day != null ? `<p class="hint">${d.water.length} water points, ${d.food.length} food stops, ${d.repair.length} bike shops on this day. Zoom the map in to list them below.</p>` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}
     </article>`);
   }

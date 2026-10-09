@@ -270,14 +270,15 @@ const server = http.createServer(async (req, res) => {
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 10_000) return res.writeHead(413).end(); }
       const d: any = await bikeRoute(JSON.parse(raw || "{}"));
-      return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
+      // 422, not 502: Cloudflare swaps an origin's 502 for its own "Bad gateway" page, hiding the message
+      return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
     if (url.pathname === "/api/ride/places") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await placeSearch(String(url.searchParams.get("q") ?? "").slice(0, 120))));
     if (url.pathname === "/api/ride/stops" && req.method === "POST") {
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 40_000) return res.writeHead(413).end(); }
       const d: any = await routeStops(JSON.parse(raw || "{}").line);
-      return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
+      return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
     if (url.pathname === "/api/mesh/state") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(meshState(meshOwner(req))));
     if (url.pathname === "/api/mesh/events") {
@@ -347,7 +348,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${SITE}/sitemap.xml\n`);
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
-    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();

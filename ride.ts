@@ -3,9 +3,11 @@ import { createHash } from "node:crypto";
 // Ride: everything useful along a route from OpenStreetMap (Overpass). The query is built here, not sent by the page,
 // the public instance is often busy (504s) so we back off and retry, and each route's answer is cached for a day.
 
-// Only the main instance: mirrors tried here answered 200 with no data for NYC (stale or partial), which reads as
-// "no water anywhere". Its 504 means "queue full", so we wait and retry instead.
-const OVERPASS = "https://overpass-api.de/api/interpreter", BACKOFF = [3, 8, 15, 25];
+// The main instance first. Mirrors are a fallback for when it's down, but they have answered 200 with no data for NYC
+// (stale or partial), so an empty answer from a mirror counts as a failure, never as "no water anywhere".
+// Its 504 means "queue full", so we wait and retry, within a time budget that stays under Cloudflare's 100 s.
+const OVERPASS = "https://overpass-api.de/api/interpreter", MIRRORS = ["https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+const BACKOFF = [3, 8, 15], BUDGET_MS = 70_000;
 const UA = { "user-agent": "ihor.sh route notebook (+https://ihor.sh/ride/)", accept: "application/json" };
 const cache = new Map<string, { at: number; v: unknown }>();
 
@@ -26,17 +28,22 @@ export async function routeStops(line: unknown) {
     `[out:json][timeout:90]${bbox};(node["amenity"~"^(drinking_water|water_point|cafe|fast_food|restaurant|bicycle_repair_station)$"]${near};node["man_made"="water_tap"]${near};node["shop"~"^(supermarket|convenience|general|bakery|deli|greengrocer|bicycle)$"]${near};);out;`, // "out tags" would drop the coordinates
     `[out:json][timeout:90]${bbox};(nwr["tourism"~"^(camp_site|hostel|motel|hotel|guest_house|alpine_hut|wilderness_hut)$"]${wide};node["railway"="station"]${wide};);out center tags;`,
   ];
+  const deadline = Date.now() + BUDGET_MS;
+  const ask = async (server: string, query: string) => {
+    const left = deadline - Date.now();
+    if (left < 3000) throw new Error("out of time");
+    const r = await fetch(server, { method: "POST", headers: UA, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(Math.min(60_000, left)) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.remark && /error|timed out/i.test(d.remark)) throw new Error(d.remark.slice(0, 80));
+    return (d.elements ?? []).map((e: any) => ({ lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags ?? {} })).filter((e: any) => e.lat);
+  };
   const run = async (query: string) => {
     let last = "";
     for (const wait of [0, ...BACKOFF]) {
-      if (wait) await new Promise((r) => setTimeout(r, wait * 1000));
-      try {
-        const r = await fetch(OVERPASS, { method: "POST", headers: UA, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(100_000) });
-        if (!r.ok) { last = `HTTP ${r.status}`; continue; }
-        const d = await r.json();
-        if (d.remark && /error|timed out/i.test(d.remark)) { last = d.remark.slice(0, 80); continue; }
-        return (d.elements ?? []).map((e: any) => ({ lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags ?? {} })).filter((e: any) => e.lat);
-      } catch (e) { last = (e as Error).message; }
+      if (wait) { if (Date.now() + wait * 1000 > deadline - 3000) break; await new Promise((r) => setTimeout(r, wait * 1000)); }
+      try { return await ask(OVERPASS, query); } catch (e) { last = (e as Error).message; }
+      for (const m of MIRRORS) { try { const els = await ask(m, query); if (els.length) return els; last = "a mirror answered with no data"; } catch (e) { last = (e as Error).message; } }
     }
     throw new Error(last);
   };
@@ -47,7 +54,7 @@ export async function routeStops(line: unknown) {
     cache.set(key, { at: Date.now(), v });
     return v;
   } catch (e) {
-    return { error: `OpenStreetMap's Overpass servers are busy right now (${(e as Error).message}). Try again in a minute.` };
+    return { error: `OpenStreetMap's Overpass servers aren't answering right now (${(e as Error).message}). Try again in a few minutes.` };
   }
 }
 
@@ -56,20 +63,51 @@ const VALHALLA = "https://valhalla1.openstreetmap.de";
 const decode6 = (s: string) => { const out: [number, number][] = []; let i = 0, lat = 0, lon = 0; const next = () => { let r = 0, sh = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; }; while (i < s.length) { lat += next(); lon += next(); out.push([lat / 1e6, lon / 1e6]); } return out; };
 const BIKES = { road: "Road", hybrid: "Hybrid", mountain: "Mountain", gravel: "Cross" } as const;
 
+// The public Valhalla server routes bicycles at most 150 km per request, so long trips go leg by leg: every stretch
+// is cut into pieces of at most LEG_KM in a straight line (roads run longer), routed one after another, and joined.
+const LEG_KM = 110, MAX_KM = 2500;
+const kmBetween = ([a, b]: number[], [c, d]: number[]) => { const r = Math.PI / 180, h = Math.sin(((c - a) * r) / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+
 /** A cycling route through 2–12 points (OSM via Valhalla), with elevation for every point. */
 export async function bikeRoute(body: any) {
   const pts = body?.points;
   if (!Array.isArray(pts) || pts.length < 2 || pts.length > 12 || !pts.every((p: any) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))) return { error: "Send 2–12 [lat, lon] points." };
   const bike = BIKES[body.bike as keyof typeof BIKES] ?? "Hybrid", hills = Math.max(0, Math.min(1, Number(body.hills ?? 0.4)));
-  const req = { locations: pts.map(([lat, lon]: number[]) => ({ lat, lon })), costing: "bicycle", costing_options: { bicycle: { bicycle_type: bike, use_hills: hills, use_roads: bike === "Road" ? 0.6 : 0.3 } }, units: "kilometers" };
-  const r = await fetch(`${VALHALLA}/route`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify(req), signal: AbortSignal.timeout(40_000) });
-  const d = await r.json().catch(() => null);
-  if (!r.ok || !d?.trip) return { error: d?.error ? `No bike route: ${d.error}` : `The routing server isn't answering (${r.status}).` };
-  let line = d.trip.legs.flatMap((l: any) => decode6(l.shape));
+  const straight = pts.slice(1).reduce((s: number, p: number[], i: number) => s + kmBetween(pts[i], p), 0);
+  if (straight > MAX_KM) return { error: `That's ${Math.round(straight)} km in a straight line; the planner handles trips up to ${MAX_KM} km. Split it into parts.` };
+  // the stops along the way, with extra ones on long stretches (marked so they can be nudged if they land somewhere unroutable)
+  const stops: { p: number[]; extra: boolean }[] = [{ p: pts[0], extra: false }];
+  for (let i = 1; i < pts.length; i++) {
+    const n = Math.ceil(kmBetween(pts[i - 1], pts[i]) / LEG_KM);
+    for (let k = 1; k < n; k++) stops.push({ p: [pts[i - 1][0] + ((pts[i][0] - pts[i - 1][0]) * k) / n, pts[i - 1][1] + ((pts[i][1] - pts[i - 1][1]) * k) / n], extra: true });
+    stops.push({ p: pts[i], extra: false });
+  }
+  const leg = async (a: number[], b: number[]) => {
+    const req = { locations: [a, b].map(([lat, lon]) => ({ lat, lon })), costing: "bicycle", costing_options: { bicycle: { bicycle_type: bike, use_hills: hills, use_roads: bike === "Road" ? 0.6 : 0.3 } }, units: "kilometers" };
+    const r = await fetch(`${VALHALLA}/route`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify(req), signal: AbortSignal.timeout(40_000) });
+    const d = await r.json().catch(() => null);
+    return r.ok && d?.trip ? d.trip : { error: d?.error ?? `HTTP ${r.status}` };
+  };
+  let line: [number, number][] = [], km = 0, minutes = 0;
+  for (let i = 1; i < stops.length; i++) {
+    let trip: any = null;
+    // An in-between point in a lake or a forest has no road nearby: try it shifted a few km each way.
+    const tries = stops[i].extra ? [[0, 0], [0.05, 0], [-0.05, 0], [0, 0.07], [0, -0.07], [0.12, 0.12], [-0.12, -0.12]] : [[0, 0]];
+    for (const [dl, dn] of tries) {
+      const b = [stops[i].p[0] + dl, stops[i].p[1] + dn];
+      trip = await leg(stops[i - 1].p, b);
+      if (!trip.error) { stops[i].p = b; break; }
+      if (!stops[i].extra || !/edges|location|path|route/i.test(trip.error)) break;
+    }
+    if (trip.error) return { error: `No bike route${stops.length > 2 ? ` for part ${i} of ${stops.length - 1}` : ""}: ${trip.error}` };
+    const shape = trip.legs.flatMap((l: any) => decode6(l.shape));
+    line.push(...(line.length ? shape.slice(1) : shape));
+    km += trip.summary.length; minutes += trip.summary.time / 60;
+  }
   const every = Math.max(1, Math.ceil(line.length / 3000)); // ponytail: thinned to ≤ 3,000 points; plenty for planning
-  line = line.filter((_: unknown, i: number) => i % every === 0 || i === line.length - 1);
-  const h = await fetch(`${VALHALLA}/height`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify({ shape: line.map(([lat, lon]: number[]) => ({ lat, lon })), range: false }), signal: AbortSignal.timeout(40_000) }).then((x) => x.json()).catch(() => null);
-  return { km: d.trip.summary.length, minutes: Math.round(d.trip.summary.time / 60), points: line.map(([lat, lon]: number[], i: number) => [+lat.toFixed(6), +lon.toFixed(6), h?.height?.[i] ?? null]) };
+  line = line.filter((_, i) => i % every === 0 || i === line.length - 1);
+  const h = await fetch(`${VALHALLA}/height`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify({ shape: line.map(([lat, lon]) => ({ lat, lon })), range: false }), signal: AbortSignal.timeout(40_000) }).then((x) => x.json()).catch(() => null);
+  return { km, minutes: Math.round(minutes), legs: stops.length - 1, points: line.map(([lat, lon], i) => [+lat.toFixed(6), +lon.toFixed(6), h?.height?.[i] ?? null]) };
 }
 
 /** Places for the route planner's search box: Photon (OpenStreetMap), nudged toward New York but not limited to it. */
