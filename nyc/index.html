@@ -374,8 +374,15 @@ $("trip").addEventListener("submit", async (e) => {
   tripLayer.clearLayers();
   const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
-  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
-  const line = L.polyline(d.line, { color: "#ffb347", weight: 5, opacity: 0.85 }).addTo(tripLayer);
+  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => c.name) };
+  const line = L.polyline(d.line, { color: "#4de1ff", weight: 5, opacity: 0.85 }).addTo(tripLayer);
+  // Traffic on the route (car trips): each jam painted over the line by how bad it is.
+  const JAM = { 1: ["#ffd166", "slow"], 2: ["#ff9f1c", "heavy"], 3: ["#ff5c8a", "jammed"], 4: ["#b3002d", "closed or stopped"] };
+  for (const j of d.jams ?? []) {
+    const [color, word] = JAM[j.magnitude] ?? JAM[1];
+    L.polyline(d.line.slice(j.from, j.to + 1), { color, weight: 7, opacity: 0.95, bubblingMouseEvents: false })
+      .bindTooltip(`${j.kind === "ROAD_WORK" ? "Road work" : j.kind === "ROAD_CLOSURE" ? "Closure" : "Traffic"}: ${word}${j.delayMinutes ? `, +${j.delayMinutes} min` : ""}${j.kmh != null ? `, ${j.kmh} km/h` : ""}`).addTo(tripLayer);
+  }
   dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
   dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
   const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
@@ -385,6 +392,7 @@ $("trip").addEventListener("submit", async (e) => {
   const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</div>`
     : `<div class="muted">${tr.onRoute.length} road segments with live speeds on the way${slow.length ? `; slow: ${slow.slice(0, 4).map((l) => `${esc(l.name)} ${Math.round(l.mph)} mph`).join(", ")}` : ", all moving"}.</div>`;
   $("tripOut").innerHTML = trafficHtml + (d.usesFerry ? `<div class="muted">⛴ This route includes a ferry${d.avoidFerries ? " (there's no way around it)" : ""}.</div>` : "") + `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
+    ${d.jams?.length ? `<div class="legend">${d.jams.length} traffic spot${d.jams.length > 1 ? "s" : ""} on the route: <i style="background:#ffd166"></i>slow <i style="background:#ff9f1c"></i>heavy <i style="background:#ff5c8a"></i>jammed <i style="background:#b3002d"></i>stopped</div>` : d.mode === "drive" && d.eta.delayMinutes != null ? `<div class="legend"><i style="background:#4de1ff"></i>no jams on the route</div>` : ""}
     <div class="muted">${d.eta.delayMinutes != null ? `${d.eta.delayMinutes ? `${d.eta.delayMinutes} min of it is traffic; ` : "no traffic delays right now; "}${d.eta.noTrafficMinutes} min on empty roads (${esc(d.eta.source)})` : `Time from ${esc(d.eta.source)}.`}</div>
     ${d.cameras.length ? `<button id="openTrip" style="display:block;margin:6px 0">Open the first 4 cameras</button>` : ""}
     <ol style="padding-left:18px;margin:4px 0">${d.cameras.map((c, i) => `<li><a href="#" data-i="${i}">${esc(c.name)}</a> <span class="muted">km ${c.kmAlong}</span></li>`).join("")}</ol>`;

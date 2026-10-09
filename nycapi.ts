@@ -162,6 +162,7 @@ const COSTING = { drive: "auto", bike: "bicycle", walk: "pedestrian" } as const;
 /** A car route with live and typical traffic from TomTom (key in .env as TOMTOM_API_KEY). */
 async function tomtomRoute(a: { lat: number; lon: number }, b: { lat: number; lon: number }, avoidFerries: boolean) {
   const q = new URLSearchParams({ key: env("TOMTOM_API_KEY"), traffic: "true", travelMode: "car", computeTravelTimeFor: "all", sectionType: "ferry", routeRepresentation: "polyline" });
+  q.append("sectionType", "traffic"); // jams on the route: where, how bad, how slow
   if (avoidFerries) q.set("avoid", "ferries");
   const d = await json(`https://api.tomtom.com/routing/1/calculateRoute/${a.lat},${a.lon}:${b.lat},${b.lon}/json?${q}`);
   const r = d.routes?.[0];
@@ -170,6 +171,10 @@ async function tomtomRoute(a: { lat: number; lon: number }, b: { lat: number; lo
     distance: r.summary.lengthInMeters, duration: r.summary.travelTimeInSeconds, delay: r.summary.trafficDelayInSeconds ?? 0,
     noTraffic: r.summary.noTrafficTravelTimeInSeconds ?? r.summary.travelTimeInSeconds,
     usesFerry: (r.sections ?? []).some((x: any) => x.sectionType === "FERRY"),
+    // magnitudeOfDelay: 0 unknown, 1 minor, 2 moderate, 3 major, 4 undefined (closures); indices point into `line`
+    jams: (r.sections ?? []).filter((x: any) => x.sectionType === "TRAFFIC").map((x: any) => ({
+      from: x.startPointIndex, to: x.endPointIndex, magnitude: x.magnitudeOfDelay ?? 0, delayMinutes: Math.round((x.delayInSeconds ?? 0) / 60),
+      kmh: x.effectiveSpeedInKmh ?? null, kind: x.simpleCategory ?? "JAM" })),
     line: r.legs.flatMap((l: any) => l.points.map((p: any) => [p.latitude, p.longitude])) as [number, number][],
   };
 }
@@ -223,8 +228,9 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof COST
   const sp = mode === "drive" ? await trafficSpeeds().catch(() => null) : null;
   const traffic = sp ? { asOf: sp.asOf, stale: sp.stale, onRoute: sp.links.filter((l: any) => l.ok && l.points.filter(([la, lo]: number[]) => near(la, lo)).length >= l.points.length * 0.6)
     .map((l: any) => ({ name: l.name, mph: l.mph })).sort((x: any, y: any) => x.mph - y.mph) } : null;
+  const jams = tt?.jams ?? [];
   const eta = tt ? { source: "TomTom live traffic", delayMinutes: Math.round(tt.delay / 60), noTrafficMinutes: Math.round(tt.noTraffic / 60) } : { source: mode === "drive" ? "typical speeds (no live traffic)" : "typical speeds" };
-  return { from: a, to: b, mode, avoidFerries, usesFerry, eta, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+  return { from: a, to: b, mode, avoidFerries, usesFerry, eta, jams, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
 }
 
