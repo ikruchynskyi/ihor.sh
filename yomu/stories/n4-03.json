@@ -1,0 +1,923 @@
+{
+ "id": "n4-03",
+ "level": "N4",
+ "unit": 3,
+ "title": {
+  "ja": "日本へ行くことにした",
+  "en": "I've decided to go to Japan"
+ },
+ "scene": "Sam books his flight. Yuki helps him plan, and they talk about why he's going.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "決めた",
+     "きめた",
+     "decided"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "八月",
+     "はちがつ",
+     "August"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "ことにした",
+     null,
+     "I decided to"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Decided! I'm going to Japan in August."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "やった",
+     null,
+     "yay"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何の",
+     "なんの",
+     "what for"
+    ],
+    [
+     "ために",
+     null,
+     "in order to"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "の",
+     null,
+     "(question)"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yay! What are you going for?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radios"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見る",
+     "みる",
+     "see"
+    ],
+    [
+     "ために",
+     null,
+     "in order to"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それから",
+     null,
+     "and also"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "アマチュア無線",
+     "あまちゅあむせん",
+     "ham radio"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "友だち",
+     "ともだち",
+     "friends"
+    ],
+    [
+     "に",
+     null,
+     "(to)",
+     "p"
+    ],
+    [
+     "会いたい",
+     "あいたい",
+     "want to meet"
+    ],
+    [
+     "んだ",
+     null,
+     "you see"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "To see old radios in Akihabara. And I want to meet my ham radio friends in Japan."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ],
+    [
+     "まで",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "新幹線",
+     "しんかんせん",
+     "bullet train"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "つもり",
+     null,
+     "intend"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Do you plan to take the bullet train from Tokyo to Kyoto?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "乗ってみたい",
+     "のってみたい",
+     "want to try riding"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "切符",
+     "きっぷ",
+     "ticket"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "早く",
+     "はやく",
+     "early"
+    ],
+    [
+     "買っておく",
+     "かっておく",
+     "buy in advance"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah, I want to try riding it. I'll buy the ticket early."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "困らない",
+     "こまらない",
+     "not get stuck"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大事な",
+     "だいじな",
+     "important"
+    ],
+    [
+     "ことば",
+     null,
+     "words"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "あげる",
+     null,
+     "(for you)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "So you don't get stuck in Japan, I'll teach you some important words."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "助かる",
+     "たすかる",
+     "that helps"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "話す",
+     "はなす",
+     "speak"
+    ],
+    [
+     "ように",
+     null,
+     "make a point of"
+    ],
+    [
+     "している",
+     null,
+     "am doing"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "速い",
+     "はやい",
+     "fast"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "わからない",
+     null,
+     "don't understand"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That helps! I try to speak every day, but I still can't follow fast Japanese."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "通訳",
+     "つうやく",
+     "interpreter"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "ことになった",
+     null,
+     "it's been decided"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's been decided: Blip will be the interpreter!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "切れない",
+     "きれない",
+     "won't run out"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "ね",
+     null,
+     "okay?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, make sure your battery doesn't run out at the airport, okay?"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "koto-ni-suru",
+   "title": "～ことにする / ～ことになる: decide / it's decided",
+   "explain": "Dictionary form + ことにした = I decided (my choice). ことになった = it's been decided (by others or circumstances).",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本",
+       "にほん",
+       "Japan"
+      ],
+      [
+       "へ",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行く",
+       "いく",
+       "go"
+      ],
+      [
+       "ことにした",
+       null,
+       "I decided"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I decided to go to Japan."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "八月に日本へ行く＿＿＿＿＿。",
+     "hint": "I decided to go to Japan in August (my choice).",
+     "choices": [
+      "ことにした",
+      "ことになった",
+      "ことがある"
+     ],
+     "answer": 0,
+     "why": "Your own decision: ことにした."
+    },
+    {
+     "q": "ブリップが通訳をする＿＿＿＿＿。",
+     "hint": "It was decided that Blip will interpret.",
+     "choices": [
+      "ことになった",
+      "ことにした",
+      "ことができる"
+     ],
+     "answer": 0,
+     "why": "Decided by others: ことになった."
+    }
+   ]
+  },
+  {
+   "id": "tame-ni",
+   "title": "～ために / ～ように: in order to / so that",
+   "explain": "ために = for a goal you act on (見るために). ように = so that a state happens, often with potential or negative verbs (困らないように, 切れないように).",
+   "examples": [
+    {
+     "t": [
+      [
+       "古い",
+       "ふるい",
+       "old"
+      ],
+      [
+       "ラジオ",
+       null,
+       "radios"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "見る",
+       "みる",
+       "see"
+      ],
+      [
+       "ために",
+       null,
+       "in order to"
+      ],
+      [
+       "行く",
+       "いく",
+       "go"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'm going to see old radios."
+    },
+    {
+     "t": [
+      [
+       "困らない",
+       "こまらない",
+       "not get stuck"
+      ],
+      [
+       "ように",
+       null,
+       "so that"
+      ],
+      [
+       "教える",
+       "おしえる",
+       "teach"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll teach you so you won't get stuck."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ラジオを見る＿＿＿秋葉原に行く。",
+     "hint": "I'll go to Akihabara to see radios.",
+     "choices": [
+      "ために",
+      "ように",
+      "ので"
+     ],
+     "answer": 0,
+     "why": "A goal you act on: ために."
+    },
+    {
+     "q": "電池が切れない＿＿＿ね。",
+     "hint": "Make sure the battery doesn't run out.",
+     "choices": [
+      "ように",
+      "ために",
+      "から"
+     ],
+     "answer": 0,
+     "why": "A state you can't directly control: ように."
+    }
+   ]
+  },
+  {
+   "id": "te-oku",
+   "title": "～ておく / ～てみる: do in advance / try",
+   "explain": "て + おく = do something ahead of time (買っておく). て + みる = try it and see (乗ってみたい).",
+   "examples": [
+    {
+     "t": [
+      [
+       "切符",
+       "きっぷ",
+       "ticket"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "買っておく",
+       "かっておく",
+       "buy in advance"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll buy the ticket ahead of time."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "新幹線に乗っ＿＿＿たい。",
+     "hint": "I want to try riding the bullet train.",
+     "choices": [
+      "てみ",
+      "てお",
+      "てい"
+     ],
+     "answer": 0,
+     "why": "Try: てみる → てみたい."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "決",
+   "on": [
+    "ケツ"
+   ],
+   "kun": [
+    "き.める"
+   ],
+   "m": "decide",
+   "ex": [
+    [
+     "決める",
+     "きめる",
+     "to decide"
+    ]
+   ]
+  },
+  {
+   "k": "京",
+   "on": [
+    "キョウ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "capital",
+   "ex": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ]
+   ]
+  },
+  {
+   "k": "切",
+   "on": [
+    "セツ"
+   ],
+   "kun": [
+    "き.る"
+   ],
+   "m": "cut",
+   "ex": [
+    [
+     "切符",
+     "きっぷ",
+     "ticket"
+    ],
+    [
+     "大切",
+     "たいせつ",
+     "important"
+    ]
+   ]
+  },
+  {
+   "k": "早",
+   "on": [
+    "ソウ"
+   ],
+   "kun": [
+    "はや.い"
+   ],
+   "m": "early",
+   "ex": [
+    [
+     "早く",
+     "はやく",
+     "early, quickly"
+    ]
+   ]
+  },
+  {
+   "k": "教",
+   "on": [
+    "キョウ"
+   ],
+   "kun": [
+    "おし.える"
+   ],
+   "m": "teach",
+   "ex": [
+    [
+     "教える",
+     "おしえる",
+     "to teach"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  4
+ ],
+ "questions": [
+  {
+   "q": "サムさんはいつ日本へ行きますか。",
+   "en": "When is Sam going to Japan?",
+   "choices": [
+    "八月",
+    "四月",
+    "十二月"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "秋葉原で何を見ますか。",
+   "en": "What will he see in Akihabara?",
+   "choices": [
+    "古いラジオ",
+    "新しい車",
+    "映画"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "通訳をするのはだれですか。",
+   "en": "Who will interpret?",
+   "choices": [
+    "ブリップ",
+    "ゆきさん",
+    "サムさんの友だち"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a trip you've decided on (～ことにした), why (～ために), and one thing you'll do in advance (～ておく)."
+}

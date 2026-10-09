@@ -1,0 +1,897 @@
+{
+ "id": "n4-01",
+ "level": "N4",
+ "unit": 1,
+ "title": {
+  "ja": "日本語が話せるようになった",
+  "en": "I can speak Japanese now"
+ },
+ "scene": "A Saturday at the café again. Sam has been studying Japanese with Yomu for three months.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最近",
+     "さいきん",
+     "lately"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "が",
+     null,
+     "(object of ability)",
+     "p"
+    ],
+    [
+     "上手になった",
+     "じょうずになった",
+     "got good"
+    ],
+    [
+     "ね",
+     null,
+     "right?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, your Japanese has gotten good lately, hasn't it?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thanks"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "勉強している",
+     "べんきょうしている",
+     "am studying"
+    ],
+    [
+     "んだ",
+     null,
+     "(explaining)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thanks. I've been studying every day, you see."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ひらがな",
+     null,
+     "hiragana"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "カタカナ",
+     null,
+     "katakana"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "全部",
+     "ぜんぶ",
+     "all"
+    ],
+    [
+     "読める",
+     "よめる",
+     "can read"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I can already read all the hiragana and katakana."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "は",
+     null,
+     "and (as for)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "And kanji?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "しか",
+     null,
+     "only"
+    ],
+    [
+     "読めない",
+     "よめない",
+     "can't read"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "十",
+     "じゅう",
+     "ten"
+    ],
+    [
+     "ずつ",
+     null,
+     "each"
+    ],
+    [
+     "覚えている",
+     "おぼえている",
+     "am memorizing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I can still read only a few kanji. But I'm learning ten every day."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "すごい",
+     null,
+     "great"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "来年",
+     "らいねん",
+     "next year"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "話せる",
+     "はなせる",
+     "can speak"
+    ],
+    [
+     "と思う",
+     "とおもう",
+     "I think"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Great! Then I think you'll be able to talk in Japan next year."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "実は",
+     "じつは",
+     "actually"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "夏休み",
+     "なつやすみ",
+     "summer vacation"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go / I'll go"
+    ],
+    [
+     "と思っている",
+     "とおもっている",
+     "I'm thinking"
+    ],
+    [
+     "んだ",
+     null,
+     "(explaining)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Actually, I'm thinking of going to Japan over the summer."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "夏",
+     "なつ",
+     "summer"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "帰る",
+     "かえる",
+     "go home"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "よ",
+     null,
+     "!"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Really? I'm going home in summer too, so let's go together!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "行ける",
+     "いける",
+     "can go"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can Blip go too?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "かばん",
+     null,
+     "bag"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入る",
+     "はいる",
+     "fit in"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "fine"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "と思う",
+     "とおもう",
+     "I think"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip fits in a bag, so I think it'll be fine."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "potential",
+   "title": "～える / ～られる: can (potential form)",
+   "explain": "U-verbs change the last u-sound to e + る: 読む → 読める, 話す → 話せる, 行く → 行ける. Ru-verbs add られる: 食べる → 食べられる (in speech often 食べれる). する → できる, 来る → 来られる. The thing you can do usually takes が.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ひらがな",
+       null,
+       "hiragana"
+      ],
+      [
+       "が",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "読める",
+       "よめる",
+       "can read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I can read hiragana."
+    },
+    {
+     "t": [
+      [
+       "漢字",
+       "かんじ",
+       "kanji"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "まだ",
+       null,
+       "still"
+      ],
+      [
+       "読めない",
+       "よめない",
+       "can't read"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I can't read kanji yet."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "日本語が話＿＿。",
+     "hint": "I can speak Japanese.",
+     "choices": [
+      "せる",
+      "される",
+      "させる"
+     ],
+     "answer": 0,
+     "why": "話す → 話せる (す → せる)."
+    },
+    {
+     "q": "ブリップも行＿＿？",
+     "hint": "Can Blip go too?",
+     "choices": [
+      "ける",
+      "かれる",
+      "こう"
+     ],
+     "answer": 0,
+     "why": "行く → 行ける."
+    }
+   ]
+  },
+  {
+   "id": "to-omou",
+   "title": "～と思う: I think",
+   "explain": "Plain form + と思う = I think. After a noun or な-adjective add だ: 大丈夫だと思う. Volitional + と思っている = I'm thinking of doing: 行こうと思っている.",
+   "examples": [
+    {
+     "t": [
+      [
+       "来年",
+       "らいねん",
+       "next year"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "話せる",
+       "はなせる",
+       "can speak"
+      ],
+      [
+       "と思う",
+       "とおもう",
+       "I think"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I think you'll be able to speak next year."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "大丈夫＿＿と思う。",
+     "hint": "I think it'll be fine.",
+     "choices": [
+      "だ",
+      "な",
+      "の"
+     ],
+     "answer": 0,
+     "why": "Nouns and な-adjectives need だ before と思う."
+    },
+    {
+     "q": "日本に行こう＿＿思っている。",
+     "hint": "I'm thinking of going to Japan.",
+     "choices": [
+      "と",
+      "を",
+      "が"
+     ],
+     "answer": 0,
+     "why": "と marks what you think."
+    }
+   ]
+  },
+  {
+   "id": "plain-speech",
+   "title": "Plain speech between friends",
+   "explain": "Friends drop です/ます: 勉強しています → 勉強している, 読めます → 読める, 行きましょう → 行こう. んだ (= のです) adds 'you see' when explaining.",
+   "examples": [
+    {
+     "t": [
+      [
+       "毎日",
+       "まいにち",
+       "every day"
+      ],
+      [
+       "勉強している",
+       "べんきょうしている",
+       "am studying"
+      ],
+      [
+       "んだ",
+       null,
+       "you see"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I've been studying every day, you see."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "いっしょに行＿＿よ！",
+     "hint": "Let's go together! (casual)",
+     "choices": [
+      "こう",
+      "きます",
+      "って"
+     ],
+     "answer": 0,
+     "why": "Casual 'let's': volitional 行こう."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "話",
+   "on": [
+    "ワ"
+   ],
+   "kun": [
+    "はな.す"
+   ],
+   "m": "talk",
+   "ex": [
+    [
+     "話す",
+     "はなす",
+     "to speak"
+    ],
+    [
+     "電話",
+     "でんわ",
+     "telephone"
+    ]
+   ]
+  },
+  {
+   "k": "思",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "おも.う"
+   ],
+   "m": "think",
+   "ex": [
+    [
+     "思う",
+     "おもう",
+     "to think"
+    ]
+   ]
+  },
+  {
+   "k": "漢",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "China (Han)",
+   "ex": [
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ]
+   ]
+  },
+  {
+   "k": "字",
+   "on": [
+    "ジ"
+   ],
+   "kun": [
+    "あざ"
+   ],
+   "m": "character, letter",
+   "ex": [
+    [
+     "漢字",
+     "かんじ",
+     "kanji"
+    ],
+    [
+     "文字",
+     "もじ",
+     "letter"
+    ]
+   ]
+  },
+  {
+   "k": "夏",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "なつ"
+   ],
+   "m": "summer",
+   "ex": [
+    [
+     "夏",
+     "なつ",
+     "summer"
+    ],
+    [
+     "夏休み",
+     "なつやすみ",
+     "summer vacation"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "サムさんはひらがなが読めますか。",
+   "en": "Can Sam read hiragana?",
+   "choices": [
+    "はい、全部読めます",
+    "いいえ、読めません",
+    "少ししか読めません"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは毎日、漢字をいくつ覚えていますか。",
+   "en": "How many kanji does Sam learn each day?",
+   "choices": [
+    "十",
+    "三",
+    "百"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはいつ日本に行こうと思っていますか。",
+   "en": "When is Sam thinking of going to Japan?",
+   "choices": [
+    "夏休みに",
+    "来週",
+    "冬に"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip what you can and can't do in Japanese yet (～られる / ～られない), and one plan you're thinking about (～ようと思っている)."
+}

@@ -1,0 +1,848 @@
+{
+ "id": "n4-08",
+ "level": "N4",
+ "unit": 8,
+ "title": {
+  "ja": "お待ちしておりました",
+  "en": "We've been expecting you"
+ },
+ "scene": "August, Tokyo. Sam checks into a small hotel in Asakusa. Polite Japanese everywhere.",
+ "lines": [
+  {
+   "who": "ホテル",
+   "t": [
+    [
+     "いらっしゃいませ",
+     null,
+     "welcome"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お待ちしておりました",
+     "おまちしておりました",
+     "we've been expecting you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome. We've been expecting you."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "こんばんは",
+     null,
+     "good evening"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "予約した",
+     "よやくした",
+     "reserved"
+    ],
+    [
+     "サム・ミラー",
+     null,
+     "Sam Miller"
+    ],
+    [
+     "です",
+     null,
+     "am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good evening. I'm Sam Miller; I have a reservation."
+  },
+  {
+   "who": "ホテル",
+   "t": [
+    [
+     "ミラー",
+     null,
+     "Miller"
+    ],
+    [
+     "様",
+     "さま",
+     "Mr. (very polite)"
+    ],
+    [
+     "ですね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パスポート",
+     null,
+     "passport"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "拝見します",
+     "はいけんします",
+     "I'll (humbly) look"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Mr. Miller, yes. May I see your passport?"
+  },
+  {
+   "who": "ホテル",
+   "t": [
+    [
+     "お部屋",
+     "おへや",
+     "your room"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "五階",
+     "ごかい",
+     "fifth floor"
+    ],
+    [
+     "で",
+     null,
+     "and"
+    ],
+    [
+     "ございます",
+     null,
+     "is (very polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "朝食",
+     "ちょうしょく",
+     "breakfast"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "七時",
+     "しちじ",
+     "seven o'clock"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "召し上がれます",
+     "めしあがれます",
+     "you can eat (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Your room is on the fifth floor. Breakfast is served from seven."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すみません",
+     null,
+     "excuse me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "近く",
+     "ちかく",
+     "nearby"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "コンビニ",
+     null,
+     "convenience store"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ありますか",
+     null,
+     "is there"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Excuse me, is there a convenience store nearby?"
+  },
+  {
+   "who": "ホテル",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ホテル",
+     null,
+     "hotel"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "出て",
+     "でて",
+     "leave and"
+    ],
+    [
+     "右",
+     "みぎ",
+     "right"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "曲がる",
+     "まがる",
+     "turn"
+    ],
+    [
+     "と",
+     null,
+     "when"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すぐ",
+     null,
+     "right away"
+    ],
+    [
+     "ございます",
+     null,
+     "there is (very polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, go out of the hotel and turn right; it's right there."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとうございます",
+     null,
+     "thank you very much"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あと",
+     null,
+     "also"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "友達",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "明日",
+     "あした",
+     "tomorrow"
+    ],
+    [
+     "来る",
+     "くる",
+     "comes"
+    ],
+    [
+     "んですが",
+     null,
+     "and so…"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ロビー",
+     null,
+     "lobby"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "待って",
+     "まって",
+     "wait"
+    ],
+    [
+     "いても",
+     null,
+     "even if"
+    ],
+    [
+     "いい",
+     null,
+     "okay"
+    ],
+    [
+     "ですか",
+     null,
+     "is it?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much. Also, a friend is coming tomorrow; may they wait in the lobby?"
+  },
+  {
+   "who": "ホテル",
+   "t": [
+    [
+     "もちろん",
+     null,
+     "of course"
+    ],
+    [
+     "でございます",
+     null,
+     "is (very polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ごゆっくり",
+     null,
+     "please relax"
+    ],
+    [
+     "お過ごしください",
+     "おすごしください",
+     "please spend (your time)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Of course. Please enjoy your stay."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ],
+    [
+     "声",
+     "こえ",
+     "voice"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "みんな",
+     null,
+     "everyone"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "ていねい",
+     null,
+     "polite"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "(whispering) Sam, everyone's so polite."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "honorific",
+   "title": "尊敬語: raising the guest",
+   "explain": "Staff raise the customer with honorific verbs: 召し上がる (eat), いらっしゃる (be/come), おっしゃる (say), or お + stem + ください: お過ごしください. 様 is a very polite さん.",
+   "examples": [
+    {
+     "t": [
+      [
+       "朝食",
+       "ちょうしょく",
+       "breakfast"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "七時",
+       "しちじ",
+       "7:00"
+      ],
+      [
+       "から",
+       null,
+       "from",
+       "p"
+      ],
+      [
+       "召し上がれます",
+       "めしあがれます",
+       "you can eat"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "You can have breakfast from seven."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "朝食は七時から＿＿＿＿＿＿。",
+     "hint": "You can have breakfast from seven (honorific).",
+     "choices": [
+      "召し上がれます",
+      "いただけます",
+      "食べさせます"
+     ],
+     "answer": 0,
+     "why": "The guest eats: honorific 召し上がる."
+    }
+   ]
+  },
+  {
+   "id": "humble",
+   "title": "謙譲語: lowering yourself",
+   "explain": "Staff lower their own actions: お待ちしております (we've been waiting), 拝見します (I'll look), いたします (I'll do), 申します (my name is). おる = humble いる.",
+   "examples": [
+    {
+     "t": [
+      [
+       "お待ちしておりました",
+       null,
+       "we've been expecting you"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "We've been expecting you."
+    },
+    {
+     "t": [
+      [
+       "パスポート",
+       null,
+       "passport"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "拝見します",
+       "はいけんします",
+       "I'll look"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "May I see your passport?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "パスポートを＿＿＿＿します。",
+     "hint": "I'll (humbly) look at your passport.",
+     "choices": [
+      "拝見",
+      "ご覧",
+      "見せ"
+     ],
+     "answer": 0,
+     "why": "Your own action, humble: 拝見する."
+    }
+   ]
+  },
+  {
+   "id": "gozaimasu",
+   "title": "ございます: very polite 'is / there is'",
+   "explain": "ございます = あります, でございます = です, used in shops and hotels.",
+   "examples": [
+    {
+     "t": [
+      [
+       "お部屋",
+       "おへや",
+       "your room"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "五階",
+       "ごかい",
+       "5th floor"
+      ],
+      [
+       "で",
+       null,
+       "(is)"
+      ],
+      [
+       "ございます",
+       null,
+       "(very polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Your room is on the fifth floor."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "コンビニはすぐ＿＿＿＿＿。",
+     "hint": "There's a convenience store right there (very polite).",
+     "choices": [
+      "ございます",
+      "いらっしゃいます",
+      "まいります"
+     ],
+     "answer": 0,
+     "why": "Very polite 'there is' for things: ございます."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "予",
+   "on": [
+    "ヨ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "beforehand",
+   "ex": [
+    [
+     "予約",
+     "よやく",
+     "reservation"
+    ],
+    [
+     "予定",
+     "よてい",
+     "plan"
+    ]
+   ]
+  },
+  {
+   "k": "約",
+   "on": [
+    "ヤク"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "promise, about",
+   "ex": [
+    [
+     "予約",
+     "よやく",
+     "reservation"
+    ],
+    [
+     "約束",
+     "やくそく",
+     "promise"
+    ]
+   ]
+  },
+  {
+   "k": "部",
+   "on": [
+    "ブ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "part, section",
+   "ex": [
+    [
+     "部屋",
+     "へや",
+     "room"
+    ]
+   ]
+  },
+  {
+   "k": "屋",
+   "on": [
+    "オク"
+   ],
+   "kun": [
+    "や"
+   ],
+   "m": "roof, shop",
+   "ex": [
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "本屋",
+     "ほんや",
+     "bookstore"
+    ]
+   ]
+  },
+  {
+   "k": "階",
+   "on": [
+    "カイ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "floor, story",
+   "ex": [
+    [
+     "五階",
+     "ごかい",
+     "fifth floor"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  4
+ ],
+ "questions": [
+  {
+   "q": "サムさんの部屋は何階ですか。",
+   "en": "What floor is Sam's room on?",
+   "choices": [
+    "五階",
+    "七階",
+    "一階"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "朝食は何時からですか。",
+   "en": "What time does breakfast start?",
+   "choices": [
+    "七時",
+    "五時",
+    "九時"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "コンビニはどこにありますか。",
+   "en": "Where's the convenience store?",
+   "choices": [
+    "ホテルを出て右",
+    "駅の中",
+    "五階"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Role-play: Blip is the hotel clerk. Check in politely, ask where something is, and ask if your friend may wait in the lobby."
+}

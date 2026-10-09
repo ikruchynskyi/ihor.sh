@@ -1,0 +1,957 @@
+{
+ "id": "n4-05",
+ "level": "N4",
+ "unit": 5,
+ "title": {
+  "ja": "おみやげをもらった",
+  "en": "I got a souvenir"
+ },
+ "scene": "Yuki's mother visits New York from Osaka and brings presents.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "母",
+     "はは",
+     "my mother"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "大阪",
+     "おおさか",
+     "Osaka"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "来て",
+     "きて",
+     "came"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おみやげ",
+     null,
+     "souvenirs"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "くれた",
+     null,
+     "gave me"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My mom came from Osaka and gave me souvenirs."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "あげる",
+     null,
+     "I'll give"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "母",
+     "はは",
+     "my mother"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "This is for you, Sam. It's from my mom."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "えっ",
+     null,
+     "what"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぼく",
+     null,
+     "me"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "開けて",
+     "あけて",
+     "open"
+    ],
+    [
+     "も",
+     null,
+     "even"
+    ],
+    [
+     "いい",
+     null,
+     "okay"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "For me? Thank you! Can I open it?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "もちろん",
+     null,
+     "of course"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大阪",
+     "おおさか",
+     "Osaka"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "おかし",
+     null,
+     "sweets"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Of course. They're sweets from Osaka."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "お母さん",
+     "かあさん",
+     "your mother"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お礼",
+     "おれい",
+     "thanks"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "言いたい",
+     "いいたい",
+     "want to say"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "書く",
+     "かく",
+     "write"
+    ],
+    [
+     "の",
+     null,
+     "(the act of)",
+     "p"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "手伝って",
+     "てつだって",
+     "help"
+    ],
+    [
+     "くれない",
+     null,
+     "won't you (for me)?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I want to thank your mother. Could you help me write a letter in Japanese?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "sure"
+    ],
+    [
+     "よ",
+     null,
+     "!"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "母",
+     "はは",
+     "my mother"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "喜ぶ",
+     "よろこぶ",
+     "will be happy"
+    ],
+    [
+     "と思う",
+     "とおもう",
+     "I think"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sure. I think my mom will be happy too."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "(time)",
+     "p"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "に",
+     null,
+     "by (from)",
+     "p"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "もらった",
+     null,
+     "received (the favor)"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今度",
+     "こんど",
+     "next time"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ぼく",
+     null,
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "英語",
+     "えいご",
+     "English"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "あげる",
+     null,
+     "(for her)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Since you taught me Japanese before, this time I'll teach your mom English."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "おかし",
+     null,
+     "sweets"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "もらえる",
+     null,
+     "can receive"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can Blip get a sweet too?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "食べられない",
+     "たべられない",
+     "can't eat"
+    ],
+    [
+     "でしょう",
+     null,
+     "right?"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, you can't eat, can you!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "ageru-kureru",
+   "title": "あげる・くれる: giving out, giving in",
+   "explain": "あげる = I (or anyone) give to someone else, outward. くれる = someone gives to me or my group, inward. 母がくれた (my mom gave me), サムにあげる (I'll give to Sam).",
+   "examples": [
+    {
+     "t": [
+      [
+       "母",
+       "はは",
+       "my mother"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "おみやげ",
+       null,
+       "souvenirs"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "くれた",
+       null,
+       "gave me"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "My mom gave me souvenirs."
+    },
+    {
+     "t": [
+      [
+       "これ",
+       null,
+       "this"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "サム",
+       null,
+       "Sam"
+      ],
+      [
+       "に",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "あげる",
+       null,
+       "give"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll give this to Sam."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "母がおみやげを＿＿＿。",
+     "hint": "My mom gave me souvenirs.",
+     "choices": [
+      "くれた",
+      "あげた",
+      "もらった"
+     ],
+     "answer": 0,
+     "why": "Toward me: くれる."
+    },
+    {
+     "q": "これ、サムに＿＿＿。",
+     "hint": "I'll give this to Sam.",
+     "choices": [
+      "あげる",
+      "くれる",
+      "もらう"
+     ],
+     "answer": 0,
+     "why": "From me outward: あげる."
+    }
+   ]
+  },
+  {
+   "id": "morau",
+   "title": "もらう: receive",
+   "explain": "もらう = I receive (the giver takes に or から). Look at it from the receiver's side: ゆきにもらった = I got it from Yuki.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ゆき",
+       null,
+       "Yuki"
+      ],
+      [
+       "に",
+       null,
+       "from",
+       "p"
+      ],
+      [
+       "おかし",
+       null,
+       "sweets"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "もらった",
+       null,
+       "received"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I got sweets from Yuki."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ゆき＿おかしをもらった。",
+     "hint": "I got sweets from Yuki.",
+     "choices": [
+      "に",
+      "を",
+      "が"
+     ],
+     "answer": 0,
+     "why": "The giver takes に (or から) with もらう."
+    }
+   ]
+  },
+  {
+   "id": "te-favor",
+   "title": "～てあげる・～てくれる・～てもらう: favors",
+   "explain": "Put a giving verb after て and it becomes a favor: 教えてあげる (I'll teach you, as a favor), 手伝ってくれない？ (could you help me?), 教えてもらった (I had someone teach me).",
+   "examples": [
+    {
+     "t": [
+      [
+       "手伝って",
+       "てつだって",
+       "help"
+      ],
+      [
+       "くれない",
+       null,
+       "won't you (for me)"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Could you help me?"
+    },
+    {
+     "t": [
+      [
+       "日本語",
+       "にほんご",
+       "Japanese"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "教えて",
+       "おしえて",
+       "teach"
+      ],
+      [
+       "もらった",
+       null,
+       "got (the favor)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I had someone teach me Japanese."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "手紙を書くのを手伝って＿＿＿？",
+     "hint": "Could you help me write a letter?",
+     "choices": [
+      "くれない",
+      "あげない",
+      "もらう"
+     ],
+     "answer": 0,
+     "why": "Asking for a favor to me: てくれない?"
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "母",
+   "on": [
+    "ボ"
+   ],
+   "kun": [
+    "はは"
+   ],
+   "m": "mother",
+   "ex": [
+    [
+     "母",
+     "はは",
+     "(my) mother"
+    ],
+    [
+     "お母さん",
+     "おかあさん",
+     "mother"
+    ]
+   ]
+  },
+  {
+   "k": "手",
+   "on": [
+    "シュ"
+   ],
+   "kun": [
+    "て"
+   ],
+   "m": "hand",
+   "ex": [
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "手伝う",
+     "てつだう",
+     "to help"
+    ]
+   ]
+  },
+  {
+   "k": "紙",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "かみ"
+   ],
+   "m": "paper",
+   "ex": [
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "紙",
+     "かみ",
+     "paper"
+    ]
+   ]
+  },
+  {
+   "k": "英",
+   "on": [
+    "エイ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "England, brilliant",
+   "ex": [
+    [
+     "英語",
+     "えいご",
+     "English"
+    ]
+   ]
+  },
+  {
+   "k": "度",
+   "on": [
+    "ド"
+   ],
+   "kun": [
+    "たび"
+   ],
+   "m": "degree, time",
+   "ex": [
+    [
+     "今度",
+     "こんど",
+     "next time"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  6
+ ],
+ "questions": [
+  {
+   "q": "おみやげは何でしたか。",
+   "en": "What was the souvenir?",
+   "choices": [
+    "大阪のおかし",
+    "手紙",
+    "ラジオ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはお母さんに何をしたいですか。",
+   "en": "What does Sam want to do for Yuki's mother?",
+   "choices": [
+    "日本語で手紙を書きたい",
+    "大阪へ行きたい",
+    "おかしを作りたい"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "今度、サムさんはだれに英語を教えますか。",
+   "en": "Who will Sam teach English to?",
+   "choices": [
+    "ゆきさんのお母さん",
+    "ブリップ",
+    "ゆきさん"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a present you gave or got recently: who gave what to whom (あげる・くれる・もらう)."
+}

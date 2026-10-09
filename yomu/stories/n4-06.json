@@ -1,0 +1,887 @@
+{
+ "id": "n4-06",
+ "level": "N4",
+ "unit": 6,
+ "title": {
+  "ja": "雪が降るそうだ",
+  "en": "I hear it's going to snow"
+ },
+ "scene": "December. A storm is coming to New York. Sam reads the news; Yuki looks out the window.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "に",
+     null,
+     "(by)",
+     "p"
+    ],
+    [
+     "よると",
+     null,
+     "according to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大雪",
+     "おおゆき",
+     "heavy snow"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "降る",
+     "ふる",
+     "falls"
+    ],
+    [
+     "そうだ",
+     null,
+     "I hear"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "According to the news, heavy snow is going to fall tonight."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "空",
+     "そら",
+     "sky"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "暗くて",
+     "くらくて",
+     "dark and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "に",
+     null,
+     "(any moment)",
+     "p"
+    ],
+    [
+     "も",
+     null,
+     "even"
+    ],
+    [
+     "降り",
+     "ふり",
+     "fall"
+    ],
+    [
+     "そう",
+     null,
+     "looks like"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Really? The sky is dark; it looks like it could start any minute."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "止まる",
+     "とまる",
+     "stop"
+    ],
+    [
+     "かもしれない",
+     null,
+     "might"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The subway might stop too."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あした",
+     null,
+     "tomorrow"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "授業",
+     "じゅぎょう",
+     "classes"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "休み",
+     "やすみ",
+     "canceled"
+    ],
+    [
+     "らしい",
+     null,
+     "apparently"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "先生",
+     "せんせい",
+     "teacher"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "メール",
+     null,
+     "email"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "来た",
+     "きた",
+     "came"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Apparently tomorrow's classes are canceled. I got an email from my teacher."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "の",
+     null,
+     "(of)",
+     "p"
+    ],
+    [
+     "うちに",
+     null,
+     "while (it lasts)"
+    ],
+    [
+     "食べ物",
+     "たべもの",
+     "food"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "買って",
+     "かって",
+     "buy"
+    ],
+    [
+     "おこう",
+     null,
+     "let's (in advance)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then let's buy food while we can today."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "スーパー",
+     null,
+     "supermarket"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "多そう",
+     "おおそう",
+     "looks crowded"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "けど",
+     null,
+     "but"
+    ],
+    [
+     "…",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The supermarket looks crowded, but…"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "窓",
+     "まど",
+     "window"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ると",
+     "みると",
+     "when I look"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "白い",
+     "しろい",
+     "white"
+    ],
+    [
+     "ような",
+     null,
+     "like"
+    ],
+    [
+     "…",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Looking out the window, it already looks kind of white… ah, it's snow!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "きれい",
+     null,
+     "pretty"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "'s",
+     "p"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "より",
+     null,
+     "than"
+    ],
+    [
+     "多い",
+     "おおい",
+     "more"
+    ],
+    [
+     "みたい",
+     null,
+     "seems"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Pretty! New York seems to get more snow than Tokyo."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "sou-two",
+   "title": "降るそうだ vs 降りそうだ",
+   "explain": "Plain form + そうだ = I heard (hearsay): 降るそうだ (I hear it'll snow). Stem + そう = looks like (my own eyes): 降りそうだ (looks like it's about to). Adjectives: 多そう (looks crowded), いい → よさそう.",
+   "examples": [
+    {
+     "t": [
+      [
+       "大雪",
+       "おおゆき",
+       "heavy snow"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "降る",
+       "ふる",
+       "falls"
+      ],
+      [
+       "そうだ",
+       null,
+       "I hear"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I hear heavy snow will fall."
+    },
+    {
+     "t": [
+      [
+       "今にも",
+       "いまにも",
+       "any moment"
+      ],
+      [
+       "降り",
+       "ふり",
+       "fall"
+      ],
+      [
+       "そう",
+       null,
+       "looks like"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It looks like it'll fall any minute."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ニュースによると、雪が降る＿＿＿。",
+     "hint": "According to the news, it'll snow.",
+     "choices": [
+      "そうだ",
+      "そう",
+      "ようだ"
+     ],
+     "answer": 0,
+     "why": "Hearsay from the news: plain form + そうだ."
+    },
+    {
+     "q": "空が暗い。雨が降り＿＿だ。",
+     "hint": "The sky is dark. Looks like rain.",
+     "choices": [
+      "そう",
+      "そうだ",
+      "らしい"
+     ],
+     "answer": 0,
+     "why": "What you see: stem + そう."
+    }
+   ]
+  },
+  {
+   "id": "rashii-mitai",
+   "title": "らしい・みたい・ようだ: seems",
+   "explain": "らしい = apparently (from what I've heard/read). みたい (casual) / ようだ (formal) = it seems, from what I see or infer.",
+   "examples": [
+    {
+     "t": [
+      [
+       "授業",
+       "じゅぎょう",
+       "classes"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "休み",
+       "やすみ",
+       "canceled"
+      ],
+      [
+       "らしい",
+       null,
+       "apparently"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Apparently classes are canceled."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "東京より雪が多い＿＿＿ね。",
+     "hint": "It seems there's more snow than in Tokyo (casual).",
+     "choices": [
+      "みたい",
+      "そう",
+      "かな"
+     ],
+     "answer": 0,
+     "why": "Casual 'seems': みたい."
+    }
+   ]
+  },
+  {
+   "id": "kamoshirenai",
+   "title": "～かもしれない: might",
+   "explain": "Plain form + かもしれない = might, maybe. Nouns drop だ: 雪かもしれない. Casual: かも.",
+   "examples": [
+    {
+     "t": [
+      [
+       "地下鉄",
+       "ちかてつ",
+       "subway"
+      ],
+      [
+       "も",
+       null,
+       "too",
+       "p"
+      ],
+      [
+       "止まる",
+       "とまる",
+       "stop"
+      ],
+      [
+       "かもしれない",
+       null,
+       "might"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The subway might stop too."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "地下鉄も止まる＿＿＿＿＿＿。",
+     "hint": "The subway might stop too.",
+     "choices": [
+      "かもしれない",
+      "そうだ",
+      "ことにする"
+     ],
+     "answer": 0,
+     "why": "Might: かもしれない."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "雪",
+   "on": [
+    "セツ"
+   ],
+   "kun": [
+    "ゆき"
+   ],
+   "m": "snow",
+   "ex": [
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "大雪",
+     "おおゆき",
+     "heavy snow"
+    ]
+   ]
+  },
+  {
+   "k": "夜",
+   "on": [
+    "ヤ"
+   ],
+   "kun": [
+    "よる"
+   ],
+   "m": "night",
+   "ex": [
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "夜",
+     "よる",
+     "night"
+    ]
+   ]
+  },
+  {
+   "k": "空",
+   "on": [
+    "クウ"
+   ],
+   "kun": [
+    "そら",
+    "から"
+   ],
+   "m": "sky, empty",
+   "ex": [
+    [
+     "空",
+     "そら",
+     "sky"
+    ],
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ]
+   ]
+  },
+  {
+   "k": "止",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "と.まる"
+   ],
+   "m": "stop",
+   "ex": [
+    [
+     "止まる",
+     "とまる",
+     "to stop"
+    ]
+   ]
+  },
+  {
+   "k": "物",
+   "on": [
+    "ブツ",
+    "モツ"
+   ],
+   "kun": [
+    "もの"
+   ],
+   "m": "thing",
+   "ex": [
+    [
+     "食べ物",
+     "たべもの",
+     "food"
+    ],
+    [
+     "買い物",
+     "かいもの",
+     "shopping"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  2
+ ],
+ "questions": [
+  {
+   "q": "今夜、何が降りますか。",
+   "en": "What's falling tonight?",
+   "choices": [
+    "雪",
+    "雨",
+    "何も降らない"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "あしたの授業はどうなりますか。",
+   "en": "What about tomorrow's classes?",
+   "choices": [
+    "休み",
+    "いつもどおり",
+    "オンライン"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "二人は今日、何をしますか。",
+   "en": "What will the two do today?",
+   "choices": [
+    "食べ物を買う",
+    "東京へ行く",
+    "地下鉄に乗る"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip the weather you've heard about (～そうだ) and what the sky looks like now (～そう)."
+}

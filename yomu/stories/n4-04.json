@@ -1,0 +1,858 @@
+{
+ "id": "n4-04",
+ "level": "N4",
+ "unit": 4,
+ "title": {
+  "ja": "ブリップがこわれちゃった",
+  "en": "Blip broke!"
+ },
+ "scene": "Sam's apartment. Blip fell off the desk and won't turn on.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あっ",
+     null,
+     "oh no"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "机",
+     "つくえ",
+     "desk"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "落ちて",
+     "おちて",
+     "fell"
+    ],
+    [
+     "しまった",
+     null,
+     "(ended up, oops)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh no! Blip fell off the desk!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "okay"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電気",
+     "でんき",
+     "power"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "つかない",
+     null,
+     "won't come on"
+    ],
+    [
+     "の",
+     null,
+     "(question)"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is it okay? Won't the power come on?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ボタン",
+     null,
+     "button"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "押しても",
+     "おしても",
+     "even if I press"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "つかない",
+     null,
+     "won't turn on"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こわれちゃった",
+     null,
+     "it's broken (oops)"
+    ],
+    [
+     "かな",
+     null,
+     "I wonder"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even if I press the button, it won't turn on. I wonder if it broke."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "入れ替えて",
+     "いれかえて",
+     "swap"
+    ],
+    [
+     "みたら",
+     null,
+     "if you try"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How about trying to swap the battery?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "そうだね",
+     null,
+     "good idea"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "引き出し",
+     "ひきだし",
+     "drawer"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入れて",
+     "いれて",
+     "put"
+    ],
+    [
+     "ある",
+     null,
+     "(has been done)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good idea. There are new batteries put away in the drawer."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "okay"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "入れた",
+     "いれた",
+     "put in"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "スイッチ",
+     null,
+     "switch"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "入れる",
+     "いれる",
+     "turn on"
+    ],
+    [
+     "と",
+     null,
+     "when"
+    ],
+    [
+     "…",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Okay, they're in. When I turn on the switch…"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あれ",
+     null,
+     "huh"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どうして",
+     null,
+     "why"
+    ],
+    [
+     "床",
+     "ゆか",
+     "floor"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "いる",
+     null,
+     "am"
+    ],
+    [
+     "の",
+     null,
+     "(question)"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep beep! Huh? Why is Blip on the floor?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "よかった",
+     null,
+     "phew"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ドア",
+     null,
+     "door"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "開いて",
+     "あいて",
+     "was open"
+    ],
+    [
+     "いて",
+     null,
+     "and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "落ちた",
+     "おちた",
+     "fell"
+    ],
+    [
+     "みたい",
+     null,
+     "seems"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Phew! It seems the door was open and you fell because of the wind."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "窓",
+     "まど",
+     "window"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "開けた",
+     "あけた",
+     "opened"
+    ],
+    [
+     "まま",
+     null,
+     "left as is"
+    ],
+    [
+     "だった",
+     null,
+     "was"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "閉めて",
+     "しめて",
+     "close"
+    ],
+    [
+     "おく",
+     null,
+     "(for now)"
+    ],
+    [
+     "ね",
+     null,
+     "okay"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'd left the window open too. I'll close it."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "te-shimau",
+   "title": "～てしまう / ～ちゃう: oops, ended up",
+   "explain": "てしまう shows something happened that you regret, or that it's completely done. Casual: ～ちゃう / ～じゃう: こわれちゃった (it broke, ugh).",
+   "examples": [
+    {
+     "t": [
+      [
+       "机",
+       "つくえ",
+       "desk"
+      ],
+      [
+       "から",
+       null,
+       "from",
+       "p"
+      ],
+      [
+       "落ちて",
+       "おちて",
+       "fall"
+      ],
+      [
+       "しまった",
+       null,
+       "(oops)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It fell off the desk (oh no)."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "ブリップがこわれ＿＿＿た。",
+     "hint": "Blip broke (casual, oops).",
+     "choices": [
+      "ちゃっ",
+      "てい",
+      "てあっ"
+     ],
+     "answer": 0,
+     "why": "てしまった → ちゃった."
+    }
+   ]
+  },
+  {
+   "id": "transitive-pairs",
+   "title": "開ける・開く: doing vs happening",
+   "explain": "Transitive verbs take を (someone does it): 窓を開ける, 電池を入れる. Intransitive take が (it happens): ドアが開く, 電気がつく. Learn them in pairs: 開ける/開く, 閉める/閉まる, つける/つく, 入れる/入る, 落とす/落ちる.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ドア",
+       null,
+       "door"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "開いて",
+       "あいて",
+       "was open"
+      ],
+      [
+       "いた",
+       null,
+       "(state)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The door was open."
+    },
+    {
+     "t": [
+      [
+       "窓",
+       "まど",
+       "window"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "閉める",
+       "しめる",
+       "close"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I'll close the window."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "電気＿つかない。",
+     "hint": "The power won't come on.",
+     "choices": [
+      "が",
+      "を",
+      "で"
+     ],
+     "answer": 0,
+     "why": "つく is intransitive: が."
+    },
+    {
+     "q": "窓＿開けたままだった。",
+     "hint": "I'd left the window open.",
+     "choices": [
+      "を",
+      "が",
+      "に"
+     ],
+     "answer": 0,
+     "why": "開ける is transitive: を."
+    }
+   ]
+  },
+  {
+   "id": "te-aru",
+   "title": "～てある / ～たまま: has been done / left as is",
+   "explain": "Transitive verb + てある = someone did it on purpose and the result remains: 電池が入れてある. たまま = left in that state: 開けたまま.",
+   "examples": [
+    {
+     "t": [
+      [
+       "電池",
+       "でんち",
+       "batteries"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "引き出し",
+       "ひきだし",
+       "drawer"
+      ],
+      [
+       "に",
+       null,
+       "in",
+       "p"
+      ],
+      [
+       "入れて",
+       "いれて",
+       "put"
+      ],
+      [
+       "ある",
+       null,
+       "(done, still there)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The batteries have been put in the drawer."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "新しい電池は引き出しに入れて＿＿。",
+     "hint": "New batteries are (put) in the drawer.",
+     "choices": [
+      "ある",
+      "いる",
+      "おく"
+     ],
+     "answer": 0,
+     "why": "Someone put them there and they're still there: てある."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "落",
+   "on": [
+    "ラク"
+   ],
+   "kun": [
+    "お.ちる"
+   ],
+   "m": "fall",
+   "ex": [
+    [
+     "落ちる",
+     "おちる",
+     "to fall"
+    ]
+   ]
+  },
+  {
+   "k": "電",
+   "on": [
+    "デン"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "electricity",
+   "ex": [
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "電気",
+     "でんき",
+     "electricity"
+    ]
+   ]
+  },
+  {
+   "k": "開",
+   "on": [
+    "カイ"
+   ],
+   "kun": [
+    "あ.ける",
+    "ひら.く"
+   ],
+   "m": "open",
+   "ex": [
+    [
+     "開ける",
+     "あける",
+     "to open"
+    ]
+   ]
+  },
+  {
+   "k": "風",
+   "on": [
+    "フウ"
+   ],
+   "kun": [
+    "かぜ"
+   ],
+   "m": "wind",
+   "ex": [
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ]
+   ]
+  },
+  {
+   "k": "窓",
+   "on": [
+    "ソウ"
+   ],
+   "kun": [
+    "まど"
+   ],
+   "m": "window",
+   "ex": [
+    [
+     "窓",
+     "まど",
+     "window"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  8
+ ],
+ "questions": [
+  {
+   "q": "ブリップはどこから落ちましたか。",
+   "en": "Where did Blip fall from?",
+   "choices": [
+    "机から",
+    "窓から",
+    "かばんから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "新しい電池はどこにありましたか。",
+   "en": "Where were the new batteries?",
+   "choices": [
+    "引き出しに",
+    "机の上に",
+    "床に"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "どうしてブリップは落ちましたか。",
+   "en": "Why did Blip fall?",
+   "choices": [
+    "風で",
+    "ゆきさんが押したから",
+    "電池がなかったから"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about something that went wrong recently (～てしまった / ～ちゃった) and what you did about it."
+}

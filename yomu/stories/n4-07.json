@@ -1,0 +1,855 @@
+{
+ "id": "n4-07",
+ "level": "N4",
+ "unit": 7,
+ "title": {
+  "ja": "先生にほめられた",
+  "en": "My teacher praised me"
+ },
+ "scene": "Yuki comes back from her university presentation. Sam wants to hear how it went.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "発表",
+     "はっぴょう",
+     "presentation"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どうだった",
+     null,
+     "how was it"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How was the presentation?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "先生",
+     "せんせい",
+     "teacher"
+    ],
+    [
+     "に",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "ほめられた",
+     null,
+     "was praised"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「",
+     null,
+     "“"
+    ],
+    [
+     "わかりやすい",
+     null,
+     "easy to understand"
+    ],
+    [
+     "」",
+     null,
+     "”"
+    ],
+    [
+     "って",
+     null,
+     "(they said)",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My teacher praised me! She said it was easy to understand."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すごい",
+     null,
+     "great"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "発表した",
+     "はっぴょうした",
+     "presented"
+    ],
+    [
+     "の",
+     null,
+     "(question)"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Great! What did you present on?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "について",
+     null,
+     "about",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "始まる",
+     "はじまる",
+     "starts"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "(time)",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "となり",
+     null,
+     "next to me"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "person"
+    ],
+    [
+     "に",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "足",
+     "あし",
+     "foot"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "ふまれて",
+     null,
+     "got stepped on"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "痛かった",
+     "いたかった",
+     "it hurt"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "About the New York subway. But before it started, the person next to me stepped on my foot and it hurt."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "それは",
+     null,
+     "that's"
+    ],
+    [
+     "大変",
+     "たいへん",
+     "awful"
+    ],
+    [
+     "だった",
+     null,
+     "was"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's awful."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "それに",
+     null,
+     "on top of that"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "先生",
+     "せんせい",
+     "teacher"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "学生",
+     "がくせい",
+     "students"
+    ],
+    [
+     "に",
+     null,
+     "(make)",
+     "p"
+    ],
+    [
+     "二回",
+     "にかい",
+     "twice"
+    ],
+    [
+     "練習させた",
+     "れんしゅうさせた",
+     "made practice"
+    ],
+    [
+     "から",
+     null,
+     "so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little"
+    ],
+    [
+     "疲れた",
+     "つかれた",
+     "got tired"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "And the teacher made the students rehearse twice, so I'm a bit tired."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ぼく",
+     null,
+     "I"
+    ],
+    [
+     "も",
+     null,
+     "too",
+     "p"
+    ],
+    [
+     "子どものころ",
+     "こどものころ",
+     "as a kid"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "ピアノ",
+     null,
+     "piano"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "練習させられた",
+     "れんしゅうさせられた",
+     "was made to practice"
+    ],
+    [
+     "よ",
+     null,
+     "you know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "When I was a kid, I was made to practice piano every day too."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "に",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "そうじ",
+     null,
+     "cleaning"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "させられる",
+     null,
+     "am made to do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip is made to do the cleaning by Sam every day!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "それ",
+     null,
+     "that"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "やりたい",
+     null,
+     "wants to do"
+    ],
+    [
+     "って",
+     null,
+     "(said)",
+     "p"
+    ],
+    [
+     "言った",
+     "いった",
+     "said"
+    ],
+    [
+     "から",
+     null,
+     "because"
+    ],
+    [
+     "でしょう",
+     null,
+     "right?"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's because you said you wanted to!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "passive",
+   "title": "Passive ～られる: was done (to me)",
+   "explain": "U-verbs: u → a + れる (ふむ → ふまれる). Ru-verbs: られる (ほめる → ほめられる). The doer takes に. Japanese also uses it when something annoying happens to you: 足をふまれた (someone stepped on my foot).",
+   "examples": [
+    {
+     "t": [
+      [
+       "先生",
+       "せんせい",
+       "teacher"
+      ],
+      [
+       "に",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "ほめられた",
+       null,
+       "was praised"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I was praised by my teacher."
+    },
+    {
+     "t": [
+      [
+       "足",
+       "あし",
+       "foot"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "ふまれた",
+       null,
+       "got stepped on"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Someone stepped on my foot."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "先生＿ほめられた。",
+     "hint": "I was praised by my teacher.",
+     "choices": [
+      "に",
+      "を",
+      "が"
+     ],
+     "answer": 0,
+     "why": "The doer in a passive takes に."
+    },
+    {
+     "q": "となりの人に足をふま＿＿。",
+     "hint": "The person next to me stepped on my foot.",
+     "choices": [
+      "れた",
+      "せた",
+      "った"
+     ],
+     "answer": 0,
+     "why": "ふむ → ふまれる (passive)."
+    }
+   ]
+  },
+  {
+   "id": "causative",
+   "title": "Causative ～させる: make / let (someone) do",
+   "explain": "U-verbs: u → a + せる (行く → 行かせる). Ru-verbs: させる. する → させる. Context decides make or let. させてください = please let me.",
+   "examples": [
+    {
+     "t": [
+      [
+       "学生",
+       "がくせい",
+       "students"
+      ],
+      [
+       "に",
+       null,
+       "(make)",
+       "p"
+      ],
+      [
+       "練習させた",
+       "れんしゅうさせた",
+       "made practice"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "(The teacher) made the students practice."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "先生は学生に二回練習＿＿＿。",
+     "hint": "The teacher made the students practice twice.",
+     "choices": [
+      "させた",
+      "された",
+      "した"
+     ],
+     "answer": 0,
+     "why": "Make someone do: させる."
+    }
+   ]
+  },
+  {
+   "id": "causative-passive",
+   "title": "～させられる: be made to do",
+   "explain": "Causative + passive = made to do something (unwillingly): 練習させられた (I was made to practice).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ピアノ",
+       null,
+       "piano"
+      ],
+      [
+       "を",
+       null,
+       "(object)",
+       "p"
+      ],
+      [
+       "練習させられた",
+       "れんしゅうさせられた",
+       "was made to practice"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I was made to practice piano."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "子どものころ、ピアノを練習＿＿＿＿＿。",
+     "hint": "As a kid I was made to practice piano.",
+     "choices": [
+      "させられた",
+      "させた",
+      "された"
+     ],
+     "answer": 0,
+     "why": "Made to do (unwillingly): させられる."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "発",
+   "on": [
+    "ハツ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "start, emit",
+   "ex": [
+    [
+     "発表",
+     "はっぴょう",
+     "presentation"
+    ]
+   ]
+  },
+  {
+   "k": "始",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "はじ.まる"
+   ],
+   "m": "begin",
+   "ex": [
+    [
+     "始まる",
+     "はじまる",
+     "to begin"
+    ]
+   ]
+  },
+  {
+   "k": "足",
+   "on": [
+    "ソク"
+   ],
+   "kun": [
+    "あし",
+    "た.りる"
+   ],
+   "m": "foot, enough",
+   "ex": [
+    [
+     "足",
+     "あし",
+     "foot, leg"
+    ]
+   ]
+  },
+  {
+   "k": "習",
+   "on": [
+    "シュウ"
+   ],
+   "kun": [
+    "なら.う"
+   ],
+   "m": "learn",
+   "ex": [
+    [
+     "練習",
+     "れんしゅう",
+     "practice"
+    ],
+    [
+     "習う",
+     "ならう",
+     "to learn"
+    ]
+   ]
+  },
+  {
+   "k": "回",
+   "on": [
+    "カイ"
+   ],
+   "kun": [
+    "まわ.る"
+   ],
+   "m": "times, turn",
+   "ex": [
+    [
+     "二回",
+     "にかい",
+     "twice"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  6
+ ],
+ "questions": [
+  {
+   "q": "先生はゆきさんの発表について何と言いましたか。",
+   "en": "What did the teacher say about Yuki's presentation?",
+   "choices": [
+    "わかりやすい",
+    "長すぎる",
+    "おもしろくない"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "発表の前に何がありましたか。",
+   "en": "What happened before the presentation?",
+   "choices": [
+    "足をふまれた",
+    "雨が降った",
+    "電車が止まった"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは子どものころ、何を練習させられましたか。",
+   "en": "What was Sam made to practice as a kid?",
+   "choices": [
+    "ピアノ",
+    "日本語",
+    "サッカー"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Tell Blip about a time you were praised (～られた) and something you were made to do as a kid (～させられた)."
+}

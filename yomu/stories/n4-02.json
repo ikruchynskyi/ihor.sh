@@ -1,0 +1,880 @@
+{
+ "id": "n4-02",
+ "level": "N4",
+ "unit": 2,
+ "title": {
+  "ja": "雨が降ったら",
+  "en": "If it rains"
+ },
+ "scene": "Friday night. Yuki and Sam plan a Sunday picnic in Central Park, but the forecast isn't sure.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "セントラルパーク",
+     null,
+     "Central Park"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "ピクニック",
+     null,
+     "picnic"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "しない",
+     null,
+     "won't we do?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Want to have a picnic in Central Park on Sunday?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいね",
+     null,
+     "sounds good"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "天気予報",
+     "てんきよほう",
+     "weather forecast"
+    ],
+    [
+     "に",
+     null,
+     "(by)",
+     "p"
+    ],
+    [
+     "よると",
+     null,
+     "according to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "降る",
+     "ふる",
+     "fall"
+    ],
+    [
+     "かもしれない",
+     null,
+     "might"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sounds good. But according to the forecast, it might rain."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "降ったら",
+     "ふったら",
+     "if it rains"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美術館",
+     "びじゅつかん",
+     "museum"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If it rains, let's go to a museum."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "メトロポリタン美術館",
+     "めとろぽりたんびじゅつかん",
+     "the Met"
+    ],
+    [
+     "なら",
+     null,
+     "if it's",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一日中",
+     "いちにちじゅう",
+     "all day"
+    ],
+    [
+     "いられる",
+     null,
+     "can stay"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If it's the Met, we could stay all day."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "晴れれば",
+     "はれれば",
+     "if it's sunny"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "公園",
+     "こうえん",
+     "park"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "おにぎり",
+     null,
+     "rice balls"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "食べよう",
+     "たべよう",
+     "let's eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "(subject)",
+     "p"
+    ],
+    [
+     "作る",
+     "つくる",
+     "will make"
+    ],
+    [
+     "よ",
+     null,
+     "!"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If it's sunny, let's eat rice balls in the park. I'll make them!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     null,
+     "Yuki"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "おにぎり",
+     null,
+     "rice balls"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "食べてみたかった",
+     "たべてみたかった",
+     "I wanted to try"
+    ],
+    [
+     "んだ",
+     null,
+     "you see"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Really? I've wanted to try your rice balls."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "を",
+     null,
+     "(object)",
+     "p"
+    ],
+    [
+     "見ると",
+     "みると",
+     "when I look"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "くもり",
+     null,
+     "cloudy"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "午後",
+     "ごご",
+     "afternoon"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "晴れ",
+     "はれ",
+     "sunny"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Looking at the weather, Sunday morning is cloudy and the afternoon sunny."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "午後",
+     "ごご",
+     "afternoon"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "行けば",
+     "いけば",
+     "if we go"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Then we should go from the afternoon."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "そうだね",
+     null,
+     "right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "駅",
+     "えき",
+     "station"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着いたら",
+     "ついたら",
+     "when (you) arrive"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電話",
+     "でんわ",
+     "phone call"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "ね",
+     null,
+     "okay?"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Right. Call me when you get to the station, okay?"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "tara",
+   "title": "～たら: if / when (then)",
+   "explain": "Past た + ら: if A happens, B; or once A is done, B. It works with requests and plans, so it's the everyday conditional: 雨が降ったら, 駅に着いたら電話して.",
+   "examples": [
+    {
+     "t": [
+      [
+       "雨",
+       "あめ",
+       "rain"
+      ],
+      [
+       "が",
+       null,
+       "(subject)",
+       "p"
+      ],
+      [
+       "降ったら",
+       "ふったら",
+       "if it rains"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "美術館",
+       "びじゅつかん",
+       "museum"
+      ],
+      [
+       "に",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行こう",
+       "いこう",
+       "let's go"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "If it rains, let's go to a museum."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "駅に着い＿＿、電話してね。",
+     "hint": "Call me when you get to the station.",
+     "choices": [
+      "たら",
+      "ば",
+      "と"
+     ],
+     "answer": 0,
+     "why": "A request after the condition: たら."
+    },
+    {
+     "q": "雨が降っ＿＿、美術館に行こう。",
+     "hint": "If it rains, let's go to a museum.",
+     "choices": [
+      "たら",
+      "て",
+      "たり"
+     ],
+     "answer": 0,
+     "why": "降った + ら."
+    }
+   ]
+  },
+  {
+   "id": "ba",
+   "title": "～ば: if (condition → result)",
+   "explain": "U-verbs: u → e + ば (行く → 行けば). Ru-verbs: れば (晴れる → 晴れれば). い-adjectives: ければ (安ければ). ～ばいい = you should / it'd be good to.",
+   "examples": [
+    {
+     "t": [
+      [
+       "午後",
+       "ごご",
+       "afternoon"
+      ],
+      [
+       "から",
+       null,
+       "from",
+       "p"
+      ],
+      [
+       "行けば",
+       "いけば",
+       "if we go"
+      ],
+      [
+       "いい",
+       null,
+       "good"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "We should go from the afternoon."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "晴れ＿＿、公園で食べよう。",
+     "hint": "If it's sunny, let's eat in the park.",
+     "choices": [
+      "れば",
+      "ると",
+      "たり"
+     ],
+     "answer": 0,
+     "why": "晴れる → 晴れれば."
+    }
+   ]
+  },
+  {
+   "id": "nara-to",
+   "title": "～なら and ～と",
+   "explain": "なら picks up a topic: 'if it's X (you mean)': メトロポリタン美術館なら. と = whenever / when A, B naturally follows: 見ると (when I look), 右に曲がると駅がある.",
+   "examples": [
+    {
+     "t": [
+      [
+       "美術館",
+       "びじゅつかん",
+       "museum"
+      ],
+      [
+       "なら",
+       null,
+       "if it's",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "一日中",
+       "いちにちじゅう",
+       "all day"
+      ],
+      [
+       "いられる",
+       null,
+       "can stay"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "If it's the museum, we can stay all day."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "メトロポリタン美術館＿＿、一日中いられるね。",
+     "hint": "If it's the Met, we can stay all day.",
+     "choices": [
+      "なら",
+      "たら",
+      "ので"
+     ],
+     "answer": 0,
+     "why": "なら takes up a topic someone mentioned."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "降",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    "ふ.る",
+    "お.りる"
+   ],
+   "m": "descend, fall",
+   "ex": [
+    [
+     "降る",
+     "ふる",
+     "to fall (rain)"
+    ]
+   ]
+  },
+  {
+   "k": "館",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    "やかた"
+   ],
+   "m": "building, hall",
+   "ex": [
+    [
+     "美術館",
+     "びじゅつかん",
+     "art museum"
+    ],
+    [
+     "図書館",
+     "としょかん",
+     "library"
+    ]
+   ]
+  },
+  {
+   "k": "晴",
+   "on": [
+    "セイ"
+   ],
+   "kun": [
+    "は.れる"
+   ],
+   "m": "clear (weather)",
+   "ex": [
+    [
+     "晴れ",
+     "はれ",
+     "sunny"
+    ]
+   ]
+  },
+  {
+   "k": "着",
+   "on": [
+    "チャク"
+   ],
+   "kun": [
+    "き.る",
+    "つ.く"
+   ],
+   "m": "arrive, wear",
+   "ex": [
+    [
+     "着く",
+     "つく",
+     "to arrive"
+    ]
+   ]
+  },
+  {
+   "k": "駅",
+   "on": [
+    "エキ"
+   ],
+   "kun": [
+    ""
+   ],
+   "m": "station",
+   "ex": [
+    [
+     "駅",
+     "えき",
+     "station"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  8
+ ],
+ "questions": [
+  {
+   "q": "雨が降ったら、どこに行きますか。",
+   "en": "If it rains, where will they go?",
+   "choices": [
+    "美術館",
+    "公園",
+    "駅"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "おにぎりはだれが作りますか。",
+   "en": "Who will make the rice balls?",
+   "choices": [
+    "ゆきさん",
+    "サムさん",
+    "ブリップ"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "日曜日の午後の天気は何ですか。",
+   "en": "What's the weather Sunday afternoon?",
+   "choices": [
+    "晴れ",
+    "雨",
+    "くもり"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Make a weekend plan with Blip using たら and ば: what you'll do if it's sunny and if it rains."
+}
