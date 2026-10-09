@@ -256,7 +256,7 @@ async function disconnect() {
   live = null;
   $("connect").textContent = "Connect USB SDR";
   $("remote").textContent = "Listen to server SDR";
-  $<HTMLButtonElement>("remote").disabled = false;
+  checkServer();
   $<HTMLButtonElement>("connect").disabled = !("usb" in navigator);
   $("wfText").textContent = "Each row is one FFT, with time running downward.";
   liveStatus("Disconnected.");
@@ -319,8 +319,18 @@ function onSamples(cu8: Uint8Array) {
 
 $("connect").addEventListener("click", () => (sdr ? disconnect() : connect(false)));
 $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true)));
-// The server button only makes sense when this page was served by server.ts.
-fetch("/api/state").then((r) => { if (r.ok) $("remote").hidden = false; }).catch(() => {});
+// The server button is lit while a dongle server answers (server.ts here, or ihor.sh's proxy to it)
+// and greyed out while it's offline; it re-checks so it lights up when the server starts.
+async function checkServer() {
+  if (sdr) return;
+  const up = await fetch("/api/state").then((r) => r.ok).catch(() => false);
+  if (sdr) return;
+  const b = $<HTMLButtonElement>("remote");
+  b.disabled = !up;
+  b.title = up ? "" : "The server SDR is offline right now.";
+}
+checkServer();
+setInterval(checkServer, 15_000);
 $("liveFreq").addEventListener("change", () => tuneTo(num("liveFreq") * 1e6));
 $("gain").addEventListener("change", () => sdr?.setGain(gainValue()));
 if (!("usb" in navigator)) {

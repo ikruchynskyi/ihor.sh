@@ -17,6 +17,11 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
+// The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Each listener is
+// ~2 MB/s of home upload, so public listeners are capped.
+const SDR_PORT = Number(process.env.SDR_PORT ?? 8073);
+const MAX_LISTENERS = 3;
+let listeners = 0;
 const COMPANION = `<script type="module" src="/companion.js"></script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
@@ -86,6 +91,19 @@ async function ask(body: any): Promise<string> {
   return reply || "…static. Try again?";
 }
 
+function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
+  const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };
+  const stream = req.url?.startsWith("/api/stream");
+  if (stream && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
+  const up = http.request({ host: "127.0.0.1", port: SDR_PORT, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json" } }, (r) => {
+    res.writeHead(r.statusCode ?? 502, r.headers);
+    r.pipe(res);
+  });
+  up.on("error", () => offline("The server SDR is offline right now."));
+  if (stream) { listeners++; res.on("close", () => { listeners--; up.destroy(); }); }
+  req.pipe(up);
+}
+
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
 function dress(html: string, world: string) {
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
@@ -116,6 +134,7 @@ const server = http.createServer(async (req, res) => {
       const reply = await ask(JSON.parse(raw));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ reply }));
     }
+    if (["/api/state", "/api/tune", "/api/stream"].includes(url.pathname)) return proxySdr(req, res);
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
