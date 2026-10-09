@@ -7,6 +7,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
+import { startEvents, currentEvents } from "./events.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const ROOT = import.meta.dirname;
@@ -203,6 +204,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/radio/aprs" || url.pathname === "/radio/adsb") return res.writeHead(301, { location: url.pathname + "/" }).end();
     const live = livePrefix(url.pathname);
     if (live) return proxyLive(req, res, live);
+    if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
@@ -227,4 +229,5 @@ const server = http.createServer(async (req, res) => {
 
 server.on("upgrade", proxyLiveSocket);
 startArchive();
+startEvents();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));

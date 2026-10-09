@@ -35,12 +35,13 @@
 <body>
 <main>
   <h1>Free NYC</h1>
-  <div class="muted">Free and pay-what-you-wish museums, gardens, zoos and ferries on any day. Rules are hand-checked (see each link), but policies change, so confirm before you go. · <a href="./">Subway Bailout map</a></div>
+  <div class="muted">Free and pay-what-you-wish museums, gardens, zoos and ferries on any day, plus the day's free pop-ups and events. Rules are hand-checked (see each link), but policies change, so confirm before you go. · <a href="./">Subway Bailout map</a></div>
 
   <div class="bar" id="days"></div>
   <div class="bar">
     <input type="date" id="date" aria-label="Pick a date" />
     <button id="locate">📍 Sort by distance</button>
+    <select id="cat" aria-label="Event category"><option value="">All event types</option></select>
     <span class="muted" id="locStatus"></span>
   </div>
 
@@ -57,6 +58,12 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 const rules = await fetch("./free.json").then((r) => r.json());
+// Free pop-ups and events from NYC for FREE, refreshed hourly by the server (absent when the page is opened as a static file).
+const feed = await fetch("/api/nyc/events").then((r) => r.json()).catch(() => ({ events: [] }));
+const cats = [...new Set(feed.events.map((e) => e.category).filter(Boolean))].sort();
+$("cat").innerHTML += cats.map((c) => `<option>${esc(c)}</option>`).join("");
+$("cat").hidden = !cats.length;
+$("cat").addEventListener("change", render);
 let me = null;
 
 // Quick picks: today, tomorrow, and the coming Saturday/Sunday.
@@ -75,6 +82,18 @@ $("locate").addEventListener("click", () => {
     (e) => { $("locStatus").textContent = `Location unavailable (${e.message})`; },
   );
 });
+
+// When an event happens on `date`: listed occurrences first, then "every Thu"-style recurrence, else its date range.
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function onDate(e, date, day) {
+  if (e.occurrences) {
+    const hit = e.occurrences.split(",").map((o) => o.split("|")).find(([d]) => d === date);
+    return hit && { start: hit[1] || e.start_time, end: hit[2] || e.end_time };
+  }
+  if (date < e.start_date || date > e.end_date) return null;
+  if (e.recurring_days && !e.recurring_days.split(/[ ,]+/).includes(WEEKDAYS[day.getDay()])) return null;
+  return { start: e.start_time, end: e.end_time };
+}
 
 const ORDER = { now: 0, later: 1, allday: 2, over: 3 };
 const GROUPS = [["now", "Happening now"], ["later", "Later"], ["allday", "All day"], ["over", "Already over"]];
@@ -102,10 +121,32 @@ function render() {
     <div class="meta"><a href="${esc(i.url)}" target="_blank" rel="noopener">source</a> · checked ${esc(i.checked)}</div>
   </div>`;
 
+  const events = feed.events
+    .map((e) => ({ ...e, on: onDate(e, $("date").value, day) }))
+    .filter((e) => e.on && (!$("cat").value || e.category === $("cat").value))
+    .map((e) => {
+      const it = e.on;
+      return { ...e, ...it, st: isToday ? status(it, new Date()) : "later", km: me && e.lat ? distance(me, e) / 1000 : null };
+    })
+    .filter((e) => e.st !== "over")
+    .sort((a, b) => ORDER[a.st] - ORDER[b.st] || (a.km ?? 0) - (b.km ?? 0) || (a.start ?? "").localeCompare(b.start ?? ""));
+  const ago = feed.updated ? Math.round((Date.now() / 1000 - feed.updated) / 60) : null;
+  const eventCard = (e) => `<div class="item ${e.st}">
+    <div class="top"><span class="name">${esc(e.title)}</span><span class="time">${esc(timeLabel(e))}</span></div>
+    <div class="meta">${esc(e.category)}${e.borough ? ` · ${esc(e.borough)}` : ""}${e.km != null ? ` · ${e.km.toFixed(1)} km` : ""}${e.frequency && e.frequency !== "One-time" ? ` · ${esc(e.frequency.toLowerCase())}, check the dates` : ""}</div>
+    <div class="meta">${esc(e.address)}</div>
+    <div class="meta">${esc(e.teaser)}</div>
+    <div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a></div>
+  </div>`;
+  const eventsBlock = feed.events.length ? `<h2>Free pop-ups &amp; events (${events.length})</h2>
+    <div class="muted">From <a href="${esc(feed.source)}" target="_blank" rel="noopener">NYC for FREE</a> (@nyc_forfree), refreshed hourly${ago != null ? `, last ${ago} min ago` : ""}. Brand pop-ups run out fast, so check the link before you go.</div>
+    ${events.map(eventCard).join("") || `<p class="muted">No free events listed for this day${$("cat").value ? " in this category" : ""}.</p>`}` : "";
+
   $("list").innerHTML = (isToday ? GROUPS : [["later", "Timed"], ["allday", "All day"]])
     .map(([k, title]) => [title, places.filter((i) => i.st === k)])
     .filter(([, l]) => l.length)
     .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("")
+    + eventsBlock
     + `<h2>Always-on perks</h2>${perks.map(card).join("")}`;
 }
 
