@@ -30,6 +30,15 @@
     .mine input { width: 160px; }
     .hint { font-size: 14px; color: var(--muted); }
     .picking #map { cursor: crosshair; }
+    #busy { position: absolute; z-index: 1000; top: 12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 120px); padding: 8px 14px; border-radius: 999px; background: rgba(20,23,29,.88); color: #e8edff; font: 14px/1.3 ui-sans-serif, system-ui, sans-serif; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; }
+    #busy[hidden] { display: none; }
+    .spin { flex: none; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.25); border-top-color: var(--accent, #ffb347); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 6px; }
+    #busy .spin { margin: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .bar { position: relative; height: 4px; margin: 4px 0 0; background: var(--line); overflow: hidden; border-radius: 2px; }
+    .bar[hidden] { display: none; }
+    .bar i { position: absolute; top: 0; bottom: 0; width: 30%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
+    @keyframes slide { from { left: -30%; } to { left: 100%; } }
   </style>
 </head>
 <body>
@@ -54,7 +63,8 @@
       <div class="row"><label>water carried <input type="number" id="water" value="2" min="0.5" max="10" step="0.25"> L</label><label>drinking <input type="number" id="drink" value="0.6" min="0.2" max="1.5" step="0.05"> L/h</label></div>
     </details>
 
-    <p id="status" class="hint"></p>
+    <p id="status" class="hint" aria-live="polite"></p>
+    <div class="bar" id="bar" hidden><i></i></div>
     <div id="out" hidden>
       <h2 id="title"></h2>
       <p id="summary" class="hint"></p>
@@ -88,6 +98,14 @@ const KNAME = { water: "💧 Water", food: "🥖 Food", camp: "⛺ Sleep", train
 const map = L.map("map").setView([40.95, -73.95], 10);
 const groups = Object.fromEntries(Object.keys(KCOLOR).map((k) => [k, L.layerGroup().addTo(map)]));
 const routeLayer = L.layerGroup().addTo(map), markLayer = L.layerGroup().addTo(map);
+// A loader: a badge over the map and a bar under the status line while anything is fetching (jobs can overlap).
+const busyEl = document.createElement("div"); busyEl.id = "busy"; busyEl.hidden = true; busyEl.setAttribute("role", "status"); map.getContainer().append(busyEl);
+let jobs = 0;
+async function busy(text, work) {
+  jobs++; busyEl.innerHTML = `<span class="spin"></span><span>${text}</span>`; busyEl.hidden = false; $("bar").hidden = false;
+  try { return await work(); }
+  finally { if (--jobs === 0) { busyEl.hidden = true; $("bar").hidden = true; } }
+}
 baseMaps(map, { overlays: Object.fromEntries(Object.entries(groups).map(([k, g]) => [KNAME[k], g])) });
 
 // ---------- state (kept in this browser) ----------
@@ -121,7 +139,7 @@ $("pts").addEventListener("change", async (e) => {
   const i = e.target.dataset.i; if (i == null) return;
   const q = e.target.value.trim(); if (!q) return;
   $("status").textContent = "Looking it up…";
-  const list = await getJSON(`/api/ride/places?q=${encodeURIComponent(q)}`).catch(() => []);
+  const list = await busy(`Looking up “${esc(q)}”…`, () => getJSON(`/api/ride/places?q=${encodeURIComponent(q)}`).catch(() => []));
   if (!list.length) { $("status").textContent = `Couldn't find "${q}". Try another name, or 📍 pick it on the map.`; return; }
   S.pts[+i] = list[0]; $("status").textContent = ""; renderPts(); save();
   map.setView([list[0].lat, list[0].lon], Math.max(map.getZoom(), 12));
@@ -145,7 +163,7 @@ async function plan() {
   if (S.pts.some((p) => p.lat == null)) { $("status").textContent = "Set every point first: type a place, or press 📍 and click the map."; return; }
   $("plan").disabled = true; $("status").textContent = "Finding a bike route…";
   try {
-    const d = await getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: S.pts.map((p) => [p.lat, p.lon]), bike: $("bike").value, hills: +$("hills").value }) });
+    const d = await busy("Finding a bike route…", () => getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: S.pts.map((p) => [p.lat, p.lon]), bike: $("bike").value, hills: +$("hills").value }) }));
     S.route = { name: `${S.pts[0].label.split(",")[0]} → ${S.pts.at(-1).label.split(",")[0]}`, points: d.points };
     S.pins = []; S.day = null; resetStops(); drawMap.fitted = false;
     await analyze();
@@ -201,7 +219,7 @@ function loadStops(a, b) {
       if (line.length < 2) { loadedKm.push([p, q]); continue; }
       $("status").textContent = `Finding water, food, beds and stations for km ${Math.round(p)}–${Math.round(q)}${todo.length > 1 ? ` (part ${k + 1} of ${todo.length})` : ""} from OpenStreetMap…`;
       try {
-        const d = await getJSON("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: line.slice(0, 400) }) });
+        const d = await busy(`Finding water, food and beds, km ${Math.round(p)}–${Math.round(q)}${todo.length > 1 ? ` (${k + 1}/${todo.length})` : ""}…`, () => getJSON("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: line.slice(0, 400) }) }));
         for (const e of d.elements) { const key = `${e.lat.toFixed(5)},${e.lon.toFixed(5)}`; if (!seen.has(key)) { seen.add(key); stopsRaw.push(e); } }
         loadedKm.push([p, q]);
       } catch (e) { failed++; }
@@ -230,10 +248,14 @@ async function analyze() {
   $("out").hidden = false;
   if (!found) resetStops();
   const total = pts.at(-1).km, short = total <= SHORT_KM;
-  if (short) await loadStops(0, total); // short trips: everything now; long ones: as days are opened or the map zoomed in
   const opts = { maxKm: +$("maxKm").value, maxClimb: +$("maxUp").value };
-  // Unpinned day ends snap to a campsite nearby (when the stops are known); pinned ones (dragged or chosen) stay put.
   days = planDays(pts, opts, S.pins);
+  if (short && !covered(0, total)) { // short trips: draw the route now, then load every stop and snap day ends to campsites
+    if (S.day != null && S.day >= days.length) S.day = null;
+    save(); render();
+    await loadStops(0, total);
+  }
+  // Unpinned day ends snap to a campsite nearby (when the stops are known); pinned ones (dragged or chosen) stay put.
   if (!S.pins.length && short) days = snapToCamps(pts, days, found.camp);
   if (!short && !stopsRaw.length) $("status").textContent = `A ${Math.round(total)} km trip: stops (water, food, beds) load for each day you open, or wherever you zoom in on the map.`;
   if (S.day != null && S.day >= days.length) S.day = null;
