@@ -98,7 +98,20 @@ function onDate(e, date, day) {
 const ORDER = { now: 0, later: 1, allday: 2, over: 3 };
 const GROUPS = [["now", "Happening now"], ["later", "Later"], ["allday", "All day"], ["over", "Already over"]];
 
+// Free events from the official NYC Events Calendar (parks, culture, libraries), fetched per day through the server.
+const cityCache = new Map();
+const cityEvents = (date) => cityCache.get(date) ?? cityCache.set(date, fetch(`/api/nyc/city-events?from=${date}&free=1`).then((r) => (r.ok ? r.json() : [])).catch(() => [])).get(date);
+
 function render() {
+  cityEvents($("date").value).then((list) => {
+    const box = $("cityEvents");
+    if (!box || !list.length) return box && (box.innerHTML = "");
+    const near = list.map((e) => ({ ...e, km: me && e.lat ? distance(me, e) / 1000 : null })).sort((a, b) => (a.km ?? 0) - (b.km ?? 0) || String(a.start).localeCompare(String(b.start)));
+    box.innerHTML = `<h2>Free city events (${list.length})</h2><div class="muted">From the <a href="https://www.nyc.gov/events" target="_blank" rel="noopener">NYC Events Calendar</a>: parks, culture and city programs marked free.</div>` +
+      near.map((e) => `<div class="item"><div class="top"><span class="name">${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div>
+        <div class="meta">${esc(e.place)}${e.km != null ? ` · ${e.km.toFixed(1)} km` : ""}</div><div class="meta">${esc(e.summary)}</div>
+        <div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("");
+  });
   const [y, m, d] = $("date").value.split("-").map(Number);
   const day = new Date(y, m - 1, d);
   const isToday = iso(day) === iso(new Date());
@@ -146,7 +159,7 @@ function render() {
     .map(([k, title]) => [title, places.filter((i) => i.st === k)])
     .filter(([, l]) => l.length)
     .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("")
-    + eventsBlock
+    + eventsBlock + `<div id="cityEvents"></div>`
     + `<h2>Always-on perks</h2>${perks.map(card).join("")}`;
 }
 
