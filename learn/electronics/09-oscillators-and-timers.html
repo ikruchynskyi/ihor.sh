@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oscillators and Timers</title>
+  <meta name="description" content="Electronics from scratch, chapter 9: circuits that tick. Why feedback oscillates, the 555 timer's astable and one-shot modes with their timing derived from a charging capacitor, crystal oscillators and parts-per-million accuracy, why watch crystals run at 32,768 Hz, and LC oscillators." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .row input[type=range] { width: 170px; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 9</p>
+  <h1>Oscillators and timers</h1>
+  <p class="lede">Every computer, radio, watch and blinking LED needs something that ticks. An oscillator is a circuit that turns steady DC into a repeating signal all by itself. This chapter builds the most famous one, the 555 timer, works out its timing from a charging capacitor, and then looks at the crystals that keep clocks accurate to seconds a month.</p>
+  <div class="plain card"><b>In plain words:</b> an oscillator is a circuit that keeps changing its mind. Something fills up (a capacitor charges); when it gets full enough, a switch flips and it starts emptying; when it's empty enough, the switch flips back. The fill-and-empty time sets the rhythm.</div>
+
+  <h2>1. Why feedback can ring forever</h2>
+  <p>Chapter 7's op-amps used <em>negative</em> feedback to settle down. Flip the sign and a circuit amplifies its own output, round and round. If a signal comes back around the loop with the same timing (a full 360° of phase) and at least as strong as it left, it sustains itself, like a microphone too close to its speaker. That's the <b>Barkhausen criterion</b>: loop gain ≥ 1 and loop phase = 360°. Every oscillator is a way of making that true at exactly one frequency.</p>
+  <div class="q" data-answer="b">
+    <p>A microphone near a speaker howls at one particular pitch, not all pitches. Why that one?</p>
+    <ul><li data-k="a" data-says="Loudness matters, but the loop must also bring the sound back in step with itself.">It's the loudest frequency in the room</li><li data-k="b">At that pitch the sound returns in step with itself (360° around the loop) with gain above 1</li><li data-k="c" data-says="It's the acoustic loop, not the microphone alone, that picks the pitch: move the mic and the pitch changes.">It's the microphone's own resonance</li></ul>
+    <div class="why">The delay from speaker to mic is a whole number of periods at that pitch, so each trip adds to the last. Move the mic, change the delay, and the howl jumps to another pitch.</div>
+  </div>
+
+  <h2>2. The 555 timer, astable</h2>
+  <p>Inside a 555 are three equal resistors that make two reference voltages, ⅓ and ⅔ of the supply, two comparators that watch the capacitor against them, and a flip-flop that remembers which way it's going. The capacitor charges through R1 + R2 until it reaches ⅔, the output drops and the discharge pin empties it through R2 down to ⅓, the output rises again, and so on. Change the parts and watch.</p>
+  <canvas id="c2" width="800" height="380" aria-label="555 astable: capacitor voltage between one third and two thirds, and the output square wave"></canvas>
+  <div class="row"><label>R1 <select id="r1"><option>1000</option><option selected>10000</option><option>47000</option><option>100000</option></select> Ω</label><label>R2 <select id="r2"><option>1000</option><option>10000</option><option selected>47000</option><option>100000</option></select> Ω</label><label>C <select id="c"><option value="1e-7">100 nF</option><option value="1e-6">1 µF</option><option value="1e-5" selected>10 µF</option></select></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> make it blink at about 1 Hz (between 0.9 and 1.1) with a duty cycle under 60%.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>From chapter 2, a capacitor charging toward \(V_s\) through \(R\) gets from \(V_a\) to \(V_b\) in</p>
+    <p class="formula">\[ t = RC \,\ln\frac{V_s - V_a}{V_s - V_b} \]</p>
+    <p>Charging from ⅓ to ⅔ of \(V_s\) through \(R_1 + R_2\): \(t = (R_1 + R_2) C \ln\frac{2/3}{1/3} = (R_1 + R_2)C \ln 2\). Discharging toward 0 from ⅔ to ⅓ through \(R_2\): \(R_2 C \ln 2\). So</p>
+    <p class="formula">\[ t_{high} = 0.693\,(R_1 + R_2)\,C, \quad t_{low} = 0.693\,R_2 C, \quad f = \frac{1}{t_{high} + t_{low}} = \frac{1.44}{(R_1 + 2R_2)\,C} \]</p>
+    <p>Notice the supply voltage cancels out: the thresholds are fractions of the same supply the capacitor charges toward. A 555 blinks at the same rate on 5 V or 15 V. And the duty cycle \(t_{high}/(t_{high}+t_{low})\) is always above 50%, since charging goes through both resistors.</p>
+  </details>
+  <div class="q" data-num="1.52" data-tol="0.02" data-unit="Hz">
+    <p>R1 = 1 kΩ, R2 = 47 kΩ, C = 10 µF (the lab's "555 LED blinker"). What frequency?</p>
+    <div class="why">\(1.44 / ((1 + 94)\text{ kΩ} \times 10\,\mu F) = 1.44 / 0.95 = 1.52\) Hz.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>You change the supply from 5 V to 12 V. What happens to the blink rate?</p>
+    <ul><li data-k="a" data-says="The capacitor charges faster, but it also has further to go: the thresholds scale too.">It speeds up</li><li data-k="b" data-says="The charging time depends only on the ratio of the thresholds to the supply.">It slows down</li><li data-k="c">Nothing: the thresholds are fractions of the supply, so it cancels</li></ul>
+    <div class="why">Both the target the capacitor charges toward and the thresholds are proportional to \(V_s\); only their ratio enters the logarithm.</div>
+  </div>
+  <div class="code" data-title="Build it: pick 555 parts for a target frequency and duty cycle"><textarea>
+// Given f and a duty cycle D (> 50%), and a capacitor you have: solve the two timing equations for R1, R2.
+//   t_high = 0.693 (R1 + R2) C,   t_low = 0.693 R2 C
+const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+const nearest = (r) => { const d = 10 ** Math.floor(Math.log10(r)); return [...E12, 10].map((v) => v * d).reduce((a, b) => (Math.abs(Math.log(b / r)) < Math.abs(Math.log(a / r)) ? b : a)); };
+
+function design555(f, D, C) {
+  const T = 1 / f, tHigh = D * T, tLow = T - tHigh;
+  const R2 = tLow / (0.693 * C), R1 = tHigh / (0.693 * C) - R2;
+  return { R1, R2, R1std: nearest(R1), R2std: nearest(R2) };
+}
+for (const [f, D, C] of [[1, 0.55, 10e-6], [1000, 0.6, 10e-9], [38000, 0.5001, 1e-9]]) {
+  const r = design555(f, D, C), fReal = 1.44 / ((r.R1std + 2 * r.R2std) * C);
+  print(`${f} Hz, duty ${+(D * 100).toFixed(2)}%: R1 = ${r.R1.toFixed(0)} Ω → ${r.R1std} Ω, R2 = ${r.R2.toFixed(0)} Ω → ${r.R2std} Ω, actual ${fReal.toFixed(1)} Hz`);
+}
+// The 38 kHz line is an infrared remote's carrier: duty ≈ 50% needs R1 ≪ R2.
+</textarea></div>
+
+  <h2>3. The 555 as a one-shot</h2>
+  <p>Wired differently (monostable), the 555 waits. A short low pulse on the trigger pin starts it: the output goes high, the capacitor charges through R from 0 to ⅔, and then the output drops and stays low until the next trigger. It turns a quick button press into a clean pulse of a set length.</p>
+  <canvas id="c3" width="800" height="300" aria-label="555 one-shot: trigger, capacitor, output"></canvas>
+  <div class="row"><button id="trig">Press the button (trigger)</button><label>R <select id="mr"><option>10000</option><option selected>100000</option><option>470000</option></select> Ω</label><label>C <select id="mc"><option value="1e-6">1 µF</option><option value="1e-5" selected>10 µF</option></select></label></div>
+  <p class="readout" id="o3"></p>
+  <div class="q" data-num="1.1" data-tol="0.02" data-unit="s">
+    <p>A one-shot with R = 100 kΩ and C = 10 µF. How long is the pulse? (It charges from 0 to ⅔: \(t = RC \ln 3\).)</p>
+    <div class="why">\(\ln 3 = 1.0986\), so \(t \approx 1.1\,RC = 1.1 \times 100\text{k} \times 10\,\mu F = 1.1\) s.</div>
+  </div>
+
+  <h2>4. Crystals: keeping time</h2>
+  <p>RC timing is only as good as the parts: 5% resistors and 20% capacitors make a 555 that's off by a lot, and it drifts with temperature. For clocks, a sliver of quartz does the timing. Quartz is <b>piezoelectric</b>: squeeze it and it makes a voltage, put a voltage on it and it flexes. Cut to size, it rings mechanically at one frequency with a Q of 10,000 to 100,000 (a tuned circuit from chapter 3 manages about 100), and an amplifier keeps it ringing.</p>
+  <canvas id="c4" width="800" height="200" aria-label="Clock drift for a given ppm error"></canvas>
+  <div class="row"><label>accuracy <input type="range" id="ppm" min="0" max="3" step="0.01" value="1.3"> <span id="ppmv" class="math"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <details class="deeper" open><summary>The math</summary>
+    <p>Accuracy is quoted in <b>parts per million</b>: ±20 ppm means the frequency may be off by 20 millionths. Over a time \(T\), the clock gains or loses \(T \times \text{ppm} \times 10^{-6}\): a month is 2.6 million seconds, so 20 ppm is up to 52 s per month. A cheap 555 at 5% would be off by 36 hours a month.</p>
+    <p><b>Why 32,768 Hz?</b> It's \(2^{15}\). Fifteen flip-flops in a row, each halving the frequency (chapter 12), turn it into exactly 1 Hz, one tick per second. That's what's inside every quartz watch and every computer's real-time clock.</p>
+  </details>
+  <div class="q" data-num="15" data-tol="0">
+    <p>How many divide-by-two stages turn 32,768 Hz into 1 Hz?</p>
+    <div class="why">\(32{,}768 = 2^{15}\), so 15 halvings.</div>
+  </div>
+  <div class="q" data-num="26" data-tol="1" data-unit="s">
+    <p>A 10 ppm crystal, over 30 days (2,592,000 s). Up to how many seconds off?</p>
+    <div class="why">\(2{,}592{,}000 \times 10 \times 10^{-6} \approx 26\) s.</div>
+  </div>
+
+  <h2>5. LC oscillators: radio frequencies</h2>
+  <p>For megahertz, a coil and capacitor (chapter 3) set the frequency and a transistor tops up the energy lost each cycle: the Colpitts and Hartley oscillators, the heart of every old radio's tuning. Your RTL-SDR dongle uses a 28.8 MHz crystal and a <b>phase-locked loop</b> to make any frequency from it, which the <a href="/radio/course/12-inside-the-dongle.html">radio course</a> takes apart.</p>
+
+  <p>Try the <b>555 LED blinker</b> in the <a href="/learn/lab.html">circuit lab</a>: change R2 and C and measure the frequency on its scope. Next: power supplies.</p>
+  <p class="muted">Previous: <a href="./08-filters.html">Filters</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", grid: "#232934", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 2.5) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+const fmtT = (s) => (s >= 1 ? `${s.toFixed(2)} s` : s >= 1e-3 ? `${(s * 1e3).toFixed(2)} ms` : `${(s * 1e6).toFixed(1)} µs`);
+let t = 0;
+
+// ---------- 2. astable ----------
+function draw2() {
+  const R1 = +$("r1").value, R2 = +$("r2").value, Cc = +$("c").value, th = 0.693 * (R1 + R2) * Cc, tl = 0.693 * R2 * Cc, T = th + tl, f = 1 / T, D = th / T;
+  const cv = $("c2"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  // show 3 periods, scrolling; capacitor from the exact exponentials, starting at 1/3 charging
+  const span = 3 * T, N = 600, X = (k) => 40 + (k / N) * (W - 60), Yc = (v) => 200 - v * 150, Yo = (o) => 340 - o * 60;
+  const capAt = (tt) => { let p = ((tt % T) + T) % T; return p < th ? 1 - (2 / 3) * Math.exp(-p / ((R1 + R2) * Cc)) : (2 / 3) * Math.exp(-(p - th) / (R2 * Cc)); };
+  const offs = (t * 0.25 * T) % T;
+  g.strokeStyle = C.grid; g.lineWidth = 1; for (const v of [1 / 3, 2 / 3]) { g.setLineDash([5, 5]); g.beginPath(); g.moveTo(40, Yc(v)); g.lineTo(W - 20, Yc(v)); g.stroke(); } g.setLineDash([]);
+  line(g, Array.from({ length: N + 1 }, (_, k) => [X(k), Yc(capAt(offs + (k / N) * span))]), C.blue);
+  line(g, Array.from({ length: N + 1 }, (_, k) => { const p = ((offs + (k / N) * span) % T + T) % T; return [X(k), Yo(p < th ? 1 : 0)]; }), C.yellow);
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("⅔ Vs", W - 60, Yc(2 / 3) - 6); g.fillText("⅓ Vs", W - 60, Yc(1 / 3) - 6);
+  g.fillStyle = C.blue; g.fillText("capacitor", 44, 40); g.fillStyle = C.yellow; g.fillText("output (pin 3)", 44, 262);
+  $("o2").textContent = `t_high = 0.693·(${R1 / 1000}k + ${R2 / 1000}k)·C = ${fmtT(th)} · t_low = 0.693·${R2 / 1000}k·C = ${fmtT(tl)} · f = ${f >= 1000 ? (f / 1000).toFixed(2) + " kHz" : f.toFixed(2) + " Hz"} · duty ${(D * 100).toFixed(0)}%`;
+  if (f >= 0.9 && f <= 1.1 && D < 0.6) done("g2", "About once a second, mostly a short-ish flash. Nicely tuned.");
+}
+for (const id of ["r1", "r2", "c"]) $(id).onchange = draw2;
+
+// ---------- 3. one-shot ----------
+let firedAt = -99;
+$("trig").onclick = () => { firedAt = t; };
+function draw3() {
+  const R = +$("mr").value, Cc = +$("mc").value, Tp = 1.0986 * R * Cc, span = Math.max(3, Tp * 2.2);
+  const cv = $("c3"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const N = 500, X = (k) => 40 + (k / N) * (W - 60), now = t;
+  const at = (tt) => { const since = tt - firedAt; return since >= 0 && since < Tp ? { out: 1, cap: 1 - Math.exp(-since / (R * Cc)), trig: since < 0.08 ? 0 : 1 } : { out: 0, cap: 0, trig: since >= 0 && since < 0.08 ? 0 : 1 }; };
+  const pts = Array.from({ length: N + 1 }, (_, k) => at(now - span + (k / N) * span));
+  line(g, pts.map((p, k) => [X(k), 60 - p.trig * 30]), C.red, 2); line(g, pts.map((p, k) => [X(k), 180 - p.cap * 90]), C.blue); line(g, pts.map((p, k) => [X(k), 280 - p.out * 50]), C.yellow);
+  g.strokeStyle = C.grid; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(40, 180 - (2 / 3) * 90); g.lineTo(W - 20, 180 - (2 / 3) * 90); g.stroke(); g.setLineDash([]);
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("trigger", 44, 18); g.fillText("capacitor (stops at ⅔)", 44, 84); g.fillText("output", 44, 222); g.fillText(`← last ${span.toFixed(1)} s`, W - 130, H - 8);
+  $("o3").textContent = `pulse length = 1.1·R·C = ${fmtT(Tp)}${now - firedAt < Tp ? " · running…" : ""}`;
+}
+
+// ---------- 4. crystal drift ----------
+function draw4() {
+  const ppm = 10 ** +$("ppm").value, month = 2592000, drift = month * ppm * 1e-6;
+  const cv = $("c4"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const items = [["quartz watch (±20 ppm)", 20], ["TCXO (±2 ppm)", 2], ["this setting", ppm], ["555 timer (5%)", 50000]];
+  items.forEach(([label, p], k) => { const d = month * p * 1e-6, w = Math.min(W - 280, (Math.log10(1 + d) / Math.log10(1 + 130000)) * (W - 280)); g.fillStyle = k === 2 ? C.yellow : C.blue; g.fillRect(250, 22 + k * 44, Math.max(2, w), 26); g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(label, 10, 40 + k * 44); g.fillText(d >= 3600 ? `${(d / 3600).toFixed(1)} h/month` : `${d.toFixed(1)} s/month`, 258 + Math.max(2, w), 40 + k * 44); });
+  $("ppmv").textContent = `±${ppm.toPrecision(3)} ppm`;
+  $("o4").textContent = `±${ppm.toPrecision(3)} ppm → up to ${drift.toFixed(1)} s a month (${(drift * 12 / 60).toFixed(1)} min a year)`;
+}
+$("ppm").oninput = draw4; draw4();
+
+let last = performance.now();
+(function loop(now) { t += Math.min(0.05, (now - last) / 1000); last = now; draw2(); draw3(); requestAnimationFrame(loop); })(last);
+window.blipContext = () => ({ page: "Electronics chapter 9: oscillators and timers (Barkhausen, 555 astable and one-shot, crystals and ppm)", r1: +$("r1").value, r2: +$("r2").value, c: +$("c").value });
+</script>
+</body>
+</html>

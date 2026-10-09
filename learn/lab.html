@@ -505,12 +505,13 @@ setInterval(() => {
       const need = LEDS[p.color][0];
       why = a > 0.0005 ? (a > 0.025 ? `<p class="note warn">${si(a, "A")} is close to the limit (about 30 mA). Use a bigger resistor.</p>` : "")
         : drop < -0.1 ? `<p class="note">It's in backwards: current only flows from the triangle (anode, +) to the bar (cathode, −). Rotate it twice.</p>`
-        : `<p class="note">Too little voltage to light: it has <b>${drop.toFixed(2)} V</b>, and a ${p.color} LED needs about <b>${need} V</b> before any current flows. If it shares a point with a lower-voltage LED (red needs only 1.9 V), that LED holds the point down. Give each LED its own resistor.</p>`;
+        : `<p class="note">Too little voltage to light: it has <b>${drop.toFixed(2)} V</b>, and a ${p.color} LED needs about <b>${need} V</b> before any current flows. If it shares a point with a lower-voltage LED (red needs only 1.9 V), that LED holds the point down. Give each LED its own resistor.</p><p><button id="fixLeds">Insert the fixed version (a resistor per LED)</button></p>`;
     }
   } else html = d.pins.map((_, k) => `${d.pinNames?.[k] ?? `pin ${k + 1}`}: ${vs[k] == null ? "—" : si(vs[k], "V")}`).join("<br>");
   const s = sim?.net.states.get(p.id); if (s && "q" in s) html += `<br>output ${s.q ? "HIGH" : "low"}`;
   if ($("live").innerHTML !== html) $("live").innerHTML = html;
   if ($("why").innerHTML !== why) $("why").innerHTML = why;
+  const fx = $("fixLeds"); if (fx && !fx.onclick) fx.onclick = () => { setTool("select"); tool = "place"; placing = { kind: "template", name: "ledsOwn" }; cv.classList.add("place"); setStatus(`<span class="muted">Click an empty spot on the board to place the fixed circuit next to yours.</span>`); };
 }, 200);
 
 // ---------- saving, sharing, files ----------
