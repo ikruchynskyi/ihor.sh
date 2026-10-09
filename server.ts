@@ -2,7 +2,6 @@
 // Public behind a Cloudflare tunnel, so only whitelisted paths are served (never the repo root).
 // Usage: npm run build && npm start   (env: PORT=8080, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL=http://localhost:11434)
 import http from "node:http";
-import net from "node:net";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { statSync } from "node:fs";
 import path from "node:path";
@@ -66,7 +65,7 @@ function allowed(ip: string) {
   return true;
 }
 
-function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
+async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
   const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };
   const stream = req.url?.startsWith("/api/stream");
   if (stream && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
@@ -75,66 +74,17 @@ function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
     r.pipe(res);
   });
   up.on("error", () => offline("The server SDR is offline right now."));
-  if (stream) { listeners++; res.on("close", () => { listeners--; up.destroy(); }); }
+  if (stream) { listeners++; res.on("close", () => listeners--); }
+  res.on("close", () => up.destroy()); // a closed stream or event feed must close upstream too (it counts listeners/watchers)
   req.pipe(up);
 }
 
-// Live receivers from ~/aprs-web (Direwolf APRS, dump1090 ADS-B). They share the one dongle with the
-// server SDR, so each runs only when started by hand; while one is off, its page says so.
-const LIVE: Record<string, { port: number; title: string; what: string }> = {
-  "/radio/aprs/": { port: 3000, title: "APRS Map", what: "the APRS map (packet radio on 144.39 MHz: hams, weather stations and trackers around NYC)" },
-  "/radio/adsb/": { port: 3001, title: "ADS-B Radar", what: "the ADS-B radar (aircraft over NYC, decoded from 1090 MHz)" },
-};
-const livePrefix = (p: string) => Object.keys(LIVE).find((k) => p.startsWith(k));
-
-function proxyLive(req: http.IncomingMessage, res: http.ServerResponse, prefix: string) {
-  const { port, title, what } = LIVE[prefix];
-  const up = http.request({ host: "127.0.0.1", port, path: "/" + req.url!.slice(prefix.length), method: req.method,
-    headers: { ...req.headers, host: `127.0.0.1:${port}`, "accept-encoding": "identity" } }, async (r) => {
-    if (!String(r.headers["content-type"]).includes("text/html")) { res.writeHead(r.statusCode ?? 502, r.headers); return r.pipe(res); }
-    let html = "";
-    for await (const c of r) html += c;
-    const { "content-length": _, etag: __, ...headers } = r.headers;
-    html = html.replace(/<title>[^<]*/, `<title>${title}`);
-    if (prefix === "/radio/adsb/") html = html.replace("</body>", `<script>showTab("aircraft")</script></body>`);
-    res.writeHead(r.statusCode ?? 502, { ...headers, "cache-control": "no-store" }).end(dress(html, WORLDS.radio.label));
-  });
-  up.on("error", () => {
-    if (res.headersSent) return;
-    res.writeHead(503, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }).end(dress(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
-<style>main { max-width: 640px; margin: 0 auto; padding: 48px 16px; } </style></head><body><main>
-<p class="eyebrow">Off the air</p><h1>${title}</h1>
-<p>This receiver isn't running right now. It's ${what}, picked up live by a radio dongle on a Mac in New York.</p>
-<p class="lede">One dongle is shared by this map, the other live receiver and the server SDR in Spectrum Lab, so only one of them runs at a time. Check back later, or play with <a href="/radio/">Spectrum Lab</a> meanwhile.</p>
-<p><a href="/">◄ Back to the map</a></p></main></body></html>`, WORLDS.radio.label));
-  });
-  req.pipe(up);
-}
-
-// The page's WebSocket (live packets / aircraft) goes to the same receiver, path prefix stripped.
-function proxyLiveSocket(req: http.IncomingMessage, socket: import("node:stream").Duplex, head: Buffer) {
-  const prefix = livePrefix(req.url ?? "");
-  if (!prefix) return socket.destroy();
-  const up = net.connect(LIVE[prefix].port, "127.0.0.1", () => {
-    const lines = [`${req.method} /${req.url!.slice(prefix.length)} HTTP/1.1`];
-    for (let i = 0; i < req.rawHeaders.length; i += 2) lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
-    up.write(lines.join("\r\n") + "\r\n\r\n");
-    up.write(head);
-    socket.pipe(up).pipe(socket);
-  });
-  up.on("error", () => socket.destroy());
-  socket.on("error", () => up.destroy());
-}
-
-/** Which live receivers are up right now, for the home page's level cards. */
+/** What the dongle is doing (raw IQ for Spectrum Lab, APRS or ADS-B decoding), for the home page cards. */
 async function radioStatus() {
-  const up = (port: number) => new Promise<boolean>((done) => {
-    const s = net.connect(port, "127.0.0.1", () => { s.destroy(); done(true); });
-    s.on("error", () => done(false));
-    s.setTimeout(500, () => { s.destroy(); done(false); });
-  });
-  const [sdr, aprs, adsb] = await Promise.all([up(SDR_PORT), up(3000), up(3001)]);
-  return { sdr, aprs, adsb };
+  try {
+    const st = await (await fetch(`http://127.0.0.1:${SDR_PORT}/api/state`, { signal: AbortSignal.timeout(1500) })).json();
+    return { sdr: true, mode: st.mode, aprs: st.mode === "aprs", adsb: st.mode === "adsb", sdrListeners: st.listeners, watchers: st.watchers };
+  } catch { return { sdr: false, mode: "offline", aprs: false, adsb: false, sdrListeners: 0, watchers: { aprs: 0, adsb: 0 } }; }
 }
 
 // Search and sharing: a fuller title, canonical URL, Open Graph/Twitter cards and JSON-LD breadcrumbs.
@@ -200,29 +150,13 @@ const server = http.createServer(async (req, res) => {
       const answer = await ask(JSON.parse(raw), SYSTEM);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
     }
-    if (["/api/state", "/api/tune", "/api/stream"].includes(url.pathname)) return proxySdr(req, res);
-    if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
-    if (url.pathname === "/radio/aprs" || url.pathname === "/radio/adsb") return res.writeHead(301, { location: url.pathname + "/" }).end();
-    const live = livePrefix(url.pathname);
-    if (live) return proxyLive(req, res, live);
-    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events"].includes(url.pathname)) {
+    if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events"].includes(url.pathname)) return proxySdr(req, res);
+    if (url.pathname === "/api/receiver" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
-      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
-      const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
-      const day = /^\d{4}-\d{2}-\d{2}$/;
-      if (url.pathname === "/api/nyc/point") {
-        const lat = Number(q.get("lat")), lon = Number(q.get("lon"));
-        if (!(lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();
-        return send(await pointInfo(lat, lon), 3600);
-      }
-      if (url.pathname === "/api/nyc/restaurants") return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20)), 3600);
-      if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
-      const from = q.get("from") ?? "", to = q.get("to") ?? from;
-      if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();
-      return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
+      return proxySdr(req, res);
     }
-    if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
-    if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
+    if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
@@ -247,7 +181,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.on("upgrade", proxyLiveSocket);
 startArchive();
 startEvents();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));

@@ -42,7 +42,6 @@
   .hud { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding: 12px 20px; font: 10px/1.6 var(--pixel); letter-spacing: .05em; background: rgba(7,9,15,.85); border-bottom: 4px solid var(--line); }
   .hud b { color: var(--amber); font-weight: normal; }
   .hud .score span { color: var(--green); }
-  .hud .ihor-read span { font-family: Georgia, serif; font-size: 13px; margin-right: 4px; }
   .hud button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px; cursor: pointer; }
   .hud button[aria-pressed="true"] { color: var(--green); }
 
@@ -81,6 +80,8 @@
   .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
 
   .level.off { opacity: .45; border-style: dashed; }
+  .level.dim { opacity: .65; }
+  .level.off:focus-visible, .locked .world:focus-visible { opacity: 1; outline: none; border-color: var(--amber); box-shadow: 6px 6px 0 var(--amber); }
   .level .air { display: block; margin-top: 6px; font: 8px var(--pixel); font-style: normal; color: var(--dim); }
   .level.onair .air { color: var(--green); }
   .level.onair .air::before { content: "● "; animation: blink 1s steps(2) infinite; }
@@ -118,6 +119,7 @@
       <span><kbd>DRAG</kbd>throw Blip</span>
       <span><kbd>CLICK</kbd>poke Blip</span>
       <span><kbd>SELECT</kbd>any text to ask</span>
+      <span><kbd>← → ↑ ↓</kbd>move · <kbd>ENTER</kbd>play</span>
     </div>
   </section>
 
@@ -137,8 +139,8 @@
         <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US amateur radio license.</span></a>
         <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">A developer guide to WebUSB, the RTL2832U and the R820T tuner.</span></a>
         <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook chapter by chapter, each section linked to an interactive lesson.</span></a>
-        <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC, decoded by Direwolf. <em class="air">CHECKING…</em></span></a>
-        <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz by dump1090. <em class="air">CHECKING…</em></span></a>
+        <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC, decoded by our own 1200-baud modem. <em class="air">CHECKING…</em></span></a>
+        <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz by our own Mode S decoder. <em class="air">CHECKING…</em></span></a>
         <a class="level" href="/radio/sstv.html" data-icon="tv" data-blip="Pictures over radio! Even from the space station."><span class="lv">1-9 <i>▶ PLAY</i></span><b>SSTV DECODER</b><span class="d">Slow-scan TV pictures from the ISS, a recording, your mic or the dongle.</span></a>
         <a class="level" href="/radio/cw.html" data-icon="key" data-blip="Dit dah! I'll be your drill partner. Plug in a real key if you have one."><span class="lv">1-10 <i>▶ PLAY</i></span><b>CW TRAINER</b><span class="d">Learn Morse by ear (Koch method), copy at any speed, send with a real key over USB.</span></a>
       </nav>
@@ -262,21 +264,56 @@
   }
   document.querySelectorAll(".level").forEach((el, i) => { el.addEventListener("pointerenter", () => beep(440 + i * 110)); el.addEventListener("click", () => beep(880, 120)); });
 
-  // Live receivers share one dongle and run only some of the time: lit when up, greyed out when not.
+  // Live receivers share one dongle: lit while decoding, dimmed otherwise (their page can switch them on).
   const liveCards = document.querySelectorAll("[data-live]");
-  const offClick = (e) => { if (e.currentTarget.classList.contains("off")) e.preventDefault(); };
-  liveCards.forEach((el) => el.addEventListener("click", offClick));
   async function checkLive() {
     const s = await fetch("/api/radio/status").then((r) => r.json()).catch(() => ({}));
     for (const el of liveCards) {
       const up = !!s[el.dataset.live];
-      el.classList.toggle("off", !up); el.classList.toggle("onair", up);
-      el.setAttribute("aria-disabled", String(!up));
-      el.querySelector(".air").textContent = up ? "ON AIR NOW" : "OFF AIR";
+      el.classList.toggle("dim", !up); el.classList.toggle("onair", up);
+      el.querySelector(".air").textContent = up ? "ON AIR NOW" : s.mode === "iq" ? "BUSY: SPECTRUM LAB IS LISTENING" : s.sdr === false ? "RADIO OFFLINE" : "OFF · ENTER TO TURN ON";
     }
   }
   checkLive();
   setInterval(checkLive, 30000);
+
+  // Game controls: arrows move between worlds and levels by where they sit on screen, Enter opens one.
+  const items = () => [...document.querySelectorAll(".level, .locked .world")];
+  items().forEach((el) => { if (el.tagName !== "A") el.tabIndex = 0; });
+  const center = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+  const DIRS = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
+  addEventListener("keydown", (e) => {
+    const dir = DIRS[e.key], list = items(), cur = document.activeElement;
+    if (e.key === "Enter" && cur === document.body) { e.preventDefault(); list[0].focus(); list[0].scrollIntoView({ block: "center", behavior: "smooth" }); return beep(660); }
+    if (!dir || (cur !== document.body && !list.includes(cur))) return; // leave arrows alone in Blip's chat and elsewhere
+    e.preventDefault();
+    if (!list.includes(cur)) { list[0].focus(); return list[0].scrollIntoView({ block: "center", behavior: "smooth" }); }
+    const c = center(cur);
+    // nearest item in that direction, weighting sideways drift 3× so rows and columns feel natural
+    let best = null, bestScore = Infinity;
+    for (const el of list) {
+      if (el === cur) continue;
+      const p = center(el), along = (p.x - c.x) * dir[0] + (p.y - c.y) * dir[1], side = Math.abs((p.x - c.x) * dir[1]) + Math.abs((p.y - c.y) * dir[0]);
+      if (along <= 4) continue;
+      const score = along + 3 * side;
+      if (score < bestScore) { bestScore = score; best = el; }
+    }
+    if (!best) return beep(110, 40);
+    best.focus({ preventScroll: true });
+    best.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    beep(520 + list.indexOf(best) * 20, 40);
+  });
+  // Locked items have nothing to open: Enter makes Blip explain instead. Focus makes Blip comment, like hover does.
+  let saidAt = 0;
+  document.addEventListener("focusin", (e) => {
+    const el = e.target.closest?.("[data-blip]");
+    if (!el || Date.now() - saidAt < 400) return;
+    saidAt = Date.now();
+    dispatchEvent(new CustomEvent("blip:say", { detail: { text: el.dataset.blip, ms: 2600 } }));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.matches?.(".level.off, .locked .world")) dispatchEvent(new CustomEvent("blip:say", { detail: { text: "Locked for now! It's on the plan, though.", mood: "think", hop: 4 } }));
+  });
 
   // Background: a pixel waterfall. A few stations, a beacon keying "IHOR SH" in Morse, and the cursor transmits.
   const cv = document.getElementById("wf"), g = cv.getContext("2d");
@@ -307,7 +344,6 @@
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) for (let i = 0; i < ROWS; i++) frame();
   else setInterval(frame, 60);
 </script>
-<script type="module" src="/reader.js"></script>
 <script type="module" src="/companion.js"></script>
 </body>
 </html>

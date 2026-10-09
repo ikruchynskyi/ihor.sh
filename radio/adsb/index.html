@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ADS-B Radar</title>
+  <meta name="description" content="Aircraft over New York, decoded live from their 1090 MHz ADS-B transponder messages by our own Mode S decoder and RTL-SDR driver, written from scratch in TypeScript." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    .wrap { flex: 1; display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+    #map { min-height: 300px; }
+    aside { overflow: auto; padding: 12px 14px; border-left: 3px solid var(--line, #3b4bb0); background: var(--card, #0d1226); }
+    aside h1 { margin: 0 0 4px; }
+    #live { font: 9px "Press Start 2P", monospace; color: var(--muted); }
+    #live.on { color: #5cff9d; }
+    .muted { color: var(--muted, #9aa3cf); font-size: .85rem; }
+    #offline { padding: 12px; margin: 10px 0; border: 3px dashed var(--accent, #ffb347); }
+    #list { list-style: none; padding: 0; margin: 10px 0; }
+    #list li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #list b { font-family: ui-monospace, Menlo, monospace; }
+    .plane { font-size: 20px; line-height: 20px; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+    @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 55vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="map"></div>
+  <aside>
+    <h1>ADS-B radar</h1>
+    <div><span id="live">CONNECTING…</span> · <span id="count" class="muted"></span></div>
+    <p class="muted">Airliners broadcast who and where they are twice a second on 1090 MHz. A $30 dongle on a Mac in New York hears them, and our own decoder (no dump1090, written from scratch) turns the pulses into this map.</p>
+    <div id="offline" hidden>
+      <b>The receiver is off.</b> One dongle is shared with Spectrum Lab and the APRS map.
+      <p><button id="turnOn" class="primary">▶ Turn on the radar</button></p>
+      <div id="offMsg" class="muted"></div>
+    </div>
+    <ul id="list"></ul>
+    <p class="muted">How the decoding works: preamble, pulse position, CRC-24, and CPR positions: <a href="../course/">Radio from scratch</a>. Planned: a chapter of its own.</p>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="/src/adsb-app.ts"></script>
+</body>
+</html>
