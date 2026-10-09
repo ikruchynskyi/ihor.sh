@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rules and Bands</title>
+  <meta name="description" content="Ham radio, visually, lesson 12: the FCC's Part 97 rules made visual. An interactive US band chart by license class, a can-I-transmit-here checker, power limits, identification, control, licensing and what's prohibited." />
+  <style>
+    .checker { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px 14px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; margin: 8px 0; }
+    .checker label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+    .checker input, .checker select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+    .verdict-box { font: 1rem ui-sans-serif, system-ui, sans-serif; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); margin: 8px 0 20px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 12</p>
+  <h1>Rules and bands</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./06-waves-and-wavelength.html#lambda">Lesson 6: band names</a>; <a href="./02-decibels-and-prefixes.html#edge">lesson 2: where a sideband sits</a>; <a href="./02-decibels-and-prefixes.html#pep">PEP</a></li>
+    </ul>
+  </div>
+
+  <p>The rules of amateur radio in the US are <b>Part 97</b> of the FCC's regulations, and the FCC both writes and enforces them. They exist to serve the service's purpose: public service, advancing the radio art and the skills of its operators, and international goodwill. The rules are surprisingly readable (every practice question links to the exact section on eCFR), but most of what the exams ask fits into a few pictures. The first is the most important: <b>where</b> you may transmit, with which license.</p>
+
+  <!-- 1 -->
+  <h2 id="chart">Who may transmit where</h2>
+  <p>Each row is one HF band, stretched to the full width so you can see its inside. Blue is for CW and data, yellow for phone and image (CW is allowed everywhere). Grey is off-limits to the class you pick:</p>
+
+  <div class="scene" id="s-chart">
+    <div class="controls">
+      <label for="ch-c">License <select id="ch-c"><option value="T">Technician</option><option value="G" selected>General</option><option value="E">Amateur Extra</option></select></label>
+    </div>
+    <p class="readout" id="r-chart" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Technicians</b> get all amateur bands above 50 MHz (6 m, 2 m, 1.25 m, 70 cm and up, with full privileges), plus a taste of HF at up to 200 W: CW on parts of 80, 40 and 15 m, CW and data on 10 m below 28.3 MHz, and <b>SSB phone on 28.300–28.500 MHz</b> (the only HF phone they have).</li>
+    <li><b>General</b> adds most of HF, but on 80, 40, 20 and 15 m some slices are reserved for <b>Extra</b> licensees. Where General can't use the whole voice segment, it gets the <b>upper</b> part.</li>
+    <li><b>30 meters</b> is CW and data only: no phone, no image, 200 W.</li>
+    <li>Above 50 MHz, the bottom 100 kHz of 6 m (50.0–50.1) and 2 m (144.0–144.1) are <b>CW only</b>. SSB phone is allowed in some segment of every band above 50 MHz.</li>
+    <li>On some bands, amateurs are a <b>secondary</b> user: they must not interfere with the primary users and must accept interference from them. The US is in ITU <b>Region 2</b> (the Americas).</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="checker">Can I transmit here?</h2>
+  <p>The rule is that your <em>whole signal</em> must be inside your privileges, not just the number on your display (<a class="back" href="./02-decibels-and-prefixes.html#edge">↩ lesson 2</a>). Try the Extra exam's tricky cases: 3 kHz USB at 14.348 MHz, LSB at 3.601 MHz, or 2.8 kHz USB data at 14.1472 MHz.</p>
+  <div class="checker">
+    <label for="ck-f">Displayed frequency (MHz)<input id="ck-f" type="number" step="0.0001" value="14.348"></label>
+    <label for="ck-m">Mode<select id="ck-m">
+      <option value="usb">USB phone (3 kHz)</option><option value="lsb">LSB phone (3 kHz)</option><option value="cw">CW</option><option value="data">USB data (2.8 kHz)</option><option value="fm">FM phone (16 kHz)</option>
+    </select></label>
+    <label for="ck-c">License<select id="ck-c"><option value="T">Technician</option><option value="G">General</option><option value="E" selected>Amateur Extra</option></select></label>
+  </div>
+  <div class="verdict-box" id="ck-out" aria-live="polite"></div>
+  <div class="scene" id="s-check"></div>
+  <p>Why not transmit exactly on a band edge anyway? Because of calibration error and drift in your radio, and because modulation sidebands extend beyond the displayed frequency: all the reasons the exam lists.</p>
+
+  <!-- 3 -->
+  <h2 id="power">Power limits</h2>
+  <ul>
+    <li>The general limit is <b>1500 W PEP output</b>, measured at the transmitter output (as PEP, <a class="back" href="./02-decibels-and-prefixes.html#pep">↩ lesson 2</a>). That applies on 160 m, 12 m, 10 m and to Technicians above 30 MHz, among others. Still, the rule is to use the minimum power necessary.</li>
+    <li><b>200 W PEP</b>: Technicians in their HF segments, and everyone on 30 meters.</li>
+    <li><b>60 meters</b>: five fixed channels, 100 W PEP effective radiated power relative to a dipole, 2.8 kHz maximum bandwidth for USB voice or data, CW at the channel center; using an antenna other than a dipole, keep a record of its gain.</li>
+    <li>The tiny new bands: <b>2200 m</b> (135.7–137.8 kHz) at 1 W EIRP and <b>630 m</b> (472–479 kHz) at 5 W EIRP (phone allowed across 630 m), after notifying the Utilities Technology Council of your call sign and location and waiting 30 days (power-line communication systems use these frequencies).</li>
+    <li>Beacons: 100 W PEP; spread spectrum: 10 W, only above 222 MHz; model craft control: 1 W.</li>
+    <li>Spurious emissions below 30 MHz must be at least <b>43 dB</b> below the fundamental; the modulation index of FM/PM below 29 MHz may not exceed 1.0. External amplifiers sold for use below 144 MHz must be FCC-certified (unless built or modified by an amateur for their own use).</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="licensing">Licenses and call signs</h2>
+  <ul>
+    <li>New licenses: <b>Technician, General, Amateur Extra</b> (older Novice and Advanced licenses are renewed but no longer issued). A license lasts <b>10 years</b>; you may renew up to <b>90 days</b> before it expires; there's a <b>2-year grace period</b> to renew, but you may not transmit during it. After that, a former General or higher licensee still gets credit for those elements, but must pass the current Technician (Element 2) exam.</li>
+    <li>You may transmit as soon as your license appears in the FCC's <b>ULS database</b>; the FCC sends an email with a link to download the grant. If the FCC can't reach you by email, your license can be revoked or suspended.</li>
+    <li>Pass General at an exam session and you get a <b>CSCE</b> (certificate of successful completion), valid for 365 days of exam credit. You may use General privileges at once, adding "<b>/AG</b>" to your call sign until the upgrade appears in the database.</li>
+    <li>Call signs come in groups by class; a <b>Group D</b> sign (Technician or General) has two letters, a number and three letters, like <b>KF1XXX</b>. Any licensee may request a <b>vanity</b> call. A club station license needs at least four members.</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="id">Identification</h2>
+  <ul>
+    <li>Give your call sign <b>at least every 10 minutes</b> during a communication and <b>at the end</b> of it, including test transmissions, and also when using tactical call signs like "Race Headquarters".</li>
+    <li>On phone, identify in <b>English</b>, by voice or by CW. The phonetic alphabet is encouraged. Self-assigned indicators like "/mobile" or "/W3" are fine.</li>
+    <li>Signals controlling model craft don't need identification. A balloon telemetry station's identification must include its call sign.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="control">Control: someone is always responsible</h2>
+  <ul>
+    <li>Every transmitting station needs a <b>control operator</b>, designated by the station licensee, responsible for its transmissions. An amateur station never transmits without one. The <b>control point</b> is where that function is performed. When the control operator isn't the licensee, both are responsible.</li>
+    <li>The control operator's license class sets the frequency privileges, whatever the station licensee holds. A Technician may never be the control operator in an Extra segment (except in an emergency).</li>
+    <li>Three kinds of control: <b>local</b> (at the radio), <b>remote</b> (for example, over the internet: any station may be remotely controlled, and if the control link fails the station must stop within <b>3 minutes</b>) and <b>automatic</b> (a repeater). Operating a US station remotely from abroad needs a US license; operating a station in South America from the US, only that country's rules apply.</li>
+    <li>Through a satellite, any amateur allowed to transmit on the uplink frequency may be the control operator.</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="prohibited">What you may not send</h2>
+  <ul>
+    <li><b>Broadcasting</b> (transmissions intended for the general public) and one-way transmissions in general, except for beacons, telemetry, telecommand, Morse code practice, and occasional retransmission of government weather and propagation forecasts. News and program support only when directly related to the immediate safety of life or property, and no other means is available.</li>
+    <li><b>Music</b>, except incidentally in an authorized retransmission of manned spacecraft communications.</li>
+    <li>Messages <b>encoded to obscure their meaning</b> (also on amateur mesh networks), except control commands to space stations or model craft. Abbreviations and procedural signals are fine as long as they don't obscure meaning.</li>
+    <li>Indecent or obscene language, and <b>willful or malicious interference</b>.</li>
+    <li>Communications for hire or compensation, or in which you or your employer has a financial (pecuniary) interest. Exceptions: classroom instruction at a school, and occasional, non-regular sales of amateur equipment.</li>
+    <li>Talking to countries whose administration has told the ITU it objects. Otherwise, international contacts are limited to amateur radio matters and personal remarks.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="thirdparty">Third parties, repeaters and special stations</h2>
+  <ul>
+    <li><b>Third-party communications</b>: a message from you, as control operator, to another station on behalf of someone else (for example, letting a visitor speak). Internationally, only with countries that have a third-party agreement with the US, and only amateur-radio, personal, or emergency messages. Someone whose amateur license was revoked can't be a third party.</li>
+    <li>A <b>repeater</b> retransmits other stations simultaneously on another channel; if it retransmits something illegal, the originating station's control operator is accountable (likewise in message-forwarding systems). Channels are recommended by a <b>frequency coordinator</b> chosen by local repeater operators. 10-meter repeaters live above 29.5 MHz; one may retransmit a Technician's 2-meter signal only if its own control operator holds at least General.</li>
+    <li>An <b>auxiliary station</b> carries one-way links, such as from a remote receiver to the repeater transmitter.</li>
+    <li>A <b>space station</b> is more than 50 km above the Earth. Space allocations are on 40, 20, 15 and 10 m, 2 m, 70 cm and 13 cm. Any Technician or higher may talk to the ISS on VHF. <b>Telemetry</b> is one-way transmission of measurements; a <b>telecommand</b> station controls a space station (and may encrypt its commands).</li>
+    <li>HF beacons belong on <b>28.20–28.30 MHz</b>, one per band per location; avoid 14.100, 18.110, 21.150, 24.930 and 28.200 MHz, where an international beacon network runs.</li>
+    <li>Automatically controlled digital stations may talk to each other anywhere on 6 m and above, and in limited HF segments; outside those, the initiating station must be under local or remote control. New digital protocols must be publicly documented.</li>
+  </ul>
+
+  <!-- 9 -->
+  <h2 id="neighbors">Antennas, neighbors and emergencies</h2>
+  <ul>
+    <li>Antennas over <b>200 feet</b>, or near a public-use airport, may require notifying the FAA and registering with the FCC. Under <b>PRB-1</b>, state and local zoning must reasonably accommodate amateur antennas, with the minimum regulation needed for their legitimate purpose. Who decides "good engineering and good amateur practice" where the rules are silent? The FCC.</li>
+    <li>Protect FCC monitoring stations within 1 mile, and radio astronomy in the <b>National Radio Quiet Zone</b> (around the National Radio Astronomy Observatory). North of <b>Line A</b> (roughly parallel to, and south of, the US–Canada border) 420–430 MHz is off-limits. A 70 cm repeater interfering with radiolocation must stop or fix it.</li>
+    <li>If you interfere with neighbors' broadcast reception on well-designed receivers, the FCC can impose quiet hours on the offending frequencies.</li>
+    <li><b>RACES</b> (Radio Amateur Civil Emergency Service) stations operate under civil-defense certification, on all frequencies the control operator holds.</li>
+    <li>Abroad: <b>CEPT</b> lets US citizens operate in many European countries (carry FCC Public Notice DA 16-1048), the <b>IARP</b> permit covers several countries of the Americas, and Canadian amateurs may operate in the US with their own privileges (never beyond Extra). On a US ship or aircraft: any FCC license, with the master's or pilot's approval.</li>
+  </ul>
+
+  <!-- 10 -->
+  <h2 id="ve">The exam system itself</h2>
+  <p>Exams are run by <b>Volunteer Examiners</b> (VEs), accredited by <b>Volunteer Examiner Coordinators</b> (VECs), which have agreements with the FCC and also maintain the question pools. VEs must be at least 18 and hold General or higher (non-citizens may serve if they hold such an FCC license); a General-class VE may administer only Technician exams. <b>Three VEs</b> must observe each session and certify a passing candidate; each VE is responsible for proper conduct, and a candidate who doesn't follow instructions has their exam ended. VEs may not examine relatives, may be reimbursed only for out-of-pocket expenses, and face license revocation for fraud. If a candidate fails, the application is returned to them; if they pass, it goes to the VEC.</p>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T1B11: Maximum PEP for Technicians in their HF segments? <i>200 watts.</i></summary><p>And 1500 W above 30 MHz.</p></details>
+  <details><summary>G1A11: Which part of the voice segment do Generals get when they can't use all of it? <i>The upper part.</i></summary><p>The band chart: on 80, 40, 20 and 15 m, the lower part of each phone segment is Extra-only.</p></details>
+  <details><summary>E1A01: Why is 3 kHz USB at 14.348 MHz illegal? <i>Its upper 1 kHz is outside the band.</i></summary><p>USB sits above the displayed frequency: 14.348 + 0.003 = 14.351 MHz, past the 14.350 edge. Try it in the checker.</p></details>
+  <details><summary>T1F03: When must you identify? <i>At least every 10 minutes and at the end of a communication.</i></summary><p>Also on test transmissions and when using tactical calls.</p></details>
+  <details><summary>T1E01: When may a station transmit without a control operator? <i>Never.</i></summary><p>Even a repeater on automatic control has a control operator responsible for it.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T1">Technician T1</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G1">General G1</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E1">Extra E1</a>
+    </p>
+    <p class="note">Every rules question in practice links to its section of Part 97 on eCFR, the official current text. The band plan here is simplified to what the exams ask; for operating, keep the <a href="https://www.arrl.org/band-plan">ARRL band chart</a> handy.</p>
+  </div>
+
+  <nav class="next">
+    <a href="./11-receivers-and-transmitters.html">← Lesson 11: Receivers and transmitters</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l12.ts"></script>
+</body>
+</html>

@@ -61,3 +61,16 @@ const { LESSONS } = await import("./lessons.ts");
 const taught = new Set(LESSONS.flatMap((l) => l.groups));
 for (const p of Object.values(pools)) for (const s of p.subs) for (const g of s.groups) assert.ok(taught.has(g.id), `no lesson covers ${g.id}`);
 console.log("lessons cover every group");
+
+// The band plan agrees with the pool's own answers.
+const { check } = await import("./bands.ts");
+assert.ok(!check(14.348, 14.351, "phone", "E").ok, "E1A01: 3 kHz USB at 14.348 spills out of the band");
+assert.ok(check(14.1472, 14.15, "data", "E").ok && !check(14.1473, 14.1501, "data", "E").ok, "E1A03: highest 2.8 kHz USB data carrier is 14.1472");
+assert.ok(!check(3.598, 3.601, "phone", "E").ok, "E1A04: LSB at 3.601 spills below the phone segment");
+assert.ok(check(28.3, 28.5, "phone", "T").ok && !check(28.5, 28.503, "phone", "T").ok, "T1B01/T1B06: Technician phone 28.300–28.500");
+assert.ok(!check(7.15, 7.153, "phone", "G").ok, "G1A05: General can't use 7.125–7.175");
+assert.ok(check(21.297, 21.3, "phone", "G").ok, "G1A09: 21300 kHz is General");
+assert.ok(!check(10.12, 10.123, "phone", "E").ok, "G1A02: no phone on 30 m");
+assert.ok(check(28.0, 29.7, "cw", "G").ok, "G1A07: General CW on all of 10 m");
+assert.ok(!check(50.05, 50.053, "phone", "T").ok && !check(144.05, 144.053, "phone", "T").ok, "T1B07: 50.0–50.1 and 144.0–144.1 are CW only");
+console.log("band plan agrees with the pool");
