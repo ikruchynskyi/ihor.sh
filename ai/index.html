@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI From Scratch</title>
+  <meta name="description" content="Machine learning from scratch, 3Blue1Brown style: the math made visible (vectors, matrices, gradients), then neural networks, backprop, CNNs, transformers, agents and computer vision, every chapter interactive." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    ol { padding: 0; list-style: none; counter-reset: ch; }
+    ol li { counter-increment: ch; padding: 14px 16px; margin: 10px 0; }
+    ol li::before { content: "Chapter " counter(ch); display: block; font-size: .8rem; color: var(--muted); }
+    ol li.soon { opacity: .55; }
+    ol li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · AI</p>
+  <h1>AI from scratch</h1>
+  <p class="lede">How machine learning actually works, built up from pictures you can drag: first the math (vectors, matrices, gradients, probability), then neural networks you can watch learn, then the ideas behind today's models: convolutions, attention, agents and vision. Same approach as the radio course: picture first, notation last, and every chapter interactive.</p>
+  <ol>
+    <li class="card"><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, adding tip to tail, a matrix as a move of the whole plane, the determinant as area, and a network layer as "move, then fold".</p></li>
+    <li class="card soon"><b>Gradients: which way is downhill</b><p>Derivatives as slopes you can feel, the gradient as an arrow, gradient descent rolling a ball into a valley.</p></li>
+    <li class="card soon"><b>A neuron from scratch</b><p>Weights, a bias and a bend: one neuron learning to separate two clouds of points, live.</p></li>
+    <li class="card soon"><b>Backprop you can watch</b><p>The chain rule as a relay of blame through a small network, step by step.</p></li>
+    <li class="card soon"><b>Probability and loss</b><p>Softmax, cross-entropy, and why a model "guesses" instead of knowing.</p></li>
+    <li class="card soon"><b>Seeing: convolutions</b><p>Filters sliding over images, feature maps, and a digit recognizer trained in your browser.</p></li>
+    <li class="card soon"><b>Attention and transformers</b><p>Words as vectors, attention as weighted averages, a tiny transformer you can poke.</p></li>
+    <li class="card soon"><b>Agents</b><p>Tools, planning and evals, using Blip, the companion on this site, as the worked example.</p></li>
+    <li class="card soon"><b>Vision in practice</b><p>Detection and segmentation on real camera images, including NYC traffic cameras.</p></li>
+  </ol>
+</main>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Matrices Are Moves</title>
+  <meta name="description" content="AI from scratch, chapter 1: vectors as arrows you can drag, adding them tip to tail, a matrix as a move of the whole plane, the determinant as area, and a neural network layer as a matrix plus a bend." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .scene { margin: 18px 0 8px; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">AI from scratch · Chapter 1</p>
+  <h1>Matrices are moves</h1>
+  <p class="lede">Every neural network, from a digit recognizer to the model behind a chatbot, is mostly one operation repeated billions of times: multiply by a matrix. So before any "AI", let's get a feel for what a matrix <em>does</em>. Not as a grid of numbers, but as a way of moving space. Drag everything.</p>
+
+  <h2>1. A vector is an arrow</h2>
+  <p>A vector is a pair of numbers, <span class="math">(x, y)</span>, but it's easier to think of it as an arrow from the origin: go <span class="math">x</span> steps right, <span class="math">y</span> steps up. Drag the tip of the <span class="b">blue arrow</span>.</p>
+  <div class="scene"><canvas id="s1" width="800" height="600" aria-label="A draggable vector on a grid"></canvas><p class="readout" id="r1"></p></div>
+  <p>In machine learning, everything becomes a vector: a pixel image is a long list of brightness values, a word becomes a list of a few hundred numbers. Same idea, just with more than two directions to walk in.</p>
+
+  <h2>2. Adding is walking one arrow, then the other</h2>
+  <p>To add two vectors, walk along the first, then from its tip along the second. Where you end up is the sum. Drag both tips.</p>
+  <div class="scene"><canvas id="s2" width="800" height="600" aria-label="Adding two vectors tip to tail"></canvas><p class="readout" id="r2"></p></div>
+  <p>Notice you can go around the parallelogram either way and land in the same spot: <span class="math">a + b = b + a</span>.</p>
+
+  <h2>3. A matrix moves the whole plane</h2>
+  <p>Here's the big idea. Two special arrows, <span class="g">î</span> = (1, 0) and <span class="r">ĵ</span> = (0, 1), are the plane's "steps". Any vector is "x of the first step plus y of the second". Now <b>drag the tips of î and ĵ</b>. The grid follows, and so does every vector on it, because <span class="b">v</span> is still x of the new î plus y of the new ĵ.</p>
+  <div class="scene"><canvas id="s3" width="800" height="600" aria-label="A linear transformation: drag the basis vectors and the grid follows"></canvas><p class="readout" id="r3"></p></div>
+  <div class="row"><button id="rot">Rotate 90°</button><button id="shear">Shear</button><button id="flip">Flip</button><button id="squash">Squash flat</button><button id="reset3">Reset</button></div>
+  <p>That's all a 2×2 matrix is: the columns say where <span class="g">î</span> and <span class="r">ĵ</span> land. Multiplying a vector by the matrix means "find where it lands". The <b>shaded square</b> started with area 1; its new area is the <b>determinant</b>. It goes negative when space gets flipped over, and zero when the plane is squashed onto a line. Then information is lost: many vectors land on the same spot, and you can't undo the move.</p>
+
+  <h2>4. A neural network layer: a move, then a bend</h2>
+  <p>If you stack matrices you only get another matrix: still straight lines, still a single move. Networks get their power from one tiny extra step after each matrix: a <b>bend</b>. The most common one, ReLU, just says "negative numbers become zero". Watch what it does to the moved grid: everything left of the vertical axis gets folded onto it, everything below the horizontal axis onto that.</p>
+  <div class="scene"><canvas id="s4" width="800" height="600" aria-label="A layer: matrix then ReLU folds the grid"></canvas><p class="readout" id="r4"></p></div>
+  <div class="row"><label><input type="checkbox" id="relu" checked> Apply the bend (ReLU)</label><button id="reset4">Reset</button></div>
+  <p>Drag <span class="g">î</span> and <span class="r">ĵ</span> again: the layer is "move, then fold". Stack dozens of these, each with its own matrix, and the folds can carve space into almost any shape, like one region for "cat" and another for "dog". Training a network is searching for the matrices that put the folds in the right places. That's where we're headed: next chapter, <b>gradients</b>, how a network finds which way to nudge every number.</p>
+
+  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. Coming next in this world: gradients, a neuron from scratch, backprop you can watch, then CNNs, transformers, agents and vision.</p>
+</main>
+<script type="module">
+// A tiny toolkit: a plane drawn on a canvas, draggable arrow tips, and a transformable grid.
+const C = { stage: "#14171d", grid: "#2a2f3a", axis: "#4a5262", text: "#d7dde5", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", fill: "rgba(244,211,94,0.18)" };
+const UNIT = 60;
+
+function scene(id, draw, handles, onChange) {
+  const cv = document.getElementById(id), g = cv.getContext("2d");
+  const W = cv.width, H = cv.height, toPx = ([x, y]) => [W / 2 + x * UNIT, H / 2 - y * UNIT], toW = (px, py) => [(px - W / 2) / UNIT, (H / 2 - py) / UNIT];
+  let drag = null;
+  const pos = (e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
+  cv.addEventListener("pointerdown", (e) => {
+    const [px, py] = pos(e);
+    drag = handles().find((h) => { const [hx, hy] = toPx(h.p); return Math.hypot(hx - px, hy - py) < 26; }) ?? null;
+    if (drag) { cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const [x, y] = toW(...pos(e));
+    drag.p[0] = Math.round(x * 4) / 4; drag.p[1] = Math.round(y * 4) / 4; // snap to quarters: friendlier numbers
+    render();
+  });
+  cv.addEventListener("pointerup", () => { drag = null; });
+  function render() {
+    g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+    draw({ g, W, H, toPx });
+    for (const h of handles()) { const [x, y] = toPx(h.p); g.beginPath(); g.arc(x, y, 9, 0, 7); g.fillStyle = h.color; g.fill(); }
+    onChange?.();
+  }
+  render();
+  return render;
+}
+
+function grid({ g, W, H, toPx }, m = [[1, 0], [0, 1]], bend = false, color = C.grid) {
+  const f = ([x, y]) => { let p = [m[0][0] * x + m[0][1] * y, m[1][0] * x + m[1][1] * y]; if (bend) p = p.map((v) => Math.max(0, v)); return toPx(p); };
+  g.strokeStyle = color; g.lineWidth = 1.5;
+  for (let k = -12; k <= 12; k++) for (const [a, b] of [[[k, -12], [k, 12]], [[-12, k], [12, k]]]) {
+    g.beginPath();
+    for (let t = 0; t <= 48; t++) { const p = [a[0] + ((b[0] - a[0]) * t) / 48, a[1] + ((b[1] - a[1]) * t) / 48]; const [x, y] = f(p); t ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  }
+}
+function axes({ g, W, H }) { g.strokeStyle = C.axis; g.lineWidth = 2; g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.stroke(); }
+function arrow({ g, toPx }, from, to, color, width = 4) {
+  const [x1, y1] = toPx(from), [x2, y2] = toPx(to), a = Math.atan2(y2 - y1, x2 - x1);
+  g.strokeStyle = g.fillStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  if (Math.hypot(x2 - x1, y2 - y1) > 6) { g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - 14 * Math.cos(a - 0.4), y2 - 14 * Math.sin(a - 0.4)); g.lineTo(x2 - 14 * Math.cos(a + 0.4), y2 - 14 * Math.sin(a + 0.4)); g.fill(); }
+}
+const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(2)).toString();
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+
+// 1. a vector
+const v1 = { p: [3, 2], color: C.blue };
+scene("s1", (s) => { grid(s); axes(s); arrow(s, [0, 0], v1.p, C.blue); }, () => [v1],
+  () => (document.getElementById("r1").textContent = `v = (${fmt(v1.p[0])}, ${fmt(v1.p[1])}): ${fmt(v1.p[0])} right, ${fmt(v1.p[1])} up · length ${Math.hypot(...v1.p).toFixed(2)}`));
+
+// 2. adding
+const a = { p: [3, 1], color: C.blue }, b = { p: [1, 2.5], color: C.yellow };
+scene("s2", (s) => {
+  grid(s); axes(s);
+  const sum = [a.p[0] + b.p[0], a.p[1] + b.p[1]];
+  arrow(s, a.p, sum, "rgba(244,211,94,0.45)", 3); arrow(s, b.p, sum, "rgba(88,196,221,0.45)", 3);
+  arrow(s, [0, 0], a.p, C.blue); arrow(s, [0, 0], b.p, C.yellow); arrow(s, [0, 0], sum, C.green, 5);
+}, () => [a, b], () => (document.getElementById("r2").textContent = `a + b = (${fmt(a.p[0])}, ${fmt(a.p[1])}) + (${fmt(b.p[0])}, ${fmt(b.p[1])}) = (${fmt(a.p[0] + b.p[0])}, ${fmt(a.p[1] + b.p[1])})`));
+
+// 3. a matrix moves the plane
+const i3 = { p: [1, 0], color: C.green }, j3 = { p: [0, 1], color: C.red }, v3 = [2, 1];
+let lastSign = 1;
+const r3 = scene("s3", (s) => {
+  const m = [[i3.p[0], j3.p[0]], [i3.p[1], j3.p[1]]];
+  grid(s, [[1, 0], [0, 1]], false, "#1d222c"); grid(s, m, false, "#3a4f6e"); axes(s);
+  const { g, toPx } = s;
+  g.fillStyle = C.fill; g.beginPath(); [[0, 0], i3.p, [i3.p[0] + j3.p[0], i3.p[1] + j3.p[1]], j3.p].forEach((p, k) => { const [x, y] = toPx(p); k ? g.lineTo(x, y) : g.moveTo(x, y); }); g.fill();
+  arrow(s, [0, 0], [v3[0] * i3.p[0] + v3[1] * j3.p[0], v3[0] * i3.p[1] + v3[1] * j3.p[1]], C.blue, 4);
+  arrow(s, [0, 0], i3.p, C.green, 5); arrow(s, [0, 0], j3.p, C.red, 5);
+}, () => [i3, j3], () => {
+  const det = i3.p[0] * j3.p[1] - j3.p[0] * i3.p[1];
+  document.getElementById("r3").textContent = `matrix [${fmt(i3.p[0])} ${fmt(j3.p[0])}; ${fmt(i3.p[1])} ${fmt(j3.p[1])}] · v = (2, 1) lands at (${fmt(2 * i3.p[0] + j3.p[0])}, ${fmt(2 * i3.p[1] + j3.p[1])}) · determinant ${fmt(det)}${det === 0 ? ": squashed flat, can't undo" : det < 0 ? ": flipped over" : ""}`;
+  const sign = Math.sign(det);
+  if (sign !== lastSign) { say(sign === 0 ? "Squashed flat! The determinant is zero." : sign < 0 ? "Whoa, you flipped space over!" : "Right side up again.", sign === 0 ? "dizzy" : "surprised"); lastSign = sign; }
+});
+const set3 = (i, j) => { i3.p = i; j3.p = j; r3(); };
+document.getElementById("rot").onclick = () => set3([0, 1], [-1, 0]);
+document.getElementById("shear").onclick = () => set3([1, 0], [1, 1]);
+document.getElementById("flip").onclick = () => set3([-1, 0], [0, 1]);
+document.getElementById("squash").onclick = () => set3([1, 0.5], [2, 1]);
+document.getElementById("reset3").onclick = () => set3([1, 0], [0, 1]);
+
+// 4. a layer: matrix, then ReLU
+const i4 = { p: [1, 0.5], color: C.green }, j4 = { p: [-0.75, 1], color: C.red };
+const r4 = scene("s4", (s) => {
+  const m = [[i4.p[0], j4.p[0]], [i4.p[1], j4.p[1]]], bend = document.getElementById("relu").checked;
+  grid(s, m, bend, "#3a4f6e"); axes(s);
+  arrow(s, [0, 0], i4.p, C.green, 5); arrow(s, [0, 0], j4.p, C.red, 5);
+}, () => [i4, j4], () => (document.getElementById("r4").textContent = document.getElementById("relu").checked
+  ? "move by the matrix, then ReLU: every negative coordinate becomes 0 (the grid folds onto the axes)" : "just the matrix: straight lines stay straight"));
+document.getElementById("relu").onchange = r4;
+document.getElementById("reset4").onclick = () => { i4.p = [1, 0.5]; j4.p = [-0.75, 1]; r4(); };
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 1: Matrices are moves", vector: v1.p, sum: [a.p, b.p], matrix: [[i3.p[0], j3.p[0]], [i3.p[1], j3.p[1]]], determinant: i3.p[0] * j3.p[1] - j3.p[0] * i3.p[1], layerMatrix: [[i4.p[0], j4.p[0]], [i4.p[1], j4.p[1]]], reluOn: document.getElementById("relu").checked });
+</script>
+</body>
+</html>

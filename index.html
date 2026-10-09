@@ -105,7 +105,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>3 OF 8 WORLDS OPEN</span>
+  <span>4 OF 8 WORLDS OPEN</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -174,6 +174,21 @@
       </nav>
     </article>
 
+    <article class="world">
+      <header>
+        <h3><small>WORLD 8</small>AI</h3>
+        <span class="onair">NEW</span>
+      </header>
+      <p>Machine learning from scratch, 3Blue1Brown style: the math made visible, then neural networks, agents and computer vision, every chapter something you drag and poke.</p>
+      <nav class="levels" aria-label="AI chapters">
+        <a class="level" href="/ai/01-matrices-are-moves.html" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">8-1 <i>▶ PLAY</i></span><b>MATRICES ARE MOVES</b><span class="d">Vectors, matrices as moves of space, the determinant, and a network layer as move-then-fold.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Next up: rolling downhill to learn."><span class="lv">8-2</span><b>GRADIENTS</b><span class="d">Which way is downhill, and gradient descent.</span></div>
+        <div class="level off" data-icon="lock" data-blip="One neuron learning live."><span class="lv">8-3</span><b>A NEURON FROM SCRATCH</b><span class="d">Weights, bias and a bend, learning to separate points.</span></div>
+        <div class="level off" data-icon="lock" data-blip="Blame, passed backwards."><span class="lv">8-4</span><b>BACKPROP YOU CAN WATCH</b><span class="d">The chain rule as a relay through a small network.</span></div>
+        <a class="level" href="/ai/" data-icon="book" data-blip="All nine chapters of the AI world."><span class="lv">8-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">Convolutions, transformers, agents and vision are on the way.</span></a>
+      </nav>
+    </article>
+
     <div class="locked">
       <article class="world" data-blip="A bike world. I don't have legs, so I'll ride in the basket.">
         <svg data-icon="lock" aria-hidden="true"></svg>
@@ -198,12 +213,6 @@
         <header><h3><small>WORLD 7</small>LEARN & BUILD</h3></header>
         <p>Math, electronics and hardware build logs, every lesson applied to the other worlds.</p>
         <ol class="chapters"><li>Skill tree</li><li>Track A: math, stats, ML</li><li>Track B: electronics to drivers</li><li>Hardware builds</li></ol>
-      </article>
-      <article class="world" data-blip="Math you can see, then neural nets, agents and vision. I'm an agent too!">
-        <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 8</small>AI</h3></header>
-        <p>Machine learning from scratch, 3Blue1Brown style: the math made visible, then deep learning, agents and computer vision, every lesson with live visuals and code.</p>
-        <ol class="chapters"><li>Essential math: vectors, matrices, gradients, probability</li><li>Linear algebra you can drag</li><li>Neural networks and backprop</li><li>CNNs and transformers</li><li>Agents: tools, planning, evals (built on Blip)</li><li>ML for vision: detection and segmentation</li></ol>
       </article>
     </div>
   </section>
