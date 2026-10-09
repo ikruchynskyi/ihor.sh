@@ -69,8 +69,9 @@ Visitors talk to you through a little game-style dialog box. You see the page th
 
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers run only some of the time (they share one dongle): /radio/aprs/ (APRS map) and /radio/adsb/ (ADS-B radar).
-- World 2, NYC: tools on NYC open data. Subway Bailout (live MTA alerts → nearest Citi Bike), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
-Planned: Ride (bikepacking), EDC (gear), Yomu (graded Japanese), Learn & build, AI (math, deep learning, agents, vision), ORNA (the GPS RPG; questions about the game go to the Telegram bot @IrishmooshBot).
+- World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, broken elevators, traffic cameras, free events, restaurant inspections, click for address info), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
+- World 3, ORNA (the GPS RPG): questions about the game go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
+Planned (locked): World 4 Ride (bikepacking), 5 EDC (gear), 6 Yomu (graded Japanese), 7 Learn & build, 8 AI (math made visible, deep learning, agents, vision).
 
 Pages on the site:
 ${siteMap}

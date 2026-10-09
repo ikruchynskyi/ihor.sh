@@ -104,7 +104,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>2 OF 6 WORLDS OPEN</span>
+  <span>3 OF 8 WORLDS OPEN</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -139,6 +139,7 @@
         <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook chapter by chapter, each section linked to an interactive lesson.</span></a>
         <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC, decoded by Direwolf. <em class="air">CHECKING…</em></span></a>
         <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz by dump1090. <em class="air">CHECKING…</em></span></a>
+        <a class="level" href="/radio/sstv.html" data-icon="tv" data-blip="Pictures over radio! Even from the space station."><span class="lv">1-9 <i>▶ PLAY</i></span><b>SSTV DECODER</b><span class="d">Slow-scan TV pictures from the ISS, a recording, your mic or the dongle.</span></a>
       </nav>
     </article>
 
@@ -158,30 +159,48 @@
       </nav>
     </article>
 
+    <article class="world">
+      <header>
+        <h3><small>WORLD 3</small>ORNA</h3>
+        <span class="onair">BOT ONLINE</span>
+      </header>
+      <p>Orna is a GPS RPG: the map around you becomes the game world, with dungeons, towers and raids on real streets. This world collects tools and guides for it, starting with a bot that answers questions about the game.</p>
+      <nav class="levels" aria-label="ORNA projects">
+        <a class="level" href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener" data-icon="chat" data-blip="Ask the bot about items, classes and raids. It opens in Telegram."><span class="lv">3-1 <i>▶ OPEN</i></span><b>ASK THE ORNA BOT</b><span class="d">@IrishmooshBot on Telegram answers questions about the game. Opens Telegram's web client (or <span style="text-decoration:underline">t.me/IrishmooshBot</span> in the app).</span></a>
+        <div class="level off" data-icon="lock" data-blip="Locked: guides built from the game data."><span class="lv">3-2</span><b>GUIDES &amp; CODEX</b><span class="d">Items, materials and classes, searchable, with build tips.</span></div>
+      </nav>
+    </article>
+
     <div class="locked">
       <article class="world" data-blip="A bike world. I don't have legs, so I'll ride in the basket.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 3</small>RIDE</h3></header>
+        <header><h3><small>WORLD 4</small>RIDE</h3></header>
         <p>Bikepacking × AI: drop in GPX files and trip reports, get a day-by-day plan that knows where the water runs out.</p>
         <ol class="chapters"><li>Route notebook</li><li>Bike + train escapes from NYC</li><li>Gear graph</li></ol>
       </article>
       <article class="world" data-blip="Flashlights! Knives! Tiny screwdrivers! Locked for now.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 4</small>EDC</h3></header>
+        <header><h3><small>WORLD 5</small>EDC</h3></header>
         <p>Everyday-carry and geek tools: a daily feed that becomes a cited catalog, a knowledge base and a gift advisor.</p>
         <ol class="chapters"><li>Daily gear feed</li><li>Tools catalog</li><li>Knowledge base</li><li>Advisor + gift mode</li></ol>
       </article>
       <article class="world" data-blip="よむ means 'read'. That's all the Japanese I know.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 5</small>YOMU</h3></header>
+        <header><h3><small>WORLD 6</small>YOMU</h3></header>
         <p>Japanese through a graded serial story: every chapter adds a few new words, checked by a validator.</p>
         <ol class="chapters"><li>Graded serial story</li><li>Tap-to-gloss + review</li><li>Shadowing mode</li></ol>
       </article>
       <article class="world" data-blip="A skill tree! Every node unlocks another world.">
         <svg data-icon="lock" aria-hidden="true"></svg>
-        <header><h3><small>WORLD 6</small>LEARN & BUILD</h3></header>
+        <header><h3><small>WORLD 7</small>LEARN & BUILD</h3></header>
         <p>Math, electronics and hardware build logs, every lesson applied to the other worlds.</p>
         <ol class="chapters"><li>Skill tree</li><li>Track A: math, stats, ML</li><li>Track B: electronics to drivers</li><li>Hardware builds</li></ol>
+      </article>
+      <article class="world" data-blip="Math you can see, then neural nets, agents and vision. I'm an agent too!">
+        <svg data-icon="lock" aria-hidden="true"></svg>
+        <header><h3><small>WORLD 8</small>AI</h3></header>
+        <p>Machine learning from scratch, 3Blue1Brown style: the math made visible, then deep learning, agents and computer vision, every lesson with live visuals and code.</p>
+        <ol class="chapters"><li>Essential math: vectors, matrices, gradients, probability</li><li>Linear algebra you can drag</li><li>Neural networks and backprop</li><li>CNNs and transformers</li><li>Agents: tools, planning, evals (built on Blip)</li><li>ML for vision: detection and segmentation</li></ol>
       </article>
     </div>
   </section>
@@ -202,6 +221,8 @@
     box:   ["..........", "aaaaaaaaaa", "abbbbbbbba", "aaaaaaaaaa", ".a......a.", ".a.cccc.a.", ".a......a.", ".a......a.", ".aaaaaaaa.", ".........."],
     pin:   ["...aaaa...", "..aaaaaa..", ".aaabbaaa.", ".aabbbbaa.", ".aaabbaaa.", "..aaaaaa..", "...aaaa...", "....aa....", "....aa....", "...cccc..."],
     plane: ["....a.....", "....a.....", "...aaa....", "..aaaaa...", ".aaaaaaa..", "aa.aaa.aa.", "....a.....", "...aaa....", "..a.a.a...", ".........."],
+    tv:    ["..a....a..", "...a..a...", "aaaaaaaaaa", "abbbbbbbca", "abccbbbbca", "abbbbccbca", "abbbbbbbca", "aaaaaaaaaa", ".a......a.", ".........."],
+    chat:  ["..........", ".aaaaaaaa.", "a........a", "a.b.b.b..a", "a........a", ".aaaaaaaa.", "..aa......", ".a........", "..........", ".........."],
     lock:  ["..........", "...aaaa...", "..a....a..", "..a....a..", ".bbbbbbbb.", ".bbbccbbb.", ".bbbccbbb.", ".bbbbbbbb.", ".bbbbbbbb.", ".........."],
   };
   const COLORS = { a: "#ffb347", b: "#4de1ff", c: "#ff5c8a" };
