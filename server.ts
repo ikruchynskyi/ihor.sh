@@ -6,7 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
-import { stationArrivals } from "./transit.ts";
+import { stationArrivals, ferryBoard } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
 import { startEvents, currentEvents } from "./events.ts";
@@ -185,6 +185,7 @@ const server = http.createServer(async (req, res) => {
       if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();
       return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
     }
+    if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
     if (url.pathname === "/api/nyc/arrivals") {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();

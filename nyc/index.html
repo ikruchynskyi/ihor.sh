@@ -213,6 +213,7 @@ const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/av
 const LAYERS = {
   stations: { label: "🚇 All stations: click for next trains", on: false, group: L.layerGroup(), load: loadAllStations },
   citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
+  ferry: { label: "⛴ NYC Ferry: next boats", on: false, group: L.layerGroup(), load: loadFerry },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
   cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
   speeds: { label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
@@ -222,7 +223,7 @@ const LAYERS = {
   c311: { label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -266,6 +267,19 @@ async function loadSpeeds(g) {
   $("n-speeds").innerHTML = `(${d.links.length} roads, ${d.stale ? `⚠ feed last updated ${when}` : `as of ${when}`})<br><span class="legend"><i style="background:#5cff9d"></i>30+ mph <i style="background:#ffb347"></i>15–30 <i style="background:#ff5c8a"></i>under 15 <i style="background:#7f8bc4"></i>no data</span>`;
   seen.speeds = { asOf: d.asOf, stale: d.stale, slowest: d.links.filter((l) => l.ok).sort((a, b) => a.mph - b.mph).slice(0, 8).map((l) => `${l.name}: ${Math.round(l.mph)} mph`) };
 }
+
+// NYC Ferry: every landing with its next boats (real-time), colored by the first route due.
+async function loadFerry(g) {
+  const list = await getJSON("/api/nyc/ferry");
+  g.clearLayers();
+  for (const s of list) {
+    const c = s.next[0]?.color ?? "#7f8bc4";
+    dot(s.lat, s.lon, c, 7).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
+  }
+  $("n-ferry").textContent = `(${list.length} landings, ${list.filter((s) => s.next.length).length} with boats coming)`;
+  seen.ferry = list.filter((s) => s.next.length).slice(0, 15).map((s) => `${s.name}: ${s.next.map((n) => `${n.short} ${n.minutes} min`).join(", ")}`);
+}
+setInterval(() => { if (LAYERS.ferry.on) loadFerry(LAYERS.ferry.group).catch(() => {}); }, 60_000);
 
 // Citi Bike: every station colored by what you can do there right now (legend under the checkbox).
 const BIKE_COLORS = { ok: "#5cff9d", few: "#ffb347", none: "#ff5c8a", off: "#7f8bc4" };
@@ -510,7 +524,7 @@ window.blipActions = {
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
   plan_trip: { label: "planned the trip", description: "Plan a trip on the map and list the cameras on the route.", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike or walk" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
     run: ({ from, to, mode, avoid_ferries }) => { $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), citibike, outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), citibike, ferry (next boats), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -523,7 +537,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311 };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
 };
 
 $("refresh").addEventListener("click", refresh);

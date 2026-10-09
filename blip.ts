@@ -3,7 +3,7 @@
 import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
-import { findStations, stationArrivals } from "./transit.ts";
+import { findStations, stationArrivals, ferryBoard } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 
@@ -62,6 +62,15 @@ const TOOLS: Record<string, Tool> = {
       const g = await placeAnywhere(String(place || "Manhattan, New York")).catch(() => null);
       if (!g) return { error: `Couldn't find "${place}".` };
       return { near: g.label, repeaters: (await repeatersNear(g.lat, g.lon, { bandName: band ?? "", mode: mode ?? "", limit: 8 })).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: r.km })) };
+    },
+  },
+  ferry_arrivals: {
+    description: "NYC Ferry: next boats at a landing (route and minutes), or all landings with boats coming if no name is given.",
+    parameters: { landing: { type: "string", description: "Landing name, e.g. 'Hunters Point South', 'Wall St', 'Astoria'" } },
+    run: async ({ landing }) => {
+      const all = await ferryBoard();
+      const q = String(landing ?? "").toLowerCase();
+      return (q ? all.filter((s) => s.name.toLowerCase().includes(q)) : all.filter((s) => s.next.length)).slice(0, 12).map((s) => ({ landing: s.name, next: s.next.map((n) => `${n.route} in ${n.minutes} min`) }));
     },
   },
   deals: {
