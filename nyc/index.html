@@ -94,7 +94,7 @@
   <div id="pbody">
   <div class="muted">Subway Bailout: MTA alerts happening now. Click a red station to see the nearest Citi Bikes. Turn on cameras, events and restaurant inspections below.</div>
   <div class="muted" id="status">Loading…</div>
-  <div id="types" style="margin-top:8px"></div>
+  <details style="margin-top:8px"><summary id="typesSum">MTA alerts by type</summary><div id="types"></div></details>
   <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
   <details open><summary>Trip planner: cameras on your route</summary>
@@ -198,14 +198,9 @@ async function refresh() {
 function renderTypes() {
   const counts = new Map();
   for (const list of byStation.values()) for (const a of list) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
-  // "Planned…" is scheduled work, not an incident: hide it on first load, unless that would leave the map empty.
-  if (!renderTypes.done && counts.size) {
-    const planned = [...counts.keys()].filter((t) => /^Planned/i.test(t));
-    if (planned.length < counts.size) planned.forEach((t) => hidden.add(t));
-    renderTypes.done = true;
-  }
   $("types").innerHTML = [...counts].sort((a, b) => b[1] - a[1]).map(([t, n]) =>
     `<label><input type="checkbox" data-t="${esc(t)}" ${hidden.has(t) ? "" : "checked"}> ${esc(t)} <span class="muted">(${n})</span></label>`).join("");
+  $("typesSum").textContent = `MTA alerts by type (${[...counts.values()].reduce((a, b) => a + b, 0)}, ${counts.size - [...counts.keys()].filter((t) => hidden.has(t)).length} of ${counts.size} types shown)`;
   $("types").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
     el.checked ? hidden.delete(el.dataset.t) : hidden.add(el.dataset.t);
     render();
