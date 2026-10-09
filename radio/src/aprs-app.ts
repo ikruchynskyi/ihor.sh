@@ -41,7 +41,12 @@ for (const [b, show] of [["tStations", "stations"], ["tLog", "log"]] as const) d
 
 connect("aprs", {
   snapshot: (d: { stations: Station[]; log: Packet[] }) => { d.stations.forEach(upsert); log = d.log; renderLists(); },
-  packet: (d: { packet: Packet; station: Station }) => { log.push(d.packet); if (log.length > 300) log.shift(); upsert(d.station); renderLists(); },
+  packet: (d: { packet: Packet; station: Station }) => {
+    log.push(d.packet); if (log.length > 300) log.shift(); upsert(d.station); renderLists();
+    dispatchEvent(new CustomEvent("blip:ping")); // every packet heard makes Blip's antenna flash
+    if (d.packet.type === "weather" && d.station.wx?.tempF != null && Math.random() < 0.5)
+      dispatchEvent(new CustomEvent("blip:say", { detail: { text: `${d.packet.from} says it's ${d.station.wx.tempF}°F out there.`, mood: "happy" } }));
+  },
 });
 setInterval(renderLists, 30_000); // keep "x min ago" fresh
 (window as any).blipContext = () => ({ page: "APRS map (packet radio on 144.39 MHz from our own modem)", stations: [...stations.values()].slice(-30).map((s) => ({ callsign: s.callsign, type: s.type, lat: s.lat, lon: s.lon, comment: s.comment, weather: s.wx, lastSeen: s.lastSeen })), lastPackets: log.slice(-10).map((p) => p.raw) });

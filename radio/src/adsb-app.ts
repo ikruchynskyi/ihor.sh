@@ -33,5 +33,18 @@ document.getElementById("list")!.addEventListener("click", (e) => {
   if (m) { map.setView(m.m.getLatLng(), 11); m.m.openPopup(); }
 });
 
-connect("adsb", { aircraft: (list: Aircraft[]) => { planes = list; render(); } });
+// Blip spots new planes (at most one shout every 20 s).
+const known = new Set<string>();
+let shouted = 0;
+function spot(list: Aircraft[]) {
+  const fresh = list.filter((a) => !known.has(a.icao) && a.lat != null);
+  list.forEach((a) => a.lat != null && known.add(a.icao));
+  if (!fresh.length || Date.now() - shouted < 20_000 || known.size === fresh.length) return; // not on the first load
+  shouted = Date.now();
+  const a = fresh[0], p = map.latLngToContainerPoint([a.lat, a.lon]), r = document.getElementById("map")!.getBoundingClientRect();
+  dispatchEvent(new CustomEvent("blip:look", { detail: { x: r.left + p.x, y: r.top + p.y, ms: 2500 } }));
+  dispatchEvent(new CustomEvent("blip:say", { detail: { text: `Plane! ${a.callsign || a.icao}${a.altitude != null ? ` at ${a.altitude.toLocaleString()} ft` : ""}`, mood: "surprised" } }));
+  dispatchEvent(new CustomEvent("blip:ping"));
+}
+connect("adsb", { aircraft: (list: Aircraft[]) => { planes = list; render(); spot(list); } });
 (window as any).blipContext = () => ({ page: "ADS-B radar (aircraft over NYC from our own 1090 MHz decoder)", aircraft: planes.slice(0, 30).map((a) => ({ callsign: a.callsign, icao: a.icao, altitudeFt: a.altitude, speedKt: a.speed, heading: a.heading, verticalRate: a.verticalRate, kmFromReceiver: km(a) < Infinity ? Math.round(km(a)) : null })) });

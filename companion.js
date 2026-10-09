@@ -35,7 +35,10 @@ const CSS = `
 .body { stroke: #2a1405; stroke-width: 3; stroke-linejoin: round; }
 .antenna { fill: none; stroke: #2a1405; stroke-width: 3; stroke-linecap: round; }
 .tip { fill: #ff5c8a; stroke: #2a1405; stroke-width: 2.5; }
-.tip.on { fill: #ffd0dc; }
+.tip.on { fill: #ffd0dc; filter: drop-shadow(0 0 6px #ff5c8a); }
+.hat { pointer-events: none; }
+.party .body { animation: party 0.6s linear infinite; }
+@keyframes party { to { filter: hue-rotate(360deg); } }
 .shadow { fill: rgba(0,0,0,.35); }
 .white { fill: #fff; stroke: #2a1405; stroke-width: 2; }
 .pupil { fill: #14080a; }
@@ -113,6 +116,7 @@ root.innerHTML = `<style>${CSS}</style>
   <g class="fx"></g>
   <g class="blip" tabindex="0" role="button" aria-label="Blip, the site companion. Press Enter to ask a question.">
     <path class="antenna"/><circle class="tip" r="5"/>
+    <g class="hat" hidden><ellipse cx="0" cy="-6" rx="12" ry="9" fill="#ff8c1a" stroke="#2a1405" stroke-width="2.5"/><path d="M-4,-14 Q0,-6 -1,2 M4,-14 Q1,-6 2,2" stroke="#c75f00" stroke-width="1.5" fill="none"/><path d="M0,-15 q1,-5 4,-6" stroke="#2f6b1e" stroke-width="3" fill="none" stroke-linecap="round"/></g>
     <path class="body" fill="url(#skin)"/>
     <g class="face mood-idle">${eye(-1)}${eye(1)}
       <ellipse class="cheek" cx="-17" cy="6" rx="4" ry="2.5"/><ellipse class="cheek" cx="17" cy="6" rx="4" ry="2.5"/>
@@ -138,6 +142,8 @@ const $ = (s) => root.querySelector(s);
 const [stage, bodyEl, antennaEl, tipEl, face, mouth, shadow, fx, blipEl, bubble, tab] =
   [".stage", ".body", ".antenna", ".tip", ".face", ".mouth", ".shadow", ".fx", ".blip", ".bubble", ".tab"].map($);
 const looks = root.querySelectorAll(".look");
+const hat = root.querySelector(".hat");
+hat.hidden = new Date().getMonth() !== 9; // a pumpkin on the head all October
 
 // ---------- the soft body ----------
 let W = innerWidth, H = innerHeight;
@@ -206,6 +212,7 @@ function render() {
   bodyEl.setAttribute("d", outline(ring));
   antennaEl.setAttribute("d", `M${top.x},${top.y}Q${stalk.x},${stalk.y} ${tip.x},${tip.y}`);
   tipEl.setAttribute("cx", tip.x); tipEl.setAttribute("cy", tip.y);
+  if (!hat.hidden) hat.setAttribute("transform", `translate(${c.x - 13},${d3.min(ring, (n) => n.y) + 4}) rotate(-12)`);
   face.setAttribute("transform", `translate(${c.x},${c.y})`);
   const t = gaze && performance.now() < gaze.until ? gaze : mood === "think" ? { x: c.x + 20, y: c.y - 200 } : mouse.seen ? mouse : { x: c.x - 40, y: c.y + 10 };
   const dx = t.x - c.x, dy = t.y - c.y, m = Math.hypot(dx, dy) || 1, s = Math.min(1, m / 60) * 3.2;
@@ -423,6 +430,25 @@ addEventListener("blip:say", (e) => {
   if (m && MOUTH[m]) setMood(m, 1800);
   if (h) hop(h);
   if (text) say(String(text).slice(0, 140), { ms: ms ?? 3000 });
+});
+
+// More page hooks: blip:ping (antenna flash + radio ring), blip:key {on} (antenna light, e.g. in time with Morse),
+// blip:look {x, y, ms} (eyes go there).
+addEventListener("blip:ping", () => { if (!hidden) ping(); });
+addEventListener("blip:key", (e) => tipEl.classList.toggle("on", !!e.detail?.on));
+addEventListener("blip:look", (e) => { const { x, y, ms = 1500 } = e.detail ?? {}; if (Number.isFinite(x) && Number.isFinite(y)) gaze = { x, y, until: performance.now() + ms }; });
+
+// Party mode: the Konami code (↑ ↑ ↓ ↓ ← → ← → B A).
+const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+let konami = 0;
+addEventListener("keydown", (e) => {
+  konami = e.key === KONAMI[konami] ? konami + 1 : e.key === KONAMI[0] ? 1 : 0;
+  if (konami < KONAMI.length) return;
+  konami = 0;
+  if (hidden) show();
+  blipEl.classList.add("party"); setMood("happy", 6000); say("PARTY MODE! ✦", { ms: 2500 });
+  for (let i = 0; i < 10; i++) setTimeout(() => { hop(7); ping(); const c = centroid(); spawn("text", { class: "z", x: c.x - 30 + Math.random() * 60, y: c.y - 20 }, pick(["✦", "★", "♪", "✧"])); }, i * 450);
+  setTimeout(() => blipEl.classList.remove("party"), 5000);
 });
 
 blipEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDialog(); } });

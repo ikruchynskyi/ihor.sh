@@ -28,6 +28,8 @@
     .leaflet-popup-content ul { padding-left: 16px; margin: 4px 0; }
     .bikes li { list-style: none; margin-left: -16px; }
     #layers label, #trip label { display: block; margin: 3px 0; }
+    .legend { font-size: .75rem; }
+    .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: 0; }
     #trip input { width: 100%; }
     #rresults button { display: block; width: 100%; text-align: left; margin: 4px 0; font-size: .8rem; }
     .viol { font-size: .8rem; margin: 2px 0 0; }
@@ -80,6 +82,7 @@ const WALK_M_PER_MIN = 80;
 const MAX_BIKE_M = 1500; // beyond this a bike is no help (e.g. Staten Island has no Citi Bike)
 
 const $ = (id) => document.getElementById(id);
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
@@ -93,6 +96,7 @@ const bikeLayer = L.layerGroup().addTo(map);
 
 let stations = new Map(); // gtfs_stop_id → { name, lat, lon, routes }
 let bikes = [];           // stations with bikes available now
+let allBikes = [];        // every station with its status, for the Citi Bike layer
 let byStation = new Map(), unplaced = [];
 const hidden = new Set(); // alert types switched off
 
@@ -108,6 +112,11 @@ async function refresh() {
   try {
     const [feed, info, status] = await Promise.all([getJSON(ALERTS), getJSON(BIKE_INFO), getJSON(BIKE_STATUS)]);
     const st = new Map(status.data.stations.map((s) => [s.station_id, s]));
+    allBikes = info.data.stations.flatMap((s) => {
+      const x = st.get(s.station_id);
+      return x ? [{ name: s.name, lat: s.lat, lon: s.lon, bikes: x.num_bikes_available, ebikes: x.num_ebikes_available ?? 0, docks: x.num_docks_available, renting: !!x.is_renting, returning: !!x.is_returning, reported: x.last_reported }] : [];
+    });
+    if (LAYERS.citibike.on) loadCitiBike(LAYERS.citibike.group);
     bikes = info.data.stations.flatMap((s) => {
       const x = st.get(s.station_id);
       if (!x || !x.is_renting || x.num_bikes_available < 1) return [];
@@ -184,13 +193,14 @@ const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_Yo
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
   stations: { label: "🚇 All stations: click for next trains", on: false, group: L.layerGroup(), load: loadAllStations },
+  citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
   outages: { label: "♿ Broken elevators & escalators", on: true, group: L.layerGroup(), load: loadOutages },
   cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
   city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -221,6 +231,23 @@ async function loadOutages(g) {
       .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString()}` : ""}</span>`).addTo(g);
   }
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
+}
+
+// Citi Bike: every station colored by what you can do there right now (legend under the checkbox).
+const BIKE_COLORS = { ok: "#5cff9d", few: "#ffb347", none: "#ff5c8a", off: "#7f8bc4" };
+const bikeState = (b) => !b.renting ? "off" : b.bikes === 0 ? "none" : b.bikes < 3 ? "few" : "ok";
+const bikeCanvas = L.canvas({ padding: 0.3 });
+function loadCitiBike(g) {
+  g.clearLayers();
+  for (const b of allBikes) {
+    const c = BIKE_COLORS[bikeState(b)];
+    L.circleMarker([b.lat, b.lon], { renderer: bikeCanvas, radius: 4, color: c, fillColor: c, fillOpacity: 0.85, weight: 1, bubblingMouseEvents: false })
+      .bindPopup(() => `<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}${b.returning ? "" : "<br>Not accepting returns"}<br><span class="muted">reported ${new Date(b.reported * 1000).toLocaleTimeString()}</span>`)
+      .addTo(g);
+  }
+  const n = (k) => allBikes.filter((b) => bikeState(b) === k).length;
+  $("n-citibike").innerHTML = `(${allBikes.length})<br><span class="legend">${Object.entries({ ok: "3+ bikes", few: "1–2 bikes", none: "empty", off: "not renting" }).map(([k, t]) => `<i style="background:${BIKE_COLORS[k]}"></i>${t} ${n(k)}`).join(" ")}</span>`;
+  seen.citibike = { stations: allBikes.length, withBikes: allBikes.filter((b) => b.bikes > 0).length, empty: n("none"), notRenting: n("off") };
 }
 
 // Next trains: MTA real-time arrivals through /api/nyc/arrivals, shown in a station's popup.
@@ -271,6 +298,7 @@ function openCam(c) {
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   w.innerHTML = `<header><b title="${esc(c.name)}">📷 ${esc(c.name)}</b><button aria-label="Close camera">×</button></header><img alt="Live traffic camera: ${esc(c.name)}" src="${esc(c.image)}?t=${Date.now()}">`;
   $("cams").append(w);
+  if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
   const img = w.querySelector("img"), tick = setInterval(() => (img.src = `${c.image}?t=${Date.now()}`), 4000);
   w.querySelector("button").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); };
@@ -353,7 +381,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike };
 };
 
 $("refresh").addEventListener("click", refresh);

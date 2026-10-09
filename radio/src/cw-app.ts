@@ -28,18 +28,24 @@ function audio() {
 }
 const level = () => (S.vol / 100) ** 2 * 0.5;
 const EDGE = 0.0017; // time constant: ~5 ms rise/fall
-let playing = 0;
+let playing = 0, blinkTimers: ReturnType<typeof setTimeout>[] = [];
+const blipKey = (on: boolean) => dispatchEvent(new CustomEvent("blip:key", { detail: { on } })); // Blip's antenna keys along
 function play(text: string, wpm = S.wpm, eff = Math.min(S.eff, S.wpm)) {
   const c = audio(), t0 = c.currentTime + 0.08, id = ++playing;
   gain.gain.cancelScheduledValues(c.currentTime);
   gain.gain.setTargetAtTime(0, c.currentTime, EDGE);
   const { tones, duration } = schedule(text, wpm, eff);
-  for (const [a, b] of tones) { gain.gain.setTargetAtTime(level(), t0 + a / 1000, EDGE); gain.gain.setTargetAtTime(0, t0 + b / 1000, EDGE); }
+  blinkTimers.forEach(clearTimeout); blinkTimers = [];
+  const lead = (t0 - c.currentTime) * 1000;
+  for (const [a, b] of tones) {
+    gain.gain.setTargetAtTime(level(), t0 + a / 1000, EDGE); gain.gain.setTargetAtTime(0, t0 + b / 1000, EDGE);
+    blinkTimers.push(setTimeout(() => blipKey(true), lead + a), setTimeout(() => blipKey(false), lead + b));
+  }
   return new Promise<boolean>((done) => setTimeout(() => done(id === playing), duration + 120));
 }
-function stop() { playing++; if (ctx) { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(0, ctx.currentTime, EDGE); } }
-const keyOn = () => { const c = audio(); gain.gain.cancelScheduledValues(c.currentTime); gain.gain.setTargetAtTime(level(), c.currentTime, EDGE); };
-const keyOff = () => { if (ctx) gain.gain.setTargetAtTime(0, ctx.currentTime, EDGE); };
+function stop() { playing++; blinkTimers.forEach(clearTimeout); blinkTimers = []; blipKey(false); if (ctx) { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(0, ctx.currentTime, EDGE); } }
+const keyOn = () => { blipKey(true); const c = audio(); gain.gain.cancelScheduledValues(c.currentTime); gain.gain.setTargetAtTime(level(), c.currentTime, EDGE); };
+const keyOff = () => { blipKey(false); if (ctx) gain.gain.setTargetAtTime(0, ctx.currentTime, EDGE); };
 
 // ---------- settings UI ----------
 const sliders = { wpm: (v: number) => `${v} WPM`, eff: (v: number) => `${Math.min(v, S.wpm)} WPM`, tone: (v: number) => `${v} Hz`, vol: (v: number) => `${v}%` } as const;
