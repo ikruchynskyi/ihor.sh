@@ -44,7 +44,7 @@
   <div class="scene"><canvas id="s3" width="800" height="600" aria-label="The XOR pattern: one neuron fails, a small network succeeds"></canvas><p class="readout" id="r3"></p></div>
   <div class="row"><button id="train3">Train one neuron</button><button id="net3">Train a hidden layer (4 neurons)</button><button id="reset3">Reset</button></div>
   <p>It can't. However it turns its line, one straight cut can't put opposite corners together, so it gets stuck around half right. This exact problem stalled neural network research for a decade in the 1970s. The fix is the one from chapter 1: <b>stack layers</b>. Four neurons in a hidden layer each make their own cut; a final neuron combines their answers, and now the boundary can bend around the corners. Press the second button and watch it curve.</p>
-  <p>But how did that hidden layer learn? Each of its neurons had to figure out its share of the blame for the final answer, through the neuron after it. Passing blame backwards like that is <b>backpropagation</b>: the next chapter.</p>
+  <p>But how did that hidden layer learn? Each of its neurons had to figure out its share of the blame for the final answer, through the neuron after it. Passing blame backwards like that is <a href="./04-backprop.html"><b>backpropagation</b></a>: the next chapter.</p>
 
   <p class="muted">Previous: <a href="./02-gradients.html">Gradients</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">Neural Networks</a> series.</p>
 </main>
