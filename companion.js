@@ -415,6 +415,16 @@ function poke(x, y) {
   }
 }
 
+// Pages can make Blip react to what happens on them: dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood, hop } })).
+addEventListener("blip:say", (e) => {
+  const { text, mood: m, hop: h, ms } = e.detail ?? {};
+  if (hidden || dialogOpen) return;
+  if (asleep) activity();
+  if (m && MOUTH[m]) setMood(m, 1800);
+  if (h) hop(h);
+  if (text) say(String(text).slice(0, 140), { ms: ms ?? 3000 });
+});
+
 blipEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDialog(); } });
 
 // ---------- hide / show ----------
