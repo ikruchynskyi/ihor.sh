@@ -51,6 +51,11 @@
   .logo { margin: 0; font: clamp(40px, 11vw, 112px)/1 var(--pixel); color: var(--amber); letter-spacing: -.02em; text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--line); animation: flicker 6s infinite steps(1); }
   .logo span { color: var(--ink); }
   @keyframes flicker { 0%, 100% { opacity: 1; } 92% { opacity: .85; } 93% { opacity: 1; } 96% { opacity: .9; } }
+  .meet { margin: 18px 0 0; max-width: 62ch; padding: 12px 16px; border: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--card, #0d1226) 85%, transparent); font-family: ui-sans-serif, system-ui, sans-serif; }
+  .meet b { display: block; font-size: 1.05rem; margin-bottom: 4px; }
+  .meet p { margin: 0 0 10px; line-height: 1.55; color: var(--dim); }
+  .meet button { font: calc(11px * var(--px, 1)) var(--pixel); color: var(--on-accent, #1b1020); background: var(--accent, #ffb347); border: 0; padding: 10px 14px; cursor: pointer; box-shadow: 0 4px 0 #1b2350; }
+  .meet button:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b2350; }
   .tag { margin: 0; max-width: 34ch; color: var(--dim); font-size: clamp(22px, 3vw, 28px); }
   .start { font: calc(14px * var(--px, 1)) var(--pixel); color: var(--green); text-decoration: none; padding: 14px 18px; animation: blink 1.1s steps(2) infinite; }
   .start:hover, .start:focus-visible { animation: none; color: var(--bg); background: var(--green); }
@@ -105,7 +110,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
-  <span>7 OF 7 WORLDS OPEN + BONUS</span>
+  <span>6 OF 6 WORLDS OPEN + BONUS</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
@@ -120,6 +125,11 @@
       <span><kbd>CLICK</kbd>poke Blip</span>
       <span><kbd>SELECT</kbd>any text to ask</span>
       <span><kbd>← → ↑ ↓</kbd>move · <kbd>ENTER</kbd>play</span>
+    </div>
+    <div class="meet">
+      <b>Meet Blip, your study buddy on every page.</b>
+      <p>Click the little robot (bottom corner) and ask anything about what you're looking at. Blip reads the page you're on: a lesson's math and code, the circuit you're building in the lab, the subway map, what the radio is decoding. It explains it in plain words, quizzes you, points at things and can change them for you ("make R1 330 Ω", "show me the next train at Union Sq"). Select any text on any page to ask about just that.</p>
+      <button id="askBlip">💬 Ask Blip something</button>
     </div>
   </section>
 
@@ -472,6 +482,8 @@
   }
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { for (let i = 0; i < ROWS; i++) frame(); new MutationObserver(() => { for (let i = 0; i < ROWS; i++) frame(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); }
   else setInterval(frame, 60);
+  // The "Meet Blip" panel opens the chat.
+  document.getElementById("askBlip").onclick = () => dispatchEvent(new CustomEvent("blip:ask", { detail: { text: "" } }));
 </script>
 <script type="module" src="/reader.js"></script>
 <script type="module" src="/companion.js"></script>
