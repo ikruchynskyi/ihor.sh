@@ -31,6 +31,10 @@
     .legend { font-size: .75rem; }
     .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: 0; }
     #trip input:not([type]) { width: 100%; }
+    .pickrow { display: flex; gap: 4px; }
+    .pickrow button { padding: 4px 8px !important; }
+    .pick[aria-pressed="true"] { background: var(--accent) !important; }
+    .picking .leaflet-container, .picking #map { cursor: crosshair !important; }
     .modes { display: flex; gap: 6px; border: 0; padding: 0; margin: 6px 0; }
     .modes legend { float: left; margin-right: 6px; align-self: center; font-size: .85rem; }
     .modes label { flex: 1; display: grid; place-items: center; gap: 2px; padding: 6px 4px; border: 2px solid var(--line); cursor: pointer; margin: 0 !important; }
@@ -63,8 +67,9 @@
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
   <details open><summary>Trip planner: cameras on your route</summary>
     <form id="trip">
-      <label>From <input id="tFrom" placeholder="Address or place, e.g. Empire State Building" autocomplete="off"></label>
-      <label>To <input id="tTo" placeholder="e.g. Barclays Center" autocomplete="off"></label>
+      <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button></span></label>
+      <label>To <span class="pickrow"><input id="tTo" placeholder="e.g. Barclays Center, or 📍" autocomplete="off"><button type="button" class="pick" data-for="tTo" title="Pick the destination on the map" aria-label="Pick the destination on the map">📍</button></span></label>
+      <div class="muted" id="pickHint" hidden>Click the map to set the point (Esc to cancel).</div>
       <fieldset class="modes"><legend>By</legend>
         <label title="Car"><input type="radio" name="tMode" value="drive" checked><span aria-hidden="true">🚗</span><b>Car</b></label>
         <label title="Bike"><input type="radio" name="tMode" value="bike"><span aria-hidden="true">🚲</span><b>Bike</b></label>
@@ -366,9 +371,36 @@ function openCam(c) {
 
 // Trip planner: route from the server (Valhalla + GeoSearch) and the traffic cameras along it, in order.
 const tripLayer = L.layerGroup().addTo(map);
+// Picking start/end on the map: the 📍 button arms the next map click; the point becomes a draggable marker
+// (drag it to re-plan). The input shows the nearest address but the route uses the exact point.
+const picked = { tFrom: null, tTo: null }, pinMarkers = {};
+let picking = null;
+const setPicking = (id) => {
+  picking = id;
+  document.body.classList.toggle("picking", !!id);
+  $("pickHint").hidden = !id;
+  document.querySelectorAll(".pick").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.for === id)));
+};
+document.querySelectorAll(".pick").forEach((b) => (b.onclick = () => setPicking(picking === b.dataset.for ? null : b.dataset.for)));
+addEventListener("keydown", (e) => { if (e.key === "Escape" && picking) setPicking(null); });
+async function placePin(id, latlng) {
+  picked[id] = { lat: latlng.lat, lon: latlng.lng };
+  const color = id === "tFrom" ? "#5cff9d" : "#ff5c8a";
+  const icon = L.divIcon({ className: "", html: `<div style="font-size:26px;line-height:26px;filter:drop-shadow(0 0 2px #000);color:${color}">📍</div>`, iconSize: [26, 26], iconAnchor: [13, 26] });
+  pinMarkers[id]?.remove();
+  pinMarkers[id] = L.marker(latlng, { icon, draggable: true, title: id === "tFrom" ? "Start" : "Destination" }).addTo(map)
+    .on("dragend", (ev) => placePin(id, ev.target.getLatLng()).then(() => { if (picked.tFrom && picked.tTo || ($("tFrom").value && $("tTo").value)) $("trip").requestSubmit(); }));
+  $(id).value = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+  const d = await getJSON(`/api/nyc/point?lat=${latlng.lat.toFixed(6)}&lon=${latlng.lng.toFixed(6)}`).catch(() => null);
+  if (d?.found && picked[id]?.lat === latlng.lat) $(id).value = d.address || d.place;
+  picked[id].label = $(id).value;
+}
+["tFrom", "tTo"].forEach((id) => $(id).addEventListener("input", () => { picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }));
+const tripEnd = (id) => (picked[id] && $(id).value === picked[id].label ? `${picked[id].lat},${picked[id].lon}` : $(id).value.trim());
+
 $("trip").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const from = $("tFrom").value.trim(), to = $("tTo").value.trim();
+  const from = tripEnd("tFrom"), to = tripEnd("tTo");
   if (!from || !to) return;
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
@@ -383,8 +415,8 @@ $("trip").addEventListener("submit", async (e) => {
     L.polyline(d.line.slice(j.from, j.to + 1), { color, weight: 7, opacity: 0.95, bubblingMouseEvents: false })
       .bindTooltip(`${j.kind === "ROAD_WORK" ? "Road work" : j.kind === "ROAD_CLOSURE" ? "Closure" : "Traffic"}: ${word}${j.delayMinutes ? `, +${j.delayMinutes} min` : ""}${j.kmh != null ? `, ${j.kmh} km/h` : ""}`).addTo(tripLayer);
   }
-  dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
-  dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
+  if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
+  if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
   const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
   for (const c of d.cameras) L.marker([c.lat, c.lon], { icon: camIcon, title: c.name }).on("click", () => openCam(c)).addTo(tripLayer);
   map.fitBounds(line.getBounds().pad(0.1));
@@ -429,6 +461,14 @@ async function showInspections(popup, r) {
 
 // Click on an empty spot: what's here (address, districts, precinct) from NYC Geoclient.
 map.on("click", async (e) => {
+  if (picking) {
+    const id = picking;
+    setPicking(null);
+    await placePin(id, e.latlng);
+    if ($("tFrom").value && $("tTo").value) $("trip").requestSubmit();
+    else if (id === "tFrom") setPicking("tTo"); // next: the destination
+    return;
+  }
   const p = L.popup().setLatLng(e.latlng).setContent("Looking up…").openOn(map);
   const d = await getJSON(`/api/nyc/point?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
   if (!d?.found) return p.setContent("No NYC address found here.");

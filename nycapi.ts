@@ -150,8 +150,14 @@ export async function trafficSpeeds() {
 }
 
 // ---------- trip planner ----------
-/** First match for an address or place in NYC (NYC Planning GeoSearch). */
+/** First match for an address or place in NYC (NYC Planning GeoSearch); "lat,lon" (a point picked on the map) is used as is. */
 export async function geocode(text: string) {
+  const c = text.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (c) {
+    const lat = Number(c[1]), lon = Number(c[2]);
+    const near = await json(`https://geosearch.planninglabs.nyc/v2/reverse?point.lat=${lat}&point.lon=${lon}&size=1`).catch(() => null);
+    return { label: near?.features?.[0]?.properties?.label ?? `${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon };
+  }
   const d = await json(`https://geosearch.planninglabs.nyc/v2/search?text=${encodeURIComponent(text)}&size=1`);
   const f = d.features?.[0];
   return f ? { label: f.properties.label as string, lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number } : null;
