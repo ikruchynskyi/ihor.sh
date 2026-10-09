@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Probability and Loss</title>
+  <meta name="description" content="AI from scratch, chapter 5: softmax turning scores into probabilities, temperature, cross-entropy as surprise, why language models sample instead of always picking the top word, and the beautifully simple gradient that trains them." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .stage { background: #14171d; color: #d7dde5; padding: 14px 16px; }
+    .bars { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 8px 14px; align-items: center; font: 15px ui-monospace, Menlo, monospace; }
+    .bars .h { color: #8f98a8; font-size: 13px; }
+    .bar { height: 22px; background: #2a2f3a; position: relative; }
+    .bar i { position: absolute; inset: 0 auto 0 0; background: #58c4dd; transition: width .15s; }
+    .bar.p i { background: #f4d35e; } .bar.right i { background: #83c167; }
+    .bar b { position: absolute; right: 6px; top: 0; font-weight: normal; font-size: 13px; line-height: 22px; color: #fff; text-shadow: 0 0 3px #000; }
+    .bars input[type=range] { width: 100%; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    .samples { font: 17px ui-monospace, Menlo, monospace; line-height: 2; }
+    .samples span { display: inline-block; padding: 0 6px; margin: 2px; background: #2a2f3a; color: #f4d35e; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 5</p>
+  <h1>Probability and loss</h1>
+  <p class="lede">So far our networks said "blue or red". Real ones choose among many answers: which digit, which animal, which of 100,000 words comes next. They don't output an answer; they output <em>how much they believe in each one</em>. This chapter is about those beliefs: how scores become probabilities, how to measure a wrong belief, and why a chatbot's reply can change every time you ask.</p>
+
+  <h2>1. Scores become probabilities: softmax</h2>
+  <p>The last layer of a network gives one raw score per answer, called a <b>logit</b>: any number, positive or negative. To turn scores into probabilities that are positive and add up to 1, we use <b>softmax</b>: raise e to each score, then divide by the total.</p>
+  <p class="math" style="text-align:center">p(i) = e<sup>score(i) / T</sup> / Σ e<sup>score(j) / T</sup></p>
+  <div class="stage"><div class="bars" id="sm"></div>
+    <div class="row" style="margin-top:12px"><label>temperature T <input type="range" id="temp" min="0.1" max="5" step="0.05" value="1"> <span id="tv" class="math">1.00</span></label></div></div>
+  <p class="readout" id="r1"></p>
+  <p>Drag the scores. Only the <em>differences</em> between them matter: add the same amount to all three and nothing changes. A score 2 higher means about 7 times more likely (e² ≈ 7.4). The <b>temperature</b> divides every score first: low temperature exaggerates the differences until the top answer takes everything; high temperature flattens them toward a coin flip.</p>
+
+  <h2>2. Loss as surprise: cross-entropy</h2>
+  <p>To train, we need a number for "how wrong was that belief?". The standard answer: look only at the probability the model gave to the <b>right</b> answer, <span class="math">p</span>, and take <span class="math">−log p</span>. That's the <b>cross-entropy loss</b>, also called surprise: 100% sure and right means zero surprise; 1% on the truth means a lot.</p>
+  <canvas id="ce" width="800" height="400" aria-label="The curve of minus log p, with a draggable probability"></canvas>
+  <div class="row"><label>probability on the right answer <input type="range" id="p" min="0.005" max="1" step="0.005" value="0.6"> <span id="pv" class="math">0.60</span></label></div>
+  <p class="readout" id="r2"></p>
+  <p>The curve shoots up near zero. That's on purpose: a model that's <em>confidently wrong</em> gets a huge loss, so its gradient is big and it changes a lot, while a model that's unsure gets a gentle push. It's the same log loss our single neuron used in chapter 3, now for any number of answers.</p>
+
+  <h2>3. Why a model "guesses": sampling</h2>
+  <p>A language model is this exact machine with one answer per word in its vocabulary. Given "The cat sat on the", it gives every word a probability. Then it has to <b>pick</b> one. Always picking the top word is called greedy; it's predictable and tends to repeat itself. Instead, models usually <b>sample</b>: roll a weighted die. Try it, and try the temperature.</p>
+  <div class="stage"><p class="math" style="margin:0 0 8px">The cat sat on the …</p><div class="bars" id="lm"></div>
+    <div class="row" style="margin-top:12px"><label>temperature <input type="range" id="temp3" min="0.1" max="2.5" step="0.05" value="1"> <span id="t3v" class="math">1.00</span></label>
+    <button id="greedy">Greedy ×10</button><button id="sample">Sample ×20</button></div>
+    <div class="samples" id="out"></div></div>
+  <p>That's why the same question can get different answers, and why "temperature" is a setting in every chatbot API: near 0 it's careful and repetitive, higher it's creative and occasionally unhinged. The model doesn't "know" the next word; it knows a distribution, and the reply is one roll of the dice.</p>
+
+  <h2>4. The gradient is "what you said minus what was true"</h2>
+  <p>Here's the beautiful part. Put softmax and cross-entropy together and do the backprop from chapter 4, and the gradient for each score comes out as simply</p>
+  <p class="math" style="text-align:center">∂loss / ∂score(i) = p(i) − (1 if i is the right answer, else 0)</p>
+  <p>The right answer's score gets pushed up by how much probability it was <em>missing</em>; every wrong answer gets pushed down by how much it <em>took</em>. Pick the right answer and train.</p>
+  <div class="stage"><div class="bars" id="tr"></div>
+    <div class="row" style="margin-top:12px"><label>right answer <select id="truth"><option>cat</option><option selected>dog</option><option>bird</option></select></label><button id="step4">One training step</button><button id="reset4">Reset</button></div></div>
+  <p class="readout" id="r4"></p>
+  <p>Every classifier and every language model is trained with exactly this push, on billions of examples. Next we'll give networks eyes: <b>convolutions</b>, filters that slide over images.</p>
+
+  <p class="muted">Previous: <a href="./04-backprop.html">Backprop you can watch</a> · All chapters: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const softmax = (s, T = 1) => { const m = Math.max(...s.map((v) => v / T)), e = s.map((v) => Math.exp(v / T - m)), z = e.reduce((a, b) => a + b, 0); return e.map((v) => v / z); };
+const bar = (frac, label, cls = "") => `<div class="bar ${cls}"><i style="width:${Math.max(0, Math.min(1, frac)) * 100}%"></i><b>${label}</b></div>`;
+
+// 1. softmax with temperature
+const names = ["cat", "dog", "bird"], scores = [2, 1, -0.5];
+function render1() {
+  const T = +$("temp").value, p = softmax(scores, T);
+  $("tv").textContent = T.toFixed(2);
+  $("sm").innerHTML = `<span class="h">answer</span><span class="h">score (logit): drag</span><span class="h">probability</span>` + names.map((n, i) =>
+    `<span>${n}</span><input type="range" min="-5" max="5" step="0.1" value="${scores[i]}" data-i="${i}" aria-label="score for ${n}"><span>${bar(p[i], (p[i] * 100).toFixed(1) + "%", "p")}</span>`).join("");
+  $("r1").textContent = `scores (${scores.map((v) => v.toFixed(1)).join(", ")}) → e^score: (${scores.map((v) => Math.exp(v / T).toFixed(2)).join(", ")}) → probabilities add up to ${p.reduce((a, b) => a + b, 0).toFixed(3)}`;
+}
+$("sm").addEventListener("input", (e) => { if (e.target.dataset.i) { scores[+e.target.dataset.i] = +e.target.value; const T = +$("temp").value, p = softmax(scores, T); $("sm").querySelectorAll(".bar").forEach((b, i) => { b.querySelector("i").style.width = p[i] * 100 + "%"; b.querySelector("b").textContent = (p[i] * 100).toFixed(1) + "%"; }); $("r1").textContent = `scores (${scores.map((v) => v.toFixed(1)).join(", ")}) → probabilities ${p.map((v) => (v * 100).toFixed(1) + "%").join(", ")}`; } });
+$("temp").oninput = render1;
+render1();
+
+// 2. cross-entropy curve
+const cv = $("ce"), g = cv.getContext("2d");
+function render2() {
+  const p = +$("p").value, X = (v) => 60 + v * 700, Y = (l) => 360 - l * 60;
+  $("pv").textContent = p.toFixed(3);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, 800, 400);
+  g.strokeStyle = "#4a5262"; g.lineWidth = 2; g.beginPath(); g.moveTo(60, 20); g.lineTo(60, 360); g.lineTo(780, 360); g.stroke();
+  g.fillStyle = "#8f98a8"; g.font = "14px ui-monospace, monospace"; g.fillText("loss = −log p", 70, 30); g.fillText("p on the right answer →", 560, 390); g.fillText("0", 52, 390); g.fillText("1", X(1) - 4, 390);
+  g.strokeStyle = "#58c4dd"; g.lineWidth = 3; g.beginPath();
+  for (let v = 0.003; v <= 1; v += 0.003) { const [x, y] = [X(v), Y(-Math.log(v))]; v === 0.003 ? g.moveTo(x, Math.max(20, y)) : g.lineTo(x, Math.max(20, y)); }
+  g.stroke();
+  const l = -Math.log(p);
+  g.fillStyle = "#f4d35e"; g.beginPath(); g.arc(X(p), Math.max(20, Y(l)), 9, 0, 7); g.fill();
+  $("r2").textContent = `p = ${p.toFixed(3)} → loss ${l.toFixed(3)}${p < 0.05 ? ": confidently wrong, huge loss" : p > 0.95 ? ": confident and right, almost no loss" : ""} · ${(l / Math.LN2).toFixed(2)} bits of surprise (one bit = a fair coin flip)`;
+}
+$("p").oninput = render2;
+render2();
+
+// 3. sampling the next word
+const words = ["mat", "floor", "chair", "roof", "keyboard", "moon"], logits3 = [3.1, 2.2, 1.6, 0.9, 1.2, -1.5];
+function render3() {
+  const T = +$("temp3").value, p = softmax(logits3, T);
+  $("t3v").textContent = T.toFixed(2);
+  $("lm").innerHTML = `<span class="h">word</span><span class="h">score</span><span class="h">probability</span>` + words.map((w, i) => `<span>${w}</span><span class="math">${logits3[i].toFixed(1)}</span>${bar(p[i], (p[i] * 100).toFixed(1) + "%", "p")}`).join("");
+  return p;
+}
+const pick = (p) => { let r = Math.random(); for (let i = 0; i < p.length; i++) if ((r -= p[i]) <= 0) return i; return p.length - 1; };
+$("temp3").oninput = render3;
+$("sample").onclick = () => { const p = render3(), got = Array.from({ length: 20 }, () => words[pick(p)]); $("out").innerHTML = got.map((w) => `<span>${w}</span>`).join(""); if (got.includes("moon")) say("The cat sat on the moon! Low odds, but it happens.", "surprised"); };
+$("greedy").onclick = () => { render3(); $("out").innerHTML = Array.from({ length: 10 }, () => `<span>mat</span>`).join(""); };
+render3();
+
+// 4. training a softmax: gradient = p − onehot
+const init4 = [0.5, 0.2, 0.8], s4 = [...init4];
+function render4(grad) {
+  const p = softmax(s4), t = names.indexOf($("truth").value);
+  $("tr").innerHTML = `<span class="h">answer</span><span class="h">score</span><span class="h">probability</span>` + names.map((n, i) => `<span>${n}${i === t ? " ✓" : ""}</span><span class="math">${s4[i].toFixed(2)}${grad ? ` <span style="color:${grad[i] < 0 ? "#83c167" : "#fc6255"}">(${grad[i] < 0 ? "↑" : "↓"} ${Math.abs(grad[i]).toFixed(2)})</span>` : ""}</span>${bar(p[i], (p[i] * 100).toFixed(1) + "%", i === t ? "right" : "p")}`).join("");
+  $("r4").textContent = `loss −log p(${names[t]}) = ${(-Math.log(p[t])).toFixed(3)}${grad ? ` · gradient p − truth = (${grad.map((v) => v.toFixed(2)).join(", ")})` : ""}`;
+}
+$("step4").onclick = () => {
+  const p = softmax(s4), t = names.indexOf($("truth").value), grad = p.map((v, i) => v - (i === t ? 1 : 0));
+  grad.forEach((gv, i) => (s4[i] -= 1.0 * gv));
+  render4(grad);
+  if (softmax(s4)[t] > 0.95) say(`It's sure it's a ${names[t]} now.`, "happy");
+};
+$("truth").onchange = () => render4();
+$("reset4").onclick = () => { s4.splice(0, 3, ...init4); render4(); };
+render4();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 5: Probability and loss", softmax: { scores, temperature: +$("temp").value, probabilities: softmax(scores, +$("temp").value) }, crossEntropyAt: +$("p").value, sampling: { words, temperature: +$("temp3").value }, training: { scores: s4, truth: $("truth").value } });
+</script>
+</body>
+</html>

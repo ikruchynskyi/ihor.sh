@@ -53,7 +53,7 @@
   <p>Nudging works, but it needs one extra forward pass <em>per weight</em>. Backprop gets every gradient from one forward and one backward pass, about the cost of three forward passes, however many weights there are.</p>
   <div class="row"><label>weights in the network <input type="range" id="n" min="1" max="12" step="0.1" value="6"></label></div>
   <p class="readout" id="r4"></p>
-  <p>That gap is why networks with billions of weights can be trained at all. Everything since, convolutions for images and attention for language, is new shapes of graphs with the same forward and backward passes running through them. Next: what the loss should actually be when a network has to choose between answers, <b>probability and loss</b>.</p>
+  <p>That gap is why networks with billions of weights can be trained at all. Everything since, convolutions for images and attention for language, is new shapes of graphs with the same forward and backward passes running through them. Next: what the loss should actually be when a network has to choose between answers, <a href="./05-probability-and-loss.html"><b>probability and loss</b></a>.</p>
 
   <p class="muted">Previous: <a href="./03-a-neuron.html">A neuron from scratch</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/backpropagation-calculus">Backpropagation calculus</a> and Andrej Karpathy's micrograd.</p>
 </main>
