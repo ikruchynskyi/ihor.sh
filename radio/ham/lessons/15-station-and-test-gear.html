@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Station and Test Gear</title>
+  <meta name="description" content="Ham radio, visually, lesson 15: wiring a station, receiver controls (notch, noise blanker, noise reduction), an oscilloscope you can use, meters, analyzers and S-parameters, and hunting interference on a waterfall." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 15</p>
+  <h1>Your station and test gear</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./01-volts-amps-ohms.html#meters">Lesson 1: meters</a>; <a href="./08-feed-lines-and-swr.html#measure">lesson 8: SWR and analyzers</a>; <a href="./10-signals-and-modes.html#mixing">lesson 10: intermod</a>; <a href="./11-receivers-and-transmitters.html">lesson 11: receivers</a></li>
+    </ul>
+  </div>
+
+  <p>A station is more than a radio: it's power, wiring, grounding, an antenna system, maybe a computer, and the instruments to check that it all works. This lesson is about putting it together, using the receiver's controls well, measuring things, and tracking down interference, both the kind you cause and the kind you suffer.</p>
+
+  <!-- 1 -->
+  <h2 id="power">Power: fat, short wires</h2>
+  <p>A transmitter draws a lot of current, and every wire has some resistance. Current times resistance is a voltage drop (<a class="back" href="./01-volts-amps-ohms.html#ohm">↩ Ohm's law</a>), and a radio that sees 11 volts instead of 13.8 misbehaves. Try a 100-watt HF rig:</p>
+
+  <div class="scene" id="s-drop">
+    <div class="controls">
+      <label for="dr-g">Wire <select id="dr-g"><option value="18">18 AWG (thin)</option><option value="14" selected>14 AWG</option><option value="12">12 AWG</option><option value="10">10 AWG</option><option value="8">8 AWG (thick)</option></select></label>
+      <label for="dr-l">Length (one way) <input id="dr-l" type="range" min="1" max="25" step="1" value="15"><output id="dr-lo"></output></label>
+      <label for="dr-i">Current <input id="dr-i" type="range" min="1" max="25" step="1" value="20"><output id="dr-io"></output></label>
+    </div>
+    <p class="readout" id="r-drop" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Size the supply generously: a 50 W mobile FM rig wants about <b>13.8 V at 12 A</b>; a 100 W HF rig about 20–25 A. Battery run time is the <b>amp-hour rating divided by the average current</b>.</li>
+    <li>In a car, run heavy-gauge, fused wires <b>directly to the battery</b>, with the negative lead to the battery's chassis ground; a vehicle's accessory socket can't handle 100 W worth of current. HF mobile is limited mostly by the efficiency of the short antenna (<a class="back" href="./07-antennas.html#short">↩ lesson 7</a>): a <b>capacitance hat</b> electrically lengthens it, and a <b>corona ball</b> on the tip reduces RF discharge. Ignition, the alternator, fuel pumps and other electronics can all cause interference to a mobile receiver.</li>
+    <li>Solar: panels wire their cells in <b>series-parallel</b> (each silicon cell gives about 0.5 V). A series <b>diode</b> stops the battery discharging back through the panel at night, and a lithium iron phosphate battery needs a proper <b>charge controller</b>.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="hookup">Hooking it all together</h2>
+  <ul>
+    <li>An <b>SWR or power meter</b> goes in the feed line, between the transmitter and the antenna; choose one rated for your frequency and power.</li>
+    <li>For digital modes like FT8, a computer connects to the radio with three signals: <b>receive audio</b> (radio's speaker or data output to the computer's line in), <b>transmit audio</b> (computer's output to the radio's audio input) and <b>transmitter keying</b> (PTT). A digital-voice <b>hotspot</b> links nearby radios to a digital network over the internet.</li>
+    <li>An <b>electronic keyer</b> generates dots and dashes automatically from a paddle.</li>
+    <li>Bond the equipment together with <b>flat copper strap</b> (low inductance at RF).</li>
+    <li>With an external amplifier, the transceiver should delay RF slightly after keying, so the amplifier's relay has time to switch the antenna. <b>ALC</b> (automatic level control) prevents excessive drive; leave it inactive on AFSK data, where its action distorts the signal. Tuning a vacuum-tube amplifier: the TUNE control gives a pronounced <b>dip</b> in plate current; LOAD for the desired output without exceeding the maximum plate current.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="controls">The receiver's tools against noise and QRM</h2>
+  <p>Here's an SSB voice in your receiver's audio passband, with an interfering carrier (someone tuning up) and a neighbor's electric fence clicking away. Try the tools:</p>
+
+  <div class="scene" id="s-rx">
+    <div class="controls">
+      <label for="rx-n"><input id="rx-n" type="checkbox"> Notch filter</label>
+      <label for="rx-b"><input id="rx-b" type="checkbox"> Noise blanker</label>
+      <label for="rx-r">Noise reduction <input id="rx-r" type="range" min="0" max="1" step="0.1" value="0"><output id="rx-ro"></output></label>
+    </div>
+    <p class="readout" id="r-rx" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A <b>notch filter</b> cuts a narrow slot to remove a carrier inside the passband. An automatic notch, used on CW, may remove the CW signal you want along with the carrier.</li>
+    <li>A <b>noise blanker</b> removes <b>impulse noise</b> (clicks, ignition, electric fences) by cutting the receiver's gain during each pulse; with strong signals nearby, it can distort them so they seem to spread.</li>
+    <li><b>DSP noise reduction</b> reduces many kinds of noise, but turned up too far it makes signals sound distorted and watery.</li>
+    <li>Other tools: a receive <b>attenuator</b> prevents overload from strong signals; on CW, switching to the <b>opposite sideband</b> may move an interfering signal out of your passband; <b>dual VFOs</b> let you transmit on one frequency and listen on another (working DX split, <a class="back" href="./13-operating.html#contests">↩ lesson 13</a>).</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="scope">The oscilloscope</h2>
+  <p>A meter gives you one number; an <b>oscilloscope</b> draws the waveform itself, with vertical (amplitude) and horizontal (time) amplifiers. That makes it the tool for complex waveforms, keying shapes and modulation envelopes. Pick something to look at:</p>
+
+  <div class="scene" id="s-scope">
+    <div class="controls">
+      <label for="sc-m">Signal <select id="sc-m">
+        <option value="cw">CW keying, well shaped</option><option value="click">CW keying, too sharp (clicks)</option><option value="two">SSB two-tone test</option><option value="flat">Two-tone test, overdriven</option><option value="ripple">Power supply ripple (line trigger)</option><option value="probe">Probe compensation</option>
+      </select></label>
+      <label for="sc-k">Probe adjustment <input id="sc-k" type="range" min="-1" max="1" step="0.1" value="0.6"><output id="sc-ko"></output></label>
+    </div>
+    <p class="readout" id="r-scope" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>To see a transmitter's RF envelope, feed its <b>attenuated RF output</b> to the vertical input.</li>
+    <li>The <b>two-tone test</b> feeds two non-harmonically related audio tones into an SSB transmitter, which should then output two clean RF tones whose envelope is a smooth series of humps. It tests <b>linearity</b>: flattened tops on the scope, or extra products on a <b>spectrum analyzer</b>, mean distortion and intermod (<a class="back" href="./10-signals-and-modes.html#mixing">↩ lesson 10</a>).</li>
+    <li><b>Compensate</b> a probe by displaying the scope's square-wave test signal and adjusting until the flat parts are flat. Keep the probe's ground lead short. To look at a linear supply's ripple, trigger on the <b>line</b> (mains) frequency.</li>
+    <li>A <b>digital</b> scope's highest accurate frequency is set by its sampling rate; too slow, and <b>aliasing</b> shows a false, jittery low-frequency waveform (<a class="back" href="../../course/03-taking-snapshots.html#fold">↩ course ch. 3: it's the wagon wheel</a>).</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="instruments">Meters, analyzers and network analyzers</h2>
+  <ul>
+    <li><b>Voltmeters</b> have a high input impedance to avoid loading the circuit they measure. An analog meter's sensitivity in <b>ohms per volt</b>, times its full-scale range, is its input impedance. <b>Digital</b> multimeters are more precise; an <b>analog</b> needle is better for adjusting to a maximum or minimum.</li>
+    <li>A <b>directional wattmeter</b> reads forward and reflected power, so it gives SWR; the power actually absorbed by the load is forward minus reflected (100 W forward, 25 W reflected: 75 W absorbed).</li>
+    <li>An <b>antenna analyzer</b> (connected to the antenna and feed line) computes SWR and impedance automatically, can measure a coax cable's impedance, length and velocity factor, and can be confused by strong signals from nearby transmitters. SWR can also be measured with directional wattmeters, SWR bridges and network analyzers.</li>
+    <li>A <b>spectrum analyzer</b> shows amplitude against frequency: the tool for spurious signals and intermod products.</li>
+    <li>A <b>frequency counter</b>'s accuracy depends on its <b>time base</b>; a <b>prescaler</b> divides a too-high frequency down into its range.</li>
+    <li>A <b>vector network analyzer</b> (VNA) measures how a circuit reflects and passes signals, as <b>S-parameters</b>: the subscripts name the ports. <b>S11</b> is the input reflection (return loss, equivalent to SWR); <b>S21</b> is forward gain (or a filter's response). It's calibrated with a <b>short, an open, and a 50 Ω load</b>. Since a tuned circuit's Q is its frequency divided by its bandwidth (<a class="back" href="./04-resonance.html#curve">↩ lesson 4</a>), measuring the bandwidth gives you Q.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="rfi">Hunting interference</h2>
+  <p>Every noise source has a fingerprint on a waterfall (<a class="back" href="../../build.html#waterfall">↩ how a waterfall is drawn</a>). Learn the patterns and you know where to look:</p>
+
+  <div class="scene" id="s-noise">
+    <div class="controls">
+      <label for="ns-s">Source <select id="ns-s">
+        <option value="smps">switch-mode power supply</option><option value="arc">arcing (bad connection, power line)</option><option value="net">network or computer equipment</option><option value="motor">AC motor / line noise</option>
+      </select></label>
+    </div>
+    <p class="readout" id="r-noise" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Your signal in their equipment</b>: an audio device picking up your SSB hears distorted speech; your CW sounds like on-and-off humming or clicking. Cures: a <b>bypass capacitor</b> in audio circuits, and <b>ferrite chokes</b> on cables to stop <b>common-mode current</b> (current flowing the same way on all conductors, or on a shield's outside, which makes shielded cables radiate and pick up).</li>
+    <li><b>Their equipment in your receiver</b>: switch-mode supplies make a <b>series of carriers at regular intervals</b>; network gear makes unstable carriers at specific frequencies; <b>arcing</b> covers a wide range of frequencies; AC line problems cause intermittent roaring or buzzing; a car's charging system can be tamed with ferrite chokes on its leads, and an AC motor with a brute-force line filter. Corroded metal connections nearby can even mix local AM broadcast signals and reradiate the products on MF and HF (the "rusty bolt" effect).</li>
+    <li><b>Ground loops</b> (several paths to ground forming a loop) cause <b>hum</b> on your transmitted audio; bonding equipment enclosures together minimizes them, and also RF hot spots. A ground wire that happens to be resonant at your operating frequency can have high RF voltage on equipment cases, even enough for RF burns. All metal enclosures must be grounded so hazardous voltages can't appear on them.</li>
+    <li>A <b>single-point ground panel</b>, where all cables enter, ensures all lightning protectors activate together; the AC surge protector belongs there too. Don't solder lightning ground joints: a strike's heat would melt them.</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T4A03: Why short, heavy wires for DC power? <i>To minimize voltage drop when transmitting.</i></summary><p>The voltage drop scene: 20 A through a long thin wire loses volts the radio needs.</p></details>
+  <details><summary>G4A03: How does a noise blanker work? <i>By reducing receiver gain during a noise pulse.</i></summary><p>Impulses are short and strong, so the blanker silences just those moments.</p></details>
+  <details><summary>G4B08: What does a two-tone test analyze? <i>Linearity.</i></summary><p>A linear transmitter reproduces the two tones and nothing else; distortion adds intermod products.</p></details>
+  <details><summary>E4B06: 100 W forward, 25 W reflected: power absorbed? <i>75 W.</i></summary><p>What's reflected isn't absorbed.</p></details>
+  <details><summary>E4E12: Carriers at regular intervals across a wide range? <i>Switch-mode power supplies.</i></summary><p>The switching frequency and its harmonics: a comb, as in the waterfall scene.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T4A">Technician T4A</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G4A,G4B,G4C,G4E">General G4A–G4C, G4E</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E4A,E4B,E4E">Extra E4A, E4B, E4E</a>
+    </p>
+  </div>
+
+  <nav class="next">
+    <a href="./14-safety.html">← Lesson 14: Safety</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l15.ts"></script>
+</body>
+</html>

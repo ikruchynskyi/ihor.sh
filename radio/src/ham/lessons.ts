@@ -18,7 +18,7 @@ export const LESSONS: Lesson[] = [
   { slug: "12-rules-and-bands", title: "Rules and bands", blurb: "Who may transmit where: an interactive band chart, power limits, identification, licensing.", groups: ["T1A", "T1B", "T1C", "T1D", "T1E", "T1F", "G1A", "G1B", "G1C", "G1D", "G1E", "E1A", "E1B", "E1C", "E1D", "E1E", "E1F"], ready: true },
   { slug: "13-operating", title: "On the air", blurb: "Phonetics and Q codes, repeaters and tones, nets and emergencies, satellites, contests, DX.", groups: ["T2A", "T2B", "T2C", "T8B", "T8C", "G2A", "G2B", "G2C", "G2D", "G2E", "E2A", "E2C", "E2D", "E2E"], ready: true },
   { slug: "14-safety", title: "Safety", blurb: "Shock and lightning, towers, and RF exposure: how close is too close, by frequency.", groups: ["T0A", "T0B", "T0C", "G0A", "G0B", "E0A"], ready: true },
-  { slug: "15-station-and-test-gear", title: "Your station and test gear", blurb: "Hooking it up, grounding, meters, scopes and analyzers, interference hunting.", groups: ["T4A", "G4A", "G4B", "G4C", "G4E", "E4A", "E4B", "E4E"], ready: false },
+  { slug: "15-station-and-test-gear", title: "Your station and test gear", blurb: "Hooking it up, grounding, meters, scopes and analyzers, interference hunting.", groups: ["T4A", "G4A", "G4B", "G4C", "G4E", "E4A", "E4B", "E4E"], ready: true },
   { slug: "16-logic-and-op-amps", title: "Logic and op-amps", blurb: "Gates and truth tables, counters and dividers, the ideal amplifier.", groups: ["E6C", "E7A", "E7G"], ready: false },
 ];
 
