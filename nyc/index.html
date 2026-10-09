@@ -129,6 +129,7 @@
 <script type="module">
 import { nearest, alertsByStation } from "/nyc/nearest.js";
 import { onDate, status } from "/nyc/free.js";
+import { baseMaps } from "/maps.js";
 
 const ALERTS = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json";
 const STATIONS = "https://data.ny.gov/resource/39hk-dx4f.json?$limit=2000";
@@ -144,18 +145,7 @@ const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
 
 const map = L.map("map").setView([40.73, -73.95], 12);
-// Base maps: the themed dark street map (theme.css inverts it), the plain street map, and satellite photos.
-const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png", OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · MTA · Citi Bike';
-const BASES = {
-  "Dark streets": L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR }),
-  "Light streets": L.tileLayer(OSM, { maxZoom: 19, attribution: OSM_ATTR, className: "plain-tiles" }),
-  "Satellite": L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 16, className: "plain-tiles", attribution: "Imagery: USGS The National Map (public domain) · MTA · Citi Bike" }),
-};
-let base = getComputedStyle(document.documentElement).colorScheme === "light" ? "Light streets" : "Dark streets"; // follows the reader theme
-try { if (BASES[localStorage.getItem("map-base")]) base = localStorage.getItem("map-base"); } catch {}
-BASES[base].addTo(map);
-L.control.layers(BASES, null, { position: "topright" }).addTo(map);
-map.on("baselayerchange", (e) => { try { localStorage.setItem("map-base", e.name); } catch {} });
+baseMaps(map, { credit: "MTA · Citi Bike" });
 const alertLayer = L.layerGroup().addTo(map);
 const bikeLayer = L.layerGroup().addTo(map);
 

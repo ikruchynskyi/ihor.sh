@@ -50,3 +50,33 @@ export async function routeStops(line: unknown) {
     return { error: `OpenStreetMap's Overpass servers are busy right now (${(e as Error).message}). Try again in a minute.` };
   }
 }
+
+// ---------- planning a bike route ----------
+const VALHALLA = "https://valhalla1.openstreetmap.de";
+const decode6 = (s: string) => { const out: [number, number][] = []; let i = 0, lat = 0, lon = 0; const next = () => { let r = 0, sh = 0, b; do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; }; while (i < s.length) { lat += next(); lon += next(); out.push([lat / 1e6, lon / 1e6]); } return out; };
+const BIKES = { road: "Road", hybrid: "Hybrid", mountain: "Mountain", gravel: "Cross" } as const;
+
+/** A cycling route through 2–12 points (OSM via Valhalla), with elevation for every point. */
+export async function bikeRoute(body: any) {
+  const pts = body?.points;
+  if (!Array.isArray(pts) || pts.length < 2 || pts.length > 12 || !pts.every((p: any) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))) return { error: "Send 2–12 [lat, lon] points." };
+  const bike = BIKES[body.bike as keyof typeof BIKES] ?? "Hybrid", hills = Math.max(0, Math.min(1, Number(body.hills ?? 0.4)));
+  const req = { locations: pts.map(([lat, lon]: number[]) => ({ lat, lon })), costing: "bicycle", costing_options: { bicycle: { bicycle_type: bike, use_hills: hills, use_roads: bike === "Road" ? 0.6 : 0.3 } }, units: "kilometers" };
+  const r = await fetch(`${VALHALLA}/route`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify(req), signal: AbortSignal.timeout(40_000) });
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d?.trip) return { error: d?.error ? `No bike route: ${d.error}` : `The routing server isn't answering (${r.status}).` };
+  let line = d.trip.legs.flatMap((l: any) => decode6(l.shape));
+  const every = Math.max(1, Math.ceil(line.length / 3000)); // ponytail: thinned to ≤ 3,000 points; plenty for planning
+  line = line.filter((_: unknown, i: number) => i % every === 0 || i === line.length - 1);
+  const h = await fetch(`${VALHALLA}/height`, { method: "POST", headers: { ...UA, "content-type": "application/json" }, body: JSON.stringify({ shape: line.map(([lat, lon]: number[]) => ({ lat, lon })), range: false }), signal: AbortSignal.timeout(40_000) }).then((x) => x.json()).catch(() => null);
+  return { km: d.trip.summary.length, minutes: Math.round(d.trip.summary.time / 60), points: line.map(([lat, lon]: number[], i: number) => [+lat.toFixed(6), +lon.toFixed(6), h?.height?.[i] ?? null]) };
+}
+
+/** Places for the route planner's search box: Photon (OpenStreetMap), nudged toward New York but not limited to it. */
+export async function placeSearch(q: string) {
+  if (!q.trim()) return [];
+  const c = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(q);
+  if (c) return [{ label: `${(+c[1]).toFixed(5)}, ${(+c[2]).toFixed(5)}`, lat: +c[1], lon: +c[2] }];
+  const d = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en&lat=40.75&lon=-73.95`, { headers: UA, signal: AbortSignal.timeout(15_000) }).then((r) => r.json()).catch(() => null);
+  return (d?.features ?? []).map((f: any) => { const p = f.properties; return { label: [p.name, [p.housenumber, p.street].filter(Boolean).join(" "), p.city ?? p.county, p.state].filter(Boolean).join(", "), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }; });
+}

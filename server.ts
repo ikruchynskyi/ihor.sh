@@ -14,7 +14,7 @@ import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
-import { routeStops } from "./ride.ts";
+import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
@@ -44,7 +44,7 @@ let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
 // The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.
-const versioned = (html: string) => html.replace(/(["'])(\/[a-z]+\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(path.join(ROOT, p)) ? `${q}${asset(p.slice(1))}${q}` : m));
+const versioned = (html: string) => html.replace(/(["'])(\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(path.join(ROOT, p)) ? `${q}${asset(p.slice(1))}${q}` : m));
 const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
@@ -175,7 +175,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   return s;
 })();
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -255,6 +255,13 @@ const server = http.createServer(async (req, res) => {
       if (!r?.ok) return res.writeHead(502).end();
       return res.writeHead(200, { "content-type": r.headers.get("content-type") ?? "image/jpeg", "cache-control": "public, max-age=2" }).end(Buffer.from(await r.arrayBuffer()));
     }
+    if (url.pathname === "/api/ride/route" && req.method === "POST") {
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 10_000) return res.writeHead(413).end(); }
+      const d: any = await bikeRoute(JSON.parse(raw || "{}"));
+      return res.writeHead(d.error ? 502 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
+    }
+    if (url.pathname === "/api/ride/places") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await placeSearch(String(url.searchParams.get("q") ?? "").slice(0, 120))));
     if (url.pathname === "/api/ride/stops" && req.method === "POST") {
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 40_000) return res.writeHead(413).end(); }
@@ -303,7 +310,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${SITE}/sitemap.xml\n`);
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
-    if (["/companion.js", "/theme.css", "/reader.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();

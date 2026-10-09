@@ -4,188 +4,319 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ride Route Notebook</title>
-  <meta name="description" content="A bikepacking route notebook: drop in a GPX file and get a day-by-day plan with climbing, water and food stops from OpenStreetMap, the longest dry stretch per day against the water you carry, campsites, train bail-outs, daylight and the forecast." />
+  <meta name="description" content="A bikepacking planner: pick start, end and via points on the map, get a bike route split into days with water, food, campsites and train bail-outs from OpenStreetMap, daylight and the forecast, edit day ends and your own stops, and export GPX." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 980px; margin: 0 auto; padding: 32px 16px 120px; }
-    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
-    .row label { white-space: nowrap; }
-    .row input[type=number] { width: 72px; }
-    #drop { border: 2px dashed var(--line); padding: 18px; text-align: center; }
-    #drop.over { border-color: var(--accent); }
-    #map { height: 420px; margin: 14px 0; }
-    #prof { display: block; width: 100%; height: 160px; background: #14171d; }
-    .days { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 14px; }
-    .day { padding: 12px 14px; border-left: 6px solid var(--c, #58c4dd); }
-    .day h3 { margin: 0 0 4px; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 ui-sans-serif, system-ui, sans-serif; }
+    .ride { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 58px); }
+    #map { height: 100%; }
+    #panel { overflow-y: auto; padding: 14px 18px 120px; }
+    @media (max-width: 860px) { .ride { grid-template-columns: 1fr; height: auto; } #map { height: 55vh; position: sticky; top: 0; z-index: 1; } #panel { overflow: visible; } }
+    h1 { margin: 0 0 4px; font-size: 1.5rem; }
+    h2 { font-size: 1.05rem; margin: 18px 0 6px; }
+    .pt { display: grid; grid-template-columns: 52px 1fr auto auto; gap: 6px; align-items: center; margin: 4px 0; }
+    .pt input { width: 100%; }
+    .pt small { grid-column: 2 / 5; color: var(--muted); margin-top: -4px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 6px 0; }
+    .row input[type=number] { width: 64px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+    .tabs button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+    .day { padding: 10px 14px; border-left: 6px solid var(--c, #1c7ed6); margin: 8px 0; }
+    .day p { margin: 4px 0; }
     .warn { color: #e03131; font-weight: 600; } .ok { color: var(--ok, #1e6b35); }
-    .legend span { margin-right: 12px; white-space: nowrap; }
-    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
-    @media print { #setup, #map, .noprint, #blip { display: none !important; } .days { display: block; } .day { break-inside: avoid; margin-bottom: 10px; } }
+    .stops { font-size: 14px; } .stops li { margin: 2px 0; } .stops button { font-size: 12px !important; padding: 2px 6px; }
+    #prof { display: block; width: 100%; height: 130px; background: #14171d; margin: 8px 0; }
+    .mine input { width: 160px; }
+    .hint { font-size: 14px; color: var(--muted); }
+    .picking #map { cursor: crosshair; }
   </style>
 </head>
 <body>
-<main>
-  <p class="eyebrow">ihor.sh · Ride</p>
-  <h1>Route notebook</h1>
-  <p class="lede">Drop in a bikepacking route and get a plan that knows where the water runs out: days split by distance and climbing, every water tap, shop, café, campsite and train station along the way from OpenStreetMap, the longest dry stretch of each day measured against what you carry, daylight, and the forecast.</p>
+<div class="ride">
+  <div id="map" aria-label="Map: the route, day ends you can drag, and stops along the way"></div>
+  <section id="panel">
+    <h1>Route notebook</h1>
+    <p class="hint">Plan a bike trip: pick where you start and end (type a place or press 📍 and click the map), add via points, and it finds a bike route, splits it into days, and checks every day for water, food, a place to sleep, daylight and weather. Drag the 🏁 flags on the map to move where a day ends.</p>
 
-  <section id="setup" class="card2">
-    <div id="drop">Drop a <b>.gpx</b> file here, or <input type="file" id="file" accept=".gpx,application/gpx+xml"> · <button id="sample">Try a sample: Hudson overnight, GWB → Bear Mountain (75 km)</button></div>
-    <div class="row">
-      <label>start <input type="date" id="date"></label><label>at <input type="time" id="time" value="08:00"></label>
-      <label>speed <input type="number" id="speed" value="17" min="6" max="35"> km/h</label>
-      <label>max <input type="number" id="maxKm" value="60" min="10" max="250"> km/day</label>
-      <label>max <input type="number" id="maxUp" value="1000" min="100" max="4000" step="50"> m up/day</label>
-    </div>
-    <div class="row">
-      <label>water carried <input type="number" id="water" value="2" min="0.5" max="10" step="0.25"> L</label>
-      <label>drinking <input type="number" id="drink" value="0.6" min="0.2" max="1.5" step="0.05"> L/h</label>
-      <label>breaks <input type="number" id="breaks" value="25" min="0" max="80" step="5">% on top of riding time</label>
-      <button id="go" disabled>Plan it</button>
+    <h2>1. Where</h2>
+    <div id="pts"></div>
+    <div class="row"><button id="addVia">+ via point</button>
+      <label>bike <select id="bike"><option value="hybrid">hybrid</option><option value="road">road</option><option value="gravel">gravel</option><option value="mountain">mountain</option></select></label>
+      <label>hills <select id="hills"><option value="0.2">avoid</option><option value="0.5" selected>some are fine</option><option value="0.9">bring them on</option></select></label>
+      <button id="plan" class="primary">Plan the route</button></div>
+    <p class="hint">Or load a <b>.gpx</b> you already have: <input type="file" id="file" accept=".gpx,application/gpx+xml"></p>
+
+    <details id="settingsBox"><summary><b>2. How you ride</b> <span class="hint" id="settingsSum"></span></summary>
+      <div class="row"><label>start <input type="date" id="date"></label><label>at <input type="time" id="time" value="08:00"></label></div>
+      <div class="row"><label>speed <input type="number" id="speed" value="17" min="6" max="35"> km/h</label><label>breaks <input type="number" id="breaks" value="25" min="0" max="80" step="5">%</label></div>
+      <div class="row"><label>max <input type="number" id="maxKm" value="60" min="10" max="250"> km/day</label><label>max <input type="number" id="maxUp" value="1000" min="100" max="4000" step="50"> m up/day</label></div>
+      <div class="row"><label>water carried <input type="number" id="water" value="2" min="0.5" max="10" step="0.25"> L</label><label>drinking <input type="number" id="drink" value="0.6" min="0.2" max="1.5" step="0.05"> L/h</label></div>
+    </details>
+
+    <p id="status" class="hint"></p>
+    <div id="out" hidden>
+      <h2 id="title"></h2>
+      <p id="summary" class="hint"></p>
+      <div class="tabs" id="tabs" role="tablist" aria-label="Days"></div>
+      <canvas id="prof" width="900" height="130" aria-label="Elevation profile"></canvas>
+      <div id="dayBox"></div>
+      <h2>Your stops</h2>
+      <p class="hint">Add your own: a lunch spot, a friend's house, a known water tap. They go into the GPX as waypoints. Drag them on the map to move them.</p>
+      <div class="row"><button id="addStop">+ Add a stop (then click the map)</button></div>
+      <ul class="stops mine" id="mine"></ul>
+      <div class="row"><button id="gpxDay">Download this day's GPX</button><button id="gpxAll">Download the whole trip GPX</button><button id="print">Print cue sheets</button></div>
+      <p class="hint">Stops: © OpenStreetMap contributors (via Overpass). Routing: Valhalla on OpenStreetMap. Weather: Open-Meteo. Opening hours are as mapped, so check before relying on a shop.</p>
     </div>
   </section>
-  <p class="muted" id="status"></p>
-
-  <div id="out" hidden>
-    <h2 id="title"></h2>
-    <p id="summary"></p>
-    <div id="map"></div>
-    <p class="legend muted"><span><i style="background:#1c7ed6"></i>water</span><span><i style="background:#2f9e44"></i>food / shop</span><span><i style="background:#e8590c"></i>camp / lodging</span><span><i style="background:#7048e8"></i>train station</span><span><i style="background:#868e96"></i>bike repair</span></p>
-    <canvas id="prof" width="980" height="160" aria-label="Elevation profile with day splits"></canvas>
-    <div class="days" id="days"></div>
-    <p class="row noprint"><button id="print">Print cue sheets</button> <span class="muted">Stops: © OpenStreetMap contributors (via Overpass). Weather: Open-Meteo. Opening hours are as mapped, so check before you rely on a shop.</span></p>
-  </div>
-</main>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-import { parseGPX, measure, climb, splitDays, snapToCamps, along, longestGap, sun, toGPX } from "/ride/route.js";
+import { parseGPX, measure, climb, planDays, snapToCamps, along, longestGap, sun, toGPX } from "/ride/route.js";
+import { baseMaps } from "/maps.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const getJSON = (u, opts) => fetch(u, opts).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
 const COLORS = ["#1c7ed6", "#e8590c", "#2f9e44", "#ae3ec9", "#f59f00", "#0ca678", "#d6336c", "#5c7cfa"];
+const KCOLOR = { water: "#1c7ed6", food: "#2f9e44", camp: "#e8590c", train: "#7048e8", repair: "#868e96", mine: "#f4d35e" };
+const KNAME = { water: "💧 Water", food: "🥖 Food", camp: "⛺ Sleep", train: "🚆 Trains", repair: "🔧 Bike repair", mine: "⭐ Your stops" };
+
+// ---------- the map ----------
+const map = L.map("map").setView([40.95, -73.95], 10);
+const groups = Object.fromEntries(Object.keys(KCOLOR).map((k) => [k, L.layerGroup().addTo(map)]));
+const routeLayer = L.layerGroup().addTo(map), markLayer = L.layerGroup().addTo(map);
+baseMaps(map, { overlays: Object.fromEntries(Object.entries(groups).map(([k, g]) => [KNAME[k], g])) });
+
+// ---------- state (kept in this browser) ----------
+let S = { pts: [{ label: "", lat: null, lon: null }, { label: "", lat: null, lon: null }], pins: [], mine: [], route: null, day: null };
+try { Object.assign(S, JSON.parse(localStorage.getItem("ride-plan") || "{}")); } catch {}
+const save = () => { try { localStorage.setItem("ride-plan", JSON.stringify(S)); } catch {} };
+let found = null, days = [], picking = null; // picking: { kind: "pt", i } or { kind: "stop" }
 const sat = new Date(); sat.setDate(sat.getDate() + ((6 - sat.getDay() + 7) % 7 || 7));
-$("date").value = sat.toLocaleDateString("en-CA");
-let route = null;
+$("date").value = S.date ?? sat.toLocaleDateString("en-CA");
+for (const id of ["time", "speed", "breaks", "maxKm", "maxUp", "water", "drink", "bike", "hills"]) if (S[id] != null) $(id).value = S[id];
 
-// ---------- input ----------
-const load = (text, label) => { route = parseGPX(text); if (route.points.length < 2) { $("status").textContent = "No track or route points in that file."; return; } $("status").textContent = `${label}: ${route.points.length} points. Adjust the settings and press Plan it.`; $("go").disabled = false; $("go").click(); };
-$("file").onchange = async () => { const f = $("file").files[0]; if (f) load(await f.text(), f.name); };
-$("sample").onclick = async () => load(await (await fetch("/ride/samples/hudson.gpx")).text(), "Sample route");
-const drop = $("drop");
-drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-drop.addEventListener("drop", async (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) load(await f.text(), f.name); });
+// ---------- 1. where: start, vias, end ----------
+function renderPts() {
+  $("pts").innerHTML = S.pts.map((p, i) => {
+    const role = i === 0 ? "Start" : i === S.pts.length - 1 ? "End" : `Via ${i}`;
+    return `<div class="pt"><b>${role}</b><input data-i="${i}" value="${esc(p.label)}" placeholder="${i === 0 ? "e.g. George Washington Bridge" : i === S.pts.length - 1 ? "e.g. Bear Mountain State Park" : "a town or place on the way"}" aria-label="${role}">
+      <button data-pick="${i}" title="Pick on the map">📍</button>${i && i < S.pts.length - 1 ? `<button data-del="${i}" title="Remove">✕</button>` : "<span></span>"}
+      ${p.lat != null ? `<small>${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</small>` : ""}</div>`;
+  }).join("");
+  markLayer.clearLayers();
+  S.pts.forEach((p, i) => {
+    if (p.lat == null) return;
+    const color = i === 0 ? "#2f9e44" : i === S.pts.length - 1 ? "#e03131" : "#1c7ed6";
+    L.marker([p.lat, p.lon], { draggable: true, title: p.label, icon: L.divIcon({ className: "", html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 3px #000"></div>`, iconSize: [18, 18] }) })
+      .on("dragend", (e) => { const ll = e.target.getLatLng(); S.pts[i] = { label: `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`, lat: ll.lat, lon: ll.lng }; renderPts(); if (S.pts.every((q) => q.lat != null)) plan(); })
+      .addTo(markLayer);
+  });
+}
+$("pts").addEventListener("change", async (e) => {
+  const i = e.target.dataset.i; if (i == null) return;
+  const q = e.target.value.trim(); if (!q) return;
+  $("status").textContent = "Looking it up…";
+  const list = await getJSON(`/api/ride/places?q=${encodeURIComponent(q)}`).catch(() => []);
+  if (!list.length) { $("status").textContent = `Couldn't find "${q}". Try another name, or 📍 pick it on the map.`; return; }
+  S.pts[+i] = list[0]; $("status").textContent = ""; renderPts(); save();
+  map.setView([list[0].lat, list[0].lon], Math.max(map.getZoom(), 12));
+});
+$("pts").addEventListener("click", (e) => {
+  const pick = e.target.closest("[data-pick]")?.dataset.pick, del = e.target.closest("[data-del]")?.dataset.del;
+  if (pick != null) { picking = { kind: "pt", i: +pick }; document.body.classList.add("picking"); $("status").textContent = "Click the map to place it."; }
+  if (del != null) { S.pts.splice(+del, 1); renderPts(); save(); }
+});
+$("addVia").onclick = () => { S.pts.splice(S.pts.length - 1, 0, { label: "", lat: null, lon: null }); renderPts(); save(); };
+map.on("click", async (e) => {
+  if (!picking) return;
+  const { lat, lng } = e.latlng;
+  if (picking.kind === "pt") { S.pts[picking.i] = { label: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lon: lng }; renderPts(); }
+  else { const name = prompt("Name this stop:", "Lunch") ?? ""; if (name.trim()) { S.mine.push({ lat, lon: lng, name: name.trim().slice(0, 60) }); if (S.route) render(); } }
+  picking = null; document.body.classList.remove("picking"); $("status").textContent = ""; save();
+});
 
-// ---------- data: elevation (if the GPX has none), stops from Overpass, forecast from Open-Meteo ----------
-async function fillElevation(points) {
-  if (points.filter((p) => p.ele != null).length > points.length * 0.8) return;
-  const every = Math.max(1, Math.ceil(points.length / 400)), idx = points.map((_, i) => i).filter((i) => i % every === 0 || i === points.length - 1), ele = [];
-  for (let k = 0; k < idx.length; k += 100) {
-    const chunk = idx.slice(k, k + 100), q = `latitude=${chunk.map((i) => points[i].lat.toFixed(5)).join(",")}&longitude=${chunk.map((i) => points[i].lon.toFixed(5)).join(",")}`;
-    const d = await fetch(`https://api.open-meteo.com/v1/elevation?${q}`).then((r) => r.json());
-    ele.push(...d.elevation);
-  }
-  points.forEach((p, i) => { const j = Math.min(idx.length - 1, Math.floor(i / every)), a = idx[j], b = idx[Math.min(j + 1, idx.length - 1)], t = b > a ? (i - a) / (b - a) : 0; p.ele = ele[j] + ((ele[Math.min(j + 1, ele.length - 1)] ?? ele[j]) - ele[j]) * t; });
+// ---------- planning ----------
+async function plan() {
+  if (S.pts.some((p) => p.lat == null)) { $("status").textContent = "Set every point first: type a place, or press 📍 and click the map."; return; }
+  $("plan").disabled = true; $("status").textContent = "Finding a bike route…";
+  try {
+    const d = await getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: S.pts.map((p) => [p.lat, p.lon]), bike: $("bike").value, hills: +$("hills").value }) });
+    S.route = { name: `${S.pts[0].label.split(",")[0]} → ${S.pts.at(-1).label.split(",")[0]}`, points: d.points };
+    S.pins = []; S.day = null; found = null; drawMap.fitted = false;
+    await analyze();
+  } catch (e) { $("status").textContent = e.message; }
+  $("plan").disabled = false;
 }
-const KIND = (t) => t.amenity === "drinking_water" || t.amenity === "water_point" || t.man_made === "water_tap" ? "water"
-  : t.railway === "station" || t.train === "yes" ? "train" : /camp_site|hostel|motel|hotel|guest_house|alpine_hut|wilderness_hut/.test(t.tourism ?? "") || t.amenity === "shelter" ? "camp"
-  : t.amenity === "bicycle_repair_station" || t.shop === "bicycle" ? "repair" : "food";
-const KCOLOR = { water: "#1c7ed6", food: "#2f9e44", camp: "#e8590c", train: "#7048e8", repair: "#868e96" };
-async function stops(points) {
-  // The route as a polyline (one point every ~800 m, at most 400) for the server's OpenStreetMap query.
-  const step = Math.max(1, Math.round(points.length / Math.max(2, Math.min(400, points.at(-1).km / 0.8))));
-  const r = await fetch("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: points.filter((_, i) => i % step === 0 || i === points.length - 1).slice(0, 400).map((p) => [p.lat, p.lon]) }) });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error ?? `stops unavailable (${r.status})`);
-  const els = d.elements;
-  return els.map((e) => ({ lat: e.lat, lon: e.lon, kind: KIND(e.tags), name: e.tags.name ?? e.tags.amenity ?? e.tags.shop ?? e.tags.tourism ?? e.tags.railway ?? "", hours: e.tags.opening_hours ?? "" }));
-}
-async function forecast(lat, lon, date) {
-  const days = (new Date(date) - new Date()) / 864e5;
-  if (days > 15 || days < -1) return null;
-  const d = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`).then((r) => r.json()).catch(() => null);
-  return d?.daily ? { hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0], rain: d.daily.precipitation_probability_max[0], wind: d.daily.wind_speed_10m_max[0] } : null;
-}
-
-// ---------- the plan ----------
-let map = null, layers = null;
-const hm = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-$("go").onclick = async () => {
-  if (!route) return;
-  $("go").disabled = true; $("out").hidden = false;
-  const pts = route.points, total = measure(pts);
-  $("status").textContent = "Reading elevation…";
-  await fillElevation(pts).catch(() => {});
-  const up = climb(pts), opts = { maxKm: +$("maxKm").value, maxClimb: +$("maxUp").value };
-  $("status").textContent = "Finding water, food, camps and stations along the route in OpenStreetMap. When its servers are busy this takes up to a minute…";
-  let all = [], problem = "";
-  try { all = await stops(pts); } catch (e) { problem = `${e.message} The plan below has no stops yet.`; }
-  const by = (k, off) => along(pts, all.filter((s) => s.kind === k), off);
-  const water = by("water", 400), food = by("food", 400), camps = by("camp", 3000), trains = by("train", 3000), repair = by("repair", 400);
-  const days = snapToCamps(pts, splitDays(pts, opts), camps);
-  const speed = +$("speed").value, breaks = 1 + +$("breaks").value / 100, carry = +$("water").value, drink = +$("drink").value, [sh, sm] = $("time").value.split(":").map(Number);
-  $("title").textContent = route.name;
-  $("summary").textContent = `${total.toFixed(1)} km · ${up.up.toLocaleString()} m up, ${up.down.toLocaleString()} m down · ${days.length} day${days.length > 1 ? "s" : ""} · found ${water.length} water points, ${food.length} food stops, ${camps.length} places to sleep, ${trains.length} stations`;
-  // map
-  if (!map) { map = L.map("map"); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors", className: "plain-tiles" }).addTo(map); layers = L.layerGroup().addTo(map); }
-  layers.clearLayers();
-  days.forEach(([s, e], i) => L.polyline(pts.slice(s, e + 1).map((p) => [p.lat, p.lon]), { color: COLORS[i % COLORS.length], weight: 5 }).bindTooltip(`Day ${i + 1}`).addTo(layers));
-  for (const s of [...water, ...food, ...camps, ...trains, ...repair]) L.circleMarker([s.lat, s.lon], { radius: 5, color: "#fff", weight: 1, fillColor: KCOLOR[s.kind], fillOpacity: 1 }).bindPopup(`<b>${esc(s.name)}</b><br>${s.kind} · km ${s.km.toFixed(1)}, ${s.off} m off route${s.hours ? `<br>hours: ${esc(s.hours)}` : ""}`).addTo(layers);
-  map.fitBounds(L.latLngBounds(pts.map((p) => [p.lat, p.lon])).pad(0.05));
-  drawProfile(pts, days, water);
-  // day cards
-  $("days").innerHTML = "";
-  for (const [i, [s, e]] of days.entries()) {
-    const seg = pts.slice(s, e + 1), km0 = pts[s].km, km1 = pts[e].km, dist = km1 - km0, c = climb(seg), mid = seg[Math.floor(seg.length / 2)];
-    const date = new Date(`${$("date").value}T00:00`); date.setDate(date.getDate() + i);
-    const iso = date.toLocaleDateString("en-CA"), sunT = sun(date, mid.lat, mid.lon), start = new Date(date); start.setHours(sh, sm);
-    const ridingH = (dist / speed) * (1 + c.up / 1000 / 2), hours = ridingH * breaks, end = new Date(start.getTime() + hours * 3600e3); // ponytail: +50% time per 1,000 m climbed
-    const gapW = longestGap(water.filter((w) => w.km >= km0 && w.km <= km1), km0, km1), gapF = longestGap(food.filter((w) => w.km >= km0 && w.km <= km1), km0, km1);
-    const lastsH = carry / drink, gapH = (gapW.km / speed) * breaks;
-    const sleep = camps.filter((x) => Math.abs(x.km - km1) <= 5).slice(0, 3), bail = [...new Set(trains.filter((t) => t.km >= km0 && t.km <= km1).map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3);
-    const wx = await forecast(mid.lat, mid.lon, iso);
-    const card = document.createElement("article");
-    card.className = "day card"; card.style.setProperty("--c", COLORS[i % COLORS.length]);
-    card.innerHTML = `<h3>Day ${i + 1} · ${date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</h3>
-      <p><b>${dist.toFixed(1)} km</b> · ${c.up} m up · ~${Math.floor(hours)} h ${Math.round((hours % 1) * 60)} min with breaks<br>
-      leave ${hm(start)} → arrive ~${hm(end)} · ${sunT ? `sunset ${hm(sunT.set)}` : ""} ${sunT && end > sunT.set ? `<span class="warn">· ${Math.round((end - sunT.set) / 60000)} min after dark: leave earlier or shorten</span>` : `<span class="ok">· in daylight</span>`}</p>
-      <p>${wx ? `🌡 ${Math.round(wx.lo)}–${Math.round(wx.hi)} °C · rain ${wx.rain ?? "?"}% · wind ${Math.round(wx.wind)} km/h` : `<span class="muted">Forecast shows up within 16 days of the ride.</span>`}</p>
-      <p>💧 ${water.filter((w) => w.km >= km0 && w.km <= km1).length} water points · longest dry stretch <b>${gapW.km.toFixed(0)} km</b> (km ${gapW.from.toFixed(0)}–${gapW.to.toFixed(0)}, ~${gapH.toFixed(1)} h)
-        ${gapH > lastsH ? `<span class="warn">: your ${carry} L lasts ~${lastsH.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`}</p>
-      <p>🥖 ${food.filter((w) => w.km >= km0 && w.km <= km1).length} food stops · longest without: ${gapF.km.toFixed(0)} km</p>
-      <p>⛺ ${i === days.length - 1 ? "Finish." : sleep.length ? `Sleep near the end: ${sleep.map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">No mapped campsite or lodging within 5 km of the day's end.</span>`}</p>
-      <p>🚆 Bail out: ${bail.length ? esc(bail.join(", ")) : "no station within 3 km of this day"}</p>
-      <p class="noprint"><button data-day="${i}">Download Day ${i + 1} GPX</button></p>`;
-    $("days").append(card);
-  }
-  $("days").onclick = (e) => {
-    const i = e.target.closest("[data-day]")?.dataset.day;
-    if (i == null) return;
-    const [s, en] = days[+i], blob = new Blob([toGPX(`${route.name}: day ${+i + 1}`, pts.slice(s, en + 1))], { type: "application/gpx+xml" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `day-${+i + 1}.gpx`; a.click(); URL.revokeObjectURL(a.href);
-  };
-  $("status").textContent = problem;
-  $("go").disabled = false;
-  window.blipPlan = { km: +total.toFixed(1), climb: up.up, days: days.length, water: water.length, camps: camps.length };
+$("plan").onclick = plan;
+$("file").onchange = async () => {
+  const f = $("file").files[0]; if (!f) return;
+  const g = parseGPX(await f.text());
+  if (g.points.length < 2) { $("status").textContent = "No track in that file."; return; }
+  S.route = { name: g.name, points: g.points.map((p) => [p.lat, p.lon, p.ele ?? null]) };
+  const a = g.points[0], b = g.points.at(-1);
+  S.pts = [{ label: "start of the GPX", lat: a.lat, lon: a.lon }, { label: "end of the GPX", lat: b.lat, lon: b.lon }];
+  S.mine.push(...g.waypoints.map((w) => ({ lat: w.lat, lon: w.lon, name: w.name ?? "waypoint" })));
+  S.pins = []; S.day = null; found = null; drawMap.fitted = false; renderPts(); await analyze();
 };
-for (const id of ["speed", "maxKm", "maxUp", "water", "drink", "breaks", "date", "time"]) $(id).addEventListener("change", () => route && $("go").click());
-$("print").onclick = () => print();
 
-// elevation profile with day splits and water ticks
-function drawProfile(pts, days, water) {
-  const cv = $("prof"), g = cv.getContext("2d"), W = cv.width, H = cv.height, km = pts.at(-1).km;
-  const eles = pts.map((p) => p.ele ?? 0), lo = Math.min(...eles), hi = Math.max(...eles, lo + 50);
-  const X = (k) => 40 + (k / km) * (W - 50), Y = (e) => H - 20 - ((e - lo) / (hi - lo)) * (H - 40);
-  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
-  days.forEach(([s, e], i) => { g.fillStyle = COLORS[i % COLORS.length] + "55"; g.beginPath(); g.moveTo(X(pts[s].km), H - 20); for (let j = s; j <= e; j++) g.lineTo(X(pts[j].km), Y(eles[j])); g.lineTo(X(pts[e].km), H - 20); g.fill(); });
-  g.strokeStyle = "#d7dde5"; g.lineWidth = 2; g.beginPath(); pts.forEach((p, j) => (j ? g.lineTo(X(p.km), Y(eles[j])) : g.moveTo(X(p.km), Y(eles[j])))); g.stroke();
-  g.fillStyle = "#1c7ed6"; for (const w of water) g.fillRect(X(w.km) - 1, H - 18, 2, 8);
-  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; g.fillText(`${Math.round(hi)} m`, 2, 14); g.fillText(`${Math.round(lo)} m`, 2, H - 22); g.fillText(`${km.toFixed(0)} km`, W - 50, H - 4); g.fillText("blue ticks: water", 44, H - 4);
+// stops along the route, from the server's OpenStreetMap query (once per route)
+const KIND = (t) => t.amenity === "drinking_water" || t.amenity === "water_point" || t.man_made === "water_tap" ? "water"
+  : t.railway === "station" ? "train" : /camp_site|hostel|motel|hotel|guest_house|alpine_hut|wilderness_hut/.test(t.tourism ?? "") ? "camp"
+  : t.amenity === "bicycle_repair_station" || t.shop === "bicycle" ? "repair" : "food";
+async function fetchStops(pts) {
+  const step = Math.max(1, Math.round(pts.length / Math.max(2, Math.min(400, pts.at(-1).km / 0.8))));
+  const d = await getJSON("/api/ride/stops", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ line: pts.filter((_, i) => i % step === 0 || i === pts.length - 1).slice(0, 400).map((p) => [p.lat, p.lon]) }) });
+  const all = d.elements.map((e) => ({ lat: e.lat, lon: e.lon, kind: KIND(e.tags), name: e.tags.name ?? e.tags.amenity ?? e.tags.shop ?? e.tags.tourism ?? e.tags.railway ?? "", hours: e.tags.opening_hours ?? "" }));
+  const by = (k, off) => along(pts, all.filter((s) => s.kind === k), off);
+  return { water: by("water", 400), food: by("food", 400), camp: by("camp", 3000), train: by("train", 3000), repair: by("repair", 400) };
+}
+const wx = new Map();
+function forecast(lat, lon, date) {
+  const key = `${lat.toFixed(2)},${lon.toFixed(2)},${date}`;
+  if (wx.has(key)) return wx.get(key);
+  const ahead = (new Date(date) - new Date()) / 864e5;
+  const p = ahead > 15 || ahead < -1 ? Promise.resolve(null) : fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto&start_date=${date}&end_date=${date}`).then((r) => r.json()).then((d) => d.daily ? { hi: d.daily.temperature_2m_max[0], lo: d.daily.temperature_2m_min[0], rain: d.daily.precipitation_probability_max[0], wind: d.daily.wind_speed_10m_max[0] } : null).catch(() => null);
+  wx.set(key, p); return p;
 }
 
-window.blipContext = () => ({ page: "Ride: route notebook (bikepacking planner)", plan: window.blipPlan ?? null, settings: { speed: +$("speed").value, maxKmPerDay: +$("maxKm").value, maxClimbPerDay: +$("maxUp").value, waterLiters: +$("water").value } });
+let pts = [];
+async function analyze() {
+  if (!S.route) return;
+  pts = S.route.points.map(([lat, lon, ele]) => ({ lat, lon, ...(ele != null ? { ele } : {}) }));
+  measure(pts);
+  $("out").hidden = false;
+  if (!found) {
+    $("status").textContent = "Finding water, food, campsites and stations along the route (OpenStreetMap; up to a minute when its servers are busy)…";
+    try { found = await fetchStops(pts); $("status").textContent = ""; } catch (e) { found = { water: [], food: [], camp: [], train: [], repair: [] }; $("status").textContent = `${e.message} The plan has no stops yet.`; }
+  }
+  const opts = { maxKm: +$("maxKm").value, maxClimb: +$("maxUp").value };
+  // Unpinned day ends snap to a campsite nearby; pinned ones (dragged or chosen) stay put.
+  days = planDays(pts, opts, S.pins);
+  if (!S.pins.length) days = snapToCamps(pts, days, found.camp);
+  if (S.day != null && S.day >= days.length) S.day = null;
+  save(); render();
+}
+
+// ---------- rendering the plan ----------
+const hm = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const kmOf = (m) => along(pts, [m], 1e9)[0]?.km ?? 0;
+function dayInfo(i) {
+  const [s, e] = days[i], seg = pts.slice(s, e + 1), km0 = pts[s].km, km1 = pts[e].km, c = climb(seg), mid = seg[Math.floor(seg.length / 2)];
+  const date = new Date(`${$("date").value}T00:00`); date.setDate(date.getDate() + i);
+  const [sh, sm] = $("time").value.split(":").map(Number), start = new Date(date); start.setHours(sh, sm);
+  const speed = +$("speed").value, breaks = 1 + +$("breaks").value / 100, hours = ((km1 - km0) / speed) * (1 + c.up / 2000) * breaks; // ponytail: +50% time per 1,000 m climbed
+  const within = (list) => list.filter((x) => x.km >= km0 && x.km <= km1);
+  return { i, s, e, km0, km1, dist: km1 - km0, c, mid, date, start, end: new Date(start.getTime() + hours * 3600e3), hours, sun: sun(date, mid.lat, mid.lon),
+    water: within(found.water), food: within(found.food), camps: found.camp.filter((x) => Math.abs(x.km - km1) <= 6), trains: within(found.train), repair: within(found.repair) };
+}
+function render() {
+  $("title").textContent = S.route.name;
+  const total = pts.at(-1).km, up = climb(pts);
+  $("summary").textContent = `${total.toFixed(1)} km · ${up.up.toLocaleString()} m up · ${days.length} day${days.length > 1 ? "s" : ""} · ${found.water.length} water points, ${found.food.length} food stops, ${found.camp.length} places to sleep, ${found.train.length} stations along the way`;
+  $("tabs").innerHTML = `<button data-day="" aria-pressed="${S.day == null}">Whole trip</button>` + days.map((_, i) => `<button data-day="${i}" aria-pressed="${S.day === i}" style="border-color:${COLORS[i % COLORS.length]}">Day ${i + 1}</button>`).join("");
+  drawMap(); drawProfile(); renderDay(); renderMine();
+}
+function drawMap(fit = false) {
+  routeLayer.clearLayers(); Object.values(groups).forEach((g) => g.clearLayers());
+  const sel = S.day;
+  days.forEach(([s, e], i) => {
+    const on = sel == null || sel === i;
+    L.polyline(pts.slice(s, e + 1).map((p) => [p.lat, p.lon]), { color: COLORS[i % COLORS.length], weight: on ? 6 : 3, opacity: on ? 0.95 : 0.35 })
+      .bindTooltip(`Day ${i + 1}`).on("click", () => selectDay(i)).addTo(routeLayer);
+    if (i < days.length - 1) {
+      // the day's end: a flag you can drag along the route
+      L.marker([pts[e].lat, pts[e].lon], { draggable: true, title: `End of day ${i + 1}: drag along the route`, icon: L.divIcon({ className: "", html: `<div style="font-size:22px;line-height:22px;filter:drop-shadow(0 0 2px #000)">🏁</div>`, iconSize: [22, 22], iconAnchor: [4, 20] }) })
+        .bindTooltip(`End of day ${i + 1}: drag me`).on("dragend", (ev) => moveDayEnd(i, nearestIndex(ev.target.getLatLng()))).addTo(routeLayer);
+    }
+  });
+  const [lo, hi] = sel == null ? [0, Infinity] : [pts[days[sel][0]].km, pts[days[sel][1]].km];
+  for (const k of ["water", "food", "camp", "train", "repair"]) for (const st of found[k]) {
+    if (st.km < lo - (k === "camp" ? 6 : 0) || st.km > hi + (k === "camp" ? 6 : 0)) continue;
+    L.circleMarker([st.lat, st.lon], { radius: 5, color: "#fff", weight: 1, fillColor: KCOLOR[k], fillOpacity: 1 })
+      .bindPopup(`<b>${esc(st.name)}</b><br>${KNAME[k]} · km ${st.km.toFixed(1)}, ${st.off} m off the route${st.hours ? `<br>hours: ${esc(st.hours)}` : ""}${k === "camp" ? `<br><button data-endat="${st.km}">End a day here</button>` : ""}`).addTo(groups[k]);
+  }
+  S.mine.forEach((m, j) => L.marker([m.lat, m.lon], { draggable: true, title: m.name, icon: L.divIcon({ className: "", html: `<div style="font-size:20px;filter:drop-shadow(0 0 2px #000)">⭐</div>`, iconSize: [20, 20] }) })
+    .bindTooltip(esc(m.name)).on("dragend", (ev) => { const ll = ev.target.getLatLng(); S.mine[j] = { ...S.mine[j], lat: ll.lat, lon: ll.lng }; save(); renderMine(); }).addTo(groups.mine));
+  const seg = sel == null ? pts : pts.slice(days[sel][0], days[sel][1] + 1);
+  if (fit || !drawMap.fitted) { map.fitBounds(L.latLngBounds(seg.map((p) => [p.lat, p.lon])).pad(0.08)); drawMap.fitted = true; }
+}
+const nearestIndex = (ll) => { let best = 0, d = Infinity; pts.forEach((p, i) => { const q = (p.lat - ll.lat) ** 2 + ((p.lon - ll.lng) * Math.cos(p.lat * Math.PI / 180)) ** 2; if (q < d) { d = q; best = i; } }); return best; };
+// Moving a day's end keeps every earlier day as it is and re-splits the rest.
+function moveDayEnd(i, idx) {
+  const prevEnd = i ? days[i - 1][1] : 0;
+  if (idx <= prevEnd + 2 || idx >= pts.length - 2) { render(); $("status").textContent = "A day has to end after it starts and before the trip does."; return; }
+  S.pins = [...days.slice(0, i).map((d) => d[1]), idx];
+  days = planDays(pts, { maxKm: +$("maxKm").value, maxClimb: +$("maxUp").value }, S.pins);
+  S.day = i; $("status").textContent = ""; save(); render(); drawMap(true);
+}
+const endDayAtKm = (km) => { const idx = pts.findIndex((p) => p.km >= km), i = S.day ?? Math.max(0, days.findIndex(([, en]) => pts[en].km >= km)); moveDayEnd(Math.min(i, days.length - 1), idx); };
+map.on("popupopen", (e) => { const b = e.popup.getElement().querySelector("[data-endat]"); if (b) b.onclick = () => { map.closePopup(); endDayAtKm(+b.dataset.endat); }; });
+function selectDay(i) { S.day = i; save(); render(); drawMap(true); }
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-day]"); if (!b) return; selectDay(b.dataset.day === "" ? null : +b.dataset.day); });
+
+async function renderDay() {
+  const which = S.day == null ? days.map((_, i) => i) : [S.day];
+  const carry = +$("water").value, drink = +$("drink").value, speed = +$("speed").value, breaks = 1 + +$("breaks").value / 100;
+  const html = [];
+  for (const i of which) {
+    const d = dayInfo(i), w = await forecast(d.mid.lat, d.mid.lon, d.date.toLocaleDateString("en-CA"));
+    const gapW = longestGap(d.water, d.km0, d.km1), gapF = longestGap(d.food, d.km0, d.km1), gapH = (gapW.km / speed) * breaks, lasts = carry / drink;
+    const list = (k, items, endBtn = false) => items.length ? `<details><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.slice(0, 40).map((x) => `<li>km ${x.km.toFixed(1)} · ${esc(x.name)}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>` : ""} <button data-go="${x.lat},${x.lon}">show</button>${endBtn ? ` <button data-endat="${x.km}">end the day here</button>` : ""}</li>`).join("")}</ul></details>` : "";
+    html.push(`<article class="day card" style="--c:${COLORS[i % COLORS.length]}">
+      <b>Day ${i + 1} · ${d.date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</b> <span class="hint">km ${d.km0.toFixed(0)}–${d.km1.toFixed(0)}</span>
+      <p><b>${d.dist.toFixed(1)} km</b> · ${d.c.up} m up · ~${Math.floor(d.hours)} h ${Math.round((d.hours % 1) * 60)} min with breaks · leave ${hm(d.start)}, arrive ~${hm(d.end)}
+        ${d.sun ? (d.end > d.sun.set ? `<span class="warn">· ${Math.round((d.end - d.sun.set) / 60000)} min after sunset (${hm(d.sun.set)})</span>` : `<span class="ok">· before sunset (${hm(d.sun.set)})</span>`) : ""}</p>
+      <p>${w ? `🌡 ${Math.round(w.lo)}–${Math.round(w.hi)} °C · rain ${w.rain ?? "?"}% · wind ${Math.round(w.wind)} km/h` : `<span class="hint">Forecast appears within 16 days of the ride.</span>`}</p>
+      <p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without food: ${gapF.km.toFixed(0)} km</p>
+      <p>${i === days.length - 1 ? "🏁 Finish." : d.camps.length ? `⛺ Sleep near the end: ${d.camps.slice(0, 3).map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">⛺ No mapped campsite or lodging within 6 km of this day's end.</span> Drag the 🏁 flag, or pick a place below.`}</p>
+      <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>
+      ${S.day != null ? `${list("water", d.water)}${list("food", d.food)}${i < days.length - 1 ? list("camp", found.camp.filter((x) => x.km > d.km0 + 5 && x.km < pts.at(-1).km - 2), true) : ""}${list("train", d.trains)}${list("repair", d.repair)}` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}
+    </article>`);
+  }
+  $("dayBox").innerHTML = html.join("");
+  window.blipPlan = { km: +pts.at(-1).km.toFixed(1), days: days.length, selectedDay: S.day == null ? "whole trip" : S.day + 1 };
+}
+$("dayBox").addEventListener("click", (e) => {
+  const go = e.target.closest("[data-go]")?.dataset.go, open = e.target.closest("[data-day]")?.dataset.day, endat = e.target.closest("[data-endat]")?.dataset.endat;
+  if (go) { const [a, b] = go.split(",").map(Number); map.setView([a, b], 16); }
+  if (open != null) selectDay(+open);
+  if (endat != null) endDayAtKm(+endat);
+});
+
+// the rider's own stops
+function renderMine() {
+  $("mine").innerHTML = S.mine.length ? S.mine.map((m, j) => `<li>⭐ <input data-j="${j}" value="${esc(m.name)}" aria-label="Stop name"> <span class="hint">km ${kmOf(m).toFixed(1)}</span> <button data-go="${m.lat},${m.lon}">show</button> <button data-rm="${j}">delete</button></li>`).join("") : `<li class="hint">None yet.</li>`;
+}
+$("mine").addEventListener("change", (e) => { const j = e.target.dataset.j; if (j != null) { S.mine[+j].name = e.target.value.slice(0, 60); save(); drawMap(); } });
+$("mine").addEventListener("click", (e) => { const rm = e.target.closest("[data-rm]")?.dataset.rm, go = e.target.closest("[data-go]")?.dataset.go; if (rm != null) { S.mine.splice(+rm, 1); save(); render(); } if (go) { const [a, b] = go.split(",").map(Number); map.setView([a, b], 16); } });
+$("addStop").onclick = () => { picking = { kind: "stop" }; document.body.classList.add("picking"); $("status").textContent = "Click the map where the stop is."; };
+
+// GPX
+const download = (name, text) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/gpx+xml" })); a.download = name; a.click(); URL.revokeObjectURL(a.href); };
+$("gpxDay").onclick = () => { const i = S.day ?? 0, [s, e] = days[i], km0 = pts[s].km, km1 = pts[e].km; download(`day-${i + 1}.gpx`, toGPX(`${S.route.name}: day ${i + 1}`, pts.slice(s, e + 1), S.mine.filter((m) => { const k = kmOf(m); return k >= km0 && k <= km1; }))); };
+$("gpxAll").onclick = () => download("trip.gpx", toGPX(S.route.name, pts, S.mine));
+$("print").onclick = () => { S.day = null; render(); setTimeout(print, 500); };
+
+// elevation profile (the selected day, or the whole trip with day colors)
+function drawProfile() {
+  const cv = $("prof"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const [s0, e0] = S.day == null ? [0, pts.length - 1] : days[S.day], seg = pts.slice(s0, e0 + 1), k0 = seg[0].km, km = seg.at(-1).km - k0 || 1;
+  const eles = seg.map((p) => p.ele ?? 0), lo = Math.min(...eles), hi = Math.max(...eles, lo + 50), X = (k) => 40 + ((k - k0) / km) * (W - 50), Y = (e) => H - 18 - ((e - lo) / (hi - lo)) * (H - 34);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  days.forEach(([s, e], i) => { const a = Math.max(s, s0), b = Math.min(e, e0); if (a >= b) return; g.fillStyle = COLORS[i % COLORS.length] + "66"; g.beginPath(); g.moveTo(X(pts[a].km), H - 18); for (let j = a; j <= b; j++) g.lineTo(X(pts[j].km), Y(pts[j].ele ?? 0)); g.lineTo(X(pts[b].km), H - 18); g.fill(); });
+  g.strokeStyle = "#d7dde5"; g.lineWidth = 2; g.beginPath(); seg.forEach((p, j) => (j ? g.lineTo(X(p.km), Y(eles[j])) : g.moveTo(X(p.km), Y(eles[j])))); g.stroke();
+  g.fillStyle = "#1c7ed6"; for (const w of found.water) if (w.km >= k0 && w.km <= k0 + km) g.fillRect(X(w.km) - 1, H - 16, 2, 7);
+  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; g.fillText(`${Math.round(hi)} m`, 2, 13); g.fillText(`${Math.round(lo)} m`, 2, H - 20); g.fillText(`km ${k0.toFixed(0)}–${(k0 + km).toFixed(0)} · blue ticks: water`, 44, H - 3);
+}
+
+// settings change → re-plan the days (not the route)
+const sumSettings = () => ($("settingsSum").textContent = `${$("speed").value} km/h, ≤ ${$("maxKm").value} km and ${$("maxUp").value} m up a day, ${$("water").value} L of water`);
+for (const id of ["date", "time", "speed", "breaks", "maxKm", "maxUp", "water", "drink", "bike", "hills"]) $(id).addEventListener("change", () => { S[id] = $(id).value; sumSettings(); if (["maxKm", "maxUp"].includes(id)) S.pins = []; if (S.route && !["bike", "hills"].includes(id)) analyze(); save(); });
+sumSettings(); renderPts();
+if (S.route) analyze(); else $("status").textContent = "Start by setting where you start and end. Tip: try Start “George Washington Bridge”, End “Bear Mountain State Park”.";
+
+window.blipContext = () => ({ page: "Ride: route notebook (bikepacking planner)", points: S.pts.map((p) => p.label), plan: window.blipPlan ?? null, yourStops: S.mine.map((m) => m.name), settings: { speed: +$("speed").value, maxKmPerDay: +$("maxKm").value, maxClimbPerDay: +$("maxUp").value, waterLiters: +$("water").value } });
 </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // Run: node ride/route.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseGPX, measure, climb, splitDays, snapToCamps, along, longestGap, sun, toGPX, meters } from "./route.js";
+import { parseGPX, measure, climb, splitDays, planDays, snapToCamps, along, longestGap, sun, toGPX, meters } from "./route.js";
 
 // a degree of latitude is ~111.2 km
 assert.ok(Math.abs(meters({ lat: 40, lon: -74 }, { lat: 41, lon: -74 }) - 111195) < 50);
@@ -28,6 +28,12 @@ assert.deepEqual(longestGap([{ km: 20 }, { km: 70 }], 0, 100), { from: 20, to: 7
 const s = sun(new Date(2026, 9, 9), 40.7128, -74.006), hm = (d) => d.getUTCHours() * 60 + d.getUTCMinutes() - 240;
 assert.ok(Math.abs(hm(s.rise) - 7 * 60) <= 3 && Math.abs(hm(s.set) - (18 * 60 + 24)) <= 3, `${s.rise.toISOString()} ${s.set.toISOString()}`);
 assert.ok(toGPX("D1", line.slice(0, 2)).includes('<trkpt lat="40.000000" lon="-74.000000"><ele>0</ele>'));
+// a pinned end at km 30 is kept; the 70 km after it is split again at 60
+const pinned = planDays(line, { maxKm: 60 }, [60]);
+assert.equal(line[pinned[0][1]].km.toFixed(0), "30"); assert.equal(pinned.length, 3); assert.equal(pinned[1][0], 60);
+// waypoints go into the GPX, with unsafe characters removed
+const gpx = toGPX("Trip", line.slice(0, 2), [{ lat: 40.5, lon: -74, name: "Lunch <deli>" }]);
+assert.ok(gpx.includes('<wpt lat="40.500000" lon="-74.000000"><name>Lunch deli</name></wpt>'));
 // the sample route reads, measures and splits
 const hud = parseGPX(readFileSync(new URL("./samples/hudson.gpx", import.meta.url), "utf8"));
 const km = measure(hud.points);

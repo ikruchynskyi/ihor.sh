@@ -51,6 +51,18 @@ export function splitDays(points, { maxKm = 60, maxClimb = 900 } = {}) {
   return days;
 }
 
+/** Days with some ends pinned by the rider (point indexes): each pinned end is kept, and only the stretches between
+ *  pins are split automatically. */
+export function planDays(points, opts, pins = []) {
+  const cuts = [0, ...[...new Set(pins)].filter((i) => i > 0 && i < points.length - 1).sort((a, b) => a - b), points.length - 1];
+  const days = [];
+  for (let k = 1; k < cuts.length; k++) {
+    const part = points.slice(cuts[k - 1], cuts[k] + 1);
+    for (const [s, e] of splitDays(part, opts)) days.push([s + cuts[k - 1], e + cuts[k - 1]]);
+  }
+  return days;
+}
+
 /** Move each day's end to a campsite/lodging near it (within `window` km of the planned end), if there is one. */
 export function snapToCamps(points, days, camps, window = 8) {
   return days.map(([s, e], i) => {
@@ -92,9 +104,11 @@ export function sun(date, lat, lon) {
   return { rise: toDate(transit - w), set: toDate(transit + w) };
 }
 
-/** A plain GPX track from points (for exporting one day). */
-export const toGPX = (name, points) => `<?xml version="1.0" encoding="UTF-8"?>
+const clean = (t) => String(t).replace(/[<>&"]/g, "");
+/** A GPX file: the track, plus waypoints (the rider's stops: { lat, lon, name }). */
+export const toGPX = (name, points, waypoints = []) => `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="ihor.sh route notebook" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>${name.replace(/[<&]/g, "")}</name><trkseg>
+${waypoints.map((w) => `<wpt lat="${w.lat.toFixed(6)}" lon="${w.lon.toFixed(6)}"><name>${clean(w.name)}</name></wpt>`).join("\n")}
+<trk><name>${clean(name)}</name><trkseg>
 ${points.map((p) => `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}">${p.ele != null ? `<ele>${Math.round(p.ele)}</ele>` : ""}</trkpt>`).join("\n")}
 </trkseg></trk></gpx>`;
