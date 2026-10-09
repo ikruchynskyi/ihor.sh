@@ -218,9 +218,10 @@ const LAYERS = {
   speeds: { label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
   city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
+  sales: { label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
 };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
+const seen = { sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [] }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
@@ -317,6 +318,14 @@ async function loadPopups(g) {
   seen.popups = list.map((e) => ({ title: e.title, category: e.category, time: [e.start_time, e.end_time].filter(Boolean).join("–"), address: e.address }));
   for (const e of list) dot(e.lat, e.lon, "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.start_time, e.end_time].filter(Boolean).join("–"))}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a>`).addTo(g);
   $("n-popups").textContent = `(${list.length})`;
+}
+
+async function loadSales(g) {
+  const d = await getJSON(`/api/nyc/deals?date=${today}`);
+  const list = d.sampleSales.filter((s) => s.lat);
+  seen.sales = d.sampleSales.map((s) => ({ name: s.name, where: s.lat ? s.place : "online", until: s.end.slice(0, 10) }));
+  for (const s of list) dot(s.lat, s.lon, "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a>`).addTo(g);
+  $("n-sales").textContent = `(${list.length} on the map, ${d.sampleSales.length - list.length} online)`;
 }
 
 // Camera windows: several can be open at once, dragged anywhere, each refreshing its picture.
@@ -484,7 +493,7 @@ window.blipContext = () => {
   return { map: "Subway Bailout: red circles = stations with active MTA alerts; blue dashed = nearest Citi Bikes", center: map.getCenter(), zoom: map.getZoom(),
     alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales };
 };
 
 $("refresh").addEventListener("click", refresh);

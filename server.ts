@@ -7,6 +7,7 @@ import { statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 import { stationArrivals } from "./transit.ts";
+import { deals } from "./deals.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan } from "./nycapi.ts";
@@ -180,6 +181,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/arrivals") {
       const d = await stationArrivals(String(url.searchParams.get("stop") ?? "").slice(0, 6));
       return d ? res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=20" }).end(JSON.stringify(d)) : res.writeHead(404).end();
+    }
+    if (url.pathname === "/api/nyc/deals") {
+      const date = url.searchParams.get("date") ?? "";
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=900" }).end(JSON.stringify(await deals(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined)));
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
     if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));

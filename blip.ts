@@ -4,6 +4,7 @@ import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPl
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals } from "./transit.ts";
+import { deals } from "./deals.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
@@ -47,6 +48,11 @@ const TOOLS: Record<string, Tool> = {
       return currentEvents().events.filter((e: any) => e.start_date <= d && d <= e.end_date && (!category || e.category === category))
         .slice(0, 25).map((e: any) => ({ title: e.title, category: e.category, time: [e.start_time, e.end_time].filter(Boolean).join("–"), address: e.address, url: e.url }));
     },
+  },
+  deals: {
+    description: "Deals in NYC on a date: designer sample sales (with address and dates) and the city's discount weeks (Restaurant Week, Broadway Week, Off-Broadway Week).",
+    parameters: { date: { type: "string", description: "YYYY-MM-DD, New York date (default today)" } },
+    run: async ({ date }) => { const d = await deals(date ? String(date) : undefined); return { ...d, sampleSales: d.sampleSales.slice(0, 20) }; },
   },
   city_events: {
     description: "Official NYC Events Calendar (parks, culture, city programs) for a date range.",
