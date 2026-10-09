@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Radio Safety</title>
+  <meta name="description" content="Ham radio, visually, lesson 14: safety. RF exposure limits by frequency, a safe-distance calculator, duty cycle, electrical shock and how a GFCI saves you, fuses and wiring, lightning grounding, and tower climbing." />
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 14</p>
+  <h1>Safety</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./01-volts-amps-ohms.html#ohm">Lesson 1: Ohm's law</a>; <a href="./07-antennas.html#erp">lesson 7: gain and EIRP</a>; <a href="./10-signals-and-modes.html#dirty">lesson 10: duty cycle</a></li>
+    </ul>
+  </div>
+
+  <p>Amateur radio is a safe hobby, as long as you respect three things: the <b>RF energy</b> your antenna radiates, the <b>electricity</b> that powers your station, and <b>gravity</b>, when antennas go up towers. Every license exam has a safety section, and it's the one part worth knowing even if you never sit an exam.</p>
+
+  <!-- 1 -->
+  <h2 id="rf">RF exposure: heat, not radioactivity</h2>
+  <p>Radio waves are <b>non-ionizing</b> radiation: unlike X-rays or radioactivity, they don't carry enough energy per photon to break chemical bonds or damage DNA. What strong RF fields <em>can</em> do is <b>heat body tissue</b>, the way a microwave oven heats food. So the FCC sets <b>maximum permissible exposure</b> (MPE) limits, in power per area, and they depend on frequency:</p>
+
+  <div class="scene" id="s-mpe">
+    <div class="controls">
+      <label for="mp-c"><input id="mp-c" type="checkbox"> Controlled environment (you, who know about it) instead of the general public</label>
+    </div>
+    <p class="readout" id="r-mpe" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>The limits are lowest, most restrictive, from <b>30 to 300 MHz</b>: a human body is roughly the size of a half wavelength there, so it absorbs energy best (it resonates, like an antenna). The body absorbs more RF energy at some frequencies than others; the rate at which it absorbs it is the <b>SAR</b> (specific absorption rate). Of the ham bands, <b>6 meters</b> (50 MHz) and 2 meters have the lowest limits.</li>
+    <li>There are two sets of limits: <b>controlled</b> (you and your family, who know about it and can control it, averaged over 6 minutes) and <b>uncontrolled</b> (the general public, including your neighbors, averaged over 30 minutes). Below 300 MHz, close to antennas, separate electric (E) and magnetic (H) field limits apply, because the two aren't in a simple relationship there.</li>
+    <li>Microwave bands bring their own hazard: the very high-gain antennas used there concentrate power into intense beams.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="distance">How close is too close?</h2>
+  <p>Exposure depends on your power, the antenna's gain, the frequency, the distance, and how much of the time you're actually transmitting. Try a few stations:</p>
+
+  <div class="scene" id="s-dist">
+    <div class="controls">
+      <label for="ds-p">Power <input id="ds-p" type="range" min="1" max="1500" step="1" value="100"><output id="ds-po"></output></label>
+      <label for="ds-g">Antenna gain <input id="ds-g" type="range" min="0" max="20" step="0.5" value="2.15"><output id="ds-go"></output></label>
+      <label for="ds-f">Band <select id="ds-f"><option value="3.8">80 m</option><option value="14.2" selected>20 m</option><option value="28.4">10 m</option><option value="50.1">6 m</option><option value="146">2 m</option><option value="440">70 cm</option><option value="1296">23 cm</option></select></label>
+      <label for="ds-m">Mode <select id="ds-m"><option value="0.2">SSB voice (20% duty)</option><option value="0.4">CW (40%)</option><option value="1" selected>FM or FT8 (100%)</option></select></label>
+      <label for="ds-t">Transmitting <input id="ds-t" type="range" min="0.1" max="1" step="0.05" value="0.5"><output id="ds-to"></output></label>
+    </div>
+    <p class="readout" id="r-dist" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Duty cycle</b> is the percentage of time a transmitter is actually transmitting during the averaging time; together with the <b>mode's own duty cycle</b> (speech is mostly pauses; FM and FT8 are full power the whole time), it sets the <em>average</em> exposure. Halving the duty cycle halves the average power density, so you may run twice the power for the same exposure: a lower duty cycle permits higher power.</li>
+    <li>The calculation here uses the FCC's standard far-field formula with ground reflection (from <b>OET Bulletin 65</b>). Other ways to evaluate: computer modeling, or measuring with a <b>calibrated field-strength meter and calibrated antenna</b>. All are acceptable.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="rules">What the rules require</h2>
+  <ul>
+    <li>Every station with a time-averaged transmission over about one milliwatt is covered. The <b>station licensee</b> is responsible for making sure no one is exposed above the limits. If your station doesn't meet the simple exemption criteria, perform an evaluation following OET Bulletin 65; the exam treats an 80-meter station as always needing one. Handhelds sold before May 3, 2021 are exempt.</li>
+    <li>If the evaluation shows a problem, you must <b>prevent the exposure</b>: reduce power, raise or <b>relocate antennas</b>, or keep people away. If a directional antenna's main lobe could overexpose a neighbor, make sure it can't be pointed at them while they're there. Indoor antennas: check the limits aren't exceeded in occupied rooms. At your neighbor's, signals must be below the <b>uncontrolled</b> limits.</li>
+    <li><b>Re-evaluate</b> whenever you change anything in the transmitter or antenna system.</li>
+    <li>At shared sites, every transmitter producing 5% or more of its MPE limit where the total is exceeded shares responsibility.</li>
+    <li>Touching an antenna while it transmits can cause an <b>RF burn</b>.</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="shock">Electricity: what a few milliamps can do</h2>
+  <p>Current through the body can heat tissue, disrupt the heart's rhythm, and make muscles contract so you can't let go: all of these. As little as tens of milliamps across the chest can be fatal. Mains wiring in the US: <b>black</b> is hot, white is neutral, green or bare is the safety ground. A <b>ground fault circuit interrupter</b> (GFCI) watches for current leaking where it shouldn't:</p>
+
+  <div class="scene" id="s-gfci">
+    <div class="controls"><label for="gf-l">Current leaking through a person to ground <input id="gf-l" type="range" min="0" max="30" step="0.5" value="0"><output id="gf-lo"></output></label></div>
+    <p class="readout" id="r-gfci" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>A GFCI compares the current going out on the hot wire with the current coming back on the neutral. Any difference means current is flowing from the hot wire <b>to ground</b> some other way, perhaps through you, and it cuts the power in a fraction of a second.</li>
+    <li>A <b>fuse</b> or <b>circuit breaker</b> removes power if there's an overload. It goes <b>in series with the hot wire(s) only</b> (in a four-wire 240 V circuit, both hot wires). Never replace a fuse with a bigger one (a 5 A fuse with a 20 A one): the wiring could overheat and start a fire before the fuse blows. Wire size must match: <b>AWG 14</b> wire for a <b>15 A</b> breaker, <b>AWG 12</b> for <b>20 A</b>. The <b>National Electrical Code</b> covers your station's electrical safety; local electrical codes set grounding requirements.</li>
+    <li>Guard against shock in every way: ground the equipment, use three-wire cords, and use GFCI outlets. A power supply <b>interlock</b> removes dangerous voltages if its cabinet is opened. Just after a power supply is turned off, its <b>filter capacitors</b> can still hold a dangerous charge (<a class="back" href="./05-diodes-and-transistors.html#rectifier">↩ lesson 5: bleeder resistors</a>).</li>
+    <li>When measuring high voltages, make sure the meter <b>and its leads</b> are rated for them.</li>
+    <li>Batteries: shorting a 12 V storage battery's terminals can cause burns, fire or an explosion; charging or discharging one too fast can overheat it or make it release gas.</li>
+    <li>Run an emergency <b>generator</b> outdoors in a well-ventilated area (carbon monoxide), and wash your hands after handling <b>lead</b> solder.</li>
+  </ul>
+
+  <!-- 5 -->
+  <h2 id="lightning">Lightning and grounding</h2>
+  <ul>
+    <li>An outdoor ground rod's main job is to <b>dissipate lightning</b>. The lightning ground system belongs <b>outside</b> the building, and <b>all</b> ground rods and earth connections must be <b>bonded together</b> with heavy wire or strap (otherwise a strike can drive large currents between them, through your equipment).</li>
+    <li>Install <b>lightning arrestors</b> on a grounded panel where the feed lines <b>enter the building</b>.</li>
+    <li>Ground connections should be <b>short and direct</b>, with <b>no sharp bends</b> (lightning is a very fast pulse, and a bend is an inductance it would rather jump across). For a tower: a separate 8-foot ground rod at each leg, bonded to the tower and to each other.</li>
+  </ul>
+
+  <!-- 6 -->
+  <h2 id="towers">Antennas and towers</h2>
+  <ul>
+    <li><b>Power lines</b> are the deadliest hazard: look for them and stay clear. Place any antenna so that if it fell, no part could come within <b>10 feet</b> of power wires, and never attach antennas to utility poles.</li>
+    <li>Never climb a tower without a helper or observer. Wear a hard hat, safety glasses and a harness that's rated for your weight and within its service life; use <b>100% tie-off</b> (at least one lanyard always attached), clipped to the <b>tower legs</b>, with a shock-absorbing lanyard attached <b>above your head</b>. Before climbing a tower that carries powered equipment, <b>lock out and tag</b> every circuit feeding it.</li>
+    <li>A crank-up tower must not be climbed unless it's fully retracted or has mechanical safety locks. A safety wire through each turnbuckle keeps vibration from loosening the guy lines.</li>
+  </ul>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>T0C02: Which band has the lowest MPE? <i>50 MHz.</i></summary><p>It's the only choice inside 30–300 MHz, where the body absorbs RF best.</p></details>
+  <details><summary>T0C03: Duty cycle from 100% to 50%: the allowable power density? <i>Increases by a factor of 2.</i></summary><p>Exposure is averaged over time: half the time on, half the average for the same peak, so twice the peak is allowed.</p></details>
+  <details><summary>T0A08: Where does a fuse go in a 120 V circuit? <i>In series with the hot conductor only.</i></summary><p>Fusing the neutral could leave equipment live after the fuse blows.</p></details>
+  <details><summary>G0B05: What makes a GFCI trip? <i>Current flowing from a hot wire directly to ground.</i></summary><p>The out and back currents no longer match: try it in the GFCI scene.</p></details>
+  <details><summary>T0A09: What should be done to all external ground rods? <i>Bond them together with heavy wire or strap.</i></summary><p>So that lightning can't create a voltage between separate grounds.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=T&mode=study&scope=T0">Technician T0</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G0">General G0</a>
+      <a class="btn alt" href="../practice.html?pool=E&mode=study&scope=E0">Extra E0</a>
+    </p>
+    <p class="note">The calculator is for learning, not a compliance evaluation: use the FCC's tools and OET Bulletin 65 (or the ARRL's RF exposure calculator) for your actual station.</p>
+  </div>
+
+  <nav class="next">
+    <a href="./13-operating.html">← Lesson 13: On the air</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l14.ts"></script>
+</body>
+</html>
