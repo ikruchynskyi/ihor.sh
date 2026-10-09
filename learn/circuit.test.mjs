@@ -45,6 +45,9 @@ const ups = []; for (let n = 1; n < sim.v.length; n++) if (sim.v[n - 1][1] < 0 &
 const f = (ups.length - 1) / (ups.at(-1) - ups[0]);
 assert.ok(Math.abs(f - 1 / (2 * Math.PI * Math.sqrt(1e-9))) < 30, `LC rings at ${f.toFixed(0)} Hz`);
 assert.ok(Math.max(...sim.v.slice(1800).map((v) => v[1])) > 0.98, "amplitude kept");
+// a coil already carrying 1 A, shorted through 2 Ω: the current decays with τ = L/R
+sim = simulate([{ type: "L", a: 1, b: 0, henries: 1, i0: 1 }, { type: "R", a: 1, b: 0, ohms: 2 }], { dt: 1e-4, steps: 5000 });
+near(sim.i[5000][0], Math.exp(-1), 0.01);
 // a sine source through an RC low-pass at its cutoff comes out at 1/√2 of the input amplitude
 const fc = 1 / (2 * Math.PI * 1000 * 1e-6);
 sim = simulate([{ type: "V", a: 1, b: 0, volts: (t) => Math.sin(2 * Math.PI * fc * t) }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "C", a: 2, b: 0, farads: 1e-6 }], { dt: 2e-6, steps: 15000 });

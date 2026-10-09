@@ -1,3 +1,5 @@
+import { stepper } from "/learn/circuit.js";
+
 // Schematic drawing kit for the electronics course: parts on a canvas, and current shown as dots moving along
 // the wires at a speed proportional to the current the solver found in that branch (conventional current, + to −).
 
@@ -71,6 +73,25 @@ export function capacitor(g, x, y1, y2, label, fill = 0) {
   g.strokeStyle = C.text; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 26, mid - 8); g.lineTo(x + 26, mid - 8); g.moveTo(x - 26, mid + 8); g.lineTo(x + 26, mid + 8); g.stroke();
   g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(label, x + 34, mid + 5);
 }
+/** An inductor (coil bumps) on a vertical wire at x between y1 and y2. */
+export function inductor(g, x, y1, y2, label) {
+  const mid = (y1 + y2) / 2, h = 64;
+  clear(g, x - 16, mid - h / 2 - 2, 32, h + 4);
+  g.strokeStyle = C.text; g.lineWidth = 3; g.beginPath();
+  for (let k = 0; k < 4; k++) g.arc(x, mid - h / 2 + 8 + k * 16, 8, -Math.PI / 2, Math.PI / 2);
+  g.stroke();
+  g.beginPath(); g.moveTo(x, mid - h / 2); g.lineTo(x, mid - h / 2 + 0.1); g.moveTo(x, mid + h / 2); g.stroke();
+  g.fillStyle = C.text; g.font = "15px ui-monospace, monospace"; g.fillText(label, x + 20, mid + 5);
+}
+/** A diode on a vertical wire at x, pointing up (cathode on top) or down. */
+export function diode(g, x, y, up = true, label = "") {
+  clear(g, x - 16, y - 14, 32, 28);
+  const s = up ? -1 : 1;
+  g.fillStyle = "#4a5262"; g.strokeStyle = C.text; g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(x - 12, y - 10 * s); g.lineTo(x + 12, y - 10 * s); g.lineTo(x, y + 10 * s); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(x - 12, y + 10 * s); g.lineTo(x + 12, y + 10 * s); g.stroke();
+  if (label) { g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(label, x - 16 - g.measureText(label).width, y + 5); }
+}
 /** A switch on a horizontal wire from x1 to x2 at y: open, or closed. */
 export function switchSym(g, x1, x2, y, closed, label = "") {
   clear(g, x1, y - 22, x2 - x1, 30);
@@ -97,3 +118,18 @@ export function scope(g, x, y, w, h, traces, lo, hi, caption = "") {
 export function tag(g, x, y, text, color = C.blue) { g.font = "14px ui-monospace, monospace"; const w = g.measureText(text).width + 10; g.fillStyle = "rgba(20,23,29,.85)"; g.fillRect(x - 4, y - 15, w, 21); g.strokeStyle = color; g.lineWidth = 1.5; g.strokeRect(x - 4, y - 15, w, 21); g.fillStyle = color; g.fillText(text, x + 1, y); }
 export const fmtA = (a) => (Math.abs(a) >= 1 ? `${a.toFixed(2)} A` : Math.abs(a) >= 1e-3 ? `${(a * 1000).toFixed(1)} mA` : `${(a * 1e6).toFixed(0)} µA`);
 export const fmtR = (r) => (r >= 1e6 ? `${(r / 1e6).toFixed(1)} MΩ` : r >= 1000 ? `${(r / 1000).toFixed(r >= 1e4 ? 0 : 1)} kΩ` : `${Math.round(r)} Ω`);
+
+// Run a stepper in real time: each frame advances real elapsed time in small steps.
+export function live(build, onStep) {
+  let sim = null, last = performance.now(), t = 0, simT = 0, dtSim = 1e-3;
+  const reset = (vc) => { const { elements, dt } = build(vc); sim = stepper(elements, dt, { gmin: 1e-9 }); dtSim = dt; simT = t; };
+  const tick = (now) => {
+    t += Math.min(0.05, (now - last) / 1000); last = now;
+    let r = null;
+    for (let k = 0; simT < t && k < 400; k++) { r = sim.step(); simT += dtSim; } // simulated time keeps pace with real time
+    if (r) onStep(r, t);
+    requestAnimationFrame(tick);
+  };
+  return { reset, start() { requestAnimationFrame(tick); } };
+}
+

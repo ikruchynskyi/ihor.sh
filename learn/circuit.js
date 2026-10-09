@@ -4,7 +4,7 @@
 //   { type: "V", a, b, volts }     voltage source, a is the + terminal
 //   { type: "I", a, b, amps }      current source pushing current from a, through itself, into b
 //   { type: "D", a, b, is, n }     diode/LED, anode a, cathode b (Shockley equation, solved by Newton's method)
-//   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries }: only in simulate(), over time
+//   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries, i0 }: only in simulate()/stepper(), over time
 // solve() returns node voltages and the current through every element, measured from a to b.
 // A voltage source's volts may be a function of time (t, seconds) in simulate(): square waves, sine waves.
 // Pure, so node can test it: node learn/circuit.test.mjs
@@ -87,7 +87,7 @@ export function simulate(elements, { dt, steps }) {
 
 /** The same, one step at a time (for circuits that run live on a page): step() advances dt and returns { t, v, i }. */
 export function stepper(elements, dt, opts = {}) {
-  const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: 0 }));
+  const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: e.type === "L" ? e.i0 ?? 0 : 0 })); // a coil can start with current flowing (i0)
   let n = 0;
   return { step() {
     const t = n++ * dt, flat = [], owner = [];
