@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pictures Over Radio</title>
+  <meta name="description" content="Radio from scratch, chapter 17: slow-scan TV. How a picture becomes a song of tones, how a decoder hears pitch with chapter 9's trick, the VIS header, color, and how fitting a line through sync pulses straightens a slanted picture." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 17</p>
+  <h1>Pictures over radio</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./05-moving-a-station.html#shift">Chapter 5: mixing</a> and <a href="./09-fm-listening-to-the-speed.html#turn">chapter 9: measuring how far an arrow turns</a></li>
+      <li><a href="./11-numbers-to-speakers.html#clocks">Chapter 11: two clocks that never agree</a></li>
+      <li><a href="./03-taking-snapshots.html#strip">Chapter 3: a picture is just samples</a> (helpful)</li>
+    </ul>
+  </div>
+
+  <p>Since 1957 people have sent pictures over radio voice channels using nothing but sound. The method, <b>slow-scan television</b> (SSTV), is so simple you could decode it with a pencil, a stopwatch and perfect pitch: each pixel's brightness is a tone's pitch. Astronauts on the International Space Station send SSTV pictures to anyone listening on 145.800 MHz, and by the end of this chapter you'll understand every step of the decoder that receives them, which runs on this site.</p>
+
+  <!-- 1 -->
+  <h2 id="pitch">Painting with pitch</h2>
+  <p>Take one row of a picture. Read it left to right, and for each pixel play a tone: <b>1500 Hz for black</b>, <b>2300 Hz for white</b>, anything in between for grays. The whole row becomes a little melody:</p>
+
+  <div class="scene" id="s-pitch">
+    <div class="game"><button id="pt-play" type="button">▶ Play this row (slowly)</button><button id="pt-fast" type="button">▶ At real SSTV speed</button></div>
+    <p class="readout" id="r-pitch" aria-live="polite"></p>
+  </div>
+
+  <p>That's all SSTV is, repeated for every row: about 240 to 500 rows, each taking a tenth of a second to half a second, so a picture takes from 36 seconds to three minutes. Because only the pitch matters, not the loudness, the signal survives fading, just like FM (<a class="back" href="./09-fm-listening-to-the-speed.html#demod">↩ ch. 9: only the angle matters</a>). In fact, SSTV is usually sent <em>over</em> FM: the radio's FM demodulator gives you the tones, and the SSTV decoder then measures their pitch.</p>
+
+  <!-- 2 -->
+  <h2 id="line">Anatomy of a line</h2>
+  <p>A decoder needs to know where each row starts, so every line begins (or ends) with a <b>sync pulse</b>: a burst of <b>1200 Hz</b>, lower than any picture tone can be. Color pictures send the line once per color, or as brightness plus color difference. Pick a mode and see one line laid out in time:</p>
+
+  <div class="scene" id="s-line">
+    <div class="controls"><label for="ln-m">Mode <select id="ln-m"></select></label></div>
+    <p class="readout" id="r-line" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>Martin</b> and <b>Scottie</b> send three scans per line: green, blue, red, each a full row of one color.</li>
+    <li><b>Robot</b> and <b>PD</b> modes send <b>brightness</b> (Y) at full resolution and two <b>color differences</b> (R−Y and B−Y) at half resolution, because our eyes see detail in brightness far better than in color (the same trick JPEG and broadcast TV use). PD modes send two rows' brightness with one shared set of color: Y1, R−Y, B−Y, Y2. Robot 36 alternates R−Y and B−Y on successive lines.</li>
+    <li>The ISS usually uses <b>PD120</b>: 640 × 496 pixels in about two minutes.</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="vis">The VIS header: which mode is this?</h2>
+  <p>Before the picture, every transmission sends a short header that names its mode, the <b>VIS code</b> (vertical interval signaling): a 1900 Hz leader, a 1200 Hz break and start bit, then seven data bits at 30 ms each (<b>1100 Hz = 1, 1300 Hz = 0</b>, least significant bit first), an even-parity bit, and a 1200 Hz stop bit:</p>
+
+  <div class="scene" id="s-vis">
+    <div class="controls"><label for="vs-m">Mode <select id="vs-m"></select></label></div>
+    <p class="readout" id="r-vis" aria-live="polite"></p>
+  </div>
+
+  <p>The parity bit is a simple check: the number of 1 bits, including parity, must be even. A decoder that hears a header with the wrong parity ignores it, so a burst of noise doesn't start a fake picture.</p>
+
+  <!-- 4 -->
+  <h2 id="hearing">How a computer hears pitch</h2>
+  <p>A decoder has to measure the tone's frequency many thousands of times a second, accurately enough to tell 1500 Hz from 1503 Hz. Counting zero crossings is too slow and too sensitive to noise. Instead, our decoder reuses two ideas you already know:</p>
+  <ol>
+    <li><b>Mix</b> the audio down by 1900 Hz, the middle of the SSTV range (<a class="back" href="./05-moving-a-station.html#shift">↩ ch. 5</a>). A 2300 Hz tone becomes an arrow spinning at +400 turns a second; a 1500 Hz tone, −400; the 1200 Hz sync, −700. The audio is a real signal (one shadow), so mixing makes a mirror copy too; a low-pass filter removes it (<a class="back" href="./06-averaging-is-filtering.html">↩ ch. 6</a>).</li>
+    <li><b>Measure how far the arrow turns</b> between samples: chapter 9's FM demodulator (<a class="back" href="./09-fm-listening-to-the-speed.html#turn">↩</a>). Turn per sample × samples per second ÷ 2π = how far the tone is from 1900 Hz.</li>
+  </ol>
+
+  <div class="scene" id="s-hear">
+    <div class="controls"><label for="hr-f">Tone <input id="hr-f" type="range" min="1100" max="2300" step="10" value="2100"><output id="hr-fo"></output></label></div>
+    <p class="readout" id="r-hear" aria-live="polite"></p>
+  </div>
+
+  <p>The result is a <b>frequency track</b>: the tone's pitch at every moment. The <a href="../sstv.html">SSTV decoder</a> draws it under the picture as it decodes; you can see the sync dips and the picture tones go by.</p>
+
+  <!-- 5 -->
+  <h2 id="slant">Two clocks again: slanted pictures</h2>
+  <p>The sender's sound card and yours each have their own crystal, and they never agree exactly (<a class="back" href="./11-numbers-to-speakers.html#clocks">↩ ch. 11</a>). If the sender's clock runs 0.2% fast, each of its lines is 0.2% shorter than you expect, and a decoder that just counts time puts every line a little too late: the picture <b>slants</b>. Here the real encoder sends a Robot 36 picture with a clock error, and the real decoder receives it:</p>
+
+  <div class="scene" id="s-slant">
+    <div class="controls">
+      <label for="sl-c">Sender's clock error <input id="sl-c" type="range" min="-0.6" max="0.6" step="0.05" value="0.3"><output id="sl-co"></output></label>
+      <label for="sl-on"><input id="sl-on" type="checkbox"> Slant correction</label>
+    </div>
+    <p class="readout" id="r-slant" aria-live="polite"></p>
+  </div>
+
+  <p>The cure uses the sync pulses. For each line, the decoder looks for its 1200 Hz pulse near where it expects it and notes where it actually is. Those measured times, plotted against the line number, fall on a straight line whose <b>slope</b> is the true line length. Fit that line (least squares: the line that's closest to all the points at once) and predict each line's start from it, and the picture comes out straight. A wrong clock in your own sound card is corrected the same way, which is why SSTV software rarely needs calibrating any more.</p>
+
+  <!-- notation -->
+  <h2 id="notation">Writing it down</h2>
+  <div class="notation">
+    <math><mi>f</mi><mo>=</mo><mn>1500</mn><mo>+</mo><mn>800</mn><mo>×</mo><mfrac><mi>v</mi><mn>255</mn></mfrac><mtext> Hz</mtext><mspace width="2em"/><msub><mi>f</mi><mtext>tone</mtext></msub><mo>=</mo><mn>1900</mn><mo>+</mo><mfrac><mrow><mo>Δ</mo><mi>θ</mi><mo>×</mo><msub><mi>f</mi><mi>s</mi></msub></mrow><mrow><mn>2</mn><mi>π</mi></mrow></mfrac></math>
+    <ul>
+      <li>v: pixel value, 0 (black) to 255 (white). Δθ: the angle between consecutive samples after mixing by 1900 Hz (chapter 9's demodulator); f<sub>s</sub>: samples per second.</li>
+      <li>Line start n = a + b·n, with a and b fitted to the measured sync times: b is the true line length in the receiver's samples.</li>
+    </ul>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The decoder (<code>src/sstv.ts</code>) is about 150 lines. Its pitch detector is three blocks from the course, chained:</p>
+<pre><code>this.mixer = new Mixer(fs, 1900);                                   // ch. 5: slide 1900 Hz to 0
+this.lp = new FirDecimator(firLowpass(1100 / fs, 700 / fs), m, 2); // ch. 6–7: keep ±1100 Hz, thin out
+this.fm = new FmDemod();                                            // ch. 9: angle turned per sample
+// … then for each sample:
+freq.push(1900 + (turn * rate) / (2 * Math.PI));</code></pre>
+  <p>Finding each line's sync: try positions near the prediction, and keep the one where the last few milliseconds are closest to 1200 Hz and the next ones to 1500 Hz (every sync is followed by a black "porch"):</p>
+<pre><code>for (let t = pred - 12 * r; t &lt;= pred + 12 * r; t += r / 4) {
+  const score = Math.abs(avg(t - sync, t) - 1200) + Math.abs(avg(t, t + porch) - 1500);
+  if (score &lt; bestScore) { bestScore = score; best = t; }
+}</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch17.ts</code> sends a test picture through every mode (encoder → audio → decoder) and compares it pixel by pixel:</p>
+<pre><code>black 1500 Hz, mid-gray 1902 Hz, white 2300 Hz
+Robot 36    36.9 s  header says Robot 36    47.6 dB
+Martin M1  115.2 s  header says Martin M1   53.7 dB
+Scottie S1 110.5 s  header says Scottie S1  55.9 dB
+PD90        90.9 s  header says PD90        53.8 dB
+PD120      127.0 s  header says PD120       51.9 dB
+PD180      188.0 s  header says PD180       53.1 dB
+clock +0.3%, noisy: slant correction 34.6 dB, none 8.6 dB
+all checks passed</code></pre>
+  <p>The numbers are PSNR (peak signal-to-noise ratio): how close the decoded picture is to the original, in decibels (<a class="back" href="./04-winding-machine.html#window">↩ ch. 4: decibels</a>). Above about 30 dB the difference is invisible; below about 20 dB it shows. Without slant correction, the drift ruins the picture.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: receive a picture</h2>
+  <div class="lab">
+    <p>The <a href="../sstv.html"><b>SSTV decoder</b></a> takes pictures from a built-in transmitter (with noise and clock-error knobs), a recording, your microphone, or your dongle on 145.800 MHz when the ISS is sending. ARISS announces events at <a href="https://www.ariss.org/">ariss.org</a>; between events, try the recordings people share online.</p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>What frequency does a mid-gray pixel (value 128) use?</summary><p>1500 + 800 × 128/255 ≈ 1902 Hz, right in the middle of the 1500–2300 Hz range.</p></details>
+  <details><summary>Why is the sync pulse at 1200 Hz, below black?</summary><p>So no picture content can ever look like a sync: every pixel is 1500 Hz or above.</p></details>
+  <details><summary>Your decoded picture leans to the right. What's wrong, and what fixes it?</summary><p>The sender's and receiver's sample clocks disagree, so each line's timing drifts a little more. Measuring the sync pulses and fitting a line through their times (slant correction) predicts the true line starts.</p></details>
+  <details><summary>Why do PD and Robot modes send color at half resolution?</summary><p>Our eyes resolve detail in brightness much better than in color, so sending color differences at half resolution saves time with little visible loss.</p></details>
+
+  <nav class="next">
+    <a href="./16-the-whole-receiver.html">← Chapter 16: The whole receiver</a>
+    <a href="./index.html">All chapters →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch17.ts"></script>
+</body>
+</html>

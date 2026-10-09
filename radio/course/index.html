@@ -65,7 +65,7 @@
     <dt><a href="./14-writing-the-driver.html#trace">driver</a></dt><dd>the code that knows which registers to write, in which order.</dd>
   </dl>
 
-  <p style="margin-top:40px">Also: <a href="../ham/">Ham radio license, visually</a> (exam prep with 16 lessons) · <a href="../">Spectrum Lab</a> (the full app) · <a href="../learn.html">one-page quick reference</a> · <a href="../build.html">build for your own dongle</a> (developer guide).</p>
+  <p style="margin-top:40px">Also: <a href="../sstv.html">SSTV decoder</a> · <a href="../ham/">Ham radio license, visually</a> (exam prep with 16 lessons) · <a href="../">Spectrum Lab</a> (the full app) · <a href="../learn.html">one-page quick reference</a> · <a href="../build.html">build for your own dongle</a> (developer guide).</p>
 </main>
 <script type="module">
   import "/src/course/course.css";
@@ -93,6 +93,9 @@
       ["14-writing-the-driver", "Writing the driver", "Everything the driver says to the chips, decoded in order; its source, annotated; how it's tested.", "12, 13", true],
       ["15-the-network-source", "The network source", "Streaming over a network: odd-sized pieces and ghost stations, bandwidth, one dongle for many.", "1, 7, 13", true],
       ["16-the-whole-receiver", "The whole receiver", "Everything on one map, how fast it runs on your computer, how it's tested, what's next.", "all", true],
+    ]],
+    ["Part V · Pictures over radio", [
+      ["17-pictures-over-radio", "Pictures over radio", "Slow-scan TV: brightness as pitch, the VIS header, hearing pitch with the FM trick, and straightening slanted pictures. Receive the ISS.", "5, 9, 11", true],
     ]],
   ];
   const read = (() => { try { return new Set(JSON.parse(localStorage.getItem("course-done") ?? "[]")); } catch { return new Set(); } })();

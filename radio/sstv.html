@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SSTV Decoder</title>
+  <meta name="description" content="Receive slow-scan TV pictures in your browser: from the ISS through an RTL-SDR, from a recording, from your microphone, or from a built-in transmitter. Robot 36, Martin, Scottie and PD modes, with automatic mode detection and slant correction." />
+  <style>
+    .srcs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 8px; }
+    .srcs button { font: 0.9rem ui-sans-serif, system-ui, sans-serif; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+    .srcs button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 8px 0 16px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
+    .pane[hidden] { display: none; }
+    .pane .row { margin: 6px 0; }
+    .pane select, .pane input[type=file] { font: inherit; }
+    .screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    #pic { width: 100%; max-width: 640px; image-rendering: auto; background: #000; border-radius: 8px; aspect-ratio: 4 / 3; display: block; }
+    .status { font: 0.9rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); min-height: 1.4em; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+    .gallery figure { margin: 0; font: 0.75rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    .gallery img { width: 100%; border-radius: 6px; display: block; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">ihor.sh · radio</a></p>
+  <h1>SSTV decoder</h1>
+  <p>Slow-scan TV sends a still picture as sound: a tone whose pitch is the brightness, line by line. Astronauts on the International Space Station send SSTV pictures on <b>145.800 MHz FM</b> during special events, and a $30 dongle can receive them. This page decodes them in your browser. How it works, step by step, is in <a href="./course/17-pictures-over-radio.html">Radio from scratch, chapter 17</a>.</p>
+
+  <div class="srcs" id="srcs" role="group" aria-label="Signal source">
+    <button type="button" data-src="demo" aria-pressed="true">Built-in transmitter</button>
+    <button type="button" data-src="file" aria-pressed="false">Audio file</button>
+    <button type="button" data-src="mic" aria-pressed="false">Microphone</button>
+    <button type="button" data-src="radio" aria-pressed="false">Radio (dongle)</button>
+  </div>
+
+  <div class="pane" data-pane="demo">
+    <div class="row">
+      <label>Mode <select id="dm-mode"></select></label>
+      <label>Picture <select id="dm-pic"><option value="card">test card</option><option value="sky">sunset</option><option value="upload">your own image…</option></select></label>
+      <input type="file" id="dm-file" accept="image/*" hidden>
+    </div>
+    <div class="row">
+      <label>Noise <input id="dm-noise" type="range" min="0" max="1.5" step="0.05" value="0.2"></label>
+      <label>Sender's clock error <input id="dm-clock" type="range" min="-0.5" max="0.5" step="0.05" value="0"> <output id="dm-clocko">0%</output></label>
+      <label><input id="dm-sound" type="checkbox"> Play the sound (real time)</label>
+    </div>
+    <div class="row"><button class="btn" id="dm-go" type="button">Transmit</button></div>
+  </div>
+  <div class="pane" data-pane="file" hidden>
+    <p>A recording of an SSTV transmission (WAV, MP3, OGG…). Many ISS event recordings are shared online.</p>
+    <input type="file" id="fl-file" accept="audio/*">
+  </div>
+  <div class="pane" data-pane="mic" hidden>
+    <p>Hold your phone or computer near a radio's speaker (or play a recording out loud). Works best in a quiet room.</p>
+    <button class="btn" id="mc-go" type="button">Start listening</button>
+  </div>
+  <div class="pane" data-pane="radio" hidden>
+    <p>FM on 145.800 MHz for the ISS. The dongle's audio goes straight into the decoder (and to your speakers if you like).</p>
+    <label><input id="rd-sound" type="checkbox" checked> Play the audio</label>
+    <div id="rd-lab"></div>
+  </div>
+
+  <div class="screen">
+    <canvas id="pic" width="640" height="496"></canvas>
+    <canvas id="track" width="640" height="90" style="width:100%;max-width:640px;height:90px;border-radius:8px;display:block" aria-label="The tone frequency over the last two seconds"></canvas>
+    <p class="status" id="status" aria-live="polite">Waiting for a signal.</p>
+    <label class="note"><input id="slant" type="checkbox" checked> Slant correction (lock to the sync pulses)</label>
+  </div>
+
+  <h2 id="gallery-h">Received pictures</h2>
+  <div class="gallery" id="gallery"><p class="note" style="grid-column:1/-1">Pictures you receive appear here (kept until you close the page). Click one to save it.</p></div>
+
+  <h2 id="iss">Catching the ISS</h2>
+  <ul>
+    <li>ARISS announces SSTV events a few times a year, usually sending a series of pictures in <b>PD120</b> for several days. Their gallery and announcements: <a href="https://www.ariss.org/">ariss.org</a>.</li>
+    <li>The ISS is above your horizon for up to about 10 minutes per pass; a PD120 picture takes about 2 minutes, so you'll catch several per good pass. Pass times: any satellite tracker (the ISS is the easiest object in the sky to predict).</li>
+    <li>Use narrow FM, no squelch (it would chop the picture), and a vertical antenna or better. Doppler shift is a few kHz on 2 meters (<a href="./ham/lessons/13-operating.html#satellites">↩ why</a>), which narrow FM tolerates.</li>
+    <li>Receiving the ISS needs no license; transmitting to it does (Technician or higher).</li>
+  </ul>
+</main>
+<script type="module" src="/src/sstv-app.ts"></script>
+</body>
+</html>

@@ -6,7 +6,7 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "test": "node src/dsp.test.ts",
+    "test": "node src/dsp.test.ts && node src/sstv.test.ts && node src/ham/srs.test.ts",
     "hw-test": "node scripts/hw-test.ts",
     "serve": "vite build && node server.ts",
     "course-check": "node scripts/course-check.ts"
