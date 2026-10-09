@@ -9,12 +9,18 @@ const URLS = [
   "/api/nyc/point?lat=40.75&lon=-73.98", "/api/nyc/trip?from=Union%20Square&to=Grand%20Central&mode=transit", "/api/nyc/restaurants?q=katz", `/api/nyc/city-events?from=${today}&free=1`,
 ];
 let failed = 0;
+// A visitor session, as a page load hands it out.
+const page = await fetch(BASE + "/", { signal: AbortSignal.timeout(30_000) });
+const session = (page.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).find((c) => c.startsWith("ihs=")) ?? "";
+if (!session) { failed++; console.log("✗ / handed out no session cookie"); }
 await Promise.all(URLS.map(async (u) => {
-  const r = await fetch(BASE + u, { headers: { referer: BASE + "/" }, signal: AbortSignal.timeout(30_000) }) // as the site's own pages.catch((e) => ({ status: 0, statusText: e.message }) as Response);
+  const r = await fetch(BASE + u, { headers: { referer: BASE + "/", cookie: session }, signal: AbortSignal.timeout(30_000) }) // as the site's own pages.catch((e) => ({ status: 0, statusText: e.message }) as Response);
   if (r.status !== 200) { failed++; console.log(`✗ ${r.status} ${u}`); }
 }));
 // The API refuses callers that aren't the site's pages.
-const direct = await fetch(BASE + "/api/nyc/events", { signal: AbortSignal.timeout(30_000) }).catch(() => null);
-if (direct?.status !== 403) { failed++; console.log(`✗ /api/nyc/events without the site's headers answered ${direct?.status}, expected 403`); }
+for (const [why, headers] of [["no headers", {}], ["site headers but no session", { referer: BASE + "/" }]] as const) {
+  const r = await fetch(BASE + "/api/nyc/events", { headers, signal: AbortSignal.timeout(30_000) }).catch(() => null);
+  if (r?.status !== 403) { failed++; console.log(`✗ /api/nyc/events with ${why} answered ${r?.status}, expected 403`); }
+}
 console.log(failed ? `${failed} of ${URLS.length} failed` : `all ${URLS.length} OK`);
 process.exit(failed ? 1 : 0);

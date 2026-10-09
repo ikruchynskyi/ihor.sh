@@ -12,6 +12,9 @@ import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt } from "./blip.ts";
+import { issue, check, cookie, spend, TTL } from "./session.ts";
+import { randomBytes } from "node:crypto";
+import { appendFileSync } from "node:fs";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -150,8 +153,8 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
 
 // The API answers only the site's own pages: ihor.sh and its subdomains (localhost while developing). Browsers send
 // Sec-Fetch-Site (older ones Origin/Referer) by themselves; direct calls from scripts and other servers get 403.
-// ponytail: a non-browser client can fake these headers, so this stops casual reuse, not a determined scraper. The
-// costly endpoints keep their per-IP limits; a signed per-page token is the upgrade if someone fakes them for real.
+// A non-browser client can fake these headers, so the API also wants a visitor session (session.ts): a signed cookie
+// that only loading a page hands out, with per-session and per-IP limits on the endpoints that spend our API keys.
 const SITE_ORIGINS = /^(?:https:\/\/(?:[a-z0-9-]+\.)*ihor\.sh|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?)$/;
 export function fromSite(h: http.IncomingHttpHeaders) {
   const fetchSite = h["sec-fetch-site"];
@@ -160,10 +163,30 @@ export function fromSite(h: http.IncomingHttpHeaders) {
   return false;
 }
 
+// The signing secret lives in .env, created on first start, so restarts don't end anyone's session.
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  const s = randomBytes(32).toString("hex");
+  appendFileSync(path.join(ROOT, ".env"), `\nSESSION_SECRET=${s}\n`);
+  return s;
+})();
+// Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
+const METERED = ["/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
-  if (url.pathname.startsWith("/api/") && !fromSite(req.headers))
-    return res.writeHead(403, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: "This API serves ihor.sh pages only." }));
+  const session = check(SESSION_SECRET, cookie(req.headers.cookie));
+  // Pages hand out a session; any request renews one past half its life, so a map left open keeps working.
+  if ((!session && !url.pathname.startsWith("/api/")) || (session && session.age > TTL / 2)) {
+    const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+    res.setHeader("set-cookie", `ihs=${issue(SESSION_SECRET)}; Path=/; Max-Age=${TTL / 1000}; HttpOnly; SameSite=Lax${live ? "; Secure; Domain=ihor.sh" : ""}`);
+  }
+  if (url.pathname.startsWith("/api/")) {
+    if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");
+    const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+    if (METERED.some((p) => url.pathname.startsWith(p)) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
+      return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
+  }
   try {
     if (url.pathname === "/api/ask" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
