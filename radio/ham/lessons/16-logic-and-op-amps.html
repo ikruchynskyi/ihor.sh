@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logic and Op-Amps</title>
+  <meta name="description" content="Ham radio, visually, lesson 16: logic gates you can click, truth tables, flip-flops that divide frequencies, comparators with hysteresis, and the operational amplifier: gain, feedback and filters." />
+  <style>
+    .tt { border-collapse: collapse; font: 0.9rem ui-monospace, Menlo, monospace; margin: 8px 0 18px; }
+    .tt td, .tt th { border: 1px solid var(--line); padding: 4px 12px; text-align: center; }
+    .tt tr.on { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="../">Ham radio, visually</a> · Lesson 16</p>
+  <h1>Logic and op-amps</h1>
+
+  <div class="prereq"><b>Before you start</b>This lesson uses:
+    <ul>
+      <li><a href="./05-diodes-and-transistors.html#transistor">Lesson 5: transistors as switches</a> and <a href="./05-diodes-and-transistors.html#ics">integrated circuits</a></li>
+      <li><a href="./04-resonance.html#filters">Lesson 4: filters</a>; <a href="./01-volts-amps-ohms.html#ohm">lesson 1: Ohm's law</a></li>
+    </ul>
+  </div>
+
+  <p>Two families of chips run inside every modern radio. <b>Digital logic</b> treats voltages as just two values, 1 and 0, and computes with them: counting, dividing frequencies, controlling everything. The <b>operational amplifier</b> is the opposite: a near-perfect analog amplifier whose behavior you set with a couple of resistors. Both are worth a few questions on the Extra exam, and both are fun.</p>
+
+  <!-- 1 -->
+  <h2 id="gates">Logic gates</h2>
+  <p>A gate looks at its inputs and produces an output by a fixed rule. With <b>positive logic</b>, a high voltage means 1 and a low voltage means 0. Click the inputs:</p>
+
+  <div class="scene" id="s-gate">
+    <div class="controls">
+      <label for="gt-g">Gate <select id="gt-g"><option>AND</option><option>OR</option><option selected>NAND</option><option>NOR</option><option>XOR</option><option>XNOR</option><option>NOT</option></select></label>
+      <label for="gt-a"><input id="gt-a" type="checkbox" checked> Input A = 1</label>
+      <label for="gt-b"><input id="gt-b" type="checkbox"> Input B = 1</label>
+    </div>
+  </div>
+  <table class="tt" id="tt" aria-live="polite"></table>
+
+  <ul>
+    <li><b>AND</b>: 1 only if all inputs are 1. <b>OR</b>: 1 if any input is 1.</li>
+    <li><b>NAND</b> and <b>NOR</b> are AND and OR followed by an inversion (the little circle on the symbol): a NAND outputs 0 only if all its inputs are 1.</li>
+    <li><b>XOR</b> (exclusive OR) is 1 when exactly one input is 1; an <b>XNOR</b> is the opposite, 0 when one and only one input is 1. <b>NOT</b> inverts.</li>
+    <li>A list of every input combination and its output is a <b>truth table</b>.</li>
+  </ul>
+  <details><summary>Figure E6-3 (gate symbols on the exam)</summary><figure><img class="fig" src="../fig/e6-3.png" alt="Figure E6-3, logic gate symbols"></figure><p>2 is NAND, 4 is NOR, 5 is NOT (inversion).</p></details>
+
+  <!-- 2 -->
+  <h2 id="families">Inside the chips</h2>
+  <ul>
+    <li><b>CMOS</b> logic uses the least power, and its input switching threshold is about half the supply voltage, giving it good immunity to noise. <b>BiCMOS</b> combines CMOS's high input impedance with bipolar transistors' low output impedance.</li>
+    <li><b>Tri-state</b> outputs have three states: 0, 1, and high impedance (disconnected), so several chips can share one wire.</li>
+    <li>A <b>pull-up</b> or <b>pull-down</b> resistor, to the positive or negative supply, gives an input or output a defined level when nothing else drives it.</li>
+    <li>An <b>FPGA</b> (field-programmable gate array) is a chip of configurable logic, designed in a hardware description language (HDL).</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="flipflops">Flip-flops: memory, and dividing by two</h2>
+  <p>Connect gates in a loop and they can remember: a <b>flip-flop</b> is <b>bistable</b>, staying in whichever of two states it was put. Wired to toggle at every clock pulse, each flip-flop flips at half the rate of its input, <b>dividing the frequency by 2</b>. Chain them:</p>
+
+  <div class="scene" id="s-ff">
+    <div class="controls"><label for="ff-n">Flip-flops <input id="ff-n" type="range" min="1" max="4" step="1" value="3"><output id="ff-no"></output></label></div>
+    <p class="readout" id="r-ff" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>n flip-flops divide by 2ⁿ: <b>4</b> of them divide by 16. They're also an n-bit binary counter: a 3-bit counter has <b>8</b> states. A <b>decade counter</b> gives one output pulse for every 10 input pulses.</li>
+    <li>A <b>shift register</b> is a clocked chain of flip-flops that passes data along one step per clock.</li>
+    <li>Multivibrators: <b>bistable</b> (the flip-flop, two stable states), <b>monostable</b> (switches to its other state for a set time when triggered, then returns), and <b>astable</b> (keeps flipping between two states by itself, with no clock: an oscillator).</li>
+  </ul>
+
+  <!-- 4 -->
+  <h2 id="comparator">Comparators, and why hysteresis helps</h2>
+  <p>A <b>comparator</b> turns an analog voltage into a digital one: its output changes state when the input crosses a threshold. A noisy input crossing slowly would make it chatter, flipping many times. <b>Hysteresis</b> uses two thresholds, a higher one to switch on and a lower one to switch off (like the squelch in <a class="back" href="../../course/11-numbers-to-speakers.html#squelch">course ch. 11</a>):</p>
+
+  <div class="scene" id="s-cmp">
+    <div class="controls"><label for="cm-h">Hysteresis <input id="cm-h" type="range" min="0" max="0.5" step="0.05" value="0"><output id="cm-ho"></output></label></div>
+    <p class="readout" id="r-cmp" aria-live="polite"></p>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="opamp">The operational amplifier</h2>
+  <p>An <b>op-amp</b> is a high-gain, direct-coupled <b>differential</b> amplifier: it amplifies the difference between its two inputs, enormously, with a <b>very high input impedance</b> and a <b>very low output impedance</b>. On its own its gain is far too high to use. With <b>negative feedback</b> (part of the output fed back to the inverting input), the gain is set purely by resistors. Figure E7-3 is the classic <b>inverting amplifier</b>:</p>
+
+  <div class="scene" id="s-op">
+    <div class="controls">
+      <label for="op-1">R1 <select id="op-1"><option>10</option><option selected>1000</option><option>1800</option><option>3300</option></select> Ω</label>
+      <label for="op-f">RF <select id="op-f"><option>470</option><option selected>10000</option><option>47000</option><option>68000</option></select> Ω</label>
+      <label for="op-v">Input <input id="op-v" type="range" min="-1" max="1" step="0.01" value="0.23"><output id="op-vo"></output></label>
+      <label for="op-c"><input id="op-c" type="checkbox"> Capacitor across RF</label>
+    </div>
+    <p class="readout" id="r-op" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li>Gain = <b>−RF ÷ R1</b> (the minus sign: the output is inverted). 10 Ω and 470 Ω: 47. 1000 Ω and 10 kΩ with 0.23 V in: −2.3 V out. 1800 Ω and 68 kΩ: about 38. 3300 Ω and 47 kΩ: about 14.</li>
+    <li>Why it works: the op-amp drives its output until its two inputs are at the same voltage, so the inverting input sits at 0 V ("virtual ground"). The input current V<sub>in</sub>/R1 must all flow through RF, so V<sub>out</sub> = −V<sub>in</sub> × RF/R1.</li>
+    <li>A capacitor across RF lowers the feedback impedance at high frequencies, so gain falls as frequency rises: a <b>low-pass filter</b>. Op-amp active filters can ring and become unstable if gain and Q are too high: restrict both.</li>
+    <li>An ideal op-amp's gain wouldn't vary with frequency; a real one's open-loop gain falls, and the frequency where it reaches 1 is its <b>gain-bandwidth</b>. <b>Input offset voltage</b> is the small differential input needed to bring the open-loop output to zero.</li>
+  </ul>
+  <details><summary>Figure E7-3</summary><figure><img class="fig" src="../fig/e7-3.png" alt="Figure E7-3, an inverting op-amp amplifier"></figure></details>
+
+  <h2 id="explained">Exam questions, explained</h2>
+  <details><summary>E7A04: Flip-flops to divide by 16? <i>4.</i></summary><p>Each divides by 2: 2 × 2 × 2 × 2 = 16.</p></details>
+  <details><summary>E7A07: What does a NAND gate do? <i>Outputs 0 only if all inputs are 1.</i></summary><p>It's AND, inverted: check the truth table above.</p></details>
+  <details><summary>E6C01: Why hysteresis in a comparator? <i>To prevent input noise from causing unstable output.</i></summary><p>Slide the hysteresis up and the chatter stops.</p></details>
+  <details><summary>E7G09: R1 = 1 kΩ, RF = 10 kΩ, 0.23 V in? <i>−2.3 V.</i></summary><p>Gain −10, inverted.</p></details>
+
+  <div class="lab" id="practice">
+    <p><b>Practice the real questions</b> this lesson covers:</p>
+    <p class="row">
+      <a class="btn" href="../practice.html?pool=E&mode=study&scope=E6C,E7A,E7G">Extra E6C, E7A, E7G</a>
+      <a class="btn alt" href="../practice.html?pool=G&mode=study&scope=G7B">General G7B (gates, counters, amplifiers)</a>
+    </p>
+  </div>
+
+  <nav class="next">
+    <a href="./15-station-and-test-gear.html">← Lesson 15: Your station and test gear</a>
+    <a href="../">All lessons →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/lessons/l16.ts"></script>
+</body>
+</html>
