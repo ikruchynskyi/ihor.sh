@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hands-On Electronics</title>
+  <meta name="description" content="Electronics from scratch, chapter 15: building real circuits. How a breadboard's holes connect (and the LED that's shorted by its own row), using a multimeter without blowing its fuse, soldering a joint at the right temperature, oscilloscope technique (triggering, 10× probes, the ground clip that adds ringing), and going from a KiCad schematic to a PCB with traces sized for their current." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    input[type=range] { width: 180px; }
+    ol.steps li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 15</p>
+  <h1>Hands-on</h1>
+  <p class="lede">Every circuit so far lived in a simulator. This chapter is about the bench: where the parts plug in, how to measure without breaking the meter, how to make a solder joint that lasts, how to get an oscilloscope to show the truth, and how a circuit becomes a board you can order. Each skill has its own small game below, and each game teaches the mistake that everyone makes once.</p>
+  <div class="plain card"><b>A first kit</b> (about $100 all in): a multimeter with auto-range, a full-size breadboard and jumper wires, an assortment of resistors, capacitors and LEDs, a temperature-controlled soldering iron, 0.8 mm solder and a flux pen, flush cutters, and a $10 USB logic analyzer that runs with the free PulseView software, which reads chapter 13's buses off real wires.</div>
+
+  <h2>1. The breadboard: which holes are connected</h2>
+  <p>Under the plastic, metal clips join the holes in short groups. Each column of five (a–e, and separately f–j) is one node; the long rails along the edges run the whole length, for the supply and ground. The gap down the middle is where a chip sits, so each of its pins gets its own column. Click any hole to light up everything connected to it.</p>
+  <canvas id="c1" width="800" height="390" aria-label="A breadboard: click a hole to see which holes connect to it"></canvas>
+  <div class="row"><label><input type="checkbox" id="led"> place an LED (click two holes for its legs)</label><button id="clr">Clear</button></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> place an LED so it's <em>shorted</em> (it never lights), then place one correctly.</p>
+
+  <h2>2. The multimeter: where the probes go</h2>
+  <p>Three rules cover nearly every mistake. <b>Voltage</b> is measured <em>across</em> a part, in parallel: the meter's 10 MΩ input barely disturbs anything. <b>Current</b> is measured <em>in series</em>: you break the circuit and let the current flow through the meter, whose 0.1 Ω shunt is almost a wire. So an ammeter placed across anything is a short circuit. <b>Resistance</b> is measured with the power off: the meter pushes its own small current and the circuit's voltages would swamp it. Try them all on a 9 V battery, a 1 kΩ resistor and an LED.</p>
+  <canvas id="c2" width="800" height="260" aria-label="A battery, resistor and LED with a multimeter connected in different ways"></canvas>
+  <div class="row"><label>mode <select id="mm"><option value="V">V (voltage)</option><option value="A">A (current)</option><option value="R">Ω (resistance)</option></select></label><label>probes <select id="mp"><option value="bat">across the battery</option><option value="res" selected>across the resistor</option><option value="ser">in series (break the loop)</option></select></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> measure the resistor's voltage and the loop's current correctly, without blowing the meter's fuse or the LED.</p>
+  <div class="q" data-num="7" data-tol="0.05">
+    <p>The LED drops 2 V. What current (in mA) does the meter read in series with the 1 kΩ resistor and the 9 V battery?</p>
+    <div class="why">\((9 - 2)\,\text{V} / 1000\,Ω = 7\) mA. And the resistor's voltage is the other 7 V: the meter readings agree with each other, which is the best check that you measured right.</div>
+  </div>
+
+  <h2>3. Soldering: heat the joint, not the solder</h2>
+  <p>Solder is a metal alloy that melts at a low temperature: lead-free SAC305 at about 217 °C, the old tin-lead 63/37 at 183 °C. It only bonds to metal that is itself above that temperature, which is why you touch the iron to the pad <em>and</em> the lead together, wait a second or two for them to heat, and feed the solder into the joint (not onto the iron). The flux inside the solder cleans the metal as it melts. Good: a shiny, concave cone, like a little volcano. Bad: a ball sitting on top (a <b>cold joint</b>, the solder never wet the pad), or a pad cooked so long it lifts off the board.</p>
+  <canvas id="c3" width="800" height="260" aria-label="A soldering joint heating up: pad temperature, iron and solder"></canvas>
+  <div class="row"><button id="iron">Hold the iron on the joint</button><button id="feed">Feed solder</button><label>iron <input type="range" id="it" min="250" max="420" step="10" value="350"> <span id="itv"></span></label><button id="next">Next joint</button></div>
+  <p class="readout" id="o3"></p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> make three good joints in a row.</p>
+  <div class="q" data-answer="b">
+    <p>Your joints keep coming out as dull balls on top of the pad. The solder melts fine on the iron. What's wrong?</p>
+    <ul><li data-k="a" data-says="More solder makes a bigger ball, still not bonded.">Not enough solder</li><li data-k="b">The pad isn't hot enough when the solder arrives: hold the iron on the pad and lead first</li><li data-k="c" data-says="Hotter helps a little, but the real problem is where the heat goes.">The iron's set too low</li></ul>
+    <div class="why">Solder melting on the iron only proves the <em>iron</em> is hot. The pad and lead have to reach the melting point too, or the solder can't wet them. A small blob of fresh solder on the iron's tip (a "heat bridge") helps get heat into the joint faster.</div>
+  </div>
+
+  <h2>4. The oscilloscope: getting a stable, honest picture</h2>
+  <p>A scope draws voltage against time, but a repeating signal only stands still on the screen if each sweep starts at the same point in the wave. The <b>trigger</b> does that: it waits until the signal crosses a level (on a rising edge, say) and starts the sweep there. Set the level outside the signal's range and it never fires: the picture rolls or smears. Drag the level.</p>
+  <canvas id="c4" width="800" height="260" aria-label="An oscilloscope screen with a trigger level"></canvas>
+  <div class="row"><label><input type="checkbox" id="trig" checked> trigger on</label><label>level <input type="range" id="tl" min="-2" max="2" step="0.05" value="0.3"> <span id="tlv"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p>The probe matters too. A <b>1×</b> probe loads the circuit with its whole cable capacitance (about 100 pF) and rounds off anything fast; a <b>10×</b> probe divides the signal by ten and loads it ten times less. And the long ground clip is a loop of wire, an inductor (chapter 3) that rings with the probe's capacitance: fast edges grow fake overshoot. A short ground spring on the probe tip makes it go away. Here's a 5 MHz square wave from a microcontroller pin.</p>
+  <canvas id="c5" width="800" height="220" aria-label="A fast square wave as seen through different probe setups"></canvas>
+  <div class="row"><label>probe <select id="px"><option value="1">1×</option><option value="10" selected>10×</option></select></label><label>ground <select id="pg"><option value="15">15 cm clip lead</option><option value="1">1 cm ground spring</option></select></label></div>
+  <p class="readout" id="o5"></p>
+  <div class="q">
+    <p>You see 40% overshoot and ringing on a digital signal. Before you blame the circuit, what should you check?</p>
+    <div class="why">The probe's ground. Swap the clip for the ground spring (or a very short wire) right at the point you're measuring, and see whether the ringing shrinks. If it does, the circuit was fine all along. Measurement first, then debugging.</div>
+  </div>
+
+  <h2>5. From schematic to PCB (KiCad)</h2>
+  <p>A breadboard is for trying; a printed circuit board is for keeping. The free <b>KiCad</b> suite takes you through it in a fixed order:</p>
+  <ol class="steps">
+    <li><b>Schematic:</b> draw the circuit with symbols (what you've seen all course). Run the electrical rules check: unconnected pins, two outputs driving one net.</li>
+    <li><b>Footprints:</b> pick the physical package for each symbol: a 0805 resistor, a SOT-23 MOSFET, a through-hole header. Check it against the datasheet's drawing (chapter 5).</li>
+    <li><b>Layout:</b> place the parts (connectors at the edges, decoupling capacitors right next to each chip's power pin), then route copper traces between pads following the "ratsnest" lines. Fill a layer with a ground plane.</li>
+    <li><b>Design rules check:</b> traces too close, too thin for the factory, unrouted nets.</li>
+    <li><b>Gerbers:</b> export one file per layer plus a drill file, zip them, upload to a board house. Five boards for a few dollars, in about a week.</li>
+  </ol>
+  <p>A trace is a resistor, and if it's too thin for its current it heats up. The industry rule of thumb (IPC-2221) gives the copper cross-section \(A\) (in square mils) for a current \(I\) and an allowed temperature rise \(\Delta T\): \(I = k\,\Delta T^{0.44} A^{0.725}\), with \(k = 0.048\) for outer layers. Size one:</p>
+  <canvas id="c6" width="800" height="140" aria-label="A PCB trace drawn at the width its current needs"></canvas>
+  <div class="row"><label>current <input type="range" id="ti" min="0.1" max="10" step="0.1" value="1"> <span id="tiv"></span></label><label>temp rise <select id="tt"><option>5</option><option selected>10</option><option>20</option><option>30</option></select> °C</label><label>copper <select id="tc"><option value="1" selected>1 oz (35 µm)</option><option value="2">2 oz (70 µm)</option></select></label></div>
+  <p class="readout" id="o6"></p>
+  <div class="q" data-num="0.3" data-tol="0.04">
+    <p>Set 1 A, 10 °C rise, 1 oz copper. How wide does the trace need to be, in mm (to one decimal)?</p>
+    <div class="why">About 0.3 mm (12 mil). Signal traces are often 0.2 mm, so a motor's or a heater's supply traces are drawn much wider, or as copper pours.</div>
+  </div>
+  <div class="q">
+    <p>Why give a board a solid ground plane instead of routing ground as a trace like any other net?</p>
+    <div class="why">Every current returns to its source. With a plane, the return current flows directly under its signal trace, so the loop it makes is tiny: little inductance (less ringing, section 4's lesson again), little radiated noise, and the same 0 V everywhere on the board. A thin ground trace makes big loops and a "ground" that's a few millivolts different at each chip, which analog circuits and ADCs (chapter 11) notice.</div>
+  </div>
+  <div class="code" data-title="Build it: a trace width calculator, and the voltage a trace drops"><textarea>
+// IPC-2221: I = k · ΔT^0.44 · A^0.725, A in mil², k = 0.048 outer / 0.024 inner layers.
+function traceWidth(amps, rise = 10, oz = 1, outer = true) {
+  const k = outer ? 0.048 : 0.024, area = (amps / (k * rise ** 0.44)) ** (1 / 0.725);  // mil²
+  const thickMil = 1.378 * oz;                                                          // 1 oz/ft² = 35 µm = 1.378 mil
+  return { mil: area / thickMil, mm: (area / thickMil) * 0.0254 };
+}
+// The trace's resistance: R = ρ L / (w t), copper ρ = 1.72e-8 Ω·m.
+const resistance = (lengthMm, widthMm, oz = 1) => (1.72e-8 * lengthMm * 1e-3) / (widthMm * 1e-3 * 35e-6 * oz);
+for (const I of [0.5, 1, 2, 5]) {
+  const w = traceWidth(I), R = resistance(100, w.mm);
+  print(`${I} A → ${w.mm.toFixed(2)} mm wide (${w.mil.toFixed(0)} mil); a 10 cm run is ${(R * 1000).toFixed(0)} mΩ and drops ${(I * R * 1000).toFixed(0)} mV`);
+}
+// Try: an inner layer (outer = false) needs about twice the width for the same current: it can't cool to the air.
+</textarea></div>
+
+  <p>Then build something: the <a href="/learn/lab.html">circuit lab</a> has every circuit from this course to rehearse before you build it for real. Next: <a href="./16-audio.html">audio</a>, amplifiers and the speakers and microphones they drive.</p>
+  <p class="muted">Previous: <a href="./14-motors.html">Motors</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", purple: "#9a72ac", copper: "#d08c4a" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 3) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+const canvasXY = (cv, e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) * cv.width) / r.width, ((e.clientY - r.top) * cv.height) / r.height]; };
+
+// ---------- 1. breadboard ----------
+const COLS = 30, colX = (c) => 40 + c * 24.5;
+const holes = []; // {x, y, node, label}
+for (let c = 0; c < COLS; c++) {
+  "abcde".split("").forEach((r, k) => holes.push({ x: colX(c), y: 90 + k * 22, node: `top${c}`, label: `${r}${c + 1}` }));
+  "fghij".split("").forEach((r, k) => holes.push({ x: colX(c), y: 222 + k * 22, node: `bot${c}`, label: `${r}${c + 1}` }));
+  if (c % 6 !== 5) for (const [y, n] of [[26, "rail+top"], [46, "rail−top"], [344, "rail+bot"], [364, "rail−bot"]]) holes.push({ x: colX(c), y, node: n, label: n.replace("top", " (top)").replace("bot", " (bottom)") });
+}
+let sel = null, legs = [], madeShort = false;
+function draw1() {
+  const cv = $("c1"), g = cv.getContext("2d");
+  g.fillStyle = "#e9e6dd"; g.fillRect(0, 0, 800, 390);
+  g.fillStyle = "#d8d4c8"; g.fillRect(20, 196, 760, 6);
+  for (const [y, col] of [[14, C.red], [58, C.blue], [332, C.red], [376, C.blue]]) line(g, [[30, y], [770, y]], col, 2);
+  const lit = sel ? new Set(holes.filter((h) => h.node === sel.node)) : new Set();
+  for (const h of holes) {
+    g.fillStyle = lit.has(h) ? C.green : "#3b3b38"; g.fillRect(h.x - 5, h.y - 5, 10, 10);
+  }
+  if (sel) { const hs = holes.filter((h) => h.node === sel.node); g.strokeStyle = C.green; g.lineWidth = 2; const xs = hs.map((h) => h.x), ys = hs.map((h) => h.y); g.strokeRect(Math.min(...xs) - 9, Math.min(...ys) - 9, Math.max(...xs) - Math.min(...xs) + 18, Math.max(...ys) - Math.min(...ys) + 18); }
+  g.fillStyle = "#6b6a66"; g.font = "11px ui-monospace, monospace"; "abcde".split("").forEach((r, k) => g.fillText(r, 22, 94 + k * 22)); "fghij".split("").forEach((r, k) => g.fillText(r, 22, 226 + k * 22));
+  for (let c = 0; c < COLS; c += 5) g.fillText(c + 1, colX(c) - 4, 72);
+  if (legs.length) {
+    const [a, b] = legs; g.fillStyle = C.red;
+    g.beginPath(); g.arc(a.x, a.y, 7, 0, 7); g.fill();
+    if (b) { line(g, [[a.x, a.y], [(a.x + b.x) / 2, (a.y + b.y) / 2 - 20], [b.x, b.y]], "#888", 2); g.fillStyle = "#ff4d3d"; g.beginPath(); g.arc((a.x + b.x) / 2, (a.y + b.y) / 2 - 22, 12, 0, 7); g.fill(); g.fillStyle = C.blue; g.beginPath(); g.arc(b.x, b.y, 7, 0, 7); g.fill(); }
+  }
+}
+$("c1").onclick = (e) => {
+  const [x, y] = canvasXY($("c1"), e), h = holes.reduce((best, h) => (Math.hypot(h.x - x, h.y - y) < Math.hypot(best.x - x, best.y - y) ? h : best));
+  if (Math.hypot(h.x - x, h.y - y) > 12) return;
+  sel = h;
+  if ($("led").checked) {
+    if (legs.length >= 2) legs = [];
+    legs.push(h);
+    if (legs.length === 2) {
+      const [a, b] = legs, same = a.node === b.node;
+      $("o1").textContent = same ? `both legs in the same strip (${a.label} and ${b.label}): the clip connects them, so the LED is shorted and never lights` : `legs in ${a.label} and ${b.label}: two different nodes, so current has to go through the LED. Add a resistor in series and it lights.`;
+      if (same) madeShort = true; else if (madeShort) done("g1", "One shorted, one right. That LED-in-one-row mistake has fooled everybody once.");
+    } else $("o1").textContent = `first leg in ${h.label}; now click a hole for the second leg`;
+  } else {
+    const n = holes.filter((k) => k.node === h.node).length;
+    $("o1").textContent = `${h.label}: connected to ${n - 1} other holes (${h.node.startsWith("rail") ? "a power rail, the full length (on many boards it's split in the middle: check with a meter!)" : "its column of five, but not across the center gap"})`;
+  }
+  draw1();
+};
+$("clr").onclick = () => { sel = null; legs = []; $("o1").textContent = ""; draw1(); };
+draw1();
+
+// ---------- 2. multimeter ----------
+const OUT = {
+  "V bat": ["9.00 V", "right: across the battery, in parallel. The LED stays lit.", "ok"],
+  "V res": ["7.00 V", "right: the resistor's share of the 9 V (the LED takes the other 2 V).", "okV"],
+  "V ser": ["≈ 7.4 V", "in series, the meter's 10 MΩ becomes part of the loop: almost no current flows, the LED goes dark, and the gap shows nearly the whole supply. Not wrong, just not useful.", "meh"],
+  "A bat": ["FUSE BLOWN", "the ammeter's 0.1 Ω shunt across the battery is a short: amps flow and the meter's fuse blows (or the battery gets hot).", "bad"],
+  "A res": ["LED BURNT", "the ammeter shorts out the resistor, so nothing limits the LED's current: it flashes bright and dies.", "bad"],
+  "A ser": ["7.00 mA", "right: the loop current flows through the meter. Move the red probe back to the V socket afterwards, or the next voltage measurement is a short!", "okA"],
+  "R bat": ["nonsense", "Ω mode measures with its own small current; a powered circuit swamps it (and can damage the meter). Power off first.", "bad"],
+  "R res": ["nonsense", "still powered, and even unpowered the resistor in a circuit is measured in parallel with everything else. Power off and lift one leg out.", "meh"],
+  "R ser": ["OL", "the probes see the open gap: 'overload', infinite resistance.", "meh"],
+};
+const got = new Set();
+function draw2() {
+  const key = `${$("mm").value} ${$("mp").value}`, [read, why, cls] = OUT[key], g = $("c2").getContext("2d");
+  g.fillStyle = C.stage; g.fillRect(0, 0, 800, 260);
+  const brk = $("mp").value === "ser", ledOk = ["V bat", "V res", "A ser"].includes(key);
+  // loop: battery left, resistor top, LED right
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace";
+  line(g, [[80, 70], [80, 200]], C.wire); line(g, [[80, 200], [420, 200], [420, 150]], C.wire);
+  if (brk) { line(g, [[80, 70], [180, 70]], C.wire); line(g, [[220, 70], [260, 70]], C.wire); } else line(g, [[80, 70], [260, 70]], C.wire); g.strokeStyle = C.yellow; g.lineWidth = 3; g.strokeRect(260, 60, 80, 20); g.fillStyle = C.yellow; g.fillText("1 kΩ", 280, 50);
+  line(g, [[340, 70], [420, 70], [420, 110]], C.wire);
+  g.fillStyle = ledOk ? "#ff4d3d" : "#3a2020"; g.beginPath(); g.moveTo(405, 110); g.lineTo(435, 110); g.lineTo(420, 140); g.closePath(); g.fill(); line(g, [[405, 142], [435, 142]], C.text, 2);
+  if (key === "A res") { g.fillStyle = "#555"; g.beginPath(); g.moveTo(405, 110); g.lineTo(435, 110); g.lineTo(420, 140); g.closePath(); g.fill(); }
+  g.fillStyle = C.red; g.fillRect(60, 110, 40, 6); g.fillStyle = C.text; g.fillRect(68, 124, 24, 6); g.fillText("9 V", 30, 125);
+  // the meter
+  g.fillStyle = "#e0b000"; g.fillRect(560, 40, 190, 190); g.fillStyle = "#1a1a1a"; g.fillRect(575, 55, 160, 50);
+  g.fillStyle = cls === "bad" ? C.red : "#a7f070"; g.font = "bold 22px ui-monospace, monospace"; g.fillText(read, 585, 90);
+  g.fillStyle = "#1a1a1a"; g.font = "16px ui-monospace, monospace"; g.fillText({ V: "V ⎓", A: "A ⎓", R: "Ω" }[$("mm").value], 630, 150);
+  const [pa, pb] = { bat: [[80, 90], [80, 180]], res: [[260, 70], [340, 70]], ser: [[180, 70], [220, 70]] }[$("mp").value];
+  line(g, [[600, 230], [600, 245], [pa[0], 245], pa], C.red, 2); line(g, [[700, 230], [700, 252], [pb[0], 252], pb], "#bbb", 2);
+  g.fillStyle = C.red; g.beginPath(); g.arc(...pa, 6, 0, 7); g.fill(); g.fillStyle = "#bbb"; g.beginPath(); g.arc(...pb, 6, 0, 7); g.fill();
+  $("o2").textContent = `${read}: ${why}`;
+  if (cls === "bad") say("Ouch!", "sad");
+  if (cls === "okV" || cls === "okA") got.add(cls);
+  if (got.size === 2) done("g2", "Volts across, amps in series, ohms with the power off. You'll never blow a fuse again. Probably.");
+}
+$("mm").onchange = draw2; $("mp").onchange = draw2;
+draw2();
+
+// ---------- 3. soldering ----------
+const MELT = 217;
+let T = 25, holding = false, heatTime = 0, joint = null, streak = 0, last3 = performance.now();
+function tick3(now) {
+  const dt = Math.min(0.05, (now - last3) / 1000); last3 = now;
+  const Ti = +$("it").value; $("itv").textContent = `${Ti} °C`;
+  if (!joint) { if (holding) { T += ((Ti - T) * dt) / 0.9; heatTime += dt; } else T += ((25 - T) * dt) / 3; }
+  else T += ((25 - T) * dt) / 3;
+  if (!joint && holding && heatTime > 6) finish("burnt");
+  const g = $("c3").getContext("2d");
+  g.fillStyle = C.stage; g.fillRect(0, 0, 800, 260);
+  // board, pad, lead
+  g.fillStyle = "#1e5631"; g.fillRect(60, 180, 360, 30); g.fillStyle = joint === "burnt" ? "#5a3a1a" : C.copper; g.fillRect(170, joint === "burnt" ? 170 : 174, 140, 8);
+  line(g, [[240, 60], [240, 210]], "#c8c8c8", 6);
+  if (joint === "good") { g.fillStyle = "#cfd3d6"; g.beginPath(); g.moveTo(180, 176); g.quadraticCurveTo(232, 168, 236, 120); g.lineTo(244, 120); g.quadraticCurveTo(248, 168, 300, 176); g.closePath(); g.fill(); }
+  if (joint === "cold") { g.fillStyle = "#8d8f90"; g.beginPath(); g.arc(240, 150, 22, 0, 7); g.fill(); }
+  if (holding && !joint) { line(g, [[330, 40], [252, 160]], "#777", 12); g.fillStyle = "#aaa"; g.beginPath(); g.arc(252, 162, 6, 0, 7); g.fill(); }
+  // thermometer
+  const frac = Math.min(1, T / 420); g.fillStyle = C.dim; g.fillRect(520, 30, 30, 200); g.fillStyle = T >= MELT ? C.green : C.yellow; g.fillRect(520, 230 - frac * 200, 30, frac * 200);
+  const ym = 230 - (MELT / 420) * 200; line(g, [[510, ym], [600, ym]], C.blue, 1);
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(`pad ${T.toFixed(0)} °C`, 570, 230 - frac * 200 + 5); g.fillStyle = C.blue; g.fillText(`solder melts ${MELT} °C`, 610, ym + 4);
+  g.fillStyle = C.text; g.fillText(`heated ${heatTime.toFixed(1)} s`, 60, 240); g.fillText(`good in a row: ${streak}`, 250, 240);
+  if (!joint) $("o3").textContent = holding ? (T < MELT ? "heating the pad and lead…" : "hot enough: feed the solder into the joint now") : heatTime ? "the iron's off the joint: the pad is cooling" : "touch the iron to the pad and lead together";
+  requestAnimationFrame(tick3);
+}
+function finish(kind) {
+  joint = kind; holding = false;
+  if (kind === "good") { streak++; $("o3").textContent = `✓ a shiny concave fillet: the pad was ${T.toFixed(0)} °C when the solder arrived, it flowed and wet everything.`; if (streak >= 3) done("g3", "Three good joints. Your soldering is officially better than most factory reworks."); }
+  else { streak = 0; $("o3").textContent = kind === "cold" ? `✗ cold joint: the pad was only ${T.toFixed(0)} °C, under ${MELT} °C. The solder balled up on top without bonding: it will crack or never conduct.` : "✗ cooked: over 6 s of heat. The flux burnt off, the pad's glue softened and it's lifting off the board. Hotter iron, shorter contact."; }
+}
+const ib = $("iron");
+ib.addEventListener("pointerdown", () => { if (!joint) holding = true; }); for (const ev of ["pointerup", "pointerleave"]) ib.addEventListener(ev, () => (holding = false));
+$("feed").onclick = () => { if (joint) return; if (!holding) { $("o3").textContent = "feeding solder with no iron on the joint does nothing: hold the iron there first"; return; } finish(T >= MELT ? "good" : "cold"); };
+$("next").onclick = () => { joint = null; T = 25; heatTime = 0; };
+requestAnimationFrame(tick3);
+
+// ---------- 4. scope trigger ----------
+const sig = (t) => Math.sin(2 * Math.PI * t) + 0.45 * Math.sin(6 * Math.PI * t + 0.6) + 0.08 * (Math.random() - 0.5);
+function draw4() {
+  const g = $("c4").getContext("2d"), W = 800, H = 260, lvl = +$("tl").value, trig = $("trig").checked;
+  $("tlv").textContent = `${lvl.toFixed(2)} V`;
+  g.fillStyle = "#0b1a10"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(131,193,103,.15)"; g.lineWidth = 1; for (let k = 0; k <= 10; k++) { g.beginPath(); g.moveTo(k * 80, 0); g.lineTo(k * 80, H); g.stroke(); } for (let k = 0; k <= 8; k++) { g.beginPath(); g.moveTo(0, k * 32.5); g.lineTo(W, k * 32.5); g.stroke(); }
+  let t0 = Math.random() * 10, fired = false;
+  if (trig) for (let t = t0; t < t0 + 2; t += 0.002) { const a = Math.sin(2 * Math.PI * t) + 0.45 * Math.sin(6 * Math.PI * t + 0.6), b = Math.sin(2 * Math.PI * (t + 0.002)) + 0.45 * Math.sin(6 * Math.PI * (t + 0.002) + 0.6); if (a < lvl && b >= lvl) { t0 = t; fired = true; break; } }
+  const pts = []; for (let x = 0; x <= W; x += 2) pts.push([x, H / 2 - sig(t0 + (x / W) * 2.5) * 70]);
+  line(g, pts, "#9cff7a", 2);
+  const yl = H / 2 - lvl * 70; g.setLineDash([5, 5]); line(g, [[0, yl], [W, yl]], C.yellow, 1); g.setLineDash([]);
+  g.fillStyle = C.yellow; g.font = "13px ui-monospace, monospace"; g.fillText("T▸", 4, yl - 4);
+  $("o4").textContent = !trig ? "trigger off: every sweep starts at a random point, so the wave slides around" : fired ? "triggered: every sweep starts where the wave rises through the level, so the picture stands still" : "the level is outside the signal (about ±1.4 V): the trigger never fires, the scope free-runs and the picture rolls";
+}
+setInterval(draw4, 90);
+
+// ---------- 4b. probes ----------
+function draw5() {
+  const g = $("c5").getContext("2d"), W = 800, H = 220, x10 = $("px").value === "10", gnd = +$("pg").value;
+  g.fillStyle = "#0b1a10"; g.fillRect(0, 0, W, H);
+  // 5 MHz square, 400 ns across. 1×: ~6 MHz bandwidth (τ ≈ 26 ns); 10×: ~100 MHz (τ ≈ 1.6 ns).
+  const tau = x10 ? 1.6 : 26, L = gnd * 15e-9, Cp = x10 ? 15e-12 : 100e-12, fr = 1 / (2 * Math.PI * Math.sqrt(L * Cp)) / 1e6, ringA = (gnd > 5 ? 0.4 : 0.05) * (x10 ? 1 : 0.25), decay = 18;
+  let v = 0; const pts = [];
+  for (let x = 0; x <= W; x++) {
+    const t = (x / W) * 400, ph = t % 200, high = ph < 100, since = high ? ph : ph - 100, target = high ? 1 : 0;
+    v += (target - v) * (1 - Math.exp(-0.5 / tau));
+    const ring = fr < 150 ? ringA * Math.exp(-since / decay) * Math.sin(2 * Math.PI * fr * 1e-3 * since) * (high ? 1 : -1) : 0;
+    pts.push([x, 170 - (v + ring) * 120]);
+  }
+  line(g, pts, "#9cff7a", 2);
+  g.fillStyle = C.text; g.font = "12px ui-monospace, monospace"; g.fillText("0 V", 4, 166); g.fillText("3.3 V", 4, 46); g.fillText("400 ns across", 700, 210);
+  $("o5").textContent = `${x10 ? "10× probe: about 15 pF load, fast edges survive" : "1× probe: ~100 pF of cable loads the pin; the edges are rounded off (a ~6 MHz bandwidth)"} · ${gnd > 5 ? `the 15 cm ground lead (~225 nH) rings with the probe at ~${fr.toFixed(0)} MHz: that overshoot isn't in the circuit` : "short ground spring: the ringing moves above the scope's bandwidth and vanishes"}`;
+}
+$("px").onchange = draw5; $("pg").onchange = draw5; draw5();
+
+// ---------- 5. trace width ----------
+const traceWidth = (I, rise, oz) => { const area = (I / (0.048 * rise ** 0.44)) ** (1 / 0.725); return (area / (1.378 * oz)) * 0.0254; };
+function draw6() {
+  const I = +$("ti").value, rise = +$("tt").value, oz = +$("tc").value, w = traceWidth(I, rise, oz);
+  $("tiv").textContent = `${I.toFixed(1)} A`;
+  const g = $("c6").getContext("2d"); g.fillStyle = "#1e5631"; g.fillRect(0, 0, 800, 140);
+  const px = Math.max(1, w * 12); g.fillStyle = C.copper; g.fillRect(60, 70 - px / 2, 680, px);
+  g.fillStyle = "#e0c060"; for (const x of [60, 740]) { g.beginPath(); g.arc(x, 70, Math.max(10, px / 2 + 6), 0, 7); g.fill(); }
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("drawn 12 px per mm (a 0.2 mm signal trace is ~2 px)", 60, 130);
+  const R = (1.72e-8 * 0.1) / (w * 1e-3 * 35e-6 * oz);
+  $("o6").textContent = `${w.toFixed(2)} mm (${(w / 0.0254).toFixed(0)} mil) wide · a 10 cm run: ${(R * 1000).toFixed(0)} mΩ, dropping ${(I * R * 1000).toFixed(0)} mV and turning ${(I * I * R * 1000).toFixed(0)} mW into heat`;
+}
+for (const id of ["ti", "tt", "tc"]) $(id).oninput = draw6; draw6();
+
+window.blipContext = () => ({ page: "Electronics chapter 15: hands-on (breadboard, multimeter, soldering, oscilloscope triggering and probes, KiCad PCB and trace widths)", meter: `${$("mm").value} ${$("mp").value}`, solderStreak: streak });
+</script>
+</body>
+</html>
