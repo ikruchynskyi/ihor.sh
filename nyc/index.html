@@ -843,11 +843,11 @@ map.on("click", async (e) => {
   const p = L.popup({ maxWidth: 340 }).setLatLng(e.latlng).setContent("Looking up…").openOn(map);
   const d = await getJSON(`/api/nyc/point?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
   if (!d?.found) return p.setContent("No NYC address found here.");
-  seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})`) };
+  seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
   p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>
-    ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
-      <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data</span>` : `<p class="muted">No businesses listed here.</p>`}`);
+    ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
+      <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
 });
 

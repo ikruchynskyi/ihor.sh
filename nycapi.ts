@@ -44,10 +44,37 @@ export async function pointInfo(lat: number, lon: number) {
   const query = p.housenumber ? `${p.housenumber} ${p.street} ${p.borough}` : p.label;
   const info: any = await addressInfo(query).catch(() => ({}));
   const bin = info["BIN (building)"]?.replace(/\D/g, "");
-  const [osm, licensed, food] = await Promise.all([osmPlaces(lat, lon).catch(() => []), bin ? licensedAt(bin).catch(() => []) : [], bin ? restaurantsAt(bin).catch(() => []) : []]);
+  const [osm, licensed, food, rated] = await Promise.all([osmPlaces(lat, lon).catch(() => []), bin ? licensedAt(bin).catch(() => []) : [], bin ? restaurantsAt(bin).catch(() => []) : [], googleRatings(lat, lon).catch(() => [])]);
   const seen = new Set<string>(), key = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/(inc|llc|corp)$/, "");
-  const businesses = [...food, ...osm, ...licensed].filter((b) => !seen.has(key(b.name)) && seen.add(key(b.name)));
+  const businesses: any[] = [...food, ...osm, ...licensed].filter((b) => !seen.has(key(b.name)) && seen.add(key(b.name)));
+  // Google ratings: on the matching business ("Katz's" ↔ "Katz's Delicatessen"), or as their own entry before the license list.
+  for (const g of rated) {
+    const k = key(g.name), hit = businesses.find((b) => { const bk = key(b.name); return bk === k || (Math.min(bk.length, k.length) >= 4 && (bk.startsWith(k) || k.startsWith(bk))); });
+    if (hit) Object.assign(hit, { rating: g.rating, reviews: g.reviews, ratingUrl: g.url });
+    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, rating: g.rating, reviews: g.reviews, ratingUrl: g.url, source: "Google" }); }
+  }
   return { lat, lon, found: true, place: p.label, address: p.housenumber ? `${titleCase(`${p.housenumber.replace(/\s+GARAGE$/i, "")} ${p.street}`).replace(/\bB'way\b/, "Broadway")}, ${p.borough}` : p.label.replace(/, (NY, )?USA$/, ""), neighborhood: info.neighborhood ?? p.neighbourhood ?? null, zip: info.ZIP ?? p.postalcode ?? null, businesses };
+}
+
+/**
+ * Google ratings within ~40 m (Places API (New) Nearby Search). Key: GOOGLE_PLACES_KEY, else SHEETS_API_KEY; either must
+ * be allowed to call the Places API (New). Ratings are a paid field: PLACES_DAILY_CAP (default 300) lookups a day.
+ */
+let placesDay = "", placesUsed = 0;
+async function googleRatings(lat: number, lon: number) {
+  const key = env("GOOGLE_PLACES_KEY") || env("SHEETS_API_KEY");
+  if (!key) return [];
+  const day = new Date().toDateString();
+  if (day !== placesDay) { placesDay = day; placesUsed = 0; }
+  if (++placesUsed > (Number(env("PLACES_DAILY_CAP")) || 300)) return []; // ponytail: in-memory count, a restart resets it
+  const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST", signal: AbortSignal.timeout(8_000),
+    headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.primaryTypeDisplayName" },
+    body: JSON.stringify({ maxResultCount: 15, rankPreference: "DISTANCE", locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: 40 } } }),
+  });
+  if (!r.ok) throw new Error(`Places API ${r.status}`);
+  return (((await r.json()).places ?? []) as any[]).filter((p) => p.rating && p.displayName?.text)
+    .map((p) => ({ name: p.displayName.text as string, kind: p.primaryTypeDisplayName?.text ?? "", rating: p.rating as number, reviews: (p.userRatingCount ?? 0) as number, url: p.googleMapsUri as string }));
 }
 
 const titleCase = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/(^|[\s/-])[a-z]/g, (c) => c.toUpperCase());
