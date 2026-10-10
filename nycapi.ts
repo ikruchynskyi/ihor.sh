@@ -157,6 +157,17 @@ export async function findRestaurants(name: string, borough = "", near?: { lat: 
   return rows.map((r) => ({ camis: r.camis, name: r.dba, cuisine: r.cuisine_description, address: `${r.building ?? ""} ${r.street ?? ""}, ${r.boro} ${r.zipcode ?? ""}`.trim(), lat: Number(r.lat), lon: Number(r.lon), km: km({ lat: Number(r.lat), lon: Number(r.lon) }), lastInspection: r.last?.slice(0, 10) }));
 }
 
+/** Restaurants within ~`m` meters of a point whose latest graded inspection is an A (the city's data, last two years). */
+export async function restaurantsNear(lat: number, lon: number, m = 600) {
+  const dLat = m / 111_200, dLon = m / (111_200 * Math.cos((lat * Math.PI) / 180)), since = new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10);
+  const rows: any[] = await soda({ $select: "camis, dba, cuisine_description, building, street, boro, grade, inspection_date, latitude, longitude",
+    $where: `latitude between ${lat - dLat} and ${lat + dLat} and longitude between ${lon - dLon} and ${lon + dLon} and grade in ('A','B','C') and inspection_date > '${since}'`, $order: "inspection_date DESC", $limit: "800" });
+  const latest = new Map<string, any>();
+  for (const r of rows) if (!latest.has(r.camis)) latest.set(r.camis, r); // newest graded inspection per restaurant
+  return [...latest.values()].filter((r) => r.grade === "A").map((r) => ({ camis: r.camis, name: r.dba, cuisine: r.cuisine_description, address: `${r.building ?? ""} ${r.street ?? ""}, ${r.boro}`.trim(), lat: +r.latitude, lon: +r.longitude, graded: r.inspection_date.slice(0, 10),
+    m: Math.round(Math.hypot((+r.latitude - lat) * 111_200, (+r.longitude - lon) * 111_200 * Math.cos((lat * Math.PI) / 180))) })).sort((a, b) => a.m - b.m);
+}
+
 /** One restaurant's inspection history: grade, score and violations per visit, newest first. */
 export async function restaurantInspections(camis: string) {
   const rows: any[] = await soda({ camis: camis.replace(/\D/g, ""), $order: "inspection_date DESC", $limit: "200" });

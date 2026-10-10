@@ -10,6 +10,7 @@ import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
 import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
+import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -81,6 +82,20 @@ const TOOLS: Record<string, Tool> = {
     description: "Where the International Space Station is now: position, altitude, speed, whether it's in sunlight, and its distance from NYC.",
     parameters: {},
     run: async () => { const d = await iss(); return { ...d, track: undefined }; },
+  },
+  evening_events: {
+    description: "What's on in NYC on a date and time window (NYC Parks, the city's events calendar, street fairs and parades, Ticketmaster shows, NYC for FREE, museum free hours): title, time, venue, price, kind, outdoors with rain chance, source link. Optionally near a place.",
+    parameters: { date: { type: "string", description: "YYYY-MM-DD (default today, New York)" }, from: { type: "string", description: "HH:MM, default 17:00" }, to: { type: "string", description: "HH:MM, default 23:30" }, budget: { type: "string", description: "free, or a max ticket price in dollars like 20" }, kind: { type: "string", description: "music, theater, comedy, sports, family, outdoors, arts, food, talks, community, popups (comma-separated)" }, place: { type: "string", description: "Near this NYC place" }, km: { type: "number", description: "Within this many km of the place" } },
+    run: async ({ date, from, to, budget, kind, place, km }) => {
+      const at = place ? await pointOf(undefined, undefined, place) : null;
+      const r = await eveningEvents({ date, from: from ?? "17:00", to: to ?? "23:30", budget, cat: kind, near: at ? `${at.lat},${at.lon}` : undefined, km: Number(km) || undefined });
+      return { date: r.date, total: r.total, page: "/nyc/tonight.html", events: r.events.slice(0, 15).map((e: any) => ({ id: e.id, time: e.start.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url })) };
+    },
+  },
+  evening_plan: {
+    description: "Plan an evening around one event (an id from evening_events): when to leave, the subway there (with MTA alerts), dinner at a grade-A restaurant nearby (before the event, or after an early one), the walk, the event, the ride home, and the rain chance if it's outdoors.",
+    parameters: { event_id: { type: "string", description: "The event's id from evening_events" }, from: { type: "string", description: "Where the visitor starts (address or place)" }, cuisine: { type: "string", description: "Optional cuisine for dinner, e.g. Italian" }, dinner: { type: "boolean", description: "false to skip dinner" } }, required: ["event_id", "from"],
+    run: ({ event_id, from, cuisine, dinner }) => planEvening(String(event_id), String(from), { dinner: dinner !== false, cuisine: String(cuisine ?? "") }),
   },
   jobs_search: {
     description: "Open jobs in NYC, New Jersey, the metro and remote-US, from employers' own job boards (re-checked hourly), NYC government listings and Adzuna (no gig ads or reposts), deduplicated and flagged (ghost, no salary, agency, scam). Returns title, company, where, pay, how old, flags and the apply link.",
@@ -261,6 +276,7 @@ ${siteMap}
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
+- Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
 - Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).

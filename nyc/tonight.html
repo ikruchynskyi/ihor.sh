@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tonight in NYC</title>
+  <meta name="description" content="What's on in New York City tonight, tomorrow or this weekend, from NYC Parks, the city's events calendar, street-event permits, Ticketmaster, NYC for FREE and museum free hours: filter by time, budget and kind, see what's near you, and plan the evening with dinner nearby, the subway there and back, alerts and the weather." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 8px 0; }
+    .chips button { border-radius: 999px; padding: 3px 12px; }
+    .chips button[aria-pressed="true"] { outline: 2px solid var(--accent); font-weight: 700; }
+    .ev { padding: 10px 14px; margin: 8px 0; display: grid; grid-template-columns: 72px 1fr; gap: 10px; }
+    .ev .t { font-weight: 800; font-size: 17px; } .ev .t small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+    .ev h3 { margin: 0; font-size: 16px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); }
+    .chip.warn { color: var(--warn); border-color: var(--warn); } .chip.ok { color: var(--ok); border-color: var(--ok); }
+    #map { height: 520px; border-radius: 10px; }
+    .plan { padding: 12px 16px; margin: 10px 0; border-left: 4px solid var(--accent); }
+    .plan ol { list-style: none; padding: 0; margin: 6px 0; } .plan li { margin: 6px 0; display: grid; grid-template-columns: 60px 1fr; gap: 8px; }
+    .plan li b.at { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/nyc/">NYC</a> · Tonight</p>
+  <h1>What's on, and how to get there</h1>
+  <p class="lede">Events from NYC Parks, the city's events calendar, street-event permits (fairs, parades, markets), Ticketmaster, NYC for FREE and museum free hours, in one list. Each one links to where it's listed; a cancelled or removed event drops off within the hour. Pick one and plan the evening: dinner nearby, the subway there and back, alerts on the way, and the weather.</p>
+
+  <div class="card" style="padding:10px 14px">
+    <div class="row chips" id="days"></div>
+    <div class="row">
+      <label>from <select id="from"></select></label><label>to <select id="to"></select></label>
+      <span class="chips" id="budget"><button data-b="free">Free</button><button data-b="20">≤ $20</button><button data-b="50">≤ $50</button><button data-b="" aria-pressed="true">Any price</button></span>
+    </div>
+    <div class="row chips" id="cats"></div>
+    <div class="row">
+      <button id="nearMe" type="button">📍 Near me</button>
+      <form id="placeForm" style="display:contents"><input id="place" placeholder="or near a place (e.g. Union Square)" style="min-width:220px"></form>
+      <label>within <select id="km"><option value="">any distance</option><option value="1">1 km</option><option value="2">2 km</option><option value="5" selected>5 km</option><option value="10">10 km</option></select></label>
+      <input id="q" type="search" placeholder="search titles and venues" style="min-width:200px">
+      <span class="chips"><button id="viewList" aria-pressed="true">List</button><button id="viewMap">Map</button></span>
+    </div>
+  </div>
+  <p class="hint" id="count" aria-live="polite"></p>
+  <div id="planBox"></div>
+  <div id="map" hidden></div>
+  <div id="list"></div>
+  <p class="hint" id="sources"></p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import { baseMaps } from "/maps.js";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const getJSON = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+const CAT = { music: "🎵 Music", theater: "🎭 Theater & dance", comedy: "😂 Comedy", sports: "🏟 Sports", family: "🧸 Family", outdoors: "🌳 Outdoors", arts: "🖼 Art & film", food: "🍜 Food & markets", talks: "🎤 Talks & classes", community: "🎪 Fairs & parades", popups: "🛍 Pop-ups", other: "✨ Other" };
+const SRC = { parks: "NYC Parks", ticketmaster: "Ticketmaster", city: "NYC events calendar", permits: "street-event permit", nycforfree: "NYC for FREE", freehours: "museum free hours" };
+const nyDate = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+const addDays = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return nyDate(d); };
+const ampm = (t) => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "am" : "pm"}`; };
+const S = { date: nyDate(), from: "17:00", to: "23:30", budget: "", cats: new Set(), near: null, nearLabel: "", view: "list" };
+let data = null;
+
+// ---------- controls ----------
+const today = nyDate(), sat = addDays(today, (6 - new Date(`${today}T12:00:00`).getDay() + 7) % 7);
+const DAYS = [["Tonight", today], ["Tomorrow", addDays(today, 1)], ...(sat !== today ? [["Saturday", sat]] : []), ["Sunday", addDays(sat, 1)]];
+$("days").innerHTML = DAYS.map(([l, d]) => `<button data-d="${d}">${l}</button>`).join("") + `<input type="date" id="dayPick" min="${today}" max="${addDays(today, 13)}">`;
+const times = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`).concat(["23:59"]);
+$("from").innerHTML = times.slice(0, -1).map((t) => `<option value="${t}" ${t === S.from ? "selected" : ""}>${ampm(t)}</option>`).join("");
+$("to").innerHTML = times.map((t) => `<option value="${t}" ${t === S.to ? "selected" : ""}>${t === "23:59" ? "midnight" : ampm(t)}</option>`).join("");
+const press = (box, sel, test) => box.querySelectorAll(sel).forEach((b) => b.setAttribute("aria-pressed", String(test(b))));
+$("days").addEventListener("click", (e) => { const d = e.target.dataset.d; if (!d) return; S.date = d; load(); });
+$("dayPick").onchange = () => { if ($("dayPick").value) { S.date = $("dayPick").value; load(); } };
+$("from").onchange = () => { S.from = $("from").value; load(); }; $("to").onchange = () => { S.to = $("to").value; load(); };
+$("budget").addEventListener("click", (e) => { const b = e.target.closest("[data-b]"); if (!b) return; S.budget = b.dataset.b; load(); });
+$("cats").addEventListener("click", (e) => { const c = e.target.closest("[data-c]")?.dataset.c; if (!c) return; S.cats.has(c) ? S.cats.delete(c) : S.cats.add(c); load(); });
+$("km").onchange = load; let t; $("q").oninput = () => { clearTimeout(t); t = setTimeout(load, 300); };
+$("nearMe").onclick = () => navigator.geolocation.getCurrentPosition((p) => { S.near = [p.coords.latitude, p.coords.longitude]; S.nearLabel = "you"; $("place").value = ""; load(); }, (e) => ($("count").textContent = `Couldn't get your location: ${e.message}`));
+$("placeForm").onsubmit = async (e) => { e.preventDefault(); const q = $("place").value.trim(); if (!q) { S.near = null; return load(); } try { const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(q)}`); S.near = [g.lat, g.lon]; S.nearLabel = g.label; load(); } catch { $("count").textContent = `Couldn't find "${q}".`; } };
+$("viewList").onclick = () => { S.view = "list"; render(); }; $("viewMap").onclick = () => { S.view = "map"; render(); };
+
+// ---------- loading and showing ----------
+async function load() {
+  const p = new URLSearchParams({ date: S.date, from: S.from, to: S.to });
+  if (S.budget) p.set("budget", S.budget); if (S.cats.size) p.set("cat", [...S.cats].join(",")); if ($("q").value.trim()) p.set("q", $("q").value.trim());
+  if (S.near) { p.set("near", S.near.join(",")); if ($("km").value) p.set("km", $("km").value); }
+  $("count").textContent = "Loading…";
+  try { data = await getJSON(`/api/evening/events?${p}`); } catch (e) { $("count").textContent = e.message; return; }
+  render();
+}
+const price = (e) => (e.free ? "Free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : e.source === "ticketmaster" ? "tickets: see price" : "");
+function card(e, i) {
+  const ongoing = e.ongoing, until = e.end && e.end.slice(0, 10) === e.start.slice(0, 10) ? ampm(e.end.slice(11)) : "";
+  return `<article class="ev card" data-i="${i}">
+    <div class="t">${ongoing ? `<small>on until</small>${until || "late"}` : ampm(e.start.slice(11))}${!ongoing && until ? `<small>to ${until}</small>` : ""}${e.times?.length > 1 ? `<small>+${e.times.length - 1} more times</small>` : ""}</div>
+    <div><h3>${esc(e.title)}</h3>
+      <div class="meta"><span>${CAT[e.category] ?? e.category}</span><span>${esc(e.venue)}</span>${price(e) ? `<b>${price(e)}</b>` : ""}${e.km != null ? `<span>${e.km} km from ${esc(S.nearLabel)}</span>` : ""}
+        ${e.rain != null && e.rain >= 40 ? `<span class="chip warn">☔ ${e.rain}% rain · outdoors</span>` : e.outdoor ? `<span class="chip">outdoors</span>` : ""}
+        ${e.status !== "ok" ? `<span class="chip warn">${esc(e.status)}</span>` : ""}${/sold out/i.test(e.title) ? `<span class="chip warn">sold out</span>` : ""}
+        <span class="chip ok">listed by ${esc(SRC[e.source] ?? e.source)}</span></div>
+      ${e.summary ? `<p class="hint" style="margin:4px 0">${esc(e.summary.slice(0, 220))}</p>` : ""}
+      <div class="row"><a href="${esc(e.url)}" target="_blank" rel="noopener">Details ↗</a>${e.lat != null ? `<button type="button" data-plan="${i}">🗓 Plan my evening around this</button>` : ""}</div></div></article>`;
+}
+let map = null, layer = null;
+function render() {
+  press($("days"), "[data-d]", (b) => b.dataset.d === S.date); press($("budget"), "[data-b]", (b) => b.dataset.b === S.budget);
+  $("cats").innerHTML = Object.entries(CAT).filter(([k]) => data?.facets.category[k] || S.cats.has(k)).map(([k, l]) => `<button data-c="${k}" aria-pressed="${S.cats.has(k)}">${l} <span class="hint">${data?.facets.category[k] ?? 0}</span></button>`).join("");
+  press($("viewList").parentElement, "button", (b) => (b.id === "viewMap") === (S.view === "map"));
+  if (!data) return;
+  const d = new Date(`${S.date}T12:00:00`), label = S.date === today ? "tonight" : d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  $("count").textContent = data.total ? `${data.total} thing${data.total > 1 ? "s" : ""} ${label}, ${ampm(S.from)}–${S.to === "23:59" ? "midnight" : ampm(S.to)}${S.near ? ` near ${S.nearLabel}` : ""}` : "";
+  const list = data.events;
+  if (!list.length) { $("list").innerHTML = `<p>Nothing matches. Try ${S.budget ? "<b>Any price</b>, " : ""}${S.cats.size ? "fewer kinds, " : ""}${S.near ? "a bigger distance, " : ""}or a wider time window.</p>`; $("map").hidden = true; return; }
+  $("map").hidden = S.view !== "map"; $("list").hidden = S.view === "map";
+  if (S.view === "map") {
+    if (!map) { map = L.map("map").setView([40.73, -73.98], 12); baseMaps(map); layer = L.layerGroup().addTo(map); }
+    layer.clearLayers();
+    const pts = list.map((e, i) => [e, i]).filter(([e]) => e.lat != null).map(([e, i]) => L.circleMarker([e.lat, e.lon], { radius: 7, color: e.free ? "#2f9e44" : "#c2410c", weight: 2, fillOpacity: 0.7 }).bindPopup(`<b>${esc(e.title)}</b><br>${ampm(e.start.slice(11))} · ${esc(e.venue)}${price(e) ? ` · ${price(e)}` : ""}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a> · <button data-plan="${i}">plan my evening</button>`).addTo(layer));
+    if (S.near) L.circleMarker(S.near, { radius: 8, color: "#1c7ed6", fillOpacity: 1 }).bindTooltip(S.nearLabel).addTo(layer);
+    if (pts.length) map.fitBounds(L.featureGroup(pts).getBounds().pad(0.1), { maxZoom: 15 });
+    setTimeout(() => map.invalidateSize(), 50);
+  } else $("list").innerHTML = list.map(card).join("");
+}
+
+// ---------- plan my evening ----------
+const icsDate = (date, t) => `${date.replace(/-/g, "")}T${t.replace(":", "")}00`;
+async function plan(e) {
+  const from = S.nearLabel && S.nearLabel !== "you" ? S.nearLabel : S.near ? S.near.join(",") : prompt("Where do you start from? (an address or place)", "Union Square, Manhattan");
+  if (!from) return;
+  $("planBox").innerHTML = `<div class="plan card">Planning your evening around <b>${esc(e.title)}</b>…</div>`; $("planBox").scrollIntoView({ behavior: "smooth" });
+  let p; try { p = await getJSON(`/api/evening/plan?event=${encodeURIComponent(e.id)}&from=${encodeURIComponent(from)}`); } catch (err) { $("planBox").innerHTML = `<div class="plan card">${esc(err.message)}</div>`; return; }
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ihor.sh//evening//EN", ...p.steps.filter((s) => s.event || s.place).map((s, k) => ["BEGIN:VEVENT", `UID:${e.id}-${k}@ihor.sh`, `DTSTART;TZID=America/New_York:${icsDate(p.date, s.at)}`, `DTEND;TZID=America/New_York:${icsDate(p.date, s.event ? (e.end?.slice(11) || s.at) : p.steps[p.steps.indexOf(s) + 1].at)}`, `SUMMARY:${s.what.replace(/[,;]/g, " ")}`, `LOCATION:${(s.place?.address ?? e.venue ?? "").replace(/[,;]/g, " ")}`, `URL:${s.link?.startsWith("/") ? location.origin + s.link : s.link ?? ""}`, "END:VEVENT"].join("\r\n")), "END:VCALENDAR"].join("\r\n");
+  const share = `${location.origin}/nyc/tonight.html#plan=${encodeURIComponent(e.id)}&from=${encodeURIComponent(from)}`;
+  $("planBox").innerHTML = `<div class="plan card"><h2 style="margin:0">Your evening: ${new Date(`${p.date}T12:00:00`).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}</h2>
+    <ol>${p.steps.map((s) => `<li><b class="at">${ampm(s.at)}</b><div><b>${s.link ? `<a href="${esc(s.link)}" ${s.link.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>${esc(s.what)}</a>` : esc(s.what)}</b><br><span class="hint">${esc(s.detail)}</span>${(s.alerts ?? []).length ? `<br><span class="chip warn">⚠ ${s.alerts.length} MTA alert${s.alerts.length > 1 ? "s" : ""} on this ride: ${esc(s.alerts[0].text.slice(0, 120))}…</span>` : ""}</div></li>`).join("")}</ol>
+    ${p.weatherNote ? `<p>${esc(p.weatherNote)}</p>` : ""}
+    ${p.alternatives?.length ? `<p class="hint">Other grade-A places nearby: ${p.alternatives.map((r) => `${esc(r.name)} (${esc(r.cuisine)}, ${r.m} m)`).join(" · ")}</p>` : ""}
+    <p class="hint">Cost: ${p.cost.event === 0 ? "the event is free" : p.cost.event != null ? `tickets from $${Math.round(p.cost.event)}` : "tickets: see the listing"}${p.cost.subway ? ` + $${p.cost.subway.toFixed(2)} for two subway rides` : ""}, plus dinner. Times are estimates: check the train times before you go.</p>
+    <div class="row"><a class="button" id="ics" download="evening.ics" href="data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}">📅 Add to calendar</a><button id="sharePlan" type="button">🔗 Share this plan</button><button type="button" onclick="this.closest('.plan').remove()">Close</button></div></div>`;
+  $("sharePlan").onclick = async () => { try { await navigator.clipboard.writeText(share); $("sharePlan").textContent = "✓ Link copied"; } catch { prompt("Copy this link:", share); } };
+}
+document.addEventListener("click", (ev) => { const i = ev.target.closest("[data-plan]")?.dataset.plan; if (i != null && data) plan(data.events[+i]); });
+// a shared plan: #plan=<event id>&from=<place>
+const h = new URLSearchParams(location.hash.slice(1));
+if (h.get("plan")) getJSON(`/api/evening/event?id=${encodeURIComponent(h.get("plan"))}`).then((e) => { S.nearLabel = h.get("from") ?? ""; S.date = e.start.slice(0, 10); plan(e); load(); }).catch(() => load()); else load();
+$("sources").innerHTML = 'Sources: <a href="https://www.nycgovparks.org/events">NYC Parks</a> · <a href="https://www.nyc.gov/events">NYC events calendar</a> · <a href="https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx">NYC permitted events</a> · <a href="https://www.ticketmaster.com">Ticketmaster</a> · <a href="https://www.nycforfree.co">NYC for FREE</a> · museum free hours from <a href="/nyc/free.html">Free NYC</a> · rain chance from Open-Meteo · restaurant grades from the NYC Health Department.';
+window.blipContext = () => ({ page: "Tonight in NYC (events and evening planner)", filters: { date: S.date, from: S.from, to: S.to, budget: S.budget || "any", kinds: [...S.cats], near: S.nearLabel || null }, shown: data?.events.slice(0, 15).map((e) => `${e.start.slice(11)} ${e.title} @ ${e.venue}${e.free ? " (free)" : ""}`) ?? [] });
+</script>
+</body>
+</html>

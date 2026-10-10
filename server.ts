@@ -22,6 +22,7 @@ import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
 import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs-ai.ts";
+import { startEvening, events as eveningEvents, eventById, planEvening } from "./evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
@@ -194,7 +195,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -419,6 +420,11 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
       } catch (e) { console.log(`${url.pathname}: ${(e as Error).message}`); return res.writeHead(503, { "content-type": "application/json" }).end(JSON.stringify({ error: "The AI helper is busy or offline right now. Try again in a minute." })); }
     }
+    if (url.pathname === "/api/evening/events") { const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 80) || undefined;
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(await eveningEvents({ date: g("date"), from: g("from"), to: g("to"), budget: g("budget"), cat: g("cat"), near: g("near"), km: Number(p.get("km")) || undefined, source: g("source"), q: g("q") }))); }
+    if (url.pathname === "/api/evening/plan") { const p = url.searchParams; const d: any = await planEvening(String(p.get("event") ?? ""), String(p.get("from") ?? "").slice(0, 120), { dinner: p.get("dinner") !== "0", cuisine: String(p.get("cuisine") ?? "").slice(0, 30).replace(/[^a-z ]/gi, "") }).catch((e) => ({ error: e.message }));
+      return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d)); }
+    if (url.pathname === "/api/evening/event") { const e = eventById(String(url.searchParams.get("id") ?? "")); return res.writeHead(e ? 200 : 404, { "content-type": "application/json" }).end(JSON.stringify(e ?? { error: "not found" })); }
     if (url.pathname === "/api/jobs/stats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(jobStats()));
     if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
@@ -449,5 +455,6 @@ startArchive();
 startEvents();
 startJobs();
 startEmbedding();
+startEvening();
 startMesh();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));
