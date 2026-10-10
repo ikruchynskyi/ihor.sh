@@ -112,6 +112,14 @@ export const ESCAPES = [
     plan: [[40.91979, -72.66691, "Riverhead station"], [40.96061, -72.80131, "Wildwood campground"], [41.09971, -72.36312, "Greenport station"]],
   },
   {
+    id: "montauk", title: "Montauk: Hither Hills by the ocean", rr: "LIRR", line: "Montauk Branch to Montauk, the end of the line (about 3 hours from Penn Station; few trains a day)",
+    blurb: "The far end of Long Island: an oceanfront state-park campground in the dunes, a short ride from the last stop, with the lighthouse and the bluffs for day 2.",
+    ride: "About 9 km from Montauk station to the campground, flat; add the 10 km out to Montauk Point Lighthouse and back on day 2.",
+    camp: { name: "Hither Hills State Park campground", season: ["04-10", "11-22"], book: "https://newyorkstateparks.reserveamerica.com/", info: "https://parks.ny.gov/visit/state-parks/hither-hills-state-park" },
+    back: "LIRR from Montauk. In summer (Memorial Day to Labor Day) Friday Montauk trains from the city don't take bikes from 10:30 am to 8 pm, and some weekend trains don't either: check the timetable.",
+    plan: [[41.04925, -71.95374, "Montauk station"], [41.00861, -72.01086, "Hither Hills campground"]],
+  },
+  {
     id: "spruce", title: "Spruce Run Reservoir, New Jersey", rr: "NJT", line: "Raritan Valley Line to Annandale (most trains need a change at Newark Penn)",
     blurb: "Hunterdon County's hills and a campground on the shore of one of New Jersey's largest reservoirs, a short ride from the station: a good first night out.",
     ride: "About 10 km from Annandale station to the campground (the bike route goes around the reservoir); add a loop through the hills on day 2.",
