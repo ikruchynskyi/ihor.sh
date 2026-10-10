@@ -209,6 +209,19 @@ async function windyWebcams() {
   }));
 }
 
+// ---------- public restrooms (NYC Open Data i7jb-7jku: parks, libraries, transit and other city-run restrooms) ----------
+let restrooms: { at: number; list: any[] } | null = null;
+export async function publicRestrooms() {
+  if (!restrooms || restrooms.at < Date.now() - 24 * 3600_000) {
+    const rows = (await json("https://data.cityofnewyork.us/resource/i7jb-7jku.json?$limit=5000")) as any[];
+    restrooms = { at: Date.now(), list: rows.filter((r) => Number(r.latitude) && Number(r.longitude)).map((r) => ({
+      name: r.facility_name ?? "", type: r.location_type ?? "", operator: r.operator ?? "", status: r.status ?? "", open: r.open ?? "", hours: r.hours_of_operation ?? "",
+      accessibility: r.accessibility ?? "", kind: r.restroom_type ?? "", changing: /yes/i.test(r.changing_stations ?? ""), website: r.website ?? "", lat: +Number(r.latitude).toFixed(5), lon: +Number(r.longitude).toFixed(5),
+    })) };
+  }
+  return restrooms.list;
+}
+
 // ---------- 311 ----------
 /** 311 service requests from the newest 48 hours of published data (it lags about a day), inside a map box. */
 export async function complaints311(s: number, w: number, n: number, e: number) {

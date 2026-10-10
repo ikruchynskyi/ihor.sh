@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
+  <meta name="description" content="Live NYC map: everything within 400 m of you (subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms), next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
@@ -100,6 +100,9 @@
     .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
+    .nearbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
+    #nearBox ul { margin: 4px 0 0; padding-left: 0; list-style: none; max-height: 220px; overflow: auto; }
+    #nearBox li { padding: 3px 0; cursor: pointer; border-bottom: 1px dashed var(--line); } #nearBox li:hover { color: var(--fg); }
     #disclaimer { position: fixed; bottom: 22px; left: 440px; right: 200px; z-index: 800; margin: 0; padding: 3px 8px; width: fit-content; max-width: 520px;
       font-size: 11px; line-height: 1.3; background: var(--card); color: var(--muted); border: 1px solid var(--line); pointer-events: none; }
     @media (max-width: 700px) { #disclaimer { top: 64px; bottom: auto; left: 56px; right: 56px; margin: 0 auto; text-align: center; } }
@@ -112,8 +115,10 @@
 <div id="panel">
   <div class="phead"><h1>NYC Live Map</h1><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
-  <div class="muted">Subway Bailout: MTA alerts happening now. Click a red station to see the nearest Citi Bikes. Turn on cameras, events and restaurant inspections below.</div>
+  <div class="muted">What's around you: subway stations (and their alerts), bus stops, Citi Bike, cameras and public restrooms within 400 m. Switch on 🚨 below for every station with an MTA alert (click one for the nearest Citi Bikes), and more layers under it.</div>
   <div class="muted" id="status">Loading…</div>
+  <div class="nearbar"><button id="nearBtn" title="Subway, buses, Citi Bike, cameras and public restrooms within 400 m of you">📍 Within 400 m of me</button><button id="nearHere" class="linkish">…of the map center</button><button id="nearOff" class="linkish" hidden>✕ clear</button></div>
+  <div id="nearBox" class="muted" hidden></div>
   <details style="margin-top:8px"><summary id="typesSum">MTA alerts by type</summary><div id="types"></div></details>
   <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
@@ -169,7 +174,7 @@ const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.st
 
 const map = L.map("map").setView([40.73, -73.95], 12);
 baseMaps(map, { credit: "MTA · Citi Bike" });
-const alertLayer = L.layerGroup().addTo(map);
+const alertLayer = L.layerGroup(); // stations with alerts: a layer you switch on (🚨), off by default
 const bikeLayer = L.layerGroup().addTo(map);
 
 let stations = new Map(); // gtfs_stop_id → { name, lat, lon, routes }
@@ -265,6 +270,7 @@ function showBikes(s) {
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
+  alerts: { grp: "go", label: "🚨 Stations with MTA alerts: click for the nearest Citi Bikes", on: false, group: alertLayer, load: () => {} },
   stations: { grp: "go", label: "🚇 All stations: click for next trains", on: true, group: L.layerGroup(), load: loadAllStations },
   trains: { grp: "go", label: "🚆 Live trains", on: false, group: L.layerGroup(), load: loadTrains },
   buses: { grp: "go", label: "🚌 Bus stops: click for next buses", on: false, group: L.layerGroup(), load: loadBusStops },
@@ -278,6 +284,7 @@ const LAYERS = {
   city: { grp: "out", label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
+  restrooms: { grp: "out", label: "🚻 Public restrooms (parks, libraries, transit)", on: false, group: L.layerGroup(), load: loadRestrooms },
   radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
   lightning: { grp: "sky", label: "⚡ Lightning (last 15 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "lightning", "lightning_detection", "ldn_lightning_strike_density", 0.8, "strike density on an ~8 km grid") },
   clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.85, "whiter = colder, higher cloud tops", { clouds: true }) },
@@ -733,6 +740,64 @@ let photoTimer = 0;
 map.on("moveend", () => { if (LAYERS.photos.on) { clearTimeout(photoTimer); photoTimer = setTimeout(() => loadPhotos(LAYERS.photos.group).catch(() => {}), 400); } });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-photo]"); if (b) openPhoto(photoById.get(b.dataset.photo)); });
 
+// ---------- public restrooms (NYC Open Data), as a layer and in the 400 m circle ----------
+let loosCache = null, camsCache = null;
+const restroomMarker = (r) => { const ok = r.status === "Operational"; return L.circleMarker([r.lat, r.lon], { radius: 5 * DOT, color: "#fff", weight: 1, fillColor: ok ? "#2f9e44" : "#868e96", fillOpacity: 0.95, bubblingMouseEvents: false })
+  .bindTooltip(`🚻 ${esc(r.name)}`).bindPopup(`<b>🚻 ${esc(r.name)}</b> <span class="muted">${esc(r.type)}${r.operator ? ` · ${esc(r.operator)}` : ""}</span><br>${ok ? "Open" : `<b>${esc(r.status)}</b>`}${r.open ? ` · ${esc(r.open)}` : ""}${r.hours ? ` · ${esc(r.hours)}` : ""}${r.accessibility ? `<br>${esc(r.accessibility)}` : ""}${r.kind ? ` · ${esc(r.kind)}` : ""}${r.changing ? " · 🚼 changing station" : ""}${r.website ? `<br><a href="${esc(r.website)}" target="_blank" rel="noopener">website</a>` : ""}<br><span class="muted">NYC Open Data: public restrooms</span>`, { maxWidth: 300 }); };
+async function loadRestrooms(g) {
+  const list = await (loosCache ??= getJSON("/api/nyc/restrooms"));
+  for (const r of list) restroomMarker(r).addTo(g);
+  const ok = list.filter((r) => r.status === "Operational").length;
+  seen.restrooms = { total: list.length, open: ok };
+  $("n-restrooms").textContent = `(${ok} open, ${list.length - ok} closed)`;
+}
+
+// ---------- within 400 m: subway stations and their alerts, bus stops, Citi Bike, cameras and restrooms around a point, on their own layer ----------
+const NEAR_M = 400, nearLayer = L.layerGroup().addTo(map);
+const distM = (a, b) => { const k = Math.PI / 180, dLat = (b.lat - a.lat) * k, dLon = (b.lon - a.lon) * k, h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * k) * Math.cos(b.lat * k) * Math.sin(dLon / 2) ** 2; return 2 * 6371000 * Math.asin(Math.sqrt(h)); };
+let near = null;
+async function nearMe(at, label = "you") {
+  at = { lat: at.lat, lon: at.lon ?? at.lng };
+  near = { ...at, items: [] }; nearLayer.clearLayers();
+  $("nearBox").hidden = false; $("nearBox").textContent = "Looking around…"; $("nearOff").hidden = false;
+  const circle = L.circle([at.lat, at.lon], { radius: NEAR_M, color: "#5cff9d", weight: 1.5, dashArray: "6 4", fillOpacity: 0.06, interactive: false }).addTo(nearLayer);
+  map.fitBounds(circle.getBounds(), { padding: [24, 24] });
+  const within = (list) => list.map((x) => ({ ...x, m: Math.round(distM(at, x)) })).filter((x) => x.m <= NEAR_M).sort((a, b) => a.m - b.m);
+  // stations and bikes are already loaded; bus stops come by grid cell (the cells around the circle); cameras and restrooms once
+  const cells = new Set(); for (const dl of [-0.004, 0, 0.004]) for (const dn of [-0.005, 0, 0.005]) cells.add(`${(Math.round((at.lat + dl) / BUS_GRID) * BUS_GRID).toFixed(4)},${(Math.round((at.lon + dn) / BUS_GRID) * BUS_GRID).toFixed(4)}`);
+  const [stopLists, cams, loos] = await Promise.all([
+    Promise.all([...cells].map((c) => { const [la, lo] = c.split(","); return getJSON(`/api/nyc/bus-stops?lat=${la}&lon=${lo}`).catch(() => []); })),
+    (camsCache ??= getJSON("/api/nyc/cameras")).catch(() => []), (loosCache ??= getJSON("/api/nyc/restrooms")).catch(() => []),
+  ]);
+  if (near?.lat !== at.lat) return; // superseded
+  const items = [], add = (kind, label, marker, meta = {}) => { marker.addTo(nearLayer); items.push({ kind, label, marker, ...meta }); };
+  for (const s of within([...stations].map(([id, x]) => ({ id, ...x })))) {
+    const alerts = (byStation.get(s.id) ?? []).filter((a) => !hidden.has(a.type)), red = alerts.length > 0;
+    add("subway", `🚇 ${esc(s.name)} <span class="muted">(${esc(s.routes)})</span> · ${s.m} m${red ? ` · <b style="color:var(--alert)">${alerts.length} alert${alerts.length > 1 ? "s" : ""}</b>` : ""}`,
+      L.circleMarker([s.lat, s.lon], { radius: (red ? 9 : 6) * DOT, color: red ? css("--alert") : "#9aa3cf", fillColor: red ? css("--alert") : "#9aa3cf", fillOpacity: 0.8, weight: 1.5, bubblingMouseEvents: false }).bindTooltip(`🚇 ${esc(s.name)} (${esc(s.routes)})`).bindPopup("Loading…", { maxWidth: 320 })
+        .on("popupopen", async (ev) => { if (red) showBikes(s); ev.popup.setContent((red ? popup(s, alerts) : `<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>`) + await arrivalsHtml(s.id)); }).on("popupclose", () => bikeLayer.clearLayers()), { alerts: alerts.length });
+  }
+  for (const st of within([...new Map(stopLists.flat().map((x) => [x.id, x])).values()]))
+    add("bus", `🚌 ${esc(st.name)} <span class="muted">(${esc(st.routes.map((r) => r.name).join(", "))})</span> · ${st.m} m`, L.circleMarker([st.lat, st.lon], { radius: 5 * DOT, color: "#fff", weight: 1.5, fillColor: "#1c7ed6", fillOpacity: 0.95, bubblingMouseEvents: false }).bindTooltip(`🚌 ${esc(st.name)}`).bindPopup("Loading…", { maxWidth: 320 }).on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))));
+  for (const b of within(allBikes)) { const c = BIKE_COLORS[bikeState(b)]; add("bike", `🚲 ${esc(b.name)}: ${b.bikes} bikes (${b.ebikes} e), ${b.docks} docks · ${b.m} m`, L.circleMarker([b.lat, b.lon], { radius: 5 * DOT, color: c, fillColor: c, fillOpacity: 0.9, weight: 1, bubblingMouseEvents: false }).bindTooltip(`🚲 ${esc(b.name)}`).bindPopup(`<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}`)); }
+  for (const c of within(cams)) add("camera", `${c.source ? "🎥" : "📷"} ${esc(c.name)} · ${c.m} m`, L.marker([c.lat, c.lon], { icon: L.divIcon({ className: "cam-icon", html: c.source ? "🎥" : "📷", iconSize: [16, 16] }), title: c.name }).on("click", () => openCam(c)), { cam: c });
+  for (const r of within(loos)) add("restroom", `🚻 ${esc(r.name)} <span class="muted">(${esc(r.type)}${r.status !== "Operational" ? `, ${esc(r.status.toLowerCase())}` : ""}${r.hours ? `, ${esc(r.hours)}` : ""})</span> · ${r.m} m`, restroomMarker(r));
+  near.items = items;
+  const n = (k) => items.filter((i) => i.kind === k).length, withAlerts = items.filter((i) => i.alerts).length;
+  $("nearBox").innerHTML = `<b>Within ${NEAR_M} m of ${esc(label)}:</b> 🚇 ${n("subway")}${withAlerts ? ` (${withAlerts} with alerts)` : ""} · 🚌 ${n("bus")} · 🚲 ${n("bike")} · 📷 ${n("camera")} · 🚻 ${n("restroom")}
+    <ul>${items.map((i, k) => `<li data-near="${k}">${i.label}</li>`).join("") || "<li>None of these five within 400 m.</li>"}</ul>`;
+  $("nearBox").querySelectorAll("[data-near]").forEach((li) => (li.onclick = () => { const it = items[+li.dataset.near]; if (it.cam) openCam(it.cam); else { map.setView(it.marker.getLatLng(), Math.max(map.getZoom(), 17)); it.marker.openPopup(); } }));
+  seen.near = { center: at, radiusM: NEAR_M, counts: { subway: n("subway"), stationsWithAlerts: withAlerts, busStops: n("bus"), citiBike: n("bike"), cameras: n("camera"), restrooms: n("restroom") }, items: items.slice(0, 40).map((i) => i.label.replace(/<[^>]+>/g, "")) };
+  return $("nearBox");
+}
+function whereAmI() {
+  if (meAt) return Promise.resolve(meAt);
+  return new Promise((resolve, reject) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }), (e) => reject(new Error(e.message)), { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }) : reject(new Error("no geolocation")));
+}
+$("nearBtn").onclick = async () => { $("nearBox").hidden = false; $("nearBox").textContent = "Finding you…"; try { await nearMe(await whereAmI(), "you"); } catch (e) { $("nearBox").textContent = `Couldn't get your location (${e.message}). Allow location for this site, or use the map center.`; } };
+$("nearHere").onclick = () => nearMe(map.getCenter(), "the map center");
+$("nearOff").onclick = () => { near = null; nearLayer.clearLayers(); seen.near = null; $("nearBox").hidden = true; $("nearOff").hidden = true; };
+
 // "Nearest traffic camera" from anything with a place: 311 reports, events, low aircraft…
 let camList = null;
 const camBtn = (lat, lon) => `<button class="linkish" data-near="${(+lat).toFixed(5)},${(+lon).toFixed(5)}">📷 nearest camera</button>`;
@@ -998,6 +1063,7 @@ map.on("locationfound", (e) => {
   L.circleMarker(e.latlng, { radius: 8, color: "#fff", weight: 3, fillColor: "#1c7ed6", fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip(`You are here (±${Math.round(e.accuracy)} m)`).addTo(meLayer);
   // on page load, only jump to you when you're in the city; elsewhere the dot just waits off-screen
   if (first && (!meAuto || NYC.contains(e.latlng))) map.setView(e.latlng, Math.max(map.getZoom(), 16));
+  if (first && meAuto && NYC.contains(e.latlng) && !near && !location.hash) nearMe(e.latlng, "you").catch(() => {}); // opening the page in the city: what's around you
   if (meWanted) { meWanted = false; startHere(); }
 });
 map.on("locationerror", (e) => {
@@ -1157,6 +1223,8 @@ map.on("click", async (e) => {
 
 // What Blip can do on this page when you ask it to.
 window.blipActions = {
+  show_near: { label: "showed what's within 400 m", description: "Show subway stations (with their alerts), bus stops, Citi Bike docks, cameras and public restrooms within 400 m of the visitor's location, or of a point.", parameters: { lat: { type: "number", description: "optional" }, lon: { type: "number", description: "optional" } },
+    run: async ({ lat, lon }) => { const at = Number(lat) && Number(lon) ? { lat: +lat, lon: +lon } : meAt ? { lat: meAt.lat, lon: meAt.lng } : null; if (!at) return; return nearMe(at, lat ? "that spot" : "you"); } },
   show_point: { label: "marked it on the map", description: "Mark a point on the map with a label and center there, e.g. a Citi Bike station or subway station you found. Use the lat/lon from a tool result.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, label: { type: "string", description: "What it is, shown in a popup" } },
     run: ({ lat, lon, label }) => { const ll = [Number(lat), Number(lon)]; if (!NYC.pad(0.2).contains(ll)) return; map.setView(ll, Math.max(map.getZoom(), 16)); L.popup().setLatLng(ll).setContent(esc(String(label ?? "").replace(/&amp;/g, "&"))).openOn(map); const p = map.latLngToContainerPoint(ll), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; } },
   show_place: { label: "moved the map", description: "Center the map on an NYC address, intersection or landmark.", parameters: { place: { type: "string", description: "Address or place" }, zoom: { type: "number", description: "11 (borough) to 18 (street), default 16" } },
@@ -1194,7 +1262,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
+    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within400m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 

@@ -30,7 +30,7 @@ import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
 import { startMonitor, stopMonitor, monitorState, monitorEvents, monitorAudio, heardLog } from "./monitor.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -571,6 +571,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=900" }).end(JSON.stringify(await deals(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined)));
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
+    if (url.pathname === "/api/nyc/restrooms") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await publicRestrooms()));
     if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
     if (url.pathname === "/api/jobs/search") {
       const p = url.searchParams, s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => (Number(p.get(k)) || undefined);
