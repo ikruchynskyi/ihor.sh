@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bike and Train Escapes</title>
+  <meta name="description" content="Overnight bike trips from New York City by Metro-North, LIRR and NJ Transit: a checker that says whether your full-size bike can ride a given train (rush hours, holidays, summer rules, from the official pages), and four tested escapes to campgrounds with their seasons, booking links and routes you can open in the route notebook." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 120px; }
+    h1 { margin: 0 0 6px; } h2 { margin: 34px 0 8px; }
+    .hint { font-size: 14px; color: var(--muted); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; }
+    .verdict { padding: 12px 16px; border-left: 6px solid var(--muted); margin: 10px 0; }
+    .verdict.ok { border-color: #2f9e44; } .verdict.no { border-color: #e03131; }
+    .verdict b.big { font-size: 1.15rem; }
+    .trip { padding: 14px 18px; margin: 14px 0; }
+    .trip h3 { margin: 0 0 4px; }
+    .trip p { margin: 6px 0; }
+    .tag { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); margin-right: 6px; }
+    .open { color: #1e6b35; font-weight: 600; } .closed { color: #e03131; font-weight: 600; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/ride/">Ride</a> · Bike + train escapes</p>
+  <h1>Bike + train escapes</h1>
+  <p class="lede">Leave the city on a train with your bike, ride to a campground, come back the next day. The hard part isn't the riding: it's knowing which trains take a full-size bike. Each railroad bans bikes at rush hour and on certain holidays, with different hours, so the checker below applies all of their rules for you. Every rule comes from the railroad's own page (linked), checked October 10, 2026.</p>
+
+  <h2>Can my bike ride this train?</h2>
+  <div class="card" style="padding:12px 16px">
+    <div class="row">
+      <label>Railroad <select id="rr"><option value="MNR">Metro-North</option><option value="LIRR">LIRR</option><option value="NJT">NJ Transit</option></select></label>
+      <label>Train <select id="dir"><option value="out">leaving the city</option><option value="in">coming back</option></select></label>
+      <label><span id="whenLabel">departs</span> <input type="datetime-local" id="when"></label>
+      <label><input type="checkbox" id="fold"> folding bike</label>
+    </div>
+    <div id="verdict" class="verdict" aria-live="polite"></div>
+  </div>
+
+  <h2>Escapes</h2>
+  <p class="hint">Distances are approximate: "Plan this ride" opens it in the route notebook with the real route, climbing, water, food (with opening hours), daylight and the forecast. Book campsites ahead: state parks fill up on summer weekends.</p>
+  <div id="trips"></div>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li>Walk your bike in stations and on platforms; bikes go where they don't block aisles or doors, and riders with disabilities always come first.</li>
+    <li>E-bikes and scooters aren't allowed on NJ Transit trains; check the MTA's rules for electric bikes before you bring one on Metro-North or the LIRR.</li>
+    <li>Rules change. The checker follows the pages below as of the date above; if a conductor or a sign says otherwise, they win.</li>
+  </ul>
+  <p class="hint" id="sources"></p>
+</main>
+<script type="module">
+import { bikeOK, nextOK, inSeason, ESCAPES, SOURCES, NAMES, LIMITS } from "/ride/escapes.js";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const fmt = (d) => d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+// default: this coming Friday at 6 pm, the most common "let's go" moment (and a banned one, which is the point)
+const fri = new Date(); fri.setDate(fri.getDate() + ((5 - fri.getDay() + 7) % 7)); fri.setHours(18, 0, 0, 0);
+if (fri < new Date()) fri.setDate(fri.getDate() + 7);
+$("when").value = local(fri);
+
+function check() {
+  const rr = $("rr").value, dir = $("dir").value, when = new Date($("when").value), fold = $("fold").checked;
+  $("whenLabel").textContent = dir === "out" ? "departs the city at" : "arrives in the city at";
+  if (isNaN(when)) return;
+  const r = bikeOK(rr, dir, when, { folding: fold }), alt = !r.ok ? nextOK(rr, dir, when) : null;
+  $("verdict").className = `verdict card ${r.ok ? "ok" : "no"}`;
+  $("verdict").innerHTML = `<b class="big">${r.ok ? "✓ Yes" : "✗ No"}</b>, on ${NAMES[rr]} ${dir === "out" ? "leaving" : "arriving"} ${fmt(when)}. ${esc(r.why)}
+    ${alt ? `<p>Earliest with a bike: <b>${fmt(alt)}</b> <button id="useAlt">use it</button></p>` : ""}
+    ${r.note ? `<p class="hint">${esc(r.note)}</p>` : ""}
+    <p class="hint">${esc(LIMITS[rr])} · <a href="${SOURCES[rr]}">${NAMES[rr]}'s bike rules</a></p>`;
+  if (alt) $("useAlt").onclick = () => { $("when").value = local(alt); check(); };
+}
+for (const id of ["rr", "dir", "when", "fold"]) $(id).addEventListener("input", check);
+check();
+
+const today = new Date();
+$("trips").innerHTML = ESCAPES.map((e) => {
+  const open = inSeason(today, ...e.camp.season), [o, c] = e.camp.season.map((md) => new Date(`2026-${md}T12:00`).toLocaleDateString([], { month: "short", day: "numeric" }));
+  const plan = "/ride/#plan=" + encodeURIComponent(e.plan.map(([a, b, n]) => `${a},${b},${n}`).join("|"));
+  return `<article class="trip card" id="${e.id}">
+    <h3>${esc(e.title)}</h3>
+    <span class="tag">🚆 ${NAMES[e.rr]}</span><span class="tag">⛺ ${open ? `<span class="open">open now</span>` : `<span class="closed">closed for the season</span>`} (${o} – ${c})</span>
+    <p>${esc(e.blurb)}</p>
+    <p><b>Train:</b> ${esc(e.line)}.</p>
+    <p><b>Ride:</b> ${esc(e.ride)}</p>
+    <p><b>Sleep:</b> <a href="${e.camp.info}">${esc(e.camp.name)}</a>, season ${o} to ${c} (2026). <a href="${e.camp.book}">Book a site</a>.</p>
+    <p><b>Home:</b> ${esc(e.back)}</p>
+    <div class="actions"><a class="button" href="${plan}">🗺 Plan this ride</a><button data-rr="${e.rr}">Check my trains</button></div>
+  </article>`;
+}).join("");
+$("trips").addEventListener("click", (ev) => { const rr = ev.target.closest("[data-rr]")?.dataset.rr; if (rr) { $("rr").value = rr; check(); $("rr").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+$("sources").innerHTML = "Sources: " + Object.entries(SOURCES).map(([k, u]) => `<a href="${u}">${NAMES[k]}</a>`).join(" · ") + " · campground seasons from NY State Parks and NJ DEP (each linked in its trip).";
+window.blipContext = () => ({ page: "Ride: bike + train escapes from NYC (bike rules checker and overnight trips)", check: { railroad: $("rr").value, direction: $("dir").value, when: $("when").value, folding: $("fold").checked, verdict: $("verdict").textContent.trim().slice(0, 300) }, trips: ESCAPES.map((e) => ({ title: e.title, railroad: NAMES[e.rr], campOpenNow: inSeason(new Date(), ...e.camp.season) })) });
+</script>
+</body>
+</html>

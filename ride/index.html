@@ -46,6 +46,7 @@
   <div id="map" aria-label="Map: the route, day ends you can drag, and stops along the way"></div>
   <section id="panel">
     <h1>Route notebook</h1>
+    <p class="hint">New: <a href="/ride/escapes.html">bike + train escapes</a>, overnights from the city and which trains take your bike.</p>
     <p class="hint">Plan a bike trip: pick where you start and end (type a place or press 📍 and click the map), add via points, and it finds a bike route, splits it into days, and checks every day for water, food, a place to sleep, daylight and weather. Drag the 🏁 flags on the map to move where a day ends.</p>
 
     <h2>1. Where</h2>
@@ -419,8 +420,11 @@ function drawProfile() {
 // settings change → re-plan the days (not the route)
 const sumSettings = () => ($("settingsSum").textContent = `${$("speed").value} km/h, ≤ ${$("maxKm").value} km and ${$("maxUp").value} m up a day, ${$("water").value} L of water`);
 for (const id of ["date", "time", "speed", "breaks", "maxKm", "maxUp", "water", "drink", "bike", "hills"]) $(id).addEventListener("change", () => { S[id] = $(id).value; sumSettings(); if (["maxKm", "maxUp"].includes(id)) S.pins = []; if (S.route && !["bike", "hills"].includes(id)) analyze(); save(); });
+// A link can bring a trip: #plan=lat,lon,Name|lat,lon,Name|… (start, vias, end), e.g. from the bike + train escapes.
+const linked = decodeURIComponent(location.hash.match(/^#plan=(.+)$/)?.[1] ?? "").split("|").map((t) => { const [a, b, ...n] = t.split(","); return { lat: +a, lon: +b, label: n.join(",").slice(0, 80) }; }).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
+if (linked.length >= 2 && linked.length <= 8) { S = { ...S, pts: linked, route: null, pins: [], day: null }; history.replaceState(null, "", location.pathname); }
 sumSettings(); renderPts();
-if (S.route) analyze(); else $("status").textContent = "Start by setting where you start and end. Tip: try Start “George Washington Bridge”, End “Bear Mountain State Park”.";
+if (linked.length >= 2 && linked.length <= 8) plan(); else if (S.route) analyze(); else $("status").textContent = "Start by setting where you start and end. Tip: try Start “George Washington Bridge”, End “Bear Mountain State Park”.";
 
 window.blipContext = () => ({ page: "Ride: route notebook (bikepacking planner)", points: S.pts.map((p) => p.label), plan: window.blipPlan ?? null, yourStops: S.mine.map((m) => m.name), settings: { speed: +$("speed").value, maxKmPerDay: +$("maxKm").value, maxClimbPerDay: +$("maxUp").value, waterLiters: +$("water").value } });
 </script>
