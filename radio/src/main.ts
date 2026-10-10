@@ -79,7 +79,7 @@ function drawWaterfall() {
   g.imageSmoothingEnabled = false;
   g.drawImage(wfCanvas, 0, 0, c.width, c.height);
   // tuning marker: passband as a translucent band
-  const x = (f: number) => (f / fs + 0.5) * c.width;
+  const x = (f: number) => (f / fs + 0.5 + 0.5 / N) * c.width; // + half a bin: each FFT column is drawn from its frequency rightward
   const o = num("offset") * 1e3, bw = num("bw") * 1e3, mode = $<HTMLSelectElement>("mode").value;
   const [a, b] = mode === "USB" ? [o, o + bw] : mode === "LSB" ? [o - bw, o] : [o - bw / 2, o + bw / 2];
   g.fillStyle = "rgba(255,255,255,0.18)";
@@ -89,8 +89,12 @@ function drawWaterfall() {
 }
 
 $("wf").addEventListener("click", (e) => {
-  const c = e.currentTarget as HTMLCanvasElement;
-  const f = ((e.offsetX / c.clientWidth) - 0.5) * fs;
+  // Where the click falls across the canvas's content box, measured on screen: offsetX/clientWidth go wrong under
+  // CSS zoom (the reader's text size zooms the page) and include the border.
+  const c = e.currentTarget as HTMLCanvasElement, r = c.getBoundingClientRect(), z = r.width / (c.offsetWidth || r.width);
+  const cs = getComputedStyle(c), bl = parseFloat(cs.borderLeftWidth) * z, br = parseFloat(cs.borderRightWidth) * z;
+  const frac = Math.min(1, Math.max(0, (e.clientX - r.left - bl) / (r.width - bl - br)));
+  const f = (frac - 0.5 - 0.5 / N) * fs; // the column under the cursor's own frequency (see drawWaterfall)
   $<HTMLInputElement>("offset").value = (f / 1e3).toFixed(1);
   retune();
 });
