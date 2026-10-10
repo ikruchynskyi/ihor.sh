@@ -25,6 +25,8 @@ import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { shipsNow } from "./ships.ts";
+import { yomuChat, isLevel } from "./yomu-chat.ts";
+import { buildIndex, siteSearch } from "./search.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -80,6 +82,7 @@ async function siteMap() {
 }
 
 const SYSTEM = systemPrompt(await siteMap());
+buildIndex(ROOT, WORLDS).then((n) => console.log(`search: ${n} pages indexed`)).catch((e) => console.warn("search index:", e.message));
 
 // ponytail: in-memory per-IP + daily caps, reset on restart; enough for a hobby site on one box.
 const hits = new Map<string, number[]>();
@@ -343,6 +346,20 @@ const server = http.createServer(async (req, res) => {
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
   }
   try {
+    if (url.pathname === "/api/site/search") {
+      const hits = await siteSearch(String(url.searchParams.get("q") ?? "").slice(0, 120), Math.min(20, Number(url.searchParams.get("n")) || 8));
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify({ hits }));
+    }
+    if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
+      const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
+      if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4 or N3" }));
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80)))); }
+      catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
+    }
     if (url.pathname === "/api/ask" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));

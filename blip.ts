@@ -9,6 +9,7 @@ import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
 import { shipsNow, shipsNear } from "./ships.ts";
+import { siteSearch } from "./search.ts";
 import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
@@ -23,6 +24,11 @@ const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America
 
 type Tool = { description: string; parameters: Record<string, { type: string; description: string; enum?: string[] }>; required?: string[]; run: (a: any) => Promise<unknown> | unknown };
 const TOOLS: Record<string, Tool> = {
+  site_search: {
+    description: "Search this site (ihor.sh): every page, lesson, tool, Yomu story and grammar point, by topic or words. Use it for 'where is…', 'is there a page about…', 'which chapter covers…'. Returns titles, URLs and snippets.",
+    parameters: { query: { type: "string", description: "What to look for, e.g. 'op-amp', 'Morse', 'bikes on Metro-North', 'て-form'" } }, required: ["query"],
+    run: async ({ query }) => ({ hits: (await siteSearch(String(query), 8)).map((h) => ({ title: h.title, url: h.url, world: h.world, snippet: h.snippet.replace(/<\/?b>/g, "") })) }),
+  },
   web_search: {
     description: "Search the web (Tavily, then Ollama, then DuckDuckGo) for current facts, news, prices, hours, how-tos: anything that isn't on this site or that you aren't sure of. Returns titles, URLs and snippets.",
     parameters: { query: { type: "string", description: "What to search for" } }, required: ["query"],
@@ -282,7 +288,7 @@ The site is a map of projects ("worlds"). Open now:
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, every station with live next trains, broken elevators, traffic cameras, free events, restaurant inspections, click anywhere for the address and businesses there). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
 - Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: machine learning from scratch with draggable visuals, the math behind each step, runnable code and questions: 10 chapters (matrices, gradients, a neuron, backprop, probability and loss, convolutions, attention, agents with a live tool-choice and faithfulness eval, vision, and a tiny transformer trained in the browser on NYC subway station names at /ai/10-tiny-transformer.html).
-- World 4, Yomu at /yomu/: Japanese from zero (stories and grammar to JLPT N3, kanji and words to N1). Graded stories (N5, N4 and N3) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); kanji and word decks all the way to N1 /yomu/deck.html; handwriting practice /yomu/draw.html; Talk /yomu/talk.html (spoken role-play scenes: konbini, asking the way, a restaurant, introductions, a train platform, a hotel); spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
+- World 4, Yomu at /yomu/: Japanese from zero (stories and grammar to JLPT N3, kanji and words to N1). Graded stories (N5, N4 and N3) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); kanji and word decks all the way to N1 /yomu/deck.html; handwriting practice /yomu/draw.html; Talk /yomu/talk.html (spoken role-play scenes: konbini, asking the way, a restaurant, introductions, a train platform, a hotel); free conversation at N5/N4/N3 on a local model /yomu/chat.html?level=N5 (tap any word for its meaning); spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
 - World 5, Ride at /ride/: a bikepacking route notebook (bike routing, days, water/food/camps along the route with opening hours checked against when you pass, GPX), bike + train escapes from NYC at /ride/escapes.html (whether a full-size bike may ride a given Metro-North, LIRR or NJ Transit train, seven checked overnight trips, and a builder that finds campgrounds near any station and saves your own trips).
 - World 6, Learn & build at /learn/: electronics from scratch in 16 chapters (from Ohm's law to microcontrollers and buses, motors, hands-on bench skills and audio) with circuits solved live by our own simulator, and a circuit lab at /learn/lab.html (drag parts onto a breadboard and watch them on a scope: resistors, capacitors, coils, LC tanks, diodes, LEDs, MOSFETs and bipolar transistors, an op-amp, a 7805 regulator, a transformer, a motor, a 555, a NOT gate, a D flip-flop and a 4017 counter).
 
@@ -291,6 +297,7 @@ ${siteMap}
 
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
+- Where something is on this site, which page or chapter covers a topic, "is there a tool for…": site_search, then link the page.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.

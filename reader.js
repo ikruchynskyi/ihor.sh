@@ -183,6 +183,50 @@ root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle
   anchor ? anchor.before(button) : document.body.append(button);
 }
 
+// ---------- site search: a 🔍 in the site bar, results from /api/site/search (search.ts) ----------
+{
+  const btn = document.createElement("button");
+  btn.className = "ihor-read ihor-find"; btn.type = "button"; btn.setAttribute("aria-label", "Search this site"); btn.setAttribute("aria-expanded", "false");
+  btn.innerHTML = "<span aria-hidden='true'>🔍</span> FIND";
+  button.before(btn);
+  const fhost = document.createElement("div");
+  fhost.style.cssText = "position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:2147481600;width:min(640px,calc(100vw - 24px))";
+  document.body.append(fhost);
+  const froot = fhost.attachShadow({ mode: "open" });
+  let fopen = false, timer = 0, lastQ = "";
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const render = () => {
+    froot.innerHTML = fopen ? `<style>
+      :host { all: initial; }
+      .box { background: var(--card, #0d1226); color: var(--fg, #e8edff); border: var(--panel-edge, 4px solid var(--fg, #e8edff)); border-radius: var(--r, 0); box-shadow: var(--panel-shadow, 8px 8px 0 rgba(0,0,0,.55)); padding: 12px; font: calc(var(--reader-size, 18px) * .9)/1.4 var(--reader-font, ui-sans-serif, system-ui, sans-serif); }
+      input { width: 100%; box-sizing: border-box; font: inherit; font-size: 1.1em; padding: 10px 12px; color: inherit; background: var(--bg, #07090f); border: 2px solid var(--line, #3b4bb0); border-radius: var(--r-sm, 0); outline: none; }
+      input:focus { border-color: var(--accent, #ffb347); }
+      ol { list-style: none; margin: 10px 0 0; padding: 0; max-height: min(60vh, 520px); overflow: auto; }
+      li a { display: block; padding: 8px 10px; color: inherit; text-decoration: none; border-radius: var(--r-sm, 0); }
+      li a:hover, li a:focus { background: color-mix(in srgb, var(--accent, #ffb347) 14%, transparent); outline: none; }
+      b.t { color: var(--accent, #ffb347); } small { color: var(--muted, #9aa3cf); display: block; }
+      .hint { margin: 8px 0 0; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #9aa3cf); letter-spacing: .06em; text-transform: uppercase; }
+    </style><div class="box" role="dialog" aria-label="Search this site"><input type="search" placeholder="Search every page, lesson and story…" aria-label="Search" autocomplete="off"><ol></ol><p class="hint">Enter opens the first result · Esc closes</p></div>` : "";
+    if (!fopen) return;
+    const inp = froot.querySelector("input"), list = froot.querySelector("ol");
+    inp.value = lastQ; inp.focus();
+    const go = async () => {
+      const q = inp.value.trim(); lastQ = q;
+      if (q.length < 2) { list.innerHTML = ""; return; }
+      const d = await fetch(`/api/site/search?q=${encodeURIComponent(q)}`).then((r) => r.json()).catch(() => ({ hits: [] }));
+      if (inp.value.trim() !== q) return;
+      list.innerHTML = d.hits.length ? d.hits.map((h) => `<li><a href="${esc(h.url)}"><b class="t">${esc(h.title)}</b><small>${esc(h.world)}</small><span>${String(h.snippet).replace(/<(?!\/?b>)[^>]*>/g, "")}</span></a></li>`).join("") : `<li><small>Nothing matches "${esc(q)}". Blip can search the web for you.</small></li>`;
+    };
+    inp.oninput = () => { clearTimeout(timer); timer = setTimeout(go, 180); };
+    inp.onkeydown = (e) => { if (e.key === "Enter") { const a = list.querySelector("a"); if (a) location.href = a.href; } if (e.key === "Escape") toggleFind(); };
+    if (lastQ) go();
+  };
+  const toggleFind = () => { fopen = !fopen; btn.setAttribute("aria-expanded", String(fopen)); render(); if (!fopen) btn.focus(); };
+  btn.onclick = toggleFind;
+  addEventListener("keydown", (e) => { if (e.key === "/" && !fopen && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? "") && !document.activeElement?.isContentEditable) { e.preventDefault(); toggleFind(); } });
+  document.addEventListener("click", (e) => { if (fopen && !e.composedPath().includes(fhost) && e.target !== btn) toggleFind(); });
+}
+
 // ---------- "still working" ----------
 // The inline script in <head> (server.ts) wraps fetch and keeps every in-flight /api/ call in window.__wait, with how
 // long each endpoint usually takes (learned per browser). After a moment a bar runs at the top; after a few seconds a

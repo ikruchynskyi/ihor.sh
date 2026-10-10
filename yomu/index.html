@@ -56,7 +56,7 @@ function renderStart() {
 async function renderToday() {
   const due = dueCards().length;
   const next = await nextStep();
-  $("today").innerHTML = `<b>Today</b> · ${due ? `<a href="/yomu/review.html">${due} card${due === 1 ? "" : "s"} to review</a>` : "no reviews due"} · next: <a href="${next.href}">${esc(next.label)}</a> · <a href="/yomu/draw.html">✍ Draw a kanji</a> · <a href="/yomu/talk.html">🗣 talk</a>`;
+  $("today").innerHTML = `<b>Today</b> · ${due ? `<a href="/yomu/review.html">${due} card${due === 1 ? "" : "s"} to review</a>` : "no reviews due"} · next: <a href="${next.href}">${esc(next.label)}</a> · <a href="/yomu/draw.html">✍ Draw a kanji</a> · <a href="/yomu/chat.html?level=${state.start?.level ?? "N5"}">💬 Chat in Japanese</a> · <a href="/yomu/talk.html">🗣 talk</a>`;
 }
 async function nextStep() {
   if (!state.start?.kana && Object.keys(state.srs).filter((k) => k.startsWith("a:")).length < 46) return { href: "/yomu/kana.html", label: "Hiragana" };
@@ -87,6 +87,7 @@ async function renderPath() {
         <a href="/yomu/grammar.html?level=${lvl}">Grammar<br>${bar(count(grammar, (g) => "g:" + g.id), grammar.length)}</a>
         <a href="/yomu/deck.html?level=${lvl}&type=kanji">Kanji<br>${bar(count(kanji, (k) => "k:" + k.k), kanji.length)}</a>
         <a href="/yomu/deck.html?level=${lvl}&type=words">Words<br>${bar(count(words, (w) => "w:" + w.w), words.length)}</a>
+        <a href="/yomu/chat.html?level=${lvl}">💬 Chat<br><span class="muted">free talk at ${lvl}, on a local model</span></a>
       </div></div>`;
   }
   $("path").innerHTML = html;
