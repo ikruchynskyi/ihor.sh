@@ -97,6 +97,10 @@
     .cam { position: absolute; width: 320px; height: 272px; min-width: 180px; min-height: 140px; display: flex; flex-direction: column; pointer-events: auto; background: var(--card); border: 3px solid var(--line); box-shadow: 6px 6px 0 rgba(0,0,0,.5); touch-action: none; }
     .cam header { display: flex; gap: 8px; align-items: center; padding: 4px 6px; cursor: move; font-size: .8rem; touch-action: none; user-select: none; }
     .cam header b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cam header button { padding: 2px 7px !important; font-size: 11px !important; }
+    .cam .grip { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50%); }
+    .cam:fullscreen, .cam.max { position: fixed; inset: 0; width: auto !important; height: auto !important; border: 0; box-shadow: none; z-index: 2147480000; background: #000; }
+    .cam:fullscreen .grip, .cam.max .grip { display: none; }
     .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
@@ -874,18 +878,29 @@ function openCam(c) {
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
-  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem">${esc(c.source)}</a>` : ""}<button aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
+  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem">${esc(c.source)}</a>` : ""}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
   $("cams").append(w);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
   const img = w.querySelector("img"), tick = c.static ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
-  w.querySelector("button").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); };
+  w.insertAdjacentHTML("beforeend", `<i class="grip" aria-hidden="true"></i>`); // the bottom-right corner: drag it to resize both ways
+  w.querySelector("button.x").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
+  // Full screen (the browser's, when it allows it; otherwise the window just fills the page) and back.
+  const fsBtn = w.querySelector("button.fs"), big = () => document.fullscreenElement === w || w.classList.contains("max");
+  fsBtn.onclick = async () => {
+    if (document.fullscreenElement === w) return document.exitFullscreen().catch(() => {});
+    if (w.classList.contains("max")) { w.classList.remove("max"); fsBtn.textContent = "⛶"; return; }
+    try { await w.requestFullscreen(); } catch { w.classList.add("max"); fsBtn.textContent = "⤡"; }
+  };
+  w.addEventListener("fullscreenchange", () => (fsBtn.textContent = document.fullscreenElement === w ? "⤡" : "⛶"));
   w.addEventListener("pointerdown", () => (w.style.zIndex = ++camZ));
-  // Resize from any edge or corner: within 8 px of the border the cursor shows the direction.
-  const EDGE = 8;
+  // Resize from any edge or corner: within 8 px of a border, or 18 px of a corner (both ways at once), the cursor shows the direction.
+  const EDGE = 8, CORNER = 18;
   const edges = (e) => {
-    const r = w.getBoundingClientRect();
-    return { n: e.clientY - r.top < EDGE, s: r.bottom - e.clientY < EDGE, w: e.clientX - r.left < EDGE, e: r.right - e.clientX < EDGE };
+    if (big()) return { n: false, s: false, w: false, e: false };
+    const r = w.getBoundingClientRect(), n = e.clientY - r.top, s = r.bottom - e.clientY, wl = e.clientX - r.left, er = r.right - e.clientX;
+    const c = (n < CORNER || s < CORNER) && (wl < CORNER || er < CORNER), m = c ? CORNER : EDGE;
+    return { n: n < m, s: s < m, w: wl < m, e: er < m };
   };
   const cursorFor = (d) => ((d.n && d.w) || (d.s && d.e) ? "nwse-resize" : (d.n && d.e) || (d.s && d.w) ? "nesw-resize" : d.n || d.s ? "ns-resize" : d.w || d.e ? "ew-resize" : "");
   w.addEventListener("pointermove", (e) => { if (!w.dataset.resizing) w.style.cursor = cursorFor(edges(e)); });
@@ -894,24 +909,27 @@ function openCam(c) {
     if (!(d.n || d.s || d.w || d.e)) return;
     e.preventDefault(); e.stopPropagation();
     w.style.zIndex = ++camZ;
-    w.setPointerCapture(e.pointerId); w.dataset.resizing = "1";
+    w.dataset.resizing = "1";
     const r0 = { x: e.clientX, y: e.clientY, left: w.offsetLeft, top: w.offsetTop, width: w.offsetWidth, height: w.offsetHeight };
-    w.onpointermove = (m) => {
+    // the listeners live on the window for the drag, so leaving the box (or a browser without pointer capture) doesn't end it
+    const move = (m) => {
       const dx = m.clientX - r0.x, dy = m.clientY - r0.y;
       if (d.e) w.style.width = `${Math.max(180, r0.width + dx)}px`;
       if (d.s) w.style.height = `${Math.max(140, r0.height + dy)}px`;
       if (d.w) { const nw = Math.max(180, r0.width - dx); w.style.width = `${nw}px`; w.style.left = `${r0.left + r0.width - nw}px`; }
       if (d.n) { const nh = Math.max(140, r0.height - dy); w.style.height = `${nh}px`; w.style.top = `${r0.top + r0.height - nh}px`; }
     };
-    w.onpointerup = () => { w.onpointermove = null; delete w.dataset.resizing; };
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); delete w.dataset.resizing; };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
   }, true); // capture: the border wins over the title bar's move handler
   const head = w.querySelector("header");
+  head.ondblclick = (e) => { if (e.target.tagName !== "BUTTON") fsBtn.click(); };
   head.addEventListener("pointerdown", (e) => {
-    if (e.target.tagName === "BUTTON" || w.dataset.resizing) return;
+    if (e.target.tagName === "BUTTON" || w.dataset.resizing || big()) return;
     const sx = e.clientX - w.offsetLeft, sy = e.clientY - w.offsetTop;
-    head.setPointerCapture(e.pointerId);
-    head.onpointermove = (m) => { w.style.left = `${Math.max(0, Math.min(innerWidth - 60, m.clientX - sx))}px`; w.style.top = `${Math.max(0, Math.min(innerHeight - 40, m.clientY - sy))}px`; };
-    head.onpointerup = () => (head.onpointermove = null);
+    const move = (m) => { w.style.left = `${Math.max(0, Math.min(innerWidth - 60, m.clientX - sx))}px`; w.style.top = `${Math.max(0, Math.min(innerHeight - 40, m.clientY - sy))}px`; };
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
   });
 }
 
