@@ -596,6 +596,7 @@ async function connect(remote: boolean) {
     $<HTMLButtonElement>(remote ? "connect" : "remote").disabled = true;
     $<HTMLButtonElement>("play").disabled = true;
     streaming = sdr.stream(onSamples).catch((e) => liveStatus(`Stream stopped: ${e.message}`));
+    if (remote) syncTimer = window.setInterval(() => syncRemote().catch(() => {}), 3000);
   } catch (e) {
     if (sdr) await sdr.close().catch(() => {});
     sdr = null;
@@ -607,6 +608,7 @@ async function connect(remote: boolean) {
 async function disconnect() {
   const s = sdr;
   sdr = null;
+  clearInterval(syncTimer);
   s?.stop();
   await streaming;
   await s?.close().catch(() => {});
@@ -622,10 +624,42 @@ async function disconnect() {
   liveStatus("Disconnected.");
 }
 
+// The server SDR is one dongle shared by everyone listening: one window of spectrum, one gain. Each listener tunes
+// freely inside the window (that's all in their own browser), but moving the window moves it for everyone. So every
+// 3 s the page checks the server: when someone else moved it, follow along (staying on your station if it's still in
+// the window, else saying so), and pick up a shared gain change.
+let syncTimer = 0, tuning = false, others = 0;
+const windowText = (c: number) => `${fmtMHz(c - fs / 2, 2)}–${fmtMHz(c + fs / 2, 2)} MHz`;
+async function syncRemote() {
+  if (!(sdr instanceof RemoteSdr) || tuning) return;
+  const st = await fetch("/api/state").then((r) => r.json());
+  if (!(sdr instanceof RemoteSdr) || tuning) return;
+  others = Math.max(0, (st.listeners ?? 1) - 1);
+  const gainNow = st.gain === null ? "auto" : String(st.gain);
+  if ($<HTMLSelectElement>("gain").value !== gainNow && Array.from($<HTMLSelectElement>("gain").options).some((o) => o.value === gainNow)) $<HTMLSelectElement>("gain").value = gainNow;
+  if (st.center === sdr.centerFrequency) return void liveCount();
+  const mine = centerHz() + num("offset") * 1e3; // the frequency I was listening to
+  sdr.centerFrequency = st.center;
+  $<HTMLInputElement>("center").value = fmtMHz(st.center);
+  wf.rows = []; trace = null; wf.img.getContext("2d")!.clearRect(0, 0, WF_N, WF_ROWS);
+  if (Math.abs(mine - st.center) < 0.45 * fs) {
+    setOffset(mine - st.center);
+    liveStatus(`Another listener moved the radio's window to ${windowText(st.center)}. You're still on ${fmtMHz(mine, 3)} MHz.`);
+  } else {
+    retune();
+    liveStatus(`Another listener moved the radio to ${windowText(st.center)}, so ${fmtMHz(mine, 3)} MHz is out of reach now. Tuning back to it moves the window for them too.`);
+  }
+}
+function liveCount() {
+  const el = $("status"), base = el.textContent!.replace(/ · \d+ others? listening too\.?$/, "");
+  el.textContent = others ? `${base} · ${others} other${others > 1 ? "s" : ""} listening too` : base;
+}
+
 /** Listen to `freq`: put the dongle LIVE_OFFSET below it and the receiver on it. */
 async function tuneTo(freq: number) {
   if (!sdr) return;
-  await sdr.setCenterFrequency(freq - LIVE_OFFSET);
+  tuning = true;
+  try { await sdr.setCenterFrequency(freq - LIVE_OFFSET); } finally { tuning = false; }
   $<HTMLInputElement>("center").value = fmtMHz(freq - LIVE_OFFSET);
   $<HTMLInputElement>("offset").value = String(LIVE_OFFSET / 1e3);
   newChain();
@@ -634,7 +668,7 @@ async function tuneTo(freq: number) {
   wf.img.getContext("2d")!.clearRect(0, 0, WF_N, WF_ROWS);
   if (view.hi - view.lo < fs) setView(LIVE_OFFSET - (view.hi - view.lo) / 2, LIVE_OFFSET + (view.hi - view.lo) / 2);
   const src = sdr instanceof RemoteSdr ? "server SDR" : `${sdr.tunerName} tuner`;
-  liveStatus(`Live: ${src}, ${(fs / 1e6).toFixed(2)} MS/s, listening on ${(freq / 1e6).toFixed(3)} MHz`);
+  liveStatus(`Live: ${src}, ${(fs / 1e6).toFixed(2)} MS/s, listening on ${(freq / 1e6).toFixed(3)} MHz${sdr instanceof RemoteSdr && others ? ` (the window moved for the ${others} other listener${others > 1 ? "s" : ""} too)` : ""}`);
 }
 
 function onSamples(cu8: Uint8Array) {
