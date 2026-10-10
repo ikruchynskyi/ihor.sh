@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Microcontrollers and Buses</title>
+  <meta name="description" content="Electronics from scratch, chapter 13: a computer on a chip and how it talks. GPIO pins as bits in a register, pull-up resistors and floating inputs, PWM for dimming, the ADC in one line, and the three buses every sensor speaks (UART, I²C, SPI) drawn on a live logic analyzer you can decode yourself." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    .bit { font: 700 20px ui-monospace, Menlo, monospace !important; width: 2.2em; height: 2.2em; padding: 0 !important; }
+    .bit.on { background: #83c167 !important; color: #10131a !important; }
+    input[type=text] { font: 16px ui-monospace, Menlo, monospace; width: 5em; padding: 4px 6px; }
+    input[type=range] { width: 200px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 13</p>
+  <h1>Microcontrollers and buses</h1>
+  <p class="lede">Chapter 12's toy CPU, shrunk onto one chip with its own memory, a clock, and pins that reach the outside world: that's a microcontroller (an Arduino's ATmega, an ESP32, a Raspberry Pi Pico). Its pins can switch an LED, read a button, fake an analog voltage with fast pulses, and talk to other chips over a few wires. This chapter covers each of those, and then you read the conversations on a logic analyzer yourself.</p>
+  <div class="plain card"><b>In plain words:</b> a microcontroller is a tiny computer whose memory has a few special addresses wired straight to its pins. Write a 1 to the right bit and a pin goes to 3.3 V; read a bit and you learn whether a pin is high or low. Everything else in this chapter is built on that one trick.</div>
+
+  <h2>1. Pins are bits in a register</h2>
+  <p>A <b>GPIO</b> (general-purpose input/output) port is a byte in memory where each bit drives one pin. Writing <code>PORT = 0b00000101</code> lights the LEDs on pins 0 and 2 and turns the others off. Click the bits, or set the byte directly.</p>
+  <canvas id="c1" width="800" height="170" aria-label="Eight LEDs driven by the bits of a port register"></canvas>
+  <div class="row"><span id="pbits"></span></div>
+  <div class="row"><label>PORT = 0x<input type="text" id="phex" value="05" maxlength="2"></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> make the port read <code>0xA5</code> (alternating pattern, 1010 0101).</p>
+
+  <h2>2. Reading a button, and why inputs float</h2>
+  <p>As an input, a pin is a CMOS gate (chapter 12): almost no current flows in, so it reads whatever voltage is near it. A button between the pin and ground pulls it to 0 when pressed, but when released the pin is connected to <em>nothing</em>, and it picks up hum from mains wiring and your finger: it <b>floats</b> and reads random 1s and 0s. The fix is a <b>pull-up resistor</b> (about 10 kΩ, built into most chips) from the pin to the supply. Released: the resistor holds it at 1. Pressed: the button wins, because it's a near-zero resistance to ground, and the resistor only passes 3.3 V / 10 kΩ = 0.33 mA.</p>
+  <canvas id="c2" width="800" height="200" aria-label="A button on an input pin with an optional pull-up resistor, and the readings over time"></canvas>
+  <div class="row"><button id="btn">Hold the button</button><label><input type="checkbox" id="pull" checked> pull-up enabled</label></div>
+  <p class="readout" id="o2"></p>
+  <div class="q" data-answer="a">
+    <p>With the pull-up enabled, what does the program read while the button is <em>pressed</em>?</p>
+    <ul><li data-k="a">0, so code checks <code>if (!digitalRead(pin))</code></li><li data-k="b" data-says="Pressed connects the pin to ground: the resistor loses.">1</li><li data-k="c" data-says="That's the floating case, without a pull-up.">random</li></ul>
+    <div class="why">"Active low": pressed = 0. It looks backwards but it's the standard wiring, because a pin pulled to ground by a switch is cheap and robust. Real buttons also <em>bounce</em> for a few milliseconds when pressed (the contacts chatter), so code waits ~10 ms before trusting a change, or uses chapter 2's RC filter.</div>
+  </div>
+
+  <h2>3. PWM: faking an analog voltage</h2>
+  <p>A digital pin is either 0 or 3.3 V. To dim an LED or slow a motor, the chip switches the pin on and off thousands of times a second: <b>pulse-width modulation</b>. The fraction of time it's on is the <b>duty cycle</b>. Your eye (and a motor's inertia, or an RC filter) averages the pulses, so 25% duty looks like a quarter of the brightness.</p>
+  <canvas id="c3" width="800" height="220" aria-label="A PWM waveform with its average voltage and the LED it dims"></canvas>
+  <div class="row"><label>duty <input type="range" id="duty" min="0" max="100" value="25"> <span id="dutyv"></span></label><label>frequency <select id="pfreq"><option value="5">5 Hz (you see it blink)</option><option value="500" selected>500 Hz (Arduino default)</option><option value="20000">20 kHz (motors, silent)</option></select></label></div>
+  <p class="readout" id="o3"></p>
+  <p class="formula">\[ V_\text{avg} = D \cdot V_\text{high} \]</p>
+  <div class="q" data-num="0.825" data-tol="0.005">
+    <p>A 3.3 V pin runs at 25% duty. What's the average voltage, in volts?</p>
+    <div class="why">\(0.25 \times 3.3 = 0.825\) V. Pass it through an RC low-pass (chapter 2) with a time constant much longer than one period, and you get a steady 0.825 V: a cheap digital-to-analog converter.</div>
+  </div>
+  <p>The other direction, voltage to number, is the <b>ADC</b> from chapter 11: a 12-bit ADC on 3.3 V splits the range into 4,096 steps of 0.8 mV each, and <code>analogRead()</code> returns which step the pin is on.</p>
+
+  <h2>4. UART: two wires, agreed speed</h2>
+  <p>The simplest way two chips talk. No clock wire: both sides agree on a speed in advance (the <b>baud rate</b>, bits per second, e.g. 9600 or 115200). The line idles high. A byte starts with a <b>start bit</b> (low), then 8 data bits, least significant first, then a <b>stop bit</b> (high). The receiver sees the falling edge of the start bit, waits half a bit, and then samples once per bit time. This is what a USB-serial adapter, a GPS module and the Arduino's Serial Monitor all speak. Type text and watch it go out.</p>
+  <canvas id="c4" width="800" height="200" aria-label="A UART frame: start bit, 8 data bits least significant first, stop bit"></canvas>
+  <div class="row"><label>send <input type="text" id="utext" value="Hi" maxlength="4" style="width:6em"></label><label>baud <select id="ubaud"><option>9600</option><option selected>115200</option></select></label></div>
+  <p class="readout" id="o4"></p>
+  <div class="q" data-num="960" data-tol="0">
+    <p>At 9600 baud with 8 data bits, 1 start and 1 stop bit, how many bytes per second can you send at most?</p>
+    <div class="why">Each byte costs 10 bit times: \(9600 / 10 = 960\) bytes per second. The framing bits are the price of not having a clock wire.</div>
+  </div>
+  <p><b>Decode one yourself.</b> Here's a single byte caught on the analyzer. Find the start bit, read the 8 data bits (the first one is the 1s place), and give the byte's value.</p>
+  <canvas id="c4b" width="800" height="120" aria-label="A mystery UART byte to decode"></canvas>
+  <div class="q" data-num="75" data-tol="0">
+    <p>What number (decimal) is the mystery byte? (Bonus: which ASCII letter?)</p>
+    <div class="why">Data bits in time order: 1 1 0 1 0 0 1 0. That's least significant first, so reversed it reads 0100 1011 = 64 + 8 + 2 + 1 = 75 = 0x4B, ASCII <b>K</b>.</div>
+  </div>
+  <div class="code" id="uart" data-title="Build it: a UART encoder and a decoder that survives noise"><textarea>
+// Transmit at 16 samples per bit (receivers oversample like this), add noise, then decode.
+const OS = 16;
+function encode(text) {
+  const s = Array(OS * 4).fill(1);                                    // idle high
+  for (const ch of text) {
+    const b = ch.charCodeAt(0), bits = [0, ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (b >> i) & 1), 1];
+    for (const v of bits) for (let k = 0; k < OS; k++) s.push(v);
+  }
+  return s.concat(Array(OS * 4).fill(1));
+}
+const vote = (s, c) => (s[c - 2] + s[c - 1] + s[c] + s[c + 1] + s[c + 2] >= 3 ? 1 : 0);  // majority of 5 samples
+function decode(s) {
+  let out = "", i = 0;
+  while (i < s.length - 10 * OS) {
+    if (s[i] === 1 && s[i + 1] === 0) {                                  // falling edge: a start bit
+      const mid = i + 1 + OS / 2;                                       // middle of the start bit
+      if (vote(s, mid) !== 0) { i++; continue; }                        // a glitch, not a start bit
+      let b = 0;
+      for (let k = 0; k < 8; k++) b |= vote(s, mid + (k + 1) * OS) << k; // each data bit, voted at its middle
+      out += String.fromCharCode(b); i = mid + 9 * OS;                  // skip to the stop bit
+    } else i++;
+  }
+  return out;
+}
+const tx = encode("Hello!");
+const noisy = tx.map((v) => (Math.random() < 0.03 ? 1 - v : v));       // flip 3% of the samples
+print("clean:", decode(tx), " noisy:", decode(noisy));
+plot(tx.slice(0, 200), { label: "first 200 samples" });
+// Try: replace vote(s, c) with a single sample s[c] and run it a few times: noise starts flipping letters.
+</textarea></div>
+
+  <h2>5. I²C: many chips on two shared wires</h2>
+  <p>Sensors (temperature, pressure, accelerometers) usually speak <b>I²C</b>: one clock line SCL and one data line SDA, shared by up to ~100 devices, each with a 7-bit address. The controller starts a message with a <b>start condition</b> (SDA falls while SCL is high), clocks out the address and a read/write bit, and the device that recognizes its address pulls SDA low for one bit: the <b>ACK</b>. Then bytes follow, each acknowledged, and a <b>stop condition</b> (SDA rises while SCL is high) ends it. Data only changes while SCL is low; a change while it's high is a start or stop.</p>
+  <canvas id="c5" width="800" height="230" aria-label="An I2C write: start, address, R/W, ACK, data byte, ACK, stop"></canvas>
+  <div class="row"><label>address 0x<input type="text" id="iaddr" value="76" maxlength="2"></label><label>data 0x<input type="text" id="idata" value="F4" maxlength="2"></label><label><input type="checkbox" id="iread"> read</label><label><input type="checkbox" id="ipresent" checked> a device answers at that address</label></div>
+  <p class="readout" id="o5"></p>
+  <div class="q">
+    <p>On I²C, no device ever drives a line <em>high</em>: they only pull it low, and a resistor pulls it up (open drain). Why build a bus that way?</p>
+    <div class="why">Because many chips share the same wire. If one drove it high while another drove it low, there'd be a short from supply to ground through two transistors. With open drain, "anyone pulls low" is safe: low simply wins. That's also what makes the ACK work (the device pulls low during a bit the controller leaves high) and lets a slow device hold SCL low to say "wait" (clock stretching). The cost is speed: the pull-up resistor charges the wire's capacitance slowly (chapter 2's RC), which caps I²C at about 400 kHz to 1 MHz.</div>
+  </div>
+
+  <h2>6. SPI: fast, with a wire per device</h2>
+  <p><b>SPI</b> drops the addresses and the open drain for speed (tens of MHz: displays, SD cards, the flash chip that holds a microcontroller's program). Four wires: SCK (clock), MOSI (controller to device), MISO (device to controller), and a chip-select CS per device, pulled low to pick who's listening. Every clock tick moves one bit each way at once, so sending a byte <em>is</em> receiving one. Below, the controller sends register number 0xD0 and then a dummy byte; the sensor answers in the second byte with its chip ID.</p>
+  <canvas id="c6" width="800" height="250" aria-label="An SPI transfer: CS, SCK, MOSI and MISO"></canvas>
+  <div class="row"><label>send 0x<input type="text" id="sdata" value="D0" maxlength="2"></label><label>device answers 0x<input type="text" id="sreply" value="60" maxlength="2"></label></div>
+  <p class="readout" id="o6"></p>
+  <div class="q" data-answer="b">
+    <p>You need a small OLED status display and five sensors on one board, all low-speed. Which bus suits the sensors best?</p>
+    <ul><li data-k="a" data-says="SPI would need a chip-select pin per sensor: five pins, plus the shared three.">SPI</li><li data-k="b">I²C</li><li data-k="c" data-says="UART is point-to-point: one partner per pair of pins.">UART</li></ul>
+    <div class="why">I²C: two wires for all of them, each sensor with its own address. SPI shines when speed matters (a big color display, an SD card), UART when it's one partner (a GPS module, a PC).</div>
+  </div>
+  <div class="code" data-title="Build it: an I²C message, bit by bit"><textarea>
+// The bits on SDA for: write `data` to the device at 7-bit `addr`. 'S' start, 'A' ACK slot, 'P' stop.
+function i2cWrite(addr, data) {
+  const bits = (n, w) => [...Array(w)].map((_, i) => (n >> (w - 1 - i)) & 1);  // most significant bit first
+  return ["S", ...bits(addr, 7), 0 /* write */, "A", ...data.flatMap((d) => [...bits(d, 8), "A"]), "P"];
+}
+const msg = i2cWrite(0x76, [0xF4, 0x27]);  // BME280 sensor: register 0xF4 (ctrl_meas) = 0x27 (measure continuously)
+print(msg.join(" "));
+const clocks = msg.filter((b) => b !== "S" && b !== "P").length;
+print(`${clocks} clock pulses; at 100 kHz that's ${(clocks / 100).toFixed(2)} ms`);
+</textarea></div>
+
+  <p>The site's own radio dongle is the extreme case of all this: its tuner chip is set up over I²C, and samples stream over USB, which the <a href="/radio/course/13-usb-from-zero.html">radio course</a> decodes from zero. Next: <a href="./14-motors.html">motors</a>, where PWM gets to push something.</p>
+  <p class="muted">Previous: <a href="./12-gates-to-a-computer.html">From gates to a computer</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", purple: "#9a72ac" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 3) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+const hex = (v, def) => { const n = parseInt(v, 16); return Number.isFinite(n) ? n & 255 : def; };
+const bitsMSB = (n, w) => [...Array(w)].map((_, i) => (n >> (w - 1 - i)) & 1);
+
+// A logic analyzer: rows of 0/1 samples, and labeled spans under (or over) a row.
+function analyzer(id, rows, spans = []) {
+  const cv = $(id), g = cv.getContext("2d"), W = cv.width, H = cv.height, N = rows[0].s.length, x0 = 70, dx = (W - x0 - 10) / N;
+  const rh = (H - 10) / rows.length;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  rows.forEach((r, k) => {
+    const yHi = 14 + k * rh, yLo = yHi + rh * 0.42, pts = [];
+    r.s.forEach((v, i) => { const y = v ? yHi : yLo; pts.push([x0 + i * dx, y], [x0 + (i + 1) * dx, y]); });
+    g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(r.name, 6, yHi + rh * 0.3);
+    line(g, pts, r.color, 2);
+  });
+  for (const sp of spans) {
+    const y = 14 + sp.row * rh + rh * 0.42 + 6, xa = x0 + sp.a * dx, xb = x0 + sp.b * dx;
+    g.fillStyle = sp.color || "rgba(88,196,221,.18)"; g.fillRect(xa + 1, y, xb - xa - 2, 18);
+    g.fillStyle = C.text; g.font = "11px ui-monospace, monospace"; g.textAlign = "center"; g.fillText(sp.text, (xa + xb) / 2, y + 13); g.textAlign = "left";
+  }
+}
+
+// ---------- 1. GPIO port ----------
+let port = 0x05;
+function draw1() {
+  const cv = $("c1"), g = cv.getContext("2d"), W = cv.width;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, cv.height);
+  g.fillStyle = "#1f2530"; g.fillRect(40, 20, 160, 130); g.strokeStyle = C.text; g.lineWidth = 2; g.strokeRect(40, 20, 160, 130);
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("micro-", 90, 75); g.fillText("controller", 76, 95);
+  for (let i = 0; i < 8; i++) {
+    const on = (port >> i) & 1, x = 260 + (7 - i) * 65;
+    line(g, [[200, 30 + i * 15], [x, 30 + i * 15], [x, 100]], on ? C.red : C.dim, 2);
+    g.fillStyle = on ? "#ff4d3d" : "#3a2020"; g.beginPath(); g.arc(x, 115, 14, 0, 7); g.fill();
+    if (on) { g.fillStyle = "rgba(255,77,61,.25)"; g.beginPath(); g.arc(x, 115, 26, 0, 7); g.fill(); }
+    g.fillStyle = C.text; g.fillText(`P${i}`, x - 9, 158);
+  }
+  $("pbits").innerHTML = [7, 6, 5, 4, 3, 2, 1, 0].map((i) => `<button class="bit ${(port >> i) & 1 ? "on" : ""}" data-i="${i}">${(port >> i) & 1}</button>`).join("");
+  if (document.activeElement !== $("phex")) $("phex").value = port.toString(16).toUpperCase().padStart(2, "0");
+  $("o1").textContent = `PORT = 0b${port.toString(2).padStart(8, "0")} = 0x${port.toString(16).toUpperCase().padStart(2, "0")} = ${port}`;
+  if (port === 0xa5) done("g1", "0xA5: in hex each digit is exactly four pins. That's why firmware people love hex.");
+}
+$("pbits").addEventListener("click", (e) => { const i = e.target.dataset.i; if (i == null) return; port ^= 1 << +i; draw1(); });
+$("phex").oninput = () => { port = hex($("phex").value, port); draw1(); };
+draw1();
+
+// ---------- 2. button, pull-up, floating ----------
+let pressed = false, reads = [];
+function sample2() {
+  const v = pressed ? 0 : $("pull").checked ? 1 : Math.random() < 0.5 ? 1 : 0;
+  reads.push(v); if (reads.length > 60) reads.shift();
+  const cv = $("c2"), g = cv.getContext("2d"), W = cv.width;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, cv.height);
+  const pu = $("pull").checked;
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("3.3 V", 30, 26);
+  line(g, [[80, 20], [140, 20]], C.red);
+  if (pu) { line(g, [[110, 20], [110, 45]], C.red, 2); g.strokeStyle = C.yellow; g.lineWidth = 2; g.strokeRect(100, 45, 20, 50); g.fillStyle = C.yellow; g.fillText("10k", 126, 75); line(g, [[110, 95], [110, 110]], C.wire, 2); }
+  const pin = pressed ? C.dim : pu ? C.green : C.purple;
+  line(g, [[110, 110], [230, 110]], pin); g.fillStyle = C.text; g.fillText("pin", 240, 115);
+  line(g, [[110, 110], [110, 130]], pin, 2);
+  line(g, pressed ? [[110, 130], [110, 160]] : [[110, 130], [130, 155]], C.wire, 3); line(g, [[110, 160], [110, 185]], C.wire, 2); line(g, [[90, 185], [130, 185]], C.wire, 3);
+  g.fillText(pressed ? "pressed" : "released", 140, 160);
+  const x0 = 300, dx = (W - x0 - 20) / 60;
+  g.fillText("reads over time", x0, 40);
+  const pts = []; reads.forEach((v, i) => { const y = v ? 70 : 130; pts.push([x0 + i * dx, y], [x0 + (i + 1) * dx, y]); });
+  line(g, pts, pressed ? C.dim : pu ? C.green : C.purple, 2);
+  $("o2").textContent = pressed ? "pressed: the pin is tied to ground → reads 0" : pu ? "released: the pull-up holds the pin at 3.3 V → reads 1" : "released with no pull-up: the pin floats and reads noise";
+}
+const b2 = $("btn");
+b2.addEventListener("pointerdown", () => (pressed = true)); for (const ev of ["pointerup", "pointerleave"]) b2.addEventListener(ev, () => (pressed = false));
+setInterval(sample2, 60);
+
+// ---------- 3. PWM ----------
+let t3 = 0;
+function draw3() {
+  const D = +$("duty").value / 100, f = +$("pfreq").value, cv = $("c3"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  $("dutyv").textContent = `${Math.round(D * 100)}%`;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const x0 = 40, x1 = 620, yHi = 40, yLo = 180, periods = 5, pts = [];
+  for (let p = 0; p < periods; p++) { const a = x0 + (p / periods) * (x1 - x0), w = (x1 - x0) / periods; pts.push([a, yLo], [a, yHi], [a + D * w, yHi], [a + D * w, yLo], [a + w, yLo]); }
+  line(g, pts, C.yellow, 2);
+  const yAvg = yLo - D * (yLo - yHi); g.setLineDash([6, 6]); line(g, [[x0, yAvg], [x1, yAvg]], C.blue, 2); g.setLineDash([]);
+  g.fillStyle = C.blue; g.font = "13px ui-monospace, monospace"; g.fillText(`average ${(D * 3.3).toFixed(2)} V`, x0 + 4, yAvg - 6);
+  g.fillStyle = C.text; g.fillText("3.3 V", 0, yHi + 4); g.fillText("0 V", 6, yLo + 4);
+  // the LED: at 5 Hz you see the blinking itself; faster, your eye averages
+  t3 += 1 / 30; const on = f < 30 ? (t3 * f) % 1 < D : true, bright = f < 30 ? (on ? 1 : 0) : D;
+  g.fillStyle = `rgba(255,77,61,${0.15 + 0.85 * bright})`; g.beginPath(); g.arc(710, 110, 34, 0, 7); g.fill();
+  g.fillStyle = `rgba(255,77,61,${0.25 * bright})`; g.beginPath(); g.arc(710, 110, 60, 0, 7); g.fill();
+  const period = 1000 / f;
+  $("o3").textContent = `period ${period >= 1 ? period.toFixed(1) + " ms" : (period * 1000).toFixed(0) + " µs"}, on for ${(D * period >= 1 ? (D * period).toFixed(2) + " ms" : (D * period * 1000).toFixed(0) + " µs")} · ${f < 30 ? "slow enough to see it blink" : "too fast to see: the LED looks " + Math.round(D * 100) + "% bright"}`;
+}
+setInterval(draw3, 33);
+
+// ---------- 4. UART ----------
+function uartSamples(text) {
+  const s = [1, 1], spans = []; let i = 2;
+  for (const ch of text) {
+    const b = ch.charCodeAt(0) & 255;
+    s.push(0); spans.push({ row: 0, a: i, b: i + 1, text: "start", color: "rgba(252,98,85,.25)" }); i++;
+    for (let k = 0; k < 8; k++) { s.push((b >> k) & 1); spans.push({ row: 0, a: i, b: i + 1, text: `${(b >> k) & 1}` }); i++; }
+    s.push(1); spans.push({ row: 0, a: i, b: i + 1, text: "stop", color: "rgba(131,193,103,.25)" }); i++;
+  }
+  s.push(1, 1);
+  return { s, spans };
+}
+function draw4() {
+  const text = $("utext").value || " ", baud = +$("ubaud").value, { s, spans } = uartSamples(text);
+  analyzer("c4", [{ name: "TX", s, color: C.yellow }], spans);
+  const g = $("c4").getContext("2d"), W = $("c4").width, x0 = 70, dx = (W - 80) / s.length;
+  let i = 2; g.font = "13px ui-monospace, monospace"; g.fillStyle = C.blue; g.textAlign = "center";
+  for (const ch of text) { const b = ch.charCodeAt(0) & 255; g.fillText(`'${ch}' = 0x${b.toString(16).toUpperCase().padStart(2, "0")} = ${b.toString(2).padStart(8, "0")}`, x0 + (i + 5) * dx, 150); i += 10; }
+  g.textAlign = "left";
+  const us = 1e6 / baud;
+  $("o4").textContent = `${text.length} byte${text.length > 1 ? "s" : ""} × 10 bits · one bit lasts ${us.toFixed(1)} µs at ${baud} baud · the whole message takes ${((text.length * 10 * us) / 1000).toFixed(3)} ms`;
+}
+$("utext").oninput = draw4; $("ubaud").onchange = draw4; draw4();
+// the mystery byte: 'K' (no labels on the data bits)
+{
+  const b = 75, s = [1, 1, 0, ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => (b >> k) & 1), 1, 1, 1];
+  analyzer("c4b", [{ name: "RX", s, color: C.yellow }], s.map((_, i) => ({ row: 0, a: i, b: i + 1, text: "·", color: "rgba(255,255,255,.04)" })));
+}
+
+// ---------- 5. I²C ----------
+// 4 samples per bit: SCL low, low, high, high; SDA changes only while SCL is low.
+function i2c(addr, data, read, present) {
+  const scl = [1, 1, 1, 1], sda = [1, 1, 0, 0], spans = [{ row: 0, a: 1, b: 4, text: "START", color: "rgba(252,98,85,.25)" }];
+  const bit = (v) => { scl.push(0, 0, 1, 1); sda.push(v, v, v, v); };
+  let i = 4;
+  bitsMSB(addr, 7).forEach((v) => bit(v)); spans.push({ row: 0, a: i, b: i + 28, text: `address 0x${addr.toString(16).toUpperCase().padStart(2, "0")}` }); i += 28;
+  bit(read ? 1 : 0); spans.push({ row: 0, a: i, b: i + 4, text: read ? "R" : "W" }); i += 4;
+  bit(present ? 0 : 1); spans.push({ row: 0, a: i, b: i + 4, text: present ? "ACK" : "NACK", color: present ? "rgba(131,193,103,.3)" : "rgba(252,98,85,.3)" }); i += 4;
+  if (present) {
+    bitsMSB(data, 8).forEach((v) => bit(v)); spans.push({ row: 0, a: i, b: i + 32, text: `${read ? "device sends" : "data"} 0x${data.toString(16).toUpperCase().padStart(2, "0")}`, color: read ? "rgba(154,114,172,.3)" : undefined }); i += 32;
+    bit(read ? 1 : 0); spans.push({ row: 0, a: i, b: i + 4, text: read ? "NACK" : "ACK", color: read ? "rgba(252,98,85,.15)" : "rgba(131,193,103,.3)" }); i += 4;
+  }
+  scl.push(0, 1, 1, 1); sda.push(0, 0, 1, 1); spans.push({ row: 0, a: i, b: i + 4, text: "STOP", color: "rgba(252,98,85,.25)" });
+  return { scl, sda, spans };
+}
+function draw5() {
+  const addr = hex($("iaddr").value, 0x76) & 127, data = hex($("idata").value, 0xf4), read = $("iread").checked, present = $("ipresent").checked;
+  const { scl, sda, spans } = i2c(addr, data, read, present);
+  analyzer("c5", [{ name: "SDA", s: sda, color: C.yellow }, { name: "SCL", s: scl, color: C.blue }], spans);
+  $("o5").textContent = present
+    ? `${read ? "read" : "write"}: the first byte on the wire is 0x${((addr << 1) | (read ? 1 : 0)).toString(16).toUpperCase().padStart(2, "0")} (address shifted left + R/W) · ${read ? "the device drives the data byte; the controller NACKs to say 'that's enough'" : "the device ACKs each byte"} · 0x76 is a BME280 pressure sensor`
+    : "nobody pulled SDA low in the ACK slot: NACK, so the controller gives up and sends STOP. That's how an I²C scanner finds devices: try all 128 addresses, note who ACKs.";
+}
+for (const id of ["iaddr", "idata"]) $(id).oninput = draw5; for (const id of ["iread", "ipresent"]) $(id).onchange = draw5; draw5();
+
+// ---------- 6. SPI (mode 0: data set while SCK is low, sampled on the rising edge) ----------
+function draw6() {
+  const tx = [hex($("sdata").value, 0xd0), 0x00], rx = [0x00, hex($("sreply").value, 0x60)];
+  const cs = [1, 1, 0], sck = [0, 0, 0], mosi = [0, 0, 0], miso = [1, 1, 1], spans = []; let i = 3;
+  tx.forEach((byte, n) => {
+    const tb = bitsMSB(byte, 8), rb = bitsMSB(rx[n], 8);
+    for (let k = 0; k < 8; k++) { cs.push(0, 0); sck.push(0, 1); mosi.push(tb[k], tb[k]); miso.push(rb[k], rb[k]); }
+    spans.push({ row: 2, a: i, b: i + 16, text: n ? "dummy 0x00" : `0x${byte.toString(16).toUpperCase().padStart(2, "0")}` });
+    spans.push({ row: 3, a: i, b: i + 16, text: n ? `0x${rx[n].toString(16).toUpperCase().padStart(2, "0")}` : "(don't care)", color: n ? "rgba(154,114,172,.35)" : "rgba(255,255,255,.04)" });
+    i += 16;
+  });
+  cs.push(0, 1, 1); sck.push(0, 0, 0); mosi.push(0, 0, 0); miso.push(1, 1, 1);
+  analyzer("c6", [{ name: "CS", s: cs, color: C.red }, { name: "SCK", s: sck, color: C.blue }, { name: "MOSI", s: mosi, color: C.yellow }, { name: "MISO", s: miso, color: C.purple }], spans);
+  $("o6").textContent = `16 clock ticks, 16 bits each way. 0x60 is the BME280's chip ID: reading it is the "are you there?" test every driver starts with.`;
+}
+for (const id of ["sdata", "sreply"]) $(id).oninput = draw6; draw6();
+
+window.blipContext = () => ({ page: "Electronics chapter 13: microcontrollers and buses (GPIO, pull-ups, PWM, UART, I²C, SPI)", port: "0x" + port.toString(16), duty: $("duty").value + "%", uartText: $("utext").value });
+</script>
+</body>
+</html>
