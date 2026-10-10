@@ -4,7 +4,7 @@
 import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
-import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear } from "./transit.ts";
+import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, busStops, busArrivals, BUS_GRID } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
@@ -107,6 +107,29 @@ const TOOLS: Record<string, Tool> = {
         internetOnly: net.slice(0, 10).map((s) => ({ name: s.name, genres: s.tags.join(", "), stream: s.url })), page: "/radio/stations/" };
     },
   },
+  bus_arrivals: {
+    description: "Next MTA buses at the stops nearest a place or point (both directions), optionally for one route (e.g. M15, B44, Q70 SBS), with minutes and how far away each bus is (MTA Bus Time). For 'near me', pass the visitor's location.",
+    parameters: { place: { type: "string", description: "An NYC address, intersection or place, e.g. '1st Ave & E 14 St'" }, lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, route: { type: "string", description: "Optional route, e.g. M15 or B44" } },
+    run: async ({ lat, lon, place, route }) => {
+      const at = await pointOf(lat, lon, place);
+      if (!at) return { error: "Need a location: a place, an intersection, or the visitor's position." };
+      const want = String(route ?? "").toUpperCase().replace(/\s+/g, "").replace(/-?SBS$/, "+");
+      // the point's grid cell and its neighbors, so a stop just across a cell edge isn't missed
+      const cells = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => [at.lat + a * BUS_GRID, at.lon + b * BUS_GRID]));
+      const all = (await Promise.all(cells.map(([a, o]) => busStops(a, o).catch(() => [])))).flat();
+      const seen = new Set<string>(), dist = (s: any) => km(at, s) * 1000;
+      const stops = all.filter((s: any) => !seen.has(s.id) && seen.add(s.id) && (!want || s.routes.some((r: any) => r.name.toUpperCase().replace(/\s+/g, "") === want || r.name.toUpperCase().replace(/\s+/g, "") === want + "SBS")))
+        .sort((a: any, b: any) => dist(a) - dist(b));
+      // nearest stop in each direction (stops come in pairs across the street)
+      const pick: any[] = []; for (const s of stops) { if (pick.length >= 4) break; if (!pick.some((p) => p.dir === s.dir && dist(p) < 400)) pick.push(s); }
+      if (!pick.length) return { error: want ? `no ${route} stop within about a kilometer of ${at.label}` : `no bus stops found near ${at.label}` };
+      return { near: at.label, stops: await Promise.all(pick.slice(0, 3).map(async (s) => {
+        const arr = (await busArrivals(s.id).catch(() => [])).filter((b: any) => !want || b.route.toUpperCase().replace(/\s+/g, "").startsWith(want.replace("+", "")));
+        return { stop: `${s.name}${s.dir ? ` (${s.dir}bound)` : ""}`, meters: Math.round(dist(s)), routes: s.routes.map((r: any) => r.name).join(", "),
+          next: arr.length ? arr.slice(0, 5).map((b: any) => `${b.route} to ${b.to}${b.minutes != null ? ` in ${b.minutes} min` : ""}${b.away ? ` (${b.away})` : ""}`) : ["no buses predicted right now"], mapLink: `/nyc/#at=${s.lat},${s.lon}` };
+      })) };
+    },
+  },
   subway_arrivals: {
     description: "Next subway trains at a station, both directions, in minutes (MTA real-time feeds).",
     parameters: { station: { type: "string", description: "Station name, e.g. 'Union Sq', '42 St-Port Authority', 'Bedford Av'" } }, required: ["station"],
@@ -207,13 +230,13 @@ export function systemPrompt(siteMap: string) {
 Visitors talk to you through a little game-style dialog box. You see the page they're on, an excerpt of it, and sometimes a list of the objects the page shows (map markers, the selected item, a drill in progress).
 
 The site is a map of projects ("worlds"). Open now:
-- World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works, a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. A Meshtastic LoRa mesh map and public chat, heard by a node on USB, is at /radio/mesh/ (visitors read only). There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
+- World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works (21 chapters, up to analog TV and weather-satellite pictures decoded in the browser), a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. A Meshtastic LoRa mesh map and public chat, heard by a node on USB, is at /radio/mesh/ (visitors read only). There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
 - World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (subway alerts → nearest Citi Bike, every station with live next trains, broken elevators, traffic cameras, free events, restaurant inspections, click anywhere for the address and businesses there). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes).
 - Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: machine learning from scratch with draggable visuals, the math behind each step, runnable code and questions: 9 chapters (matrices, gradients, a neuron, backprop, probability and loss, convolutions, attention, agents, vision).
 - World 4, Yomu at /yomu/: Japanese from zero to JLPT N3. Graded stories (N5, N4 and N3) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); all N5–N3 kanji and words /yomu/deck.html; spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
-- World 5, Ride at /ride/: a bikepacking route notebook (bike routing, days, water/food/camps along the route, GPX).
-- World 6, Learn & build at /learn/: electronics from scratch with circuits solved live by our own simulator, and a circuit lab.
+- World 5, Ride at /ride/: a bikepacking route notebook (bike routing, days, water/food/camps along the route with opening hours checked against when you pass, GPX), bike + train escapes from NYC at /ride/escapes.html (whether a full-size bike may ride a given Metro-North, LIRR or NJ Transit train, and overnight trips to campgrounds), and a gear list at /ride/gear.html (weights, water and battery capacity).
+- World 6, Learn & build at /learn/: electronics from scratch in 16 chapters (from Ohm's law to microcontrollers and buses, motors, hands-on bench skills and audio) with circuits solved live by our own simulator, and a circuit lab.
 
 Pages on the site:
 ${siteMap}
@@ -222,7 +245,7 @@ Some pages also give you actions on the visitor's page (moving the map, opening 
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
-- "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near or subway_near. If it's missing, ask them to press ◎ on the NYC map (or name a place).
+- "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 
 How to answer:
