@@ -127,54 +127,156 @@ async function radioStatus() {
 // Search and sharing: a fuller title, canonical URL, Open Graph/Twitter cards and JSON-LD breadcrumbs.
 const SITE = "https://ihor.sh";
 const attr = (s: string) => s.replace(/"/g, "&quot;");
-function seo(html: string, world: string, urlPath: string) {
-  const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "ihor.sh";
-  const desc = html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "";
-  const url = SITE + urlPath.replace(/index\.html$/, "");
+// ---------- SEO, for people and for agents: titles, descriptions, Open Graph, JSON-LD by page kind, and real pages
+// for the query-addressed ones (a Yomu story, a deck level), so crawlers without JavaScript still see what each is ----------
+const AUTHOR = { "@type": "Person", name: "Ihor Kruchynskyi", url: "https://ihork.link/" };
+const COURSES: [RegExp, string, string][] = [
+  [/^\/ai\/\d\d-/, "AI from scratch", "/ai/"], [/^\/learn\/electronics\/\d\d-/, "Electronics from scratch", "/learn/"],
+  [/^\/radio\/course\//, "Radio from scratch", "/radio/course/"], [/^\/radio\/ham\//, "US ham radio license prep", "/radio/ham/"], [/^\/yomu\/(story|grammar|deck|kana|draw|talk|placement|review)/, "Yomu: Japanese from zero", "/yomu/"],
+];
+const APPS: [RegExp, string][] = [
+  [/^\/nyc\/(jobs|resume)/, "BusinessApplication"], [/^\/nyc\/(tonight|free|index|archive)?/, "TravelApplication"], [/^\/ride\//, "TravelApplication"],
+  [/^\/learn\/lab/, "EducationalApplication"], [/^\/radio\/(index\.html)?$|^\/radio\/(sstv|cw|repeaters|mesh|stations|aprs|adsb)/, "UtilitiesApplication"], [/^\/orna\//, "GameApplication"],
+];
+type Meta = { title?: string; desc?: string; image?: string; canonical?: string; h1?: string; lede?: string; teaches?: string[]; level?: string };
+const cache = new Map<string, Promise<any>>();
+const readJson = (rel: string) => { if (!cache.has(rel)) cache.set(rel, readFile(path.join(ROOT, rel), "utf8").then(JSON.parse).catch(() => null)); return cache.get(rel)!; };
+/** The page behind a query: a story, a deck level, a grammar level. */
+async function pageMeta(urlPath: string, search: URLSearchParams): Promise<Meta | null> {
+  if (urlPath === "/yomu/story.html") {
+    const u = (search.get("u") ?? "n5-01").replace(/[^a-z0-9-]/g, ""), story = await readJson(`yomu/stories/${u}.json`);
+    if (!story) return null;
+    const credits = (await readJson("yomu/img/credits.json")) ?? {};
+    const grammar = (story.grammar ?? []).map((g: any) => g.title).filter(Boolean);
+    return { title: `${story.title.ja} · ${story.title.en}: a JLPT ${story.level} Japanese story`, h1: `${story.title.ja} <small class="muted">${story.title.en}</small>`, lede: story.scene,
+      desc: `${story.scene} A graded JLPT ${story.level} Japanese story (unit ${story.unit}) with every word tappable, audio and shadowing, grammar${grammar.length ? ` (${grammar.slice(0, 3).join("; ")})` : ""}, kanji with stroke order, sentence building and comprehension questions.`,
+      image: credits[u] ? `${SITE}/yomu/img/${u}.jpg` : undefined, canonical: `${SITE}/yomu/story.html?u=${u}`, teaches: grammar, level: `JLPT ${story.level}` };
+  }
+  if (urlPath === "/yomu/deck.html") {
+    const level = /^N[1-5]$/.test(search.get("level") ?? "") ? search.get("level")! : "N5", type = search.get("type") === "kanji" ? "kanji" : "words";
+    return { title: `${level} ${type}: the JLPT ${level} ${type === "kanji" ? "kanji" : "vocabulary"} deck`, desc: `Every JLPT ${level} ${type === "kanji" ? "kanji with readings, meanings, stroke order and example words" : "word with its reading and meaning, pictures for the concrete ones"}: learn ten at a time, quiz yourself, add them to spaced review.`, canonical: `${SITE}/yomu/deck.html?level=${level}&type=${type}`, level: `JLPT ${level}` };
+  }
+  if (urlPath === "/yomu/grammar.html") {
+    const level = /^N[3-5]$/.test(search.get("level") ?? "") ? search.get("level")! : "N5";
+    return { title: `${level} grammar: every JLPT ${level} point explained`, desc: `All JLPT ${level} grammar points with plain explanations, examples with audio, links to Tae Kim's guide and a quick quiz for each.`, canonical: `${SITE}/yomu/grammar.html?level=${level}`, level: `JLPT ${level}` };
+  }
+  return null;
+}
+function seo(html: string, world: string, urlPath: string, extra: Meta | null = null) {
+  const baseTitle = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "ihor.sh";
+  const title = extra?.title ?? baseTitle, desc = attr(extra?.desc ?? html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "");
+  const url = extra?.canonical ?? SITE + urlPath.replace(/index\.html$/, "");
+  const image = extra?.image ?? `${SITE}/og.png`;
   const worldName = world.split(" · ")[1] ?? world, worldUrl = `${SITE}/${urlPath.split("/")[1]}/`;
   const crumbs = [["ihor.sh", `${SITE}/`], [worldName, worldUrl], ...(url === worldUrl ? [] : [[title, url]])];
+  const course = COURSES.find(([re]) => re.test(urlPath)), app = !course && APPS.find(([re]) => re.test(urlPath));
+  const page = course
+    ? { "@type": "LearningResource", name: title, description: desc, url, inLanguage: urlPath.startsWith("/yomu/") ? ["en", "ja"] : "en", learningResourceType: "interactive lesson", isAccessibleForFree: true, author: AUTHOR,
+        ...(extra?.level ? { educationalLevel: extra.level } : {}), ...(extra?.teaches?.length ? { teaches: extra.teaches } : {}),
+        isPartOf: { "@type": "Course", name: course[1], url: SITE + course[2], provider: AUTHOR, isAccessibleForFree: true } }
+    : app
+    ? { "@type": "WebApplication", name: title, description: desc, url, applicationCategory: app[1], operatingSystem: "Web", browserRequirements: "Requires JavaScript", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, author: AUTHOR }
+    : { "@type": "WebPage", name: title, description: desc, url, inLanguage: "en", author: AUTHOR };
   const ld = JSON.stringify([
-    { "@context": "https://schema.org", "@type": "WebPage", name: title, description: desc, url, inLanguage: "en",
-      isPartOf: { "@type": "WebSite", name: "ihor.sh", url: `${SITE}/` } },
+    { "@context": "https://schema.org", ...page, isPartOf: page["@type"] === "LearningResource" ? (page as any).isPartOf : { "@type": "WebSite", name: "ihor.sh", url: `${SITE}/` } },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map(([name, item], i) => ({ "@type": "ListItem", position: i + 1, name, item })) },
   ]).replace(/</g, "\\u003c");
   const full = `${title} · ${worldName} · ihor.sh`;
-  return html.replace(/<title>[^<]*<\/title>/, `<title>${full}</title>`).replace("</head>", `<link rel="canonical" href="${attr(url)}">
-<meta property="og:type" content="article"><meta property="og:site_name" content="ihor.sh"><meta property="og:title" content="${attr(full)}">
-<meta property="og:description" content="${desc}"><meta property="og:url" content="${attr(url)}"><meta property="og:image" content="${SITE}/og.png">
-<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">
+  let out = html.replace(/<title>[^<]*<\/title>/, `<title>${attr(full)}</title>`);
+  if (extra?.desc) out = out.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${desc}">`);
+  if (extra?.h1) out = out.replace(/<h1 id="title">[^<]*<\/h1>/, `<h1 id="title">${extra.h1}</h1>`); // so a reader without JavaScript sees the story's name
+  if (extra?.lede) out = out.replace(/<p class="lede" id="scene"><\/p>/, `<p class="lede" id="scene">${attr(extra.lede)}</p>`);
+  return out.replace("</head>", `<link rel="canonical" href="${attr(url)}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"><meta name="author" content="${AUTHOR.name}">
+<meta property="og:type" content="${course ? "article" : "website"}"><meta property="og:site_name" content="ihor.sh"><meta property="og:locale" content="en_US"><meta property="og:title" content="${attr(full)}">
+<meta property="og:description" content="${desc}"><meta property="og:url" content="${attr(url)}"><meta property="og:image" content="${attr(image)}">
+${image.endsWith("og.png") ? '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' : ""}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${attr(full)}"><meta name="twitter:description" content="${desc}"><meta name="twitter:image" content="${attr(image)}">
 <script type="application/ld+json">${ld}</script></head>`);
+}
+
+// Crawlers and AI agents are welcome everywhere but the API (which serves the site's own pages) and the MCP endpoint.
+const ROBOTS = `User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /mcp
+
+# AI agents: /llms.txt maps the site; live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: ${SITE}/sitemap.xml
+`;
+
+/** /llms.txt (llmstxt.org): what the site is, how agents can use it, and every page with its one-line description. */
+let llms: Promise<string> | null = null;
+function llmsTxt() {
+  return (llms ??= (async () => {
+    const out = [`# ihor.sh`, ``, `> Hobby projects built and learned in public, free and without accounts: a software-defined radio written from scratch with courses, NYC open-data tools (a live subway map, a jobs radar, an evening planner, a résumé check), AI and electronics courses with interactive chapters, Yomu (Japanese from zero), a bikepacking route notebook, and Blip, a companion that answers questions on every page.`, ``,
+      `For agents:`, `- Pages render in the browser (JavaScript). The lists below link every page with its description.`,
+      `- Live data (subway, buses, ferries, Citi Bike, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP, 26 tools, bearer token from the owner), or by asking Blip on any page.`,
+      `- /api/ serves the site's own pages only; /sitemap.xml lists every page.`, `- Author: Ihor Kruchynskyi (https://ihork.link/).`, ``];
+    for (const [name, { dir, label }] of Object.entries(WORLDS)) {
+      out.push(`## ${label}`, ``);
+      for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
+        const page = await readFile(path.join(dir, f), "utf8");
+        if (page.includes('name="ihor-bare"')) continue;
+        const title = page.match(/<title>([^<]*)/)?.[1]?.trim() ?? f, desc = page.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "";
+        out.push(`- [${title}](${SITE}/${name}/${f.replace(/index\.html$/, "")})${desc ? `: ${desc}` : ""}`);
+      }
+      if (name === "yomu") for (const st of (await readJson("yomu/stories/index.json")) ?? []) out.push(`- [${st.title.ja} · ${st.title.en}](${SITE}/yomu/story.html?u=${st.id}): a JLPT ${st.level} Japanese story, unit ${st.unit}`);
+      out.push(``);
+    }
+    return out.join("\n");
+  })());
 }
 
 async function sitemap() {
   const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime]];
+  // the query-addressed pages: every story, deck level and grammar level
+  for (const st of (await readJson("yomu/stories/index.json")) ?? []) urls.push([`${SITE}/yomu/story.html?u=${st.id}`, (await stat(path.join(ROOT, `yomu/stories/${st.id}.json`)).catch(() => ({ mtime: new Date() }))).mtime]);
+  for (const level of ["N5", "N4", "N3", "N2", "N1"]) for (const type of ["kanji", "words"]) urls.push([`${SITE}/yomu/deck.html?level=${level}&type=${type}`, (await stat(path.join(ROOT, "yomu/deck.html"))).mtime]);
+  for (const level of ["N5", "N4", "N3"]) urls.push([`${SITE}/yomu/grammar.html?level=${level}`, (await stat(path.join(ROOT, "yomu/grammar.html"))).mtime]);
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort())
       if (!(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-    .map(([u, d]) => `  <url><loc>${u}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
+    .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
 }
 
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
-function dress(html: string, world: string, urlPath = "") {
+function dress(html: string, world: string, urlPath = "", extra: Meta | null = null) {
   if (html.includes('name="ihor-bare"')) return html; // helper pages shown inside another page (nyc/windy.html)
-  const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
+  const title = extra?.title ?? html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const [num, name] = world.split(" · "); // "World 2 · NYC": phones show just the name
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${name ? `<em>${num} ·</em> ${name}` : world}</span><b>${title}</b></nav>`;
-  if (urlPath) html = seo(html, world, urlPath);
+  if (urlPath) html = seo(html, world, urlPath, extra);
   // the page's own </body>, the last one: a script may contain the text "</body>" in a string
   const out = html.replace("</head>", `${HEAD}<link rel="stylesheet" href="${asset("theme.css")}"></head>`).replace(/<body[^>]*>/, (m) => m + hud), end = out.lastIndexOf("</body>");
   return end < 0 ? out + companion() : out.slice(0, end) + companion() + out.slice(end);
 }
 
-async function serveFile(res: http.ServerResponse, file: string, world?: string | "home", urlPath = "") {
+async function serveFile(res: http.ServerResponse, file: string, world?: string | "home", urlPath = "", search?: URLSearchParams) {
   const data = await readFile(file).catch(() => null);
-  if (!data) return res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
+  if (!data) return notFound(res);
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
-  res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath) : data);
+  res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath, search ? await pageMeta(urlPath, search) : null) : data);
+}
+
+// A real page for a missing URL: where the worlds are, instead of two words of plain text.
+function notFound(res: http.ServerResponse) {
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not found</title><meta name="robots" content="noindex"><meta name="description" content="There's nothing at this address."></head>
+<body><main style="max-width:720px;margin:0 auto;padding:40px 16px"><p class="eyebrow">404</p><h1>Nothing here</h1><p class="lede">That address doesn't exist (or doesn't any more). The worlds are all on the <a href="/">home page</a>:</p>
+<ul>${Object.entries(WORLDS).map(([n, w]) => `<li><a href="/${n}/">${w.label}</a></li>`).join("")}</ul></main></body></html>`;
+  res.writeHead(404, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" }).end(dress(html, "Lost"));
 }
 
 // The API answers only the site's own pages: ihor.sh and its subdomains (localhost while developing). Browsers send
@@ -455,7 +557,8 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
-    if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${SITE}/sitemap.xml\n`);
+    if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(ROBOTS);
+    if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
     if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
@@ -465,9 +568,9 @@ const server = http.createServer(async (req, res) => {
       const rel = decodeURIComponent(rest);
       const file = path.resolve(world.dir, "." + rel + (rel.endsWith("/") ? "index.html" : ""));
       if (!file.startsWith(world.dir + path.sep)) return res.writeHead(403).end();
-      return serveFile(res, file, world.label, url.pathname);
+      return serveFile(res, file, world.label, url.pathname, url.searchParams);
     }
-    res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
+    return notFound(res);
   } catch (e) {
     console.error(req.url, (e as Error).message);
     if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip lost the signal. Try again?" }));

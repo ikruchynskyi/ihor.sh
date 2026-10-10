@@ -60,7 +60,7 @@ document.title = `${u.title.ja} · ${u.title.en}`;
 $("lvl").textContent = `${u.level} · Unit ${u.unit}`;
 $("title").innerHTML = `<span class="jp">${esc(u.title.ja)}</span> <small class="muted">${esc(u.title.en)}</small>`;
 $("scene").textContent = u.scene;
-photo(id, $("photo"));
+photo(id, $("photo"), u.scene);
 const progress = (state.done[id] ??= { steps: {} });
 const STEPS = [["story", "Story"], ["words", "Words"], ["grammar", "Grammar"], ["kanji", "Kanji"], ["build", "Build"], ["questions", "Questions"], ["talk", "Talk"]];
 const renderSteps = () => ($("steps").innerHTML = STEPS.map(([k, l]) => `<a href="#s-${k}" class="${progress.steps[k] ? "done" : ""}">${progress.steps[k] ? "✓ " : ""}${l}</a>`).join(""));
@@ -145,7 +145,8 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = t
 
 // ---------- words ----------
 const words = [...new Map(u.lines.flatMap((l) => l.t.map(tok)).filter((t) => t.g && t.k !== "p" && t.k !== "x").map((t) => [t.s, t])).values()];
-$("vocab").innerHTML = words.map((t, i) => `<div>${pic(t.g) ? `<span class="pic" aria-hidden="true">${pic(t.g)}</span>` : ""}<span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join("");
+const renderVocab = () => ($("vocab").innerHTML = words.map((t, i) => `<div>${pic(t.g) ? `<span class="pic" aria-hidden="true">${pic(t.g)}</span>` : ""}<span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join(""));
+renderVocab();
 $("vocab").addEventListener("click", (e) => { const i = e.target.closest("[data-w]")?.dataset.w; if (i != null) speak(reading(words[+i])); });
 $("addAll").onclick = () => { for (const t of words) addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("addAll").textContent = `✓ ${words.length} words in your review deck`; complete("words", 10); };
 
@@ -165,11 +166,13 @@ function quiz(container, items, step, xp) {
     if (answered === items.length) { complete(step, xp); blip(right === items.length ? "Perfect! 満点 (manten)!" : `${right}/${items.length}. Read the explanation and try the next one!`, right === items.length ? "happy" : "think", right === items.length ? 6 : 0); }
   }));
 }
+const exRefs = []; // [element, tokens] of every grammar example, re-rendered when the script changes
 for (const g of u.grammar) {
   const box = document.createElement("div");
   box.className = "card2 card";
   box.innerHTML = `<h3>${esc(g.title)}</h3><p>${esc(g.explain)}${g.lesson ? ` <a href="/yomu/${g.lesson}">Full lesson + drill →</a>` : ""}</p>${g.examples.map((ex) => `<div class="ex"><span class="t" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-ex="${esc(plain(ex.t))}">▶</button><div class="muted">${esc(ex.en)}</div></div>`).join("")}`;
   $("grammar").append(box);
+  box.querySelectorAll(".ex .t").forEach((el, i) => exRefs.push([el, g.examples[i].t]));
 }
 $("grammar").addEventListener("click", (e) => { const t = e.target.closest("[data-ex]")?.dataset.ex; if (t) speak(t); });
 quiz($("grammar"), u.grammar.flatMap((g) => g.quiz), "grammar", 15);
@@ -188,6 +191,7 @@ $("kanji").addEventListener("click", (e) => {
 
 // ---------- build the sentence ----------
 let builtOk = 0;
+const buildRefs = []; // [box, pieces] per sentence, relabelled when the script changes
 for (const li of u.build ?? []) {
   const l = u.lines[li], pieces = l.t.map(tok).filter((t) => t.k !== "x");
   const order = pieces.map((_, i) => i).sort(() => Math.random() - 0.5);
@@ -197,6 +201,7 @@ for (const li of u.build ?? []) {
   const slots = box.querySelector(".slots"), pool = box.querySelector(".pool");
   const label = (t) => (state.settings.script === "romaji" ? romaji(reading(t), t.k === "p") : state.settings.script === "kana" ? reading(t) : t.s);
   pool.innerHTML = order.map((i) => `<button data-p="${i}">${esc(label(pieces[i]))}</button>`).join("");
+  buildRefs.push([box, pieces, label]);
   box.addEventListener("click", (e) => {
     const b = e.target.closest("[data-p]");
     if (b) { (b.parentElement === pool ? slots : pool).append(b); return; }
@@ -232,7 +237,12 @@ window.blipActions = {
 const i = catalog.findIndex((c) => c.id === id), nxt = catalog[i + 1];
 $("next").innerHTML = nxt ? `Next: <a href="/yomu/story.html?u=${nxt.id}">${esc(nxt.level)} unit ${nxt.unit}: <span class="jp">${esc(nxt.title.ja)}</span> (${esc(nxt.title.en)}) →</a>` : `<a href="/yomu/">Back to the map</a>`;
 
-settingsBar($("settings"), () => location.reload()); // every section re-renders in the new script
+// A script or furigana change re-renders every section in place (progress, answers and built sentences stay).
+settingsBar($("settings"), () => {
+  renderLines(); renderVocab();
+  for (const [el, t] of exRefs) el.innerHTML = renderTokens(t, state.settings, state.known);
+  for (const [box, pieces, label] of buildRefs) box.querySelectorAll("[data-p]").forEach((b) => (b.textContent = label(pieces[+b.dataset.p])));
+});
 renderLines(); renderSteps();
 </script>
 </body>
