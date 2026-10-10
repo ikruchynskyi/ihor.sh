@@ -77,7 +77,10 @@ const CSS = `
 .stage, .tab { z-index: 2; } /* Blip stands in front of the scrim (sharp while the page blurs) but behind the panel */
 .panel { position: fixed; z-index: 3; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); max-height: min(72vh, 640px); display: flex; flex-direction: column; background: var(--card, #0d1226); color: var(--fg, #e8edff); pointer-events: auto; font: var(--reader-size, 21px)/var(--reader-line, 1.2) var(--reader-font, "VT323", monospace); letter-spacing: var(--reader-letter, 0); border: var(--panel-edge, 4px solid var(--fg, #e8edff)); border-radius: var(--r, 0); box-shadow: var(--panel-shadow, inset 0 0 0 4px var(--line, #3b4bb0), 10px 10px 0 rgba(0,0,0,.55)); animation: rise .22s var(--motion, steps(4)); }
 :host(.sleek) .panel { background: color-mix(in srgb, var(--card, #0f1626) 90%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); }
-:host(.sleek) .scrim { background: rgba(3,6,14,.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+:host(.sleek) .scrim { background: rgba(3,6,14,.5); }
+:host(.onmap) .scrim { display: none; } /* on a map the page stays usable while the chat is open */
+.panel header { cursor: move; touch-action: none; }
+.panel header .x { cursor: pointer; }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } }
 .panel header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 4px solid var(--line, #3b4bb0); }
 :host(.sleek) .panel header, :host(.sleek) form { border-color: color-mix(in srgb, var(--fg, #fff) 12%, transparent); border-width: 1px; }
@@ -121,6 +124,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 .panel footer a, .panel footer button { color: var(--muted, #7f8bc4); background: none; box-shadow: none; padding: 4px 0; text-decoration: none; font: inherit; }
 .panel footer a:hover, .panel footer button:hover { color: var(--accent, #ffb347); }
 .tab { position: fixed; right: 12px; bottom: 0; pointer-events: auto; }
+/* touch devices have no B key: a round 💬 by Blip opens the chat (long-pressing Blip does too) */
+.ask { display: none; position: fixed; right: 14px; bottom: calc(100px + var(--blip-floor, 0px)); width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 22px; line-height: 46px; text-align: center; pointer-events: auto; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+:host(.touch) .ask { display: block; }
+:host(.sleek) .ask { border-radius: 50%; }
 @media (max-width: 600px) { .panel { left: 8px; bottom: 8px; width: calc(100vw - 16px); } }
 `;
 
@@ -132,6 +139,8 @@ const eye = (s) => `<g transform="translate(${s * 10},-4)">
 const host = document.createElement("div");
 host.id = "blip";
 const look = () => host.classList.toggle("sleek", document.documentElement.dataset.style !== "pixel");
+const onMap = !!document.querySelector("body > #map, #map.leaflet-container, .leaflet-container"); // map pages: the chat floats over a usable map
+host.classList.toggle("touch", matchMedia("(pointer: coarse)").matches);
 look(); new MutationObserver(look).observe(document.documentElement, { attributes: true, attributeFilter: ["data-style"] });
 host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483000";
 document.body.append(host);
@@ -158,6 +167,7 @@ root.innerHTML = `<style>${CSS}</style>
 </svg>
 <div class="bubble" hidden></div>
 <button class="tab" hidden>▲ BLIP</button>
+<button class="ask" aria-label="Ask Blip" title="Ask Blip">💬</button>
 <div class="dialog" hidden>
   <div class="scrim"></div>
   <section class="panel" role="dialog" aria-modal="true" aria-labelledby="blip-h">
@@ -466,23 +476,27 @@ document.addEventListener("visibilitychange", () => {
 addEventListener("pagehide", () => session.set("blip:x", Math.round(core.x)));
 
 // ---------- drag, throw, poke ----------
-let grab = null, moved = 0, trail = [], pokes = [];
+let grab = null, moved = 0, trail = [], pokes = [], pressTimer = 0, pressed = false;
 d3.select(blipEl).call(d3.drag().container(stage)
   .on("start", (e) => {
-    activity(); hush(); walk = null; dragging = true; moved = 0;
+    activity(); hush(); walk = null; dragging = true; moved = 0; pressed = false;
     grab = d3.least(nodes, (n) => (n.x - e.x) ** 2 + (n.y - e.y) ** 2);
     grab.fx = grab.x; grab.fy = grab.y;
     trail = [{ x: e.x, y: e.y, t: performance.now() }];
+    clearTimeout(pressTimer); pressTimer = setTimeout(() => { if (moved < 8) { pressed = true; openDialog(); } }, 550); // hold Blip: ask
   })
   .on("drag", (e) => {
     moved += Math.hypot(e.dx, e.dy);
+    if (moved >= 8) clearTimeout(pressTimer);
     grab.fx = e.x; grab.fy = e.y;
     trail.push({ x: e.x, y: e.y, t: performance.now() });
     if (trail.length > 5) trail.shift();
     if (moved > 6 && mood !== "surprised") setMood("surprised");
   })
   .on("end", (e) => {
+    clearTimeout(pressTimer);
     grab.fx = grab.fy = null; grab = null; dragging = false;
+    if (pressed) return;
     if (moved < 6) return poke(e.x, e.y);
     const a = trail[0], b = trail.at(-1), now = performance.now();
     const dt = Math.max(16, b.t - a.t), still = now - b.t > 80;
@@ -564,19 +578,39 @@ addEventListener("keydown", (e) => {
 // ---------- hide / show ----------
 function hide() {
   hidden = true; local.set("blip:hidden", "1"); closeDialog(); hush();
-  sim.stop(); stage.style.display = "none"; tab.hidden = false;
+  sim.stop(); stage.style.display = "none"; tab.hidden = false; askBtn.hidden = true;
 }
 function show() {
   hidden = false; local.set("blip:hidden", "");
-  stage.style.display = ""; tab.hidden = true;
+  stage.style.display = ""; tab.hidden = true; askBtn.hidden = false;
   for (const n of nodes) n.y -= H; // drop back in from above
   flying = true; sim.restart();
 }
 tab.onclick = show;
+const askBtn = root.querySelector(".ask");
+askBtn.onclick = () => openDialog();
 if (local.get("blip:hidden")) hide();
 
 // ---------- the dialog ----------
-const dialog = $(".dialog"), log = $(".log"), form = $("form"), input = $("input");
+const dialog = $(".dialog"), log = $(".log"), form = $("form"), input = $("input"), panel = $(".panel");
+if (onMap) { host.classList.add("onmap"); panel.setAttribute("aria-modal", "false"); }
+// The chat can be dragged by its title bar; where you put it is kept for the rest of the session.
+{
+  const head = panel.querySelector("header"), place = (x, y) => {
+    x = Math.max(0, Math.min(innerWidth - 120, x)); y = Math.max(0, Math.min(innerHeight - 80, y));
+    Object.assign(panel.style, { left: `${x}px`, top: `${y}px`, bottom: "auto", right: "auto" });
+  };
+  try { const p = JSON.parse(sessionStorage.getItem("blip:panel") || "null"); if (p && innerWidth > 700) place(p.x, p.y); } catch {}
+  head.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button, a") || e.button) return;
+    const r = panel.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const move = (m) => place(m.clientX - sx, m.clientY - sy);
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); const q = panel.getBoundingClientRect(); try { sessionStorage.setItem("blip:panel", JSON.stringify({ x: q.left, y: q.top })); } catch {} };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+    e.preventDefault();
+  });
+  head.title = "Drag to move";
+}
 let history = [];
 try { history = JSON.parse(session.get("blip:log") || "[]"); } catch {}
 const save = () => session.set("blip:log", JSON.stringify(history.slice(-30)));
@@ -610,14 +644,14 @@ function renderLog() {
 function openDialog(q) {
   if (hidden) show();
   if (asleep) activity();
-  dialogOpen = true; dialog.hidden = false; hush();
+  dialogOpen = true; dialog.hidden = false; hush(); askBtn.hidden = true;
   if (innerWidth > 700) walkTo(W - 70);
   renderLog(); input.focus();
   if (q) send(q);
 }
 function closeDialog() {
   if (!dialogOpen) return;
-  dialogOpen = false; dialog.hidden = true;
+  dialogOpen = false; dialog.hidden = true; askBtn.hidden = hidden;
   if (!hidden) blipEl.focus({ preventScroll: true });
 }
 $(".x").onclick = closeDialog;

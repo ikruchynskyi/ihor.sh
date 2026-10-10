@@ -1312,6 +1312,19 @@ map.on("popupopen", (e) => {
   setTimeout(() => e.popup.isOpen() && e.popup._adjustPan?.(), 300); // re-pan with the padding (after any setView animation)
 });
 // The panel folds away (and starts folded on phones, where it would cover the map).
+// The side panel can be dragged by its title bar (on a screen wide enough that it isn't the bottom sheet).
+{
+  const head = document.querySelector("#panel .phead"), panel = $("panel");
+  head.style.cursor = "move"; head.title = "Drag to move the panel";
+  head.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button, a, input") || e.button || matchMedia("(max-width: 700px)").matches) return;
+    const r = panel.getBoundingClientRect(), box = $("map").getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const move = (m) => { const x = Math.max(box.left, Math.min(box.right - 80, m.clientX - sx)), y = Math.max(box.top, Math.min(box.bottom - 60, m.clientY - sy)); Object.assign(panel.style, { left: `${x - box.left}px`, top: `${y - box.top}px` }); };
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); placeDisclaimer(); };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+    e.preventDefault();
+  });
+}
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 // On phones the panel is a sheet at the bottom: Blip (companion.js) stands on top of it instead of on its buttons.
 const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${$("panel").offsetHeight + 8}px` : "0px");
