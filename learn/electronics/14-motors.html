@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Motors</title>
+  <meta name="description" content="Electronics from scratch, chapter 14: making things move. How a DC motor turns current into torque and fights back with back-EMF, stall current, speed control with PWM, an H-bridge you switch by hand (forward, reverse, brake, and the shoot-through that burns it), hobby servos driven by pulse width, and stepper motors stepping through their coil sequence." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    input[type=range] { width: 200px; }
+    .sw.on { background: #83c167 !important; color: #10131a !important; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 14</p>
+  <h1>Motors</h1>
+  <p class="lede">Chapter 3's coil made a magnetic field from a current. Put that coil next to a magnet and the field pushes: that's a motor. This chapter covers the three kinds you'll actually use: a plain DC motor (fast, cheap, needs an H-bridge to reverse), a hobby servo (goes to an angle you name with a pulse), and a stepper (moves exactly one notch per pulse), along with the electronics that drive each.</p>
+  <div class="plain card"><b>In plain words:</b> current through a wire in a magnetic field gets a sideways push. Coil the wire around a shaft between magnets and the push becomes turning. A microcontroller pin can't supply the amps a motor needs, so a transistor (or four) does the heavy lifting while the pin only says when.</div>
+
+  <h2>1. A DC motor, and the voltage it makes back</h2>
+  <p>Torque is proportional to current: \(\tau = k\,I\). But a spinning motor is also a generator (chapter 3: a moving magnet in a coil induces a voltage), and that <b>back-EMF</b> \(k\,\omega\) opposes the supply. So the current is set by what's left over: \(I = (V - k\omega)/R\). A free-running motor speeds up until back-EMF almost cancels the supply and only a small current flows. Load it, it slows, back-EMF drops, more current flows, more torque: it balances itself. Hold the shaft still (<b>stall</b>) and nothing opposes the supply: the current is just \(V/R\), the largest it can be.</p>
+  <canvas id="c1" width="800" height="260" aria-label="A DC motor with supply voltage, load, speed and current"></canvas>
+  <div class="row"><label>supply <input type="range" id="v1" min="0" max="12" step="0.1" value="6"> <span id="v1v"></span></label><label>load <input type="range" id="l1" min="0" max="100" value="10"> <span id="l1v"></span></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="formula">\[ I = \frac{V - k\,\omega}{R}, \qquad \tau = k\,I, \qquad I_\text{stall} = \frac{V}{R} \]</p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> stall the motor (drag the load until it stops) and read the stall current.</p>
+  <div class="q" data-num="3" data-tol="0.01">
+    <p>A 6 V motor has a winding resistance of 2 Ω. What's its stall current, in amps?</p>
+    <div class="why">\(6 / 2 = 3\) A, maybe ten times its running current. That's what the driver, the battery and the wires must survive at every start (a motor starts from standstill, so it starts at stall current) and why a stuck motor overheats: all that current goes into heating the winding.</div>
+  </div>
+
+  <h2>2. The H-bridge</h2>
+  <p>To run a motor both ways you need to swap which terminal is positive. Four switches (MOSFETs, chapter 4) in an "H" do it: close the top-left and bottom-right and current flows left to right through the motor; close the other diagonal and it flows right to left. Close both bottoms and the motor's terminals are shorted together: its own back-EMF drives a current that brakes it hard. Close two switches on the <em>same side</em> and you've connected the supply straight to ground: <b>shoot-through</b>, which in real life means smoke. Driver chips (L298, DRV8833, TB6612) contain the four switches plus the logic that makes shoot-through impossible.</p>
+  <canvas id="c2" width="800" height="330" aria-label="An H-bridge with four switches and a motor"></canvas>
+  <div class="row"><button class="sw" data-s="0">top-left</button><button class="sw" data-s="1">top-right</button><button class="sw" data-s="2">bottom-left</button><button class="sw" data-s="3">bottom-right</button><button id="hoff">all off</button></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> run the motor forward, then reverse it, then brake it.</p>
+  <div class="q">
+    <p>When a running motor's H-bridge switches off, the motor's coil still carries current and wants to keep it flowing (chapter 3). Where does it go?</p>
+    <div class="why">Through diodes across each switch (MOSFETs have one built in, the "body diode"), back to the supply. Without them the coil's voltage spikes until something breaks down: the same flyback problem as chapter 4's single MOSFET driving a relay, four times over.</div>
+  </div>
+
+  <h2>3. Speed control with PWM</h2>
+  <p>Chapter 13's PWM drives one switch of the bridge: at 50% duty the motor sees, on average, half the supply. The coil's inductance smooths the current between pulses (it can't change quickly), so the motor spins steadily rather than jerking. Pick the PWM frequency above 20 kHz and you can't hear it whine. Below, the duty sets the average voltage that section 1's motor runs on.</p>
+  <canvas id="c3" width="800" height="200" aria-label="PWM pulses into a motor and the smoothed current"></canvas>
+  <div class="row"><label>duty <input type="range" id="d3" min="0" max="100" value="50"> <span id="d3v"></span></label><label>PWM <select id="f3"><option value="200">200 Hz</option><option value="2000" selected>2 kHz</option><option value="20000">20 kHz</option></select></label></div>
+  <p class="readout" id="o3"></p>
+
+  <h2>4. Hobby servos: an angle from a pulse width</h2>
+  <p>A servo is a small DC motor, a gearbox, a potentiometer on the output shaft (chapter 11's sensor) and a control circuit in one box. You send it a pulse every 20 ms (50 Hz), and the pulse's width is the angle you want: 1 ms means one end, 2 ms the other, 1.5 ms the middle. The circuit compares the pot's reading with the pulse and drives the motor until they match: a closed loop, like chapter 7's op-amp chasing its two inputs to equal.</p>
+  <canvas id="c4" width="800" height="240" aria-label="A servo pulse train and the horn's angle"></canvas>
+  <div class="row"><label>pulse width <input type="range" id="p4" min="1000" max="2000" step="10" value="1500"> <span id="p4v"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <div class="q" data-num="135" data-tol="0.01">
+    <p>A servo maps 1.0 ms → 0° and 2.0 ms → 180°, linearly. What angle does a 1.75 ms pulse give, in degrees?</p>
+    <div class="why">0.75 of the way from 1 ms to 2 ms, so \(0.75 \times 180 = 135°\). (Real servos vary; many go from about 0.5 to 2.5 ms, so calibrate the ends.)</div>
+  </div>
+
+  <h2>5. Steppers: one notch per pulse</h2>
+  <p>A stepper has two coils and a magnetized rotor with many teeth. Energize coil A one way, and the rotor snaps to the nearest position that lines up with A. Then B, then A reversed, then B reversed: each step moves the rotor one notch, 1.8° for the common kind, 200 steps per turn. No sensor needed: count the steps and you know where it is (as long as it never skips). That's why 3D printers and plotters use them. Energize both coils at once between full steps and the rotor sits halfway: <b>half-stepping</b>, twice the resolution.</p>
+  <canvas id="c5" width="800" height="290" aria-label="A two-coil stepper motor stepping through its sequence"></canvas>
+  <div class="row"><button id="st">Step</button><button id="stb">Step back</button><label><input type="checkbox" id="half"> half-stepping</label><label><input type="checkbox" id="spin"> run</label></div>
+  <p class="readout" id="o5"></p>
+  <div class="q" data-num="50" data-tol="0">
+    <p>How many full steps turn a 1.8° stepper by exactly 90°?</p>
+    <div class="why">\(90 / 1.8 = 50\). Microstepping drivers (A4988, TMC2209) go further, feeding the coils sine-shaped currents to sit anywhere between notches, 16 or more positions per step, and much quieter.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>A robot arm's base must hold any angle precisely, all day, with no position sensor. A wheel just has to go fast. A camera pan needs an angle, cheaply. Which motor goes where?</p>
+    <ul><li data-k="a" data-says="A DC motor alone has no idea where it is: it needs a sensor to hold a position.">DC on the arm, stepper on the wheel, servo on the camera</li><li data-k="b" data-says="A stepper is slow and power-hungry for a wheel that only needs speed.">Servo on the arm, stepper on the wheel, DC on the camera</li><li data-k="c">Stepper on the arm, DC on the wheel, servo on the camera</li></ul>
+    <div class="why">The stepper counts its way to positions, the DC motor is the cheap fast spinner, and the servo is an angle for one wire and a pulse. (Big robot arms actually use DC or brushless motors with encoders, which is the servo idea scaled up.)</div>
+  </div>
+
+  <div class="code" data-title="Build it: a motor spinning up (two equations, stepped in time)"><textarea>
+// Electrical: L di/dt = V − R i − k ω.  Mechanical: J dω/dt = k i − b ω − load.
+const R = 2, L = 0.002, k = 0.01, J = 2e-6, b = 1e-6;
+function spinUp(V, load = 0, T = 0.3, dt = 1e-5) {
+  let i = 0, w = 0; const speed = [], current = [];
+  for (let n = 0, t = 0; t < T; n++, t += dt) {
+    i += (dt / L) * (V - R * i - k * w);
+    w += (dt / J) * (k * i - b * w - load);
+    if (w < 0 && load > 0) w = 0;                               // a load can stall it, not run it backwards
+    if (n % 300 === 0) { speed.push([t * 1000, (w * 60) / (2 * Math.PI)]); current.push([t * 1000, i]); }
+  }
+  return { speed, current, rpm: (w * 60) / (2 * Math.PI), i };
+}
+const r = spinUp(6);
+print(`6 V, no load: ${r.rpm.toFixed(0)} rpm, ${(r.i * 1000).toFixed(0)} mA running; stall would be ${6 / R} A`);
+plot(r.speed, { label: "speed (rpm) vs time (ms)" });
+plot(r.current, { label: "current (A) vs time (ms): the start is a stall" });
+// Try: spinUp(6, 0.01) for a load, or spinUp(3) at half the voltage (half the speed: speed ∝ voltage).
+</textarea></div>
+  <div class="code" data-title="Build it: stepper coil sequences"><textarea>
+// Full steps: one coil at a time (A+, B+, A−, B−). Half steps add both-coils-on in between.
+const FULL = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+const HALF = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+function moveTo(degrees, half = false, stepDeg = 1.8) {
+  const seq = half ? HALF : FULL, per = half ? stepDeg / 2 : stepDeg, n = Math.round(degrees / per);
+  return { steps: n, reached: n * per, coils: [...Array(Math.min(n, 8))].map((_, s) => seq[(s + 1) % seq.length]) };
+}
+print(moveTo(90));
+print(moveTo(10, true));   // 10° isn't a whole number of steps: it lands on the nearest one
+</textarea></div>
+
+  <p>In the <a href="/learn/lab.html">circuit lab</a>, "MOSFET motor driver with flyback" is section 2's bottom half of the bridge. Next: <a href="./15-hands-on.html">hands-on</a>, building these for real on a breadboard and a PCB.</p>
+  <p class="muted">Previous: <a href="./13-microcontrollers-and-buses.html">Microcontrollers and buses</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", purple: "#9a72ac" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 3) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+
+// A small DC motor: R = 2 Ω, k = 0.01 V·s/rad (≈ 5,700 rpm at 6 V unloaded), friction b.
+const R = 2, K = 0.01, B = 1e-6;
+const steady = (V, load) => { // solve k·i = b·ω + load with i = (V − kω)/R
+  const w = Math.max(0, (K * V / R - load) / (K * K / R + B));
+  return { w, i: w > 0 ? (V - K * w) / R : V / R };
+};
+function rotor(g, cx, cy, r, angle, color) {
+  g.strokeStyle = C.wire; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, r + 10, 0, 7); g.stroke();
+  g.fillStyle = "#1f2530"; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+  for (let k = 0; k < 3; k++) { const a = angle + (k * 2 * Math.PI) / 3; line(g, [[cx, cy], [cx + Math.cos(a) * r, cy + Math.sin(a) * r]], color, 6); }
+  g.fillStyle = C.text; g.beginPath(); g.arc(cx, cy, 6, 0, 7); g.fill();
+}
+
+// ---------- 1 + 3: motor state (section 3 sets the voltage through PWM) ----------
+let ang1 = 0, w1 = 0, ang3 = 0, w3 = 0, last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // section 1
+  const V = +$("v1").value, load = (+$("l1").value / 100) * 0.05;
+  const s = steady(V, load); w1 += (s.w - w1) * Math.min(1, dt * 6); ang1 += w1 * dt * 0.01;
+  $("v1v").textContent = `${V.toFixed(1)} V`; $("l1v").textContent = `${(load * 1000).toFixed(1)} mN·m`;
+  const i = (V - K * w1) / R, g = $("c1").getContext("2d"), W = 800, H = 260;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#c0392b"; g.fillRect(60, 60, 40, 140); g.fillStyle = "#2c6fbb"; g.fillRect(300, 60, 40, 140);
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("N", 74, 50); g.fillText("S", 314, 50);
+  rotor(g, 200, 130, 70, ang1, s.w > 0 ? C.yellow : C.red);
+  const bar = (x, label, v, max, color) => { g.fillStyle = C.dim; g.fillRect(x, 40, 30, 180); const h = Math.min(1, v / max) * 180; g.fillStyle = color; g.fillRect(x, 220 - h, 30, h); g.fillStyle = C.text; g.fillText(label, x - 14, 245); };
+  bar(430, "supply", V, 12, C.red); bar(520, "back-EMF", K * w1, 12, C.blue); bar(630, "current", i, 6, C.yellow);
+  g.fillText(`${V.toFixed(1)} V`, 425, 32); g.fillText(`${(K * w1).toFixed(2)} V`, 512, 32); g.fillText(`${i.toFixed(2)} A`, 624, 32);
+  const rpm = (w1 * 60) / (2 * Math.PI);
+  $("o1").textContent = s.w > 0 ? `${rpm.toFixed(0)} rpm · back-EMF ${(K * w1).toFixed(2)} V · current ${i.toFixed(2)} A · torque ${(K * i * 1000).toFixed(2)} mN·m` : `stalled: no back-EMF, current = ${V.toFixed(1)} V / ${R} Ω = ${(V / R).toFixed(2)} A, all of it heating the winding`;
+  if (s.w === 0 && V > 1 && w1 < 1) done("g1", `Stalled: ${(V / R).toFixed(1)} amps and not moving. That's how motors burn out.`);
+
+  // section 3
+  const D = +$("d3").value / 100, f = +$("f3").value, s3 = steady(12 * D, 0.002);
+  w3 += (s3.w - w3) * Math.min(1, dt * 4); ang3 += w3 * dt * 0.01;
+  $("d3v").textContent = `${Math.round(D * 100)}%`;
+  const g3 = $("c3").getContext("2d");
+  g3.fillStyle = C.stage; g3.fillRect(0, 0, 800, 200);
+  const x0 = 40, x1 = 560, per = f >= 20000 ? 12 : f >= 2000 ? 6 : 3, pts = [], cur = [];
+  for (let p = 0; p < per; p++) { const a = x0 + (p / per) * (x1 - x0), w = (x1 - x0) / per; pts.push([a, 120], [a, 30], [a + D * w, 30], [a + D * w, 120], [a + w, 120]); }
+  line(g3, pts, C.yellow, 2);
+  // inductor current ripple: rises during on, falls during off; slower PWM → bigger ripple
+  const ripple = (0.4 / per) * (D > 0 && D < 1 ? 1 : 0), mean = 180 - D * 50;
+  for (let x = x0; x <= x1; x += 2) { const ph = (((x - x0) / (x1 - x0)) * per) % 1, tri = ph < D ? ph / Math.max(D, 1e-3) : 1 - (ph - D) / Math.max(1 - D, 1e-3); cur.push([x, mean - (tri - 0.5) * ripple * 120]); }
+  line(g3, cur, C.blue, 2);
+  g3.fillStyle = C.text; g3.font = "13px ui-monospace, monospace"; g3.fillText("pin", 4, 80); g3.fillStyle = C.blue; g3.fillText("current", 0, mean + 4);
+  rotor(g3, 680, 100, 60, ang3, C.yellow);
+  $("o3").textContent = `average ${(12 * D).toFixed(1)} V of 12 V → ${((w3 * 60) / (2 * Math.PI)).toFixed(0)} rpm · ${f < 20000 ? "audible whine at " + f + " Hz" : "above hearing: silent"} · ${f < 2000 ? "big current ripple between pulses" : "the coil smooths the current"}`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- 2. H-bridge ----------
+const sw = [0, 0, 0, 0]; let seen = new Set(), hAng = 0, hDir = 0;
+function drawH() {
+  const [tl, tr, bl, br] = sw, shoot = (tl && bl) || (tr && br);
+  const mode = shoot ? "SHOOT" : tl && br ? "FWD" : tr && bl ? "REV" : bl && br ? "BRAKE" : tl && tr ? "BRAKE_TOP" : "COAST";
+  const g = $("c2").getContext("2d"), W = 800, H = 330;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  line(g, [[200, 30], [600, 30]], C.red); line(g, [[200, 300], [600, 300]], C.wire);
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("+12 V", 620, 35); g.fillText("ground", 620, 305);
+  const sws = [[250, 30, 250, 145, tl], [550, 30, 550, 145, tr], [250, 185, 250, 300, bl], [550, 185, 550, 300, br]];
+  sws.forEach(([x, y0, , y1, on], k) => {
+    line(g, [[x, y0], [x, y0 + 30]], C.wire, 3); line(g, [[x, y1 - 30], [x, y1]], C.wire, 3);
+    if (on) line(g, [[x, y0 + 30], [x, y1 - 30]], C.green, 5); else line(g, [[x, y0 + 30], [x + 26, y1 - 36]], C.dim, 4);
+    g.fillStyle = on ? C.green : C.dim; g.fillText(["TL", "TR", "BL", "BR"][k], x - 40, (y0 + y1) / 2 + 5);
+  });
+  line(g, [[250, 165], [340, 165]], C.wire); line(g, [[460, 165], [550, 165]], C.wire); line(g, [[250, 145], [250, 185]], C.wire); line(g, [[550, 145], [550, 185]], C.wire);
+  hDir = mode === "FWD" ? 1 : mode === "REV" ? -1 : mode === "COAST" ? hDir * 0.97 : 0;
+  hAng += hDir * 0.15;
+  rotor(g, 400, 165, 50, hAng, mode === "SHOOT" ? C.dim : C.yellow);
+  // the current path
+  const path = mode === "FWD" ? [[250, 30], [250, 165], [350, 165]] : mode === "REV" ? [[550, 30], [550, 165], [450, 165]] : null;
+  if (path) { g.setLineDash([8, 6]); g.lineDashOffset = -performance.now() / 40; line(g, mode === "FWD" ? [[250, 30], [250, 165], [550, 165], [550, 300]] : [[550, 30], [550, 165], [250, 165], [250, 300]], C.blue, 3); g.setLineDash([]); }
+  if (mode === "SHOOT") { const x = tl && bl ? 250 : 550; g.setLineDash([4, 4]); line(g, [[x, 30], [x, 300]], C.red, 6); g.setLineDash([]); g.fillStyle = C.red; g.font = "bold 22px ui-monospace, monospace"; g.fillText("SHORT CIRCUIT", 300, 260); }
+  const text = { FWD: "forward: current flows left → right through the motor", REV: "reverse: current flows right → left, the motor turns the other way", BRAKE: "brake: both bottoms on, the motor's terminals are shorted; its back-EMF fights itself and it stops fast", BRAKE_TOP: "brake (through the top switches): same idea, shorted terminals", COAST: "coast: nothing driven, the motor spins down freely", SHOOT: "shoot-through! the supply is shorted straight to ground through one side. Real MOSFETs would be destroyed in microseconds." }[mode];
+  $("o2").textContent = text;
+  document.querySelectorAll(".sw").forEach((b) => b.classList.toggle("on", !!sw[+b.dataset.s]));
+  if (mode === "FWD") seen.add("f"); if (mode === "REV" && seen.has("f")) seen.add("r"); if (mode === "BRAKE" && seen.has("r")) done("g2", "Forward, reverse, brake: that's every move a robot wheel makes.");
+}
+document.querySelectorAll(".sw").forEach((b) => (b.onclick = () => { sw[+b.dataset.s] ^= 1; if ((sw[0] && sw[2]) || (sw[1] && sw[3])) say("Shoot-through! In real life that's a puff of smoke.", "sad"); }));
+$("hoff").onclick = () => sw.fill(0);
+setInterval(drawH, 40);
+
+// ---------- 4. servo ----------
+let servoAng = 90;
+function drawServo() {
+  const us = +$("p4").value, target = ((us - 1000) / 1000) * 180;
+  servoAng += (target - servoAng) * 0.15;
+  $("p4v").textContent = `${(us / 1000).toFixed(2)} ms`;
+  const g = $("c4").getContext("2d");
+  g.fillStyle = C.stage; g.fillRect(0, 0, 800, 240);
+  // pulses: 20 ms period, 3 periods over 60 ms on 480 px
+  const x0 = 30, px = 480 / 60, pts = [[x0, 150]];
+  for (let p = 0; p < 3; p++) { const a = x0 + p * 20 * px; pts.push([a, 150], [a, 70], [a + (us / 1000) * px, 70], [a + (us / 1000) * px, 150], [a + 20 * px, 150]); }
+  line(g, pts, C.yellow, 2);
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(`pulse ${(us / 1000).toFixed(2)} ms`, x0, 60); g.fillText("every 20 ms (50 Hz)", x0 + 20 * px, 175);
+  line(g, [[x0, 190], [x0 + 20 * px, 190]], C.dim, 1);
+  // servo body and horn
+  const cx = 660, cy = 150; g.fillStyle = "#1f2530"; g.fillRect(cx - 70, cy - 40, 140, 80); g.strokeStyle = C.wire; g.strokeRect(cx - 70, cy - 40, 140, 80);
+  g.strokeStyle = C.dim; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, 90, Math.PI, 2 * Math.PI); g.stroke();
+  const a = Math.PI + (servoAng / 180) * Math.PI; line(g, [[cx, cy], [cx + Math.cos(a) * 80, cy + Math.sin(a) * 80]], C.green, 10);
+  g.fillStyle = C.text; g.beginPath(); g.arc(cx, cy, 8, 0, 7); g.fill(); g.fillText("0°", cx - 110, cy + 4); g.fillText("180°", cx + 94, cy + 4); g.fillText("90°", cx - 12, cy - 98);
+  $("o4").textContent = `${(us / 1000).toFixed(2)} ms → ${target.toFixed(0)}° · the pulse width is the whole message; the 20 ms gap just repeats it`;
+}
+setInterval(drawServo, 40);
+
+// ---------- 5. stepper ----------
+const FULL = [[1, 0], [0, 1], [-1, 0], [0, -1]], HALF = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+let pos = 0; // in half steps
+function drawStep() {
+  const half = $("half").checked, ph = ((pos % 8) + 8) % 8, [a, b] = half ? HALF[ph] : FULL[(ph >> 1) % 4];
+  const g = $("c5").getContext("2d"), cx = 260, cy = 145;
+  g.fillStyle = C.stage; g.fillRect(0, 0, 800, 290);
+  // coils: A left/right, B top/bottom
+  const coil = (x, y, w, h, v, label) => { g.fillStyle = v ? (v > 0 ? "rgba(252,98,85,.7)" : "rgba(88,196,221,.7)") : "#2a303c"; g.fillRect(x, y, w, h); g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(label, x, y - 6); };
+  coil(cx - 150, cy - 25, 40, 50, a, "A"); coil(cx + 110, cy - 25, 40, 50, -a, ""); coil(cx - 25, cy - 130, 50, 40, b, "B"); coil(cx - 25, cy + 95, 50, 40, -b, "");
+  // the rotor points at the field: angle of (a, b); shown magnified (one step drawn as 45°, real is 1.8°)
+  const ang = Math.atan2(-b, -a) + Math.PI;
+  g.fillStyle = "#1f2530"; g.beginPath(); g.arc(cx, cy, 60, 0, 7); g.fill();
+  line(g, [[cx - Math.cos(ang) * 55, cy - Math.sin(ang) * 55], [cx + Math.cos(ang) * 55, cy + Math.sin(ang) * 55]], C.yellow, 12);
+  g.fillStyle = C.red; g.beginPath(); g.arc(cx - Math.cos(ang) * 50, cy - Math.sin(ang) * 50, 8, 0, 7); g.fill();
+  // the step sequence table
+  const seq = half ? HALF : FULL, cur = half ? ph : (ph >> 1) % 4;
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("step   coil A   coil B", 480, 40);
+  seq.forEach(([x, y], k) => { g.fillStyle = k === cur ? C.yellow : C.dim; const s = (v) => (v > 0 ? " +" : v < 0 ? " −" : " 0"); g.fillText(`${String(k).padStart(3)}     ${s(x)}       ${s(y)}`, 480, 68 + k * 24); });
+  const deg = (pos * 0.9).toFixed(1);
+  $("o5").textContent = `${half ? "half" : "full"} steps · position ${half ? pos : pos / 2} steps = ${deg}° (the picture magnifies each step; a real one is ${half ? "0.9" : "1.8"}°)`;
+}
+const stepBy = (d) => { const half = $("half").checked; if (!half && pos % 2) pos += d; else pos += half ? d : 2 * d; drawStep(); };
+$("st").onclick = () => stepBy(1); $("stb").onclick = () => stepBy(-1); $("half").onchange = () => { if (!$("half").checked && pos % 2) pos++; drawStep(); };
+setInterval(() => { if ($("spin").checked) stepBy(1); }, 350); drawStep();
+
+window.blipContext = () => ({ page: "Electronics chapter 14: motors (DC with back-EMF and stall current, H-bridge, PWM speed, servo pulses, stepper sequences)", supplyV: $("v1").value, hbridge: sw.join(""), servoPulseUs: $("p4").value, stepperPos: pos });
+</script>
+</body>
+</html>
