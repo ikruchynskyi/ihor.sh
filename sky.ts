@@ -130,3 +130,32 @@ export function radioStations() {
     }));
   });
 }
+
+// ---------- street-level photos ----------
+/** Mapillary photos inside a small box (zoomed-in map view), newest first. Key MAPILLARY_TOKEN; photos CC BY-SA 4.0,
+ *  "© Mapillary contributors". Thumbnail links are signed and expire after a while, so they're cached for an hour only. */
+export function streetPhotos(s: number, w: number, n: number, e: number) {
+  const token = process.env.MAPILLARY_TOKEN;
+  if (!token) return Promise.resolve([]);
+  if (!(n > s && e > w && n - s <= 0.03 && e - w <= 0.04)) throw new Error("zoom in further");
+  const box = [w, s, e, n].map((v) => v.toFixed(4)).join(",");
+  const key = `photos:${box}`, p = cached(key, 3600_000, async () => {
+    const q = new URLSearchParams({ access_token: token, fields: "id,thumb_1024_url,captured_at,compass_angle,is_pano,geometry,creator", bbox: box, limit: "400" });
+    // Mapillary's API is flaky: the same box comes back with 36, 27 or 0 photos. Ask again (twice) before believing "none".
+    let d: any = { data: [] };
+    for (let i = 0; i < 3 && !d.data?.length; i++) d = await json(`https://graph.mapillary.com/images?${q}`, 25_000);
+    return (d.data as any[]).filter((p) => p.thumb_1024_url && p.geometry).map((p) => ({
+      id: p.id, lat: +p.geometry.coordinates[1].toFixed(6), lon: +p.geometry.coordinates[0].toFixed(6), at: p.captured_at, angle: p.compass_angle ?? null,
+      pano: !!p.is_pano, thumb: p.thumb_1024_url, by: p.creator?.username ?? null,
+    })).sort((a, b) => b.at - a.at);
+  });
+  p.then((l) => { if (!l.length) setTimeout(() => memo.delete(key), 60_000); }, () => {}); // an empty answer may be a hiccup: ask again soon
+  return p;
+}
+/** The nearest Mapillary photo within ~60 m of a point (newer wins when two are about as close). */
+export async function photoNear(lat: number, lon: number) {
+  const list = await streetPhotos(lat - 0.0006, lon - 0.0008, lat + 0.0006, lon + 0.0008);
+  const score = (p: { lat: number; lon: number; at: number }) => km(p, { lat, lon }) * 1000 + (Date.now() - p.at) / (365 * 864e5) * 5; // 5 m per year of age
+  const best = [...list].sort((a, b) => score(a) - score(b))[0]; // a copy: the cached list stays newest-first
+  return best ? { ...best, meters: Math.round(km(best, { lat, lon }) * 1000), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
+}

@@ -270,6 +270,7 @@ const LAYERS = {
   outages: { grp: "go", label: "♿ Broken elevators & escalators", on: false, group: L.layerGroup(), load: loadOutages },
   cameras: { grp: "streets", label: "📷 Traffic cameras & webcams", on: false, group: L.layerGroup(), load: loadCameras },
   speeds: { grp: "streets", label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
+  photos: { grp: "streets", label: "📸 Street photos (Mapillary): zoom in, click a dot", on: false, group: L.layerGroup(), load: loadPhotos },
   c311: { grp: "streets", label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
   city: { grp: "out", label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
@@ -287,7 +288,7 @@ const LAYERS = {
 const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather", air: "📻 On the air" };
 const groupCount = (g) => { const n = Object.values(LAYERS).filter((l) => l.grp === g && l.on).length; const el = $(`gn-${g}`); if (el) el.textContent = n ? `(${n} on)` : ""; };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { weather: null, aircraft: null, trail: null, iss: null, storms: null, radio: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
+const seen = { photo: null, weather: null, aircraft: null, trail: null, iss: null, storms: null, radio: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
   const ks = Object.entries(LAYERS).filter(([, l]) => l.grp === g);
@@ -334,10 +335,10 @@ async function loadOutages(g) {
 
 // Traffic speeds: NYC DOT's live speed per road segment, colored like a traffic map. Says so when the feed is stale.
 const mph = (v, ok) => (!ok ? "#7f8bc4" : v < 15 ? "#ff5c8a" : v < 30 ? "#ffb347" : "#5cff9d");
-async function loadSpeeds(g) {
+async function loadSpeeds(g) { // each road comes in pieces: the feed has gaps (see trafficSpeeds)
   const d = await getJSON("/api/nyc/speeds");
   g.clearLayers();
-  for (const l of d.links) L.polyline(l.points, { color: mph(l.mph, l.ok), weight: 5, opacity: d.stale ? 0.35 : 0.85, renderer: bikeCanvas, bubblingMouseEvents: false })
+  for (const l of d.links) L.polyline(l.segments, { color: mph(l.mph, l.ok), weight: 5, opacity: d.stale ? 0.35 : 0.85, renderer: bikeCanvas, bubblingMouseEvents: false })
     .bindTooltip(`${l.name}: ${l.ok ? `${Math.round(l.mph)} mph` : "no data"}`).addTo(g);
   const when = new Date(d.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   $("n-speeds").innerHTML = `(${d.links.length} roads, ${d.stale ? `⚠ feed last updated ${when}` : `as of ${when}`})<br><span class="legend"><i style="background:#5cff9d"></i>30+ mph <i style="background:#ffb347"></i>15–30 <i style="background:#ff5c8a"></i>under 15 <i style="background:#7f8bc4"></i>no data</span>`;
@@ -653,7 +654,31 @@ addEventListener("message", (e) => {
     syncWindy();
   }
   if (e.data.windyOverlay) $("windyOverlay").value = e.data.windyOverlay;
+  // if Windy couldn't follow (outside its zoom range), ours goes where Windy is, so the markers stay on the right spots
+  if (e.data.windyZoom != null && e.data.windyZoom !== map.getZoom()) map.setZoom(e.data.windyZoom, { animate: false });
 });
+
+// Street photos from Mapillary (© Mapillary contributors, CC BY-SA 4.0): dots for the photos in view once zoomed in
+// (newer = greener, rings = 360° photos); a click opens the photo in a window.
+const photoById = new Map();
+const photoTitle = (p) => `${new Date(p.at).toLocaleDateString([], { year: "numeric", month: "short" })}${p.pano ? " · 360°" : ""}${p.by ? ` · by ${p.by}` : ""} · © Mapillary, CC BY-SA`;
+function openPhoto(p) { openCam({ id: `m${p.id}`, name: photoTitle(p), image: p.thumb, page: p.page ?? `https://www.mapillary.com/app/?pKey=${p.id}`, source: "Mapillary", static: true }); seen.photo = { taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, lat: p.lat, lon: p.lon }; }
+async function loadPhotos(g) {
+  g.clearLayers();
+  if (map.getZoom() < 16) return ($("n-photos").textContent = "(zoom in closer to see them)");
+  const b = map.getBounds(), list = await getJSON(`/api/nyc/photos?bbox=${[b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((v) => v.toFixed(4)).join(",")}`);
+  const now = Date.now();
+  for (const p of list) {
+    photoById.set(p.id, p);
+    const years = (now - p.at) / (365 * 864e5), c = years < 1 ? "#5cff9d" : years < 4 ? "#a8e063" : "#8a93a3";
+    L.circleMarker([p.lat, p.lon], { renderer: bikeCanvas, radius: 3.5 * DOT, color: p.pano ? "#fff" : c, weight: p.pano ? 1.5 : 1, fillColor: c, fillOpacity: 0.9, bubblingMouseEvents: false })
+      .bindTooltip(photoTitle(p)).on("click", () => openPhoto(p)).addTo(g);
+  }
+  $("n-photos").innerHTML = `(${list.length} here${list.length >= 400 ? ", newest first; zoom in for more" : ""}) · © <a href="https://www.mapillary.com" target="_blank" rel="noopener">Mapillary</a>`;
+}
+let photoTimer = 0;
+map.on("moveend", () => { if (LAYERS.photos.on) { clearTimeout(photoTimer); photoTimer = setTimeout(() => loadPhotos(LAYERS.photos.group).catch(() => {}), 400); } });
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-photo]"); if (b) openPhoto(photoById.get(b.dataset.photo)); });
 
 // "Nearest traffic camera" from anything with a place: 311 reports, events, low aircraft…
 let camList = null;
@@ -718,12 +743,12 @@ function openCam(c) {
   w.className = "cam"; w.id = `cam-${c.id}`;
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
-  const frame = () => `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`;
-  w.innerHTML = `<header><b title="${esc(c.name)}">${c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem">windy.com</a>` : ""}<button aria-label="Close camera">×</button></header><img alt="Live camera: ${esc(c.name)}" src="${esc(frame())}">`;
+  const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
+  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem">${esc(c.source)}</a>` : ""}<button aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
   $("cams").append(w);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
-  const img = w.querySelector("img"), tick = setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
+  const img = w.querySelector("img"), tick = c.static ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
   w.querySelector("button").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); };
   w.addEventListener("pointerdown", () => (w.style.zIndex = ++camZ));
   // Resize from any edge or corner: within 8 px of the border the cursor shows the direction.
@@ -1045,8 +1070,16 @@ map.on("click", async (e) => {
   const list = d.businesses.slice(0, 25);
   p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
-      <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
+      <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}<div class="here-photo"></div>`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
+  // the nearest street photo, if Mapillary has one within ~60 m
+  const ph = await getJSON(`/api/nyc/photo-near?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
+  const box = p.getElement()?.querySelector(".here-photo");
+  if (ph && box) {
+    photoById.set(ph.id, ph);
+    box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;
+    p.update();
+  }
 });
 
 // What Blip can do on this page when you ask it to.
@@ -1076,9 +1109,11 @@ window.blipActions = {
       map.setView(m.getLatLng(), 12); m.openPopup(); showTrail(m.ac.hex);
       const p = map.latLngToContainerPoint(m.getLatLng()), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y };
     } },
+  street_photo: { label: "opened a street photo", description: "Open the nearest street-level photo (Mapillary) to a point, to see what a place looks like from the sidewalk.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
+    run: async ({ lat, lon }) => { const ph = await getJSON(`/api/nyc/photo-near?lat=${Number(lat)}&lon=${Number(lon)}`).catch(() => null); if (ph) { photoById.set(ph.id, ph); openPhoto(ph); map.setView([ph.lat, ph.lon], Math.max(map.getZoom(), 17)); } } },
   nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
     run: async ({ lat, lon }) => { if (NYC.contains([Number(lat), Number(lon)])) openCam(await nearestCam(Number(lat), Number(lon))); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -1094,7 +1129,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, iss: seen.iss, tropicalStorms: seen.storms, radioPlaying: seen.radio,
+    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, radioPlaying: seen.radio,
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 

@@ -222,10 +222,20 @@ export async function trafficSpeeds() {
   // data_as_of is New York local time without a zone; compare in NY time to judge freshness
   const nyNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
   const ageMin = Math.round((nyNow.getTime() - new Date(last).getTime()) / 60_000);
-  const links = [...byLink.values()].map((r) => ({
-    id: r.link_id, name: r.link_name, borough: r.borough, mph: Number(r.speed), ok: r.status !== "-101" && Number(r.speed) > 0,
-    points: String(r.link_points ?? "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2 && p.every(Number.isFinite) && p[0] > 40 && p[0] < 41.2),
-  })).filter((l) => l.points.length > 1);
+  // link_points is text that the feed cuts off mid-number ("-7", "40.76408,0", "-73"): keep only points inside the
+  // city, and break a road into pieces where two points are far apart, or the map draws lines across neighborhoods.
+  const inCity = (p: number[]) => p.length === 2 && p[0] > 40.45 && p[0] < 40.95 && p[1] > -74.3 && p[1] < -73.65;
+  const links = [...byLink.values()].map((r) => {
+    const points = String(r.link_points ?? "").trim().split(/\s+/).map((p) => p.split(",").map(Number)).filter(inCity) as [number, number][];
+    const segments: [number, number][][] = [];
+    points.forEach((p, i) => {
+      const q = points[i - 1], gap = q ? Math.hypot((p[0] - q[0]) * 111, (p[1] - q[1]) * 84) : Infinity; // km
+      if (gap > 1.5) segments.push([]);
+      segments.at(-1)!.push(p);
+    });
+    return { id: r.link_id, name: r.link_name, borough: r.borough, mph: Number(r.speed), ok: r.status !== "-101" && Number(r.speed) > 0,
+      points, segments: segments.filter((g) => g.length > 1) };
+  }).filter((l) => l.segments.length);
   const data = { asOf: last, ageMinutes: ageMin, stale: ageMin > 30, links };
   speeds = { at: Date.now(), data };
   return data;

@@ -18,7 +18,7 @@ import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
-import { aircraft, trace, iss, storms, weather, radioStations } from "./sky.ts";
+import { aircraft, trace, iss, storms, weather, radioStations, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -190,7 +190,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/radio/callsign"];
+const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -264,6 +264,15 @@ const server = http.createServer(async (req, res) => {
     }
     // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.
     if (url.pathname === "/api/nyc/windy-key") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ key: process.env.WINDY_KEY ?? "" }));
+    if (url.pathname === "/api/nyc/photos" || url.pathname === "/api/nyc/photo-near") { // Mapillary street photos
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = url.searchParams;
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
+      try {
+        const out = url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
+        const empty = !out || (Array.isArray(out) && !out.length); // don't let browsers keep "nothing here" for half an hour
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": empty ? "no-store" : "public, max-age=1800" }).end(JSON.stringify(out));
+      } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (url.pathname === "/api/nyc/trace") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));

@@ -20,11 +20,15 @@
   const tell = (m) => parent.postMessage(m, location.origin);
   fetch("/api/nyc/windy-key").then((r) => r.json()).then(({ key }) => windyInit({ key, lat: +lat || 40.73, lon: +lon || -73.95, zoom: +zoom || 9, overlay: overlay || "wind" }, (api) => {
     const { map, store } = api;
+    window.windyAPI = api; // for poking at it from the console
     document.getElementById("msg").remove();
     addEventListener("message", (e) => {
       if (e.origin !== location.origin) return;
       if (e.data.overlay) store.set("overlay", e.data.overlay);
-      if (e.data.view) map.setView([e.data.view[0], e.data.view[1]], e.data.view[2], { animate: false }); // the NYC map leads
+      if (e.data.view) { // the NYC map leads; say where we actually ended up (Windy stops at its own zoom range)
+        map.setView([e.data.view[0], e.data.view[1]], e.data.view[2], { animate: false });
+        tell({ windyZoom: map.getZoom() });
+      }
     });
     store.on("overlay", (o) => tell({ windyOverlay: o }));
     tell({ windyReady: [store.getAllowed("overlay"), map.getMaxZoom()] });

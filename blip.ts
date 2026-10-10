@@ -7,7 +7,7 @@ import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
-import { aircraft, iss, storms, weather, radioStations, km } from "./sky.ts";
+import { aircraft, iss, storms, weather, radioStations, km, photoNear } from "./sky.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -84,6 +84,16 @@ const TOOLS: Record<string, Tool> = {
     description: "Active hurricanes and tropical storms (Atlantic and Pacific, NOAA NHC): name, strength, position, movement, distance from NYC, advisory link.",
     parameters: {},
     run: async () => ({ storms: (await storms()).storms }),
+  },
+  street_photo: {
+    description: "The nearest street-level photo (Mapillary, within ~60 m) of a point or NYC place: when it was taken, by whom, and links to see it. Use it for 'what does it look like there'.",
+    parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place" } },
+    run: async ({ lat, lon, place }) => {
+      const at = await pointOf(lat, lon, place);
+      if (!at) return { error: "Need a point or a place." };
+      const p = await photoNear(at.lat, at.lon);
+      return p ? { near: at.label, taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, panorama: p.pano, metersAway: p.meters, image: p.thumb, page: p.page, license: "© Mapillary contributors, CC BY-SA 4.0" } : { near: at.label, note: "no street photo within ~60 m" };
+    },
   },
   radio_stations: {
     description: "Internet radio stations based in and around NYC (Radio Browser): name, genres, FM frequency if it's on FM, stream link. Search by name, genre or frequency.",
