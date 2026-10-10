@@ -33,7 +33,7 @@
     .report { font-size: 13px; color: var(--muted); }
     .pager { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
     details.rail > summary { display: none; }
-    @media (max-width: 820px) { details.rail > summary { display: block; font-weight: 700; cursor: pointer; padding: 6px 0; } }
+    @media (max-width: 820px) { details.rail > summary { display: list-item; font-weight: 700; cursor: pointer; padding: 6px 0; } }
     .saved li { display: flex; gap: 6px; align-items: center; font-size: 14px; }
     .saved li a { flex: 1; }
     .new { color: var(--accent); font-weight: 700; font-size: 12px; }
@@ -113,6 +113,13 @@ const LV = "jobs-last-visit"; let lastVisit = 0; try { lastVisit = +localStorage
 setTimeout(() => { try { localStorage.setItem(LV, String(Math.floor(Date.now() / 1000))); } catch {} }, 10_000); // after you've had a look
 
 // ---------- state ⇄ URL ----------
+// Phones: the filters start folded (one line above the results) and say how many are active.
+const rail = document.querySelector("details.rail");
+if (matchMedia("(max-width: 820px)").matches) rail.open = false;
+function filterSummary() {
+  const n = [...state().keys()].filter((k) => !["q", "title", "sort"].includes(k)).length;
+  rail.querySelector("summary").textContent = n ? `Filters · ${n} active` : "Filters";
+}
 function state() {
   const p = new URLSearchParams();
   const set = (k, v) => v && p.set(k, v);
@@ -139,6 +146,7 @@ const money = (v, per) => (per === "hour" ? `$${Math.round(v)}/h` : v >= 1000 ? 
 const age = (t) => { const d = (Date.now() / 1000 - t) / 86400; return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${Math.floor(d)} days ago` : `${Math.floor(d / 30)} months ago`; };
 const verified = (s) => ["greenhouse", "lever", "ashby", "nycjobs"].includes(s);
 async function run(keepPage = false) {
+  filterSummary();
   if (!keepPage) page = 0;
   const p = state(); restore(p);
   history.replaceState(null, "", `${location.pathname}${p.toString() ? `?${p}` : ""}`);
