@@ -5,7 +5,7 @@ declare const L: any;
 
 type Node = { num: number; id: string; long?: string; short?: string; role?: number; lat?: number; lon?: number; alt?: number; posAt?: number; snr?: number; rssi?: number; heard?: number; hops?: number; battery?: number; voltage?: number; chUtil?: number; airTx?: number; uptime?: number; viaMqtt?: boolean };
 type Msg = { id: number; from: number; to: number; channel: number; text: string; at: number; snr?: number; rssi?: number; hops?: number; mine?: boolean };
-type State = { connected: boolean; me: string | null; myNum: number; region: string; preset: string; channels: { index: number; name: string }[]; packets: number; nodes: Node[]; messages: Msg[]; owner: boolean };
+type State = { connected: boolean; me: string | null; myNum: number; region: string; preset: string; channels: { index: number; name: string }[]; packets: number; nodes: Node[]; messages: Msg[]; owner: boolean; ports?: Record<string, number>; encryptedByChannelHash?: Record<string, number> };
 
 const $ = (id: string) => document.getElementById(id)!;
 const ROLES = ["client", "client (muted)", "router", "router + client", "repeater", "tracker", "sensor", "TAK", "client (hidden)", "lost and found", "TAK tracker", "router (late)"];
@@ -64,8 +64,19 @@ function renderChat() {
   box.innerHTML = list.length ? list.map((m) => {
     const n = nodes.get(m.from);
     return `<li class="${m.mine ? "mine" : ""} ${m.to !== 0xffffffff ? "dm" : ""}"><b data-num="${m.from}">${esc(name(n))}</b> <span class="muted">${new Date(m.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${m.hops != null && !m.mine ? ` · ${m.hops} hop${m.hops === 1 ? "" : "s"}` : ""}${m.snr ? ` · SNR ${m.snr.toFixed(1)}` : ""}</span><div class="t">${esc(m.text)}</div></li>`;
-  }).join("") : `<li class="muted">No messages yet on this channel since the node was plugged in. They show up here the moment it hears one.</li>`;
+  }).join("") : "";
+  // Nothing from anyone else yet: say what the node does hear, so a quiet chat doesn't look broken.
+  if (tab !== "dm" && !list.some((m) => !m.mine)) box.innerHTML += `<li class="muted">${quietNote()}</li>`;
   if (atBottom) box.scrollTop = box.scrollHeight;
+}
+function quietNote() {
+  const p = S!.ports ?? {}, heard = Object.values(p).reduce((a, v) => a + v, 0), text = p["1"] ?? 0;
+  const hour = S!.nodes.filter((n) => n.num !== S!.myNum && n.snr != null && Date.now() - (n.heard ?? 0) < 3600e3).map((n) => n.snr!).sort((a, b) => a - b);
+  const snr = hour.length ? hour[hour.length >> 1] : null;
+  if (!heard) return "No messages yet on this channel. They show up here the moment the node hears one.";
+  const kinds = [["3", "positions"], ["4", "node infos"], ["67", "telemetry"]].filter(([k]) => p[k]).map(([k, w]) => `${p[k]} ${w}`).join(", ");
+  return `No chat heard yet. The node has decoded ${heard} packets on this channel (${kinds}${text ? `, ${text} text` : ""}); people chat far less often than radios report their position and battery.` +
+    (snr != null && snr < -12 ? ` It also hears the mesh weakly: a median SNR of ${snr.toFixed(1)} dB, close to LongFast's limit of about −17.5 dB, so it catches only part of the traffic (an antenna by a window helps most).` : "");
 }
 function renderNodes() {
   const list = [...nodes.values()].sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0));
