@@ -100,7 +100,7 @@
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
   <details open><summary>Trip planner: cameras on your route</summary>
     <form id="trip">
-      <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button></span></label>
+      <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button><button type="button" id="tHere" title="Start from where I am" aria-label="Start from where I am">🎯</button></span></label>
       <label>To <span class="pickrow"><input id="tTo" placeholder="e.g. Barclays Center, or 📍" autocomplete="off"><button type="button" class="pick" data-for="tTo" title="Pick the destination on the map" aria-label="Pick the destination on the map">📍</button></span></label>
       <div class="muted" id="pickHint" hidden>Click the map to set the point (Esc to cancel).</div>
       <fieldset class="modes"><legend>By</legend>
@@ -586,6 +586,41 @@ async function placePin(id, latlng) {
 }
 ["tFrom", "tTo"].forEach((id) => $(id).addEventListener("input", () => { picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }));
 const tripEnd = (id) => (picked[id] && $(id).value === picked[id].label ? `${picked[id].lat},${picked[id].lon}` : $(id).value.trim());
+
+// Where am I: the ◎ map button follows you with a blue dot (accuracy circle around it); 🎯 next to From
+// uses that spot as the start. Location comes from the browser and never leaves it (only the start, when you plan).
+const meLayer = L.layerGroup().addTo(map);
+let meAt = null, meWanted = false;
+const meBtn = L.DomUtil.create("a");
+Object.assign(meBtn, { href: "#", role: "button", textContent: "◎", title: "Show me on the map" });
+meBtn.setAttribute("aria-label", "Show me on the map");
+meBtn.style.fontSize = "18px";
+L.DomEvent.disableClickPropagation(meBtn);
+meBtn.onclick = (e) => { e.preventDefault(); meAt ? stopMe() : locateMe(); };
+new (L.Control.extend({ onAdd: () => { const d = L.DomUtil.create("div", "leaflet-bar"); d.append(meBtn); return d; } }))({ position: "topleft" }).addTo(map);
+const startHere = () => placePin("tFrom", meAt).then(() => { if ($("tTo").value) $("trip").requestSubmit(); else setPicking("tTo"); });
+function locateMe(asStart = false) {
+  meWanted = asStart;
+  meBtn.style.color = "var(--accent)";
+  if (meAt) { map.setView(meAt, Math.max(map.getZoom(), 16)); if (asStart) { meWanted = false; startHere(); } return; }
+  map.locate({ watch: true, enableHighAccuracy: true });
+}
+function stopMe() { map.stopLocate(); meLayer.clearLayers(); meAt = null; meBtn.style.color = ""; }
+map.on("locationfound", (e) => {
+  const first = !meAt;
+  meAt = e.latlng;
+  meLayer.clearLayers();
+  L.circle(e.latlng, { radius: e.accuracy, color: "#1c7ed6", weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
+  L.circleMarker(e.latlng, { radius: 8, color: "#fff", weight: 3, fillColor: "#1c7ed6", fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip(`You are here (±${Math.round(e.accuracy)} m)`).addTo(meLayer);
+  if (first) map.setView(e.latlng, Math.max(map.getZoom(), 16));
+  if (meWanted) { meWanted = false; startHere(); }
+});
+map.on("locationerror", (e) => {
+  stopMe();
+  meWanted = false;
+  L.popup().setLatLng(map.getCenter()).setContent(`Couldn't get your location: ${esc(e.message)}. Allow location for this site in the browser, or pick the start with 📍.`).openOn(map);
+});
+$("tHere").onclick = () => locateMe(true);
 
 // Clear: route, pins, both fields and the result list.
 $("tClear").onclick = () => {
