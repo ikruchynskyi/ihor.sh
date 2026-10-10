@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Pictures From Space</title>
+  <meta name="description" content="Radio from scratch, chapter 21: weather pictures from a satellite's digital downlink, in the style of Meteor-M's LRPT at 137.9 MHz. A pass and its Doppler shift, QPSK and the Costas loop that stops the constellation spinning, the 4th-power trick, a convolutional code that Viterbi decodes through noise, JPEG-style 8×8 blocks, sync words and the four-rotation puzzle, and a whole pass decoded live in the browser." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 21</p>
+  <h1>Digital pictures from space</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./02-arrows-as-numbers.html">Chapter 2: arrows as numbers</a> and <a href="./05-moving-a-station.html">chapter 5: mixing</a></li>
+      <li><a href="./06-averaging-is-filtering.html">Chapter 6: filters</a> and <a href="./04-winding-machine.html">chapter 4: the FFT</a></li>
+      <li><a href="./20-analog-tv.html">Chapter 20: analog TV</a> (helpful: the same picture, sent the other way)</li>
+    </ul>
+  </div>
+
+  <p>Russia's Meteor-M weather satellites circle the Earth from pole to pole, 830 km up, and broadcast what their cameras see, unencrypted, to anyone with a $30 dongle and a homemade antenna. The signal is called <b>LRPT</b> (low rate picture transmission): around 137.1 or 137.9 MHz, 72,000 symbols a second, a strip of picture at a time as the satellite sweeps over you. Chapter 20's TV was analog: the voltage <em>was</em> the brightness. This one is digital: numbers, packed, protected and modulated. Everything that makes digital radio work is in it.</p>
+  <p>This chapter builds a link with the same structure (we simplified two layers, noted where they come up) and decodes a whole simulated pass in your browser. The question to keep in mind: <b>how can a picture come through perfectly when a fifth of the bits arrive wrong?</b></p>
+
+  <!-- 1 -->
+  <h2 id="pass">A pass, and a frequency that slides</h2>
+  <p>A satellite in low orbit is above your horizon for at most about 15 minutes, a few times a day. Coming toward you, its signal is squeezed to a higher frequency; going away, stretched lower: the <b>Doppler shift</b>, the same thing that drops an ambulance siren's pitch as it passes. At 137.9 MHz and 7.45 km/s it slides by about ±3 kHz. Choose how high the pass goes:</p>
+  <div class="scene" id="s-pass">
+    <div class="controls"><label for="ps-e">Highest elevation <input id="ps-e" type="range" min="5" max="90" step="1" value="45"><output id="ps-eo"></output></label></div>
+    <p class="readout" id="r-pass" aria-live="polite"></p>
+  </div>
+  <div class="q" data-answer="b">
+    <p>The Doppler shift changes fastest when the satellite is…</p>
+    <ul><li data-k="a" data-says="Near the horizon it's moving almost straight toward or away from you: the shift is large but nearly constant.">rising, just over the horizon</li><li data-k="b">at its highest point, flying past</li><li data-k="c" data-says="It does change: the curve isn't a straight line.">the shift is constant through the pass</li></ul>
+    <div class="why">Overhead, its motion swings from "toward you" to "away from you" in a few minutes, so the curve is steepest there (up to about 50 Hz a second on an overhead pass). The receiver has to track that, which is section 3's job.</div>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="qpsk">Four arrows for two bits: QPSK</h2>
+  <p>The carrier is chapter 1's spinning arrow again, and each symbol sets its angle to one of four positions, 45°, 135°, 225° or 315°: <b>QPSK</b>, two bits per symbol. Plotting each received symbol as a dot gives a <b>constellation</b>: four tight clusters when all is well. Noise blurs the clusters. A frequency error is worse: every symbol is rotated a little more than the last, and the four clusters smear into a ring.</p>
+  <div class="scene" id="s-qpsk">
+    <div class="controls">
+      <label for="qp-n">Es/N0 <input id="qp-n" type="range" min="2" max="25" step="1" value="12"><output id="qp-no"></output></label>
+      <label for="qp-f">Doppler <input id="qp-f" type="range" min="-3500" max="3500" step="100" value="1500"><output id="qp-fo"></output></label>
+    </div>
+    <p class="readout" id="r-qpsk" aria-live="polite"></p>
+  </div>
+  <p><b>Es/N0</b> is the energy in one symbol over the noise's energy per hertz: the SNR that matters for digital links. The left picture is what the receiver gets; the right one is after it measured and removed the frequency error, then kept tracking it.</p>
+
+  <!-- 3 -->
+  <h2 id="lock">Finding the frequency: the 4th-power trick and the Costas loop</h2>
+  <p>To remove the Doppler, the receiver first has to measure it, without knowing the data. The trick: raise every symbol to the 4th power (as a complex number, chapter 2: multiply its angle by four). The four QPSK angles, 45° + 90°·k, all become 180°: the data disappears, and what's left spins at exactly <b>four times</b> the frequency error. One FFT (chapter 4) of those 4th powers shows a single spike; divide its frequency by four.</p>
+  <p class="formula">\[ z = e^{j(\pi/4 + k\pi/2 + \Delta\omega\, n)} \quad\Rightarrow\quad z^4 = e^{j(\pi + 2k\pi + 4\Delta\omega\, n)} = -e^{j\,4\Delta\omega\, n} \]</p>
+  <p>Then a <b>Costas loop</b> keeps it locked as the Doppler slides: for each symbol, compare it to the nearest of the four points, and nudge the receiver's phase (and, more slowly, its frequency) by the angle it's off. It's chapter 11's control loop, steering an angle instead of a clock.</p>
+  <div class="q" data-answer="c">
+    <p>A Costas loop can lock with the constellation rotated by 0°, 90°, 180° or 270°: all four look identical. How does the receiver find out which is right?</p>
+    <ul><li data-k="a" data-says="The loop has no way to tell: the four rotations are perfect copies of each other.">The loop always locks at 0°</li><li data-k="b" data-says="The carrier carries no marker of its own phase.">From the carrier's phase</li><li data-k="c">It decodes all four, and keeps the one where the known sync word shows up</li></ul>
+    <div class="why">Every frame starts with the same 32-bit sync word, 0x1ACFFC1D. Decoded with the wrong rotation, the bits are garbage and the word never appears; with the right one, it appears every frame. Our receiver runs four decoders until one finds two sync words, then keeps only that one.</div>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="code">Fixing errors before they happen: the convolutional code</h2>
+  <p>At the edge of a pass, a few percent of the symbols are on the wrong side of a line. Instead of sending each bit once, the transmitter sends <b>two</b> bits for every bit of data, each a different mix (XOR) of the last seven data bits. Every data bit leaves traces in 14 transmitted bits, so a few of them can be wrong and the others still agree on what it was. The decoder, the <b>Viterbi algorithm</b>, keeps 64 guesses at once (one per possible state of those seven bits), scores each by how well it explains what arrived, and at every step throws away the worse of each pair. Flip bits and watch:</p>
+  <div class="scene" id="s-conv">
+    <div class="controls">
+      <label for="cv-e">Bits flipped <input id="cv-e" type="range" min="0" max="16" step="1" value="5"><output id="cv-eo"></output></label>
+      <label for="cv-s">Which ones <input id="cv-s" type="range" min="0" max="20" step="1" value="0"></label>
+    </div>
+    <p class="readout" id="r-conv" aria-live="polite"></p>
+  </div>
+  <p>It's not magic: errors bunched too close together defeat it, and below about Es/N0 = 4 dB there are simply too many. Then the picture doesn't get worse gradually as an analog picture would; it goes from perfect to nothing within a decibel or two: the <b>cliff effect</b> of digital radio. (The real link adds a second layer, Reed-Solomon, which repairs most of what Viterbi misses. Ours uses a simpler checksum instead: a damaged frame is just dropped.)</p>
+  <div class="q" data-num="72" data-tol="0">
+    <p>The code is "rate ½": two coded bits per data bit. LRPT sends 72,000 QPSK symbols a second. How many thousand data bits per second is that?</p>
+    <div class="why">72,000 symbols × 2 bits = 144,000 coded bits, half of them data: 72 kbit/s. Half the capacity spent on protection, and worth it: without the code the picture would be unusable for most of a pass.</div>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="dct">Pictures in 8×8 blocks</h2>
+  <p>72 kbit/s is slow for pictures, so they're compressed the JPEG way. Each 8×8 block of pixels is rewritten as 64 numbers saying how much of each of 64 standard patterns it contains, from "flat" through "gentle slope" to "fine checkerboard" (a 2-D version of chapter 4's Fourier transform, the DCT). Clouds and coastlines are mostly smooth, so the first few numbers carry almost everything and the rest can be dropped or rounded coarsely:</p>
+  <div class="scene" id="s-dct">
+    <div class="controls"><label for="dc-k">Numbers kept per block <input id="dc-k" type="range" min="1" max="36" step="1" value="6"></label></div>
+    <p class="readout" id="r-dct" aria-live="polite"></p>
+  </div>
+  <p>Meteor sends three such pictures at once, from different wavelengths (visible light and infrared: infrared sees clouds at night by their cold), which decoders combine into false-color images. Ours sends one.</p>
+
+  <!-- code -->
+  <h2 id="incode">In code</h2>
+  <p>The link is <code>src/lrpt.ts</code>, about 300 lines, transmitter and receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code>:</p>
+<pre><code>for (let ns = 0; ns &lt; 64; ns++) {                       // each state: the last 6 data bits
+  const u = ns &gt;&gt; 5, p0 = (ns &amp; 31) &lt;&lt; 1, p1 = p0 | 1;    // the two states it can come from
+  const e0 = exp[(u &lt;&lt; 6) | p0], e1 = exp[(u &lt;&lt; 6) | p1];  // the bit pairs each path would have sent (±1)
+  const m0 = m[p0] + a * e0[0] + b * e0[1], m1 = m[p1] + a * e1[0] + b * e1[1];
+  if (m1 &gt; m0) { n[ns] = m1; d[ns] = 1; } else n[ns] = m0;  // keep the better path, remember which
+}</code></pre>
+  <p>The receiver, symbol by symbol: matched filter → Gardner timing → AGC → (once) the 4th-power FFT → Costas loop → four rotations into four Viterbi decoders → sync word search → descramble → checksum → picture.</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch21.ts</code>:</p>
+<pre><code>a pass rising to 10°: 11.4 min above the horizon, Doppler 2128 → -2128 Hz, closest 2428 km
+a pass rising to 30°: 14.7 min above the horizon, Doppler 2814 → -2814 Hz, closest 1442 km
+a pass rising to 90°: 15.6 min above the horizon, Doppler 3032 → -3032 Hz, closest 830 km
+convolutional code: 320 of 8000 coded bits flipped (4%), 0 message bits wrong after Viterbi
+keeping  1 of 64 coefficients:   2% of the numbers, PSNR 23.0 dB
+keeping  6 of 64 coefficients:   9% of the numbers, PSNR 36.4 dB
+keeping 15 of 64 coefficients:  23% of the numbers, PSNR 40.1 dB
+keeping 36 of 64 coefficients:  56% of the numbers, PSNR 41.6 dB
+frames of 488 bytes, 54 ms each at 72k symbols/s
+Es/N0 12 dB, Doppler     0 Hz: measured     0 Hz, rotation 1, 26/30 frames (0 failed the CRC), picture PSNR 42.4 dB
+Es/N0  6 dB, Doppler  2500 Hz: measured  2500 Hz, rotation 1, 25/30 frames (0 failed the CRC), picture PSNR 42.5 dB
+Es/N0  4 dB, Doppler -2000 Hz: measured -2000 Hz, rotation 1, 24/30 frames (1 failed the CRC), picture PSNR 42.5 dB
+Es/N0  2 dB, Doppler  1000 Hz: measured   998 Hz, rotation -1,  0/30 frames (2 failed the CRC), picture PSNR 0.0 dB
+all checks passed</code></pre>
+  <p>The first 4 frames of each run go to measuring the frequency and finding the rotation. At 4 dB nearly everything still comes through; at 2 dB the frequency is still found (998 Hz for 1000), but the code gives up: the cliff.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: a pass, decoded live</h2>
+  <div class="lab">
+    <p>A whole pass, sped up: the satellite rises, the signal strengthens as it comes closer, the Doppler slides through zero, and it sets. Every frame is a strip of picture, encoded, modulated, Doppler-shifted, buried in noise, and decoded by the receiver above, as it arrives.</p>
+    <div class="controls">
+      <label class="note">Highest elevation <select id="lab-e"><option value="15">15° (low, far)</option><option value="40">40°</option><option value="60" selected>60°</option><option value="88">88° (overhead)</option></select></label>
+      <label for="lab-a">Antenna <input id="lab-a" type="range" min="-6" max="6" step="1" value="0"><output id="lab-ao"></output></label>
+      <label class="note">Speed <select id="lab-v"><option value="6">slow</option><option value="12" selected>normal</option><option value="30">fast</option></select></label>
+      <button id="lab-go" type="button">▶ Start the pass</button>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(0,256px) 1fr;gap:12px;margin-top:10px;align-items:start">
+      <canvas id="lab-img" style="width:100%;image-rendering:pixelated;border-radius:6px;background:#000" aria-label="The picture, strip by strip"></canvas>
+      <canvas id="lab-plot" style="width:100%;height:300px;border-radius:8px" aria-label="Constellation, Doppler tracking and decoded frames"></canvas>
+    </div>
+    <p class="readout" id="lab-r" aria-live="polite"></p>
+    <p class="note">For real passes: a V-dipole (two 53 cm rods at 120°, horizontal) outdoors, a dongle at 137.9 MHz recording 288 kS/s or more, and <a href="https://github.com/SatDump/SatDump">SatDump</a>, which implements the full LRPT stack including the parts simplified here. Pass times for your location: <a href="https://www.n2yo.com/">n2yo.com</a> (search "METEOR-M").</p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does the frequency of a satellite's signal slide during a pass?</summary><p>Doppler: approaching, the waves are compressed (higher frequency); receding, stretched (lower). The change is fastest as it flies past overhead.</p></details>
+  <details><summary>How does the 4th power remove QPSK's data?</summary><p>Multiplying angles by four turns all four QPSK angles (45° + k·90°) into 180°, so only the frequency error remains, at four times its size.</p></details>
+  <details><summary>What does a sync word do besides marking frames?</summary><p>It resolves the 90° ambiguity of the Costas loop: only the right rotation decodes to the known pattern.</p></details>
+  <details><summary>Why do digital pictures fail suddenly instead of getting gradually snowy?</summary><p>The error-correcting code fixes everything up to a point, so the picture stays perfect; past it, errors overwhelm the code and whole frames are lost.</p></details>
+
+  <nav class="next">
+    <a href="./20-analog-tv.html">← Chapter 20: How analog TV worked</a>
+    <a href="./">Back to the course →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch21.ts"></script>
+</body>
+</html>
