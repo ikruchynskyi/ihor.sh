@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How Analog TV Worked</title>
+  <meta name="description" content="Radio from scratch, chapter 20: analog television (NTSC), taken apart and rebuilt in the browser. Scanning and persistence of vision, one line of composite video, sync pulses and interlaced fields, why 15,734 lines a second, color as a spinning arrow on a 3.58 MHz subcarrier, the comb filter, what a 2.4 MHz dongle can and can't capture, and a live NTSC transmitter and receiver for any picture or your webcam." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 20</p>
+  <h1>How analog TV worked</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./01-spinning-arrows.html">Chapter 1: spinning arrows</a> and <a href="./02-arrows-as-numbers.html">chapter 2: arrows as numbers</a></li>
+      <li><a href="./10-am-ssb-and-morse.html">Chapter 10: AM and sidebands</a></li>
+      <li><a href="./17-pictures-over-radio.html#line">Chapter 17: a picture sent line by line, with sync pulses</a></li>
+    </ul>
+  </div>
+
+  <p>Chapter 17's slow-scan TV takes two minutes per picture. Broadcast television sent thirty a second, in color, from the 1950s until 2009, when full-power US stations switched to digital (the last low-power analog ones went dark in July 2021). There's nothing left on the air to receive, so this chapter builds both ends: a transmitter that turns any picture into the exact signal a 1980s TV expected, and a receiver that decodes it again, live, in your browser.</p>
+  <p>Honest constraints first: an analog TV channel is <b>6 MHz</b> wide, and the RTL-SDR captures at most about 3. You'll see below exactly what that costs.</p>
+  <p>The question to keep in mind: <b>how do you fit a color picture into a signal that black-and-white TVs, built years earlier, still understand?</b></p>
+
+  <!-- 1 -->
+  <h2 id="scan">A spot that never stops moving</h2>
+  <p>A picture tube has one electron beam making one bright spot. The spot sweeps left to right across a line, snaps back, drops a little, and sweeps the next line: a <b>raster</b>. Its brightness follows the signal's voltage moment by moment. Done fast enough, your eye blends the spot's trail into a whole picture.</p>
+  <div class="scene" id="s-scan">
+    <div class="controls">
+      <label for="sc-v">Speed <input id="sc-v" type="range" min="0" max="8" step="1" value="1"><output id="sc-vo"></output></label>
+      <label class="note"><input id="sc-i" type="checkbox"> interlaced</label>
+    </div>
+    <p class="readout" id="r-scan" aria-live="polite"></p>
+  </div>
+  <p>NTSC draws 525 lines per frame, about 480 of them visible. Thirty frames a second would flicker, so each frame is sent as two <b>fields</b>: first the odd lines, then the even ones (tick "interlaced"). The screen is repainted 60 times a second for the bandwidth of 30: a clever trade from 1941.</p>
+  <div class="q" data-num="15734" data-tol="2">
+    <p>525 lines per frame, 29.97 frames per second. How many lines does a TV draw each second?</p>
+    <div class="why">\(525 \times 29.97 \approx 15\,734\). That's the whine an old TV made: a transformer driving the beam's sideways sweep at 15.7 kHz, which young ears can hear. (Black-and-white TV used exactly 30 frames and 15,750 lines; color slowed it by 0.1% for a reason in section 4.)</div>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="line">One line of composite video</h2>
+  <p>The signal for one line is a voltage over 63.6 µs. It starts with a <b>sync pulse</b>, a dip <em>below</em> black ("blacker than black") that tells the receiver "start a new line now". Then a short pause with a burst of fast wiggles (the <b>color burst</b>, section 4), then 52.6 µs of picture: higher voltage, brighter spot. Levels are measured in <b>IRE</b> units: sync −40, blanking 0, black 7.5, white 100. Pick a row of the test card:</p>
+  <div class="scene" id="s-line">
+    <div class="controls"><label for="ln-r">Row <input id="ln-r" type="range" min="0" max="479" step="1" value="150"><output id="ln-ro"></output></label></div>
+    <p class="readout" id="r-line" aria-live="polite"></p>
+  </div>
+  <div class="q" data-answer="b">
+    <p>Why is the sync pulse below black, instead of being some special pattern inside the picture's range?</p>
+    <ul><li data-k="a" data-says="It doesn't need to be strong: just different.">So it's louder than the picture</li><li data-k="b">So nothing in any picture can ever look like a sync: a simple voltage threshold separates them</li><li data-k="c" data-says="During sync the beam is blanked anyway; the level is about telling them apart.">So the screen is darker</li></ul>
+    <div class="why">The same idea as chapter 17's 1200 Hz sync below 1500 Hz black. A 1950s TV separated sync with one transistor and a threshold; our decoder does the same thing in one line of code.</div>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="vsync">Where each field begins</h2>
+  <p>Line syncs say "new line". To say "new field, back to the top", the signal dips to sync level for most of every half line, six times in a row: the <b>vertical sync</b>. Field 1's starts exactly on a line; field 2's starts half a line later. That half line is the whole trick of interlace: everything in field 2 lands half a line lower, between field 1's lines.</p>
+  <div class="scene" id="s-vsync">
+    <div class="controls"><label class="note">Field <select id="vs-f"><option value="1">field 1 (odd lines)</option><option value="2">field 2 (even lines)</option></select></label></div>
+    <p class="readout" id="r-vsync" aria-live="polite"></p>
+  </div>
+  <p>A real receiver doesn't trust each sync pulse on its own: noise can fake or hide one. It runs a <b>flywheel</b>: it expects the next sync one line later, and only nudges its timing a little toward each pulse it sees. Our decoder does the same, so snowy pictures still have straight edges (try the noise knob in the lab).</p>
+
+  <!-- 4 -->
+  <h2 id="color">Color as a spinning arrow</h2>
+  <p>Color had to be added in 1953 without breaking 20 million black-and-white sets. The solution: keep the brightness signal (Y) exactly as it was, and add the color as a faint, fast wiggle on top, at <b>3.579545 MHz</b>, the <b>color subcarrier</b>. Old sets show the wiggle as fine dots too small to notice; color sets decode it.</p>
+  <p>The wiggle is chapter 1's spinning arrow. Its <b>length</b> is how strong the color is (saturation) and its <b>angle</b> is which color (hue), measured on two axes: blue minus brightness (B−Y) and red minus brightness (R−Y). Drag the arrow:</p>
+  <div class="scene" id="s-color">
+    <div class="controls"><label for="cl-y">Brightness Y <input id="cl-y" type="range" min="0" max="1" step="0.01" value="0.5"></label></div>
+    <p class="readout" id="r-color" aria-live="polite"></p>
+  </div>
+  <p>An angle needs a reference. That's the <b>color burst</b>: nine cycles of the subcarrier at the start of every line, always at the same angle (180°). The TV locks onto it and measures every color against it. (Phase errors on long cable runs turned faces green, so NTSC sets had a "tint" knob, and engineers joked the name stood for "Never Twice the Same Color".)</p>
+  <div class="q">
+    <p>The subcarrier is 455/2 times the line rate: 227.5 cycles per line. Why half a cycle extra?</p>
+    <div class="why">So the wiggle is upside down on every other line. On a black-and-white set, the dots from one line fall between the dots of the next, and the pattern nearly cancels to the eye. And it makes the next section's comb filter possible. Fitting 227.5 cycles exactly, together with the sound carrier at 4.5 MHz, is why color TV slowed the frame rate from 30 to 29.97.</div>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="comb">Separating brightness and color: the comb</h2>
+  <p>Brightness and color are added together in one signal. How does the receiver pull them apart? Because the color wiggle flips each line and the picture usually doesn't change much from one line to the next, two neighboring lines added together cancel the color and keep the brightness; subtracted, they cancel the brightness and keep the color. It's called a <b>comb filter</b>: its frequency response has teeth at exactly the subcarrier's harmonics.</p>
+  <div class="scene" id="s-comb">
+    <p class="readout" id="r-comb" aria-live="polite"></p>
+  </div>
+  <p>The color that comes out is still riding on the subcarrier. To read its arrow, multiply by the subcarrier itself, sine and cosine (chapter 5's mixing, bringing 3.58 MHz down to 0 Hz), and average over one cycle (chapter 6). Sampling at exactly four times the subcarrier makes this neat: the sine is just 0, 1, 0, −1, repeating.</p>
+
+  <!-- 6 -->
+  <h2 id="rf">On the air, and what a dongle can catch</h2>
+  <p>The video was sent as AM (chapter 10), with most of one sideband cut off to save space (<b>vestigial sideband</b>), and the sound as FM 4.5 MHz above the picture carrier. A whole channel is 6 MHz. Slide the dongle's capture window across it:</p>
+  <div class="scene" id="s-rf">
+    <div class="controls">
+      <label for="rf-c">Tune to <input id="rf-c" type="range" min="0" max="6" step="0.05" value="2.4"></label>
+      <label class="note">Capture <select id="rf-w"><option value="2.4" selected>2.4 MHz (stable)</option><option value="3.2">3.2 MHz (the chip's limit)</option></select></label>
+    </div>
+    <p class="readout" id="r-rf" aria-live="polite"></p>
+  </div>
+  <div class="q" data-answer="a">
+    <p>With a 2.4 MHz capture placed to keep as much picture as possible, what does the decoded picture look like?</p>
+    <ul><li data-k="a">Black and white and a bit soft: the color subcarrier (3.58 MHz above the picture carrier) is outside</li><li data-k="b" data-says="The brightness signal starts at 0 Hz above the carrier: most of it fits.">Nothing at all</li><li data-k="c" data-says="Color sits higher than the capture reaches.">Full color but blurry</li></ul>
+    <div class="why">Brightness detail extends to 4.2 MHz, but most of a picture's energy is in the lower part, so 2 MHz still gives a recognizable picture, about as sharp as a VHS tape. The color killer sees no burst and turns color off, rather than showing random colors. Try it in the lab.</div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p>The encoder and decoder are <code>src/ntsc.ts</code>, about 200 lines. The decoder's steps, in order:</p>
+<pre><code>// 1. sync: smooth, then a threshold halfway between sync (−40) and blanking (0)
+if (sm[i] &lt; -20 &amp;&amp; sm[i - 1] &gt;= -20) lowStart = fallAt(i);   // a falling edge, to a fraction of a sample
+// 2. a dip longer than 18 µs is a vertical sync; half a line after the last line sync means field 2
+const field = g - prevH &lt; 0.75 * LINE ? 2 : 1;
+// 3. the flywheel: expect each line one line later, nudge toward the edge actually seen
+err = 0.7 * err + 0.3 * (measured - predicted);
+// 4. the burst's angle is the reference for every color on the line
+psi = Math.atan2(-qb, -pb);
+// 5. comb: the sum of two lines is brightness, the difference is color
+Y[j] = (x[k] + x[k - LINE]) / 2;  C[j] = (x[k] - x[k - LINE]) / 2;
+// 6. demodulate: multiply by the subcarrier, average over a cycle, undo the burst's rotation
+U[j] = p * Math.cos(psi) + q * Math.sin(psi);  V[j] = -p * Math.sin(psi) + q * Math.cos(psi);</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch20.ts</code> sends a test card through channels of different widths and noise and compares what comes out:</p>
+<pre><code>lines per second: 15734.27 (525 lines × 29.970 frames/s)
+color subcarrier: 3.579545 MHz = 227.5 × the line rate
+sampled at 4 × subcarrier = 14.318 MHz: 910 samples per line, 477750 per frame
+the whole 4.2 MHz of video             fields 1+2  burst 19.8 IRE  color   PSNR 25.2 dB (brightness 27.6 dB)  sync jitter 0.01 samples
+4.2 MHz with noise (snowy)             fields 1+2  burst 19.9 IRE  color   PSNR 21.9 dB (brightness 25.1 dB)  sync jitter 0.58 samples
+3 MHz (what fits a 3.2 MS/s dongle)    fields 1+2  burst 0.3 IRE  B&amp;W     PSNR 10.9 dB (brightness 27.3 dB)  sync jitter 0.01 samples
+2 MHz (a 2.4 MS/s dongle)              fields 1+2  burst 0.2 IRE  B&amp;W     PSNR 10.9 dB (brightness 25.5 dB)  sync jitter 0.03 samples
+a black-and-white transmission: burst 0.1 IRE → color killer on, brightness PSNR 29.5 dB
+all checks passed</code></pre>
+  <p>Without color, the color picture's PSNR drops to 11 dB (all the color is gone), but its brightness is nearly untouched: the same picture a 1950s black-and-white set showed.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: be a TV station</h2>
+  <div class="lab">
+    <p>Your picture goes through our NTSC transmitter, a channel (bandwidth and noise), and our receiver, 30 times a second if your computer keeps up. Left: what was sent. Right: what the receiver made of it. Underneath: one line of the received signal, like a studio's waveform monitor.</p>
+    <div class="controls">
+      <label class="note">Picture <select id="lab-pick"><option value="card">test card</option><option value="file">a picture of yours…</option><option value="cam">my camera</option></select></label>
+      <input type="file" id="lab-file" accept="image/*" hidden>
+      <label class="note">Bandwidth <select id="lab-bw"><option value="7">full (no limit)</option><option value="4.2" selected>4.2 MHz (broadcast)</option><option value="3">3 MHz (3.2 MS/s dongle)</option><option value="2">2 MHz (2.4 MS/s dongle)</option><option value="1">1 MHz</option></select></label>
+      <label for="lab-n">Noise <input id="lab-n" type="range" min="0" max="25" step="1" value="0"><output id="lab-no"></output></label>
+      <label class="note"><input id="lab-color" type="checkbox" checked> send color</label>
+      <label class="note"><input id="lab-run" type="checkbox"> keep running</label>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <canvas id="lab-src" style="width:100%;border-radius:8px" aria-label="The picture sent"></canvas>
+      <canvas id="lab-out" style="width:100%;border-radius:8px" aria-label="The picture received"></canvas>
+    </div>
+    <canvas id="lab-wave" style="width:100%;height:120px;border-radius:8px;margin-top:8px" aria-label="One received line of composite video"></canvas>
+    <p class="readout" id="lab-r" aria-live="polite"></p>
+    <p class="note">Nothing from your camera leaves this page. On the air, hams still send analog TV (amateur TV) around 421–440 MHz and 1.2 GHz; it's rare in New York, so this lab doesn't wait for one.</p>
+  </div>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>What tells a TV to start a new line, and why can't the picture fake it?</summary><p>The horizontal sync pulse, a dip to −40 IRE. Picture content never goes below black (7.5 IRE), so a threshold at −20 separates them.</p></details>
+  <details><summary>How does a receiver know which field it's drawing?</summary><p>Field 1's vertical sync starts exactly on a line boundary, field 2's half a line later. Measuring the distance from the last line sync tells them apart.</p></details>
+  <details><summary>What do the length and the angle of the color arrow mean?</summary><p>Length is saturation (how vivid), angle is hue (which color), measured against the color burst sent on every line.</p></details>
+  <details><summary>Why does adding two neighboring lines remove the color?</summary><p>A line holds 227.5 subcarrier cycles, so the color wiggle is inverted on the next line and cancels in the sum, while the brightness, nearly the same on both lines, doubles.</p></details>
+
+  <nav class="next">
+    <a href="./19-cleaner-sound.html">← Chapter 19: Cleaner sound</a>
+    <a href="./">Back to the course →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch20.ts"></script>
+</body>
+</html>
