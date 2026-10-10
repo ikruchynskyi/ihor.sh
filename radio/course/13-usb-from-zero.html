@@ -23,6 +23,11 @@
 
   <!-- 1 -->
   <h2 id="tree">What a USB device says about itself</h2>
+  <div class="q" data-answer="a"><p>Who speaks first on USB, the computer or the device?</p>
+    <ul><li data-k="a">The computer (the host), always</li><li data-k="b" data-says="On USB, devices never start a conversation, even with data waiting.">Whichever has data</li><li data-k="c" data-says="Plugging in only changes a voltage; the host then asks.">The device, to announce itself</li></ul>
+    <div class="why">Devices only answer. Even the radio samples flow because the host keeps asking for them (section 3), which is why a slow program loses samples.</div>
+  </div>
+
   <p>USB has one boss: the computer, called the <b>host</b>. Devices never speak first; they only answer. When you plug something in, the host asks it a series of questions, and the device answers with <b>descriptors</b>: small, standardized blocks of facts about itself. Together they form a tree. Here's the tree of the dongle on this site's server, as it really answered (click each part):</p>
 
   <div id="desc-tree"></div>
@@ -49,9 +54,18 @@
   </div>
 
   <p>Look at the last one: reading the tuner's ID takes <em>two</em> USB transfers. The tuner isn't on the USB bus at all; it's on the RTL2832U's internal I2C wires. So the computer first asks the RTL2832U to <em>send</em> one byte over I2C ("start at register 0"), then asks it to <em>read</em> one byte back over I2C, and that byte comes back over USB. Talking to a chip through another chip is everyday life in electronics.</p>
+  <div class="q" data-answer="b"><p>A two-byte value 0x1234 goes into a setup packet. In what order do its bytes travel on the wire?</p>
+    <ul><li data-k="a" data-says="That's big-endian: USB is the other way round.">12 34</li><li data-k="b">34 12</li></ul>
+    <div class="why">Little-endian: the low byte (0x34) first. The same order the bytes sit in memory on almost every computer today.</div>
+  </div>
+
 
   <!-- 3 -->
   <h2 id="bulk">Bulk transfers and bus time</h2>
+  <div class="q" data-num="4.8" data-tol="0.05"><p>At 2.4 million samples per second, each sample being one byte of I and one of Q, how many megabytes per second must cross the cable?</p>
+    <div class="why">2.4 M × 2 bytes = 4.8 MB/s, under a tenth of USB 2.0's 60 MB/s.</div>
+  </div>
+
   <p>Control transfers are small and careful. The samples need the opposite: lots of data, fast. That's what <b>bulk</b> transfers are for. The host asks endpoint 0x81 for, say, 256 KiB (a KiB is 1024 bytes, so about 262 000 bytes); the dongle answers in 512-byte packets, as fast as the bus has room, until the request is filled.</p>
   <p>USB 2.0 ("high speed", 480 Mbit/s: megabits per second; a byte is 8 bits, so that's 60 MB, megabytes, per second) divides time into slots of 125 µs, called microframes, each with room for up to 13 bulk packets of 512 bytes. How much of that does a radio stream need?</p>
 
@@ -63,6 +77,13 @@
   </div>
 
   <p>Less than a tenth of the bus. So when samples get lost, it's not because USB is full. It's because nobody was waiting for them: bulk data only moves while the host has a request pending, and the dongle's own buffer is tiny. That's why the driver always keeps several requests queued (<a href="../build.html#stream">build guide: the streaming timeline</a>).</p>
+  <details class="deeper notation" open><summary>The math, step by step</summary>
+    <p class="formula">\[ \text{rate} = f_s \times 2\,\tfrac{\text{bytes}}{\text{sample}} = 2.4\,\text{M} \times 2 = 4.8\,\text{MB/s} \]</p>
+    <p class="formula">\[ \text{bus} = 8000\,\tfrac{\text{microframes}}{\text{s}} \times 13 \times 512\,\text{B} \approx 53\,\text{MB/s}, \qquad \frac{4.8}{53} \approx 9\% \]</p>
+    <p class="formula">\[ \text{0x1234} \;\to\; \underbrace{\text{34}}_{\text{low byte first}}\;\text{12} \]</p>
+    <ul><li>A 256 KiB bulk request fills in 262 144 / 4.8 MB/s ≈ 55 ms, so the driver keeps several requests waiting at once and the bus never idles between them.</li></ul>
+  </details>
+
 
   <!-- 4 -->
   <h2 id="layers">Who's allowed to talk to the dongle?</h2>

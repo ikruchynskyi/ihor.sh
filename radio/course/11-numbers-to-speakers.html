@@ -23,6 +23,10 @@
 
   <!-- 1 -->
   <h2 id="clocks">Two clocks that never agree</h2>
+  <div class="q" data-num="288" data-tol="1"><p>Two crystals differ by 20 ppm (20 millionths). After four hours, how far apart are the two clocks, in milliseconds?</p>
+    <div class="why">4 hours = 14,400 s, and 20 × 10⁻⁶ × 14,400 s = 0.288 s = 288 ms. Small differences, given hours, become audible.</div>
+  </div>
+
   <p>The dongle decides how fast samples arrive, using its own crystal (28.8 MHz). The sound card decides how fast they're played, using a different crystal. No two crystals are exactly alike: they differ by some <b>parts per million</b> (ppm). 50 ppm sounds like nothing, but it means that every hour, one side gets 180 ms ahead of the other.</p>
   <p>Chapter 8's audio cushion (<a class="back" href="./08-chunks-of-a-live-stream.html#delay">↩</a>) absorbs this, for a while. Here's the cushion over four hours:</p>
 
@@ -37,6 +41,10 @@
 
   <!-- 2 -->
   <h2 id="resample">Playing at a different rate</h2>
+  <div class="q" data-num="1.042" data-tol="0.002"><p>The radio's audio is 50,000 samples per second and the sound card plays 48,000. For each sample it plays, how far does the player move through ours (in our samples, three decimals)?</p>
+    <div class="why">50,000 / 48,000 ≈ 1.042 of our samples per output sample, landing between samples most of the time: that's why it has to guess values in between.</div>
+  </div>
+
   <p>Our sound comes out at whatever rate the last decimation gave (chapter 7): for FM at 2.4 MS/s, exactly 50 000 samples per second. The sound card might run at 44 100 or 48 000. So someone has to produce new samples <b>between</b> the ones we have, at different moments: <b>resampling</b>.</p>
 
   <div class="scene" id="s-resample">
@@ -80,6 +88,18 @@
     <li><b>Hysteresis:</b> it opens at the threshold, but only closes again 3 dB <em>below</em> it. Without that gap, a signal hovering right at the threshold would chop the sound on and off many times a second.</li>
   </ul>
   <p>Set the threshold too low and noise gets through; too high and the start of weak messages is cut off. Real radios have a squelch knob for exactly this.</p>
+  <div class="q"><p>Why does the squelch close 3 dB below where it opens, instead of at the same threshold?</p>
+    <div class="why">A signal hovering right at one threshold would cross it many times a second, chopping the sound into stutter. With a gap (hysteresis), once open it stays open until the signal clearly drops: the same trick every thermostat uses.</div>
+  </div>
+  <details class="deeper notation" open><summary>The math, step by step</summary>
+    <p class="formula">\[ \text{drift} = \text{ppm} \times 10^{-6} \times t \qquad\text{e.g. } 50 \times 10^{-6} \times 3600\,\text{s} = 0.18\,\text{s} \]</p>
+    <p class="formula">\[ y(n + f) \approx (1 - f)\,y[n] + f\,y[n+1], \qquad 0 \le f \lt 1 \]</p>
+    <p class="formula">\[ \text{step} = \frac{f_\text{radio}}{f_\text{card}} = \frac{50\,000}{48\,000} \approx 1.042 \]</p>
+    <p class="formula">\[ g = \frac{\text{target}}{\text{peak}}, \qquad \text{peak} \leftarrow \begin{cases} |x| & |x| > \text{peak} \;(\text{attack: at once})\\ \text{peak}\cdot r & \text{otherwise} \;(\text{release: } r \text{ a bit under } 1) \end{cases} \]</p>
+    <ul><li>Resampling walks through our samples in steps of 1.042 and reads each value off the straight line between its two neighbors (f is how far along).</li><li>The AGC's release r sets how fast the volume climbs back: per sample, r = 0.99995 at 50 kHz takes about half a second to recover by 10 dB.</li></ul>
+  </details>
+
+
 
   <!-- lab -->
   <h2 id="lab">Lab: the complete receiver</h2>

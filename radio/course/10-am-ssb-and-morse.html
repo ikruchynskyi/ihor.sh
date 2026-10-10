@@ -24,6 +24,11 @@
 
   <!-- 1 -->
   <h2 id="am">AM: the sound is in the length</h2>
+  <div class="q" data-answer="b"><p>Predict: an AM signal fades to half its strength under a bridge. What happens to the sound?</p>
+    <ul><li data-k="a" data-says="FM ignored fading because it only uses the angle. AM uses the length.">Nothing, like FM</li><li data-k="b">It gets quieter: the receiver can't tell a weak signal from quiet music</li><li data-k="c" data-says="The level itself drops, since the sound is the length.">It gets noisier but stays as loud</li></ul>
+    <div class="why">The sound is in the arrow's length, so anything that shortens the arrow, fading included, goes straight into the sound. (Chapter 11's automatic volume control tries to undo it.)</div>
+  </div>
+
   <p><b>Amplitude modulation</b> (AM) keeps the arrow's speed steady and makes its <b>length</b> follow the sound: longer when the speaker should push out, shorter when it should pull in. The demodulator is even simpler than FM's: measure each sample's length (chapter 2: the distance from the center), and remove the constant part.</p>
 
   <div class="scene" id="s-am">
@@ -39,6 +44,10 @@
 
   <!-- 2 -->
   <h2 id="sidebands">Sidebands, and why half of them are spare</h2>
+  <div class="q" data-num="709" data-tol="0"><p>An AM station on 710 kHz plays a steady 1 kHz tone. Where does the lower sideband's copy of that tone sit, in kHz?</p>
+    <div class="why">1 kHz below the carrier: 709 kHz (and the upper copy at 711 kHz). Each tone appears as a mirror pair around the carrier.</div>
+  </div>
+
   <p>Look at an AM station with chapter 4's winding machine. You see the carrier in the middle, and the sound twice: once above the carrier and once below it, as exact mirror images. These are the <b>upper</b> and <b>lower sidebands</b>.</p>
 
   <div class="scene" id="s-amspec">
@@ -70,6 +79,10 @@
 
   <!-- 4 -->
   <h2 id="cw">Morse code: on and off</h2>
+  <div class="q" data-num="700" data-tol="0"><p>You tune 700 Hz away from a Morse signal. What pitch, in Hz, will each dot and dash beep at?</p>
+    <div class="why">The arrow lands 700 Hz from 0 and spins at that speed: a 700 Hz beat. Choose the tuning offset and you choose the pitch. Spectrum Lab's CW mode uses exactly 700 Hz.</div>
+  </div>
+
   <p>The simplest message of all: switch the arrow <b>on</b> and <b>off</b>. Short on is a dot, long on is a dash. Radio people call it <b>CW</b> ("continuous wave", because the arrow itself never changes while it's on).</p>
 
   <div class="scene" id="s-cw">

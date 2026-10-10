@@ -24,6 +24,10 @@
 
   <!-- 1 -->
   <h2 id="turn">How far did it turn?</h2>
+  <div class="q" data-num="-20" data-tol="0.5"><p>Predict first: "before" points at −170° and "now" at 170°. Which angle will the pink arrow (now × mirrored before) point at, in degrees?</p>
+    <div class="why">170° − (−170°) = 340°, which is the same direction as −20°. The arrow turned 20° clockwise, the short way round, and the multiplication gets that right with no wrapping code at all.</div>
+  </div>
+
   <p>We could compute each snapshot's angle and subtract. But angles wrap around (from 179° to −179° is a turn of 2°, not −358°), which makes subtraction fiddly. Chapter 2 has a cleaner trick. Multiplying arrows <em>adds</em> their angles (<a class="back" href="./02-arrows-as-numbers.html#multiply">↩</a>). So to <em>subtract</em> an angle, multiply by the arrow's <b>mirror image</b>: the same arrow flipped upside down, which has the opposite angle. Mathematicians call the mirror image the <b>complex conjugate</b>.</p>
   <p>Drag the two arrows:</p>
 
@@ -34,6 +38,11 @@
 
   <!-- 2 -->
   <h2 id="demod">The demodulator, step by step</h2>
+  <div class="q" data-answer="b"><p>Before you tick "Signal fades": if the signal drops to half its strength, what happens to the FM demodulator's output?</p>
+    <ul><li data-k="a" data-says="The demodulator only takes the pink arrow's angle; its length never enters.">It halves, like the signal</li><li data-k="b">Nothing: the bars stay the same</li><li data-k="c" data-says="There's no volume control in the demodulator: just an angle.">It gets louder to compensate</li></ul>
+    <div class="why">Only the angle between samples counts, and fading changes lengths, not angles. Try it in the scene.</div>
+  </div>
+
   <p>Now apply it to a whole FM signal. For every sample, multiply it by the mirrored previous sample and take the angle. Each answer is one bar below. The dashed green line is the music that was put into the signal:</p>
 
   <div class="scene" id="s-demod">
@@ -63,9 +72,18 @@
     <li><b>57 kHz, RDS:</b> slow digital data: the station's name, the song title, the time. It's what makes your car radio show "98.7 ESPN".</li>
   </ul>
   <p>Our receiver plays the mono part only. Stereo and RDS would be good projects for after the course.</p>
+  <div class="q" data-num="38" data-tol="0"><p>The pilot is at 19 kHz and the stereo part sits around exactly twice the pilot. At what frequency, in kHz?</p>
+    <div class="why">2 × 19 = 38 kHz. Locking onto the pilot and doubling it gives the receiver a perfectly matched reference for shifting the stereo band back down.</div>
+  </div>
+
 
   <!-- 4 -->
   <h2 id="deemph">De-emphasis: why FM needs a bass boost (sort of)</h2>
+  <div class="q" data-answer="a"><p>Predict: noise jiggles the arrow's angle at random. Why would that come out louder at <em>high</em> pitches than low ones?</p>
+    <ul><li data-k="a">The demodulator reports how fast the angle changes, and fast jitter changes it fastest</li><li data-k="b" data-says="The speaker isn't the cause: the hiss rises in the numbers already.">Speakers are louder at high pitches</li><li data-k="c" data-says="They do (pre-emphasis), but that boosts the music, not the noise.">FM stations send more treble</li></ul>
+    <div class="why">Speed of change is bigger for quick wiggles than slow ones, so the demodulated noise rises with frequency. De-emphasis turns the treble down by exactly what the station boosted, taking the hiss down with it.</div>
+  </div>
+
   <p>FM has a quirk. Noise in the radio signal pushes the arrow around randomly, and the demodulator turns those pushes into sound. But a push changes the arrow's <em>angle</em> by a random amount, and the demodulator reports the angle's <em>rate of change</em>, which is larger for fast jitter. So FM noise comes out <b>louder at high pitches</b>: a hiss that rises with frequency (red below).</p>
 
   <div class="scene" id="s-deemph">

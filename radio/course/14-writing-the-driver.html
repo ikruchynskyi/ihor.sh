@@ -36,9 +36,18 @@
     <li><b>Tune</b>: notice registers 0x14, 0x15 and 0x16 (the PLL integer and fraction from chapter 12) and the status read that checks the lock bit.</li>
     <li>Almost every tuner phase starts with "I2C repeater on" (demod register 0x01 = 0x18) and ends with it off (0x10).</li>
   </ul>
+  <div class="q"><p>Why does the driver write 20 filter coefficients into the RTL2832U at start-up?</p>
+    <div class="why">The chip decimates the converter's samples before sending them, and decimating without filtering first lets other stations fold in on top of yours (chapters 3 and 7). Those 20 numbers are that anti-aliasing filter.</div>
+  </div>
+
 
   <!-- 2 -->
   <h2 id="knowledge">How anyone knows what to write</h2>
+  <div class="q" data-answer="b"><p>Predict: neither chip has a public datasheet. How does anyone know which registers to write?</p>
+    <ul><li data-k="a" data-says="There's no public datasheet: that's the point.">The makers publish it under license</li><li data-k="b">The open-source community recorded and reverse-engineered what TV software sent</li><li data-k="c" data-says="Everyone builds on shared community work (librtlsdr, the Linux drivers).">Trial and error by each driver author</li></ul>
+    <div class="why">Captured USB traffic, leaked reference code and experiments, pooled since 2012, when people found the undocumented SDR mode.</div>
+  </div>
+
   <p>Neither chip has a public datasheet. The knowledge in the trace above was pieced together over years by the open-source community: people recorded what Windows TV software sent to these sticks, studied leaked reference code from the chip makers, and experimented. In 2012 they discovered the RTL2832U's undocumented "SDR mode" that ships raw samples, which is what turned a $20 TV stick into a radio receiver. The results live in osmocom's <b>librtlsdr</b> and the <b>Linux kernel's</b> drivers; our driver is a fresh TypeScript implementation of that shared knowledge.</p>
   <p>That's also why the trace decoder above can name every register: the names come from the same community work. Writing a driver for a chip without a datasheet means reading other drivers carefully, and testing a lot.</p>
 
@@ -52,6 +61,10 @@
 
   <!-- 4 -->
   <h2 id="testing">Testing a driver</h2>
+  <div class="q"><p>How could a test check that an FM receiver works on a real station, without anyone listening?</p>
+    <div class="why">Look for something every FM stereo station sends and that's easy to measure: the 19 kHz pilot. If the demodulated audio has a strong, steady 19 kHz tone, the whole chain from USB to demodulator works.</div>
+  </div>
+
   <p>Hardware code is hard to test, because the hardware isn't always there and doesn't always behave. This driver is tested at four levels, each catching different mistakes:</p>
   <ol>
     <li><b>A fake chip</b> (chapter 12's script): the tuner driver runs against a pretend I2C bus that records writes. Checks: does the driver write the PLL values the math says it should?</li>

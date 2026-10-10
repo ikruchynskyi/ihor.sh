@@ -25,6 +25,11 @@
 
   <!-- 1 -->
   <h2 id="path">The signal's journey</h2>
+  <div class="q" data-answer="b"><p>Predict: the dongle's converter is 8 bits at 28.8 MHz. Where does the tuner put a 98.7 MHz station before it's digitized?</p>
+    <ul><li data-k="a" data-says="Far too fast for a cheap converter to sample.">It stays at 98.7 MHz</li><li data-k="b">A few MHz up: an intermediate frequency</li><li data-k="c" data-says="The analog part can't do that cleanly with one shadow (section 2); the digital part does it later.">At exactly 0 Hz</li></ul>
+    <div class="why">A few MHz (the IF), slow enough for the 8-bit converter. Then the RTL2832U does chapter 5's mixing, chapter 6's filter and chapter 7's decimation in digital form.</div>
+  </div>
+
   <p>Step through the seven stages. The picture shows what the radio band looks like at each point, for the dongle tuned to 98.45 MHz (with 98.7 FM the station we care about, in yellow):</p>
 
   <div class="scene" id="s-path">
@@ -49,6 +54,10 @@
   </div>
 
   <p>The defense is a <b>tracking filter</b> in front of the mixer (green): a broad filter that follows your tuning and weakens everything far away, including the image, 7.14 MHz above you. It's not very sharp (that's the whole problem), so a strong station sitting exactly on your image can still sneak through as a faint ghost. In the driver, choosing this filter's setting for each frequency band is the job of a lookup table (<code>BANDS</code> in <code>src/r820t.ts</code>).</p>
+  <div class="q" data-num="105.59" data-tol="0.02"><p>The oscillator runs at 102.02 MHz so that 98.45 MHz lands at a 3.57 MHz IF. Which other frequency, in MHz, also lands at 3.57 MHz (the image)?</p>
+    <div class="why">102.02 + 3.57 = 105.59 MHz: the same distance on the other side of the oscillator. With one shadow, the mixer can't tell them apart, so the tuner's filters must remove 105.59 MHz before mixing.</div>
+  </div>
+
 
   <!-- 3 -->
   <h2 id="pll">Making any frequency from one crystal: the PLL</h2>
@@ -67,6 +76,16 @@
     <li>The ratio to the crystal isn't a whole number, so the PLL uses a whole part plus a 16-bit fraction (a "fractional-N" PLL). The fraction's smallest step sets the tuning resolution: tens of hertz, far finer than any station's width.</li>
     <li>After writing the registers, the driver waits 10 ms and checks a "locked" bit. If the loop hasn't settled, it boosts the VCO's current and checks again.</li>
   </ul>
+  <div class="q" data-num="32" data-tol="0"><p>The VCO runs between 1.77 and 3.54 GHz and is divided by a power of two. Which divider gives a 102.02 MHz oscillator?</p>
+    <div class="why">102.02 × 32 = 3264.6 MHz, inside the range (×16 = 1632 MHz is too low, ×64 = 6.5 GHz too high). Exactly one power of two always fits, because the range spans exactly 2×.</div>
+  </div>
+  <details class="deeper notation" open><summary>The math, step by step</summary>
+    <p class="formula">\[ f_\text{IF} = f_\text{LO} - f_\text{RF}, \qquad f_\text{image} = f_\text{LO} + f_\text{IF} = f_\text{RF} + 2 f_\text{IF} \]</p>
+    <p class="formula">\[ f_\text{LO} = \frac{f_\text{VCO}}{2^k}, \quad 1.77\,\text{GHz} \le f_\text{VCO} \lt 3.54\,\text{GHz}, \qquad \frac{f_\text{VCO}}{2 f_\text{xtal}} = N + \frac{\text{frac}}{65\,536} \]</p>
+    <ul><li>Example, 98.45 MHz: f<sub>LO</sub> = 98.45 + 3.57 = 102.02 MHz; image 105.59 MHz; k = 5 (÷32), so f<sub>VCO</sub> = 3264.64 MHz.</li><li>With the 28.8 MHz crystal, 3264.64 / 57.6 = 56.678: N = 56 and frac = 0.678 × 65 536 ≈ 44 419, the numbers in the trace above. The leftover rounding is why each tuning is a few hertz off.</li></ul>
+  </details>
+
+
 
   <!-- lab -->
   <h2 id="lab">Lab: explore the whole range</h2>

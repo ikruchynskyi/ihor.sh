@@ -24,6 +24,11 @@
 
   <!-- 1 -->
   <h2 id="pairs">Pieces of any size, and the mirror-image ghost</h2>
+  <div class="q" data-answer="b"><p>Predict: a piece arrives with an odd number of bytes, and the next piece is decoded as if its first byte were an I. What happens?</p>
+    <ul><li data-k="a" data-says="Every pair from then on is wrong.">Nothing visible</li><li data-k="b">I and Q swap: the spectrum is mirrored, ghost stations appear</li><li data-k="c" data-says="It's not random: each arrow is mirrored exactly.">Random noise</li></ul>
+    <div class="why">Swapping the two shadows flips every arrow's direction: stations appear at mirror-image frequencies. Regrouping the bytes into pairs fixes it.</div>
+  </div>
+
   <p>The server sends neat 256 KiB chunks. The network doesn't care: it delivers whatever has arrived, in pieces of any size, including odd sizes. Measured on this site's server: <b>48 of 120 pieces had an odd number of bytes</b>. Remember the byte order: I, Q, I, Q… (<a class="back" href="./03-taking-snapshots.html#real">↩ ch. 3</a>). After an odd-sized piece, the next piece <em>starts with a Q</em>.</p>
   <p>If the page decodes each piece on its own, assuming the first byte is always an I, half the stream ends up with I and Q swapped. Untick the box to see what that does:</p>
 
@@ -39,6 +44,10 @@
 
   <!-- 2 -->
   <h2 id="bandwidth">There's much less bandwidth to go around</h2>
+  <div class="q" data-num="1" data-tol="0"><p>Sending the whole band takes 4.8 MB/s per listener. A home connection uploads 40 megabits per second. How many listeners can it serve?</p>
+    <div class="why">40 Mbit/s ÷ 8 = 5 MB/s: one listener at 4.8 MB/s. That's why the server sends each listener only a slice (the next rungs).</div>
+  </div>
+
   <p>Inside a computer, 4.8 MB/s is nothing. Across the internet, it's a lot, and a server has to send it to <em>every</em> listener separately. A typical home connection uploads 10–40 megabits per second (1–5 MB/s). Slide the number of listeners:</p>
 
   <div class="scene" id="s-ladder">
@@ -68,6 +77,17 @@
 
   <p>For each listener, the server runs its own mixer, filter and decimator: a <b>channelizer</b>. That costs computing power per listener: at 2.4 MS/s with a 70-weight filter, roughly 350 million multiply-adds per second each (<a class="back" href="./06-averaging-is-filtering.html#real">↩ ch. 6</a>), divided by the decimation (<a class="back" href="./07-throwing-away-snapshots.html#skip">↩ ch. 7</a>). Servers with many listeners use a trick: one big FFT (<a class="back" href="./04-winding-machine.html#fft">↩ ch. 4</a>) already splits the band into thousands of narrow slices at once, and each listener's slice is assembled from the pieces they need.</p>
   <p>One more server-side rule from this site's <code>server.ts</code>: if a listener can't keep up, the server <b>skips</b> chunks for them instead of storing them. Storing would make that listener's delay grow forever; skipping costs them a click but keeps everyone else unaffected.</p>
+  <div class="q"><p>Why does an FFT make a server with many listeners cheaper than one mixer, filter and decimator per listener?</p>
+    <div class="why">One FFT splits the whole band into thousands of narrow slices at once, for everyone; each listener's channel is then put together from the slices around their station. The big cost is shared instead of repeated.</div>
+  </div>
+  <details class="deeper notation" open><summary>The math, step by step</summary>
+    <p class="formula">\[ \text{listeners} = \left\lfloor \frac{\text{upload}}{\text{rate per listener}} \right\rfloor, \qquad \frac{40\,\text{Mbit/s} \div 8}{4.8\,\text{MB/s}} = 1.04 \to 1 \]</p>
+    <p class="formula">\[ \text{slice} = 2 \times f_\text{slice}\ \text{bytes/s}: \quad 48\,\text{kHz} \to 96\,\text{kB/s}, \quad \frac{4.8\,\text{MB/s}}{96\,\text{kB/s}} = 50\times \text{ less} \]</p>
+    <p class="formula">\[ \text{cost per listener} \approx 2 f_s \times \frac{\text{taps}}{M} = 2 \times 2.4\,\text{M} \times \frac{70}{8} \approx 42\,\text{M multiply-adds/s} \]</p>
+    <ul><li>Two multiply-adds per tap (I and Q), and computing only the outputs kept after decimating by M (chapter 7) divides the cost by M: 350 million becomes about 42 million.</li></ul>
+  </details>
+
+
 
   <!-- lab -->
   <h2 id="lab">Lab: measure the stream</h2>
