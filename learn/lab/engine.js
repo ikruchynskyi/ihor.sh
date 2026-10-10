@@ -69,7 +69,7 @@ export function netlist(parts, memory = { capV: new Map(), indI: new Map() }) {
  * A running simulation. speed: simulated seconds per real second. Each frame call advance(realSeconds); read
  * .v (node voltages), .cur (part id → amps, a → b), .wire (wire segment index → amps), .t, and probe samples via onSample.
  */
-export function simulation(parts, { speed = 1, memory, onSample } = {}) {
+export function simulation(parts, { speed = 1, memory, onSample, t0 = 0 } = {}) {
   memory ??= { capV: new Map(), indI: new Map() };
   const net = netlist(parts, memory);
   if (!net) return null;
@@ -77,8 +77,8 @@ export function simulation(parts, { speed = 1, memory, onSample } = {}) {
   let dt = Math.min(1e-3, speed / 60 / 100, net.fmax ? 1 / (net.fmax * 100) : Infinity);
   if (parts.some((p) => p.type === "timer555" || PARTS[p.type].cat === "Logic")) dt = Math.min(dt, speed / 60 / 200);
   dt = Math.max(dt, 1e-9);
-  const st = stepper(net.els, dt, { gmin: 1e-9, method: net.method === "euler" ? "euler" : undefined });
-  const sim = { net, dt, speed, t: 0, v: [], cur: new Map(), wire: new Map(), raw: null, error: "", lag: false, memory };
+  const st = stepper(net.els, dt, { gmin: 1e-9, t0, method: net.method === "euler" ? "euler" : undefined });
+  const sim = { net, dt, speed, t: t0, v: [], cur: new Map(), wire: new Map(), raw: null, error: "", lag: false, memory };
   const record = (r) => {
     sim.raw = r; sim.v = r.v;
     for (const fn of net.behaviors) fn(r.v, r);

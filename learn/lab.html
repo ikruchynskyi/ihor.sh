@@ -242,7 +242,7 @@ cv.addEventListener("pointermove", (e) => {
 });
 cv.addEventListener("pointerup", () => {
   if (drag?.kind === "button") { drag.part.closed = false; dirty = true; }
-  if (drag?.kind === "move" && !drag.moved && drag.hit?.type === "switch") { remember(); drag.hit.closed = !drag.hit.closed; changed(); }
+  if (drag?.kind === "move" && !drag.moved && ["switch", "switch2"].includes(drag.hit?.type)) { remember(); drag.hit.closed = !drag.hit.closed; changed(); }
   if (drag?.kind === "box") { const [x0, x1] = [drag.from[0], drag.to[0]].sort((a, b) => a - b), [y0, y1] = [drag.from[1], drag.to[1]].sort((a, b) => a - b); selected = new Set(parts.filter((p) => pins(p).every(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1)).map((p) => p.id)); showPanel(); }
   if (drag?.kind === "end" || (drag?.kind === "move" && drag.moved)) changed();
   drag = null; cv.classList.remove("pan");
@@ -296,7 +296,9 @@ $("speed").onchange = () => { speed = +$("speed").value; dirty = true; scopeClea
 $("play").onclick = () => { running = !running; $("play").textContent = running ? "❚❚ Pause" : "▶ Run"; };
 const burn = new Map(); // LED id → simulated seconds spent over its limit
 function changed() { dirty = true; save(); showPanel(); }
-function rebuild() { dirty = false; sim = simulation(parts, { speed, memory, onSample: scopeSample }); if (!sim) scopeClear(); }
+// A rebuilt circuit (a switch flipped, a value changed) carries on from the old one's time, so the scope's trace
+// continues instead of restarting at 0 on top of the samples already on screen.
+function rebuild() { dirty = false; sim = simulation(parts, { speed, memory, onSample: scopeSample, t0: sim?.t ?? 0 }); if (!sim) scopeClear(); }
 
 // ---------- oscilloscope ----------
 const TDIV = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
@@ -487,7 +489,7 @@ function showPanel() {
   $("panel").innerHTML = `<h2>${d.name} ${refs().get(p.id) ?? ""}</h2><p class="muted">${d.desc}${d.chapter ? ` <a href="/learn/electronics/${d.chapter}">Learn more</a>` : ""}</p>
     ${(d.fields ?? []).map(field).join("")}
     ${p.type === "led" && p.dead ? `<p><span class="warn">Burnt out.</span> <button id="pFix">Replace it</button></p>` : ""}
-    ${p.type === "switch" ? `<p><button id="pFlip">${p.closed ? "Open it" : "Close it"}</button></p>` : ""}
+    ${p.type === "switch" ? `<p><button id="pFlip">${p.closed ? "Open it" : "Close it"}</button></p>` : p.type === "switch2" ? `<p><button id="pFlip">Flip to ${p.closed ? "A" : "B"}</button></p>` : ""}
     <div class="read" id="live">…</div><div id="why"></div>
     <p><button id="pRot">Rotate</button> <button id="pDup">Duplicate</button> <button id="pDel">Delete</button></p>`;
   $("panel").querySelectorAll("[data-prop]").forEach((el) => {
@@ -568,7 +570,7 @@ showPanel();
 requestAnimationFrame(frame);
 
 // ---------- reading the circuit: reference names, a netlist, and what Blip can do here ----------
-const PREFIX = { battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
+const PREFIX = { battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", switch2: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
 /** Schematic reference names (R1, LED2, U1…), numbered in the order parts were added. */
 function refs() {
   const count = {}, out = new Map();
@@ -595,7 +597,7 @@ function nets() {
 function partSummary(p, R) {
   const d = PARTS[p.type], vals = (d.fields ?? []).map(([prop, label, kind]) => `${label} ${kind === "si" ? si(p[prop], { ohms: "Ω", farads: "F", henries: "H", v: "V", amp: "V", freq: "Hz", bv: "V", volts: "V", watts: "W" }[prop] ?? "") : p[prop]}`).join(", ");
   const amps = sim?.cur.get(p.id) ?? 0, cur = !d.two || !sim ? "" : ["battery", "source"].includes(p.type) ? `, supplying ${si(Math.abs(amps), "A")}` : `, current ${si(amps, "A")}`;
-  return `${R.get(p.id)}: ${d.name}${vals ? ` (${vals})` : ""}${p.dead ? " BURNT OUT" : ""}${p.closed != null ? (p.closed ? " closed" : " open") : ""}${cur}`;
+  return `${R.get(p.id)}: ${d.name}${vals ? ` (${vals})` : ""}${p.dead ? " BURNT OUT" : ""}${p.type === "switch2" ? ` common to ${p.closed ? "B" : "A"}` : p.closed != null ? (p.closed ? " closed" : " open") : ""}${cur}`;
 }
 const screenOf = (p) => { const ps = pins(p), x = ps.reduce((s, q) => s + q[0], 0) / ps.length, y = ps.reduce((s, q) => s + q[1], 0) / ps.length, r = cv.getBoundingClientRect(); return { x: r.left + view.x + x * view.s, y: r.top + view.y + y * view.s }; };
 const byRef = (ref) => { const R = refs(), want = String(ref ?? "").trim().toUpperCase(); return parts.find((p) => R.get(p.id)?.toUpperCase() === want); };
@@ -638,8 +640,8 @@ window.blipActions = {
       remember(); p[prop] = v; if (prop === "color") delete p.dead; selected = new Set([p.id]); changed();
       return screenOf(p);
     } },
-  toggle_switch: { label: "flipped a switch", description: "Open or close a switch by name (SW1…).", parameters: { ref: { type: "string" } },
-    run: ({ ref }) => { const p = byRef(ref); if (!p || p.type !== "switch") return; remember(); p.closed = !p.closed; changed(); return screenOf(p); } },
+  toggle_switch: { label: "flipped a switch", description: "Open or close a switch by name (SW1…), or flip a two-way switch between A and B.", parameters: { ref: { type: "string" } },
+    run: ({ ref }) => { const p = byRef(ref); if (!p || !["switch", "switch2"].includes(p.type)) return; remember(); p.closed = !p.closed; changed(); return screenOf(p); } },
 };
 
 </script>

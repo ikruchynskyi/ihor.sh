@@ -56,6 +56,9 @@ export const PARTS = {
     desc: "A coil: its current can't jump (V = L·dI/dt). Cut its current suddenly and the voltage spikes. With a capacitor it rings at f = 1/(2π√LC).", chapter: "03-coils-and-resonance.html",
     stamp(p, c) { const mid = c.node(); c.add({ type: "L", a: c.pin(0), b: mid, henries: Math.max(1e-9, p.henries), i0: c.memory.indI.get(p.id) ?? 0 }, { main: true, ind: true }); c.add({ type: "R", a: mid, b: c.pin(1), ohms: Math.max(1e-3, p.ohms) }); } },
   switch: { name: "Switch", cat: "Basic", two: true, len: 3, props: { closed: false }, desc: "Click it to flip it.", stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: p.closed ? 1e-3 : 1e10 }, { main: true }); } },
+  switch2: { name: "Two-way switch", cat: "Basic", pins: [[0, 0], [3, -1], [3, 1]], pinNames: ["common", "A", "B"], props: { closed: false },
+    desc: "Click it to move the common contact from A (top) to B (bottom) and back, never touching both: charge something from one side, then hand it to the other.",
+    stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: p.closed ? 1e10 : 1e-3 }, { main: true }); c.add({ type: "R", a: c.pin(0), b: c.pin(2), ohms: p.closed ? 1e-3 : 1e10 }, { main: true }); } },
   button: { name: "Push button", cat: "Basic", two: true, len: 3, props: { closed: false }, desc: "Closed only while you hold it down (press and hold on it).", stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: p.closed ? 1e-3 : 1e10 }, { main: true }); } },
   diode: { name: "Diode", cat: "Semiconductors", two: true, len: 3, props: { model: "1N4007 (rectifier)" }, fields: [["model", "type", "select", Object.keys(DIODES)]],
     desc: "A one-way valve: current flows from the triangle to the bar once there's about 0.6 V across it (0.3 V for a Schottky).", chapter: "04-diodes-and-transistors.html",
@@ -238,6 +241,11 @@ export function draw(g, p, st) {
   switch (p.type) {
     case "ground": L(0, 0, 0, 0.5); for (const [w, y] of [[0.5, 0.5], [0.32, 0.68], [0.14, 0.86]]) L(-w, y, w, y); break;
     case "probe": { const c = PROBE_COLORS[(p.ch - 1) % 4]; g.strokeStyle = c; g.fillStyle = c; L(0, 0, 0.6, -0.6); g.beginPath(); g.arc(0, 0, 0.13, 0, 7); g.fill(); g.fillRect(0.5, -1.1, 0.75, 0.55); T(`${p.ch}`, 0.875, -0.82, 0.42, COL.stage); break; }
+    case "switch2": {
+      L(0, 0, 1, 0); L(2, -1, 3, -1); L(2, 1, 3, 1); g.fillStyle = COL.text; for (const [x, y] of [[1, 0], [2, -1], [2, 1]]) { g.beginPath(); g.arc(x, y, 0.12, 0, 7); g.fill(); }
+      g.strokeStyle = COL.text; L(1, 0, 1.95, p.closed ? 0.9 : -0.9);
+      T("A", 2.2, -1.45, 0.34, COL.dim); T("B", 2.2, 1.75, 0.34, COL.dim); break;
+    }
     case "pot": {
       L(0, 0, 1.2, 0); L(2.8, 0, 4, 0); g.beginPath(); for (let k = 0; k <= 8; k++) g.lineTo(1.2 + k * 0.2, k === 0 || k === 8 ? 0 : k % 2 ? 0.28 : -0.28); g.stroke();
       const x = 1.2 + 1.6 * (p.pos / 100); L(2, 2, 2, 1.2); L(2, 1.2, x, 1.2); L(x, 1.2, x, 0.45); g.fillStyle = line; g.beginPath(); g.moveTo(x, 0.35); g.lineTo(x - 0.15, 0.6); g.lineTo(x + 0.15, 0.6); g.fill();

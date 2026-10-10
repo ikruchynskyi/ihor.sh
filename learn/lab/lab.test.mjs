@@ -45,11 +45,12 @@ for (const name of Object.keys(TEMPLATES)) {
 { const { out } = run(build("lowpass"), 0.06, 0.025), a = measure(out[1]), b = measure(out[2]);
   assert.ok(Math.abs(b.vpp / a.vpp - 0.707) < 0.03, `low-pass gain ${b.vpp / a.vpp}`); assert.ok(Math.abs(b.freq - 159) < 3, `freq ${b.freq}`); }
 
-// LC tank rings at ≈ 503 Hz once switched over
-{ const parts = build("lc"), sim = simulation(parts, { speed: 1 }), [s1, s2] = parts.filter((p) => p.type === "switch");
-  for (let k = 0; k < 0.01 / sim.dt; k++) sim.advance(sim.dt); // charge
-  s1.closed = false; s2.closed = true;
-  const sim2 = simulation(parts, { speed: 1, memory: sim.memory }), node = sim2.net.nodeOf.get(probeOf(parts, 1).join(",")), out = [];
+// LC tank rings at ≈ 503 Hz once its one switch closes; the rebuilt simulation carries on in time (the scope relies on it)
+{ const parts = build("lc"), sim = simulation(parts, { speed: 1 }), sw = parts.find((p) => p.type === "switch2");
+  for (let k = 0; k < 0.002 / sim.dt; k++) sim.advance(sim.dt); // charge (τ = 10 Ω × 10 µF = 0.1 ms)
+  sw.closed = true;
+  const sim2 = simulation(parts, { speed: 1, memory: sim.memory, t0: sim.t }), node = sim2.net.nodeOf.get(probeOf(parts, 1).join(",")), out = [];
+  assert.ok(Math.abs(sim2.t - sim.t) < 1e-12, "time carries over a rebuild");
   for (let k = 0; k < 0.01 / sim2.dt; k++) { sim2.advance(sim2.dt); out.push([sim2.t, sim2.v[node]]); }
   const m = measure(out); assert.ok(Math.abs(m.freq - 503) < 15 && m.max > 3, `LC ${JSON.stringify(m)}`); }
 

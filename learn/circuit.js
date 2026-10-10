@@ -156,14 +156,15 @@ export function simulate(elements, { dt, steps }) {
 
 /** The same, one step at a time (for circuits that run live on a page): step() advances dt and returns { t, v, i }. */
 // opts.method "euler" (backward Euler) instead of trapezoidal: it damps a little, but it doesn't ring when a coil is
-// suddenly switched into a near-open circuit (a MOSFET turning off), which trapezoidal does.
+// suddenly switched into a near-open circuit (a MOSFET turning off), which trapezoidal does. opts.t0: the time the
+// first step is at (a rebuilt circuit carries on from where the last one stopped, so sources keep their phase).
 export function stepper(elements, dt, opts = {}) {
   const be = opts.method === "euler";
   const state = elements.map((e) => ({ v: e.type === "C" ? e.v0 ?? 0 : 0, i: e.type === "L" ? e.i0 ?? 0 : 0 })); // a coil can start with current flowing (i0)
   const warm = {}; // Newton starts each step from the last one's answer
   let n = 0;
   return { step() {
-    const t = n++ * dt, flat = [], owner = [];
+    const t = (opts.t0 ?? 0) + n++ * dt, flat = [], owner = [];
     elements.forEach((e, k) => {
       const s = state[k];
       if (e.type === "C") { const g = (be ? 1 : 2) * e.farads / dt; flat.push({ type: "R", a: e.a, b: e.b, ohms: 1 / g }, { type: "I", a: e.b, b: e.a, amps: g * s.v + (be ? 0 : s.i) }); owner.push(k, -1); }
