@@ -27,7 +27,7 @@
       if (e.data.overlay) store.set("overlay", e.data.overlay);
       if (e.data.view) { // the NYC map leads; say where we actually ended up (Windy stops at its own zoom range)
         map.setView([e.data.view[0], e.data.view[1]], e.data.view[2], { animate: false });
-        tell({ windyZoom: map.getZoom() });
+        tell({ windyZoom: map.getZoom(), asked: e.data.view[2] });
       }
     });
     store.on("overlay", (o) => tell({ windyOverlay: o }));

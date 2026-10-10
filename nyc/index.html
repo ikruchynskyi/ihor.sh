@@ -694,11 +694,19 @@ document.addEventListener("click", (e) => {
 // windy.com's forecast map (wind, rain, temperature…) with its own legend. Its API needs its own Leaflet 1.4 map, so it
 // runs in nyc/windy.html, in an iframe laid exactly under this map. While it's on, our street tiles hide and our map
 // turns see-through: every marker stays visible and clickable on top, and our map drives Windy's view as it moves.
-let windyFrame = null, maxZoomBefore = null;
+let windyFrame = null, maxZoomBefore = null, windyAt = null; // windyAt: the view Windy was last sent [lat, lon, zoom]
 $("n-windy").innerHTML = `<select id="windyOverlay" aria-label="Windy forecast layer">${["wind", "rain", "temp", "clouds", "gust", "pressure", "rh", "thunder"].map((o) => `<option>${o}</option>`).join("")}</select>`;
 const windyView = () => { const c = map.getCenter(); return [+c.lat.toFixed(5), +c.lng.toFixed(5), map.getZoom()]; };
 const placeWindy = () => { if (!windyFrame) return; const r = $("map").getBoundingClientRect(); Object.assign(windyFrame.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` }); };
-const syncWindy = () => windyFrame?.contentWindow?.postMessage({ view: windyView() }, location.origin);
+// Windy only shows whole zoom levels, so mid-pinch (fractional zoom) its last frame is stretched and moved to match
+// ours instead, and it gets the new view when the gesture settles on a whole level.
+function syncWindy() {
+  if (!windyFrame) return;
+  if (map.getZoom() % 1 === 0) { windyAt = windyView(); windyFrame.style.transform = ""; return windyFrame.contentWindow?.postMessage({ view: windyAt }, location.origin); }
+  if (!windyAt) return;
+  const p = map.latLngToContainerPoint(windyAt), size = map.getSize();
+  windyFrame.style.transform = `translate(${p.x - size.x / 2}px, ${p.y - size.y / 2}px) scale(${map.getZoomScale(map.getZoom(), windyAt[2])})`;
+}
 function showWindy(on) {
   document.body.classList.toggle("windy-on", on);
   if (!on) {
@@ -706,7 +714,7 @@ function showWindy(on) {
     if (maxZoomBefore !== null) { map.setMaxZoom(maxZoomBefore); maxZoomBefore = null; }
     return;
   }
-  const [la, lo, z] = windyView();
+  const [la, lo, z] = windyAt = windyView();
   windyFrame = Object.assign(document.createElement("iframe"), { id: "windyFrame", title: "windy.com forecast map", tabIndex: -1, src: `/nyc/windy.html#${la},${lo},${z},${$("windyOverlay").value}` });
   document.body.prepend(windyFrame);
   placeWindy();
@@ -725,7 +733,8 @@ addEventListener("message", (e) => {
   }
   if (e.data.windyOverlay) $("windyOverlay").value = e.data.windyOverlay;
   // if Windy couldn't follow (outside its zoom range), ours goes where Windy is, so the markers stay on the right spots
-  if (e.data.windyZoom != null && e.data.windyZoom !== map.getZoom()) map.setZoom(e.data.windyZoom, { animate: false });
+  // (only an answer to the view we're at now: a late answer about an earlier view would pull the map back mid-gesture)
+  if (e.data.windyZoom != null && e.data.asked === map.getZoom() && e.data.windyZoom !== e.data.asked) map.setZoom(e.data.windyZoom, { animate: false });
 });
 
 // Street photos from Mapillary (© Mapillary contributors, CC BY-SA 4.0): dots for the photos in view once zoomed in
