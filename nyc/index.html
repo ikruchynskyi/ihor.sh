@@ -99,6 +99,7 @@
     .cam header b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
+    .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
     #disclaimer { position: fixed; bottom: 22px; left: 440px; right: 200px; z-index: 800; margin: 0; padding: 3px 8px; width: fit-content; max-width: 520px;
       font-size: 11px; line-height: 1.3; background: var(--card); color: var(--muted); border: 1px solid var(--line); pointer-events: none; }
     @media (max-width: 700px) { #disclaimer { top: 64px; bottom: auto; left: 56px; right: 56px; margin: 0 auto; text-align: center; } }
@@ -310,7 +311,7 @@ async function toggle(k, on) {
   l.group.addTo(map);
   if (k === "buses" && map.getZoom() < 15) map.setZoom(15); // stops only show from zoom 15; moveend then loads them
   if (k === "buses") return loadBusStops(l.group).catch(() => {});
-  if (!l.loaded) { l.loaded = true; await l.load(l.group).catch((e) => ($(`n-${k}`).textContent = `(failed: ${e.message})`)); }
+  if (!l.loaded) { l.loaded = true; await Promise.resolve(l.load(l.group)).catch((e) => ($(`n-${k}`).textContent = `(failed: ${e.message})`)); } // some loaders are synchronous
 }
 const DOT = 1.3; // every marker a bit bigger, so they read on a phone
 const dot = (lat, lon, color, r = 6) => L.circleMarker([lat, lon], { radius: r * DOT, color, fillColor: color, fillOpacity: 0.85, weight: 1, bubblingMouseEvents: false });
@@ -746,6 +747,18 @@ document.addEventListener("click", async (e) => {
   const [la, lo] = b.dataset.near.split(",").map(Number);
   openCam(await nearestCam(la, lo));
 });
+// Every popup on the map gets the button (a station, a bike dock, a ferry stop, an outage, a report, an address, a
+// restaurant…): hooked where Leaflet renders popup content, so it also survives a popup that fills in later.
+{
+  const render = L.Popup.prototype._updateContent;
+  L.Popup.prototype._updateContent = function () {
+    render.call(this);
+    const node = this._contentNode, ll = this.getLatLng?.();
+    if (!node || !ll || node.querySelector("[data-near]") || this._source?.options?.icon?.options?.className === "cam-icon") return;
+    if (/^(Loading…|Looking up…|Couldn't|That train|That bus|No NYC address)/.test(node.textContent.trim())) return;
+    node.insertAdjacentHTML("beforeend", `<div class="cam-foot">${camBtn(ll.lat, ll.lng)}</div>`);
+  };
+}
 
 async function loadCityEvents(g) {
   const list = await getJSON(`/api/nyc/city-events?from=${today}&free=1`);
