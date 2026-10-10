@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audio Electronics</title>
+  <meta name="description" content="Electronics from scratch, chapter 16: audio. Microphones (dynamic, electret, MEMS) and your own on a live scope, decibels from millivolts to watts, amplifier classes A, B, AB and D drawn and played out loud (crossover distortion, clipping, efficiency, harmonics and THD), and speakers: power into 4 and 8 ohms." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .formula { text-align: center; }
+    input[type=range] { width: 180px; }
+    .cls.on { background: #83c167 !important; color: #10131a !important; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 16</p>
+  <h1>Audio</h1>
+  <p class="lede">Audio is the whole course in one signal chain. A microphone turns air pressure into a few millivolts, an amplifier (chapter 7's op-amps, then transistors that can push current) makes it big, and a speaker (chapter 14's motor, moving in a line instead of a circle) turns it back into air. Along the way it's chapter 8's filters, chapter 10's power supplies, chapter 13's PWM, and the ear as the final judge: you'll <em>hear</em> each amplifier's mistakes below.</p>
+  <div class="plain card"><b>In plain words:</b> sound is the air pressure wiggling, 20 to 20,000 times a second. A microphone makes a voltage that wiggles the same way, an amplifier makes a bigger copy of that voltage, and a speaker uses the copy to push the air. Everything that goes wrong is the copy not being exact.</div>
+
+  <h2>1. Microphones: pressure to voltage</h2>
+  <p>A <b>dynamic</b> microphone is a speaker run backwards: a diaphragm moves a coil in a magnet's field and induces a voltage (chapter 3), no power needed, about 2 mV for speech. An <b>electret</b> capsule is a capacitor (chapter 2) whose one plate is the diaphragm, permanently charged; sound changes the gap and so the voltage, and a tiny built-in transistor needs a few volts of bias through a resistor to read it out. A <b>MEMS</b> microphone (every phone and laptop) is the same idea etched in silicon with its own ADC, sending numbers over I²S (chapter 13's buses again). Here's yours, if you let the page listen:</p>
+  <canvas id="c1" width="800" height="220" aria-label="Your microphone's live waveform and level"></canvas>
+  <div class="row"><button id="mic">🎤 Use my microphone</button><span class="readout" style="margin:0" id="micst">nothing is recorded or sent anywhere: the samples are drawn and dropped</span></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> whistle a steady note and read its frequency.</p>
+
+  <h2>2. Decibels: from millivolts to watts</h2>
+  <p>Audio levels span a huge range, so they're counted in decibels: every ×10 in voltage is +20 dB, every ×2 is about +6 dB. A dynamic mic gives ~2 mV, "line level" between devices is ~1 V, and a speaker at a loud party gets ~10 V across it. Each stage of a chain has a gain in dB, and the gains just add.</p>
+  <p class="formula">\[ G_\text{dB} = 20 \log_{10} \frac{V_\text{out}}{V_\text{in}} \]</p>
+  <div class="q" data-num="40" data-tol="0.1">
+    <p>A preamp turns a 10 mV microphone signal into 1 V. What's its gain in dB?</p>
+    <div class="why">\(1 / 0.01 = 100\), and \(20 \log_{10} 100 = 40\) dB. Two ×10 steps, 20 dB each.</div>
+  </div>
+
+  <h2>3. Amplifier classes, drawn and played</h2>
+  <p>The output stage has to push real current into a speaker, and the ways of doing it trade quality against heat:</p>
+  <ul>
+    <li><b>Class A:</b> one transistor biased half-on all the time, so it amplifies the whole wave smoothly. It also burns power even in silence: at most 25% of the supply's power reaches the speaker (with a simple resistor load).</li>
+    <li><b>Class B:</b> two transistors in push-pull, one for the positive half, one for the negative. Nothing flows at rest, up to 78.5% efficient. But each transistor needs ~0.6 V to turn on (chapter 4), so near zero <em>neither</em> conducts: a little flat step at every zero crossing, <b>crossover distortion</b>, that sounds harsh exactly when the music is quiet.</li>
+    <li><b>Class AB:</b> class B with a small idle current through both so the handover is seamless. Almost every hi-fi amplifier.</li>
+    <li><b>Class D:</b> the output transistors only switch fully on or off at hundreds of kHz (chapter 13's PWM, with the duty following the music), and an LC filter (chapter 8) smooths it back to audio. Switches waste almost nothing: 90%+, which is why a tiny Bluetooth speaker runs all day.</li>
+  </ul>
+  <canvas id="c3" width="800" height="300" aria-label="An amplifier's input and output waveforms, with harmonics"></canvas>
+  <div class="row"><span>class</span><button class="cls" data-c="A">A</button><button class="cls" data-c="B">B</button><button class="cls" data-c="AB">AB</button><button class="cls" data-c="D">D</button></div>
+  <div class="row"><label>volume <input type="range" id="amp" min="0.02" max="1.6" step="0.01" value="0.3"> <span id="ampv"></span></label><button id="play">▶ Play 1 s</button><label><input type="checkbox" id="cmp"> play the clean input after it</label></div>
+  <p class="readout" id="o3"></p>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> find the setting that sounds worst at a <em>low</em> volume, then the one that clips at a high volume.</p>
+  <div class="q" data-answer="b">
+    <p>Why is crossover distortion worse at low volume, while clipping is worse at high volume?</p>
+    <ul><li data-k="a" data-says="The dead zone doesn't change size with the signal.">The transistors heat up when quiet</li><li data-k="b">The dead zone is a fixed ±0.6 V: a big wave barely notices it, a small wave is mostly dead zone. Clipping only starts when the wave reaches the supply rails.</li><li data-k="c" data-says="Both distortions come from the output stage itself.">The speaker distorts quiet sounds</li></ul>
+    <div class="why">Distortion is the share of the output that isn't the input. A fixed-size flaw is a big share of a small wave; the rails are a limit only big waves meet. That's why THD (total harmonic distortion) specs always say "at 1 W" or similar.</div>
+  </div>
+
+  <h2>4. Speakers: power into ohms</h2>
+  <p>A speaker is a coil glued to a paper or plastic cone, sitting in a magnet's gap: the current pushes the coil in and out (chapter 14's force, \(F = B I \ell\)). Its <b>impedance</b>, usually 4 or 8 Ω, is mostly the coil's resistance (plus its inductance, which rises with frequency). Power is chapter 1's \(P = V^2/R\), with the RMS voltage (a sine's peak ÷ √2).</p>
+  <canvas id="c4" width="800" height="220" aria-label="A speaker's cone moving with the voltage across it"></canvas>
+  <div class="row"><label>peak voltage <input type="range" id="sv" min="0" max="20" step="0.1" value="6"> <span id="svv"></span></label><label>impedance <select id="sz"><option>4</option><option selected>8</option></select> Ω</label></div>
+  <p class="readout" id="o4"></p>
+  <p class="formula">\[ P = \frac{V_\text{rms}^2}{R}, \qquad V_\text{rms} = \frac{V_\text{peak}}{\sqrt{2}} \]</p>
+  <div class="q" data-num="8.94" data-tol="0.05">
+    <p>What RMS voltage drives an 8 Ω speaker at 10 W?</p>
+    <div class="why">\(V = \sqrt{P R} = \sqrt{80} \approx 8.94\) V RMS, a 12.6 V peak, so the amplifier's supply has to be at least ±13 V (or 26 V for a bridged class D). Doubling the loudness you hear takes about ten times the power.</div>
+  </div>
+  <div class="q">
+    <p>A 4 Ω speaker on the same amplifier, at the same voltage, takes twice the power of an 8 Ω one. Why can that be a problem?</p>
+    <div class="why">Twice the power means twice the current through the output transistors (\(I = V/R\)), and their heat grows with current. An amplifier rated for 8 Ω may overheat, or shut down, on 4 Ω. That's why speakers and amplifiers state their impedance.</div>
+  </div>
+
+  <div class="code" id="thd" data-title="Build it: measure distortion (one DFT bin per harmonic)"><textarea>
+// One cycle of a sine through a class-B stage with a ±0.6 V dead zone, then the harmonics by a DFT.
+const N = 1024;
+const classB = (v, dead = 0.6) => (v > dead ? v - dead : v < -dead ? v + dead : 0);
+const clip = (v, rail) => Math.max(-rail, Math.min(rail, v));
+function harmonics(f, peak, count = 9) {
+  const y = [...Array(N)].map((_, n) => f(peak * Math.sin((2 * Math.PI * n) / N)));
+  return [...Array(count)].map((_, k) => {
+    let re = 0, im = 0; for (let n = 0; n < N; n++) { re += y[n] * Math.cos((2 * Math.PI * (k + 1) * n) / N); im += y[n] * Math.sin((2 * Math.PI * (k + 1) * n) / N); }
+    return (2 / N) * Math.hypot(re, im);
+  });
+}
+const thd = (h) => (100 * Math.sqrt(h.slice(1).reduce((s, a) => s + a * a, 0))) / h[0];
+for (const peak of [1, 3, 10]) print(`class B, ${peak} V peak: THD ${thd(harmonics((v) => classB(v), peak)).toFixed(1)}%`);
+for (const peak of [10, 13, 16]) print(`clipping at ±12 V, ${peak} V peak: THD ${thd(harmonics((v) => clip(v, 12), peak)).toFixed(1)}%`);
+plot(harmonics((v) => classB(v), 1).map((a, k) => [k + 1, a]), { label: "class B at 1 V: harmonic amplitudes (only odd ones: the flaw is symmetric)" });
+</textarea></div>
+  <div class="code" data-title="Build it: a class-D amplifier (PWM, then an LC low-pass)"><textarea>
+// A 1 kHz tone as PWM at 384 kHz, switched between ±12 V, then a 2nd-order low-pass at ~30 kHz.
+const fs = 384e3 * 32, fc = 384e3, f = 1000, cycles = 2;
+const fo = 30e3, Q = 0.7, w0 = 2 * Math.PI * fo, dt = 1 / fs;
+let i = 0, v = 0, out = [];   // a state-variable model of the LC filter: v'' = w0²(u − v) − (w0/Q) v'
+for (let n = 0; n < (fs / f) * cycles; n++) {
+  const t = n * dt, audio = 0.8 * Math.sin(2 * Math.PI * f * t), saw = ((t * fc) % 1) * 2 - 1;
+  const u = audio > saw ? 12 : -12;                        // the comparator: PWM with duty following the audio
+  i += dt * (w0 * w0 * (u - v) - (w0 / Q) * i); v += dt * i;
+  if (n % 256 === 0) out.push([t * 1000, v]);
+}
+plot(out, { label: "filtered class-D output (V) vs ms: a 9.6 V-peak sine from switches that are only ever fully on or off" });
+</textarea></div>
+
+  <p>That's the electronics track. To build any of it, start in the <a href="/learn/lab.html">circuit lab</a> (op-amp amplifiers and filters are ready-made circuits), and the <a href="/radio/course/">radio course</a> is where filters, mixing and audio meet again, in software.</p>
+  <p class="muted">Previous: <a href="./15-hands-on.html">Hands-on</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const C = { stage: "#14171d", text: "#d7dde5", dim: "#4a5262", wire: "#8f98a8", blue: "#58c4dd", yellow: "#f4d35e", green: "#83c167", red: "#fc6255", purple: "#9a72ac" };
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const line = (g, pts, color, w = 3) => { g.strokeStyle = color; g.lineWidth = w; g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
+let ctx = null; const audio = () => (ctx ??= new AudioContext());
+
+// ---------- 1. microphone ----------
+let analyser = null, buf = null;
+$("mic").onclick = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    analyser = audio().createAnalyser(); analyser.fftSize = 4096; buf = new Float32Array(analyser.fftSize);
+    audio().createMediaStreamSource(stream).connect(analyser);
+    $("mic").disabled = true; $("micst").textContent = "listening (the samples never leave this page)";
+  } catch (e) { $("micst").textContent = `no microphone: ${e.message}`; }
+};
+let whistle = 0;
+function drawMic() {
+  const g = $("c1").getContext("2d"), W = 800, H = 220;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  if (!analyser) { g.fillStyle = C.dim; g.font = "15px ui-monospace, monospace"; g.fillText("press 'Use my microphone' to see your voice as a voltage", 160, 115); requestAnimationFrame(drawMic); return; }
+  analyser.getFloatTimeDomainData(buf);
+  // trigger on a rising zero crossing (chapter 15's scope trick) so the wave stands still
+  let s0 = 0; for (let k = 1; k < buf.length / 2; k++) if (buf[k - 1] < 0 && buf[k] >= 0) { s0 = k; break; }
+  const pts = []; for (let x = 0; x < W - 120; x++) pts.push([x, H / 2 - buf[s0 + x] * H * 1.6]);
+  line(g, pts, C.green, 2);
+  const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length), db = 20 * Math.log10(rms + 1e-9);
+  const frac = Math.max(0, Math.min(1, (db + 70) / 70)); g.fillStyle = C.dim; g.fillRect(W - 60, 20, 30, 180); g.fillStyle = frac > 0.85 ? C.red : C.green; g.fillRect(W - 60, 200 - frac * 180, 30, frac * 180);
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText(`${db.toFixed(0)} dBFS`, W - 112, 214);
+  // frequency by autocorrelation, for a steady tone
+  let best = 0, lag = 0; const sr = audio().sampleRate;
+  for (let L = Math.floor(sr / 3000); L < sr / 80; L++) { let c = 0; for (let k = 0; k < 1024; k++) c += buf[k] * buf[k + L]; if (c > best) { best = c; lag = L; } }
+  let e = 0; for (let k = 0; k < 1024; k++) e += buf[k] * buf[k];
+  const clean = best / (e + 1e-12) > 0.85 && rms > 0.01, hz = lag ? sr / lag : 0;
+  $("o1").textContent = `level ${db.toFixed(1)} dB below full scale${clean ? ` · steady tone ≈ ${hz.toFixed(0)} Hz` : rms > 0.01 ? " · a mix of frequencies (speech): no single pitch" : " · quiet"}`;
+  if (clean && hz > 500) { whistle++; if (whistle > 30) done("g1", `About ${hz.toFixed(0)} hertz! A whistle is nearly a pure sine.`); } else whistle = 0;
+  requestAnimationFrame(drawMic);
+}
+requestAnimationFrame(drawMic);
+
+// ---------- 3. amplifier classes ----------
+const RAIL = 1.2, DEAD = 0.15; // in "volume" units: the rails at 1.2, the class-B dead zone ±0.15 (0.6 V on a ±4.8 V stage)
+const STAGE = {
+  A: (v) => { const y = Math.max(-RAIL, Math.min(RAIL, v)); return y + 0.06 * y * y; }, // single-ended: a little even-harmonic bend
+  B: (v) => { const y = v > DEAD ? v - DEAD : v < -DEAD ? v + DEAD : 0; return Math.max(-RAIL, Math.min(RAIL, y * (1 + DEAD))); },
+  AB: (v) => Math.max(-RAIL, Math.min(RAIL, v)),
+  D: (v) => Math.max(-RAIL, Math.min(RAIL, v)),
+};
+let cls = "B", tried = new Set();
+const harm = (f, a, N = 512) => [...Array(8)].map((_, k) => { let re = 0, im = 0; for (let n = 0; n < N; n++) { const y = f(a * Math.sin((2 * Math.PI * n) / N)); re += y * Math.cos((2 * Math.PI * (k + 1) * n) / N); im += y * Math.sin((2 * Math.PI * (k + 1) * n) / N); } return (2 / N) * Math.hypot(re, im); });
+function draw3() {
+  const a = +$("amp").value, f = STAGE[cls], g = $("c3").getContext("2d"), W = 800, H = 300;
+  $("ampv").textContent = a.toFixed(2);
+  document.querySelectorAll(".cls").forEach((b) => b.classList.toggle("on", b.dataset.c === cls));
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  const x0 = 20, x1 = 540, mid = 150, sc = 95;
+  for (const r of [RAIL, -RAIL]) { g.setLineDash([4, 6]); line(g, [[x0, mid - r * sc], [x1, mid - r * sc]], C.red, 1); g.setLineDash([]); }
+  g.fillStyle = C.red; g.font = "12px ui-monospace, monospace"; g.fillText("supply rail", x0 + 4, mid - RAIL * sc - 4);
+  const inp = [], out = [], pwm = [];
+  for (let x = x0; x <= x1; x++) {
+    const ph = ((x - x0) / (x1 - x0)) * 2 * 2 * Math.PI, v = a * Math.sin(ph);
+    inp.push([x, mid - v * sc]); out.push([x, mid - f(v) * sc]);
+    if (cls === "D") { const saw = (((x - x0) / 6) % 1) * 2 - 1; pwm.push([x, mid - (v / RAIL > saw ? RAIL : -RAIL) * sc]); }
+  }
+  if (cls === "D") line(g, pwm, "rgba(244,211,94,.25)", 1);
+  if (cls === "B" || cls === "AB") { g.fillStyle = "rgba(252,98,85,.10)"; g.fillRect(x0, mid - DEAD * sc, x1 - x0, 2 * DEAD * sc); }
+  line(g, inp, C.dim, 2); line(g, out, C.green, 2.5);
+  g.fillStyle = C.dim; g.fillText("input (scaled)", x1 - 110, 290); g.fillStyle = C.green; g.fillText("output", x1 - 200, 290);
+  // harmonics and THD
+  const h = harm(f, a), thd = (100 * Math.sqrt(h.slice(1).reduce((s, v) => s + v * v, 0))) / (h[0] || 1);
+  g.fillStyle = C.text; g.fillText("harmonics (log)", 600, 24);
+  h.forEach((v, k) => { const db = Math.max(-80, 20 * Math.log10(v / (h[0] || 1) + 1e-9)), bh = ((db + 80) / 80) * 200; g.fillStyle = k ? C.yellow : C.green; g.fillRect(600 + k * 24, 240 - bh, 16, bh); g.fillStyle = C.dim; g.fillText(k + 1, 604 + k * 24, 256); });
+  g.fillStyle = C.text; g.fillText(`THD ${thd < 0.1 ? "< 0.1" : thd.toFixed(1)}%`, 600, 280);
+  // efficiency: A ≤ 25%·(a/rail)², B/AB ≈ 78.5%·(a/rail), D ≈ 90%
+  const m = Math.min(1, a / RAIL), eff = { A: 25 * m * m, B: 78.5 * m, AB: 75 * m, D: 92 }[cls];
+  const clipped = a > RAIL;
+  $("o3").textContent = `class ${cls}: efficiency ≈ ${eff.toFixed(0)}% (the rest heats the transistors) · THD ${thd.toFixed(1)}%${clipped ? " · clipping: the wave hits the supply rails and is flattened, a buzz of odd harmonics" : cls === "B" && thd > 5 ? " · crossover distortion: the flat step at every zero crossing" : ""}`;
+  if (cls === "B" && a < 0.4 && thd > 15) tried.add("cross"); if (clipped && thd > 10) tried.add("clip");
+  if (tried.size === 2) done("g3", "Crossover at the quiet end, clipping at the loud end. Class AB at a sane volume avoids both.");
+}
+document.querySelectorAll(".cls").forEach((b) => (b.onclick = () => { cls = b.dataset.c; draw3(); }));
+$("amp").oninput = draw3; draw3();
+$("play").onclick = () => {
+  const ac = audio(), sr = ac.sampleRate, a = +$("amp").value, f = STAGE[cls], both = $("cmp").checked, n = sr * (both ? 2.2 : 1);
+  const b = ac.createBuffer(1, n, sr), d = b.getChannelData(0);
+  for (let k = 0; k < n; k++) { const t = k / sr, v = a * Math.sin(2 * Math.PI * 330 * t), second = t > 1.2, y = t > 1 && t < 1.2 ? 0 : second ? v : f(v); const env = Math.min(1, (t % 1.2) * 50, ((both ? 2.2 : 1) - t) * 50); d[k] = 0.18 * y * env; }
+  const src = ac.createBufferSource(); src.buffer = b; src.connect(ac.destination); src.start();
+};
+
+// ---------- 4. speaker ----------
+let t4 = 0;
+function draw4() {
+  const Vp = +$("sv").value, Z = +$("sz").value, Vr = Vp / Math.SQRT2, P = (Vr * Vr) / Z, I = Vp / Z;
+  $("svv").textContent = `${Vp.toFixed(1)} V`;
+  t4 += 0.08; const x = Math.sin(t4) * Math.min(1, Vp / 20) * 18, g = $("c4").getContext("2d");
+  g.fillStyle = C.stage; g.fillRect(0, 0, 800, 220);
+  // magnet, coil, cone
+  g.fillStyle = "#555c66"; g.fillRect(60, 80, 70, 60); g.fillStyle = "#2c6fbb"; g.fillRect(130, 95, 20, 30);
+  g.fillStyle = C.yellow; g.fillRect(150 + x, 92, 26, 36);
+  g.fillStyle = "#c9b48a"; g.beginPath(); g.moveTo(176 + x, 92); g.lineTo(300 + x * 0.8, 20); g.lineTo(300 + x * 0.8, 200); g.lineTo(176 + x, 128); g.closePath(); g.fill();
+  // air waves
+  for (let k = 0; k < 8; k++) { const r = ((t4 * 18 + k * 40) % 320), alpha = Math.max(0, 1 - r / 320) * Math.min(1, Vp / 6); g.strokeStyle = `rgba(88,196,221,${alpha * 0.6})`; g.lineWidth = 2; g.beginPath(); g.arc(300, 110, 20 + r, -0.6, 0.6); g.stroke(); }
+  g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("magnet", 64, 160); g.fillText("coil", 150, 160); g.fillText("cone", 240, 214);
+  $("o4").textContent = `${Vp.toFixed(1)} V peak = ${Vr.toFixed(2)} V RMS into ${Z} Ω → ${P.toFixed(1)} W, ${I.toFixed(2)} A peak${P > 50 ? " · past what a small speaker's voice coil survives" : ""}`;
+}
+for (const id of ["sv", "sz"]) $(id).oninput = draw4; setInterval(draw4, 40);
+
+window.blipContext = () => ({ page: "Electronics chapter 16: audio (microphones, decibels, amplifier classes A/B/AB/D with THD, speakers and power)", amplifierClass: cls, volume: $("amp").value });
+</script>
+</body>
+</html>
