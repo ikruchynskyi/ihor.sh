@@ -50,7 +50,10 @@ const PRESETS = ["LongFast", "LongSlow", "VeryLongSlow", "MediumSlow", "MediumFa
 export type MeshNode = { num: number; id: string; long?: string; short?: string; hw?: number; role?: number; lat?: number; lon?: number; alt?: number; posAt?: number; snr?: number; rssi?: number; heard?: number; hops?: number; battery?: number; voltage?: number; chUtil?: number; airTx?: number; uptime?: number; viaMqtt?: boolean };
 export const isPublic = (m: MeshMsg) => m.to === BROADCAST;
 export type MeshMsg = { id: number; from: number; to: number; channel: number; text: string; at: number; snr?: number; rssi?: number; hops?: number; mine?: boolean };
-export const mesh = { connected: false, port: "", myNum: 0, region: "", preset: "", channels: [] as { index: number; name: string; role: number }[], nodes: new Map<number, MeshNode>(), messages: [] as MeshMsg[], packets: 0, lastPacket: 0, log: [] as string[] };
+export const mesh = { connected: false, port: "", myNum: 0, region: "", preset: "", channels: [] as { index: number; name: string; role: number }[], nodes: new Map<number, MeshNode>(), messages: [] as MeshMsg[], packets: 0, lastPacket: 0, log: [] as string[],
+  // what arrives, to tell "nobody chatted" from "we can't read their channel": decoded packets per app port, and
+  // encrypted ones per channel hash (the byte the radio sends for a channel it has no key for)
+  ports: {} as Record<string, number>, encrypted: {} as Record<string, number> };
 const BROADCAST = 0xffffffff;
 const hexId = (n: number) => `!${(n >>> 0).toString(16).padStart(8, "0")}`;
 const node = (n: number) => mesh.nodes.get(n) ?? mesh.nodes.set(n, { num: n, id: hexId(n) }).get(n)!;
@@ -99,8 +102,9 @@ function packet(p: Map<number, Field[]>) {
   n.heard = rxTime; if (snr != null && snr !== 0) n.snr = snr; if (rssi) n.rssi = rssi;
   if (hopStart != null && hopLimit != null) n.hops = hopStart - hopLimit;
   if (num(p, 14) === 1) n.viaMqtt = true;
-  if (!d) return emit("node", n); // encrypted for a channel we don't have
+  if (!d) { const h = String(num(p, 3) ?? "?"); mesh.encrypted[h] = (mesh.encrypted[h] ?? 0) + 1; save(); return emit("node", n); } // encrypted for a channel we don't have
   const port = num(d, 1) ?? 0, payload = one(d, 2);
+  mesh.ports[port] = (mesh.ports[port] ?? 0) + 1;
   const body = Buffer.isBuffer(payload) ? payload : Buffer.alloc(0);
   try {
     if (port === 1) {
@@ -119,9 +123,9 @@ const FILE = path.join(import.meta.dirname, "data", "mesh.json");
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, myNum: mesh.myNum })); } catch {} }, 2000);
+  saveTimer = setTimeout(() => { try { writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, myNum: mesh.myNum, ports: mesh.ports, encrypted: mesh.encrypted })); } catch {} }, 2000);
 }
-try { const d = JSON.parse(readFileSync(FILE, "utf8")); for (const n of d.nodes) mesh.nodes.set(n.num, n); mesh.messages = d.messages ?? []; mesh.myNum = d.myNum ?? 0; } catch {}
+try { const d = JSON.parse(readFileSync(FILE, "utf8")); for (const n of d.nodes) mesh.nodes.set(n.num, n); mesh.messages = d.messages ?? []; mesh.myNum = d.myNum ?? 0; mesh.ports = d.ports ?? {}; mesh.encrypted = d.encrypted ?? {}; } catch {}
 
 /** Frames are 0x94 0xC3, a 2-byte big-endian length, then a protobuf. Anything else on the line is the node's debug log. */
 export function deframer(onFrame: (b: Buffer) => void, onLog: (line: string) => void = () => {}) {
@@ -194,7 +198,7 @@ export function meshState(owner = false) {
   return {
     connected: mesh.connected, me: mesh.myNum ? hexId(mesh.myNum) : null, myNum: mesh.myNum, region: mesh.region, preset: mesh.preset,
     channels: mesh.channels.filter((c) => c.role > 0).map((c) => ({ index: c.index, name: c.name || (c.index === 0 ? mesh.preset || "Primary" : `Channel ${c.index}`) })),
-    packets: mesh.packets, lastPacket: mesh.lastPacket,
+    packets: mesh.packets, lastPacket: mesh.lastPacket, ports: mesh.ports, encryptedByChannelHash: mesh.encrypted,
     nodes: [...mesh.nodes.values()].filter((n) => n.num === mesh.myNum || (n.heard ?? 0) > since).sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0)),
     messages: owner ? mesh.messages : mesh.messages.filter((m) => m.to === BROADCAST), owner,
   };

@@ -5,6 +5,7 @@ import { RtlSdr } from "./rtlsdr.ts";
 import { RemoteSdr } from "./remote.ts";
 import { GAINS } from "./r820t.ts";
 import { streamOut } from "./player.ts";
+import { joinRoom } from "./room.ts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const num = (id: string) => parseFloat($<HTMLInputElement>(id).value) || 0;
@@ -312,8 +313,32 @@ scope.addEventListener("keydown", (e) => {
   else if (e.key === "0") { resetView(); drawScope(); }
 });
 
+// Listening together: a chat for everyone on this page, with what each person listens to on the server SDR. Your
+// station is announced once it has stayed put for 2 s; "tune here" joins someone (it can move the shared window).
+const room = joinRoom($("room"), "spectrum", { title: "Listening together", joinLabel: "▶ tune here", join: (d) => joinStation(Number(d.mhz), String(d.mode)) });
+let announced = "", announceTimer = 0, quiet = false;
+function announce() {
+  clearTimeout(announceTimer);
+  if (quiet) return;
+  announceTimer = window.setTimeout(() => {
+    if (!(sdr instanceof RemoteSdr)) return;
+    const mhz = +fmtMHz(centerHz() + num("offset") * 1e3, 3), key = `${mhz}|${modeNow()}`;
+    if (key !== announced) { announced = key; room.act(`listening to ${mhz.toFixed(3)} MHz ${modeNow()}`, { mhz, mode: modeNow() }); }
+  }, 2000);
+}
+async function joinStation(mhz: number, mode: string) {
+  if (!(mhz >= 24 && mhz <= 1766)) return;
+  if (["WFM", "NFM", "AM", "USB", "LSB", "CW"].includes(mode) && mode !== modeNow()) setMode(mode as Mode);
+  $<HTMLInputElement>("liveFreq").value = mhz.toFixed(3);
+  if (!(sdr instanceof RemoteSdr)) return liveStatus(`Ready for ${mhz.toFixed(3)} MHz ${mode}: press "Listen to server SDR" to hear it.`);
+  const f = mhz * 1e6;
+  if (Math.abs(f - centerHz()) < 0.45 * fs) setOffset(f - centerHz()); // inside the shared window: nobody else moves
+  else await tuneTo(f);
+}
+
 /** Tuning, mode, bandwidth or shift changed. `full`: also redo the stage plots (skipped mid-drag). */
 function retune(full = true) {
+  announce();
   drawScope();
   if (sdr) $<HTMLInputElement>("liveFreq").value = fmtMHz(centerHz() + num("offset") * 1e3, 3);
   if (sdr || filePlay) newChain();
@@ -596,7 +621,7 @@ async function connect(remote: boolean) {
     $<HTMLButtonElement>(remote ? "connect" : "remote").disabled = true;
     $<HTMLButtonElement>("play").disabled = true;
     streaming = sdr.stream(onSamples).catch((e) => liveStatus(`Stream stopped: ${e.message}`));
-    if (remote) syncTimer = window.setInterval(() => syncRemote().catch(() => {}), 3000);
+    if (remote) { syncTimer = window.setInterval(() => syncRemote().catch(() => {}), 3000); announce(); }
   } catch (e) {
     if (sdr) await sdr.close().catch(() => {});
     sdr = null;
@@ -606,6 +631,7 @@ async function connect(remote: boolean) {
 }
 
 async function disconnect() {
+  if (sdr instanceof RemoteSdr) { room.act("stopped listening"); announced = ""; }
   const s = sdr;
   sdr = null;
   clearInterval(syncTimer);
@@ -646,7 +672,7 @@ async function syncRemote() {
     setOffset(mine - st.center);
     liveStatus(`Another listener moved the radio's window to ${windowText(st.center)}. You're still on ${fmtMHz(mine, 3)} MHz.`);
   } else {
-    retune();
+    quiet = true; retune(); quiet = false; // not a station you chose: don't announce it
     liveStatus(`Another listener moved the radio to ${windowText(st.center)}, so ${fmtMHz(mine, 3)} MHz is out of reach now. Tuning back to it moves the window for them too.`);
   }
 }
@@ -668,6 +694,7 @@ async function tuneTo(freq: number) {
   wf.img.getContext("2d")!.clearRect(0, 0, WF_N, WF_ROWS);
   if (view.hi - view.lo < fs) setView(LIVE_OFFSET - (view.hi - view.lo) / 2, LIVE_OFFSET + (view.hi - view.lo) / 2);
   const src = sdr instanceof RemoteSdr ? "server SDR" : `${sdr.tunerName} tuner`;
+  announce();
   liveStatus(`Live: ${src}, ${(fs / 1e6).toFixed(2)} MS/s, listening on ${(freq / 1e6).toFixed(3)} MHz${sdr instanceof RemoteSdr && others ? ` (the window moved for the ${others} other listener${others > 1 ? "s" : ""} too)` : ""}`);
 }
 
@@ -734,6 +761,7 @@ $("demo").click();
 (window as any).blipContext = () => ({
   page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: modeNow(),
   frequencyMHz: +fmtMHz(centerHz() + num("offset") * 1e3), tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), filterShiftKHz: num("shift"), live: !!sdr,
+  listeningTogether: room.summary(),
   squelchDb: num("sql") > SQL_OFF ? num("sql") : "off", signalDb: chain && !Number.isNaN(sqLevel) ? Math.round(sqLevel) : undefined, noiseFloorDb: Math.round(wf.floor),
   cw: modeNow() === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
 });

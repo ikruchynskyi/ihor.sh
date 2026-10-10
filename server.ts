@@ -13,6 +13,7 @@ import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { mcp } from "./mcp.ts";
+import { roomStream, roomPost } from "./room.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
@@ -276,6 +277,9 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(200, { "content-type": "application/json", "cache-control": empty ? "no-store" : "public, max-age=1800" }).end(JSON.stringify(out));
       } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
+    // Live rooms (room.ts): chat and shared actions on a page. Only known rooms.
+    const rm = url.pathname.match(/^\/api\/room\/(spectrum)(\/events)?$/);
+    if (rm) return rm[2] ? roomStream(rm[1], req, res) : req.method === "POST" ? roomPost(rm[1], req, res) : res.writeHead(405).end();
     if (url.pathname === "/api/nyc/trace") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));

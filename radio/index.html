@@ -52,6 +52,14 @@
     .inl button { padding: 2px 8px; }
     label.check { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--fg); }
     input[type=range] { padding: 0; width: 120px; }
+    .room { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+    .room-head { font-size: .9rem; } .room-people { color: var(--muted); font-size: .8rem; }
+    .room-log { list-style: none; margin: 8px 0; padding: 0; max-height: 180px; overflow: auto; font-size: .85rem; }
+    .room-log li { padding: 2px 0; } .room-t { color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
+    .room-log .room-join, .room-log .room-leave { color: var(--muted); } .room-log i { color: var(--muted); }
+    .room-go { padding: 1px 8px; font-size: .75rem; margin-left: 4px; }
+    .room-say { display: flex; gap: 6px; } .room-say input { flex: 1; min-width: 0; }
+    .room-note { font-size: .72rem; color: var(--muted); margin: 6px 0 0; }
     #rec.on { background: #e03131; border-color: #e03131; color: #fff; }
     .axis { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted);
             font-variant-numeric: tabular-nums; }
@@ -123,6 +131,7 @@
       <button id="rec" type="button" disabled title="Record what you hear">● Record</button>
     </div>
     <p class="stat" id="recStat"></p>
+    <div id="room"></div>
     <p class="stat">How each of these works, with the math and code: <a href="./course/18-reading-the-band.html">the screen, tuning, filter shift and squelch</a> · <a href="./course/19-cleaner-sound.html">voice filter, noise reduction, AGC, limiter, the audio stream and recording</a>.</p>
   </section>
 
