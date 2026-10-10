@@ -581,7 +581,7 @@ async function refreshAircraft(g) {
   const list = await getJSON("/api/nyc/aircraft"), ids = new Set(list.map((a) => a.hex));
   for (const a of list) {
     let m = acMarkers.get(a.hex);
-    if (!m) { m = L.marker([a.lat, a.lon], { icon: acIcon(a), zIndexOffset: 800, title: a.flight || a.reg }).bindPopup(() => acPopup(m.ac)).addTo(g); acMarkers.set(a.hex, m); }
+    if (!m) { m = L.marker([a.lat, a.lon], { icon: acIcon(a), zIndexOffset: 800, title: a.flight || a.reg, keyboard: false }).bindPopup(() => acPopup(m.ac), MOVING_POPUP()).on("popupopen", panIntoView).addTo(g); acMarkers.set(a.hex, m); }
     else { m.setLatLng([a.lat, a.lon]); if (m.ac.track !== a.track || m.ac.military !== a.military) m.setIcon(acIcon(a)); }
     m.ac = a; m.fix = { lat: a.lat, lon: a.lon, at: performance.now() };
   }
@@ -606,6 +606,12 @@ async function loadAircraft(g) {
 }
 // Ships from AIS (aisstream.io), every 10 s: an arrow pointing the way it's heading, colored by kind; moored ones are dots.
 const shipMarkers = new Map();
+// Popups on things that move: Leaflet's auto-pan would run again on every move (the popup's setLatLng re-pans), fighting
+// the visitor's fingers on a phone, so these pan into view once, leaving room for the popup above and the sheet below.
+const phone = () => matchMedia("(max-width: 700px)").matches;
+const sheetH = () => (phone() ? $("panel").offsetHeight + 16 : 0);
+const MOVING_POPUP = () => ({ autoPan: false, maxWidth: Math.min(300, innerWidth - 70) });
+const panIntoView = (ev) => { const half = Math.min(190, innerWidth / 2 - 6); map.panInside(ev.popup.getLatLng(), { paddingTopLeft: [half, 190], paddingBottomRight: [half, sheetH() + 40] }); }; // room for the popup's half-width each side
 const SHIP_COLOR = { passenger: "#4de1ff", cargo: "#ffb347", tanker: "#fc6255", tug: "#f4d35e", "pilot boat": "#f4d35e", sailing: "#e9ecff", "pleasure craft": "#e9ecff", "high-speed craft": "#4de1ff", military: "#83c167", "search and rescue": "#ff5c8a", "law enforcement": "#ff5c8a" };
 const shipMoving = (s) => (s.kts ?? 0) > 0.5 && !/moored|anchor/.test(s.status);
 const shipSvg = (s) => `<svg viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(${s.heading ?? s.cog ?? 0}deg)"><path d="M12 2l6 18-6-4-6 4z" fill="${SHIP_COLOR[s.kind] ?? "#9aa3cf"}" stroke="#000" stroke-width=".8"/></svg>`;
@@ -617,7 +623,7 @@ async function refreshShips(g) {
   const d = await getJSON("/api/nyc/ships"), list = d.ships, ids = new Set(list.map((s) => s.mmsi));
   for (const s of list) {
     let m = shipMarkers.get(s.mmsi);
-    if (!m) { m = L.marker([s.lat, s.lon], { icon: shipIcon(s), zIndexOffset: 700, title: s.name }).bindPopup(() => shipPopup(m.ship)).addTo(g); shipMarkers.set(s.mmsi, m); }
+    if (!m) { m = L.marker([s.lat, s.lon], { icon: shipIcon(s), zIndexOffset: 700, title: s.name, keyboard: false }).bindPopup(() => shipPopup(m.ship), MOVING_POPUP()).on("popupopen", panIntoView).addTo(g); shipMarkers.set(s.mmsi, m); }
     else { m.setLatLng([s.lat, s.lon]); if ((m.ship.heading ?? m.ship.cog) !== (s.heading ?? s.cog) || shipMoving(m.ship) !== shipMoving(s) || m.ship.kind !== s.kind) m.setIcon(shipIcon(s)); }
     m.ship = s;
   }
@@ -822,6 +828,7 @@ document.addEventListener("click", async (e) => {
   const render = L.Popup.prototype._updateContent;
   L.Popup.prototype._updateContent = function () {
     render.call(this);
+    if (innerWidth < 700) { this.options.maxWidth = Math.min(this.options.maxWidth ?? 300, innerWidth - 70); this.options.autoPanPaddingBottomRight = L.point(10, ($("panel")?.offsetHeight ?? 0) + 16); } // phones: fit the screen, stay above the sheet
     const node = this._contentNode, ll = this.getLatLng?.();
     if (!node || !ll || node.querySelector("[data-near]") || this._source?.options?.icon?.options?.className === "cam-icon") return;
     if (/^(Loading…|Looking up…|Couldn't|That train|That bus|No NYC address)/.test(node.textContent.trim())) return;
