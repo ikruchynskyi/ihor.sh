@@ -34,7 +34,7 @@ const readingOf = (x) => (type === "kanji" ? [...x.on, ...x.kun].join("、") : x
 const show = (s) => (state.settings.script === "romaji" ? romaji(toHiragana(s)) : s);
 $("crumb").textContent = `${level} ${type}`;
 $("title").textContent = `${level} ${type === "kanji" ? "kanji" : "words"} · ${items.length}`;
-$("tabs").innerHTML = LEVELS.flatMap((l) => ["kanji", "words"].map((t) => `<a class="btn" href="?level=${l}&type=${t}" ${l === level && t === type ? 'aria-current="page"' : ""}>${l} ${t}</a>`)).join(" ");
+$("tabs").innerHTML = LEVELS.flatMap((l) => ["kanji", "words"].map((t) => `<a class="btn${l === level && t === type ? "" : " alt"}" href="?level=${l}&type=${t}" ${l === level && t === type ? 'aria-current="page"' : ""}>${l} ${t}</a>`)).join(" ");
 settingsBar($("settings"), () => { render(); renderSession(); });
 
 // ---------- browse ----------
@@ -46,7 +46,7 @@ function render() {
   $("grid").className = type === "kanji" ? "ktiles" : "vocab";
   $("grid").innerHTML = list.slice(0, limit).map((x, i) => type === "kanji"
     ? `<button class="ktile jp${inDeck(idOf(x)) ? " done" : ""}" data-i="${items.indexOf(x)}" title="${esc(meaning(x))}">${esc(x.k)}</button>`
-    : `<div class="${inDeck(idOf(x)) ? "done" : ""}"><span class="jp">${x.w === x.r || state.settings.script !== "kanji" ? esc(show(x.r)) : `<ruby>${esc(x.w)}<rt>${esc(x.r)}</rt></ruby>`}</span> <button class="mini" data-say="${esc(x.r)}" aria-label="Play">▶</button><br><span class="muted">${esc(x.m)}</span></div>`).join("");
+    : `<div class="${inDeck(idOf(x)) ? "done" : ""}">${pic(x.m) ? `<span class="pic" aria-hidden="true">${pic(x.m)}</span>` : ""}<span class="jp">${x.w === x.r || state.settings.script !== "kanji" ? esc(show(x.r)) : `<ruby>${esc(x.w)}<rt>${esc(x.r)}</rt></ruby>`}</span> <button class="mini" data-say="${esc(x.r)}" aria-label="Play">▶</button><br><span class="muted">${esc(x.m)}</span></div>`).join("");
   $("more").hidden = list.length <= limit;
   $("grid").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => detail(items[+b.dataset.i])));
   $("grid").querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => speak(b.dataset.say)));
