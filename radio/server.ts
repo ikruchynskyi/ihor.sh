@@ -12,12 +12,12 @@ import path from "node:path";
 import { openDongle, resetDongle, looksStalled } from "./scripts/node-usb.ts";
 import type { RtlSdr } from "./src/rtlsdr.ts";
 import { decodeCU8 } from "./src/iq.ts";
-import { avgSpectrum } from "./src/dsp.ts";
+import { avgSpectrum, firLowpass, FirDecimator } from "./src/dsp.ts";
 import { AprsReceiver, Stations } from "./src/aprs.ts";
 import { Tracker, demodulate, magnitude } from "./src/adsb.ts";
 
 const PORT = Number(process.env.PORT ?? 8073);
-const RATE = Number(process.env.RATE ?? 1_024_000); // 2 MB/s: comfortable over Wi-Fi
+const RATE = Number(process.env.RATE ?? 2_400_000); // the shared window: listeners get slices of it, not all of it
 const IDLE_MS = 5000; // release the dongle this long after the last listener leaves
 const DIST = path.resolve(import.meta.dirname, "dist");
 const TYPES: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
@@ -76,7 +76,7 @@ async function recover() {
     await release();
     console.log(`USB reset: ${(await resetDongle()) ? "ok" : "failed"}`);
     await new Promise((r) => setTimeout(r, 2500)); // re-enumeration
-    if (want !== "iq" || clients.size) { await ensureSdr(want); if (want !== "iq") push(want, "online", { mode: want }); }
+    if (want !== "iq" || listening()) { await ensureSdr(want); if (want !== "iq") push(want, "online", { mode: want }); }
   } catch (e) { console.error("recovery failed:", (e as Error).message); }
   finally { recovering = false; }
 }
@@ -85,7 +85,11 @@ async function recover() {
 function onChunk(chunk: Uint8Array) {
   if (++chunkCount % 64 === 8 && !recovering && looksStalled(chunk)) { recover(); return; }
   if (scanSink) return scanSink(decodeCU8(chunk));
-  if (mode === "iq") return fanOut(chunk);
+  if (mode === "iq") {
+    fanOut(chunk); // raw listeners (on this computer's network only)
+    if (slices.size || overviewers.size) { const x = decodeCU8(chunk); for (const sl of slices.values()) sliceOut(sl, x); overview(x); }
+    return;
+  }
   if (mode === "aprs" && aprsRx) for (const p of aprsRx.process(decodeCU8(chunk))) push("aprs", "packet", { packet: p, station: stations.add(p) });
   if (mode === "adsb") {
     // keep the last 240 magnitudes so messages across chunk edges are found (and found once)
@@ -120,7 +124,7 @@ const collect = (n: number) => new Promise<Float32Array>((done) => {
   };
 });
 async function scanFm() {
-  if (mode !== "idle" || clients.size || opening) throw new Error("The dongle is busy right now (someone is listening or watching a decoder). Try again in a few minutes.");
+  if (mode !== "idle" || listening() || opening) throw new Error("The dongle is busy right now (someone is listening or watching a decoder). Try again in a few minutes.");
   const s = await ensureSdr("iq"), fs = s.sampleRate, channels: { mhz: number; snrDb: number }[] = [];
   try {
     for (let c = 88.4e6; c <= 107.7e6; c += 0.8e6) {
@@ -137,13 +141,87 @@ async function scanFm() {
     }
   } finally {
     scanSink = null;
-    if (clients.size) await s.setCenterFrequency(tuning.center).catch(() => {}); // someone joined meanwhile: back to their tuning
+    if (listening()) await s.setCenterFrequency(tuning.center).catch(() => {}); // someone joined meanwhile: back to their tuning
     else await release();
   }
   scanResult = { at: Date.now(), gain: tuning.gain, channels };
   await writeFile(SCAN_FILE, JSON.stringify(scanResult)).catch(() => {});
   return scanResult;
 }
+
+// ---------- slices: each listener gets just their part of the band ----------
+// The dongle captures a 2.4 MHz window; sending all of it costs 4.8 MB/s per listener. Instead every listener gets a
+// slice around their own station: mixed to 0 Hz, low-passed and decimated here (2.4 MS/s → 480 k → 240 k, or one
+// stage to 1.2 M), 8-bit like the dongle's own bytes. Slices are absolute frequencies, so everyone tunes on their own;
+// the window itself moves only when it can still cover every slice.
+type Slice = { id: string; res: http.ServerResponse; center: number; width: number; tag: string; phase: number; stages: FirDecimator[]; congested: boolean };
+const slices = new Map<string, Slice>();
+const overviewers = new Set<http.ServerResponse>();
+const listening = () => clients.size + slices.size;
+const USABLE = 0.45; // of the sample rate, each side of center: the dongle's filter rolls off beyond
+const half = () => USABLE * (sdr?.sampleRate ?? RATE);
+const BUDGET = Number(process.env.STREAM_BUDGET ?? 3_500_000); // bytes/s of upload for all slices together (~28 Mbit/s)
+const WIDTHS = [240_000, 1_200_000];
+function stages(rate: number, width: number) {
+  const pass = 0.45 * width, out: FirDecimator[] = [];
+  let r = rate;
+  for (const f of width === 240_000 ? [5, 2] : [2]) { // anything above (r/f − pass) would fold back onto the passband
+    const o = r / f, stop = o - pass;
+    out.push(new FirDecimator(firLowpass((pass + stop) / 2 / r, (stop - pass) / r), f, 2));
+    r = o;
+  }
+  return out;
+}
+function sliceOut(sl: Slice, x: Float32Array) {
+  // mix by a rotating phasor (cheaper than cos/sin per sample), renormalized now and then against rounding drift
+  const step = (-2 * Math.PI * (sl.center - tuning.center)) / (sdr?.sampleRate ?? RATE), cw = Math.cos(step), sw = Math.sin(step);
+  let c = Math.cos(sl.phase), s = Math.sin(sl.phase);
+  const m = new Float32Array(x.length);
+  for (let k = 0; k < x.length; k += 2) {
+    m[k] = x[k] * c - x[k + 1] * s; m[k + 1] = x[k] * s + x[k + 1] * c;
+    const nc = c * cw - s * sw; s = c * sw + s * cw; c = nc;
+    if ((k & 8191) === 0) { const g = 1 / Math.hypot(c, s); c *= g; s *= g; }
+  }
+  sl.phase = Math.atan2(s, c);
+  let y: Float32Array = m;
+  for (const st of sl.stages) y = st.process(y);
+  if (sl.congested) return;
+  const b = new Uint8Array(y.length);
+  for (let i = 0; i < y.length; i++) b[i] = Math.max(0, Math.min(255, Math.round(y[i] * 127.5 + 127.5)));
+  if (!sl.res.write(b)) { sl.congested = true; sl.res.once("drain", () => (sl.congested = false)); }
+}
+const fmtMHz = (hz: number) => (hz / 1e6).toFixed(2);
+/** Where a slice can go: inside the window as it is, or by moving the window if it can still cover everyone. */
+async function place(id: string | null, f: number, width: number) {
+  const w2 = width / 2, others = [...slices.values()].filter((s) => s.id !== id);
+  if (f - w2 >= tuning.center - half() && f + w2 <= tuning.center + half()) return f;
+  const lo = Math.min(f - w2, ...others.map((s) => s.center - s.width / 2)), hi = Math.max(f + w2, ...others.map((s) => s.center + s.width / 2));
+  if (hi - lo > 2 * half()) {
+    const olo = Math.min(...others.map((s) => s.center - s.width / 2)), ohi = Math.max(...others.map((s) => s.center + s.width / 2));
+    throw Object.assign(new Error(`The radio is shared: ${others.length} other listener${others.length > 1 ? "s are" : " is"} on ${fmtMHz(olo)}–${fmtMHz(ohi)} MHz, and it covers ${fmtMHz(2 * half())} MHz at once. Pick something between ${fmtMHz(ohi - 2 * half())} and ${fmtMHz(olo + 2 * half())} MHz, or try again later.`), { code: 409 });
+  }
+  // alone: put the dongle's DC spike just below your slice; shared: center on everyone, nudged off any slice
+  const inSlice = (c: number) => [...others, { center: f, width }].some((s) => Math.abs(c - s.center) < s.width / 2);
+  const fitsAll = (c: number) => lo >= c - half() && hi <= c + half();
+  const tries = others.length ? [(lo + hi) / 2, ...[...others, { center: f, width }].flatMap((s) => [s.center - s.width / 2 - 40e3, s.center + s.width / 2 + 40e3])] : [f - w2 - 50e3];
+  const c = tries.find((t) => fitsAll(t) && !inSlice(t)) ?? (lo + hi) / 2;
+  tuning.center = Math.round(c);
+  if (mode === "iq") await sdr?.setCenterFrequency(tuning.center);
+  return f;
+}
+// The whole window for everyone, ~7 rows a second (dB above the floor, ¼ dB per step), plus who listens where.
+let lastRow = 0;
+function overview(x: Float32Array) {
+  if (!overviewers.size || Date.now() - lastRow < 140) return;
+  lastRow = Date.now();
+  const db = avgSpectrum(x, 1024, 8), floor = db.slice().sort()[512], row = new Uint8Array(1024);
+  for (let i = 0; i < 1024; i++) row[i] = Math.max(0, Math.min(255, Math.round((db[i] - floor + 8) * 4)));
+  const msg = `event: row\ndata: ${Buffer.from(row).toString("base64")}\n\n`;
+  for (const r of overviewers) r.write(msg);
+}
+const band = () => ({ center: tuning.center, rate: sdr?.sampleRate ?? RATE, half: half(), gain: tuning.gain, listeners: listening(),
+  slices: [...slices.values()].map((s) => ({ tag: s.tag, center: s.center, width: s.width })) });
+function tellBand() { const msg = `event: band\ndata: ${JSON.stringify(band())}\n\n`; for (const r of overviewers) r.write(msg); }
 
 /** Open the dongle for `want` (raw IQ at the listeners' tuning, or a decoder's own settings). */
 function ensureSdr(want: "iq" | Decoder = "iq"): Promise<RtlSdr> {
@@ -169,7 +247,7 @@ function ensureSdr(want: "iq" | Decoder = "iq"): Promise<RtlSdr> {
 async function resumeOrRelease() {
   const d = paused;
   paused = null;
-  if (clients.size) return;
+  if (listening()) return;
   if (d && watchers[d].size) { await ensureSdr(d); push(d, "online", { mode: d }); scheduleDecoderIdle(); }
   else await release();
 }
@@ -177,7 +255,7 @@ async function resumeOrRelease() {
 /** Start a decoder for a visitor. Throws a message they can read when the dongle can't be given to it. */
 async function startDecoder(name: Decoder) {
   if (mode === name) return;
-  if (clients.size) throw new Error("Someone is listening in Spectrum Lab right now, so the dongle is busy.");
+  if (listening()) throw new Error("Someone is listening in Spectrum Lab right now, so the dongle is busy.");
   if ((mode === "aprs" || mode === "adsb") && watchers[mode].size) throw new Error(`${watchers[mode].size} watching the ${DECODERS[mode].label} right now, so the dongle is busy.`);
   if (Date.now() - lastSwitch < 10_000) throw new Error("The receiver was just switched. Try again in a few seconds.");
   lastSwitch = Date.now();
@@ -208,7 +286,7 @@ function json(res: http.ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
 }
 
-const state = () => ({ tuner: sdr?.tunerName ?? "", rate: sdr?.sampleRate ?? RATE, center: tuning.center, gain: tuning.gain, listeners: clients.size,
+const state = () => ({ tuner: sdr?.tunerName ?? "", rate: sdr?.sampleRate ?? RATE, center: tuning.center, gain: tuning.gain, listeners: listening(), half: half(),
   mode, watchers: { aprs: watchers.aprs.size, adsb: watchers.adsb.size } });
 
 const server = http.createServer(async (req, res) => {
@@ -220,21 +298,24 @@ const server = http.createServer(async (req, res) => {
       let body = "";
       for await (const c of req) body += c;
       const { center, gain } = JSON.parse(body || "{}");
-      if (typeof center === "number") {
+      if (typeof center === "number") { // moves the whole window, so only when it still covers every slice
         if (center < 24e6 || center > 1.766e9) return json(res, 400, { error: "Frequency must be 24–1766 MHz" });
+        const out = [...slices.values()].find((s) => Math.abs(s.center - center) + s.width / 2 > half());
+        if (out) return json(res, 409, { error: `Someone is listening at ${fmtMHz(out.center)} MHz, outside that window.` });
         tuning.center = center;
         if (mode === "iq") await sdr?.setCenterFrequency(center);
       }
       if (gain === null || typeof gain === "number") { tuning.gain = gain; if (mode === "iq") await sdr?.setGain(gain); }
+      tellBand();
       return json(res, 200, state());
     }
 
     // Owner-only (this Mac): drop every Spectrum Lab listener and map viewer and release the dongle. ihor.sh never forwards it.
     if (url.pathname === "/api/admin/free" && req.method === "POST") {
       if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress ?? "")) return json(res, 403, { error: "local only" });
-      const dropped = { listeners: clients.size, aprs: watchers.aprs.size, adsb: watchers.adsb.size };
-      for (const c of [...clients, ...watchers.aprs, ...watchers.adsb]) c.destroy();
-      clients.clear(); watchers.aprs.clear(); watchers.adsb.clear();
+      const dropped = { listeners: listening(), aprs: watchers.aprs.size, adsb: watchers.adsb.size };
+      for (const c of [...clients, ...[...slices.values()].map((s) => s.res), ...overviewers, ...watchers.aprs, ...watchers.adsb]) c.destroy();
+      clients.clear(); slices.clear(); overviewers.clear(); watchers.aprs.clear(); watchers.adsb.clear();
       paused = null; clearTimeout(idle); clearTimeout(decoderIdle);
       await release();
       return json(res, 200, { dropped, ...state() });
@@ -287,18 +368,50 @@ const server = http.createServer(async (req, res) => {
       try { return json(res, 200, await (scanning ??= scanFm().finally(() => (scanning = null)))); }
       catch (e) { return json(res, 409, { error: (e as Error).message, last: scanResult }); }
     }
+    // GET /api/stream?center=Hz&width=240000|1200000&id=… : your slice of the window (no center: the window's middle,
+    // 1.2 MHz wide, which is what older pages expect). ?raw=1, the whole 2.4 MHz, only on this computer's own network.
     if (url.pathname === "/api/stream") {
+      const q = url.searchParams, raw = q.get("raw") === "1" && !req.headers["x-via-ihor"];
+      const width = WIDTHS.includes(Number(q.get("width"))) ? Number(q.get("width")) : 1_200_000;
+      const used = [...slices.values()].reduce((t, s) => t + 2 * s.width, 0);
+      if (!raw && used + 2 * width > BUDGET) return json(res, 503, { error: "The radio's upload is full right now (too many listeners). Try again in a few minutes." });
       clearTimeout(idle);
       if (mode === "aprs" || mode === "adsb") { paused = mode; push(mode, "offline", { mode: "iq", reason: "spectrum" }); }
+      const id = String(q.get("id") ?? "").replace(/[^\w-]/g, "").slice(0, 40) || Math.random().toString(36).slice(2);
+      let center = Number(q.get("center")) || tuning.center;
+      if (!raw) try { center = await place(id, center, width); } catch (e) { return json(res, (e as any).code ?? 500, { error: (e as Error).message }); }
       await ensureSdr("iq");
-      res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(sdr!.sampleRate) });
-      clients.add(res);
-      console.log(`listener joined (${clients.size})`);
-      req.on("close", () => {
-        clients.delete(res); congested.delete(res);
-        console.log(`listener left (${clients.size})`);
-        if (!clients.size) idle = setTimeout(resumeOrRelease, IDLE_MS);
-      });
+      const headers = { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(raw ? sdr!.sampleRate : width), "x-center": String(raw ? tuning.center : center), "x-slice-id": id };
+      res.writeHead(200, headers);
+      const leave = () => { if (!listening()) idle = setTimeout(resumeOrRelease, IDLE_MS); tellBand(); console.log(`listener left (${listening()})`); };
+      if (raw) { clients.add(res); req.on("close", () => { clients.delete(res); congested.delete(res); leave(); }); }
+      else {
+        slices.get(id)?.res.destroy(); // the same page reconnecting replaces its old stream
+        slices.set(id, { id, res, center, width, tag: id.slice(-4), phase: 0, stages: stages(sdr!.sampleRate, width), congested: false });
+        req.on("close", () => { if (slices.get(id)?.res === res) slices.delete(id); leave(); });
+      }
+      console.log(`listener joined (${listening()})`);
+      tellBand();
+      return;
+    }
+    // POST /api/slice {id, center}: move your slice (moves the window too if it can still cover everyone).
+    if (url.pathname === "/api/slice" && req.method === "POST") {
+      let body = "";
+      for await (const c of req) { body += c; if (body.length > 300) return json(res, 413, {}); }
+      const { id, center } = JSON.parse(body || "{}"), sl = slices.get(String(id));
+      if (!sl) return json(res, 404, { error: "No stream with that id." });
+      if (!(center >= 24e6 && center <= 1.766e9)) return json(res, 400, { error: "Frequency must be 24–1766 MHz" });
+      try { sl.center = await place(sl.id, center, sl.width); } catch (e) { return json(res, (e as any).code ?? 500, { error: (e as Error).message }); }
+      tellBand();
+      return json(res, 200, { center: sl.center, window: [tuning.center - half(), tuning.center + half()] });
+    }
+    // GET /api/overview: server-sent events: "band" (the window, the gain, everyone's slices) and "row" (a spectrum row).
+    if (url.pathname === "/api/overview") {
+      res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no" });
+      res.write(`event: band\ndata: ${JSON.stringify(band())}\n\n`);
+      overviewers.add(res);
+      const beat = setInterval(() => res.write(": keep-alive\n\n"), 25_000);
+      req.on("close", () => { clearInterval(beat); overviewers.delete(res); });
       return;
     }
 

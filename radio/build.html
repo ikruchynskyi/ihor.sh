@@ -186,9 +186,11 @@ while (streaming) {
   <p><code>server.ts</code> runs the same driver in Node (through the <code>usb</code> package's WebUSB implementation), owns the dongle, and serves plain HTTP. Three endpoints:</p>
   <div class="table"><table>
     <tr><th>Request</th><th>Does</th></tr>
-    <tr><td><code>GET /api/state</code></td><td>JSON: <code>{"tuner":"R820T","rate":1024000,"center":98450000,"gain":32.8,"listeners":1}</code></td></tr>
-    <tr><td><code>POST /api/tune</code> body <code>{"center":98450000,"gain":30}</code></td><td>Retunes the shared dongle (either field optional; <code>gain: null</code> = automatic).</td></tr>
-    <tr><td><code>GET /api/stream</code></td><td>An endless <code>application/octet-stream</code> of raw cu8 bytes at the rate in the <code>x-sample-rate</code> header. The dongle opens on the first listener and closes 5 s after the last.</td></tr>
+    <tr><td><code>GET /api/state</code></td><td>JSON: <code>{"tuner":"R820T","rate":2400000,"center":98450000,"gain":32.8,"listeners":1,"half":1080000}</code></td></tr>
+    <tr><td><code>POST /api/tune</code> body <code>{"center":98450000,"gain":30}</code></td><td>Retunes the shared dongle (either field optional; <code>gain: null</code> = automatic). A center that would leave someone's slice outside the window is refused (409).</td></tr>
+    <tr><td><code>GET /api/stream?center=Hz&amp;width=240000|1200000&amp;id=…</code></td><td>An endless <code>application/octet-stream</code> of cu8 bytes: <b>your slice</b> of the dongle's shared 2.4 MHz window, centered on <code>center</code> (header <code>x-center</code>) at the rate in <code>x-sample-rate</code> (the width). Without parameters: the window's middle, 1.2 MHz wide. <code>?raw=1</code> (the whole window) works only on the server's own network. The dongle opens on the first listener and closes 5 s after the last; a slice the shared window can't reach gets 409 with the reason.</td></tr>
+    <tr><td><code>POST /api/slice</code> body <code>{"id":"…","center":100300000}</code></td><td>Moves your slice. The window moves only if it can still cover everyone's slices (else 409).</td></tr>
+    <tr><td><code>GET /api/overview</code></td><td>Server-sent events: <code>band</code> (window center, rate, gain, listeners, everyone's slices) and <code>row</code> (a 1024-bin spectrum of the whole window, base64 bytes, ¼ dB above the floor per step).</td></tr>
   </table></div>
 <pre><code># record 5 seconds from the command line
 curl -s http://your-server:8073/api/stream --max-time 5 -o capture.cu8

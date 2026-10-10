@@ -45,6 +45,7 @@
     .smeter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
     .scope { outline-offset: 3px; touch-action: none; }
     .scope:focus-visible { outline: 2px solid var(--accent); }
+    canvas.overview { height: 84px; border-radius: 6px; cursor: crosshair; margin-bottom: 4px; }
     canvas.spec { height: 170px; border-radius: 6px 6px 0 0; cursor: crosshair; }
     .scope canvas.wf { border-radius: 0 0 6px 6px; }
     .scope.drag-band canvas { cursor: grabbing; } .scope.edge canvas { cursor: ew-resize; } .scope.band canvas { cursor: grab; } .scope.sqline canvas { cursor: ns-resize; }
@@ -104,6 +105,8 @@
       <div class="smeter" title="Signal: the strongest point in the band, on the chart's dB scale; the orange mark is the squelch"><i id="smLevel"></i><b id="smSql"></b></div>
       <span class="stat" id="smText"></span>
     </div>
+    <canvas id="overview" class="overview" hidden title="The server SDR's whole shared window: boxes are everyone's slices (yours in orange). Click to tune there."></canvas>
+    <p class="stat" id="overviewNote" hidden>Above: the whole shared window (2.4 MHz), with everyone's slice boxed (yours in orange); click it to go there. Below: your own slice, in detail.</p>
     <div class="scope" id="scope" tabindex="0" aria-label="Spectrum and waterfall. Click to tune; drag the band to move it or its edges to change the bandwidth; Ctrl+wheel or pinch to zoom; arrow keys step the tuning.">
       <canvas id="spec" class="spec"></canvas>
       <canvas id="wf" class="wf"></canvas>
