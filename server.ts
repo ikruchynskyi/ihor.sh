@@ -53,6 +53,18 @@ const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT
 // The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.
 const versioned = (html: string) => html.replace(/(["'])(\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(path.join(ROOT, p)) ? `${q}${asset(p.slice(1))}${q}` : m));
 const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
+// Runs before first paint on every page: sets the visitor's theme and look on <html> (so the pixel or the sleek rules
+// apply at once, no flash), and wraps fetch so reader.js can show "still working" for the page's /api/ calls, with
+// how long each endpoint usually takes in this browser.
+const HEAD = `<script>(function(){var h=document.documentElement,r={};try{r=JSON.parse(localStorage.getItem("ihor-reader")||"{}")}catch(e){}
+var t=r.theme||"nova";h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
+var W=window.__wait={active:new Map(),n:0,typical:{},on:new Set()};try{W.typical=JSON.parse(localStorage.getItem("ihor-wait")||"{}")}catch(e){}
+var f=window.fetch,tell=function(){W.on.forEach(function(l){try{l()}catch(e){}})};
+window.fetch=function(a){var u;try{u=new URL(typeof a==="string"?a:a&&a.url||"",location.href)}catch(e){return f.apply(window,arguments)}
+if(u.origin!==location.origin||u.pathname.indexOf("/api/")!==0)return f.apply(window,arguments);
+var id=++W.n,rec={key:u.pathname,at:performance.now()};W.active.set(id,rec);tell();
+var done=function(){W.active.delete(id);var ms=performance.now()-rec.at;if(ms>1500){var o=W.typical[rec.key];W.typical[rec.key]=Math.round(o?o*.7+ms*.3:ms);try{localStorage.setItem("ihor-wait",JSON.stringify(W.typical))}catch(e){}}tell()};
+var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
@@ -147,10 +159,11 @@ async function sitemap() {
 function dress(html: string, world: string, urlPath = "") {
   if (html.includes('name="ihor-bare"')) return html; // helper pages shown inside another page (nyc/windy.html)
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
-  const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
+  const [num, name] = world.split(" · "); // "World 2 · NYC": phones show just the name
+  const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${name ? `<em>${num} ·</em> ${name}` : world}</span><b>${title}</b></nav>`;
   if (urlPath) html = seo(html, world, urlPath);
   // the page's own </body>, the last one: a script may contain the text "</body>" in a string
-  const out = html.replace("</head>", `<link rel="stylesheet" href="${asset("theme.css")}"></head>`).replace(/<body[^>]*>/, (m) => m + hud), end = out.lastIndexOf("</body>");
+  const out = html.replace("</head>", `${HEAD}<link rel="stylesheet" href="${asset("theme.css")}"></head>`).replace(/<body[^>]*>/, (m) => m + hud), end = out.lastIndexOf("</body>");
   return end < 0 ? out + companion() : out.slice(0, end) + companion() + out.slice(end);
 }
 
@@ -160,7 +173,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
-  if (world === "home") return res.end(data.toString().replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
+  if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
   res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath) : data);
 }
 

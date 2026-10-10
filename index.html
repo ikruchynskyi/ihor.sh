@@ -23,7 +23,7 @@
 <style>
   :root {
     /* shared names, so the reader panel's color themes apply here too */
-    --bg: #07090f; --card: #0d1226; --fg: #e8edff; --muted: #7f8bc4; --line: #3b4bb0; --accent: #ffb347;
+    --bg: #07090f; --card: #0d1226; --fg: #e8edff; --muted: #7f8bc4; --line: #3b4bb0; --accent: #ffb347; --accent2: #ff5c8a;
     --panel: var(--card); --ink: var(--fg); --dim: var(--muted); --amber: var(--accent); --pink: #ff5c8a; --cyan: #4de1ff; --ok: #5cff9d; --green: var(--ok);
     --pixel: "Press Start 2P", ui-monospace, monospace; --mono: "VT323", ui-monospace, monospace;
     color-scheme: dark;
@@ -103,6 +103,65 @@
 
   @media (max-width: 600px) { .world { padding: 20px 16px; } .hud { font-size: calc(8px * var(--px, 1)); } }
   @media (prefers-reduced-motion: reduce) { .logo, .start, .onair::before { animation: none; } html { scroll-behavior: auto; } }
+</style>
+<style>
+  /* The sleek look (every theme but Arcade; reader.js sets <html data-style>): the same page as a title screen of a
+     big-budget game: a blurred, slowly moving light behind glass panels, a display face, soft glows. */
+  html[data-style="sleek"] { --r: 16px; --glow: color-mix(in srgb, var(--accent) 50%, transparent); }
+  html[data-style="sleek"] body { font: 17px/1.6 var(--body-font, "Inter", ui-sans-serif, system-ui, sans-serif); }
+  html[data-style="sleek"] #wf { filter: blur(22px) saturate(1.5); opacity: .55; transform: scale(1.15); }
+  html[data-style="sleek"] body::before { background: radial-gradient(ellipse at 50% 30%, transparent 10%, color-mix(in srgb, var(--bg) 90%, transparent) 100%), linear-gradient(color-mix(in srgb, var(--bg) 30%, transparent), color-mix(in srgb, var(--bg) 85%, transparent)); }
+  html[data-style="sleek"] body::after { display: none; }
+  html[data-style="sleek"] .hud { font: 600 12px/1.5 var(--body-font); letter-spacing: .12em; padding: 12px 22px; background: color-mix(in srgb, var(--bg) 62%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); border-bottom: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
+  html[data-style="sleek"] .hud::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .5; }
+  html[data-style="sleek"] .hud b { font: 700 18px/1 var(--display-font); letter-spacing: .1em; color: var(--fg); }
+  html[data-style="sleek"] .hud button { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); padding: 6px 12px; transition: border-color .15s; }
+  html[data-style="sleek"] .hud button:hover { border-color: var(--accent); color: var(--fg); }
+  html[data-style="sleek"] .title { gap: 26px; }
+  html[data-style="sleek"] .logo { font: 800 clamp(64px, 13vw, 150px)/1 var(--display-font); letter-spacing: -.01em; text-shadow: none; animation: none; background: linear-gradient(135deg, var(--fg) 30%, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 36px var(--glow)); }
+  html[data-style="sleek"] .logo span { background: linear-gradient(135deg, var(--accent), var(--accent2, var(--pink))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  html[data-style="sleek"] .tag { font-size: clamp(18px, 2.2vw, 22px); line-height: 1.5; max-width: 42ch; color: var(--muted); }
+  html[data-style="sleek"] .start { font: 700 15px/1 var(--body-font); letter-spacing: .16em; text-transform: uppercase; color: var(--on-accent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, var(--accent2, var(--pink)))); padding: 17px 32px; border-radius: 999px; box-shadow: 0 16px 44px -14px var(--accent), inset 0 1px 0 rgba(255,255,255,.25); animation: none; transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
+  html[data-style="sleek"] .start:hover, html[data-style="sleek"] .start:focus-visible { transform: translateY(-2px) scale(1.03); box-shadow: 0 22px 56px -14px var(--accent); color: var(--on-accent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, var(--accent2, var(--pink)))); }
+  html[data-style="sleek"] .controls { font-size: 14px; color: var(--muted); gap: 10px 20px; }
+  html[data-style="sleek"] kbd { font: 600 11px/1 var(--body-font); letter-spacing: .06em; color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent); border-bottom-width: 2px; border-radius: 6px; padding: 5px 7px; box-shadow: none; }
+  html[data-style="sleek"] .meet { border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); background: color-mix(in srgb, var(--card) 72%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); padding: 20px 24px; font-family: inherit; }
+  html[data-style="sleek"] .meet b { font: 700 20px/1.2 var(--display-font); letter-spacing: .02em; margin-bottom: 8px; }
+  html[data-style="sleek"] .meet p { font-size: 15.5px; }
+  html[data-style="sleek"] .meet button { font: 700 13px var(--body-font); letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 11px 18px; box-shadow: 0 10px 28px -12px var(--accent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, var(--accent2, var(--pink)))); transition: transform .15s, box-shadow .15s; }
+  html[data-style="sleek"] .meet button:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -12px var(--accent); }
+  html[data-style="sleek"] h2 { display: flex; align-items: center; gap: 18px; font: 700 clamp(13px, 1.6vw, 15px)/1.3 var(--body-font); letter-spacing: .32em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
+  html[data-style="sleek"] h2::before, html[data-style="sleek"] h2::after { content: ""; flex: 1; height: 1px; margin: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fg) 25%, transparent)); }
+  html[data-style="sleek"] h2::after { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 25%, transparent), transparent); }
+  html[data-style="sleek"] .world { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); border-radius: 22px; background: color-mix(in srgb, var(--card) 76%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 7%, transparent), 0 40px 80px -40px rgba(0,0,0,.9); padding: 32px; margin-bottom: 28px; }
+  html[data-style="sleek"] .world::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 180px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent); pointer-events: none; }
+  html[data-style="sleek"] .world header { margin-bottom: 10px; }
+  html[data-style="sleek"] .world h3 { font: 700 clamp(26px, 3.2vw, 36px)/1.05 var(--display-font); letter-spacing: .03em; color: var(--fg); }
+  html[data-style="sleek"] .world h3 small { font: 600 11px/1 var(--body-font); letter-spacing: .26em; color: var(--accent); margin-bottom: 8px; }
+  html[data-style="sleek"] .onair { font: 600 10.5px/1 var(--body-font); letter-spacing: .18em; color: var(--ok); padding: 7px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+  html[data-style="sleek"] .onair::before { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  html[data-style="sleek"] .world > p { font-size: 16px; line-height: 1.6; color: var(--muted); margin-bottom: 22px; }
+  html[data-style="sleek"] .levels { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  html[data-style="sleek"] .level { border-radius: 14px; border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); background: color-mix(in srgb, var(--fg) 4%, transparent); padding: 18px; transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s, box-shadow .18s, background .18s; }
+  html[data-style="sleek"] .level:hover, html[data-style="sleek"] .level:focus-visible, html[data-style="sleek"] .locked .world:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: 0 0 0 1px var(--glow), 0 24px 40px -24px rgba(0,0,0,.9); }
+  html[data-style="sleek"] .level .lv { font: 600 11px/1 var(--body-font); letter-spacing: .2em; color: var(--muted); }
+  html[data-style="sleek"] .level b { font: 700 19px/1.15 var(--display-font); letter-spacing: .03em; color: var(--fg); }
+  html[data-style="sleek"] .level span.d { font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+  html[data-style="sleek"] .level i { font: 700 10px/1 var(--body-font); letter-spacing: .18em; color: var(--ok); }
+  html[data-style="sleek"] .level:hover i, html[data-style="sleek"] .level:focus-visible i { animation: none; }
+  html[data-style="sleek"] .level svg { width: 34px; height: 34px; image-rendering: auto; filter: drop-shadow(0 0 8px var(--glow)); }
+  html[data-style="sleek"] .level svg rect { rx: .22; }
+  html[data-style="sleek"] [data-icon] svg rect[fill="#ffb347"] { fill: var(--accent); }
+  html[data-style="sleek"] [data-icon] svg rect[fill="#4de1ff"] { fill: color-mix(in srgb, var(--fg) 75%, var(--accent)); }
+  html[data-style="sleek"] [data-icon] svg rect[fill="#ff5c8a"] { fill: var(--accent2, var(--pink)); }
+  html[data-style="sleek"] .level .air { font: 600 10px/1.4 var(--body-font); letter-spacing: .16em; }
+  html[data-style="sleek"] .level.off { border-style: dashed; opacity: .55; }
+  html[data-style="sleek"] .level.off:hover { transform: none; box-shadow: none; background: transparent; border-color: color-mix(in srgb, var(--fg) 10%, transparent); }
+  html[data-style="sleek"] .chapters li::before { font: 600 10px var(--body-font); }
+  html[data-style="sleek"] .locked .world { border-style: dashed; }
+  html[data-style="sleek"] footer { font: 500 12px/2 var(--body-font); letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+  @media (max-width: 600px) { html[data-style="sleek"] .world { padding: 22px 16px; border-radius: 18px; } html[data-style="sleek"] .hud { padding: 10px 14px; font-size: 11px; } html[data-style="sleek"] .logo { font-size: clamp(56px, 18vw, 96px); } }
 </style>
 </head>
 <body>
@@ -192,7 +251,7 @@
         <a class="level" href="/ai/08-agents.html" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-8 <i>▶ PLAY</i></span><b>AGENTS</b><span class="d">The tool loop, Blip's real toolbox, live traces, prompt injection, and an eval you can run.</span></a>
         <a class="level" href="/ai/09-vision.html" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-9 <i>▶ PLAY</i></span><b>VISION IN PRACTICE</b><span class="d">Motion by subtraction and a real object detector on live NYC traffic cameras.</span></a>
         <a class="level" href="/ai/10-tiny-transformer.html" data-icon="chip" data-blip="I trained a GPT on subway stations. It made up Cheronst Av!"><span class="lv">3-10 <i>▶ PLAY</i></span><b>A TINY TRANSFORMER</b><span class="d">Train a real one-block GPT in your browser on every NYC subway station name, then let it invent new ones.</span></a>
-        <a class="level" href="/ai/" data-icon="book" data-blip="All nine chapters of the AI world."><span class="lv">3-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">The whole path in one list: from matrices to a detector reading New York's streets.</span></a>
+        <a class="level" href="/ai/" data-icon="book" data-blip="All ten chapters of the AI world."><span class="lv">3-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">The whole path in one list: from matrices to a detector reading New York's streets.</span></a>
       </nav>
     </article>
 
@@ -201,9 +260,9 @@
         <h3><small>WORLD 4</small>YOMU</h3>
         <span class="onair">NEW</span>
       </header>
-      <p>Japanese from zero to JLPT N3: graded stories about Yuki, Sam and Blip in New York, plus every N5–N3 grammar point, all 612 kanji and 3,500 words, with spaced review. Kanji, kana or romaji, your choice.</p>
+      <p>Japanese from zero: graded stories about Yuki, Sam and Blip in New York, every N5–N3 grammar point, kanji and word decks all the way to N1, spoken scenes and handwriting, with spaced review. Kanji, kana or romaji, your choice.</p>
       <nav class="levels" aria-label="Yomu lessons">
-        <a class="level" href="/yomu/" data-icon="book" data-blip="よむ means 'to read'. Start from zero or take the placement test!"><span class="lv">4-1 <i>▶ PLAY</i></span><b>START HERE</b><span class="d">Your path from kana to N3, today's reviews, and where to begin.</span></a>
+        <a class="level" href="/yomu/" data-icon="book" data-blip="よむ means 'to read'. Start from zero or take the placement test!"><span class="lv">4-1 <i>▶ PLAY</i></span><b>START HERE</b><span class="d">Your path from kana to N3 and beyond, today's reviews, and where to begin.</span></a>
         <a class="level" href="/yomu/kana.html" data-icon="wave" data-blip="あいうえお! Tap one and I'll draw it for you."><span class="lv">4-2 <i>▶ PLAY</i></span><b>HIRAGANA &amp; KATAKANA</b><span class="d">Charts with audio and stroke order, reading and listening drills.</span></a>
         <a class="level" href="/yomu/story.html?u=n5-01" data-icon="ticket" data-blip="I'm in this story! Beep beep!"><span class="lv">4-3 <i>▶ PLAY</i></span><b>N5 STORIES</b><span class="d">12 scenes in New York: tap any word, hear every line, say it back, build sentences.</span></a>
         <a class="level" href="/yomu/story.html?u=n4-01" data-icon="ticket" data-blip="Sam books a flight to Japan. I fit in the bag!"><span class="lv">4-4 <i>▶ PLAY</i></span><b>N4 STORIES</b><span class="d">12 scenes: casual speech, plans, favors and keigo, all the way to a hotel in Tokyo.</span></a>
@@ -222,8 +281,7 @@
       <p>Bikepacking with a planner that knows where the water runs out: drop in a route, get days, climbing, every tap, shop, campsite and train bail-out along the way, daylight and the forecast.</p>
       <nav class="levels" aria-label="Ride projects">
         <a class="level" href="/ride/" data-icon="pin" data-blip="Helmet on! Drop a GPX and I'll find the water."><span class="lv">5-1 <i>▶ PLAY</i></span><b>ROUTE NOTEBOOK</b><span class="d">Days split by distance and climbing, the longest dry stretch against the water you carry, camps, stations, sunset and weather.</span></a>
-        <a class="level" href="/ride/escapes.html" data-icon="pin" data-blip="Friday 6 pm with a bike? Not on Metro-North. 8 pm, yes!"><span class="lv">5-2 <i>▶ PLAY</i></span><b>BIKE + TRAIN ESCAPES</b><span class="d">Can your bike ride this train? Rush hours and holidays for Metro-North, LIRR and NJ Transit, and four overnights to campgrounds.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Metro-North with a bike? Coming."><span class="lv">5-2</span><b>BIKE + TRAIN ESCAPES</b><span class="d">Overnights from NYC that start or end on Metro-North, LIRR or NJ Transit.</span></div>
+        <a class="level" href="/ride/escapes.html" data-icon="pin" data-blip="Friday 6 pm with a bike? Not on Metro-North. 8 pm, yes!"><span class="lv">5-2 <i>▶ PLAY</i></span><b>BIKE + TRAIN ESCAPES</b><span class="d">Can your bike ride this train? Rush hours and holidays for Metro-North, LIRR and NJ Transit, and seven checked overnights to campgrounds, or build your own.</span></a>
       </nav>
     </article>
 
@@ -426,6 +484,9 @@
   const SCENES = {
     arcade: { init() { STOPS = ARCADE; }, frame: waterfall },
     amber: { init() { const [b, l, a, f] = [C.bg, C.line, C.accent, C.fg]; STOPS = [[0, ...b], [.35, ...l], [.7, ...a], [1, ...f]]; }, frame: waterfall },
+    // the cinematic themes: the waterfall in their own colors (blurred by the sleek look into moving light)
+    nova: { init() { STOPS = [[0, ...C.bg], [.4, ...C.line], [.75, ...C.accent], [1, ...C.fg]]; }, frame: waterfall },
+    ember: { init() { STOPS = [[0, ...C.bg], [.4, ...C.line], [.75, ...C.accent], [1, ...C.fg]]; }, frame: waterfall },
     matrix: { // digital rain: bright heads falling down each column, trails fading behind
       init() { state.drops = Array.from({ length: COLS }, () => ({ y: rnd(ROWS), v: .3 + Math.random() * .7 })); },
       frame() { fade(.12); state.drops.forEach((d, x) => { d.y += d.v; if (d.y > ROWS + rnd(40)) d.y = -rnd(20); px(x, d.y, C.ok); px(x, d.y - 1, C.fg, .8); }); },
@@ -475,11 +536,12 @@
       },
     },
   };
-  let theme = "";
+  const SAME = { aurora: "forest", obsidian: "blueprint", frost: "neural" }; // the other cinematic themes borrow a scene
+  let theme = "", seen = "";
   function frame() {
     const now = document.documentElement.dataset.theme || "arcade";
-    if (now !== theme) {
-      theme = SCENES[now] ? now : "arcade";
+    if (now !== seen) {
+      seen = now; theme = SCENES[now] ? now : SCENES[SAME[now]] ? SAME[now] : "arcade";
       C = Object.fromEntries(["bg", "fg", "accent", "line", "ok"].map((k) => [k, rgb(cssVar(`--${k}`) || "#000000")]));
       g.fillStyle = `rgb(${C.bg.join(",")})`; g.fillRect(0, 0, COLS, ROWS);
       state = {}; SCENES[theme].init();

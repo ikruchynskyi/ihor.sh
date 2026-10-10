@@ -3,8 +3,9 @@
 // dragged, thrown and poked, and answers questions about the current page through /api/ask.
 const d3 = await import("https://cdn.jsdelivr.net/npm/d3@7/+esm");
 
-// Fonts must live in the document (an @font-face inside a shadow root isn't picked up).
-document.head.insertAdjacentHTML("beforeend", `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">`);
+// Fonts must live in the document (an @font-face inside a shadow root isn't picked up). The pixel faces only matter
+// for the pixel look (the Arcade theme); the sleek look uses the page's fonts through --reader-font and --pixel.
+if (document.documentElement.dataset.style === "pixel") document.head.insertAdjacentHTML("beforeend", `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">`);
 
 const store = (s) => ({ get: (k) => { try { return s().getItem(k); } catch { return null; } }, set: (k, v) => { try { s().setItem(k, v); } catch {} } });
 const session = store(() => sessionStorage), local = store(() => localStorage);
@@ -63,14 +64,25 @@ const CSS = `
 .bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -9px; width: 9px; height: 9px; margin-left: -4px; background: #fff8e7; box-shadow: 3px 0 0 #1b1020, -3px 0 0 #1b1020, 0 3px 0 #1b1020; }
 .bubble.clickable { pointer-events: auto; cursor: pointer; }
 .bubble.clickable:hover { background: #fff; }
+/* the sleek look (every theme but Arcade): a glass card with a soft tail */
+:host(.sleek) .bubble { background: color-mix(in srgb, var(--card, #0f1626) 92%, transparent); color: var(--fg, #e6edf7); border: 1px solid color-mix(in srgb, var(--fg, #e6edf7) 18%, transparent); border-radius: 12px; padding: 8px 14px 10px; line-height: 1.3; box-shadow: 0 14px 36px -14px rgba(0,0,0,.8), 0 0 0 1px rgba(0,0,0,.25); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+:host(.sleek) .bubble::after { width: 12px; height: 12px; bottom: -7px; margin-left: -6px; transform: rotate(45deg); background: inherit; box-shadow: none; border: inherit; border-top: 0; border-left: 0; }
+:host(.sleek) .bubble.clickable:hover { background: color-mix(in srgb, var(--card, #0f1626) 96%, var(--fg, #fff)); }
+:host(.sleek) .cta { color: var(--accent, #5ee1ff); animation: none; letter-spacing: .1em; }
 .rest { visibility: hidden; }
 .cta { display: block; margin-top: 6px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: #d6336c; animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-.scrim { position: fixed; inset: 0; background: rgba(5,8,20,.45); pointer-events: auto; }
-.panel { position: fixed; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); max-height: min(72vh, 640px); display: flex; flex-direction: column; background: var(--card, #0d1226); color: var(--fg, #e8edff); pointer-events: auto; font: var(--reader-size, 21px)/var(--reader-line, 1.2) var(--reader-font, "VT323", monospace); letter-spacing: var(--reader-letter, 0); border: 4px solid var(--fg, #e8edff); box-shadow: inset 0 0 0 4px var(--line, #3b4bb0), 10px 10px 0 rgba(0,0,0,.55); animation: rise .2s steps(4); }
+.scrim { position: fixed; inset: 0; z-index: 1; background: rgba(5,8,20,.45); pointer-events: auto; }
+.stage, .tab { z-index: 2; } /* Blip stands in front of the scrim (sharp while the page blurs) but behind the panel */
+.panel { position: fixed; z-index: 3; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); max-height: min(72vh, 640px); display: flex; flex-direction: column; background: var(--card, #0d1226); color: var(--fg, #e8edff); pointer-events: auto; font: var(--reader-size, 21px)/var(--reader-line, 1.2) var(--reader-font, "VT323", monospace); letter-spacing: var(--reader-letter, 0); border: var(--panel-edge, 4px solid var(--fg, #e8edff)); border-radius: var(--r, 0); box-shadow: var(--panel-shadow, inset 0 0 0 4px var(--line, #3b4bb0), 10px 10px 0 rgba(0,0,0,.55)); animation: rise .22s var(--motion, steps(4)); }
+:host(.sleek) .panel { background: color-mix(in srgb, var(--card, #0f1626) 90%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3); }
+:host(.sleek) .scrim { background: rgba(3,6,14,.55); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 @keyframes rise { from { transform: translateY(24px); opacity: 0; } }
 .panel header { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 4px solid var(--line, #3b4bb0); }
+:host(.sleek) .panel header, :host(.sleek) form { border-color: color-mix(in srgb, var(--fg, #fff) 12%, transparent); border-width: 1px; }
+:host(.sleek) .panel h2 { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 14px; }
+:host(.sleek) .panel header p, :host(.sleek) .msg .who, :host(.sleek) .panel footer { letter-spacing: .1em; text-transform: uppercase; font-size: 11px; font-weight: 600; }
 .panel h2 { margin: 0; font: calc(12px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--accent, #ffb347); }
 .panel header p { margin: 4px 0 0; font: calc(8px * var(--px, 1))/1.4 var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
 .portrait { width: 40px; height: 40px; flex: none; }
@@ -91,8 +103,17 @@ form { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border
 .caret { color: var(--ok, #5cff9d); animation: blink 1s steps(2) infinite; }
 input { flex: 1; min-width: 0; background: none; border: 0; color: inherit; font: inherit; outline: none; caret-color: #5cff9d; }
 input::placeholder { color: var(--muted, #5d679b); opacity: .8; }
-button { font: calc(9px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--on-accent, #1b1020); background: var(--accent, #ffb347); border: 0; padding: 10px 12px; box-shadow: 0 4px 0 rgba(0,0,0,.35); cursor: pointer; }
+button { font: calc(9px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--on-accent, #1b1020); background: var(--accent, #ffb347); border: 0; border-radius: var(--r-sm, 0); padding: 10px 12px; box-shadow: 0 4px 0 rgba(0,0,0,.35); cursor: pointer; }
 button:active { transform: translateY(2px); box-shadow: 0 2px 0 #b86b1e; }
+:host(.sleek) button { font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; background: linear-gradient(135deg, var(--accent, #5ee1ff), color-mix(in srgb, var(--accent, #5ee1ff) 62%, var(--accent2, #8b7bff))); box-shadow: 0 10px 24px -12px var(--accent, #5ee1ff); transition: transform .15s, box-shadow .15s; }
+:host(.sleek) button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -12px var(--accent, #5ee1ff); }
+:host(.sleek) button:active { transform: none; box-shadow: none; }
+:host(.sleek) .chips button, :host(.sleek) .x { background: color-mix(in srgb, var(--fg, #fff) 6%, transparent); border: 1px solid color-mix(in srgb, var(--fg, #fff) 16%, transparent); box-shadow: none; text-transform: none; letter-spacing: 0; font-weight: 500; }
+:host(.sleek) .chips button:hover, :host(.sleek) .x:hover { border-color: var(--accent, #5ee1ff); box-shadow: 0 0 0 1px var(--glow, transparent); }
+:host(.sleek) .tab { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border-radius: 12px 12px 0 0; }
+:host(.sleek) .panel footer button, :host(.sleek) .panel footer a { background: none; box-shadow: none; border: 0; padding: 4px 0; font: inherit; letter-spacing: .1em; text-transform: uppercase; transform: none; }
+:host(.sleek) .panel footer button:hover, :host(.sleek) .panel footer a:hover { color: var(--accent, #5ee1ff); }
+:host(.sleek) .x { width: 36px; height: 36px; padding: 0; border-radius: 999px; display: grid; place-items: center; font-size: 14px; }
 button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-offset: 2px; }
 .chips button { color: var(--fg, #e8edff); background: var(--bg, #1e2650); box-shadow: 0 4px 0 var(--line, #3b4bb0); text-align: left; line-height: 1.5; }
 .panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
@@ -109,6 +130,8 @@ const eye = (s) => `<g transform="translate(${s * 10},-4)">
 
 const host = document.createElement("div");
 host.id = "blip";
+const look = () => host.classList.toggle("sleek", document.documentElement.dataset.style !== "pixel");
+look(); new MutationObserver(look).observe(document.documentElement, { attributes: true, attributeFilter: ["data-style"] });
 host.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:2147483000";
 document.body.append(host);
 const root = host.attachShadow({ mode: "open" });
@@ -140,7 +163,7 @@ root.innerHTML = `<style>${CSS}</style>
     <header>
       <svg class="portrait" viewBox="-24 -30 48 54" aria-hidden="true"><path d="M0,-18 Q2,-24 0,-28" fill="none" stroke="#2a1405" stroke-width="3"/><circle cy="-28" r="4" fill="#ff5c8a" stroke="#2a1405" stroke-width="2"/><ellipse rx="20" ry="18" fill="url(#skin)" stroke="#2a1405" stroke-width="3"/><circle cx="-7" cy="-3" r="4"/><circle cx="7" cy="-3" r="4"/><path d="M-5,7 Q0,11 5,7" fill="none" stroke="#2a1405" stroke-width="2.5"/></svg>
       <div><h2 id="blip-h">BLIP</h2><p>COMPANION · ON AIR</p></div>
-      <button class="x" aria-label="Close">X</button>
+      <button class="x" aria-label="Close">✕</button>
     </header>
     <div class="log" aria-live="polite"></div>
     <div class="wardrobe" hidden></div>
@@ -176,7 +199,11 @@ if (myItem?.at === "head") hat.setAttribute("hidden", ""); // headphones and a p
 
 // ---------- the soft body ----------
 let W = innerWidth, H = innerHeight;
-addEventListener("resize", () => { W = innerWidth; H = innerHeight; });
+// A page can raise the floor (a bottom sheet on phones): html { --blip-floor: 64px }
+let floorUp = 0;
+const readFloor = () => { floorUp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--blip-floor")) || 0; };
+addEventListener("resize", () => { W = innerWidth; H = innerHeight; readFloor(); });
+setInterval(readFloor, 1000); readFloor();
 const N = 14, R = 30, G = 0.45;
 const firstVisit = !session.get("blip:x");
 const x0 = Math.min(W - 70, Math.max(70, Number(session.get("blip:x")) || W - 100)), y0 = firstVisit ? -80 : H - R - 6;
@@ -196,7 +223,7 @@ const links = [
 let grounded = false, impact = 0, walk = null, flying = false;
 function world() {
   grounded = false; impact = 0;
-  const floor = H - 4;
+  const floor = H - 4 - floorUp;
   for (const n of nodes) {
     if (n.fx != null) continue;
     n.vy += G;
@@ -259,8 +286,8 @@ function render() {
   const dx = t.x - c.x, dy = t.y - c.y, m = Math.hypot(dx, dy) || 1, s = Math.min(1, m / 60) * 3.2;
   pupil.x += (dx / m * s - pupil.x) * 0.25; pupil.y += (dy / m * s - pupil.y) * 0.25;
   for (const el of looks) el.setAttribute("transform", `translate(${pupil.x},${pupil.y})`);
-  const height = H - d3.max(ring, (n) => n.y);
-  shadow.setAttribute("cx", c.x); shadow.setAttribute("cy", H - 3);
+  const height = H - floorUp - d3.max(ring, (n) => n.y);
+  shadow.setAttribute("cx", c.x); shadow.setAttribute("cy", H - 3 - floorUp);
   shadow.setAttribute("rx", Math.max(8, 30 - height / 10)); shadow.style.opacity = Math.max(0.2, 1 - height / 300);
   if (!bubble.hidden) {
     const w = bubble.offsetWidth, h = bubble.offsetHeight;
