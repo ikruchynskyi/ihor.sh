@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { alertsNow, outagesNow } from "./archive.ts";
 
 // Subway arrivals: the MTA's GTFS-realtime feeds (protobuf, no key) → next trains per station and direction.
 // A tiny protobuf reader covers the few fields we need; feeds are fetched on demand and cached 30 s.
@@ -64,13 +65,48 @@ export function vehicles(feed: Uint8Array): Vehicle[] {
 }
 
 // ---------- stations and cache ----------
-type Station = { id: string; name: string; lines: string; north: string; south: string; lat: number; lon: number };
+type Station = { id: string; name: string; lines: string; north: string; south: string; lat: number; lon: number; ada: number; adaN: number; adaS: number; adaNotes: string };
 let stations: Map<string, Station> | null = null;
 async function loadStations() {
   if (stations) return stations;
   const rows: any[] = await (await fetch(STATIONS, { signal: AbortSignal.timeout(20_000) })).json();
-  stations = new Map(rows.map((r) => [r.gtfs_stop_id, { id: r.gtfs_stop_id, name: r.stop_name, lines: r.daytime_routes, north: r.north_direction_label || "Northbound", south: r.south_direction_label || "Southbound", lat: +r.gtfs_latitude, lon: +r.gtfs_longitude }]));
+  stations = new Map(rows.map((r) => [r.gtfs_stop_id, { id: r.gtfs_stop_id, name: r.stop_name, lines: r.daytime_routes, north: r.north_direction_label || "Northbound", south: r.south_direction_label || "Southbound", lat: +r.gtfs_latitude, lon: +r.gtfs_longitude,
+    ada: +r.ada || 0, adaN: +r.ada_northbound || 0, adaS: +r.ada_southbound || 0, adaNotes: r.ada_notes && r.ada_notes !== "NaN" ? r.ada_notes : "" }]));
   return stations;
+}
+/** Step-free access at a platform: "635S" → the station and its southbound platform. ada: 0 none, 1 full, 2 partial. */
+export async function stationAccess(stopId: string) {
+  const st = (await loadStations()).get(stopId.replace(/[NS]$/, ""));
+  if (!st) return null;
+  const dir = stopId.endsWith("N") ? st.adaN : stopId.endsWith("S") ? st.adaS : st.ada;
+  return { name: st.name, lines: st.lines, ada: dir || st.ada, notes: st.adaNotes };
+}
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+/** A commute's options get what affects them: active MTA alerts on their subway lines, and (accessible) whether each
+ *  boarding and exit platform is step-free right now (MTA's station data, minus elevators reported out). */
+export async function annotateTrip(d: any, accessible = false) {
+  if (!d?.options) return d;
+  const alerts = alertsNow(), outs = outagesNow().filter((o) => o.kind === "EL");
+  for (const o of d.options) {
+    const routes = new Set(o.legs.filter((l: any) => l.mode === "SUBWAY").map((l: any) => String(l.route).replace(/X$/, "")));
+    o.alerts = alerts.filter((a) => a.routes.split(",").some((r) => routes.has(r))).slice(0, 6).map((a) => ({ type: a.type, routes: a.routes, text: a.header.slice(0, 220) }));
+    if (!accessible) continue;
+    const notes: string[] = [];
+    for (const l of o.legs.filter((x: any) => x.mode === "SUBWAY")) for (const [stop, what] of [[l.stop, "board"], [l.alight, "exit"]]) {
+      const a = stop ? await stationAccess(stop) : null;
+      if (!a) continue;
+      if (a.ada === 0) notes.push(`${a.name}: not step-free (${what} the ${l.route})`);
+      else if (a.ada === 2) notes.push(`${a.name}: only partly accessible${a.notes ? ` (${a.notes})` : ""}`);
+      const r = String(l.route).replace(/X$/, ""), platformFor = (x: { serving: string }) => x.serving.match(/\b([A-Z0-9](?:\/[A-Z0-9])+|[A-Z0-9]) platform/)?.[1].split("/");
+      // an elevator that names another line's platform ("2/3 platform") doesn't stop a Q rider; mezzanine/street ones do
+      const down = outs.filter((x) => norm(x.station) === norm(a.name) && x.trains.split("/").includes(r) && (platformFor(x)?.includes(r) ?? true));
+      for (const x of down) notes.push(`${a.name}: elevator out (${x.serving})${x.est_return ? `, back ~${new Date(x.est_return * 1000).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}`);
+    }
+    o.access = { stepFree: notes.length === 0, notes };
+  }
+  if (accessible) d.options.sort((x: any, y: any) => Number(y.access?.stepFree) - Number(x.access?.stepFree)); // step-free first, otherwise as ranked
+  d.accessible = accessible;
+  return d;
 }
 let cache: { at: number; byStop: Map<string, Arrival[]>; byTrip: Map<string, Arrival[]>; vehicles: Vehicle[] } | null = null;
 async function board() {

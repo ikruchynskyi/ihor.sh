@@ -6,7 +6,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
-import { stationArrivals, ferryBoard, ferryBoats, trainPositions, busStops, busArrivals, busRoute } from "./transit.ts";
+import { stationArrivals, ferryBoard, ferryBoats, trainPositions, busStops, busArrivals, busRoute, annotateTrip } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
@@ -254,7 +254,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname === "/api/nyc/geocode") return send(await geocode(String(q.get("q") ?? "").slice(0, 120)), 3600);
       if (url.pathname === "/api/nyc/suggest") return send(await suggest(String(q.get("q") ?? "").slice(0, 80)), 86400);
-      if (url.pathname === "/api/nyc/trip") return send(await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk", "transit"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0", via: q.getAll("via").slice(0, 6).map((v) => v.slice(0, 120)).filter(Boolean) }), 120);
+      if (url.pathname === "/api/nyc/trip") { const acc = q.get("access") === "1", t: any = await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk", "transit"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0", accessible: acc, via: q.getAll("via").slice(0, 6).map((v) => v.slice(0, 120)).filter(Boolean) }); return send(t.mode === "transit" ? await annotateTrip(t, acc) : t, 120); }
       if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
       const from = q.get("from") ?? "", to = q.get("to") ?? from;
       if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();

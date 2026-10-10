@@ -20,6 +20,8 @@
              border-radius: 10px; padding: 12px 14px; }
     h1 { font-size: 1.05rem; margin: 0 0 2px; }
     .muted { color: var(--muted); font-size: 0.8rem; }
+    .warn { color: var(--alert); font-weight: 600; font-size: 0.85rem; }
+    details.alerts p { margin: 4px 0; font-size: 0.8rem; }
     label { display: block; font-size: 0.85rem; }
     details { margin-top: 8px; font-size: 0.8rem; }
     details li { margin-bottom: 4px; }
@@ -128,6 +130,7 @@
         <label title="Commute: subway, buses and walking"><input type="radio" name="tMode" value="transit"><span aria-hidden="true">🚇</span><b>Commute</b></label>
       </fieldset>
       <label><input type="checkbox" id="tNoFerry"> Avoid ferries</label>
+      <label title="Commute: routes without stairs, flagging any station that isn't step-free or has an elevator out"><input type="checkbox" id="tAccess"> ♿ Step-free</label>
       <button style="margin-top:6px">Plan</button> <button type="button" id="tClear" style="margin-top:6px">Clear</button>
     </form>
     <div id="tripOut" class="muted"></div>
@@ -965,7 +968,7 @@ $("trip").addEventListener("submit", async (e) => {
   if (!from || !to) return;
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
-  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${viaIds.map((id) => `&via=${encodeURIComponent(tripEnd(id))}`).join("")}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
+  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${viaIds.map((id) => `&via=${encodeURIComponent(tripEnd(id))}`).join("")}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}${$("tAccess").checked ? "&access=1" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
   d.viaIds = viaIds;
   if (d.mode === "transit") return showCommute(d, 0);
@@ -1014,6 +1017,9 @@ function showCommute(d, pick) {
   if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${esc(d.to.label)}`).addTo(tripLayer);
   stopDots(d);
   map.fitBounds(L.featureGroup(lines).getBounds().pad(0.1), { paddingTopLeft: [Math.max(20, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 20), 20] });
+  // live: the MTA reported this train or bus's real position/time; otherwise the times are the timetable's
+  const badges = (x) => { const t = x.legs.filter((l) => l.mode !== "WALK"), live = t.filter((l) => l.realTime).length;
+    return `<br><span class="muted">${t.length ? (live === t.length ? "🟢 live times" : live ? `🟢 ${live} of ${t.length} legs live` : "🕒 timetable times") : ""}${x.alerts?.length ? ` · ⚠ ${x.alerts.length} alert${x.alerts.length > 1 ? "s" : ""}` : ""}${x.access ? (x.access.stepFree ? " · ♿ step-free" : ` · <span class="warn">♿ ${x.access.notes.length} issue${x.access.notes.length > 1 ? "s" : ""}</span>`) : ""}</span>`; };
   const chips = (x) => x.legs.map((l) => (l.mode === "WALK" ? `<span class="muted">🚶${l.minutes}</span>` : legBullet(l))).join(' <span class="muted">›</span> ');
   // waiting at a stop: the gap between getting there and the bus or train leaving
   const wait = (l, i) => { const g = i && l.mode !== "WALK" ? Math.round((Date.parse(l.depart) - Date.parse(o.legs[i - 1].arrive)) / 60000) : 0; return g >= 2 ? `<li class="muted">⏱ Wait ${g} min for the ${esc(l.route)}</li>` : ""; };
@@ -1022,7 +1028,9 @@ function showCommute(d, pick) {
     : `<li>${legBullet(l)} <b>${esc(l.route)}</b> toward ${esc(l.headsign)}<br><span class="muted">${hm(l.depart)} ${esc(l.from)} → ${hm(l.arrive)} ${esc(l.to)} · ${l.stops} stop${l.stops > 1 ? "s" : ""}, ${l.minutes} min${l.realTime ? " · live time" : ""}</span>
        ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`);
   const stepAndStop = (l, i) => step(l, i) + (l.stopAfter ? `<li>📍 <b>Stop: ${esc(l.stopAfter)}</b></li>` : "");
-  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>Arrive ${hm(x.arrive)}</b> · ${fromNow(x.arrive)} min from now<br><span class="muted">leave ${fromNow(x.depart) ? `in ${fromNow(x.depart)} min` : "now"} · ${x.minutes} min on the way${x.waitMinutes ? `, ${x.waitMinutes} of it waiting at stops` : ""}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}</span><br>${chips(x)}</button>`).join("")
+  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>Arrive ${hm(x.arrive)}</b> · ${fromNow(x.arrive)} min from now<br><span class="muted">leave ${fromNow(x.depart) ? `in ${fromNow(x.depart)} min` : "now"} · ${x.minutes} min on the way${x.waitMinutes ? `, ${x.waitMinutes} of it waiting at stops` : ""}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}</span><br>${chips(x)}${badges(x)}</button>`).join("")
+    + (o.access && !o.access.stepFree ? `<div class="warn">♿ Not step-free: ${o.access.notes.map(esc).join("; ")}</div>` : o.access ? `<div class="muted">♿ Step-free at every station on this trip, as of now.</div>` : "")
+    + (o.alerts?.length ? `<details class="alerts"><summary>⚠ ${o.alerts.length} MTA alert${o.alerts.length > 1 ? "s" : ""} on these lines</summary>${o.alerts.map((a) => `<p>${a.routes.split(",").map(bullet).join("")} <b>${esc(a.type)}</b>: ${esc(a.text)}</p>`).join("")}</details>` : "")
     + `<ol class="steps">${o.legs.map(stepAndStop).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
     + `<div class="muted">Routes and times: <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a> on MTA schedules (live where the MTA reports it). Walks marked ~ are estimated.</div>`;
   $("tripOut").querySelectorAll("button[data-o]").forEach((b) => (b.onclick = () => showCommute(d, +b.dataset.o)));
@@ -1095,8 +1103,8 @@ window.blipActions = {
     run: async ({ place, zoom }) => { const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(place)}`); if (g) { map.setView([g.lat, g.lon], Math.min(18, Math.max(11, Number(zoom) || 16))); L.popup().setLatLng([g.lat, g.lon]).setContent(esc(g.label)).openOn(map); const p = map.latLngToContainerPoint([g.lat, g.lon]), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; } } },
   open_cameras: { label: "opened cameras", description: "Open up to 4 live traffic camera windows whose name matches, e.g. 'Canal St', 'FDR', 'Atlantic Ave'.", parameters: { query: { type: "string", description: "Street or road words" } },
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
-  plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start, or 'my location' for where the visitor is" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
-    run: ({ from, to, mode, avoid_ferries, stops }) => { $("tClear").click(); String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6).forEach((x) => addStop(x, false)); const mine = /^(my (current )?location|me|here|where i am|current location)$/i.test(String(from ?? "").trim()) && meAt; $("tFrom").value = mine ? "" : from ?? ""; $("tTo").value = to ?? ""; if (mine) placePin("tFrom", meAt, "My location"); const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
+  plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start, or 'my location' for where the visitor is" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" }, accessible: { type: "boolean", description: "Transit: step-free routes only (wheelchair, stroller)" } },
+    run: ({ from, to, mode, avoid_ferries, stops, accessible }) => { $("tClear").click(); String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6).forEach((x) => addStop(x, false)); const mine = /^(my (current )?location|me|here|where i am|current location)$/i.test(String(from ?? "").trim()) && meAt; $("tFrom").value = mine ? "" : from ?? ""; $("tTo").value = to ?? ""; if (mine) placePin("tFrom", meAt, "My location"); const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("tAccess").checked = !!accessible; $("trip").requestSubmit(); } },
   follow_aircraft: { label: "found the aircraft", description: "Show a live aircraft or helicopter on the map with where it's been in the last 24 h. Query: callsign, registration or hex from aircraftInView; or 'helicopter' for the nearest helicopter.", parameters: { query: { type: "string", description: "Callsign, registration, hex, or 'helicopter'" } },
     run: async ({ query }) => {
       await toggle("aircraft", true);

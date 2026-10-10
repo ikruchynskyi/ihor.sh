@@ -4,7 +4,7 @@
 import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
-import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, busStops, busArrivals, BUS_GRID } from "./transit.ts";
+import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, busStops, busArrivals, BUS_GRID, annotateTrip } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
@@ -204,10 +204,10 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   trip_plan: {
-    description: "Plan a trip in NYC by car, bike or on foot: distance, time (car trips include live traffic delay), and the live traffic cameras along the route in order.",
-    parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike or walk", enum: ["drive", "bike", "walk"] }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
+    description: "Plan a trip in NYC by car, bike, on foot, or by subway and bus (mode transit: options with arrival times, transfers, live times, active MTA alerts on their lines; accessible: step-free routes, with any platform that isn't step-free or has an elevator out listed). Car trips include live traffic and the cameras along the route.",
+    parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike, walk or transit (subway + bus)", enum: ["drive", "bike", "walk", "transit"] }, accessible: { type: "boolean", description: "Transit only: step-free (wheelchair, stroller) routes" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
     required: ["from", "to"],
-    run: async ({ from, to, mode, avoid_ferries, stops }) => { const t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },
+    run: async ({ from, to, mode, avoid_ferries, stops, accessible }) => { let t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, accessible: !!accessible, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); if (t.mode === "transit") t = await annotateTrip(t, !!accessible); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },
   },
   address_info: {
     description: "Look up an NYC address, intersection or landmark: districts, police precinct, BBL/BIN, ZIP, neighborhood, coordinates (NYC Geoclient).",

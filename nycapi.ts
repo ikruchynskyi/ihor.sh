@@ -328,12 +328,12 @@ function decodePolyline(str: string, precision = 6) {
  * A route from A to B through up to 6 stops in order (Valhalla on valhalla1.openstreetmap.de, which can avoid ferries)
  * and the traffic cameras along it, in order: every camera within 150 m of the line, sorted by how far along the trip it is.
  */
-export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING | "transit" = "drive", { avoidFerries = false, via = [] as string[] } = {}) {
+export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING | "transit" = "drive", { avoidFerries = false, via = [] as string[], accessible = false } = {}) {
   const names = [from, ...via.slice(0, 6), to], found = await Promise.all(names.map(geocode));
   const missing = found.findIndex((p) => !p);
   if (missing >= 0) return { error: `Couldn't find ${names[missing]} in NYC.` };
   const pts = found as Place[], a = pts[0], b = pts[pts.length - 1], stops = pts.slice(1, -1);
-  if (mode === "transit") return stops.length ? transitWithStops(pts) : transitPlan(a, b);
+  if (mode === "transit") return stops.length ? transitWithStops(pts, accessible) : transitPlan(a, b, undefined, accessible);
   // Car trips with a TomTom key: live traffic in the time. Otherwise (and for bike/walk) Valhalla's typical speeds.
   const tt = mode === "drive" && env("TOMTOM_API_KEY") ? await tomtomRoute(pts, avoidFerries).catch(() => null) : null;
   const costing = COSTING[mode] ?? "auto";
@@ -401,10 +401,10 @@ function dropHops(it: any) {
 }
 
 /** Transit through stops: each stretch planned in turn, leaving when the last one arrives; the simplest option of each, joined. */
-async function transitWithStops(pts: Place[]) {
+async function transitWithStops(pts: Place[], accessible = false) {
   const parts: any[] = [];
   for (let i = 1; i < pts.length; i++) {
-    const d: any = await transitPlan(pts[i - 1], pts[i], parts.at(-1)?.arrive);
+    const d: any = await transitPlan(pts[i - 1], pts[i], parts.at(-1)?.arrive, accessible);
     if (d.error) return { error: `${pts[i - 1].label} → ${pts[i].label}: ${d.error}` };
     const o = d.options[0];
     o.legs.at(-1).stopAfter = i < pts.length - 1 ? pts[i].label : undefined;
@@ -416,8 +416,9 @@ async function transitWithStops(pts: Place[]) {
       walkMinutes: parts.reduce((t, o) => t + o.walkMinutes, 0), waitMinutes: parts.reduce((t, o) => t + o.waitMinutes, 0), legs: parts.flatMap((o) => o.legs) }] };
 }
 
-async function transitPlan(a: Place, b: Place, leaveAt?: string) {
+async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = false) {
   const q = new URLSearchParams({ fromPlace: `${a.lat},${a.lon}`, toPlace: `${b.lat},${b.lon}`, numItineraries: "8", transitModes: "SUBWAY,BUS", directModes: "WALK" });
+  if (accessible) q.set("pedestrianProfile", "WHEELCHAIR"); // step-free walking paths and stops marked wheelchair-accessible in the GTFS
   if (leaveAt) q.set("time", leaveAt);
   const r = await fetch(`https://api.transitous.org/api/v1/plan?${q}`, { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) });
   if (!r.ok) return { error: `The transit router isn't answering (${r.status}). Try again in a minute.` };
@@ -446,7 +447,7 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string) {
       stops: (l.intermediateStops?.length ?? 0) + 1, realTime: !!l.realTime, estimated: !!l.estimated,
       line: (l.line ?? decodePolyline(l.legGeometry.points, l.legGeometry.precision ?? 6)).map(([la, lo]: number[]) => [+la.toFixed(5), +lo.toFixed(5)]),
       // "20261009_10:36_us-ny-MTA-NYCSubway_…_063600_4..S06R" → the realtime id "063600_4..S06R"; boarding stop "635S"
-      ...(l.mode === "SUBWAY" && l.tripId ? { trip: l.tripId.split("_").slice(-2).join("_"), stop: String(l.from.stopId ?? "").split("_").pop() } : {}),
+      ...(l.mode === "SUBWAY" && l.tripId ? { trip: l.tripId.split("_").slice(-2).join("_"), stop: String(l.from.stopId ?? "").split("_").pop(), alight: String(l.to.stopId ?? "").split("_").pop() } : {}),
     })),
   }));
   if (!options.length) return { error: "No subway or bus route found between those places." };

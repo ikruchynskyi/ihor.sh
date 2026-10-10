@@ -80,6 +80,18 @@ export function startArchive() {
 const planned = (type: string) => type.startsWith("Planned");
 
 /** Everything the archive page shows, for the last `days` days. */
+/** Elevators and escalators out of service in the latest snapshot. */
+export function outagesNow() {
+  const last = (db.prepare("select max(last_seen) t from outages").get() as any)?.t ?? 0;
+  return db.prepare("select station, trains, kind, serving, reason, est_return, ada from outages where last_seen = ?").all(last) as { station: string; trains: string; kind: string; serving: string; reason: string; est_return: number; ada: number }[];
+}
+
+/** Every alert active in the latest snapshot, planned work included (a weekend reroute matters to a trip). */
+export function alertsNow() {
+  const last = (db.prepare("select max(last_seen) t from alerts").get() as any)?.t ?? 0;
+  return db.prepare("select type, routes, header from alerts where last_seen = ?").all(last) as { type: string; routes: string; header: string }[];
+}
+
 export function summary(days = 30) {
   const since = now() - days * 86400;
   const last = (feed: string) => (db.prepare("select max(at) at from polls where feed = ? and ok = 1").get(feed) as any)?.at ?? 0;
