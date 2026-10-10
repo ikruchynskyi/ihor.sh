@@ -341,7 +341,7 @@ export async function ask(body: any, system: string) {
   const used: string[] = [], extra = pageTools(page), pageNames = new Set(extra.map((t: any) => t.function.name));
   const actions: { name: string; args: unknown }[] = [];
   // With body.trace, every step comes back too (the AI world's agents chapter replays them).
-  const trace: { step: number; tool: string; args: unknown; result: string }[] | undefined = body?.trace ? [] : undefined;
+  const trace: { step: number; tool: string; args: unknown; result: string; data: string }[] | undefined = body?.trace ? [] : undefined;
   const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps: MAX_STEPS } : {}) });
   for (let step = 0; step < MAX_STEPS; step++) {
     const msg = await chat(messages, true, extra);
@@ -355,7 +355,7 @@ export async function ask(body: any, system: string) {
       try { out = tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
       catch (e) { out = { error: (e as Error).message }; }
       messages.push({ role: "tool", tool_name: name, content: JSON.stringify(out).slice(0, 8000) });
-      trace?.push({ step: step + 1, tool: name, args: call.function.arguments ?? {}, result: JSON.stringify(out).slice(0, 400) });
+      trace?.push({ step: step + 1, tool: name, args: call.function.arguments ?? {}, result: JSON.stringify(out).slice(0, 400), data: JSON.stringify(out).slice(0, 8000) }); // data: what the faithfulness check reads
     }
   }
   const final = await chat(messages, false); // out of steps: answer with what we have
