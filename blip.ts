@@ -324,8 +324,11 @@ async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [])
   return (await r.json()).message as Msg;
 }
 
-/** One visitor turn: returns Blip's reply and the tools it used along the way. */
-export async function ask(body: any, system: string) {
+/** What ask() is doing right now, for a page that streams the wait: thinking, or running a tool. */
+export type Step = { kind: "think" | "tool"; tool?: string; args?: unknown; n: number };
+
+/** One visitor turn: returns Blip's reply and the tools it used along the way. onStep hears each step as it starts. */
+export async function ask(body: any, system: string, onStep?: (s: Step) => void) {
   const history: Msg[] = (Array.isArray(body?.messages) ? body.messages : []).slice(-12)
     .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string" && m.content.trim())
     .map((m: any) => ({ role: m.role, content: m.content.slice(0, 2000) }));
@@ -344,12 +347,14 @@ export async function ask(body: any, system: string) {
   const trace: { step: number; tool: string; args: unknown; result: string; data: string }[] | undefined = body?.trace ? [] : undefined;
   const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps: MAX_STEPS } : {}) });
   for (let step = 0; step < MAX_STEPS; step++) {
+    onStep?.({ kind: "think", n: step });
     const msg = await chat(messages, true, extra);
     if (!msg.tool_calls?.length) return done(msg.content ?? "");
     messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
     for (const call of msg.tool_calls) {
       const name = call.function?.name, tool = TOOLS[name];
       if (!pageNames.has(name)) used.push(name);
+      onStep?.({ kind: "tool", tool: name, args: call.function.arguments ?? {}, n: step });
       let out: unknown;
       if (pageNames.has(name)) { actions.push({ name, args: call.function.arguments ?? {} }); messages.push({ role: "tool", tool_name: name, content: JSON.stringify({ ok: true, note: "done on the visitor's page" }) }); continue; }
       try { out = tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
@@ -358,6 +363,7 @@ export async function ask(body: any, system: string) {
       trace?.push({ step: step + 1, tool: name, args: call.function.arguments ?? {}, result: JSON.stringify(out).slice(0, 400), data: JSON.stringify(out).slice(0, 8000) }); // data: what the faithfulness check reads
     }
   }
+  onStep?.({ kind: "think", n: MAX_STEPS });
   const final = await chat(messages, false); // out of steps: answer with what we have
   return done(final.content ?? "");
 }

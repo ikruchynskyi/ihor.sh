@@ -245,8 +245,18 @@ const server = http.createServer(async (req, res) => {
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
-      const answer = await ask(JSON.parse(raw), SYSTEM);
-      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
+      const body = JSON.parse(raw);
+      if (!body?.stream) {
+        const answer = await ask(body, SYSTEM);
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
+      }
+      // Streamed: one JSON line per step as Blip thinks and calls tools (the chat shows them while it waits), then the answer.
+      res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
+      try {
+        const answer = await ask(body, SYSTEM, (step) => res.write(JSON.stringify({ step }) + "\n"));
+        res.end(JSON.stringify(answer) + "\n");
+      } catch (e) { res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
+      return;
     }
     if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm", "/api/slice", "/api/overview"].includes(url.pathname)) return proxySdr(req, res);
     if (url.pathname === "/api/viewer" && req.method === "POST") return proxySdr(req, res);

@@ -97,6 +97,7 @@ const CSS = `
 .msg a { color: var(--accent, #ffb347); }
 .msg code { background: var(--bg, #1e2650); padding: 0 4px; }
 .dots::after { content: "."; animation: dots 1.2s steps(3) infinite; }
+.status { color: var(--muted, #9aa8c0); font-size: .9em; }
 @keyframes dots { 33% { content: ".."; } 66% { content: "..."; } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 form { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 4px solid var(--line, #3b4bb0); }
@@ -623,8 +624,12 @@ form.onsubmit = (e) => { e.preventDefault(); send(input.value); };
 
 // Pages can publish what they show (map markers, the selected item, a drill in progress) as window.blipContext().
 const pageObjects = () => { try { return typeof window.blipContext === "function" ? JSON.stringify(window.blipContext()).slice(0, 5000) : ""; } catch { return ""; } };
-const TOOL_LABEL = { web_search: "searched the web", subway_status: "checked the subway", subway_arrivals: "checked train times", trip_plan: "planned the route", deals: "checked deals", callsign_lookup: "looked up the callsign", ferry_arrivals: "checked the ferries", orna_shops: "checked the guild shops", repeaters_near: "found repeaters", free_events: "checked free events", city_events: "checked the city calendar",
-  restaurant_inspections: "checked health inspections", address_info: "looked up the address" };
+// Each tool as "what Blip is doing" (shown live while it runs) and "what Blip did" (under the answer).
+const TOOL_DOING = { web_search: "searching the web", subway_status: "checking the subway", subway_arrivals: "checking train times", subway_near: "finding stations", citibike_near: "finding Citi Bikes", bus_arrivals: "checking bus times", ferry_arrivals: "checking the ferries", trip_plan: "planning the route",
+  weather_now: "checking the weather", aircraft_over_nyc: "looking at the sky", iss_now: "finding the ISS", iss_passes: "computing ISS passes", tropical_storms: "checking the storms", evening_events: "looking at what's on", evening_plan: "planning the evening", jobs_search: "searching jobs",
+  free_events: "checking free events", city_events: "checking the city calendar", restaurant_inspections: "checking health inspections", address_info: "looking up the address", street_photo: "finding street photos", deals: "checking deals",
+  callsign_lookup: "looking up the callsign", repeaters_near: "finding repeaters", radio_stations: "checking the stations", orna_shops: "checking the guild shops" };
+const TOOL_LABEL = Object.fromEntries(Object.entries(TOOL_DOING).map(([k, v]) => [k, v.replace(/^(\w+)ing\b/, (_, w) => ({ check: "checked", search: "searched", find: "found", plann: "planned", look: "looked", comput: "computed" })[w] ?? w + "ed")]));
 // Blip remembers where you've been (this browser only) and greets you per world.
 const WORLD_NAMES = { radio: "Radio", nyc: "NYC", ai: "AI", yomu: "Yomu", ride: "Ride", learn: "Learn & build", orna: "ORNA" };
 const progress = (() => { try { return JSON.parse(local.get("blip:progress") || "{}"); } catch { return {}; } })();
@@ -672,17 +677,39 @@ async function send(q) {
   if (!q || pending) return;
   pending = true; input.value = "";
   history.push({ role: "user", content: q }); save(); renderLog();
-  log.insertAdjacentHTML("beforeend", line("BLIP", `<span class="t"><span class="dots"></span></span>`));
-  const out = log.lastElementChild.querySelector(".t");
+  log.insertAdjacentHTML("beforeend", line("BLIP", `<span class="t"><span class="status"><span class="dots"></span></span></span>`));
+  const out = log.lastElementChild.querySelector(".t"), status = out.firstElementChild;
   log.scrollTop = log.scrollHeight;
   setMood("think"); const pinging = setInterval(ping, 700);
+  // What Blip is doing, live: the server streams a line per step (thinking, each tool) before the answer.
+  const t0 = performance.now();
+  let doing = "thinking";
+  const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 ? " · the model is slow right now, hang on" : ""}`; }, 500);
   try {
-    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history, page: pageInfo() }) })
+    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history, page: pageInfo(), stream: true }) })
       .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || "Blip lost the signal. Try again?");
+    let data = {};
+    if (!r.ok || !/x-ndjson/.test(r.headers.get("content-type") ?? "")) data = await r.json().catch(() => ({}));
+    else {
+      const reader = r.body.getReader(), dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        buf += done ? "" : dec.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const row = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+          if (!row) continue;
+          const j = JSON.parse(row);
+          if (j.step) { doing = j.step.kind === "tool" ? (TOOL_DOING[j.step.tool] ?? allActions()[j.step.tool]?.label ?? j.step.tool.replace(/_/g, " ")) : j.step.n ? "putting it together" : "thinking"; hop(3); }
+          else data = j;
+        }
+        if (done) break;
+      }
+    }
+    if (!r.ok || data.error || !data.reply) throw new Error(data.error || "Blip lost the signal. Try again?");
     history.push({ role: "assistant", content: data.reply }); save();
-    clearInterval(pinging);
+    clearInterval(pinging); clearInterval(tick);
     await typeOut(out, data.reply);
     const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => allActions()[a.name]?.label ?? a.name.replace(/_/g, " "))])];
     if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
@@ -693,7 +720,7 @@ async function send(q) {
     out.parentElement.classList.add("err"); out.textContent = err.message;
     setMood("dizzy", 1400);
   } finally {
-    clearInterval(pinging); pending = false;
+    clearInterval(pinging); clearInterval(tick); pending = false;
   }
 }
 function typeOut(el, text) {

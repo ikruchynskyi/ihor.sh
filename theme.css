@@ -145,7 +145,7 @@ progress, meter { accent-color: var(--accent); }
 ::-webkit-scrollbar-thumb { background: var(--line); }
 
 /* ---------- "still working": a bar at the top and, after a moment, what the page is waiting for (reader.js) ---------- */
-.ihor-wait { position: fixed; left: 0; right: 0; top: 0; z-index: 2147482500; pointer-events: none; }
+.ihor-wait { position: fixed; left: 0; right: 0; top: 0; z-index: 2147483100; pointer-events: none; } /* above Blip, so the pill shows over its chat scrim */
 .ihor-wait i { display: block; height: 3px; background: linear-gradient(90deg, transparent, var(--accent), var(--accent2, var(--accent)), transparent) 0 0 / 50% 100% no-repeat; animation: ihor-slide 1.1s linear infinite; }
 @keyframes ihor-slide { from { background-position: -100% 0; } to { background-position: 200% 0; } }
 .ihor-wait output { position: absolute; top: calc(var(--hud-h, 48px) + 10px); left: 50%; transform: translateX(-50%); display: none; max-width: calc(100vw - 32px); padding: 8px 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
