@@ -30,12 +30,13 @@ const hhmm = (s: string) => { const m = String(s ?? "").match(/(\d{1,2}):(\d{2})
 const unent = (s: string) => String(s ?? "").replace(/&#8217;|&rsquo;/g, "’").replace(/&#8216;/g, "‘").replace(/&#8220;|&#8221;|&quot;/g, '"').replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").replace(/&#\d+;/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 // one set of categories for every source
-const CATS: [string, RegExp][] = [["popups", /pop-?up|sample sale|activation|brand experience|store opening|launch party|giveaway|freebie/i], ["music", /music|concert|jazz|band|orchestra|opera|choir|dj|hip.?hop|rock|classical/i], ["theater", /theat|broadway|musical|play\b|dance|ballet|performance/i],
+const CATS: [string, RegExp][] = [["popups", /pop-?up|sample sale|activation|brand experience|store opening|launch party|giveaway|freebie/i], ["music", /music|concert|jazz|\bband\b|orchestra|\bopera\b|choir|\bdj\b|hip.?hop|\brock\b|classical/i], ["theater", /theat|broadway|musical|play\b|dance|ballet|performance/i],
   ["comedy", /comedy|stand.?up|improv/i], ["sports", /sport|basketball|baseball|football|soccer|hockey|tennis|race|run\b|marathon|wrestling|boxing/i],
   ["family", /kids|family|children|toddler|teen|youth|story ?time/i], ["outdoors", /outdoor|fitness|nature|hike|walk|bird|garden|yoga|tai chi|kayak|bike|tour/i],
-  ["arts", /art|museum|exhibit|gallery|film|movie|cinema|photograph/i], ["food", /food|market|tasting|wine|beer|cooking|farmers/i],
+  ["arts", /\barts?\b|artist|museum|exhibit|gallery|\bfilms?\b|movie|cinema|photograph/i], ["food", /food|market|tasting|wine|beer|cooking|farmers/i],
   ["talks", /talk|lecture|book|reading|workshop|class|learn|panel/i], ["community", /street fair|festival|parade|community|celebration|block party|volunteer|cleanup/i]];
-const category = (...txt: string[]) => CATS.find(([, re]) => txt.some((t) => re.test(t ?? "")))?.[0] ?? "other";
+// fields in the order given, and a tag list ("Film | Best for Kids | Free Summer Concerts") tag by tag: its first tag is the main one
+export const category = (...txt: unknown[]) => { for (const t of txt.flatMap((x) => String(x ?? "").split(/\s*[|,;]\s*/))) { const c = CATS.find(([, re]) => re.test(t)); if (c) return c[0]; } return "other"; };
 
 type E = { id: string; source: string; title: string; start: string; end?: string | null; allDay?: boolean; venue?: string; address?: string; lat?: number | null; lon?: number | null; borough?: string;
   priceMin?: number | null; priceMax?: number | null; free?: boolean; category: string; url: string; image?: string; status?: string; outdoor?: boolean; summary?: string };

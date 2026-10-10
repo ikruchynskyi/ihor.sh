@@ -23,3 +23,12 @@ const multi = `<div class="w-dyn-item" slug="m" title="M" start-date="October 1,
   <div class="w-dyn-item" slug="n" title="N" start-date="October 2, 2026"><div event-data="occurrences" class="hide w-dyn-bind-empty"></div></div>`;
 assert.deepEqual(parseEvents(multi).map((e) => e.occurrences), ["2026-10-01|06:00|08:00,2026-10-15|06:00|08:00", ""], "occurrences stay with their own item");
 console.log("events ok");
+
+// event kinds: a tag list is read tag by tag, so the first (main) tag wins
+{
+  const { category } = await import("./evening.ts");
+  assert.equal(category("Film | Best for Kids | Free Summer Concerts | Movies Under the Stars", "Movie Under the Stars"), "arts");
+  assert.equal(category("Fitness | Shape Up NYC", "Zumba"), "outdoors");
+  assert.equal(category("", "Rockaway Beach Cleanup"), "community");
+  assert.equal(category("Music", "Jazz at Lincoln Center"), "music");
+}
