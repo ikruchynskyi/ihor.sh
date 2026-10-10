@@ -45,6 +45,7 @@
   <h1>Jobs that are real and still open</h1>
   <p class="lede">New York City, New Jersey and the metro, and remote in the US. Most jobs come straight from employers' own job boards and are re-checked <b>every hour</b>: when an employer takes a job down, it drops off here. City jobs come from NYC's open data; Adzuna adds more, without gig ads or reposts. Duplicates are merged, and anything that looks off is flagged with the reason.</p>
   <p class="hint" id="stats"></p>
+  <p><a href="/nyc/resume.html">📄 Check how a hiring system reads your résumé</a> <span class="hint">(runs in your browser)</span></p>
 
   <div class="layout">
     <details class="rail" open>
@@ -169,6 +170,7 @@ $("list").addEventListener("click", async (e) => {
     const j = await getJSON(`/api/jobs/job?id=${encodeURIComponent(r.id)}`), e2 = j.employer;
     box.innerHTML = `<p><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source])} ↗</a>
       <span class="hint">${esc(j.location)}${j.employment ? ` · ${esc(j.employment)}` : ""}${j.department ? ` · ${esc(j.department)}` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</span></p>
+      <p class="hint"><a href="/nyc/resume.html?job=${encodeURIComponent(j.id)}">📄 Check my résumé against this job</a></p>
       <p class="report">${esc(j.company)} here: ${e2.open} open job${e2.open === 1 ? "" : "s"}${e2.openOver60Days ? `, ${e2.openOver60Days} open over 60 days` : ""}${e2.withoutSalary ? `, ${e2.withoutSalary} without a salary` : ""}${e2.closedLast30Days ? `, ${e2.closedLast30Days} closed in the last 30 days` : ""}.</p>
       <div class="desc">${esc(j.description)}</div>`;
   } catch (err) { box.textContent = err.message; }

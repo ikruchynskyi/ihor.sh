@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Résumé Check</title>
+  <meta name="description" content="Check a résumé the way an applicant tracking system reads it: the plain text and fields it extracts, layout problems that break parsing (columns, tables, text boxes, contact in headers), contact details, bullet quality, and which of a job's terms are missing. Runs in your browser; the file isn't uploaded." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 20px 16px 120px; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 22px; text-align: center; margin: 12px 0; }
+    .drop.over { border-color: var(--accent); }
+    textarea { width: 100%; box-sizing: border-box; min-height: 120px; font: 13px/1.5 ui-monospace, Menlo, monospace; }
+    .grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    .score { font-size: 56px; font-weight: 800; line-height: 1; }
+    .area { margin: 6px 0; } .area .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; } .area .bar i { display: block; height: 100%; background: var(--accent); }
+    .fix { padding: 8px 12px; margin: 6px 0; border-left: 4px solid var(--warn); }
+    .fix b { display: block; }
+    .okline { color: var(--ok); } .bad { color: var(--warn); }
+    pre.ats { white-space: pre-wrap; max-height: 460px; overflow: auto; font-size: 12.5px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+    table.fields td { padding: 2px 10px 2px 0; vertical-align: top; font-size: 14px; }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); margin: 2px; }
+    .chip.miss { border-color: var(--warn); color: var(--warn); } .chip.have { border-color: var(--ok); color: var(--ok); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/nyc/jobs.html">Jobs</a> · Résumé check</p>
+  <h1>How a hiring system reads your résumé</h1>
+  <p class="lede">Most applications are read by software (an applicant tracking system) before a person sees them. It pulls out plain text, guesses your name, contact details, jobs and skills, and often filters on the exact words a posting uses. This page shows you that plain text, finds the layout choices that break it, checks the basics, and, given a job, lists the terms you're missing. It never invents anything for you to claim.</p>
+  <p class="hint">🔒 Your file is read here in your browser. Nothing is uploaded; nothing is kept unless you tick "keep it in this browser".</p>
+
+  <div class="drop card" id="drop">
+    <p><b>Drop your résumé here</b> (PDF, Word .docx or .txt), or <label style="text-decoration:underline;cursor:pointer">choose a file<input type="file" id="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" hidden></label></p>
+    <details><summary class="hint">or paste the text</summary><textarea id="paste" placeholder="Paste your résumé's text"></textarea><button id="usePaste" type="button">Check this text</button></details>
+    <label class="hint"><input type="checkbox" id="keep"> keep it in this browser (to match it against jobs later)</label>
+  </div>
+  <p class="hint" id="status" aria-live="polite"></p>
+
+  <section id="out" hidden>
+    <div class="grid">
+      <div class="card" style="padding:14px"><div class="hint">ATS readiness</div><div class="score" id="score"></div><div id="areas"></div></div>
+      <div><h2 style="margin-top:0">Fix these first</h2><div id="fixes"></div></div>
+    </div>
+
+    <h2>Against a job</h2>
+    <p class="hint">Paste a job posting (or open one from the <a href="/nyc/jobs.html">jobs page</a>) to see which of its words and skills your résumé has. Many systems match exact words, so "Kubernetes" in the posting needs "Kubernetes" in your résumé, not just "k8s". Add only what's true.</p>
+    <textarea id="jd" placeholder="Paste the job description here"></textarea>
+    <div id="match"></div>
+
+    <h2>What the system sees</h2>
+    <table class="fields" id="fields"></table>
+    <p class="hint">The plain text, in the order a simple parser reads it. If lines from two columns are interleaved here, that's what the system got too.</p>
+    <pre class="ats" id="ats"></pre>
+  </section>
+</main>
+<script type="module">
+import { evaluate, compare, extract } from "/nyc/resume.js";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const load = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
+let current = null; // { text, layout }
+
+// ---------- reading files ----------
+async function readPdf(buf) {
+  const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+  const doc = await pdfjs.getDocument({ data: buf }).promise, lines = [], layout = { kind: "pdf", pages: doc.numPages, columns: 1, iconGlyphs: 0, headerFooterContact: false };
+  let twoColPages = 0, bodyContact = false, edgeContact = false;
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p), { height, width } = page.getViewport({ scale: 1 }), tc = await page.getTextContent();
+    const items = tc.items.filter((i) => i.str?.trim()).map((i) => ({ s: i.str, x: i.transform[4], y: i.transform[5], w: i.width }));
+    // a naive parser reads top to bottom, left to right across the whole page: group by baseline, sort by x
+    const rows = new Map();
+    for (const it of items) { const k = Math.round(it.y / 3); (rows.get(k) ?? rows.set(k, []).get(k)).push(it); }
+    const sorted = [...rows.entries()].sort((a, b) => b[0] - a[0]).map(([, r]) => r.sort((a, b) => a.x - b.x));
+    for (const r of sorted) {
+      const text = r.map((i) => i.s).join(" ").replace(/\s+/g, " ").trim(), y = r[0].y, edge = y > height * 0.94 || y < height * 0.05;
+      if (/[-]/.test(text)) layout.iconGlyphs++;
+      if (/@|\(\d{3}\)|\d{3}[.-]\d{3}[.-]\d{4}/.test(text)) { if (edge && p > 0) edgeContact = true; else bodyContact = true; }
+      lines.push(text);
+    }
+    // two columns: a second left edge that many lines start at, right of a third of the page
+    const starts = new Map();
+    for (const r of sorted) r.forEach((i, k) => { if (!k || i.x - (r[k - 1].x + r[k - 1].w) > 15) { const b = Math.round(i.x / 8); starts.set(b, (starts.get(b) ?? 0) + 1); } });
+    const second = Math.max(0, ...[...starts].filter(([b]) => b * 8 > width * 0.35).map(([, n]) => n));
+    if (sorted.length > 10 && second >= Math.max(5, sorted.length * 0.25)) twoColPages++;
+    lines.push("");
+  }
+  layout.columns = twoColPages ? 2 : 1; layout.headerFooterContact = edgeContact && !bodyContact;
+  const text = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  layout.scanned = text.replace(/\s/g, "").length < 50;
+  return { text, layout };
+}
+async function readDocx(buf) {
+  if (!window.JSZip) await load("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
+  const zip = await JSZip.loadAsync(buf), xml = await zip.file("word/document.xml").async("string"), layout = { kind: "docx" };
+  layout.tables = (xml.match(/<w:tbl>/g) ?? []).length;
+  layout.textBoxes = (xml.match(/<w:txbxContent>/g) ?? []).length;
+  const cols = xml.match(/<w:cols [^>]*w:num="(\d+)"/); layout.columns = cols ? +cols[1] : 1;
+  layout.iconGlyphs = (xml.match(/<w:sym /g) ?? []).length;
+  // many systems drop text boxes: leave their text out, as they would
+  const body = xml.replace(/<w:txbxContent>[\s\S]*?<\/w:txbxContent>/g, "");
+  const para = (x) => [...x.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)].map((m) => [...m[0].matchAll(/<w:t[^>]*>([^<]*)<\/w:t>|<w:tab\/>|<w:br\/>/g)].map((t) => t[1] ?? " ").join("")).map((s) => s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'"));
+  const text = para(body).join("\n");
+  let hf = "";
+  for (const name of Object.keys(zip.files).filter((n) => /^word\/(header|footer)\d*\.xml$/.test(n))) hf += para(await zip.file(name).async("string")).join("\n");
+  const contact = (s) => /@|\(\d{3}\)|\d{3}[.-]\d{3}[.-]\d{4}/.test(s);
+  layout.headerFooterContact = contact(hf) && !contact(text);
+  layout.pages = Math.max(1, Math.round(text.split(/\s+/).length / 500));
+  return { text: text.trim(), layout };
+}
+async function readFile(f) {
+  $("status").textContent = `Reading ${f.name}…`;
+  const buf = await f.arrayBuffer();
+  try {
+    current = /\.pdf$/i.test(f.name) || f.type === "application/pdf" ? await readPdf(buf) : /\.docx$/i.test(f.name) ? await readDocx(buf) : /\.doc$/i.test(f.name) ? null : { text: new TextDecoder().decode(buf), layout: { kind: "txt" } };
+    if (!current) { $("status").textContent = "Old .doc files can't be read here: save it as .docx or PDF and try again."; return; }
+    $("status").textContent = `${f.name}: read.`; show();
+  } catch (e) { $("status").textContent = `Couldn't read that file (${e.message}). Try saving it as a PDF or .docx again.`; }
+}
+$("file").onchange = () => $("file").files[0] && readFile($("file").files[0]);
+const d = $("drop");
+d.addEventListener("dragover", (e) => { e.preventDefault(); d.classList.add("over"); }); d.addEventListener("dragleave", () => d.classList.remove("over"));
+d.addEventListener("drop", (e) => { e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+$("usePaste").onclick = () => { const t = $("paste").value.trim(); if (t) { current = { text: t, layout: { kind: "txt" } }; $("status").textContent = "Checking the pasted text (layout checks need the file itself)."; show(); } };
+
+// ---------- showing ----------
+const NAMES = { parsing: "Will it parse?", contact: "Can they reach you?", content: "Do the bullets sell?" };
+function show() {
+  const r = evaluate(current.text, current.layout), x = r.extracted;
+  $("out").hidden = false;
+  $("score").textContent = r.score; $("score").style.color = r.score >= 80 ? "var(--ok)" : r.score >= 55 ? "var(--accent)" : "var(--warn)";
+  $("areas").innerHTML = r.areas.map((a) => `<div class="area"><span class="hint">${NAMES[a.area]} ${a.score}/${a.max}</span><div class="bar"><i style="width:${(a.score / a.max) * 100}%"></i></div></div>`).join("");
+  $("fixes").innerHTML = r.fixes.length ? r.fixes.map((f) => `<div class="fix card"><b>${esc(f.problem)}</b>${esc(f.fix)}</div>`).join("") : `<p class="okline">Nothing big to fix. Now tailor it to each job below.</p>`;
+  const row = (k, v, ok = !!v) => `<tr><td class="hint">${k}</td><td class="${ok ? "" : "bad"}">${v ? esc(v) : "not found"}</td></tr>`;
+  $("fields").innerHTML = row("Name", x.name) + row("Email", x.email) + row("Phone", x.phone) + row("Location", x.location) + row("LinkedIn", x.linkedin) + row("Links", x.urls.join(", "), true)
+    + row("Sections", [...new Set(x.sections.map((s) => s.text))].join(" · ")) + row("Date ranges", x.dates.map((d) => `${d.from} – ${d.to}`).join("; ")) + row("Skills", x.skills.join(", ")) + row("Bullets", String(x.bullets.length), x.bullets.length > 0);
+  $("ats").textContent = current.text;
+  match();
+  try { if ($("keep").checked) localStorage.setItem("resume-text", current.text); } catch {}
+}
+function match() {
+  if (!current) return;
+  const jd = $("jd").value.trim();
+  if (jd.length < 80) { $("match").innerHTML = ""; return; }
+  const c = compare(current.text, jd);
+  $("match").innerHTML = `<p>${c.coverage != null ? `<b>${c.coverage}%</b> of the skills this job names are in your résumé.` : "The posting names no common skills we know; check its words below."}</p>
+    <p>${c.present.map((s) => `<span class="chip have">✓ ${esc(s)}</span>`).join("")}${c.missing.map((s) => `<span class="chip miss">✗ ${esc(s)}</span>`).join("")}</p>
+    ${c.advice.map((a) => `<p class="fix card">${esc(a)}</p>`).join("")}`;
+}
+$("jd").addEventListener("input", match);
+$("keep").onchange = () => { try { if ($("keep").checked && current) localStorage.setItem("resume-text", current.text); else localStorage.removeItem("resume-text"); } catch {} };
+// a job opened from the jobs page: ?job=<id>
+const jid = new URLSearchParams(location.search).get("job");
+if (jid) fetch(`/api/jobs/job?id=${encodeURIComponent(jid)}`).then((r) => r.json()).then((j) => { if (j.description) { $("jd").value = `${j.title} at ${j.company}\n\n${j.description}`; match(); } }).catch(() => {});
+try { const kept = localStorage.getItem("resume-text"); if (kept) { $("keep").checked = true; current = { text: kept, layout: { kind: "txt" } }; $("status").textContent = "Using the résumé you kept in this browser (open the file again for the layout checks)."; show(); } } catch {}
+window.blipContext = () => ({ page: "Résumé check (how an ATS reads a résumé; runs in the browser)", score: current ? evaluate(current.text, current.layout).score : null, topFixes: current ? evaluate(current.text, current.layout).fixes.slice(0, 5).map((f) => f.problem) : [] });
+</script>
+</body>
+</html>
