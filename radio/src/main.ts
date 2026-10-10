@@ -1,4 +1,4 @@
-import { avgSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, Squelch, NoiseReducer, Biquad, DEMO_SIGNALS, DEFAULT_BW, CW_PITCH, type Mode } from "./dsp.ts";
+import { avgSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, NoiseReducer, Biquad, DEMO_SIGNALS, DEFAULT_BW, CW_PITCH, type Mode } from "./dsp.ts";
 import { CwSignalDecoder } from "./cw.ts";
 import { decodeCU8, decodeCF32, parseName } from "./iq.ts";
 import { RtlSdr } from "./rtlsdr.ts";
@@ -151,7 +151,7 @@ function drawScope() {
   // Spectrum: grid, trace, passband, frequency labels.
   const s = $<HTMLCanvasElement>("spec"), h = fitCanvas(s), SW = s.width, SH = s.height, axisH = 16 * dpr;
   h.fillStyle = css("--card") || "#000"; h.fillRect(0, 0, SW, SH);
-  const lo = wf.floor - 10, hi = wf.floor + num("wfRange") + 10, Y = (db: number) => (SH - axisH) * (1 - (db - lo) / (hi - lo));
+  const { lo, hi } = chartDb(), Y = (db: number) => (SH - axisH) * (1 - (db - lo) / (hi - lo));
   // grid every 10 dB, and frequency ticks at a round step
   h.fillStyle = css("--grid");
   for (let d = Math.ceil(lo / 10) * 10; d < hi; d += 10) h.fillRect(0, Y(d), SW, 1);
@@ -173,8 +173,26 @@ function drawScope() {
     h.fillStyle = css("--plot") + "33"; h.fill();
   }
   if (hoverF !== null) { h.fillStyle = css("--fg"); h.fillRect(X(hoverF), 0, 1, SH - axisH); }
+  // dB labels on the grid lines
+  h.textAlign = "left"; h.textBaseline = "bottom"; h.fillStyle = css("--muted");
+  const every = Y(lo) - Y(lo + 10) < 16 * dpr ? 20 : 10; // fewer labels when the lines are close
+  for (let d = Math.ceil(lo / every) * every; d < hi; d += every) if (Y(d) > 12 * dpr && Y(d) < SH - axisH - 4 * dpr && Math.abs(Y(d) - Y(wf.floor)) > 12 * dpr) h.fillText(`${d} dB`, 3 * dpr, Y(d) - 1);
+  // the noise floor (median bin), dashed
+  const label = (text: string, y: number, color: string, left = false) => { h.textAlign = left ? "left" : "right"; h.fillStyle = color; h.fillText(text, left ? 52 * dpr : SW - 3 * dpr, Math.max(12 * dpr, y - 1)); };
+  h.setLineDash([4 * dpr, 4 * dpr]); h.strokeStyle = css("--muted"); h.lineWidth = dpr;
+  h.beginPath(); h.moveTo(0, Y(wf.floor)); h.lineTo(SW, Y(wf.floor)); h.stroke(); h.setLineDash([]);
+  label(`noise ${wf.floor.toFixed(0)} dB`, Y(wf.floor), css("--muted"), true); // left: the squelch label is on the right
+  // what the squelch hears: the strongest bin in the passband, as a mark across the band
+  if (!Number.isNaN(sqLevel)) { h.fillStyle = css("--fg"); h.fillRect(X(a), Y(sqLevel) - dpr, Math.max(2, X(b) - X(a)), 2 * dpr); }
+  // the squelch: drag this line; at the bottom it's off
+  const sqOff = num("sql") <= SQL_OFF, ys = sqOff ? SH - axisH - dpr : Math.min(SH - axisH - dpr, Math.max(dpr, Y(num("sql"))));
+  h.fillStyle = css("--accent"); h.globalAlpha = sqOff ? 0.5 : 1; h.fillRect(0, ys - dpr, SW, 2 * dpr); h.globalAlpha = 1;
+  label(sqOff ? "squelch off: drag up" : `squelch ${num("sql").toFixed(0)} dB${chain ? (sqOpen ? " · open" : " · closed") : ""}`, sqOff ? ys - 2 * dpr : ys, css("--accent"));
   $("freqShow").innerHTML = `${freqText(C + o)}<small>MHz</small>`;
 }
+
+/** The spectrum chart's dB range (follows the contrast setting). */
+const chartDb = () => ({ lo: wf.floor - 10, hi: wf.floor + num("wfRange") + 10 });
 
 // --- tuning with the mouse, wheel and keys ------------------------------------------------------
 const scope = $("scope");
@@ -217,9 +235,19 @@ function nudge(n: number) {
   setOffset(f);
 }
 
-type Drag = { kind: "band" | "lo" | "hi" | "pan"; x: number; f: number; offset: number; bw: number; view: typeof view; moved: boolean };
+type Drag = { kind: "band" | "lo" | "hi" | "pan" | "sql"; x: number; f: number; offset: number; bw: number; view: typeof view; moved: boolean };
 let drag: Drag | null = null;
+/** dB at a pointer's height on the spectrum chart, or null when it's not over the chart. */
+function dbAt(e: MouseEvent) {
+  const r = $("spec").getBoundingClientRect(), plotH = r.height - 16, y = e.clientY - r.top;
+  if (y < 0 || y > r.height) return null;
+  const { lo, hi } = chartDb();
+  return lo + (1 - Math.min(plotH, y) / plotH) * (hi - lo);
+}
 function hit(e: PointerEvent): Drag["kind"] {
+  const db = dbAt(e), { lo, hi } = chartDb(), plotH = $("spec").getBoundingClientRect().height - 16;
+  const sqDb = num("sql") <= SQL_OFF ? lo : Math.max(lo, num("sql"));
+  if (db !== null && Math.abs(db - sqDb) * (plotH / (hi - lo)) < 7) return "sql"; // within 7 px of the squelch line
   const [a, b] = passband(), f = fAt(e), tol = 6 / pxPerHz();
   if (Math.abs(f - a) < tol && modeNow() !== "USB") return "lo";
   if (Math.abs(f - b) < tol && modeNow() !== "LSB") return "hi";
@@ -237,8 +265,13 @@ scope.addEventListener("pointermove", (e) => {
   $("hover").textContent = `${freqText(centerHz() + hoverF)} MHz${trace?.[bin] !== undefined ? ` · ${trace[bin].toFixed(0)} dB` : ""}`;
   if (!drag) {
     const k = wf.rows.length ? hit(e) : "pan";
-    scope.className = `scope ${k === "lo" || k === "hi" ? "edge" : k === "band" ? "band" : ""}`;
+    scope.className = `scope ${k === "lo" || k === "hi" ? "edge" : k === "band" ? "band" : k === "sql" ? "sqline" : ""}`;
     return drawScope();
+  }
+  if (drag.kind === "sql") { // drag the squelch line; below the chart's bottom turns it off
+    const db = dbAt(e) ?? chartDb().lo, { lo } = chartDb();
+    $<HTMLInputElement>("sql").value = String(db <= lo + 1 ? SQL_OFF : Math.round(db));
+    drag.moved = true; meter(); drawScope(); return;
   }
   if (Math.abs(e.clientX - drag.x) > 3) drag.moved = true;
   if (!drag.moved) return;
@@ -255,6 +288,7 @@ scope.addEventListener("pointerup", (e) => {
   if (!drag) return;
   const d = drag;
   drag = null;
+  if (d.kind === "sql") return saveSettings();
   if (!d.moved) setOffset(snap(fAt(e)));
   else if (d.kind !== "pan") retune(true); // now redraw the stage plots too
 });
@@ -405,13 +439,13 @@ $("vol").addEventListener("input", setVolume);
 
 // --- the audio chain, shared by live sources and file playback ---------------------------------------
 const AGC = { slow: [1.5, 0.5], medium: [0.4, 0.25], fast: [0.1, 0.05] } as Record<string, [number, number]>; // release, hang (s)
-type Chain = { rx: Receiver; sq: Squelch; agc: Agc | null; nr: NoiseReducer; hp: Biquad; lp: Biquad; gate: number; cushion: number };
+type Chain = { rx: Receiver; agc: Agc | null; nr: NoiseReducer; hp: Biquad; lp: Biquad; gate: number; cushion: number };
 let chain: Chain | null = null;
 function newChain() {
   const rx = new Receiver(fs, num("offset") * 1e3, modeNow(), num("bw") * 1e3, num("shift") * 1e3);
   const a = AGC[$<HTMLSelectElement>("agc").value];
   chain = {
-    rx, sq: chain?.sq ?? new Squelch(), agc: a ? new Agc(rx.audioFs, a[0], a[1], 60) : null,
+    rx, agc: a ? new Agc(rx.audioFs, a[0], a[1], 60) : null,
     nr: chain && chain.rx.audioFs === rx.audioFs ? chain.nr : new NoiseReducer(), // keeps what it learned about the noise
     hp: new Biquad(rx.audioFs, 300, "highpass"), lp: new Biquad(rx.audioFs, 3000, "lowpass"), gate: chain?.gate ?? 0,
     cushion: sdr instanceof RemoteSdr ? 0.35 : 0.15, // the server's stream crosses the internet: a bigger cushion
@@ -420,16 +454,29 @@ function newChain() {
 }
 $("agc").addEventListener("change", () => { if (chain) newChain(); });
 
+// The squelch works in the chart's dB: it opens when the strongest bin inside the passband rises above the line
+// you drew, and closes 3 dB below it (so a signal right at the line doesn't flicker).
+const SQL_OFF = -130;
+let sqLevel = NaN, sqOpen = true;
+function passbandPeak(db: Float32Array) {
+  const [a, b] = passband(), bin = (f: number) => Math.round((f / fs) * WF_N + WF_N / 2);
+  let m = -Infinity;
+  for (let i = Math.max(0, bin(a)); i <= Math.min(WF_N - 1, bin(b)); i++) m = Math.max(m, db[i]);
+  return m;
+}
+
 let meterDrawn = 0;
-/** One chunk of I/Q in, audio out to the speakers. */
-function listen(x: Float32Array) {
+/** One chunk of I/Q (and its spectrum, dB per bin) in, audio out to the speakers. */
+function listen(x: Float32Array, db: Float32Array) {
   const c = chain;
   if (!c) return;
+  const peak = passbandPeak(db);
+  sqLevel = Number.isNaN(sqLevel) ? peak : 0.5 * sqLevel + 0.5 * peak;
+  if (!sqOpen && sqLevel > num("sql")) sqOpen = true;
+  else if (sqOpen && sqLevel < num("sql") - 3) sqOpen = false;
   const o = c.rx.process(x);
   if (o.env && sdr) { cw.process(o.env, o.envFs); if (performance.now() - cwDrawn > 150) { cwDrawn = performance.now(); cwShow(); } }
-  c.sq.threshold = num("sql");
-  c.sq.update(o.channel); // measured even when off, for the meter
-  const open = num("sql") <= -100 || c.sq.open;
+  const open = num("sql") <= SQL_OFF || sqOpen;
   let a = o.audio;
   if ($<HTMLInputElement>("voice").checked && modeNow() !== "WFM") a = c.lp.process(c.hp.process(a));
   c.nr.strength = num("nr");
@@ -444,20 +491,21 @@ function listen(x: Float32Array) {
   if (performance.now() - meterDrawn > 100) { meterDrawn = performance.now(); meter(); }
 }
 
-const pct = (db: number) => Math.min(100, Math.max(0, db + 100));
+/** The meter, on the chart's scale: signal (strongest bin in the passband), noise floor, and the squelch mark. */
 function meter() {
-  const sq = chain?.sq, lvl = sq && sq.level > -150 ? sq.level : null;
-  $("smLevel").style.width = `${lvl === null ? 0 : pct(lvl)}%`;
+  const { lo, hi } = chartDb(), pct = (db: number) => Math.min(100, Math.max(0, (100 * (db - lo)) / (hi - lo)));
+  const on = chain && !Number.isNaN(sqLevel), off = num("sql") <= SQL_OFF;
+  $("smLevel").style.width = `${on ? pct(sqLevel) : 0}%`;
   $("smSql").style.left = `${pct(num("sql"))}%`;
-  $("smSql").hidden = num("sql") <= -100;
-  $("smText").textContent = lvl === null ? "" : `${lvl.toFixed(0)} dBFS${num("sql") > -100 ? (chain!.gate ? " · squelch open" : " · squelched") : ""}`;
+  $("smSql").hidden = off;
+  $("smText").textContent = !on ? "" : `signal ${sqLevel.toFixed(0)} dB · noise ${wf.floor.toFixed(0)} dB · SNR ${(sqLevel - wf.floor).toFixed(0)} dB${off ? "" : sqOpen ? " · squelch open" : " · squelched"}`;
 }
-$("sql").addEventListener("input", meter);
+$("sql").addEventListener("input", () => { meter(); drawScope(); });
 $("sqlAuto").addEventListener("click", () => {
-  const l = chain?.sq.level;
-  if (l === undefined || l < -150) return void ($("smText").textContent = "Play or listen first, on an empty channel.");
-  $<HTMLInputElement>("sql").value = String(Math.round(l + 5));
-  saveSettings(); meter();
+  // just above what the band hears now: tune to an empty channel (only noise in the band) first
+  if (!chain || Number.isNaN(sqLevel)) return void ($("smText").textContent = "Play or listen first, on an empty channel.");
+  $<HTMLInputElement>("sql").value = String(Math.round(sqLevel + 3));
+  saveSettings(); meter(); drawScope();
 });
 
 // --- recording what you hear --------------------------------------------------------------
@@ -497,7 +545,9 @@ $("play").addEventListener("click", async () => {
     const total = iq.length / 2, due = ((performance.now() - fp.t0) / 1000 + 0.2) * fs; // stay 0.2 s ahead
     while (fp.sent < due) {
       const n = Math.min(Math.round(fs * 0.02), total - fp.pos);
-      listen(iq.subarray(2 * fp.pos, 2 * (fp.pos + n)));
+      const x = iq.subarray(2 * fp.pos, 2 * (fp.pos + n)), db = avgSpectrum(x, WF_N, 2);
+      for (let i = 0; i < WF_N; i++) trace![i] = 0.7 * trace![i] + 0.3 * db[i]; // the spectrum line follows the playhead
+      listen(x, db);
       fp.pos = (fp.pos + n) % total; // loops
       fp.sent += n;
     }
@@ -636,10 +686,9 @@ async function tuneTo(freq: number) {
 
 function onSamples(cu8: Uint8Array) {
   if (!sdr || !chain) return;
-  const x = decodeCU8(cu8);
-  listen(x);
-
-  pushRow(avgSpectrum(x, WF_N, 8));
+  const x = decodeCU8(cu8), db = avgSpectrum(x, WF_N, 8);
+  listen(x, db);
+  pushRow(db);
   if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawScope(); }); }
 
   // Stage plots: refresh from the last SNAPSHOT_S seconds every 1.5 s.
@@ -698,6 +747,6 @@ $("demo").click();
 (window as any).blipContext = () => ({
   page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: modeNow(),
   frequencyMHz: +fmtMHz(centerHz() + num("offset") * 1e3), tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), filterShiftKHz: num("shift"), live: !!sdr,
-  squelchDb: num("sql") > -100 ? num("sql") : "off", channelLevelDb: chain && chain.sq.level > -150 ? Math.round(chain.sq.level) : undefined,
+  squelchDb: num("sql") > SQL_OFF ? num("sql") : "off", signalDb: chain && !Number.isNaN(sqLevel) ? Math.round(sqLevel) : undefined, noiseFloorDb: Math.round(wf.floor),
   cw: modeNow() === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
 });

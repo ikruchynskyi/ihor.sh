@@ -45,9 +45,9 @@
     .smeter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
     .scope { outline-offset: 3px; touch-action: none; }
     .scope:focus-visible { outline: 2px solid var(--accent); }
-    canvas.spec { height: 120px; border-radius: 6px 6px 0 0; cursor: crosshair; }
+    canvas.spec { height: 170px; border-radius: 6px 6px 0 0; cursor: crosshair; }
     .scope canvas.wf { border-radius: 0 0 6px 6px; }
-    .scope.drag-band canvas { cursor: grabbing; } .scope.edge canvas { cursor: ew-resize; } .scope.band canvas { cursor: grab; }
+    .scope.drag-band canvas { cursor: grabbing; } .scope.edge canvas { cursor: ew-resize; } .scope.band canvas { cursor: grab; } .scope.sqline canvas { cursor: ns-resize; }
     .inl { display: flex; gap: 4px; align-items: center; }
     .inl button { padding: 2px 8px; }
     label.check { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--fg); }
@@ -93,14 +93,14 @@
     <p>The line on top is the spectrum right now; below it, <span id="wfText">each row is one FFT, with time running downward</span>. Brighter means stronger. <b>Click a signal to tune it.</b></p>
     <div class="rxhead">
       <output class="freq" id="freqShow" aria-live="off"></output>
-      <div class="smeter" title="Channel level; the orange mark is the squelch"><i id="smLevel"></i><b id="smSql"></b></div>
+      <div class="smeter" title="Signal: the strongest point in the band, on the chart's dB scale; the orange mark is the squelch"><i id="smLevel"></i><b id="smSql"></b></div>
       <span class="stat" id="smText"></span>
     </div>
     <div class="scope" id="scope" tabindex="0" aria-label="Spectrum and waterfall. Click to tune; drag the band to move it or its edges to change the bandwidth; Ctrl+wheel or pinch to zoom; arrow keys step the tuning.">
       <canvas id="spec" class="spec"></canvas>
       <canvas id="wf" class="wf"></canvas>
     </div>
-    <div class="stat" id="hover">Click to tune · drag the band or its edges · pinch or Ctrl+wheel to zoom, drag to pan · click here, then wheel or ←/→ to step</div>
+    <div class="stat" id="hover">Click to tune · drag the band or its edges · drag the orange squelch line up to just above the noise, so only signals louder than it play · pinch or Ctrl+wheel to zoom, drag to pan · click here, then wheel or ←/→ to step</div>
     <div class="row">
       <label>Mode <select id="mode"><option>WFM</option><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option><option>CW</option></select></label>
       <label>Tune offset (kHz) <input id="offset" type="number" step="0.1" value="200" /></label>
@@ -117,7 +117,7 @@
       <button id="play" class="primary" disabled>▶ Play</button>
       <label>Volume <input id="vol" type="range" min="-20" max="30" step="1" value="0" /></label>
       <label title="Automatic gain: evens out loud and quiet stations. Slow suits voice with pauses, fast suits CW">AGC <select id="agc"><option>off</option><option>slow</option><option selected>medium</option><option>fast</option></select></label>
-      <label title="Mutes the audio while the channel holds only noise. Far left is off">Squelch <span class="inl"><input id="sql" type="range" min="-100" max="0" step="1" value="-100" /><button id="sqlAuto" type="button" title="Set the squelch just above what the channel hears now (tune to an empty channel first)">Auto</button></span></label>
+      <label title="Mutes the audio until a signal in the band rises above this level (the orange line on the chart). Far left is off">Squelch <span class="inl"><input id="sql" type="range" min="-130" max="0" step="1" value="-130" /><button id="sqlAuto" type="button" title="Set the squelch 3 dB above what the band hears now: tune to an empty channel (just noise) first">Auto</button></span></label>
       <label title="Turns down the hiss between and behind words">Noise reduction <input id="nr" type="range" min="0" max="1" step="0.05" value="0" /></label>
       <label class="check" title="300–3000 Hz band-pass: cuts the CTCSS hum below and the hiss above a voice (not in WFM)"><input id="voice" type="checkbox" checked /> Voice filter</label>
       <button id="rec" type="button" disabled title="Record what you hear">● Record</button>
@@ -155,7 +155,7 @@
 
   <section>
     <h2><span>6</span>Audio <a class="how" href="./learn.html#audio">How &amp; why →</a></h2>
-    <p>Filtered again and decimated to about 48 kHz. Then the controls under the waterfall, in order: the squelch gate (opening and closing with a short fade so it doesn't click), the voice filter, noise reduction, AGC, and volume through a soft limiter. The audio goes to your speakers as one continuous stream with a small cushion; it plays a hair faster or slower to keep that cushion steady, since the radio's clock and your sound card's never quite agree.</p>
+    <p>Filtered again and decimated to about 48 kHz. Then the controls under the waterfall, in order: the squelch gate (it compares the strongest point inside the band with the orange line on the chart, and opens and closes with a short fade so it doesn't click), the voice filter, noise reduction, AGC, and volume through a soft limiter. The audio goes to your speakers as one continuous stream with a small cushion; it plays a hair faster or slower to keep that cushion steady, since the radio's clock and your sound card's never quite agree.</p>
     <div class="row"><span class="stat" id="audStat"></span></div>
   </section>
 
