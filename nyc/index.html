@@ -109,7 +109,7 @@
 <div id="map"></div>
 <ul id="sugg" role="listbox" aria-label="Matching places" hidden></ul>
 <div id="panel">
-  <div class="phead"><h1>NYC Live Map</h1><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
+  <div class="phead"><h1>NYC Live Map</h1><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
   <div class="muted">Subway Bailout: MTA alerts happening now. Click a red station to see the nearest Citi Bikes. Turn on cameras, events and restaurant inspections below.</div>
   <div class="muted" id="status">Loading…</div>
@@ -570,15 +570,25 @@ async function refreshAircraft(g) {
     let m = acMarkers.get(a.hex);
     if (!m) { m = L.marker([a.lat, a.lon], { icon: acIcon(a), zIndexOffset: 800, title: a.flight || a.reg }).bindPopup(() => acPopup(m.ac)).addTo(g); acMarkers.set(a.hex, m); }
     else { m.setLatLng([a.lat, a.lon]); if (m.ac.track !== a.track || m.ac.military !== a.military) m.setIcon(acIcon(a)); }
-    m.ac = a;
+    m.ac = a; m.fix = { lat: a.lat, lon: a.lon, at: performance.now() };
   }
   for (const [hex, m] of acMarkers) if (!ids.has(hex)) { m.remove(); acMarkers.delete(hex); }
   const heli = list.filter((a) => a.heli), mil = list.filter((a) => a.military), sos = list.filter((a) => a.emergency);
   seen.aircraft = { count: list.length, helicopters: heli.map((a) => `${a.flight || a.reg || a.hex} (${a.type}) at ${a.altFt} ft near ${a.lat},${a.lon}`), military: mil.map((a) => `${a.flight || a.hex} (${a.type})`), emergencies: sos.map((a) => `${a.flight || a.hex}: ${a.emergency}`) };
   $("n-aircraft").textContent = `(${list.length}: ${heli.length} helicopters${mil.length ? `, ${mil.length} military` : ""}${sos.length ? `, ${sos.length} EMERGENCY` : ""}) · adsb.lol`;
 }
+// Smooth motion between the 10 s updates: each plane flies on along its heading at its speed (dead reckoning), so the
+// next fix lands about where the marker already is instead of making it jump.
+function glideAircraft() {
+  if (LAYERS.aircraft.on) for (const m of acMarkers.values()) {
+    const a = m.ac, f = m.fix; if (!f || a.kts == null || a.track == null || a.kts < 5) continue;
+    const dt = Math.min(15, (performance.now() - f.at) / 1000), d = a.kts * 0.5144 * dt, rad = (a.track * Math.PI) / 180;
+    m.setLatLng([f.lat + (d * Math.cos(rad)) / 111320, f.lon + (d * Math.sin(rad)) / (111320 * Math.cos((f.lat * Math.PI) / 180))]);
+  }
+  setTimeout(() => requestAnimationFrame(glideAircraft), 150);
+}
 async function loadAircraft(g) {
-  await refreshAircraft(g);
+  await refreshAircraft(g); glideAircraft();
   setInterval(() => { if (LAYERS.aircraft.on) refreshAircraft(g).catch(() => {}); }, 10_000);
 }
 async function showTrail(hex) {
@@ -1157,7 +1167,8 @@ $("refresh").addEventListener("click", refresh);
 await loadStations().catch((e) => ($("status").textContent = `Stations failed: ${e.message}`));
 for (const [k, l] of Object.entries(LAYERS)) if (l.on) toggle(k, true);
 
-// Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom], #place=<address>, #cam=<camera id>.
+// Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom], #place=<address>, #cam=<camera id>,
+// and shared views #view=lat,lon,zoom,layer+layer (the 🔗 button).
 async function focusHash() {
   const [key, val = ""] = decodeURIComponent(location.hash.slice(1)).split("=");
   if (key === "station" && stations.get(val)) {
@@ -1173,12 +1184,24 @@ async function focusHash() {
   } else if (key === "place" && val) {
     const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(val)}`).catch(() => null);
     if (g) { map.setView([g.lat, g.lon], 17); map.fire("click", { latlng: L.latLng(g.lat, g.lon) }); }
+  } else if (key === "view") {
+    // a shared view: #view=lat,lon,zoom,layer+layer (only known layers; the rest of the page as it was)
+    const [lat, lon, z, ls = ""] = val.split(",");
+    if (Number.isFinite(+lat) && Number.isFinite(+lon)) map.setView([+lat, +lon], Math.min(19, Math.max(9, +z || 13)));
+    const want = new Set(ls.split("+").filter((k) => LAYERS[k]));
+    if (want.size) for (const [k, l] of Object.entries(LAYERS)) if (l.on !== want.has(k)) { const cb = document.querySelector(`#layers input[data-l="${k}"]`); if (cb) cb.checked = want.has(k); await toggle(k, want.has(k)); }
   } else if (key === "cam") {
     const c = (await getJSON("/api/nyc/cameras")).find((x) => x.id === val);
     if (c) { map.setView([c.lat, c.lon], 16); openCam(c); }
   }
 }
 addEventListener("hashchange", focusHash);
+$("share").onclick = async () => {
+  const c = map.getCenter(), on = Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k).join("+");
+  const url = `${location.origin}/nyc/#view=${c.lat.toFixed(5)},${c.lng.toFixed(5)},${map.getZoom()},${on}`;
+  try { await navigator.clipboard.writeText(url); $("share").textContent = "✓"; } catch { prompt("Copy this link:", url); }
+  setTimeout(() => ($("share").textContent = "🔗"), 1500);
+};
 if (location.hash) focusHash();
 await refresh();
 setInterval(() => { if (!bikeLayer.getLayers().length) refresh(); }, 60_000); // skip while a popup is open
