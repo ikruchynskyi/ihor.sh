@@ -1,6 +1,28 @@
 // Blip: the ihor.sh companion. Its body is a d3-force soft body (a ring of nodes on springs around a
 // core, plus a two-segment antenna). It idles, watches the cursor, clicks and selections, can be
 // dragged, thrown and poked, and answers questions about the current page through /api/ask.
+
+// WebMCP: an AI agent driving this tab gets the site search and Blip as tools (navigator.modelContext). Registered
+// before d3 loads, so they're there as soon as the page is.
+if (navigator.modelContext?.registerTool) {
+  const call = async (url, init) => {
+    const r = await fetch(url, init), j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error ?? `HTTP ${r.status}`);
+    return j;
+  };
+  const text = (t) => ({ content: [{ type: "text", text: t }] });
+  const tools = [
+    { name: "search_site", description: "Search every ihor.sh page (radio, NYC tools, AI and electronics courses, Yomu Japanese stories and grammar). Returns titles, URLs and snippets.",
+      inputSchema: { type: "object", properties: { query: { type: "string", description: "Words to look for" } }, required: ["query"] },
+      execute: async ({ query }) => text(JSON.stringify((await call(`/api/site/search?q=${encodeURIComponent(String(query).slice(0, 120))}`)).hits)) },
+    { name: "ask_blip", description: "Ask Blip, ihor.sh's assistant: live NYC transit, events and restaurants, weather, aircraft, the ISS, radio, the site's pages, web search. Answers in a few sentences with links.",
+      inputSchema: { type: "object", properties: { question: { type: "string", description: "The question, in plain words" } }, required: ["question"] },
+      execute: async ({ question }) => text((await call("/api/ask", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: String(question).slice(0, 500) }], page: { url: location.href, title: document.title } }) })).reply) },
+  ];
+  for (const t of tools) try { navigator.modelContext.registerTool(t); } catch (e) { console.warn("WebMCP:", t.name, e.message); }
+}
+
 const d3 = await import("https://cdn.jsdelivr.net/npm/d3@7/+esm");
 
 // Fonts must live in the document (an @font-face inside a shadow root isn't picked up). The pixel faces only matter

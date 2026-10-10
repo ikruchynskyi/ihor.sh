@@ -12,11 +12,11 @@ import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
-import { mcp } from "./mcp.ts";
+import { mcp, a2a, serverCard, agentCard } from "./mcp.ts";
 import { roomStream, roomPost } from "./room.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./ride.ts";
-import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
@@ -201,11 +201,14 @@ ${image.endsWith("og.png") ? '<meta property="og:image:width" content="1200"><me
 <script type="application/ld+json">${ld}</script></head>`);
 }
 
-// Crawlers and AI agents are welcome everywhere but the API (which serves the site's own pages) and the MCP endpoint.
+// Crawlers and AI agents are welcome everywhere but the API (which serves the site's own pages) and the agent endpoints.
+// Content-Signal (contentsignals.org): search, answering with the pages and training are all fine.
 const ROBOTS = `User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Disallow: /api/
 Disallow: /mcp
+Disallow: /a2a
 
 # AI agents: /llms.txt maps the site; live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
 User-agent: GPTBot
@@ -243,6 +246,43 @@ function llmsTxt() {
   })());
 }
 
+// Accept: text/markdown gets a page as Markdown (Cloudflare's "Markdown for Agents" convention): the page's own HTML,
+// before the HUD and Blip go in, without scripts, styles and drawings, under a front matter of title and description.
+// ponytail: regex conversion, fine for these hand-written pages; a real HTML parser if tables or nested lists matter.
+export function toMarkdown(html: string, url: string) {
+  const ent = (t: string) => t.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp|#39);/gi, (_, e) => (({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " } as Record<string, string>)[e.toLowerCase()] ?? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))));
+  const strip = (t: string) => t.replace(/<[^>]+>/g, "");
+  const title = ent(html.match(/<title>([^<]*)/)?.[1]?.trim() ?? ""), desc = ent(html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "");
+  const body = (html.match(/<main\b[\s\S]*<\/main>/i) ?? html.match(/<body\b[\s\S]*<\/body>/i) ?? [html])[0]
+    .replace(/<!--[\s\S]*?-->|<(script|style|svg|template|canvas|select|textarea|button)\b[\s\S]*?<\/\1>/gi, "")
+    .replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_, c) => `\n\n\u0000\`\`\`\n${strip(c).replace(/^\n+|\s+$/g, "")}\n\`\`\`\u0000\n\n`)
+    .replace(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) => `\n\n${"#".repeat(+n)} ${strip(t).replace(/\s+/g, " ").trim()}\n\n`)
+    .replace(/<a\b[^>]*?href="([^"#][^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (m, h, t) => { const label = t.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(); try { return label ? `[${label}](${new URL(ent(h), url)})` : ""; } catch { return label; } })
+    .replace(/<img\b[^>]*?alt="([^"]+)"[^>]*>/gi, "$1")
+    .replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_, c) => `\`${strip(c)}\``)
+    .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_, b, t) => (t.trim() ? `**${t}**` : t))
+    .replace(/<li\b[^>]*>/gi, "\n- ")
+    .replace(/<br\s*\/?>|<\/?(p|div|section|article|header|footer|ul|ol|table|tr|blockquote|figure|figcaption|nav|main|details|summary|dl|dt|dd)\b[^>]*>/gi, "\n");
+  // whitespace is the source's indentation outside code blocks (\0 marks their edges)
+  const md = body.split("\u0000").map((part, i) => (i % 2 ? ent(part) : ent(strip(part)).split("\n").map((l) => l.replace(/\s+/g, " ").trim()).join("\n"))).join("").replace(/\n{3,}/g, "\n\n").trim();
+  return `---\ntitle: ${JSON.stringify(title)}\n${desc ? `description: ${JSON.stringify(desc)}\n` : ""}url: ${url}\n---\n\n${md}\n`;
+}
+const wantsMarkdown = (req: http.IncomingMessage) => /\btext\/markdown\b/i.test(String(req.headers.accept ?? ""));
+
+// Agent discovery (/.well-known/): the MCP and A2A cards, and one skill that tells an agent how to use the site.
+const SKILL = await readFile(path.join(ROOT, ".well-known/agent-skills/ihor-sh/SKILL.md"));
+const WELL_KNOWN: Record<string, () => [string, string | Buffer]> = {
+  "/.well-known/mcp/server-card.json": () => ["application/json", JSON.stringify(serverCard(SITE), null, 1)],
+  "/.well-known/mcp/server-cards.json": () => ["application/json", JSON.stringify([serverCard(SITE)], null, 1)],
+  "/.well-known/agent-card.json": () => ["application/json", JSON.stringify(agentCard(SITE), null, 1)],
+  "/.well-known/agent-skills/index.json": () => ["application/json", JSON.stringify({ $schema: "https://schemas.agentskills.io/discovery/0.2.0/schema.json", skills: [
+    { name: "ihor-sh", type: "skill-md", description: "Read ihor.sh as Markdown, find its pages, and get live NYC, sky and radio data from Blip over MCP or A2A.", url: `${SITE}/.well-known/agent-skills/ihor-sh/SKILL.md`, digest: `sha256:${createHash("sha256").update(SKILL).digest("hex")}` }] }, null, 1)],
+  "/.well-known/agent-skills/ihor-sh/SKILL.md": () => ["text/markdown; charset=utf-8", SKILL],
+};
+// The home page points agents at them (RFC 8288 Link headers).
+const HOME_LINKS = [`</llms.txt>; rel="service-doc"; type="text/plain"`, `</.well-known/mcp/server-card.json>; rel="service-desc"; type="application/json"`,
+  `</.well-known/agent-card.json>; rel="describedby"; type="application/json"`, `</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"`].join(", ");
+
 async function sitemap() {
   const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime]];
   // the query-addressed pages: every story, deck level and grammar level
@@ -273,6 +313,14 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   if (!data) return notFound(res);
   const ext = path.extname(file);
   const hashed = file.includes(`${path.sep}assets${path.sep}`);
+  if (ext === ".html" && !data.includes('name="ihor-bare"')) {
+    res.setHeader("vary", "accept");
+    if (world === "home") res.setHeader("link", HOME_LINKS);
+    if (wantsMarkdown(res.req)) {
+      const md = toMarkdown(data.toString(), SITE + (urlPath || "/") + (search?.size ? `?${search}` : ""));
+      return res.writeHead(200, { "content-type": "text/markdown; charset=utf-8", "x-markdown-tokens": String(Math.ceil(md.length / 4)), "cache-control": "no-cache" }).end(md);
+    }
+  }
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
   res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath, search ? await pageMeta(urlPath, search) : null) : data);
@@ -328,12 +376,14 @@ const server = http.createServer(async (req, res) => {
     const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
     res.setHeader("set-cookie", `ihs=${issue(SESSION_SECRET)}; Path=/; Max-Age=${TTL / 1000}; HttpOnly; SameSite=Lax${live ? "; Secure; Domain=ihor.sh" : ""}`);
   }
-  // MCP for other agents: its own bearer-token auth, not the site session; same per-IP budget as the chat.
-  if (url.pathname === "/mcp") {
+  // MCP and A2A for other agents: their own bearer-token auth, not the site session; same per-IP budget as the chat.
+  if (url.pathname === "/mcp" || url.pathname === "/a2a") {
     const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
-    console.log(`mcp: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
+    console.log(`${url.pathname.slice(1)}: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
     if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
-    return mcp(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: { url: "mcp", title: "MCP client" } }, SYSTEM)).catch((e) => res.writeHead(500).end(String(e.message)));
+    const viaMcp = url.pathname === "/mcp";
+    return (viaMcp ? mcp : a2a)(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: viaMcp ? { url: "mcp", title: "MCP client" } : { url: "a2a", title: "A2A agent" } }, SYSTEM))
+      .catch((e) => { if (!res.headersSent) res.writeHead(500).end(String(e.message)); });
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;
@@ -605,6 +655,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(ROBOTS);
+    if (WELL_KNOWN[url.pathname]) { const [type, body] = WELL_KNOWN[url.pathname](); return res.writeHead(200, { "content-type": type, "access-control-allow-origin": "*", "cache-control": "public, max-age=3600" }).end(body); }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
     if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
