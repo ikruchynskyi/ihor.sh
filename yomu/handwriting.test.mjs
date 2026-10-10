@@ -6,6 +6,8 @@ import { references, recognize } from "./handwriting.js";
 
 const json = JSON.parse(readFileSync(new URL("./data/strokes.json", import.meta.url)));
 const refs = references(json);
+// every 4th kanji drawn (against all 2,211 references): the whole deck is n² and takes ~10 minutes
+const sample = Object.entries(json).filter((_, i) => i % 4 === 0);
 let seed = 7;
 const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const learner = (flat, { shuffle, reverse, wobble, drop, join }) => {
@@ -21,11 +23,11 @@ for (const [name, opts, top1, top5] of [["in order", { wobble: 6 }, 0.9, 0.97], 
   ["one stroke left out", { shuffle: true, wobble: 8, drop: true }, 0.6, 0.8], ["two strokes joined", { shuffle: true, wobble: 8, join: true }, 0.6, 0.8]]) {
   let hit1 = 0, hit5 = 0;
   const t0 = performance.now();
-  for (const [k, flat] of Object.entries(json)) {
+  for (const [k, flat] of sample) {
     const got = recognize(learner(flat, opts), refs, 5).map((r) => r.k);
     hit1 += got[0] === k; hit5 += got.includes(k);
   }
-  const n = Object.keys(json).length, ms = (performance.now() - t0) / n;
+  const n = sample.length, ms = (performance.now() - t0) / n;
   console.log(`${name}: top-1 ${(hit1 / n * 100).toFixed(1)}%, top-5 ${(hit5 / n * 100).toFixed(1)}%, ${ms.toFixed(1)} ms per drawing`);
   assert.ok(hit1 / n >= top1 && hit5 / n >= top5, name);
 }
