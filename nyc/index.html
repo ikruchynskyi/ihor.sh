@@ -277,7 +277,7 @@ const LAYERS = {
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
   radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
   lightning: { grp: "sky", label: "⚡ Lightning (last 15 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "lightning", "lightning_detection", "ldn_lightning_strike_density", 0.8, "strike density on an ~8 km grid") },
-  clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.45, "brighter = colder, higher cloud tops") },
+  clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.85, "whiter = colder, higher cloud tops", { clouds: true }) },
   aircraft: { grp: "sky", label: "✈️ Aircraft & helicopters (live)", on: false, group: L.layerGroup(), load: loadAircraft },
   storms: { grp: "sky", label: "🌀 Hurricanes & tropical storms", on: false, group: L.layerGroup(), load: loadStorms },
   iss: { grp: "sky", label: "🛰 The ISS and its next orbit", on: false, group: L.layerGroup(), load: loadIss },
@@ -512,11 +512,42 @@ async function loadCameras(g) {
 }
 
 // ---------- sky & weather, and the air (server: sky.ts) ----------
-// NOAA nowCOAST map images (radar, lightning, clouds), refreshed while the layer is on.
-async function loadWms(g, k, svc, layer, opacity, note) {
-  const t = L.tileLayer.wms(`https://nowcoast.noaa.gov/geoserver/observations/${svc}/ows`, { layers: layer, format: "image/png", transparent: true, opacity, attribution: "NOAA nowCOAST" }).addTo(g);
+// NOAA nowCOAST map images (radar, lightning, clouds), refreshed while the layer is on. They get their own pane: the
+// site's dark theme inverts the colors of the tile pane, which would turn white clouds dark and scramble the radar.
+// Each tile is drawn through a canvas (NOAA allows cross-origin reads), so the layer can say whether anything is in
+// view, and the clouds can be made "clouds only": NOAA's infrared picture is opaque gray everywhere, warm ground included.
+map.createPane("wx").style.zIndex = 350; // above the street tiles (200), under markers and lines (400+)
+const CLOUD = [118, 175]; // ponytail: infrared gray (0–255) where cloud starts → fully white; tuned by eye, adjust if clear nights look cloudy
+const WxLayer = L.TileLayer.WMS.extend({
+  createTile(coords, done) {
+    const c = document.createElement("canvas"), img = new Image();
+    c.width = c.height = 256;
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, 256, 256), p = d.data;
+      let seen = 0;
+      for (let i = 0; i < p.length; i += 4) {
+        if (this.options.clouds) { const a = Math.max(0, Math.min(1, (p[i] - CLOUD[0]) / (CLOUD[1] - CLOUD[0]))); p[i] = p[i + 1] = p[i + 2] = 255; p[i + 3] = 230 * a; }
+        if (p[i + 3] > 20) seen++;
+      }
+      if (this.options.clouds) g.putImageData(d, 0, 0);
+      this._seen = (this._seen ?? 0) + seen;
+      done(null, c);
+    };
+    img.onerror = () => done(new Error("no tile"), c);
+    img.src = this.getTileUrl(coords);
+    return c;
+  },
+});
+async function loadWms(g, k, svc, layer, opacity, note, extra = {}) {
+  const t = new WxLayer(`https://nowcoast.noaa.gov/geoserver/observations/${svc}/ows`, { layers: layer, format: "image/png", transparent: true, opacity, pane: "wx", attribution: "NOAA nowCOAST", ...extra }).addTo(g);
+  const empty = { radar: "no rain in view right now", lightning: "no lightning in view in the last 15 min", clouds: "clear skies in view" }[k];
+  t.on("loading", () => (t._seen = 0));
+  t.on("load", () => ($(`n-${k}`).textContent = `(${t._seen ? note : empty})`));
   setInterval(() => { if (LAYERS[k].on) t.setParams({ _t: Date.now() }); }, 4 * 60_000);
-  $(`n-${k}`).textContent = `(${note})`;
+  $(`n-${k}`).textContent = "(loading…)";
 }
 // The weather now: under the "Sky & weather" heading, and for Blip.
 getJSON("/api/nyc/weather").then((w) => {
