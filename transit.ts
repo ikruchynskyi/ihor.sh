@@ -105,6 +105,30 @@ export async function findStations(q: string) {
   return [...(await loadStations()).values()].filter((s) => norm(s.name).includes(n)).slice(0, 6);
 }
 
+/** The `n` subway stations nearest a point. */
+export async function stationsNear(lat: number, lon: number, n = 3) {
+  return [...(await loadStations()).values()].map((s) => ({ ...s, m: Math.round(meters([lat, lon], [s.lat, s.lon])) })).sort((x, y) => x.m - y.m).slice(0, n);
+}
+
+// ---------- Citi Bike (GBFS, no key) ----------
+const GBFS = "https://gbfs.citibikenyc.com/gbfs/en";
+let bikeInfo: { at: number; byId: Map<string, { name: string; lat: number; lon: number }> } | null = null;
+let bikeStatus: { at: number; list: any[] } | null = null;
+/** Citi Bike stations nearest a point that are renting and have a bike (or an e-bike, with `ebike`), live counts. */
+export async function citiBikeNear(lat: number, lon: number, { ebike = false, n = 5 } = {}) {
+  if (!bikeInfo || Date.now() - bikeInfo.at > 6 * 3600_000) {
+    const d = await (await fetch(`${GBFS}/station_information.json`, { signal: AbortSignal.timeout(15_000) })).json();
+    bikeInfo = { at: Date.now(), byId: new Map(d.data.stations.map((s: any) => [s.station_id, { name: s.name, lat: s.lat, lon: s.lon }])) };
+  }
+  if (!bikeStatus || Date.now() - bikeStatus.at > 30_000) {
+    const d = await (await fetch(`${GBFS}/station_status.json`, { signal: AbortSignal.timeout(15_000) })).json();
+    bikeStatus = { at: Date.now(), list: d.data.stations };
+  }
+  return bikeStatus.list.filter((s) => s.is_renting && (ebike ? s.num_ebikes_available > 0 : s.num_bikes_available > 0) && bikeInfo!.byId.has(s.station_id))
+    .map((s) => { const i = bikeInfo!.byId.get(s.station_id)!, m = Math.round(meters([lat, lon], [i.lat, i.lon])); return { station: i.name, lat: i.lat, lon: i.lon, meters: m, walkMinutes: Math.max(1, Math.round((m * 1.3) / 80)), bikes: s.num_bikes_available - s.num_ebikes_available, ebikes: s.num_ebikes_available, docksFree: s.num_docks_available }; })
+    .sort((x, y) => x.meters - y.meters).slice(0, n);
+}
+
 // ---------- where each train is now ----------
 // The subway reports no GPS, only "stopped at X" or "heading to X" plus the predicted arrival there. So a moving
 // train is drawn on its line's shape (static GTFS), walked back from X by the distance it covers in the time left.

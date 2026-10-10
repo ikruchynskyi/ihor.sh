@@ -1,23 +1,25 @@
-// Blip's brain: the system prompt, the tools it can call, and the tool loop over a local Ollama model.
+// Blip's brain: the system prompt, the tools it can call, and the tool loop over Ollama: a cloud model first
+// (Ollama Cloud, OLLAMA_CLOUD_KEY), the local one when the cloud fails or has no key.
 // Each tool is a plain function from nycapi.ts / archive.ts / events.ts; results go back to the model as data.
-import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch } from "./nycapi.ts";
+import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
-import { findStations, stationArrivals, ferryBoard } from "./transit.ts";
+import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
 const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
-const MAX_STEPS = 4;
+const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
+const MAX_STEPS = 6;
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
 type Tool = { description: string; parameters: Record<string, { type: string; description: string; enum?: string[] }>; required?: string[]; run: (a: any) => Promise<unknown> | unknown };
 const TOOLS: Record<string, Tool> = {
   web_search: {
-    description: "Search the web for current information that isn't on this site. Returns titles, URLs and snippets.",
+    description: "Search the web (Tavily, then Ollama, then DuckDuckGo) for current facts, news, prices, hours, how-tos: anything that isn't on this site or that you aren't sure of. Returns titles, URLs and snippets.",
     parameters: { query: { type: "string", description: "What to search for" } }, required: ["query"],
     run: ({ query }) => webSearch(String(query)),
   },
@@ -31,6 +33,28 @@ const TOOLS: Record<string, Tool> = {
       return { alertsActive: s.counts.alertsNow, outagesNow: s.counts.outagesNow, alertTypes: s.types, alerts,
         outages: (s.outagesNow as any[]).filter((o) => !l || String(o.trains).split("/").includes(l)).slice(0, 15)
           .map((o) => ({ station: o.station, trains: o.trains, what: o.kind === "EL" ? "elevator" : "escalator", serving: o.serving, reason: o.reason })) };
+    },
+  },
+  citibike_near: {
+    description: "Citi Bike stations nearest a point, renting now, with live counts of classic bikes, e-bikes and free docks, distance and walk time. For 'near me', pass the visitor's location from the page objects.",
+    parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place instead of lat/lon" }, ebike: { type: "boolean", description: "Only stations with an e-bike available" } },
+    run: async ({ lat, lon, place, ebike }) => {
+      const at = await pointOf(lat, lon, place);
+      if (!at) return { error: "Need a location: the visitor's position (ask them to press ◎ on the map) or a place." };
+      return { from: at.label, stations: (await citiBikeNear(at.lat, at.lon, { ebike: !!ebike })).map((s) => ({ ...s, mapLink: `/nyc/#at=${s.lat},${s.lon}` })) };
+    },
+  },
+  subway_near: {
+    description: "The nearest subway stations to a point, with distance and their next trains both ways. For 'near me', pass the visitor's location from the page objects.",
+    parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place instead of lat/lon" } },
+    run: async ({ lat, lon, place }) => {
+      const at = await pointOf(lat, lon, place);
+      if (!at) return { error: "Need a location: the visitor's position (ask them to press ◎ on the map) or a place." };
+      return Promise.all((await stationsNear(at.lat, at.lon, 3)).map(async (s) => {
+        const d = await stationArrivals(s.id, 3);
+        const line = (x: any) => `${x.label}: ${x.trains.length ? x.trains.map((t: any) => `${t.route} in ${t.minutes} min`).join(", ") : "none listed"}`;
+        return { station: `${s.name} (${s.lines})`, meters: s.m, walkMinutes: Math.max(1, Math.round((s.m * 1.3) / 80)), next: d ? [line(d.north), line(d.south)] : [], mapLink: `/nyc/#station=${s.id}` };
+      }));
     },
   },
   subway_arrivals: {
@@ -107,9 +131,9 @@ const TOOLS: Record<string, Tool> = {
   },
   trip_plan: {
     description: "Plan a trip in NYC by car, bike or on foot: distance, time (car trips include live traffic delay), and the live traffic cameras along the route in order.",
-    parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike or walk", enum: ["drive", "bike", "walk"] }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
+    parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike or walk", enum: ["drive", "bike", "walk"] }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
     required: ["from", "to"],
-    run: async ({ from, to, mode, avoid_ferries }) => { const t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries }); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },
+    run: async ({ from, to, mode, avoid_ferries, stops }) => { const t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },
   },
   address_info: {
     description: "Look up an NYC address, intersection or landmark: districts, police precinct, BBL/BIN, ZIP, neighborhood, coordinates (NYC Geoclient).",
@@ -117,6 +141,12 @@ const TOOLS: Record<string, Tool> = {
     run: ({ address }) => addressInfo(String(address)),
   },
 };
+/** A point from lat/lon, or by looking up a place. */
+async function pointOf(lat: unknown, lon: unknown, place: unknown) {
+  const la = Number(lat), lo = Number(lon);
+  if (la > 40.3 && la < 41.2 && lo > -74.5 && lo < -73.4) return { lat: la, lon: lo, label: "the given point" };
+  return place ? geocode(String(place)).catch(() => null) : null;
+}
 const toolSpecs = Object.entries(TOOLS).map(([name, t]) => ({
   type: "function", function: { name, description: t.description, parameters: { type: "object", properties: t.parameters, required: t.required ?? [] } },
 }));
@@ -138,7 +168,10 @@ Pages on the site:
 ${siteMap}
 
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
-Tools: use them when the answer needs live or outside data (subway status, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
+Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
+- Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
+- "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near or subway_near. If it's missing, ask them to press ◎ on the NYC map (or name a place).
+- Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 
 How to answer:
 - Be warm, playful and brief: usually 1-4 short sentences, like a game character. Go longer only when asked to explain.
@@ -160,10 +193,23 @@ function pageTools(page: any) {
       parameters: { type: "object", properties: Object.fromEntries(Object.entries(a.parameters ?? {}).slice(0, 8).map(([k, v]: [string, any]) => [k, { type: ["string", "number", "boolean"].includes(v?.type) ? v.type : "string", description: String(v?.description ?? "").slice(0, 200) }])), required: [] } } }));
 }
 
+/** One model call: Ollama Cloud's model first, the local model if the cloud fails, times out or has no key. */
 async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = []) {
+  const tools = withTools ? { tools: [...toolSpecs, ...extraTools] } : {};
+  const key = process.env.OLLAMA_CLOUD_KEY;
+  if (key) {
+    try {
+      const r = await fetch("https://ollama.com/api/chat", {
+        method: "POST", signal: AbortSignal.timeout(45_000), headers: { Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: CLOUD_MODEL, stream: false, options: { num_predict: 1500 }, messages, ...tools }),
+      });
+      if (r.ok) return (await r.json()).message as Msg;
+      console.warn(`blip: cloud ${r.status}, using the local model`);
+    } catch (e) { console.warn(`blip: cloud failed (${(e as Error).message}), using the local model`); }
+  }
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(120_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: "low", options: { num_predict: 1500 }, messages, ...(withTools ? { tools: [...toolSpecs, ...extraTools] } : {}) }),
+    body: JSON.stringify({ model: MODEL, stream: false, think: "low", options: { num_predict: 1500 }, messages, ...tools }),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   return (await r.json()).message as Msg;
