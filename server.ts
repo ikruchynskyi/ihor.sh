@@ -57,7 +57,7 @@ const companion = () => `<script type="module" src="${asset("reader.js")}"></scr
 // apply at once, no flash), and wraps fetch so reader.js can show "still working" for the page's /api/ calls, with
 // how long each endpoint usually takes in this browser.
 const HEAD = `<script>(function(){var h=document.documentElement,r={};try{r=JSON.parse(localStorage.getItem("ihor-reader")||"{}")}catch(e){}
-var t=r.theme||"nova";h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
+var t=r.theme||"arcade";h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
 var W=window.__wait={active:new Map(),n:0,typical:{},on:new Set()};try{W.typical=JSON.parse(localStorage.getItem("ihor-wait")||"{}")}catch(e){}
 var f=window.fetch,tell=function(){W.on.forEach(function(l){try{l()}catch(e){}})};
 window.fetch=function(a){var u;try{u=new URL(typeof a==="string"?a:a&&a.url||"",location.href)}catch(e){return f.apply(window,arguments)}

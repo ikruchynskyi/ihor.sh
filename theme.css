@@ -1,17 +1,17 @@
 /* ihor.sh theme. server.ts links it after each page's own styles, so these rules re-skin every project page
    (radio, nyc, …) without touching their sources. Pages share variable names, so most of the work is remapping them.
    Two looks share one set of design tokens:
-   - sleek (the default, every theme but Arcade): glass panels, soft light, Inter plus a display face per theme;
-   - pixel (the Arcade theme): square panels, hard shadows, Press Start 2P and VT323.
+   - pixel (Arcade, the default): square panels, hard shadows, Press Start 2P and VT323;
+   - sleek (every other theme): glass panels, soft light, Inter plus a display face per theme.
    A tiny inline script from server.ts sets <html data-theme data-style> before first paint; reader.js sets the colors
    per theme and lets the visitor change everything. Blip's and the reader's panels live in shadow DOM: they read the
    tokens (custom properties cross the boundary), so they follow the look too. */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"); /* the sleek themes load theirs on demand (reader.js) */
 
 :root:root {
-  /* colors: the Nova theme (the default); reader.js re-sets these per theme */
-  --bg: #070b14; --fg: #e6edf7; --muted: #9aa8c0; --line: #273349; --card: #0f1626; --soft: #121b2e; --grid: #1a2140;
-  --field: #05070d; --on-accent: #06101a; --accent: #5ee1ff; --accent2: #8b7bff; --plot: #4de1ff; --plot2: #ffb347; --ok: #7cf2b2;
+  /* colors: the Arcade theme (the default); reader.js re-sets these per theme */
+  --bg: #07090f; --fg: #e8edff; --muted: #9aa3cf; --line: #3b4bb0; --card: #0d1226; --soft: #111939; --grid: #1a2140;
+  --field: #05070d; --on-accent: #1b1020; --accent: #ffb347; --accent2: #ff5c8a; --plot: #4de1ff; --plot2: #ffb347; --ok: #5cff9d;
   --blue: #58c4dd; --yellow: #f4d35e; --green: #83c167; --red: #fc6255; --pink: #ff5c8a;
   --alert: #ff5c8a; --bike: #4de1ff; --now: #5cff9d; --later: #4de1ff;
   --pixel: "Press Start 2P", ui-monospace, monospace;
@@ -24,7 +24,7 @@
   --btn-shadow: 0 4px 0 rgba(0,0,0,.45); --motion: steps(4); --glow: transparent;
   color-scheme: dark;
 }
-:root:root[data-theme="arcade"] { --bg: #07090f; --fg: #e8edff; --muted: #9aa3cf; --line: #3b4bb0; --card: #0d1226; --soft: #111939; --field: #05070d; --accent: #ffb347; --accent2: #ff5c8a; --on-accent: #1b1020; --ok: #5cff9d; }
+:root:root[data-theme="nova"] { --bg: #070b14; --fg: #e6edf7; --muted: #9aa8c0; --line: #273349; --card: #0f1626; --soft: #121b2e; --accent: #5ee1ff; --accent2: #8b7bff; --on-accent: #06101a; --ok: #7cf2b2; } /* first paint for the most-picked sleek theme */
 html { background: var(--bg); }
 body {
   background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--line) 40%, var(--bg)) 0%, transparent 60%), var(--bg);

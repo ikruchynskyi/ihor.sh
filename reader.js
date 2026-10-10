@@ -1,7 +1,7 @@
 // Reader tools: an "Aa READER" button in the HUD bar ("🎨 THEME" on the home page) opens a panel to pick a theme
 // (colors, a body font and a display face for headings), the font, text size, line and letter spacing. Every
 // text/background pair is >= 7:1 contrast (WCAG AAA). Choices are kept per browser in localStorage.
-// Every theme but Arcade uses the sleek look (theme.css: glass panels, soft light); Arcade is the pixel look.
+// Arcade (the default) is the pixel look; every other theme uses the sleek look (theme.css: glass panels, soft light).
 // It also draws the "still working" bar for the page's API calls (tracked by the inline script server.ts puts in <head>).
 
 const FONTS = {
@@ -39,9 +39,9 @@ const THEMES = {
   forest: { label: "Forest", kind: "color", world: "Ride", c: ["#f1ead8", "#14291e", "#1b3627", "#ffb26b", "#bfcfb8", "#3f6b4f", "#ffd166", "#ffd166"], dark: true, font: "atkinson", display: "rajdhani" },
   blueprint: { label: "Blueprint", kind: "color", world: "Learn", c: ["#eaf2ff", "#0b2747", "#0f3460", "#ffd166", "#b0c7e6", "#4672a8", "#8ef0c0", "#8ef0c0"], dark: true, font: "atkinson", display: "rajdhani" },
 };
-const GROUPS = [["cinematic", "Cinematic"], ["retro", "Retro"], ["light", "Light"], ["color", "By world"]];
+const GROUPS = [["retro", "Retro"], ["cinematic", "Cinematic"], ["light", "Light"], ["color", "By world"]];
 const isHome = !!document.querySelector(".hud #snd");
-const DEFAULT_THEME = "nova";
+const DEFAULT_THEME = "arcade";
 const DEFAULTS = { theme: DEFAULT_THEME, line: isHome ? 1.5 : 1.7, letter: 0 };
 
 // Only what the visitor changed is stored, so each page keeps its own defaults for the rest; the font and the size
@@ -134,7 +134,7 @@ function panelHTML() {
   <section class="panel" role="dialog" aria-label="Reader settings">
     <header><h2>${isHome ? "Theme" : "Reader"}</h2><button class="x" aria-label="Close reader settings">✕</button></header>
     ${GROUPS.map(([kind, label]) => `<h3>${label}</h3>${pick("theme", Object.fromEntries(Object.entries(THEMES).filter(([, t]) => t.kind === kind)), s.theme, (k, t) => swatch(t))}`).join("")}
-    <p class="hint">Cinematic themes bring their own fonts; Arcade is the pixel look.</p>
+    <p class="hint">Arcade is the pixel look. The others are smooth, with their own fonts.</p>
     <h3>Font</h3>${pick("font", FONTS, fontKey(), (k, o) => `<span style='font-family:${o.css.replace(/"/g, "&quot;")}'>${o.label}</span>`)}
     <h3><label for="size">Size</label><output>${sizeOf()}px</output></h3><input id="size" type="range" min="14" max="28" step="1" value="${sizeOf()}">
     <h3><label for="line">Line spacing</label><output>${s.line}</output></h3><input id="line" type="range" min="1.3" max="2.3" step="0.1" value="${s.line}">

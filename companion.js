@@ -205,7 +205,7 @@ let floorUp = 0;
 const readFloor = () => { floorUp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--blip-floor")) || 0; };
 addEventListener("resize", () => { W = innerWidth; H = innerHeight; readFloor(); });
 setInterval(readFloor, 1000); readFloor();
-const N = 14, R = 30, G = 0.45;
+const N = 14, R = innerWidth < 600 ? 24 : 30, G = 0.45; // a smaller Blip on phones, where it shares the screen with the page's buttons
 const firstVisit = !session.get("blip:x");
 const x0 = Math.min(W - 70, Math.max(70, Number(session.get("blip:x")) || W - 100)), y0 = firstVisit ? -80 : H - R - 6;
 const core = { x: x0, y: y0 };
@@ -281,7 +281,7 @@ function render() {
     const [x0, x1] = d3.extent(ring, (n) => n.x), w = (x1 - x0) / 2 / R;
     itemEl.setAttribute("transform", myItem.at === "head" ? `translate(${c.x},${c.y - 2}) scale(${w.toFixed(3)})` : `translate(${x1 - 3},${c.y + 8}) rotate(${myItem.label === "MetroCard" ? -18 : 28}) scale(1.2)`);
   }
-  face.setAttribute("transform", `translate(${c.x},${c.y})`);
+  face.setAttribute("transform", `translate(${c.x},${c.y}) scale(${(R / 30).toFixed(3)})`);
   if (wardrobe) { const [x0, x1] = d3.extent(ring, (n) => n.x); wardrobe.render(c, d3.min(ring, (n) => n.y), x1, (x1 - x0) / 2 / R); }
   const t = gaze && performance.now() < gaze.until ? gaze : mood === "think" ? { x: c.x + 20, y: c.y - 200 } : mouse.seen ? mouse : { x: c.x - 40, y: c.y + 10 };
   const dx = t.x - c.x, dy = t.y - c.y, m = Math.hypot(dx, dy) || 1, s = Math.min(1, m / 60) * 3.2;
