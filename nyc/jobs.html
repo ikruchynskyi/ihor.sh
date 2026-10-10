@@ -45,7 +45,8 @@
   <h1>Jobs that are real and still open</h1>
   <p class="lede">New York City, New Jersey and the metro, and remote in the US. Most jobs come straight from employers' own job boards and are re-checked <b>every hour</b>: when an employer takes a job down, it drops off here. City jobs come from NYC's open data; Adzuna adds more, without gig ads or reposts. Duplicates are merged, and anything that looks off is flagged with the reason.</p>
   <p class="hint" id="stats"></p>
-  <p><a href="/nyc/resume.html">📄 Check how a hiring system reads your résumé</a> <span class="hint">(runs in your browser)</span></p>
+  <p><a href="/nyc/resume.html">📄 Check how a hiring system reads your résumé</a> <span class="hint">(runs in your browser)</span> · <button id="matchBtn" type="button">✨ Jobs that fit my résumé</button></p>
+  <section id="matchBox" class="card" style="padding:10px 14px" hidden></section>
 
   <div class="layout">
     <details class="rail" open>
@@ -196,6 +197,29 @@ async function renderSaved() {
 $("saved").addEventListener("click", (e) => { const rm = e.target.dataset.rm; if (rm != null) { const l = saved(); l.splice(+rm, 1); putSaved(l); renderSaved(); } });
 $("saved").addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a || a.getAttribute("href").startsWith("/jobs/feed")) return; e.preventDefault(); const l = saved(), s = l.find((x) => `?${x.q}` === a.getAttribute("href")); if (s) { s.seen = Math.floor(Date.now() / 1000); putSaved(l); } restore(new URLSearchParams(a.getAttribute("href").slice(1))); facets(last?.facets); run(); });
 $("save").onclick = () => { const q = state().toString(); if (!q) return; const name = prompt("Name this search:", $("q").value || "My search"); if (!name) return; putSaved([...saved().filter((s) => s.q !== q), { name: name.slice(0, 60), q, seen: Math.floor(Date.now() / 1000) }]); renderSaved(); };
+
+// ---------- jobs that fit my résumé: by meaning first (seconds), then re-ranked by the AI model (about a minute) ----------
+const resumeKept = () => { try { return localStorage.getItem("resume-text"); } catch { return null; } };
+const post = (u, body) => fetch(u, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+function matchCards(d) {
+  return d.jobs.map((j) => `<article class="job card" style="cursor:default"><h3>${j.score != null ? `<span class="chip ${j.score >= 70 ? "ok" : ""}">${j.score}% fit</span> ` : `<span class="chip">${Math.round(j.sim * 100)} close</span> `}<a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a></h3>
+    <div class="meta"><b>${esc(j.company)}</b><span>${esc(LABEL.region[j.region])} · ${esc(LABEL.remote[j.remote])}</span>${j.salary_min ? `<span class="pay">${money(j.salary_min, j.salary_period)}–${money(j.salary_max, j.salary_period)}${j.salary_est ? " est." : ""}</span>` : ""}${j.flags.length ? j.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("") : ""}</div>
+    ${j.why ? `<p class="hint" style="margin:4px 0">${esc(j.why)}</p>` : ""}
+    ${j.has?.length ? `<div class="meta">${j.has.map((h) => `<span class="chip ok">✓ ${esc(h)}</span>`).join("")}</div>` : ""}${j.missing?.length ? `<div class="meta">${j.missing.map((h) => `<span class="chip flag">✗ ${esc(h)}</span>`).join("")}</div>` : ""}
+    <p class="hint"><a href="/nyc/resume.html?job=${encodeURIComponent(j.id)}">📄 Tailor my résumé for this job</a></p></article>`).join("");
+}
+$("matchBtn").onclick = async () => {
+  const box = $("matchBox"), text = resumeKept(); box.hidden = false;
+  if (!text) { box.innerHTML = `First <a href="/nyc/resume.html">check your résumé</a> and tick <b>keep it in this browser</b>; then come back here.`; return; }
+  const p = Object.fromEntries(state()), body = { resume: text, region: p.region, remote: p.remote, seniority: p.seniority, func: p.func, salary: p.salary, days: p.days, hideFlagged: p.flagged === "0" };
+  box.innerHTML = `<p class="hint">Finding the jobs closest to your résumé (using your filters)…</p>`;
+  try {
+    const fast = await post("/api/jobs/match", { ...body, rank: false });
+    box.innerHTML = `<h2 style="margin:4px 0">Closest to your résumé</h2><p class="hint" id="rankNote">The AI is now reading the top 15 against your résumé to score them and say what fits and what's missing (about a minute)…</p>${matchCards(fast)}`;
+    const ranked = await post("/api/jobs/match", body);
+    box.innerHTML = `<h2 style="margin:4px 0">Best fits for your résumé</h2><p class="hint">Scored by AI from your résumé and each posting only: ✓ what it found in your résumé, ✗ what the job asks for that your résumé doesn't show. Your résumé isn't stored on the server.</p>${matchCards(ranked)}`;
+  } catch (e) { box.innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
+};
 
 getJSON("/api/jobs/stats").then((s) => {
   const ago = Math.round((Date.now() / 1000 - Math.max(...s.lastRuns.filter((r) => r.what === "boards").map((r) => r.at))) / 60);

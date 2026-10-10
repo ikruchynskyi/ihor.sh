@@ -21,6 +21,7 @@ import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
+import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs-ai.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
@@ -147,10 +148,9 @@ function dress(html: string, world: string, urlPath = "") {
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
   if (urlPath) html = seo(html, world, urlPath);
-  return html
-    .replace("</head>", `<link rel="stylesheet" href="${asset("theme.css")}"></head>`)
-    .replace(/<body[^>]*>/, (m) => m + hud)
-    .replace("</body>", `${companion()}</body>`);
+  // the page's own </body>, the last one: a script may contain the text "</body>" in a string
+  const out = html.replace("</head>", `<link rel="stylesheet" href="${asset("theme.css")}"></head>`).replace(/<body[^>]*>/, (m) => m + hud), end = out.lastIndexOf("</body>");
+  return end < 0 ? out + companion() : out.slice(0, end) + companion() + out.slice(end);
 }
 
 async function serveFile(res: http.ServerResponse, file: string, world?: string | "home", urlPath = "") {
@@ -194,7 +194,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -406,6 +406,19 @@ const server = http.createServer(async (req, res) => {
         salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"), seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" })));
     }
     if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
+    if ((url.pathname === "/api/jobs/match" || url.pathname === "/api/jobs/suggest") && req.method === "POST") {
+      // the résumé is used for this request only: not stored, not logged (errors log the message, never the body)
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
+      let b: any; try { b = JSON.parse(raw || "{}"); } catch { return res.writeHead(400).end(); }
+      const resume = String(b.resume ?? "").slice(0, 20_000);
+      try {
+        const d: any = url.pathname === "/api/jobs/match"
+          ? await jobMatch(resume, { region: b.region, remote: b.remote, seniority: b.seniority, func: b.func, salaryMin: Number(b.salary) || undefined, days: Number(b.days) || undefined, hideFlagged: !!b.hideFlagged }, b.rank !== false)
+          : await jobSuggest(resume, (Array.isArray(b.bullets) ? b.bullets : []).map(String).slice(0, 20), b.job ? String(b.job) : undefined, b.jd ? String(b.jd).slice(0, 8000) : undefined);
+        return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
+      } catch (e) { console.log(`${url.pathname}: ${(e as Error).message}`); return res.writeHead(503, { "content-type": "application/json" }).end(JSON.stringify({ error: "The AI helper is busy or offline right now. Try again in a minute." })); }
+    }
     if (url.pathname === "/api/jobs/stats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(jobStats()));
     if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
@@ -435,5 +448,6 @@ const server = http.createServer(async (req, res) => {
 startArchive();
 startEvents();
 startJobs();
+startEmbedding();
 startMesh();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));

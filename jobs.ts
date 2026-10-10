@@ -20,6 +20,7 @@ db.exec(`
   create virtual table if not exists jobs_fts2 using fts5(id unindexed, title, company, body, tokenize = 'porter unicode61'); -- porter: engineers = engineer
   create table if not exists runs (at int, what text, ok int, n int, note text);
   create table if not exists probed (ckey text primary key, at int, found text);
+  create table if not exists emb (id text primary key, v blob);
 `);
 const now = () => Math.floor(Date.now() / 1000);
 const UA = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json" };
@@ -379,3 +380,21 @@ export function rss(qy: Query, selfUrl: string, title: string) {
   const items = r.rows.map((j: any) => `<item><title>${x(`${j.title} at ${j.company}`)}</title><link>${x(j.url)}</link><guid isPermaLink="false">${x(j.id)}</guid><pubDate>${new Date((j.posted ?? j.first_seen) * 1000).toUTCString()}</pubDate><description>${x(`${j.location}${j.salary_min ? ` · $${Math.round(j.salary_min)}–$${Math.round(j.salary_max)} per ${j.salary_period}` : ""}${j.flags.length ? ` · flags: ${j.flags.join(", ")}` : ""}`)}</description></item>`).join("");
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${x(title)}</title><link>${x(selfUrl)}</link><description>Open jobs matching a saved search on ihor.sh</description>${items}</channel></rss>`;
 }
+
+// ---------- for matching (jobs-ai.ts): embeddings of open jobs ----------
+/** Open jobs that have no embedding yet: the text that represents each. */
+export const needEmbedding = (limit = 64) => (db.prepare("select j.id, j.title, j.company, j.region, j.remote, j.seniority, substr(j.description, 1, 1800) d from jobs j left join emb e on e.id = j.id where j.closed is null and j.dup_of is null and e.id is null limit ?").all(limit) as any[])
+  .map((r) => ({ id: r.id, text: `${r.title} at ${r.company} (${r.region}, ${r.remote}, ${r.seniority})\n${r.d}` }));
+export const saveEmbedding = (id: string, v: Float32Array) => db.prepare("insert or replace into emb values (?, ?)").run(id, new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
+/** Every open job matching the filters (no text query), with its embedding, for ranking against a résumé. */
+export function candidates(qy: Query) {
+  const where = ["j.closed is null", "j.dup_of is null"], args: any[] = [];
+  const inList = (col: string, v?: string) => { const l = (v ?? "").split(",").filter(Boolean); if (l.length) { where.push(`${col} in (${l.map(() => "?").join(",")})`); args.push(...l); } };
+  inList("j.region", qy.region); inList("j.remote", qy.remote); inList("j.seniority", qy.seniority); inList("j.func", qy.func); inList("j.source", qy.source);
+  if (qy.salaryMin) { where.push("(case when j.salary_period = 'hour' then j.salary_max * 2080 else j.salary_max end) >= ?"); args.push(qy.salaryMin); }
+  if (qy.days) { where.push("coalesce(j.posted, j.first_seen) >= ?"); args.push(now() - qy.days * 86400); }
+  if (qy.hideFlagged) where.push("(j.flags is null or j.flags = '[]')");
+  return (db.prepare(`select j.id, j.title, j.company, j.region, j.remote, j.url, j.salary_min, j.salary_max, j.salary_period, j.salary_est, j.flags, j.source, j.posted, j.first_seen, e.v from jobs j join emb e on e.id = j.id where ${where.join(" and ")}`).all(...args) as any[])
+    .map((r) => ({ ...r, flags: JSON.parse(r.flags ?? "[]"), v: new Float32Array(new Uint8Array(r.v).buffer) }));
+}
+export const jobText = (id: string) => (db.prepare("select title, company, description from jobs where id = ?").get(id) as any) ?? null;
