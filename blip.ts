@@ -10,6 +10,8 @@ import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
 import { shipsNow, shipsNear } from "./ships.ts";
 import { siteSearch } from "./search.ts";
+import { hamPasses, HAM_SATS } from "./sat.ts";
+import { propagation } from "./spacewx.ts";
 import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
@@ -128,6 +130,21 @@ const TOOLS: Record<string, Tool> = {
       return { total: r.total, page: `/nyc/jobs.html?${new URLSearchParams(Object.entries({ q, region, remote, salary: salary_min, seniority, company, days }).filter(([, v]) => v != null && v !== "").map(([k, v]) => [k, String(v)]))}`,
         jobs: r.rows.slice(0, 12).map((x: any) => ({ title: x.title, company: x.company, where: `${x.region}, ${x.remote}`, pay: pay(x), posted: new Date((x.posted ?? x.first_seen) * 1000).toISOString().slice(0, 10), source: x.source, flags: x.flags, apply: x.url })) };
     },
+  },
+  satellite_passes: {
+    description: `The next passes of the amateur-radio satellites over a place (SGP4 from CelesTrak): ${HAM_SATS.map((x) => x.name).join(", ")}. Each pass: rise time (New York time), minutes, highest elevation, path, the uplink/downlink and status. Filter by satellite or kind (FM repeater, linear transponder, digipeater, ISS, weather pictures).`,
+    parameters: { sat: { type: "string", description: "Optional satellite id or name part, e.g. so-50, rs-44, iss, meteor" }, kind: { type: "string", description: "Optional kind" }, hours: { type: "number", description: "How far ahead (default 24, up to 72)" }, lat: { type: "number" }, lon: { type: "number" }, place: { type: "string", description: "Or a place name (default New York)" } },
+    run: async ({ sat, kind, hours, lat, lon, place }) => {
+      const at = lat != null || place ? await pointOf(lat, lon, place) : null;
+      const d = await hamPasses(at?.lat, at?.lon, Math.min(72, Number(hours) || 24));
+      const q = String(sat ?? "").toLowerCase(), k = String(kind ?? "").toLowerCase();
+      const list = d.passes.filter((p: any) => (!q || p.sat.includes(q) || p.name.toLowerCase().includes(q)) && (!k || p.kind.toLowerCase().includes(k)));
+      return { from: d.from, hours: d.hours, count: list.length, passes: list.slice(0, 25), page: "/radio/repeaters/ (the Ham satellites panel draws a pass on the map)", statusNote: "Status is hand-kept; AMSAT's status page has today's reports: https://www.amsat.org/status/" };
+    },
+  },
+  propagation_now: {
+    description: "Space weather for radio right now (NOAA SWPC): solar flux, sunspot number, K and A index, X-ray flux class, solar wind, NOAA R/S/G scales, and plain-words band conditions (80–40 m, 30–20 m, 17–15 m, 12–10 m, day/night), aurora and sporadic-E hints.",
+    parameters: {}, run: () => propagation(),
   },
   iss_passes: {
     description: "When the International Space Station passes over a place in the next 3 days (computed with SGP4 from CelesTrak's latest orbit): rise time (New York time), how long, highest elevation, direction across the sky, and whether it's visible to the eye (only at dusk or dawn, when it's sunlit and your sky is dark). Default place: NYC; pass the visitor's location for 'over me'.",
@@ -301,7 +318,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
-- Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
+- Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 

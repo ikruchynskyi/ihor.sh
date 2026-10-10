@@ -27,6 +27,8 @@ import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNe
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
+import { hamPasses, satTrack } from "./sat.ts";
+import { propagation } from "./spacewx.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -346,6 +348,15 @@ const server = http.createServer(async (req, res) => {
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
   }
   try {
+    if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
+      const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180;
+      try {
+        const data = url.pathname === "/api/radio/propagation" ? await propagation()
+          : url.pathname === "/api/radio/sats" ? await hamPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined, Math.min(72, Number(url.searchParams.get("hours")) || 24))
+          : await satTrack(String(url.searchParams.get("id") ?? "iss"), ok ? la : undefined, ok ? lo : undefined);
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/sat-track" ? 5 : 600}` }).end(JSON.stringify(data));
+      } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (url.pathname === "/api/site/search") {
       const hits = await siteSearch(String(url.searchParams.get("q") ?? "").slice(0, 120), Math.min(20, Number(url.searchParams.get("n")) || 8));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify({ hits }));

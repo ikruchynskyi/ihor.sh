@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Callsigns &amp; Repeaters</title>
-  <meta name="description" content="Look up any US amateur radio callsign (FCC license, class, location, grid square) and explore 22,000+ ham radio repeaters worldwide on a map: frequency, offset, CTCSS tone, mode and network." />
+  <meta name="description" content="Live propagation (solar flux, sunspots, K index, X-rays, band conditions from NOAA), the next passes of the amateur satellites (SO-50, RS-44, the ISS repeater, Meteor weather pictures…) drawn on the map, any US amateur radio callsign (FCC license, class, location, grid square) and 22,000+ ham radio repeaters worldwide: frequency, offset, CTCSS tone, mode and network." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     html, body { height: 100%; margin: 0; }
@@ -24,6 +24,19 @@
     #list li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
     #list b { font-family: ui-monospace, Menlo, monospace; }
     .freq { font-family: ui-monospace, Menlo, monospace; }
+    details.panel { margin: 10px 0; border: 1px solid var(--line, #3b4bb0); padding: 6px 10px; }
+    details.panel > summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+    details.panel p { margin: 6px 0; }
+    table.bands { width: 100%; border-collapse: collapse; font-size: .85rem; margin: 6px 0; }
+    .bands th, .bands td { text-align: left; padding: 2px 6px; border-bottom: 1px solid var(--line, #3b4bb0); }
+    .good { color: #5cff9d; } .fair { color: #ffd166; } .poor { color: #ff5c8a; }
+    .kbars { display: flex; align-items: flex-end; gap: 2px; height: 36px; margin: 4px 0; }
+    .kbars i { flex: 1; background: var(--accent, #ffb347); min-height: 2px; opacity: .8; }
+    .pass { padding: 5px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; font-size: .9rem; }
+    .pass:hover { background: color-mix(in srgb, var(--accent, #ffb347) 12%, transparent); }
+    .pass b { font-family: ui-monospace, Menlo, monospace; }
+    .satbtns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+    .satbtns button { font-size: .8rem !important; padding: 4px 8px !important; }
     @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 50vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
   </style>
 </head>
@@ -35,6 +48,8 @@
     <p class="muted">Every ham has a callsign from their license. Look one up (US licenses, from the FCC database), or explore repeaters anywhere in the world (pan and zoom the map): hilltop and rooftop stations that rebroadcast a handheld radio's signal across a whole city.</p>
     <form id="callForm"><input id="call" placeholder="Callsign, e.g. W1AW" autocomplete="off" aria-label="Callsign"><button>Look up</button></form>
     <div id="lic" class="muted"></div>
+    <details class="panel" id="wx"><summary>☀️ Propagation <span class="muted" id="wxSum"></span></summary><div id="wxBody" class="muted">Loading space weather…</div></details>
+    <details class="panel" id="sats"><summary>🛰 Ham satellites <span class="muted" id="satSum"></span></summary><div id="satBody" class="muted">Computing passes…</div></details>
     <h2 style="font-size:14px;margin:16px 0 4px">Repeaters <span id="count" class="muted"></span></h2>
     <div class="filters" id="bands"></div>
     <div class="filters">

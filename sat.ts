@@ -148,13 +148,68 @@ export async function issPasses(lat = 40.7128, lon = -74.006, hours = 72) {
       path: `${compass(p.riseAz)} → ${compass(p.peakAz)} (highest) → ${compass(p.setAz)}`, visibleToEye: p.visible, note: p.visible ? `Look ${compass(p.riseAz)} at ${t(p.rise).split(", ").pop()}: ${p.magnitudeHint}` : "in daylight or Earth's shadow: not visible" })) };
 }
 
-let cache: { at: number; tle: Tle } | null = null;
+// ---------- the satellites hams work: FM repeaters, linear transponders, digipeaters, the ISS, weather pictures ----------
+// Hand-kept (checked against AMSAT's status page and CelesTrak, 2026-10); decommissioned birds (NOAA 15/18/19, AO-85,
+// AO-91/92/95, LilacSat-2) are left out. "status" says when a bird is only part-time.
+export type HamSat = { id: string; catnr: number; name: string; kind: "FM repeater" | "linear transponder" | "digipeater" | "ISS" | "weather pictures"; up?: string; down: string; tone?: string; notes: string; status: string };
+export const HAM_SATS: HamSat[] = [
+  { id: "iss", catnr: 25544, name: "ISS", kind: "ISS", up: "145.990 MHz FM (PL 67.0)", down: "437.800 MHz FM repeater · 145.825 APRS · 145.800 voice/SSTV", notes: "A cross-band FM repeater and an APRS digipeater on the station; SSTV pictures during events.", status: "repeater usually on; check ARISS" },
+  { id: "so-50", catnr: 27607, name: "SO-50 (SaudiSat 1C)", kind: "FM repeater", up: "145.850 MHz (PL 67.0; 74.4 arms it for 10 min)", down: "436.795 MHz FM", notes: "The easiest FM bird: a handheld and a small Yagi work. Send 74.4 Hz first to turn it on.", status: "active" },
+  { id: "ao-7", catnr: 7530, name: "AO-7 (OSCAR 7)", kind: "linear transponder", up: "432.125–432.175 MHz (mode B) · 145.850–145.950 (mode A)", down: "145.975–145.925 MHz (B, inverting) · 29.400–29.500 (A)", notes: "Launched 1974, back from the dead in 2002: runs on sunlight only and swaps modes daily.", status: "works in sunlight only" },
+  { id: "fo-29", catnr: 24278, name: "FO-29 (JAS-2)", kind: "linear transponder", up: "145.900–146.000 MHz", down: "435.800–435.900 MHz SSB/CW (inverting)", notes: "A 1996 Japanese bird; the transponder comes up in full sunlight.", status: "part-time, sunlit passes" },
+  { id: "ao-73", catnr: 39444, name: "AO-73 (FUNcube-1)", kind: "linear transponder", up: "435.130–435.150 MHz", down: "145.950–145.970 MHz SSB/CW (inverting) · 145.935 telemetry", notes: "Transponder on while in eclipse, telemetry for schools in daylight.", status: "active (transponder in eclipse)" },
+  { id: "jo-97", catnr: 43803, name: "JO-97 (JY1Sat)", kind: "linear transponder", up: "435.100–435.120 MHz", down: "145.855–145.875 MHz SSB/CW (inverting) · 145.840 telemetry", notes: "Jordan's FUNcube-style bird.", status: "active" },
+  { id: "rs-44", catnr: 44909, name: "RS-44 (DOSAAF-85)", kind: "linear transponder", up: "145.935–145.995 MHz", down: "435.610–435.670 MHz SSB/CW (inverting) · 435.605 CW beacon", notes: "A 60 kHz-wide transponder in a high orbit: long passes and a loud downlink, the most-used linear bird.", status: "active" },
+  { id: "xw-3", catnr: 50466, name: "XW-3 (CAS-9)", kind: "linear transponder", up: "435.180–435.210 MHz", down: "145.870–145.900 MHz SSB/CW (inverting) · 145.855 CW beacon", notes: "Chinese CAMSAT bird with a 30 kHz transponder.", status: "active" },
+  { id: "io-117", catnr: 53109, name: "IO-117 (GreenCube)", kind: "digipeater", up: "435.310 MHz 1200 bps", down: "435.310 MHz", notes: "A packet digipeater 6,000 km up: passes last an hour and reach across the Atlantic.", status: "active" },
+  { id: "po-101", catnr: 43678, name: "PO-101 (Diwata-2)", kind: "FM repeater", up: "437.500 MHz (PL 141.3)", down: "145.900 MHz FM", notes: "The Philippines' bird; the FM repeater is switched on by schedule (see its Facebook page).", status: "scheduled activations" },
+  { id: "tevel2", catnr: 63217, name: "TEVEL-2 (nine satellites)", kind: "FM repeater", up: "145.970 MHz FM", down: "436.400 MHz FM", notes: "Nine Israeli school satellites (TEVEL2-1…9) share one frequency pair; one is on at a time. Passes shown for TEVEL2-1.", status: "active, one at a time" },
+  { id: "meteor-m2-3", catnr: 57166, name: "Meteor-M2 3", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps)", notes: "Digital weather pictures you can decode: the radio course's LRPT chapter does exactly this.", status: "active" },
+  { id: "meteor-m2-4", catnr: 59051, name: "Meteor-M2 4", kind: "weather pictures", down: "137.100 MHz LRPT (72 kbps)", notes: "The newer Meteor; same decoder, a different frequency.", status: "active" },
+];
+
+const tles = new Map<number, Tle>();
+let tlesAt = 0;
+/** Elements for every satellite in the list, from CelesTrak's amateur, stations and weather groups (three requests, cached 6 h). */
+async function loadTles() {
+  if (tles.size && Date.now() - tlesAt < 6 * 3600e3) return;
+  for (const group of ["amateur", "stations", "weather"]) {
+    const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`, { headers: { "user-agent": "ihor.sh (+https://ihor.sh/radio/)" }, signal: AbortSignal.timeout(20_000) });
+    if (!r.ok) throw new Error(`CelesTrak ${r.status}`);
+    const lines = (await r.text()).trim().split(/\r?\n/).map((x) => x.trim());
+    for (let i = 0; i + 2 < lines.length; i += 3) { const t = parseTle(lines[i + 1], lines[i + 2], lines[i]); tles.set(Number(lines[i + 1].slice(2, 7)), t); }
+  }
+  tlesAt = Date.now();
+}
+export async function tleFor(catnr: number): Promise<Tle> {
+  await loadTles();
+  const t = tles.get(catnr);
+  if (!t) throw new Error(`no elements for ${catnr}`);
+  return t;
+}
 /** The ISS's latest elements from CelesTrak (cached 6 h). */
-export async function issTle(): Promise<Tle> {
-  if (cache && Date.now() - cache.at < 6 * 3600e3) return cache.tle;
-  const r = await fetch("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=tle", { headers: { "user-agent": "ihor.sh (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(15_000) });
-  if (!r.ok) throw new Error(`CelesTrak ${r.status}`);
-  const [name, l1, l2] = (await r.text()).trim().split(/\r?\n/).map((x) => x.trim());
-  cache = { at: Date.now(), tle: parseTle(l1, l2, name) };
-  return cache.tle;
+export const issTle = () => tleFor(25544);
+
+const nyTime = (ms: number) => new Date(ms).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+/** The next passes of every ham satellite over a place, soonest first. */
+export async function hamPasses(lat = 40.7128, lon = -74.006, hours = 24, minEl = 10) {
+  await loadTles();
+  const out: any[] = [];
+  for (const sat of HAM_SATS) {
+    const tle = tles.get(sat.catnr); if (!tle) continue;
+    for (const p of passes(tle, lat, lon, Date.now(), hours, minEl).slice(0, 4))
+      out.push({ sat: sat.id, name: sat.name, kind: sat.kind, rise: nyTime(p.rise), riseIso: new Date(p.rise).toISOString(), setIso: new Date(p.set).toISOString(), minutes: Math.round((p.set - p.rise) / 60000), maxElevation: Math.round(p.maxEl),
+        path: `${compass(p.riseAz)} → ${compass(p.peakAz)} → ${compass(p.setAz)}`, up: sat.up, down: sat.down, status: sat.status });
+  }
+  out.sort((a, b) => a.riseIso.localeCompare(b.riseIso));
+  return { from: { lat: +lat.toFixed(3), lon: +lon.toFixed(3) }, hours, satellites: HAM_SATS.map(({ id, name, kind, up, down, notes, status }) => ({ id, name, kind, up, down, notes, status })), passes: out };
+}
+/** Where a satellite is now and its ground track for the next `minutes` (for drawing on a map), plus the view from a place. */
+export async function satTrack(id: string, lat?: number, lon?: number, minutes = 100) {
+  const sat = HAM_SATS.find((s) => s.id === id); if (!sat) throw new Error("unknown satellite");
+  const tle = await tleFor(sat.catnr), now = Date.now(), s = lat != null && lon != null ? site(lat, lon) : null;
+  const point = (ms: number) => { const sp = subpoint(tle, ms); return [+sp.lat.toFixed(3), +sp.lon.toFixed(3), Math.round(sp.km)]; };
+  const track: number[][] = []; for (let t = now; t <= now + minutes * 60e3; t += 30e3) track.push(point(t));
+  const L = s ? look(tle, now, s) : null;
+  return { sat: { id: sat.id, name: sat.name, kind: sat.kind, up: sat.up, down: sat.down, notes: sat.notes, status: sat.status }, now: point(now), track, view: L ? { elevation: +L.el.toFixed(1), azimuth: Math.round(L.az), direction: compass(L.az), aboveHorizon: L.el > 0 } : null, elementsAgeHours: +((now - tle.epoch) / 3600e3).toFixed(1) };
 }

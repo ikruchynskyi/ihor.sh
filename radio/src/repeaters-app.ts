@@ -84,6 +84,63 @@ async function lookup(call: string) {
 }
 $("callForm").addEventListener("submit", (e) => { e.preventDefault(); lookup($<HTMLInputElement>("call").value); });
 
+// ---------- propagation: NOAA's indexes and what they mean for the bands (server: spacewx.ts) ----------
+let wx: any = null;
+async function loadWx() {
+  wx = await fetch("/api/radio/propagation").then((r) => r.json()).catch(() => null);
+  if (!wx || wx.error) { $("wxBody").textContent = "Couldn't load space weather right now."; return; }
+  const g = (x: string) => `<span class="${x}">${x}</span>`, sc = (o: any) => (o ? `${o.level}` : "?");
+  $("wxSum").textContent = `SFI ${wx.sfi ?? "?"} · K ${wx.k ? wx.k.kp.toFixed(1) : "?"}`;
+  $("wxBody").innerHTML = `<p>${esc(wx.summary)}</p>
+    <table class="bands"><tr><th>Band</th><th>Day</th><th>Night</th></tr>${wx.bands.map((b: any) => `<tr title="${esc(b.why)}"><td>${esc(b.band)}</td><td>${g(b.day)}</td><td>${g(b.night)}</td></tr>`).join("")}</table>
+    <p>Solar flux <b>${wx.sfi ?? "?"}</b> · sunspots <b>${wx.ssn ?? "?"}</b> · K <b>${wx.k?.kp ?? "?"}</b> (A ${wx.k?.a ?? "?"}) · X-ray <b>${wx.xray?.now ?? "?"}</b>${wx.xray ? ` (6 h peak ${wx.xray.max6h})` : ""}${wx.solarWind ? ` · solar wind <b>${wx.solarWind.kmPerS} km/s</b>, Bz ${wx.solarWind.bz}` : ""}</p>
+    <div class="kbars" title="K index, last 2 days (3-hourly)">${wx.kHistory.map(([t, k]: [string, number]) => `<i style="height:${Math.max(2, k * 4)}px" title="${t.replace("T", " ")}: K ${k}"></i>`).join("")}</div>
+    ${wx.scales ? `<p>NOAA scales now: R${sc(wx.scales.radioBlackout)} S${sc(wx.scales.solarRadiation)} G${sc(wx.scales.geomagnetic)}${wx.scales.geomagnetic?.text ? ` (${esc(wx.scales.geomagnetic.text)})` : ""}${wx.scales.tomorrow ? ` · tomorrow G${sc(wx.scales.tomorrow.geomagnetic)}, flare chance ${wx.scales.tomorrow.rMinorProb ?? "?"}% (M) / ${wx.scales.tomorrow.rMajorProb ?? "?"}% (X)` : ""}</p>` : ""}
+    <p>VHF: aurora ${esc(wx.vhf.aurora)} · sporadic E ${esc(wx.vhf.sporadicE)}.</p>
+    <span class="muted">NOAA SWPC · ${new Date(wx.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · <a href="https://www.swpc.noaa.gov/communities/radio-communications" target="_blank" rel="noopener">about these numbers</a></span>`;
+}
+loadWx(); setInterval(loadWx, 10 * 60_000);
+
+// ---------- ham satellites: the next passes over the map's center, and any bird's position and track on the map (server: sat.ts) ----------
+const satLayer = L.layerGroup().addTo(map);
+let sats: any = null, satShown: string | null = null, satTimer: ReturnType<typeof setInterval> | undefined;
+async function loadSats() {
+  const c = map.getCenter();
+  sats = await fetch(`/api/radio/sats?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&hours=24`).then((r) => r.json()).catch(() => null);
+  if (!sats || sats.error) { $("satBody").textContent = "Couldn't compute passes right now."; return; }
+  const next = sats.passes.slice(0, 14);
+  $("satSum").textContent = next.length ? `next: ${next[0].name.split(" ")[0]} ${next[0].rise.split(", ").pop()}` : "";
+  $("satBody").innerHTML = `<p>Passes over the map's center in the next 24 h (≥ 10° up). Click one to draw the satellite and its track.</p>
+    ${next.map((p: any) => `<div class="pass" data-sat="${esc(p.sat)}"><b>${esc(p.rise.split(", ").slice(1).join(", "))}</b> ${esc(p.name)} · <b>${p.maxElevation}°</b> · ${p.minutes} min · ${esc(p.path)}<br><span class="muted">${esc(p.kind)}: ↓ ${esc(p.down)}${p.up ? ` · ↑ ${esc(p.up)}` : ""}${p.status !== "active" ? ` · ${esc(p.status)}` : ""}</span></div>`).join("")}
+    <p>Where is it now?</p><div class="satbtns">${sats.satellites.map((s: any) => `<button type="button" data-sat="${esc(s.id)}" title="${esc(s.notes)}">${esc(s.name.split(" (")[0])}</button>`).join("")}</div>
+    <p class="muted">Orbits from CelesTrak; status hand-kept (check <a href="https://www.amsat.org/status/" target="_blank" rel="noopener">AMSAT's status page</a> for today's reports). <button type="button" id="satHere">Recompute for this map center</button></p>`;
+  $("satBody").querySelectorAll("[data-sat]").forEach((el) => ((el as HTMLElement).onclick = () => showSat((el as HTMLElement).dataset.sat!)));
+  $("satHere").onclick = loadSats;
+}
+async function showSat(id: string) {
+  satShown = id;
+  const c = map.getCenter();
+  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`).then((r) => r.json()).catch(() => null);
+  if (!t || t.error) return;
+  satLayer.clearLayers();
+  // the ground track, cut where it crosses the date line
+  const segs: number[][][] = [[]];
+  for (const [la, lo] of t.track) { const seg = segs.at(-1)!; if (seg.length && Math.abs(lo - seg.at(-1)![1]) > 180) segs.push([]); segs.at(-1)!.push([la, lo]); }
+  for (const seg of segs) if (seg.length > 1) L.polyline(seg, { color: "#4de1ff", weight: 2, opacity: 0.8, dashArray: "4 6" }).addTo(satLayer);
+  const icon = L.divIcon({ className: "", html: `<div style="font-size:26px;line-height:26px;filter:drop-shadow(0 0 3px #000)">🛰</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+  const v = t.view;
+  L.marker([t.now[0], t.now[1]], { icon }).bindPopup(`<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>${t.now[2]} km up over ${t.now[0].toFixed(1)}°, ${t.now[1].toFixed(1)}°${v ? `<br>${v.aboveHorizon ? `<b>Above the horizon here:</b> ${v.elevation}° up, ${esc(v.direction)} (${v.azimuth}°)` : "Below the horizon here"}` : ""}<br>↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}<br><span class="muted">${esc(t.sat.notes)} · ${esc(t.sat.status)}</span>`).addTo(satLayer).openPopup();
+  clearInterval(satTimer);
+  satTimer = setInterval(() => { if (satShown === id) showSatQuiet(id); }, 15_000);
+}
+async function showSatQuiet(id: string) { // move the marker along without reopening the popup
+  const c = map.getCenter();
+  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`).then((r) => r.json()).catch(() => null);
+  if (!t || t.error) return;
+  satLayer.eachLayer((l: any) => { if (l.setLatLng && l.getLatLng) l.setLatLng([t.now[0], t.now[1]]); });
+}
+loadSats();
+
 const q = new URLSearchParams(location.search).get("call");
 if (q) await lookup(q); // moves the map; the area then loads
 await loadArea();
@@ -97,5 +154,6 @@ await loadArea();
       render();
     } },
 };
-(window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area)", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
+(window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area), with a propagation panel (NOAA space weather, band conditions) and the next ham-satellite passes over the map's center", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
+  propagation: wx && { summary: wx.summary, sfi: wx.sfi, ssn: wx.ssn, k: wx.k?.kp, bands: wx.bands }, nextSatellitePasses: sats?.passes.slice(0, 6).map((p: any) => `${p.rise} ${p.name} ${p.maxElevation}° ${p.minutes} min, down ${p.down}`), satelliteShown: satShown,
   nearestRepeaters: shown.slice(0, 12).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: +r.km.toFixed(1) })) });
