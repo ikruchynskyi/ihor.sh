@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A Tiny Transformer</title>
+  <meta name="description" content="AI from scratch, chapter 10: train a real (tiny) GPT in your browser. One transformer block with attention, written from scratch with hand-made backpropagation, learns every NYC subway station name and then invents new ones. Watch the loss fall, change the temperature, and look inside at what each letter pays attention to." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .corpus { font: 13px/1.8 ui-monospace, Menlo, monospace; max-height: 160px; overflow: auto; padding: 8px 10px; }
+    .corpus span { white-space: nowrap; margin-right: 12px; }
+    .samples { font: 17px/1.9 ui-monospace, Menlo, monospace; padding: 10px 14px; min-height: 3em; }
+    .samples .real { color: var(--muted); } .samples .new { color: #2f9e44; font-weight: 600; }
+    .block { background: #14171d; color: #d7dde5; padding: 14px; font: 14px ui-monospace, Menlo, monospace; line-height: 2.1; text-align: center; border-radius: 6px; }
+    .block span { display: inline-block; padding: 2px 10px; border: 2px solid #4a5262; margin: 2px; }
+    .formula { text-align: center; }
+    input[type=range] { width: 160px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 10</p>
+  <h1>A tiny transformer, trained here</h1>
+  <p class="lede">Chapter 7 drew attention as pictures. This chapter builds the real thing: a GPT, the same design as the models behind chatbots, shrunk to one block and about 36,000 numbers so it trains in your browser in a minute. It reads every subway station name in New York, one character at a time, learning to guess the next one. Then it makes up stations that don't exist, but sound like they should.</p>
+
+  <h2>1. The task: guess the next letter</h2>
+  <p>Language models do one thing: given the text so far, give a probability for every possible next piece. Chatbots predict word-pieces; ours predicts single characters, from an alphabet of 68 (letters, digits, a few symbols, and a "the name ends here" mark). Here's everything it will learn from:</p>
+  <div class="corpus card" id="corpus"></div>
+  <div class="q" data-num="4.22" data-tol="0.03">
+    <p>Before training, the model knows nothing, so it gives all 68 characters the same chance. Its loss is −ln(the chance it gave the right one). What's that loss?</p>
+    <div class="why">\(-\ln(1/68) = \ln 68 \approx 4.22\). That's the line to beat: every step of learning shows up as the loss falling below it. (Chapter 5 is where this loss comes from.)</div>
+  </div>
+
+  <h2>2. The model</h2>
+  <div class="block">
+    "Court Sq" → <span>character + position embeddings</span> → <span>attention: each letter looks back at the earlier ones</span> + residual → <span>MLP: 48 → 192 → 48, ReLU</span> + residual → <span>scores for 68 next characters</span>
+  </div>
+  <p>Each character becomes a vector of 48 numbers (its embedding, plus one for its position). Attention lets every position gather information from the positions before it, weighted by how relevant they are; the MLP then thinks about what it gathered. The residual connections ("+") add each step's result to its input, so information can flow straight through. Big models stack this block 50–100 times, with thousands of numbers per vector and dozens of attention heads; ours has one of each.</p>
+  <p class="formula">\[ \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d}} + \text{mask}\right) V, \qquad Q = XW_q,\; K = XW_k,\; V = XW_v \]</p>
+  <p>The <b>mask</b> sets every "look at a later position" score to −∞ before the softmax, so a letter can't peek at the answer it's supposed to predict.</p>
+  <div class="q" data-answer="b">
+    <p>Why does training need the mask, but a model that only ever generates left to right could seem not to?</p>
+    <ul><li data-k="a" data-says="Speed isn't the reason: it's about what the model is allowed to see.">It makes training faster</li><li data-k="b">In training, all positions are predicted at once from a known text; without the mask, each could just read the next letter from its neighbor</li><li data-k="c" data-says="Softmax works either way.">Softmax needs it</li></ul>
+    <div class="why">Training scores every position of a window in one pass. If position 5 could attend to position 6, predicting position 6 would be copying, and the model would learn nothing useful. The mask makes each position predict from the past only, exactly as it must when generating.</div>
+  </div>
+  <p class="readout" id="params"></p>
+
+  <h2>3. Train it</h2>
+  <p>Each step takes 8 random 32-character windows of the station list, predicts every next character, measures the loss, and nudges all 36,000 numbers downhill (backpropagation through the attention and the MLP, then the Adam optimizer: chapters 2 and 4). Every 50 steps it makes up a few new names.</p>
+  <div class="row"><button id="go" type="button">▶ Train</button><button id="reset" type="button">↺ Start over</button><label>learning rate <input type="range" id="lr" min="-4" max="-1.5" step="0.1" value="-2.5"> <span id="lrv"></span></label></div>
+  <canvas id="loss" width="800" height="260" aria-label="The training loss over steps"></canvas>
+  <p class="readout" id="status"></p>
+  <div class="row"><label>temperature <input type="range" id="temp" min="0.2" max="1.5" step="0.05" value="0.8"> <span id="tv"></span></label><button id="gen" type="button">Make up 10 stations</button></div>
+  <div class="samples card" id="samples"><span class="hint">Train for a few hundred steps, then make some up.</span></div>
+  <p class="hint">Green: a name that isn't a real station. Gray: one it memorized from the list.</p>
+  <div class="q">
+    <p>Turn the temperature down to 0.2 and generate. Why does it start repeating real stations?</p>
+    <div class="why">Temperature divides the scores before the softmax. Low temperature sharpens the probabilities toward the single most likely next letter, so the model follows the strongest paths it learned, which are the real names. High temperature flattens them, so it takes unlikely turns: more original, and more nonsense ("Qxv St"). Creativity in a language model is literally this knob.</div>
+  </div>
+
+  <h2>4. Look inside</h2>
+  <p>Type the start of a name. The bars are the model's guesses for the next character; the colored letters show where the last position's attention went (darker: more weight).</p>
+  <div class="row"><label>starts with <input id="prefix" value="Court Sq" style="font:18px ui-monospace,monospace;width:12em"></label></div>
+  <canvas id="inside" width="800" height="240" aria-label="Next-character probabilities and attention weights"></canvas>
+  <p class="readout" id="insideR"></p>
+
+  <div class="code" data-title="Build it: attention for one sequence, the core of every transformer"><textarea>
+// X: one row per position (here 4 positions, 3 numbers each). Wq, Wk, Wv: the learned 3×3 matrices.
+const X = [[1, 0, 1], [0, 1, 0], [1, 1, 0], [0, 0, 1]];
+const W = (seed) => [0, 1, 2].map((i) => [0, 1, 2].map((j) => Math.sin(seed + 3 * i + j)));
+const Wq = W(1), Wk = W(2), Wv = W(3);
+const mul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0)));
+const Q = mul(X, Wq), K = mul(X, Wk), V = mul(X, Wv), d = 3;
+const attention = Q.map((q, i) => {
+  const scores = K.map((k, j) => (j <= i ? q.reduce((s, x, n) => s + x * k[n], 0) / Math.sqrt(d) : -Infinity)); // the causal mask
+  const e = scores.map((s) => Math.exp(s)), z = e.reduce((a, b) => a + b, 0), w = e.map((x) => x / z);        // softmax
+  return { weights: w.map((x) => +x.toFixed(2)), out: V[0].map((_, n) => +w.reduce((s, x, j) => s + x * V[j][n], 0).toFixed(2)) };
+});
+table(attention.map((a, i) => ({ position: i, "attends to (weights)": a.weights.join("  "), output: a.out.join(", ") })));
+</textarea></div>
+
+  <p>That's the whole idea, at toy scale. The GPTs behind chatbots are this block, repeated dozens of times, about a million times wider, trained on trillions of word-pieces instead of 379 station names. Same arithmetic.</p>
+  <p class="muted">Previous: <a href="./09-vision.html">Vision in practice</a> · All chapters: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { TinyGPT } from "/ai/tinygpt.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const text = "\n" + (await (await fetch("/ai/data/stations.txt")).text()), names = new Set(text.split("\n").filter(Boolean)), chars = [...new Set(text)].sort();
+$("corpus").innerHTML = [...names].map((n) => `<span>${n.replace(/[&<>]/g, "")}</span>`).join("");
+let model, ids, losses = [], running = false, timer = 0, samplesAt = 0;
+const fresh = () => { model = new TinyGPT(chars, { d: 48, T: 32, seed: Math.floor(Math.random() * 1e9) }); ids = model.encode(text); losses = []; drawLoss(); inside(); };
+const lr = () => 10 ** +$("lr").value;
+$("lrv").textContent = lr().toExponential(1); $("lr").oninput = () => ($("lrv").textContent = lr().toExponential(1));
+$("tv").textContent = $("temp").value; $("temp").oninput = () => ($("tv").textContent = $("temp").value);
+fresh();
+$("params").textContent = `${model.size.toLocaleString()} numbers to learn: embeddings ${(model.p.E.length + model.p.P.length).toLocaleString()}, attention ${(4 * model.d * model.d).toLocaleString()}, MLP ${(model.p.W1.length + model.p.W2.length + model.p.b1.length + model.p.b2.length).toLocaleString()}, output ${(model.p.U.length + model.p.bu.length).toLocaleString()}.`;
+
+function drawLoss() {
+  const cv = $("loss"), g = cv.getContext("2d"), W = cv.width, H = cv.height, L = 40, B = H - 24, top = 4.6;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  const Y = (v) => B - (Math.min(top, v) / top) * (B - 10), n = Math.max(200, losses.length), X = (i) => L + (i / n) * (W - L - 10);
+  g.strokeStyle = "#2a2f3a"; g.lineWidth = 1; for (const v of [1, 2, 3, 4]) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.fillStyle = "#8a93a3"; g.font = "12px ui-monospace, monospace"; g.fillText(v, 18, Y(v) + 4); }
+  g.setLineDash([5, 5]); g.strokeStyle = "#fc6255"; g.beginPath(); g.moveTo(L, Y(Math.log(chars.length))); g.lineTo(W, Y(Math.log(chars.length))); g.stroke(); g.setLineDash([]);
+  g.fillStyle = "#fc6255"; g.fillText("random guessing (ln 68)", L + 6, Y(Math.log(chars.length)) - 6);
+  // a smoothed curve (the raw loss is noisy: each step sees different windows)
+  g.strokeStyle = "#58c4dd"; g.lineWidth = 2; g.beginPath(); let sm = losses[0] ?? 0;
+  losses.forEach((l, i) => { sm = i ? 0.95 * sm + 0.05 * l : l; i ? g.lineTo(X(i), Y(sm)) : g.moveTo(X(i), Y(sm)); }); g.stroke();
+  g.fillStyle = "#8a93a3"; g.fillText(`step ${losses.length}`, W - 90, H - 6);
+}
+const samples = (k = 6) => { const t = +$("temp").value; $("samples").innerHTML = Array.from({ length: k }, () => model.sample(t)).filter(Boolean).map((s) => `<span class="${names.has(s) ? "real" : "new"}">${s.replace(/[&<>]/g, "")}</span>`).join(" · "); };
+function tick() {
+  if (!running) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < 40) losses.push(model.train(ids, { B: 8, lr: lr() })); // a slice of training per frame, so the page stays responsive
+  const recent = losses.slice(-50), avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  $("status").textContent = `step ${losses.length} · loss ${avg.toFixed(2)} (random guessing: ${Math.log(chars.length).toFixed(2)})${avg < 1.6 ? " · it's learned the shapes of the names" : ""}`;
+  drawLoss();
+  if (losses.length - samplesAt >= 50) { samplesAt = losses.length; samples(); inside(); }
+  if (losses.length === 1500) say("Fifteen hundred steps! Try a low and a high temperature.", "happy");
+  timer = setTimeout(tick, 0);
+}
+$("go").onclick = () => { running = !running; $("go").textContent = running ? "❚❚ Pause" : "▶ Train"; if (running) tick(); };
+$("reset").onclick = () => { running = false; clearTimeout(timer); $("go").textContent = "▶ Train"; samplesAt = 0; fresh(); $("samples").innerHTML = ""; $("status").textContent = ""; };
+$("gen").onclick = () => samples(10);
+
+function inside() {
+  const pre = $("prefix").value.slice(0, 31), { probs, attention } = model.next("\n" + pre, 1), top = probs.map((p, j) => [chars[j], p]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const cv = $("inside"), g = cv.getContext("2d"), W = cv.width;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, cv.height);
+  g.font = "13px ui-monospace, monospace"; g.fillStyle = "#8a93a3"; g.fillText("next character", 10, 18);
+  top.forEach(([c, p], i) => { const y = 30 + i * 22; g.fillStyle = "#d7dde5"; g.fillText(c === "\n" ? "⏎ end" : c === " " ? "␣ space" : c, 10, y + 12); g.fillStyle = "#58c4dd"; g.fillRect(90, y, p * 300, 14); g.fillStyle = "#8a93a3"; g.fillText(`${(p * 100).toFixed(1)}%`, 96 + p * 300, y + 12); });
+  g.fillStyle = "#8a93a3"; g.fillText("where the last letter looked", 440, 18);
+  const shown = ["⏎", ...pre], mx = Math.max(...attention);
+  shown.forEach((c, i) => { const a = attention[i] ?? 0, x = 440 + (i % 12) * 28, y = 34 + Math.floor(i / 12) * 34; g.fillStyle = `rgba(244,211,94,${0.1 + 0.9 * (a / mx)})`; g.fillRect(x, y, 24, 26); g.fillStyle = "#14171d"; g.font = "bold 15px ui-monospace, monospace"; g.fillText(c === " " ? "␣" : c, x + 7, y + 18); g.font = "13px ui-monospace, monospace"; });
+  $("insideR").textContent = `after "${pre}": most likely ${top.slice(0, 3).map(([c, p]) => `"${c === "\n" ? "⏎" : c}" ${(p * 100).toFixed(0)}%`).join(", ")}${losses.length < 200 ? " (train it first: an untrained model guesses evenly)" : ""}`;
+}
+$("prefix").oninput = inside;
+window.blipContext = () => ({ page: "AI chapter 10: a tiny transformer trained in the browser on NYC subway station names", steps: losses.length, loss: losses.length ? +(losses.slice(-50).reduce((a, b) => a + b, 0) / Math.min(50, losses.length)).toFixed(2) : null, temperature: +$("temp").value });
+</script>
+</body>
+</html>
