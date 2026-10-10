@@ -37,6 +37,22 @@
     button { cursor: pointer; }
     button:disabled { opacity: 0.45; cursor: not-allowed; }
     button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .rxhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 8px 0 6px; }
+    .freq { font: 600 1.6rem/1.2 ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+    .freq small { font-size: .55em; color: var(--muted); margin-left: 4px; }
+    .smeter { position: relative; width: 180px; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+    .smeter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--plot); transition: width .1s; }
+    .smeter b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+    .scope { outline-offset: 3px; touch-action: none; }
+    .scope:focus-visible { outline: 2px solid var(--accent); }
+    canvas.spec { height: 120px; border-radius: 6px 6px 0 0; cursor: crosshair; }
+    .scope canvas.wf { border-radius: 0 0 6px 6px; }
+    .scope.drag-band canvas { cursor: grabbing; } .scope.edge canvas { cursor: ew-resize; } .scope.band canvas { cursor: grab; }
+    .inl { display: flex; gap: 4px; align-items: center; }
+    .inl button { padding: 2px 8px; }
+    label.check { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--fg); }
+    input[type=range] { padding: 0; width: 120px; }
+    #rec.on { background: #e03131; border-color: #e03131; color: #fff; }
     .axis { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted);
             font-variant-numeric: tabular-nums; }
     .stat { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -74,15 +90,39 @@
 
   <section>
     <h2><span>1</span>Spectrum &amp; waterfall <a class="how" href="./learn.html#spectrum">How &amp; why →</a></h2>
-    <p><span id="wfText">Each row is one FFT, with time running downward.</span> Brighter means stronger. <b>Click a signal to tune it.</b></p>
-    <canvas id="wf" class="wf"></canvas>
-    <div class="axis" id="wfAxis"></div>
+    <p>The line on top is the spectrum right now; below it, <span id="wfText">each row is one FFT, with time running downward</span>. Brighter means stronger. <b>Click a signal to tune it.</b></p>
+    <div class="rxhead">
+      <output class="freq" id="freqShow" aria-live="off"></output>
+      <div class="smeter" title="Channel level; the orange mark is the squelch"><i id="smLevel"></i><b id="smSql"></b></div>
+      <span class="stat" id="smText"></span>
+    </div>
+    <div class="scope" id="scope" tabindex="0" aria-label="Spectrum and waterfall. Click to tune; drag the band to move it or its edges to change the bandwidth; Ctrl+wheel or pinch to zoom; arrow keys step the tuning.">
+      <canvas id="spec" class="spec"></canvas>
+      <canvas id="wf" class="wf"></canvas>
+    </div>
+    <div class="stat" id="hover">Click to tune · drag the band or its edges · pinch or Ctrl+wheel to zoom, drag to pan · click here, then wheel or ←/→ to step</div>
     <div class="row">
       <label>Mode <select id="mode"><option>WFM</option><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option><option>CW</option></select></label>
       <label>Tune offset (kHz) <input id="offset" type="number" step="0.1" value="200" /></label>
       <label>Bandwidth (kHz) <input id="bw" type="number" step="0.1" value="200" /></label>
+      <label title="Slide the passband off the tuned frequency to dodge a neighbor (not in CW)">Filter shift (kHz) <input id="shift" type="number" step="0.1" value="0" /></label>
+      <label title="Clicks, the wheel and the arrow keys snap the frequency to this step">Step <select id="step"><option value="0">auto</option><option>10</option><option>100</option><option>1000</option><option>5000</option><option>6250</option><option>12500</option><option>25000</option><option>100000</option></select></label>
       <button id="run" class="primary">Receive</button>
     </div>
+    <div class="row">
+      <label>Zoom <input id="zoom" type="range" min="0" max="6" step="0.1" value="0" /></label>
+      <label title="How many dB from the noise floor to full brightness">Contrast <input id="wfRange" type="range" min="15" max="90" step="1" value="50" /></label>
+    </div>
+    <div class="row audio">
+      <button id="play" class="primary" disabled>▶ Play</button>
+      <label>Volume <input id="vol" type="range" min="-20" max="30" step="1" value="0" /></label>
+      <label title="Automatic gain: evens out loud and quiet stations. Slow suits voice with pauses, fast suits CW">AGC <select id="agc"><option>off</option><option>slow</option><option selected>medium</option><option>fast</option></select></label>
+      <label title="Mutes the audio while the channel holds only noise. Far left is off">Squelch <span class="inl"><input id="sql" type="range" min="-100" max="0" step="1" value="-100" /><button id="sqlAuto" type="button" title="Set the squelch just above what the channel hears now (tune to an empty channel first)">Auto</button></span></label>
+      <label title="Turns down the hiss between and behind words">Noise reduction <input id="nr" type="range" min="0" max="1" step="0.05" value="0" /></label>
+      <label class="check" title="300–3000 Hz band-pass: cuts the CTCSS hum below and the hiss above a voice (not in WFM)"><input id="voice" type="checkbox" checked /> Voice filter</label>
+      <button id="rec" type="button" disabled title="Record what you hear">● Record</button>
+    </div>
+    <p class="stat" id="recStat"></p>
   </section>
 
   <section>
@@ -115,8 +155,8 @@
 
   <section>
     <h2><span>6</span>Audio <a class="how" href="./learn.html#audio">How &amp; why →</a></h2>
-    <p>Filtered again and decimated to about 48 kHz, then handed to your speakers.</p>
-    <div class="row"><button id="play" class="primary" disabled>▶ Play</button><span class="stat" id="audStat"></span></div>
+    <p>Filtered again and decimated to about 48 kHz. Then the controls under the waterfall, in order: the squelch gate (opening and closing with a short fade so it doesn't click), the voice filter, noise reduction, AGC, and volume through a soft limiter. The audio goes to your speakers as one continuous stream with a small cushion; it plays a hair faster or slower to keep that cushion steady, since the radio's clock and your sound card's never quite agree.</p>
+    <div class="row"><span class="stat" id="audStat"></span></div>
   </section>
 
   <section id="cwPanel" hidden>

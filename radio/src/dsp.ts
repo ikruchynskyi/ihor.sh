@@ -197,8 +197,8 @@ export class SsbDemod {
   private down: Mixer;
   private up: Mixer;
   private lp: FirDecimator;
-  constructor(fs: number, bw: number, upper: boolean) {
-    const shift = upper ? bw / 2 : -bw / 2;
+  constructor(fs: number, bw: number, upper: boolean, passShift = 0) {
+    const shift = (upper ? bw / 2 : -bw / 2) + passShift; // passShift slides the kept band without moving the carrier
     this.down = new Mixer(fs, shift);
     this.up = new Mixer(fs, -shift);
     this.lp = new FirDecimator(firLowpass(bw / 2 / fs, bw / 4 / fs), 1, 2);
@@ -261,19 +261,115 @@ export class Deemphasis {
   }
 }
 
-/** Live audio level control: instant attack, slow release (default 0.4 s). (Files use normalize() instead.) */
+/**
+ * Live audio level control: instant attack, slow release (default 0.4 s). (Files use normalize() instead.)
+ * `hang` holds the gain for that long after a peak before releasing, so the pauses between words aren't pumped up
+ * into loud hiss; `maxGainDb` caps how far it turns up a quiet channel.
+ */
 export class Agc {
   private env = 1e-4;
   private decay: number;
-  constructor(fs: number, release = 0.4) { this.decay = Math.exp(-1 / (release * fs)); }
+  private hang: number;
+  private held = 0;
+  private maxGain: number;
+  constructor(fs: number, release = 0.4, hang = 0, maxGainDb = 80) {
+    this.decay = Math.exp(-1 / (release * fs));
+    this.hang = Math.round(hang * fs);
+    this.maxGain = 10 ** (maxGainDb / 20);
+  }
   process(x: Float32Array, target = 0.5): Float32Array {
-    const out = new Float32Array(x.length);
+    const out = new Float32Array(x.length), lo = Math.max(1e-4, target / this.maxGain);
     for (let i = 0; i < x.length; i++) {
       const a = Math.abs(x[i]);
-      this.env = a > this.env ? a : Math.max(1e-4, this.env * this.decay);
+      if (a >= this.env) { this.env = a; this.held = this.hang; }
+      else if (this.held > 0) this.held--;
+      else this.env = Math.max(lo, this.env * this.decay);
       out[i] = (x[i] * target) / this.env;
     }
     return out;
+  }
+}
+
+/** 2nd-order Butterworth low- or high-pass (RBJ's audio EQ cookbook). The voice filter is one of each. */
+export class Biquad {
+  private b0: number; private b1: number; private b2: number; private a1: number; private a2: number;
+  private x1 = 0; private x2 = 0; private y1 = 0; private y2 = 0;
+  constructor(fs: number, f: number, type: "lowpass" | "highpass") {
+    const w = (TAU * f) / fs, c = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
+    const k = type === "lowpass" ? (1 - c) / 2 : (1 + c) / 2;
+    this.b0 = k / a0; this.b1 = (type === "lowpass" ? 2 * k : -2 * k) / a0; this.b2 = k / a0;
+    this.a1 = (-2 * c) / a0; this.a2 = (1 - al) / a0;
+  }
+  process(x: Float32Array): Float32Array {
+    const out = new Float32Array(x.length);
+    let { x1, x2, y1, y2 } = this;
+    for (let i = 0; i < x.length; i++) {
+      const y = this.b0 * x[i] + this.b1 * x1 + this.b2 * x2 - this.a1 * y1 - this.a2 * y2;
+      x2 = x1; x1 = x[i]; y2 = y1; y1 = out[i] = y;
+    }
+    Object.assign(this, { x1, x2, y1, y2 });
+    return out;
+  }
+}
+
+/**
+ * Noise reduction by spectral subtraction. Audio is cut into 512-sample frames overlapping by half; in each frame,
+ * every frequency bin's power is compared with that bin's noise level, tracked as its recent minimum (speech comes and
+ * goes, hiss stays), and bins not far above the noise are turned down. The gains are floored and released slowly:
+ * gains that flicker frame to frame are what makes over-eager noise reduction warble and sound robotic.
+ * `strength` 0 (off) … 1 (strong). Delays the audio by one frame (~11 ms at 48 kHz).
+ */
+const NR_BIAS = 2;
+export class NoiseReducer {
+  strength = 0.5;
+  private n = 512;
+  private hop = 256;
+  private win: Float32Array; // √Hann, used going in and coming out: at 50% overlap the two multiply back to exactly 1
+  private inp: Float32Array;
+  private ola: Float32Array;
+  private outq: Float32Array;
+  private k = 0;
+  private smooth: Float32Array;
+  private noise: Float32Array;
+  private gain: Float32Array;
+  constructor() {
+    const { n } = this, bins = n / 2 + 1;
+    this.win = new Float32Array(n).map((_, i) => Math.sqrt(0.5 - 0.5 * Math.cos((TAU * i) / n)));
+    this.inp = new Float32Array(n); this.ola = new Float32Array(n); this.outq = new Float32Array(this.hop);
+    this.smooth = new Float32Array(bins); this.noise = new Float32Array(bins).fill(Infinity); this.gain = new Float32Array(bins).fill(1);
+  }
+  process(x: Float32Array): Float32Array {
+    const out = new Float32Array(x.length), { n, hop } = this;
+    for (let i = 0; i < x.length; i++) {
+      this.inp[n - hop + this.k] = x[i];
+      out[i] = this.outq[this.k];
+      if (++this.k === hop) { this.k = 0; this.frame(); }
+    }
+    return out;
+  }
+  private frame() {
+    const { n, hop, win } = this, re = new Float32Array(n), im = new Float32Array(n);
+    for (let i = 0; i < n; i++) re[i] = this.inp[i] * win[i];
+    this.inp.copyWithin(0, hop);
+    fft(re, im);
+    const over = 0.5 + 1.5 * this.strength, floor = 10 ** (-(6 + 14 * this.strength) / 20); // subtract 0.5–2× the noise, floor at −6…−20 dB
+    for (let b = 0; b <= n / 2; b++) {
+      const p = re[b] ** 2 + im[b] ** 2;
+      const s = (this.smooth[b] = 0.8 * this.smooth[b] + 0.2 * p);
+      // Noise tracker (in dB): falls a twentieth of the way toward any dip, rises a steady ~8 dB/s, so it settles in the
+      // quiet troughs of the level and speech bursts barely lift it. Those troughs sit below the noise's mean: ×BIAS.
+      const nz = this.noise[b];
+      this.noise[b] = !(nz < Infinity) ? s : s < nz ? nz * (s / nz) ** 0.05 : nz * 1.01;
+      let g = this.strength > 0 ? Math.max(floor, 1 - (NR_BIAS * over * this.noise[b]) / (s + 1e-20)) : 1;
+      g = this.gain[b] = (g > this.gain[b] ? 0.65 : 0.75) * this.gain[b] + (g > this.gain[b] ? 0.35 : 0.25) * g; // open quickly, close gently
+      re[b] *= g; im[b] *= g;
+      if (b && b < n / 2) { re[n - b] *= g; im[n - b] *= g; }
+    }
+    for (let i = 0; i < n; i++) im[i] = -im[i]; // inverse FFT = conj(FFT(conj(X))) / n
+    fft(re, im);
+    for (let i = 0; i < n; i++) this.ola[i] += (re[i] / n) * win[i];
+    this.outq = this.ola.slice(0, hop);
+    this.ola.copyWithin(0, hop); this.ola.fill(0, n - hop);
   }
 }
 
@@ -319,29 +415,38 @@ export class Receiver {
   private demod: { process(x: Float32Array): Float32Array; env?: Float32Array; envFs?: number };
   private deemph: Deemphasis | null;
   private audioFir: FirDecimator;
+  private back: Mixer | null;
 
-  constructor(fs: number, offset: number, mode: Mode, bw: number) {
+  /**
+   * `shift` (filter shift, Hz) slides the passband off the tuned frequency to dodge a neighbor: the channel filter is
+   * centered `shift` away, then the result is moved back so the carrier sits at 0 Hz again. CW ignores it.
+   */
+  constructor(fs: number, offset: number, mode: Mode, bw: number, shift = 0) {
     const ssb = mode === "USB" || mode === "LSB";
     const half = ssb ? bw : bw / 2; // SSB lives on one side of 0 Hz, so keep ±bw
     const m1 = Math.max(1, Math.floor(fs / Math.max(48e3, 1.5 * bw)));
     this.chanFs = fs / m1;
     // Anything between chanFs-half and fs/2 would alias onto our passband, so that is the stop edge.
     this.taps = firLowpass(half / fs, Math.max(this.chanFs - 2 * half, this.chanFs * 0.1) / fs);
-    this.mixer = new Mixer(fs, offset);
+    const room = Math.max(0, this.chanFs / 2 - half); // keep the shifted band inside the decimated channel
+    const sh = mode === "CW" ? 0 : Math.max(-room, Math.min(room, shift));
+    this.mixer = new Mixer(fs, offset + sh);
     this.chan = new FirDecimator(this.taps, m1, 2);
+    this.back = sh ? new Mixer(this.chanFs, -sh) : null;
     this.demod = mode === "WFM" || mode === "NFM" ? new FmDemod()
-      : mode === "AM" ? new AmDemod() : mode === "CW" ? new CwDemod(this.chanFs, bw, CW_PITCH) : new SsbDemod(this.chanFs, bw, mode === "USB");
+      : mode === "AM" ? new AmDemod() : mode === "CW" ? new CwDemod(this.chanFs, bw, CW_PITCH) : new SsbDemod(this.chanFs, bw, mode === "USB", sh);
     this.deemph = mode === "WFM" ? new Deemphasis(this.chanFs) : null;
 
     const m2 = Math.max(1, Math.round(this.chanFs / 48e3));
-    const audioCut = mode === "WFM" ? 15e3 : mode === "CW" ? 1500 : Math.min(half, 0.45 * (this.chanFs / m2));
+    const audioCut = mode === "WFM" ? 15e3 : mode === "CW" ? 1500 : Math.min(half + (ssb ? Math.abs(sh) : 0), 0.45 * (this.chanFs / m2));
     const ha = firLowpass(audioCut / this.chanFs, Math.max(this.chanFs / m2 / 2 - audioCut, 1e3) / this.chanFs);
     this.audioFir = new FirDecimator(ha, m2, 1);
     this.audioFs = this.chanFs / m2;
   }
 
   process(iq: Float32Array) {
-    const channel = this.chan.process(this.mixer.process(iq));
+    const filtered = this.chan.process(this.mixer.process(iq));
+    const channel = this.back ? this.back.process(filtered) : filtered;
     const demod = this.demod.process(channel);
     const audio = this.audioFir.process(this.deemph ? this.deemph.process(demod) : demod);
     return { channel, demod, audio, env: this.demod.env ?? null, envFs: this.demod.envFs ?? 0 };
@@ -360,8 +465,8 @@ export interface Stages {
 }
 
 /** Whole-buffer convenience for files: one chunk through a fresh Receiver, then normalized. */
-export function receive(iq: Float32Array, fs: number, offset: number, mode: Mode, bw: number): Stages {
-  const r = new Receiver(fs, offset, mode, bw);
+export function receive(iq: Float32Array, fs: number, offset: number, mode: Mode, bw: number, shift = 0): Stages {
+  const r = new Receiver(fs, offset, mode, bw, shift);
   const { channel, demod, audio, env, envFs } = r.process(iq);
   return { taps: r.taps, chanFs: r.chanFs, channel, demod, audioFs: r.audioFs, audio: normalize(audio), env, envFs };
 }

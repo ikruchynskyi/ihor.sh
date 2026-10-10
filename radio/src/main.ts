@@ -1,4 +1,4 @@
-import { avgSpectrum, powerSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, DEMO_SIGNALS, DEFAULT_BW, CW_PITCH, type Mode } from "./dsp.ts";
+import { avgSpectrum, mix, freqResponse, receive, synth, Receiver, Agc, Squelch, NoiseReducer, Biquad, DEMO_SIGNALS, DEFAULT_BW, CW_PITCH, type Mode } from "./dsp.ts";
 import { CwSignalDecoder } from "./cw.ts";
 import { decodeCU8, decodeCF32, parseName } from "./iq.ts";
 import { RtlSdr } from "./rtlsdr.ts";
@@ -6,14 +6,13 @@ import { RemoteSdr } from "./remote.ts";
 import { GAINS } from "./r820t.ts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const num = (id: string) => parseFloat($<HTMLInputElement>(id).value);
+const num = (id: string) => parseFloat($<HTMLInputElement>(id).value) || 0;
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const N = 1024; // FFT size for every plot
+const modeNow = () => $<HTMLSelectElement>("mode").value as Mode;
+const N = 1024; // FFT size for the stage plots
 
 let iq: Float32Array = new Float32Array(0);
 let fs = 1.024e6;
-let audio: { data: Float32Array; rate: number } | null = null;
-let source: AudioBufferSourceNode | null = null;
 
 function fitCanvas(c: HTMLCanvasElement) {
   const r = window.devicePixelRatio || 1;
@@ -46,70 +45,247 @@ function plot(c: HTMLCanvasElement, series: { y: Float32Array; color: string }[]
   }
 }
 
-// --- waterfall ---------------------------------------------------------------
-let wfCanvas: OffscreenCanvas | null = null; // file mode: whole capture; live mode: scrolling history
+// --- settings that stick (per browser) -------------------------------------------------------
+const SAVED = ["vol", "agc", "sql", "nr", "voice", "step", "wfRange"];
+try {
+  const s = JSON.parse(localStorage.getItem("spectrum-lab") || "{}");
+  for (const id of SAVED) if (id in s) { const el = $<HTMLInputElement>(id); el.type === "checkbox" ? (el.checked = s[id]) : (el.value = s[id]); }
+} catch {}
+const saveSettings = () => {
+  try { localStorage.setItem("spectrum-lab", JSON.stringify(Object.fromEntries(SAVED.map((id) => { const el = $<HTMLInputElement>(id); return [id, el.type === "checkbox" ? el.checked : el.value]; })))); } catch {}
+};
+for (const id of SAVED) $(id).addEventListener("change", saveSettings);
+
+// --- spectrum + waterfall ----------------------------------------------------------------
+// 4096 bins (586 Hz each at 2.4 MS/s), so zooming in still shows detail. Rows keep their dB values, so a contrast
+// change can repaint the whole history.
+const WF_N = 4096, WF_ROWS = 256;
+const wf = { rows: [] as Float32Array[], img: new OffscreenCanvas(WF_N, WF_ROWS), floor: NaN, live: false };
+let trace: Float32Array | null = null; // the spectrum line
+let view = { lo: -fs / 2, hi: fs / 2 }; // visible slice, Hz from the center
+let hoverF: number | null = null;
 
 function heat(t: number): [number, number, number] {
   // black → blue → magenta → yellow
   t = Math.min(1, Math.max(0, t));
   return [Math.round(255 * Math.min(1, t * 2)), Math.round(255 * Math.max(0, t * 2 - 1)), Math.round(255 * Math.min(1, t * 3) * (1 - Math.max(0, t * 2 - 1)))];
 }
+const LUT = new Uint32Array(256).map((_, i) => { const [r, g, b] = heat(i / 255); return (255 << 24) | (b << 16) | (g << 8) | r; }); // RGBA, little-endian
+const median = (x: Float32Array) => x.slice().sort()[x.length >> 1];
 
+function rowPixels(db: Float32Array) {
+  const im = new ImageData(WF_N, 1), px = new Uint32Array(im.data.buffer), k = 255 / num("wfRange");
+  for (let i = 0; i < WF_N; i++) px[i] = LUT[Math.max(0, Math.min(255, ((db[i] - wf.floor) * k) | 0))];
+  return im;
+}
+
+function repaint() {
+  const g = wf.img.getContext("2d")!;
+  g.clearRect(0, 0, WF_N, WF_ROWS);
+  wf.rows.forEach((r, y) => g.putImageData(rowPixels(r), 0, y));
+  drawScope();
+}
+
+/** File mode: the whole capture, time running downward. */
 function renderWaterfall() {
-  const total = iq.length / 2;
-  const rows = Math.min(256, Math.max(1, Math.floor(total / N)));
-  const step = Math.floor((total - N) / Math.max(rows - 1, 1));
-  const spectra = Array.from({ length: rows }, (_, r) => powerSpectrum(iq, r * step, N));
-  const sorted = spectra.flatMap((s) => Array.from(s)).sort((a, b) => a - b);
-  const lo = sorted[Math.floor(sorted.length * 0.5)], hi = sorted[sorted.length - 1];
-  const img = new ImageData(N, rows);
-  spectra.forEach((s, r) => s.forEach((v, i) => {
-    const [R, G, B] = heat((v - lo) / (hi - lo));
-    img.data.set([R, G, B, 255], 4 * (r * N + i));
-  }));
-  wfCanvas = new OffscreenCanvas(N, rows);
-  wfCanvas.getContext("2d")!.putImageData(img, 0, 0);
-  drawWaterfall();
-  axis("wfAxis", fs);
+  const total = iq.length / 2, rows = Math.min(WF_ROWS, Math.max(1, Math.floor(total / WF_N))), step = Math.floor(total / rows);
+  wf.rows = Array.from({ length: rows }, (_, r) => avgSpectrum(iq.subarray(2 * r * step, 2 * (r * step + Math.max(step, WF_N))), WF_N, 2));
+  wf.live = false;
+  wf.floor = median(Float32Array.from(wf.rows, median));
+  trace = new Float32Array(WF_N);
+  for (const r of wf.rows) for (let i = 0; i < WF_N; i++) trace[i] += r[i] / rows;
+  resetView();
+  repaint();
 }
 
-function drawWaterfall() {
-  if (!wfCanvas) return;
-  const c = $<HTMLCanvasElement>("wf"), g = fitCanvas(c);
+/** Live: one new row on top. */
+function pushRow(db: Float32Array) {
+  wf.rows.unshift(db);
+  if (wf.rows.length > WF_ROWS) wf.rows.pop();
+  const m = median(db);
+  wf.floor = Number.isNaN(wf.floor) ? m : 0.9 * wf.floor + 0.1 * m;
+  const g = wf.img.getContext("2d")!;
+  g.drawImage(wf.img, 0, 1);
+  g.putImageData(rowPixels(db), 0, 0);
+  if (!trace) trace = db.slice();
+  else for (let i = 0; i < WF_N; i++) trace[i] = 0.6 * trace[i] + 0.4 * db[i];
+}
+
+const centerHz = () => num("center") * 1e6;
+const stepHz = () => {
+  const s = Number($<HTMLSelectElement>("step").value);
+  return s || { WFM: 100e3, NFM: 5e3, AM: 5e3, USB: 100, LSB: 100, CW: 10 }[modeNow()];
+};
+/** Offset `f` moved so the absolute frequency lands on the tuning step. */
+const snap = (f: number) => Math.round((centerHz() + f) / stepHz()) * stepHz() - centerHz();
+
+/** The passband [a, b] in Hz from the center, as the receiver will hear it. */
+function passband() {
+  const o = num("offset") * 1e3, bw = num("bw") * 1e3, m = modeNow(), sh = m === "CW" ? 0 : num("shift") * 1e3;
+  return m === "USB" ? [o + sh, o + sh + bw] : m === "LSB" ? [o + sh - bw, o + sh] : [o + sh - bw / 2, o + sh + bw / 2];
+}
+
+const fmtMHz = (hz: number, digits = 6) => (hz / 1e6).toFixed(digits);
+/** 98.700 000 */
+const freqText = (hz: number) => fmtMHz(hz).replace(/(\.\d{3})/, "$1 ");
+
+function drawScope() {
+  if (!wf.rows.length) return;
+  const span = view.hi - view.lo, dpr = window.devicePixelRatio || 1;
+  // Waterfall: the visible slice of the image. Column i is centered on bin i's frequency.
+  const c = $<HTMLCanvasElement>("wf"), g = fitCanvas(c), W = c.width, H = c.height;
+  const u = (f: number) => (f / fs) * WF_N + WF_N / 2 + 0.5;
+  const X = (f: number) => ((f - view.lo) / span) * W;
   g.imageSmoothingEnabled = false;
-  g.drawImage(wfCanvas, 0, 0, c.width, c.height);
-  // tuning marker: passband as a translucent band
-  const x = (f: number) => (f / fs + 0.5 + 0.5 / N) * c.width; // + half a bin: each FFT column is drawn from its frequency rightward
-  const o = num("offset") * 1e3, bw = num("bw") * 1e3, mode = $<HTMLSelectElement>("mode").value;
-  const [a, b] = mode === "USB" ? [o, o + bw] : mode === "LSB" ? [o - bw, o] : [o - bw / 2, o + bw / 2];
-  g.fillStyle = "rgba(255,255,255,0.18)";
-  g.fillRect(x(a), 0, Math.max(2, x(b) - x(a)), c.height);
-  g.fillStyle = css("--accent");
-  g.fillRect(x(o) - 1, 0, 2, c.height);
+  g.drawImage(wf.img, u(view.lo), 0, u(view.hi) - u(view.lo), wf.live ? WF_ROWS : wf.rows.length, 0, 0, W, H);
+  const [a, b] = passband(), o = num("offset") * 1e3;
+  const band = (gg: CanvasRenderingContext2D, h: number) => {
+    gg.fillStyle = "rgba(255,255,255,0.16)";
+    gg.fillRect(X(a), 0, Math.max(2, X(b) - X(a)), h);
+    gg.fillStyle = css("--accent");
+    gg.fillRect(X(o) - dpr, 0, 2 * dpr, h);
+  };
+  band(g, H);
+  if (filePlay) { g.fillStyle = "rgba(255,255,255,0.7)"; g.fillRect(0, (filePlay.pos / (iq.length / 2)) * H, W, dpr); } // playhead
+
+  // Spectrum: grid, trace, passband, frequency labels.
+  const s = $<HTMLCanvasElement>("spec"), h = fitCanvas(s), SW = s.width, SH = s.height, axisH = 16 * dpr;
+  h.fillStyle = css("--card") || "#000"; h.fillRect(0, 0, SW, SH);
+  const lo = wf.floor - 10, hi = wf.floor + num("wfRange") + 10, Y = (db: number) => (SH - axisH) * (1 - (db - lo) / (hi - lo));
+  // grid every 10 dB, and frequency ticks at a round step
+  h.fillStyle = css("--grid");
+  for (let d = Math.ceil(lo / 10) * 10; d < hi; d += 10) h.fillRect(0, Y(d), SW, 1);
+  const raw = span / 6, mag = 10 ** Math.floor(Math.log10(raw)), tick = [1, 2, 5, 10].map((k) => k * mag).find((t) => t >= raw)!;
+  const digits = Math.max(0, Math.min(6, Math.ceil(-Math.log10(tick / 1e6)))), C = centerHz();
+  h.font = `${11 * dpr}px ui-sans-serif, system-ui, sans-serif`; h.textAlign = "center"; h.textBaseline = "bottom";
+  for (let t = Math.ceil((C + view.lo) / tick) * tick; t <= C + view.hi; t += tick) {
+    const x = X(t - C);
+    h.fillStyle = css("--grid"); h.fillRect(x, 0, 1, SH - axisH);
+    h.fillStyle = css("--muted"); h.fillText(fmtMHz(t, digits), x, SH - 2 * dpr);
+  }
+  band(h, SH - axisH);
+  if (trace) {
+    h.beginPath();
+    const i0 = Math.max(0, Math.floor(u(view.lo)) - 1), i1 = Math.min(WF_N - 1, Math.ceil(u(view.hi)));
+    for (let i = i0; i <= i1; i++) { const x = X(((i - WF_N / 2) / WF_N) * fs), y = Y(trace[i]); i === i0 ? h.moveTo(x, y) : h.lineTo(x, y); }
+    h.strokeStyle = css("--plot"); h.lineWidth = 1.2 * dpr; h.stroke();
+    h.lineTo(X(((i1 - WF_N / 2) / WF_N) * fs), SH - axisH); h.lineTo(X(((i0 - WF_N / 2) / WF_N) * fs), SH - axisH);
+    h.fillStyle = css("--plot") + "33"; h.fill();
+  }
+  if (hoverF !== null) { h.fillStyle = css("--fg"); h.fillRect(X(hoverF), 0, 1, SH - axisH); }
+  $("freqShow").innerHTML = `${freqText(C + o)}<small>MHz</small>`;
 }
 
-$("wf").addEventListener("click", (e) => {
-  // Where the click falls across the canvas's content box, measured on screen: offsetX/clientWidth go wrong under
-  // CSS zoom (the reader's text size zooms the page) and include the border.
-  const c = e.currentTarget as HTMLCanvasElement, r = c.getBoundingClientRect(), z = r.width / (c.offsetWidth || r.width);
+// --- tuning with the mouse, wheel and keys ------------------------------------------------------
+const scope = $("scope");
+/** Where a pointer event falls across the canvas, 0…1, measured on screen (CSS zoom breaks offsetX; skip the border). */
+function fracX(e: MouseEvent) {
+  const c = $<HTMLCanvasElement>("wf"), r = c.getBoundingClientRect(), z = r.width / (c.offsetWidth || r.width);
   const cs = getComputedStyle(c), bl = parseFloat(cs.borderLeftWidth) * z, br = parseFloat(cs.borderRightWidth) * z;
-  const frac = Math.min(1, Math.max(0, (e.clientX - r.left - bl) / (r.width - bl - br)));
-  const f = (frac - 0.5 - 0.5 / N) * fs; // the column under the cursor's own frequency (see drawWaterfall)
-  $<HTMLInputElement>("offset").value = (f / 1e3).toFixed(1);
-  retune();
+  return Math.min(1, Math.max(0, (e.clientX - r.left - bl) / (r.width - bl - br)));
+}
+const fAt = (e: MouseEvent) => view.lo + fracX(e) * (view.hi - view.lo);
+const pxPerHz = () => $("wf").getBoundingClientRect().width / (view.hi - view.lo);
+
+function setView(lo: number, hi: number) {
+  const span = Math.min(fs, Math.max(fs / 64, hi - lo));
+  lo = Math.max(-fs / 2, Math.min(fs / 2 - span, lo));
+  view = { lo, hi: lo + span };
+  $<HTMLInputElement>("zoom").value = String(Math.log2(fs / span));
+  drawScope();
+}
+function resetView() { view = { lo: -fs / 2, hi: fs / 2 }; $<HTMLInputElement>("zoom").value = "0"; }
+function zoomAt(f: number, factor: number) { setView(f - (f - view.lo) * factor, f + (view.hi - f) * factor); }
+$("zoom").addEventListener("input", () => {
+  const span = fs / 2 ** num("zoom"), o = num("offset") * 1e3; // zoom around the tuned frequency
+  setView(o - span / 2, o + span / 2);
+});
+$("wfRange").addEventListener("input", repaint);
+
+function setOffset(f: number, full = true) {
+  f = Math.max(-fs / 2, Math.min(fs / 2, f));
+  $<HTMLInputElement>("offset").value = (f / 1e3).toFixed(3).replace(/\.?0+$/, "");
+  // keep the tuned frequency in view
+  if (f < view.lo || f > view.hi) setView(f - (view.hi - view.lo) / 2, f + (view.hi - view.lo) / 2);
+  retune(full);
+}
+
+/** Step the tuning; live, past the edge of the dongle's band, it retunes the dongle. */
+function nudge(n: number) {
+  const f = snap(num("offset") * 1e3) + n * stepHz();
+  if (sdr && Math.abs(f) > 0.45 * fs) { $<HTMLInputElement>("liveFreq").value = fmtMHz(centerHz() + f); tuneTo(centerHz() + f); return; }
+  setOffset(f);
+}
+
+type Drag = { kind: "band" | "lo" | "hi" | "pan"; x: number; f: number; offset: number; bw: number; view: typeof view; moved: boolean };
+let drag: Drag | null = null;
+function hit(e: PointerEvent): Drag["kind"] {
+  const [a, b] = passband(), f = fAt(e), tol = 6 / pxPerHz();
+  if (Math.abs(f - a) < tol && modeNow() !== "USB") return "lo";
+  if (Math.abs(f - b) < tol && modeNow() !== "LSB") return "hi";
+  return f > a && f < b ? "band" : "pan";
+}
+scope.addEventListener("pointerdown", (e) => {
+  if (!wf.rows.length || e.button) return;
+  scope.focus({ preventScroll: true });
+  scope.setPointerCapture(e.pointerId);
+  drag = { kind: hit(e), x: e.clientX, f: fAt(e), offset: num("offset") * 1e3, bw: num("bw") * 1e3, view: { ...view }, moved: false };
+});
+scope.addEventListener("pointermove", (e) => {
+  hoverF = fAt(e);
+  const bin = Math.round((hoverF / fs) * WF_N + WF_N / 2);
+  $("hover").textContent = `${freqText(centerHz() + hoverF)} MHz${trace?.[bin] !== undefined ? ` · ${trace[bin].toFixed(0)} dB` : ""}`;
+  if (!drag) {
+    const k = wf.rows.length ? hit(e) : "pan";
+    scope.className = `scope ${k === "lo" || k === "hi" ? "edge" : k === "band" ? "band" : ""}`;
+    return drawScope();
+  }
+  if (Math.abs(e.clientX - drag.x) > 3) drag.moved = true;
+  if (!drag.moved) return;
+  const df = (e.clientX - drag.x) / pxPerHz(), m = modeNow(), sh = m === "CW" ? 0 : num("shift") * 1e3;
+  if (drag.kind === "pan") { setView(drag.view.lo - df, drag.view.hi - df); return; }
+  if (drag.kind === "band") { scope.className = "scope drag-band"; setOffset(snap(drag.offset + df), false); return; }
+  // an edge: the bandwidth (symmetric modes widen both sides)
+  const edge = fAt(e) - drag.offset - sh, max = Math.min(fs / 2, m === "WFM" ? 300e3 : 100e3);
+  const bw = m === "USB" ? edge : m === "LSB" ? -edge : 2 * Math.abs(edge);
+  $<HTMLInputElement>("bw").value = String(+(Math.max(50, Math.min(max, bw)) / 1e3).toFixed(2));
+  retune(false);
+});
+scope.addEventListener("pointerup", (e) => {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  if (!d.moved) setOffset(snap(fAt(e)));
+  else if (d.kind !== "pan") retune(true); // now redraw the stage plots too
+});
+const HINT = $("hover").textContent;
+scope.addEventListener("pointerleave", () => { if (!drag) { hoverF = null; $("hover").textContent = HINT; drawScope(); } });
+let wheelAcc = 0;
+scope.addEventListener("wheel", (e) => {
+  if (!wf.rows.length) return;
+  if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoomAt(fAt(e), Math.exp(e.deltaY * 0.01)); return; } // also a trackpad pinch
+  if (document.activeElement !== scope) return; // the page scrolls until you click the scope
+  e.preventDefault();
+  wheelAcc += e.deltaY;
+  while (Math.abs(wheelAcc) >= 40) { nudge(wheelAcc < 0 ? 1 : -1); wheelAcc -= 40 * Math.sign(wheelAcc); }
+}, { passive: false });
+scope.addEventListener("keydown", (e) => {
+  const k = { ArrowRight: 1, ArrowLeft: -1, ArrowUp: 1, ArrowDown: -1 }[e.key];
+  if (k) { e.preventDefault(); nudge(k * (e.shiftKey ? 10 : 1)); }
+  else if (e.key === "+" || e.key === "=") zoomAt(num("offset") * 1e3, 0.5);
+  else if (e.key === "-") zoomAt(num("offset") * 1e3, 2);
+  else if (e.key === "0") { resetView(); drawScope(); }
 });
 
-/** Tuning, mode or bandwidth changed. */
-function retune() {
-  drawWaterfall();
-  if (sdr) {
-    newReceiver();
-    $<HTMLInputElement>("liveFreq").value = ((sdr.centerFrequency + num("offset") * 1e3) / 1e6).toFixed(3);
-  }
-  run();
+/** Tuning, mode, bandwidth or shift changed. `full`: also redo the stage plots (skipped mid-drag). */
+function retune(full = true) {
+  drawScope();
+  if (sdr) $<HTMLInputElement>("liveFreq").value = fmtMHz(centerHz() + num("offset") * 1e3, 3);
+  if (sdr || filePlay) newChain();
+  if (full) run();
 }
 
-// --- pipeline ----------------------------------------------------------------
+// --- pipeline (the stage plots) -----------------------------------------------------------
 const DEMOD_TEXT: Record<Mode, string> = {
   WFM: "FM carries the audio in the <i>frequency</i>. The phase step between consecutive samples, arg(x[n]·x*[n−1]), is the instantaneous frequency, and that is the audio. Broadcast FM also needs de-emphasis (a 75 µs low-pass).",
   NFM: "Same as WFM: the phase step between samples is the audio. Narrowband FM (repeaters, NOAA weather) just uses much less deviation and bandwidth.",
@@ -122,7 +298,7 @@ const DEMOD_TEXT: Record<Mode, string> = {
 // ---------- CW: the Morse panel ----------
 let cw = new CwSignalDecoder(), cwDrawn = 0;
 function cwShow() {
-  const on = $<HTMLSelectElement>("mode").value === "CW";
+  const on = modeNow() === "CW";
   $("cwPanel").hidden = !on;
   if (!on) return;
   const box = $("cwText"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
@@ -138,9 +314,9 @@ $("cwClear").addEventListener("click", () => { cw.clear(); cwShow(); });
 function run() {
   if (!iq.length) return;
   const t0 = performance.now();
-  const mode = $<HTMLSelectElement>("mode").value as Mode;
+  const mode = modeNow();
   const offset = num("offset") * 1e3, bw = num("bw") * 1e3;
-  const s = receive(iq, fs, offset, mode, bw);
+  const s = receive(iq, fs, offset, mode, bw, num("shift") * 1e3);
   const ms = performance.now() - t0;
 
   const mixed = avgSpectrum(mix(iq.subarray(0, Math.min(iq.length, 2 * N * 32)), fs, offset), N);
@@ -163,28 +339,184 @@ function run() {
   plot($("demPlot"), [{ y: win, color: css("--plot") }]);
   $("demStat").textContent = `10 ms of demodulator output at ${(s.chanFs / 1e3).toFixed(1)} kS/s`;
 
-  if (mode === "CW" && s.env) { cw = new CwSignalDecoder(); cw.process(s.env, s.envFs); }
+  if (mode === "CW" && s.env && !sdr) { cw = new CwSignalDecoder(); cw.process(s.env, s.envFs); }
   cwShow();
-  audio = { data: s.audio, rate: s.audioFs };
-  $<HTMLButtonElement>("play").disabled = false;
-  $("audStat").textContent = `${(s.audio.length / s.audioFs).toFixed(1)} s at ${(s.audioFs / 1e3).toFixed(1)} kHz · pipeline took ${ms.toFixed(0)} ms`;
+  $<HTMLButtonElement>("play").disabled = !!sdr;
+  $("audStat").textContent = `Audio at ${(s.audioFs / 1e3).toFixed(1)} kHz · the stage plots took ${ms.toFixed(0)} ms`;
 }
 
-$("play").addEventListener("click", () => {
-  if (source) { source.stop(); source = null; $("play").textContent = "▶ Play"; return; }
-  if (!audio) return;
-  const ctx = new AudioContext();
-  const buf = ctx.createBuffer(1, audio.data.length, audio.rate);
-  buf.copyToChannel(audio.data as Float32Array<ArrayBuffer>, 0);
-  source = ctx.createBufferSource();
-  source.buffer = buf; source.connect(ctx.destination);
-  source.onended = () => { source = null; $("play").textContent = "▶ Play"; ctx.close(); };
-  source.start();
+// --- audio out: one continuous stream ------------------------------------------------------------
+// Each chunk used to be its own AudioBufferSource, resampled to the sound card's rate on its own: a seam every
+// ~50 ms, and gaps whenever the network hiccuped, which made voices sound robotic. Now an AudioWorklet keeps a ring
+// buffer with a cushion, resamples continuously, and plays up to 0.5% fast or slow to hold the cushion steady.
+const PLAYER = `
+class Player extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.ring = new Float32Array(1 << 19); this.w = 0; this.r = 0; this.rate = sampleRate; this.cushion = 4800; this.on = false; this.fade = 0;
+    this.port.onmessage = ({ data: d }) => {
+      if (d.rate !== this.rate || d.reset) { this.rate = d.rate; this.w = this.r = 0; this.on = false; } // new rate: start over
+      if (!d.a) return;
+      this.cushion = d.cushion * d.rate;
+      const M = this.ring.length - 1;
+      for (let i = 0; i < d.a.length; i++) this.ring[(this.w + i) & M] = d.a[i];
+      this.w += d.a.length;
+      if (this.w - this.r > 4 * this.cushion + d.a.length) this.r = this.w - this.cushion; // far behind: skip ahead
+    };
+  }
+  process(_, outputs) {
+    const out = outputs[0][0], M = this.ring.length - 1, have = this.w - this.r;
+    if (!this.on && have >= this.cushion) this.on = true;
+    if (!this.on) return true;
+    const step = (this.rate / sampleRate) * (1 + Math.max(-0.005, Math.min(0.005, (0.01 * (have - this.cushion)) / this.cushion)));
+    for (let i = 0; i < out.length; i++) {
+      if (this.w - this.r < 2) { this.on = false; this.fade = 0; break; } // ran dry: refill the cushion first
+      const k = Math.floor(this.r), f = this.r - k;
+      this.fade = Math.min(1, this.fade + 1 / 256); // ~5 ms fade-in after a gap
+      out[i] = this.fade * (this.ring[k & M] * (1 - f) + this.ring[(k + 1) & M] * f);
+      this.r += step;
+    }
+    return true;
+  }
+}
+registerProcessor("player", Player);`;
+// ponytail: linear interpolation in the resampler; fine for voice, a polyphase filter if WFM music ever sounds gritty.
+
+let out: { ctx: AudioContext; player: AudioWorkletNode; vol: GainNode; rec: MediaStreamAudioDestinationNode } | null = null;
+let outReady: Promise<void> | null = null;
+/** Created on a click (browsers only allow sound after one). */
+function audioOut() {
+  return (outReady ??= (async () => {
+    const ctx = new AudioContext();
+    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([PLAYER], { type: "text/javascript" })));
+    const player = new AudioWorkletNode(ctx, "player", { outputChannelCount: [1] });
+    // Volume, then a soft limiter: ×¼ into tanh(4x) is unity for normal levels and rounds off peaks instead of clipping.
+    const vol = new GainNode(ctx), limiter = new WaveShaperNode(ctx, { oversample: "2x", curve: Float32Array.from({ length: 1025 }, (_, i) => Math.tanh(4 * (i / 512 - 1))) });
+    const rec = ctx.createMediaStreamDestination();
+    player.connect(vol).connect(limiter).connect(ctx.destination);
+    limiter.connect(rec);
+    out = { ctx, player, vol, rec };
+    setVolume();
+    $<HTMLButtonElement>("rec").disabled = false;
+  })());
+}
+function setVolume() { if (out) out.vol.gain.value = 10 ** (num("vol") / 20) / 4; }
+$("vol").addEventListener("input", setVolume);
+
+// --- the audio chain, shared by live sources and file playback ---------------------------------------
+const AGC = { slow: [1.5, 0.5], medium: [0.4, 0.25], fast: [0.1, 0.05] } as Record<string, [number, number]>; // release, hang (s)
+type Chain = { rx: Receiver; sq: Squelch; agc: Agc | null; nr: NoiseReducer; hp: Biquad; lp: Biquad; gate: number; cushion: number };
+let chain: Chain | null = null;
+function newChain() {
+  const rx = new Receiver(fs, num("offset") * 1e3, modeNow(), num("bw") * 1e3, num("shift") * 1e3);
+  const a = AGC[$<HTMLSelectElement>("agc").value];
+  chain = {
+    rx, sq: chain?.sq ?? new Squelch(), agc: a ? new Agc(rx.audioFs, a[0], a[1], 60) : null,
+    nr: chain && chain.rx.audioFs === rx.audioFs ? chain.nr : new NoiseReducer(), // keeps what it learned about the noise
+    hp: new Biquad(rx.audioFs, 300, "highpass"), lp: new Biquad(rx.audioFs, 3000, "lowpass"), gate: chain?.gate ?? 0,
+    cushion: sdr instanceof RemoteSdr ? 0.35 : 0.15, // the server's stream crosses the internet: a bigger cushion
+  };
+  if (sdr) { cw = new CwSignalDecoder(); cwShow(); }
+}
+$("agc").addEventListener("change", () => { if (chain) newChain(); });
+
+let meterDrawn = 0;
+/** One chunk of I/Q in, audio out to the speakers. */
+function listen(x: Float32Array) {
+  const c = chain;
+  if (!c) return;
+  const o = c.rx.process(x);
+  if (o.env && sdr) { cw.process(o.env, o.envFs); if (performance.now() - cwDrawn > 150) { cwDrawn = performance.now(); cwShow(); } }
+  c.sq.threshold = num("sql");
+  c.sq.update(o.channel); // measured even when off, for the meter
+  const open = num("sql") <= -100 || c.sq.open;
+  let a = o.audio;
+  if ($<HTMLInputElement>("voice").checked && modeNow() !== "WFM") a = c.lp.process(c.hp.process(a));
+  c.nr.strength = num("nr");
+  if (c.nr.strength > 0) a = c.nr.process(a);
+  if (c.agc) a = c.agc.process(a, 0.3);
+  else a = a.map((v) => v * 0.3);
+  // the squelch gate, ramped across the chunk so opening and closing don't click
+  const g0 = c.gate, g1 = open ? 1 : 0;
+  if (g0 !== 1 || g1 !== 1) for (let i = 0; i < a.length; i++) a[i] *= g0 + ((g1 - g0) * i) / a.length;
+  c.gate = g1;
+  out?.player.port.postMessage({ a, rate: c.rx.audioFs, cushion: c.cushion });
+  if (performance.now() - meterDrawn > 100) { meterDrawn = performance.now(); meter(); }
+}
+
+const pct = (db: number) => Math.min(100, Math.max(0, db + 100));
+function meter() {
+  const sq = chain?.sq, lvl = sq && sq.level > -150 ? sq.level : null;
+  $("smLevel").style.width = `${lvl === null ? 0 : pct(lvl)}%`;
+  $("smSql").style.left = `${pct(num("sql"))}%`;
+  $("smSql").hidden = num("sql") <= -100;
+  $("smText").textContent = lvl === null ? "" : `${lvl.toFixed(0)} dBFS${num("sql") > -100 ? (chain!.gate ? " · squelch open" : " · squelched") : ""}`;
+}
+$("sql").addEventListener("input", meter);
+$("sqlAuto").addEventListener("click", () => {
+  const l = chain?.sq.level;
+  if (l === undefined || l < -150) return void ($("smText").textContent = "Play or listen first, on an empty channel.");
+  $<HTMLInputElement>("sql").value = String(Math.round(l + 5));
+  saveSettings(); meter();
+});
+
+// --- recording what you hear --------------------------------------------------------------
+let recorder: MediaRecorder | null = null;
+$("rec").addEventListener("click", () => {
+  if (recorder) return recorder.stop();
+  if (!out) return;
+  const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+  const r = (recorder = new MediaRecorder(out.rec.stream, type ? { mimeType: type } : {})), parts: Blob[] = [], t0 = Date.now();
+  const name = `${fmtMHz(centerHz() + num("offset") * 1e3, 4)}MHz_${modeNow()}_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}`;
+  const tick = setInterval(() => { $("recStat").textContent = `● Recording ${name}: ${Math.floor((Date.now() - t0) / 1000)} s`; }, 500);
+  r.ondataavailable = (e) => parts.push(e.data);
+  r.onstop = () => {
+    clearInterval(tick);
+    recorder = null;
+    $("rec").textContent = "● Record"; $("rec").classList.remove("on");
+    const blob = new Blob(parts, { type: r.mimeType }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name}.${r.mimeType.includes("mp4") ? "m4a" : r.mimeType.includes("ogg") ? "ogg" : "webm"}`;
+    a.click();
+    $("recStat").textContent = `Saved ${a.download} (${(blob.size / 1024).toFixed(0)} KB).`;
+  };
+  r.start(1000);
+  $("rec").textContent = "■ Stop recording"; $("rec").classList.add("on");
+});
+
+// --- file playback: the loaded recording, streamed through the same chain in real time ---------------------
+let filePlay: { pos: number; sent: number; t0: number; timer: number } | null = null;
+$("play").addEventListener("click", async () => {
+  if (filePlay) return stopFile();
+  await audioOut();
+  await out!.ctx.resume();
+  out!.player.port.postMessage({ reset: true, rate: 0 });
+  newChain();
+  const fp = (filePlay = { pos: 0, sent: 0, t0: performance.now(), timer: 0 });
+  fp.timer = window.setInterval(() => {
+    const total = iq.length / 2, due = ((performance.now() - fp.t0) / 1000 + 0.2) * fs; // stay 0.2 s ahead
+    while (fp.sent < due) {
+      const n = Math.min(Math.round(fs * 0.02), total - fp.pos);
+      listen(iq.subarray(2 * fp.pos, 2 * (fp.pos + n)));
+      fp.pos = (fp.pos + n) % total; // loops
+      fp.sent += n;
+    }
+    drawScope();
+  }, 30);
   $("play").textContent = "■ Stop";
 });
+function stopFile() {
+  if (!filePlay) return;
+  clearInterval(filePlay.timer);
+  filePlay = null;
+  out?.player.port.postMessage({ reset: true, rate: 0 });
+  $("play").textContent = "▶ Play";
+  drawScope();
+}
 
 // --- inputs ------------------------------------------------------------------
 function load(data: Float32Array, label: string) {
+  stopFile();
   iq = data;
   fs = num("rate") * 1e6;
   $("status").textContent = `${label}: ${(iq.length / 2 / fs).toFixed(2)} s, ${(iq.length / 2 / 1e6).toFixed(2)} M samples`;
@@ -218,50 +550,48 @@ $<HTMLInputElement>("file").addEventListener("change", async (e) => {
 function setMode(m: Mode, bwKHz = DEFAULT_BW[m] / 1e3) {
   $<HTMLSelectElement>("mode").value = m;
   $<HTMLInputElement>("bw").value = String(bwKHz);
+  $<HTMLInputElement>("shift").disabled = m === "CW";
 }
 
-$("mode").addEventListener("change", () => { setMode($<HTMLSelectElement>("mode").value as Mode); retune(); });
-$("run").addEventListener("click", retune);
-window.addEventListener("resize", () => { drawWaterfall(); run(); });
+$("mode").addEventListener("change", () => { setMode(modeNow()); retune(); });
+for (const id of ["offset", "bw", "shift"]) $(id).addEventListener("change", () => retune());
+$("run").addEventListener("click", () => retune());
+window.addEventListener("resize", () => { drawScope(); run(); });
 
-// --- live: an RTL-SDR over WebUSB --------------------------------------------------
+// --- live: an RTL-SDR over WebUSB, or the server's ---------------------------------------------
 const LIVE_RATE = 2_400_000;
 const LIVE_OFFSET = 250e3; // tune the dongle this far below the station, away from its DC spike
 const SNAPSHOT_S = 0.25; // how much recent signal the stage plots show
 let sdr: RtlSdr | RemoteSdr | null = null; // your dongle (WebUSB) or the server's (HTTP)
 let streaming: Promise<void> | null = null;
-let live: { rx: Receiver; agc: Agc; ctx: AudioContext; t: number } | null = null;
 let recent: Float32Array[] = [];
-let lastPlots = 0, drawQueued = false, floor = -60;
+let lastPlots = 0, drawQueued = false;
 
 $<HTMLSelectElement>("gain").innerHTML = `<option value="auto">Auto</option>` +
   GAINS.map((g) => `<option value="${g / 10}">${(g / 10).toFixed(1)} dB</option>`).join("");
 $<HTMLSelectElement>("gain").value = String(GAINS.find((g) => g >= 300)! / 10);
 const gainValue = () => { const v = $<HTMLSelectElement>("gain").value; return v === "auto" ? null : parseFloat(v); };
 
-function newReceiver() {
-  if (!live || !sdr) return;
-  const mode = $<HTMLSelectElement>("mode").value as Mode;
-  live.rx = new Receiver(fs, num("offset") * 1e3, mode, num("bw") * 1e3);
-  cw = new CwSignalDecoder(); cwShow();
-  live.agc = new Agc(live.rx.audioFs);
-}
-
 function liveStatus(text: string) { $("status").textContent = text; }
 
 async function connect(remote: boolean) {
+  stopFile();
+  const audio = audioOut(); // while the click still counts as a user gesture
   try {
     sdr = remote ? await RemoteSdr.connect() : await RtlSdr.request();
     fs = sdr instanceof RtlSdr ? await sdr.setSampleRate(LIVE_RATE) : sdr.sampleRate;
     $<HTMLInputElement>("rate").value = String(fs / 1e6);
     await sdr.setGain(gainValue());
-    live = { rx: null!, agc: null!, ctx: new AudioContext(), t: 0 };
+    await audio;
+    await out!.ctx.resume();
+    wf.rows = []; wf.live = true; wf.floor = NaN; trace = null;
+    wf.img.getContext("2d")!.clearRect(0, 0, WF_N, WF_ROWS);
+    resetView();
     await tuneTo(num("liveFreq") * 1e6);
-    wfCanvas = new OffscreenCanvas(N, 256);
-    axis("wfAxis", fs);
-    $("wfText").textContent = "Live: one FFT row every ~55 ms, newest on top.";
+    $("wfText").textContent = "live, one row every few dozen ms, newest on top";
     $(remote ? "remote" : "connect").textContent = "Disconnect";
     $<HTMLButtonElement>(remote ? "connect" : "remote").disabled = true;
+    $<HTMLButtonElement>("play").disabled = true;
     streaming = sdr.stream(onSamples).catch((e) => liveStatus(`Stream stopped: ${e.message}`));
   } catch (e) {
     if (sdr) await sdr.close().catch(() => {});
@@ -277,13 +607,15 @@ async function disconnect() {
   s?.stop();
   await streaming;
   await s?.close().catch(() => {});
-  await live?.ctx.close();
-  live = null;
+  recorder?.stop();
+  chain = null;
+  out?.player.port.postMessage({ reset: true, rate: 0 });
   $("connect").textContent = "Connect USB SDR";
   $("remote").textContent = "Listen to server SDR";
   checkServer();
   $<HTMLButtonElement>("connect").disabled = !("usb" in navigator);
-  $("wfText").textContent = "Each row is one FFT, with time running downward.";
+  $<HTMLButtonElement>("play").disabled = false;
+  $("wfText").textContent = "each row is one FFT, with time running downward";
   liveStatus("Disconnected.");
 }
 
@@ -291,45 +623,24 @@ async function disconnect() {
 async function tuneTo(freq: number) {
   if (!sdr) return;
   await sdr.setCenterFrequency(freq - LIVE_OFFSET);
-  $<HTMLInputElement>("center").value = ((freq - LIVE_OFFSET) / 1e6).toFixed(3);
+  $<HTMLInputElement>("center").value = fmtMHz(freq - LIVE_OFFSET);
   $<HTMLInputElement>("offset").value = String(LIVE_OFFSET / 1e3);
-  newReceiver();
-  drawWaterfall();
+  newChain();
+  // the old rows were at the old center: start the picture over
+  wf.rows = []; trace = null;
+  wf.img.getContext("2d")!.clearRect(0, 0, WF_N, WF_ROWS);
+  if (view.hi - view.lo < fs) setView(LIVE_OFFSET - (view.hi - view.lo) / 2, LIVE_OFFSET + (view.hi - view.lo) / 2);
   const src = sdr instanceof RemoteSdr ? "server SDR" : `${sdr.tunerName} tuner`;
   liveStatus(`Live: ${src}, ${(fs / 1e6).toFixed(2)} MS/s, listening on ${(freq / 1e6).toFixed(3)} MHz`);
 }
 
 function onSamples(cu8: Uint8Array) {
-  if (!live) return;
+  if (!sdr || !chain) return;
   const x = decodeCU8(cu8);
+  listen(x);
 
-  // Audio: through the streaming receiver, then scheduled back to back.
-  const out = live.rx.process(x), a = live.agc.process(out.audio);
-  if (out.env) { cw.process(out.env, out.envFs); if (performance.now() - cwDrawn > 150) { cwDrawn = performance.now(); cwShow(); } }
-  if (a.length) {
-    const ctx = live.ctx, now = ctx.currentTime;
-    if (live.t < now + 0.05) live.t = now + 0.15; // underrun: rebuild a small cushion
-    // ponytail: dongle and sound card clocks drift apart; dropping a chunk when we get >0.6 s ahead
-    // is audible only every few minutes. Resample by the measured drift if that ever matters.
-    if (live.t < now + 0.6) {
-      const buf = ctx.createBuffer(1, a.length, live.rx.audioFs);
-      buf.copyToChannel(a as Float32Array<ArrayBuffer>, 0);
-      const src = ctx.createBufferSource();
-      src.buffer = buf; src.connect(ctx.destination); src.start(live.t);
-      live.t += buf.duration;
-    }
-  }
-
-  // Waterfall: one new row per chunk, newest on top.
-  const row = powerSpectrum(x, 0, N);
-  const sorted = Array.from(row).sort((p, q) => p - q);
-  floor = 0.9 * floor + 0.1 * sorted[N >> 1];
-  const img = new ImageData(N, 1);
-  row.forEach((v, i) => img.data.set([...heat((v - floor) / 45), 255], 4 * i));
-  const g = wfCanvas!.getContext("2d")!;
-  g.drawImage(wfCanvas!, 0, 1);
-  g.putImageData(img, 0, 0);
-  if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawWaterfall(); }); }
+  pushRow(avgSpectrum(x, WF_N, 8));
+  if (!drawQueued) { drawQueued = true; requestAnimationFrame(() => { drawQueued = false; drawScope(); }); }
 
   // Stage plots: refresh from the last SNAPSHOT_S seconds every 1.5 s.
   recent.push(x);
@@ -380,11 +691,13 @@ if (!("usb" in navigator)) {
     : "USB live mode needs an https:// or localhost address. From another computer, use \"Listen to server SDR\" instead.";
 }
 
+meter();
 $("demo").click();
 
 // What Blip sees here: the tuning and, in CW mode, what the Morse decoder has read so far.
 (window as any).blipContext = () => ({
-  page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: $<HTMLSelectElement>("mode").value,
-  tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), live: !!sdr,
-  cw: $<HTMLSelectElement>("mode").value === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
+  page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: modeNow(),
+  frequencyMHz: +fmtMHz(centerHz() + num("offset") * 1e3), tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), filterShiftKHz: num("shift"), live: !!sdr,
+  squelchDb: num("sql") > -100 ? num("sql") : "off", channelLevelDb: chain && chain.sq.level > -150 ? Math.round(chain.sq.level) : undefined,
+  cw: modeNow() === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
 });

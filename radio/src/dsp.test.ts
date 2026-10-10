@@ -1,6 +1,6 @@
 // Run: npm test  (node strips the TS types itself, no test framework)
 import assert from "node:assert/strict";
-import { powerSpectrum, firLowpass, freqResponse, receive, synth, Receiver, Squelch } from "./dsp.ts";
+import { powerSpectrum, firLowpass, freqResponse, receive, synth, Receiver, Squelch, NoiseReducer, Agc, fft } from "./dsp.ts";
 import { decodeCU8, parseName } from "./iq.ts";
 
 const peakBin = (x: Float32Array) => x.reduce((best, v, i) => (v > x[best] ? i : best), 0);
@@ -77,6 +77,43 @@ const peakBin = (x: Float32Array) => x.reduce((best, v, i) => (v > x[best] ? i :
   assert.ok(Math.abs(d[0] + 1) < 1e-6 && Math.abs(d[1] - 1) < 1e-6 && Math.abs(d[2]) < 0.01);
   assert.deepEqual(parseName("fm_100.3M_2.4M.cu8"), { center: 100.3e6, rate: 2.4e6 });
   assert.deepEqual(parseName("gqrx_20240101_120000_100300000_2400000_fc.raw"), { center: 100.3e6, rate: 2.4e6 });
+}
+
+// Filter shift: USB with an 800 Hz tone; shifting the passband up 1.2 kHz (to 1.2–4 kHz) drops the tone.
+{
+  const fs = 1.024e6, iq = synth(fs, 0.25, [{ kind: "USB", offset: 350e3, tone: 800, amp: 0.3 }], 0.002);
+  const rms = (shift: number) => { const a = new Receiver(fs, 350e3, "USB", 2.8e3, shift).process(iq).audio.subarray(4000); return Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length); };
+  const db = 20 * Math.log10(rms(1200) / rms(0));
+  assert.ok(db < -20, `shifted passband only cut the tone by ${db.toFixed(1)} dB`);
+}
+
+// Noise reduction: a keyed 1 kHz tone (like speech, it comes and goes) in white noise. The hiss drops a lot,
+// the tone barely; with strength 0 it is a pure delay (√Hann in and out reconstructs exactly).
+{
+  const fs = 48e3, x = new Float32Array(fs * 3);
+  for (let i = 0; i < x.length; i++) x[i] = (i % 24000 < 14400 ? 0.3 * Math.sin((2 * Math.PI * 1000 * i) / fs) : 0) + 0.05 * (Math.random() * 2 - 1);
+  const band = (y: Float32Array, start: number, lo: number, hi: number) => { // power in [lo, hi) Hz of 8192 samples
+    const re = new Float32Array(8192), im = new Float32Array(8192);
+    for (let i = 0; i < 8192; i++) re[i] = y[start + i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / 8192));
+    fft(re, im);
+    let p = 0; for (let b = Math.round((lo * 8192) / fs); b < Math.round((hi * 8192) / fs); b++) p += re[b] ** 2 + im[b] ** 2;
+    return 10 * Math.log10(p);
+  };
+  const nr = new NoiseReducer(); nr.strength = 1;
+  const y = nr.process(x), at = 2 * 24000 + 1000, pause = 2 * 24000 + 14800; // inside the third tone burst; the pause after it
+  assert.ok(band(x, pause, 3000, 20000) - band(y, pause, 3000, 20000) > 10, "hiss in a pause drops by 10+ dB");
+  assert.ok(Math.abs(band(x, at, 900, 1100) - band(y, at + 512, 900, 1100)) < 3, "the tone stays within 3 dB");
+  const off = new NoiseReducer(); off.strength = 0;
+  const z = off.process(x);
+  for (let i = 1000; i < 2000; i++) assert.ok(Math.abs(z[i + 512] - x[i]) < 1e-5, "strength 0 passes audio through, delayed");
+}
+
+// AGC hang: after a loud burst, the gain is held through a short pause instead of climbing into the hiss.
+{
+  const fs = 48e3, burst = new Float32Array(fs / 10).fill(0.5), quiet = new Float32Array(fs * 0.15).fill(0.01);
+  const peak = (a: Agc) => { a.process(burst); return Math.max(...a.process(quiet).slice(-100)); };
+  assert.ok(peak(new Agc(fs, 0.05, 0.2)) < 0.02, "held: the quiet part stays quiet");
+  assert.ok(peak(new Agc(fs, 0.05)) > 0.1, "no hang: the quiet part is pumped up");
 }
 
 console.log("dsp ok");
