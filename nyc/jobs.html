@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NYC Jobs Finder</title>
+  <meta name="description" content="Real, open jobs in New York City, New Jersey, the metro and remote in the US: read straight from employers' own job boards and checked every hour (closed jobs drop off), plus NYC government jobs and Adzuna without gig ads or reposts, deduplicated, with salary ranges and honest flags for ghost, scam and agency postings." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --fg: #e9e7e1; --muted: #9a978f; --line: #2c2b28; --card: #1a1a18; --ok: #69db7c; --warn: #ff8787; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 120px; }
+    h1 { margin: 0 0 4px; }
+    .hint { color: var(--muted); font-size: 13px; }
+    .layout { display: grid; grid-template-columns: 270px 1fr; gap: 18px; margin-top: 14px; }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+    aside fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 8px 0; }
+    aside legend { font-weight: 700; font-size: 13px; padding: 0; }
+    aside label { display: flex; gap: 6px; align-items: center; font-size: 14px; margin: 2px 0; }
+    aside label .n { margin-left: auto; color: var(--muted); font-size: 12px; }
+    aside input[type=text], aside select { width: 100%; box-sizing: border-box; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+    #q { flex: 1 1 260px; font-size: 16px; padding: 7px 10px; }
+    .job { padding: 10px 14px; margin: 8px 0; border-left: 4px solid transparent; cursor: pointer; }
+    .job.open { border-left-color: var(--accent); cursor: default; }
+    .job h3 { margin: 0; font-size: 16px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .chip { display: inline-block; font-size: 12px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); }
+    .chip.ok { color: var(--ok); border-color: var(--ok); } .chip.flag { color: var(--warn); border-color: var(--warn); }
+    .pay { font-weight: 600; color: var(--fg); }
+    .detail { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+    .detail .desc { white-space: pre-wrap; max-height: 420px; overflow: auto; font-size: 14px; }
+    .report { font-size: 13px; color: var(--muted); }
+    .pager { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+    details.rail > summary { display: none; }
+    @media (max-width: 820px) { details.rail > summary { display: block; font-weight: 700; cursor: pointer; padding: 6px 0; } }
+    .saved li { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+    .saved li a { flex: 1; }
+    .new { color: var(--accent); font-weight: 700; font-size: 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/nyc/">NYC</a> · Jobs</p>
+  <h1>Jobs that are real and still open</h1>
+  <p class="lede">New York City, New Jersey and the metro, and remote in the US. Most jobs come straight from employers' own job boards and are re-checked <b>every hour</b>: when an employer takes a job down, it drops off here. City jobs come from NYC's open data; Adzuna adds more, without gig ads or reposts. Duplicates are merged, and anything that looks off is flagged with the reason.</p>
+  <p class="hint" id="stats"></p>
+
+  <div class="layout">
+    <details class="rail" open>
+      <summary>Filters</summary>
+      <aside id="rail">
+        <fieldset><legend>Where</legend><div id="f-region"></div></fieldset>
+        <fieldset><legend>Work</legend><div id="f-remote"></div></fieldset>
+        <fieldset><legend>Pay</legend>
+          <label>at least <select id="salary"><option value="">any</option><option value="50000">$50k</option><option value="75000">$75k</option><option value="100000">$100k</option><option value="150000">$150k</option><option value="200000">$200k</option><option value="250000">$250k</option></select></label>
+          <label><input type="checkbox" id="nosalary"> only jobs that state pay</label>
+        </fieldset>
+        <fieldset><legend>Posted</legend><label><select id="days"><option value="">any time</option><option value="1">today</option><option value="3">last 3 days</option><option value="7">last week</option><option value="14">last 2 weeks</option><option value="30">last month</option></select></label>
+          <label><input type="checkbox" id="newOnly"> new since my last visit</label></fieldset>
+        <fieldset><legend>Level</legend><div id="f-seniority"></div></fieldset>
+        <fieldset><legend>Field</legend><div id="f-func"></div></fieldset>
+        <fieldset><legend>Company</legend>
+          <label><input type="text" id="company" placeholder="only this company"></label>
+          <label><input type="text" id="exclude" placeholder="hide companies (comma-separated)"></label>
+        </fieldset>
+        <fieldset><legend>Source</legend><div id="f-source"></div>
+          <label><input type="checkbox" id="flagged"> hide flagged postings</label></fieldset>
+        <fieldset><legend>Saved searches</legend>
+          <ul class="saved" id="saved" style="list-style:none;padding:0;margin:0"></ul>
+          <button id="save" type="button">☆ Save this search</button>
+        </fieldset>
+      </aside>
+    </details>
+
+    <section>
+      <form class="bar" id="form">
+        <input id="q" type="search" placeholder='e.g. data engineer, "product designer" -senior' aria-label="Search jobs">
+        <label class="hint"><input type="checkbox" id="title"> titles only</label>
+        <label class="hint">sort <select id="sort"><option value="">best match / newest</option><option value="newest">newest</option><option value="salary">highest pay</option></select></label>
+      </form>
+      <p class="hint" id="count" aria-live="polite"></p>
+      <div id="list"></div>
+      <div class="pager"><button id="prev" type="button">← Previous</button><span class="hint" id="pageInfo"></span><button id="next" type="button">Next →</button></div>
+      <details class="card" style="padding:10px 14px;margin-top:20px"><summary><b>How this works, and what the flags mean</b></summary>
+        <ul>
+          <li><b>✓ at the employer</b>: read from the company's own job board (Greenhouse, Lever, Ashby) or NYC's official listings. These are checked every hour; a job missing twice in a row is removed.</li>
+          <li><b>via Adzuna</b>: a job board aggregator. We can't open their pages to check, so these stay while Adzuna still lists them and go a week after it stops. Gig ads (delivery apps, "be your own boss") and reposts (the same ad again, or copied to many towns) never get in.</li>
+          <li><b>Flags</b> never hide a job unless you ask: <i>open N days</i> (possibly a ghost job), <i>evergreen / talent-pool</i> (collecting résumés, not hiring for a seat), <i>no salary range</i> (NYC's pay-transparency law requires one for jobs here), <i>staffing agency</i>, <i>commission-only or agent-recruiting</i>, <i>very wide pay range</i>, <i>scam signs</i>.</li>
+          <li>Salaries are what the employer posted; Adzuna's estimates are marked "est." and don't count as stated pay.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const getJSON = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+const LABEL = {
+  region: { nyc: "New York City", nj: "New Jersey", metro: "Metro (Westchester, LI, CT)", remote: "Remote (US)" },
+  remote: { onsite: "On site", hybrid: "Hybrid", remote: "Remote" },
+  seniority: { intern: "Intern", junior: "Entry / junior", mid: "Mid", senior: "Senior", staff: "Staff / principal", manager: "Manager / lead", director: "Director", executive: "VP / executive" },
+  func: { engineering: "Engineering", data: "Data & analytics", design: "Design", product: "Product", sales: "Sales", marketing: "Marketing", finance: "Finance", legal: "Legal", people: "People / HR", support: "Customer support", operations: "Operations", health: "Health care", education: "Education", other: "Other" },
+  source: { greenhouse: "Employer (Greenhouse)", lever: "Employer (Lever)", ashby: "Employer (Ashby)", nycjobs: "NYC government", remotive: "Remotive", himalayas: "Himalayas", adzuna: "Adzuna" },
+};
+const MULTI = ["region", "remote", "seniority", "func", "source"];
+let last = null, page = 0;
+const LV = "jobs-last-visit"; let lastVisit = 0; try { lastVisit = +localStorage.getItem(LV) || 0; } catch {}
+setTimeout(() => { try { localStorage.setItem(LV, String(Math.floor(Date.now() / 1000))); } catch {} }, 10_000); // after you've had a look
+
+// ---------- state ⇄ URL ----------
+function state() {
+  const p = new URLSearchParams();
+  const set = (k, v) => v && p.set(k, v);
+  set("q", $("q").value.trim()); if ($("title").checked) p.set("title", "1");
+  for (const k of MULTI) set(k, [...document.querySelectorAll(`#f-${k} input:checked`)].map((i) => i.value).join(","));
+  set("salary", $("salary").value); if ($("nosalary").checked) p.set("nosalary", "0"); set("days", $("days").value);
+  set("company", $("company").value.trim()); set("exclude", $("exclude").value.trim()); if ($("flagged").checked) p.set("flagged", "0"); set("sort", $("sort").value);
+  return p;
+}
+function restore(p) {
+  $("q").value = p.get("q") ?? ""; $("title").checked = p.get("title") === "1"; $("salary").value = p.get("salary") ?? ""; $("nosalary").checked = p.get("nosalary") === "0";
+  $("days").value = p.get("days") ?? ""; $("company").value = p.get("company") ?? ""; $("exclude").value = p.get("exclude") ?? ""; $("flagged").checked = p.get("flagged") === "0"; $("sort").value = p.get("sort") ?? "";
+  restore.multi = Object.fromEntries(MULTI.map((k) => [k, new Set((p.get(k) ?? "").split(",").filter(Boolean))]));
+}
+function facets(f) {
+  for (const k of MULTI) {
+    const want = restore.multi?.[k] ?? new Set(), keys = Object.keys(LABEL[k]);
+    $(`f-${k}`).innerHTML = keys.filter((v) => want.has(v) || f?.[k]?.[v]).map((v) => `<label><input type="checkbox" value="${v}" ${want.has(v) ? "checked" : ""}> ${LABEL[k][v]}<span class="n">${f?.[k]?.[v] ?? 0}</span></label>`).join("") || `<span class="hint">—</span>`;
+  }
+}
+
+// ---------- search ----------
+const money = (v, per) => (per === "hour" ? `$${Math.round(v)}/h` : v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`);
+const age = (t) => { const d = (Date.now() / 1000 - t) / 86400; return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${Math.floor(d)} days ago` : `${Math.floor(d / 30)} months ago`; };
+const verified = (s) => ["greenhouse", "lever", "ashby", "nycjobs"].includes(s);
+async function run(keepPage = false) {
+  if (!keepPage) page = 0;
+  const p = state(); restore(p);
+  history.replaceState(null, "", `${location.pathname}${p.toString() ? `?${p}` : ""}`);
+  if ($("newOnly").checked && lastVisit) p.set("days", String(Math.max(1, Math.ceil((Date.now() / 1000 - lastVisit) / 86400))));
+  p.set("page", String(page));
+  $("count").textContent = "Searching…";
+  let d; try { d = await getJSON(`/api/jobs/search?${p}`); } catch (e) { $("count").textContent = e.message; return; }
+  last = d; facets(d.facets);
+  const rows = $("newOnly").checked && lastVisit ? d.rows.filter((r) => r.first_seen > lastVisit) : d.rows;
+  $("count").textContent = `${d.total.toLocaleString()} open job${d.total === 1 ? "" : "s"}${$("q").value ? ` matching “${$("q").value}”` : ""}`;
+  $("list").innerHTML = rows.map((r, i) => `<article class="job card" data-i="${i}" tabindex="0">
+    <h3>${esc(r.title)}</h3>
+    <div class="meta"><b>${esc(r.company)}</b><span>${esc(LABEL.region[r.region])}${r.region !== "remote" ? ` · ${esc(LABEL.remote[r.remote])}` : ""}</span>
+      ${r.salary_min ? `<span class="pay">${money(r.salary_min, r.salary_period)}${r.salary_max && r.salary_max !== r.salary_min ? `–${money(r.salary_max, r.salary_period)}` : ""}${r.salary_est ? " est." : ""}</span>` : ""}
+      <span>${age(r.posted ?? r.first_seen)}</span>
+      ${verified(r.source) ? `<span class="chip ok" title="Read from the employer's own listings, re-checked hourly">✓ at the employer</span>` : `<span class="chip" title="An aggregator listing">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}
+      ${r.also.length ? `<span class="chip" title="The same job, also listed there">also on ${r.also.map((s) => esc(LABEL.source[s] ?? s)).join(", ")}</span>` : ""}
+      ${lastVisit && r.first_seen > lastVisit ? `<span class="new">NEW</span>` : ""}</div>
+    ${r.flags.length ? `<div class="meta">${r.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
+    <div class="detail" hidden></div></article>`).join("") || `<p>Nothing matches. Loosen a filter: ${["region", "salary", "days", "seniority"].map((k) => `<b>${k}</b>`).join(", ")}.</p>`;
+  $("pageInfo").textContent = d.total > 30 ? `page ${page + 1} of ${Math.ceil(d.total / 30)}` : "";
+  $("prev").disabled = page === 0; $("next").disabled = (page + 1) * 30 >= d.total;
+  renderSaved();
+}
+$("list").addEventListener("click", async (e) => {
+  const card = e.target.closest(".job"); if (!card || e.target.closest("a, button")) return;
+  const box = card.querySelector(".detail"), r = last.rows[+card.dataset.i];
+  if (!box.hidden) { box.hidden = true; card.classList.remove("open"); return; }
+  box.hidden = false; card.classList.add("open"); box.textContent = "Loading…";
+  try {
+    const j = await getJSON(`/api/jobs/job?id=${encodeURIComponent(r.id)}`), e2 = j.employer;
+    box.innerHTML = `<p><a class="button" href="${esc(j.url)}" target="_blank" rel="noopener">Apply at ${verified(j.source) ? esc(j.company) : esc(LABEL.source[j.source])} ↗</a>
+      <span class="hint">${esc(j.location)}${j.employment ? ` · ${esc(j.employment)}` : ""}${j.department ? ` · ${esc(j.department)}` : ""} · first seen ${age(j.first_seen)}, last checked ${age(j.last_seen)}</span></p>
+      <p class="report">${esc(j.company)} here: ${e2.open} open job${e2.open === 1 ? "" : "s"}${e2.openOver60Days ? `, ${e2.openOver60Days} open over 60 days` : ""}${e2.withoutSalary ? `, ${e2.withoutSalary} without a salary` : ""}${e2.closedLast30Days ? `, ${e2.closedLast30Days} closed in the last 30 days` : ""}.</p>
+      <div class="desc">${esc(j.description)}</div>`;
+  } catch (err) { box.textContent = err.message; }
+});
+$("list").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList.contains("job")) e.target.click(); });
+$("form").onsubmit = (e) => { e.preventDefault(); run(); };
+let t; $("q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 350); });
+$("rail").addEventListener("change", () => run());
+for (const id of ["title", "sort"]) $(id).addEventListener("change", () => run());
+for (const id of ["company", "exclude"]) $(id).addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 500); });
+$("prev").onclick = () => { page--; run(true); scrollTo(0, 0); }; $("next").onclick = () => { page++; run(true); scrollTo(0, 0); };
+
+// ---------- saved searches (this browser) ----------
+const SK = "jobs-saved";
+const saved = () => { try { return JSON.parse(localStorage.getItem(SK) ?? "[]"); } catch { return []; } };
+const putSaved = (l) => { try { localStorage.setItem(SK, JSON.stringify(l)); } catch {} };
+async function renderSaved() {
+  const l = saved();
+  $("saved").innerHTML = l.length ? l.map((s, i) => `<li><a href="?${esc(s.q)}">${esc(s.name)}</a><span class="new" id="sv${i}"></span><button data-rm="${i}" title="Remove" type="button">✕</button></li>`).join("") : `<li class="hint">None yet.</li>`;
+  // how many are new since you last opened each saved search
+  l.forEach(async (s, i) => { const p = new URLSearchParams(s.q); p.set("days", String(Math.max(1, Math.ceil((Date.now() / 1000 - s.seen) / 86400)))); const d = await getJSON(`/api/jobs/search?${p}`).catch(() => null); const n = d?.rows.filter((r) => r.first_seen > s.seen).length; if (n) $(`sv${i}`).textContent = `${n}${n >= 30 ? "+" : ""} new`; });
+}
+$("saved").addEventListener("click", (e) => { const rm = e.target.dataset.rm; if (rm != null) { const l = saved(); l.splice(+rm, 1); putSaved(l); renderSaved(); } });
+$("saved").addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a) return; e.preventDefault(); const l = saved(), s = l.find((x) => `?${x.q}` === a.getAttribute("href")); if (s) { s.seen = Math.floor(Date.now() / 1000); putSaved(l); } restore(new URLSearchParams(a.getAttribute("href").slice(1))); facets(last?.facets); run(); });
+$("save").onclick = () => { const q = state().toString(); if (!q) return; const name = prompt("Name this search:", $("q").value || "My search"); if (!name) return; putSaved([...saved().filter((s) => s.q !== q), { name: name.slice(0, 60), q, seen: Math.floor(Date.now() / 1000) }]); renderSaved(); };
+
+getJSON("/api/jobs/stats").then((s) => {
+  const ago = Math.round((Date.now() / 1000 - Math.max(...s.lastRuns.filter((r) => r.what === "boards").map((r) => r.at))) / 60);
+  $("stats").textContent = `${s.open.toLocaleString()} open jobs from ${s.companies} employer job boards, NYC's listings, Adzuna and remote boards · employer boards re-checked ${ago <= 1 ? "just now" : `${ago} min ago`} · ${s.closedLastDay} closed and removed in the last day`;
+}).catch(() => {});
+restore(new URLSearchParams(location.search)); facets(null); run();
+window.blipContext = () => ({ page: "NYC jobs finder (open jobs from employer boards, NYC government, Adzuna; filters, flags)", search: Object.fromEntries(state()), results: last ? { total: last.total, top: last.rows.slice(0, 10).map((r) => `${r.title} at ${r.company} (${LABEL.region[r.region]}${r.salary_min ? `, ${money(r.salary_min, r.salary_period)}–${money(r.salary_max, r.salary_period)}` : ""})${r.flags.length ? ` flags: ${r.flags.join(", ")}` : ""}`) } : null });
+</script>
+</body>
+</html>

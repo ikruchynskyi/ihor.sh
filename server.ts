@@ -20,6 +20,7 @@ import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
+import { startJobs, search as jobSearch, job as jobOne, stats as jobStats } from "./jobs.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
@@ -392,6 +393,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
     if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
+    if (url.pathname === "/api/jobs/search") {
+      const p = url.searchParams, s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => (Number(p.get(k)) || undefined);
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch({ q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"),
+        salaryMin: n("salary"), hideNoSalary: p.get("nosalary") === "0", days: n("days"), seniority: s("seniority"), func: s("func"), source: s("source"), hideFlagged: p.get("flagged") === "0", sort: s("sort"), page: n("page"), titleOnly: p.get("title") === "1" })));
+    }
+    if (url.pathname === "/api/jobs/job") { const j = jobOne(String(url.searchParams.get("id") ?? "")); return res.writeHead(j ? 200 : 404, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(j ?? { error: "That job isn't in the index (it may have closed)." })); }
+    if (url.pathname === "/api/jobs/stats") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(jobStats()));
     if (url.pathname === "/api/nyc/events") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify(currentEvents()));
     if (url.pathname === "/api/nyc/archive") {
       const days = Math.min(365, Math.max(1, Number(url.searchParams.get("days")) || 30));
@@ -419,5 +427,6 @@ const server = http.createServer(async (req, res) => {
 
 startArchive();
 startEvents();
+startJobs();
 startMesh();
 server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));

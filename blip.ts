@@ -9,6 +9,7 @@ import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
 import { issPasses } from "./sat.ts";
+import { search as jobSearch } from "./jobs.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -80,6 +81,16 @@ const TOOLS: Record<string, Tool> = {
     description: "Where the International Space Station is now: position, altitude, speed, whether it's in sunlight, and its distance from NYC.",
     parameters: {},
     run: async () => { const d = await iss(); return { ...d, track: undefined }; },
+  },
+  jobs_search: {
+    description: "Open jobs in NYC, New Jersey, the metro and remote-US, from employers' own job boards (re-checked hourly), NYC government listings and Adzuna (no gig ads or reposts), deduplicated and flagged (ghost, no salary, agency, scam). Returns title, company, where, pay, how old, flags and the apply link.",
+    parameters: { q: { type: "string", description: "Keywords, e.g. 'data engineer' or '\"product designer\" -senior'" }, region: { type: "string", description: "nyc, nj, metro or remote (comma-separated for several)" }, remote: { type: "string", description: "onsite, hybrid or remote" }, salary_min: { type: "number", description: "Minimum yearly pay in dollars" }, seniority: { type: "string", description: "intern, junior, mid, senior, staff, manager, director, executive" }, company: { type: "string", description: "Only this company" }, days: { type: "number", description: "Posted within this many days" }, hide_flagged: { type: "boolean", description: "Leave out flagged postings" } },
+    run: ({ q, region, remote, salary_min, seniority, company, days, hide_flagged }) => {
+      const r = jobSearch({ q: q ? String(q) : undefined, region, remote, salaryMin: Number(salary_min) || undefined, seniority, company, days: Number(days) || undefined, hideFlagged: !!hide_flagged });
+      const pay = (x: any) => (x.salary_min ? `${x.salary_period === "hour" ? `$${Math.round(x.salary_min)}–${Math.round(x.salary_max)}/h` : `$${Math.round(x.salary_min / 1000)}k–${Math.round(x.salary_max / 1000)}k`}${x.salary_est ? " (estimate)" : ""}` : "no salary posted");
+      return { total: r.total, page: `/nyc/jobs.html?${new URLSearchParams(Object.entries({ q, region, remote, salary: salary_min, seniority, company, days }).filter(([, v]) => v != null && v !== "").map(([k, v]) => [k, String(v)]))}`,
+        jobs: r.rows.slice(0, 12).map((x: any) => ({ title: x.title, company: x.company, where: `${x.region}, ${x.remote}`, pay: pay(x), posted: new Date((x.posted ?? x.first_seen) * 1000).toISOString().slice(0, 10), source: x.source, flags: x.flags, apply: x.url })) };
+    },
   },
   iss_passes: {
     description: "When the International Space Station passes over a place in the next 3 days (computed with SGP4 from CelesTrak's latest orbit): rise time (New York time), how long, highest elevation, direction across the sky, and whether it's visible to the eye (only at dusk or dawn, when it's sunlit and your sky is dark). Default place: NYC; pass the visitor's location for 'over me'.",
@@ -250,6 +261,7 @@ ${siteMap}
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
+- Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters).
 - Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
