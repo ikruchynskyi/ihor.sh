@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 // Ride: everything useful along a route from OpenStreetMap (Overpass). The query is built here, not sent by the page,
 // the public instance is often busy (504s) so we back off and retry, and each route's answer is cached for a day.
@@ -10,6 +12,27 @@ const OVERPASS = "https://overpass-api.de/api/interpreter", MIRRORS = ["https://
 const BACKOFF = [3, 8, 15], BUDGET_MS = 70_000;
 const UA = { "user-agent": "ihor.sh route notebook (+https://ihor.sh/ride/)", accept: "application/json" };
 const cache = new Map<string, { at: number; v: unknown }>();
+
+/** One Overpass query with retries: the main instance (backing off on its "queue full" 504s), then the mirrors, whose
+ *  empty answers don't count. Elements come back as { lat, lon, tags } (ways and areas at their center). */
+async function overpass(query: string, deadline = Date.now() + BUDGET_MS) {
+  const ask = async (server: string) => {
+    const left = deadline - Date.now();
+    if (left < 3000) throw new Error("out of time");
+    const r = await fetch(server, { method: "POST", headers: UA, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(Math.min(60_000, left)) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.remark && /error|timed out/i.test(d.remark)) throw new Error(d.remark.slice(0, 80));
+    return (d.elements ?? []).map((e: any) => ({ id: `${e.type}/${e.id}`, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags ?? {} })).filter((e: any) => e.lat);
+  };
+  let last = "";
+  for (const wait of [0, ...BACKOFF]) {
+    if (wait) { if (Date.now() + wait * 1000 > deadline - 3000) break; await new Promise((r) => setTimeout(r, wait * 1000)); }
+    try { return await ask(OVERPASS); } catch (e) { last = (e as Error).message; }
+    for (const m of MIRRORS) { try { const els = await ask(m); if (els.length) return els; last = "a mirror answered with no data"; } catch (e) { last = (e as Error).message; } }
+  }
+  throw new Error(last);
+}
 
 /** Stops near a route given as up to 400 [lat, lon] points: water, food, bike repair within 400 m; lodging and stations within 3 km. */
 export async function routeStops(line: unknown) {
@@ -28,25 +51,7 @@ export async function routeStops(line: unknown) {
     `[out:json][timeout:90]${bbox};(node["amenity"~"^(drinking_water|water_point|cafe|fast_food|restaurant|bicycle_repair_station)$"]${near};node["man_made"="water_tap"]${near};node["shop"~"^(supermarket|convenience|general|bakery|deli|greengrocer|bicycle)$"]${near};);out;`, // "out tags" would drop the coordinates
     `[out:json][timeout:90]${bbox};(nwr["tourism"~"^(camp_site|hostel|motel|hotel|guest_house|alpine_hut|wilderness_hut)$"]${wide};node["railway"="station"]${wide};);out center tags;`,
   ];
-  const deadline = Date.now() + BUDGET_MS;
-  const ask = async (server: string, query: string) => {
-    const left = deadline - Date.now();
-    if (left < 3000) throw new Error("out of time");
-    const r = await fetch(server, { method: "POST", headers: UA, body: new URLSearchParams({ data: query }), signal: AbortSignal.timeout(Math.min(60_000, left)) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    if (d.remark && /error|timed out/i.test(d.remark)) throw new Error(d.remark.slice(0, 80));
-    return (d.elements ?? []).map((e: any) => ({ lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags ?? {} })).filter((e: any) => e.lat);
-  };
-  const run = async (query: string) => {
-    let last = "";
-    for (const wait of [0, ...BACKOFF]) {
-      if (wait) { if (Date.now() + wait * 1000 > deadline - 3000) break; await new Promise((r) => setTimeout(r, wait * 1000)); }
-      try { return await ask(OVERPASS, query); } catch (e) { last = (e as Error).message; }
-      for (const m of MIRRORS) { try { const els = await ask(m, query); if (els.length) return els; last = "a mirror answered with no data"; } catch (e) { last = (e as Error).message; } }
-    }
-    throw new Error(last);
-  };
+  const deadline = Date.now() + BUDGET_MS, run = (query: string) => overpass(query, deadline);
   try {
     const elements = [...(await run(queries[0])), ...(await run(queries[1]))]; // one after the other: Overpass allows ~2 per IP at once
     const v = { elements };
@@ -117,4 +122,40 @@ export async function placeSearch(q: string) {
   if (c) return [{ label: `${(+c[1]).toFixed(5)}, ${(+c[2]).toFixed(5)}`, lat: +c[1], lon: +c[2] }];
   const d = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=en&lat=40.75&lon=-73.95`, { headers: UA, signal: AbortSignal.timeout(15_000) }).then((r) => r.json()).catch(() => null);
   return (d?.features ?? []).map((f: any) => { const p = f.properties; return { label: [p.name, [p.housenumber, p.street].filter(Boolean).join(" "), p.city ?? p.county, p.state].filter(Boolean).join(", "), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }; });
+}
+
+// ---------- bike + train escapes: stations, and campgrounds near one ----------
+const RAIL = { MNR: /Metro-North/i, LIRR: /Long Island Rail Road|LIRR/i, NJT: /NJ Transit/i } as const;
+const STATIONS_FILE = path.join(import.meta.dirname, "data", "rail-stations.json");
+let stationsCache: { at: number; v: any[] } | null = (() => { try { return JSON.parse(readFileSync(STATIONS_FILE, "utf8")); } catch { return null; } })(); // survives restarts
+/** Every Metro-North, LIRR and NJ Transit station (OpenStreetMap), with which of the three serve it. Cached a week. */
+export async function railStations() {
+  if (stationsCache && Date.now() - stationsCache.at < 7 * 864e5) return stationsCache.v;
+  const els = await overpass('[out:json][timeout:90];nwr["railway"="station"]["network"~"Metro-North|Long Island Rail Road|LIRR|NJ Transit",i](39.3,-75.6,42.3,-71.7);out center tags;');
+  const seen = new Set<string>();
+  const v = els.filter((e: any) => !["subway", "light_rail", "tram"].includes(e.tags.station) && e.tags.name).map((e: any) => ({
+    name: e.tags.name, lat: +e.lat.toFixed(5), lon: +e.lon.toFixed(5), rr: (Object.keys(RAIL) as (keyof typeof RAIL)[]).filter((k) => RAIL[k].test(e.tags.network ?? "")),
+  })).filter((s: any) => s.rr.length && !seen.has(`${s.name}|${s.rr}`) && seen.add(`${s.name}|${s.rr}`)).sort((a: any, b: any) => a.name.localeCompare(b.name));
+  stationsCache = { at: Date.now(), v };
+  try { writeFileSync(STATIONS_FILE, JSON.stringify(stationsCache)); } catch {}
+  return v;
+}
+const campCache = new Map<string, { at: number; v: unknown }>();
+/** Campgrounds within `km` of a point, as mapped in OpenStreetMap: name, website, fees, tents, and the straight-line distance. */
+export async function campsNear(lat: number, lon: number, km: number) {
+  if (![lat, lon, km].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return { error: "Need lat, lon and km." };
+  const r = Math.min(60, Math.max(2, km)), key = `${lat.toFixed(3)},${lon.toFixed(3)},${r}`, hit = campCache.get(key);
+  if (hit && Date.now() - hit.at < 864e5) return hit.v;
+  try {
+    const els = await overpass(`[out:json][timeout:60];nwr["tourism"="camp_site"](around:${r * 1000},${lat},${lon});out center tags;`);
+    // campgrounds you can book: named, not single pitches, not private, tents allowed, not scout or group camps
+    const names = new Set<string>(), ok = (t: any) => t.name && t.camp_site !== "camp_pitch" && t.access !== "private" && t.access !== "no" && t.tents !== "no" && t.group_only !== "yes" && !/scout|council|ymca|church|bible|private|group/i.test(t.name) && /[a-z]{3}/i.test(t.name);
+    const v = { camps: els.filter((e: any) => ok(e.tags) && !names.has(e.tags.name) && names.add(e.tags.name)).map((e: any) => ({
+      osm: e.id, name: e.tags.name, lat: +e.lat.toFixed(5), lon: +e.lon.toFixed(5), km: +kmBetween([lat, lon], [e.lat, e.lon]).toFixed(1),
+      website: e.tags.website ?? e.tags["contact:website"] ?? e.tags.url ?? "", operator: e.tags.operator ?? "", fee: e.tags.fee ?? "", reservation: e.tags.reservation ?? "", backcountry: e.tags.backcountry === "yes" || /lean-?to|shelter/i.test(e.tags.name) || (/campsite$/i.test(e.tags.name) && !e.tags.website && !e.tags.operator), season: e.tags.opening_hours ?? "", phone: e.tags.phone ?? e.tags["contact:phone"] ?? "",
+    })).sort((a: any, b: any) => a.km - b.km).slice(0, 40) };
+    if (campCache.size > 300) campCache.clear();
+    campCache.set(key, { at: Date.now(), v });
+    return v;
+  } catch (e) { return { error: `OpenStreetMap's Overpass servers aren't answering right now (${(e as Error).message}). Try again in a few minutes.` }; }
 }

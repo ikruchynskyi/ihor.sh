@@ -15,7 +15,7 @@ import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { mcp } from "./mcp.ts";
 import { roomStream, roomPost } from "./room.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
-import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
+import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
@@ -193,7 +193,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -323,6 +323,8 @@ const server = http.createServer(async (req, res) => {
       // 422, not 502: Cloudflare swaps an origin's 502 for its own "Bad gateway" page, hiding the message
       return res.writeHead(d.error ? 422 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(d));
     }
+    if (url.pathname === "/api/ride/stations") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await railStations().catch((e) => ({ error: (e as Error).message }))));
+    if (url.pathname === "/api/ride/camps") { const p = url.searchParams; return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await campsNear(Number(p.get("lat")), Number(p.get("lon")), Number(p.get("km") ?? 30)))); }
     if (url.pathname === "/api/ride/places") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await placeSearch(String(url.searchParams.get("q") ?? "").slice(0, 120))));
     if (url.pathname === "/api/ride/stops" && req.method === "POST") {
       let raw = "";

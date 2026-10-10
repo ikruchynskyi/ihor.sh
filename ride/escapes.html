@@ -21,6 +21,10 @@
     .tag { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); margin-right: 6px; }
     .open { color: #1e6b35; font-weight: 600; } .closed { color: #e03131; font-weight: 600; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .found { padding: 10px 14px; margin: 8px 0; }
+    .found p { margin: 3px 0; }
+    .tag.mine { border-color: var(--accent); }
+    input[list] { min-width: 220px; }
   </style>
 </head>
 <body>
@@ -43,6 +47,22 @@
   <h2>Escapes</h2>
   <p class="hint">Distances are approximate: "Plan this ride" opens it in the route notebook with the real route, climbing, water, food (with opening hours), daylight and the forecast. Book campsites ahead: state parks fill up on summer weekends.</p>
   <div id="trips"></div>
+
+  <h2 id="make">Make your own escape</h2>
+  <p>Pick a station and how far you'd ride, and the page lists every campground mapped in OpenStreetMap around it. Measure the real bike ride to any of them, open it in the route notebook, and save the trip to your list. These come straight from the map, so they aren't checked the way the trips above are: look at the campground's own website for its season and how to book, and whether it takes tents for one night.</p>
+  <div class="card" style="padding:12px 16px">
+    <div class="row">
+      <label>Railroad <select id="mkRr"><option value="MNR">Metro-North</option><option value="LIRR">LIRR</option><option value="NJT">NJ Transit</option></select></label>
+      <label>Station <input id="mkSt" list="mkStations" placeholder="type a station"><datalist id="mkStations"></datalist></label>
+      <label>within <input type="range" id="mkKm" min="5" max="60" step="5" value="30"> <span id="mkKmV"></span></label>
+      <label><input type="checkbox" id="mkHike"> include hike-in trail sites</label>
+      <button id="mkGo">Find campgrounds</button>
+    </div>
+    <p class="hint" id="mkStatus" aria-live="polite"></p>
+    <div id="mkOut"></div>
+  </div>
+  <h2 id="mine">Your escapes</h2>
+  <div id="mineList"><p class="hint">None yet: make one above and press "Save".</p></div>
 
   <h2>Good to know</h2>
   <ul>
@@ -96,7 +116,80 @@ $("trips").innerHTML = ESCAPES.map((e) => {
 }).join("");
 $("trips").addEventListener("click", (ev) => { const rr = ev.target.closest("[data-rr]")?.dataset.rr; if (rr) { $("rr").value = rr; check(); $("rr").scrollIntoView({ behavior: "smooth", block: "center" }); } });
 $("sources").innerHTML = "Sources: " + Object.entries(SOURCES).map(([k, u]) => `<a href="${u}">${NAMES[k]}</a>`).join(" · ") + " · campground seasons from NY State Parks and NJ DEP (each linked in its trip).";
-window.blipContext = () => ({ page: "Ride: bike + train escapes from NYC (bike rules checker and overnight trips)", check: { railroad: $("rr").value, direction: $("dir").value, when: $("when").value, folding: $("fold").checked, verdict: $("verdict").textContent.trim().slice(0, 300) }, trips: ESCAPES.map((e) => ({ title: e.title, railroad: NAMES[e.rr], campOpenNow: inSeason(new Date(), ...e.camp.season) })) });
+// ---------- make your own ----------
+const getJSON = (u, opts) => fetch(u, opts).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+const KEY = "ride-escapes-mine";
+let mine = []; try { mine = JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch {}
+const saveMine = () => { try { localStorage.setItem(KEY, JSON.stringify(mine)); } catch {} };
+let stations = [], found = [], fromSt = null;
+$("mkGo").disabled = true; $("mkStatus").textContent = "Loading the stations…";
+getJSON("/api/ride/stations").then((d) => { stations = d; fillStations(); $("mkGo").disabled = false; $("mkStatus").textContent = ""; }).catch(() => ($("mkStatus").textContent = "Couldn't load the station list. Try again in a minute."));
+function fillStations() { const rr = $("mkRr").value; $("mkStations").innerHTML = stations.filter((x) => x.rr.includes(rr)).map((x) => `<option value="${esc(x.name)}">`).join(""); }
+$("mkRr").onchange = fillStations;
+const kmLabel = () => ($("mkKmV").textContent = `${$("mkKm").value} km`); $("mkKm").oninput = kmLabel; kmLabel();
+const planLink = (pts) => "/ride/#plan=" + encodeURIComponent(pts.map(([a, b, n]) => `${a},${b},${n}`).join("|"));
+$("mkGo").onclick = async () => {
+  const rr = $("mkRr").value, name = $("mkSt").value.trim().toLowerCase();
+  fromSt = stations.find((x) => x.rr.includes(rr) && x.name.toLowerCase() === name) ?? stations.find((x) => x.rr.includes(rr) && x.name.toLowerCase().includes(name));
+  if (!name || !fromSt) { $("mkStatus").textContent = "Pick a station from the list (start typing its name)."; return; }
+  $("mkSt").value = fromSt.name; $("mkStatus").textContent = `Looking for campgrounds within ${$("mkKm").value} km of ${fromSt.name} (OpenStreetMap can take up to a minute)…`; $("mkOut").innerHTML = "";
+  try { found = (await getJSON(`/api/ride/camps?lat=${fromSt.lat}&lon=${fromSt.lon}&km=${$("mkKm").value}`)).camps; } catch (e) { $("mkStatus").textContent = e.message; return; }
+  renderFound();
+};
+$("mkHike").onchange = () => found.length && renderFound();
+function renderFound() {
+  const list = found.filter((c) => $("mkHike").checked || !c.backcountry);
+  $("mkStatus").textContent = list.length ? `${list.length} campground${list.length > 1 ? "s" : ""} within ${$("mkKm").value} km of ${fromSt.name} (straight-line distance; measure the ride for the real one).` : `No campgrounds mapped within ${$("mkKm").value} km of ${fromSt.name}${found.length ? " (only hike-in trail sites: tick the box to see them)" : ""}. Try a bigger distance or another station.`;
+  $("mkOut").innerHTML = list.map((c) => `<div class="found card" data-osm="${esc(c.osm)}">
+    <p><b>${esc(c.name)}</b> <span class="hint">${c.km} km away${c.backcountry ? " · hike-in trail site" : ""}${c.operator ? ` · ${esc(c.operator)}` : ""}${c.fee ? ` · fee: ${esc(c.fee)}` : ""}${c.season ? ` · hours: ${esc(c.season)}` : ""}</span></p>
+    <p class="hint">${c.website ? `<a href="${esc(c.website)}" rel="noopener" target="_blank">its website</a> · ` : "no website mapped · "}<a href="https://www.openstreetmap.org/${esc(c.osm)}" target="_blank" rel="noopener">on OpenStreetMap</a></p>
+    <p class="hint ride"></p>
+    <div class="actions"><button data-act="measure">⏱ Measure the ride</button><a class="button" href="${planLink([[fromSt.lat, fromSt.lon, `${fromSt.name} station`], [c.lat, c.lon, c.name]])}">🗺 Plan it</a><button data-act="save">＋ Save as my escape</button></div></div>`).join("");
+}
+$("mkOut").addEventListener("click", async (ev) => {
+  const box = ev.target.closest("[data-osm]"), act = ev.target.dataset.act; if (!box || !act) return;
+  const c = found.find((x) => x.osm === box.dataset.osm);
+  if (act === "measure") {
+    const out = box.querySelector(".ride"); out.textContent = "Measuring the bike route…";
+    try {
+      const r = await getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: [[fromSt.lat, fromSt.lon], [c.lat, c.lon]], bike: "hybrid", hills: 0.5 }) });
+      let up = 0; r.points.forEach((p, i) => { if (i && p[2] != null && r.points[i - 1][2] != null) up += Math.max(0, p[2] - r.points[i - 1][2]); });
+      c.rideKm = Math.round(r.km); c.rideUp = Math.round(up / 10) * 10;
+      out.innerHTML = `🚲 <b>${c.rideKm} km</b> by bike, about ${c.rideUp} m of climbing (roughly ${Math.round(r.minutes / 60 * 10) / 10} h of riding)`;
+    } catch (e) { out.textContent = e.message; }
+  }
+  if (act === "save") {
+    mine.unshift({ id: `${fromSt.name}|${c.osm}`, rr: $("mkRr").value, station: { name: fromSt.name, lat: fromSt.lat, lon: fromSt.lon }, camp: { name: c.name, lat: c.lat, lon: c.lon, website: c.website, osm: c.osm }, rideKm: c.rideKm ?? null, rideUp: c.rideUp ?? null, note: "", saved: new Date().toISOString().slice(0, 10) });
+    mine = mine.filter((m, i, a) => a.findIndex((x) => x.id === m.id) === i).slice(0, 100); saveMine(); renderMine();
+    ev.target.textContent = "✓ Saved"; ev.target.disabled = true;
+  }
+});
+// shareable: #escape=<base64 of one escape>
+const toB64 = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/=+$/, ""), fromB64 = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
+function renderMine() {
+  $("mineList").innerHTML = mine.length ? mine.map((m, i) => `<article class="trip card">
+    <h3>${esc(m.station.name)} → ${esc(m.camp.name)}</h3>
+    <span class="tag mine">yours</span><span class="tag">🚆 ${NAMES[m.rr]}</span><span class="tag">from OpenStreetMap: check the season and booking</span>
+    <p>${m.rideKm ? `🚲 ${m.rideKm} km${m.rideUp ? `, ~${m.rideUp} m up` : ""} each way` : "Ride not measured yet: plan it to see."} ${m.camp.website ? ` · <a href="${esc(m.camp.website)}" target="_blank" rel="noopener">campground's website</a>` : ""}</p>
+    <p><input data-note="${i}" value="${esc(m.note)}" placeholder="your notes: booked? site number? which train?" style="width:100%"></p>
+    <div class="actions"><a class="button" href="${planLink([[m.station.lat, m.station.lon, `${m.station.name} station`], [m.camp.lat, m.camp.lon, m.camp.name]])}">🗺 Plan this ride</a><button data-rr="${m.rr}">Check my trains</button><button data-share="${i}">🔗 Share</button><button data-del="${i}">Remove</button></div>
+  </article>`).join("") : `<p class="hint">None yet: make one above and press "Save".</p>`;
+}
+$("mineList").addEventListener("input", (e) => { const i = e.target.dataset.note; if (i != null) { mine[+i].note = e.target.value.slice(0, 200); saveMine(); } });
+$("mineList").addEventListener("click", async (e) => {
+  const del = e.target.dataset.del, share = e.target.dataset.share, rr = e.target.closest("[data-rr]")?.dataset.rr;
+  if (del != null) { mine.splice(+del, 1); saveMine(); renderMine(); }
+  if (share != null) { const { note, ...m } = mine[+share], url = `${location.origin}/ride/escapes.html#escape=${toB64(m)}`; try { await navigator.clipboard.writeText(url); e.target.textContent = "✓ Link copied"; } catch { prompt("Copy this link:", url); } }
+  if (rr) { $("rr").value = rr; check(); $("rr").scrollIntoView({ behavior: "smooth", block: "center" }); }
+});
+// someone shared one with you: add it (once) to your list
+try {
+  const sh = location.hash.match(/^#escape=([A-Za-z0-9+/]+)$/)?.[1];
+  if (sh) { const m = fromB64(sh); if (m?.station?.name && m?.camp?.name && Number.isFinite(m.camp.lat) && NAMES[m.rr]) { m.note = "shared with you"; mine = [m, ...mine.filter((x) => x.id !== m.id)]; saveMine(); history.replaceState(null, "", location.pathname + "#mine"); } }
+} catch {}
+renderMine();
+
+window.blipContext = () => ({ page: "Ride: bike + train escapes from NYC (bike rules checker, overnight trips, and a builder for your own from OpenStreetMap campgrounds near any station)", yourEscapes: mine.map((m) => `${m.station.name} → ${m.camp.name}${m.rideKm ? ` (${m.rideKm} km)` : ""}`), check: { railroad: $("rr").value, direction: $("dir").value, when: $("when").value, folding: $("fold").checked, verdict: $("verdict").textContent.trim().slice(0, 300) }, trips: ESCAPES.map((e) => ({ title: e.title, railroad: NAMES[e.rr], campOpenNow: inSeason(new Date(), ...e.camp.season) })) });
 </script>
 </body>
 </html>
