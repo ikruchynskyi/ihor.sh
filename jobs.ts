@@ -19,6 +19,7 @@ db.exec(`
   create index if not exists jobs_open on jobs (closed, dup_of);
   create virtual table if not exists jobs_fts2 using fts5(id unindexed, title, company, body, tokenize = 'porter unicode61'); -- porter: engineers = engineer
   create table if not exists runs (at int, what text, ok int, n int, note text);
+  create table if not exists probed (ckey text primary key, at int, found text);
 `);
 const now = () => Math.floor(Date.now() / 1000);
 const UA = { "user-agent": "ihor.sh jobs (+https://ihor.sh/nyc/jobs.html)", accept: "application/json" };
@@ -259,6 +260,25 @@ export async function refreshRemote() {
   return { jobs: n };
 }
 
+/** The employer list grows by itself: companies seen in Adzuna are tried on Greenhouse, Lever and Ashby (once each, up
+ *  to `max` a day); any board that answers with NYC-area or US-remote jobs is added and read hourly from then on. */
+export async function discover(max = 40) {
+  const cands = db.prepare("select company, ckey, count(*) n from jobs where source = 'adzuna' and closed is null and ckey not in (select ckey from probed) group by ckey order by n desc limit ?").all(max) as any[];
+  let added = 0;
+  for (const c of cands) {
+    const slugs = [...new Set([c.ckey, c.company.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), c.company.toLowerCase().split(/\s+/)[0].replace(/[^a-z0-9]/g, "")])].filter((x) => x.length > 2);
+    let found = "";
+    for (const slug of slugs) for (const ats of ["greenhouse", "lever", "ashby"]) {
+      if (found || STAFFING.test(c.company)) continue;
+      try { const jobs = await readBoard(ats, slug); if (jobs.some((j) => region(j.location, j.isRemote)) && jobs.some((j) => ckey(j.company) === c.ckey || ats !== "greenhouse")) found = `${ats}:${slug}`; } catch {}
+    }
+    db.prepare("insert or replace into probed values (?, ?, ?)").run(c.ckey, now(), found);
+    if (found) { const [ats, slug] = found.split(":"); db.prepare("insert or ignore into companies (ats, slug, added) values (?, ?, ?)").run(ats, slug, now()); added++; }
+  }
+  db.prepare("insert into runs values (?,?,?,?,?)").run(now(), "discover", 1, added, `${cands.length} companies tried`);
+  return { tried: cands.length, added };
+}
+
 /** Duplicates across sources: the same company + title + area, or the same company with a near-identical description.
  *  The employer's own record wins (ATS > city > remote boards > Adzuna); the others point to it and show as "also on". */
 export function dedupe() {
@@ -346,8 +366,16 @@ export async function jobsTick() {
     await refreshBoards().catch((e) => console.log("jobs boards:", e.message));
     await refreshNycJobs().catch((e) => console.log("jobs nyc:", e.message));
     const last = (db.prepare("select max(at) t from runs where what = 'adzuna'").get() as any)?.t ?? 0;
-    if (now() - last > 20 * 3600) { await refreshAdzuna().catch((e) => console.log("jobs adzuna:", e.message)); await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); }
+    if (now() - last > 20 * 3600) { await refreshAdzuna().catch((e) => console.log("jobs adzuna:", e.message)); await refreshRemote().catch((e) => console.log("jobs remote:", e.message)); await discover().catch((e) => console.log("jobs discover:", e.message)); }
     dedupe();
   } finally { running = false; }
 }
 export function startJobs() { setTimeout(jobsTick, 30_000); setInterval(jobsTick, 3600_000); }
+
+/** A saved search as RSS: the 30 newest matches. */
+export function rss(qy: Query, selfUrl: string, title: string) {
+  const r = search(qy), x = (t: string) => t.replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" })[c]!);
+  r.rows.sort((a: any, b: any) => (b.posted ?? b.first_seen) - (a.posted ?? a.first_seen)); // the best 30 matches, newest first
+  const items = r.rows.map((j: any) => `<item><title>${x(`${j.title} at ${j.company}`)}</title><link>${x(j.url)}</link><guid isPermaLink="false">${x(j.id)}</guid><pubDate>${new Date((j.posted ?? j.first_seen) * 1000).toUTCString()}</pubDate><description>${x(`${j.location}${j.salary_min ? ` · $${Math.round(j.salary_min)}–$${Math.round(j.salary_max)} per ${j.salary_period}` : ""}${j.flags.length ? ` · flags: ${j.flags.join(", ")}` : ""}`)}</description></item>`).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${x(title)}</title><link>${x(selfUrl)}</link><description>Open jobs matching a saved search on ihor.sh</description>${items}</channel></rss>`;
+}

@@ -20,7 +20,7 @@ import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
-import { startJobs, search as jobSearch, job as jobOne, stats as jobStats } from "./jobs.ts";
+import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
@@ -211,6 +211,13 @@ const server = http.createServer(async (req, res) => {
     console.log(`mcp: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
     if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
     return mcp(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: { url: "mcp", title: "MCP client" } }, SYSTEM)).catch((e) => res.writeHead(500).end(String(e.message)));
+  }
+  if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
+    const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;
+    if (!spend(`rss:${String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress)}`, 60, 3600_000)) return res.writeHead(429).end("Too many requests.");
+    const xml = jobRss({ q: g("q"), company: g("company"), exclude: g("exclude"), region: g("region"), remote: g("remote"), salaryMin: Number(p.get("salary")) || undefined, hideNoSalary: p.get("nosalary") === "0", seniority: g("seniority"), func: g("func"), source: g("source"), hideFlagged: p.get("flagged") === "0", titleOnly: p.get("title") === "1" },
+      `https://ihor.sh/nyc/jobs.html?${p}`, `Jobs: ${g("name") ?? g("q") ?? "saved search"}`);
+    return res.writeHead(200, { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=900" }).end(xml);
   }
   if (url.pathname.startsWith("/api/")) {
     if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");

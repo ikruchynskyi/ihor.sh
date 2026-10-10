@@ -187,12 +187,12 @@ const saved = () => { try { return JSON.parse(localStorage.getItem(SK) ?? "[]");
 const putSaved = (l) => { try { localStorage.setItem(SK, JSON.stringify(l)); } catch {} };
 async function renderSaved() {
   const l = saved();
-  $("saved").innerHTML = l.length ? l.map((s, i) => `<li><a href="?${esc(s.q)}">${esc(s.name)}</a><span class="new" id="sv${i}"></span><button data-rm="${i}" title="Remove" type="button">✕</button></li>`).join("") : `<li class="hint">None yet.</li>`;
+  $("saved").innerHTML = l.length ? l.map((s, i) => `<li><a href="?${esc(s.q)}">${esc(s.name)}</a><span class="new" id="sv${i}"></span><a class="hint" href="/jobs/feed.xml?${esc(s.q)}&name=${encodeURIComponent(s.name)}" title="RSS feed: add it to any feed reader to hear about new matches" style="flex:0">RSS</a><button data-rm="${i}" title="Remove" type="button">✕</button></li>`).join("") : `<li class="hint">None yet.</li>`;
   // how many are new since you last opened each saved search
   l.forEach(async (s, i) => { const p = new URLSearchParams(s.q); p.set("days", String(Math.max(1, Math.ceil((Date.now() / 1000 - s.seen) / 86400)))); const d = await getJSON(`/api/jobs/search?${p}`).catch(() => null); const n = d?.rows.filter((r) => r.first_seen > s.seen).length; if (n) $(`sv${i}`).textContent = `${n}${n >= 30 ? "+" : ""} new`; });
 }
 $("saved").addEventListener("click", (e) => { const rm = e.target.dataset.rm; if (rm != null) { const l = saved(); l.splice(+rm, 1); putSaved(l); renderSaved(); } });
-$("saved").addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a) return; e.preventDefault(); const l = saved(), s = l.find((x) => `?${x.q}` === a.getAttribute("href")); if (s) { s.seen = Math.floor(Date.now() / 1000); putSaved(l); } restore(new URLSearchParams(a.getAttribute("href").slice(1))); facets(last?.facets); run(); });
+$("saved").addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a || a.getAttribute("href").startsWith("/jobs/feed")) return; e.preventDefault(); const l = saved(), s = l.find((x) => `?${x.q}` === a.getAttribute("href")); if (s) { s.seen = Math.floor(Date.now() / 1000); putSaved(l); } restore(new URLSearchParams(a.getAttribute("href").slice(1))); facets(last?.facets); run(); });
 $("save").onclick = () => { const q = state().toString(); if (!q) return; const name = prompt("Name this search:", $("q").value || "My search"); if (!name) return; putSaved([...saved().filter((s) => s.q !== q), { name: name.slice(0, 60), q, seen: Math.floor(Date.now() / 1000) }]); renderSaved(); };
 
 getJSON("/api/jobs/stats").then((s) => {
