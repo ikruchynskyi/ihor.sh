@@ -219,14 +219,38 @@ export async function geocode(text: string) {
   return f ? { label: f.properties.label as string, lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number } : null;
 }
 
+/**
+ * What you might mean so far, for the trip planner's dropdown as you type: place names from OpenStreetMap (Photon,
+ * inside NYC) and street addresses from NYC Planning GeoSearch's autocomplete. Addresses first when the text starts
+ * with a number. Duplicates (a station's several entrances) are folded by name and ~300 m.
+ */
+export async function suggest(text: string) {
+  if (text.trim().length < 2) return [];
+  const photon = json(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=8&lang=en&bbox=-74.26,40.49,-73.69,40.92`).then((d) => (d.features as any[]).map((f) => {
+    const q = f.properties, street = [q.housenumber, q.street].filter(Boolean).join(" ");
+    return { name: q.name ?? street, detail: [q.name ? street : null, q.district ?? q.city].filter(Boolean).join(", "), kind: String(q.osm_value ?? "").replace(/_/g, " "), lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number };
+  })).catch(() => []);
+  const addresses = json(`https://geosearch.planninglabs.nyc/v2/autocomplete?text=${encodeURIComponent(text)}`).then((d) => (d.features as any[]).slice(0, 6).map((f) => {
+    const q = f.properties;
+    return { name: titleCase(q.name), detail: [q.borough, q.postalcode].filter(Boolean).join(" "), kind: "address", lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number };
+  })).catch(() => []);
+  const [a, b] = await Promise.all([photon, addresses]);
+  const out: Awaited<typeof photon> = [];
+  // a typed name: the city's address list adds alias spellings ("Barclay's Center & Arena"…), so only its top two
+  for (const x of /^\s*\d/.test(text) ? [...b, ...a] : [...a, ...b.slice(0, 2)])
+    if (x.name && !out.some((y) => y.name.toLowerCase() === x.name.toLowerCase() && Math.abs(y.lat - x.lat) + Math.abs(y.lon - x.lon) < 0.004)) out.push(x);
+  return out.slice(0, 8);
+}
+
 const COSTING = { drive: "auto", bike: "bicycle", walk: "pedestrian" } as const;
 
-/** A car route with live and typical traffic from TomTom (key in .env as TOMTOM_API_KEY). */
-async function tomtomRoute(a: { lat: number; lon: number }, b: { lat: number; lon: number }, avoidFerries: boolean) {
+type Place = { lat: number; lon: number; label: string };
+/** A car route through `pts` in order, with live and typical traffic from TomTom (key in .env as TOMTOM_API_KEY). */
+async function tomtomRoute(pts: Place[], avoidFerries: boolean) {
   const q = new URLSearchParams({ key: env("TOMTOM_API_KEY"), traffic: "true", travelMode: "car", computeTravelTimeFor: "all", sectionType: "ferry", routeRepresentation: "polyline" });
   q.append("sectionType", "traffic"); // jams on the route: where, how bad, how slow
   if (avoidFerries) q.set("avoid", "ferries");
-  const d = await json(`https://api.tomtom.com/routing/1/calculateRoute/${a.lat},${a.lon}:${b.lat},${b.lon}/json?${q}`);
+  const d = await json(`https://api.tomtom.com/routing/1/calculateRoute/${pts.map((p) => `${p.lat},${p.lon}`).join(":")}/json?${q}`);
   const r = d.routes?.[0];
   if (!r) throw new Error("no TomTom route");
   return {
@@ -249,17 +273,19 @@ function decodePolyline(str: string, precision = 6) {
   return out;
 }
 /**
- * A route from A to B (Valhalla on valhalla1.openstreetmap.de, which can avoid ferries) and the traffic cameras
- * along it, in order: every camera within 150 m of the line, sorted by how far along the trip it is.
+ * A route from A to B through up to 6 stops in order (Valhalla on valhalla1.openstreetmap.de, which can avoid ferries)
+ * and the traffic cameras along it, in order: every camera within 150 m of the line, sorted by how far along the trip it is.
  */
-export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING | "transit" = "drive", { avoidFerries = false } = {}) {
-  const [a, b] = await Promise.all([geocode(from), geocode(to)]);
-  if (!a || !b) return { error: `Couldn't find ${!a ? from : to} in NYC.` };
-  if (mode === "transit") return transitPlan(a, b);
+export async function tripPlan(from: string, to: string, mode: keyof typeof COSTING | "transit" = "drive", { avoidFerries = false, via = [] as string[] } = {}) {
+  const names = [from, ...via.slice(0, 6), to], found = await Promise.all(names.map(geocode));
+  const missing = found.findIndex((p) => !p);
+  if (missing >= 0) return { error: `Couldn't find ${names[missing]} in NYC.` };
+  const pts = found as Place[], a = pts[0], b = pts[pts.length - 1], stops = pts.slice(1, -1);
+  if (mode === "transit") return stops.length ? transitWithStops(pts) : transitPlan(a, b);
   // Car trips with a TomTom key: live traffic in the time. Otherwise (and for bike/walk) Valhalla's typical speeds.
-  const tt = mode === "drive" && env("TOMTOM_API_KEY") ? await tomtomRoute(a, b, avoidFerries).catch(() => null) : null;
+  const tt = mode === "drive" && env("TOMTOM_API_KEY") ? await tomtomRoute(pts, avoidFerries).catch(() => null) : null;
   const costing = COSTING[mode] ?? "auto";
-  const req = { locations: [{ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }], costing, costing_options: { [costing]: { use_ferry: avoidFerries ? 0 : 0.5 } }, units: "kilometers" };
+  const req = { locations: pts.map((p) => ({ lat: p.lat, lon: p.lon })), costing, costing_options: { [costing]: { use_ferry: avoidFerries ? 0 : 0.5 } }, units: "kilometers" };
   const trip = tt ? null : (await (await fetch(`https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify(req))}`,
     { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) })).json()).trip;
   if (!tt && !trip) return { error: "No route found." };
@@ -293,7 +319,7 @@ export async function tripPlan(from: string, to: string, mode: keyof typeof COST
     .map((l: any) => ({ name: l.name, mph: l.mph })).sort((x: any, y: any) => x.mph - y.mph) } : null;
   const jams = tt?.jams ?? [];
   const eta = tt ? { source: "TomTom live traffic", delayMinutes: Math.round(tt.delay / 60), noTrafficMinutes: Math.round(tt.noTraffic / 60) } : { source: mode === "drive" ? "typical speeds (no live traffic)" : "typical speeds" };
-  return { from: a, to: b, mode, avoidFerries, usesFerry, eta, jams, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
+  return { from: a, to: b, stops, mode, avoidFerries, usesFerry, eta, jams, traffic, distanceKm: +(route.distance / 1000).toFixed(1), minutes: Math.round(route.duration / 60), line,
     cameras: along.map(({ cam, at, off }) => ({ ...cam, kmAlong: +(at / 1000).toFixed(1), metersOff: Math.round(off) })) };
 }
 
@@ -322,8 +348,25 @@ function dropHops(it: any) {
   return { ...it, legs, startTime: new Date(start).toISOString(), endTime: new Date(end).toISOString(), duration: (end - start) / 1000, transfers: Math.max(0, transit().length - 1) };
 }
 
-async function transitPlan(a: { lat: number; lon: number; label: string }, b: { lat: number; lon: number; label: string }) {
+/** Transit through stops: each stretch planned in turn, leaving when the last one arrives; the simplest option of each, joined. */
+async function transitWithStops(pts: Place[]) {
+  const parts: any[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const d: any = await transitPlan(pts[i - 1], pts[i], parts.at(-1)?.arrive);
+    if (d.error) return { error: `${pts[i - 1].label} → ${pts[i].label}: ${d.error}` };
+    const o = d.options[0];
+    o.legs.at(-1).stopAfter = i < pts.length - 1 ? pts[i].label : undefined;
+    parts.push(o);
+  }
+  const depart = parts[0].depart, arrive = parts.at(-1).arrive;
+  return { from: pts[0], to: pts.at(-1), stops: pts.slice(1, -1), mode: "transit", source: "Transitous (MTA schedules and live updates)",
+    options: [{ minutes: Math.round((Date.parse(arrive) - Date.parse(depart)) / 60000), transfers: parts.reduce((t, o) => t + o.transfers, 0), depart, arrive, later: [],
+      walkMinutes: parts.reduce((t, o) => t + o.walkMinutes, 0), legs: parts.flatMap((o) => o.legs) }] };
+}
+
+async function transitPlan(a: Place, b: Place, leaveAt?: string) {
   const q = new URLSearchParams({ fromPlace: `${a.lat},${a.lon}`, toPlace: `${b.lat},${b.lon}`, numItineraries: "8", transitModes: "SUBWAY,BUS", directModes: "WALK" });
+  if (leaveAt) q.set("time", leaveAt);
   const r = await fetch(`https://api.transitous.org/api/v1/plan?${q}`, { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(25_000) });
   if (!r.ok) return { error: `The transit router isn't answering (${r.status}). Try again in a minute.` };
   const d = await r.json();

@@ -43,6 +43,10 @@
     #trip input:not([type]) { width: 100%; }
     .pickrow { display: flex; gap: 4px; }
     .pickrow button { padding: 4px 8px !important; }
+    #sugg { position: fixed; z-index: 1700; margin: 0; padding: 4px 0; list-style: none; max-height: 280px; overflow: auto; background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0,0,0,.4); font-size: .85rem; }
+    #sugg li { padding: 5px 10px; cursor: pointer; } #sugg li .muted { font-size: .75rem; }
+    #sugg li:hover, #sugg li[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+    .pin-n { position: absolute; left: 15px; top: -4px; font: bold 10px/14px sans-serif; min-width: 14px; text-align: center; border-radius: 7px; background: #ffb347; color: #000; }
     .pick[aria-pressed="true"] { background: var(--accent) !important; }
     .picking .leaflet-container, .picking #map { cursor: crosshair !important; }
     .modes { display: flex; gap: 6px; border: 0; padding: 0; margin: 6px 0; }
@@ -90,6 +94,7 @@
 </head>
 <body>
 <div id="map"></div>
+<ul id="sugg" role="listbox" aria-label="Matching places" hidden></ul>
 <div id="panel">
   <div class="phead"><h1>NYC Live Map</h1><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
@@ -100,8 +105,10 @@
   <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
   <details open><summary>Trip planner: cameras on your route</summary>
     <form id="trip">
-      <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button><button type="button" id="tHere" title="Start from where I am" aria-label="Start from where I am">🎯</button></span></label>
-      <label>To <span class="pickrow"><input id="tTo" placeholder="e.g. Barclays Center, or 📍" autocomplete="off"><button type="button" class="pick" data-for="tTo" title="Pick the destination on the map" aria-label="Pick the destination on the map">📍</button></span></label>
+      <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button><button type="button" id="tHere" title="Start from where I am" aria-label="Start from where I am">🎯</button></span></label>
+      <div id="tStops"></div>
+      <button type="button" id="tAddStop" class="linkish" style="margin:2px 0 4px">+ Add a stop</button>
+      <label>To <span class="pickrow"><input id="tTo" placeholder="e.g. Barclays Center, or 📍" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button type="button" class="pick" data-for="tTo" title="Pick the destination on the map" aria-label="Pick the destination on the map">📍</button></span></label>
       <div class="muted" id="pickHint" hidden>Click the map to set the point (Esc to cancel).</div>
       <fieldset class="modes"><legend>By</legend>
         <label title="Car"><input type="radio" name="tMode" value="drive" checked><span aria-hidden="true">🚗</span><b>Car</b></label>
@@ -562,7 +569,14 @@ function openCam(c) {
 const tripLayer = L.layerGroup().addTo(map);
 // Picking start/end on the map: the 📍 button arms the next map click; the point becomes a draggable marker
 // (drag it to re-plan). The input shows the nearest address but the route uses the exact point.
-const picked = { tFrom: null, tTo: null }, pinMarkers = {};
+const picked = {}, pinMarkers = {};
+const stopIds = () => [...$("tStops").querySelectorAll("input")].map((i) => i.id);
+const ready = () => $("tFrom").value.trim() && $("tTo").value.trim();
+const replan = () => { if (ready()) $("trip").requestSubmit(); };
+function pinIcon(id) {
+  const n = stopIds().indexOf(id) + 1, color = id === "tFrom" ? "#5cff9d" : id === "tTo" ? "#ff5c8a" : "#ffb347";
+  return L.divIcon({ className: "", html: `<div style="position:relative;font-size:26px;line-height:26px;filter:drop-shadow(0 0 2px #000);color:${color}">📍${n ? `<b class="pin-n">${n}</b>` : ""}</div>`, iconSize: [26, 26], iconAnchor: [13, 26] });
+}
 let picking = null;
 const setPicking = (id) => {
   picking = id;
@@ -570,21 +584,105 @@ const setPicking = (id) => {
   $("pickHint").hidden = !id;
   document.querySelectorAll(".pick").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.for === id)));
 };
-document.querySelectorAll(".pick").forEach((b) => (b.onclick = () => setPicking(picking === b.dataset.for ? null : b.dataset.for)));
+$("trip").addEventListener("click", (e) => {
+  const b = e.target.closest(".pick"), rm = e.target.closest("[data-rm]");
+  if (b) setPicking(picking === b.dataset.for ? null : b.dataset.for);
+  if (rm) removeStop(rm.dataset.rm);
+});
 addEventListener("keydown", (e) => { if (e.key === "Escape" && picking) setPicking(null); });
-async function placePin(id, latlng) {
+/** A start, stop or destination pin at `latlng`; the field shows `label`, or the nearest address once it's looked up. */
+async function placePin(id, latlng, label) {
   picked[id] = { lat: latlng.lat, lon: latlng.lng };
-  const color = id === "tFrom" ? "#5cff9d" : "#ff5c8a";
-  const icon = L.divIcon({ className: "", html: `<div style="font-size:26px;line-height:26px;filter:drop-shadow(0 0 2px #000);color:${color}">📍</div>`, iconSize: [26, 26], iconAnchor: [13, 26] });
   pinMarkers[id]?.remove();
-  pinMarkers[id] = L.marker(latlng, { icon, draggable: true, title: id === "tFrom" ? "Start" : "Destination" }).addTo(map)
-    .on("dragend", (ev) => placePin(id, ev.target.getLatLng()).then(() => { if (picked.tFrom && picked.tTo || ($("tFrom").value && $("tTo").value)) $("trip").requestSubmit(); }));
+  pinMarkers[id] = L.marker(latlng, { icon: pinIcon(id), draggable: true, title: id === "tFrom" ? "Start" : id === "tTo" ? "Destination" : "Stop" }).addTo(map)
+    .on("dragend", (ev) => placePin(id, ev.target.getLatLng()).then(replan));
+  if (label) return void ($(id).value = picked[id].label = label);
   $(id).value = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
   const d = await getJSON(`/api/nyc/point?lat=${latlng.lat.toFixed(6)}&lon=${latlng.lng.toFixed(6)}`).catch(() => null);
   if (d?.found && picked[id]?.lat === latlng.lat) $(id).value = d.address || d.place;
   picked[id].label = $(id).value;
 }
-["tFrom", "tTo"].forEach((id) => $(id).addEventListener("input", () => { picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }));
+$("trip").addEventListener("input", (e) => {
+  const id = e.target.id;
+  if (!e.target.matches("input[role=combobox]")) return;
+  picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id];
+  suggestFor(e.target);
+});
+
+// Stops on the way (up to 6), in order between the start and the destination.
+let stopSeq = 0;
+function addStop(value = "", focus = true) {
+  if (stopIds().length >= 6) return;
+  const id = `tS${++stopSeq}`, row = document.createElement("label");
+  row.innerHTML = `<span class="sn"></span> <span class="pickrow"><input id="${id}" placeholder="A stop on the way" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button type="button" class="pick" data-for="${id}" title="Pick this stop on the map" aria-label="Pick this stop on the map">📍</button><button type="button" data-rm="${id}" title="Remove this stop" aria-label="Remove this stop">✕</button></span>`;
+  $("tStops").append(row);
+  $(id).value = value;
+  renumber();
+  if (focus) $(id).focus();
+}
+function removeStop(id) {
+  $(id).closest("label").remove();
+  delete picked[id]; pinMarkers[id]?.remove(); delete pinMarkers[id];
+  renumber(); replan();
+}
+function renumber() {
+  stopIds().forEach((id, i) => { $(id).closest("label").querySelector(".sn").textContent = `Stop ${i + 1}`; pinMarkers[id]?.setIcon(pinIcon(id)); });
+  $("tAddStop").hidden = stopIds().length >= 6;
+}
+$("tAddStop").onclick = () => addStop();
+
+// Search as you type: a dropdown of matching places (OpenStreetMap names, NYC addresses). ↑/↓ and Enter pick one.
+const sugg = $("sugg"), suggCache = new Map();
+let suggFor = null, suggItems = [], suggActive = -1, suggTimer = 0;
+function suggestFor(input) {
+  clearTimeout(suggTimer);
+  const q = input.value.trim();
+  if (q.length < 2) return hideSugg();
+  suggTimer = setTimeout(async () => {
+    const list = suggCache.get(q) ?? (await getJSON(`/api/nyc/suggest?q=${encodeURIComponent(q)}`).catch(() => []));
+    suggCache.set(q, list);
+    if (input.value.trim() === q && document.activeElement === input) showSugg(input, list);
+  }, 200);
+}
+function showSugg(input, list) {
+  if (!list.length) return hideSugg();
+  suggFor = input; suggItems = list; suggActive = -1;
+  sugg.innerHTML = list.map((s, i) => `<li role="option" id="sg${i}" aria-selected="false"><b>${esc(s.name)}</b> <span class="muted">${esc([s.detail, s.kind === "address" ? "" : s.kind].filter(Boolean).join(" · "))}</span></li>`).join("");
+  const r = input.getBoundingClientRect();
+  Object.assign(sugg.style, { left: `${r.left}px`, top: `${r.bottom + 2}px`, width: `${Math.max(r.width, 280)}px` });
+  sugg.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+}
+function hideSugg() {
+  clearTimeout(suggTimer);
+  sugg.hidden = true;
+  suggFor?.setAttribute("aria-expanded", "false");
+  suggFor?.removeAttribute("aria-activedescendant");
+  suggFor = null;
+}
+async function choose(i) {
+  const s = suggItems[i], id = suggFor.id;
+  hideSugg();
+  await placePin(id, L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name);
+  if (ready()) return replan();
+  map.panTo([s.lat, s.lon]);
+  ["tFrom", ...stopIds(), "tTo"].map((x) => $(x)).find((x) => !x.value.trim())?.focus(); // on to the next empty field
+}
+sugg.addEventListener("pointerdown", (e) => { e.preventDefault(); const li = e.target.closest("li"); if (li) choose([...sugg.children].indexOf(li)); }); // keeps focus in the field
+$("trip").addEventListener("keydown", (e) => {
+  if (sugg.hidden || e.target !== suggFor) return;
+  const n = suggItems.length;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    suggActive = e.key === "ArrowDown" ? (suggActive + 1) % n : suggActive <= 0 ? n - 1 : suggActive - 1;
+    [...sugg.children].forEach((li, i) => li.setAttribute("aria-selected", String(i === suggActive)));
+    sugg.children[suggActive].scrollIntoView({ block: "nearest" });
+    suggFor.setAttribute("aria-activedescendant", `sg${suggActive}`);
+  } else if (e.key === "Enter" && suggActive >= 0) { e.preventDefault(); choose(suggActive); }
+  else if (e.key === "Escape") hideSugg();
+});
+$("trip").addEventListener("focusout", (e) => { if (e.target === suggFor) hideSugg(); });
+$("panel").addEventListener("scroll", hideSugg);
 const tripEnd = (id) => (picked[id] && $(id).value === picked[id].label ? `${picked[id].lat},${picked[id].lon}` : $(id).value.trim());
 
 // Where am I: the ◎ map button follows you with a blue dot (accuracy circle around it); 🎯 next to From
@@ -631,6 +729,8 @@ locateMe(false, true); // show you on the map right away (no start set)
 $("tClear").onclick = () => {
   tripLayer.clearLayers();
   for (const id of ["tFrom", "tTo"]) { $(id).value = ""; picked[id] = null; pinMarkers[id]?.remove(); delete pinMarkers[id]; }
+  for (const id of stopIds()) { $(id).closest("label").remove(); delete picked[id]; pinMarkers[id]?.remove(); delete pinMarkers[id]; }
+  renumber();
   setPicking(null);
   $("tripOut").textContent = "";
   seen.trip = null;
@@ -638,14 +738,16 @@ $("tClear").onclick = () => {
 
 $("trip").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const from = tripEnd("tFrom"), to = tripEnd("tTo");
+  hideSugg();
+  const from = tripEnd("tFrom"), to = tripEnd("tTo"), viaIds = stopIds().filter((id) => tripEnd(id));
   if (!from || !to) return;
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
-  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
+  const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${viaIds.map((id) => `&via=${encodeURIComponent(tripEnd(id))}`).join("")}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}`).catch((err) => ({ error: err.message }));
   if (d.error) return ($("tripOut").textContent = d.error);
+  d.viaIds = viaIds;
   if (d.mode === "transit") return showCommute(d, 0);
-  seen.trip = { from: d.from.label, to: d.to.label, mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => ({ cameraId: c.id, name: c.name })) };
+  seen.trip = { from: d.from.label, to: d.to.label, stops: d.stops?.map((x) => x.label), mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => ({ cameraId: c.id, name: c.name })) };
   const line = L.polyline(d.line, { color: "#4de1ff", weight: 5, opacity: 0.85 }).addTo(tripLayer);
   // Traffic on the route (car trips): each jam painted over the line by how bad it is.
   const JAM = { 1: ["#ffd166", "slow"], 2: ["#ff9f1c", "heavy"], 3: ["#ff5c8a", "jammed"], 4: ["#b3002d", "closed or stopped"] };
@@ -656,6 +758,7 @@ $("trip").addEventListener("submit", async (e) => {
   }
   if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
   if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
+  stopDots(d);
   const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
   for (const c of d.cameras) L.marker([c.lat, c.lon], { icon: camIcon, title: c.name }).on("click", () => openCam(c)).addTo(tripLayer);
   map.fitBounds(line.getBounds().pad(0.1));
@@ -671,6 +774,8 @@ $("trip").addEventListener("submit", async (e) => {
   $("openTrip")?.addEventListener("click", () => d.cameras.slice(0, 4).forEach(openCam));
 });
 
+const stopDots = (d) => (d.stops ?? []).forEach((s, i) => { if (!pinMarkers[d.viaIds?.[i]]) dot(s.lat, s.lon, "#ffb347", 8).bindTooltip(`Stop ${i + 1}: ${esc(s.label)}`).addTo(tripLayer); });
+
 // Commute (subway + bus + walking): options from Transitous; pick one to see it on the map, step by step.
 const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const legBullet = (l) => (l.mode === "SUBWAY" ? bullet(l.route) : busBullet({ name: l.route, color: l.color ?? "#1c7ed6", text: l.text }));
@@ -678,20 +783,22 @@ const legColor = (l) => (l.mode === "SUBWAY" ? ROUTE_COLOR[l.route.replace(/X$/,
 function showCommute(d, pick) {
   tripLayer.clearLayers();
   const o = d.options[pick];
-  seen.trip = { from: d.from.label, to: d.to.label, mode: "commute", options: d.options.map((x) => `${x.minutes} min, leave ${hm(x.depart)}: ${x.legs.map((l) => (l.mode === "WALK" ? `walk ${l.minutes} min` : `${l.route} ${l.from} → ${l.to}`)).join(", ")}`) };
+  seen.trip = { from: d.from.label, to: d.to.label, stops: d.stops?.map((x) => x.label), mode: "commute", options: d.options.map((x) => `${x.minutes} min, leave ${hm(x.depart)}: ${x.legs.map((l) => (l.mode === "WALK" ? `walk ${l.minutes} min` : `${l.route} ${l.from} → ${l.to}`)).join(", ")}`) };
   const lines = o.legs.map((l) => L.polyline(l.line, l.mode === "WALK" ? { color: "#9aa3cf", weight: 4, dashArray: "3 7" } : { color: legColor(l), weight: 6, opacity: 0.9 })
     .bindTooltip(l.mode === "WALK" ? `Walk ${l.minutes} min` : `${esc(l.route)} toward ${esc(l.headsign)}: ${esc(l.from)} → ${esc(l.to)}`).addTo(tripLayer));
   for (const l of o.legs.filter((x) => x.mode !== "WALK")) dot(l.line[0][0], l.line[0][1], legColor(l), 6).bindTooltip(`Board the ${esc(l.route)} at ${esc(l.from)}`).addTo(tripLayer);
   if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${esc(d.from.label)}`).addTo(tripLayer);
   if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${esc(d.to.label)}`).addTo(tripLayer);
+  stopDots(d);
   map.fitBounds(L.featureGroup(lines).getBounds().pad(0.1), { paddingTopLeft: [Math.max(20, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 20), 20] });
   const chips = (x) => x.legs.map((l) => (l.mode === "WALK" ? `<span class="muted">🚶${l.minutes}</span>` : legBullet(l))).join(' <span class="muted">›</span> ');
   const step = (l, i) => l.mode === "WALK"
     ? `<li>🚶 Walk ${l.estimated ? "~" : ""}${l.minutes} min to ${esc(i === o.legs.length - 1 ? d.to.label : o.legs[i + 1]?.from ?? "")}</li>`
     : `<li>${legBullet(l)} <b>${esc(l.route)}</b> toward ${esc(l.headsign)}<br><span class="muted">${hm(l.depart)} ${esc(l.from)} → ${hm(l.arrive)} ${esc(l.to)} · ${l.stops} stop${l.stops > 1 ? "s" : ""}, ${l.minutes} min${l.realTime ? " · live time" : ""}</span>
        ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`;
+  const stepAndStop = (l, i) => step(l, i) + (l.stopAfter ? `<li>📍 <b>Stop: ${esc(l.stopAfter)}</b></li>` : "");
   $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>${x.minutes} min</b> · ${hm(x.depart)} → ${hm(x.arrive)}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}<br>${chips(x)}</button>`).join("")
-    + `<ol class="steps">${o.legs.map(step).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
+    + `<ol class="steps">${o.legs.map(stepAndStop).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
     + `<div class="muted">Routes and times: <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a> on MTA schedules (live where the MTA reports it). Walks marked ~ are estimated.</div>`;
   $("tripOut").querySelectorAll("button[data-o]").forEach((b) => (b.onclick = () => showCommute(d, +b.dataset.o)));
 }
@@ -750,8 +857,8 @@ window.blipActions = {
     run: async ({ place, zoom }) => { const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(place)}`); if (g) { map.setView([g.lat, g.lon], Math.min(18, Math.max(11, Number(zoom) || 16))); L.popup().setLatLng([g.lat, g.lon]).setContent(esc(g.label)).openOn(map); const p = map.latLngToContainerPoint([g.lat, g.lon]), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; } } },
   open_cameras: { label: "opened cameras", description: "Open up to 4 live traffic camera windows whose name matches, e.g. 'Canal St', 'FDR', 'Atlantic Ave'.", parameters: { query: { type: "string", description: "Street or road words" } },
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
-  plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" } },
-    run: ({ from, to, mode, avoid_ferries }) => { $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
+  plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
+    run: ({ from, to, mode, avoid_ferries, stops }) => { $("tClear").click(); String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6).forEach((x) => addStop(x, false)); $("tFrom").value = from ?? ""; $("tTo").value = to ?? ""; const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
   show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },

@@ -17,7 +17,7 @@ import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, complaints311 } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -186,7 +186,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -220,7 +220,7 @@ const server = http.createServer(async (req, res) => {
       return proxySdr(req, res);
     }
     if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
-    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/311"].includes(url.pathname)) {
+    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/311"].includes(url.pathname)) {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
@@ -237,7 +237,8 @@ const server = http.createServer(async (req, res) => {
         return send(await complaints311(bs, bw, bn, be), 600);
       }
       if (url.pathname === "/api/nyc/geocode") return send(await geocode(String(q.get("q") ?? "").slice(0, 120)), 3600);
-      if (url.pathname === "/api/nyc/trip") return send(await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk", "transit"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0" }), 120);
+      if (url.pathname === "/api/nyc/suggest") return send(await suggest(String(q.get("q") ?? "").slice(0, 80)), 86400);
+      if (url.pathname === "/api/nyc/trip") return send(await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk", "transit"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0", via: q.getAll("via").slice(0, 6).map((v) => v.slice(0, 120)).filter(Boolean) }), 120);
       if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
       const from = q.get("from") ?? "", to = q.get("to") ?? from;
       if (!day.test(from) || !day.test(to)) return res.writeHead(400).end();
