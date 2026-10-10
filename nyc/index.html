@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
+  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
@@ -281,6 +281,7 @@ const LAYERS = {
   lightning: { grp: "sky", label: "⚡ Lightning (last 15 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "lightning", "lightning_detection", "ldn_lightning_strike_density", 0.8, "strike density on an ~8 km grid") },
   clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.85, "whiter = colder, higher cloud tops", { clouds: true }) },
   aircraft: { grp: "sky", label: "✈️ Aircraft & helicopters (live)", on: false, group: L.layerGroup(), load: loadAircraft },
+  ships: { grp: "go", label: "🚢 Ships in the harbor (live AIS)", on: false, group: L.layerGroup(), load: loadShips },
   storms: { grp: "sky", label: "🌀 Hurricanes & tropical storms", on: false, group: L.layerGroup(), load: loadStorms },
   iss: { grp: "sky", label: "🛰 The ISS and its next orbit", on: false, group: L.layerGroup(), load: loadIss },
   windy: { grp: "sky", label: "🌬 windy.com forecast map, under the markers", on: false, group: L.layerGroup(), load: () => {} },
@@ -289,7 +290,7 @@ const LAYERS = {
 const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather" };
 const groupCount = (g) => { const n = Object.values(LAYERS).filter((l) => l.grp === g && l.on).length; const el = $(`gn-${g}`); if (el) el.textContent = n ? `(${n} on)` : ""; };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { photo: null, weather: null, aircraft: null, trail: null, iss: null, storms: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
+const seen = { photo: null, weather: null, aircraft: null, ships: null, trail: null, iss: null, storms: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
   const ks = Object.entries(LAYERS).filter(([, l]) => l.grp === g);
@@ -590,6 +591,32 @@ function glideAircraft() {
 async function loadAircraft(g) {
   await refreshAircraft(g); glideAircraft();
   setInterval(() => { if (LAYERS.aircraft.on) refreshAircraft(g).catch(() => {}); }, 10_000);
+}
+// Ships from AIS (aisstream.io), every 10 s: an arrow pointing the way it's heading, colored by kind; moored ones are dots.
+const shipMarkers = new Map();
+const SHIP_COLOR = { passenger: "#4de1ff", cargo: "#ffb347", tanker: "#fc6255", tug: "#f4d35e", "pilot boat": "#f4d35e", sailing: "#e9ecff", "pleasure craft": "#e9ecff", "high-speed craft": "#4de1ff", military: "#83c167", "search and rescue": "#ff5c8a", "law enforcement": "#ff5c8a" };
+const shipMoving = (s) => (s.kts ?? 0) > 0.5 && !/moored|anchor/.test(s.status);
+const shipSvg = (s) => `<svg viewBox="0 0 24 24" width="20" height="20" style="transform:rotate(${s.heading ?? s.cog ?? 0}deg)"><path d="M12 2l6 18-6-4-6 4z" fill="${SHIP_COLOR[s.kind] ?? "#9aa3cf"}" stroke="#000" stroke-width=".8"/></svg>`;
+const shipIcon = (s) => shipMoving(s) ? L.divIcon({ className: "ship", html: shipSvg(s), iconSize: [20, 20] }) : L.divIcon({ className: "ship", html: `<span style="display:block;width:9px;height:9px;border-radius:50%;background:${SHIP_COLOR[s.kind] ?? "#9aa3cf"};border:1.5px solid #000"></span>`, iconSize: [9, 9] });
+const shipPopup = (s) => `<b>🚢 ${esc(s.name || `MMSI ${s.mmsi}`)}</b> <span class="muted">${esc(s.kind)}${s.length ? ` · ${s.length} m` : ""}${s.callsign ? ` · ${esc(s.callsign)}` : ""}</span><br>
+  ${s.kts != null ? `${s.kts} kt` : "speed unknown"}${s.heading != null || s.cog != null ? ` · heading ${s.heading ?? s.cog}°` : ""}${s.status ? ` · ${esc(s.status)}` : ""}${s.dest ? `<br>bound for <b>${esc(s.dest)}</b>` : ""}
+  <br><span class="muted">seen ${s.agoS < 90 ? `${s.agoS} s` : `${Math.round(s.agoS / 60)} min`} ago</span> · ${camBtn(s.lat, s.lon)} · <a href="https://www.vesselfinder.com/?mmsi=${s.mmsi}" target="_blank" rel="noopener">VesselFinder</a>`;
+async function refreshShips(g) {
+  const d = await getJSON("/api/nyc/ships"), list = d.ships, ids = new Set(list.map((s) => s.mmsi));
+  for (const s of list) {
+    let m = shipMarkers.get(s.mmsi);
+    if (!m) { m = L.marker([s.lat, s.lon], { icon: shipIcon(s), zIndexOffset: 700, title: s.name }).bindPopup(() => shipPopup(m.ship)).addTo(g); shipMarkers.set(s.mmsi, m); }
+    else { m.setLatLng([s.lat, s.lon]); if ((m.ship.heading ?? m.ship.cog) !== (s.heading ?? s.cog) || shipMoving(m.ship) !== shipMoving(s) || m.ship.kind !== s.kind) m.setIcon(shipIcon(s)); }
+    m.ship = s;
+  }
+  for (const [k, m] of shipMarkers) if (!ids.has(k)) { m.remove(); shipMarkers.delete(k); }
+  const moving = list.filter(shipMoving), kinds = {}; for (const s of list) kinds[s.kind] = (kinds[s.kind] ?? 0) + 1;
+  seen.ships = { count: list.length, moving: moving.slice(0, 25).map((s) => `${s.name || s.mmsi} (${s.kind}) ${s.kts} kt heading ${s.heading ?? s.cog}°${s.dest ? ` to ${s.dest}` : ""} at ${s.lat},${s.lon}`), byKind: kinds };
+  $("n-ships").textContent = d.off ? "(feed not set up)" : d.warming ? "(listening… a few seconds)" : `(${list.length}: ${moving.length} moving) · AIS`;
+}
+async function loadShips(g) {
+  await refreshShips(g);
+  setInterval(() => { if (LAYERS.ships.on) refreshShips(g).catch(() => {}); }, 10_000);
 }
 async function showTrail(hex) {
   const d = await getJSON(`/api/nyc/trace?hex=${encodeURIComponent(hex)}`).catch(() => null);
@@ -1154,7 +1181,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
+    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 

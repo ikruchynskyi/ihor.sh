@@ -594,7 +594,7 @@ function renderLog() {
   log.innerHTML = history.length
     ? history.map((m) => line(m.role === "user" ? "YOU" : "BLIP", m.role === "user" ? esc(m.content) : format(m.content))).join("")
     : line("BLIP", "Hi! I'm Blip. I can see this page with you: ask me to explain anything here, quiz you, or help you build it. What's up?") +
-      `<div class="chips">${CHIPS.map((c) => `<button type="button">${c}</button>`).join("")}</div>`;
+      `<div class="chips">${(Array.isArray(window.blipChips) ? window.blipChips.slice(0, 4).map(String) : CHIPS).map((c) => `<button type="button">${esc(c)}</button>`).join("")}</div>`;
   log.querySelectorAll(".chips button").forEach((b) => (b.onclick = () => send(b.textContent)));
   log.scrollTop = log.scrollHeight;
 }

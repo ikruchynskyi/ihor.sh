@@ -24,6 +24,7 @@ import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss a
 import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./evening.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
+import { shipsNow } from "./ships.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -219,7 +220,7 @@ function llmsTxt() {
   return (llms ??= (async () => {
     const out = [`# ihor.sh`, ``, `> Hobby projects built and learned in public, free and without accounts: a software-defined radio written from scratch with courses, NYC open-data tools (a live subway map, a jobs radar, an evening planner, a résumé check), AI and electronics courses with interactive chapters, Yomu (Japanese from zero), a bikepacking route notebook, and Blip, a companion that answers questions on every page.`, ``,
       `For agents:`, `- Pages render in the browser (JavaScript). The lists below link every page with its description.`,
-      `- Live data (subway, buses, ferries, Citi Bike, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP, 26 tools, bearer token from the owner), or by asking Blip on any page.`,
+      `- Live data (subway, buses, ferries, Citi Bike, ships in the harbor, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP, 26 tools, bearer token from the owner), or by asking Blip on any page.`,
       `- /api/ serves the site's own pages only; /sitemap.xml lists every page.`, `- Author: Ihor Kruchynskyi (https://ihork.link/).`, ``];
     for (const [name, { dir, label }] of Object.entries(WORLDS)) {
       out.push(`## ${label}`, ``);
@@ -397,7 +398,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
     // The sky and the air (sky.ts): cached there, so these are cheap however many people watch.
-    const SKY: Record<string, [() => Promise<unknown>, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
+    const SKY: Record<string, [() => unknown, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/ships": [shipsNow, 10], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
     if (url.pathname === "/api/nyc/iss-passes") { // optional ?lat&lon (rounded: a pass looks the same within a few km)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 70 && Math.abs(lo) <= 180;
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await issPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined))); }

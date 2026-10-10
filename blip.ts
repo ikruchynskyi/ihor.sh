@@ -8,6 +8,7 @@ import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, 
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
+import { shipsNow, shipsNear } from "./ships.ts";
 import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
@@ -76,6 +77,21 @@ const TOOLS: Record<string, Tool> = {
       const rows = list.map((a) => ({ id: a.flight || a.reg || a.hex, hex: a.hex, type: a.type, helicopter: a.heli, military: a.military, altFt: a.altFt, kts: a.kts && Math.round(a.kts), lat: a.lat, lon: a.lon, emergency: a.emergency ?? undefined, kmAway: at ? +km(at, a).toFixed(1) : undefined }));
       if (at) rows.sort((x, y) => x.kmAway! - y.kmAway!);
       return { total: list.length, aircraft: rows.slice(0, 25), source: "adsb.lol (ODbL)" };
+    },
+  },
+  ships_in_harbor: {
+    description: "Ships in New York Harbor and the rivers right now (live AIS): name, kind (passenger, cargo, tanker, tug, pilot boat, sailing…), speed, heading, status (under way, moored, at anchor), destination. Filter by kind, or the nearest to a point.",
+    parameters: { kind: { type: "string", description: "Optional: passenger, cargo, tanker, tug, sailing, pleasure, fishing, military, high-speed, pilot, moving (under way and faster than 1 kt)" }, lat: { type: "number", description: "Optional: nearest to this point" }, lon: { type: "number" } },
+    run: async ({ kind, lat, lon }) => {
+      const at = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : null;
+      const d = shipsNow();
+      if (d.off) return { error: "The AIS feed isn't set up." };
+      let list: any[] = at ? shipsNear(at.lat, at.lon, 200) : d.ships;
+      const k = String(kind ?? "").toLowerCase();
+      if (k === "moving") list = list.filter((s) => (s.kts ?? 0) > 1 && !/moored|anchor/.test(s.status));
+      else if (k && k !== "all") list = list.filter((s) => s.kind.includes(k.replace("pleasure", "pleasure craft").replace("high-speed", "high-speed")));
+      const rows = list.slice(0, 40).map((s) => ({ name: s.name || `MMSI ${s.mmsi}`, kind: s.kind, kts: s.kts, heading: s.heading ?? s.cog, status: s.status || undefined, destination: s.dest || undefined, lengthM: s.length ?? undefined, lat: s.lat, lon: s.lon, ...(s.kmAway != null ? { kmAway: s.kmAway } : {}), seenSecondsAgo: s.agoS }));
+      return { count: list.length, warming: d.warming, note: d.warming ? "The feed just opened: ask again in a few seconds for the full picture." : undefined, page: "/nyc/ (turn on the Ships layer)", ships: rows };
     },
   },
   iss_now: {
@@ -278,7 +294,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
-- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
+- Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 

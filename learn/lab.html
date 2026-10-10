@@ -323,7 +323,7 @@ function setSpeed(v) { speed = SPEEDS.reduce((b, s) => (Math.abs(Math.log(s[0] /
 $("speed").onchange = () => { speed = +$("speed").value; dirty = true; scopeClear(); };
 $("play").onclick = () => { running = !running; $("play").textContent = running ? "❚❚ Pause" : "▶ Run"; };
 const burn = new Map(); // LED id → simulated seconds spent over its limit
-function changed() { dirty = true; save(); showPanel(); }
+function changed() { dirty = true; save(); showPanel(); hintProblems(); }
 // A rebuilt circuit (a switch flipped, a value changed) carries on from the old one's time, so the scope's trace
 // continues instead of restarting at 0 on top of the samples already on screen.
 function rebuild() { dirty = false; sim = simulation(parts, { speed, memory, onSample: scopeSample, t0: sim?.t ?? 0 }); if (!sim) scopeClear(); }
@@ -626,6 +626,37 @@ function nets() {
     return { name: ground.has(root) ? "GND" : `N${++n}`, volts: v == null ? null : +v.toFixed(3), pins: g.pins, loose: g.pins.length === 1 };
   });
 }
+/** What's wrong with the circuit right now, in plain words (the first one is the most important). */
+function diagnose() {
+  const R = refs(), out = [], real = parts.filter((p) => R.has(p.id) && p.type !== "probe");
+  if (!real.length) return ["The board is empty: add parts (or insert a ready-made circuit) and wire them."];
+  const hasSource = parts.some((p) => ["battery", "source"].includes(p.type)), hasGround = parts.some((p) => p.type === "ground");
+  if (!hasSource) out.push("There's no battery or signal source, so nothing can flow.");
+  if (!hasGround) out.push("There's no ground symbol: voltages need a 0 V reference. Add a Ground and wire it to the battery's − pin.");
+  if (sim?.error) out.push(`The solver gave up: ${sim.error}.`);
+  const N = nets(), netOf = new Map(); N.forEach((n) => n.pins.forEach((pin) => netOf.set(pin, n.name)));
+  for (const n of N) if (n.loose) out.push(`${n.pins[0]} is connected to nothing.`);
+  for (const p of real) {
+    const ref = R.get(p.id), d = PARTS[p.type], names = pins(p).map((_, k) => `${ref}.${pinName(p, k)}`);
+    if (d.two && netOf.get(names[0]) && netOf.get(names[0]) === netOf.get(names[1])) out.push(`${ref} is shorted out: both of its pins are on the same net (${netOf.get(names[0])}), so current goes around it.`);
+    if (p.dead) out.push(`${ref} burnt out: too much current. An LED needs a resistor in series (220 Ω to 1 kΩ from a 5–9 V supply). Change its color to reset it.`);
+    const amps = Math.abs(sim?.cur.get(p.id) ?? 0);
+    if (["battery", "source"].includes(p.type) && amps > 2) out.push(`${ref} is supplying ${si(amps, "A")}: that's a short circuit (something joins + to − with almost no resistance).`);
+    if (p.type === "resistor" && sim) { const w = amps * amps * p.ohms; if (w > 0.5) out.push(`${ref} is dissipating ${si(w, "W")}: a normal resistor is rated 1/4 W and would burn.`); }
+    if (p.type === "led" && !p.dead && sim && amps < 2e-4 && hasSource && hasGround) { const drop = (sim.voltAt(p.a) ?? 0) - (sim.voltAt(p.b) ?? 0); out.push(`${ref} is dark: ${drop < -0.1 ? "it's in backwards (anode must be on the + side)" : `only ${drop.toFixed(2)} V across it, it needs about ${LEDS[p.color]?.[0] ?? 2} V`}.`); }
+  }
+  if (!sim && hasSource && hasGround && !out.length) out.push("The circuit can't be solved: check that every part is wired into a loop with the source and the ground.");
+  return out;
+}
+// Blip points out a new problem once, a moment after the edit that caused it.
+function hintProblems() { // state on the function itself: changed() runs before this part of the script is reached
+  clearTimeout(hintProblems.timer);
+  hintProblems.timer = setTimeout(() => {
+    const seen = (hintProblems.seen ??= new Set()), fresh = diagnose().filter((m) => !/^The board is empty|connected to nothing/.test(m) && !seen.has(m));
+    if (!fresh.length) return;
+    seen.add(fresh[0]); say(fresh[0].length > 120 ? fresh[0].slice(0, 117) + "…" : fresh[0], "think");
+  }, 1800);
+}
 function partSummary(p, R) {
   const d = PARTS[p.type], vals = (d.fields ?? []).map(([prop, label, kind]) => `${label} ${kind === "si" ? si(p[prop], { ohms: "Ω", farads: "F", henries: "H", v: "V", amp: "V", freq: "Hz", bv: "V", volts: "V", watts: "W" }[prop] ?? "") : p[prop]}`).join(", ");
   const amps = sim?.cur.get(p.id) ?? 0, cur = !d.two || !sim ? "" : ["battery", "source"].includes(p.type) ? `, supplying ${si(Math.abs(amps), "A")}` : `, current ${si(amps, "A")}`;
@@ -637,7 +668,8 @@ const byRef = (ref) => { const R = refs(), want = String(ref ?? "").trim().toUpp
 window.blipContext = () => {
   const R = refs();
   return {
-    page: "Circuit lab: the student's own circuit, simulated live. Parts have schematic names (R1, LED1, U1…) shown on the board; nets list which pins are connected and their voltage (GND = 0 V). Use the names when explaining, and the lab actions to show or change things.",
+    page: "Circuit lab: the student's own circuit, simulated live. Parts have schematic names (R1, LED1, U1…) shown on the board; pins are named (R1.1, R1.2, LED1.anode, BAT1.+); nets list which pins are connected and their voltage (GND = 0 V). Use the names when explaining. `problems` lists what's wrong right now, most important first: when the student asks for help, explain the first problem simply and offer to fix it with the lab actions (add_part, connect, set_value, delete_part, probe, insert_circuit); after an action, say what changed and point at it. For 'why' questions, reason from the readings (voltages on the nets, currents in the parts, the scope) with Ohm's law and Kirchhoff, not from guesses.",
+    problems: diagnose(),
     running: !!sim, speed: `${speed} simulated s per real s`, simTime: sim ? si(sim.t, "s") : null, status: $("status").textContent || "ok",
     parts: parts.filter((p) => R.has(p.id) && p.type !== "probe").map((p) => partSummary(p, R)),
     nets: nets().map((n) => `${n.name}${n.volts == null ? "" : ` (${n.volts} V)`}: ${n.pins.join(", ")}${n.loose ? "  ← this pin is connected to nothing" : ""}`),
@@ -674,7 +706,57 @@ window.blipActions = {
     } },
   toggle_switch: { label: "flipped a switch", description: "Open or close a switch by name (SW1…), or flip a two-way switch between A and B.", parameters: { ref: { type: "string" } },
     run: ({ ref }) => { const p = byRef(ref); if (!p || !["switch", "switch2"].includes(p.type)) return; remember(); p.closed = !p.closed; changed(); return screenOf(p); } },
+  add_part: { label: "added a part", description: `Add one part to the board, unwired, to the right of everything (or next to a named part). Types: ${Object.keys(PARTS).filter((k) => k !== "wire" && k !== "probe").join(", ")}. Then wire it with connect.`,
+    parameters: { type: { type: "string", description: "the part type, e.g. resistor, led, battery, ground, capacitor" }, value: { type: "string", description: "optional main value, e.g. 330, 10u, 9" }, near: { type: "string", description: "optional: a part name to place it beside" } },
+    run: ({ type, value, near }) => {
+      const d = PARTS[type]; if (!d || type === "wire") return;
+      const ps = parts.flatMap(pins), anchor = near && byRef(near);
+      const at = anchor ? [Math.max(...pins(anchor).map((q) => q[0])) + 2, Math.min(...pins(anchor).map((q) => q[1]))] : [ps.length ? Math.max(...ps.map((q) => q[0])) + 3 : 2, ps.length ? Math.min(...ps.map((q) => q[1])) : 2];
+      const p = d.two ? { id: newId(), type, ...structuredClone(d.props ?? {}), a: at, b: [at[0] + d.len, at[1]] } : { id: newId(), type, ...structuredClone(d.props ?? {}), at, rot: 0 };
+      const f = d.fields?.[0]; if (value != null && f) { const [prop, , kind, extra] = f; const v = kind === "si" ? parseSI(value) : kind === "select" ? (extra.map(String).includes(String(value)) ? (isNaN(+value) ? value : +value) : null) : parseFloat(value); if (v != null && (typeof v !== "number" || Number.isFinite(v))) p[prop] = v; }
+      remember(); parts.push(p); selected = new Set([p.id]); changed(); fit();
+      return screenOf(p);
+    } },
+  connect: { label: "wired two pins", description: "Wire two pins together, named part.pin: R1.2, LED1.anode, BAT1.+, U1.3, or GND for the ground symbol. Two-pin parts have pins 1 and 2 (anode/cathode for diodes and LEDs, + and − for batteries).",
+    parameters: { from: { type: "string", description: "e.g. BAT1.+" }, to: { type: "string", description: "e.g. R1.1" } },
+    run: ({ from, to }) => {
+      const pt = (name) => {
+        const txt = String(name ?? "").trim(); if (/^GND$/i.test(txt)) { const g = parts.find((p) => p.type === "ground"); return g && pins(g)[0]; }
+        const m = txt.match(/^([A-Za-z]+\d+)[.\s]+(.+)$/); if (!m) return null;
+        const p = byRef(m[1]); if (!p) return null;
+        const want = m[2].trim().toLowerCase().replace("minus", "−").replace("-", "−").replace("plus", "+");
+        const k = pins(p).findIndex((_, i) => pinName(p, i).toLowerCase() === want || String(i + 1) === want || (want === "a" && i === 0) || (want === "b" && i === 1));
+        return k < 0 ? null : pins(p)[k];
+      };
+      const a = pt(from), b = pt(to); if (!a || !b || key(a) === key(b)) return;
+      // A wire joins every pin it passes over, so the route must avoid other pins: try straight, the two L shapes, then
+      // detours around the circuit, and take the first path whose interior touches nothing.
+      const taken = new Set(parts.flatMap((p) => (p.type === "wire" ? [p.a, p.b] : pins(p))).map(key)); taken.delete(key(a)); taken.delete(key(b));
+      const clear = (path) => path.every((q, i) => i === 0 || (q[0] === path[i - 1][0] || q[1] === path[i - 1][1]) && !(() => { const [x0, y0] = path[i - 1], [x1, y1] = q, dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0); for (let x = x0 + dx, y = y0 + dy; x !== x1 || y !== y1; x += dx, y += dy) if (taken.has(key([x, y]))) return true; return i < path.length - 1 && taken.has(key(q)); })());
+      const all = parts.flatMap(pins), minY = Math.min(...all.map((q) => q[1])), maxY = Math.max(...all.map((q) => q[1])), minX = Math.min(...all.map((q) => q[0])), maxX = Math.max(...all.map((q) => q[0]));
+      const routes = [[a, b], [a, [b[0], a[1]], b], [a, [a[0], b[1]], b],
+        ...[minY - 2, maxY + 2, minY - 3, maxY + 3].map((y) => [a, [a[0], y], [b[0], y], b]), ...[maxX + 2, minX - 2, maxX + 3, minX - 3].map((x) => [a, [x, a[1]], [x, b[1]], b])];
+      const path = routes.find(clear) ?? routes[1];
+      remember();
+      for (let i = 1; i < path.length; i++) if (key(path[i]) !== key(path[i - 1])) parts.push({ id: newId(), type: "wire", a: path[i - 1], b: path[i] });
+      changed(); fit();
+      return screenOf({ type: "wire", a, b });
+    } },
+  delete_part: { label: "removed a part", description: "Remove a part by name.", parameters: { ref: { type: "string" } },
+    run: ({ ref }) => { const p = byRef(ref); if (!p) return; remember(); parts = parts.filter((q) => q.id !== p.id); selected.clear(); changed(); } },
+  probe: { label: "put a scope probe", description: "Put an oscilloscope probe on a pin (part.pin, like R1.2 or LED1.anode) so its voltage shows on the scope; picks a free channel.",
+    parameters: { pin: { type: "string", description: "e.g. C1.1" } },
+    run: ({ pin }) => {
+      const m = String(pin ?? "").trim().match(/^([A-Za-z]+\d+)[.\s]+(.+)$/); const p = m && byRef(m[1]); if (!p) return;
+      const want = m[2].trim().toLowerCase(), k = pins(p).findIndex((_, i) => pinName(p, i).toLowerCase() === want || String(i + 1) === want); if (k < 0) return;
+      const ch = freeChannel(); if (!ch) return;
+      remember(); const pr = { id: newId(), type: "probe", at: pins(p)[k], ch }; parts.push(pr); changed(); return screenOf(pr);
+    } },
+  run_pause: { label: "ran / paused the simulation", description: "Run or pause the simulation.", parameters: { run: { type: "boolean" } },
+    run: ({ run }) => { running = !!run; $("play").textContent = running ? "❚❚ Pause" : "▶ Run"; } },
+  undo: { label: "undid the last change", description: "Undo the last change to the board.", parameters: {}, run: () => $("undo").click() },
 };
+window.blipChips = ["Check my circuit for problems", "Why is the LED dark?", "What does the scope show?", "Explain this circuit step by step"];
 
 </script>
 </body>
