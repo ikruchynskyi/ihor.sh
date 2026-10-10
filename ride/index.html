@@ -85,7 +85,7 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-import { parseGPX, measure, climb, planDays, snapToCamps, along, longestGap, sun, toGPX } from "/ride/route.js";
+import { parseGPX, measure, climb, planDays, snapToCamps, along, longestGap, sun, toGPX, openAt } from "/ride/route.js";
 import { baseMaps } from "/maps.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -264,6 +264,9 @@ async function analyze() {
 
 // ---------- rendering the plan ----------
 const hm = (d) => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/** When you'd reach a km of the route: the day it falls in, at that day's average pace (climbing and breaks included). */
+const passAt = (km) => { const i = days.findIndex(([, e]) => pts[e].km >= km); if (i < 0) return null; const d = dayInfo(i); return new Date(d.start.getTime() + ((km - d.km0) / Math.max(d.dist, 0.1)) * d.hours * 3600e3); };
+const openNote = (st) => { if (!st.hours) return ""; const t = passAt(st.km), o = t && openAt(st.hours, t); return o == null ? "" : o ? ` <span class="ok">open when you pass (~${hm(t)})</span>` : ` <span class="warn">closed when you pass (~${hm(t)})</span>`; };
 const kmOf = (m) => along(pts, [m], 1e9)[0]?.km ?? 0;
 function dayInfo(i) {
   const [s, e] = days[i], seg = pts.slice(s, e + 1), km0 = pts[s].km, km1 = pts[e].km, c = climb(seg), mid = seg[Math.floor(seg.length / 2)];
@@ -299,7 +302,7 @@ function drawMap(fit = false) {
   for (const k of ["water", "food", "camp", "train", "repair"]) for (const st of found[k]) {
     if (st.km < lo - (k === "camp" ? 6 : 0) || st.km > hi + (k === "camp" ? 6 : 0)) continue;
     L.circleMarker([st.lat, st.lon], { radius: 5, color: "#fff", weight: 1, fillColor: KCOLOR[k], fillOpacity: 1 })
-      .bindPopup(`<b>${esc(st.name)}</b><br>${KNAME[k]} · km ${st.km.toFixed(1)}, ${st.off} m off the route${st.hours ? `<br>hours: ${esc(st.hours)}` : ""}<br>${actions(st, false)}`)
+      .bindPopup(`<b>${esc(st.name)}</b><br>${KNAME[k]} · km ${st.km.toFixed(1)}, ${st.off} m off the route${st.hours ? `<br>hours: ${esc(st.hours)}${openNote(st)}` : ""}<br>${actions(st, false)}`)
       .on("popupopen", (e) => e.popup.getElement().addEventListener("click", (ev) => { const a = ev.target.closest("[data-act]")?.dataset.act; if (a) { map.closePopup(); act(a, st); } })).addTo(groups[k]);
   }
   S.mine.forEach((m, j) => L.marker([m.lat, m.lon], { draggable: true, title: m.name, icon: L.divIcon({ className: "", html: `<div style="font-size:20px;filter:drop-shadow(0 0 2px #000)">⭐</div>`, iconSize: [20, 20] }) })
@@ -343,7 +346,7 @@ function renderNear() {
   $("nearHint").textContent = nearList.length ? `${nearList.length} in view${S.day != null ? ` (day ${S.day + 1})` : ""}. Move or zoom the map to see others.` : "Nothing mapped in this part of the map. Move along the route.";
   $("nearBox").innerHTML = ["water", "food", "camp", "train", "repair"].map((k) => {
     const items = nearList.map((st, j) => [st, j]).filter(([st]) => st.kind === k);
-    return items.length ? `<details open><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.map(([x, j]) => `<li data-n="${j}">km ${x.km.toFixed(1)} · ${esc(x.name)}${x.off > 50 ? ` <span class="hint">${x.off} m off</span>` : ""}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>` : ""} ${actions(x)}</li>`).join("")}</ul></details>` : "";
+    return items.length ? `<details open><summary>${KNAME[k]} (${items.length})</summary><ul class="stops">${items.map(([x, j]) => `<li data-n="${j}">km ${x.km.toFixed(1)} · ${esc(x.name)}${x.off > 50 ? ` <span class="hint">${x.off} m off</span>` : ""}${x.hours ? ` <span class="hint">(${esc(x.hours)})</span>${openNote(x)}` : ""} ${actions(x)}</li>`).join("")}</ul></details>` : "";
   }).join("");
 }
 map.on("moveend", () => {
@@ -362,13 +365,16 @@ async function renderDay() {
   const html = [];
   for (const i of which) {
     const d = dayInfo(i), w = await forecast(d.mid.lat, d.mid.lon, d.date.toLocaleDateString("en-CA"));
-    const gapW = longestGap(d.water, d.km0, d.km1), gapF = longestGap(d.food, d.km0, d.km1), gapH = (gapW.km / speed) * breaks, lasts = carry / drink;
+    const pace = (k) => new Date(d.start.getTime() + ((k - d.km0) / Math.max(d.dist, 0.1)) * d.hours * 3600e3);
+    const foodState = d.food.map((x) => ({ x, o: openAt(x.hours, pace(x.km)) })), shut = foodState.filter((f) => f.o === false);
+    const gapW = longestGap(d.water, d.km0, d.km1), gapF = longestGap(foodState.filter((f) => f.o !== false).map((f) => f.x), d.km0, d.km1), gapH = (gapW.km / speed) * breaks, lasts = carry / drink;
+    const hoursLine = d.food.length ? `<p>🕒 Food when you pass: <b>${foodState.filter((f) => f.o).length}</b> open, ${shut.length ? `<span class="warn">${shut.length} closed</span>` : "0 closed"}, ${foodState.filter((f) => f.o == null).length} with no hours mapped${shut.length ? ` <span class="hint">(e.g. ${esc(shut[0].x.name)} at km ${shut[0].x.km.toFixed(0)}, ~${hm(pace(shut[0].x.km))}: ${esc(shut[0].x.hours)})</span>` : ""}</p>` : "";
     html.push(`<article class="day card" style="--c:${COLORS[i % COLORS.length]}">
       <b>Day ${i + 1} · ${d.date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</b> <span class="hint">km ${d.km0.toFixed(0)}–${d.km1.toFixed(0)}</span>
       <p><b>${d.dist.toFixed(1)} km</b> · ${d.c.up} m up · ~${Math.floor(d.hours)} h ${Math.round((d.hours % 1) * 60)} min with breaks · leave ${hm(d.start)}, arrive ~${hm(d.end)}
         ${d.sun ? (d.end > d.sun.set ? `<span class="warn">· ${Math.round((d.end - d.sun.set) / 60000)} min after sunset (${hm(d.sun.set)})</span>` : `<span class="ok">· before sunset (${hm(d.sun.set)})</span>`) : ""}</p>
       <p>${w ? `🌡 ${Math.round(w.lo)}–${Math.round(w.hi)} °C · rain ${w.rain ?? "?"}% · wind ${Math.round(w.wind)} km/h` : `<span class="hint">Forecast appears within 16 days of the ride.</span>`}</p>
-      ${covered(d.km0 - 6, d.km1 + 6) ? `<p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without food: ${gapF.km.toFixed(0)} km</p>
+      ${covered(d.km0 - 6, d.km1 + 6) ? `<p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without open food: ${gapF.km.toFixed(0)} km</p>${hoursLine}
       <p>${i === days.length - 1 ? "🏁 Finish." : d.camps.length ? `⛺ Sleep near the end: ${d.camps.slice(0, 3).map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">⛺ No mapped campsite or lodging within 6 km of this day's end.</span> Drag the 🏁 flag, or pick a place below.`}</p>
       <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>` : `<p class="hint">💧🥖⛺🚆 Water, food, beds and stations for this day aren't loaded yet.${S.day === i ? " Loading…" : ` <button data-day="${i}">Open day ${i + 1} to load them</button>`}</p>`}
       ${S.day != null ? `<p class="hint">${d.water.length} water points, ${d.food.length} food stops, ${d.repair.length} bike shops on this day. Zoom the map in to list them below.</p>` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}

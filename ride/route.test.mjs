@@ -1,7 +1,7 @@
 // Run: node ride/route.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseGPX, measure, climb, splitDays, planDays, snapToCamps, along, longestGap, sun, toGPX, meters } from "./route.js";
+import { parseGPX, measure, climb, splitDays, planDays, snapToCamps, along, longestGap, sun, toGPX, meters, openAt } from "./route.js";
 
 // a degree of latitude is ~111.2 km
 assert.ok(Math.abs(meters({ lat: 40, lon: -74 }, { lat: 41, lon: -74 }) - 111195) < 50);
@@ -40,3 +40,20 @@ const km = measure(hud.points);
 assert.ok(km > 70 && km < 80, km);
 console.log(`sample: ${km.toFixed(1)} km, ${climb(hud.points).up} m up, ${splitDays(hud.points, { maxKm: 45 }).length} days at 45 km`);
 console.log("route ok");
+
+// opening hours: a Friday (2026-10-09) and a Saturday, local time
+const fri = (hh, mm = 0) => new Date(2026, 9, 9, hh, mm), sat = (hh, mm = 0) => new Date(2026, 9, 10, hh, mm);
+assert.equal(openAt("24/7", fri(3)), true);
+assert.equal(openAt("Mo-Fr 08:00-20:00; Sa 09:00-14:00; Su off", fri(19, 59)), true);
+assert.equal(openAt("Mo-Fr 08:00-20:00; Sa 09:00-14:00; Su off", fri(20)), false);
+assert.equal(openAt("Mo-Fr 08:00-20:00; Sa 09:00-14:00; Su off", sat(15)), false);
+assert.equal(openAt("Mo-Su 08:00-12:00,13:00-18:00", sat(12, 30)), false);
+assert.equal(openAt("Mo-Su 08:00-12:00,13:00-18:00", sat(13, 30)), true);
+assert.equal(openAt("Fr 18:00-02:00", sat(1)), true);             // Friday night, past midnight
+assert.equal(openAt("Mo-Sa 07:00-22:00; Su 08:00-20:00", sat(21)), true);
+assert.equal(openAt("Sa-Mo 10:00-16:00", sat(11)), true);          // a range that wraps the week
+assert.equal(openAt("Mo-Fr 06:00-sunset", fri(10)), null);         // sunset: we don't guess
+assert.equal(openAt("Mo-Fr 08:00-17:00; PH off", fri(9)), true);   // holidays skipped
+assert.equal(openAt("", fri(9)), null);
+assert.equal(openAt("Tu-Th 09:00-17:00", fri(10)), false);         // days not named are closed (OSM rule)
+console.log("opening hours ok");

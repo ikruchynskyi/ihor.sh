@@ -106,6 +106,40 @@ export function sun(date, lat, lon) {
 
 const clean = (t) => String(t).replace(/[<>&"]/g, "");
 /** A GPX file: the track, plus waypoints (the rider's stops: { lat, lon, name }). */
+/** Is a place open at `when` (a Date, local time), going by its OpenStreetMap opening_hours? true / false, or null when
+ *  the tag is missing or uses parts we don't read (months, holidays, sunrise…). Reads the common forms: "24/7",
+ *  "Mo-Fr 08:00-20:00; Sa 09:00-14:00; Su off", several time spans "08:00-12:00,13:00-18:00", and spans past midnight. */
+export function openAt(hours, when) {
+  if (!hours) return null;
+  const h = hours.trim();
+  if (h === "24/7") return true;
+  const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], wd = (when.getDay() + 6) % 7, min = when.getHours() * 60 + when.getMinutes();
+  const rules = [];
+  for (const raw of h.split(";").map((r) => r.trim()).filter(Boolean)) {
+    const m = raw.match(/^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?)(?:,(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?)*)?\s*(.*)$/);
+    const sel = m[1], rest = m[2].trim();
+    if (!sel && /^(PH|SH|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|week|easter)/.test(rest)) continue; // holidays, seasons: skip the rule
+    const days = new Set();
+    if (!sel) DAYS.forEach((_, i) => days.add(i));
+    else for (const part of sel.split(",")) { const [a, b] = part.split("-").map((d) => DAYS.indexOf(d)); for (let i = a; ; i = (i + 1) % 7) { days.add(i); if (b == null || b < 0 || i === b) break; } }
+    if (/^(off|closed)$/i.test(rest)) { rules.push({ days, spans: [] }); continue; }
+    const spans = [];
+    for (const t of rest.split(",").map((x) => x.trim())) {
+      const tm = t.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\+?$/);
+      if (!tm) return null; // sunrise, "open end" text, comments: don't guess
+      spans.push([+tm[1] * 60 + +tm[2], +tm[3] * 60 + +tm[4]]);
+    }
+    rules.push({ days, spans });
+  }
+  if (!rules.length) return null;
+  // a later rule replaces earlier ones for the days it names (that's how OSM reads them)
+  const forDay = (d) => { let r = null; for (const x of rules) if (x.days.has(d)) r = x; return r; };
+  const today = forDay(wd), yest = forDay((wd + 6) % 7);
+  if (today && today.spans.some(([a, b]) => (b > a ? min >= a && min < b : min >= a))) return true;
+  if (yest && yest.spans.some(([a, b]) => b <= a && min < b)) return true; // yesterday's span past midnight
+  return false; // days the tag doesn't name are closed
+}
+
 export const toGPX = (name, points, waypoints = []) => `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="ihor.sh route notebook" xmlns="http://www.topografix.com/GPX/1/1">
 ${waypoints.map((w) => `<wpt lat="${w.lat.toFixed(6)}" lon="${w.lon.toFixed(6)}"><name>${clean(w.name)}</name></wpt>`).join("\n")}
