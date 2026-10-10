@@ -176,7 +176,7 @@ root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle
   button.type = "button";
   button.setAttribute("aria-expanded", "false");
   button.setAttribute("aria-label", "Reader settings: theme, font, size, spacing");
-  button.innerHTML = isHome ? "<span aria-hidden='true'>🎨</span> THEME" : "<span aria-hidden='true'>Aa</span> READER";
+  button.innerHTML = isHome ? "<span aria-hidden='true'>🎨</span><em> THEME</em>" : "<span aria-hidden='true'>Aa</span><em> READER</em>";
   button.onclick = toggle;
   // Project pages: before the page title in the HUD bar. Home: before the sound toggle.
   const anchor = document.querySelector(".ihor-hud b, .hud #snd");
@@ -187,7 +187,7 @@ root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle
 {
   const btn = document.createElement("button");
   btn.className = "ihor-read ihor-find"; btn.type = "button"; btn.setAttribute("aria-label", "Search this site"); btn.setAttribute("aria-expanded", "false");
-  btn.innerHTML = "<span aria-hidden='true'>🔍</span> FIND";
+  btn.innerHTML = "<span aria-hidden='true'>🔍</span><em> FIND</em>";
   button.before(btn);
   const fhost = document.createElement("div");
   fhost.style.cssText = "position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:2147481600;width:min(640px,calc(100vw - 24px))";

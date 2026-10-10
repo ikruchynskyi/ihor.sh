@@ -45,8 +45,9 @@ html[data-style="pixel"] body::after { content: ""; position: fixed; inset: 0; p
 .ihor-hud .ihor-read span { font-family: Georgia, serif; font-size: 13px; text-transform: none; margin-right: 4px; }
 .ihor-hud .ihor-read + b { margin-left: 0; }
 .ihor-hud b { color: var(--fg); font-weight: normal; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
-.ihor-hud span em { font-style: normal; }
-@media (max-width: 600px) { .ihor-hud b, .ihor-hud span em { display: none; } }
+.ihor-hud span em, .ihor-hud .ihor-read em { font-style: normal; }
+/* phones: just the world name, and the two buttons as icons, so the bar stays one line */
+@media (max-width: 600px) { .ihor-hud b, .ihor-hud span em, .ihor-hud .ihor-read em { display: none; } .ihor-hud .ihor-read { padding: 6px 9px !important; } .ihor-hud .ihor-read span { margin-right: 0; } }
 
 /* type: pixel headings, readable body */
 h1, h2, h3 { font-family: var(--display) !important; font-weight: normal; letter-spacing: 0 !important; text-wrap: balance; }

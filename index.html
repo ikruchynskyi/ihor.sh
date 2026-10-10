@@ -103,7 +103,8 @@
 
   footer { text-align: center; color: var(--dim); font: calc(9px * var(--px, 1))/2 var(--pixel); padding: 40px 16px 120px; }
 
-  @media (max-width: 600px) { .world { padding: 20px 16px; } .hud { font-size: calc(8px * var(--px, 1)); } }
+  .hud .ihor-read em { font-style: normal; }
+  @media (max-width: 600px) { .world { padding: 20px 16px; } .hud { font-size: calc(8px * var(--px, 1)); gap: 8px 14px; } .hud > span:first-of-type, .hud .ihor-read em { display: none; } }
   @media (prefers-reduced-motion: reduce) { .logo, .start, .onair::before { animation: none; } html { scroll-behavior: auto; } }
 </style>
 <style>

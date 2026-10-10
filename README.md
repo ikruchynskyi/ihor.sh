@@ -4,7 +4,9 @@ Hobby projects behind [ihor.sh](https://ihor.sh): radio, NYC, and learning in pu
 
 ## The site
 
-`index.html` is the home page (projects as game worlds), `theme.css` is the game look the server adds to every project page, `companion.js` is Blip, the companion that rides along on every page (d3-force soft body, chat through `/api/ask`), and `server.ts` serves `/`, the built radio site under `/radio/`, and `/api/ask`, answered by a local [Ollama](https://ollama.com) model.
+`index.html` is the home page (projects as game worlds), `theme.css` is the look the server adds to every project page (the pixel Arcade theme by default, plus five cinematic glass themes and more in the reader panel, `reader.js`, which also holds the site search box and the "still working" bar), `companion.js` is Blip, the companion that rides along on every page (d3-force soft body, chat through `/api/ask` streamed step by step, page context and page actions), and `server.ts` serves everything: `/`, the worlds, `/api/*` for the site's own pages, `/mcp` (the same tools for AI agents over the Model Context Protocol), `/llms.txt`, `/sitemap.xml`, SEO meta and JSON-LD per page kind. Blip answers with Ollama Cloud and falls back to a local [Ollama](https://ollama.com) model; Yomu's chat (`yomu-chat.ts`) uses the local model only.
+
+Top-level modules: `blip.ts` (the agent and its 28 tools), `mcp.ts`, `search.ts` (site search, FTS5 in memory), `jobs.ts` + `jobs-ai.ts` (the jobs radar: ATS boards, NYC jobs, Adzuna, remote boards; embeddings and résumé matching), `evening.ts` (the evening planner), `transit.ts`, `nycapi.ts`, `archive.ts`, `sky.ts` (aircraft, ISS, storms, weather), `sat.ts` (SGP4 passes), `ships.ts` (AIS from aisstream.io), `ride.ts` (bike routing, Overpass), `deals.ts`, `events.ts`, `orna.ts`, `session.ts`. Keys live in `.env` (git-ignored). Tests: `node <file>.test.*` for each module; `npm run check` fetches every page and API after a deploy.
 
 ```sh
 npm run build          # builds radio/dist
@@ -50,7 +52,11 @@ WebUSB needs Chrome, Edge or Opera on an `https://` or `localhost` page.
 
 ## nyc/
 
-Small pages built on NYC open data: **Subway Bailout** (live MTA alerts → nearest Citi Bike stations), **Free NYC** (free and pay-what-you-wish museums, gardens and ferries on any day) and the **MTA Archive** (`archive.html`). `archive.ts` polls the MTA alert and elevator/escalator outage feeds every 5 minutes into `data/mta.db` (SQLite, not in git), because that history can't be backfilled; the page reads it from `/api/nyc/archive`.
+Tools built on NYC open data: the **NYC Live Map** (`index.html`: alerts, live trains, buses, ferries, ships, aircraft, Citi Bike, cameras, 311, events, inspections, a trip planner), **Free NYC**, the **MTA Archive** (`archive.html`), **Tonight** (`tonight.html`, the evening planner), the **Jobs radar** (`jobs.html`) and the **résumé check** (`resume.html`, parsed and scored in the browser). `archive.ts` polls the MTA alert and elevator/escalator outage feeds every 5 minutes into `data/mta.db` (SQLite, not in git), because that history can't be backfilled; the page reads it from `/api/nyc/archive`.
+
+## ai/, learn/, yomu/, ride/, orna/
+
+**ai/**: AI from scratch, ten interactive chapters (matrices to a tiny transformer trained in the browser, `tinygpt.js`) with `learn-kit.js` questions, runnable code and KaTeX. **learn/**: electronics from scratch (16 chapters) solved live by `circuit.js`, and the circuit lab (`lab.html`, parts/engine/templates in `lab/`). **yomu/**: Japanese from zero: hand-written stories (`stories/`, from `src/n*.py`), grammar, kanji and word decks to N1 (`data/`), kana, handwriting (`handwriting.js`), spoken scenes (`talk.js`), free chat at a level (`chat.html`), photos (`img/`, from `src/images.py`). **ride/**: the bikepacking route notebook and bike + train escapes (`escapes.js`). **orna/**: the guild shop planner.
 
 ## ideas-page/
 
