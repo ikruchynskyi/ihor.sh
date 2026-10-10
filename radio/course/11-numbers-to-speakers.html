@@ -102,7 +102,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <p><b>Scheduling sound</b> (<code>LivePlayer</code> in <code>src/course/audio.ts</code>, the same logic as Spectrum Lab): each chunk is scheduled to start exactly when the previous one ends, with the cushion and the two drift rules:</p>
+  <p><b>Scheduling sound</b> (<code>LivePlayer</code> in <code>src/course/audio.ts</code>): each chunk is scheduled to start exactly when the previous one ends, with the cushion and the two drift rules. (Spectrum Lab has since moved to one continuous stream that corrects drift smoothly instead: <a href="./19-cleaner-sound.html#stream">chapter 19</a>.)</p>
 <pre><code>if (this.t &lt; now + 0.05) this.t = now + 0.15;   // ran dry: rebuild a 150 ms cushion
 if (this.t &gt; now + 0.6) return;                 // too far ahead (clocks drift apart): drop this chunk
 const buf = ctx.createBuffer(1, samples.length, rate);   // we say our rate; the browser resamples

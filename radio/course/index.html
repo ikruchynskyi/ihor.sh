@@ -55,6 +55,10 @@
     <dt><a href="./10-am-ssb-and-morse.html#am">FM, AM, SSB, CW</a></dt><dd>sound in the arrow's speed, in its length, one sideband only, Morse on/off.</dd>
     <dt><a href="./09-fm-listening-to-the-speed.html#demod">demodulation</a></dt><dd>getting the sound back out of a station's arrow.</dd>
     <dt><a href="./11-numbers-to-speakers.html#agc">AGC, squelch</a></dt><dd>automatic volume; muting when nobody's transmitting.</dd>
+    <dt><a href="./18-reading-the-band.html#floor">noise floor, SNR</a></dt><dd>the level of the hiss (the median bin); how far a signal stands above it, in dB.</dd>
+    <dt><a href="./18-reading-the-band.html#shift">filter shift</a></dt><dd>sliding the passband off the tuned frequency to dodge an interferer.</dd>
+    <dt><a href="./19-cleaner-sound.html#voice">biquad, CTCSS</a></dt><dd>a five-number filter with feedback; the sub-audible tone repeaters use (67–250 Hz).</dd>
+    <dt><a href="./19-cleaner-sound.html#gains">noise reduction, musical noise</a></dt><dd>turning down frequency bins that sound like hiss; the warble when that's overdone.</dd>
     <dt><a href="./11-numbers-to-speakers.html#clocks">ppm</a></dt><dd>parts per million: 50 ppm is 50 millionths.</dd>
     <dt><a href="./12-inside-the-dongle.html#image">tuner, IF, image</a></dt><dd>the chip that moves radio down to a fixed intermediate frequency; the mirror frequency that can sneak in.</dd>
     <dt><a href="./12-inside-the-dongle.html#pll">PLL, VCO, crystal</a></dt><dd>the circuit that makes any frequency from one steady quartz crystal.</dd>
@@ -96,6 +100,10 @@
     ]],
     ["Part V · Pictures over radio", [
       ["17-pictures-over-radio", "Pictures over radio", "Slow-scan TV: brightness as pitch, the VIS header, hearing pitch with the FM trick, and straightening slanted pictures. Receive the ISS.", "5, 9, 11", true],
+    ]],
+    ["Part VI · A receiver you'd actually use", [
+      ["18-reading-the-band", "Reading the band", "Spectrum Lab's screen taken apart: FFT size and resolution, averaging away the grass, the noise floor as a median, dB to colors, a click becoming a frequency, filter shift, and a squelch you can see.", "4–6, 10, 11", true],
+      ["19-cleaner-sound", "Cleaner sound", "The audio controls: a voice filter from two biquads, noise reduction with overlapping frames and a noise tracker, AGC hang, a soft limiter, and one stream that never stutters.", "4, 6, 11, 18", true],
     ]],
   ];
   const read = (() => { try { return new Set(JSON.parse(localStorage.getItem("course-done") ?? "[]")); } catch { return new Set(); } })();

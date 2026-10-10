@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cleaner Sound</title>
+  <meta name="description" content="Radio from scratch, chapter 19: the audio controls under Spectrum Lab's waterfall. A voice filter from two biquads, noise reduction with overlapping frames and a noise tracker, AGC hang, a soft limiter, one continuous audio stream that holds its cushion, and recording." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 19</p>
+  <h1>Cleaner sound</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./04-winding-machine.html#window">Chapter 4: windows and the FFT</a> and <a href="./06-averaging-is-filtering.html#weights">chapter 6: filters</a></li>
+      <li><a href="./11-numbers-to-speakers.html#clocks">Chapter 11: two clocks, resampling, AGC</a></li>
+      <li><a href="./18-reading-the-band.html#floor">Chapter 18: the noise floor</a></li>
+    </ul>
+  </div>
+
+  <p>By chapter 11 the radio made sound. This chapter is about making that sound pleasant to listen to for an hour: a police dispatcher without the hum underneath, a weak voice without the hiss on top, pauses that stay quiet, peaks that don't crackle, and a stream that never stutters. Every piece is a row of controls under Spectrum Lab's waterfall, and every piece is under a hundred lines.</p>
+  <p>The question to keep in mind: <b>how can you remove hiss from a voice when the hiss and the voice are at the same frequencies?</b></p>
+
+  <!-- 1 -->
+  <h2 id="voice">A filter for voices</h2>
+  <p>Narrow FM, AM and SSB carry speech, and speech lives between about 300 and 3000 Hz. Below it, many repeaters add a quiet <b>CTCSS tone</b>, 67 to 250 Hz, that opens other radios' squelch: you hear it as a hum. Above it is mostly hiss. So the first cleanup is a band-pass: cut below 300 Hz, cut above 3000 Hz.</p>
+  <p>Chapter 6's filters were long lists of weights, hundreds of multiplications per sample. For audio there's a cheaper kind, with <b>memory of its own output</b>: each new output sample mixes the last two inputs and the last two <em>outputs</em>. Feed it a single click and watch it answer:</p>
+
+  <div class="scene" id="s-biquad">
+    <div class="controls">
+      <label for="bq-f">Cutoff <input id="bq-f" type="range" min="100" max="6000" step="50" value="1000"><output id="bq-fo"></output></label>
+      <label class="note">Kind <select id="bq-k"><option value="lowpass">low-pass</option><option value="highpass">high-pass</option></select></label>
+    </div>
+  </div>
+
+  <p>Five numbers do it all, and it's called a <b>biquad</b>. Because it feeds its output back in, the answer to one click rings on for a while, as if it were a long filter, yet it only ever does five multiplications. The recipe for the five numbers (from Robert Bristow-Johnson's "audio EQ cookbook", the one almost every audio program uses) turns a cutoff frequency into coefficients. Two of them in a row, a 300 Hz high-pass and a 3 kHz low-pass, make the voice filter:</p>
+
+  <div class="scene" id="s-voice">
+    <div class="controls">
+      <label for="vf-lo">Low cut <input id="vf-lo" type="range" min="50" max="800" step="10" value="300"><output id="vf-loo"></output></label>
+      <label for="vf-hi">High cut <input id="vf-hi" type="range" min="1500" max="8000" step="100" value="3000"><output id="vf-hio"></output></label>
+    </div>
+    <div class="game">
+      <button id="vf-raw" type="button">▶ A voice with a 100 Hz tone and hiss</button>
+      <button id="vf-on" type="button">▶ Through the voice filter</button>
+    </div>
+  </div>
+
+  <p>Measured by the chapter's script: the lowest CTCSS tone, 67 Hz, comes out 26 dB quieter; 1000 Hz is untouched (−0.1 dB); hiss at 8 kHz is 19 dB down. At exactly the cutoffs the level is −3 dB: half the power, which is how a cutoff is defined. Spectrum Lab skips the filter in WFM, where music needs the whole 15 kHz.</p>
+
+  <div class="notation">
+    <math><mi>y</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><msub><mi>b</mi><mn>0</mn></msub><mi>x</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>+</mo><msub><mi>b</mi><mn>1</mn></msub><mi>x</mi><mo>[</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>+</mo><msub><mi>b</mi><mn>2</mn></msub><mi>x</mi><mo>[</mo><mi>n</mi><mo>−</mo><mn>2</mn><mo>]</mo><mo>−</mo><msub><mi>a</mi><mn>1</mn></msub><mi>y</mi><mo>[</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo>]</mo><mo>−</mo><msub><mi>a</mi><mn>2</mn></msub><mi>y</mi><mo>[</mo><mi>n</mi><mo>−</mo><mn>2</mn><mo>]</mo></math>
+    <math><mi>ω</mi><mo>=</mo><mfrac><mrow><mn>2</mn><mi>π</mi><msub><mi>f</mi><mi>c</mi></msub></mrow><msub><mi>f</mi><mi>s</mi></msub></mfrac><mspace width="1.5em"/><mi>α</mi><mo>=</mo><mfrac><mrow><mi>sin</mi><mi>ω</mi></mrow><mrow><mn>2</mn><mi>Q</mi></mrow></mfrac></math>
+    <math><mtext>low-pass:</mtext><mspace width="0.6em"/><msub><mi>b</mi><mn>0</mn></msub><mo>=</mo><msub><mi>b</mi><mn>2</mn></msub><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mi>cos</mi><mi>ω</mi></mrow><mn>2</mn></mfrac><mo>,</mo><mspace width="0.6em"/><msub><mi>b</mi><mn>1</mn></msub><mo>=</mo><mn>1</mn><mo>−</mo><mi>cos</mi><mi>ω</mi></math>
+    <math><msub><mi>a</mi><mn>1</mn></msub><mo>=</mo><mo>−</mo><mn>2</mn><mi>cos</mi><mi>ω</mi><mo>,</mo><mspace width="0.6em"/><msub><mi>a</mi><mn>2</mn></msub><mo>=</mo><mn>1</mn><mo>−</mo><mi>α</mi></math>
+    <ul>
+      <li>Every coefficient is then divided by <b>1 + α</b>. <b>Q = 1/√2</b> gives the flattest passband (a Butterworth filter). The high-pass uses (1 + cos ω)/2 and −(1 + cos ω) for the b's.</li>
+      <li>The <b>a</b>'s are the memory of the output. They make it cheap, and they're also why a badly designed one can ring forever (an unstable filter). The cookbook's recipe is always stable.</li>
+    </ul>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="frames">Hiss and voice at the same frequencies</h2>
+  <p>Now the hard question from the top. Hiss covers every frequency, including 300–3000 Hz, so no fixed filter can remove it without removing the voice. But hiss and voice behave differently <b>over time</b>. A voice is loud at a few frequencies for a few hundredths of a second, then moves; hiss is the same faint level everywhere, all the time. So look at the sound in short slices, and in each slice turn down only the frequencies that are no louder than the hiss.</p>
+  <p>Slicing sound into frames and putting it back together without seams is a trick of its own. Each frame is 512 samples (about 11 ms), the frames overlap by half, and each is shaped by a window, applied twice: once going in, once coming out:</p>
+
+  <div class="scene" id="s-ola"></div>
+
+  <p>The window is the square root of chapter 4's Hann window. Applied twice, it becomes a Hann window, and Hann windows placed half a frame apart <b>add up to exactly 1</b> everywhere (the script checks: to within 0.00000007). So if nothing is changed in between, the sound comes back exactly as it went in, just one frame late. Whatever we change in a frame fades smoothly into its neighbors, so there are no clicks at frame edges.</p>
+
+  <div class="notation">
+    <math><mi>w</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><msqrt><mrow><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mi>cos</mi><mfrac><mrow><mn>2</mn><mi>π</mi><mi>n</mi></mrow><mi>N</mi></mfrac></mrow></msqrt><mspace width="2em"/><mi>w</mi><msup><mrow><mo>[</mo><mi>n</mi><mo>]</mo></mrow><mn>2</mn></msup><mo>+</mo><mi>w</mi><msup><mrow><mo>[</mo><mi>n</mi><mo>+</mo><mfrac><mi>N</mi><mn>2</mn></mfrac><mo>]</mo></mrow><mn>2</mn></msup><mo>=</mo><mn>1</mn></math>
+    <ul><li>This is called <b>overlap-add</b>: window, FFT, change, inverse FFT, window again, add into the output. It's how almost every audio effect that works on frequencies is built.</li></ul>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="gains">Turning down what sounds like hiss</h2>
+  <p>Inside one frame we have the FFT: a level for every frequency bin. Suppose we already know the hiss level in each bin (next section). Then a bin much louder than the hiss is mostly voice: keep it. A bin about as loud as the hiss is mostly hiss: turn it down. That rule, a <b>gain</b> per bin, is the whole noise reducer:</p>
+
+  <div class="scene" id="s-gain">
+    <div class="controls">
+      <label for="gn-s">Strength <input id="gn-s" type="range" min="0" max="1" step="0.05" value="0.5"><output id="gn-so"></output></label>
+    </div>
+  </div>
+
+  <p>Push it too hard and something strange happens. Hiss isn't perfectly even: in each frame, a few bins happen to poke above the estimate, so their gain flips up to 1 for 11 ms, then back down. Scattered all over the spectrum, those flickers sound like warbling little tones, a watery, robotic effect called <b>musical noise</b>. Watch the gains of every bin over time, with and without the two fixes:</p>
+
+  <div class="scene" id="s-musical"></div>
+
+  <p>The fixes are both about being gentle. A <b>floor</b>: never turn a bin down by more than 20 dB, so the hiss that's left is a soft, steady bed instead of silence with sparkles. And <b>smoothing</b>: a gain may rise quickly (so the start of a word isn't cut) but falls back only gradually. Spectrum Lab's strength slider moves both at once: from subtracting half the hiss with a −6 dB floor, to twice the hiss with a −20 dB floor.</p>
+
+  <div class="notation">
+    <math><msub><mi>G</mi><mi>k</mi></msub><mo>=</mo><mi>max</mi><mo>(</mo><msub><mi>G</mi><mtext>floor</mtext></msub><mo>,</mo><mspace width="0.3em"/><mn>1</mn><mo>−</mo><mi>α</mi><mfrac><msub><mi>N</mi><mi>k</mi></msub><msub><mi>S</mi><mi>k</mi></msub></mfrac><mo>)</mo></math>
+    <math><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>←</mo><mrow><mo>{</mo><mtable><mtr><mtd><mn>0.65</mn><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>+</mo><mn>0.35</mn><msub><mi>G</mi><mi>k</mi></msub></mtd><mtd><mtext>rising</mtext></mtd></mtr><mtr><mtd><mn>0.75</mn><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>+</mo><mn>0.25</mn><msub><mi>G</mi><mi>k</mi></msub></mtd><mtd><mtext>falling</mtext></mtd></mtr></mtable></mrow></math>
+    <ul>
+      <li><b>S<sub>k</sub></b>: bin k's power (smoothed over a few frames); <b>N<sub>k</sub></b>: its hiss level; <b>α</b>: how much hiss to subtract (0.5 to 2); <b>G̃<sub>k</sub></b>: the gain actually used.</li>
+      <li>The same gain is applied to bin k and its mirror image (bin N − k), so the output stays real sound.</li>
+    </ul>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="tracker">Learning the hiss while someone talks</h2>
+  <p>We needed each bin's hiss level, but nobody tells us when the voice is silent. The trick: the hiss is the level a bin keeps falling back to. Track each bin's level in decibels with a line that <b>falls toward every dip</b> (a twentieth of the way each frame) and <b>rises slowly</b> otherwise, about 8 dB a second:</p>
+
+  <div class="scene" id="s-track"></div>
+
+  <p>During a word the bin's level jumps up, but the tracker only creeps after it; between words the level drops back and the tracker follows it down. If the hiss itself gets louder (you tuned to a noisier channel), the tracker climbs to it in a second or two. One correction: a line that lives in the dips sits <em>below</em> the hiss's average, by a factor of about 2.2 in power (measured, for this exact tracker). So the estimate is the tracker times 2. The script's result: with strength 1, the hiss in pauses drops by 11.5 dB, while a tone keyed on and off like speech changes by 0.2 dB.</p>
+
+  <div class="notation">
+    <math><msub><mi>N</mi><mi>k</mi></msub><mo>←</mo><mrow><mo>{</mo><mtable><mtr><mtd><msub><mi>N</mi><mi>k</mi></msub><msup><mrow><mo>(</mo><msub><mi>S</mi><mi>k</mi></msub><mo>/</mo><msub><mi>N</mi><mi>k</mi></msub><mo>)</mo></mrow><mn>0.05</mn></msup></mtd><mtd><msub><mi>S</mi><mi>k</mi></msub><mo>&lt;</mo><msub><mi>N</mi><mi>k</mi></msub></mtd></mtr><mtr><mtd><mn>1.01</mn><mo>·</mo><msub><mi>N</mi><mi>k</mi></msub></mtd><mtd><mtext>otherwise</mtext></mtd></mtr></mtable></mrow><mspace width="2em"/><mtext>hiss</mtext><mo>≈</mo><mn>2</mn><msub><mi>N</mi><mi>k</mi></msub></math>
+    <ul><li>Raising a ratio to the power 0.05 is moving a twentieth of the way in decibels. 1.01 per frame, at 187 frames a second, is +8 dB a second.</li></ul>
+  </div>
+
+  <div class="q" data-answer="a">
+    <p>A steady, unchanging whistle sits in the passband for a minute. What does the noise reducer do to it?</p>
+    <ul>
+      <li data-k="a">Slowly decides it's hiss and turns it down</li>
+      <li data-k="b" data-says="Look at the tracker: what does it do when a level never dips?">Leaves it alone, because it's loud</li>
+    </ul>
+    <div class="why">The tracker rises about 8 dB a second whenever the level doesn't dip, so within a few seconds a constant tone looks exactly like hiss to it. Speech is safe because it keeps stopping. For a constant whistle, the filter shift of chapter 18 is the right tool.</div>
+  </div>
+
+  <!-- 5 -->
+  <h2 id="hang">Quiet pauses: AGC hang</h2>
+  <p>Chapter 11's automatic volume follows the loudest recent peak and slowly turns up when things get quiet (<a class="back" href="./11-numbers-to-speakers.html#agc">↩</a>). That slow release has a side effect: in the pause after a sentence, it starts turning up the volume, and the hiss in the pause rises with it, "breathing" between every phrase. The fix is to <b>hang</b>: after a peak, hold the volume where it is for a moment before releasing:</p>
+
+  <div class="scene" id="s-hang">
+    <div class="controls">
+      <label for="hg-h">Hang <input id="hg-h" type="range" min="0" max="0.5" step="0.05" value="0.25"><output id="hg-ho"></output></label>
+    </div>
+  </div>
+
+  <p>With a 200 ms hang, the script's pause comes out exactly as quiet as it went in; with none, 20 times louder. Spectrum Lab's AGC menu sets three pairs: <b>fast</b> (release 0.1 s, hang 50 ms) for CW, <b>medium</b> (0.4 s, 250 ms) for most voice, <b>slow</b> (1.5 s, 500 ms) for slow talkers and SSB. It also caps the gain at 60 dB, so an empty channel isn't amplified without limit.</p>
+
+  <!-- 6 -->
+  <h2 id="limiter">Peaks that don't crackle</h2>
+  <p>The volume knob goes up to +30 dB, and a speaker can only move so far: samples past ±1 get chopped flat, a <b>hard clip</b>, which sounds like crackling. Instead of a sharp corner at ±1, bend the curve smoothly, with <b>tanh</b>, which is a straight line for small sounds and gently levels off for big ones:</p>
+
+  <div class="scene" id="s-limiter">
+    <div class="controls">
+      <label for="lm-v">Volume <input id="lm-v" type="range" min="-12" max="24" step="1" value="12"><output id="lm-vo"></output></label>
+    </div>
+  </div>
+
+  <p>The browser has a node for exactly this, the <code>WaveShaperNode</code>: you give it a curve, it bends every sample. Its curve only covers inputs from −1 to +1, so Spectrum Lab divides by 4 first and draws <b>tanh(4x)</b>: together that's tanh of the original, with a slope of exactly 1 near zero, so normal sound passes untouched and only peaks are rounded.</p>
+
+  <div class="notation">
+    <math><mi>y</mi><mo>=</mo><mi>tanh</mi><mo>(</mo><mn>4</mn><mo>·</mo><mfrac><mrow><mi>v</mi><mi>x</mi></mrow><mn>4</mn></mfrac><mo>)</mo><mo>=</mo><mi>tanh</mi><mo>(</mo><mi>v</mi><mi>x</mi><mo>)</mo><mspace width="2em"/><mi>tanh</mi><mo>(</mo><mi>u</mi><mo>)</mo><mo>≈</mo><mi>u</mi><mtext> for small </mtext><mi>u</mi></math>
+    <ul><li><b>v</b>: the volume as a factor, 10<sup>dB/20</sup>. From the script: 0.1 → 0.100, 1 → 0.762, 4 → 0.999. Never past 1, never a corner.</li></ul>
+  </div>
+
+  <!-- 7 -->
+  <h2 id="stream">One stream that never stutters</h2>
+  <p>Chapter 11's player scheduled every chunk as its own little sound, placed right after the previous one. It has three weak spots. Each chunk is resampled to the sound card's rate on its own, so what happens at the joins is up to the browser. The cushion is a fixed 150 ms, too little when the server's stream crosses the internet and stalls. And clock drift is fixed with a jolt: a dropped chunk or a pause to refill.</p>
+  <p>Spectrum Lab now plays everything through <b>one continuous stream</b>: a ring buffer, a reader that walks through it at a fractional speed, and a little control loop. Watch it:</p>
+
+  <div class="scene" id="s-ring">
+    <div class="controls">
+      <label for="rg-p">Radio's clock vs the sound card's <input id="rg-p" type="range" min="-3000" max="3000" step="100" value="1500"><output id="rg-po"></output></label>
+    </div>
+    <div class="game"><button id="rg-stall" type="button">Network stall (300 ms)</button></div>
+    <p class="readout" id="r-ring" aria-live="polite"></p>
+  </div>
+
+  <p>Chunks are <b>written</b> into the ring as they arrive (yellow). The sound card <b>reads</b> 128 samples at a time (blue), at its own rate. The distance between them is the cushion. The reader doesn't jump from sample to sample: its position is a fraction, advanced by the ratio of the two rates, and the sound between samples is read off a straight line (chapter 11's resampling, done continuously, so there are no joins at all). Then the control loop: if the cushion is bigger than the target, read a hair faster; if smaller, a hair slower, by at most 0.5%, a pitch change nobody can hear. If the ring ever runs dry, wait until the cushion is back and fade in over 5 ms.</p>
+  <p>In the chapter's script, the old player lost 5 chunks over 4 hours of a 50 ppm clock difference and, over the internet with a 300 ms stall every 20 seconds, had a gap and a skip per hour; the stream had none, holding a 350 ms cushion for the server's dongle (150 ms for your own). The code runs inside an <b>AudioWorklet</b>, a small program that the browser runs on its audio thread, so a busy page can't make the sound stutter.</p>
+
+  <div class="notation">
+    <math><mtext>step</mtext><mo>=</mo><mfrac><msub><mi>r</mi><mtext>radio</mtext></msub><msub><mi>r</mi><mtext>card</mtext></msub></mfrac><mo>·</mo><mo>(</mo><mn>1</mn><mo>+</mo><mtext>clamp</mtext><mo>(</mo><mn>0.01</mn><mfrac><mrow><mi>h</mi><mo>−</mo><mi>c</mi></mrow><mi>c</mi></mfrac><mo>,</mo><mo>±</mo><mn>0.005</mn><mo>)</mo><mo>)</mo></math>
+    <math><mi>y</mi><mo>=</mo><mi>x</mi><mo>[</mo><mi>i</mi><mo>]</mo><mo>(</mo><mn>1</mn><mo>−</mo><mi>f</mi><mo>)</mo><mo>+</mo><mi>x</mi><mo>[</mo><mi>i</mi><mo>+</mo><mn>1</mn><mo>]</mo><mi>f</mi></math>
+    <ul><li><b>h</b>: samples waiting in the ring; <b>c</b>: the cushion we want; <b>i</b> and <b>f</b>: the reader's position split into whole and fractional parts.</li></ul>
+  </div>
+
+  <!-- 8 -->
+  <h2 id="record">Recording what you hear</h2>
+  <p>The last box in the chain hands the sound to the speakers and, at the same time, to a <code>MediaStreamAudioDestinationNode</code>: a tap that turns it into a stream the browser's <code>MediaRecorder</code> can compress. The recording is exactly what you heard, after squelch, noise reduction, AGC, volume and the limiter, saved as Opus in a .webm file (or .m4a in Safari) named after the frequency, mode and time. To keep the radio itself (to retune it later or study it in chapter 18's charts), you'd record the I/Q samples instead, 4.8 MB every second at 2.4 MS/s.</p>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: clean up a real voice</h2>
+  <div class="lab">
+    <p>A live receiver with this chapter's controls, played through the continuous stream. Pick a voice channel, then switch each control on and off and listen. The chart shows the sound's spectrum before (gray) and after (blue) the cleanup.</p>
+    <div class="game">
+      <button data-preset="162.55,NFM">NOAA weather 162.55 (NFM)</button>
+      <button data-preset="118.7,AM">LaGuardia tower 118.7 (AM)</button>
+      <button data-preset="146.52,NFM">2 m calling 146.52 (NFM)</button>
+    </div>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label class="note">Mode <select id="lb-mode"><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option></select></label>
+        <label class="note"><input id="lb-voice" type="checkbox" checked> Voice filter</label>
+        <label for="lb-nr">Noise reduction <input id="lb-nr" type="range" min="0" max="1" step="0.05" value="0.5"><output id="lb-nro"></output></label>
+        <label class="note">AGC <select id="lb-agc"><option>off</option><option>slow</option><option selected>medium</option><option>fast</option></select></label>
+        <label for="lb-vol">Volume <input id="lb-vol" type="range" min="-20" max="30" step="1" value="0"><output id="lb-volo"></output></label>
+      </div>
+      <p class="readout" id="r-lab" aria-live="polite"></p>
+    </div>
+    <div id="lab19"></div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>The biquad</b> (<code>Biquad</code> in <code>src/dsp.ts</code>): the cookbook's numbers, then five multiplications per sample:</p>
+<pre><code>const w = (TAU * f) / fs, c = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
+const k = type === "lowpass" ? (1 - c) / 2 : (1 + c) / 2;
+this.b0 = k / a0; this.b1 = (type === "lowpass" ? 2 * k : -2 * k) / a0; this.b2 = k / a0;
+this.a1 = (-2 * c) / a0; this.a2 = (1 - al) / a0;
+// per sample:
+const y = this.b0 * x[i] + this.b1 * x1 + this.b2 * x2 - this.a1 * y1 - this.a2 * y2;</code></pre>
+  <p><b>Noise reduction, one frame</b> (<code>NoiseReducer</code> in <code>src/dsp.ts</code>): window, FFT, a gain per bin, inverse FFT, window, overlap-add:</p>
+<pre><code>for (let i = 0; i &lt; n; i++) re[i] = this.inp[i] * win[i];                 // √Hann in
+fft(re, im);
+for (let b = 0; b &lt;= n / 2; b++) {
+  const s = (this.smooth[b] = 0.8 * this.smooth[b] + 0.2 * (re[b] ** 2 + im[b] ** 2));
+  const nz = this.noise[b];
+  this.noise[b] = s &lt; nz ? nz * (s / nz) ** 0.05 : nz * 1.01;              // fall toward dips, rise slowly
+  let g = Math.max(floor, 1 - (NR_BIAS * over * this.noise[b]) / (s + 1e-20));
+  g = this.gain[b] = g &gt; this.gain[b] ? 0.65 * this.gain[b] + 0.35 * g : 0.75 * this.gain[b] + 0.25 * g;
+  re[b] *= g; im[b] *= g; if (b &amp;&amp; b &lt; n / 2) { re[n - b] *= g; im[n - b] *= g; }   // and the mirror bin
+}
+for (let i = 0; i &lt; n; i++) im[i] = -im[i]; fft(re, im);                     // inverse FFT = conj, FFT, conj, ÷n
+for (let i = 0; i &lt; n; i++) this.ola[i] += (re[i] / n) * win[i];              // √Hann out, add</code></pre>
+  <p><b>AGC with hang</b> (<code>Agc</code> in <code>src/dsp.ts</code>):</p>
+<pre><code>if (a &gt;= this.env) { this.env = a; this.held = this.hang; }   // a new peak: hold for `hang` samples
+else if (this.held &gt; 0) this.held--;                           // holding
+else this.env = Math.max(lo, this.env * this.decay);           // then release (lo caps the gain)</code></pre>
+  <p><b>The stream</b> (the AudioWorklet in <code>src/player.ts</code>), for every sample the sound card asks for:</p>
+<pre><code>const step = (this.rate / sampleRate) * (1 + Math.max(-0.005, Math.min(0.005, (0.01 * (have - this.cushion)) / this.cushion)));
+for (let i = 0; i &lt; out.length; i++) {
+  if (this.w - this.r &lt; 2) { this.on = false; this.fade = 0; break; }   // ran dry: refill the cushion first
+  const k = Math.floor(this.r), f = this.r - k;
+  this.fade = Math.min(1, this.fade + 1 / 256);                        // ~5 ms fade-in after a gap
+  out[i] = this.fade * (this.ring[k &amp; M] * (1 - f) + this.ring[(k + 1) &amp; M] * f);
+  this.r += step;
+}</code></pre>
+  <p><b>Volume, limiter, recording</b> (<code>streamOut</code> in <code>src/player.ts</code>):</p>
+<pre><code>const vol = new GainNode(ctx), limiter = new WaveShaperNode(ctx, { oversample: "2x",
+  curve: Float32Array.from({ length: 1025 }, (_, i) => Math.tanh(4 * (i / 512 - 1))) });
+const rec = ctx.createMediaStreamDestination();
+player.connect(vol).connect(limiter).connect(ctx.destination);
+limiter.connect(rec);                                      // new MediaRecorder(rec.stream) records what you hear</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch19.ts</code>:</p>
+<pre><code id="ch19-out">voice filter at   67 Hz (lowest CTCSS tone):  -26.1 dB
+voice filter at  150 Hz (a CTCSS tone):  -12.3 dB
+voice filter at  300 Hz (the low edge):   -3.0 dB
+voice filter at 1000 Hz (the middle of a voice):   -0.1 dB
+voice filter at 3000 Hz (the high edge):   -3.0 dB
+voice filter at 8000 Hz (hiss):  -18.6 dB
+√Hann² + √Hann² half a frame later: off from 1 by at most 7.3e-8
+noise reduction 0.5: hiss in the pauses 8.5 dB lower, the tone changed by 0.1 dB
+noise reduction 1: hiss in the pauses 11.5 dB lower, the tone changed by 0.2 dB
+AGC, hang 0 ms: the pause comes out at 0.201 (it went in at 0.010)
+AGC, hang 200 ms: the pause comes out at 0.010 (it went in at 0.010)
+limiter: in 0.1 → out 0.100 (a hard clip would give 0.100)
+limiter: in 0.5 → out 0.462 (a hard clip would give 0.500)
+limiter: in 1.0 → out 0.762 (a hard clip would give 1.000)
+limiter: in 2.0 → out 0.964 (a hard clip would give 1.000)
+limiter: in 4.0 → out 0.999 (a hard clip would give 1.000)
+4 hours, USB dongle, clocks 50 ppm apart:
+  one buffer per chunk: 0 gaps, 5 skips
+  one stream:           0 gaps, 0 skips (cushion stayed between 120 and 176 ms)
+1 hour over the internet, a 300 ms stall every 20 s:
+  one buffer per chunk: 1 gaps, 1 skips
+  one stream:           0 gaps, 0 skips (cushion stayed between 26 and 380 ms)
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does a biquad need only five multiplications when chapter 6's filters needed hundreds?</summary><p>It reuses its own past outputs (the a-coefficients), so one click keeps ringing through the feedback instead of needing a weight for every past input. The price: the recipe must be chosen carefully, or the feedback can grow without end.</p></details>
+  <details><summary>Why do the frames overlap by half, with a square-root Hann window used twice?</summary><p>The window used twice is a Hann window, and Hann windows half a frame apart add up to exactly 1. So untouched frames rebuild the original sound perfectly, and changes fade smoothly between neighboring frames instead of clicking at the edges.</p></details>
+  <details><summary>What makes over-eager noise reduction sound warbly and robotic, and what stops it?</summary><p>Random bins of hiss poke above the estimate and their gains flicker on and off frame by frame: "musical noise". A gain floor (never more than −20 dB) and smoothing (rise fast, fall slowly) keep the gains calm.</p></details>
+  <details><summary>The sound card runs at 48 000 samples a second and the radio's audio at 50 000. How far does the reader move per output sample, before the control loop's correction?</summary><p>50 000 / 48 000 ≈ 1.042 input samples per output sample.</p></details>
+
+  <nav class="next">
+    <a href="./18-reading-the-band.html">← Chapter 18: Reading the band</a>
+    <a href="./">Back to the course →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch19.ts"></script>
+</body>
+</html>

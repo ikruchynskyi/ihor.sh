@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reading the Band</title>
+  <meta name="description" content="Radio from scratch, chapter 18: how Spectrum Lab draws and tunes the band. FFT size and resolution, averaging away the noise grass, the noise floor as a median, decibels to colors, a click becoming a frequency, filter shift, and a squelch in the chart's own decibels." />
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio from scratch · Chapter 18</p>
+  <h1>Reading the band</h1>
+
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./04-winding-machine.html#fft">Chapter 4: the FFT, windows and decibels</a></li>
+      <li><a href="./05-moving-a-station.html#shift">Chapter 5: mixing</a> and <a href="./06-averaging-is-filtering.html#weights">chapter 6: the low-pass filter</a></li>
+      <li><a href="./10-am-ssb-and-morse.html#ssb">Chapter 10: single sideband</a> and <a href="./11-numbers-to-speakers.html#squelch">chapter 11: squelch</a></li>
+    </ul>
+  </div>
+
+  <p>Open <a href="../">Spectrum Lab</a> and you see a line wiggling across the top, a curtain of color sliding down underneath, and a frequency in big digits. You can click a bump and hear it, drag an orange line until the hiss goes away, slide the passband off a whistle. Every one of those is a few lines of arithmetic on chapter 4's FFT. This chapter takes the screen apart, piece by piece, until you could build it yourself.</p>
+  <p>Start with a question you can almost answer already: <b>if two stations sit 1.5 kHz apart, why does one setting of the screen show one bump and another show two?</b></p>
+
+  <!-- 1 -->
+  <h2 id="resolution">How sharp can the picture be?</h2>
+  <p>An FFT of <b>N</b> samples gives N bins, and they share the whole band the dongle hears. At 2.4 million samples a second, 1024 bins are 2.3 kHz wide each. Two carriers closer than that fall into the same bin, or into neighboring bins that blur together. Slide them apart, or give the FFT more samples:</p>
+
+  <div class="scene" id="s-res">
+    <div class="controls">
+      <label for="rs-n">FFT size N <input id="rs-n" type="range" min="8" max="14" step="1" value="10"><output id="rs-no"></output></label>
+      <label for="rs-d">Carriers apart <input id="rs-d" type="range" min="200" max="8000" step="100" value="1500"><output id="rs-do"></output></label>
+    </div>
+    <p class="readout" id="r-res" aria-live="polite"></p>
+  </div>
+
+  <p>More bins cost something: to measure finer frequencies, the FFT has to <b>listen longer</b>. 4096 samples at 2.4 MS/s is 1.7 ms of signal; 16 384 is 6.8 ms. It's the same trade a musician knows: you can't tell a note's exact pitch from a click, only from a held tone.</p>
+
+  <div class="notation">
+    <math><mi>Δ</mi><mi>f</mi><mo>=</mo><mfrac><msub><mi>f</mi><mi>s</mi></msub><mi>N</mi></mfrac><mspace width="2em"/><mi>T</mi><mo>=</mo><mfrac><mi>N</mi><msub><mi>f</mi><mi>s</mi></msub></mfrac><mspace width="2em"/><mi>Δ</mi><mi>f</mi><mo>·</mo><mi>T</mi><mo>=</mo><mn>1</mn></math>
+    <ul>
+      <li><b>Δf</b>: how wide one bin is (Hz). <b>f<sub>s</sub></b>: the sample rate. <b>N</b>: the FFT size. <b>T</b>: how much signal one FFT reads.</li>
+      <li>Their product is always 1: halve the bin width and you double the listening time.</li>
+    </ul>
+  </div>
+
+  <div class="q" data-answer="b">
+    <p>Spectrum Lab's chart is zoomed in 8× on a 2.4 MS/s band. Does zooming show more detail?</p>
+    <ul>
+      <li data-k="a" data-says="Zooming only stretches the bins you already have.">Yes, 8× finer</li>
+      <li data-k="b">No: each bin just gets wider on screen. Detail only comes from a bigger N.</li>
+    </ul>
+    <div class="why">The picture is made of N bins no matter how you stretch it. That's why Spectrum Lab uses 4096 bins (586 Hz each) instead of 1024: there is still detail left when you zoom in.</div>
+  </div>
+
+  <!-- 2 -->
+  <h2 id="average">Calming the grass</h2>
+  <p>Look at a spectrum of pure noise and it isn't flat: it's grass, every bin jumping up and down by several dB. A weak station a few dB above the noise hides in that grass. The fix is the oldest trick in measuring: <b>take several FFTs and average them</b>. Each bin's random ups and downs cancel out; a real carrier is there every time, so it stays.</p>
+
+  <div class="scene" id="s-avg">
+    <div class="controls">
+      <label for="av-k">FFTs averaged <input id="av-k" type="range" min="0" max="6" step="1" value="0"><output id="av-ko"></output></label>
+    </div>
+    <p class="readout" id="r-avg" aria-live="polite"></p>
+  </div>
+
+  <p>There is a weak carrier in that picture, 5 dB above the noise. With one FFT, the grass is as tall as the carrier. With 16, it stands out clearly. Two details matter in the code: average the <b>power</b> (not the dB values), and spread the FFTs across the chunk, so each one sees different noise. Spectrum Lab averages 8 FFTs per waterfall row.</p>
+
+  <div class="notation">
+    <math><msub><mi>σ</mi><mi>K</mi></msub><mo>≈</mo><mfrac><mrow><mn>5.6</mn><mtext> dB</mtext></mrow><msqrt><mi>K</mi></msqrt></mfrac></math>
+    <ul>
+      <li><b>σ<sub>K</sub></b>: how much the noise bins scatter, after averaging <b>K</b> FFTs. One FFT scatters about ±5.6 dB; averaging 4 halves it, 16 quarters it. (Measured: 5.5, 2.3, 1.1 and 0.55 dB for 1, 4, 16, 64.)</li>
+    </ul>
+  </div>
+
+  <div class="q" data-num="4">
+    <p>One FFT's grass scatters ±5.6 dB. How many FFTs do you average to bring it down to ±2.8 dB?</p>
+    <div class="why">Half the scatter needs √K = 2, so K = 4. Every halving costs four times the FFTs.</div>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="floor">Where is the noise?</h2>
+  <p>To say how strong a signal is, you need something to compare it with: the <b>noise floor</b>, the level of the hiss. But the spectrum is noise and stations mixed together. Which bins are "just noise"?</p>
+  <p>Here is a trick that needs no knowledge of where the stations are. Take every bin's level and <b>sort them</b>:</p>
+
+  <div class="scene" id="s-floor">
+    <p class="readout" id="r-floor" aria-live="polite"></p>
+  </div>
+
+  <p>Stations are tall, but they fill only a few bins. Sorted, they all end up at the right. The bin in the exact middle of the sorted list, the <b>median</b>, is noise, even with a dozen stations in the band. It only fails when stations cover more than half the band: in the chapter's script, five wide FM stations covering a third of the bins nudge it up by 1 dB.</p>
+  <p>With a floor, signal strength becomes a difference. In decibels, a difference is a ratio: a carrier 20 dB above the floor is 100 times stronger than the noise in one bin. That's the <b>signal-to-noise ratio</b>, SNR, which Spectrum Lab's meter shows.</p>
+
+  <div class="notation">
+    <math><msub><mi>L</mi><mtext>dB</mtext></msub><mo>=</mo><mn>10</mn><msub><mi>log</mi><mn>10</mn></msub><mi>P</mi><mspace width="2em"/><mtext>floor</mtext><mo>=</mo><mtext>median</mtext><mo>(</mo><msub><mi>L</mi><mn>0</mn></msub><mo>,</mo><mo>…</mo><mo>,</mo><msub><mi>L</mi><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>)</mo></math>
+    <math><mtext>SNR</mtext><mo>=</mo><msub><mi>L</mi><mtext>signal</mtext></msub><mo>−</mo><mtext>floor</mtext></math>
+    <ul>
+      <li>+3 dB is twice the power, +10 dB ten times, +20 dB a hundred times (<a href="./04-winding-machine.html#window">chapter 4</a>).</li>
+      <li>On a live waterfall the floor is also smoothed over time (90% old, 10% new each row), so the colors don't flicker.</li>
+    </ul>
+  </div>
+
+  <!-- 4 -->
+  <h2 id="colors">From decibels to colors</h2>
+  <p>The waterfall is the spectrum turned into one row of pixels, many times a second, each new row pushing the older ones down. Every bin's level becomes a color: the floor is black, and as the level climbs it goes blue, magenta, yellow. The <b>contrast</b> says how many dB above the floor count as full yellow:</p>
+
+  <div class="scene" id="s-colors">
+    <div class="controls">
+      <label for="co-r">Contrast (dB from black to yellow) <input id="co-r" type="range" min="10" max="90" step="1" value="50"><output id="co-ro"></output></label>
+    </div>
+  </div>
+
+  <p>Low contrast makes weak signals bright but turns every strong one into a yellow blob. High contrast keeps the strong ones apart but hides the faint ones in black. Computing the color for millions of pixels a second is the expensive part, so the colors are worked out once: a table of 256 colors, and each bin just looks up its slot. Changing the contrast repaints the whole history from the stored dB values, which is why Spectrum Lab keeps the last 256 rows of numbers, not just the picture.</p>
+
+  <!-- 5 -->
+  <h2 id="tune">A click becomes a frequency</h2>
+  <p>You click a bump. Which frequency was that? The chart shows a slice of the band, from <b>f<sub>lo</sub></b> to <b>f<sub>hi</sub></b> (the whole band, or less when zoomed). Where you clicked, as a fraction of the width, picks a frequency in between. Try it: click anywhere on this chart, then change the step.</p>
+
+  <div class="scene" id="s-tune">
+    <div class="controls">
+      <label for="tn-z">Zoom <input id="tn-z" type="range" min="0" max="4" step="0.1" value="0"><output id="tn-zo"></output></label>
+      <label class="note">Step <select id="tn-s"><option value="0">off</option><option value="5000">5 kHz</option><option value="12500">12.5 kHz</option><option value="25000">25 kHz</option><option value="100000" selected>100 kHz</option></select></label>
+    </div>
+    <p class="readout" id="r-tune" aria-live="polite"></p>
+  </div>
+
+  <p>Two small things make this pleasant. First, <b>snapping</b>: stations sit on a grid (FM broadcast every 100 kHz in the US, two-way radio every 12.5 or 25 kHz), so the click is rounded to the nearest channel. A sloppy click on a bump lands exactly on the station. Second, <b>bin centers</b>: an FFT bin covers a little range of frequencies, and its color is drawn as a column. If the frequency of bin <i>i</i> is put at the column's left edge instead of its middle, every click lands half a bin off. At 1024 bins over 2.4 MHz that's 1.2 kHz, enough to make a narrow signal sound wrong.</p>
+
+  <div class="notation">
+    <math><mi>f</mi><mo>=</mo><msub><mi>f</mi><mtext>lo</mtext></msub><mo>+</mo><mfrac><mi>x</mi><mi>W</mi></mfrac><mo>(</mo><msub><mi>f</mi><mtext>hi</mtext></msub><mo>−</mo><msub><mi>f</mi><mtext>lo</mtext></msub><mo>)</mo><mspace width="2em"/><msub><mi>f</mi><mtext>snap</mtext></msub><mo>=</mo><mtext>round</mtext><mo>(</mo><mfrac><mrow><mi>C</mi><mo>+</mo><mi>f</mi></mrow><mi>s</mi></mfrac><mo>)</mo><mo>·</mo><mi>s</mi><mo>−</mo><mi>C</mi></math>
+    <ul>
+      <li><b>x</b>: where you clicked, in pixels from the left; <b>W</b>: the chart's width. <b>f</b> is an offset from the dongle's center <b>C</b>.</li>
+      <li>Snap the <em>absolute</em> frequency C + f to the step <b>s</b>, not the offset: the dongle's center is rarely on the channel grid.</li>
+      <li>Dragging the passband's edge sets the bandwidth: twice the distance from the carrier for AM and FM, the distance itself for one sideband.</li>
+    </ul>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="shift">Sliding the window, not the station</h2>
+  <p>You're listening to a voice on single sideband and a carrier whistles 2.6 kHz above the voice's carrier: inside the 2.8 kHz passband. Retuning would move the voice too. What you want is to slide only the <b>window</b>, the filter, off the whistle, and leave the voice where it is. Real radios call it <b>passband tuning</b> or <b>filter shift</b>:</p>
+
+  <div class="scene" id="s-shift">
+    <div class="controls">
+      <label for="sh-s">Filter shift <input id="sh-s" type="range" min="-1500" max="1500" step="50" value="0"><output id="sh-so"></output></label>
+    </div>
+    <div class="game">
+      <button id="sh-play" type="button">▶ Listen with this shift</button>
+    </div>
+    <p class="readout" id="r-shift" aria-live="polite"></p>
+  </div>
+
+  <p>Slide it down 500 Hz: the whistle falls outside, and the voice loses only its very top, which barely matters for speech. The trick is three steps, all from earlier chapters. <b>Mix</b> by the tuned frequency plus the shift, so the filter's center moves (<a href="./05-moving-a-station.html#shift">chapter 5</a>). <b>Filter</b> as usual (<a href="./06-averaging-is-filtering.html#weights">chapter 6</a>). Then <b>mix back</b> by the shift, so the voice's carrier is at 0 Hz again and the demodulator hears it at the right pitch. For SSB, the sideband filter itself moves by the shift too.</p>
+
+  <div class="notation">
+    <math><mi>y</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><mo>(</mo><mi>h</mi><mo>*</mo><mo>(</mo><mi>x</mi><mo>·</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>π</mi><mo>(</mo><msub><mi>f</mi><mn>0</mn></msub><mo>+</mo><mi>s</mi><mo>)</mo><mi>n</mi><mo>/</mo><msub><mi>f</mi><mi>s</mi></msub></mrow></msup><mo>)</mo><mo>)</mo><mo>·</mo><msup><mi>e</mi><mrow><mi>j</mi><mn>2</mn><mi>π</mi><mi>s</mi><mi>n</mi><mo>/</mo><msub><mi>f</mi><mi>s</mi></msub></mrow></msup></math>
+    <ul>
+      <li><b>f<sub>0</sub></b>: the tuned frequency; <b>s</b>: the shift; <b>h</b>: the low-pass filter; <b>*</b>: convolution (sliding-and-multiplying).</li>
+      <li>The script measures it: a +1.2 kHz shift makes an 800 Hz USB tone 59 dB quieter.</li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <h2 id="squelch">A squelch you can see</h2>
+  <p>Chapter 11's squelch measured the channel's power, a number on its own scale. Spectrum Lab's squelch is an <b>orange line on the chart</b>, so it has to work in the chart's own decibels. It looks at the bins inside the passband and takes the <b>loudest</b> one. If that rises above the line, a signal is there: sound on.</p>
+
+  <div class="scene" id="s-sq">
+    <div class="controls">
+      <label for="sq-t">Squelch line <input id="sq-t" type="range" min="-12" max="20" step="0.5" value="6"><output id="sq-to"></output></label>
+    </div>
+    <p class="readout" id="r-sq" aria-live="polite"></p>
+  </div>
+
+  <p>Why the loudest bin and not the average? A narrow voice or a carrier fills only a few bins of a wide passband: their average barely moves, while their peak jumps right up. Why does the line sit <b>above</b> the floor, not on it? Because noise has peaks too. Of 22 noise bins in a 12.5 kHz passband, the loudest one sits a few dB above the median, every time. So "set it at the noise level" really means "just above the noise's own peaks". Spectrum Lab's <b>Auto</b> button does exactly that: it reads the loudest bin on an empty channel and puts the line 3 dB above it. In the script, that line let none of 100 chunks of pure noise through and opened at once for a carrier 23 dB over the floor.</p>
+  <p>The rest is chapter 11's two comfort features. <b>Smoothing</b>: the level is averaged with the previous one, so one noise spike doesn't open it. <b>Hysteresis</b>: it closes only 3 dB below the line, the shaded band in the picture, so a signal hovering right at the line doesn't chop.</p>
+
+  <div class="notation">
+    <math><msub><mi>L</mi><mi>t</mi></msub><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><msub><mi>L</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><munder><mi>max</mi><mrow><mi>k</mi><mo>∈</mo><mtext>passband</mtext></mrow></munder><msub><mtext>dB</mtext><mi>k</mi></msub><mspace width="2em"/><mtext>open if</mtext><mspace width="0.4em"/><msub><mi>L</mi><mi>t</mi></msub><mo>&gt;</mo><mi>T</mi><mo>,</mo><mspace width="1em"/><mtext>close if</mtext><mspace width="0.4em"/><msub><mi>L</mi><mi>t</mi></msub><mo>&lt;</mo><mi>T</mi><mo>−</mo><mn>3</mn></math>
+  </div>
+
+  <!-- lab -->
+  <h2 id="lab">Lab: read a real band</h2>
+  <div class="lab">
+    <p>A live spectrum from a real dongle, with this chapter's dials: the FFT size, how many FFTs are averaged, the noise floor as a median, and the strongest signal's SNR. Click the chart to read a frequency. Try the airband (118–137 MHz) with averaging off and on: the short transmissions pop out of the grass.</p>
+    <div class="scene" id="s-lab">
+      <div class="controls">
+        <label class="note">FFT size <select id="lb-n"><option>1024</option><option selected>4096</option><option>16384</option></select></label>
+        <label for="lb-k">FFTs averaged <input id="lb-k" type="range" min="1" max="32" step="1" value="8"><output id="lb-ko"></output></label>
+      </div>
+      <p class="readout" id="r-lab" aria-live="polite"></p>
+    </div>
+    <div id="lab18"></div>
+  </div>
+
+  <!-- code -->
+  <h2 id="code">In code</h2>
+  <p><b>Averaging FFTs</b> (<code>avgSpectrum</code> in <code>src/dsp.ts</code>): spread across the signal, averaged as power, back to dB at the end:</p>
+<pre><code>for (let s = 0; s + n &lt;= total &amp;&amp; count &lt; frames; s += step, count++) {
+  const p = powerSpectrum(iq, s, n);                       // one FFT, in dB (chapter 4)
+  for (let i = 0; i &lt; n; i++) acc[i] += 10 ** (p[i] / 10); // dB → power, then add
+}
+for (let i = 0; i &lt; n; i++) acc[i] = 10 * Math.log10(acc[i] / count + 1e-20);</code></pre>
+  <p><b>The noise floor and the colors</b> (<code>src/main.ts</code>): the median bin, smoothed, and a 256-color lookup table:</p>
+<pre><code>const median = (x: Float32Array) => x.slice().sort()[x.length >> 1];
+wf.floor = 0.9 * wf.floor + 0.1 * median(db);
+const LUT = new Uint32Array(256).map((_, i) => { const [r, g, b] = heat(i / 255); return (255 &lt;&lt; 24) | (b &lt;&lt; 16) | (g &lt;&lt; 8) | r; });
+// each bin: how far above the floor, scaled so `contrast` dB is the last color
+px[i] = LUT[Math.max(0, Math.min(255, ((db[i] - wf.floor) * 255 / contrast) | 0))];</code></pre>
+  <p><b>A click, snapped</b> (<code>src/main.ts</code>): position across the chart, then the absolute frequency rounded to the step:</p>
+<pre><code>const f = view.lo + fracX(e) * (view.hi - view.lo);                   // Hz from the dongle's center
+const snap = (f: number) => Math.round((centerHz() + f) / stepHz()) * stepHz() - centerHz();
+// image column whose middle is frequency f (each bin is drawn as a column from its frequency rightward)
+const u = (f: number) => (f / fs) * WF_N + WF_N / 2 + 0.5;</code></pre>
+  <p><b>Filter shift</b> (<code>Receiver</code> in <code>src/dsp.ts</code>): mix by tuning + shift, filter, mix back:</p>
+<pre><code>this.mixer = new Mixer(fs, offset + sh);                  // the filter's center moves by the shift
+this.chan = new FirDecimator(this.taps, m1, 2);
+this.back = sh ? new Mixer(this.chanFs, -sh) : null;      // and the carrier comes back to 0 Hz
+// SSB: the sideband filter slides too
+const shift = (upper ? bw / 2 : -bw / 2) + passShift;</code></pre>
+  <p><b>The squelch</b> (<code>src/main.ts</code>): the loudest bin in the passband, smoothed, with 3 dB of hysteresis:</p>
+<pre><code>for (let i = bin(a); i &lt;= bin(b); i++) peak = Math.max(peak, db[i]);
+sqLevel = 0.5 * sqLevel + 0.5 * peak;
+if (!sqOpen &amp;&amp; sqLevel &gt; line) sqOpen = true;
+else if (sqOpen &amp;&amp; sqLevel &lt; line - 3) sqOpen = false;</code></pre>
+  <p><b>Try it yourself:</b> <code>node course/code/ch18.ts</code>:</p>
+<pre><code>N =  1024: bins 2344 Hz wide, one FFT = 0.43 ms of signal
+N =  4096: bins  586 Hz wide, one FFT = 1.71 ms of signal
+N = 16384: bins  146 Hz wide, one FFT = 6.83 ms of signal
+two carriers 1.5 kHz apart: N=1024 shows 1 peak, N=4096 shows 2 peaks
+averaging  1 FFTs: noise bins spread ±5.49 dB
+averaging  4 FFTs: noise bins spread ±2.29 dB
+averaging 16 FFTs: noise bins spread ±1.13 dB
+averaging 64 FFTs: noise bins spread ±0.55 dB
+median bin: -56.3 dB with noise alone, -55.2 dB with five FM stations covering 34% of the bins
+click at 100.2093 MHz, FM broadcast, 100 kHz step → 100.2000 MHz
+click at 146.7213 MHz, 2 m repeater, 5 kHz step → 146.7200 MHz
+click at 119.0952 MHz, airband, 25 kHz step → 119.1000 MHz
+filter shift +1.2 kHz on an 800 Hz USB tone: 59 dB quieter
+empty channel: noise floor -56.3 dB, loudest noise bin in the passband -53.3 dB (3.0 dB above the floor)
+squelch at -50.3 dB: 0 of 100 noise chunks opened it; a carrier 23 dB over the floor opens it
+all checks passed</code></pre>
+
+  <h2 id="check">Check yourself</h2>
+  <details><summary>At 1.024 MS/s, how wide is one bin of a 4096-point FFT, and how long does that FFT listen?</summary><p>1 024 000 / 4096 = 250 Hz per bin, and 4096 / 1 024 000 = 4 ms of signal.</p></details>
+  <details><summary>Why is the noise floor the median bin and not the average?</summary><p>Stations are few but very loud: a handful of bins 40 dB up drag the average far above the hiss. The median only looks at the middle of the sorted list, which stays in the noise as long as stations cover less than half the band.</p></details>
+  <details><summary>Why snap the absolute frequency and not the offset from the dongle's center?</summary><p>The dongle is tuned 250 kHz below the station to dodge its own spike, so its center is rarely on a channel. Channels are a grid of absolute frequencies.</p></details>
+  <details><summary>Your squelch set right at the noise floor keeps opening on nothing. Why?</summary><p>It compares the loudest bin in the passband with the line, and in pure noise the loudest of many bins is always a few dB above the median. Set it just above those peaks, which is what Auto does.</p></details>
+
+  <nav class="next">
+    <a href="./17-pictures-over-radio.html">← Chapter 17: Pictures over radio</a>
+    <a href="./19-cleaner-sound.html">Next: Chapter 19, Cleaner sound →</a>
+  </nav>
+</main>
+<script type="module" src="/src/course/ch18.ts"></script>
+</body>
+</html>
