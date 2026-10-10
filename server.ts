@@ -29,6 +29,7 @@ import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
+import { startMonitor, stopMonitor, monitorState, monitorEvents, monitorAudio, heardLog } from "./monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -348,6 +349,22 @@ const server = http.createServer(async (req, res) => {
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
   }
   try {
+    if (url.pathname.startsWith("/api/radio/monitor") || url.pathname === "/api/radio/heard") { // listen on the server SDR with captions (monitor.ts)
+      if (url.pathname === "/api/radio/heard") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ heard: heardLog() }));
+      if (url.pathname === "/api/radio/monitor/events") return monitorEvents(res);
+      if (url.pathname === "/api/radio/monitor/audio") return monitorAudio(res);
+      if (req.method === "POST") {
+        const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+        if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
+        let raw = ""; for await (const c of req) { raw += c; if (raw.length > 500) return res.writeHead(413).end(); }
+        const b = JSON.parse(raw || "{}");
+        try {
+          const out = b.stop ? (stopMonitor("stopped by a visitor"), monitorState()) : await startMonitor(Number(b.mhz), String(b.label ?? ""), b.mode === "WFM" ? "WFM" : "NFM");
+          return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out));
+        } catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+      }
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
+    }
     if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180;
       try {

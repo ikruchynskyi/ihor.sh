@@ -37,6 +37,13 @@
     .pass b { font-family: ui-monospace, Menlo, monospace; }
     .satbtns { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
     .satbtns button { font-size: .8rem !important; padding: 4px 8px !important; }
+    .monform { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; } .monform input { flex: 1; min-width: 120px; }
+    #monAudio { width: 100%; margin: 6px 0; }
+    #captions { max-height: 240px; overflow: auto; font-size: .9rem; }
+    .cap { padding: 5px 0; border-bottom: 1px solid var(--line, #3b4bb0); } .cap time { color: var(--muted, #9aa3cf); font-size: .8rem; margin-right: 6px; }
+    .cap .call { font-family: ui-monospace, Menlo, monospace; font-weight: 700; color: var(--ok, #5cff9d); cursor: pointer; } .cap .call.unknown { color: var(--muted, #9aa3cf); font-weight: 400; }
+    .heard { list-style: none; padding: 0; margin: 0; font-size: .85rem; max-height: 160px; overflow: auto; } .heard li { padding: 3px 0; cursor: pointer; } .heard b { font-family: ui-monospace, Menlo, monospace; }
+    .sq { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #666; margin-right: 4px; } .sq.open { background: #ff5c8a; box-shadow: 0 0 6px #ff5c8a; }
     @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 50vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
   </style>
 </head>
@@ -48,6 +55,17 @@
     <p class="muted">Every ham has a callsign from their license. Look one up (US licenses, from the FCC database), or explore repeaters anywhere in the world (pan and zoom the map): hilltop and rooftop stations that rebroadcast a handheld radio's signal across a whole city.</p>
     <form id="callForm"><input id="call" placeholder="Callsign, e.g. W1AW" autocomplete="off" aria-label="Callsign"><button>Look up</button></form>
     <div id="lic" class="muted"></div>
+    <details class="panel" id="mon" open><summary>🎧 Listen with live captions <span class="muted" id="monSum"></span></summary>
+      <div id="monBody">
+        <p class="muted">Tune the server's SDR to a repeater (🎧 in any repeater's popup) or type a frequency. You hear it here, Whisper on the server writes what's said, and any callsign it hears is looked up and pinned on the map. One frequency at a time for everyone; it switches off after ten quiet minutes.</p>
+        <form id="monForm" class="monform"><input id="monMhz" type="number" step="0.0001" min="24" max="1766" placeholder="MHz, e.g. 147.270" aria-label="Frequency in MHz"><select id="monMode" aria-label="Mode"><option>NFM</option><option>WFM</option></select><button>Listen</button><button type="button" id="monStop" hidden>Stop</button></form>
+        <p id="monStatus" class="muted"></p>
+        <audio id="monAudio" controls hidden></audio>
+        <div id="captions"></div>
+        <h3 style="font-size:13px;margin:10px 0 4px">Heard <span class="muted">(callsigns spoken on the air, pinned 📻)</span></h3>
+        <ul id="heard" class="heard"></ul>
+      </div>
+    </details>
     <details class="panel" id="wx"><summary>☀️ Propagation <span class="muted" id="wxSum"></span></summary><div id="wxBody" class="muted">Loading space weather…</div></details>
     <details class="panel" id="sats"><summary>🛰 Ham satellites <span class="muted" id="satSum"></span></summary><div id="satBody" class="muted">Computing passes…</div></details>
     <h2 style="font-size:14px;margin:16px 0 4px">Repeaters <span id="count" class="muted"></span></h2>

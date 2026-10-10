@@ -12,6 +12,7 @@ import { shipsNow, shipsNear } from "./ships.ts";
 import { siteSearch } from "./search.ts";
 import { hamPasses, HAM_SATS } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
+import { heardLog, monitorState } from "./monitor.ts";
 import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
@@ -141,6 +142,10 @@ const TOOLS: Record<string, Tool> = {
       const list = d.passes.filter((p: any) => (!q || p.sat.includes(q) || p.name.toLowerCase().includes(q)) && (!k || p.kind.toLowerCase().includes(k)));
       return { from: d.from, hours: d.hours, count: list.length, passes: list.slice(0, 25), page: "/radio/repeaters/ (the Ham satellites panel draws a pass on the map)", statusNote: "Status is hand-kept; AMSAT's status page has today's reports: https://www.amsat.org/status/" };
     },
+  },
+  heard_on_air: {
+    description: "Callsigns heard on the air by the site's own receiver (the repeaters page can tune the server SDR to a repeater and caption it with a local speech model): who was heard when, on which frequency, with their FCC name, class, grid and location, plus what the receiver is tuned to right now and its last captions. Like a reverse beacon for voice.",
+    parameters: {}, run: () => { const m = monitorState(); return { listening: m.on ? { mhz: m.mhz, label: m.label, mode: m.mode, transmitting: m.open, lastCaptions: m.captions.slice(-5).map((c) => `${c.at}: ${c.text}`) } : null, heard: heardLog().slice(-40).reverse(), page: "/radio/repeaters/ (🎧 panel)" }; },
   },
   propagation_now: {
     description: "Space weather for radio right now (NOAA SWPC): solar flux, sunspot number, K and A index, X-ray flux class, solar wind, NOAA R/S/G scales, and plain-words band conditions (80–40 m, 30–20 m, 17–15 m, 12–10 m, day/night), aurora and sporadic-E hints.",
@@ -318,7 +323,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
-- Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
+- Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over), heard_on_air (callsigns our receiver heard on a repeater, and what it's captioning now). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 

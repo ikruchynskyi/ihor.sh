@@ -33,7 +33,7 @@ function popup(r: Repeater) {
     <span class="freq">${r.outputMHz.toFixed(4)} MHz</span> · offset ${fmtOff(r.offsetMHz)} MHz (transmit on ${r.inputMHz.toFixed(4)})<br>
     ${r.toneUp ? `Tone ${esc(r.toneUp)} Hz` : "No tone listed"} · ${esc(r.mode)}${r.network ? ` · ${esc(r.network)}${r.node ? ` node ${esc(r.node)}` : ""}` : ""}${r.operational ? "" : " · <b>not operational</b>"}${r.restriction ? ` · ${esc(r.restriction)}` : ""}<br>
     ${r.description ? `<span class="muted">${esc(r.description).replace(/\n/g, "<br>")}</span><br>` : ""}
-    <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${r.outputMHz >= 24 && r.outputMHz <= 1766 && r.mode === "FM" ? ` · <a href="../?listen=${r.outputMHz}">Listen in Spectrum Lab</a>` : ""}`;
+    <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${r.outputMHz >= 24 && r.outputMHz <= 1766 && r.mode === "FM" ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
 }
 function render() {
   layer.clearLayers();
@@ -83,6 +83,55 @@ async function lookup(call: string) {
   return d.lat ? (() => { const p = map.latLngToContainerPoint([d.lat, d.lon]), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y }; })() : undefined;
 }
 $("callForm").addEventListener("submit", (e) => { e.preventDefault(); lookup($<HTMLInputElement>("call").value); });
+
+// ---------- listening on the server SDR with captions and a callsign detector (server: monitor.ts) ----------
+const heardLayer = L.layerGroup().addTo(map), heardPins = new Map<string, any>();
+let mon: any = null, es: EventSource | null = null;
+const tfmt = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const callHtml = (c: any) => `<span class="call ${c.found ? "" : "unknown"}" data-heardcall="${esc(c.call)}" title="${c.found ? esc(`${c.name ?? ""} ${c.cls ?? ""} ${c.grid ?? ""}`) : "not found in the FCC database (misheard, or not a US call)"}">${esc(c.call)}</span>`;
+const capHtml = (c: any) => `<div class="cap"><time>${tfmt(c.at)}</time>${esc(c.text)}${c.calls?.length ? ` <span class="muted">·</span> ${c.calls.map(callHtml).join(" ")}` : ""}</div>`;
+function pinHeard(h: any) {
+  if (!h.lat || !h.lon) return;
+  const icon = L.divIcon({ className: "", html: `<div style="font-size:22px;line-height:22px;filter:drop-shadow(0 0 3px #000)">📻</div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
+  const popup = `<b>${esc(h.call)}</b> ${esc(h.name ?? "")}<br><span class="muted">${esc(h.cls ?? "")} · ${esc(h.grid ?? "")} · ${esc(h.city ?? "")}</span><br>heard ${tfmt(h.at)} on ${h.mhz.toFixed(3)} MHz${h.label ? ` (${esc(h.label)})` : ""}${h.times > 1 ? `, ${h.times}×` : ""}<br><span class="muted">“${esc(h.text)}”</span><br><a href="#" data-call="${esc(h.call)}">Look up</a>`;
+  const old = heardPins.get(h.call);
+  if (old) { old.setLatLng([h.lat, h.lon]).setPopupContent(popup); return; }
+  heardPins.set(h.call, L.marker([h.lat, h.lon], { icon, zIndexOffset: 500 }).bindPopup(popup, { maxWidth: 320 }).addTo(heardLayer));
+}
+function renderMon() {
+  if (!mon) return;
+  const live = mon.on && !mon.error;
+  $("monSum").textContent = live ? `${mon.mhz.toFixed(3)} MHz${mon.label ? ` · ${mon.label}` : ""}` : "";
+  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `<span class="sq ${mon.open ? "open" : ""}"></span>${mon.open ? "Someone's transmitting" : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""} · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>` : "Not listening. Pick a repeater on the map, or type a frequency.";
+  $("monStop").hidden = !live;
+  const audio = $<HTMLAudioElement>("monAudio");
+  if (live && audio.hidden) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
+  if (!live && !audio.hidden) { audio.hidden = true; audio.removeAttribute("src"); audio.load(); }
+  $("captions").innerHTML = mon.captions?.length ? mon.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
+  $("captions").scrollTop = $("captions").scrollHeight;
+  if (mon.heard) { $("heard").innerHTML = mon.heard.slice(-30).reverse().map((h: any) => `<li data-heardcall="${esc(h.call)}"><b>${esc(h.call)}</b> ${esc(h.name ?? "")} <span class="muted">· ${tfmt(h.at)} · ${h.mhz.toFixed(3)}${h.times > 1 ? ` · ${h.times}×` : ""}</span></li>`).join("") || `<li class="muted">Nothing yet.</li>`; for (const h of mon.heard) pinHeard(h); }
+}
+function watchMon() {
+  es?.close();
+  es = new EventSource("/api/radio/monitor/events");
+  es.addEventListener("state", (m) => { const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d, heard: d.heard ?? mon?.heard }; renderMon(); });
+  es.addEventListener("squelch", (m) => { if (mon) { mon.open = JSON.parse((m as MessageEvent).data).open; renderMon(); } });
+  es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; mon.captions = [...(mon.captions ?? []), c].slice(-60); for (const x of c.calls ?? []) if (x.found) { const h = { ...x, at: c.at, mhz: mon.mhz, label: mon.label, text: c.text.slice(0, 160), times: 1 }; mon.heard = [...(mon.heard ?? []).filter((y: any) => y.call !== h.call), h]; } renderMon(); });
+}
+async function monitor(mhz: number, label: string, mode = "NFM") {
+  $("monStatus").textContent = `Tuning the server SDR to ${mhz.toFixed(3)} MHz…`; $<HTMLDetailsElement>("mon").open = true;
+  const d = await fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mhz, label, mode }) }).then((r) => r.json()).catch((e) => ({ error: e.message }));
+  if (d.error) { $("monStatus").textContent = `⚠ ${d.error}`; return; }
+  mon = { ...mon, ...d }; renderMon();
+}
+$("monForm").addEventListener("submit", (e) => { e.preventDefault(); const f = Number($<HTMLInputElement>("monMhz").value); if (f) monitor(f, "", $<HTMLSelectElement>("monMode").value); });
+$("monStop").onclick = () => fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stop: true }) }).catch(() => {});
+document.addEventListener("click", (e) => {
+  const t = e.target as HTMLElement, m = t.closest("a[data-monitor]") as HTMLElement | null, h = t.closest("[data-heardcall]") as HTMLElement | null;
+  if (m) { e.preventDefault(); const [f, label] = m.dataset.monitor!.split("|"); monitor(Number(f), label); map.closePopup(); }
+  else if (h) { const pin = heardPins.get(h.dataset.heardcall!); if (pin) { map.setView(pin.getLatLng(), Math.max(map.getZoom(), 10)); pin.openPopup(); } else lookup(h.dataset.heardcall!); }
+});
+watchMon();
 
 // ---------- propagation: NOAA's indexes and what they mean for the bands (server: spacewx.ts) ----------
 let wx: any = null;
@@ -155,5 +204,6 @@ await loadArea();
     } },
 };
 (window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area), with a propagation panel (NOAA space weather, band conditions) and the next ham-satellite passes over the map's center", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
+  listening: mon?.on ? { mhz: mon.mhz, label: mon.label, mode: mon.mode, squelchOpen: mon.open, lastCaptions: (mon.captions ?? []).slice(-6).map((c: any) => `${tfmt(c.at)}: ${c.text}${c.calls?.length ? ` [${c.calls.map((x: any) => x.call).join(", ")}]` : ""}`), heard: (mon.heard ?? []).slice(-10).map((h: any) => `${h.call} ${h.name ?? ""} at ${tfmt(h.at)} on ${h.mhz}`) } : "off (the 🎧 panel can tune the server SDR to a repeater and caption it)",
   propagation: wx && { summary: wx.summary, sfi: wx.sfi, ssn: wx.ssn, k: wx.k?.kp, bands: wx.bands }, nextSatellitePasses: sats?.passes.slice(0, 6).map((p: any) => `${p.rise} ${p.name} ${p.maxElevation}° ${p.minutes} min, down ${p.down}`), satelliteShown: satShown,
   nearestRepeaters: shown.slice(0, 12).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: +r.km.toFixed(1) })) });
