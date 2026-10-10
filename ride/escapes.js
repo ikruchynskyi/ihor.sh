@@ -127,4 +127,20 @@ export const ESCAPES = [
     back: "Back to Annandale. Weekend inbound trains reaching New York 9 am–noon don't take bikes.",
     plan: [[40.64514, -74.8789, "Annandale station"], [40.65612, -74.93032, "Spruce Run campground"]],
   },
+  {
+    id: "harriman", title: "Harriman: Beaver Pond by Lake Welch", rr: "NJT", line: "Port Jervis Line, Hoboken (or change at Secaucus from Penn Station) → Sloatsburg; Metro-North's line, run by NJ Transit, so NJ Transit's bike rules apply",
+    blurb: "Into the Hudson Highlands: Seven Lakes Drive through Harriman's forest past lake after lake, to a state-park campground beside Lake Welch and its beach.",
+    ride: "About 15 km from Sloatsburg, with about 320 m of climbing on Seven Lakes Drive: short but real hills. Tuxedo is the next stop if a train skips Sloatsburg (about 18 km, more climbing).",
+    camp: { name: "Beaver Pond Campground, Harriman State Park (700 Kanawauke Road, Stony Point)", season: ["04-17", "10-11"], book: "https://newyorkstateparks.reserveamerica.com/", info: "https://parks.ny.gov/visit/state-parks/beaver-pond-campgrounds-harriman-state-park" },
+    back: "Back to Sloatsburg; trains are every hour or two on weekends, so check the timetable. Weekend trains reaching New York 9 am–noon don't take bikes.",
+    plan: [[41.15716, -74.19131, "Sloatsburg station"], [41.22957, -74.06946, "Beaver Pond campground"]],
+  },
+  {
+    id: "voorhees", title: "Voorhees State Park, from the end of the line", rr: "NJT", line: "Raritan Valley Line to High Bridge, the last stop (most trains need a change at Newark Penn)",
+    blurb: "The shortest ride on the list: from the last station up one hill to a quiet wooded campground with an observatory, then Ken Lockwood Gorge and the Columbia Trail on day 2.",
+    ride: "About 4 km from High Bridge station, but uphill nearly all the way (about 160 m). Day 2: the Columbia Trail (a gravel rail trail) starts in High Bridge and follows the South Branch through Ken Lockwood Gorge.",
+    camp: { name: "Voorhees State Park campground, Glen Gardner", season: ["04-01", "10-31"], book: "https://camping.nj.gov/", info: "https://nj.gov/dep/parksandforests/parks/voorheesstatepark.html" },
+    back: "Coast down to High Bridge. Weekend inbound trains reaching New York 9 am–noon don't take bikes.",
+    plan: [[40.66674, -74.89595, "High Bridge station"], [40.68213, -74.89542, "Voorhees campground"]],
+  },
 ];
