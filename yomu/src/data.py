@@ -1,4 +1,4 @@
-# Builds the complete JLPT N5–N3 kanji and vocabulary decks (yomu/data/*.json) so learners can study every item,
+# Builds the complete JLPT N5–N1 kanji and vocabulary decks (yomu/data/*.json) so learners can study every item,
 # not only the ones the stories use. Run: python3 yomu/src/data.py
 # Sources (attributed on the hub page):
 #   kanji:      KANJIDIC (EDRDG, CC BY-SA 4.0) + Jonathan Waller's JLPT levels, via github.com/davidluzgouveia/kanji-data
@@ -7,7 +7,7 @@ import csv, io, json, pathlib, re, urllib.request
 
 root = pathlib.Path(__file__).parent.parent / "data"
 get = lambda url: urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ihor.sh"}), timeout=60).read().decode()
-LEVELS = (5, 4, 3)
+LEVELS = (5, 4, 3, 2, 1)
 
 vocab = {}
 for n in LEVELS:

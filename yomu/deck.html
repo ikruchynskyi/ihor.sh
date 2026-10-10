@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yomu Kanji and Words</title>
-  <meta name="description" content="Every JLPT N5, N4 and N3 kanji and word: meanings, readings, animated stroke order, example words with audio. Learn ten at a time with a quick quiz, then keep them with spaced review." />
+  <meta name="description" content="Every JLPT kanji and word from N5 to N1 (2,211 kanji, 8,131 words): meanings, readings, animated stroke order, example words with audio. Learn ten at a time with a quick quiz, then keep them with spaced review." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
 </head>
 <body>
@@ -20,7 +20,7 @@
   <p><button id="more" hidden>Show more</button></p>
 </main>
 <script type="module">
-import { state, gain, settingsBar, esc, speak, strokes, romaji, toHiragana, addCard, wordCard, kanjiCard, inDeck, vocab, kanjiDeck, LEVELS, shuffle, blip } from "/yomu/lib.js";
+import { state, gain, settingsBar, esc, speak, strokes, romaji, toHiragana, addCard, wordCard, kanjiCard, inDeck, vocab, kanjiDeck, DECK_LEVELS as LEVELS, shuffle, blip } from "/yomu/lib.js";
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const level = LEVELS.includes(params.get("level")) ? params.get("level") : "N5";

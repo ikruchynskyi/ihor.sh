@@ -216,7 +216,8 @@ export const blip = (text, mood = "happy", hop = 0) => dispatchEvent(new CustomE
 // ---------- the full JLPT decks (data/*.json, built by src/data.py and src/grammar.py) ----------
 const loaded = {};
 export const data = (name) => (loaded[name] ??= fetch(`/yomu/data/${name}.json`).then((r) => r.json()));
-export const LEVELS = ["N5", "N4", "N3"];
+export const LEVELS = ["N5", "N4", "N3"]; // grammar, stories and placement go up to N3
+export const DECK_LEVELS = [...LEVELS, "N2", "N1"]; // kanji and word decks go all the way
 export const vocab = (level) => data(`vocab-${level.toLowerCase()}`);
 export const kanjiDeck = async (level) => (await data("kanji")).filter((k) => `N${k.n}` === level);
 export const grammarDeck = async (level) => (await data("grammar")).filter((g) => !level || g.level === level);

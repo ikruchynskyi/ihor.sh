@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Talk</title>
+  <meta name="description" content="Speak Japanese in everyday scenes: Blip plays the convenience-store clerk, a passer-by, a waiter, a station worker and a hotel receptionist; you answer out loud (or type), and each answer is checked against what a Japanese speaker would accept, with the model answer to listen to." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+    .scenes button { text-align: left; padding: 12px 14px; }
+    .chat { margin: 14px 0; }
+    .line { padding: 8px 12px; margin: 8px 0; border-radius: 12px; max-width: 85%; }
+    .line.blip { background: color-mix(in srgb, var(--accent, #c2410c) 12%, transparent); }
+    .line.you { margin-left: auto; text-align: right; border: 1px solid var(--line, #ddd); }
+    .line .jp { font-size: 1.25rem; }
+    .goal { font-weight: 600; margin: 10px 0 4px; }
+    .verdict.great { color: #2f9e44; } .verdict.close { color: #e8590c; } .verdict.again { color: #e03131; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #typed { font-size: 1.15rem; min-width: 260px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Talk</p>
+  <h1>Talk: everyday scenes</h1>
+  <p class="lede">Blip plays the other person. Listen, then answer out loud (press 🎤) or type it. Your answer is checked against the replies a Japanese speaker would accept, in kanji or kana; close answers get a nudge and the model answer to hear. The scenes are written by hand for N5 and N4.</p>
+  <div id="settings"></div>
+  <p class="muted" id="mic"></p>
+  <div class="scenes" id="scenes"></div>
+  <section id="play" hidden>
+    <h2 id="sceneTitle"></h2>
+    <div class="chat" id="chat"></div>
+    <p class="goal" id="goal"></p>
+    <div class="controls">
+      <button id="say" type="button">🎤 Answer out loud</button>
+      <form id="typeForm" style="display:contents"><input id="typed" lang="ja" placeholder="or type it (日本語で)"><button type="submit">Check</button></form>
+      <button id="hint" type="button">💡 Show an answer</button>
+      <button id="skip" type="button">Skip</button>
+    </div>
+    <p id="result" aria-live="polite"></p>
+  </section>
+</main>
+<script type="module">
+import { settingsBar, speak, listen, canListen, gain, blip, esc, state, save } from "/yomu/lib.js";
+import { SCENES, score } from "/yomu/talk.js";
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"));
+$("mic").textContent = canListen() ? "Speaking uses your browser's speech recognition (in Chrome, the audio is sent to Google to be transcribed)." : "This browser can't listen for Japanese: type your answers instead (Chrome and Edge can listen).";
+if (!canListen()) $("say").hidden = true;
+const done = () => state.talk ?? (state.talk = {});
+$("scenes").innerHTML = SCENES.map((s) => `<button class="card2" data-s="${s.id}"><b>${esc(s.title)}</b> <span class="muted">${s.level}</span><br><span lang="ja">${esc(s.where)}</span> · ${esc(s.desc)}${done()[s.id] ? `<br><span class="muted">best: ${done()[s.id]}%</span>` : ""}</button>`).join("");
+let scene = null, k = 0, results = [];
+const show = (who, jp, en) => { $("chat").insertAdjacentHTML("beforeend", `<div class="line ${who}"><div class="jp" lang="ja">${esc(jp)}</div>${en && state.settings.translation ? `<div class="muted">${esc(en)}</div>` : ""}</div>`); $("chat").lastElementChild.scrollIntoView({ block: "nearest" }); };
+async function step() {
+  const t = scene.turns[k];
+  $("result").textContent = ""; $("typed").value = "";
+  if (!t) return finish();
+  // don't wait forever on a voice that never finishes (no Japanese voice installed): about as long as the line takes
+  if (t.blip) { show("blip", t.blip, t.en); await Promise.race([speak(t.blip), new Promise((r) => setTimeout(r, 1500 + t.blip.length * 180))]); }
+  $("goal").textContent = `Your turn: ${t.goal}`;
+}
+function finish() {
+  const pct = Math.round((results.filter((r) => r === "great").length + 0.5 * results.filter((r) => r === "close").length) / scene.turns.length * 100);
+  $("goal").textContent = ""; $("result").innerHTML = `<b>Scene done: ${pct}%</b>. <button id="again" type="button">Play it again</button>`;
+  done()[scene.id] = Math.max(done()[scene.id] ?? 0, pct); save(); gain(Math.round(pct / 10));
+  blip(pct >= 80 ? "すごい！ You'd get through that for real." : "Good practice! Try it once more: it gets easier fast.", "happy");
+  $("again").onclick = () => start(scene.id);
+}
+async function answer(text) {
+  const t = scene.turns[k];
+  const tries = String(text).split(" / ").map((x) => ({ x, r: score(x, t.you) })).sort((a, b) => b.r.score - a.r.score)[0];
+  const { x, r } = tries;
+  show("you", x || "…");
+  const msg = { great: "✓ Perfect.", close: `Close! A natural way to say it: 「${r.best}」`, again: `Not quite. Try: 「${r.best}」`, silent: "I didn't hear anything: try again, a bit louder and closer to the mic." }[r.verdict];
+  $("result").innerHTML = `<span class="verdict ${r.verdict}">${esc(msg)}</span> ${r.verdict !== "great" && r.verdict !== "silent" ? `<button id="hear" type="button">🔊 Hear it</button>` : ""}`;
+  $("hear")?.addEventListener("click", () => speak(r.best));
+  if (r.verdict === "silent") return;
+  results[k] = r.verdict;
+  if (r.verdict === "great" || r.verdict === "close") { k++; setTimeout(step, r.verdict === "great" ? 700 : 2200); }
+}
+function start(id) {
+  scene = SCENES.find((s) => s.id === id); k = 0; results = [];
+  $("play").hidden = false; $("sceneTitle").textContent = `${scene.title} · ${scene.where}`; $("chat").innerHTML = "";
+  $("play").scrollIntoView({ behavior: "smooth" }); step();
+}
+$("scenes").addEventListener("click", (e) => { const id = e.target.closest("[data-s]")?.dataset.s; if (id) start(id); });
+$("say").onclick = async () => { $("say").disabled = true; $("say").textContent = "🎤 Listening…"; const heard = await listen(); $("say").disabled = false; $("say").textContent = "🎤 Answer out loud"; answer(heard); };
+$("typeForm").onsubmit = (e) => { e.preventDefault(); if ($("typed").value.trim()) answer($("typed").value.trim()); };
+$("hint").onclick = () => { const t = scene.turns[k]; const a = t.you.find((x) => !x.startsWith("re:")); $("result").innerHTML = `One answer: 「${esc(a)}」 <button id="hear2" type="button">🔊</button>`; $("hear2").onclick = () => speak(a); };
+$("skip").onclick = () => { results[k] = "skipped"; k++; step(); };
+window.blipContext = () => ({ page: "Yomu Talk: Japanese role-play scenes", scene: scene?.title ?? null, turn: scene ? k + 1 : null, goal: scene?.turns[k]?.goal ?? null });
+</script>
+</body>
+</html>
