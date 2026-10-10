@@ -86,10 +86,13 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
   if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).error ?? `SDR ${r.status}`);
   const fs = Number(r.headers.get("x-sample-rate")) || WIDTH, center = Number(r.headers.get("x-center")) || hz;
   const rx = new Receiver(fs, hz - center, mode, mode === "WFM" ? 150e3 : 12.5e3);
+  // the squelch compares the channel's power with the empty air 80 kHz either side (whichever is quieter): a carrier
+  // is 15–40 dB above that, hiss is not, and a transmission that never ends can't fool it. WFM broadcasts aren't squelched.
+  const sides = mode === "NFM" ? [80e3, -80e3].map((off) => new Receiver(fs, hz - center + off, "NFM", 12.5e3)) : [];
+  const power = (ch: Float32Array) => { let p = 0; for (let i = 0; i < ch.length; i += 2) p += ch[i] ** 2 + ch[i + 1] ** 2; return 10 * Math.log10(p / Math.max(1, ch.length / 2) + 1e-12); };
   const down = new FirDecimator(firLowpass(6.5e3 / rx.audioFs, 2e3 / rx.audioFs), Math.round(rx.audioFs / AUDIO_FS), 1);
   state.since = new Date().toISOString(); state.error = ""; send("state", pub());
-  const ring: number[] = []; // channel power per chunk over the last ~10 min: the quietest chunk is the noise floor
-  let floor = Infinity, open = false, closedFor = 0, utt: Int16Array[] = [], uttLen = 0, utStart = 0, rest = new Uint8Array(0);
+  let chunks = 0, open = false, closedFor = 0, utt: Int16Array[] = [], uttLen = 0, utStart = 0, rest = new Uint8Array(0);
   const finish = async () => {
     const n = uttLen; const pcm = new Int16Array(n); let o = 0; for (const part of utt) { pcm.set(part, o); o += part.length; }
     utt = []; uttLen = 0;
@@ -124,16 +127,12 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     const bytes = rest.length ? Buffer.concat([rest, value]) : value, n = bytes.length & ~1, iq = new Float32Array(n);
     for (let i = 0; i < n; i++) iq[i] = (bytes[i] - 127.5) / 127.5;
     rest = bytes.subarray(n);
-    const st = rx.process(iq);
-    // carrier squelch on the channel's power (dB); the floor follows the quietest moments
-    let p = 0; for (let i = 0; i < st.channel.length; i += 2) p += st.channel[i] ** 2 + st.channel[i + 1] ** 2;
-    const db = 10 * Math.log10(p / Math.max(1, st.channel.length / 2) + 1e-12);
-    ring.push(db); if (ring.length > 4400) ring.shift();
-    floor = ring.length < 15 ? Infinity : [...ring].sort((a, b) => a - b)[Math.floor(ring.length * 0.1)]; // the dongle needs a moment to settle; then the quiet tenth of recent chunks sets the floor
-    const sec = iq.length / 2 / fs, on = db > floor + 8;
+    const st = rx.process(iq), db = power(st.channel);
+    const noise = sides.length ? Math.min(...sides.map((r) => power(r.process(iq).channel))) : -Infinity, snr = db - noise;
+    const sec = iq.length / 2 / fs, on = mode === "WFM" || (++chunks > 15 && snr > 10); // the dongle needs a moment to settle
     if (on) closedFor = 0; else closedFor += sec;
     const nowOpen = on || (open && closedFor < 0.7);
-    if (nowOpen !== open) { open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), floor: +floor.toFixed(1) }); if (open) utStart = Date.now(); }
+    if (nowOpen !== open) { open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), snr: Number.isFinite(snr) ? +snr.toFixed(1) : null }); if (open) utStart = Date.now(); }
     const a = down.process(st.audio), pcm = new Int16Array(a.length);
     if (open) for (let i = 0; i < a.length; i++) pcm[i] = Math.max(-32767, Math.min(32767, Math.round(a[i] * 24000)));
     const chunk = Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength);

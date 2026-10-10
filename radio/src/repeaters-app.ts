@@ -102,10 +102,10 @@ function renderMon() {
   if (!mon) return;
   const live = mon.on && !mon.error;
   $("monSum").textContent = live ? `${mon.mhz.toFixed(3)} MHz${mon.label ? ` · ${mon.label}` : ""}` : "";
-  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `<span class="sq ${mon.open ? "open" : ""}"></span>${mon.open ? "Someone's transmitting" : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""} · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>` : "Not listening. Pick a repeater on the map, or type a frequency.";
+  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `<span class="sq ${mon.open ? "open" : ""}"></span>${mon.mode === "WFM" ? "Listening" : mon.open ? `Someone's transmitting${mon.snr != null ? ` (${mon.snr} dB over the noise)` : ""}` : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""} · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>` : "Not listening. Pick a repeater on the map, or type a frequency.";
   $("monStop").hidden = !live;
   const audio = $<HTMLAudioElement>("monAudio");
-  if (live && audio.hidden) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
+  if (live && (audio.hidden || !audio.src)) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
   if (!live && !audio.hidden) { audio.hidden = true; audio.removeAttribute("src"); audio.load(); }
   $("captions").innerHTML = mon.captions?.length ? mon.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
   $("captions").scrollTop = $("captions").scrollHeight;
@@ -115,11 +115,13 @@ function watchMon() {
   es?.close();
   es = new EventSource("/api/radio/monitor/events");
   es.addEventListener("state", (m) => { const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d, heard: d.heard ?? mon?.heard }; renderMon(); });
-  es.addEventListener("squelch", (m) => { if (mon) { mon.open = JSON.parse((m as MessageEvent).data).open; renderMon(); } });
+  es.addEventListener("squelch", (m) => { if (mon) { const d = JSON.parse((m as MessageEvent).data); mon.open = d.open; mon.snr = d.snr; renderMon(); } });
   es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; mon.captions = [...(mon.captions ?? []), c].slice(-60); for (const x of c.calls ?? []) if (x.found) { const h = { ...x, at: c.at, mhz: mon.mhz, label: mon.label, text: c.text.slice(0, 160), times: 1 }; mon.heard = [...(mon.heard ?? []).filter((y: any) => y.call !== h.call), h]; } renderMon(); });
 }
 async function monitor(mhz: number, label: string, mode = "NFM") {
   $("monStatus").textContent = `Tuning the server SDR to ${mhz.toFixed(3)} MHz…`; $<HTMLDetailsElement>("mon").open = true;
+  // start the audio inside the click, while the browser still counts it as a user gesture
+  const audio = $<HTMLAudioElement>("monAudio"); audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {});
   const d = await fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mhz, label, mode }) }).then((r) => r.json()).catch((e) => ({ error: e.message }));
   if (d.error) { $("monStatus").textContent = `⚠ ${d.error}`; return; }
   mon = { ...mon, ...d }; renderMon();
