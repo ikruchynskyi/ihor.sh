@@ -176,11 +176,22 @@ let cams: { at: number; list: any[] } | null = null;
 /** NYC DOT traffic cameras (webcams.nyctmc.org): id, name, area, lat/lon, live JPEG URL. Cached 10 min. */
 export async function trafficCameras() {
   if (!cams || cams.at < Date.now() - 10 * 60_000) {
-    const rows: any[] = await json("https://webcams.nyctmc.org/api/cameras");
-    cams = { at: Date.now(), list: rows.filter((c) => c.isOnline === "true" || c.isOnline === true)
-      .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })) };
+    const [rows, windy] = await Promise.all([json("https://webcams.nyctmc.org/api/cameras") as Promise<any[]>, windyWebcams().catch(() => [])]);
+    cams = { at: Date.now(), list: [...rows.filter((c) => c.isOnline === "true" || c.isOnline === true)
+      .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })), ...windy] };
   }
   return cams.list;
+}
+/** Public webcams within 60 km from windy.com (key WINDY_WEBCAMS_KEY): skyline, harbor and street views. Their stills
+ *  change every few minutes, so the map refreshes them once a minute; windy.com asks for a link back to each camera. */
+async function windyWebcams() {
+  const key = env("WINDY_WEBCAMS_KEY");
+  if (!key) return [];
+  const d = await json("https://api.windy.com/webcams/api/v3/webcams?nearby=40.73,-73.95,60&limit=50&include=location,images,urls", { "x-windy-api-key": key });
+  return (d.webcams as any[]).filter((w) => w.status === "active" && w.images?.current?.preview).map((w) => ({
+    id: `w${w.webcamId}`, name: w.title, area: w.location?.city ?? "", lat: w.location.latitude, lon: w.location.longitude,
+    image: w.images.current.preview, source: "windy.com", page: w.urls?.detail ?? `https://windy.com/webcams/${w.webcamId}`, refreshMs: 60_000,
+  }));
 }
 
 // ---------- 311 ----------

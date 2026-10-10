@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Windy Forecast Map</title>
+  <meta name="ihor-bare" content="shown inside the NYC map; no site bar or Blip" />
+  <meta name="robots" content="noindex" />
+  <style>html, body, #windy { margin: 0; width: 100%; height: 100%; background: #10131c; } #msg { position: absolute; top: 45%; width: 100%; text-align: center; color: #ccc; font: 14px system-ui, sans-serif; }</style>
+  <!-- Windy's Map Forecast API brings its own map and needs exactly Leaflet 1.4 (and no Leaflet CSS), so it lives in this
+       page, shown over the NYC map in an iframe. The two talk with postMessage: view and overlay in, view out. -->
+  <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+  <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+</head>
+<body>
+<div id="windy"></div>
+<div id="msg">Loading windy.com…</div>
+<script>
+  const [lat, lon, zoom, overlay] = location.hash.slice(1).split(",");
+  const tell = (m) => parent.postMessage(m, location.origin);
+  fetch("/api/nyc/windy-key").then((r) => r.json()).then(({ key }) => windyInit({ key, lat: +lat || 40.73, lon: +lon || -73.95, zoom: +zoom || 9, overlay: overlay || "wind" }, (api) => {
+    const { map, store } = api;
+    document.getElementById("msg").remove();
+    addEventListener("message", (e) => {
+      if (e.origin !== location.origin) return;
+      if (e.data.overlay) store.set("overlay", e.data.overlay);
+    });
+    map.on("moveend", () => { const c = map.getCenter(); tell({ windyView: [c.lat, c.lng, map.getZoom()] }); });
+    store.on("overlay", (o) => tell({ windyOverlay: o }));
+    tell({ windyReady: store.getAllowed("overlay") });
+  })).catch((e) => { document.getElementById("msg").textContent = `windy.com didn't load: ${e.message}`; });
+</script>
+</body>
+</html>

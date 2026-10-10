@@ -7,6 +7,7 @@ import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
+import { aircraft, iss, storms, weather, radioStations, km } from "./sky.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -55,6 +56,42 @@ const TOOLS: Record<string, Tool> = {
         const line = (x: any) => `${x.label}: ${x.trains.length ? x.trains.map((t: any) => `${t.route} in ${t.minutes} min`).join(", ") : "none listed"}`;
         return { station: `${s.name} (${s.lines})`, meters: s.m, walkMinutes: Math.max(1, Math.round((s.m * 1.3) / 80)), next: d ? [line(d.north), line(d.south)] : [], mapLink: `/nyc/#station=${s.id}` };
       }));
+    },
+  },
+  weather_now: {
+    description: "NYC weather now (Central Park observation), the NWS forecast for the next day or so, and any active weather alerts.",
+    parameters: {},
+    run: () => weather(),
+  },
+  aircraft_over_nyc: {
+    description: "Aircraft over NYC right now (within ~35 nm, live ADS-B from adsb.lol): callsign, type, altitude, speed, position. Filter helicopters, military, or emergencies; or the ones nearest a point.",
+    parameters: { kind: { type: "string", description: "all (default), helicopters, military or emergency", enum: ["all", "helicopters", "military", "emergency"] }, lat: { type: "number", description: "Optional: sort by distance from here" }, lon: { type: "number", description: "Optional longitude" } },
+    run: async ({ kind, lat, lon }) => {
+      let list = await aircraft();
+      if (kind === "helicopters") list = list.filter((a) => a.heli); else if (kind === "military") list = list.filter((a) => a.military); else if (kind === "emergency") list = list.filter((a) => a.emergency);
+      const at = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : null;
+      const rows = list.map((a) => ({ id: a.flight || a.reg || a.hex, hex: a.hex, type: a.type, helicopter: a.heli, military: a.military, altFt: a.altFt, kts: a.kts && Math.round(a.kts), lat: a.lat, lon: a.lon, emergency: a.emergency ?? undefined, kmAway: at ? +km(at, a).toFixed(1) : undefined }));
+      if (at) rows.sort((x, y) => x.kmAway! - y.kmAway!);
+      return { total: list.length, aircraft: rows.slice(0, 25), source: "adsb.lol (ODbL)" };
+    },
+  },
+  iss_now: {
+    description: "Where the International Space Station is now: position, altitude, speed, whether it's in sunlight, and its distance from NYC.",
+    parameters: {},
+    run: async () => { const d = await iss(); return { ...d, track: undefined }; },
+  },
+  tropical_storms: {
+    description: "Active hurricanes and tropical storms (Atlantic and Pacific, NOAA NHC): name, strength, position, movement, distance from NYC, advisory link.",
+    parameters: {},
+    run: async () => ({ storms: (await storms()).storms }),
+  },
+  radio_stations: {
+    description: "Internet radio stations based in and around NYC (Radio Browser): name, genres, FM frequency if it's on FM, stream link. Search by name, genre or frequency.",
+    parameters: { query: { type: "string", description: "Optional: name, genre (jazz, news, latin…) or FM frequency (e.g. 93.9)" } },
+    run: async ({ query }) => {
+      const q = String(query ?? "").toLowerCase().trim(), all = await radioStations();
+      const hits = q ? all.filter((r) => r.name.toLowerCase().includes(q) || r.tags.some((t: string) => t.includes(q)) || String(r.fmMHz) === q) : all;
+      return { matches: hits.length, stations: hits.slice(0, 15).map((r) => ({ name: r.name, genres: r.tags.join(", "), fmMHz: r.fmMHz ?? undefined, stream: r.stream, listenOnSdr: r.fmMHz ? `/radio/?listen=${r.fmMHz}` : undefined })) };
     },
   },
   subway_arrivals: {
@@ -170,6 +207,7 @@ ${siteMap}
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
+- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, tropical_storms, radio_stations. On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, play_radio, nearest_camera).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near or subway_near. If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 
@@ -255,3 +293,11 @@ export async function ask(body: any, system: string) {
 
 /** Blip's toolbox as the model sees it: names, descriptions and parameters (for the agents chapter). */
 export const toolCatalog = () => Object.entries(TOOLS).map(([name, t]: [string, any]) => ({ name, description: t.description, parameters: Object.keys(t.parameters ?? {}) }));
+
+/** Blip's tools for other agents (the MCP endpoint): name, description and JSON Schema of each, and a way to run one. */
+export const toolDefs = () => toolSpecs.map((t) => ({ name: t.function.name, description: t.function.description, inputSchema: t.function.parameters }));
+export async function runTool(name: string, args: Record<string, unknown>) {
+  const tool = TOOLS[name];
+  if (!tool) throw new Error(`unknown tool ${name}`);
+  return tool.run(args ?? {});
+}

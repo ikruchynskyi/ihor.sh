@@ -12,11 +12,13 @@ import { callsign, repeatersIn } from "./ham.ts";
 import { today as ornaToday, plan as ornaPlan, materialNames } from "./orna.ts";
 import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
+import { mcp } from "./mcp.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
+import { aircraft, trace, iss, storms, weather, radioStations } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -51,7 +53,8 @@ async function siteMap() {
   const lines = ["/ — home: the project select screen"];
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
-      const title = (await readFile(path.join(dir, f), "utf8")).match(/<title>([^<]*)/)?.[1]?.trim();
+      const page = await readFile(path.join(dir, f), "utf8"), title = page.match(/<title>([^<]*)/)?.[1]?.trim();
+      if (page.includes('name="ihor-bare"')) continue;
       lines.push(`/${name}/${f.replace(/index\.html$/, "")} — ${title ?? f}`);
     }
   return lines.join("\n");
@@ -129,13 +132,14 @@ async function sitemap() {
   const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime]];
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort())
-      urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
+      if (!(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(([u, d]) => `  <url><loc>${u}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
 }
 
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
 function dress(html: string, world: string, urlPath = "") {
+  if (html.includes('name="ihor-bare"')) return html; // helper pages shown inside another page (nyc/windy.html)
   const title = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${world}</span><b>${title}</b></nav>`;
   if (urlPath) html = seo(html, world, urlPath);
@@ -186,7 +190,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/radio/callsign"];
+const METERED = ["/api/ride/route", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -196,6 +200,12 @@ const server = http.createServer(async (req, res) => {
   if ((!session && !url.pathname.startsWith("/api/")) || (session && session.age > TTL / 2)) {
     const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
     res.setHeader("set-cookie", `ihs=${issue(SESSION_SECRET)}; Path=/; Max-Age=${TTL / 1000}; HttpOnly; SameSite=Lax${live ? "; Secure; Domain=ihor.sh" : ""}`);
+  }
+  // MCP for other agents: its own bearer-token auth, not the site session; same per-IP budget as the chat.
+  if (url.pathname === "/mcp") {
+    const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+    if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
+    return mcp(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: { url: "mcp", title: "MCP client" } }, SYSTEM)).catch((e) => res.writeHead(500).end(String(e.message)));
   }
   if (url.pathname.startsWith("/api/")) {
     if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");
@@ -245,6 +255,21 @@ const server = http.createServer(async (req, res) => {
       return send(await cityEvents(from, to, { freeOnly: q.get("free") === "1" }), 1800);
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
+    // The sky and the air (sky.ts): cached there, so these are cheap however many people watch.
+    const SKY: Record<string, [() => Promise<unknown>, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/nyc/radio": [radioStations, 3600] };
+    if (SKY[url.pathname]) {
+      const [f, maxAge] = SKY[url.pathname];
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f())); }
+      catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
+    // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.
+    if (url.pathname === "/api/nyc/windy-key") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ key: process.env.WINDY_KEY ?? "" }));
+    if (url.pathname === "/api/nyc/trace") {
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(await trace(String(url.searchParams.get("hex") ?? "").toLowerCase()))); }
+      catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (url.pathname === "/api/nyc/bus-stops") {
       const lat = Number(url.searchParams.get("lat")), lon = Number(url.searchParams.get("lon"));
       if (!(lat > 40.4 && lat < 41.0 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();

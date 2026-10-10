@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: subway alerts with the nearest Citi Bikes, broken elevators and escalators, 900+ traffic cameras in movable windows, free events, restaurant health inspections, and what is at any address." />
+  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, local radio stations, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
@@ -47,6 +47,12 @@
     #sugg li { padding: 5px 10px; cursor: pointer; } #sugg li .muted { font-size: .75rem; }
     #sugg li:hover, #sugg li[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 25%, transparent); }
     .pin-n { position: absolute; left: 15px; top: -4px; font: bold 10px/14px sans-serif; min-width: 14px; text-align: center; border-radius: 7px; background: #ffb347; color: #000; }
+    .lgrp { margin: 4px 0; } .lgrp summary { cursor: pointer; font-weight: 600; font-size: .85rem; padding: 2px 0; }
+    .lgrp label { margin-left: 14px !important; }
+    #wx { margin: 2px 0 4px 14px; } #wx .alert { color: #ff6b6b; }
+    .acft { filter: drop-shadow(0 0 2px #000); line-height: 0; }
+    .acft-heli { font-size: 18px; line-height: 18px; filter: drop-shadow(0 0 2px #000); }
+    #nowPlaying { margin-top: 6px; font-size: .8rem; }
     .pick[aria-pressed="true"] { background: var(--accent) !important; }
     .picking .leaflet-container, .picking #map { cursor: crosshair !important; }
     .modes { display: flex; gap: 6px; border: 0; padding: 0; margin: 6px 0; }
@@ -123,6 +129,8 @@
   </details>
   <details open><summary>More on the map</summary>
     <div id="layers"></div>
+    <div id="nowPlaying" hidden></div>
+    <audio id="radioAudio" preload="none"></audio>
     <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
     <div id="rresults" class="muted"></div>
     <div class="muted" style="margin-top:6px">Tip: click anywhere on the map to see what's there (address, districts, precinct).</div>
@@ -249,27 +257,47 @@ function showBikes(s) {
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
-  stations: { label: "🚇 All stations: click for next trains", on: true, group: L.layerGroup(), load: loadAllStations },
-  trains: { label: "🚆 Live trains", on: false, group: L.layerGroup(), load: loadTrains },
-  buses: { label: "🚌 Bus stops: click for next buses", on: false, group: L.layerGroup(), load: loadBusStops },
-  citibike: { label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
-  ferry: { label: "⛴ NYC Ferry: boats + next departures", on: false, group: L.layerGroup(), load: loadFerry },
-  outages: { label: "♿ Broken elevators & escalators", on: false, group: L.layerGroup(), load: loadOutages },
-  cameras: { label: "📷 Traffic cameras", on: false, group: L.layerGroup(), load: loadCameras },
-  speeds: { label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
-  city: { label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
-  popups: { label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
-  sales: { label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
-  c311: { label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
+  stations: { grp: "go", label: "🚇 All stations: click for next trains", on: true, group: L.layerGroup(), load: loadAllStations },
+  trains: { grp: "go", label: "🚆 Live trains", on: false, group: L.layerGroup(), load: loadTrains },
+  buses: { grp: "go", label: "🚌 Bus stops: click for next buses", on: false, group: L.layerGroup(), load: loadBusStops },
+  citibike: { grp: "go", label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
+  ferry: { grp: "go", label: "⛴ NYC Ferry: boats + next departures", on: false, group: L.layerGroup(), load: loadFerry },
+  outages: { grp: "go", label: "♿ Broken elevators & escalators", on: false, group: L.layerGroup(), load: loadOutages },
+  cameras: { grp: "streets", label: "📷 Traffic cameras & webcams", on: false, group: L.layerGroup(), load: loadCameras },
+  speeds: { grp: "streets", label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
+  c311: { grp: "streets", label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
+  city: { grp: "out", label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
+  popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
+  sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
+  radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
+  lightning: { grp: "sky", label: "⚡ Lightning (last 15 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "lightning", "lightning_detection", "ldn_lightning_strike_density", 0.8, "strike density on an ~8 km grid") },
+  clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.45, "brighter = colder, higher cloud tops") },
+  aircraft: { grp: "sky", label: "✈️ Aircraft & helicopters (live)", on: false, group: L.layerGroup(), load: loadAircraft },
+  storms: { grp: "sky", label: "🌀 Hurricanes & tropical storms", on: false, group: L.layerGroup(), load: loadStorms },
+  iss: { grp: "sky", label: "🛰 The ISS and its next orbit", on: false, group: L.layerGroup(), load: loadIss },
+  windy: { grp: "sky", label: "🌬 windy.com forecast map (covers the map)", on: false, group: L.layerGroup(), load: () => {} },
+  radio: { grp: "air", label: "📻 Radio stations: click to listen", on: false, group: L.layerGroup(), load: loadRadio },
 };
+// The legend, grouped; a group opens by itself when one of its layers is on.
+const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather", air: "📻 On the air" };
+const groupCount = (g) => { const n = Object.values(LAYERS).filter((l) => l.grp === g && l.on).length; const el = $(`gn-${g}`); if (el) el.textContent = n ? `(${n} on)` : ""; };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
+const seen = { weather: null, aircraft: null, trail: null, iss: null, storms: null, radio: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
 
-$("layers").innerHTML = Object.entries(LAYERS).map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("");
+$("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
+  const ks = Object.entries(LAYERS).filter(([, l]) => l.grp === g);
+  return `<details class="lgrp" ${ks.some(([, l]) => l.on) ? "open" : ""}><summary>${name} <span class="muted" id="gn-${g}"></span></summary>${g === "sky" ? '<div class="muted" id="wx">Weather…</div>' : ""}
+    ${ks.map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${l.on ? "checked" : ""}> ${l.label} <span class="muted" id="n-${k}"></span></label>`).join("")}</details>`;
+}).join("");
+Object.keys(GROUPS).forEach(groupCount);
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
 async function toggle(k, on) {
   const l = LAYERS[k];
   l.on = on;
+  groupCount(l.grp);
+  const cb = document.querySelector(`#layers input[data-l="${k}"]`);
+  if (cb) { cb.checked = on; if (on) cb.closest("details").open = true; }
+  if (k === "windy") return showWindy(on);
   if (!on) return l.group.remove();
   l.group.addTo(map);
   if (k === "buses" && map.getZoom() < 15) map.setZoom(15); // stops only show from zoom 15; moveend then loads them
@@ -471,15 +499,160 @@ async function loadAllStations(g) {
 async function loadCameras(g) {
   const list = await getJSON("/api/nyc/cameras");
   seen.cameras = list.length;
-  const icon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [16, 16] });
-  for (const c of list) L.marker([c.lat, c.lon], { icon, title: c.name }).on("click", () => openCam(c)).addTo(g);
-  $("n-cameras").textContent = `(${list.length}, click to open; several at once)`;
+  const icon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [16, 16] }), webcam = L.divIcon({ className: "cam-icon", html: "🎥", iconSize: [18, 18] });
+  for (const c of list) L.marker([c.lat, c.lon], { icon: c.source ? webcam : icon, title: c.source ? `${c.name} (windy.com webcam)` : c.name }).on("click", () => openCam(c)).addTo(g);
+  const w = list.filter((c) => c.source).length;
+  $("n-cameras").innerHTML = `(${list.length - w} traffic 📷 + ${w} <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a> webcams 🎥; click to open, several at once)`;
 }
+
+// ---------- sky & weather, and the air (server: sky.ts) ----------
+// NOAA nowCOAST map images (radar, lightning, clouds), refreshed while the layer is on.
+async function loadWms(g, k, svc, layer, opacity, note) {
+  const t = L.tileLayer.wms(`https://nowcoast.noaa.gov/geoserver/observations/${svc}/ows`, { layers: layer, format: "image/png", transparent: true, opacity, attribution: "NOAA nowCOAST" }).addTo(g);
+  setInterval(() => { if (LAYERS[k].on) t.setParams({ _t: Date.now() }); }, 4 * 60_000);
+  $(`n-${k}`).textContent = `(${note})`;
+}
+// The weather now: under the "Sky & weather" heading, and for Blip.
+getJSON("/api/nyc/weather").then((w) => {
+  seen.weather = w;
+  $("wx").innerHTML = `Central Park: ${esc(w.sky || "")}${w.tempF != null ? `, ${w.tempF}°F (${w.tempC}°C)` : ""} · ${esc((w.forecast[0] ?? "").replace(/\.\s.*$/, "."))}` +
+    w.alerts.map((a) => `<div class="alert">⚠ ${esc(a.event)}${a.until ? ` until ${new Date(a.until).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}</div>`).join("");
+}).catch(() => ($("wx").textContent = ""));
+
+// Aircraft from adsb.lol, every 10 s. Planes point where they fly; helicopters are 🚁; military in amber.
+const acMarkers = new Map(), trailLayer = L.layerGroup().addTo(map);
+const planeSvg = (a) => `<svg viewBox="0 0 24 24" width="22" height="22" style="transform:rotate(${a.track ?? 0}deg)"><path d="M12 2l1.6 6.5L21 13v2l-7.3-2.2-.6 5.1 2.7 1.9V21L12 20l-3.8 1v-1.2l2.7-1.9-.6-5.1L3 15v-2l7.4-4.5z" fill="${a.emergency ? "#ff3b3b" : a.military ? "#ffb347" : "#e9ecff"}" stroke="#000" stroke-width=".8"/></svg>`;
+const acIcon = (a) => a.heli ? L.divIcon({ className: "acft-heli", html: "🚁", iconSize: [20, 20] }) : L.divIcon({ className: "acft", html: planeSvg(a), iconSize: [22, 22] });
+const acPopup = (a) => `<b>${a.heli ? "🚁" : "✈"} ${esc(a.flight || a.reg || a.hex)}</b> <span class="muted">${esc([a.type, a.reg].filter(Boolean).join(" · "))}${a.military ? " · military" : ""}</span><br>
+  ${a.altFt != null ? `${a.altFt.toLocaleString()} ft` : "altitude unknown"}${a.kts != null ? ` · ${Math.round(a.kts)} kt` : ""}${a.track != null ? ` · heading ${Math.round(a.track)}°` : ""}${a.squawk ? ` · squawk ${esc(a.squawk)}` : ""}${a.emergency ? `<br><b style="color:#ff3b3b">Emergency: ${esc(a.emergency)}</b>` : ""}
+  <br><button class="linkish" data-trail="${esc(a.hex)}">Where it's been (24 h)</button>${a.heli || (a.altFt ?? 99999) < 3000 ? ` · ${camBtn(a.lat, a.lon)}` : ""} · <a href="https://adsb.lol/?icao=${esc(a.hex)}" target="_blank" rel="noopener">adsb.lol</a>`;
+async function refreshAircraft(g) {
+  const list = await getJSON("/api/nyc/aircraft"), ids = new Set(list.map((a) => a.hex));
+  for (const a of list) {
+    let m = acMarkers.get(a.hex);
+    if (!m) { m = L.marker([a.lat, a.lon], { icon: acIcon(a), zIndexOffset: 800, title: a.flight || a.reg }).bindPopup(() => acPopup(m.ac)).addTo(g); acMarkers.set(a.hex, m); }
+    else { m.setLatLng([a.lat, a.lon]); if (m.ac.track !== a.track || m.ac.military !== a.military) m.setIcon(acIcon(a)); }
+    m.ac = a;
+  }
+  for (const [hex, m] of acMarkers) if (!ids.has(hex)) { m.remove(); acMarkers.delete(hex); }
+  const heli = list.filter((a) => a.heli), mil = list.filter((a) => a.military), sos = list.filter((a) => a.emergency);
+  seen.aircraft = { count: list.length, helicopters: heli.map((a) => `${a.flight || a.reg || a.hex} (${a.type}) at ${a.altFt} ft near ${a.lat},${a.lon}`), military: mil.map((a) => `${a.flight || a.hex} (${a.type})`), emergencies: sos.map((a) => `${a.flight || a.hex}: ${a.emergency}`) };
+  $("n-aircraft").textContent = `(${list.length}: ${heli.length} helicopters${mil.length ? `, ${mil.length} military` : ""}${sos.length ? `, ${sos.length} EMERGENCY` : ""}) · adsb.lol`;
+}
+async function loadAircraft(g) {
+  await refreshAircraft(g);
+  setInterval(() => { if (LAYERS.aircraft.on) refreshAircraft(g).catch(() => {}); }, 10_000);
+}
+async function showTrail(hex) {
+  const d = await getJSON(`/api/nyc/trace?hex=${encodeURIComponent(hex)}`).catch(() => null);
+  trailLayer.clearLayers();
+  if (!d?.points.length) return;
+  L.polyline(d.points.map((p) => [p[0], p[1]]), { color: "#ffb347", weight: 2.5, opacity: 0.85, dashArray: "6 4" })
+    .bindTooltip(`${hex}: since ${new Date(d.points[0][3] * 1000).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}`).addTo(trailLayer);
+  seen.trail = { hex, points: d.points.length, since: new Date(d.points[0][3] * 1000).toISOString() };
+}
+
+// The ISS, every 10 s, with its next orbit (split where it crosses the date line).
+async function refreshIss(g) {
+  const d = await getJSON("/api/nyc/iss");
+  g.clearLayers();
+  const segs = [[]];
+  d.track.forEach((p, i) => { if (i && Math.abs(p[1] - d.track[i - 1][1]) > 180) segs.push([]); segs.at(-1).push(p); });
+  segs.forEach((sg) => L.polyline(sg, { color: "#4de1ff", weight: 2, dashArray: "4 6", opacity: 0.8 }).addTo(g));
+  L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "acft-heli", html: "🛰", iconSize: [22, 22] }), zIndexOffset: 900 })
+    .bindPopup(`<b>🛰 International Space Station</b><br>${d.altKm} km up · ${d.kmh.toLocaleString()} km/h · ${d.daylight ? "in sunlight" : "in Earth's shadow"}<br><span class="muted">${d.kmFromNyc.toLocaleString()} km from NYC · dashed: the next 90 minutes</span>`).addTo(g);
+  seen.iss = { lat: d.lat, lon: d.lon, altKm: d.altKm, kmFromNyc: d.kmFromNyc, daylight: d.daylight };
+  $("n-iss").innerHTML = `(${d.kmFromNyc.toLocaleString()} km away) <button class="linkish" data-fly="${d.lat},${d.lon},3">show</button>`;
+}
+async function loadIss(g) {
+  await refreshIss(g);
+  setInterval(() => { if (LAYERS.iss.on) refreshIss(g).catch(() => {}); }, 10_000);
+}
+
+// Tropical storms: NHC forecast cones, tracks and points (NOAA), plus each storm on the legend.
+async function loadStorms(g) {
+  const d = await getJSON("/api/nyc/storms");
+  L.geoJSON(d.cone, { style: { color: "#ff8fab", weight: 1, fillOpacity: 0.12 } }).addTo(g);
+  L.geoJSON(d.past, { style: { color: "#c9c9c9", weight: 2, dashArray: "3 5" } }).addTo(g);
+  L.geoJSON(d.track, { style: { color: "#ff5c8a", weight: 2.5 } }).addTo(g);
+  L.geoJSON(d.points, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: "#fff", weight: 1, fillColor: "#ff5c8a", fillOpacity: 0.9 })
+    .bindTooltip(`${esc(f.properties.stormname ?? "")}: ${esc(f.properties.datelbl ?? "")}${f.properties.maxwind ? ` · ${f.properties.maxwind} kt` : ""}`) }).addTo(g);
+  for (const st of d.storms) dot(st.lat, st.lon, "#ff5c8a", 9).bindPopup(`<b>🌀 ${esc(st.name)}</b>: ${esc(st.kind)}, ${st.windKt} kt, ${st.pressureMb} mb<br>moving ${esc(st.moving)} · ${st.kmFromNyc.toLocaleString()} km from NYC${st.advisory ? `<br><a href="${esc(st.advisory)}" target="_blank" rel="noopener">NHC advisory</a>` : ""}`).addTo(g);
+  seen.storms = d.storms.map((st) => `${st.name}: ${st.kind}, ${st.windKt} kt, ${st.kmFromNyc} km from NYC, moving ${st.moving}`);
+  $("n-storms").innerHTML = d.storms.length ? d.storms.map((st) => `<button class="linkish" data-fly="${st.lat},${st.lon},5">${esc(st.name)}</button>`).join(", ") : "(none active)";
+}
+
+// Radio stations near the city (Radio Browser): click to listen; FM ones can tune the site's SDR.
+const radioAudio = $("radioAudio");
+let radioList = [];
+function playRadio(st) {
+  if (!st.https) return void window.open(st.stream, "_blank", "noopener"); // http streams can't play inside an https page
+  radioAudio.src = st.stream;
+  radioAudio.play().catch(() => {});
+  seen.radio = { playing: st.name, tags: st.tags };
+  $("nowPlaying").hidden = false;
+  $("nowPlaying").innerHTML = `▶ <b>${esc(st.name)}</b> <button class="linkish" id="radioStop">■ stop</button>`;
+  $("radioStop").onclick = stopRadio;
+}
+function stopRadio() { radioAudio.pause(); radioAudio.removeAttribute("src"); $("nowPlaying").hidden = true; seen.radio = null; }
+async function loadRadio(g) {
+  radioList = await getJSON("/api/nyc/radio");
+  const at = new Map(); // stations sharing one address fan out in a small circle
+  radioList.forEach((st, i) => {
+    const key = `${st.lat.toFixed(3)},${st.lon.toFixed(3)}`, n = at.get(key) ?? 0;
+    at.set(key, n + 1);
+    const a = n * 2.4, r = n ? 0.0012 * Math.sqrt(n) : 0;
+    L.marker([st.lat + r * Math.sin(a), st.lon + r * Math.cos(a)], { icon: L.divIcon({ className: "acft-heli", html: "📻", iconSize: [18, 18] }), title: st.name })
+      .bindPopup(() => `<b>📻 ${esc(st.name)}</b><br><span class="muted">${esc(st.tags.join(", "))}${st.codec ? ` · ${esc(st.codec)}${st.kbps ? ` ${st.kbps} kbps` : ""}` : ""}</span><br>
+        <button class="linkish" data-radio="${i}">${st.https ? "▶ Listen" : "▶ Listen (opens a new tab)"}</button>${st.fmMHz ? ` · <a href="/radio/?listen=${st.fmMHz}" title="Hear it off the air on this site's own radio (Spectrum Lab)">📡 ${st.fmMHz} FM on my SDR</a>` : ""}${st.homepage ? ` · <a href="${esc(st.homepage)}" target="_blank" rel="noopener">site</a>` : ""}`).addTo(g);
+  });
+  $("n-radio").textContent = `(${radioList.length} · Radio Browser)`;
+}
+document.addEventListener("click", (e) => {
+  const r = e.target.closest("[data-radio]"), t = e.target.closest("[data-trail]"), f = e.target.closest("[data-fly]");
+  if (r) playRadio(radioList[+r.dataset.radio]);
+  if (t) showTrail(t.dataset.trail);
+  if (f) { const [la, lo, z] = f.dataset.fly.split(",").map(Number); map.setView([la, lo], z); }
+});
+
+// windy.com's forecast map (wind, rain, temperature…) with its own legend. Its API needs its own Leaflet 1.4 map, so it
+// runs in nyc/windy.html, laid over this map while on and kept at the same place and zoom both ways.
+let windyFrame = null;
+$("n-windy").innerHTML = `<select id="windyOverlay" aria-label="Windy forecast layer">${["wind", "rain", "temp", "clouds", "gust", "pressure", "rh", "thunder"].map((o) => `<option>${o}</option>`).join("")}</select>`;
+function showWindy(on) {
+  if (!on) { windyFrame?.remove(); windyFrame = null; return; }
+  const c = map.getCenter();
+  windyFrame = Object.assign(document.createElement("iframe"), { title: "windy.com forecast map", src: `/nyc/windy.html#${c.lat.toFixed(4)},${c.lng.toFixed(4)},${Math.min(map.getZoom(), 11)},${$("windyOverlay").value}` });
+  windyFrame.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:900";
+  $("map").after(windyFrame);
+}
+$("windyOverlay").addEventListener("change", () => windyFrame?.contentWindow.postMessage({ overlay: $("windyOverlay").value }, location.origin));
+addEventListener("message", (e) => {
+  if (e.origin !== location.origin || !windyFrame || e.source !== windyFrame.contentWindow) return;
+  if (e.data.windyView) map.setView(e.data.windyView.slice(0, 2), e.data.windyView[2], { animate: false }); // stay in step for when it's turned off
+  if (e.data.windyReady) $("windyOverlay").innerHTML = e.data.windyReady.map((o) => `<option ${o === $("windyOverlay").value ? "selected" : ""}>${o}</option>`).join("");
+  if (e.data.windyOverlay) $("windyOverlay").value = e.data.windyOverlay;
+});
+
+// "Nearest traffic camera" from anything with a place: 311 reports, events, low aircraft…
+let camList = null;
+const camBtn = (lat, lon) => `<button class="linkish" data-near="${(+lat).toFixed(5)},${(+lon).toFixed(5)}">📷 nearest camera</button>`;
+async function nearestCam(lat, lon) {
+  camList ??= await getJSON("/api/nyc/cameras");
+  const k = Math.cos((lat * Math.PI) / 180);
+  return camList.reduce((best, c) => ((c.lat - lat) ** 2 + ((c.lon - lon) * k) ** 2 < (best.lat - lat) ** 2 + ((best.lon - lon) * k) ** 2 ? c : best));
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-near]");
+  if (!b) return;
+  const [la, lo] = b.dataset.near.split(",").map(Number);
+  openCam(await nearestCam(la, lo));
+});
 
 async function loadCityEvents(g) {
   const list = await getJSON(`/api/nyc/city-events?from=${today}&free=1`);
   seen.city = list.map((e) => ({ name: e.name, when: e.when, place: e.place }));
-  for (const e of list.filter((e) => e.lat)) dot(e.lat, e.lon, "#5cff9d").bindPopup(`<b>${esc(e.name)}</b><br>${esc(e.when)}<br><span class="muted">${esc(e.place)}</span><br>${esc(e.summary)}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a>`).addTo(g);
+  for (const e of list.filter((e) => e.lat)) dot(e.lat, e.lon, "#5cff9d").bindPopup(`<b>${esc(e.name)}</b><br>${esc(e.when)}<br><span class="muted">${esc(e.place)}</span><br>${esc(e.summary)}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-city").textContent = `(${list.length})`;
 }
 
@@ -488,7 +661,7 @@ async function loadPopups(g) {
   // The same rule as Free NYC: on today's dates or weekdays, and not over yet.
   const list = events.map((e) => ({ ...e, on: onDate(e, today, new Date()) })).filter((e) => e.lat && e.on && status(e.on, new Date()) !== "over");
   seen.popups = list.map((e) => ({ title: e.title, category: e.category, time: [e.on.start, e.on.end].filter(Boolean).join("–"), address: e.address }));
-  for (const e of list) dot(e.lat, e.lon, "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.on.start, e.on.end].filter(Boolean).join("–") || "all day")}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a>`).addTo(g);
+  for (const e of list) dot(e.lat, e.lon, "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.on.start, e.on.end].filter(Boolean).join("–") || "all day")}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-popups").textContent = `(${list.length})`;
 }
 
@@ -500,7 +673,7 @@ async function load311(g) {
   const d = await getJSON(`/api/nyc/311?bbox=${[b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((v) => v.toFixed(4)).join(",")}`);
   g.clearLayers();
   for (const r of d.items) L.circleMarker([r.lat, r.lon], { renderer: bikeCanvas, radius: 4 * DOT, color: C311(r.type), fillColor: C311(r.type), fillOpacity: 0.8, weight: 1, bubblingMouseEvents: false })
-    .bindPopup(`<b>${esc(r.type)}</b><br>${esc(r.what)}<br><span class="muted">${esc(r.address)} · ${new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${esc(r.status)} (${esc(r.agency)})</span>`).addTo(g);
+    .bindPopup(`<b>${esc(r.type)}</b><br>${esc(r.what)}<br><span class="muted">${esc(r.address)} · ${new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${esc(r.status)} (${esc(r.agency)})</span><br>${camBtn(r.lat, r.lon)}`).addTo(g);
   const top = Object.entries(d.items.reduce((m, r) => ((m[r.type] = (m[r.type] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
   $("n-c311").innerHTML = `(${d.items.length} here, data up to ${new Date(d.asOf).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })})<br><span class="legend"><i style="background:#c59bff"></i>noise <i style="background:#ff9f1c"></i>heat/water <i style="background:#4de1ff"></i>parking <i style="background:#83c167"></i>sanitation <i style="background:#ff5c8a"></i>other</span>`;
   seen.c311 = { inView: d.items.length, topTypes: top.map(([t, n]) => `${t}: ${n}`) };
@@ -511,7 +684,7 @@ async function loadSales(g) {
   const d = await getJSON(`/api/nyc/deals?date=${today}`);
   const list = d.sampleSales.filter((s) => s.lat);
   seen.sales = d.sampleSales.map((s) => ({ name: s.name, where: s.lat ? s.place : "online", until: s.end.slice(0, 10) }));
-  for (const s of list) dot(s.lat, s.lon, "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a>`).addTo(g);
+  for (const s of list) dot(s.lat, s.lon, "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a> · ${camBtn(s.lat, s.lon)}`).addTo(g);
   $("n-sales").textContent = `(${list.length} on the map, ${d.sampleSales.length - list.length} online)`;
 }
 
@@ -524,11 +697,12 @@ function openCam(c) {
   w.className = "cam"; w.id = `cam-${c.id}`;
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
-  w.innerHTML = `<header><b title="${esc(c.name)}">📷 ${esc(c.name)}</b><button aria-label="Close camera">×</button></header><img alt="Live traffic camera: ${esc(c.name)}" src="${esc(c.image)}?t=${Date.now()}">`;
+  const frame = () => `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`;
+  w.innerHTML = `<header><b title="${esc(c.name)}">${c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem">windy.com</a>` : ""}<button aria-label="Close camera">×</button></header><img alt="Live camera: ${esc(c.name)}" src="${esc(frame())}">`;
   $("cams").append(w);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
-  const img = w.querySelector("img"), tick = setInterval(() => (img.src = `${c.image}?t=${Date.now()}`), 4000);
+  const img = w.querySelector("img"), tick = setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
   w.querySelector("button").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); };
   w.addEventListener("pointerdown", () => (w.style.zIndex = ++camZ));
   // Resize from any edge or corner: within 8 px of the border the cursor shows the direction.
@@ -864,7 +1038,26 @@ window.blipActions = {
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
   plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start, or 'my location' for where the visitor is" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
     run: ({ from, to, mode, avoid_ferries, stops }) => { $("tClear").click(); String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6).forEach((x) => addStop(x, false)); const mine = /^(my (current )?location|me|here|where i am|current location)$/i.test(String(from ?? "").trim()) && meAt; $("tFrom").value = mine ? "" : from ?? ""; $("tTo").value = to ?? ""; if (mine) placePin("tFrom", meAt, "My location"); const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), city (free city events), popups (free pop-ups), sales (sample sales), c311 (311 reports in view).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  play_radio: { label: "turned on the radio", description: "Play a radio station from the map's radio layer: by name, genre or FM frequency (e.g. 'WNYC', 'jazz', '93.9'). Or 'stop'.", parameters: { query: { type: "string", description: "Station name, genre or frequency, or 'stop'" } },
+    run: async ({ query }) => {
+      const q = String(query ?? "").toLowerCase().trim();
+      if (q === "stop") return stopRadio();
+      await toggle("radio", true);
+      const st = radioList.find((x) => x.name.toLowerCase().includes(q) || String(x.fmMHz) === q) ?? radioList.find((x) => x.tags.some((t) => t.includes(q)));
+      if (st) { playRadio(st); map.setView([st.lat, st.lon], 13); }
+    } },
+  follow_aircraft: { label: "found the aircraft", description: "Show a live aircraft or helicopter on the map with where it's been in the last 24 h. Query: callsign, registration or hex from aircraftInView; or 'helicopter' for the nearest helicopter.", parameters: { query: { type: "string", description: "Callsign, registration, hex, or 'helicopter'" } },
+    run: async ({ query }) => {
+      await toggle("aircraft", true);
+      const q = String(query ?? "").toLowerCase().trim(), all = [...acMarkers.values()];
+      const m = q.startsWith("heli") ? all.find((x) => x.ac.heli) : all.find((x) => [x.ac.flight, x.ac.reg, x.ac.hex].some((v) => String(v).toLowerCase() === q));
+      if (!m) return;
+      map.setView(m.getLatLng(), 12); m.openPopup(); showTrail(m.ac.hex);
+      const p = map.latLngToContainerPoint(m.getLatLng()), r = $("map").getBoundingClientRect(); return { x: r.left + p.x, y: r.top + p.y };
+    } },
+  nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
+    run: async ({ lat, lon }) => { if (NYC.contains([Number(lat), Number(lon)])) openCam(await nearestCam(Number(lat), Number(lon))); } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…; covers the other layers while on).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -879,7 +1072,9 @@ window.blipContext = () => {
     visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry };
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
+    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, iss: seen.iss, tropicalStorms: seen.storms, radioPlaying: seen.radio,
+    windy: LAYERS.windy?.on ? `Windy forecast map is covering the map, showing ${$("windyOverlay")?.value}` : undefined };
 };
 
 // Popups pan clear of the panel, which floats over the map's left side.
