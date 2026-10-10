@@ -7,11 +7,12 @@
 // Plain HTTP: on the internet it sits behind ihor.sh's proxy.
 // Usage: npm run serve   (env: PORT=8073, RATE=1024000, REF_LAT/REF_LON = receiver location)
 import http from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { openDongle, resetDongle, looksStalled } from "./scripts/node-usb.ts";
 import type { RtlSdr } from "./src/rtlsdr.ts";
 import { decodeCU8 } from "./src/iq.ts";
+import { avgSpectrum } from "./src/dsp.ts";
 import { AprsReceiver, Stations } from "./src/aprs.ts";
 import { Tracker, demodulate, magnitude } from "./src/adsb.ts";
 
@@ -83,6 +84,7 @@ async function recover() {
 /** Every chunk from the dongle goes where the current mode needs it. */
 function onChunk(chunk: Uint8Array) {
   if (++chunkCount % 64 === 8 && !recovering && looksStalled(chunk)) { recover(); return; }
+  if (scanSink) return scanSink(decodeCU8(chunk));
   if (mode === "iq") return fanOut(chunk);
   if (mode === "aprs" && aprsRx) for (const p of aprsRx.process(decodeCU8(chunk))) push("aprs", "packet", { packet: p, station: stations.add(p) });
   if (mode === "adsb") {
@@ -94,6 +96,54 @@ function onChunk(chunk: Uint8Array) {
   }
 }
 setInterval(() => { if (adsbDirty) { adsbDirty = false; push("adsb", "aircraft", tracker.current()); } }, 1000);
+
+// ---------- FM band scan ----------
+// Which broadcast FM channels this antenna actually hears. Hop across 88–108 MHz 0.8 MHz at a time: each hop holds four
+// US channels (odd tenths) at ±100 and ±300 kHz from center, so none sits on the dongle's DC spike. A channel's level
+// is its ±75 kHz average against the hop's quiet bins (10th percentile: in a busy band the median is a station).
+// Runs only while nobody uses the dongle (~8 s), and the result is kept for 10 minutes.
+let scanSink: ((x: Float32Array) => void) | null = null;
+const SCAN_FILE = path.resolve(import.meta.dirname, "fm-scan.json"); // kept across restarts (git-ignored)
+let scanResult: { at: number; gain: number | null; channels: { mhz: number; snrDb: number }[] } | null = await readFile(SCAN_FILE, "utf8").then(JSON.parse).catch(() => null);
+let scanning: Promise<typeof scanResult> | null = null;
+const collect = (n: number) => new Promise<Float32Array>((done) => {
+  const parts: Float32Array[] = [];
+  let have = 0, skip = 1; // the first chunk after a retune may straddle it
+  scanSink = (x) => {
+    if (skip-- > 0) return;
+    parts.push(x); have += x.length / 2;
+    if (have < n) return;
+    scanSink = null;
+    const out = new Float32Array(2 * have); let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    done(out);
+  };
+});
+async function scanFm() {
+  if (mode !== "idle" || clients.size || opening) throw new Error("The dongle is busy right now (someone is listening or watching a decoder). Try again in a few minutes.");
+  const s = await ensureSdr("iq"), fs = s.sampleRate, channels: { mhz: number; snrDb: number }[] = [];
+  try {
+    for (let c = 88.4e6; c <= 107.7e6; c += 0.8e6) {
+      await s.setCenterFrequency(c);
+      const db = avgSpectrum(await collect(fs * 0.1), 1024, 32), bin = fs / 1024; // 1 kHz bins at 1.024 MS/s
+      const quiet = db.slice().sort()[Math.floor(db.length * 0.1)];
+      for (const off of [-300e3, -100e3, 100e3, 300e3]) {
+        const mhz = +((c + off) / 1e6).toFixed(1);
+        if (mhz < 88 || mhz > 108) continue;
+        let p = 0, k = 0;
+        for (let f = off - 75e3; f <= off + 75e3; f += bin) { p += 10 ** (db[Math.round(f / bin + 512)] / 10); k++; }
+        channels.push({ mhz, snrDb: +(10 * Math.log10(p / k) - quiet).toFixed(1) });
+      }
+    }
+  } finally {
+    scanSink = null;
+    if (clients.size) await s.setCenterFrequency(tuning.center).catch(() => {}); // someone joined meanwhile: back to their tuning
+    else await release();
+  }
+  scanResult = { at: Date.now(), gain: tuning.gain, channels };
+  await writeFile(SCAN_FILE, JSON.stringify(scanResult)).catch(() => {});
+  return scanResult;
+}
 
 /** Open the dongle for `want` (raw IQ at the listeners' tuning, or a decoder's own settings). */
 function ensureSdr(want: "iq" | Decoder = "iq"): Promise<RtlSdr> {
@@ -232,6 +282,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === "/api/scan/fm") {
+      if (req.method !== "POST" || (scanResult && Date.now() - scanResult.at < 10 * 60_000)) return json(res, 200, scanResult ?? { at: 0, channels: [] });
+      try { return json(res, 200, await (scanning ??= scanFm().finally(() => (scanning = null)))); }
+      catch (e) { return json(res, 409, { error: (e as Error).message, last: scanResult }); }
+    }
     if (url.pathname === "/api/stream") {
       clearTimeout(idle);
       if (mode === "aprs" || mode === "adsb") { paused = mode; push(mode, "offline", { mode: "iq", reason: "spectrum" }); }

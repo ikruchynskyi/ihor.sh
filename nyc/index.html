@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, local radio stations, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
+  <meta name="description" content="Live NYC map: subway alerts and next trains, buses, ferries, Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
@@ -134,8 +134,7 @@
   </details>
   <details open><summary>More on the map</summary>
     <div id="layers"></div>
-    <div id="nowPlaying" hidden></div>
-    <audio id="radioAudio" preload="none"></audio>
+    <p class="muted" style="margin:6px 0 0">📻 NYC radio stations, and which ones this site's antenna hears, moved to the <a href="/radio/stations/">Radio world</a>.</p>
     <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
     <div id="rresults" class="muted"></div>
     <div class="muted" style="margin-top:6px">Tip: click anywhere on the map to see what's there (address, districts, precinct).</div>
@@ -282,13 +281,12 @@ const LAYERS = {
   storms: { grp: "sky", label: "🌀 Hurricanes & tropical storms", on: false, group: L.layerGroup(), load: loadStorms },
   iss: { grp: "sky", label: "🛰 The ISS and its next orbit", on: false, group: L.layerGroup(), load: loadIss },
   windy: { grp: "sky", label: "🌬 windy.com forecast map, under the markers", on: false, group: L.layerGroup(), load: () => {} },
-  radio: { grp: "air", label: "📻 Radio stations: click to listen", on: false, group: L.layerGroup(), load: loadRadio },
 };
 // The legend, grouped; a group opens by itself when one of its layers is on.
-const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather", air: "📻 On the air" };
+const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather" };
 const groupCount = (g) => { const n = Object.values(LAYERS).filter((l) => l.grp === g && l.on).length; const el = $(`gn-${g}`); if (el) el.textContent = n ? `(${n} on)` : ""; };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { photo: null, weather: null, aircraft: null, trail: null, iss: null, storms: null, radio: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
+const seen = { photo: null, weather: null, aircraft: null, trail: null, iss: null, storms: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
   const ks = Object.entries(LAYERS).filter(([, l]) => l.grp === g);
@@ -619,35 +617,8 @@ async function loadStorms(g) {
   $("n-storms").innerHTML = d.storms.length ? d.storms.map((st) => `<button class="linkish" data-fly="${st.lat},${st.lon},5">${esc(st.name)}</button>`).join(", ") : "(none active)";
 }
 
-// Radio stations near the city (Radio Browser): click to listen; FM ones can tune the site's SDR.
-const radioAudio = $("radioAudio");
-let radioList = [];
-function playRadio(st) {
-  if (!st.https) return void window.open(st.stream, "_blank", "noopener"); // http streams can't play inside an https page
-  radioAudio.src = st.stream;
-  radioAudio.play().catch(() => {});
-  seen.radio = { playing: st.name, tags: st.tags };
-  $("nowPlaying").hidden = false;
-  $("nowPlaying").innerHTML = `▶ <b>${esc(st.name)}</b> <button class="linkish" id="radioStop">■ stop</button>`;
-  $("radioStop").onclick = stopRadio;
-}
-function stopRadio() { radioAudio.pause(); radioAudio.removeAttribute("src"); $("nowPlaying").hidden = true; seen.radio = null; }
-async function loadRadio(g) {
-  radioList = await getJSON("/api/nyc/radio");
-  const at = new Map(); // stations sharing one address fan out in a small circle
-  radioList.forEach((st, i) => {
-    const key = `${st.lat.toFixed(3)},${st.lon.toFixed(3)}`, n = at.get(key) ?? 0;
-    at.set(key, n + 1);
-    const a = n * 2.4, r = n ? 0.0012 * Math.sqrt(n) : 0;
-    L.marker([st.lat + r * Math.sin(a), st.lon + r * Math.cos(a)], { icon: L.divIcon({ className: "acft-heli", html: "📻", iconSize: [18, 18] }), title: st.name })
-      .bindPopup(() => `<b>📻 ${esc(st.name)}</b><br><span class="muted">${esc(st.tags.join(", "))}${st.codec ? ` · ${esc(st.codec)}${st.kbps ? ` ${st.kbps} kbps` : ""}` : ""}</span><br>
-        <button class="linkish" data-radio="${i}">${st.https ? "▶ Listen" : "▶ Listen (opens a new tab)"}</button>${st.fmMHz ? ` · <a href="/radio/?listen=${st.fmMHz}" title="Hear it off the air on this site's own radio (Spectrum Lab)">📡 ${st.fmMHz} FM on my SDR</a>` : ""}${st.homepage ? ` · <a href="${esc(st.homepage)}" target="_blank" rel="noopener">site</a>` : ""}`).addTo(g);
-  });
-  $("n-radio").textContent = `(${radioList.length} · Radio Browser)`;
-}
 document.addEventListener("click", (e) => {
-  const r = e.target.closest("[data-radio]"), t = e.target.closest("[data-trail]"), f = e.target.closest("[data-fly]");
-  if (r) playRadio(radioList[+r.dataset.radio]);
+  const t = e.target.closest("[data-trail]"), f = e.target.closest("[data-fly]");
   if (t) showTrail(t.dataset.trail);
   if (f) { const [la, lo, z] = f.dataset.fly.split(",").map(Number); map.setView([la, lo], z); }
 });
@@ -1066,9 +1037,12 @@ $("rsearch").addEventListener("submit", async (e) => {
   $("rresults").textContent = "Searching…";
   restaurantLayer.clearLayers();
   try {
-    const list = await getJSON(`/api/nyc/restaurants?q=${encodeURIComponent(q)}`);
-    seen.restaurants = list.slice(0, 15).map((r) => `${r.name}, ${r.address}`);
-    $("rresults").innerHTML = list.length ? `${list.length} found` + list.slice(0, 12).map((r, i) => `<button data-i="${i}">${esc(r.name)} · <span class="muted">${esc(r.address)}</span></button>`).join("") : "Nothing found.";
+    // nearest first: from you when the map knows where you are, else from the middle of the map
+    const from = meAt ? { lat: meAt.lat, lon: meAt.lng, who: "you" } : { lat: map.getCenter().lat, lon: map.getCenter().lng, who: "the map's center" };
+    const list = await getJSON(`/api/nyc/restaurants?q=${encodeURIComponent(q)}&near=${from.lat.toFixed(5)},${from.lon.toFixed(5)}`);
+    const dist = (km) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`);
+    seen.restaurants = list.slice(0, 15).map((r) => `${r.name}, ${r.address}, ${dist(r.km)} from ${from.who}`);
+    $("rresults").innerHTML = list.length ? `${list.length >= 40 ? "The 40 nearest" : `${list.length} found`}, nearest to ${from.who} first` + list.slice(0, 12).map((r, i) => `<button data-i="${i}">${esc(r.name)} · <span class="muted">${esc(r.address)} · ${dist(r.km)}</span></button>`).join("") : "Nothing found.";
     const markers = list.filter((r) => r.lat).map((r) => dot(r.lat, r.lon, "#ff5c8a", 7).bindPopup("Loading…", { maxWidth: 340 }).on("popupopen", (ev) => showInspections(ev.popup, r)).addTo(restaurantLayer));
     if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2), { maxZoom: 15 });
     $("rresults").querySelectorAll("button").forEach((b) => (b.onclick = () => { const r = list[+b.dataset.i]; map.setView([r.lat, r.lon], 16); markers.find((m) => m.getLatLng().lat === r.lat)?.openPopup(); }));
@@ -1123,14 +1097,6 @@ window.blipActions = {
     run: async ({ query }) => { const q = String(query ?? "").toLowerCase(); const hits = (await getJSON("/api/nyc/cameras")).filter((c) => c.name.toLowerCase().includes(q)).slice(0, 4); hits.forEach(openCam); if (hits[0]) map.setView([hits[0].lat, hits[0].lon], 14); return document.querySelector(".cam:last-child"); } },
   plan_trip: { label: "planned the trip", description: "Plan a trip on the map: drive, bike or walk (with the traffic cameras on the route), or transit (subway + bus + walking options with times).", parameters: { from: { type: "string", description: "Start, or 'my location' for where the visitor is" }, to: { type: "string", description: "Destination" }, mode: { type: "string", description: "drive, bike, walk or transit" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
     run: ({ from, to, mode, avoid_ferries, stops }) => { $("tClear").click(); String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6).forEach((x) => addStop(x, false)); const mine = /^(my (current )?location|me|here|where i am|current location)$/i.test(String(from ?? "").trim()) && meAt; $("tFrom").value = mine ? "" : from ?? ""; $("tTo").value = to ?? ""; if (mine) placePin("tFrom", meAt, "My location"); const r = document.querySelector(`input[name="tMode"][value="${mode}"]`); if (r) r.checked = true; $("tNoFerry").checked = !!avoid_ferries; $("trip").requestSubmit(); } },
-  play_radio: { label: "turned on the radio", description: "Play a radio station from the map's radio layer: by name, genre or FM frequency (e.g. 'WNYC', 'jazz', '93.9'). Or 'stop'.", parameters: { query: { type: "string", description: "Station name, genre or frequency, or 'stop'" } },
-    run: async ({ query }) => {
-      const q = String(query ?? "").toLowerCase().trim();
-      if (q === "stop") return stopRadio();
-      await toggle("radio", true);
-      const st = radioList.find((x) => x.name.toLowerCase().includes(q) || String(x.fmMHz) === q) ?? radioList.find((x) => x.tags.some((t) => t.includes(q)));
-      if (st) { playRadio(st); map.setView([st.lat, st.lon], 13); }
-    } },
   follow_aircraft: { label: "found the aircraft", description: "Show a live aircraft or helicopter on the map with where it's been in the last 24 h. Query: callsign, registration or hex from aircraftInView; or 'helicopter' for the nearest helicopter.", parameters: { query: { type: "string", description: "Callsign, registration, hex, or 'helicopter'" } },
     run: async ({ query }) => {
       await toggle("aircraft", true);
@@ -1144,7 +1110,7 @@ window.blipActions = {
     run: async ({ lat, lon }) => { const ph = await getJSON(`/api/nyc/photo-near?lat=${Number(lat)}&lon=${Number(lon)}`).catch(() => null); if (ph) { photoById.set(ph.id, ph); openPhoto(ph); map.setView([ph.lat, ph.lon], Math.max(map.getZoom(), 17)); } } },
   nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
     run: async ({ lat, lon }) => { if (NYC.contains([Number(lat), Number(lon)])) openCam(await nearestCam(Number(lat), Number(lon))); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -1160,7 +1126,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, radioPlaying: seen.radio,
+    weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 

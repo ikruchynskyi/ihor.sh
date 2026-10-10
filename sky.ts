@@ -159,3 +159,53 @@ export async function photoNear(lat: number, lon: number) {
   const best = [...list].sort((a, b) => score(a) - score(b))[0]; // a copy: the cached list stays newest-first
   return best ? { ...best, meters: Math.round(km(best, { lat, lon }) * 1000), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
 }
+
+// ---------- FM stations on the air (FCC) + what our own antenna hears ----------
+/** Licensed full-power FM stations within ~100 km of the city, from the FCC's FM query (refreshed weekly). The list
+ *  says what's on the air; a stream's name ("WNYC 93.9") is only a claim, and many streams are internet-only. */
+function fccFm() {
+  return cached("fcc-fm", 7 * 24 * 3600_000, async () => {
+    const txt = await (await get("https://transition.fcc.gov/fcc-bin/fmq?serv=FM&vac=3&freq=87.9&fre2=108.0&list=4&dist=100&dlat2=40&mlat2=44&slat2=0&NS=N&dlon2=73&mlon2=59&slon2=0&EW=W&size=9", 40_000)).text();
+    const best = new Map<string, any>();
+    for (const line of txt.split("\n")) {
+      const f = line.split("|").map((x) => x.trim());
+      if (f.length < 29 || !/^\d/.test(f[2])) continue;
+      const st = { call: f[1].replace(/-FM$/, ""), mhz: parseFloat(f[2]), status: f[9], city: f[10], state: f[11], erpKw: Math.max(parseFloat(f[14]) || 0, parseFloat(f[15]) || 0),
+        lat: +(+f[20] + +f[21] / 60 + +f[22] / 3600).toFixed(4), lon: -(+f[24] + +f[25] / 60 + +f[26] / 3600).toFixed(4), licensee: f[27], km: parseFloat(f[28]) };
+      const cur = best.get(st.call);
+      if (!cur || (cur.status !== "LIC" && st.status === "LIC")) best.set(st.call, st); // one record per station, the license first
+    }
+    return [...best.values()].sort((a, b) => a.mhz - b.mhz);
+  });
+}
+const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
+/** The latest FM band scan from our dongle; asks for a new one (in the background) when it's over 6 hours old. */
+async function fmScan() {
+  const last = await json(`${SDR}/api/scan/fm`, 5_000).catch(() => null);
+  if (!last?.at || Date.now() - last.at > 6 * 3600_000) cached("fm-scan-kick", 10 * 60_000, () => fetch(`${SDR}/api/scan/fm`, { method: "POST", signal: AbortSignal.timeout(60_000) }).catch(() => null));
+  return last?.at ? last : null;
+}
+/** NYC radio: every FM station on the air (FCC), whether our antenna hears it (the scan), and its internet stream if one
+ *  matches its call sign; plus internet-only streams from the city. */
+export async function radioDial() {
+  const [fm, streams, scan] = await Promise.all([fccFm(), radioStations(), fmScan()]);
+  const level = new Map<number, number>((scan?.channels ?? []).map((c: any) => [c.mhz, c.snrDb]));
+  const used = new Set<string>();
+  const stations = fm.map((st: any) => {
+    const call = new RegExp(`\\b${st.call}\\b`, "i");
+    const mine = streams.filter((s) => call.test(`${s.name} ${s.homepage ?? ""} ${s.tags.join(" ")}`));
+    mine.forEach((s) => used.add(s.id));
+    const snr = level.get(st.mhz) ?? null;
+    // within 200 kHz of a channel ≥10 dB louder, a modest reading is that neighbor spilling over, not this station
+    const louder = [-0.2, 0.2].some((d) => (level.get(+(st.mhz + d).toFixed(1)) ?? -99) >= (snr ?? 0) + 10);
+    const heard = snr === null ? "not scanned" : snr >= 15 ? "clear" : snr >= 8 && !louder ? "heard" : louder && snr >= 8 ? "spillover" : "not heard";
+    return { ...st, snrDb: snr, heard, streams: mine.map((s) => ({ name: s.name, url: s.stream, https: s.https, codec: s.codec, kbps: s.kbps })) };
+  });
+  // Stations far apart share channels (four on 88.1), and a scan measures the channel: credit what's heard to the one
+  // most likely to arrive here (power ÷ distance²), and mark the rest as sharing it.
+  const likely = new Map<number, any>();
+  for (const st of stations) { const cur = likely.get(st.mhz), w = (s: any) => s.erpKw / Math.max(1, s.km) ** 2; if (!cur || w(st) > w(cur)) likely.set(st.mhz, st); }
+  for (const st of stations) if (likely.get(st.mhz) !== st && (st.heard === "clear" || st.heard === "heard")) Object.assign(st, { heard: "co-channel", sharesWith: likely.get(st.mhz).call });
+  const internet = streams.filter((s) => !used.has(s.id)).map((s) => ({ name: s.name, tags: s.tags, url: s.stream, https: s.https, homepage: s.homepage, claimsFm: s.fmMHz }));
+  return { scan: scan && { at: scan.at, gain: scan.gain }, stations, internet };
+}

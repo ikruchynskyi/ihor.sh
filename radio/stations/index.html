@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NYC Radio Stations</title>
+  <meta name="description" content="Every FM station on the air around New York (FCC licenses), checked against what this site's own antenna actually hears in a band scan, with each station's internet stream; plus internet-only stations from the city." />
+  <style>
+    body { margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+    h1 { margin: 0 0 6px; }
+    .muted { color: var(--muted, #9aa3cf); font-size: .9rem; }
+    .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 14px 0; }
+    .bar input[type=search] { flex: 1 1 220px; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line, #3b4bb0); vertical-align: middle; }
+    th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #9aa3cf); }
+    td.f { font: 600 1rem ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .meter { display: inline-block; width: 60px; height: 8px; background: var(--line, #3b4bb0); vertical-align: middle; margin-right: 6px; }
+    .meter i { display: block; height: 100%; background: #5cff9d; }
+    .heard-clear { color: #5cff9d; } .heard-heard { color: #ffd166; } .heard-spillover, .heard-not { color: var(--muted, #9aa3cf); }
+    .acts { white-space: nowrap; } .acts a, .acts button { margin-right: 6px; }
+    button.play { padding: 3px 8px; font-size: .8rem; }
+    #player { position: sticky; bottom: 0; padding: 10px 12px; margin-top: 16px; background: var(--card, #0d1226); border: 2px solid var(--line, #3b4bb0); }
+    #internet li { margin: 4px 0; }
+    @media (max-width: 700px) { .hide-sm { display: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>NYC radio stations</h1>
+  <p class="muted">Every FM station licensed within 100 km of the city, from the <a href="https://www.fcc.gov/media/radio/fm-query">FCC's records</a>, checked against what this site's own antenna (an RTL-SDR on a Mac mini in the city) actually hears: a scan of the whole FM band every few hours measures each channel's signal above the noise. <b>📡</b> listens off the air in <a href="../">Spectrum Lab</a>; <b>▶</b> plays the station's internet stream.</p>
+  <p class="muted" id="scanLine">Loading…</p>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Search: call sign, city, frequency or genre" aria-label="Search stations" />
+    <label><input type="checkbox" id="onlyHeard" checked /> Only stations my antenna hears</label>
+  </div>
+  <table>
+    <thead><tr><th>MHz</th><th>Station</th><th class="hide-sm">Where</th><th>My antenna</th><th>Listen</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <h2 style="font-size:1.1rem;margin-top:32px">Internet-only stations from the city</h2>
+  <p class="muted">Streams based in and around NYC (from <a href="https://www.radio-browser.info/">Radio Browser</a>) that match no licensed FM station. A frequency in a stream's name (<i>"… 101.5"</i>) is only a label: these can't be heard over the air.</p>
+  <ul id="internet"></ul>
+  <div id="player" hidden></div>
+  <audio id="audio" preload="none"></audio>
+</main>
+<script type="module" src="/src/stations-app.ts"></script>
+</body>
+</html>

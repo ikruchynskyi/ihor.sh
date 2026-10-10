@@ -18,7 +18,7 @@ import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
-import { aircraft, trace, iss, storms, weather, radioStations, streetPhotos, photoNear } from "./sky.ts";
+import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -222,7 +222,7 @@ const server = http.createServer(async (req, res) => {
       const answer = await ask(JSON.parse(raw), SYSTEM);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
     }
-    if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events"].includes(url.pathname)) return proxySdr(req, res);
+    if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm"].includes(url.pathname)) return proxySdr(req, res);
     if (url.pathname === "/api/viewer" && req.method === "POST") return proxySdr(req, res);
     if (url.pathname === "/api/receiver" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
@@ -240,7 +240,10 @@ const server = http.createServer(async (req, res) => {
         if (!(lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();
         return send(await pointInfo(lat, lon), 3600);
       }
-      if (url.pathname === "/api/nyc/restaurants") return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20)), 3600);
+      if (url.pathname === "/api/nyc/restaurants") {
+        const [la, lo] = String(q.get("near") ?? "").split(",").map(Number), near = la > 40.4 && la < 41 && lo > -74.3 && lo < -73.6 ? { lat: la, lon: lo } : undefined;
+        return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20), near), 3600);
+      }
       if (url.pathname === "/api/nyc/311") {
         const [bs, bw, bn, be] = String(q.get("bbox") ?? "").split(",").map(Number);
         if (![bs, bw, bn, be].every(Number.isFinite) || bn - bs > 0.2 || be - bw > 0.3) return res.writeHead(400).end(); // zoomed in enough
@@ -256,7 +259,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
     // The sky and the air (sky.ts): cached there, so these are cheap however many people watch.
-    const SKY: Record<string, [() => Promise<unknown>, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/nyc/radio": [radioStations, 3600] };
+    const SKY: Record<string, [() => Promise<unknown>, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
     if (SKY[url.pathname]) {
       const [f, maxAge] = SKY[url.pathname];
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f())); }

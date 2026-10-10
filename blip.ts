@@ -7,7 +7,7 @@ import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear } from "./transit.ts";
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
-import { aircraft, iss, storms, weather, radioStations, km, photoNear } from "./sky.ts";
+import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -96,12 +96,15 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   radio_stations: {
-    description: "Internet radio stations based in and around NYC (Radio Browser): name, genres, FM frequency if it's on FM, stream link. Search by name, genre or frequency.",
-    parameters: { query: { type: "string", description: "Optional: name, genre (jazz, news, latin…) or FM frequency (e.g. 93.9)" } },
+    description: "NYC radio: FM stations on the air (FCC licenses within 100 km) with whether this site's own antenna hears them (a band scan) and their internet streams; plus internet-only stations. Search by call sign, frequency, city, name or genre. The page is /radio/stations/.",
+    parameters: { query: { type: "string", description: "Optional: call sign (WNYC), frequency (93.9), city, station name or genre (jazz)" } },
     run: async ({ query }) => {
-      const q = String(query ?? "").toLowerCase().trim(), all = await radioStations();
-      const hits = q ? all.filter((r) => r.name.toLowerCase().includes(q) || r.tags.some((t: string) => t.includes(q)) || String(r.fmMHz) === q) : all;
-      return { matches: hits.length, stations: hits.slice(0, 15).map((r) => ({ name: r.name, genres: r.tags.join(", "), fmMHz: r.fmMHz ?? undefined, stream: r.stream, listenOnSdr: r.fmMHz ? `/radio/?listen=${r.fmMHz}` : undefined })) };
+      const q = String(query ?? "").toLowerCase().trim(), d = await radioDial();
+      const fm = d.stations.filter((s: any) => !q || `${s.call} ${s.mhz} ${s.city} ${s.streams.map((x: any) => x.name).join(" ")}`.toLowerCase().includes(q));
+      const net = d.internet.filter((s) => !q || `${s.name} ${s.tags.join(" ")}`.toLowerCase().includes(q));
+      return { scannedAt: d.scan ? new Date(d.scan.at).toISOString() : null,
+        fm: fm.slice(0, 15).map((s: any) => ({ mhz: s.mhz, call: s.call, city: s.city, myAntenna: s.heard, snrDb: s.snrDb, streams: s.streams.map((x: any) => x.name), listenOnSdr: s.heard === "clear" || s.heard === "heard" ? `/radio/?listen=${s.mhz}` : undefined })),
+        internetOnly: net.slice(0, 10).map((s) => ({ name: s.name, genres: s.tags.join(", "), stream: s.url })), page: "/radio/stations/" };
     },
   },
   subway_arrivals: {
@@ -168,10 +171,11 @@ const TOOLS: Record<string, Tool> = {
   },
   restaurant_inspections: {
     description: "NYC health inspections for restaurants matching a name: grade, score and violations of the latest visits.",
-    parameters: { name: { type: "string", description: "Restaurant name or part of it" }, borough: { type: "string", description: "Optional borough", enum: ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"] } },
+    parameters: { name: { type: "string", description: "Restaurant name or part of it" }, borough: { type: "string", description: "Optional borough", enum: ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"] }, lat: { type: "number", description: "Optional: nearest to this point first (e.g. the visitor's location)" }, lon: { type: "number", description: "Optional longitude" } },
     required: ["name"],
-    run: async ({ name, borough }) => {
-      const found = await findRestaurants(String(name), String(borough ?? ""));
+    run: async ({ name, borough, lat, lon }) => {
+      const near = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : undefined;
+      const found = await findRestaurants(String(name), String(borough ?? ""), near);
       const top = await Promise.all(found.slice(0, 3).map((r) => restaurantInspections(r.camis)));
       return { matches: found.length, restaurants: top.filter(Boolean).map((r: any) => ({ ...r, visits: r.visits.slice(0, 3) })), others: found.slice(3, 12).map((r) => `${r.name}, ${r.address}`) };
     },
@@ -217,7 +221,7 @@ ${siteMap}
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
-- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, tropical_storms, radio_stations. On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, play_radio, nearest_camera).
+- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near or subway_near. If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 

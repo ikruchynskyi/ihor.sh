@@ -144,13 +144,17 @@ const soda = (params: Record<string, string>) => {
 const soql = (s: string) => s.replace(/'/g, "''");
 
 /** Restaurants whose name matches `name` (one row per restaurant, with its latest inspection). */
-export async function findRestaurants(name: string, borough = "") {
-  const where = [`upper(dba) like '%${soql(name.toUpperCase())}%'`, "latitude IS NOT NULL", borough && `upper(boro) = '${soql(borough.toUpperCase())}'`].filter(Boolean).join(" AND ");
+/** Restaurants whose name matches; with `near`, the 40 closest to that point (nearest first), else the 40 inspected most recently. */
+export async function findRestaurants(name: string, borough = "", near?: { lat: number; lon: number }) {
+  const where = [`upper(dba) like '%${soql(name.toUpperCase())}%'`, "latitude IS NOT NULL", "latitude > 0", borough && `upper(boro) = '${soql(borough.toUpperCase())}'`].filter(Boolean).join(" AND ");
+  // squared flat-earth distance (a degree of longitude is 0.76 of a degree of latitude here): enough to rank by
+  const dist = near && `(max(latitude) - ${near.lat}) * (max(latitude) - ${near.lat}) + (max(longitude) - ${near.lon}) * (max(longitude) - ${near.lon}) * 0.58`;
   const rows: any[] = await soda({
     $select: "camis, dba, boro, building, street, zipcode, cuisine_description, max(inspection_date) as last, max(latitude) as lat, max(longitude) as lon",
-    $where: where, $group: "camis, dba, boro, building, street, zipcode, cuisine_description", $order: "last DESC", $limit: "40",
+    $where: where, $group: "camis, dba, boro, building, street, zipcode, cuisine_description", $order: dist ? `${dist} ASC` : "last DESC", $limit: "40",
   });
-  return rows.map((r) => ({ camis: r.camis, name: r.dba, cuisine: r.cuisine_description, address: `${r.building ?? ""} ${r.street ?? ""}, ${r.boro} ${r.zipcode ?? ""}`.trim(), lat: Number(r.lat), lon: Number(r.lon), lastInspection: r.last?.slice(0, 10) }));
+  const km = (r: any) => (near ? +(Math.hypot((r.lat - near.lat) * 111.2, (r.lon - near.lon) * 84.3)).toFixed(2) : undefined);
+  return rows.map((r) => ({ camis: r.camis, name: r.dba, cuisine: r.cuisine_description, address: `${r.building ?? ""} ${r.street ?? ""}, ${r.boro} ${r.zipcode ?? ""}`.trim(), lat: Number(r.lat), lon: Number(r.lon), km: km({ lat: Number(r.lat), lon: Number(r.lon) }), lastInspection: r.last?.slice(0, 10) }));
 }
 
 /** One restaurant's inspection history: grade, score and violations per visit, newest first. */
