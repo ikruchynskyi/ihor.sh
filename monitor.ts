@@ -129,8 +129,8 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     let p = 0; for (let i = 0; i < st.channel.length; i += 2) p += st.channel[i] ** 2 + st.channel[i + 1] ** 2;
     const db = 10 * Math.log10(p / Math.max(1, st.channel.length / 2) + 1e-12);
     ring.push(db); if (ring.length > 4400) ring.shift();
-    floor = ring.length < 15 ? Infinity : Math.min(...ring); // the dongle needs a moment to settle, then the quietest recent chunk is the floor
-    const sec = iq.length / 2 / fs, on = db > floor + 7;
+    floor = ring.length < 15 ? Infinity : [...ring].sort((a, b) => a - b)[Math.floor(ring.length * 0.1)]; // the dongle needs a moment to settle; then the quiet tenth of recent chunks sets the floor
+    const sec = iq.length / 2 / fs, on = db > floor + 8;
     if (on) closedFor = 0; else closedFor += sec;
     const nowOpen = on || (open && closedFor < 0.7);
     if (nowOpen !== open) { open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), floor: +floor.toFixed(1) }); if (open) utStart = Date.now(); }
