@@ -29,6 +29,13 @@ export const TEMPLATES = {
     parts: [["battery", [0, 3], [0, 6], { v: 5 }], w([0, 3], [0, 0]), w([0, 0], [3, 0]), ["resistor", [3, 0], [6, 0], { ohms: 10 }], w([6, 0], [9, 0]), w([9, 0], [9, 1]),
       ["switch2", [6, 2], 0, { closed: false }], ["capacitor", [6, 2], [6, 5], { farads: 10e-6 }], w([9, 3], [11, 3]), ["inductor", [11, 3], [11, 6], { henries: 10e-3, ohms: 0.5 }],
       w([6, 5], [6, 7]), w([11, 6], [11, 7]), w([11, 7], [0, 7]), w([0, 7], [0, 6]), ["ground", [0, 7], 0], ["probe", [6, 2], 0, { ch: 1 }]] },
+  bjtswitch: { name: "Transistor switch (BJT)", desc: "Close the switch: a small base current (9 V through 10 kΩ, under 1 mA) turns the 2N3904 fully on, and it carries the LED's ~15 mA. That's the transistor as a switch: β = 200 times more current than it takes.", speed: 1,
+    parts: [["battery", [0, 3], [0, 6], { v: 9 }], w([0, 3], [0, 0]), w([0, 0], [10, 0]), ["switch", [4, 0], [4, 3], { closed: false }], ["resistor", [4, 3], [4, 6], { ohms: 10000 }], w([4, 6], [4, 8]), w([4, 8], [8, 8]),
+      ["resistor", [10, 0], [10, 3], { ohms: 470 }], ["led", [10, 3], [10, 6], { color: "green" }], ["bjt", [8, 8], 0, { model: "2N3904 (NPN)" }], w([10, 10], [10, 11]), w([10, 11], [0, 11]), w([0, 11], [0, 6]), ["ground", [0, 11], 0],
+      ["probe", [8, 8], 0, { ch: 1 }], ["probe", [10, 6], 0, { ch: 2 }]] },
+  transformer: { name: "Transformer: 120 V to 12 V", desc: "Wall-socket AC (170 V peak = 120 V RMS, 60 Hz) on a 10:1 transformer gives 12 V RMS on the secondary (yellow vs blue on the scope), and the 100 Ω load draws 120 mA there but only 12 mA from the primary.", speed: 0.02, div: 5e-3,
+    parts: [["source", [0, 1], [0, 4], { wave: "sine", freq: 60, amp: 170, offset: 0, duty: 50 }], w([0, 1], [3, 1]), w([0, 4], [3, 4]), ["transformer", [3, 1], 0, { ratio: 0.1, lm: 1 }],
+      w([7, 1], [10, 1]), ["resistor", [10, 1], [10, 4], { ohms: 100 }], w([7, 4], [10, 4]), ["ground", [0, 4], 0], ["ground", [7, 4], 0], ["probe", [0, 1], 0, { ch: 1 }], ["probe", [7, 1], 0, { ch: 2 }]] },
   blinker: { name: "555 LED blinker", desc: "The 555 in astable mode: the capacitor (blue) charges through R1 + R2 to ⅔ of 9 V and discharges through R2 to ⅓, flipping the output (yellow) each time. f = 1.44 / ((R1 + 2·R2)·C) ≈ 1.5 Hz.", speed: 1, div: 0.2,
     parts: [["battery", [0, 3], [0, 6], { v: 9 }], w([0, 3], [0, 0]), w([0, 0], [14, 0]), ["resistor", [3, 0], [3, 3], { ohms: 1000 }], w([3, 3], [3, 5]), w([3, 5], [6, 5]), ["resistor", [3, 5], [3, 8], { ohms: 47000 }], w([3, 8], [5, 8]), w([5, 8], [5, 2]), w([5, 2], [6, 2]), w([5, 3], [6, 3]),
       ["capacitor", [3, 8], [3, 11], { farads: 10e-6 }], ["timer555", [6, 1], 0], w([12, 2], [14, 2]), w([14, 2], [14, 0]), w([12, 5], [13, 5]), w([13, 5], [13, 11]),
@@ -53,6 +60,17 @@ export const TEMPLATES = {
 };
 
 /** A template's parts, as lab parts shifted to (x, y). */
+// the 555 blinker without its LED (its output at (12, 4), ground rail along y = 11), as a clock for the logic templates
+const clock = () => TEMPLATES.blinker.parts.filter((q) => !(q[0] === "led" || (q[0] === "resistor" && q[1][0] === 16) || (q[0] === "wire" && (q[1][0] === 16 || q[2][0] === 16) && q[1][1] !== 11) || q[0] === "probe" || (q[0] === "wire" && q[1][0] === 12 && q[1][1] === 4)));
+TEMPLATES.runlight = { name: "Running light (555 + 4017)", desc: "The 555 ticks about 1.5 times a second; each tick moves the 4017 to its next output, so the LEDs on Q0, Q2, Q4, Q6 and Q8 light one after another, then it starts over. The 330 Ω resistors keep each LED near 10 mA.", speed: 1, div: 0.2,
+  // the clock goes out along y = 4 and up x = 15 (x = 14, y = 2 is the 555's supply); RST runs down x = 14 to the ground rail
+  parts: [...clock(), w([12, 4], [15, 4]), w([15, 4], [15, 2]), w([15, 2], [16, 2]), w([16, 3], [14, 3]), w([14, 3], [14, 11]), ["counter4017", [16, 1], 0],
+    ...[0, 2, 4, 6, 8].flatMap((q) => [["resistor", [22, q + 2], [25, q + 2], { ohms: 330 }], ["led", [25, q + 2], [28, q + 2], { color: ["red", "yellow", "green", "blue", "white"][q / 2] }]]),
+    w([28, 2], [28, 13]), w([28, 13], [0, 13]), w([0, 13], [0, 11]), ["probe", [16, 2], 0, { ch: 1 }]] };
+TEMPLATES.divider2 = { name: "Divide by two (D flip-flop)", desc: "Q̄ fed back to D makes the flip-flop flip at every rising clock edge: Q (blue) runs at exactly half the 555's frequency (yellow). Chain more and you have chapter 12's counter.", speed: 1, div: 0.5,
+  parts: [...clock(), w([12, 4], [14, 4]), w([14, 4], [14, 6]), w([14, 6], [16, 6]), ["dff", [16, 3], 0], w([20, 6], [21, 6]), w([21, 6], [21, 8]), w([21, 8], [15, 8]), w([15, 8], [15, 4]), w([15, 4], [16, 4]),
+    ["probe", [16, 6], 0, { ch: 1 }], ["probe", [20, 4], 0, { ch: 2 }]] };
+
 export function instantiate(name, [x, y], nextId) {
   return TEMPLATES[name].parts.map(([type, p1, p2, props = {}]) => {
     const two = Array.isArray(p2);

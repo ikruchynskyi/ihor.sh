@@ -77,3 +77,18 @@ near(r.v[3], 4, 0.01);
 r = solve([{ type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "D", a: 0, b: 2, is: 1e-14, n: 1, bv: 5.1 }]);
 assert.ok(r.v[2] > 5.1 && r.v[2] < 5.25, `zener at ${r.v[2]}`);
 console.log("circuit ok");
+
+// bipolar transistor: common-emitter switch. 5 V through 1 kΩ into the base, 12 V through 1 kΩ to the collector: saturated
+{
+  const { solve } = await import("./circuit.js");
+  const sat = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: 1000 }, { type: "V", a: 3, b: 0, volts: 12 }, { type: "R", a: 3, b: 4, ohms: 1000 }, { type: "Q", a: 4, b: 0, g: 2, is: 1e-14, bf: 100 }]);
+  const vbe = sat.v[2], vce = sat.v[4], ic = sat.current[4];
+  if (!(vbe > 0.6 && vbe < 0.8 && vce < 0.3 && Math.abs(ic - 0.0118) < 0.0006)) throw new Error(`npn saturated: vbe ${vbe} vce ${vce} ic ${ic}`);
+  // active region: a small base current (100 kΩ from 5 V ≈ 43 µA) gives Ic ≈ β·Ib ≈ 4.3 mA, Vce well above 0
+  const act = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: 100e3 }, { type: "V", a: 3, b: 0, volts: 12 }, { type: "R", a: 3, b: 4, ohms: 1000 }, { type: "Q", a: 4, b: 0, g: 2, is: 1e-14, bf: 100 }]);
+  if (!(Math.abs(act.current[4] - 0.0043) < 0.0004 && act.v[4] > 6)) throw new Error(`npn active: ic ${act.current[4]} vce ${act.v[4]}`);
+  // pnp: emitter at 12 V, base pulled to 0 through 100 kΩ, collector to ground through 1 kΩ: ~11 mA flows out of the collector
+  const pnp = solve([{ type: "V", a: 1, b: 0, volts: 12 }, { type: "R", a: 2, b: 0, ohms: 100e3 }, { type: "R", a: 3, b: 0, ohms: 1000 }, { type: "Q", a: 3, b: 1, g: 2, is: 1e-14, bf: 100, pnp: true }]);
+  if (!(pnp.v[3] > 10 && pnp.v[3] < 12)) throw new Error(`pnp: collector ${pnp.v[3]}`);
+  console.log(`bjt ok: saturated vce ${vce.toFixed(2)} V, active ic ${(act.current[4] * 1000).toFixed(2)} mA, pnp collector ${pnp.v[3].toFixed(2)} V`);
+}

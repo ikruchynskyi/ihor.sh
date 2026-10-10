@@ -9,6 +9,7 @@
 // dots), ctx.behave(fn) runs fn(v, t, dt) after every step (behavioral ICs read the last voltages there), ctx.free(k)
 // tells whether pin k is wired to nothing.
 
+const BJTS = { "2N3904 (NPN)": { is: 6.7e-15, bf: 200, br: 1 }, "2N2222 (NPN)": { is: 1.4e-14, bf: 150, br: 6 }, "BC547 (NPN)": { is: 1.8e-14, bf: 300, br: 1 }, "TIP31 (NPN, power)": { is: 1e-12, bf: 50, br: 1 }, "2N3906 (PNP)": { is: 1.4e-15, bf: 180, br: 4, pnp: true } };
 export const COL = { stage: "#14171d", grid: "#262b35", wire: "#8f98a8", text: "#d7dde5", sel: "#f4d35e", dot: "#f4d35e", blue: "#58c4dd", red: "#fc6255", green: "#83c167", dim: "#4a5262", body: "#1f2530" };
 export const PROBE_COLORS = ["#f4d35e", "#58c4dd", "#fc6255", "#83c167"];
 export const LEDS = { red: [1.9, "#ff4b3e"], yellow: [2.0, "#ffd23e"], green: [2.1, "#3ddc84"], blue: [3.0, "#4d7cff"], white: [3.1, "#f5f5ff"] };
@@ -75,7 +76,7 @@ export const PARTS = {
   motor: { name: "DC motor", cat: "Output", two: true, len: 3, props: { ohms: 6, henries: 1e-3 }, fields: [["ohms", "winding resistance", "si", "Ω", 0.1, 1000], ["henries", "winding inductance", "si", "H", 1e-6, 1]],
     desc: "A coil that spins: modeled as its winding's resistance and inductance (the speed shown follows the current). Switch one off without a flyback diode and watch the spike.", chapter: "04-diodes-and-transistors.html",
     stamp(p, c) { const mid = c.node(); c.add({ type: "R", a: c.pin(0), b: mid, ohms: Math.max(0.1, p.ohms) }, { main: true }); c.add({ type: "L", a: mid, b: c.pin(1), henries: p.henries, i0: c.memory.indI.get(p.id) ?? 0 }, { ind: true }); } },
-  ammeter: { name: "Ammeter", cat: "Meters", two: true, len: 3, props: {}, desc: "Put it in series (break the loop and let the current go through it). It reads the current from its + end to its − end, and drops almost no voltage.",
+  ammeter: { name: "Ammeter", cat: "Meters", two: true, len: 3, props: { ch: "off" }, fields: [["ch", "show on the scope", "select", ["off", 1, 2, 3, 4]]], desc: "Put it in series (break the loop and let the current go through it). It reads the current from its + end to its − end, and drops almost no voltage. Pick a scope channel to draw its current over time (a current probe).",
     stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: 1e-3 }, { main: true }); } },
   probe: { name: "Scope probe", cat: "Meters", pins: [[0, 0]], props: { ch: 1 }, fields: [["ch", "scope channel", "select", [1, 2, 3, 4]]],
     desc: "Touch it to a point: the oscilloscope below draws that point's voltage (against ground) over time, with Vpp, RMS, average and frequency.", stamp() {} },
@@ -84,6 +85,40 @@ export const PARTS = {
     desc: "A switch worked by voltage: gate above the source by more than the threshold, and current flows drain → source. Logic-level ones switch fully on from 3.3–5 V.", chapter: "04-diodes-and-transistors.html",
     stamp(p, c) { const m = { "IRLZ44N (logic level)": { vth: 1.5, k: 30 }, "IRF540N (standard)": { vth: 3.5, k: 15 }, "2N7000 (small signal)": { vth: 2.1, k: 0.3 } }[p.model] ?? { vth: p.vth, k: p.k };
       c.add({ type: "M", a: c.pin(1), b: c.pin(2), g: c.pin(0), ...m }, { main: true }); c.add({ type: "R", a: c.pin(0), b: c.pin(2), ohms: 1e9 }); } },
+  bjt: { name: "Transistor (BJT)", cat: "Semiconductors", pins: [[0, 0], [2, -2], [2, 2]], pinNames: ["base", "collector", "emitter"], props: { model: "2N3904 (NPN)" }, fields: [["model", "type", "select", Object.keys(BJTS)]],
+    desc: "A current amplifier: a small current into the base (about 0.65 V above the emitter) lets β times more flow collector → emitter (NPN). Fully on it drops only ~0.1 V (saturated); a PNP works upside down, from the positive side.", chapter: "04-diodes-and-transistors.html",
+    stamp(p, c) { c.add({ type: "Q", a: c.pin(1), b: c.pin(2), g: c.pin(0), ...(BJTS[p.model] ?? BJTS["2N3904 (NPN)"]) }, { main: true }); } },
+  transformer: { name: "Transformer", cat: "Passive", pins: [[0, 0], [0, 3], [4, 0], [4, 3]], pinNames: ["primary 1", "primary 2", "secondary 1", "secondary 2"], props: { ratio: 0.1, lm: 1 },
+    fields: [["ratio", "turns ratio (secondary : primary)", "select", [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]], ["lm", "primary inductance", "si", "H", 0.001, 100]],
+    desc: "Two coils on one core: AC on the primary appears on the secondary times the turns ratio (0.1 turns 120 V into 12 V), and the current goes the other way (the primary draws 0.1× the secondary's current). DC doesn't pass: the primary is just a coil to it.", chapter: "03-coils-and-resonance.html",
+    stamp(p, c) {
+      // an ideal transformer plus its magnetizing inductance: secondary = n·(primary voltage), primary draws n·(secondary current) (one step behind)
+      const [p1, p2, s1, s2] = [0, 1, 2, 3].map((k) => c.pin(k)), mid = c.node(), n = p.ratio, s = { vp: 0, is: 0 };
+      c.add({ type: "L", a: p1, b: p2, henries: p.lm, i0: c.memory.indI.get(p.id) ?? 0 }, { ind: true });
+      c.add({ type: "I", a: p1, b: p2, get amps() { return n * s.is; } });
+      c.add({ type: "V", a: mid, b: s2, get volts() { return n * s.vp; } }); c.add({ type: "R", a: mid, b: s1, ohms: 0.05 }, { main: true, sign: -1 });
+      c.behave((v) => { s.vp = v[p1] - v[p2]; s.is = (v[mid] - v[s1]) / 0.05; });
+      c.state(p.id, s);
+    } },
+  dff: { name: "D flip-flop", cat: "Logic", pins: [[0, 1], [0, 3], [4, 1], [4, 3]], pinNames: ["D", "CLK", "Q", "Q̄"], props: { vdd: 5 },
+    desc: "Remembers one bit: at each rising edge of CLK, Q copies D and holds it until the next edge (Q̄ is its opposite). Chain them for counters and shift registers.", chapter: "12-gates-to-a-computer.html",
+    stamp(p, c) {
+      const [d, clk, q, qb] = [0, 1, 2, 3].map((k) => c.pin(k)), s = { q: false, clk: false }, dq = c.node(), dqb = c.node();
+      for (const k of [d, clk]) c.add({ type: "R", a: k, b: 0, ohms: 1e6 });
+      c.add({ type: "V", a: dq, b: 0, volts: () => (s.q ? p.vdd : 0) }); c.add({ type: "R", a: dq, b: q, ohms: 25 }, { main: true, sign: -1 });
+      c.add({ type: "V", a: dqb, b: 0, volts: () => (s.q ? 0 : p.vdd) }); c.add({ type: "R", a: dqb, b: qb, ohms: 25 });
+      c.behave((v) => { const hi = v[clk] > p.vdd / 2; if (hi && !s.clk) s.q = v[d] > p.vdd / 2; s.clk = hi; });
+      c.state(p.id, s);
+    } },
+  counter4017: { name: "4017 decade counter", cat: "Logic", pins: [[0, 1], [0, 2], ...Array.from({ length: 10 }, (_, k) => [6, k + 1])], pinNames: ["CLK", "RST", ...Array.from({ length: 10 }, (_, k) => `Q${k}`)], props: { vdd: 5 },
+    desc: "Counts clock pulses from 0 to 9 and lights one output at a time: Q0, Q1… Q9, then Q0 again. RST high sends it back to Q0. With a 555 on CLK and LEDs on the outputs: a running light.", chapter: "12-gates-to-a-computer.html",
+    stamp(p, c) {
+      const clk = c.pin(0), rst = c.pin(1), s = { n: 0, clk: false };
+      c.add({ type: "R", a: clk, b: 0, ohms: 1e6 }); c.add({ type: "R", a: rst, b: 0, ohms: 1e6 });
+      for (let k = 0; k < 10; k++) { const drv = c.node(); c.add({ type: "V", a: drv, b: 0, volts: () => (s.n === k ? p.vdd : 0) }); c.add({ type: "R", a: drv, b: c.pin(k + 2), ohms: 25 }, k === 0 ? { main: true, sign: -1 } : {}); }
+      c.behave((v) => { const hi = v[clk] > p.vdd / 2; if (v[rst] > p.vdd / 2) s.n = 0; else if (hi && !s.clk) s.n = (s.n + 1) % 10; s.clk = hi; });
+      c.state(p.id, s);
+    } },
   opamp: { name: "Op-amp", cat: "ICs", optional: [3, 4], pins: [[0, -1], [0, 1], [4, 0], [2, -2], [2, 2]], pinNames: ["−in", "+in", "out", "V+", "V−"], props: {},
     desc: "Amplifies the difference between its inputs about 100,000 times, limited by its supply. With feedback (output wired back to −in through a resistor) it does exactly what the resistors say. Leave V+/V− unwired for ±15 V.",
     stamp(p, c) {
@@ -250,6 +285,31 @@ export function draw(g, p, st) {
       L(0, 0, 1.2, 0); L(2.8, 0, 4, 0); g.beginPath(); for (let k = 0; k <= 8; k++) g.lineTo(1.2 + k * 0.2, k === 0 || k === 8 ? 0 : k % 2 ? 0.28 : -0.28); g.stroke();
       const x = 1.2 + 1.6 * (p.pos / 100); L(2, 2, 2, 1.2); L(2, 1.2, x, 1.2); L(x, 1.2, x, 0.45); g.fillStyle = line; g.beginPath(); g.moveTo(x, 0.35); g.lineTo(x - 0.15, 0.6); g.lineTo(x + 0.15, 0.6); g.fill();
       T(si(p.ohms, "Ω"), 2, -0.65, 0.4); break;
+    }
+    case "bjt": {
+      const pnp = /PNP/.test(p.model);
+      L(0, 0, 1.1, 0); g.strokeStyle = COL.text; g.lineWidth = 0.15; L(1.1, -0.6, 1.1, 0.6); g.lineWidth = 0.1; g.strokeStyle = line;
+      L(1.1, -0.3, 2, -0.9); L(2, -0.9, 2, -2); L(1.1, 0.3, 2, 0.9); L(2, 0.9, 2, 2);
+      g.strokeStyle = COL.dim; g.beginPath(); g.arc(1.5, 0, 0.95, 0, 7); g.stroke();
+      { // the emitter arrow: out of the transistor for NPN, into it for PNP
+        const [x0, y0, x1, y1] = pnp ? [2, 0.9, 1.3, 0.45] : [1.3, 0.45, 2, 0.9], a = Math.atan2(y1 - y0, x1 - x0); g.fillStyle = line; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 - 0.3 * Math.cos(a - 0.5), y1 - 0.3 * Math.sin(a - 0.5)); g.lineTo(x1 - 0.3 * Math.cos(a + 0.5), y1 - 0.3 * Math.sin(a + 0.5)); g.fill(); }
+      T("B", -0.2, -0.35, 0.32, COL.dim); T("C", 2.35, -1.6, 0.32, COL.dim); T("E", 2.35, 1.6, 0.32, COL.dim); T(p.model.split(" ")[0], 3.1, 0, 0.32, COL.dim, "left"); break;
+    }
+    case "transformer": {
+      L(0, 0, 1, 0); L(0, 3, 1, 3); L(3, 0, 4, 0); L(3, 3, 4, 3); L(1, 0, 1, 0.3); L(1, 2.7, 1, 3); L(3, 0, 3, 0.3); L(3, 2.7, 3, 3);
+      for (const [x, dir] of [[1, 1], [3, -1]]) { g.beginPath(); for (let k = 0; k < 4; k++) g.arc(x, 0.6 + k * 0.6, 0.3, -Math.PI / 2, Math.PI / 2, dir < 0); g.stroke(); }
+      g.strokeStyle = COL.text; L(1.85, 0.2, 1.85, 2.8); L(2.15, 0.2, 2.15, 2.8);
+      T(`${p.ratio >= 1 ? `1:${p.ratio}` : `${Math.round(1 / p.ratio)}:1`}`, 2, -0.45, 0.34); break;
+    }
+    case "dff": case "counter4017": {
+      const big = p.type === "counter4017", h = big ? 11 : 4, w = big ? 6 : 4;
+      for (const [x, y] of pins(p).map(([px, py]) => [px - p.at[0], py - p.at[1]])) L(x, y, x < w / 2 ? 1 : w - 1, y);
+      g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.fillRect(1, 0.3, w - 2, h - 0.6); g.strokeRect(1, 0.3, w - 2, h - 0.6);
+      const names = PARTS[p.type].pinNames;
+      pins(p).forEach(([px, py], k) => { const x = px - p.at[0], y = py - p.at[1]; T(names[k], x < w / 2 ? 1.15 : w - 1.15, y, 0.3, COL.text, x < w / 2 ? "left" : "right"); });
+      if (big) T("4017", w / 2, h / 2 + 0.6, 0.5, COL.blue); else { if (!flipText) T("D FF", 2, 2, 0.4, COL.blue); if (st.q != null) T(`Q=${st.q ? 1 : 0}`, 2, 2.7, 0.3, st.q ? COL.green : COL.dim); }
+      if (big && st.n != null) T(`count ${st.n}`, w / 2, h / 2 + 1.4, 0.32, COL.green);
+      break;
     }
     case "nmos": {
       L(0, 0, 1.1, 0); g.strokeStyle = COL.text; L(1.1, -0.7, 1.1, 0.7); g.lineWidth = 0.13; for (const y of [-0.55, 0, 0.55]) L(1.4, y - 0.18, 1.4, y + 0.18);

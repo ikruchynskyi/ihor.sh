@@ -81,3 +81,20 @@ for (const name of Object.keys(TEMPLATES)) {
 // no driver → nothing to simulate
 assert.equal(netlist([{ id: 1, type: "resistor", a: [0, 0], b: [3, 0], ohms: 1 }]), null);
 console.log("lab ok");
+
+// BJT switch: switch open → LED dark; closed → ~15 mA through the LED and Vce near 0
+{ const parts = build("bjtswitch"), sw = parts.find((p) => p.type === "switch"), led = parts.find((p) => p.type === "led");
+  let { sim } = run(parts, 0.01); const off = Math.abs(sim.cur.get(led.id) ?? 0);
+  sw.closed = true; ({ sim } = run(parts, 0.01)); const on = Math.abs(sim.cur.get(led.id) ?? 0), vce = sim.voltAt([10, 6]);
+  assert.ok(off < 1e-4 && on > 0.012 && on < 0.018 && vce < 0.3, `bjt switch: off ${off} on ${on} vce ${vce}`); }
+// transformer 10:1 on 170 V peak: secondary ≈ 17 V peak
+{ const parts = build("transformer"), { out } = run(parts, 0.1, 0.05), m2 = measure(out[2]), m1 = measure(out[1]);
+  assert.ok(Math.abs(m2.max - 17) < 1.5 && Math.abs(m1.max - 170) < 3 && Math.abs(m2.freq - 60) < 3, `transformer: primary ${m1.max} secondary ${m2.max} f ${m2.freq}`); }
+// divide by two: Q at half the clock
+{ const parts = build("divider2"), { out } = run(parts, 6, 4), clk = measure(out[1]), q = measure(out[2]);
+  assert.ok(Math.abs(q.freq / clk.freq - 0.5) < 0.08, `divide by two: clock ${clk.freq} Q ${q.freq}`); }
+// running light: over 8 s the counter moves on about 1.5 times a second
+{ const parts = build("runlight"), { sim, out } = run(parts, 8, 6), st = sim.net.states.get(parts.find((p) => p.type === "counter4017").id), clk = measure(out[1]);
+  assert.ok(clk.vpp > 5 && Math.abs(clk.freq - 1.52) < 0.15, `4017 clock: ${JSON.stringify(clk)}`);
+  assert.ok(st && st.n >= 1, `4017 counted: ${JSON.stringify(st)}`); }
+console.log("new parts ok");

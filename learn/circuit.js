@@ -8,6 +8,7 @@
 //   { type: "OA", p, n, o, vp, vn, gain } op-amp: output node o follows gain·(v(p) − v(n)), saturating smoothly
 //                                     between output limits vp and vn (volts), or 1.5 V inside supply nodes vpNode/vnNode
 //   { type: "M", a, b, g, vth, k }   n-channel MOSFET: drain a, source b, gate g (square-law model, Newton like diodes)
+//   { type: "Q", a, b, g, is, bf, br, pnp } bipolar transistor: collector a, emitter b, base g (Ebers–Moll; pnp flips polarity)
 //   { type: "C", a, b, farads, v0 } and { type: "L", a, b, henries, i0 }: only in simulate()/stepper(), over time
 // solve() returns node voltages and the current through every element, measured from a to b.
 // A voltage source's volts may be a function of time (t, seconds) in simulate(): square waves, sine waves.
@@ -24,6 +25,14 @@ export function mosfet(e, vgs, vds) {
   if (ov <= 0) return { id: 0, gm: 0, gds: 1e-9 };
   if (vds < ov) return { id: k * (ov * vds - vds * vds / 2), gm: k * vds, gds: k * (ov - vds) + 1e-9 };
   return { id: (k / 2) * ov * ov, gm: k * ov, gds: 1e-9 };
+}
+
+/** Ebers–Moll bipolar transistor (npn polarity; the caller flips signs for pnp): collector and base currents, and their
+ *  slopes against the base–emitter and base–collector voltages. bf, br: forward and reverse current gains. */
+export function bjt(e, vbe, vbc) {
+  const { is = 1e-14, bf = 100, br = 1 } = e, ef = Math.exp(Math.min(vbe / VT, 80)), er = Math.exp(Math.min(vbc / VT, 80));
+  const ic = is * (ef - er) - (is / br) * (er - 1), ib = (is / bf) * (ef - 1) + (is / br) * (er - 1);
+  return { ic, ib, gcbe: (is / VT) * ef, gcbc: -(is / VT) * er * (1 + 1 / br), gbbe: (is / (bf * VT)) * ef + 1e-12, gbbc: (is / (br * VT)) * er + 1e-12 };
 }
 
 /** Op-amp transfer: the output swings between the rails, steeply (gain) around v(p) = v(n). */
@@ -52,15 +61,15 @@ function gauss(A, b) {
 // unconnected part still solves (that part just sits at 0 V) instead of throwing.
 export function solve(input, { gmin = 0, state } = {}) {
   // Renumber the nodes actually used to 1…n (an unused number, e.g. after a part is removed, isn't a floating node).
-  const pins = (e) => (e.type === "OA" ? [e.p, e.n, e.o, e.vpNode, e.vnNode].filter((x) => x != null) : [e.a, e.b, ...(e.type === "M" ? [e.g] : [])]);
+  const pins = (e) => (e.type === "OA" ? [e.p, e.n, e.o, e.vpNode, e.vnNode].filter((x) => x != null) : [e.a, e.b, ...(e.type === "M" || e.type === "Q" ? [e.g] : [])]);
   const used = [...new Set(input.flatMap(pins).filter((n) => n))].sort((x, y) => x - y), map = new Map(used.map((n, i) => [n, i + 1]));
   const re = (n) => (n == null ? n : map.get(n) ?? 0);
   const elements = input.map((e) => e.type === "OA" ? { ...e, p: re(e.p), n: re(e.n), o: re(e.o), vpNode: re(e.vpNode), vnNode: re(e.vnNode) }
-    : { ...e, a: re(e.a), b: re(e.b), ...(e.type === "M" ? { g: re(e.g) } : {}) });
+    : { ...e, a: re(e.a), b: re(e.b), ...(e.type === "M" || e.type === "Q" ? { g: re(e.g) } : {}) });
   const nodes = used.length; // node count, not counting ground
   const sources = elements.filter((e) => e.type === "V" || e.type === "OA"); // each adds a current unknown
   const size = nodes + sources.length;
-  const diodes = elements.filter((e) => e.type === "D" || e.type === "M" || e.type === "OA"); // the parts that need Newton's method
+  const diodes = elements.filter((e) => e.type === "D" || e.type === "M" || e.type === "OA" || e.type === "Q"); // the parts that need Newton's method
   let v = new Array(nodes + 1).fill(0), x = null, limited = false;
   // A warm start (state from the previous time step): begin Newton at last step's answer, with each junction's memory.
   // Element k keeps its slot, so this only makes sense for the same circuit step after step (as stepper() does).
@@ -93,6 +102,19 @@ export function solve(input, { gmin = 0, state } = {}) {
         let id = e.is * (Math.exp(vd / nvt) - 1), g = (e.is / nvt) * Math.exp(vd / nvt) + 1e-12;
         if (e.bv) { const r = 1e-3 * Math.exp(Math.min(-(vd + e.bv) / nvt, 100)); id -= r; g += r / nvt; } // Zener: 1 mA backwards at bv (SPICE's IBV), steeply more past it
         conduct(e.a, e.b, g); inject(e.a, -(id - g * vd)); inject(e.b, id - g * vd);
+      } else if (e.type === "Q") {
+        // Ebers–Moll, linearized around the last guess. Both junctions get the diode's junction limiting.
+        const p = e.pnp ? -1 : 1, old = lastVd.get(k) ?? { be: 0, bc: 0 }, { is = 1e-14, bf = 100, br = 1 } = e, vcrit = VT * Math.log(VT / (Math.SQRT2 * is));
+        const lim = (vd, o) => (vd > vcrit && Math.abs(vd - o) > 2 * VT ? ((limited = true), o > 0 ? o + VT * Math.log(1 + (vd - o) / VT) : VT * Math.log(vd / VT)) : vd);
+        const be = lim(p * (v[e.g] - v[e.b]), old.be), bc = lim(p * (v[e.g] - v[e.a]), old.bc);
+        lastVd.set(k, { be, bc });
+        const q = bjt(e, be, bc), [c, bb, em] = [e.a, e.g, e.b];
+        // currents into the device: collector p·Ic, base p·Ib, out of the emitter p·(Ic + Ib)
+        const ic0 = q.ic - q.gcbe * be - q.gcbc * bc, ib0 = q.ib - q.gbbe * be - q.gbbc * bc;
+        stamp(c, bb, q.gcbe + q.gcbc); stamp(c, em, -q.gcbe); stamp(c, c, -q.gcbc); inject(c, -p * ic0);
+        stamp(bb, bb, q.gbbe + q.gbbc); stamp(bb, em, -q.gbbe); stamp(bb, c, -q.gbbc); inject(bb, -p * ib0);
+        stamp(em, bb, -(q.gcbe + q.gcbc + q.gbbe + q.gbbc)); stamp(em, em, q.gcbe + q.gbbe); stamp(em, c, q.gcbc + q.gbbc); inject(em, p * (ic0 + ib0));
+        conduct(bb, em, 1e-12); conduct(bb, c, 1e-12);
       } else if (e.type === "M") {
         // Linearize Id(Vgs, Vds) around the last guess: Id ≈ Id0 + gm·ΔVgs + gds·ΔVds, a conductance plus a controlled source.
         // Limit how far the gate and drain voltages may move per iteration (SPICE does the same for FETs).
@@ -134,6 +156,7 @@ export function solve(input, { gmin = 0, state } = {}) {
     if (e.type === "D") { const nvt = (e.n ?? 1) * VT; return e.is * (Math.exp(Math.min(vd, 100 * nvt) / nvt) - 1) - (e.bv ? 1e-3 * Math.exp(Math.min(-(vd + e.bv) / nvt, 100)) : 0); }
     if (e.type === "OA") return -x[nodes + sources.indexOf(e)]; // the output's current
     if (e.type === "M") return mosfet(e, v[e.g] - v[e.b], vd).id;
+    if (e.type === "Q") { const p = e.pnp ? -1 : 1; return p * bjt(e, p * (v[e.g] - v[e.b]), p * (v[e.g] - v[e.a])).ic; } // collector current, into C (out of C for a pnp)
     return -x[nodes + sources.indexOf(e)]; // MNA solves for the current into the + terminal; report it flowing out of +
   });
   // Report voltages under the caller's own node numbers.

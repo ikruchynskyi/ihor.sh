@@ -193,8 +193,12 @@ let drag = null; // { kind: "move" | "pan" | "end" | "box" | "button", … }
 const hitPart = (pt) => parts.map((p) => [p, distTo(p, pt)]).filter(([p, d]) => d < (PARTS[p.type].two ? 0.45 : 0.6))
   .sort((a, b) => a[1] - b[1] || (a[0].type === "wire") - (b[0].type === "wire"))[0]?.[0] ?? null;
 const straight = (a, b) => (Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]) ? [b[0], a[1]] : [a[0], b[1]]);
+// two fingers: pinch to zoom about their midpoint, and pan as it moves
+const touches = new Map(); let pinch = null;
+const pinchState = () => { const [a, b] = [...touches.values()], r = cv.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, cx: (a.x + b.x) / 2 - r.left, cy: (a.y + b.y) / 2 - r.top }; };
 cv.addEventListener("pointerdown", (e) => {
   cv.setPointerCapture(e.pointerId);
+  if (e.pointerType === "touch") { touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (touches.size === 2) { drag = null; placing = tool === "wire" ? null : placing; const st = pinchState(); pinch = { ...st, s: view.s, vx: view.x, vy: view.y }; return; } }
   const exact = toGrid(e), pt = snap(exact);
   if (e.button === 1 || e.button === 2) { if (tool === "wire") { placing = null; return; } drag = { kind: "pan", sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y }; cv.classList.add("pan"); return; }
   if (tool === "place") {
@@ -227,7 +231,14 @@ cv.addEventListener("pointerdown", (e) => {
   drag = { kind: "pan", sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y }; cv.classList.add("pan");
 });
 cv.addEventListener("pointermove", (e) => {
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && touches.size >= 2) {
+    const st = pinchState(), sNew = Math.min(80, Math.max(8, pinch.s * (st.d / pinch.d)));
+    // keep the grid point under the starting midpoint under the fingers' current midpoint
+    view.s = sNew; view.x = st.cx - ((pinch.cx - pinch.vx) * sNew) / pinch.s; view.y = st.cy - ((pinch.cy - pinch.vy) * sNew) / pinch.s; return;
+  }
   const exact = toGrid(e), pt = snap(exact);
+  if (!drag && tool === "select" && e.pointerType !== "touch") showTip(hitPart(exact), e);
   hover = pt;
   if (!drag) return;
   if (drag.kind === "pan") { view.x = drag.vx + e.clientX - drag.sx; view.y = drag.vy + e.clientY - drag.sy; }
@@ -240,14 +251,28 @@ cv.addEventListener("pointermove", (e) => {
     moveSelection(dx, dy); drag.last = pt;
   }
 });
-cv.addEventListener("pointerup", () => {
+const endTouch = (e) => { touches.delete(e.pointerId); if (pinch && touches.size < 2) { pinch = null; drag = null; return true; } return false; };
+cv.addEventListener("pointercancel", (e) => { endTouch(e); drag = null; });
+cv.addEventListener("pointerup", (e) => {
+  if (endTouch(e)) return;
   if (drag?.kind === "button") { drag.part.closed = false; dirty = true; }
   if (drag?.kind === "move" && !drag.moved && ["switch", "switch2"].includes(drag.hit?.type)) { remember(); drag.hit.closed = !drag.hit.closed; changed(); }
   if (drag?.kind === "box") { const [x0, x1] = [drag.from[0], drag.to[0]].sort((a, b) => a - b), [y0, y1] = [drag.from[1], drag.to[1]].sort((a, b) => a - b); selected = new Set(parts.filter((p) => pins(p).every(([x, y]) => x >= x0 && x <= x1 && y >= y0 && y <= y1)).map((p) => p.id)); showPanel(); }
   if (drag?.kind === "end" || (drag?.kind === "move" && drag.moved)) changed();
   drag = null; cv.classList.remove("pan");
 });
-cv.addEventListener("pointerleave", () => { hover = null; });
+cv.addEventListener("pointerleave", () => { hover = null; showTip(null); });
+// hover a part: what it is and what it's doing right now
+const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const tip = document.createElement("div");
+tip.style.cssText = "position:fixed;z-index:50;max-width:280px;padding:6px 9px;border-radius:8px;background:rgba(20,23,29,.95);color:#e8edff;font:13px/1.4 ui-sans-serif,system-ui,sans-serif;pointer-events:none;display:none;border:1px solid #3b4bb0";
+document.body.append(tip);
+let tipFor = null;
+function showTip(p, e) {
+  if (!p || p.type === "wire") { tip.style.display = "none"; tipFor = null; return; }
+  if (tipFor !== p.id || frame.n % 6 === 0) { tipFor = p.id; const d = PARTS[p.type]; tip.innerHTML = `<b>${esc(partSummary(p, refs()))}</b><br><span style="opacity:.8">${esc(String(d.desc ?? "").split(/(?<=\.)\s/)[0])}</span>`; }
+  tip.style.display = "block"; tip.style.left = `${Math.min(innerWidth - 300, e.clientX + 14)}px`; tip.style.top = `${e.clientY + 16}px`;
+}
 cv.addEventListener("contextmenu", (e) => e.preventDefault());
 /** Moves the selection; wire ends that touched a moved pin come along (rubber-banding). */
 function moveSelection(dx, dy) {
@@ -303,14 +328,14 @@ function rebuild() { dirty = false; sim = simulation(parts, { speed, memory, onS
 // ---------- oscilloscope ----------
 const TDIV = [1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
 $("tdiv").innerHTML = `<option value="auto">auto</option>` + TDIV.map((v) => `<option value="${v}">${si(v, "s")}</option>`).join("");
-const VDIV = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
-let tdiv = "auto", hold = false, buf = { 1: [], 2: [], 3: [], 4: [] }, chanNode = {}, vdiv = { 1: "auto", 2: "auto", 3: "auto", 4: "auto" };
+const VDIV = [1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+let tdiv = "auto", hold = false, buf = { 1: [], 2: [], 3: [], 4: [] }, chanNode = {}, chanCur = {}, vdiv = { 1: "auto", 2: "auto", 3: "auto", 4: "auto" };
 const tdivSet = (v) => { tdiv = v; $("tdiv").value = String(v); };
 $("tdiv").onchange = () => { tdiv = $("tdiv").value === "auto" ? "auto" : +$("tdiv").value; };
 $("hold").onclick = () => { hold = !hold; $("hold").setAttribute("aria-pressed", hold); $("hold").textContent = hold ? "Holding" : "Hold"; };
 const curTdiv = () => (tdiv === "auto" ? TDIV.find((v) => v >= speed * 0.2) ?? 1 : tdiv);
 function scopeClear() { buf = { 1: [], 2: [], 3: [], 4: [] }; }
-function scopeSample(t, v) { if (hold) return; for (const ch of [1, 2, 3, 4]) { const n = chanNode[ch]; if (n != null) buf[ch].push([t, v[n] ?? 0]); } }
+function scopeSample(t, v, i) { if (hold) return; for (const ch of [1, 2, 3, 4]) { const n = chanNode[ch], k = chanCur[ch]; if (k != null) buf[ch].push([t, i?.[k] ?? 0]); else if (n != null) buf[ch].push([t, v[n] ?? 0]); } }
 function scopeTrim() {
   const keep = curTdiv() * 30;
   for (const ch of [1, 2, 3, 4]) { const b = buf[ch]; if (b.length > 2000 && b.at(-1)[0] - b[0][0] > keep) { const cut = b.findIndex((s) => s[0] > b.at(-1)[0] - keep); if (cut > 0) b.splice(0, cut); } if (b.length > 150000) b.splice(0, b.length - 150000); }
@@ -349,13 +374,13 @@ function drawScope() {
     const s = buf[ch].filter(([t]) => t >= t0 && t <= t0 + win), m = measure(s), color = PROBE_COLORS[(ch - 1) % 4];
     if (!m) continue;
     m.freq = measure(buf[ch].filter(([t]) => t >= tEnd - win * 3))?.freq ?? m.freq; // a longer stretch than the screen, so 1–2 visible cycles still give a frequency
-    const vd = vdiv[ch] === "auto" ? niceV(Math.max(Math.abs(m.max), Math.abs(m.min), 0.01)) : vdiv[ch];
+    const u = chanCur[ch] != null ? "A" : "V", vd = vdiv[ch] === "auto" ? niceV(Math.max(Math.abs(m.max), Math.abs(m.min), u === "A" ? 1e-4 : 0.01)) : vdiv[ch];
     sg.strokeStyle = color; sg.lineWidth = 2 * dpr; sg.beginPath();
     const step = Math.max(1, Math.floor(s.length / (W * 2)));
     for (let k = 0; k < s.length; k += step) { const x = ((s[k][0] - t0) / win) * W, y = H / 2 - (s[k][1] / vd) * (H / 8); k ? sg.lineTo(x, y) : sg.moveTo(x, y); }
     sg.stroke();
-    sg.fillStyle = color; sg.fillText(`CH${ch}  ${si(vd, "V")}/div`, 8 * dpr, (16 + 16 * (ch - 1)) * dpr);
-    rows.push(`<tr><td style="color:${color}">CH${ch}</td><td>${si(m.vpp, "V")}</td><td>${si(m.max, "V")}</td><td>${si(m.min, "V")}</td><td>${si(m.avg, "V")}</td><td>${si(m.rms, "V")}</td><td>${m.freq ? si(m.freq, "Hz") : "—"}</td><td><select data-vdiv="${ch}" aria-label="volts per division, channel ${ch}"><option value="auto">auto</option>${VDIV.map((v) => `<option value="${v}" ${vdiv[ch] === v ? "selected" : ""}>${si(v, "V")}</option>`).join("")}</select></td></tr>`);
+    sg.fillStyle = color; sg.fillText(`CH${ch}  ${si(vd, u)}/div${u === "A" ? " (current)" : ""}`, 8 * dpr, (16 + 16 * (ch - 1)) * dpr);
+    rows.push(`<tr><td style="color:${color}">CH${ch}</td><td>${si(m.vpp, u)}</td><td>${si(m.max, u)}</td><td>${si(m.min, u)}</td><td>${si(m.avg, u)}</td><td>${si(m.rms, u)}</td><td>${m.freq ? si(m.freq, "Hz") : "—"}</td><td><select data-vdiv="${ch}" aria-label="volts per division, channel ${ch}"><option value="auto">auto</option>${VDIV.map((v) => `<option value="${v}" ${vdiv[ch] === v ? "selected" : ""}>${si(v, u)}</option>`).join("")}</select></td></tr>`);
   }
   const html = `<tr><th>ch</th><th>Vpp</th><th>max</th><th>min</th><th>average</th><th>RMS</th><th>frequency</th><th>V/div</th></tr>${rows.join("")}`;
   if (frame.n % 10 === 0 && html !== $("meas").dataset.html && !$("meas").contains(document.activeElement)) { $("meas").innerHTML = html; $("meas").dataset.html = html; }
@@ -371,7 +396,11 @@ function frame(now) {
   const dt = Math.min(0.05, (now - (frame.last ?? now)) / 1000); frame.last = now; tReal += dt;
   if (dirty) rebuild();
   chanNode = {};
-  if (sim) for (const p of parts) if (p.type === "probe") { const n = sim.net.nodeOf.get(key(pins(p)[0])); if (n != null) chanNode[p.ch] = n; }
+  chanCur = {};
+  if (sim) for (const p of parts) {
+    if (p.type === "probe") { const n = sim.net.nodeOf.get(key(pins(p)[0])); if (n != null) chanNode[p.ch] = n; }
+    if (p.type === "ammeter" && p.ch && p.ch !== "off") { const k = sim.net.owner.findIndex((o) => o && o.id === p.id && o.main); if (k >= 0) chanCur[+p.ch] = k; } // a current probe
+  }
   if (sim && running && !sim.error) { sim.advance(dt); scopeTrim(); checkLimits(dt * speed); }
   const W = cv.width, H = cv.height;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = COL.stage; g.fillRect(0, 0, W, H);

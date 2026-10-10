@@ -82,7 +82,7 @@ export function simulation(parts, { speed = 1, memory, onSample, t0 = 0 } = {}) 
   const record = (r) => {
     sim.raw = r; sim.v = r.v;
     for (const fn of net.behaviors) fn(r.v, r);
-    onSample?.(sim.t, r.v);
+    onSample?.(sim.t, r.v, r.i);
   };
   sim.advance = (real) => {
     const want = real * sim.speed, steps = Math.round(want / dt), cap = 400, todo = Math.min(cap, Math.max(1, steps));
