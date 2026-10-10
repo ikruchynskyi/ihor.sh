@@ -8,6 +8,7 @@ import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, 
 import { deals } from "./deals.ts";
 import { callsign, repeatersNear, placeAnywhere } from "./ham.ts";
 import { aircraft, iss, storms, weather, radioDial, km, photoNear } from "./sky.ts";
+import { issPasses } from "./sat.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
@@ -79,6 +80,11 @@ const TOOLS: Record<string, Tool> = {
     description: "Where the International Space Station is now: position, altitude, speed, whether it's in sunlight, and its distance from NYC.",
     parameters: {},
     run: async () => { const d = await iss(); return { ...d, track: undefined }; },
+  },
+  iss_passes: {
+    description: "When the International Space Station passes over a place in the next 3 days (computed with SGP4 from CelesTrak's latest orbit): rise time (New York time), how long, highest elevation, direction across the sky, and whether it's visible to the eye (only at dusk or dawn, when it's sunlit and your sky is dark). Default place: NYC; pass the visitor's location for 'over me'.",
+    parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or a place name" } },
+    run: async ({ lat, lon, place }) => { const at = lat != null || place ? await pointOf(lat, lon, place) : null; return issPasses(at?.lat, at?.lon); },
   },
   tropical_storms: {
     description: "Active hurricanes and tropical storms (Atlantic and Pacific, NOAA NHC): name, strength, position, movement, distance from NYC, advisory link.",
@@ -244,7 +250,7 @@ ${siteMap}
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did.
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
-- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
+- Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 

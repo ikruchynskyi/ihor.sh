@@ -608,9 +608,19 @@ async function refreshIss(g) {
   d.track.forEach((p, i) => { if (i && Math.abs(p[1] - d.track[i - 1][1]) > 180) segs.push([]); segs.at(-1).push(p); });
   segs.forEach((sg) => L.polyline(sg, { color: "#4de1ff", weight: 2, dashArray: "4 6", opacity: 0.8 }).addTo(g));
   L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "acft-heli", html: "🛰", iconSize: [22, 22] }), zIndexOffset: 900 })
-    .bindPopup(`<b>🛰 International Space Station</b><br>${d.altKm} km up · ${d.kmh.toLocaleString()} km/h · ${d.daylight ? "in sunlight" : "in Earth's shadow"}<br><span class="muted">${d.kmFromNyc.toLocaleString()} km from NYC · dashed: the next 90 minutes</span>`).addTo(g);
+    .bindPopup(`<b>🛰 International Space Station</b><br>${d.altKm} km up · ${d.kmh.toLocaleString()} km/h · ${d.daylight ? "in sunlight" : "in Earth's shadow"}<br><span class="muted">${d.kmFromNyc.toLocaleString()} km from NYC · dashed: the next 90 minutes</span>${issPassHtml()}`).addTo(g);
   seen.iss = { lat: d.lat, lon: d.lon, altKm: d.altKm, kmFromNyc: d.kmFromNyc, daylight: d.daylight };
+  if (!refreshIss.passes || Date.now() - refreshIss.passes.at > 600e3) {
+    const q = meAt ? `?lat=${meAt.lat.toFixed(2)}&lon=${meAt.lng.toFixed(2)}` : "";
+    getJSON(`/api/nyc/iss-passes${q}`).then((p) => { refreshIss.passes = { at: Date.now(), p }; seen.issPasses = p.passes.slice(0, 6); }).catch(() => {});
+  }
   $("n-iss").innerHTML = `(${d.kmFromNyc.toLocaleString()} km away) <button class="linkish" data-fly="${d.lat},${d.lon},3">show</button>`;
+}
+function issPassHtml() {
+  const p = refreshIss.passes?.p; if (!p) return "";
+  const vis = p.passes.filter((x) => x.visibleToEye).slice(0, 3), next = p.passes.slice(0, 3);
+  return `<br><b>Over ${meAt ? "you" : "NYC"}</b>${vis.length ? `: you can see it <ul style="margin:2px 0 0 16px;padding:0">${vis.map((x) => `<li>${esc(x.rise)}, ${x.minutes} min, up to ${x.maxElevation}° · ${esc(x.path)}</li>`).join("")}</ul>` : `: no visible passes in the next 3 days (they happen only at dusk or dawn)`}
+    <span class="muted">Next passes (daylight too): ${next.map((x) => `${esc(x.rise)} (${x.maxElevation}°)`).join(" · ")}</span>`;
 }
 async function loadIss(g) {
   await refreshIss(g);

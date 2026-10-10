@@ -19,6 +19,7 @@ import { routeStops, bikeRoute, placeSearch } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
+import { issPasses } from "./sat.ts";
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311 } from "./nycapi.ts";
 
@@ -263,6 +264,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
     // The sky and the air (sky.ts): cached there, so these are cheap however many people watch.
     const SKY: Record<string, [() => Promise<unknown>, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
+    if (url.pathname === "/api/nyc/iss-passes") { // optional ?lat&lon (rounded: a pass looks the same within a few km)
+      const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 70 && Math.abs(lo) <= 180;
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await issPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined))); }
+      catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (SKY[url.pathname]) {
       const [f, maxAge] = SKY[url.pathname];
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f())); }
