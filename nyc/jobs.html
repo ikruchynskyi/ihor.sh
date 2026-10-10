@@ -47,6 +47,7 @@
   <p class="hint" id="stats"></p>
   <p><a href="/nyc/resume.html">📄 Check how a hiring system reads your résumé</a> <span class="hint">(runs in your browser)</span> · <button id="matchBtn" type="button">✨ Jobs that fit my résumé</button></p>
   <section id="matchBox" class="card" style="padding:10px 14px" hidden></section>
+  <details class="card" id="trackBox" style="padding:10px 14px;margin-top:10px"><summary><b>📋 My applications</b> <span class="hint" id="trackSum"></span></summary><div id="track"></div></details>
 
   <div class="layout">
     <details class="rail" open>
@@ -155,7 +156,7 @@ async function run(keepPage = false) {
       <span>${age(r.posted ?? r.first_seen)}</span>
       ${verified(r.source) ? `<span class="chip ok" title="Read from the employer's own listings, re-checked hourly">✓ at the employer</span>` : `<span class="chip" title="An aggregator listing">via ${esc(LABEL.source[r.source] ?? r.source)}</span>`}
       ${r.also.length ? `<span class="chip" title="The same job, also listed there">also on ${r.also.map((s) => esc(LABEL.source[s] ?? s)).join(", ")}</span>` : ""}
-      ${lastVisit && r.first_seen > lastVisit ? `<span class="new">NEW</span>` : ""}</div>
+      ${lastVisit && r.first_seen > lastVisit ? `<span class="new">NEW</span>` : ""}<button type="button" class="linkish" data-track="${i}">${tracked()[r.id] ? `📋 ${esc(tracked()[r.id].status)}` : "☆ Save"}</button></div>
     ${r.flags.length ? `<div class="meta">${r.flags.map((f) => `<span class="chip flag">⚑ ${esc(f)}</span>`).join("")}</div>` : ""}
     <div class="detail" hidden></div></article>`).join("") || `<p>Nothing matches. Loosen a filter: ${["region", "salary", "days", "seniority"].map((k) => `<b>${k}</b>`).join(", ")}.</p>`;
   $("pageInfo").textContent = d.total > 30 ? `page ${page + 1} of ${Math.ceil(d.total / 30)}` : "";
@@ -163,6 +164,8 @@ async function run(keepPage = false) {
   renderSaved();
 }
 $("list").addEventListener("click", async (e) => {
+  const tb = e.target.closest("[data-track]");
+  if (tb) { const r = last.rows[+tb.dataset.track], t = tracked(); if (!t[r.id]) { t[r.id] = { title: r.title, company: r.company, url: r.url, status: "saved", saved: Date.now(), notes: "", follow: "" }; putTracked(t); } tb.textContent = `📋 ${t[r.id].status}`; renderTrack(); $("trackBox").open = true; return; }
   const card = e.target.closest(".job"); if (!card || e.target.closest("a, button")) return;
   const box = card.querySelector(".detail"), r = last.rows[+card.dataset.i];
   if (!box.hidden) { box.hidden = true; card.classList.remove("open"); return; }
@@ -183,6 +186,28 @@ $("rail").addEventListener("change", () => run());
 for (const id of ["title", "sort"]) $(id).addEventListener("change", () => run());
 for (const id of ["company", "exclude"]) $(id).addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, 500); });
 $("prev").onclick = () => { page--; run(true); scrollTo(0, 0); }; $("next").onclick = () => { page++; run(true); scrollTo(0, 0); };
+
+// ---------- my applications (this browser) ----------
+const TK = "jobs-tracker", STAGES = ["saved", "applied", "interview", "offer", "rejected", "withdrawn"];
+const tracked = () => { try { return JSON.parse(localStorage.getItem(TK) ?? "{}"); } catch { return {}; } };
+const putTracked = (t) => { try { localStorage.setItem(TK, JSON.stringify(t)); } catch {} };
+async function renderTrack() {
+  const t = tracked(), ids = Object.keys(t), today = new Date().toISOString().slice(0, 10);
+  const due = ids.filter((id) => t[id].follow && t[id].follow <= today && !["rejected", "withdrawn", "offer"].includes(t[id].status)).length;
+  $("trackSum").textContent = ids.length ? `${ids.length} job${ids.length > 1 ? "s" : ""} · ${STAGES.map((s) => [s, ids.filter((id) => t[id].status === s).length]).filter(([, n]) => n).map(([s, n]) => `${n} ${s}`).join(", ")}${due ? ` · ${due} follow-up${due > 1 ? "s" : ""} due` : ""}` : "none yet: press ☆ Save on a job";
+  $("track").innerHTML = ids.length ? `<table style="width:100%;font-size:14px"><tr><th align="left">Job</th><th>Stage</th><th>Follow up</th><th align="left">Notes</th><th></th></tr>${ids.sort((a, b) => STAGES.indexOf(t[a].status) - STAGES.indexOf(t[b].status)).map((id) => `<tr data-id="${esc(id)}">
+    <td><a href="${esc(t[id].url)}" target="_blank" rel="noopener">${esc(t[id].title)}</a><br><span class="hint">${esc(t[id].company)}</span> <span class="hint" data-closed></span></td>
+    <td><select data-f="status">${STAGES.map((s) => `<option ${s === t[id].status ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+    <td><input type="date" data-f="follow" value="${esc(t[id].follow)}" ${t[id].follow && t[id].follow <= today ? 'style="outline:2px solid var(--accent)"' : ""}></td>
+    <td><input type="text" data-f="notes" value="${esc(t[id].notes)}" placeholder="recruiter, referral, salary…" style="width:100%"></td>
+    <td><button type="button" data-rm="1" title="Remove">✕</button></td></tr>`).join("")}</table>` : "";
+  // a job you're tracking that the employer has taken down
+  for (const id of ids) getJSON(`/api/jobs/job?id=${encodeURIComponent(id)}`).then((j) => { if (j.closed) mark(id, `closed ${new Date(j.closed * 1000).toLocaleDateString()}`); }).catch(() => mark(id, "no longer listed"));
+}
+const mark = (id, text) => { const el = document.querySelector(`#track tr[data-id="${CSS.escape(id)}"] [data-closed]`); if (el) el.innerHTML = `<span class="chip flag">${esc(text)}</span>`; };
+$("track").addEventListener("change", (e) => { const tr = e.target.closest("[data-id]"), f = e.target.dataset.f; if (!tr || !f) return; const t = tracked(); t[tr.dataset.id][f] = e.target.value.slice(0, 300); if (f === "status" && e.target.value === "applied") t[tr.dataset.id].applied = Date.now(); putTracked(t); if (f !== "notes") renderTrack(); });
+$("track").addEventListener("click", (e) => { const tr = e.target.closest("[data-id]"); if (tr && e.target.dataset.rm) { const t = tracked(); delete t[tr.dataset.id]; putTracked(t); renderTrack(); } });
+renderTrack();
 
 // ---------- saved searches (this browser) ----------
 const SK = "jobs-saved";
