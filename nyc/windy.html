@@ -8,7 +8,7 @@
   <meta name="robots" content="noindex" />
   <style>html, body, #windy { margin: 0; width: 100%; height: 100%; background: #10131c; } #msg { position: absolute; top: 45%; width: 100%; text-align: center; color: #ccc; font: 14px system-ui, sans-serif; }</style>
   <!-- Windy's Map Forecast API brings its own map and needs exactly Leaflet 1.4 (and no Leaflet CSS), so it lives in this
-       page, shown over the NYC map in an iframe. The two talk with postMessage: view and overlay in, view out. -->
+       page, shown under the NYC map in an iframe. The NYC map sends its view and the chosen overlay with postMessage. -->
   <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
   <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 </head>
@@ -24,10 +24,10 @@
     addEventListener("message", (e) => {
       if (e.origin !== location.origin) return;
       if (e.data.overlay) store.set("overlay", e.data.overlay);
+      if (e.data.view) map.setView([e.data.view[0], e.data.view[1]], e.data.view[2], { animate: false }); // the NYC map leads
     });
-    map.on("moveend", () => { const c = map.getCenter(); tell({ windyView: [c.lat, c.lng, map.getZoom()] }); });
     store.on("overlay", (o) => tell({ windyOverlay: o }));
-    tell({ windyReady: store.getAllowed("overlay") });
+    tell({ windyReady: [store.getAllowed("overlay"), map.getMaxZoom()] });
   })).catch((e) => { document.getElementById("msg").textContent = `windy.com didn't load: ${e.message}`; });
 </script>
 </body>

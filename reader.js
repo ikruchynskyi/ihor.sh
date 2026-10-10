@@ -62,7 +62,7 @@ function apply() {
   style.textContent = `
     :root:root { --fg: ${fg}; --bg: ${bg}; --card: ${card}; --soft: ${card}; --field: ${bg}; --accent: ${accent}; --on-accent: ${onAccent(accent)}; --muted: ${muted}; --line: ${line}; --ok: ${ok}; color-scheme: ${t.dark ? "dark" : "light"};
       /* for panels in shadow DOM (Blip's chat, this reader panel): custom properties cross the boundary */
-      --reader-font: ${f.css}; --reader-size: ${s.font === "pixel" ? s.size + 3 : s.size}px; --reader-line: ${s.font === "pixel" ? Math.max(1.15, s.line - 0.3) : s.line}; --reader-letter: ${s.letter}em; }
+      --reader-font: ${f.css}; --reader-size: ${s.font === "pixel" ? s.size + 3 : s.size}px; --reader-line: ${s.font === "pixel" ? Math.max(1.15, s.line - 0.3) : s.line}; --reader-letter: ${s.letter}em; --zoom: ${k.toFixed(3)}; } /* --zoom: the factor on main/#panel/aside below; a zoomed box's own top and max-height scale with it */
     html, body { background: ${bg} !important; color: ${fg}; } ${isHome ? "body { background: transparent !important; } /* keeps the waterfall canvas visible */" : ""}
     body { font-family: ${f.css}; } ${isHome && s.font !== "pixel" ? "body { font-size: 17px; }" : ""}
     ${s.headings === "plain" ? `:root:root { --pixel: ${f.css}; --px: 1.55; }` : ""} /* the pixel font's small labels, in a readable font a size up */

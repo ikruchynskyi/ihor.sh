@@ -95,9 +95,11 @@ nav.next a { font: calc(9px * var(--px, 1))/1.8 var(--pixel); }
 .leaflet-bar a { background: var(--card) !important; color: var(--fg) !important; border-radius: 0 !important; }
 .leaflet-control-layers { background: var(--card) !important; color: var(--fg) !important; border-radius: 0 !important; border: 2px solid var(--line) !important; }
 .leaflet-control-layers-toggle { filter: invert(.8); }
-body:has(> #map) { display: flex; flex-direction: column; }
-body:has(> #map) > #map { flex: 1; height: auto !important; }
-body:has(> #map) > #panel { top: 52px; }
+/* Map pages fill the window exactly (no page scroll, or the sticky bar would slide over the map's controls); the side
+   panel sits under the bar, whose height companion.js publishes as --hud-h (it grows with the reader's text size). */
+body:has(> #map) { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+body:has(> #map) > #map { flex: 1; height: auto !important; min-height: 0; }
+body:has(> #map) > #panel { top: calc((var(--hud-h, 52px) + 10px) / var(--zoom, 1)); }
 button[aria-pressed="true"] small, .btn:not(.alt) small { color: var(--on-accent) !important; opacity: .8; }
 /* aprs-web live maps */
 #topbar h1 { font-size: 11px !important; text-shadow: none; }

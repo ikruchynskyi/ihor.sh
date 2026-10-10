@@ -681,3 +681,9 @@ function typeOut(el, text) {
     }, 14);
   });
 }
+
+// The site bar's height as --hud-h, so map pages can lay their panels out under it (it changes with the text size).
+{
+  const hud = document.querySelector(".ihor-hud");
+  if (hud) new ResizeObserver(() => document.documentElement.style.setProperty("--hud-h", `${hud.offsetHeight}px`)).observe(hud);
+}

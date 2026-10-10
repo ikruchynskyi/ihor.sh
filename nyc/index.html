@@ -16,7 +16,7 @@
     html, body, #map { height: 100%; margin: 0; }
     body { background: var(--bg); color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
     #panel { position: absolute; z-index: 1000; top: 12px; left: 56px; max-width: min(340px, calc(100% - 72px));
-             max-height: calc(100% - 24px); overflow: auto; background: var(--card); border: 1px solid var(--line);
+             max-height: calc((100vh - var(--hud-h, 52px) - 20px) / var(--zoom, 1)); overflow: auto; box-sizing: border-box; background: var(--card); border: 1px solid var(--line);
              border-radius: 10px; padding: 12px 14px; }
     h1 { font-size: 1.05rem; margin: 0 0 2px; }
     .muted { color: var(--muted); font-size: 0.8rem; }
@@ -47,6 +47,11 @@
     #sugg li { padding: 5px 10px; cursor: pointer; } #sugg li .muted { font-size: .75rem; }
     #sugg li:hover, #sugg li[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 25%, transparent); }
     .pin-n { position: absolute; left: 15px; top: -4px; font: bold 10px/14px sans-serif; min-width: 14px; text-align: center; border-radius: 7px; background: #ffb347; color: #000; }
+    /* windy.com under our map: our street tiles hide and the map turns see-through, so every marker stays on top */
+    #map { z-index: 1; }
+    .windy-on .leaflet-container { background: transparent !important; }
+    .windy-on #map .leaflet-tile-pane { visibility: hidden; }
+    #windyFrame { position: fixed; border: 0; z-index: 0; pointer-events: none; }
     .lgrp { margin: 4px 0; } .lgrp summary { cursor: pointer; font-weight: 600; font-size: .85rem; padding: 2px 0; }
     .lgrp label { margin-left: 14px !important; }
     #wx { margin: 2px 0 4px 14px; } #wx .alert { color: #ff6b6b; }
@@ -275,7 +280,7 @@ const LAYERS = {
   aircraft: { grp: "sky", label: "✈️ Aircraft & helicopters (live)", on: false, group: L.layerGroup(), load: loadAircraft },
   storms: { grp: "sky", label: "🌀 Hurricanes & tropical storms", on: false, group: L.layerGroup(), load: loadStorms },
   iss: { grp: "sky", label: "🛰 The ISS and its next orbit", on: false, group: L.layerGroup(), load: loadIss },
-  windy: { grp: "sky", label: "🌬 windy.com forecast map (covers the map)", on: false, group: L.layerGroup(), load: () => {} },
+  windy: { grp: "sky", label: "🌬 windy.com forecast map, under the markers", on: false, group: L.layerGroup(), load: () => {} },
   radio: { grp: "air", label: "📻 Radio stations: click to listen", on: false, group: L.layerGroup(), load: loadRadio },
 };
 // The legend, grouped; a group opens by itself when one of its layers is on.
@@ -616,21 +621,37 @@ document.addEventListener("click", (e) => {
 });
 
 // windy.com's forecast map (wind, rain, temperature…) with its own legend. Its API needs its own Leaflet 1.4 map, so it
-// runs in nyc/windy.html, laid over this map while on and kept at the same place and zoom both ways.
-let windyFrame = null;
+// runs in nyc/windy.html, in an iframe laid exactly under this map. While it's on, our street tiles hide and our map
+// turns see-through: every marker stays visible and clickable on top, and our map drives Windy's view as it moves.
+let windyFrame = null, maxZoomBefore = null;
 $("n-windy").innerHTML = `<select id="windyOverlay" aria-label="Windy forecast layer">${["wind", "rain", "temp", "clouds", "gust", "pressure", "rh", "thunder"].map((o) => `<option>${o}</option>`).join("")}</select>`;
+const windyView = () => { const c = map.getCenter(); return [+c.lat.toFixed(5), +c.lng.toFixed(5), map.getZoom()]; };
+const placeWindy = () => { if (!windyFrame) return; const r = $("map").getBoundingClientRect(); Object.assign(windyFrame.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` }); };
+const syncWindy = () => windyFrame?.contentWindow?.postMessage({ view: windyView() }, location.origin);
 function showWindy(on) {
-  if (!on) { windyFrame?.remove(); windyFrame = null; return; }
-  const c = map.getCenter();
-  windyFrame = Object.assign(document.createElement("iframe"), { title: "windy.com forecast map", src: `/nyc/windy.html#${c.lat.toFixed(4)},${c.lng.toFixed(4)},${Math.min(map.getZoom(), 11)},${$("windyOverlay").value}` });
-  windyFrame.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:900";
-  $("map").after(windyFrame);
+  document.body.classList.toggle("windy-on", on);
+  if (!on) {
+    windyFrame?.remove(); windyFrame = null;
+    if (maxZoomBefore !== null) { map.setMaxZoom(maxZoomBefore); maxZoomBefore = null; }
+    return;
+  }
+  const [la, lo, z] = windyView();
+  windyFrame = Object.assign(document.createElement("iframe"), { id: "windyFrame", title: "windy.com forecast map", tabIndex: -1, src: `/nyc/windy.html#${la},${lo},${z},${$("windyOverlay").value}` });
+  document.body.prepend(windyFrame);
+  placeWindy();
 }
+map.on("move zoom", syncWindy);
+addEventListener("resize", placeWindy);
 $("windyOverlay").addEventListener("change", () => windyFrame?.contentWindow.postMessage({ overlay: $("windyOverlay").value }, location.origin));
 addEventListener("message", (e) => {
   if (e.origin !== location.origin || !windyFrame || e.source !== windyFrame.contentWindow) return;
-  if (e.data.windyView) map.setView(e.data.windyView.slice(0, 2), e.data.windyView[2], { animate: false }); // stay in step for when it's turned off
-  if (e.data.windyReady) $("windyOverlay").innerHTML = e.data.windyReady.map((o) => `<option ${o === $("windyOverlay").value ? "selected" : ""}>${o}</option>`).join("");
+  if (e.data.windyReady) {
+    const [overlays, maxZoom] = e.data.windyReady;
+    $("windyOverlay").innerHTML = overlays.map((o) => `<option ${o === $("windyOverlay").value ? "selected" : ""}>${o}</option>`).join("");
+    // beyond Windy's deepest zoom the two maps would no longer line up, so ours stops there too while it's on
+    if (maxZoom && maxZoom < map.getMaxZoom()) { maxZoomBefore = map.getMaxZoom(); map.setMaxZoom(maxZoom); }
+    syncWindy();
+  }
   if (e.data.windyOverlay) $("windyOverlay").value = e.data.windyOverlay;
 });
 
@@ -1057,7 +1078,7 @@ window.blipActions = {
     } },
   nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
     run: async ({ lat, lon }) => { if (NYC.contains([Number(lat), Number(lon)])) openCam(await nearestCam(Number(lat), Number(lon))); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…; covers the other layers while on).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), radio (radio stations to listen to), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
@@ -1074,7 +1095,7 @@ window.blipContext = () => {
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, aircraftTrail: seen.trail, iss: seen.iss, tropicalStorms: seen.storms, radioPlaying: seen.radio,
-    windy: LAYERS.windy?.on ? `Windy forecast map is covering the map, showing ${$("windyOverlay")?.value}` : undefined };
+    windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 
 // Popups pan clear of the panel, which floats over the map's left side.
