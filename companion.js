@@ -169,7 +169,7 @@ root.innerHTML = `<style>${CSS}</style>
     <div class="log" aria-live="polite"></div>
     <div class="wardrobe" hidden></div>
     <form><span class="caret" aria-hidden="true">▶</span><input aria-label="Your question" autocomplete="off" maxlength="500" placeholder="Ask me anything about this page…"><button>SEND</button></form>
-    <footer><span>ESC CLOSE</span><a href="/">⌂ HOME</a><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
+    <footer><span>B OPEN · ESC CLOSE</span><a href="/">⌂ HOME</a><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
   </section>
 </div>`;
 const $ = (s) => root.querySelector(s);
@@ -552,6 +552,14 @@ addEventListener("keydown", (e) => {
 });
 
 blipEl.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDialog(); } });
+// B opens the chat from anywhere on a page (not while typing in a field, and not with a modifier held).
+addEventListener("keydown", (e) => {
+  if (e.key !== "b" && e.key !== "B") return;
+  if (e.metaKey || e.ctrlKey || e.altKey || dialogOpen || e.composedPath().includes(host)) return;
+  const el = document.activeElement;
+  if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+  e.preventDefault(); openDialog();
+});
 
 // ---------- hide / show ----------
 function hide() {
