@@ -38,10 +38,11 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
 const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
-// The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Each listener is
-// ~2 MB/s of home upload, so public listeners are capped.
+// The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
+// dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
+// this cap is only a backstop.
 const SDR_PORT = Number(process.env.SDR_PORT ?? 8073);
-const MAX_LISTENERS = 3;
+const MAX_LISTENERS = 12;
 let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
 const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
@@ -89,7 +90,7 @@ async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
   const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };
   const stream = req.url?.startsWith("/api/stream");
   if (stream && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
-  const up = http.request({ host: "127.0.0.1", port: SDR_PORT, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json" } }, (r) => {
+  const up = http.request({ host: "127.0.0.1", port: SDR_PORT, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json", "x-via-ihor": "1" } }, (r) => { // x-via-ihor: from the internet (no raw full-window stream)
     res.writeHead(r.statusCode ?? 502, r.headers);
     r.pipe(res);
   });
@@ -205,6 +206,7 @@ const server = http.createServer(async (req, res) => {
   // MCP for other agents: its own bearer-token auth, not the site session; same per-IP budget as the chat.
   if (url.pathname === "/mcp") {
     const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+    console.log(`mcp: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
     if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
     return mcp(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: { url: "mcp", title: "MCP client" } }, SYSTEM)).catch((e) => res.writeHead(500).end(String(e.message)));
   }
@@ -223,7 +225,7 @@ const server = http.createServer(async (req, res) => {
       const answer = await ask(JSON.parse(raw), SYSTEM);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
     }
-    if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm"].includes(url.pathname)) return proxySdr(req, res);
+    if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm", "/api/slice", "/api/overview"].includes(url.pathname)) return proxySdr(req, res);
     if (url.pathname === "/api/viewer" && req.method === "POST") return proxySdr(req, res);
     if (url.pathname === "/api/receiver" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
