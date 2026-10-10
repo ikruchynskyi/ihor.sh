@@ -12,6 +12,7 @@
   <p class="eyebrow">World 4 · 読む yomu = to read</p>
   <h1>Yomu: Japanese from zero to N3</h1>
   <p class="lede">Learn by reading little stories about Yuki, Sam and Blip in New York. Every word can be tapped, every line can be heard and said back. Behind the stories sits the whole JLPT N5–N3 syllabus: kana, grammar, kanji and words, with spaced review so nothing slips away.</p>
+  <figure class="scene hero" id="photo" hidden><img id="photoImg" alt="Tokyo at sunset, Mount Fuji behind the skyline" loading="eager"><figcaption class="cap" id="photoCredit"></figcaption></figure>
   <div id="settings"></div>
 
   <section class="card2" id="start"></section>
@@ -24,6 +25,8 @@
 </main>
 <script type="module">
 import { state, save, settingsBar, esc, dueCards, LEVELS, vocab, kanjiDeck, grammarDeck, GOJUON, inDeck, learned, blip } from "/yomu/lib.js";
+import { photo } from "/yomu/photos.js";
+photo("hero", document.getElementById("photo"));
 const $ = (id) => document.getElementById(id);
 settingsBar($("settings"), () => {});
 const stories = await fetch("/yomu/stories/index.json").then((r) => r.json());
@@ -79,7 +82,7 @@ async function renderPath() {
     const count = (list, id) => list.filter((x) => inDeck(id(x))).length;
     const units = stories.filter((s) => s.level === lvl);
     html += `<div class="stage${state.start?.kana && state.start.level === lvl ? " here" : ""}"><h3>${lvl} <span class="muted">${{ N5: "basic sentences, everyday words", N4: "everyday conversation, plain speech", N3: "real-life Japanese, nuance and news" }[lvl]}</span></h3>
-      ${units.length ? `<ol class="units">${units.map((u) => `<li class="${state.done[u.id]?.finished ? "done" : ""}"><a href="/yomu/story.html?u=${u.id}"><span class="jp">${esc(u.title.ja)}</span> · ${esc(u.title.en)}</a> <span class="muted">${esc(u.grammar.join(" · "))}</span></li>`).join("")}</ol>` : `<p class="muted">Stories for ${lvl} are being written; meanwhile everything below is ready.</p>`}
+      ${units.length ? `<ol class="units">${units.map((u) => `<li class="${state.done[u.id]?.finished ? "done" : ""}"><img class="thumb" src="/yomu/img/${u.id}.jpg" alt="" loading="lazy" width="72" height="48"><span><a href="/yomu/story.html?u=${u.id}"><span class="jp">${esc(u.title.ja)}</span> · ${esc(u.title.en)}</a> <span class="muted">${esc(u.grammar.join(" · "))}</span></span></li>`).join("")}</ol>` : `<p class="muted">Stories for ${lvl} are being written; meanwhile everything below is ready.</p>`}
       <div class="decks">
         <a href="/yomu/grammar.html?level=${lvl}">Grammar<br>${bar(count(grammar, (g) => "g:" + g.id), grammar.length)}</a>
         <a href="/yomu/deck.html?level=${lvl}&type=kanji">Kanji<br>${bar(count(kanji, (k) => "k:" + k.k), kanji.length)}</a>

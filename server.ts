@@ -41,7 +41,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   learn: { dir: path.join(ROOT, "learn"), label: "World 6 · Learn & build" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
 // dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
 // this cap is only a backstop.

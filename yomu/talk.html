@@ -7,8 +7,9 @@
   <meta name="description" content="Speak Japanese in everyday scenes: Blip plays the convenience-store clerk, a passer-by, a waiter, a station worker and a hotel receptionist; you answer out loud (or type), and each answer is checked against what a Japanese speaker would accept, with the model answer to listen to." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
-    .scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
-    .scenes button { text-align: left; padding: 12px 14px; }
+    .scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; }
+    .scenes button { text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
+    .scenes img { width: 96px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; }
     .chat { margin: 14px 0; }
     .line { padding: 8px 12px; margin: 8px 0; border-radius: 12px; max-width: 85%; }
     .line.blip { background: color-mix(in srgb, var(--accent, #c2410c) 12%, transparent); }
@@ -49,7 +50,7 @@ settingsBar($("settings"));
 $("mic").textContent = canListen() ? "Speaking uses your browser's speech recognition (in Chrome, the audio is sent to Google to be transcribed)." : "This browser can't listen for Japanese: type your answers instead (Chrome and Edge can listen).";
 if (!canListen()) $("say").hidden = true;
 const done = () => state.talk ?? (state.talk = {});
-$("scenes").innerHTML = SCENES.map((s) => `<button class="card2" data-s="${s.id}"><b>${esc(s.title)}</b> <span class="muted">${s.level}</span><br><span lang="ja">${esc(s.where)}</span> · ${esc(s.desc)}${done()[s.id] ? `<br><span class="muted">best: ${done()[s.id]}%</span>` : ""}</button>`).join("");
+$("scenes").innerHTML = SCENES.map((s) => `<button class="card2" data-s="${s.id}"><img src="/yomu/img/talk-${s.id}.jpg" alt="" loading="lazy" width="96" height="64"><span class="txt"><b>${esc(s.title)}</b> <span class="muted">${s.level}</span><br><span lang="ja">${esc(s.where)}</span> · ${esc(s.desc)}${done()[s.id] ? `<br><span class="muted">best: ${done()[s.id]}%</span>` : ""}</span></button>`).join("");
 let scene = null, k = 0, results = [];
 const show = (who, jp, en) => { $("chat").insertAdjacentHTML("beforeend", `<div class="line ${who}"><div class="jp" lang="ja">${esc(jp)}</div>${en && state.settings.translation ? `<div class="muted">${esc(en)}</div>` : ""}</div>`); $("chat").lastElementChild.scrollIntoView({ block: "nearest" }); };
 async function step() {

@@ -11,6 +11,7 @@
 <main>
   <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · <span id="lvl"></span></p>
   <h1 id="title">…</h1>
+  <figure class="scene" id="photo" hidden><img id="photoImg" alt="" loading="eager"><figcaption class="cap" id="photoCredit"></figcaption></figure>
   <p class="lede" id="scene"></p>
   <div id="settings"></div>
   <nav class="steps" id="steps" aria-label="Steps"></nav>
@@ -47,6 +48,8 @@
 <div id="pop" hidden></div>
 <script type="module">
 import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip } from "/yomu/lib.js";
+import { pic } from "/yomu/pics.js";
+import { photo } from "/yomu/photos.js";
 
 const $ = (id) => document.getElementById(id);
 const id = new URLSearchParams(location.search).get("u") ?? "n5-01";
@@ -57,6 +60,7 @@ document.title = `${u.title.ja} · ${u.title.en}`;
 $("lvl").textContent = `${u.level} · Unit ${u.unit}`;
 $("title").innerHTML = `<span class="jp">${esc(u.title.ja)}</span> <small class="muted">${esc(u.title.en)}</small>`;
 $("scene").textContent = u.scene;
+photo(id, $("photo"));
 const progress = (state.done[id] ??= { steps: {} });
 const STEPS = [["story", "Story"], ["words", "Words"], ["grammar", "Grammar"], ["kanji", "Kanji"], ["build", "Build"], ["questions", "Questions"], ["talk", "Talk"]];
 const renderSteps = () => ($("steps").innerHTML = STEPS.map(([k, l]) => `<a href="#s-${k}" class="${progress.steps[k] ? "done" : ""}">${progress.steps[k] ? "✓ " : ""}${l}</a>`).join(""));
@@ -141,7 +145,7 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = t
 
 // ---------- words ----------
 const words = [...new Map(u.lines.flatMap((l) => l.t.map(tok)).filter((t) => t.g && t.k !== "p" && t.k !== "x").map((t) => [t.s, t])).values()];
-$("vocab").innerHTML = words.map((t, i) => `<div><span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join("");
+$("vocab").innerHTML = words.map((t, i) => `<div>${pic(t.g) ? `<span class="pic" aria-hidden="true">${pic(t.g)}</span>` : ""}<span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join("");
 $("vocab").addEventListener("click", (e) => { const i = e.target.closest("[data-w]")?.dataset.w; if (i != null) speak(reading(words[+i])); });
 $("addAll").onclick = () => { for (const t of words) addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("addAll").textContent = `✓ ${words.length} words in your review deck`; complete("words", 10); };
 

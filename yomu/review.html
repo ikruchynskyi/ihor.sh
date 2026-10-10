@@ -18,6 +18,7 @@
 </main>
 <script type="module">
 import { state, gain, grade, dueCards, settingsBar, esc, speak, listen, canListen, similarity, romaji, toHiragana, hasKanji, grammarDeck, cloze, choiceLabel, plain, shuffle, blip } from "/yomu/lib.js";
+import { pic } from "/yomu/pics.js";
 const $ = (id) => document.getElementById(id);
 const grammar = Object.fromEntries((await grammarDeck()).map((g) => [g.id, g]));
 settingsBar($("settings"), () => show());
@@ -46,7 +47,7 @@ function render() {
   const sayable = c.kind === "kanji" ? null : c.reading;
   $("card").innerHTML = `<p class="muted">${esc(c.kind)}${c.kind === "word" ? " · what does it mean, how is it read?" : c.kind === "kanji" ? " · meaning and readings?" : " · how is it read?"}</p>
     <div class="front jp">${esc(c.kind === "word" && state.settings.script === "romaji" && !hasKanji(c.front) ? kana(c.front) : c.front)}</div>
-    <div id="back" hidden><p class="jp" style="font-size:1.4rem">${esc(kana(c.reading ?? ""))}</p>${c.kind !== "kana" ? `<p><b>${esc(c.meaning ?? "")}</b></p>` : ""}</div>
+    <div id="back" hidden><p class="jp" style="font-size:1.4rem">${esc(kana(c.reading ?? ""))}</p>${c.kind !== "kana" ? `<p>${c.kind === "word" && pic(c.meaning) ? `<span class="pic" aria-hidden="true">${pic(c.meaning)}</span> ` : ""}<b>${esc(c.meaning ?? "")}</b></p>` : ""}</div>
     <div class="row" id="acts"><button id="flip">Show answer (space)</button>${canListen() && sayable ? ` <button id="say">🎤 Say it</button>` : ""}</div>
     <p id="fb"></p>
     <div class="row grades" id="grades" hidden><button data-g="0">Again</button><button data-g="1">Hard</button><button data-g="2">Good</button><button data-g="3">Easy</button></div>`;

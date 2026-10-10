@@ -83,3 +83,16 @@ ruby rt { font-size: .55em; color: var(--muted); }
 .grades { justify-content: center; gap: 8px; display: flex; }
 .grades[hidden] { display: none; }
 @media (max-width: 600px) { .kana-wrap { grid-template-columns: 1fr; } .kana-focus { position: static; } .decks { grid-template-columns: 1fr; } .kc .jp { font-size: 22px; } }
+
+/* photos of the scenes (yomu/img, free-licensed from Wikimedia Commons; credits.json has the authors) and word pictures */
+figure.scene { margin: 12px 0 18px; position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 16 / 7; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+figure.scene img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#photo figcaption.cap { font-size: .7rem !important; line-height: 1.4 !important; } /* the reader's text-size rule would scale it up */
+figure.scene figcaption { position: absolute; right: 8px; bottom: 6px; max-width: calc(100% - 16px); font-size: .68rem; line-height: 1.4; color: #fff; background: rgba(0,0,0,.5); padding: 2px 9px; border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+figure.scene figcaption a { color: #fff; }
+figure.hero { aspect-ratio: 16 / 6; }
+.pic { font-size: 54px; line-height: 1; margin: 4px 0 8px; }
+.vocab .pic, #back .pic { font-size: 1.5rem; margin: 0 6px 0 0; vertical-align: middle; }
+.units li { display: flex; align-items: center; gap: 10px; }
+.units .thumb { width: 72px; height: 48px; object-fit: cover; border-radius: 8px; flex: none; }
+@media (max-width: 600px) { figure.scene { aspect-ratio: 16 / 9; border-radius: 10px; } figure.hero { aspect-ratio: 16 / 8; } }
