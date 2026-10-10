@@ -46,7 +46,7 @@
   <div id="map" aria-label="Map: the route, day ends you can drag, and stops along the way"></div>
   <section id="panel">
     <h1>Route notebook</h1>
-    <p class="hint">New: <a href="/ride/escapes.html">bike + train escapes</a>, overnights from the city and which trains take your bike.</p>
+    <p class="hint">Also: <a href="/ride/escapes.html">bike + train escapes</a> (overnights from the city, and which trains take your bike) · <a href="/ride/gear.html">gear list</a> (weights, water and battery).</p>
     <p class="hint">Plan a bike trip: pick where you start and end (type a place or press 📍 and click the map), add via points, and it finds a bike route, splits it into days, and checks every day for water, food, a place to sleep, daylight and weather. Drag the 🏁 flags on the map to move where a day ends.</p>
 
     <h2>1. Where</h2>
@@ -61,6 +61,7 @@
       <div class="row"><label>start <input type="date" id="date"></label><label>at <input type="time" id="time" value="08:00"></label></div>
       <div class="row"><label>speed <input type="number" id="speed" value="17" min="6" max="35"> km/h</label><label>breaks <input type="number" id="breaks" value="25" min="0" max="80" step="5">%</label></div>
       <div class="row"><label>max <input type="number" id="maxKm" value="60" min="10" max="250"> km/day</label><label>max <input type="number" id="maxUp" value="1000" min="100" max="4000" step="50"> m up/day</label></div>
+      <p class="hint" id="gearSum"><a href="/ride/gear.html">Gear list</a>: weigh your kit and the notebook will know how much water and battery you carry.</p>
       <div class="row"><label>water carried <input type="number" id="water" value="2" min="0.5" max="10" step="0.25"> L</label><label>drinking <input type="number" id="drink" value="0.6" min="0.2" max="1.5" step="0.05"> L/h</label></div>
     </details>
 
@@ -377,6 +378,7 @@ async function renderDay() {
       <p>${w ? `🌡 ${Math.round(w.lo)}–${Math.round(w.hi)} °C · rain ${w.rain ?? "?"}% · wind ${Math.round(w.wind)} km/h` : `<span class="hint">Forecast appears within 16 days of the ride.</span>`}</p>
       ${covered(d.km0 - 6, d.km1 + 6) ? `<p>💧 longest stretch without water: <b>${gapW.km.toFixed(0)} km</b> (~${gapH.toFixed(1)} h) ${gapH > lasts ? `<span class="warn">: ${carry} L lasts ~${lasts.toFixed(1)} h, so fill up at a shop or carry more</span>` : `<span class="ok">: ${carry} L covers it</span>`} · 🥖 longest without open food: ${gapF.km.toFixed(0)} km</p>${hoursLine}
       <p>${i === days.length - 1 ? "🏁 Finish." : d.camps.length ? `⛺ Sleep near the end: ${d.camps.slice(0, 3).map((x) => `${esc(x.name)} (km ${x.km.toFixed(0)})`).join(", ")}` : `<span class="warn">⛺ No mapped campsite or lodging within 6 km of this day's end.</span> Drag the 🏁 flag, or pick a place below.`}</p>
+      ${gear?.powerDays != null && i + 1 > gear.powerDays && i < gear.powerDays + 1 ? `<p><span class="warn">🔋 Your batteries run out today</span> (${gear.batteryWh} Wh for ${gear.useWhPerDay} Wh a day, no charging): find an outlet at a café or the campsite.</p>` : ""}
       <p>🚆 Bail out: ${d.trains.length ? [...new Set(d.trains.map((t) => `${t.name} (km ${t.km.toFixed(0)})`))].slice(0, 3).map(esc).join(", ") : "no station within 3 km of this day"}</p>` : `<p class="hint">💧🥖⛺🚆 Water, food, beds and stations for this day aren't loaded yet.${S.day === i ? " Loading…" : ` <button data-day="${i}">Open day ${i + 1} to load them</button>`}</p>`}
       ${S.day != null ? `<p class="hint">${d.water.length} water points, ${d.food.length} food stops, ${d.repair.length} bike shops on this day. Zoom the map in to list them below.</p>` : `<p><button data-day="${i}">Open day ${i + 1}</button></p>`}
     </article>`);
@@ -423,6 +425,12 @@ for (const id of ["date", "time", "speed", "breaks", "maxKm", "maxUp", "water", 
 // A link can bring a trip: #plan=lat,lon,Name|lat,lon,Name|… (start, vias, end), e.g. from the bike + train escapes.
 const linked = decodeURIComponent(location.hash.match(/^#plan=(.+)$/)?.[1] ?? "").split("|").map((t) => { const [a, b, ...n] = t.split(","); return { lat: +a, lon: +b, label: n.join(",").slice(0, 80) }; }).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
 if (linked.length >= 2 && linked.length <= 8) { S = { ...S, pts: linked, route: null, pins: [], day: null }; history.replaceState(null, "", location.pathname); }
+// The gear list (ride/gear.html) leaves a summary: liters carried, battery days.
+const gear = (() => { try { return JSON.parse(localStorage.getItem("ride-gear-summary") ?? "null"); } catch { return null; } })();
+if (gear && (gear.waterL || gear.batteryWh)) {
+  $("gearSum").innerHTML = `Your <a href="/ride/gear.html">gear</a>: ${gear.waterL} L of water${gear.powerDays != null ? `, batteries for ${gear.powerDays} days` : ""}${gear.foodDays ? `, ${gear.foodDays} days of food` : ""}. ${gear.waterL && +$("water").value !== gear.waterL ? `<button id="useGear">use ${gear.waterL} L</button>` : ""}`;
+  $("useGear")?.addEventListener("click", () => { $("water").value = gear.waterL; $("water").dispatchEvent(new Event("change")); $("useGear").remove(); });
+}
 sumSettings(); renderPts();
 if (linked.length >= 2 && linked.length <= 8) plan(); else if (S.route) analyze(); else $("status").textContent = "Start by setting where you start and end. Tip: try Start “George Washington Bridge”, End “Bear Mountain State Park”.";
 
