@@ -388,7 +388,7 @@ async function transitWithStops(pts: Place[]) {
   const depart = parts[0].depart, arrive = parts.at(-1).arrive;
   return { from: pts[0], to: pts.at(-1), stops: pts.slice(1, -1), mode: "transit", source: "Transitous (MTA schedules and live updates)",
     options: [{ minutes: Math.round((Date.parse(arrive) - Date.parse(depart)) / 60000), transfers: parts.reduce((t, o) => t + o.transfers, 0), depart, arrive, later: [],
-      walkMinutes: parts.reduce((t, o) => t + o.walkMinutes, 0), legs: parts.flatMap((o) => o.legs) }] };
+      walkMinutes: parts.reduce((t, o) => t + o.walkMinutes, 0), waitMinutes: parts.reduce((t, o) => t + o.waitMinutes, 0), legs: parts.flatMap((o) => o.legs) }] };
 }
 
 async function transitPlan(a: Place, b: Place, leaveAt?: string) {
@@ -401,7 +401,9 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string) {
   // NY Waterway's ferry shuttles. Keep MTA legs only, and rank by how simple a trip is to ride.
   const mta = (it: any) => it.legs.every((l: any) => l.mode === "WALK" || /^MTA/.test(l.agencyName ?? ""));
   const hops = (it: any) => it.legs.filter((l: any) => l.mode !== "WALK" && (l.intermediateStops?.length ?? 0) === 0 && l.duration <= 240).length;
-  const score = (it: any) => it.duration / 60 + 4 * it.transfers + 6 * hops(it);
+  // Rank by when you'd arrive leaving now, not by the ride alone: a faster bus that comes in 15 minutes loses to a
+  // slower train that comes in 2. Waits at transfers are inside that already (each leg keeps its scheduled times).
+  const now = Date.now(), score = (it: any) => (Date.parse(it.endTime) - now) / 60000 + 4 * it.transfers + 6 * hops(it);
   const walk = (d.direct ?? []).find((x: any) => x.legs.length === 1 && x.legs[0].mode === "WALK" && x.duration <= 45 * 60);
   // The same routes at later times are one option with its next departures.
   const all = [...(walk ? [{ ...walk, transfers: 0 }] : []), ...(d.itineraries ?? []).filter(mta).map(dropHops)].sort((x, y) => Date.parse(x.startTime) - Date.parse(y.startTime));
@@ -411,6 +413,8 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string) {
   const options = best.map((it: any) => ({
     minutes: Math.round(it.duration / 60), transfers: it.transfers, depart: it.startTime, arrive: it.endTime, later: (it.later ?? []).slice(0, 3),
     walkMinutes: Math.round(it.legs.filter((l: any) => l.mode === "WALK").reduce((t: number, l: any) => t + l.duration, 0) / 60),
+    // standing at stops between legs (the wait before leaving home is depart − now, worked out on the page)
+    waitMinutes: Math.round(it.legs.reduce((t: number, l: any, i: number) => t + (i ? Math.max(0, Date.parse(l.startTime) - Date.parse(it.legs[i - 1].endTime)) : 0), 0) / 60000),
     legs: it.legs.map((l: any) => ({
       mode: l.mode, route: l.routeShortName ?? "", color: l.routeColor ? `#${l.routeColor}` : null, text: l.routeTextColor ? `#${l.routeTextColor}` : "#ffffff",
       headsign: l.headsign ?? "", from: l.from.name, to: l.to.name, depart: l.startTime, arrive: l.endTime, minutes: Math.max(1, Math.round(l.duration / 60)),

@@ -779,11 +779,12 @@ const stopDots = (d) => (d.stops ?? []).forEach((s, i) => { if (!pinMarkers[d.vi
 // Commute (subway + bus + walking): options from Transitous; pick one to see it on the map, step by step.
 const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const legBullet = (l) => (l.mode === "SUBWAY" ? bullet(l.route) : busBullet({ name: l.route, color: l.color ?? "#1c7ed6", text: l.text }));
+const fromNow = (t) => Math.max(0, Math.round((Date.parse(t) - Date.now()) / 60000));
 const legColor = (l) => (l.mode === "SUBWAY" ? ROUTE_COLOR[l.route.replace(/X$/, "")] ?? l.color : l.color) ?? "#1c7ed6";
 function showCommute(d, pick) {
   tripLayer.clearLayers();
   const o = d.options[pick];
-  seen.trip = { from: d.from.label, to: d.to.label, stops: d.stops?.map((x) => x.label), mode: "commute", options: d.options.map((x) => `${x.minutes} min, leave ${hm(x.depart)}: ${x.legs.map((l) => (l.mode === "WALK" ? `walk ${l.minutes} min` : `${l.route} ${l.from} → ${l.to}`)).join(", ")}`) };
+  seen.trip = { from: d.from.label, to: d.to.label, stops: d.stops?.map((x) => x.label), mode: "commute", options: d.options.map((x) => `arrive ${hm(x.arrive)} (${fromNow(x.arrive)} min from now), leave ${hm(x.depart)}, ${x.minutes} min on the way incl. ${x.waitMinutes} min waiting at stops: ${x.legs.map((l) => (l.mode === "WALK" ? `walk ${l.minutes} min` : `${l.route} ${l.from} → ${l.to}`)).join(", ")}`) };
   const lines = o.legs.map((l) => L.polyline(l.line, l.mode === "WALK" ? { color: "#9aa3cf", weight: 4, dashArray: "3 7" } : { color: legColor(l), weight: 6, opacity: 0.9 })
     .bindTooltip(l.mode === "WALK" ? `Walk ${l.minutes} min` : `${esc(l.route)} toward ${esc(l.headsign)}: ${esc(l.from)} → ${esc(l.to)}`).addTo(tripLayer));
   for (const l of o.legs.filter((x) => x.mode !== "WALK")) dot(l.line[0][0], l.line[0][1], legColor(l), 6).bindTooltip(`Board the ${esc(l.route)} at ${esc(l.from)}`).addTo(tripLayer);
@@ -792,12 +793,14 @@ function showCommute(d, pick) {
   stopDots(d);
   map.fitBounds(L.featureGroup(lines).getBounds().pad(0.1), { paddingTopLeft: [Math.max(20, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 20), 20] });
   const chips = (x) => x.legs.map((l) => (l.mode === "WALK" ? `<span class="muted">🚶${l.minutes}</span>` : legBullet(l))).join(' <span class="muted">›</span> ');
-  const step = (l, i) => l.mode === "WALK"
+  // waiting at a stop: the gap between getting there and the bus or train leaving
+  const wait = (l, i) => { const g = i && l.mode !== "WALK" ? Math.round((Date.parse(l.depart) - Date.parse(o.legs[i - 1].arrive)) / 60000) : 0; return g >= 2 ? `<li class="muted">⏱ Wait ${g} min for the ${esc(l.route)}</li>` : ""; };
+  const step = (l, i) => wait(l, i) + (l.mode === "WALK"
     ? `<li>🚶 Walk ${l.estimated ? "~" : ""}${l.minutes} min to ${esc(i === o.legs.length - 1 ? d.to.label : o.legs[i + 1]?.from ?? "")}</li>`
     : `<li>${legBullet(l)} <b>${esc(l.route)}</b> toward ${esc(l.headsign)}<br><span class="muted">${hm(l.depart)} ${esc(l.from)} → ${hm(l.arrive)} ${esc(l.to)} · ${l.stops} stop${l.stops > 1 ? "s" : ""}, ${l.minutes} min${l.realTime ? " · live time" : ""}</span>
-       ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`;
+       ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`);
   const stepAndStop = (l, i) => step(l, i) + (l.stopAfter ? `<li>📍 <b>Stop: ${esc(l.stopAfter)}</b></li>` : "");
-  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>${x.minutes} min</b> · ${hm(x.depart)} → ${hm(x.arrive)}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}<br>${chips(x)}</button>`).join("")
+  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>Arrive ${hm(x.arrive)}</b> · ${fromNow(x.arrive)} min from now<br><span class="muted">leave ${fromNow(x.depart) ? `in ${fromNow(x.depart)} min` : "now"} · ${x.minutes} min on the way${x.waitMinutes ? `, ${x.waitMinutes} of it waiting at stops` : ""}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}</span><br>${chips(x)}</button>`).join("")
     + `<ol class="steps">${o.legs.map(stepAndStop).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
     + `<div class="muted">Routes and times: <a href="https://transitous.org" target="_blank" rel="noopener">Transitous</a> on MTA schedules (live where the MTA reports it). Walks marked ~ are estimated.</div>`;
   $("tripOut").querySelectorAll("button[data-o]").forEach((b) => (b.onclick = () => showCommute(d, +b.dataset.o)));
