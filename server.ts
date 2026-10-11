@@ -549,8 +549,9 @@ const server = http.createServer(async (req, res) => {
       if (!src) return fail(404, "No such camera.");
       const r = await fetch(src, { signal: AbortSignal.timeout(10_000) }).catch(() => null), frame = r?.ok ? Buffer.from(await r.arrayBuffer()) : null;
       if (!frame?.length || frame.length > 8e6) return fail(502, "The camera didn't send a picture just now.");
-      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await upscale(frame))); }
-      catch (e) { return fail(503, (e as Error).message); }
+      const out = await upscale(frame).catch((e: Error) => e); // awaited before the headers: "busy" must still reach the page
+      if (out instanceof Error) return fail(503, out.message);
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out));
     }
     if (url.pathname === "/api/nyc/camera-image") { // a traffic camera frame, same-origin so pages can read its pixels
       const id = String(url.searchParams.get("id") ?? "");

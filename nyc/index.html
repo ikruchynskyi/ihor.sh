@@ -901,20 +901,21 @@ function openCam(c) {
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
-  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (on the server's Mac, about a second)">✨</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
+  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
   $("cams").append(w);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
   const img = w.querySelector("img"), tick = c.static ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
   w.insertAdjacentHTML("beforeend", `<i class="grip" aria-hidden="true"></i>`); // the bottom-right corner: drag it to resize both ways
   w.querySelector("button.x").onclick = () => { clearInterval(tick); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
-  // ✨: the server upscales the camera's frame of this moment (Real-ESRGAN, upscale.ts) and it opens in a window of its
+  // ✨: the server upscales the camera's frame of this moment (SeedVR2, upscale.ts) and it opens in a window of its
   // own, as a data: URL (nothing is kept on the server), with a link to save it.
   const upBtn = w.querySelector("button.up");
   if (upBtn) upBtn.onclick = async () => {
+    const t0 = Date.now(), tick = setInterval(() => (upBtn.textContent = `⏳ ${Math.round((Date.now() - t0) / 1000)} s`), 1000);
     upBtn.disabled = true; upBtn.textContent = "⏳";
     const d = await fetch(`/api/nyc/upscale?cam=${encodeURIComponent(c.id)}`, { method: "POST" }).then((r) => r.json()).catch((e) => ({ error: e.message }));
-    upBtn.disabled = false; upBtn.textContent = "✨";
+    clearInterval(tick); upBtn.disabled = false; upBtn.textContent = "✨";
     if (d.error) return dispatchEvent(new CustomEvent("blip:say", { detail: { text: d.error } }));
     const n = ++upscaled, at = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }), src = `data:image/jpeg;base64,${d.img}`;
     openCam({ id: `up${n}`, name: `✨ ${c.name} · ${at} · ×4 by AI, ${d.w}×${d.h} (fine details are AI guesses)`, image: src, static: true, upscaled: true, page: src, source: "⬇ Save", download: `${c.name.replace(/[^\w-]+/g, "_")}-${d.w}x${d.h}.jpg` });
