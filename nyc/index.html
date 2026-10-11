@@ -1052,7 +1052,7 @@ function suggestFor(input) {
 function showSugg(input, list) {
   if (!list.length) return hideSugg();
   suggFor = input; suggItems = list; suggActive = -1;
-  sugg.innerHTML = list.map((s, i) => `<li role="option" id="sg${i}" aria-selected="false"><b>${esc(s.name)}</b> <span class="muted">${esc([s.detail, s.kind === "address" ? "" : s.kind].filter(Boolean).join(" · "))}</span></li>`).join("");
+  sugg.innerHTML = list.map((s, i) => `<li role="option" id="sg${i}" aria-selected="false"><b>${esc(s.name)}</b> <span class="muted">${esc([s.detail, s.kind === "address" || s.kind === "yes" ? "" : s.kind].filter(Boolean).join(" · "))}</span></li>`).join("");
   const r = input.getBoundingClientRect();
   Object.assign(sugg.style, { left: `${r.left}px`, top: `${r.bottom + 2}px`, width: `${Math.max(r.width, 280)}px` });
   sugg.hidden = false;
