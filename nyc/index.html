@@ -1429,10 +1429,11 @@ window.blipContext = () => {
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 
-// Popups pan clear of the panel, which floats over the map's left side.
+// Popups pan clear of the panel, which floats over the map's left side (on phones it's the bottom sheet, which the
+// popup patch above already keeps clear of; its right edge is the screen's, so padding by it threw the map sideways).
 map.on("popupopen", (e) => {
   const r = $("panel").getBoundingClientRect(), m = $("map").getBoundingClientRect();
-  e.popup.options.autoPanPaddingTopLeft = [Math.max(10, r.right - m.left + 10), 10];
+  e.popup.options.autoPanPaddingTopLeft = [phone() ? 10 : Math.max(10, r.right - m.left + 10), 10];
   setTimeout(() => e.popup.isOpen() && e.popup._adjustPan?.(), 300); // re-pan with the padding (after any setView animation)
 });
 // The panel folds away (and starts folded on phones, where it would cover the map).
