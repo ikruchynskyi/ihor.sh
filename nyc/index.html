@@ -120,6 +120,7 @@
   <div class="phead"><h1>NYC Live Map</h1><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
   <div class="muted">What's around you: subway stations (and their alerts), bus stops, Citi Bike, cameras and public restrooms within 400 m. Switch on 🚨 below for every station with an MTA alert (click one for the nearest Citi Bikes), and more layers under it.</div>
+  <form id="search" role="search" class="pickrow" style="margin:8px 0"><input id="q" type="search" placeholder="🔎 Find a place or address" aria-label="Find a place or address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg" style="flex:1"><button title="Find it on the map">Go</button></form>
   <div class="muted" id="status">Loading…</div>
   <div class="nearbar"><button id="nearBtn" title="Subway, buses, Citi Bike, cameras and public restrooms within 400 m of you">📍 Within 400 m of me</button><button id="nearHere" class="linkish">…of the map center</button><button id="nearOff" class="linkish" hidden>✕ clear</button></div>
   <div id="nearBox" class="muted" hidden></div>
@@ -1067,13 +1068,14 @@ function hideSugg() {
 async function choose(i) {
   const s = suggItems[i], id = suggFor.id;
   hideSugg();
+  if (id === "q") { $("q").value = s.name; return showHere(L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name); }
   await placePin(id, L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name);
   if (ready()) return replan();
   map.panTo([s.lat, s.lon]);
   ["tFrom", ...stopIds(), "tTo"].map((x) => $(x)).find((x) => !x.value.trim())?.focus(); // on to the next empty field
 }
 sugg.addEventListener("pointerdown", (e) => { e.preventDefault(); const li = e.target.closest("li"); if (li) choose([...sugg.children].indexOf(li)); }); // keeps focus in the field
-$("trip").addEventListener("keydown", (e) => {
+const suggKeys = (e) => {
   if (sugg.hidden || e.target !== suggFor) return;
   const n = suggItems.length;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -1084,8 +1086,19 @@ $("trip").addEventListener("keydown", (e) => {
     suggFor.setAttribute("aria-activedescendant", `sg${suggActive}`);
   } else if (e.key === "Enter" && suggActive >= 0) { e.preventDefault(); choose(suggActive); }
   else if (e.key === "Escape") hideSugg();
+};
+for (const f of ["trip", "search"]) { $(f).addEventListener("keydown", suggKeys); $(f).addEventListener("focusout", (e) => { if (e.target === suggFor) hideSugg(); }); }
+// The search box: type for suggestions; Enter or Go without picking one finds the best match.
+$("q").addEventListener("input", (e) => suggestFor(e.target));
+$("search").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  if (!q) return;
+  hideSugg();
+  const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(q)}`).catch(() => null);
+  if (!g) return ($("status").textContent = `Couldn't find "${q}" in NYC.`);
+  showHere(L.latLng(g.lat, g.lon), g.label);
 });
-$("trip").addEventListener("focusout", (e) => { if (e.target === suggFor) hideSugg(); });
 $("panel").addEventListener("scroll", hideSugg);
 const tripEnd = (id) => (picked[id] && $(id).value === picked[id].label ? `${picked[id].lat},${picked[id].lon}` : $(id).value.trim());
 
@@ -1256,15 +1269,22 @@ map.on("click", async (e) => {
     else if (id === "tFrom") setPicking("tTo"); // next: the destination
     return;
   }
-  const p = L.popup({ maxWidth: 340 }).setLatLng(e.latlng).setContent("Looking up…").openOn(map);
-  const phP = getJSON(`/api/nyc/photo-near?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null); // alongside the address
-  const d = await getJSON(`/api/nyc/point?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
+  showHere(e.latlng);
+});
+/** What's at a point: the address, the businesses there and a street photo of it (a click on the map, or a search,
+ *  which also gives the place's name as `title` and moves the map there). */
+async function showHere(ll, title = "") {
+  if (title) map.setView(ll, Math.max(map.getZoom(), 17));
+  const head = title ? `<b>📍 ${esc(title)}</b><br>` : "";
+  const p = L.popup({ maxWidth: 340 }).setLatLng(ll).setContent(`${head}Looking up…`).openOn(map);
+  const phP = getJSON(`/api/nyc/photo-near?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null); // alongside the address
+  const d = await getJSON(`/api/nyc/point?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null);
   const photoBox = `<div class="here-photo muted">📸 looking for a street photo…</div>`; // the first look in an area can take several seconds
-  if (!d?.found) p.setContent(`No NYC address found here.${photoBox}`);
+  if (!d?.found) p.setContent(`${head}No NYC address found here.${photoBox}`);
   else {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
-  p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${photoBox}
+  p.setContent(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
@@ -1278,7 +1298,7 @@ map.on("click", async (e) => {
     box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;
     p.update();
   }
-});
+}
 
 // What Blip can do on this page when you ask it to.
 window.blipActions = {
