@@ -1,11 +1,10 @@
 // Yomu's free conversation at a JLPT level: Blip talks about whatever the learner wants, using only that level's
 // grammar and vocabulary, and glosses every word so the page can show readings and meanings on a tap.
-// Local model only (Ollama on this machine): nothing the learner writes leaves it. gpt-oss:20b takes 10–30 s a turn.
+// Local model only (Ollama on this machine, see llm.ts): nothing the learner writes leaves it.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
-const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
+import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const ROOT = import.meta.dirname;
 const LEVELS = ["N5", "N4", "N3"] as const;
 export type Level = (typeof LEVELS)[number];
@@ -58,7 +57,7 @@ Answer with the JSON object only.`;
     try {
       const r = await fetch(`${OLLAMA}/api/chat`, {
         method: "POST", signal,
-        body: JSON.stringify({ model: MODEL, stream: false, think: "low", format: SCHEMA, options: { num_predict: 900, temperature: 0.8 }, messages }),
+        body: JSON.stringify({ model: MODEL, stream: false, think: localThink(true), format: SCHEMA, options: { num_predict: 900, temperature: 0.8 }, messages }),
       });
       if (!r.ok) throw new Error(`local model: ${r.status}`);
       const o = JSON.parse((await r.json()).message.content) as Reply;
@@ -85,7 +84,7 @@ export function wellSplit(words: Reply["words"], ja: string) {
 export async function splitWords(ja: string): Promise<Reply["words"]> {
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(60_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: "low", format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
+    body: JSON.stringify({ model: MODEL, stream: false, think: localThink(true), format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
       messages: [{ role: "system", content: 'Split the Japanese sentence into dictionary words and particles, in order, covering every character: s = surface form, r = hiragana reading, g = short English meaning (particles: "particle: marks the topic" etc.; punctuation: g ""). One word per item, never a phrase. JSON only.' }, { role: "user", content: ja }] }),
   });
   if (!r.ok) throw new Error(`local model: ${r.status}`);

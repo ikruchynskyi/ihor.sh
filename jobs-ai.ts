@@ -3,8 +3,8 @@
 // text is used for the request only: never stored, never logged.
 import { needEmbedding, saveEmbedding, candidates, jobText, type Query } from "./jobs.ts";
 
-const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434", EMBED = "nomic-embed-text";
-const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash", LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
+import { OLLAMA, LOCAL_MODEL, localThink } from "./llm.ts";
+const EMBED = "nomic-embed-text", CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
 
 async function embed(texts: string[]): Promise<Float32Array[]> {
   const r = await fetch(`${OLLAMA}/api/embed`, { method: "POST", body: JSON.stringify({ model: EMBED, input: texts, truncate: true }), signal: AbortSignal.timeout(120_000) });
@@ -37,7 +37,7 @@ async function llmJson(system: string, user: string, schema: object, maxTokens =
       if (r.ok) return parse((await r.json()).message.content);
     } catch {}
   }
-  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: "low", format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
+  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
   if (!r.ok) throw new Error(`model ${r.status}`);
   return parse((await r.json()).message.content);
 }

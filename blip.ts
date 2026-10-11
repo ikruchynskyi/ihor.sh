@@ -18,8 +18,7 @@ import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
-const MODEL = process.env.OLLAMA_MODEL ?? "gpt-oss:20b";
-const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
+import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
 const MAX_STEPS = 6;
 
@@ -406,7 +405,7 @@ async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [])
   }
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(120_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: "low", options: { num_predict: 1500 }, messages, ...tools }),
+    body: JSON.stringify({ model: MODEL, stream: false, think: localThink(false), options: { num_predict: 1500 }, messages, ...tools }),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   return (await r.json()).message as Msg;
