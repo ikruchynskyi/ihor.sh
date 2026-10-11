@@ -152,7 +152,7 @@
     <p class="muted" style="margin:6px 0 0">📻 NYC radio stations, and which ones this site's antenna hears, moved to the <a href="/radio/stations/">Radio world</a>.</p>
     <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
     <div id="rresults" class="muted"></div>
-    <div class="muted" style="margin-top:6px">Tip: click anywhere on the map to see what's there (address, districts, precinct).</div>
+    <div class="muted" style="margin-top:6px">Tip: double-click or long-press anywhere on the map to see what's there (address, districts, precinct).</div>
   </details>
   </div>
 </div>
@@ -178,7 +178,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
 
-const map = L.map("map").setView([40.73, -73.95], 12);
+const map = L.map("map", { doubleClickZoom: false }).setView([40.73, -73.95], 12);
 baseMaps(map, { credit: "MTA · Citi Bike" });
 const alertLayer = L.layerGroup(); // stations with alerts: a layer you switch on (🚨), off by default
 const bikeLayer = L.layerGroup().addTo(map);
@@ -349,15 +349,20 @@ async function loadOutages(g) {
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
 }
 
-// Traffic speeds: NYC DOT's live speed per road segment, colored like a traffic map. Says so when the feed is stale.
-const mph = (v, ok) => (!ok ? "#7f8bc4" : v < 15 ? "#ff5c8a" : v < 30 ? "#ffb347" : "#5cff9d");
+// Traffic speeds: NYC DOT's live speed per road segment, in Google Maps' traffic colors on a dark outline so they stand
+// out on any base map. Roads without a reading aren't drawn. A stale feed is drawn dashed, and the count says so.
+const mph = (v) => (v >= 30 ? "#1db954" : v >= 15 ? "#ff974d" : v >= 7 ? "#f23c32" : "#a50e15");
 async function loadSpeeds(g) { // each road comes in pieces: the feed has gaps (see trafficSpeeds)
   const d = await getJSON("/api/nyc/speeds");
   g.clearLayers();
-  for (const l of d.links) L.polyline(l.segments, { color: mph(l.mph, l.ok), weight: 5, opacity: d.stale ? 0.35 : 0.85, renderer: bikeCanvas, bubblingMouseEvents: false })
-    .bindTooltip(`${l.name}: ${l.ok ? `${Math.round(l.mph)} mph` : "no data"}`).addTo(g);
+  const live = d.links.filter((l) => l.ok), dash = d.stale ? "10 7" : null;
+  for (const l of live) {
+    L.polyline(l.segments, { color: "#000", weight: 10, opacity: 0.55, lineCap: "round", renderer: bikeCanvas, interactive: false }).addTo(g);
+    L.polyline(l.segments, { color: mph(l.mph), weight: 6, opacity: 1, lineCap: "round", dashArray: dash, renderer: bikeCanvas, bubblingMouseEvents: false })
+      .bindTooltip(`${esc(l.name)}: ${Math.round(l.mph)} mph`).addTo(g);
+  }
   const when = new Date(d.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  $("n-speeds").innerHTML = `(${d.links.length} roads, ${d.stale ? `⚠ feed last updated ${when}` : `as of ${when}`})<br><span class="legend"><i style="background:#5cff9d"></i>30+ mph <i style="background:#ffb347"></i>15–30 <i style="background:#ff5c8a"></i>under 15 <i style="background:#7f8bc4"></i>no data</span>`;
+  $("n-speeds").innerHTML = `(${live.length} roads, ${d.stale ? `⚠ feed last updated ${when}, dashed` : `as of ${when}`})<br><span class="legend"><i style="background:#1db954"></i>30+ mph <i style="background:#ff974d"></i>15–30 <i style="background:#f23c32"></i>7–15 <i style="background:#a50e15"></i>under 7</span>`;
   seen.speeds = { asOf: d.asOf, stale: d.stale, slowest: d.links.filter((l) => l.ok).sort((a, b) => a.mph - b.mph).slice(0, 8).map((l) => `${l.name}: ${Math.round(l.mph)} mph`) };
 }
 
@@ -528,8 +533,8 @@ async function loadCameras(g) {
 }
 
 // ---------- sky & weather, and the air (server: sky.ts) ----------
-// NOAA nowCOAST map images (radar, lightning, clouds), refreshed while the layer is on. They get their own pane: the
-// site's dark theme inverts the colors of the tile pane, which would turn white clouds dark and scramble the radar.
+// NOAA nowCOAST map images (radar, lightning, clouds), refreshed while the layer is on. They get their own pane, so
+// they sit over whichever street map is on.
 // Each tile is drawn through a canvas (NOAA allows cross-origin reads), so the layer can say whether anything is in
 // view, and the clouds can be made "clouds only": NOAA's infrared picture is opaque gray everywhere, warm ground included.
 map.createPane("wx").style.zIndex = 350; // above the street tiles (200), under markers and lines (400+)
@@ -1298,7 +1303,8 @@ async function showInspections(popup, r) {
     <p class="viol muted">Earlier: ${d.visits.slice(1, 5).map((x) => `${x.date} ${x.grade ?? ""} ${x.score ?? ""}`).join(" · ") || "none"}</p>`);
 }
 
-// Click on an empty spot: the address and the businesses there (shops, licensed businesses, restaurants with grades).
+// Double-click or long-press (right-click too) an empty spot: the address and the businesses there (shops, licensed
+// businesses, restaurants with grades). A single click does nothing, so panning and missed taps don't open it.
 map.on("click", async (e) => {
   if (picking) {
     const id = picking;
@@ -1308,8 +1314,8 @@ map.on("click", async (e) => {
     else if (id === "tFrom") setPicking("tTo"); // next: the destination
     return;
   }
-  showHere(e.latlng);
 });
+map.on("dblclick contextmenu", (e) => { if (!picking) showHere(e.latlng); });
 /** What's at a point: the address, the businesses there and a street photo of it (a click on the map, or a search,
  *  which also gives the place's name as `title` and moves the map there). */
 async function showHere(ll, title = "") {

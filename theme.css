@@ -103,8 +103,7 @@ input[type="range"] { accent-color: var(--accent); }
 /* page-family touches */
 nav.next a, nav.toc a { text-decoration: none; }
 nav.next a { font: calc(9px * var(--px, 1))/1.8 var(--pixel); }
-.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); }
-.leaflet-tile-pane:has(.plain-tiles) { filter: none; } /* light and satellite base maps stay as drawn */
+.dark-tiles { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); } /* only the "Dark streets" base map: light and satellite stay as drawn */
 .leaflet-container { background: var(--bg) !important; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--card) !important; color: var(--fg) !important; border-radius: var(--r-sm) !important; border: 2px solid var(--line); }
 .leaflet-bar a { background: var(--card) !important; color: var(--fg) !important; border-radius: 0 !important; }

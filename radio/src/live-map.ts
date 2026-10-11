@@ -11,13 +11,15 @@ export function makeMap(id: string, zoom = 9) {
   // Base maps, as on the NYC map: themed dark streets (theme.css inverts them), plain light streets, satellite (USGS, US only).
   const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
   const bases: Record<string, any> = {
-    "Dark streets": L.tileLayer(OSM, { maxZoom: 18, attribution }),
+    "Dark streets": L.tileLayer(OSM, { maxZoom: 18, attribution, className: "dark-tiles" }),
     "Light streets": L.tileLayer(OSM, { maxZoom: 18, attribution, className: "plain-tiles" }),
     "Satellite (US)": L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, className: "plain-tiles", attribution: "Imagery: USGS The National Map (public domain)" }),
   };
-  let base = getComputedStyle(document.documentElement).colorScheme === "light" ? "Light streets" : "Dark streets";
-  try { const saved = localStorage.getItem("map-base"); if (saved && bases[saved]) base = saved; } catch {}
-  bases[base].addTo(map);
+  let saved: string | null = null;
+  try { saved = localStorage.getItem("map-base"); if (!saved || !bases[saved]) saved = null; } catch {}
+  // reader.js sets the theme's color-scheme after this script runs, so the default waits for it
+  const pick = () => bases[saved || (getComputedStyle(document.documentElement).colorScheme === "light" ? "Light streets" : "Dark streets")].addTo(map);
+  if (saved || document.readyState !== "loading") pick(); else addEventListener("DOMContentLoaded", pick, { once: true });
   L.control.layers(bases, null, { position: "topright" }).addTo(map);
   map.on("baselayerchange", (e: any) => { try { localStorage.setItem("map-base", e.name); } catch {} });
   L.circleMarker([HOME.lat, HOME.lon], { radius: 5, color: "#ff5c8a", fillOpacity: 1 }).bindTooltip("The receiver (approximate)").addTo(map);
