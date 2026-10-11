@@ -140,24 +140,27 @@ export function streetPhotos(s: number, w: number, n: number, e: number) {
   if (!(n > s && e > w && n - s <= 0.03 && e - w <= 0.04)) throw new Error("zoom in further");
   const box = [w, s, e, n].map((v) => v.toFixed(4)).join(",");
   const key = `photos:${box}`, p = cached(key, 3600_000, async () => {
-    const q = new URLSearchParams({ access_token: token, fields: "id,thumb_1024_url,captured_at,compass_angle,is_pano,geometry,creator", bbox: box, limit: "400" });
+    const q = new URLSearchParams({ access_token: token, fields: "id,thumb_1024_url,thumb_2048_url,captured_at,compass_angle,is_pano,geometry,creator,sequence", bbox: box, limit: "400" });
     // Mapillary's API is flaky: the same box comes back with 36, 27 or 0 photos. Ask again (twice) before believing "none".
     let d: any = { data: [] };
     for (let i = 0; i < 3 && !d.data?.length; i++) d = await json(`https://graph.mapillary.com/images?${q}`, 25_000);
     return (d.data as any[]).filter((p) => p.thumb_1024_url && p.geometry).map((p) => ({
       id: p.id, lat: +p.geometry.coordinates[1].toFixed(6), lon: +p.geometry.coordinates[0].toFixed(6), at: p.captured_at, angle: p.compass_angle ?? null,
-      pano: !!p.is_pano, thumb: p.thumb_1024_url, by: p.creator?.username ?? null,
+      pano: !!p.is_pano, thumb: p.thumb_1024_url, big: p.is_pano ? p.thumb_2048_url : undefined, by: p.creator?.username ?? null, seq: p.sequence ?? null, // big: 360° photos are turned in, so they need the pixels
     })).sort((a, b) => b.at - a.at);
   });
   p.then((l) => { if (!l.length) setTimeout(() => memo.delete(key), 60_000); }, () => {}); // an empty answer may be a hiccup: ask again soon
   return p;
 }
-/** The nearest Mapillary photo within ~60 m of a point (newer wins when two are about as close). */
+/** The best Mapillary photo of a point within ~60 m: near, looking at it (a 360° photo always is), newer. `facing` is
+ *  the bearing from the photo to the point, so a viewer can turn to it. */
 export async function photoNear(lat: number, lon: number) {
   const list = await streetPhotos(lat - 0.0006, lon - 0.0008, lat + 0.0006, lon + 0.0008);
-  const score = (p: { lat: number; lon: number; at: number }) => km(p, { lat, lon }) * 1000 + (Date.now() - p.at) / (365 * 864e5) * 5; // 5 m per year of age
+  const toward = (p: { lat: number; lon: number }) => (Math.atan2((lon - p.lon) * Math.cos((lat * Math.PI) / 180), lat - p.lat) * 180 / Math.PI + 360) % 360;
+  const off = (p: { lat: number; lon: number; angle: number | null; pano: boolean }) => (p.pano || p.angle == null ? 0 : Math.abs(((p.angle - toward(p) + 540) % 360) - 180));
+  const score = (p: { lat: number; lon: number; at: number; angle: number | null; pano: boolean }) => km(p, { lat, lon }) * 1000 + (Date.now() - p.at) / (365 * 864e5) * 5 + Math.max(0, off(p) - 30) * 0.5; // 5 m per year of age; 15 m per 30° looking away
   const best = [...list].sort((a, b) => score(a) - score(b))[0]; // a copy: the cached list stays newest-first
-  return best ? { ...best, meters: Math.round(km(best, { lat, lon }) * 1000), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
+  return best ? { ...best, meters: Math.round(km(best, { lat, lon }) * 1000), facing: Math.round(toward(best)), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
 }
 
 // ---------- FM stations on the air (FCC) + what our own antenna hears ----------
