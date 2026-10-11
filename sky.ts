@@ -1,6 +1,7 @@
 // The sky over NYC, and what's on the air: aircraft (adsb.lol), the ISS (wheretheiss.at), tropical storms (NOAA NHC),
 // the weather now (NWS), and internet radio stations near the city (Radio Browser). All keyless. Every source is
 // fetched here and cached, so one upstream request serves every visitor; the NYC map and Blip read the same data.
+import { mvtPoints } from "./mvt.ts";
 import { gunzipSync } from "node:zlib";
 
 const UA = { "user-agent": "ihor.sh NYC map (+https://ihor.sh/nyc/)" };
@@ -132,25 +133,48 @@ export function radioStations() {
 }
 
 // ---------- street-level photos ----------
-/** Mapillary photos inside a small box (zoomed-in map view), newest first. Key MAPILLARY_TOKEN; photos CC BY-SA 4.0,
- *  "© Mapillary contributors". Thumbnail links are signed and expire after a while, so they're cached for an hour only. */
-export function streetPhotos(s: number, w: number, n: number, e: number) {
-  const token = process.env.MAPILLARY_TOKEN;
-  if (!token) return Promise.resolve([]);
-  if (!(n > s && e > w && n - s <= 0.03 && e - w <= 0.04)) throw new Error("zoom in further");
-  const box = [w, s, e, n].map((v) => v.toFixed(4)).join(",");
-  const key = `photos:${box}`, p = cached(key, 3600_000, async () => {
-    const q = new URLSearchParams({ access_token: token, fields: "id,thumb_1024_url,thumb_2048_url,captured_at,compass_angle,is_pano,geometry,creator,sequence", bbox: box, limit: "400" });
-    // Mapillary's API is flaky: the same box comes back with 36, 27 or 0 photos. Ask again (twice) before believing "none".
-    let d: any = { data: [] };
-    for (let i = 0; i < 3 && !d.data?.length; i++) d = await json(`https://graph.mapillary.com/images?${q}`, 25_000);
-    return (d.data as any[]).filter((p) => p.thumb_1024_url && p.geometry).map((p) => ({
-      id: p.id, lat: +p.geometry.coordinates[1].toFixed(6), lon: +p.geometry.coordinates[0].toFixed(6), at: p.captured_at, angle: p.compass_angle ?? null,
-      pano: !!p.is_pano, thumb: p.thumb_1024_url, big: p.is_pano ? p.thumb_2048_url : undefined, by: p.creator?.username ?? null, seq: p.sequence ?? null, // big: 360° photos are turned in, so they need the pixels
-    })).sort((a, b) => b.at - a.at);
-  });
-  p.then((l) => { if (!l.length) setTimeout(() => memo.delete(key), 60_000); }, () => {}); // an empty answer may be a hiccup: ask again soon
+/** Every Mapillary photo in a box (zoomed-in map view), newest first, as points; thumbnails come from photoImages.
+ *  Read from Mapillary's coverage tiles (z14, ~2.4 km, every photo): the search API returns at most 400 a box, all
+ *  bunched in one spot. Key MAPILLARY_TOKEN; photos CC BY-SA 4.0, "© Mapillary contributors". Over PHOTO_MAX in the
+ *  box, the newest per small grid cell. */
+export type Photo = { id: string; lat: number; lon: number; at: number; angle: number | null; pano: boolean; seq: string | null };
+const PHOTO_MAX = 3000, tiles = new Map<string, { at: number; p: Promise<Photo[]> }>();
+function photoTile(x: number, y: number): Promise<Photo[]> {
+  const k = `${x}/${y}`, hit = tiles.get(k);
+  if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.p;
+  const p = fetch(`https://tiles.mapillary.com/maps/vtp/mly1_public/2/14/${k}?access_token=${process.env.MAPILLARY_TOKEN}`, { signal: AbortSignal.timeout(30_000) })
+    .then(async (r) => { if (!r.ok) throw new Error(`Mapillary tiles: ${r.status}`); return new Uint8Array(await r.arrayBuffer()); })
+    .then((b) => mvtPoints(b, "image", 14, x, y).map((m) => ({ id: String(m.id), lat: +m.lat.toFixed(6), lon: +m.lon.toFixed(6), at: Number(m.captured_at), angle: m.compass_angle ?? null, pano: !!m.is_pano, seq: m.sequence_id ?? null })));
+  tiles.delete(k); tiles.set(k, { at: Date.now(), p }); // newest last: a Manhattan tile is ~50,000 photos, so keep only a dozen
+  if (tiles.size > 12) tiles.delete(tiles.keys().next().value!);
+  p.catch(() => tiles.delete(k));
   return p;
+}
+export async function streetPhotos(s: number, w: number, n: number, e: number) {
+  if (!process.env.MAPILLARY_TOKEN) return [];
+  if (!(n > s && e > w && n - s <= 0.03 && e - w <= 0.04)) throw new Error("zoom in further");
+  const tx = (lon: number) => Math.floor(((lon + 180) / 360) * 16384), ty = (lat: number) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 16384);
+  const parts: Promise<Photo[]>[] = [];
+  for (let x = tx(w); x <= tx(e); x++) for (let y = ty(n); y <= ty(s); y++) parts.push(photoTile(x, y));
+  let list = (await Promise.all(parts)).flat().filter((p) => p.lat >= s && p.lat <= n && p.lon >= w && p.lon <= e).sort((a, b) => b.at - a.at);
+  if (list.length > PHOTO_MAX) { // the newest photo per cell, cells sized so about PHOTO_MAX fit
+    const cell = Math.sqrt(((n - s) * (e - w)) / PHOTO_MAX), seen = new Set<string>();
+    list = list.filter((p) => { const c = `${Math.floor(p.lat / cell)},${Math.floor(p.lon / cell)}`; return !seen.has(c) && !!seen.add(c); });
+  }
+  return list;
+}
+/** Thumbnails (signed links that expire, so kept an hour) and photographers for up to 50 photos, in one request. */
+const images = new Map<string, { at: number; thumb: string; big?: string; by: string | null }>();
+export async function photoImages(ids: string[]) {
+  const want = [...new Set(ids.filter((id) => /^\d{1,20}$/.test(id)))].slice(0, 50), fresh = (id: string) => { const i = images.get(id); return i && Date.now() - i.at < 3600_000; };
+  const missing = want.filter((id) => !fresh(id));
+  if (missing.length && process.env.MAPILLARY_TOKEN) {
+    const q = new URLSearchParams({ access_token: process.env.MAPILLARY_TOKEN, image_ids: missing.join(","), fields: "id,thumb_1024_url,thumb_2048_url,is_pano,creator" });
+    const d: any = await json(`https://graph.mapillary.com/images?${q}`, 25_000);
+    for (const m of d.data ?? []) if (m.thumb_1024_url) images.set(m.id, { at: Date.now(), thumb: m.thumb_1024_url, big: m.is_pano ? m.thumb_2048_url : undefined, by: m.creator?.username ?? null });
+    if (images.size > 20_000) images.clear();
+  }
+  return Object.fromEntries(want.filter(fresh).map((id) => { const { at, ...i } = images.get(id)!; void at; return [id, i]; }));
 }
 /** The best Mapillary photo of a point within ~60 m: near, looking at it (a 360° photo always is), newer. `facing` is
  *  the bearing from the photo to the point, so a viewer can turn to it. */
@@ -160,7 +184,8 @@ export async function photoNear(lat: number, lon: number) {
   const off = (p: { lat: number; lon: number; angle: number | null; pano: boolean }) => (p.pano || p.angle == null ? 0 : Math.abs(((p.angle - toward(p) + 540) % 360) - 180));
   const score = (p: { lat: number; lon: number; at: number; angle: number | null; pano: boolean }) => km(p, { lat, lon }) * 1000 + (Date.now() - p.at) / (365 * 864e5) * 5 + Math.max(0, off(p) - 30) * 0.5; // 5 m per year of age; 15 m per 30° looking away
   const best = [...list].sort((a, b) => score(a) - score(b))[0]; // a copy: the cached list stays newest-first
-  return best ? { ...best, meters: Math.round(km(best, { lat, lon }) * 1000), facing: Math.round(toward(best)), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
+  const img = best && (await photoImages([best.id]))[best.id];
+  return best && img ? { ...best, ...img, meters: Math.round(km(best, { lat, lon }) * 1000), facing: Math.round(toward(best)), page: `https://www.mapillary.com/app/?pKey=${best.id}` } : null;
 }
 
 // ---------- FM stations on the air (FCC) + what our own antenna hears ----------

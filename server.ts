@@ -23,7 +23,7 @@ import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
 import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./evening.ts";
-import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear } from "./sky.ts";
+import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages } from "./sky.ts";
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
@@ -505,12 +505,12 @@ const server = http.createServer(async (req, res) => {
     }
     // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.
     if (url.pathname === "/api/nyc/windy-key") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ key: process.env.WINDY_KEY ?? "" }));
-    if (url.pathname === "/api/nyc/photos" || url.pathname === "/api/nyc/photo-near") { // Mapillary street photos
+    if (url.pathname === "/api/nyc/photos" || url.pathname === "/api/nyc/photo-near" || url.pathname === "/api/nyc/photo-images") { // Mapillary street photos
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = url.searchParams;
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       try {
-        const out = url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
-        const empty = !out || (Array.isArray(out) && !out.length); // don't let browsers keep "nothing here" for half an hour
+        const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
+        const empty = !out || (Array.isArray(out) ? !out.length : !Object.keys(out).length); // don't let browsers keep "nothing here" for half an hour
         return res.writeHead(200, { "content-type": "application/json", "cache-control": empty ? "no-store" : "public, max-age=1800" }).end(JSON.stringify(out));
       } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }

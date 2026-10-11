@@ -757,7 +757,7 @@ async function loadPhotos(g) {
     L.circleMarker([p.lat, p.lon], { renderer: bikeCanvas, radius: 3.5 * DOT, color: p.pano ? "#fff" : c, weight: p.pano ? 1.5 : 1, fillColor: c, fillOpacity: 0.9, bubblingMouseEvents: false })
       .bindTooltip(photoTitle(p)).on("click", () => openPhoto(p)).addTo(g);
   }
-  $("n-photos").innerHTML = `(${list.length} here${list.length >= 400 ? ", newest first; zoom in for more" : ""}) · © <a href="https://www.mapillary.com" target="_blank" rel="noopener">Mapillary</a>`;
+  $("n-photos").innerHTML = `(${list.length} here) · © <a href="https://www.mapillary.com" target="_blank" rel="noopener">Mapillary</a>`;
 }
 let photoTimer = 0;
 map.on("moveend", () => { if (LAYERS.photos.on) { clearTimeout(photoTimer); photoTimer = setTimeout(() => loadPhotos(LAYERS.photos.group).catch(() => {}), 400); } });
@@ -807,12 +807,20 @@ function walkFacing(h) {
   return best;
 }
 const walkSrc = (p) => (p.pano ? p.big ?? p.thumb : p.thumb);
+// Photos come as points; their pictures (signed links) are fetched for the photo and the ~24 nearest, in one request.
+async function photoImgs(p) {
+  const near = [...walk.pool.values()].filter((x) => !x.thumb && x !== p && mDist(p, x) < 50).sort((a, b) => mDist(p, a) - mDist(p, b)).slice(0, 24);
+  const need = [...(p.thumb ? [] : [p]), ...near];
+  if (!need.length) return;
+  const got = await getJSON(`/api/nyc/photo-images?ids=${need.map((x) => x.id).join(",")}`).catch(() => ({}));
+  for (const x of need) if (got[x.id]) Object.assign(x, got[x.id]);
+}
 function walkShow(note = "") {
   const w = document.getElementById("cam-walk"), p = walk.cur;
   if (!w || !p) return;
   walk.note = note;
   const v = w.querySelector(".walkview");
-  v.style.backgroundImage = `url("${walkSrc(p)}")`;
+  if (walkSrc(p)) v.style.backgroundImage = `url("${walkSrc(p)}")`;
   if (p.pano) { // an equirectangular 360° photo: ~100° of it across the window, centered on where you face
     const W = v.clientWidth * 3.6, off = ((walk.h - (p.angle ?? 0) + 540) % 360) - 180;
     Object.assign(v.style, { backgroundSize: `${W}px auto`, backgroundRepeat: "repeat-x", backgroundPosition: `${v.clientWidth / 2 - W * (0.5 + off / 360)}px center` });
@@ -836,21 +844,25 @@ async function walkKey(k) {
     const turn = ((bearing(walk.cur, p) - dir + 540) % 360) - 180;
     if (!p.pano && p.angle != null && angOff(p.angle, walk.h) < 60) walk.h = p.angle;
     else if (p.pano) walk.h = (walk.h + turn / 2 + 360) % 360;
+    if (!p.thumb) { walkShow("…"); await photoImgs(p); }
+    if (!p.thumb) return walkShow("that photo didn't load: try again");
     walk.cur = p;
-    walkLoad(p);
+    walkLoad(p); photoImgs(p);
   } else {
     walk.h = (walk.h + (k === "left" ? -45 : 45) + 360) % 360;
     if (!walk.cur.pano) {
       const p = walkFacing(walk.h);
       if (!p) return walkShow("no photo this way from here; ↑ still walks this way");
+      if (!p.thumb) await photoImgs(p);
+      if (!p.thumb) return walkShow("that photo didn't load: try again");
       walk.cur = p; if (!p.pano) walk.h = p.angle;
     }
   }
   walkShow();
-  const n = walkNext(walk.h); if (n) new Image().src = walkSrc(n); // the likely next step, ready before you press ↑
+  const n = walkNext(walk.h); if (n?.thumb) new Image().src = walkSrc(n); // the likely next step, ready before you press ↑
 }
 /** Open a street photo in the walking window (one at a time), facing `facing` (default: the way the camera looked). */
-function openPhoto(p, facing = p.facing) {
+async function openPhoto(p, facing = p.facing) {
   walk.cur = p; walk.h = (p.pano ? facing ?? p.angle : p.angle ?? facing) ?? 0; // a flat photo can only face where its camera did walk.pool.set(p.id, p); walkLoad(p);
   if (facing == null && p.pano) walk.ready.then(() => { // face along the street: toward the nearest photo of the same sequence
     if (walk.cur !== p) return;
@@ -868,7 +880,8 @@ function openPhoto(p, facing = p.facing) {
     new ResizeObserver(() => walkShow(walk.note)).observe(w.querySelector(".walkview"));
     w.querySelector("button.x").addEventListener("click", () => { walk.marker?.remove(); walk.marker = null; walk.cur = null; seen.photo = null; });
   }
-  walkShow("↑ ↓ ← → to walk");
+  if (!p.thumb) { walkShow("loading the photo…"); await photoImgs(p); }
+  if (walk.cur === p) walkShow(p.thumb ? "↑ ↓ ← → to walk" : "that photo didn't load: try another dot");
 }
 addEventListener("keydown", (e) => { // capture: while walking, the arrows walk instead of panning the map
   const k = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" }[e.key];
