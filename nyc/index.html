@@ -15,7 +15,7 @@
     }
     html, body, #map { height: 100%; margin: 0; }
     body { background: var(--bg); color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
-    #panel { position: absolute; z-index: 1000; top: 12px; left: 56px; max-width: min(340px, calc(100% - 72px));
+    #panel { position: absolute; z-index: 1000; top: 12px; left: 12px; width: min(360px, calc(100% - 24px));
              max-height: calc((100vh - var(--hud-h, 52px) - 20px) / var(--zoom, 1)); overflow: auto; box-sizing: border-box; background: var(--card); border: 1px solid var(--line);
              border-radius: 10px; padding: 12px 14px; }
     h1 { font-size: 1.05rem; margin: 0 0 2px; }
@@ -31,14 +31,20 @@
     .leaflet-popup-content ul.biz { max-height: 240px; overflow-y: auto; }
     .bikes li { list-style: none; margin-left: -16px; }
     #layers label, #trip label { display: block; margin: 3px 0; }
-    .phead { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-    .phead h1 { margin: 0 !important; }
+    .phead { display: flex; align-items: center; gap: 6px; }
+    .phead form { flex: 1; min-width: 0; } .phead input { flex: 1; min-width: 0; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .ptabs { display: flex; gap: 2px; margin: 10px 0 6px; border-bottom: 2px solid var(--line); }
+    .ptabs button, .here-dir button { font-family: var(--body-font, inherit) !important; text-transform: none !important; letter-spacing: 0 !important; }
+    .ptabs button { flex: 1; border: 0 !important; border-bottom: 3px solid transparent !important; margin-bottom: -2px; padding: 6px 2px !important; background: none !important; box-shadow: none !important; color: var(--muted); font-size: .85rem !important; white-space: nowrap; }
+    .ptabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent) !important; }
+    .here-dir { display: flex; gap: 6px; margin: 6px 0 2px; } .here-dir button { font-size: 12px !important; padding: 3px 8px !important; }
+    .pfoot { margin: 10px 0 0; padding-top: 6px; border-top: 1px dashed var(--line); font-size: .72rem; }
     #fold { padding: 4px 10px !important; font-size: 14px !important; }
     #panel.folded #pbody { display: none; }
     #panel.folded { max-height: none; }
     @media (max-width: 700px) {
-      #panel { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; max-width: none !important; max-height: 50vh !important; }
-      #panel .phead h1 { font-size: 14px !important; text-shadow: none !important; }
+      #panel { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-width: none !important; max-height: 50vh !important; }
     }
     .legend { font-size: .75rem; }
     .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin: 0 3px 0 8px; vertical-align: 0; }
@@ -108,9 +114,6 @@
     .nearbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
     #nearBox ul { margin: 4px 0 0; padding-left: 0; list-style: none; max-height: 220px; overflow: auto; }
     #nearBox li { padding: 3px 0; cursor: pointer; border-bottom: 1px dashed var(--line); } #nearBox li:hover { color: var(--fg); }
-    #disclaimer { position: fixed; bottom: 22px; left: 440px; right: 200px; z-index: 800; margin: 0; padding: 3px 8px; width: fit-content; max-width: 520px;
-      font-size: 11px; line-height: 1.3; background: var(--card); color: var(--muted); border: 1px solid var(--line); pointer-events: none; }
-    @media (max-width: 700px) { #disclaimer { top: 64px; bottom: auto; left: 56px; right: 56px; margin: 0 auto; text-align: center; } }
     .cam-icon { font-size: 14px; line-height: 1; filter: drop-shadow(0 0 2px #000); }
   </style>
 </head>
@@ -118,17 +121,20 @@
 <div id="map"></div>
 <ul id="sugg" role="listbox" aria-label="Matching places" hidden></ul>
 <div id="panel">
-  <div class="phead"><h1>NYC Live Map</h1><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
+  <h1 class="sr">NYC Live Map</h1>
+  <div class="phead"><form id="search" role="search" class="pickrow"><input id="q" type="search" placeholder="🔎 Search NYC" aria-label="Find a place or address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button title="Find it on the map">Go</button></form><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
-  <div class="muted">What's around you: subway stations (and their alerts), bus stops, Citi Bike, cameras and public restrooms within 400 m. Switch on 🚨 below for every station with an MTA alert (click one for the nearest Citi Bikes), and more layers under it.</div>
-  <form id="search" role="search" class="pickrow" style="margin:8px 0"><input id="q" type="search" placeholder="🔎 Find a place or address" aria-label="Find a place or address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg" style="flex:1"><button title="Find it on the map">Go</button></form>
-  <div class="muted" id="status">Loading…</div>
-  <div class="nearbar"><button id="nearBtn" title="Subway, buses, Citi Bike, cameras and public restrooms within 400 m of you">📍 Within 400 m of me</button><button id="nearHere" class="linkish">…of the map center</button><button id="nearOff" class="linkish" hidden>✕ clear</button></div>
-  <div id="nearBox" class="muted" hidden></div>
-  <details style="margin-top:8px"><summary id="typesSum">MTA alerts by type</summary><div id="types"></div></details>
-  <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
-  <button id="refresh" style="margin-top:8px">Refresh</button> <a href="./free.html" style="font-size:.85rem">Free NYC today →</a>
-  <details open><summary>Trip planner: cameras on your route</summary>
+  <div class="ptabs" role="tablist"><button role="tab" data-tab="explore">Nearby</button><button role="tab" data-tab="trip">Directions</button><button role="tab" data-tab="layers">Layers</button></div>
+  <section data-tab="explore" role="tabpanel">
+    <div class="nearbar"><button id="nearBtn" title="Subway, buses, Citi Bike, cameras and public restrooms within 400 m of you">📍 Within 400 m of me</button><button id="nearHere" class="linkish">…of the map center</button><button id="nearOff" class="linkish" hidden>✕ clear</button></div>
+    <div id="nearBox" class="muted" hidden></div>
+    <details><summary id="typesSum">MTA alerts by type</summary><div id="types"></div></details>
+    <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
+    <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
+    <div id="rresults" class="muted"></div>
+    <div class="muted" style="margin-top:8px"><a href="./free.html">Free NYC today →</a> · Double-click or long-press the map for what's there.</div>
+  </section>
+  <section data-tab="trip" role="tabpanel" hidden>
     <form id="trip">
       <label>From <span class="pickrow"><input id="tFrom" placeholder="Address, place, or 📍 pick on the map" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button type="button" class="pick" data-for="tFrom" title="Pick the start on the map" aria-label="Pick the start on the map">📍</button><button type="button" id="tHere" title="Start from where I am" aria-label="Start from where I am">🎯</button></span></label>
       <div id="tStops"></div>
@@ -146,18 +152,15 @@
       <button style="margin-top:6px">Plan</button> <button type="button" id="tClear" style="margin-top:6px">Clear</button>
     </form>
     <div id="tripOut" class="muted"></div>
-  </details>
-  <details open><summary>More on the map</summary>
+  </section>
+  <section data-tab="layers" role="tabpanel" hidden>
     <div id="layers"></div>
-    <p class="muted" style="margin:6px 0 0">📻 NYC radio stations, and which ones this site's antenna hears, moved to the <a href="/radio/stations/">Radio world</a>.</p>
-    <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
-    <div id="rresults" class="muted"></div>
-    <div class="muted" style="margin-top:6px">Tip: double-click or long-press anywhere on the map to see what's there (address, districts, precinct).</div>
-  </details>
+    <p class="muted" style="margin:6px 0 0">📻 NYC radio stations moved to the <a href="/radio/stations/">Radio world</a>.</p>
+  </section>
+  <div class="muted pfoot"><span id="status">Loading…</span> <button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button><br>Open data, some of it estimated (train positions): it can be late or wrong.</div>
   </div>
 </div>
 <div id="cams" aria-live="polite"></div>
-<p id="disclaimer">All data comes from open sources or is estimated (train positions are). It can be late or wrong, so don't rely on it.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
@@ -178,8 +181,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const getJSON = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(`${r.status} ${u}`); return r.json(); });
 
-const map = L.map("map", { doubleClickZoom: false }).setView([40.73, -73.95], 12);
+const map = L.map("map", { doubleClickZoom: false, zoomControl: false }).setView([40.73, -73.95], 12);
 baseMaps(map, { credit: "MTA · Citi Bike" });
+L.control.zoom({ position: "topright" }).addTo(map);
 const alertLayer = L.layerGroup(); // stations with alerts: a layer you switch on (🚨), off by default
 const bikeLayer = L.layerGroup().addTo(map);
 
@@ -1029,6 +1033,7 @@ function pinIcon(id) {
 let picking = null;
 const setPicking = (id) => {
   picking = id;
+  if (id) { showTab("trip"); fold(false); }
   document.body.classList.toggle("picking", !!id);
   $("pickHint").hidden = !id;
   document.querySelectorAll(".pick").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.for === id)));
@@ -1041,6 +1046,7 @@ $("trip").addEventListener("click", (e) => {
 addEventListener("keydown", (e) => { if (e.key === "Escape" && picking) setPicking(null); });
 /** A start, stop or destination pin at `latlng`; the field shows `label`, or the nearest address once it's looked up. */
 async function placePin(id, latlng, label) {
+  showTab("trip");
   picked[id] = { lat: latlng.lat, lon: latlng.lng };
   pinMarkers[id]?.remove();
   pinMarkers[id] = L.marker(latlng, { icon: pinIcon(id), draggable: true, title: id === "tFrom" ? "Start" : id === "tTo" ? "Destination" : "Stop" }).addTo(map)
@@ -1156,7 +1162,7 @@ meBtn.setAttribute("aria-label", "Show me on the map");
 meBtn.style.fontSize = "18px";
 L.DomEvent.disableClickPropagation(meBtn);
 meBtn.onclick = (e) => { e.preventDefault(); meAt ? stopMe() : locateMe(); };
-new (L.Control.extend({ onAdd: () => { const d = L.DomUtil.create("div", "leaflet-bar"); d.append(meBtn); return d; } }))({ position: "topleft" }).addTo(map);
+new (L.Control.extend({ onAdd: () => { const d = L.DomUtil.create("div", "leaflet-bar"); d.append(meBtn); return d; } }))({ position: "topright" }).addTo(map);
 const startHere = () => placePin("tFrom", meAt).then(() => { if ($("tTo").value) $("trip").requestSubmit(); else setPicking("tTo"); });
 function locateMe(asStart = false, auto = false) {
   meWanted = asStart;
@@ -1318,18 +1324,30 @@ map.on("click", async (e) => {
 map.on("dblclick contextmenu", (e) => { if (!picking) showHere(e.latlng); });
 /** What's at a point: the address, the businesses there and a street photo of it (a click on the map, or a search,
  *  which also gives the place's name as `title` and moves the map there). */
+let hereAt = null; // the spot the "what's here" popup is about, for its directions buttons
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-dir]");
+  if (!b || !hereAt) return;
+  const id = b.dataset.dir, other = id === "tFrom" ? "tTo" : "tFrom";
+  map.closePopup();
+  await placePin(id, hereAt.ll, hereAt.label || undefined);
+  if ($(other).value) $("trip").requestSubmit(); else setPicking(other);
+});
 async function showHere(ll, title = "") {
   if (title) map.setView(ll, Math.max(map.getZoom(), 17));
   const head = title ? `<b>📍 ${esc(title)}</b><br>` : "";
+  const dir = `<div class="here-dir"><button data-dir="tFrom">↱ Directions from here</button> <button data-dir="tTo">to here</button></div>`;
+  const at = (hereAt = { ll, label: title });
   const p = L.popup({ maxWidth: 340 }).setLatLng(ll).setContent(`${head}Looking up…`).openOn(map);
   const phP = getJSON(`/api/nyc/photo-near?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null); // alongside the address
   const d = await getJSON(`/api/nyc/point?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null);
   const photoBox = `<div class="here-photo muted">📸 looking for a street photo…</div>`; // the first look in an area can take several seconds
-  if (!d?.found) p.setContent(`${head}No NYC address found here.${photoBox}`);
+  if (!d?.found) p.setContent(`${head}No NYC address found here.${dir}${photoBox}`);
   else {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
-  p.setContent(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${photoBox}
+  at.label ||= d.address;
+  p.setContent(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
@@ -1426,20 +1444,23 @@ map.on("popupopen", (e) => {
     if (e.target.closest("button, a, input") || e.button || matchMedia("(max-width: 700px)").matches) return;
     const r = panel.getBoundingClientRect(), box = $("map").getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
     const move = (m) => { const x = Math.max(box.left, Math.min(box.right - 80, m.clientX - sx)), y = Math.max(box.top, Math.min(box.bottom - 60, m.clientY - sy)); Object.assign(panel.style, { left: `${x - box.left}px`, top: `${y - box.top}px` }); };
-    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); placeDisclaimer(); };
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); };
     addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
     e.preventDefault();
   });
 }
+// Three tabs, like a maps app's panel; the last one opened is remembered in this browser.
+const showTab = (t) => {
+  document.querySelectorAll("#panel [data-tab]").forEach((el) => (el.tagName === "BUTTON" ? el.setAttribute("aria-selected", String(el.dataset.tab === t)) : (el.hidden = el.dataset.tab !== t)));
+  try { localStorage.setItem("nyc-tab", t); } catch {}
+};
+document.querySelector(".ptabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) showTab(b.dataset.tab); });
+try { showTab(localStorage.getItem("nyc-tab") || "explore"); } catch { showTab("explore"); }
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 // On phones the panel is a sheet at the bottom: Blip (companion.js) stands on top of it instead of on its buttons.
 const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${$("panel").offsetHeight + 8}px` : "0px");
 new ResizeObserver(blipFloor).observe($("panel")); addEventListener("resize", blipFloor);
 $("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
-// The disclaimer sits right of the panel on wide screens; the panel's width changes with the reader's text size.
-const placeDisclaimer = () => { $("disclaimer").style.left = matchMedia("(max-width: 700px)").matches ? "" : `${Math.round($("panel").getBoundingClientRect().right + 10)}px`; };
-addEventListener("resize", placeDisclaimer);
-new ResizeObserver(placeDisclaimer).observe($("panel"));
 if (matchMedia("(max-width: 700px)").matches) fold(true);
 
 $("refresh").addEventListener("click", refresh);
