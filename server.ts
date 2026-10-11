@@ -727,4 +727,7 @@ startJobs();
 startEmbedding();
 startEvening();
 startMesh();
-server.listen(PORT, "127.0.0.1", () => console.log(`ihor.sh on http://localhost:${PORT}`));
+// HOST=0.0.0.0 (in .env) also serves the local network directly, e.g. /mcp at http://<this Mac's address>:8080/mcp;
+// the default is this machine only (the Cloudflare tunnel connects here).
+const HOST = process.env.HOST ?? "127.0.0.1";
+server.listen(PORT, HOST, () => console.log(`ihor.sh on http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`));
