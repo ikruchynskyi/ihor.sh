@@ -29,7 +29,7 @@ import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
-import { startMonitor, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
+import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -405,10 +405,10 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "POST") {
         const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
         if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
-        let raw = ""; for await (const c of req) { raw += c; if (raw.length > 500) return res.writeHead(413).end(); }
+        let raw = ""; for await (const c of req) { raw += c; if (raw.length > 20_000) return res.writeHead(413).end(); } // a scan list: up to 150 channels
         const b = JSON.parse(raw || "{}");
         try {
-          const out = b.stop ? (stopMonitor("stopped by a visitor"), monitorState()) : await startMonitor(Number(b.mhz), String(b.label ?? ""), b.mode === "WFM" ? "WFM" : "NFM");
+          const out = b.stop ? (stopMonitor("stopped by a visitor"), monitorState()) : b.scan ? await startScan(b.scan) : await startMonitor(Number(b.mhz), String(b.label ?? ""), b.mode === "WFM" ? "WFM" : "NFM");
           return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out));
         } catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
       }

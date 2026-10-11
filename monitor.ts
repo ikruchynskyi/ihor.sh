@@ -15,19 +15,21 @@ const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
 const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
 const DIR = path.join(import.meta.dirname, "data", "monitor");
+const SCAN_DWELL = 0.25, SCAN_HANG = 2.5, SCAN_MAX = 150; // seconds on each quiet channel; how long to stay after a transmission ends
 const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000, MAX_UTT_S = 25, MIN_UTT_S = 0.7;
 
-export type Caption = { at: string; text: string; seconds: number; calls: Call[] };
+export type Caption = { at: string; text: string; seconds: number; calls: Call[]; mhz: number; label: string };
+type Scan = { list: { mhz: number; label: string }[]; i: number; hits: Record<string, string> };
 export type Call = { call: string; found: boolean; name?: string; cls?: string; grid?: string; lat?: number; lon?: number; city?: string; how: "spoken" | "phonetic" };
 
 type Viewer = { res: import("node:http").ServerResponse };
 const viewers = new Set<Viewer>(), ears = new Set<import("node:http").ServerResponse>();
-let state = { on: false, mhz: 0, label: "", mode: "NFM" as "NFM" | "WFM", open: false, since: "", error: "", captions: [] as Caption[], transcribing: 0 };
+let state = { on: false, mhz: 0, label: "", mode: "NFM" as "NFM" | "WFM", open: false, since: "", error: "", captions: [] as Caption[], transcribing: 0, scan: null as Scan | null };
 let abort: AbortController | null = null, lastViewer = Date.now(), whisper: ChildProcess | null = null;
 const pending = new Map<string, (r: any) => void>();
 
 const send = (ev: string, data: unknown) => { const line = `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`; for (const v of viewers) v.res.write(line); };
-const pub = () => ({ on: state.on, mhz: state.mhz, label: state.label, mode: state.mode, open: state.open, since: state.since, error: state.error, transcribing: state.transcribing, viewers: viewers.size, captions: state.captions.slice(-40) });
+const pub = () => ({ on: state.on, mhz: state.mhz, label: state.label, mode: state.mode, open: state.open, since: state.since, error: state.error, transcribing: state.transcribing, viewers: viewers.size, captions: state.captions.slice(-40), scan: state.scan });
 export const monitorState = pub;
 
 // ---------- the whisper worker: one python process that keeps the model loaded ----------
@@ -91,7 +93,21 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
   const down = new FirDecimator(firLowpass(6.5e3 / rx.audioFs, 2e3 / rx.audioFs), Math.round(rx.audioFs / AUDIO_FS), 1);
   state.since = new Date().toISOString(); state.error = ""; send("state", pub());
   let chunks = 0, open = false, closedFor = 0, utt: Int16Array[] = [], uttLen = 0, utStart = 0, rest = new Uint8Array(0);
+  // Scanning: the slice hops from channel to channel (instant inside the dongle's window; outside it the dongle retunes),
+  // listens DWELL seconds, and holds on a channel while it's busy and HANG seconds after, like a scanner radio.
+  let settle = 0, dwell = SCAN_DWELL, hopping = false, fails = 0, window0 = 0;
+  const hop = async () => {
+    const sc = state.scan!; hopping = true;
+    sc.i = (sc.i + 1) % sc.list.length; const ch = sc.list[sc.i];
+    state.mhz = ch.mhz; state.label = ch.label;
+    const r: any = await fetch(`${SDR}/api/slice`, { method: "POST", headers: { "content-type": "application/json", "x-via-ihor": "1" }, body: JSON.stringify({ id: "monitor", center: Math.round(ch.mhz * 1e6) }), signal: ac.signal }).then((x) => x.json()).catch((e) => ({ error: e.message }));
+    if (ac.signal.aborted) return;
+    if (r.error) { if (++fails >= sc.list.length) { stopMonitor("scan blocked"); state.error = `Can't scan: ${r.error}`; send("state", pub()); return; } settle = 0; dwell = 0; }
+    else { fails = 0; settle = r.window?.[0] !== window0 ? 0.35 : 0.12; window0 = r.window?.[0]; dwell = SCAN_DWELL; } // skip what was in flight (and the retune)
+    hopping = false; send("scan", { i: sc.i, mhz: ch.mhz, label: ch.label });
+  };
   const finish = async () => {
+    const { mhz, label } = state;
     const n = uttLen; const pcm = new Int16Array(n); let o = 0; for (const part of utt) { pcm.set(part, o); o += part.length; }
     utt = []; uttLen = 0;
     if (n < MIN_UTT_S * AUDIO_FS) return;
@@ -107,7 +123,7 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
       const d: any = await fccLookup(c.call).catch(() => null);
       calls.push(d?.found ? { call: c.call, found: true, name: d.name, cls: d.licenseClass ?? d.type, grid: d.grid, lat: d.lat, lon: d.lon, city: String(d.address ?? "").split(",").slice(-2).join(",").trim(), how: c.how } : { call: c.call, found: false, how: c.how });
     }
-    const cap: Caption = { at: new Date().toISOString(), text, seconds: +(n / AUDIO_FS).toFixed(1), calls };
+    const cap: Caption = { at: new Date().toISOString(), text, seconds: +(n / AUDIO_FS).toFixed(1), calls, mhz, label };
     state.captions.push(cap); if (state.captions.length > 200) state.captions.shift();
     send("caption", cap); send("state", pub());
   };
@@ -120,33 +136,46 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     rest = bytes.subarray(n);
     const st = rx.process(iq), db = power(st.channel);
     const noise = sides.length ? Math.min(...sides.map((r) => power(r.process(iq).channel))) : -Infinity, snr = db - noise;
-    const sec = iq.length / 2 / fs, on = mode === "WFM" || (++chunks > 15 && snr > 10); // the dongle needs a moment to settle
+    const sec = iq.length / 2 / fs;
+    if (state.scan && (hopping || settle > 0)) { settle -= sec; continue; }
+    const on = mode === "WFM" || (++chunks > 15 && snr > 10); // the dongle needs a moment to settle
     if (on) closedFor = 0; else closedFor += sec;
     const nowOpen = on || (open && closedFor < 0.7);
-    if (nowOpen !== open) { open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), snr: Number.isFinite(snr) ? +snr.toFixed(1) : null }); if (open) utStart = Date.now(); }
+    if (nowOpen !== open) {
+      open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), snr: Number.isFinite(snr) ? +snr.toFixed(1) : null, mhz: state.mhz }); if (open) utStart = Date.now();
+      if (open && state.scan) { state.scan.hits[state.mhz] = new Date().toISOString(); send("hit", { mhz: state.mhz, label: state.label, at: state.scan.hits[state.mhz] }); }
+    }
     const a = down.process(st.audio), pcm = new Int16Array(a.length);
     if (open) for (let i = 0; i < a.length; i++) pcm[i] = Math.max(-32767, Math.min(32767, Math.round(a[i] * 24000)));
     const chunk = Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength);
     for (const e of ears) e.write(chunk);
     if (open) { utt.push(pcm); uttLen += pcm.length; if (uttLen >= MAX_UTT_S * AUDIO_FS) finish(); }
     else if (uttLen) finish();
+    if (state.scan && chunks > 15) { if (open) dwell = SCAN_HANG; else if ((dwell -= sec) <= 0 && !uttLen) void hop(); }
     if (Date.now() - lastViewer > IDLE_MS && !viewers.size) { stopMonitor("nobody listening"); break; }
   }
 }
 
-export async function startMonitor(mhz: number, label = "", mode: "NFM" | "WFM" = "NFM") {
+export async function startMonitor(mhz: number, label = "", mode: "NFM" | "WFM" = "NFM", scan: Scan | null = null) {
   if (!(mhz >= 24 && mhz <= 1766)) throw new Error("Frequency must be 24–1766 MHz");
   stopMonitor("retuning", true);
-  state = { ...state, on: true, mhz, label: label.slice(0, 60), mode, open: false, error: "", captions: state.mhz === mhz ? state.captions : [] };
+  state = { ...state, on: true, mhz, label: label.slice(0, 60), mode, open: false, error: "", captions: state.mhz === mhz || scan || state.scan ? state.captions : [], scan };
   const ac = new AbortController(); abort = ac; lastViewer = Date.now();
   worker(); // warm the model while the dongle tunes
   run(mhz, mode, ac).catch((e) => { if (ac.signal.aborted) return; state.error = e.message; state.on = false; state.open = false; send("state", pub()); console.warn("monitor:", e.message); });
   return pub();
 }
+/** Scan a list of FM channels (repeater outputs) in a loop; channels that carry a transmission are kept in scan.hits. */
+export function startScan(list: unknown) {
+  const chans = (Array.isArray(list) ? list : []).map((c: any) => ({ mhz: +Number(c?.mhz).toFixed(4), label: String(c?.label ?? "").slice(0, 40) }))
+    .filter((c) => c.mhz >= 24 && c.mhz <= 1766).filter((c, i, a) => a.findIndex((d) => d.mhz === c.mhz) === i).slice(0, SCAN_MAX);
+  if (chans.length < 2) throw new Error("Pick at least two repeaters to scan.");
+  return startMonitor(chans[0].mhz, chans[0].label, "NFM", { list: chans, i: 0, hits: {} });
+}
 export function stopMonitor(why = "stopped", quiet = false) {
   abort?.abort(); abort = null;
   // what was said stays only with those who listened (their page keeps it)
-  if (!quiet) { state = { ...state, on: false, open: false, error: "", captions: [] }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
+  if (!quiet) { state = { ...state, on: false, open: false, error: "", captions: [], scan: null }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
   void why;
 }
 /** Server-sent events for the page: state, squelch, caption. */

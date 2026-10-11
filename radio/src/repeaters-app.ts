@@ -12,6 +12,8 @@ const canvas = L.canvas({ padding: 0.3 });
 let all: Repeater[] = [];
 const on = new Set(["2m", "70cm", "1.25m", "6m"]);
 let shown: (Repeater & { km: number })[] = [], lastLicense: any = null;
+const picked = new Map<number, Repeater>(); // repeaters ticked in the list for the scanner (kept while panning away)
+const scannable = (r: Repeater) => r.mode === "FM" && r.outputMHz >= 24 && r.outputMHz <= 1766;
 
 $("bands").innerHTML = Object.entries(BANDS).map(([b, c]) => `<label><input type="checkbox" data-b="${b}" ${on.has(b) ? "checked" : ""}><span class="swatch" style="background:${c}"></span>${b}</label>`).join("");
 $("bands").addEventListener("change", (e) => { const b = (e.target as HTMLInputElement).dataset.b!; (e.target as HTMLInputElement).checked ? on.add(b) : on.delete(b); render(); });
@@ -33,13 +35,16 @@ function popup(r: Repeater) {
     <span class="freq">${r.outputMHz.toFixed(4)} MHz</span> · offset ${fmtOff(r.offsetMHz)} MHz (transmit on ${r.inputMHz.toFixed(4)})<br>
     ${r.toneUp ? `Tone ${esc(r.toneUp)} Hz` : "No tone listed"} · ${esc(r.mode)}${r.network ? ` · ${esc(r.network)}${r.node ? ` node ${esc(r.node)}` : ""}` : ""}${r.operational ? "" : " · <b>not operational</b>"}${r.restriction ? ` · ${esc(r.restriction)}` : ""}<br>
     ${r.description ? `<span class="muted">${esc(r.description).replace(/\n/g, "<br>")}</span><br>` : ""}
-    <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${r.outputMHz >= 24 && r.outputMHz <= 1766 && r.mode === "FM" ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
+    <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${scannable(r) ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
 }
 function render() {
   layer.clearLayers();
-  for (const r of all) {
+  const hit = (r: Repeater) => log.hits[r.outputMHz]; // drawn last, so on top: a white ring for a repeater the scan heard busy
+  for (const r of [...all].sort((a, b) => Number(!!hit(a)) - Number(!!hit(b)))) {
     if (!on.has(r.band) || ($<HTMLInputElement>("opOnly").checked && !r.operational) || ($<HTMLSelectElement>("mode").value && !r.mode.toUpperCase().includes($<HTMLSelectElement>("mode").value))) continue;
-    L.circleMarker([r.lat, r.lon], { renderer: canvas, radius: 6, color: BANDS[r.band], fillColor: BANDS[r.band], fillOpacity: 0.85, weight: 1 }).bindPopup(() => popup(r), { maxWidth: 320 }).bindTooltip(`${r.callsign} ${r.outputMHz}`).addTo(layer);
+    const h = hit(r), p = picked.has(r.id);
+    L.circleMarker([r.lat, r.lon], { renderer: canvas, radius: h ? 11 : p ? 8 : 6, color: h || p ? "#fff" : BANDS[r.band], fillColor: BANDS[r.band], fillOpacity: h ? 1 : 0.85, weight: h ? 4 : p ? 2 : 1 })
+      .bindPopup(() => popup(r), { maxWidth: 320 }).bindTooltip(`${r.callsign} ${r.outputMHz}${h ? ` · busy at ${tfmt(h)}` : ""}`).addTo(layer);
   }
   renderList();
 }
@@ -48,9 +53,12 @@ function renderList() {
   shown = all.filter((r) => on.has(r.band) && (!$<HTMLInputElement>("opOnly").checked || r.operational) && (!$<HTMLSelectElement>("mode").value || r.mode.toUpperCase().includes($<HTMLSelectElement>("mode").value)))
     .map((r) => ({ ...r, km: Math.hypot((r.lat - c.lat) * 111, (r.lon - c.lng) * 84) })).sort((a, b) => a.km - b.km);
   $("count").textContent = `(${shown.length}${total > all.length ? ` of the nearest ${all.length}; zoom in for all ${total}` : ""})`;
-  $("list").innerHTML = shown.slice(0, 60).map((r, i) => `<li data-i="${i}"><span class="swatch" style="background:${BANDS[r.band]}"></span><b>${esc(r.callsign)}</b> <span class="freq">${r.outputMHz.toFixed(3)}</span> <span class="muted">${fmtOff(r.offsetMHz)} ${r.toneUp ? `· ${esc(r.toneUp)} Hz` : ""} · ${esc(r.mode)} · ${r.km.toFixed(1)} km · ${esc(r.city)}</span></li>`).join("");
+  $("list").innerHTML = shown.slice(0, 60).map((r, i) => `<li data-i="${i}">${scannable(r) ? `<input type="checkbox" data-pick="${i}" ${picked.has(r.id) ? "checked" : ""} aria-label="Scan ${esc(r.callsign)}" title="Scan this one">` : ""}${log.hits[r.outputMHz] ? `📶 ` : ""}<span class="swatch" style="background:${BANDS[r.band]}"></span><b>${esc(r.callsign)}</b> <span class="freq">${r.outputMHz.toFixed(3)}</span> <span class="muted">${fmtOff(r.offsetMHz)} ${r.toneUp ? `· ${esc(r.toneUp)} Hz` : ""} · ${esc(r.mode)} · ${r.km.toFixed(1)} km · ${esc(r.city)}${log.hits[r.outputMHz] ? ` · <b>busy at ${tfmt(log.hits[r.outputMHz])}</b>` : ""}</span></li>`).join("");
+  scanWhat();
 }
 $("list").addEventListener("click", (e) => {
+  const pick = (e.target as HTMLElement).closest("input[data-pick]") as HTMLInputElement | null;
+  if (pick) { const r = shown[Number(pick.dataset.pick)]; pick.checked ? picked.set(r.id, r) : picked.delete(r.id); render(); return; }
   const r = shown[Number((e.target as HTMLElement).closest("li")?.dataset.i)];
   if (r) { map.setView([r.lat, r.lon], 13); L.popup().setLatLng([r.lat, r.lon]).setContent(popup(r)).openOn(map); }
 });
@@ -89,7 +97,7 @@ const heardLayer = L.layerGroup().addTo(map), heardPins = new Map<string, any>()
 let mon: any = null, es: EventSource | null = null;
 const tfmt = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const callHtml = (c: any) => `<span class="call ${c.found ? "" : "unknown"}" data-heardcall="${esc(c.call)}" title="${c.found ? esc(`${c.name ?? ""} ${c.cls ?? ""} ${c.grid ?? ""}`) : "not found in the FCC database (misheard, or not a US call)"}">${esc(c.call)}</span>`;
-const capHtml = (c: any) => `<div class="cap"><time>${tfmt(c.at)}</time>${esc(c.text)}${c.calls?.length ? ` <span class="muted">·</span> ${c.calls.map(callHtml).join(" ")}` : ""}</div>`;
+const capHtml = (c: any) => `<div class="cap"><time>${tfmt(c.at)}</time>${c.mhz ? `<span class="muted freq" title="${esc(c.label ?? "")}">${c.mhz.toFixed(3)}</span> ` : ""}${esc(c.text)}${c.calls?.length ? ` <span class="muted">·</span> ${c.calls.map(callHtml).join(" ")}` : ""}</div>`;
 function pinHeard(h: any) {
   if (!h.lat || !h.lon) return;
   const icon = L.divIcon({ className: "", html: `<div style="font-size:22px;line-height:22px;filter:drop-shadow(0 0 3px #000)">📻</div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
@@ -100,8 +108,9 @@ function pinHeard(h: any) {
 }
 // What this tab heard while listening, kept until the tab closes (the server keeps nothing once listening stops,
 // so other visitors never see it).
-let log: { captions: any[]; heard: any[] } = { captions: [], heard: [] };
+let log: { captions: any[]; heard: any[]; hits: Record<string, string> } = { captions: [], heard: [], hits: {} };
 try { log = JSON.parse(sessionStorage.getItem("rpt:log") || "") ?? log; } catch {}
+log.hits ??= {};
 const saveLog = () => { try { sessionStorage.setItem("rpt:log", JSON.stringify(log)); } catch {} };
 function addCaption(c: any, mhz: number, label: string) {
   if (log.captions.some((x) => x.at === c.at && x.text === c.text)) return;
@@ -111,12 +120,16 @@ function addCaption(c: any, mhz: number, label: string) {
     log.heard = [...log.heard.filter((y) => y.call !== x.call), { ...x, at: c.at, mhz, label, text: c.text.slice(0, 160), times: (old?.times ?? 0) + 1 }];
   }
 }
+function renderStatus() { // the light part, redrawn on every scanner hop
+  const live = mon.on && !mon.error, sc = live && mon.scan;
+  $("monSum").textContent = live ? `${sc ? "📡 " : ""}${mon.mhz.toFixed(3)} MHz${mon.label ? ` · ${mon.label}` : ""}` : "";
+  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `${sc ? `📡 Scanning ${sc.i + 1}/${sc.list.length} (${Object.keys(sc.hits).length} busy so far) · ` : ""}<span class="sq ${mon.open ? "open" : ""}"></span>${mon.mode === "WFM" ? "Listening" : mon.open ? `Someone's transmitting${mon.snr != null ? ` (${mon.snr} dB over the noise)` : ""}` : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""}${sc ? "" : ` · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>`}` : "Not listening. Pick a repeater on the map, or type a frequency.";
+  $("monStop").hidden = !live; $("monStop").textContent = sc ? "Stop scanning" : "Stop";
+}
 function renderMon() {
   if (!mon) return;
   const live = mon.on && !mon.error;
-  $("monSum").textContent = live ? `${mon.mhz.toFixed(3)} MHz${mon.label ? ` · ${mon.label}` : ""}` : "";
-  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `<span class="sq ${mon.open ? "open" : ""}"></span>${mon.mode === "WFM" ? "Listening" : mon.open ? `Someone's transmitting${mon.snr != null ? ` (${mon.snr} dB over the noise)` : ""}` : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""} · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>` : "Not listening. Pick a repeater on the map, or type a frequency.";
-  $("monStop").hidden = !live;
+  renderStatus();
   const audio = $<HTMLAudioElement>("monAudio");
   if (live && (audio.hidden || !audio.src)) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
   if (!live && !audio.hidden) { audio.hidden = true; audio.removeAttribute("src"); audio.load(); }
@@ -142,32 +155,48 @@ function renderMon() {
     addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
     e.preventDefault();
   });
-  $("capClear").onclick = () => { log = { captions: [], heard: [] }; saveLog(); heardLayer.clearLayers(); heardPins.clear(); renderMon(); };
+  $("capClear").onclick = () => { log = { captions: [], heard: [], hits: {} }; saveLog(); heardLayer.clearLayers(); heardPins.clear(); renderMon(); render(); };
   $("capFold").onclick = () => { const f = panel.classList.toggle("folded"); $("capFold").textContent = f ? "▸" : "▾"; $("capFold").setAttribute("aria-expanded", String(!f)); };
 }
 function watchMon() {
   es?.close();
   es = new EventSource("/api/radio/monitor/events");
-  es.addEventListener("state", (m) => { const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d }; if (d.on) { for (const c of d.captions ?? []) addCaption(c, d.mhz, d.label); saveLog(); } renderMon(); });
-  es.addEventListener("squelch", (m) => { if (mon) { const d = JSON.parse((m as MessageEvent).data); mon.open = d.open; mon.snr = d.snr; renderMon(); } });
-  es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; addCaption(c, mon.mhz, mon.label); saveLog(); renderMon(); });
+  es.addEventListener("state", (m) => {
+    const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d };
+    if (d.on) { for (const c of d.captions ?? []) addCaption(c, c.mhz ?? d.mhz, c.label ?? d.label); const n = Object.keys(log.hits).length; Object.assign(log.hits, d.scan?.hits); saveLog(); if (Object.keys(log.hits).length !== n) render(); }
+    renderMon();
+  });
+  es.addEventListener("squelch", (m) => { if (mon) { const d = JSON.parse((m as MessageEvent).data); mon.open = d.open; mon.snr = d.snr; renderStatus(); } });
+  es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; addCaption(c, c.mhz ?? mon.mhz, c.label ?? mon.label); saveLog(); renderMon(); });
+  es.addEventListener("scan", (m) => { const d = JSON.parse((m as MessageEvent).data); if (!mon?.scan) return; mon.scan.i = d.i; mon.mhz = d.mhz; mon.label = d.label; mon.open = false; renderStatus(); });
+  es.addEventListener("hit", (m) => { const d = JSON.parse((m as MessageEvent).data); if (!mon?.scan) return; mon.scan.hits[d.mhz] = log.hits[d.mhz] = d.at; saveLog(); render(); renderStatus(); });
 }
-async function monitor(mhz: number, label: string, mode = "NFM") {
-  $("monStatus").textContent = `Tuning the server SDR to ${mhz.toFixed(3)} MHz…`; $<HTMLDetailsElement>("mon").open = true;
+async function monitor(body: object, what: string) {
+  $("monStatus").textContent = `Tuning the server SDR to ${what}…`; $<HTMLDetailsElement>("mon").open = true;
   // start the audio inside the click, while the browser still counts it as a user gesture
   const audio = $<HTMLAudioElement>("monAudio"); audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {});
-  const d = await fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mhz, label, mode }) }).then((r) => r.json()).catch((e) => ({ error: e.message }));
+  const d = await fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json()).catch((e) => ({ error: e.message }));
   if (d.error) { $("monStatus").textContent = `⚠ ${d.error}`; return; }
   mon = { ...mon, ...d }; renderMon();
 }
-$("monForm").addEventListener("submit", (e) => { e.preventDefault(); const f = Number($<HTMLInputElement>("monMhz").value); if (f) monitor(f, "", $<HTMLSelectElement>("monMode").value); });
+$("monForm").addEventListener("submit", (e) => { e.preventDefault(); const f = Number($<HTMLInputElement>("monMhz").value); if (f) monitor({ mhz: f, mode: $<HTMLSelectElement>("monMode").value }, `${f.toFixed(3)} MHz`); });
 $("monStop").onclick = () => fetch("/api/radio/monitor", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stop: true }) }).catch(() => {});
 document.addEventListener("click", (e) => {
   const t = e.target as HTMLElement, m = t.closest("a[data-monitor]") as HTMLElement | null, h = t.closest("[data-heardcall]") as HTMLElement | null;
-  if (m) { e.preventDefault(); const [f, label] = m.dataset.monitor!.split("|"); monitor(Number(f), label); map.closePopup(); }
+  if (m) { e.preventDefault(); const [f, label] = m.dataset.monitor!.split("|"); monitor({ mhz: Number(f), label }, `${Number(f).toFixed(3)} MHz`); map.closePopup(); }
   else if (h) { const pin = heardPins.get(h.dataset.heardcall!); if (pin) { map.setView(pin.getLatLng(), Math.max(map.getZoom(), 10)); pin.openPopup(); } else lookup(h.dataset.heardcall!); }
 });
 watchMon();
+// The scanner: the server SDR hops through the ticked repeaters (or every FM repeater in the list when none is ticked),
+// stops on any that's busy while it's busy, and the busy ones light up on the map.
+const scanList = () => (picked.size ? [...picked.values()] : shown.filter(scannable)).slice(0, 150);
+function scanWhat() {
+  const n = scanList().length;
+  $("scanWhat").innerHTML = picked.size ? `your ${n} ticked repeater${n > 1 ? "s" : ""} · <a href="#" id="unpick">untick all</a>` : `all ${n} FM repeaters in the list (or tick ☐ the ones you want)`;
+  $<HTMLButtonElement>("scanBtn").disabled = n < 2;
+}
+$("scanBtn").onclick = () => monitor({ scan: scanList().map((r) => ({ mhz: r.outputMHz, label: `${r.callsign} ${r.city}` })) }, `the first of ${scanList().length} repeaters`);
+$("scanWhat").addEventListener("click", (e) => { if ((e.target as HTMLElement).id === "unpick") { e.preventDefault(); picked.clear(); render(); } });
 
 // ---------- propagation: NOAA's indexes and what they mean for the bands (server: spacewx.ts) ----------
 let wx: any = null;
@@ -240,6 +269,7 @@ await loadArea();
     } },
 };
 (window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area), with a propagation panel (NOAA space weather, band conditions) and the next ham-satellite passes over the map's center", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
+  scanning: mon?.on && mon.scan ? { channels: mon.scan.list.length, busySoFar: mon.scan.hits } : undefined,
   listening: mon?.on ? { mhz: mon.mhz, label: mon.label, mode: mon.mode, squelchOpen: mon.open, lastCaptions: log.captions.slice(-6).map((c: any) => `${tfmt(c.at)}: ${c.text}${c.calls?.length ? ` [${c.calls.map((x: any) => x.call).join(", ")}]` : ""}`), } : "off (the 🎧 panel can tune the server SDR to a repeater and caption it)",
   heardInThisTab: log.heard.slice(-10).map((h: any) => `${h.call} ${h.name ?? ""} at ${tfmt(h.at)} on ${h.mhz}`),
   propagation: wx && { summary: wx.summary, sfi: wx.sfi, ssn: wx.ssn, k: wx.k?.kp, bands: wx.bands }, nextSatellitePasses: sats?.passes.slice(0, 6).map((p: any) => `${p.rise} ${p.name} ${p.maxElevation}° ${p.minutes} min, down ${p.down}`), satelliteShown: satShown,

@@ -22,6 +22,7 @@
     .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; }
     #list { list-style: none; padding: 0; margin: 8px 0; }
     #list li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #list input[data-pick] { margin: 0 6px 0 0; vertical-align: -1px; }
     #list b { font-family: ui-monospace, Menlo, monospace; }
     .freq { font-family: ui-monospace, Menlo, monospace; }
     details.panel { margin: 10px 0; border: 1px solid var(--line, #3b4bb0); padding: 6px 10px; }
@@ -69,6 +70,8 @@
       <div id="monBody">
         <p class="muted">Tune the server's SDR to a repeater (🎧 in any repeater's popup) or type a frequency. You hear it here, Whisper on the server writes what's said, and any callsign it hears is looked up and pinned on the map (only on your page, until you close the tab or press Clear). One frequency at a time for everyone; it switches off after ten quiet minutes.</p>
         <form id="monForm" class="monform"><input id="monMhz" type="number" step="0.0001" min="24" max="1766" placeholder="MHz, e.g. 147.270" aria-label="Frequency in MHz"><select id="monMode" aria-label="Mode"><option>NFM</option><option>WFM</option></select><button>Listen</button><button type="button" id="monStop" hidden>Stop</button></form>
+        <div class="monform"><button type="button" id="scanBtn">📡 Scan</button><span class="muted" id="scanWhat" style="flex:1"></span></div>
+        <p class="muted">The scanner hops through them in a loop (one or two a second), stops on a busy one while it's busy, and rings the busy ones in white on the map. Pick the bands above the list to narrow it.</p>
         <p id="monStatus" class="muted"></p>
         <audio id="monAudio" controls hidden></audio>
       </div>
