@@ -1,7 +1,7 @@
 // Blip's brain: the system prompt, the tools it can call, and the tool loop over Ollama: a cloud model first
 // (Ollama Cloud, OLLAMA_CLOUD_KEY), the local one when the cloud fails or has no key.
 // Each tool is a plain function from nycapi.ts / archive.ts / events.ts; results go back to the model as data.
-import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode } from "./nycapi.ts";
+import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode, suggest, trafficCameras } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, busStops, busArrivals, BUS_GRID, annotateTrip } from "./transit.ts";
@@ -74,7 +74,7 @@ const TOOLS: Record<string, Tool> = {
   weather_now: {
     description: "NYC weather now (Central Park observation), the NWS forecast for the next day or so, and any active weather alerts.",
     parameters: {},
-    run: () => weather(),
+    run: async () => ({ ...(await weather()), maps: { rainRadar: "/nyc/#view=40.73,-73.95,9,radar", lightning: "/nyc/#view=40.73,-73.95,8,lightning", clouds: "/nyc/#view=40.73,-73.95,7,clouds", windAndForecast: "/nyc/#view=40.73,-73.95,9,windy" } }),
   },
   aircraft_over_nyc: {
     description: "Aircraft over NYC right now (within ~35 nm, live ADS-B from adsb.lol): callsign, type, altitude, speed, position. Filter helicopters, military, or emergencies; or the ones nearest a point.",
@@ -83,7 +83,7 @@ const TOOLS: Record<string, Tool> = {
       let list = await aircraft();
       if (kind === "helicopters") list = list.filter((a) => a.heli); else if (kind === "military") list = list.filter((a) => a.military); else if (kind === "emergency") list = list.filter((a) => a.emergency);
       const at = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : null;
-      const rows = list.map((a) => ({ id: a.flight || a.reg || a.hex, hex: a.hex, type: a.type, helicopter: a.heli, military: a.military, altFt: a.altFt, kts: a.kts && Math.round(a.kts), lat: a.lat, lon: a.lon, emergency: a.emergency ?? undefined, kmAway: at ? +km(at, a).toFixed(1) : undefined }));
+      const rows = list.map((a) => ({ id: a.flight || a.reg || a.hex, hex: a.hex, type: a.type, helicopter: a.heli, military: a.military, altFt: a.altFt, kts: a.kts && Math.round(a.kts), lat: a.lat, lon: a.lon, emergency: a.emergency ?? undefined, kmAway: at ? +km(at, a).toFixed(1) : undefined, mapLink: `/nyc/#aircraft=${a.hex}` }));
       if (at) rows.sort((x, y) => x.kmAway! - y.kmAway!);
       return { total: list.length, aircraft: rows.slice(0, 25), source: "adsb.lol (ODbL)" };
     },
@@ -99,14 +99,14 @@ const TOOLS: Record<string, Tool> = {
       const k = String(kind ?? "").toLowerCase();
       if (k === "moving") list = list.filter((s) => (s.kts ?? 0) > 1 && !/moored|anchor/.test(s.status));
       else if (k && k !== "all") list = list.filter((s) => s.kind.includes(k.replace("pleasure", "pleasure craft").replace("high-speed", "high-speed")));
-      const rows = list.slice(0, 40).map((s) => ({ name: s.name || `MMSI ${s.mmsi}`, kind: s.kind, kts: s.kts, heading: s.heading ?? s.cog, status: s.status || undefined, destination: s.dest || undefined, lengthM: s.length ?? undefined, lat: s.lat, lon: s.lon, ...(s.kmAway != null ? { kmAway: s.kmAway } : {}), seenSecondsAgo: s.agoS }));
+      const rows = list.slice(0, 40).map((s) => ({ name: s.name || `MMSI ${s.mmsi}`, kind: s.kind, kts: s.kts, heading: s.heading ?? s.cog, status: s.status || undefined, destination: s.dest || undefined, lengthM: s.length ?? undefined, lat: s.lat, lon: s.lon, ...(s.kmAway != null ? { kmAway: s.kmAway } : {}), seenSecondsAgo: s.agoS, mapLink: `/nyc/#ship=${s.mmsi}` }));
       return { count: list.length, warming: d.warming, note: d.warming ? "The feed just opened: ask again in a few seconds for the full picture." : undefined, page: "/nyc/ (turn on the Ships layer)", ships: rows };
     },
   },
   iss_now: {
     description: "Where the International Space Station is now: position, altitude, speed, whether it's in sunlight, and its distance from NYC.",
     parameters: {},
-    run: async () => { const d = await iss(); return { ...d, track: undefined }; },
+    run: async () => { const d = await iss(); return { ...d, track: undefined, mapLink: `/nyc/#view=${d.lat.toFixed(2)},${d.lon.toFixed(2)},3,iss` }; },
   },
   evening_events: {
     description: "What's on in NYC on a date and time window (NYC Parks, the city's events calendar, street fairs and parades, Ticketmaster shows, NYC for FREE, museum free hours): title, time, venue, price, kind, outdoors with rain chance, source link. Optionally near a place.",
@@ -114,7 +114,7 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ date, from, to, budget, kind, place, km }) => {
       const at = place ? await pointOf(undefined, undefined, place) : null;
       const r = await eveningEvents({ date, from: from ?? "17:00", to: to ?? "23:30", budget, cat: kind, near: at ? `${at.lat},${at.lon}` : undefined, km: Number(km) || undefined });
-      return { date: r.date, total: r.total, page: "/nyc/tonight.html", events: r.events.slice(0, 15).map((e: any) => ({ id: e.id, time: e.start.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url })) };
+      return { date: r.date, total: r.total, page: "/nyc/tonight.html", events: r.events.slice(0, 15).map((e: any) => ({ id: e.id, time: e.start.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url, mapLink: e.lat ? mapAt(e.lat, e.lon, e.venue || e.title) : undefined })) };
     },
   },
   evening_plan: {
@@ -159,7 +159,7 @@ const TOOLS: Record<string, Tool> = {
   tropical_storms: {
     description: "Active hurricanes and tropical storms (Atlantic and Pacific, NOAA NHC): name, strength, position, movement, distance from NYC, advisory link.",
     parameters: {},
-    run: async () => ({ storms: (await storms()).storms }),
+    run: async () => ({ storms: (await storms()).storms, mapLink: "/nyc/#view=30,-65,4,storms" }),
   },
   street_photo: {
     description: "The nearest street-level photo (Mapillary, within ~100 m) of a point or NYC place: when it was taken, by whom, and links to see it. Use it for 'what does it look like there'.",
@@ -227,7 +227,7 @@ const TOOLS: Record<string, Tool> = {
     run: ({ date, category }) => {
       const d = String(date || nyDate());
       return currentEvents().events.filter((e: any) => e.start_date <= d && d <= e.end_date && (!category || e.category === category))
-        .slice(0, 25).map((e: any) => ({ title: e.title, category: e.category, time: [e.start_time, e.end_time].filter(Boolean).join("–"), address: e.address, url: e.url }));
+        .slice(0, 25).map((e: any) => ({ title: e.title, category: e.category, time: [e.start_time, e.end_time].filter(Boolean).join("–"), address: e.address, url: e.url, mapLink: e.address ? `/nyc/#place=${encodeURIComponent(e.address)}` : undefined }));
     },
   },
   callsign_lookup: {
@@ -266,7 +266,7 @@ const TOOLS: Record<string, Tool> = {
   city_events: {
     description: "Official NYC Events Calendar (parks, culture, city programs) for a date range.",
     parameters: { from: { type: "string", description: "YYYY-MM-DD (default today)" }, to: { type: "string", description: "YYYY-MM-DD (default = from)" }, free_only: { type: "boolean", description: "Only free events" } },
-    run: async ({ from, to, free_only }) => (await cityEvents(String(from || nyDate()), String(to || from || nyDate()), { freeOnly: !!free_only })).slice(0, 25),
+    run: async ({ from, to, free_only }) => (await cityEvents(String(from || nyDate()), String(to || from || nyDate()), { freeOnly: !!free_only })).slice(0, 25).map((e: any) => ({ ...e, mapLink: e.lat ? mapAt(+e.lat, +e.lon, e.place || e.name) : undefined })),
   },
   restaurant_inspections: {
     description: "NYC health inspections for restaurants matching a name: grade, score and violations of the latest visits.",
@@ -276,14 +276,32 @@ const TOOLS: Record<string, Tool> = {
       const near = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : undefined;
       const found = await findRestaurants(String(name), String(borough ?? ""), near);
       const top = await Promise.all(found.slice(0, 3).map((r) => restaurantInspections(r.camis)));
-      return { matches: found.length, restaurants: top.filter(Boolean).map((r: any) => ({ ...r, visits: r.visits.slice(0, 3) })), others: found.slice(3, 12).map((r) => `${r.name}, ${r.address}`) };
+      return { matches: found.length, restaurants: top.filter(Boolean).map((r: any) => ({ ...r, visits: r.visits.slice(0, 3), mapLink: r.address ? `/nyc/#place=${encodeURIComponent(r.address)}` : undefined })), others: found.slice(3, 12).map((r) => `${r.name}, ${r.address}`) };
+    },
+  },
+  find_place: {
+    description: "Find places in NYC by name, kind or address (a museum, 'Joe's Pizza', 'Barclays Center', '350 5th Ave'): name, address, kind, coordinates and a mapLink that opens the NYC map there with the address, businesses and a street photo.",
+    parameters: { query: { type: "string", description: "Name, kind or address, e.g. 'Brooklyn Museum', 'Katz's Deli', '1 Wall St'" } }, required: ["query"],
+    run: async ({ query }) => ({ places: (await suggest(String(query))).slice(0, 6).map((p) => ({ ...p, mapLink: mapAt(p.lat, p.lon, p.name) })) }),
+  },
+  traffic_cameras: {
+    description: "Live NYC traffic cameras and webcams: the nearest to a place or point, or the ones whose name matches words (e.g. 'FDR', 'Canal St'). Each has a mapLink that opens the map with its live picture.",
+    parameters: { place: { type: "string", description: "Address or place to find cameras near" }, lat: { type: "number", description: "Or a point: latitude" }, lon: { type: "number", description: "Longitude" }, query: { type: "string", description: "Or words in the camera's name" } },
+    run: async ({ place, lat, lon, query }) => {
+      const all = await trafficCameras(), words = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+      const at = words.length && !place && !lat ? null : await pointOf(lat, lon, place);
+      if (!words.length && !at) return { error: "Name a place, a point or words in the camera's name." };
+      const hits = all.filter((c) => words.every((w) => String(c.name).toLowerCase().includes(w)))
+        .map((c) => ({ id: c.id, name: c.name, area: c.area, meters: at ? Math.round(km(at, { lat: +c.lat, lon: +c.lon }) * 1000) : undefined, mapLink: `/nyc/#cam=${c.id}` }))
+        .sort((a, b) => (a.meters ?? 0) - (b.meters ?? 0));
+      return { near: at?.label, cameras: hits.slice(0, 6) };
     },
   },
   trip_plan: {
     description: "Plan a trip in NYC by car, bike, on foot, or by subway and bus (mode transit: options with arrival times, transfers, live times, active MTA alerts on their lines; accessible: step-free routes, with any platform that isn't step-free or has an elevator out listed). Car trips include live traffic and the cameras along the route.",
     parameters: { from: { type: "string", description: "Start address or place" }, to: { type: "string", description: "Destination address or place" }, mode: { type: "string", description: "drive, bike, walk or transit (subway + bus)", enum: ["drive", "bike", "walk", "transit"] }, accessible: { type: "boolean", description: "Transit only: step-free (wheelchair, stroller) routes" }, avoid_ferries: { type: "boolean", description: "Avoid ferries" }, stops: { type: "string", description: "Optional stops on the way, in order, separated by |" } },
     required: ["from", "to"],
-    run: async ({ from, to, mode, avoid_ferries, stops, accessible }) => { let t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, accessible: !!accessible, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); if (t.mode === "transit") t = await annotateTrip(t, !!accessible); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => `${c.name} (km ${c.kmAlong})`); return t; },
+    run: async ({ from, to, mode, avoid_ferries, stops, accessible }) => { let t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, accessible: !!accessible, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); if (t.mode === "transit") t = await annotateTrip(t, !!accessible); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => ({ name: c.name, kmAlong: c.kmAlong, mapLink: `/nyc/#cam=${c.id}` })); t.mapLink = `/nyc/#trip=${[mode ?? "drive", from, ...String(stops ?? "").split("|"), to].map((x) => encodeURIComponent(String(x).trim())).filter(Boolean).join("|")}`; return t; },
   },
   address_info: {
     description: "Look up an NYC address, intersection or landmark: districts, police precinct, BBL/BIN, ZIP, neighborhood, coordinates (NYC Geoclient).",
@@ -291,6 +309,8 @@ const TOOLS: Record<string, Tool> = {
     run: ({ address }) => addressInfo(String(address)),
   },
 };
+/** A map link that opens the NYC map at a point with its "what's here" popup, titled with the place's name. */
+const mapAt = (lat: number, lon: number, name = "") => `/nyc/#at=${lat.toFixed(5)},${lon.toFixed(5)},17${name ? `|${encodeURIComponent(name)}` : ""}`;
 /** A point from lat/lon, or by looking up a place. */
 async function pointOf(lat: unknown, lon: unknown, place: unknown) {
   const la = Number(lat), lo = Number(lon);
@@ -307,7 +327,7 @@ Visitors talk to you through a little game-style dialog box. You see the page th
 
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works (21 chapters, up to analog TV and weather-satellite pictures decoded in the browser), a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. A Meshtastic LoRa mesh map and public chat, heard by a node on USB, is at /radio/mesh/ (visitors read only). There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
-- World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (opens with everything within 400 m of the visitor: subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms; layers for every station with live next trains, stations with MTA alerts → nearest Citi Bike, buses, ferries, ships, aircraft, broken elevators, traffic cameras, free events, restaurant inspections, public restrooms; click anywhere for the address and businesses there; the page action show_near draws the 400 m circle). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
+- World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (opens with everything within 400 m of the visitor: subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms; layers for every station with live next trains, stations with MTA alerts → nearest Citi Bike, buses, ferries, ships, aircraft, broken elevators, traffic cameras, free events, restaurant inspections, public restrooms; click anywhere for the address and businesses there; the page action show_near draws the 400 m circle). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), [a route](/nyc/#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops in between; all separated by |). [an aircraft](/nyc/#aircraft=<hex>), [a ship](/nyc/#ship=<MMSI>), and any view with layers on: [rain radar](/nyc/#view=40.73,-73.95,9,radar) (#view=lat,lon,zoom,layer+layer; layers: radar, lightning, clouds, windy, storms, iss, aircraft, ships, ferry, trains, citibike, cameras, speeds, c311, city, popups, sales, restrooms, outages). Tool results carry mapLink / maps fields with these links ready-made (places, cameras, routes, stations, bikes, buses, aircraft, ships, events, restaurants, weather, storms, the ISS): link each thing you mention with its mapLink, so a click opens the map showing it. For "over / near <a place>", get the place's coordinates with find_place, then pass them as lat/lon, Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
 - Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: machine learning from scratch with draggable visuals, the math behind each step, runnable code and questions: 10 chapters (matrices, gradients, a neuron, backprop, probability and loss, convolutions, attention, agents with a live tool-choice and faithfulness eval, vision, and a tiny transformer trained in the browser on NYC subway station names at /ai/10-tiny-transformer.html).
 - World 4, Yomu at /yomu/: Japanese from zero (stories and grammar to JLPT N3, kanji and words to N1). Graded stories (N5, N4 and N3) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); kanji and word decks all the way to N1 /yomu/deck.html; handwriting practice /yomu/draw.html; Talk /yomu/talk.html (spoken role-play scenes: konbini, asking the way, a restaurant, introductions, a train platform, a hotel); free conversation at N5/N4/N3 on a local model /yomu/chat.html?level=N5 (tap any word for its meaning); spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.

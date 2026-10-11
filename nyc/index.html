@@ -1209,6 +1209,7 @@ $("trip").addEventListener("submit", async (e) => {
   hideSugg();
   const from = tripEnd("tFrom"), to = tripEnd("tTo"), viaIds = stopIds().filter((id) => tripEnd(id));
   if (!from || !to) return;
+  showTab("trip");
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
   const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${viaIds.map((id) => `&via=${encodeURIComponent(tripEnd(id))}`).join("")}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}${$("tAccess").checked ? "&access=1" : ""}`).catch((err) => ({ error: err.message }));
@@ -1422,7 +1423,7 @@ window.blipContext = () => {
     tripForm: { from: $("tFrom").value || null, to: $("tTo").value || null, stops: stopIds().map((id) => $(id).value).filter(Boolean), mode: document.querySelector('input[name="tMode"]:checked')?.value, avoidFerries: $("tNoFerry").checked, stepFree: $("tAccess").checked, picking: picking || null },
     // ~11 m precision is plenty for "nearest bike"; it goes to the chat model with the question
     visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
-    linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
+    linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within400m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
@@ -1468,10 +1469,10 @@ $("refresh").addEventListener("click", refresh);
 await loadStations().catch((e) => ($("status").textContent = `Stations failed: ${e.message}`));
 for (const [k, l] of Object.entries(LAYERS)) if (l.on) toggle(k, true);
 
-// Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom], #place=<address>, #cam=<camera id>,
-// and shared views #view=lat,lon,zoom,layer+layer (the 🔗 button).
+// Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom][|name], #place=<address>,
+// #cam=<camera id>, #trip=[mode|]from|[stop|…]to, #aircraft=<hex>, #ship=<MMSI>, and shared views #view=lat,lon,zoom,layer+layer (the 🔗 button).
 async function focusHash() {
-  const [key, val = ""] = decodeURIComponent(location.hash.slice(1)).split("=");
+  const h = decodeURIComponent(location.hash.slice(1)), eq = h.indexOf("="), key = h.slice(0, eq), val = eq < 0 ? "" : h.slice(eq + 1);
   if (key === "station" && stations.get(val)) {
     const cb = document.querySelector('#layers input[data-l="stations"]');
     if (!LAYERS.stations.on) { cb.checked = true; await toggle("stations", true); }
@@ -1480,23 +1481,38 @@ async function focusHash() {
     map.setView([s.lat, s.lon], Math.max(map.getZoom(), 15));
     stationMarkers.get(val).openPopup();
   } else if (key === "at") {
-    const [lat, lon, z] = val.split(",").map(Number);
-    if (Number.isFinite(lat) && Number.isFinite(lon)) { map.setView([lat, lon], z || 17); map.fire("click", { latlng: L.latLng(lat, lon) }); }
+    const [pt, name = ""] = val.split("|"), [lat, lon, z] = pt.split(",").map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) { map.setView([lat, lon], z || 17); showHere(L.latLng(lat, lon), name); }
   } else if (key === "place" && val) {
     const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(val)}`).catch(() => null);
-    if (g) { map.setView([g.lat, g.lon], 17); map.fire("click", { latlng: L.latLng(g.lat, g.lon) }); }
+    if (g) showHere(L.latLng(g.lat, g.lon), g.label);
   } else if (key === "view") {
     // a shared view: #view=lat,lon,zoom,layer+layer (only known layers; the rest of the page as it was)
     const [lat, lon, z, ls = ""] = val.split(",");
-    if (Number.isFinite(+lat) && Number.isFinite(+lon)) map.setView([+lat, +lon], Math.min(19, Math.max(9, +z || 13)));
+    if (Number.isFinite(+lat) && Number.isFinite(+lon)) map.setView([+lat, +lon], Math.min(19, Math.max(3, +z || 13))); // 3: hurricanes and the ISS
     const want = new Set(ls.split("+").filter((k) => LAYERS[k]));
     if (want.size) for (const [k, l] of Object.entries(LAYERS)) if (l.on !== want.has(k)) { const cb = document.querySelector(`#layers input[data-l="${k}"]`); if (cb) cb.checked = want.has(k); await toggle(k, want.has(k)); }
+  } else if (key === "aircraft") {
+    blipActions.follow_aircraft.run({ query: val });
+  } else if (key === "ship") {
+    await toggle("ships", true);
+    for (let i = 0; i < 50 && !shipMarkers.get(val); i++) await new Promise((r) => setTimeout(r, 200)); // the AIS feed may still be warming up
+    const m = shipMarkers.get(val) ?? shipMarkers.get(Number(val));
+    if (m) { map.setView(m.getLatLng(), 14); m.openPopup(); }
+  } else if (key === "trip") {
+    const parts = val.split("|").map((x) => x.trim()).filter(Boolean), mode = ["drive", "bike", "walk", "transit"].includes(parts[0]) ? parts.shift() : "drive";
+    if (parts.length >= 2) { fold(false); blipActions.plan_trip.run({ from: parts[0], to: parts.at(-1), stops: parts.slice(1, -1).join("|"), mode }); }
   } else if (key === "cam") {
     const c = (await getJSON("/api/nyc/cameras")).find((x) => x.id === val);
     if (c) { map.setView([c.lat, c.lon], 16); openCam(c); }
   }
 }
 addEventListener("hashchange", focusHash);
+// A map link clicked again (in Blip's chat, say) doesn't change the hash, so no hashchange: do it anyway.
+document.addEventListener("click", (e) => {
+  const a = e.composedPath().find((el) => el.tagName === "A" && el.href);
+  if (a && a.href === location.href && location.hash) focusHash();
+});
 $("share").onclick = async () => {
   const c = map.getCenter(), on = Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k).join("+");
   const url = `${location.origin}/nyc/#view=${c.lat.toFixed(5)},${c.lng.toFixed(5)},${map.getZoom()},${on}`;
