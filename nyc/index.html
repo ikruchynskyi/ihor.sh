@@ -115,6 +115,7 @@
     #nearBox ul { margin: 4px 0 0; padding-left: 0; list-style: none; max-height: 220px; overflow: auto; }
     #nearBox li { padding: 3px 0; cursor: pointer; border-bottom: 1px dashed var(--line); } #nearBox li:hover { color: var(--fg); }
     .cam-icon { font-size: 14px; line-height: 1; filter: drop-shadow(0 0 2px #000); }
+    .iss-live { aspect-ratio: 16 / 9; width: 100%; margin: 6px 0 2px; background: #000; } .iss-live iframe { width: 100%; height: 100%; border: 0; display: block; }
     /* an open camera's spot on the map: a pulsing ring, so you can tell which camera a window shows */
     .cam-open { display: grid; place-items: center; font-size: 16px; border-radius: 50%; background: var(--accent, #ffb347); box-shadow: 0 0 0 3px #fff; animation: camPulse 1.6s ease-out infinite; }
     @keyframes camPulse { 0% { box-shadow: 0 0 0 3px #fff, 0 0 0 0 color-mix(in srgb, var(--accent, #ffb347) 70%, transparent); } 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 18px transparent; } }
@@ -673,15 +674,23 @@ async function showTrail(hex) {
   seen.trail = { hex, points: d.points.length, since: new Date(d.points[0][3] * 1000).toISOString() };
 }
 
-// The ISS, every 10 s, with its next orbit (split where it crosses the date line).
+// The ISS, every 10 s, with its next orbit (split where it crosses the date line). The marker moves in place, so its
+// popup, and the live video in it, stay open across the updates.
+const issTrack = L.layerGroup();
+let issMarker = null, issNow = null;
+const ISS_VIDEO = "fO9e9jnhYK8"; // Sen's 24/7 4K livestream from cameras on the ISS
+const issPopup = () => { const d = issNow; return `<b>🛰 International Space Station</b><br>${d.altKm} km up · ${d.kmh.toLocaleString()} km/h · ${d.daylight ? "in sunlight" : "in Earth's shadow"}<br><span class="muted">${d.kmFromNyc.toLocaleString()} km from NYC · dashed: the next 90 minutes</span>
+  <div class="iss-live"><iframe src="https://www.youtube-nocookie.com/embed/${ISS_VIDEO}?autoplay=1&mute=1&playsinline=1" title="Live video from the ISS" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <span class="muted">Live from the ISS: Sen's 4K cameras · <a href="https://www.youtube.com/watch?v=${ISS_VIDEO}" target="_blank" rel="noopener">YouTube</a></span>${issPassHtml()}`; };
 async function refreshIss(g) {
-  const d = await getJSON("/api/nyc/iss");
-  g.clearLayers();
+  const d = (issNow = await getJSON("/api/nyc/iss"));
+  issTrack.clearLayers(); if (!g.hasLayer(issTrack)) issTrack.addTo(g);
   const segs = [[]];
   d.track.forEach((p, i) => { if (i && Math.abs(p[1] - d.track[i - 1][1]) > 180) segs.push([]); segs.at(-1).push(p); });
-  segs.forEach((sg) => L.polyline(sg, { color: "#4de1ff", weight: 2, dashArray: "4 6", opacity: 0.8 }).addTo(g));
-  L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "acft-heli", html: "🛰", iconSize: [22, 22] }), zIndexOffset: 900 })
-    .bindPopup(`<b>🛰 International Space Station</b><br>${d.altKm} km up · ${d.kmh.toLocaleString()} km/h · ${d.daylight ? "in sunlight" : "in Earth's shadow"}<br><span class="muted">${d.kmFromNyc.toLocaleString()} km from NYC · dashed: the next 90 minutes</span>${issPassHtml()}`).addTo(g);
+  segs.forEach((sg) => L.polyline(sg, { color: "#4de1ff", weight: 2, dashArray: "4 6", opacity: 0.8 }).addTo(issTrack));
+  if (issMarker) issMarker.setLatLng([d.lat, d.lon]);
+  else issMarker = L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "acft-heli", html: "🛰", iconSize: [22, 22] }), zIndexOffset: 900 })
+    .bindPopup(issPopup, { maxWidth: 360, minWidth: 280 }).addTo(g);
   seen.iss = { lat: d.lat, lon: d.lon, altKm: d.altKm, kmFromNyc: d.kmFromNyc, daylight: d.daylight };
   if (!refreshIss.passes || Date.now() - refreshIss.passes.at > 600e3) {
     const q = meAt ? `?lat=${meAt.lat.toFixed(2)}&lon=${meAt.lng.toFixed(2)}` : "";
@@ -914,7 +923,7 @@ document.addEventListener("click", async (e) => {
     render.call(this);
     if (innerWidth < 700) { this.options.maxWidth = Math.min(this.options.maxWidth ?? 300, innerWidth - 70); this.options.autoPanPaddingBottomRight = L.point(10, ($("panel")?.offsetHeight ?? 0) + 16); } // phones: fit the screen, stay above the sheet
     const node = this._contentNode, ll = this.getLatLng?.();
-    if (!node || !ll || node.querySelector("[data-near]") || this._source?.options?.icon?.options?.className === "cam-icon") return;
+    if (!node || !ll || node.querySelector("[data-near], .iss-live") || this._source?.options?.icon?.options?.className === "cam-icon") return; // not on cameras, nor in space
     if (/^(Loading…|Looking up…|Couldn't|That train|That bus|No NYC address)/.test(node.textContent.trim())) return;
     node.insertAdjacentHTML("beforeend", `<div class="cam-foot">${camBtn(ll.lat, ll.lng)}</div>`);
   };
