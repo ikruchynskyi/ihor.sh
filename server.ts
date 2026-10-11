@@ -27,7 +27,7 @@ import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNe
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
-import { hamPasses, satTrack } from "./sat.ts";
+import { hamPasses, satTrack, hamSatsNow } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
 import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
@@ -416,13 +416,14 @@ const server = http.createServer(async (req, res) => {
       }
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
     }
-    if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
+    if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/sats-now" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180;
       try {
         const data = url.pathname === "/api/radio/propagation" ? await propagation()
           : url.pathname === "/api/radio/sats" ? await hamPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined, Math.min(72, Number(url.searchParams.get("hours")) || 24))
+          : url.pathname === "/api/radio/sats-now" ? await hamSatsNow(ok ? la : undefined, ok ? lo : undefined)
           : await satTrack(String(url.searchParams.get("id") ?? "iss"), ok ? la : undefined, ok ? lo : undefined);
-        return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/sat-track" ? 5 : 600}` }).end(JSON.stringify(data));
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/propagation" || url.pathname === "/api/radio/sats" ? 600 : 5}` }).end(JSON.stringify(data));
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (url.pathname === "/api/site/search") {
