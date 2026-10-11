@@ -176,6 +176,21 @@ export async function photoImages(ids: string[]) {
   }
   return Object.fromEntries(want.filter(fresh).map((id) => { const { at, ...i } = images.get(id)!; void at; return [id, i]; }));
 }
+/** MapillaryJS (the street-photo viewer) asks the graph API through us: the token is added here and never reaches a
+ *  page. Answers are kept 10 minutes (the photo links in them are signed for longer), at most 400 of them. */
+const graphCache = new Map<string, { at: number; p: Promise<string> }>();
+export function mapillaryGraph(path: string, query: URLSearchParams) {
+  query.delete("access_token");
+  const k = `${path}?${query}`, hit = graphCache.get(k);
+  if (hit && Date.now() - hit.at < 600_000) return hit.p;
+  query.set("access_token", process.env.MAPILLARY_TOKEN ?? "");
+  const p = fetch(`https://graph.mapillary.com/${path}?${query}`, { signal: AbortSignal.timeout(20_000) })
+    .then(async (r) => { if (!r.ok) throw Object.assign(new Error(`Mapillary ${r.status}`), { code: r.status }); return r.text(); });
+  graphCache.delete(k); graphCache.set(k, { at: Date.now(), p });
+  if (graphCache.size > 400) graphCache.delete(graphCache.keys().next().value!);
+  p.catch(() => graphCache.delete(k));
+  return p;
+}
 /** The best Mapillary photo of a point within ~100 m (the middle of a big block is that far from a street): near, looking at it (a 360° photo always is), newer. */
 export async function photoNear(lat: number, lon: number) {
   const list = await streetPhotos(lat - 0.0009, lon - 0.0012, lat + 0.0009, lon + 0.0012);

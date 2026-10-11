@@ -23,7 +23,7 @@ import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
 import { startEmbedding, match as jobMatch, suggest as jobSuggest } from "./jobs-ai.ts";
 import { startEvening, events as eveningEvents, eventById, planEvening } from "./evening.ts";
-import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages } from "./sky.ts";
+import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./sky.ts";
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
@@ -94,7 +94,7 @@ let day = "", today = 0;
 const PER_IP = 20, WINDOW_MS = 10 * 60_000, PER_DAY = 1000;
 // Map data endpoints use keyed city APIs: a looser per-IP budget of their own.
 // Street photos have their own: they're read from cached Mapillary tiles, and the dots reload with every pan.
-const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>(), upscaleHits = new Map<string, number[]>();
+const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>(), mlyHits = new Map<string, number[]>(), upscaleHits = new Map<string, number[]>();
 function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   const now = Date.now(), recent = (bucket.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= max) return false;
@@ -539,6 +539,16 @@ const server = http.createServer(async (req, res) => {
       const id = String(url.searchParams.get("route") ?? "");
       if (!/^[A-Z ]{3,12}_[A-Z0-9+-]{1,10}$/.test(id)) return res.writeHead(400).end();
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await busRoute(id)));
+    }
+    // The street-photo viewer (MapillaryJS) reads Mapillary's graph API through here, which adds the token: only the
+    // three kinds of request it makes. Walking around asks for a lot, so it has a budget of its own.
+    const mly = url.pathname.match(/^\/api\/mly\/(images|image_ids|\d{1,20}\/tiles)$/);
+    if (mly) {
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      if (!dataAllowed(ip, mlyHits, 3000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: { message: "Too many requests, try again in a few minutes." } }));
+      const out = await mapillaryGraph(mly[1], url.searchParams).catch((e) => e as Error & { code?: number });
+      if (out instanceof Error) return res.writeHead(out.code === 400 || out.code === 404 ? out.code : 502, { "content-type": "application/json" }).end(JSON.stringify({ error: { message: out.message } }));
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "private, max-age=600" }).end(out);
     }
     if (url.pathname === "/api/nyc/upscale" && req.method === "POST") { // ✨ in a camera window: its frame now, ~4× by AI (upscale.ts)
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), id = String(url.searchParams.get("cam") ?? "");

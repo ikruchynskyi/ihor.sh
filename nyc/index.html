@@ -101,6 +101,7 @@
     .cam .grip { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--line) 50%); }
     .cam:fullscreen, .cam.max { position: fixed; inset: 0; width: auto !important; height: auto !important; border: 0; box-shadow: none; z-index: 2147480000; background: #000; }
     .cam:fullscreen .grip, .cam.max .grip { display: none; }
+    .mlyview { flex: 1; min-height: 0; position: relative; background: #000; }
     .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
@@ -759,12 +760,50 @@ let photoTimer = 0;
 map.on("moveend", () => { if (LAYERS.photos.on) { clearTimeout(photoTimer); photoTimer = setTimeout(() => loadPhotos(LAYERS.photos.group).catch(() => {}), 400); } });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-photo]"); if (b) openPhoto(photoById.get(b.dataset.photo)); });
 
-/** Open a street photo in a window. Dots are bare points, so the picture (a signed link) is fetched first. */
+// Street photos open in Mapillary's own viewer (MapillaryJS 4.1.2, MIT, loaded on first use): click the arrows or use
+// the arrow keys to walk, drag to look around, 360° photos in 3D, like mapillary.com. It reads Mapillary's data through
+// /api/mly/ (server.ts adds the token, so no key reaches the page). An arrow on the map shows where you are and face.
+const MLY = "https://cdn.jsdelivr.net/npm/mapillary-js@4.1.2/dist/mapillary";
+let mlyLib = null, mly = null, mlyMarker = null;
+const loadMly = () => (mlyLib ??= new Promise((ok, fail) => {
+  document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", href: `${MLY}.css`, integrity: "sha384-IamMZxz60pSNzUk3cW2nl3uYUdpiDoQpLJrBoAAezEE+QaOYCVA9rfi/8Cx0x15T", crossOrigin: "anonymous" }));
+  document.head.append(Object.assign(document.createElement("script"), { src: `${MLY}.js`, integrity: "sha384-1AlAxcgdzKreJ5f2K+t7SW3pEE0ek9u3lUwlZXX+v+FtEk1tWSg6DBVLb3ZKhpB+", crossOrigin: "anonymous", onload: () => ok(window.mapillary), onerror: () => { mlyLib = null; fail(new Error("viewer didn't load")); } }));
+}));
+function mlyHere(lat, lon, bearing) { // the arrow on the map
+  const ll = [lat, lon];
+  if (!mlyMarker) mlyMarker = L.marker(ll, { interactive: false, zIndexOffset: 1000, icon: L.divIcon({ className: "", html: `<svg viewBox="0 0 20 20" width="28" height="28" style="filter:drop-shadow(0 0 2px #000)"><path d="M10 1 17 18 10 14 3 18Z" fill="#ff5c8a" stroke="#fff" stroke-width="1.5"/></svg>`, iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(map);
+  else mlyMarker.setLatLng(ll);
+  const svg = mlyMarker.getElement()?.querySelector("svg");
+  if (svg && bearing != null) svg.style.transform = `rotate(${bearing}deg)`;
+  if (!map.getBounds().pad(-0.15).contains(ll)) map.panTo(ll);
+}
 async function openPhoto(p) {
-  if (!p.thumb) Object.assign(p, (await getJSON(`/api/nyc/photo-images?ids=${p.id}`).catch(() => ({})))[p.id]);
-  if (!p.thumb) return;
-  openCam({ id: `m${p.id}`, name: photoTitle(p), image: p.thumb, page: `https://www.mapillary.com/app/?pKey=${p.id}`, source: "Mapillary", static: true });
-  seen.photo = { taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, lat: p.lat, lon: p.lon };
+  if (mly && document.getElementById("cam-mly")) return mly.moveTo(String(p.id)).catch(() => {});
+  const cam = { id: "mly", name: photoTitle(p), image: "", page: `https://www.mapillary.com/app/?pKey=${p.id}`, source: "Mapillary", static: true };
+  openCam(cam);
+  cam.id = `m${p.id}`; // the window stays "cam-mly"; ✨ upscales the photo you're on
+  const w = document.getElementById("cam-mly"), box = Object.assign(document.createElement("div"), { className: "mlyview" });
+  w.querySelector("img").replaceWith(box);
+  Object.assign(w.style, { width: `${Math.min(640, innerWidth - 20)}px`, height: `${Math.min(460, innerHeight - 100)}px` });
+  w.querySelector("button.x").addEventListener("click", () => { mly?.remove(); mly = null; mlyMarker?.remove(); mlyMarker = null; seen.photo = null; });
+  const M = await loadMly().catch(() => null);
+  if (!document.body.contains(w)) return; // closed meanwhile
+  if (!M) { // no viewer: the plain photo, as before
+    if (!p.thumb) Object.assign(p, (await getJSON(`/api/nyc/photo-images?ids=${p.id}`).catch(() => ({})))[p.id]);
+    box.innerHTML = p.thumb ? `<img alt="Street photo" src="${esc(p.thumb)}" style="width:100%;height:100%;object-fit:contain">` : `<p class="muted">The street viewer didn't load.</p>`;
+    return;
+  }
+  mly = new M.Viewer({ container: box, imageId: String(p.id), dataProvider: new M.GraphDataProvider({ endpoint: `${location.origin}/api/mly/` }), imageTiling: false, component: { cover: false } }); // tiles: Mapillary refuses our token there; the 2048 px photos do
+  new ResizeObserver(() => mly?.resize()).observe(box);
+  mly.on("image", ({ image }) => {
+    const q = { at: image.capturedAt, pano: image.cameraType === "spherical" || image.cameraType === "equirectangular", by: image.creatorUsername };
+    cam.id = `m${image.id}`;
+    w.querySelector("header b").textContent = `📸 ${photoTitle(q)}`;
+    w.querySelector("header a").href = `https://www.mapillary.com/app/?pKey=${image.id}`;
+    mlyHere(image.lngLat.lat, image.lngLat.lng, null);
+    seen.photo = { taken: new Date(image.capturedAt).toISOString().slice(0, 10), by: image.creatorUsername, lat: image.lngLat.lat, lon: image.lngLat.lng };
+  });
+  mly.on("bearing", ({ bearing }) => { const ll = mlyMarker?.getLatLng(); if (ll) mlyHere(ll.lat, ll.lng, bearing); });
 }
 
 // ---------- public restrooms (NYC Open Data), as a layer and in the 400 m circle ----------
