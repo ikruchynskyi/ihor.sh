@@ -29,7 +29,7 @@ import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
-import { startMonitor, stopMonitor, monitorState, monitorEvents, monitorAudio, heardLog } from "./monitor.ts";
+import { startMonitor, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -399,8 +399,7 @@ const server = http.createServer(async (req, res) => {
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
   }
   try {
-    if (url.pathname.startsWith("/api/radio/monitor") || url.pathname === "/api/radio/heard") { // listen on the server SDR with captions (monitor.ts)
-      if (url.pathname === "/api/radio/heard") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ heard: heardLog() }));
+    if (url.pathname.startsWith("/api/radio/monitor")) { // listen on the server SDR with captions (monitor.ts)
       if (url.pathname === "/api/radio/monitor/events") return monitorEvents(res);
       if (url.pathname === "/api/radio/monitor/audio") return monitorAudio(res);
       if (req.method === "POST") {

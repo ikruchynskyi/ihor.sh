@@ -98,6 +98,19 @@ function pinHeard(h: any) {
   if (old) { old.setLatLng([h.lat, h.lon]).setPopupContent(popup); return; }
   heardPins.set(h.call, L.marker([h.lat, h.lon], { icon, zIndexOffset: 500 }).bindPopup(popup, { maxWidth: 320 }).addTo(heardLayer));
 }
+// What this tab heard while listening, kept until the tab closes (the server keeps nothing once listening stops,
+// so other visitors never see it).
+let log: { captions: any[]; heard: any[] } = { captions: [], heard: [] };
+try { log = JSON.parse(sessionStorage.getItem("rpt:log") || "") ?? log; } catch {}
+const saveLog = () => { try { sessionStorage.setItem("rpt:log", JSON.stringify(log)); } catch {} };
+function addCaption(c: any, mhz: number, label: string) {
+  if (log.captions.some((x) => x.at === c.at && x.text === c.text)) return;
+  log.captions = [...log.captions, c].slice(-200);
+  for (const x of c.calls ?? []) if (x.found) {
+    const old = log.heard.find((y) => y.call === x.call);
+    log.heard = [...log.heard.filter((y) => y.call !== x.call), { ...x, at: c.at, mhz, label, text: c.text.slice(0, 160), times: (old?.times ?? 0) + 1 }];
+  }
+}
 function renderMon() {
   if (!mon) return;
   const live = mon.on && !mon.error;
@@ -107,12 +120,12 @@ function renderMon() {
   const audio = $<HTMLAudioElement>("monAudio");
   if (live && (audio.hidden || !audio.src)) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
   if (!live && !audio.hidden) { audio.hidden = true; audio.removeAttribute("src"); audio.load(); }
-  $("capPanel").hidden = !live && !mon.captions?.length;
-  $("capSum").textContent = `${mon.captions?.length ?? 0} lines · ${mon.heard?.length ?? 0} calls`;
+  $("capPanel").hidden = !live && !log.captions.length;
+  $("capSum").textContent = `${log.captions.length} lines · ${log.heard.length} calls`;
   const caps = $("captions"), atEnd = caps.scrollHeight - caps.scrollTop - caps.clientHeight < 40; // don't yank the reader back down while they scroll up
-  caps.innerHTML = mon.captions?.length ? mon.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
+  caps.innerHTML = log.captions.length ? log.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
   if (atEnd) caps.scrollTop = caps.scrollHeight;
-  if (mon.heard) { $("heard").innerHTML = mon.heard.slice(-30).reverse().map((h: any) => `<li data-heardcall="${esc(h.call)}"><b>${esc(h.call)}</b> ${esc(h.name ?? "")} <span class="muted">· ${tfmt(h.at)} · ${h.mhz.toFixed(3)}${h.times > 1 ? ` · ${h.times}×` : ""}</span></li>`).join("") || `<li class="muted">Nothing yet.</li>`; for (const h of mon.heard) pinHeard(h); }
+  { $("heard").innerHTML = log.heard.slice(-30).reverse().map((h: any) => `<li data-heardcall="${esc(h.call)}"><b>${esc(h.call)}</b> ${esc(h.name ?? "")} <span class="muted">· ${tfmt(h.at)} · ${h.mhz.toFixed(3)}${h.times > 1 ? ` · ${h.times}×` : ""}</span></li>`).join("") || `<li class="muted">Nothing yet.</li>`; for (const h of log.heard) pinHeard(h); }
 }
 // The captions panel floats over the map: dragged by its title bar (kept for the session), folded with ▾.
 {
@@ -129,14 +142,15 @@ function renderMon() {
     addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
     e.preventDefault();
   });
+  $("capClear").onclick = () => { log = { captions: [], heard: [] }; saveLog(); heardLayer.clearLayers(); heardPins.clear(); renderMon(); };
   $("capFold").onclick = () => { const f = panel.classList.toggle("folded"); $("capFold").textContent = f ? "▸" : "▾"; $("capFold").setAttribute("aria-expanded", String(!f)); };
 }
 function watchMon() {
   es?.close();
   es = new EventSource("/api/radio/monitor/events");
-  es.addEventListener("state", (m) => { const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d, heard: d.heard ?? mon?.heard }; renderMon(); });
+  es.addEventListener("state", (m) => { const d = JSON.parse((m as MessageEvent).data); mon = { ...mon, ...d }; if (d.on) { for (const c of d.captions ?? []) addCaption(c, d.mhz, d.label); saveLog(); } renderMon(); });
   es.addEventListener("squelch", (m) => { if (mon) { const d = JSON.parse((m as MessageEvent).data); mon.open = d.open; mon.snr = d.snr; renderMon(); } });
-  es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; mon.captions = [...(mon.captions ?? []), c].slice(-60); for (const x of c.calls ?? []) if (x.found) { const h = { ...x, at: c.at, mhz: mon.mhz, label: mon.label, text: c.text.slice(0, 160), times: 1 }; mon.heard = [...(mon.heard ?? []).filter((y: any) => y.call !== h.call), h]; } renderMon(); });
+  es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; addCaption(c, mon.mhz, mon.label); saveLog(); renderMon(); });
 }
 async function monitor(mhz: number, label: string, mode = "NFM") {
   $("monStatus").textContent = `Tuning the server SDR to ${mhz.toFixed(3)} MHz…`; $<HTMLDetailsElement>("mon").open = true;
@@ -226,6 +240,7 @@ await loadArea();
     } },
 };
 (window as any).blipContext = () => ({ page: "Callsigns & repeaters (worldwide map, showing the visible area), with a propagation panel (NOAA space weather, band conditions) and the next ham-satellite passes over the map's center", lastLookup: lastLicense, bandsShown: [...on], mode: $<HTMLSelectElement>("mode").value || "all",
-  listening: mon?.on ? { mhz: mon.mhz, label: mon.label, mode: mon.mode, squelchOpen: mon.open, lastCaptions: (mon.captions ?? []).slice(-6).map((c: any) => `${tfmt(c.at)}: ${c.text}${c.calls?.length ? ` [${c.calls.map((x: any) => x.call).join(", ")}]` : ""}`), heard: (mon.heard ?? []).slice(-10).map((h: any) => `${h.call} ${h.name ?? ""} at ${tfmt(h.at)} on ${h.mhz}`) } : "off (the 🎧 panel can tune the server SDR to a repeater and caption it)",
+  listening: mon?.on ? { mhz: mon.mhz, label: mon.label, mode: mon.mode, squelchOpen: mon.open, lastCaptions: log.captions.slice(-6).map((c: any) => `${tfmt(c.at)}: ${c.text}${c.calls?.length ? ` [${c.calls.map((x: any) => x.call).join(", ")}]` : ""}`), } : "off (the 🎧 panel can tune the server SDR to a repeater and caption it)",
+  heardInThisTab: log.heard.slice(-10).map((h: any) => `${h.call} ${h.name ?? ""} at ${tfmt(h.at)} on ${h.mhz}`),
   propagation: wx && { summary: wx.summary, sfi: wx.sfi, ssn: wx.ssn, k: wx.k?.kp, bands: wx.bands }, nextSatellitePasses: sats?.passes.slice(0, 6).map((p: any) => `${p.rise} ${p.name} ${p.maxElevation}° ${p.minutes} min, down ${p.down}`), satelliteShown: satShown,
   nearestRepeaters: shown.slice(0, 12).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: +r.km.toFixed(1) })) });

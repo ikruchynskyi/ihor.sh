@@ -2,10 +2,11 @@
 // the dongle server streams a 240 kHz slice around the frequency → NFM demodulation in TypeScript (radio/src/dsp.ts)
 // → a carrier squelch cuts the audio into transmissions → each one goes to Whisper on this Mac (mlx_whisper, local)
 // → callsigns in the text (spoken plainly or in phonetics) are looked up in the FCC database and pinned on the map.
-// One monitor at a time (one dongle); everyone on the page hears and reads the same thing. It stops after ten quiet
+// One monitor at a time (one dongle); everyone on the page hears and reads the same thing. Nothing is kept: the
+// callsigns heard live only in the pages that were listening, and the captions are dropped when listening stops. It stops after ten quiet
 // minutes without anyone watching.
 import { spawn, type ChildProcess } from "node:child_process";
-import { writeFile, unlink, mkdir, readFile } from "node:fs/promises";
+import { writeFile, unlink, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Receiver, firLowpass, FirDecimator } from "./radio/src/dsp.ts";
 import { callsign as fccLookup } from "./ham.ts";
@@ -14,23 +15,20 @@ const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
 const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
 const DIR = path.join(import.meta.dirname, "data", "monitor");
-const HEARD_FILE = path.join(import.meta.dirname, "data", "heard.json");
 const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000, MAX_UTT_S = 25, MIN_UTT_S = 0.7;
 
 export type Caption = { at: string; text: string; seconds: number; calls: Call[] };
 export type Call = { call: string; found: boolean; name?: string; cls?: string; grid?: string; lat?: number; lon?: number; city?: string; how: "spoken" | "phonetic" };
-export type Spot = { call: string; at: string; mhz: number; label: string; name?: string; cls?: string; grid?: string; lat?: number; lon?: number; city?: string; text: string; times: number };
 
 type Viewer = { res: import("node:http").ServerResponse };
 const viewers = new Set<Viewer>(), ears = new Set<import("node:http").ServerResponse>();
 let state = { on: false, mhz: 0, label: "", mode: "NFM" as "NFM" | "WFM", open: false, since: "", error: "", captions: [] as Caption[], transcribing: 0 };
-let heard: Spot[] = [];
 let abort: AbortController | null = null, lastViewer = Date.now(), whisper: ChildProcess | null = null;
 const pending = new Map<string, (r: any) => void>();
 
 const send = (ev: string, data: unknown) => { const line = `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`; for (const v of viewers) v.res.write(line); };
 const pub = () => ({ on: state.on, mhz: state.mhz, label: state.label, mode: state.mode, open: state.open, since: state.since, error: state.error, transcribing: state.transcribing, viewers: viewers.size, captions: state.captions.slice(-40) });
-export const monitorState = () => ({ ...pub(), heard: heard.slice(-60) });
+export const monitorState = pub;
 
 // ---------- the whisper worker: one python process that keeps the model loaded ----------
 function worker(): ChildProcess {
@@ -111,13 +109,6 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     }
     const cap: Caption = { at: new Date().toISOString(), text, seconds: +(n / AUDIO_FS).toFixed(1), calls };
     state.captions.push(cap); if (state.captions.length > 200) state.captions.shift();
-    for (const c of calls.filter((x) => x.found)) {
-      const recent = heard.find((s) => s.call === c.call && s.mhz === state.mhz && Date.now() - Date.parse(s.at) < 15 * 60e3);
-      if (recent) { recent.times++; recent.at = cap.at; recent.text = text.slice(0, 160); }
-      else heard.push({ call: c.call, at: cap.at, mhz: state.mhz, label: state.label, name: c.name, cls: c.cls, grid: c.grid, lat: c.lat, lon: c.lon, city: c.city, text: text.slice(0, 160), times: 1 });
-      if (heard.length > 500) heard.shift();
-      writeFile(HEARD_FILE, JSON.stringify(heard.slice(-500))).catch(() => {});
-    }
     send("caption", cap); send("state", pub());
   };
   const reader = r.body.getReader();
@@ -154,7 +145,8 @@ export async function startMonitor(mhz: number, label = "", mode: "NFM" | "WFM" 
 }
 export function stopMonitor(why = "stopped", quiet = false) {
   abort?.abort(); abort = null;
-  if (!quiet) { state = { ...state, on: false, open: false, error: "" }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
+  // what was said stays only with those who listened (their page keeps it)
+  if (!quiet) { state = { ...state, on: false, open: false, error: "", captions: [] }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
   void why;
 }
 /** Server-sent events for the page: state, squelch, caption. */
@@ -171,5 +163,3 @@ export function monitorAudio(res: import("node:http").ServerResponse) {
   res.write(WAV_HEAD); ears.add(res); lastViewer = Date.now();
   res.on("close", () => ears.delete(res));
 }
-export const heardLog = () => heard.slice(-200);
-readFile(HEARD_FILE, "utf8").then((t) => { heard = JSON.parse(t); }).catch(() => {});

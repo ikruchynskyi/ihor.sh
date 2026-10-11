@@ -48,7 +48,7 @@
     .floatp { position: fixed; z-index: 1100; left: 56px; top: 10px; width: min(620px, calc(100vw - 460px)); height: 340px; min-width: 260px; min-height: 120px; display: flex; flex-direction: column; resize: both; overflow: hidden; background: var(--card, #0d1226); border: 2px solid var(--line, #3b4bb0); box-shadow: 0 6px 24px #0008; }
     .floatp[hidden] { display: none; }
     .floatp header { display: flex; align-items: center; gap: 8px; padding: 4px 8px; cursor: move; touch-action: none; user-select: none; border-bottom: 1px solid var(--line, #3b4bb0); }
-    .floatp header button { margin-left: auto; padding: 0 8px !important; }
+    .floatp header button { padding: 0 8px !important; } #capSum { flex: 1; }
     .floatp.folded { height: auto !important; resize: none; } .floatp.folded .fbody { display: none; }
     .fbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr minmax(150px, 34%); }
     .fbody > * { overflow: auto; min-height: 0; padding: 4px 10px; } .fbody > * + * { border-left: 1px solid var(--line, #3b4bb0); }
@@ -67,7 +67,7 @@
     <div id="lic" class="muted"></div>
     <details class="panel" id="mon" open><summary>🎧 Listen with live captions <span class="muted" id="monSum"></span></summary>
       <div id="monBody">
-        <p class="muted">Tune the server's SDR to a repeater (🎧 in any repeater's popup) or type a frequency. You hear it here, Whisper on the server writes what's said, and any callsign it hears is looked up and pinned on the map. One frequency at a time for everyone; it switches off after ten quiet minutes.</p>
+        <p class="muted">Tune the server's SDR to a repeater (🎧 in any repeater's popup) or type a frequency. You hear it here, Whisper on the server writes what's said, and any callsign it hears is looked up and pinned on the map (only on your page, until you close the tab or press Clear). One frequency at a time for everyone; it switches off after ten quiet minutes.</p>
         <form id="monForm" class="monform"><input id="monMhz" type="number" step="0.0001" min="24" max="1766" placeholder="MHz, e.g. 147.270" aria-label="Frequency in MHz"><select id="monMode" aria-label="Mode"><option>NFM</option><option>WFM</option></select><button>Listen</button><button type="button" id="monStop" hidden>Stop</button></form>
         <p id="monStatus" class="muted"></p>
         <audio id="monAudio" controls hidden></audio>
@@ -86,7 +86,7 @@
   </aside>
 </div>
 <section id="capPanel" class="floatp" hidden aria-label="Live captions and heard callsigns">
-  <header title="Drag to move"><b>📝 On the air</b> <span class="muted" id="capSum"></span><button type="button" id="capFold" aria-expanded="true" title="Fold">▾</button></header>
+  <header title="Drag to move"><b>📝 On the air</b> <span class="muted" id="capSum"></span><button type="button" id="capClear" title="Forget these captions and callsigns, and take the pins off the map">Clear</button><button type="button" id="capFold" aria-expanded="true" title="Fold">▾</button></header>
   <div class="fbody">
     <div id="captions"></div>
     <div><h3>Heard <span class="muted">(pinned 📻)</span></h3><ul id="heard" class="heard"></ul></div>
