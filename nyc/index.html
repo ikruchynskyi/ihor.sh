@@ -1246,18 +1246,20 @@ map.on("click", async (e) => {
   const p = L.popup({ maxWidth: 340 }).setLatLng(e.latlng).setContent("Looking up…").openOn(map);
   const phP = getJSON(`/api/nyc/photo-near?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null); // alongside the address
   const d = await getJSON(`/api/nyc/point?lat=${e.latlng.lat.toFixed(6)}&lon=${e.latlng.lng.toFixed(6)}`).catch(() => null);
-  if (!d?.found) p.setContent(`No NYC address found here.<div class="here-photo"></div>`);
+  const photoBox = `<div class="here-photo muted">📸 looking for a street photo…</div>`; // the first look in an area can take several seconds
+  if (!d?.found) p.setContent(`No NYC address found here.${photoBox}`);
   else {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
-  p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span><div class="here-photo"></div>
+  p.setContent(`<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   }
-  // the best street photo of this spot (Mapillary, within ~60 m, looking at it); a click opens it
+  // the best street photo of this spot (Mapillary, within ~100 m, looking at it); a click opens it
   const ph = await phP;
   const box = p.getElement()?.querySelector(".here-photo");
+  if (box && !ph) { box.textContent = "No street photo within ~100 m."; p.update(); }
   if (ph && box) {
     photoById.set(ph.id, ph);
     box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;

@@ -162,13 +162,13 @@ const TOOLS: Record<string, Tool> = {
     run: async () => ({ storms: (await storms()).storms }),
   },
   street_photo: {
-    description: "The nearest street-level photo (Mapillary, within ~60 m) of a point or NYC place: when it was taken, by whom, and links to see it. Use it for 'what does it look like there'.",
+    description: "The nearest street-level photo (Mapillary, within ~100 m) of a point or NYC place: when it was taken, by whom, and links to see it. Use it for 'what does it look like there'.",
     parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or an NYC address/place" } },
     run: async ({ lat, lon, place }) => {
       const at = await pointOf(lat, lon, place);
       if (!at) return { error: "Need a point or a place." };
       const p = await photoNear(at.lat, at.lon);
-      return p ? { near: at.label, taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, panorama: p.pano, metersAway: p.meters, image: p.thumb, page: p.page, license: "© Mapillary contributors, CC BY-SA 4.0" } : { near: at.label, note: "no street photo within ~60 m" };
+      return p ? { near: at.label, taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, panorama: p.pano, metersAway: p.meters, image: p.thumb, page: p.page, license: "© Mapillary contributors, CC BY-SA 4.0" } : { near: at.label, note: "no street photo within ~100 m" };
     },
   },
   radio_stations: {
