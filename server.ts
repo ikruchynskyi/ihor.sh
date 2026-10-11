@@ -29,6 +29,7 @@ import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
+import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms } from "./nycapi.ts";
 
@@ -93,7 +94,7 @@ let day = "", today = 0;
 const PER_IP = 20, WINDOW_MS = 10 * 60_000, PER_DAY = 1000;
 // Map data endpoints use keyed city APIs: a looser per-IP budget of their own.
 // Street photos have their own: they're read from cached Mapillary tiles, and the dots reload with every pan.
-const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>();
+const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>(), upscaleHits = new Map<string, number[]>();
 function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   const now = Date.now(), recent = (bucket.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
   if (recent.length >= max) return false;
@@ -538,6 +539,18 @@ const server = http.createServer(async (req, res) => {
       const id = String(url.searchParams.get("route") ?? "");
       if (!/^[A-Z ]{3,12}_[A-Z0-9+-]{1,10}$/.test(id)) return res.writeHead(400).end();
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await busRoute(id)));
+    }
+    if (url.pathname === "/api/nyc/upscale" && req.method === "POST") { // ✨ in a camera window: its frame now, ~4× by AI (upscale.ts)
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), id = String(url.searchParams.get("cam") ?? "");
+      const fail = (code: number, error: string) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
+      if (!dataAllowed(ip, upscaleHits, 30)) return fail(429, "That's a lot of upscaling: try again in a few minutes.");
+      // the picture comes from our own camera list (or Mapillary's link for a street photo), never from a URL the page sends
+      const src = /^m\d{1,20}$/.test(id) ? (await photoImages([id.slice(1)]))[id.slice(1)]?.thumb : (await trafficCameras()).find((c) => c.id === id)?.image;
+      if (!src) return fail(404, "No such camera.");
+      const r = await fetch(src, { signal: AbortSignal.timeout(10_000) }).catch(() => null), frame = r?.ok ? Buffer.from(await r.arrayBuffer()) : null;
+      if (!frame?.length || frame.length > 8e6) return fail(502, "The camera didn't send a picture just now.");
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await upscale(frame))); }
+      catch (e) { return fail(503, (e as Error).message); }
     }
     if (url.pathname === "/api/nyc/camera-image") { // a traffic camera frame, same-origin so pages can read its pixels
       const id = String(url.searchParams.get("id") ?? "");
