@@ -92,7 +92,7 @@ const hits = new Map<string, number[]>();
 let day = "", today = 0;
 const PER_IP = 20, WINDOW_MS = 10 * 60_000, PER_DAY = 1000;
 // Map data endpoints use keyed city APIs: a looser per-IP budget of their own.
-// Street photos have their own: they're read from cached Mapillary tiles, and walking asks for them step after step.
+// Street photos have their own: they're read from cached Mapillary tiles, and the dots reload with every pan.
 const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>();
 function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   const now = Date.now(), recent = (bucket.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
@@ -510,7 +510,7 @@ const server = http.createServer(async (req, res) => {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = url.searchParams;
       if (!dataAllowed(ip, photoHits, 600)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       try {
-        const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number]), Number(q.get("max"))) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
+        const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
         const empty = !out || (Array.isArray(out) ? !out.length : !Object.keys(out).length); // don't let browsers keep "nothing here" for half an hour
         return res.writeHead(200, { "content-type": "application/json", "cache-control": empty ? "no-store" : "public, max-age=1800" }).end(JSON.stringify(out));
       } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }

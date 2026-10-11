@@ -102,11 +102,6 @@
     .cam:fullscreen, .cam.max { position: fixed; inset: 0; width: auto !important; height: auto !important; border: 0; box-shadow: none; z-index: 2147480000; background: #000; }
     .cam:fullscreen .grip, .cam.max .grip { display: none; }
     .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
-    .walkview { flex: 1; min-height: 0; background-color: #000; pointer-events: none; }
-    .walknote { position: absolute; left: 8px; bottom: 8px; font-size: 12px; background: #000b; color: #fff; padding: 2px 6px; pointer-events: none; }
-    .walkpad { position: absolute; right: 22px; bottom: 22px; display: grid; grid-template-columns: repeat(3, 32px); grid-template-rows: repeat(2, 32px); gap: 3px; }
-    .walkpad button { padding: 0 !important; min-width: 0 !important; font-size: 14px !important; opacity: .85; }
-    .walkpad [data-k="up"] { grid-area: 1 / 2; } .walkpad [data-k="left"] { grid-area: 2 / 1; } .walkpad [data-k="down"] { grid-area: 2 / 2; } .walkpad [data-k="right"] { grid-area: 2 / 3; }
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
     .nearbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
@@ -763,135 +758,13 @@ let photoTimer = 0;
 map.on("moveend", () => { if (LAYERS.photos.on) { clearTimeout(photoTimer); photoTimer = setTimeout(() => loadPhotos(LAYERS.photos.group).catch(() => {}), 400); } });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-photo]"); if (b) openPhoto(photoById.get(b.dataset.photo)); });
 
-// Walking through the street photos, like Street View: ↑ goes to the next photo ahead, ↓ steps back (still facing
-// ahead), ← → turn 45° (a 360° photo just turns; otherwise the photo from about the same spot facing that way).
-// Photos load in small tiles around you; the map follows with an arrow for where you face. On phones: the ▲◀▶▼ buttons.
-const walk = { cur: null, h: 0, note: "", pool: new Map(), tiles: new Map(), ready: null, marker: null, last: 0, err: "" };
-const WT = 0.0015; // tile size in degrees (~165 × 125 m)
-const mDist = (a, b) => Math.hypot((a.lat - b.lat) * 111_320, (a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180));
-const bearing = (a, b) => ((Math.atan2((b.lon - a.lon) * Math.cos((a.lat * Math.PI) / 180), b.lat - a.lat) * 180) / Math.PI + 360) % 360;
-const angOff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
-const compass = (h) => `${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(h / 45) % 8]} ${Math.round(h)}°`;
-// The 3×3 tiles around a photo, in one request whenever any of them is missing.
-function walkLoad(p) {
-  const i0 = Math.floor(p.lat / WT), j0 = Math.floor(p.lon / WT), keys = [];
-  for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) keys.push(`${i0 + di},${j0 + dj}`);
-  if (keys.some((k) => !walk.tiles.has(k))) {
-    const req = getJSON(`/api/nyc/photos?bbox=${[(i0 - 1) * WT, (j0 - 1) * WT, (i0 + 2) * WT, (j0 + 2) * WT].map((v) => v.toFixed(4)).join(",")}&max=10000`) // all of them: turning needs every photo of a spot
-      .then((l) => { for (const x of l) if (!walk.pool.has(x.id)) walk.pool.set(x.id, x); walk.err = ""; })
-      .catch((e) => { walk.err = /429/.test(e.message) ? "too many requests, wait a minute" : e.message; for (const k of keys) if (walk.tiles.get(k) === req) walk.tiles.delete(k); });
-    for (const k of keys) if (!walk.tiles.has(k)) walk.tiles.set(k, req);
-  }
-  return (walk.ready = Promise.all(keys.map((k) => walk.tiles.get(k))));
+/** Open a street photo in a window. Dots are bare points, so the picture (a signed link) is fetched first. */
+async function openPhoto(p) {
+  if (!p.thumb) Object.assign(p, (await getJSON(`/api/nyc/photo-images?ids=${p.id}`).catch(() => ({})))[p.id]);
+  if (!p.thumb) return;
+  openCam({ id: `m${p.id}`, name: photoTitle(p), image: p.thumb, page: `https://www.mapillary.com/app/?pKey=${p.id}`, source: "Mapillary", static: true });
+  seen.photo = { taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, lat: p.lat, lon: p.lon };
 }
-// The photo to step to, going `dir`: 2–40 m away and within 35° of that way (`wide`: 60 m, 60°, for bends and gaps);
-// nearer, straighter, the same sequence (one person's walk or drive), looking the way you face, and newer win.
-function walkNext(dir, wide = false) {
-  const c = walk.cur, now = Date.now();
-  let best = null, bs = Infinity;
-  for (const p of walk.pool.values()) {
-    if (p.id === c.id) continue;
-    const d = mDist(c, p); if (d < 2 || d > (wide ? 60 : 40)) continue;
-    const off = angOff(bearing(c, p), dir); if (off > (wide ? 60 : 35)) continue;
-    const sc = d + off * 0.4 + (p.seq && p.seq === c.seq ? 0 : 6) + (p.pano || p.angle == null ? 0 : angOff(p.angle, walk.h) * 0.08) + ((now - p.at) / 3.15e10) * 2;
-    if (sc < bs) { bs = sc; best = p; }
-  }
-  return best;
-}
-// A photo from about here looking toward `h` (turning where there's no 360° photo).
-function walkFacing(h) {
-  let best = null, bs = Infinity;
-  for (const p of walk.pool.values()) {
-    const d = mDist(walk.cur, p), off = p.pano ? 0 : p.angle == null ? 999 : angOff(p.angle, h);
-    if (d > 12 || off > 40) continue;
-    if (d * 2 + off < bs) { bs = d * 2 + off; best = p; }
-  }
-  return best;
-}
-const walkSrc = (p) => (p.pano ? p.big ?? p.thumb : p.thumb);
-// Photos come as points; their pictures (signed links) are fetched for the photo and the ~24 nearest, in one request.
-async function photoImgs(p) {
-  const near = [...walk.pool.values()].filter((x) => !x.thumb && x !== p && mDist(p, x) < 50).sort((a, b) => mDist(p, a) - mDist(p, b)).slice(0, 24);
-  const need = [...(p.thumb ? [] : [p]), ...near];
-  if (!need.length) return;
-  const got = await getJSON(`/api/nyc/photo-images?ids=${need.map((x) => x.id).join(",")}`).catch(() => ({}));
-  for (const x of need) if (got[x.id]) Object.assign(x, got[x.id]);
-}
-function walkShow(note = "") {
-  const w = document.getElementById("cam-walk"), p = walk.cur;
-  if (!w || !p) return;
-  walk.note = note;
-  const v = w.querySelector(".walkview");
-  if (walkSrc(p)) v.style.backgroundImage = `url("${walkSrc(p)}")`;
-  if (p.pano) { // an equirectangular 360° photo: ~100° of it across the window, centered on where you face
-    const W = v.clientWidth * 3.6, off = ((walk.h - (p.angle ?? 0) + 540) % 360) - 180;
-    Object.assign(v.style, { backgroundSize: `${W}px auto`, backgroundRepeat: "repeat-x", backgroundPosition: `${v.clientWidth / 2 - W * (0.5 + off / 360)}px center` });
-  } else Object.assign(v.style, { backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" });
-  w.querySelector("header b").textContent = `🚶 ${photoTitle(p)}`;
-  w.querySelector("header a").href = `https://www.mapillary.com/app/?pKey=${p.id}`;
-  w.querySelector(".walknote").textContent = `${compass(walk.h)}${note ? ` · ${note}` : ""}`;
-  const ll = [p.lat, p.lon], icon = L.divIcon({ className: "", html: `<svg viewBox="0 0 20 20" width="28" height="28" style="transform:rotate(${walk.h}deg);filter:drop-shadow(0 0 2px #000)"><path d="M10 1 17 18 10 14 3 18Z" fill="#ff5c8a" stroke="#fff" stroke-width="1.5"/></svg>`, iconSize: [28, 28], iconAnchor: [14, 14] });
-  if (walk.marker) walk.marker.setLatLng(ll).setIcon(icon); else walk.marker = L.marker(ll, { icon, interactive: false, zIndexOffset: 1000 }).addTo(map);
-  if (!map.getBounds().pad(-0.2).contains(ll)) map.panTo(ll);
-  seen.photo = { taken: new Date(p.at).toISOString().slice(0, 10), by: p.by, lat: p.lat, lon: p.lon, facing: compass(walk.h) };
-}
-async function walkKey(k) {
-  if (!walk.cur) return;
-  if (k === "up" || k === "down") {
-    const dir = k === "up" ? walk.h : (walk.h + 180) % 360;
-    let p = walkNext(dir) ?? walkNext(dir, true);
-    if (!p) { walkShow("loading the photos around…"); await walk.ready; p = walkNext(dir) ?? walkNext(dir, true); }
-    if (!p) return walkShow(walk.err ? `couldn't load the photos around: ${walk.err}` : `no photo ${k === "up" ? "ahead" : "behind"}: try turning`);
-    // follow the street as it bends: a photo's own direction, or for 360° ones half the turn of the step (GPS jitters)
-    const turn = ((bearing(walk.cur, p) - dir + 540) % 360) - 180;
-    if (!p.pano && p.angle != null && angOff(p.angle, walk.h) < 60) walk.h = p.angle;
-    else if (p.pano) walk.h = (walk.h + turn / 2 + 360) % 360;
-    if (!p.thumb) { walkShow("…"); await photoImgs(p); }
-    if (!p.thumb) return walkShow("that photo didn't load: try again");
-    walk.cur = p;
-    walkLoad(p); photoImgs(p);
-  } else {
-    walk.h = (walk.h + (k === "left" ? -45 : 45) + 360) % 360;
-    if (!walk.cur.pano) {
-      const p = walkFacing(walk.h);
-      if (!p) return walkShow("no photo this way from here; ↑ still walks this way");
-      if (!p.thumb) await photoImgs(p);
-      if (!p.thumb) return walkShow("that photo didn't load: try again");
-      walk.cur = p; if (!p.pano) walk.h = p.angle;
-    }
-  }
-  walkShow();
-  const n = walkNext(walk.h); if (n?.thumb) new Image().src = walkSrc(n); // the likely next step, ready before you press ↑
-}
-/** Open a street photo in the walking window (one at a time), facing `facing` (default: the way the camera looked). */
-async function openPhoto(p, facing = p.facing) {
-  walk.cur = p; walk.h = (p.pano ? facing ?? p.angle : p.angle ?? facing) ?? 0; // a flat photo can only face where its camera did walk.pool.set(p.id, p); walkLoad(p);
-  if (facing == null && p.pano) walk.ready.then(() => { // face along the street: toward the nearest photo of the same sequence
-    if (walk.cur !== p) return;
-    const nb = [...walk.pool.values()].filter((x) => x.seq && x.seq === p.seq && x.id !== p.id).sort((a, b) => mDist(p, a) - mDist(p, b))[0];
-    if (nb) { walk.h = bearing(p, nb); walkShow(walk.note); }
-  });
-  if (!document.getElementById("cam-walk")) {
-    openCam({ id: "walk", name: photoTitle(p), image: "", page: `https://www.mapillary.com/app/?pKey=${p.id}`, source: "Mapillary", static: true });
-    const w = document.getElementById("cam-walk");
-    w.querySelector("img").replaceWith(Object.assign(document.createElement("div"), { className: "walkview", role: "img", ariaLabel: "Street photo" }));
-    w.insertAdjacentHTML("beforeend", `<span class="walknote"></span><div class="walkpad"><button data-k="up" aria-label="Walk forward">▲</button><button data-k="left" aria-label="Turn left">◀</button><button data-k="down" aria-label="Step back">▼</button><button data-k="right" aria-label="Turn right">▶</button></div>`);
-    Object.assign(w.style, { width: `${Math.min(520, innerWidth - 20)}px`, height: `${Math.min(380, innerHeight - 120)}px` });
-    w.title = "Walk with the arrow keys";
-    w.querySelector(".walkpad").onclick = (e) => { const b = e.target.closest("button"); if (b) walkKey(b.dataset.k); };
-    new ResizeObserver(() => walkShow(walk.note)).observe(w.querySelector(".walkview"));
-    w.querySelector("button.x").addEventListener("click", () => { walk.marker?.remove(); walk.marker = null; walk.cur = null; seen.photo = null; });
-  }
-  if (!p.thumb) { walkShow("loading the photo…"); await photoImgs(p); }
-  if (walk.cur === p) walkShow(p.thumb ? "↑ ↓ ← → to walk" : "that photo didn't load: try another dot");
-}
-addEventListener("keydown", (e) => { // capture: while walking, the arrows walk instead of panning the map
-  const k = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" }[e.key];
-  if (!k || !walk.cur || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.("input, textarea, select, [contenteditable]")) return;
-  e.preventDefault(); e.stopPropagation();
-  if (e.repeat && performance.now() - walk.last < 300) return; // holding ↑ walks, at a pace the photos can keep up with
-  walk.last = performance.now(); walkKey(k);
-}, true);
 
 // ---------- public restrooms (NYC Open Data), as a layer and in the 400 m circle ----------
 let loosCache = null, camsCache = null;
@@ -1382,12 +1255,12 @@ map.on("click", async (e) => {
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   }
-  // the best street photo of this spot (Mapillary, within ~60 m, looking at it); a click walks from there, facing it
+  // the best street photo of this spot (Mapillary, within ~60 m, looking at it); a click opens it
   const ph = await phP;
   const box = p.getElement()?.querySelector(".here-photo");
   if (ph && box) {
     photoById.set(ph.id, ph);
-    box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))} · click it to walk from there 🚶</span>`;
+    box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;
     p.update();
   }
 });
