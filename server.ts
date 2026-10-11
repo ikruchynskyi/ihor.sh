@@ -212,7 +212,7 @@ Disallow: /api/
 Disallow: /mcp
 Disallow: /a2a
 
-# AI agents: /llms.txt maps the site; live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
+# AI agents: /llms.txt maps the site; /search?q= searches it (JSON, or Markdown with Accept: text/markdown); live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
 User-agent: GPTBot
 Allow: /
 User-agent: ClaudeBot
@@ -231,7 +231,8 @@ function llmsTxt() {
   return (llms ??= (async () => {
     const out = [`# ihor.sh`, ``, `> Hobby projects built and learned in public, free and without accounts: a software-defined radio written from scratch with courses, NYC open-data tools (a live subway map, a jobs radar, an evening planner, a résumé check), AI and electronics courses with interactive chapters, Yomu (Japanese from zero), a bikepacking route notebook, and Blip, a companion that answers questions on every page.`, ``,
       `For agents:`, `- Pages render in the browser (JavaScript). The lists below link every page with its description.`,
-      `- Live data (subway, buses, ferries, Citi Bike, ships in the harbor, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP, 26 tools, bearer token from the owner), or by asking Blip on any page.`,
+      `- Live data (subway, buses, ferries, Citi Bike, ships in the harbor, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP; its tools need a bearer token from the owner, except site_search, which is open), or by asking Blip on any page.`,
+      `- Search the whole site (pages, lessons, tools, Yomu stories and grammar): ${SITE}/search?q=<words> (keyless; JSON {query, hits: [{title, url, world, snippet}]}, or Markdown with Accept: text/markdown or &format=md; &n= up to 20).`,
       `- /api/ serves the site's own pages only; /sitemap.xml lists every page.`, `- Author: Ihor Kruchynskyi (https://ihork.link/).`, ``];
     for (const [name, { dir, label }] of Object.entries(WORLDS)) {
       out.push(`## ${label}`, ``);
@@ -688,6 +689,18 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(ROBOTS);
     if (WELL_KNOWN[url.pathname]) { const [type, body] = WELL_KNOWN[url.pathname](); return res.writeHead(200, { "content-type": type, "access-control-allow-origin": "*", "cache-control": "public, max-age=3600" }).end(body); }
+    // Search for agents and scripts: keyless and cross-origin, unlike /api/ (the site's own pages only). JSON by default;
+    // Markdown with Accept: text/markdown or ?format=md. Rate-limited per IP like the other data endpoints.
+    if (url.pathname === "/search") {
+      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = String(url.searchParams.get("q") ?? "").slice(0, 120);
+      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json", "access-control-allow-origin": "*" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
+      if (!q.trim()) return res.writeHead(400, { "content-type": "application/json", "access-control-allow-origin": "*" }).end(JSON.stringify({ error: "Add ?q=, e.g. /search?q=op-amp" }));
+      const hits = (await siteSearch(q, Math.min(20, Number(url.searchParams.get("n")) || 8))).map((h) => ({ ...h, url: new URL(h.url, SITE).href, snippet: h.snippet.replace(/<\/?b>/g, "") }));
+      const head = { "access-control-allow-origin": "*", "cache-control": "public, max-age=300", vary: "accept" };
+      if (wantsMarkdown(req) || url.searchParams.get("format") === "md")
+        return res.writeHead(200, { ...head, "content-type": "text/markdown; charset=utf-8" }).end(`# ihor.sh search: ${q}\n\n${hits.map((h) => `- [${h.title}](${h.url}) (${h.world}): ${h.snippet}`).join("\n") || "No pages match."}\n`);
+      return res.writeHead(200, { ...head, "content-type": "application/json" }).end(JSON.stringify({ query: q, hits }));
+    }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
     if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));

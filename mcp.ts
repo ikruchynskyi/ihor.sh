@@ -21,16 +21,19 @@ type Rpc = { jsonrpc: "2.0"; id?: string | number | null; method: string; params
 const INSTRUCTIONS = "Live NYC data (subway, buses, ferries, Citi Bike, traffic, 311, events, restaurants, trips), the sky (weather, aircraft, ISS, hurricanes), radio (stations, callsigns, repeaters) and web search. Call ask_blip for a composed answer.";
 const ASK = { name: "ask_blip", description: "Ask Blip, ihor.sh's assistant, a question in plain words; it picks and chains its own tools (and web search) and answers in a few sentences with links.", inputSchema: { type: "object", properties: { question: { type: "string", description: "The question" } }, required: ["question"] } };
 
-async function handle(m: Rpc, ask: (q: string) => Promise<{ reply: string; tools: string[] }>) {
+// Without the token, /mcp still answers, with site_search only: searching the site is open to everyone.
+const OPEN = new Set(["site_search"]);
+async function handle(m: Rpc, ask: (q: string) => Promise<{ reply: string; tools: string[] }>, open = false) {
   switch (m.method) {
     case "initialize": {
       const v = VERSIONS.includes(m.params?.protocolVersion) ? m.params.protocolVersion : VERSIONS[0];
-      return { protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "ihor.sh Blip", version: "1.0.0" }, instructions: INSTRUCTIONS };
+      return { protocolVersion: v, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "ihor.sh Blip", version: "1.0.0" }, instructions: open ? "Search ihor.sh with site_search (no token needed). Blip and the live-data tools need a bearer token from the site's owner." : INSTRUCTIONS };
     }
     case "ping": return {};
-    case "tools/list": return { tools: [ASK, ...toolDefs()] };
+    case "tools/list": return { tools: open ? toolDefs().filter((t) => OPEN.has(t.name)) : [ASK, ...toolDefs()] };
     case "tools/call": {
       const { name, arguments: args } = m.params ?? {};
+      if (open && !OPEN.has(String(name))) return { content: [{ type: "text", text: `${name} needs a bearer token from the site's owner (https://ihork.link/); site_search works without one.` }], isError: true };
       try {
         if (name === "ask_blip") { const a = await ask(String(args?.question ?? "")); return { content: [{ type: "text", text: a.reply }], structuredContent: { reply: a.reply, toolsUsed: a.tools } }; }
         const out = await runTool(String(name), args ?? {});
@@ -67,13 +70,14 @@ export const agentCard = (site: string) => ({
 });
 
 // CORS and the bearer token for /mcp and /a2a; false when the request was answered here.
-function gate(req: http.IncomingMessage, res: http.ServerResponse) {
+function gate(req: http.IncomingMessage, res: http.ServerResponse, open = false): boolean | "open" {
   res.setHeader("access-control-allow-origin", "*");
   res.setHeader("access-control-allow-headers", "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, last-event-id, a2a-version");
   res.setHeader("access-control-allow-methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader("access-control-expose-headers", "mcp-session-id, www-authenticate");
   if (req.method === "OPTIONS") { res.writeHead(204).end(); return false; } // CORS preflight: no token on these
   if (authorized(req.headers.authorization)) return true;
+  if (open && !req.headers.authorization) return "open"; // no token at all: the open tools (a wrong token is still refused)
   res.writeHead(401, { "content-type": "application/json", "cache-control": "no-store", "www-authenticate": 'Bearer realm="ihor.sh mcp"' }).end(JSON.stringify({ error: "Missing or wrong bearer token." }));
   return false;
 }
@@ -99,7 +103,9 @@ const sse = new Map<string, http.ServerResponse>(); // older-transport sessions:
 
 /** /mcp: POST JSON-RPC (one message or a batch; notifications get 202), or GET for the older SSE transport. */
 export async function mcp(req: http.IncomingMessage, res: http.ServerResponse, ask: (q: string) => Promise<{ reply: string; tools: string[] }>) {
-  if (!gate(req, res)) return;
+  const access = gate(req, res, true);
+  if (!access) return;
+  const open = access === "open";
   const send = (code: number, body?: unknown) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(body === undefined ? undefined : JSON.stringify(body));
   const session = new URL(req.url ?? "/", "http://x").searchParams.get("session");
   if (req.method === "GET") { // older HTTP+SSE transport: announce where to post, then stream the answers
@@ -120,7 +126,7 @@ export async function mcp(req: http.IncomingMessage, res: http.ServerResponse, a
   const one = async (m: Rpc) => {
     if (m?.jsonrpc !== "2.0" || typeof m.method !== "string") return { jsonrpc: "2.0", id: m?.id ?? null, error: { code: -32600, message: "Invalid Request" } };
     if (m.id === undefined) return null; // a notification (e.g. notifications/initialized): nothing to answer
-    try { return { jsonrpc: "2.0", id: m.id, result: await handle(m, ask) }; }
+    try { return { jsonrpc: "2.0", id: m.id, result: await handle(m, ask, open) }; }
     catch (e) { return { jsonrpc: "2.0", id: m.id, error: { code: (e as any).code ?? -32603, message: (e as Error).message } }; }
   };
   if (session) { // older transport: accept now, answer on the session's event stream

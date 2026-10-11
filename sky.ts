@@ -249,7 +249,7 @@ async function fmScan() {
 /** NYC radio: every FM station on the air (FCC), whether our antenna hears it (the scan), and its internet stream if one
  *  matches its call sign; plus internet-only streams from the city. */
 export async function radioDial() {
-  const [fm, streams, scan] = await Promise.all([fccFm(), radioStations(), fmScan()]);
+  const [fm, streams, scan] = await Promise.all([fccFm(), radioStations().catch(() => []), fmScan()]); // the FM list stands without Radio Browser's streams
   const level = new Map<number, number>((scan?.channels ?? []).map((c: any) => [c.mhz, c.snrDb]));
   const used = new Set<string>();
   const stations = fm.map((st: any) => {

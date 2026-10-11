@@ -30,7 +30,7 @@ const TOOLS: Record<string, Tool> = {
   site_search: {
     description: "Search this site (ihor.sh): every page, lesson, tool, Yomu story and grammar point, by topic or words. Use it for 'where is…', 'is there a page about…', 'which chapter covers…'. Returns titles, URLs and snippets.",
     parameters: { query: { type: "string", description: "What to look for, e.g. 'op-amp', 'Morse', 'bikes on Metro-North', 'て-form'" } }, required: ["query"],
-    run: async ({ query }) => ({ hits: (await siteSearch(String(query), 8)).map((h) => ({ title: h.title, url: h.url, world: h.world, snippet: h.snippet.replace(/<\/?b>/g, "") })) }),
+    run: async ({ query }) => ({ hits: (await siteSearch(String(query), 8)).map((h) => ({ title: h.title, url: new URL(h.url, "https://ihor.sh").href, world: h.world, snippet: h.snippet.replace(/<\/?b>/g, "") })) }),
   },
   web_search: {
     description: "Search the web (Tavily, then Ollama, then DuckDuckGo) for current facts, news, prices, hours, how-tos: anything that isn't on this site or that you aren't sure of. Returns titles, URLs and snippets.",

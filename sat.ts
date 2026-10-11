@@ -3,6 +3,8 @@
 // you can see it (the satellite in sunlight while your sky is dark). Good to a few km over a few days: plenty for
 // "when do I look up". The ISS's elements come from CelesTrak, refreshed every 6 hours.
 
+import { readFile, writeFile } from "node:fs/promises";
+
 const XKE = 0.0743669161, CK2 = 5.413080e-4, CK4 = 0.62098875e-6, A30 = 2.53881e-6, QOMS2T = 1.88027916e-9, S0 = 1.01222928, RE = 6378.135, TAU = 2 * Math.PI;
 
 export type Tle = { name: string; epoch: number; n0: number; e0: number; i0: number; node0: number; w0: number; m0: number; bstar: number };
@@ -170,16 +172,33 @@ export const HAM_SATS: HamSat[] = [
 
 const tles = new Map<number, Tle>();
 let tlesAt = 0;
-/** Elements for every satellite in the list, from CelesTrak's amateur, stations and weather groups (three requests, cached 6 h). */
+/** Elements for every satellite in the list, cached 6 h, in memory and in data/tle.json so a restart doesn't download them
+ *  again (CelesTrak refuses addresses that ask too often). From CelesTrak's amateur, stations and weather groups; when
+ *  CelesTrak refuses, SatNOGS's copy of each of ours; when both fail, the last saved set, however old. */
+const TLE_FILE = new URL("./data/tle.json", import.meta.url);
 async function loadTles() {
   if (tles.size && Date.now() - tlesAt < 6 * 3600e3) return;
-  for (const group of ["amateur", "stations", "weather"]) {
-    const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`, { headers: { "user-agent": "ihor.sh (+https://ihor.sh/radio/)" }, signal: AbortSignal.timeout(20_000) });
-    if (!r.ok) throw new Error(`CelesTrak ${r.status}`);
-    const lines = (await r.text()).trim().split(/\r?\n/).map((x) => x.trim());
-    for (let i = 0; i + 2 < lines.length; i += 3) { const t = parseTle(lines[i + 1], lines[i + 2], lines[i]); tles.set(Number(lines[i + 1].slice(2, 7)), t); }
+  const saved = JSON.parse(await readFile(TLE_FILE, "utf8").catch(() => "null")) as { at: number; sets: [string, string, string][] } | null;
+  const use = (sets: [string, string, string][], at: number) => { for (const [name, l1, l2] of sets) tles.set(Number(l1.slice(2, 7)), parseTle(l1, l2, name)); tlesAt = at; };
+  if (saved && Date.now() - saved.at < 6 * 3600e3) return use(saved.sets, saved.at);
+  const sets: [string, string, string][] = [];
+  try {
+    for (const group of ["amateur", "stations", "weather"]) {
+      const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`, { headers: { "user-agent": "ihor.sh (+https://ihor.sh/radio/)" }, signal: AbortSignal.timeout(20_000) });
+      if (!r.ok) throw new Error(`CelesTrak ${r.status}`);
+      const lines = (await r.text()).trim().split(/\r?\n/).map((x) => x.trim());
+      for (let i = 0; i + 2 < lines.length; i += 3) sets.push([lines[i], lines[i + 1], lines[i + 2]]);
+    }
+  } catch {
+    sets.length = 0;
+    for (const s of HAM_SATS) {
+      const d = await fetch(`https://db.satnogs.org/api/tle/?norad_cat_id=${s.catnr}&format=json`, { signal: AbortSignal.timeout(20_000) }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+      if (d[0]) sets.push([String(d[0].tle0).replace(/^0 /, ""), d[0].tle1, d[0].tle2]);
+    }
   }
-  tlesAt = Date.now();
+  if (!sets.length) { if (saved) return use(saved.sets, Date.now() - 5 * 3600e3); throw new Error("no satellite elements (CelesTrak and SatNOGS both failed)"); } // stale: retry in an hour
+  use(sets, Date.now());
+  await writeFile(TLE_FILE, JSON.stringify({ at: tlesAt, sets })).catch(() => {});
 }
 export async function tleFor(catnr: number): Promise<Tle> {
   await loadTles();
