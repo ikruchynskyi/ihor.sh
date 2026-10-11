@@ -29,11 +29,13 @@ for line in sys.stdin:
 
 let worker: ChildProcess | null = null, idle: ReturnType<typeof setTimeout> | undefined, seq = 0;
 const pending = new Map<number, (r: any) => void>();
+// the five idle minutes count only while nothing is queued (a long queue must not be cut off mid-run)
+const armIdle = () => { clearTimeout(idle); if (!pending.size) idle = setTimeout(() => worker?.kill(), IDLE_MS); };
 function py(): ChildProcess {
   if (worker && worker.exitCode == null && !worker.killed) return worker;
   const w = spawn(PY, ["-u", "-c", SCRIPT], { stdio: ["pipe", "pipe", "pipe"] });
   let buf = "";
-  w.stdout!.on("data", (d) => { buf += d; let i; while ((i = buf.indexOf("\n")) >= 0) { const row = buf.slice(0, i); buf = buf.slice(i + 1); try { const j = JSON.parse(row); pending.get(j.id)?.(j); pending.delete(j.id); } catch {} } });
+  w.stdout!.on("data", (d) => { buf += d; let i; while ((i = buf.indexOf("\n")) >= 0) { const row = buf.slice(0, i); buf = buf.slice(i + 1); try { const j = JSON.parse(row); pending.get(j.id)?.(j); pending.delete(j.id); armIdle(); } catch {} } });
   w.stderr!.on("data", (d) => { const t = String(d); if (!/Fetching|%\||Warning|Downloading/.test(t)) console.warn("upscale:", t.trim().slice(0, 200)); });
   w.on("exit", () => { if (worker === w) worker = null; for (const [, r] of pending) r({ error: "the upscaler stopped" }); pending.clear(); });
   return (worker = w);
@@ -43,11 +45,11 @@ function py(): ChildProcess {
  *  data: URL, so nothing is kept on the server. */
 export function upscale(image: Buffer): Promise<{ img: string; w: number; h: number; ms: number }> {
   if (pending.size >= MAX_QUEUE) return Promise.reject(new Error("The upscaler is busy. Try again in a minute."));
-  clearTimeout(idle); idle = setTimeout(() => worker?.kill(), IDLE_MS);
+  clearTimeout(idle);
   const id = ++seq;
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => { if (pending.delete(id)) reject(new Error("The upscaler took too long.")); }, 180_000);
-    pending.set(id, (r) => { clearTimeout(t); clearTimeout(idle); idle = setTimeout(() => worker?.kill(), IDLE_MS); r.error ? reject(new Error(r.error)) : resolve(r); });
+    const t = setTimeout(() => { if (pending.delete(id)) { armIdle(); reject(new Error("The upscaler took too long.")); } }, 180_000);
+    pending.set(id, (r) => { clearTimeout(t); r.error ? reject(new Error(r.error)) : resolve(r); });
     py().stdin!.write(JSON.stringify({ id, img: image.toString("base64") }) + "\n");
   });
 }
