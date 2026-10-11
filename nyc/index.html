@@ -766,21 +766,23 @@ document.addEventListener("click", (e) => { const b = e.target.closest("[data-ph
 // Walking through the street photos, like Street View: ↑ goes to the next photo ahead, ↓ steps back (still facing
 // ahead), ← → turn 45° (a 360° photo just turns; otherwise the photo from about the same spot facing that way).
 // Photos load in small tiles around you; the map follows with an arrow for where you face. On phones: the ▲◀▶▼ buttons.
-const walk = { cur: null, h: 0, note: "", pool: new Map(), tiles: new Map(), ready: null, marker: null, last: 0 };
+const walk = { cur: null, h: 0, note: "", pool: new Map(), tiles: new Map(), ready: null, marker: null, last: 0, err: "" };
 const WT = 0.0015; // tile size in degrees (~165 × 125 m)
 const mDist = (a, b) => Math.hypot((a.lat - b.lat) * 111_320, (a.lon - b.lon) * 111_320 * Math.cos((a.lat * Math.PI) / 180));
 const bearing = (a, b) => ((Math.atan2((b.lon - a.lon) * Math.cos((a.lat * Math.PI) / 180), b.lat - a.lat) * 180) / Math.PI + 360) % 360;
 const angOff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 const compass = (h) => `${["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(h / 45) % 8]} ${Math.round(h)}°`;
+// The 3×3 tiles around a photo, in one request whenever any of them is missing.
 function walkLoad(p) {
-  const i0 = Math.floor(p.lat / WT), j0 = Math.floor(p.lon / WT), all = [];
-  for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
-    const k = `${i0 + di},${j0 + dj}`;
-    if (!walk.tiles.has(k)) walk.tiles.set(k, getJSON(`/api/nyc/photos?bbox=${[(i0 + di) * WT, (j0 + dj) * WT, (i0 + di + 1) * WT, (j0 + dj + 1) * WT].map((v) => v.toFixed(4)).join(",")}`)
-      .then((l) => { for (const x of l) walk.pool.set(x.id, x); }).catch(() => walk.tiles.delete(k)));
-    all.push(walk.tiles.get(k));
+  const i0 = Math.floor(p.lat / WT), j0 = Math.floor(p.lon / WT), keys = [];
+  for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) keys.push(`${i0 + di},${j0 + dj}`);
+  if (keys.some((k) => !walk.tiles.has(k))) {
+    const req = getJSON(`/api/nyc/photos?bbox=${[(i0 - 1) * WT, (j0 - 1) * WT, (i0 + 2) * WT, (j0 + 2) * WT].map((v) => v.toFixed(4)).join(",")}&max=10000`) // all of them: turning needs every photo of a spot
+      .then((l) => { for (const x of l) if (!walk.pool.has(x.id)) walk.pool.set(x.id, x); walk.err = ""; })
+      .catch((e) => { walk.err = /429/.test(e.message) ? "too many requests, wait a minute" : e.message; for (const k of keys) if (walk.tiles.get(k) === req) walk.tiles.delete(k); });
+    for (const k of keys) if (!walk.tiles.has(k)) walk.tiles.set(k, req);
   }
-  return (walk.ready = Promise.all(all));
+  return (walk.ready = Promise.all(keys.map((k) => walk.tiles.get(k))));
 }
 // The photo to step to, going `dir`: 2–40 m away and within 35° of that way (`wide`: 60 m, 60°, for bends and gaps);
 // nearer, straighter, the same sequence (one person's walk or drive), looking the way you face, and newer win.
@@ -839,7 +841,7 @@ async function walkKey(k) {
     const dir = k === "up" ? walk.h : (walk.h + 180) % 360;
     let p = walkNext(dir) ?? walkNext(dir, true);
     if (!p) { walkShow("loading the photos around…"); await walk.ready; p = walkNext(dir) ?? walkNext(dir, true); }
-    if (!p) return walkShow(`no photo ${k === "up" ? "ahead" : "behind"}: try turning`);
+    if (!p) return walkShow(walk.err ? `couldn't load the photos around: ${walk.err}` : `no photo ${k === "up" ? "ahead" : "behind"}: try turning`);
     // follow the street as it bends: a photo's own direction, or for 360° ones half the turn of the step (GPS jitters)
     const turn = ((bearing(walk.cur, p) - dir + 540) % 360) - 180;
     if (!p.pano && p.angle != null && angOff(p.angle, walk.h) < 60) walk.h = p.angle;

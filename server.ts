@@ -92,12 +92,13 @@ const hits = new Map<string, number[]>();
 let day = "", today = 0;
 const PER_IP = 20, WINDOW_MS = 10 * 60_000, PER_DAY = 1000;
 // Map data endpoints use keyed city APIs: a looser per-IP budget of their own.
-const dataHits = new Map<string, number[]>();
-function dataAllowed(ip: string) {
-  const now = Date.now(), recent = (dataHits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= 150) return false;
-  recent.push(now); dataHits.set(ip, recent);
-  if (dataHits.size > 5000) dataHits.clear();
+// Street photos have their own: they're read from cached Mapillary tiles, and walking asks for them step after step.
+const dataHits = new Map<string, number[]>(), photoHits = new Map<string, number[]>();
+function dataAllowed(ip: string, bucket = dataHits, max = 150) {
+  const now = Date.now(), recent = (bucket.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (recent.length >= max) return false;
+  recent.push(now); bucket.set(ip, recent);
+  if (bucket.size > 5000) bucket.clear();
   return true;
 }
 function allowed(ip: string) {
@@ -507,9 +508,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/windy-key") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ key: process.env.WINDY_KEY ?? "" }));
     if (url.pathname === "/api/nyc/photos" || url.pathname === "/api/nyc/photo-near" || url.pathname === "/api/nyc/photo-images") { // Mapillary street photos
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = url.searchParams;
-      if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
+      if (!dataAllowed(ip, photoHits, 600)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       try {
-        const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
+        const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number]), Number(q.get("max"))) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
         const empty = !out || (Array.isArray(out) ? !out.length : !Object.keys(out).length); // don't let browsers keep "nothing here" for half an hour
         return res.writeHead(200, { "content-type": "application/json", "cache-control": empty ? "no-store" : "public, max-age=1800" }).end(JSON.stringify(out));
       } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }

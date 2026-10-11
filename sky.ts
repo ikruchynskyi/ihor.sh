@@ -150,15 +150,16 @@ function photoTile(x: number, y: number): Promise<Photo[]> {
   p.catch(() => tiles.delete(k));
   return p;
 }
-export async function streetPhotos(s: number, w: number, n: number, e: number) {
+export async function streetPhotos(s: number, w: number, n: number, e: number, max = PHOTO_MAX) {
+  max = Math.min(10_000, Math.max(100, max || PHOTO_MAX));
   if (!process.env.MAPILLARY_TOKEN) return [];
   if (!(n > s && e > w && n - s <= 0.03 && e - w <= 0.04)) throw new Error("zoom in further");
   const tx = (lon: number) => Math.floor(((lon + 180) / 360) * 16384), ty = (lat: number) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 16384);
   const parts: Promise<Photo[]>[] = [];
   for (let x = tx(w); x <= tx(e); x++) for (let y = ty(n); y <= ty(s); y++) parts.push(photoTile(x, y));
   let list = (await Promise.all(parts)).flat().filter((p) => p.lat >= s && p.lat <= n && p.lon >= w && p.lon <= e).sort((a, b) => b.at - a.at);
-  if (list.length > PHOTO_MAX) { // the newest photo per cell, cells sized so about PHOTO_MAX fit
-    const cell = Math.sqrt(((n - s) * (e - w)) / PHOTO_MAX), seen = new Set<string>();
+  if (list.length > max) { // the newest photo per cell, cells sized so about `max` fit
+    const cell = Math.sqrt(((n - s) * (e - w)) / max), seen = new Set<string>();
     list = list.filter((p) => { const c = `${Math.floor(p.lat / cell)},${Math.floor(p.lon / cell)}`; return !seen.has(c) && !!seen.add(c); });
   }
   return list;
