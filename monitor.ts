@@ -69,7 +69,7 @@ export function findCallsigns(text: string): { call: string; how: "spoken" | "ph
   const flush = () => { if (run.length >= 4) { const s = run.join(""); for (let a = 0; a < run.length; a++) for (let b = Math.min(run.length, a + 7); b - a >= 4; b--) { const c = run.slice(a, b).join(""); if (CALL.test(c) && !out.has(c)) { out.set(c, "phonetic"); a = b; break; } } void s; } run = []; };
   for (const w of words) { const ch = NATO[w] ?? (w.length === 1 ? w : null); if (ch) run.push(ch); else flush(); }
   flush();
-  return [...out].map(([call, how]) => ({ call, how })).filter(({ call }) => US.test(call) || how === "spoken");
+  return [...out].map(([call, how]) => ({ call, how })).filter(({ call, how }) => US.test(call) || how === "spoken");
 }
 
 // ---------- the radio chain ----------

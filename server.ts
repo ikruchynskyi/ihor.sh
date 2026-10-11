@@ -434,7 +434,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4 or N3" }));
-      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80)))); }
+      try { const out = await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80)); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
       catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
@@ -671,6 +671,7 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     console.error(req.url, (e as Error).message);
     if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip lost the signal. Try again?" }));
+    else if (!res.writableEnded) res.destroy(); // `writeHead(200).end(await …)` sends the headers before the await: a failure must still end the request, not leave the page waiting
   }
 });
 

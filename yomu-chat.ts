@@ -50,12 +50,23 @@ If their last Japanese had a mistake, put ONE short friendly correction in "fix"
 Answer with the JSON object only.`;
   const messages = [{ role: "system", content: system }, ...turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }))];
   if (!turns.length || turns.at(-1)!.role === "assistant") messages.push({ role: "user", content: "(Start the conversation: greet me and ask me something.)" });
-  const r = await fetch(`${OLLAMA}/api/chat`, {
-    method: "POST", signal: AbortSignal.timeout(150_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: "low", format: SCHEMA, options: { num_predict: 900, temperature: 0.8 }, messages }),
-  });
-  if (!r.ok) throw new Error(`local model: ${r.status}`);
-  const out = JSON.parse((await r.json()).message.content) as Reply;
+  // gpt-oss now and then leaves the answer in its thinking (empty content) or garbles its channels (Ollama answers 500):
+  // asking again fixes both, within one time limit for the whole turn
+  const signal = AbortSignal.timeout(150_000);
+  let out: Reply | null = null, err: unknown;
+  for (let tries = 0; tries < 3 && !out && !signal.aborted; tries++) {
+    try {
+      const r = await fetch(`${OLLAMA}/api/chat`, {
+        method: "POST", signal,
+        body: JSON.stringify({ model: MODEL, stream: false, think: "low", format: SCHEMA, options: { num_predict: 900, temperature: 0.8 }, messages }),
+      });
+      if (!r.ok) throw new Error(`local model: ${r.status}`);
+      const o = JSON.parse((await r.json()).message.content) as Reply;
+      if (!String(o?.ja ?? "").trim()) throw new Error("empty reply");
+      out = o;
+    } catch (e) { err = e; }
+  }
+  if (!out) throw err;
   out.ja = String(out.ja ?? "").trim(); out.en = String(out.en ?? "").trim(); out.fix = String(out.fix ?? "").trim();
   out.words = (Array.isArray(out.words) ? out.words : []).map((w) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w) => w.s);
   // the glosses must cover the sentence (the page taps them) and be word-sized; otherwise ask once more just for the
