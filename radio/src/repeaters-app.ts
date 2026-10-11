@@ -107,9 +107,29 @@ function renderMon() {
   const audio = $<HTMLAudioElement>("monAudio");
   if (live && (audio.hidden || !audio.src)) { audio.hidden = false; audio.src = `/api/radio/monitor/audio?t=${Date.now()}`; audio.play().catch(() => {}); }
   if (!live && !audio.hidden) { audio.hidden = true; audio.removeAttribute("src"); audio.load(); }
-  $("captions").innerHTML = mon.captions?.length ? mon.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
-  $("captions").scrollTop = $("captions").scrollHeight;
+  $("capPanel").hidden = !live && !mon.captions?.length;
+  $("capSum").textContent = `${mon.captions?.length ?? 0} lines · ${mon.heard?.length ?? 0} calls`;
+  const caps = $("captions"), atEnd = caps.scrollHeight - caps.scrollTop - caps.clientHeight < 40; // don't yank the reader back down while they scroll up
+  caps.innerHTML = mon.captions?.length ? mon.captions.slice(-40).map(capHtml).join("") : (live ? `<p class="muted">Captions appear here a few seconds after each transmission.</p>` : "");
+  if (atEnd) caps.scrollTop = caps.scrollHeight;
   if (mon.heard) { $("heard").innerHTML = mon.heard.slice(-30).reverse().map((h: any) => `<li data-heardcall="${esc(h.call)}"><b>${esc(h.call)}</b> ${esc(h.name ?? "")} <span class="muted">· ${tfmt(h.at)} · ${h.mhz.toFixed(3)}${h.times > 1 ? ` · ${h.times}×` : ""}</span></li>`).join("") || `<li class="muted">Nothing yet.</li>`; for (const h of mon.heard) pinHeard(h); }
+}
+// The captions panel floats over the map: dragged by its title bar (kept for the session), folded with ▾.
+{
+  const panel = $("capPanel"), head = panel.querySelector("header")!, place = (x: number, y: number) => {
+    x = Math.max(0, Math.min(innerWidth - 120, x)); y = Math.max(0, Math.min(innerHeight - 40, y));
+    Object.assign(panel.style, { left: `${x}px`, top: `${y}px` });
+  };
+  try { const p = JSON.parse(sessionStorage.getItem("rpt:caps") || "null"); if (p && innerWidth > 760) place(p.x, p.y); } catch {}
+  head.addEventListener("pointerdown", (e) => {
+    if ((e.target as HTMLElement).closest("button") || e.button) return;
+    const r = panel.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const move = (m: PointerEvent) => place(m.clientX - sx, m.clientY - sy);
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); const q = panel.getBoundingClientRect(); try { sessionStorage.setItem("rpt:caps", JSON.stringify({ x: q.left, y: q.top })); } catch {} };
+    addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
+    e.preventDefault();
+  });
+  $("capFold").onclick = () => { const f = panel.classList.toggle("folded"); $("capFold").textContent = f ? "▸" : "▾"; $("capFold").setAttribute("aria-expanded", String(!f)); };
 }
 function watchMon() {
   es?.close();
