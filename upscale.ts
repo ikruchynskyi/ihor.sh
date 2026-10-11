@@ -1,6 +1,7 @@
 // AI upscaling of a camera frame on this Mac: SeedVR2-3B (ByteDance's one-step diffusion restoration model) in MLX
-// through mflux, in its own venv (~/AI/mflux-venv: mflux wants a newer mlx and torch than Whisper's venv). The model
-// (~7 GB) loads on the first request and the worker exits after five idle minutes, giving the memory back.
+// through mflux, in its own venv (~/AI/mflux-venv: mflux wants a newer mlx and torch than Whisper's venv). Quantized to
+// 8 bits with MLX's cache capped and emptied after each frame: ~5 GB between frames and a ~16 GB peak, where fp16 sat
+// at 20–29 GB and pushed the Mac into swap. Loads on the first request; exits after five idle minutes.
 // The frame goes through a temp file (mflux reads paths), deleted at once; the result goes back as base64.
 import { spawn, type ChildProcess } from "node:child_process";
 
@@ -8,14 +9,16 @@ const PY = process.env.MFLUX_PY ?? "/Users/irishdash/AI/mflux-venv/bin/python";
 const IDLE_MS = 5 * 60_000, MAX_QUEUE = 3, MAX_SHORT = 1080; // output: ~4×, the short side at most 1080 px
 const SCRIPT = `import sys, json, base64, io, os, tempfile, time
 from PIL import Image
+import mlx.core as mx
 from mflux.models.common.config import ModelConfig
 from mflux.models.seedvr2 import SeedVR2
 model = None
+mx.set_cache_limit(1 << 30)
 for line in sys.stdin:
     j, path = {}, None
     try:
         j = json.loads(line); t = time.time()
-        if model is None: model = SeedVR2(model_config=ModelConfig.seedvr2_3b())
+        if model is None: model = SeedVR2(quantize=8, model_config=ModelConfig.seedvr2_3b())
         fd, path = tempfile.mkstemp(suffix=".jpg"); os.write(fd, base64.b64decode(j["img"])); os.close(fd)
         short = min(Image.open(path).size)
         out = model.generate_image(seed=42, image_path=path, resolution=max(short, min(4 * short, ${MAX_SHORT})), softness=0.0).image.convert("RGB")
@@ -25,6 +28,7 @@ for line in sys.stdin:
         print(json.dumps({"id": j.get("id"), "error": str(e)[:200]}), flush=True)
     finally:
         if path: os.unlink(path)
+        mx.clear_cache()
 `;
 
 let worker: ChildProcess | null = null, idle: ReturnType<typeof setTimeout> | undefined, seq = 0;
