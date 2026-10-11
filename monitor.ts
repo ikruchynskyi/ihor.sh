@@ -15,11 +15,11 @@ const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
 const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
 const DIR = path.join(import.meta.dirname, "data", "monitor");
-const SCAN_DWELL = 0.25, SCAN_HANG = 2.5, SCAN_MAX = 150; // seconds on each quiet channel; how long to stay after a transmission ends
+const SCAN_DWELL = 0.25, SCAN_HANG = 2.5, SCAN_MAX_HOLD = 15, SCAN_MAX = 150; // seconds on each quiet channel; how long to stay after a transmission ends; the most on any one channel
 const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000, MAX_UTT_S = 25, MIN_UTT_S = 0.7;
 
 export type Caption = { at: string; text: string; seconds: number; calls: Call[]; mhz: number; label: string };
-type Scan = { list: { mhz: number; label: string }[]; i: number; hits: Record<string, string> };
+type Scan = { list: { mhz: number; label: string }[]; i: number; hits: Record<string, string>; round?: number; roundStart?: number };
 export type Call = { call: string; found: boolean; name?: string; cls?: string; grid?: string; lat?: number; lon?: number; city?: string; how: "spoken" | "phonetic" };
 
 type Viewer = { res: import("node:http").ServerResponse };
@@ -95,16 +95,18 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
   let chunks = 0, open = false, closedFor = 0, utt: Int16Array[] = [], uttLen = 0, utStart = 0, rest = new Uint8Array(0);
   // Scanning: the slice hops from channel to channel (instant inside the dongle's window; outside it the dongle retunes),
   // listens DWELL seconds, and holds on a channel while it's busy and HANG seconds after, like a scanner radio.
-  let settle = 0, dwell = SCAN_DWELL, hopping = false, fails = 0, window0 = 0;
+  let settle = 0, dwell = SCAN_DWELL, hopping = false, fails = 0, window0 = 0, onFor = 0;
   const hop = async () => {
-    const sc = state.scan!; hopping = true;
+    const sc = state.scan!; hopping = true; onFor = 0;
+    if (open) { open = false; state.open = false; closedFor = 0; send("squelch", { open: false, db: null, snr: null, mhz: state.mhz }); } // leaving a channel that's still busy
     sc.i = (sc.i + 1) % sc.list.length; const ch = sc.list[sc.i];
+    if (!sc.i) { if (sc.roundStart) sc.round = Math.round((Date.now() - sc.roundStart) / 1000); sc.roundStart = Date.now(); } // how long a round takes: a transmission shorter than that may be missed
     state.mhz = ch.mhz; state.label = ch.label;
     const r: any = await fetch(`${SDR}/api/slice`, { method: "POST", headers: { "content-type": "application/json", "x-via-ihor": "1" }, body: JSON.stringify({ id: "monitor", center: Math.round(ch.mhz * 1e6) }), signal: ac.signal }).then((x) => x.json()).catch((e) => ({ error: e.message }));
     if (ac.signal.aborted) return;
     if (r.error) { if (++fails >= sc.list.length) { stopMonitor("scan blocked"); state.error = `Can't scan: ${r.error}`; send("state", pub()); return; } settle = 0; dwell = 0; }
     else { fails = 0; settle = r.window?.[0] !== window0 ? 0.35 : 0.12; window0 = r.window?.[0]; dwell = SCAN_DWELL; } // skip what was in flight (and the retune)
-    hopping = false; send("scan", { i: sc.i, mhz: ch.mhz, label: ch.label });
+    hopping = false; send("scan", { i: sc.i, mhz: ch.mhz, label: ch.label, round: sc.round });
   };
   const finish = async () => {
     const { mhz, label } = state;
@@ -151,7 +153,10 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     for (const e of ears) e.write(chunk);
     if (open) { utt.push(pcm); uttLen += pcm.length; if (uttLen >= MAX_UTT_S * AUDIO_FS) finish(); }
     else if (uttLen) finish();
-    if (state.scan && chunks > 15) { if (open) dwell = SCAN_HANG; else if ((dwell -= sec) <= 0 && !uttLen) void hop(); }
+    if (state.scan && chunks > 15) {
+      if ((onFor += sec) > SCAN_MAX_HOLD) { if (uttLen) finish(); void hop(); } // a channel that never goes quiet doesn't stop the scan
+      else if (open) dwell = SCAN_HANG; else if ((dwell -= sec) <= 0 && !uttLen) void hop();
+    }
     if (Date.now() - lastViewer > IDLE_MS && !viewers.size) { stopMonitor("nobody listening"); break; }
   }
 }

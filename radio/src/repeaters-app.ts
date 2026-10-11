@@ -123,7 +123,7 @@ function addCaption(c: any, mhz: number, label: string) {
 function renderStatus() { // the light part, redrawn on every scanner hop
   const live = mon.on && !mon.error, sc = live && mon.scan;
   $("monSum").textContent = live ? `${sc ? "📡 " : ""}${mon.mhz.toFixed(3)} MHz${mon.label ? ` · ${mon.label}` : ""}` : "";
-  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `${sc ? `📡 Scanning ${sc.i + 1}/${sc.list.length} (${Object.keys(sc.hits).length} busy so far) · ` : ""}<span class="sq ${mon.open ? "open" : ""}"></span>${mon.mode === "WFM" ? "Listening" : mon.open ? `Someone's transmitting${mon.snr != null ? ` (${mon.snr} dB over the noise)` : ""}` : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""}${sc ? "" : ` · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>`}` : "Not listening. Pick a repeater on the map, or type a frequency.";
+  $("monStatus").innerHTML = mon.error ? `⚠ ${esc(mon.error)}` : live ? `${sc ? `📡 Scanning ${sc.i + 1}/${sc.list.length} (${Object.keys(sc.hits).length} busy so far${sc.round ? `; a round takes ${sc.round} s` : ""}) · ` : ""}<span class="sq ${mon.open ? "open" : ""}"></span>${mon.mode === "WFM" ? "Listening" : mon.open ? `Someone's transmitting${mon.snr != null ? ` (${mon.snr} dB over the noise)` : ""}` : "Quiet"} on <b>${mon.mhz.toFixed(3)} MHz</b> ${esc(mon.mode)}${mon.label ? ` · ${esc(mon.label)}` : ""} · ${mon.viewers} listening${mon.transcribing ? " · ✍ transcribing…" : ""}${sc ? "" : ` · <a href="../?listen=${mon.mhz}">open in Spectrum Lab</a>`}` : "Not listening. Pick a repeater on the map, or type a frequency.";
   $("monStop").hidden = !live; $("monStop").textContent = sc ? "Stop scanning" : "Stop";
 }
 function renderMon() {
@@ -168,7 +168,7 @@ function watchMon() {
   });
   es.addEventListener("squelch", (m) => { if (mon) { const d = JSON.parse((m as MessageEvent).data); mon.open = d.open; mon.snr = d.snr; renderStatus(); } });
   es.addEventListener("caption", (m) => { const c = JSON.parse((m as MessageEvent).data); if (!mon) return; addCaption(c, c.mhz ?? mon.mhz, c.label ?? mon.label); saveLog(); renderMon(); });
-  es.addEventListener("scan", (m) => { const d = JSON.parse((m as MessageEvent).data); if (!mon?.scan) return; mon.scan.i = d.i; mon.mhz = d.mhz; mon.label = d.label; mon.open = false; renderStatus(); });
+  es.addEventListener("scan", (m) => { const d = JSON.parse((m as MessageEvent).data); if (!mon?.scan) return; mon.scan.i = d.i; mon.scan.round = d.round; mon.mhz = d.mhz; mon.label = d.label; mon.open = false; renderStatus(); });
   es.addEventListener("hit", (m) => { const d = JSON.parse((m as MessageEvent).data); if (!mon?.scan) return; mon.scan.hits[d.mhz] = log.hits[d.mhz] = d.at; saveLog(); render(); renderStatus(); });
 }
 async function monitor(body: object, what: string) {
