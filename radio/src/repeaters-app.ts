@@ -37,15 +37,19 @@ function popup(r: Repeater) {
     ${r.description ? `<span class="muted">${esc(r.description).replace(/\n/g, "<br>")}</span><br>` : ""}
     <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${scannable(r) ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
 }
+const marks = new Map<number, any>(); // repeater id → its marker
+let pendingRpt: number | null = null; // a ?rpt= link's repeater, opened once the area around it has loaded
 function render() {
-  layer.clearLayers();
+  const openId = pendingRpt ?? [...marks].find(([, m]) => m.isPopupOpen())?.[0]; // an open popup stays open across reloads
+  layer.clearLayers(); marks.clear();
   const hit = (r: Repeater) => log.hits[r.outputMHz]; // drawn last, so on top: a white ring for a repeater the scan heard busy
   for (const r of [...all].sort((a, b) => Number(!!hit(a)) - Number(!!hit(b)))) {
     if (!on.has(r.band) || ($<HTMLInputElement>("opOnly").checked && !r.operational) || ($<HTMLSelectElement>("mode").value && !r.mode.toUpperCase().includes($<HTMLSelectElement>("mode").value))) continue;
     const h = hit(r), p = picked.has(r.id);
-    L.circleMarker([r.lat, r.lon], { renderer: canvas, radius: h ? 11 : p ? 8 : 6, color: h || p ? "#fff" : BANDS[r.band], fillColor: BANDS[r.band], fillOpacity: h ? 1 : 0.85, weight: h ? 4 : p ? 2 : 1 })
-      .bindPopup(() => popup(r), { maxWidth: 320 }).bindTooltip(`${r.callsign} ${r.outputMHz}${h ? ` · busy at ${tfmt(h)}` : ""}`).addTo(layer);
+    marks.set(r.id, L.circleMarker([r.lat, r.lon], { renderer: canvas, radius: h ? 11 : p ? 8 : 6, color: h || p ? "#fff" : BANDS[r.band], fillColor: BANDS[r.band], fillOpacity: h ? 1 : 0.85, weight: h ? 4 : p ? 2 : 1 })
+      .bindPopup(() => popup(r), { maxWidth: 320 }).bindTooltip(`${r.callsign} ${r.outputMHz}${h ? ` · busy at ${tfmt(h)}` : ""}`).addTo(layer));
   }
+  if (openId != null && marks.has(openId)) { pendingRpt = null; marks.get(openId).openPopup(); }
   renderList();
 }
 function renderList() {
@@ -255,9 +259,16 @@ async function showSatQuiet(id: string) { // move the marker along without reope
 }
 loadSats();
 
-const q = new URLSearchParams(location.search).get("call");
-if (q) await lookup(q); // moves the map; the area then loads
+// Links in (Blip uses them): ?call=<callsign>, ?rpt=<repeater id>@<lat>,<lon> (opens that repeater), ?sat=<id> (shows that satellite).
+const params = new URLSearchParams(location.search), q = params.get("call"), [rptId, rptAt = ""] = (params.get("rpt") ?? "").split("@"), [rLat, rLon] = rptAt.split(",").map(Number);
+if (Number.isFinite(rLat) && Number.isFinite(rLon) && rptAt) map.setView([rLat, rLon], 13);
+else if (q) await lookup(q); // moves the map; the area then loads
+if (rptId) pendingRpt = Number(rptId);
 await loadArea();
+if (params.get("sat")) {
+  await showSat(params.get("sat")!);
+  satLayer.eachLayer((l: any) => { if (l.getPopup?.()) map.setView(l.getLatLng(), 3); });
+}
 
 (window as any).blipActions = {
   lookup_callsign: { label: "looked up the callsign", description: "Look up a US callsign and show the licensee's location on this map.", parameters: { callsign: { type: "string", description: "e.g. W1AW" } }, run: ({ callsign }: { callsign: string }) => lookup(String(callsign ?? "")) },

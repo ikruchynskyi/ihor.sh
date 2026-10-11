@@ -33,10 +33,12 @@ export const km = (a: { lat: number; lon: number }, b: { lat: number; lon: numbe
 // adsb.lol: community ADS-B, ODbL. Category A7 is a rotorcraft; dbFlags bit 1 marks military.
 const HELI_TYPES = /^(EC\d|AS\d|A1\d\d|AW\d|B0\d|B4\d|B2\d|R22|R44|R66|S76|S92|H\d\d|UH\d|MD\d|BK17|EH10|A109|A119|A139|A169|A189)/;
 export type Aircraft = { hex: string; flight: string; reg: string; type: string; lat: number; lon: number; altFt: number | null; kts: number | null; track: number | null; heli: boolean; military: boolean; squawk: string; emergency: string | null };
-/** Everything flying within ~35 nm of the city now, refreshed every 8 s. */
-export function aircraft(): Promise<Aircraft[]> {
-  return cached("aircraft", 8_000, async () => {
-    const d = await json(`https://api.adsb.lol/v2/lat/${NYC.lat}/lon/${NYC.lon}/dist/35`);
+/** Everything flying within ~35 nm of the city (or of any point: the map's view) now, refreshed every 8 s. Points snap
+ *  to a 0.25° grid, so everyone looking at about the same area shares one upstream request. */
+export function aircraft(lat = NYC.lat, lon = NYC.lon): Promise<Aircraft[]> {
+  const la = Math.round(lat * 4) / 4, lo = Math.round(lon * 4) / 4, home = Math.abs(lat - NYC.lat) < 0.2 && Math.abs(lon - NYC.lon) < 0.25;
+  return cached(home ? "aircraft" : `aircraft:${la},${lo}`, 8_000, async () => {
+    const d = await json(`https://api.adsb.lol/v2/lat/${home ? NYC.lat : la}/lon/${home ? NYC.lon : lo}/dist/35`);
     return (d.ac as any[]).filter((a) => typeof a.lat === "number").map((a) => ({
       hex: a.hex, flight: String(a.flight ?? "").trim(), reg: a.r ?? "", type: a.t ?? "", lat: +a.lat.toFixed(5), lon: +a.lon.toFixed(5),
       altFt: a.alt_baro === "ground" ? 0 : typeof a.alt_baro === "number" ? a.alt_baro : null, kts: a.gs ?? null, track: a.track ?? a.true_heading ?? null,
@@ -96,23 +98,40 @@ export function storms() {
 
 // ---------- weather now ----------
 /** Central Park's latest observation, the NWS forecast for the city, and any active alerts. */
-export function weather() {
-  return cached("weather", 10 * 60_000, async () => {
-    const [obs, alerts, pt] = await Promise.all([
-      json("https://api.weather.gov/stations/KNYC/observations/latest"),
-      json(`https://api.weather.gov/alerts/active?point=${NYC.lat},${NYC.lon}`),
-      json(`https://api.weather.gov/points/${NYC.lat},${NYC.lon}`),
+/** The weather at NYC (Central Park), or at any point: in the US the nearest NWS station, its forecast and alerts;
+ *  elsewhere Open-Meteo's model (no station, no alerts). */
+export function weather(lat = NYC.lat, lon = NYC.lon) {
+  const home = Math.abs(lat - NYC.lat) < 0.2 && Math.abs(lon - NYC.lon) < 0.25, la = home ? NYC.lat : +lat.toFixed(1), lo = home ? NYC.lon : +lon.toFixed(1);
+  return cached(home ? "weather" : `weather:${la},${lo}`, 10 * 60_000, async () => {
+    const pt = await json(`https://api.weather.gov/points/${la},${lo}`).catch(() => null); // 404 outside the US
+    if (!pt) return openMeteo(la, lo);
+    const st = home ? { id: "KNYC", name: "Central Park" } : await json(pt.properties.observationStations).then((d) => ({ id: d.features[0].properties.stationIdentifier, name: d.features[0].properties.name }));
+    const [obs, alerts, fc] = await Promise.all([
+      json(`https://api.weather.gov/stations/${st.id}/observations/latest`),
+      json(`https://api.weather.gov/alerts/active?point=${la},${lo}`),
+      json(pt.properties.forecast).catch(() => null),
     ]);
-    const fc = await json(pt.properties.forecast).catch(() => null);
     const o = obs.properties, c = (v: any) => (typeof v?.value === "number" ? Math.round(v.value) : null);
     const tempC = c(o.temperature);
     return {
-      station: "Central Park", at: o.timestamp, sky: o.textDescription, tempC, tempF: tempC === null ? null : Math.round(tempC * 1.8 + 32),
+      station: st.name, at: o.timestamp, sky: o.textDescription, tempC, tempF: tempC === null ? null : Math.round(tempC * 1.8 + 32),
       windKmh: c(o.windSpeed), humidity: c(o.relativeHumidity),
       forecast: (fc?.properties?.periods ?? []).slice(0, 3).map((p: any) => `${p.name}: ${p.detailedForecast}`),
       alerts: (alerts.features as any[]).map((f) => ({ event: f.properties.event, headline: f.properties.headline, until: f.properties.ends ?? f.properties.expires })),
     };
   });
+}
+
+// WMO weather codes (Open-Meteo) in words.
+const wmo = (n: number) => n === 0 ? "Clear" : n <= 2 ? "Partly cloudy" : n === 3 ? "Overcast" : n <= 48 ? "Fog" : n <= 57 ? "Drizzle" : n <= 67 ? "Rain" : n <= 77 ? "Snow" : n <= 82 ? "Rain showers" : n <= 86 ? "Snow showers" : "Thunderstorm";
+async function openMeteo(lat: number, lon: number) {
+  const d = await json(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=3&timezone=auto`);
+  const c = d.current, tempC = Math.round(c.temperature_2m);
+  return {
+    station: `Open-Meteo forecast model at ${lat}, ${lon}`, at: c.time, sky: wmo(c.weather_code), tempC, tempF: Math.round(tempC * 1.8 + 32), windKmh: Math.round(c.wind_speed_10m), humidity: c.relative_humidity_2m,
+    forecast: (d.daily.time as string[]).map((t, i) => `${t}: ${wmo(d.daily.weather_code[i])}, ${Math.round(d.daily.temperature_2m_min[i])}–${Math.round(d.daily.temperature_2m_max[i])} °C, rain chance ${d.daily.precipitation_probability_max[i] ?? "?"}%`),
+    alerts: [],
+  };
 }
 
 // ---------- radio stations ----------

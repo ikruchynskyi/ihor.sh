@@ -1,7 +1,7 @@
 // Blip's brain: the system prompt, the tools it can call, and the tool loop over Ollama: a cloud model first
 // (Ollama Cloud, OLLAMA_CLOUD_KEY), the local one when the cloud fails or has no key.
 // Each tool is a plain function from nycapi.ts / archive.ts / events.ts; results go back to the model as data.
-import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode, suggest, trafficCameras } from "./nycapi.ts";
+import { addressInfo, cityEvents, findRestaurants, restaurantInspections, tripPlan, webSearch, geocode, suggest, trafficCameras, webcamsNear, inNyc } from "./nycapi.ts";
 import { summary } from "./archive.ts";
 import { currentEvents } from "./events.ts";
 import { findStations, stationArrivals, ferryBoard, stationsNear, citiBikeNear, busStops, busArrivals, BUS_GRID, annotateTrip } from "./transit.ts";
@@ -72,15 +72,18 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   weather_now: {
-    description: "NYC weather now (Central Park observation), the NWS forecast for the next day or so, and any active weather alerts.",
-    parameters: {},
-    run: async () => ({ ...(await weather()), maps: { rainRadar: "/nyc/#view=40.73,-73.95,9,radar", lightning: "/nyc/#view=40.73,-73.95,8,lightning", clouds: "/nyc/#view=40.73,-73.95,7,clouds", windAndForecast: "/nyc/#view=40.73,-73.95,9,windy" } }),
+    description: "Weather now, the forecast for the next day or so, and active alerts: NYC (Central Park) by default, or any place / point (US: the nearest NWS station; elsewhere a forecast model). Includes map links for radar, lightning, clouds and wind there.",
+    parameters: { place: { type: "string", description: "Optional place anywhere" }, lat: { type: "number", description: "Optional point (e.g. the map's view)" }, lon: { type: "number", description: "Longitude" } },
+    run: async ({ place, lat, lon }) => {
+      const at = lat != null || place ? await pointAnywhere(lat, lon, place) : null, c = at ? `${at.lat.toFixed(2)},${at.lon.toFixed(2)}` : "40.73,-73.95";
+      return { ...(await weather(at?.lat, at?.lon)), place: at?.label, maps: { rainRadar: `/nyc/#view=${c},9,radar`, lightning: `/nyc/#view=${c},8,lightning`, clouds: `/nyc/#view=${c},7,clouds`, windAndForecast: `/nyc/#view=${c},9,windy` } };
+    },
   },
   aircraft_over_nyc: {
-    description: "Aircraft over NYC right now (within ~35 nm, live ADS-B from adsb.lol): callsign, type, altitude, speed, position. Filter helicopters, military, or emergencies; or the ones nearest a point.",
+    description: "Aircraft in the air right now within ~35 nm of NYC, or of any point (live ADS-B from adsb.lol): callsign, type, altitude, speed, position. Filter helicopters, military, or emergencies; nearest the point first.",
     parameters: { kind: { type: "string", description: "all (default), helicopters, military or emergency", enum: ["all", "helicopters", "military", "emergency"] }, lat: { type: "number", description: "Optional: sort by distance from here" }, lon: { type: "number", description: "Optional longitude" } },
     run: async ({ kind, lat, lon }) => {
-      let list = await aircraft();
+      let list = await aircraft(...(Number(lat) && Number(lon) ? [Number(lat), Number(lon)] : []));
       if (kind === "helicopters") list = list.filter((a) => a.heli); else if (kind === "military") list = list.filter((a) => a.military); else if (kind === "emergency") list = list.filter((a) => a.emergency);
       const at = Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : null;
       const rows = list.map((a) => ({ id: a.flight || a.reg || a.hex, hex: a.hex, type: a.type, helicopter: a.heli, military: a.military, altFt: a.altFt, kts: a.kts && Math.round(a.kts), lat: a.lat, lon: a.lon, emergency: a.emergency ?? undefined, kmAway: at ? +km(at, a).toFixed(1) : undefined, mapLink: `/nyc/#aircraft=${a.hex}` }));
@@ -140,7 +143,7 @@ const TOOLS: Record<string, Tool> = {
       const d = await hamPasses(at?.lat, at?.lon, Math.min(72, Number(hours) || 24));
       const q = String(sat ?? "").toLowerCase(), k = String(kind ?? "").toLowerCase();
       const list = d.passes.filter((p: any) => (!q || p.sat.includes(q) || p.name.toLowerCase().includes(q)) && (!k || p.kind.toLowerCase().includes(k)));
-      return { from: d.from, hours: d.hours, count: list.length, passes: list.slice(0, 25).map((p: any) => ({ ...p, mapLink: `/nyc/#sat=${p.sat}` })), page: "/radio/repeaters/ (the Ham satellites panel draws a pass on the map)", statusNote: "Status is hand-kept; AMSAT's status page has today's reports: https://www.amsat.org/status/" };
+      return { from: d.from, hours: d.hours, count: list.length, passes: list.slice(0, 25).map((p: any) => ({ ...p, mapLink: `/radio/repeaters/?sat=${p.sat}` })), page: "/radio/repeaters/ (the Ham satellites panel draws a pass on the map)", statusNote: "Status is hand-kept; AMSAT's status page has today's reports: https://www.amsat.org/status/" };
     },
   },
   heard_on_air: {
@@ -157,14 +160,14 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ lat, lon, place }) => { const at = lat != null || place ? await pointOf(lat, lon, place) : null; return issPasses(at?.lat, at?.lon); },
   },
   satellite_now: {
-    description: "Where an amateur-radio satellite (or the ISS) is right now: position, height, whether it's above a place's horizon and where to point, its frequencies, and a mapLink showing it with its track, next pass and a Listen button.",
+    description: "Where an amateur-radio satellite (or the ISS) is right now: position, height, whether it's above a place's horizon and where to point, its frequencies, and a mapLink to the repeaters page showing it with its track.",
     parameters: { sat: { type: "string", description: `Satellite id: ${HAM_SATS.map((x) => x.id).join(", ")}` }, place: { type: "string", description: "Optional: the view from here (default NYC)" } }, required: ["sat"],
     run: async ({ sat, place }) => {
       const q = String(sat).toLowerCase(), s = HAM_SATS.find((x) => x.id === q || x.name.toLowerCase().includes(q));
       if (!s) return { error: `Unknown satellite; one of ${HAM_SATS.map((x) => x.id).join(", ")}.` };
       const at = place ? await pointOf(undefined, undefined, place) : { lat: 40.73, lon: -73.95, label: "NYC" };
       const t: any = await satTrack(s.id, at?.lat, at?.lon, 0);
-      return { ...t, track: undefined, from: at?.label, mapLink: `/nyc/#sat=${s.id}` };
+      return { ...t, track: undefined, from: at?.label, mapLink: `/radio/repeaters/?sat=${s.id}` };
     },
   },
   tropical_storms: {
@@ -252,7 +255,7 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ place, band, mode }) => {
       const g = await placeAnywhere(String(place || "Manhattan, New York")).catch(() => null);
       if (!g) return { error: `Couldn't find "${place}".` };
-      return { near: g.label, repeaters: (await repeatersNear(g.lat, g.lon, { bandName: band ?? "", mode: mode ?? "", limit: 8 })).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: r.km, mapLink: `/nyc/#rpt=${r.id}@${r.lat},${r.lon}`, spectrumLab: r.outputMHz >= 24 && r.outputMHz <= 1766 ? `/radio/?listen=${r.outputMHz}` : undefined })) };
+      return { near: g.label, repeaters: (await repeatersNear(g.lat, g.lon, { bandName: band ?? "", mode: mode ?? "", limit: 8 })).map((r) => ({ callsign: r.callsign, outputMHz: r.outputMHz, offsetMHz: r.offsetMHz, tone: r.toneUp, mode: r.mode, network: r.network, city: r.city, km: r.km, mapLink: `/radio/repeaters/?rpt=${r.id}@${r.lat},${r.lon}`, spectrumLab: r.outputMHz >= 24 && r.outputMHz <= 1766 ? `/radio/?listen=${r.outputMHz}` : undefined })) };
     },
   },
   ferry_arrivals: {
@@ -292,15 +295,16 @@ const TOOLS: Record<string, Tool> = {
   },
   find_place: {
     description: "Find places in NYC by name, kind or address (a museum, 'Joe's Pizza', 'Barclays Center', '350 5th Ave'): name, address, kind, coordinates and a mapLink that opens the NYC map there with the address, businesses and a street photo.",
-    parameters: { query: { type: "string", description: "Name, kind or address, e.g. 'Brooklyn Museum', 'Katz's Deli', '1 Wall St'" } }, required: ["query"],
-    run: async ({ query }) => ({ places: (await suggest(String(query))).slice(0, 6).map((p) => ({ ...p, mapLink: mapAt(p.lat, p.lon, p.name) })) }),
+    parameters: { query: { type: "string", description: "Name, kind or address, e.g. 'Brooklyn Museum', 'Katz's Deli', '1 Wall St'" }, lat: { type: "number", description: "Optional: search around this point instead of NYC (e.g. the map's view)" }, lon: { type: "number", description: "Longitude" } }, required: ["query"],
+    run: async ({ query, lat, lon }) => ({ places: (await suggest(String(query), Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : undefined)).slice(0, 6).map((p) => ({ ...p, mapLink: mapAt(p.lat, p.lon, p.name) })) }),
   },
   traffic_cameras: {
-    description: "Live NYC traffic cameras and webcams: the nearest to a place or point, or the ones whose name matches words (e.g. 'FDR', 'Canal St'). Each has a mapLink that opens the map with its live picture.",
+    description: "Live traffic cameras and webcams (NYC DOT's, and windy.com webcams anywhere): the nearest to a place or point, or the ones whose name matches words (e.g. 'FDR', 'Canal St'). Each has a mapLink that opens the map with its live picture.",
     parameters: { place: { type: "string", description: "Address or place to find cameras near" }, lat: { type: "number", description: "Or a point: latitude" }, lon: { type: "number", description: "Longitude" }, query: { type: "string", description: "Or words in the camera's name" } },
     run: async ({ place, lat, lon, query }) => {
-      const all = await trafficCameras(), words = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-      const at = words.length && !place && !lat ? null : await pointOf(lat, lon, place);
+      const pt = lat != null || place ? await pointAnywhere(lat, lon, place) : null;
+      const all = pt && !inNyc(pt.lat, pt.lon) ? await webcamsNear(pt.lat, pt.lon) : await trafficCameras(), words = String(query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+      const at = pt;
       if (!words.length && !at) return { error: "Name a place, a point or words in the camera's name." };
       const hits = all.filter((c) => words.every((w) => String(c.name).toLowerCase().includes(w)))
         .map((c) => ({ id: c.id, name: c.name, area: c.area, meters: at ? Math.round(km(at, { lat: +c.lat, lon: +c.lon }) * 1000) : undefined, mapLink: `/nyc/#cam=${c.id}` }))
@@ -322,6 +326,13 @@ const TOOLS: Record<string, Tool> = {
 };
 /** A map link that opens the NYC map at a point with its "what's here" popup, titled with the place's name. */
 const mapAt = (lat: number, lon: number, name = "") => `/nyc/#at=${lat.toFixed(5)},${lon.toFixed(5)},17${name ? `|${encodeURIComponent(name)}` : ""}`;
+/** A point anywhere: lat/lon as given, or a place looked up worldwide (NYC's own geocoder first for places in the city). */
+async function pointAnywhere(lat: unknown, lon: unknown, place: unknown) {
+  const la = Number(lat), lo = Number(lon);
+  if (Number.isFinite(la) && Number.isFinite(lo) && (la || lo) && Math.abs(la) <= 85) return { lat: la, lon: lo, label: `${la.toFixed(3)}, ${lo.toFixed(3)}` };
+  if (!place) return null;
+  return placeAnywhere(String(place)).catch(() => null); // worldwide: NYC's geocoder would find "Boston" on a Brooklyn street
+}
 /** A point from lat/lon, or by looking up a place. */
 async function pointOf(lat: unknown, lon: unknown, place: unknown) {
   const la = Number(lat), lo = Number(lon);
@@ -338,7 +349,7 @@ Visitors talk to you through a little game-style dialog box. You see the page th
 
 The site is a map of projects ("worlds"). Open now:
 - World 1, Radio: a software-defined radio that runs in the browser, written from scratch in TypeScript (no SDR libraries), plus courses that teach how it works (21 chapters, up to analog TV and weather-satellite pictures decoded in the browser), a US ham license prep track, a handbook companion and an SSTV decoder. Two live receivers share one dongle with Spectrum Lab, decoded by our own TypeScript (no Direwolf, no dump1090): /radio/aprs/ (APRS packet radio on 144.39 MHz) and /radio/adsb/ (aircraft on 1090 MHz); visitors can switch them on from their pages when the dongle is free. A Meshtastic LoRa mesh map and public chat, heard by a node on USB, is at /radio/mesh/ (visitors read only). There's also a CW (Morse) trainer at /radio/cw.html and a callsign lookup + repeater map at /radio/repeaters/.
-- World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (opens with everything within 400 m of the visitor: subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms; layers for every station with live next trains, stations with MTA alerts → nearest Citi Bike, buses, ferries, ships, aircraft, broken elevators, traffic cameras, free events, restaurant inspections, public restrooms; click anywhere for the address and businesses there; the page action show_near draws the 400 m circle). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), [a route](/nyc/#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops in between; all separated by |). [an aircraft](/nyc/#aircraft=<hex>), [a ship](/nyc/#ship=<MMSI>), [a ham repeater](/nyc/#rpt=<id>@<lat>,<lon>) and [a ham satellite](/nyc/#sat=<id>) (their map popups have 🎧 Listen on the site's SDR and Spectrum Lab; a spectrumLab link like /radio/?listen=146.94 opens Spectrum Lab preset to that frequency: the visitor still presses 'Listen to server SDR'; to just hear it, the map popup's 🎧 Listen is one click), and any view with layers on: [rain radar](/nyc/#view=40.73,-73.95,9,radar) (#view=lat,lon,zoom,layer+layer; layers: repeaters, hamsats, radar, lightning, clouds, windy, storms, iss, aircraft, ships, ferry, trains, citibike, cameras, speeds, c311, city, popups, sales, restrooms, outages). Tool results carry mapLink / maps fields with these links ready-made (places, cameras, routes, stations, bikes, buses, aircraft, ships, events, restaurants, weather, storms, the ISS, repeaters, satellites): link each thing you mention with its mapLink, so a click opens the map showing it. For "over / near <a place>", get the place's coordinates with find_place, then pass them as lat/lon, Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
+- World 2, NYC: tools on NYC open data. NYC Live Map at /nyc/ (opens with everything within 400 m of the visitor: subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms; layers for every station with live next trains, stations with MTA alerts → nearest Citi Bike, buses, ferries, ships, aircraft, broken elevators, traffic cameras, free events, restaurant inspections, public restrooms; click anywhere for the address and businesses there; the page action show_near draws the 400 m circle). Link things on that map with markdown so visitors can click straight to them: [Union Sq](/nyc/#station=635) (GTFS station id), [a spot](/nyc/#at=40.7359,-73.9911), [an address](/nyc/#place=350 5th Ave Manhattan), [a camera](/nyc/#cam=<camera id>), [a route](/nyc/#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops in between; all separated by |). [an aircraft](/nyc/#aircraft=<hex>), [a ship](/nyc/#ship=<MMSI>). Ham radio lives on the repeaters page, not the NYC map: [a repeater](/radio/repeaters/?rpt=<id>@<lat>,<lon>) and [a ham satellite](/radio/repeaters/?sat=<id>) open there (its popups have 🎧 Listen with captions and Spectrum Lab); a spectrumLab link like /radio/?listen=146.94 opens Spectrum Lab preset to that frequency (the visitor then presses 'Listen to server SDR'), and any view with layers on: [rain radar](/nyc/#view=40.73,-73.95,9,radar) (#view=lat,lon,zoom,layer+layer; layers: radar, lightning, clouds, windy, storms, iss, aircraft, ships, ferry, trains, citibike, cameras, speeds, c311, city, popups, sales, restrooms, outages). Tool results carry mapLink / maps fields with these links ready-made (places, cameras, routes, stations, bikes, buses, aircraft, ships, events, restaurants, weather, storms, the ISS, repeaters, satellites): link each thing you mention with its mapLink, so a click opens the map showing it. For "over / near <a place>", get the place's coordinates with find_place, then pass them as lat/lon, Free NYC (free places and the day's free events), and the MTA Archive (subway alerts and elevator outages recorded every 5 minutes). Also [Tonight in NYC](/nyc/tonight.html) (what's on tonight, tomorrow or the weekend from official sources, and a planned evening: subway there, dinner nearby, the ride home), the [Jobs radar](/nyc/jobs.html) (open jobs in NYC, NJ, the metro and remote-US from the employers' own boards, deduplicated and re-checked hourly, with résumé matching and an application tracker) and the [résumé check](/nyc/resume.html).
 - Bonus world ORNA (the GPS RPG, at the bottom of the home page): a guild shop planner at /orna/ (which guild sells which material when, proof costs); deeper game questions go to the Telegram bot @IrishmooshBot, link [Ask the ORNA bot](https://web.telegram.org/k/#@IrishmooshBot).
 - World 3, AI at /ai/: machine learning from scratch with draggable visuals, the math behind each step, runnable code and questions: 10 chapters (matrices, gradients, a neuron, backprop, probability and loss, convolutions, attention, agents with a live tool-choice and faithfulness eval, vision, and a tiny transformer trained in the browser on NYC subway station names at /ai/10-tiny-transformer.html).
 - World 4, Yomu at /yomu/: Japanese from zero (stories and grammar to JLPT N3, kanji and words to N1). Graded stories (N5, N4 and N3) with tap-to-gloss words, audio, shadowing and sentence building; kana trainer /yomu/kana.html; every N5–N3 grammar point /yomu/grammar.html (each links to Tae Kim's guide); kanji and word decks all the way to N1 /yomu/deck.html; handwriting practice /yomu/draw.html; Talk /yomu/talk.html (spoken role-play scenes: konbini, asking the way, a restaurant, introductions, a train platform, a hotel); free conversation at N5/N4/N3 on a local model /yomu/chat.html?level=N5 (tap any word for its meaning); spaced review /yomu/review.html; placement test /yomu/placement.html. On Yomu pages act as a Japanese tutor: write Japanese with kanji, then the reading in kana and romaji, then English.
@@ -356,6 +367,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - Jobs: jobs_search (open jobs in NYC, NJ, the metro and remote-US; link the visitor to its page result for the full list with filters). Résumés: point to [the résumé check](/nyc/resume.html) (how an ATS reads it, fixes, AI rewrites that never invent facts) and the jobs page's "Jobs that fit my résumé"; you never see résumé text.
 - Water: ships_in_harbor (what's that ship, the ferries and tugs and tankers moving now, nearest to a spot). Radio: propagation_now (band conditions, solar flux, K index), satellite_passes (when SO-50, RS-44, the ISS repeater, Meteor… pass over), heard_on_air (what our receiver is captioning on a repeater right now, and the callsigns in it). Sky and air: weather_now, aircraft_over_nyc (helicopters circling, military, emergencies), iss_now, iss_passes (when to look up), tropical_storms, radio_stations (NYC radio lives at /radio/stations/). On the NYC map, show what you found with its page actions (show_layer, follow_aircraft, nearest_camera, street_photo).
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
+- Where: on a map page the page objects carry mapView (the area the visitor is looking at). A question that names no place ("what's flying here?", "is it raining?", "any webcams?") is about that area: pass its lat/lon to the tool. With no mapView (the home page, other pages), assume NYC.
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
 
 How to answer:

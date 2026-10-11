@@ -37,7 +37,18 @@ export async function addressInfo(input: string) {
 
 /** A map click: the nearest address (GeoSearch) and who is there: OpenStreetMap shops and places within ~50 m,
  *  NYC-licensed businesses in that building (DCWP) and restaurants with their latest inspection grade (DOHMH). */
+/** What's at a point outside NYC: OpenStreetMap's address (Photon) and the places there; no city records. */
+async function pointAnywhere(lat: number, lon: number) {
+  const [d, osm] = await Promise.all([json(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&limit=1&lang=en`), osmPlaces(lat, lon).catch(() => [])]);
+  const p = d.features?.[0]?.properties;
+  if (!p) return { lat, lon, found: false };
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+  return { lat, lon, found: true, place: p.name ?? street, address: [p.name && p.name !== street ? p.name : null, street, p.city ?? p.county].filter(Boolean).join(", "),
+    neighborhood: [p.district, p.state, p.country].filter(Boolean).join(", "), zip: p.postcode ?? "", businesses: osm, outsideNyc: true };
+}
+export const inNyc = (lat: number, lon: number) => lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6;
 export async function pointInfo(lat: number, lon: number) {
+  if (!inNyc(lat, lon)) return pointAnywhere(lat, lon);
   const d = await json(`https://geosearch.planninglabs.nyc/v2/reverse?point.lat=${lat}&point.lon=${lon}&size=1`);
   const p = d.features?.[0]?.properties;
   if (!p) return { lat, lon, found: false };
@@ -197,12 +208,22 @@ export async function trafficCameras() {
   }
   return cams.list;
 }
+/** Webcams elsewhere (the map looking outside NYC): windy.com's within 60 km of a point on a 0.5° grid, cached 30 min. */
+const away = new Map<string, { at: number; list: any[] }>();
+export async function webcamsNear(lat: number, lon: number) {
+  const la = Math.round(lat * 2) / 2, lo = Math.round(lon * 2) / 2, k = `${la},${lo}`, hit = away.get(k);
+  if (hit && hit.at > Date.now() - 30 * 60_000) return hit.list;
+  if (away.size > 200) away.clear();
+  const list = await windyWebcams(la, lo);
+  away.set(k, { at: Date.now(), list });
+  return list;
+}
 /** Public webcams within 60 km from windy.com (key WINDY_WEBCAMS_KEY): skyline, harbor and street views. Their stills
  *  change every few minutes, so the map refreshes them once a minute; windy.com asks for a link back to each camera. */
-async function windyWebcams() {
+export async function windyWebcams(lat = 40.73, lon = -73.95) {
   const key = env("WINDY_WEBCAMS_KEY");
   if (!key) return [];
-  const d = await json("https://api.windy.com/webcams/api/v3/webcams?nearby=40.73,-73.95,60&limit=50&include=location,images,urls", { "x-windy-api-key": key });
+  const d = await json(`https://api.windy.com/webcams/api/v3/webcams?nearby=${lat},${lon},60&limit=50&include=location,images,urls`, { "x-windy-api-key": key });
   return (d.webcams as any[]).filter((w) => w.status === "active" && w.images?.current?.preview).map((w) => ({
     id: `w${w.webcamId}`, name: w.title, area: w.location?.city ?? "", lat: w.location.latitude, lon: w.location.longitude,
     image: w.images.current.preview, source: "windy.com", page: w.urls?.detail ?? `https://windy.com/webcams/${w.webcamId}`, refreshMs: 60_000,
@@ -300,8 +321,13 @@ export async function geocode(text: string) {
  * inside NYC) and street addresses from NYC Planning GeoSearch's autocomplete. Addresses first when the text starts
  * with a number. Duplicates (a station's several entrances) are folded by name and ~300 m.
  */
-export async function suggest(text: string) {
+export async function suggest(text: string, near?: { lat: number; lon: number }) {
   if (text.trim().length < 2) return [];
+  if (near && !inNyc(near.lat, near.lon)) { // looking elsewhere: OpenStreetMap places, nearest that view first
+    const d = await json(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=8&lang=en&lat=${near.lat}&lon=${near.lon}`).catch(() => null);
+    return ((d?.features ?? []) as any[]).map((f) => { const q = f.properties, street = [q.housenumber, q.street].filter(Boolean).join(" ");
+      return { name: q.name ?? street, detail: [q.name ? street : null, q.city ?? q.county, q.state ?? q.country].filter(Boolean).join(", "), kind: String(q.osm_value ?? "").replace(/_/g, " "), lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number }; });
+  }
   const photon = json(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=8&lang=en&bbox=-74.26,40.49,-73.69,40.92`).then((d) => (d.features as any[]).map((f) => {
     const q = f.properties, street = [q.housenumber, q.street].filter(Boolean).join(" ");
     return { name: q.name ?? street, detail: [q.name ? street : null, q.district ?? q.city].filter(Boolean).join(", "), kind: String(q.osm_value ?? "").replace(/_/g, " "), lon: f.geometry.coordinates[0] as number, lat: f.geometry.coordinates[1] as number };

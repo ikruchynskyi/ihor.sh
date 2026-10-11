@@ -204,8 +204,6 @@ export async function hamPasses(lat = 40.7128, lon = -74.006, hours = 24, minEl 
   out.sort((a, b) => a.riseIso.localeCompare(b.riseIso));
   return { from: { lat: +lat.toFixed(3), lon: +lon.toFixed(3) }, hours, satellites: HAM_SATS.map(({ id, name, kind, up, down, notes, status }) => ({ id, name, kind, up, down, notes, status })), passes: out };
 }
-/** Where every ham satellite is now, and the view of each from a place (one request for a map of them all). */
-export const hamSatsNow = (lat?: number, lon?: number) => Promise.all(HAM_SATS.map((s) => satTrack(s.id, lat, lon, 0).then((t) => ({ ...t, track: undefined })).catch(() => null))).then((l) => l.filter(Boolean));
 /** Where a satellite is now and its ground track for the next `minutes` (for drawing on a map), plus the view from a place. */
 export async function satTrack(id: string, lat?: number, lon?: number, minutes = 100) {
   const sat = HAM_SATS.find((s) => s.id === id); if (!sat) throw new Error("unknown satellite");

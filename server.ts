@@ -27,11 +27,11 @@ import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNe
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { buildIndex, siteSearch } from "./search.ts";
-import { hamPasses, satTrack, hamSatsNow } from "./sat.ts";
+import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
 import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms } from "./nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc } from "./nycapi.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -416,12 +416,11 @@ const server = http.createServer(async (req, res) => {
       }
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
     }
-    if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/sats-now" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
+    if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180;
       try {
         const data = url.pathname === "/api/radio/propagation" ? await propagation()
           : url.pathname === "/api/radio/sats" ? await hamPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined, Math.min(72, Number(url.searchParams.get("hours")) || 24))
-          : url.pathname === "/api/radio/sats-now" ? await hamSatsNow(ok ? la : undefined, ok ? lo : undefined)
           : await satTrack(String(url.searchParams.get("id") ?? "iss"), ok ? la : undefined, ok ? lo : undefined);
         return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/propagation" || url.pathname === "/api/radio/sats" ? 600 : 5}` }).end(JSON.stringify(data));
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
@@ -473,7 +472,7 @@ const server = http.createServer(async (req, res) => {
       const day = /^\d{4}-\d{2}-\d{2}$/;
       if (url.pathname === "/api/nyc/point") {
         const lat = Number(q.get("lat")), lon = Number(q.get("lon"));
-        if (!(lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6)) return res.writeHead(400).end();
+        if (!(Math.abs(lat) <= 85 && Math.abs(lon) <= 180)) return res.writeHead(400).end(); // outside NYC: OpenStreetMap only
         return send(await pointInfo(lat, lon), 3600);
       }
       if (url.pathname === "/api/nyc/restaurants") {
@@ -485,8 +484,12 @@ const server = http.createServer(async (req, res) => {
         if (![bs, bw, bn, be].every(Number.isFinite) || bn - bs > 0.2 || be - bw > 0.3) return res.writeHead(400).end(); // zoomed in enough
         return send(await complaints311(bs, bw, bn, be), 600);
       }
-      if (url.pathname === "/api/nyc/geocode") return send(await geocode(String(q.get("q") ?? "").slice(0, 120)), 3600);
-      if (url.pathname === "/api/nyc/suggest") return send(await suggest(String(q.get("q") ?? "").slice(0, 80)), 86400);
+      if (url.pathname === "/api/nyc/geocode") { // ?near=lat,lon outside NYC: the best match around there
+        const text = String(q.get("q") ?? "").slice(0, 120), [la, lo] = String(q.get("near") ?? "").split(",").map(Number);
+        if (Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo)) { const s = (await suggest(text, { lat: la, lon: lo }))[0]; return send(s ? { label: [s.name, s.detail].filter(Boolean).join(", "), lat: s.lat, lon: s.lon } : null, 3600); }
+        return send(await geocode(text), 3600);
+      }
+      if (url.pathname === "/api/nyc/suggest") { const [la, lo] = String(q.get("near") ?? "").split(",").map(Number); return send(await suggest(String(q.get("q") ?? "").slice(0, 80), Number.isFinite(la) && Number.isFinite(lo) ? { lat: la, lon: lo } : undefined), 86400); }
       if (url.pathname === "/api/nyc/trip") { const acc = q.get("access") === "1", t: any = await tripPlan(String(q.get("from") ?? "").slice(0, 120), String(q.get("to") ?? "").slice(0, 120), (["drive", "bike", "walk", "transit"].includes(q.get("mode") ?? "") ? q.get("mode") : "drive") as any, { avoidFerries: q.get("ferry") === "0", accessible: acc, via: q.getAll("via").slice(0, 6).map((v) => v.slice(0, 120)).filter(Boolean) }); return send(t.mode === "transit" ? await annotateTrip(t, acc) : t, 120); }
       if (url.pathname === "/api/nyc/restaurant") return send(await restaurantInspections(String(q.get("camis") ?? "")), 3600);
       const from = q.get("from") ?? "", to = q.get("to") ?? from;
@@ -495,15 +498,16 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/ferry") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=30" }).end(JSON.stringify(await ferryBoard()));
     // The sky and the air (sky.ts): cached there, so these are cheap however many people watch.
-    const SKY: Record<string, [() => unknown, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/ships": [shipsNow, 10], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
+    const SKY: Record<string, [(lat?: number, lon?: number) => unknown, number]> = { "/api/nyc/aircraft": [aircraft, 8], "/api/nyc/ships": [shipsNow, 10], "/api/nyc/iss": [iss, 5], "/api/nyc/storms": [storms, 600], "/api/nyc/weather": [weather, 600], "/api/radio/stations": [radioDial, 120] };
     if (url.pathname === "/api/nyc/iss-passes") { // optional ?lat&lon (rounded: a pass looks the same within a few km)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 70 && Math.abs(lo) <= 180;
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await issPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined))); }
       catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (SKY[url.pathname]) {
-      const [f, maxAge] = SKY[url.pathname];
-      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f())); }
+      const [f, maxAge] = SKY[url.pathname], la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN);
+      const at = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180 ? [la, lo] : []; // aircraft and weather follow the map's view
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f(...at))); }
       catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.
@@ -647,7 +651,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
     if (url.pathname === "/api/nyc/restrooms") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await publicRestrooms()));
-    if (url.pathname === "/api/nyc/cameras") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await trafficCameras()));
+    if (url.pathname === "/api/nyc/cameras") { // ?lat&lon outside NYC: windy.com's webcams there instead
+      const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), away = Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo);
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
+    }
     if (url.pathname === "/api/jobs/search") {
       const p = url.searchParams, s = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined, n = (k: string) => (Number(p.get(k)) || undefined);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(jobSearch({ q: s("q"), company: s("company"), exclude: s("exclude"), region: s("region"), remote: s("remote"),
