@@ -4,6 +4,7 @@ import { MODES, encode, SstvDecoder, durationS, type Mode } from "./sstv.ts";
 import { lab } from "./course/lab.ts";
 import { LivePlayer } from "./course/audio.ts";
 import { Receiver } from "./dsp.ts";
+import { passClock } from "./pass-clock.ts";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const pic = el<HTMLCanvasElement>("pic"), pg = pic.getContext("2d")!, status = el("status");
@@ -148,6 +149,13 @@ el("mc-go").addEventListener("click", async () => {
 // ?f=145.880 (from a satellite's "receive its pictures" link): open on the radio, tuned there
 const qf = parseFloat(new URLSearchParams(location.search).get("f") ?? "");
 if (Number.isFinite(qf)) document.querySelector<HTMLButtonElement>('#srcs [data-src="radio"]')!.click();
+{ // ?sat=iss (with &lat=&lon=): a countdown to its next pass over the server's dongle, and over you if that's elsewhere
+  const qp = new URLSearchParams(location.search), sat = qp.get("sat"), me = { lat: parseFloat(qp.get("lat") ?? ""), lon: parseFloat(qp.get("lon") ?? "") }, srv = { lat: 40.71, lon: -74.01 };
+  if (sat) {
+    el("clk-srv").hidden = false; passClock(el("clk-srv"), sat, srv, "Server's dongle (New York)");
+    if (Number.isFinite(me.lat) && Number.isFinite(me.lon) && Math.hypot(me.lat - srv.lat, me.lon - srv.lon) > 0.5) { el("clk-me").hidden = false; passClock(el("clk-me"), sat, me, "Your own dongle"); }
+  }
+}
 
 // --- 4. Radio --------------------------------------------------------------------------------------------------------------------
 {

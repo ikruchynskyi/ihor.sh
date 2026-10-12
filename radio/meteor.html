@@ -42,6 +42,8 @@
     <label>Satellite <select id="sat"><option value="meteor-m2-3" data-f="137.9">Meteor-M2 3 · 137.900 MHz</option><option value="meteor-m2-4" data-f="137.9">Meteor-M2 4 · 137.900 MHz</option><option value="meteor-m2-4" data-f="137.1">Meteor-M2 4 · 137.100 MHz (its backup)</option></select></label>
     <div id="rd-lab"></div>
     <button class="btn" id="rec" type="button">Start recording</button>
+    <p class="status" id="clk-srv"></p>
+    <p class="status" id="clk-me" hidden></p>
   </div>
 
   <canvas id="wf" width="640" height="300" aria-label="Waterfall around the satellite's frequency; the dashed lines mark the LRPT signal's width"></canvas>

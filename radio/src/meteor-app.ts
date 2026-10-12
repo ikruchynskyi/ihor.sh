@@ -6,6 +6,7 @@ import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
 import { MeteorReceiver, WIDTH, composite } from "./meteor.ts";
 import { Projector, rowTimes, drawLines } from "./meteor-map.ts";
+import { passClock } from "./pass-clock.ts";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el("status"), cv = el<HTMLCanvasElement>("wf"), g = cv.getContext("2d")!, wf = new Waterfall(512, 300);
@@ -194,7 +195,14 @@ async function passList(where: { lat: number; lon: number }, ul: HTMLElement) {
 }
 const qp = new URLSearchParams(location.search), qLat = parseFloat(qp.get("lat") ?? ""), qLon = parseFloat(qp.get("lon") ?? "");
 let me: { lat: number; lon: number } | null = Number.isFinite(qLat) && Number.isFinite(qLon) ? { lat: qLat, lon: qLon } : null;
-const refreshPasses = () => { passList(SERVER, el("p-srv")); if (me) { el("p-me-where").textContent = `(${me.lat.toFixed(1)}°, ${me.lon.toFixed(1)}°)`; passList(me, el("p-me")); } };
+let stopClocks = () => {};
+const refreshPasses = () => {
+  passList(SERVER, el("p-srv")); if (me) { el("p-me-where").textContent = `(${me.lat.toFixed(1)}°, ${me.lon.toFixed(1)}°)`; passList(me, el("p-me")); }
+  // the countdown next to the record button: over the server's dongle, and over you when that's somewhere else
+  stopClocks(); const sat = el<HTMLSelectElement>("sat").value, far = me && Math.hypot(me.lat - SERVER.lat, me.lon - SERVER.lon) > 0.5;
+  const a = passClock(el("clk-srv"), sat, SERVER, "Server's dongle (New York)"), b = far ? passClock(el("clk-me"), sat, me!, "Your own dongle") : () => {};
+  el("clk-me").hidden = !far; stopClocks = () => { a(); b(); };
+};
 el("locate").addEventListener("click", () => {
   if (!navigator.geolocation) { el("p-me").innerHTML = "<li>This browser can't share its location.</li>"; return; }
   el("p-me").innerHTML = "<li>Asking your browser for your location…</li>";

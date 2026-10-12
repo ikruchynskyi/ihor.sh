@@ -220,12 +220,17 @@ async function loadWx() {
 loadWx(); setInterval(loadWx, 10 * 60_000);
 
 // ---------- ham satellites: the next passes over the map's center, and any bird's position and track on the map (server: sat.ts) ----------
-const satLayer = L.layerGroup().addTo(map);
+const satLayer = L.layerGroup().addTo(map), horizonLayer = L.layerGroup().addTo(map);
 let sats: any = null, satShown: string | null = null, satTimer: ReturnType<typeof setInterval> | undefined;
+// The place passes are computed for: the map's center when they were computed (showing a satellite moves the map away).
+let satHome = map.getCenter();
+const at = () => `lat=${satHome.lat.toFixed(2)}&lon=${satHome.lng.toFixed(2)}`;
 /** The picture page for a satellite, with its settings and the place passes are computed for. */
-const picUrl = (page: string) => { const c = map.getCenter(); return `../${page}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`; };
+const picUrl = (page: string) => `../${page}&${at()}`;
+/** How far from a place (km along the ground) a satellite `h` km up is at least `el` degrees above its horizon. */
+const reachKm = (h: number, el: number) => { const R = 6371, e = (el * Math.PI) / 180; return R * (Math.acos((R * Math.cos(e)) / (R + h)) - e); };
 async function loadSats() {
-  const c = map.getCenter();
+  const c = (satHome = map.getCenter());
   sats = await fetch(`/api/radio/sats?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&hours=24`).then((r) => r.json()).catch(() => null);
   if (!sats || sats.error) { $("satBody").textContent = "Couldn't compute passes right now."; return; }
   const next = sats.passes.slice(0, 14);
@@ -243,10 +248,16 @@ async function loadSats() {
 }
 async function showSat(id: string) {
   satShown = id;
-  const c = map.getCenter();
-  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`).then((r) => r.json()).catch(() => null);
+  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&${at()}`).then((r) => r.json()).catch(() => null);
   if (!t || t.error) return;
-  satLayer.clearLayers();
+  satLayer.clearLayers(); horizonLayer.clearLayers();
+  // Around the place: where this satellite is above the horizon (start recording as it crosses in) and 20° up (a clean signal)
+  const h = t.now[2];
+  L.circle(satHome, { radius: reachKm(h, 0) * 1000, color: "#fff", weight: 2, opacity: 0.85, dashArray: "2 7", fill: false, interactive: true })
+    .bindTooltip(`Horizon for ${esc(t.sat.name)}: inside this circle it's above your horizon. Start recording as it crosses in.`, { sticky: true }).addTo(horizonLayer);
+  L.circle(satHome, { radius: reachKm(h, 20) * 1000, color: "#5cff9d", weight: 2, opacity: 0.8, dashArray: "2 7", fill: true, fillOpacity: 0.05, interactive: true })
+    .bindTooltip("20° above your horizon: inside this circle the signal is strong enough to decode well.", { sticky: true }).addTo(horizonLayer);
+  L.circleMarker(satHome, { radius: 5, color: "#000", weight: 1.5, fillColor: "#fff", fillOpacity: 1 }).bindTooltip("You (where passes are computed)").addTo(horizonLayer);
   // the ground track, cut where it crosses the date line
   const segs: number[][][] = [[]];
   for (const [la, lo] of t.track) { const seg = segs.at(-1)!; if (seg.length && Math.abs(lo - seg.at(-1)![1]) > 180) segs.push([]); segs.at(-1)!.push([la, lo]); }
@@ -262,8 +273,7 @@ async function showSat(id: string) {
   satTimer = setInterval(() => { if (satShown === id) showSatQuiet(id); }, 15_000);
 }
 async function showSatQuiet(id: string) { // move the marker along without reopening the popup
-  const c = map.getCenter();
-  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`).then((r) => r.json()).catch(() => null);
+  const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&${at()}`).then((r) => r.json()).catch(() => null);
   if (!t || t.error) return;
   satLayer.eachLayer((l: any) => { if (l.setLatLng && l.getLatLng) l.setLatLng([t.now[0], t.now[1]]); });
 }

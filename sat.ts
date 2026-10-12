@@ -158,7 +158,7 @@ export type HamSat = { id: string; catnr: number; name: string; kind: "FM repeat
   /** Where to receive its pictures: a page under /radio/ with the settings in its query (frequency, satellite). */
   pictures?: string };
 export const HAM_SATS: HamSat[] = [
-  { id: "iss", catnr: 25544, name: "ISS", kind: "ISS", up: "145.990 MHz FM (PL 67.0)", down: "437.800 MHz FM repeater · 145.825 APRS · 145.800 voice/SSTV", notes: "A cross-band FM repeater and an APRS digipeater on the station; SSTV pictures during events.", status: "repeater usually on; check ARISS", pictures: "sstv.html?f=145.800" },
+  { id: "iss", catnr: 25544, name: "ISS", kind: "ISS", up: "145.990 MHz FM (PL 67.0)", down: "437.800 MHz FM repeater · 145.825 APRS · 145.800 voice/SSTV", notes: "A cross-band FM repeater and an APRS digipeater on the station; SSTV pictures during events.", status: "repeater usually on; check ARISS", pictures: "sstv.html?f=145.800&sat=iss" },
   { id: "so-50", catnr: 27607, name: "SO-50 (SaudiSat 1C)", kind: "FM repeater", up: "145.850 MHz (PL 67.0; 74.4 arms it for 10 min)", down: "436.795 MHz FM", notes: "The easiest FM bird: a handheld and a small Yagi work. Send 74.4 Hz first to turn it on.", status: "active" },
   { id: "ao-7", catnr: 7530, name: "AO-7 (OSCAR 7)", kind: "linear transponder", up: "432.125–432.175 MHz (mode B) · 145.850–145.950 (mode A)", down: "145.975–145.925 MHz (B, inverting) · 29.400–29.500 (A)", notes: "Launched 1974, back from the dead in 2002: runs on sunlight only and swaps modes daily.", status: "works in sunlight only" },
   { id: "fo-29", catnr: 24278, name: "FO-29 (JAS-2)", kind: "linear transponder", up: "145.900–146.000 MHz", down: "435.800–435.900 MHz SSB/CW (inverting)", notes: "A 1996 Japanese bird; the transponder comes up in full sunlight.", status: "part-time, sunlit passes" },
@@ -171,7 +171,7 @@ export const HAM_SATS: HamSat[] = [
   { id: "tevel2", catnr: 63217, name: "TEVEL-2 (nine satellites)", kind: "FM repeater", up: "145.970 MHz FM", down: "436.400 MHz FM", notes: "Nine Israeli school satellites (TEVEL2-1…9) share one frequency pair; one is on at a time. Passes shown for TEVEL2-1.", status: "active, one at a time" },
   { id: "meteor-m2-3", catnr: 57166, name: "Meteor-M2 3", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps)", notes: "Digital weather pictures you can decode: the radio course's LRPT chapter does exactly this.", status: "active", pictures: "meteor.html?sat=meteor-m2-3" },
   { id: "meteor-m2-4", catnr: 59051, name: "Meteor-M2 4", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps); 137.100 backup", notes: "The newer Meteor, on the same frequency as M2 3 (their passes rarely overlap); if the waterfall is empty at 137.9, try its backup 137.1.", status: "active", pictures: "meteor.html?sat=meteor-m2-4" },
-  { id: "sonate-2", catnr: 59112, name: "SONATE-2", kind: "SSTV pictures", down: "145.880 MHz FM SSTV (Martin M1) · APRS digipeater", notes: "A Würzburg university cubesat that sends its own camera's pictures as SSTV.", status: "pictures when its camera schedule runs; check SatNOGS", pictures: "sstv.html?f=145.880" },
+  { id: "sonate-2", catnr: 59112, name: "SONATE-2", kind: "SSTV pictures", down: "145.880 MHz FM SSTV (Martin M1) · APRS digipeater", notes: "A Würzburg university cubesat that sends its own camera's pictures as SSTV.", status: "pictures when its camera schedule runs; check SatNOGS", pictures: "sstv.html?f=145.880&sat=sonate-2" },
 ];
 
 const tles = new Map<number, Tle>();
