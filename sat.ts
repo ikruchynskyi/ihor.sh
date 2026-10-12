@@ -168,7 +168,7 @@ export const HAM_SATS: HamSat[] = [
   { id: "po-101", catnr: 43678, name: "PO-101 (Diwata-2)", kind: "FM repeater", up: "437.500 MHz (PL 141.3)", down: "145.900 MHz FM", notes: "The Philippines' bird; the FM repeater is switched on by schedule (see its Facebook page).", status: "scheduled activations" },
   { id: "tevel2", catnr: 63217, name: "TEVEL-2 (nine satellites)", kind: "FM repeater", up: "145.970 MHz FM", down: "436.400 MHz FM", notes: "Nine Israeli school satellites (TEVEL2-1…9) share one frequency pair; one is on at a time. Passes shown for TEVEL2-1.", status: "active, one at a time" },
   { id: "meteor-m2-3", catnr: 57166, name: "Meteor-M2 3", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps)", notes: "Digital weather pictures you can decode: the radio course's LRPT chapter does exactly this.", status: "active" },
-  { id: "meteor-m2-4", catnr: 59051, name: "Meteor-M2 4", kind: "weather pictures", down: "137.100 MHz LRPT (72 kbps)", notes: "The newer Meteor; same decoder, a different frequency.", status: "active" },
+  { id: "meteor-m2-4", catnr: 59051, name: "Meteor-M2 4", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps); 137.100 backup", notes: "The newer Meteor, on the same frequency as M2 3 (their passes rarely overlap); if the waterfall is empty at 137.9, try its backup 137.1.", status: "active" },
 ];
 
 const tles = new Map<number, Tle>();

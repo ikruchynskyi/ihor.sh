@@ -13,9 +13,10 @@ let chain: { key: string; mix: Mixer; dec: FirDecimator; fs: number } | null = n
 const MAX_REC_S = 20 * 60, MAX_KEPT = 3;
 let chunks: Uint8Array[] = [], bytes = 0, recording = false, outFs = 0, rms = 0.05;
 
+const freq = () => el<HTMLSelectElement>("sat").selectedOptions[0].dataset.f!; // MHz
 el<HTMLSelectElement>("sat").addEventListener("change", () => {
   const f = el("rd-lab").querySelector<HTMLInputElement>(".lab-f")!;
-  f.value = el<HTMLSelectElement>("sat").value; f.dispatchEvent(new Event("change"));
+  f.value = freq(); f.dispatchEvent(new Event("change"));
 });
 
 lab(el("rd-lab"), {
@@ -52,7 +53,7 @@ requestAnimationFrame(draw);
 function stopRec() {
   recording = false; el("rec").textContent = "Start recording";
   if (!bytes) { status.textContent = "Nothing recorded (is the dongle running?)."; return; }
-  const name = `meteor-${el<HTMLSelectElement>("sat").value}MHz-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${outFs}sps.cu8`;
+  const name = `${el<HTMLSelectElement>("sat").value}-${freq()}MHz-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${outFs}sps.cu8`;
   const url = URL.createObjectURL(new Blob(chunks as BlobPart[]));
   el("saves").insertAdjacentHTML("afterbegin", `<li data-url="${url}" data-name="${name}"><a href="${url}" download="${name}">${name}</a> · ${(bytes / 2 / outFs / 60).toFixed(1)} min, ${(bytes / 1e6).toFixed(0)} MB · <button type="button" data-act="decode">Decode</button> <button type="button" data-act="delete">Delete</button></li>`);
   const kept = el("saves").querySelectorAll<HTMLElement>("li");
@@ -134,7 +135,7 @@ const SERVER = { lat: 40.71, lon: -74.01 };
 const hhmm = (iso: string, day = false) => new Date(iso).toLocaleString([], day ? { weekday: "short", hour: "numeric", minute: "2-digit" } : { hour: "numeric", minute: "2-digit" });
 async function passList(where: { lat: number; lon: number }, ul: HTMLElement) {
   const d = await fetch(`/api/radio/sats?lat=${where.lat.toFixed(2)}&lon=${where.lon.toFixed(2)}&hours=48`).then((r) => r.json()).catch(() => null);
-  const id = el<HTMLSelectElement>("sat").value === "137.9" ? "meteor-m2-3" : "meteor-m2-4", ps = d?.passes?.filter((p: any) => p.sat === id) ?? [];
+  const id = el<HTMLSelectElement>("sat").value, ps = d?.passes?.filter((p: any) => p.sat === id) ?? [];
   ul.innerHTML = !d?.passes ? "<li>Couldn't compute passes right now.</li>" : ps.length ? ps.map((p: any) => `<li>${p.upNow ? "<b>up now</b> · " : ""}${hhmm(p.riseIso, true)}–${hhmm(p.setIso)} · <b>${p.maxElevation}°</b>${p.maxElevation >= 40 ? " (good)" : p.maxElevation < 20 ? " (low)" : ""} · ${String(p.path).replace(/[<&]/g, "")}</li>`).join("") : "<li>None at least 10° up in the next 48 hours.</li>";
 }
 const qp = new URLSearchParams(location.search), qLat = parseFloat(qp.get("lat") ?? ""), qLon = parseFloat(qp.get("lon") ?? "");
