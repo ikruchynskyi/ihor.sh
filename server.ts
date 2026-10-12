@@ -147,7 +147,7 @@ const COURSES: [RegExp, string, string][] = [
 ];
 const APPS: [RegExp, string][] = [
   [/^\/nyc\/(jobs|resume)/, "BusinessApplication"], [/^\/nyc\/(tonight|free|index|archive)?/, "TravelApplication"], [/^\/ride\//, "TravelApplication"],
-  [/^\/learn\/lab/, "EducationalApplication"], [/^\/radio\/(index\.html)?$|^\/radio\/(sstv|cw|repeaters|mesh|stations|aprs|adsb)/, "UtilitiesApplication"], [/^\/orna\//, "GameApplication"],
+  [/^\/learn\/lab/, "EducationalApplication"], [/^\/radio\/(index\.html)?$|^\/radio\/(sstv|meteor|cw|repeaters|mesh|stations|aprs|adsb)/, "UtilitiesApplication"], [/^\/orna\//, "GameApplication"],
 ];
 type Meta = { title?: string; desc?: string; image?: string; canonical?: string; h1?: string; lede?: string; teaches?: string[]; level?: string };
 const cache = new Map<string, Promise<any>>();
