@@ -87,7 +87,7 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
   const fs = Number(r.headers.get("x-sample-rate")) || WIDTH, center = Number(r.headers.get("x-center")) || hz;
   const rx = new Receiver(fs, hz - center, mode, mode === "WFM" ? 150e3 : 12.5e3);
   // the squelch compares the channel's power with the empty air 80 kHz either side (whichever is quieter): a carrier
-  // is 15–40 dB above that, hiss is not, and a transmission that never ends can't fool it. WFM broadcasts aren't squelched.
+  // is 6–40 dB above that, hiss is not, and a transmission that never ends can't fool it. WFM broadcasts aren't squelched.
   const sides = mode === "NFM" ? [80e3, -80e3].map((off) => new Receiver(fs, hz - center + off, "NFM", 12.5e3)) : [];
   const power = (ch: Float32Array) => { let p = 0; for (let i = 0; i < ch.length; i += 2) p += ch[i] ** 2 + ch[i + 1] ** 2; return 10 * Math.log10(p / Math.max(1, ch.length / 2) + 1e-12); };
   const down = new FirDecimator(firLowpass(6.5e3 / rx.audioFs, 2e3 / rx.audioFs), Math.round(rx.audioFs / AUDIO_FS), 1);
@@ -140,7 +140,7 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     const noise = sides.length ? Math.min(...sides.map((r) => power(r.process(iq).channel))) : -Infinity, snr = db - noise;
     const sec = iq.length / 2 / fs;
     if (state.scan && (hopping || settle > 0)) { settle -= sec; continue; }
-    const on = mode === "WFM" || (++chunks > 15 && snr > 10); // the dongle needs a moment to settle
+    const on = mode === "WFM" || (++chunks > 15 && snr > 5); // the dongle needs a moment to settle. 5 dB: empty 2 m channels measure 0–1, and a weak repeater (146.955 MHz on the HackRF) sat at 6–8, muted by the old 10
     if (on) closedFor = 0; else closedFor += sec;
     const nowOpen = on || (open && closedFor < 0.7);
     if (nowOpen !== open) {

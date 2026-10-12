@@ -66,6 +66,7 @@ const GAINS_FILE = path.resolve(import.meta.dirname, "gains.json"); // git-ignor
 type Gains = { gain: number | null; lna: number; vga: number; amp: boolean };
 const gainMemory: Record<string, Gains> = await readFile(GAINS_FILE, "utf8").then(JSON.parse).catch(() => ({}));
 let gainBand = bandKey(tuning.center);
+Object.assign(tuning, gainMemory[gainBand] ?? {}); // start with what was last set in the band it starts in
 function rememberGain() {
   gainMemory[gainBand] = { gain: tuning.gain, lna: tuning.lna, vga: tuning.vga, amp: tuning.amp };
   writeFile(GAINS_FILE, JSON.stringify(gainMemory, null, 1)).catch(() => {});
@@ -82,23 +83,22 @@ async function followBand() {
   if (sdr instanceof HackRf) await applyHackrf(); else await sdr?.setGain(tuning.gain);
 }
 
-// The ADC's level, from every 7th byte: RMS in dBFS and the share of samples at the rails. Clipping on the HackRF backs
-// the gain off by itself (amp first, then whichever of VGA and LNA is pushed harder), a step every 1.5 s (a level
-// reading covers 0.5 s, so it has to show the last step first) until it stops: nobody can leave it clipping.
+// The ADC's level, from every 7th byte: RMS in dBFS and the share of samples at the rails, shown on the pages. Clipping
+// with the HackRF's RF amp on switches the amp off (the one stage strong signals can harm); LNA and VGA only distort
+// when too high, so they stay where the listener set them (an automatic LNA/VGA backoff kept muting weak 2 m repeaters).
 let acc = { sum: 0, n: 0, clip: 0, at: Date.now() }, level = { dbfs: -99, clipPct: 0 }, protectNote: { text: string; at: number } | null = null, lastProtect = 0;
 function measure(chunk: Uint8Array) {
   for (let i = 0; i < chunk.length; i += 7) { const v = chunk[i] - 127.5; acc.sum += v * v; acc.n++; if (v * v >= 126 ** 2) acc.clip++; }
   if (Date.now() - acc.at < 500) return;
   level = { dbfs: +(10 * Math.log10(acc.sum / acc.n / 127.5 ** 2 + 1e-12)).toFixed(1), clipPct: +((100 * acc.clip) / acc.n).toFixed(2) };
   acc = { sum: 0, n: 0, clip: 0, at: Date.now() };
-  if (level.clipPct > 0.2 && mode === "iq" && sdr instanceof HackRf && Date.now() - lastProtect > 1500) void protect(sdr);
+  if (level.clipPct > 0.2 && tuning.amp && mode === "iq" && sdr instanceof HackRf && Date.now() - lastProtect > 1500) void protect(sdr);
   tellBand(); // twice a second: the meters on the pages
 }
 async function protect(s: HackRf) {
   lastProtect = Date.now();
-  const vgaFirst = tuning.vga / 62 >= tuning.lna / 40 || !tuning.lna; // the stage nearer its top: LNA 40 is its max, VGA 62
-  const text = tuning.amp ? ((tuning.amp = false), "RF amp switched off") : vgaFirst && tuning.vga > 0 ? ((tuning.vga = Math.max(0, tuning.vga - 6)), `VGA lowered to ${tuning.vga} dB`) : tuning.lna > 0 ? ((tuning.lna -= 8), `LNA lowered to ${tuning.lna} dB`) : "";
-  if (!text) return;
+  tuning.amp = false;
+  const text = "RF amp switched off";
   protectNote = { text: `${text}: the signal was clipping (${level.clipPct}% of samples at full scale)`, at: Date.now() };
   rememberGain(); // what's safe here is what this band gets next time
   console.log(`protect: ${protectNote.text}`);

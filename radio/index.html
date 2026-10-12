@@ -98,7 +98,6 @@
         <label>VGA <input id="vga" type="range" min="0" max="62" step="2" value="24" style="width:7em" /> <b id="vgaV">24</b> dB</label>
         <label id="ampBox"><input id="amp" type="checkbox" /> RF amp +14 dB</label>
       </span>
-      <button id="autoGain" hidden title="Try gain settings on the station you're tuned to and keep the best signal-to-noise without clipping">Auto gain</button>
       <label title="Show who's allowed where: the US band plan over the spectrum"><input id="bandPlan" type="checkbox" /> Band plan</label>
     </div>
     <div class="stat" id="radioStat" hidden></div>
@@ -138,7 +137,7 @@
       <button id="play" class="primary" disabled>▶ Play</button>
       <label>Volume <input id="vol" type="range" min="-20" max="30" step="1" value="0" /></label>
       <label title="Automatic gain: evens out loud and quiet stations. Slow suits voice with pauses, fast suits CW">AGC <select id="agc"><option>off</option><option>slow</option><option selected>medium</option><option>fast</option></select></label>
-      <label title="Mutes the audio until a signal in the band rises above this level (the orange line on the chart). Far left is off">Squelch <span class="inl"><input id="sql" type="range" min="-130" max="0" step="1" value="-130" /><label class="inl" title="Follows the noise: mutes the hiss and opens only when a signal stands 12 dB over it, like the repeaters page. Dragging the line sets it by hand."><input id="sqlAuto" type="checkbox" checked /> Auto</label></span></label>
+      <label title="Mutes the audio until a signal in the band rises above this level (the orange line on the chart). Far left is off">Squelch <span class="inl"><input id="sql" type="range" min="-130" max="0" step="1" value="-130" /><button id="sqlAuto" type="button" title="Set the squelch 3 dB above what the band hears now: tune to an empty channel (just noise) first">Auto</button></span></label>
       <label title="Turns down the hiss between and behind words">Noise reduction <input id="nr" type="range" min="0" max="1" step="0.05" value="0" /></label>
       <label class="check" title="300–3000 Hz band-pass: cuts the CTCSS hum below and the hiss above a voice (not in WFM)"><input id="voice" type="checkbox" checked /> Voice filter</label>
       <button id="rec" type="button" disabled title="Record what you hear">● Record</button>
