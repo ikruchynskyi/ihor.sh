@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Just Enough Code for Machine Learning</title>
+  <meta name="description" content="AI from scratch, start here: the minimum programming to read and change every code box on the path. Numbers, variables, lists, loops, functions and objects, each in a box you run, ending with computing a model's mean squared error yourself, plus how the same code looks in Python." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .rules td code { white-space: pre; }
+    .wide { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Start 2 · Stage 0: start here</p>
+  <h1>Just enough code</h1>
+  <p class="lede">Every lesson on this path has code you can run and change. This lesson teaches exactly what you need to read it: numbers, names, lists, loops and functions. No installing anything: each box runs right here in the page. Change things, break things, press <b>Reset</b> to get the original back. By the end you'll compute a model's error yourself.</p>
+  <p>The code is JavaScript, the language every web browser speaks. At work, ML is mostly written in Python; stage 4 switches over, and section 7 shows how little changes.</p>
+
+  <h2>1. The computer as a calculator</h2>
+  <p><code>print(...)</code> shows whatever you put between the brackets. Separate several things with commas. <code>*</code> is times, <code>/</code> is divide, <code>**</code> is "to the power of", and text goes in quotes. Lines starting with <code>//</code> are comments: notes for people, ignored by the computer.</p>
+  <div class="code" data-title="Run it: arithmetic"><textarea>
+print(3 + 4 * 2);           // times before plus, as in school: 11
+print((3 + 4) * 2);         // brackets first: 14
+print(2 ** 10);             // 2 to the power 10
+print(Math.sqrt(2));        // square root
+print("one third is", 1 / 3);
+</textarea></div>
+  <div class="q" data-num="59049">
+    <p>Use the box: what is \(3^{10}\)? (Change a line to <code>print(3 ** 10)</code> and run.)</p>
+    <div class="why">59049. You'll see <code>**</code> for powers, and <code>Math.sqrt</code>, <code>Math.exp</code> (\(e^x\)) and <code>Math.log</code> (\(\ln x\)) all over the path.</div>
+  </div>
+
+  <h2>2. Names for values</h2>
+  <p>A <b>variable</b> is a name for a value, so you can use it later. <code>const</code> makes a name that never changes; <code>let</code> makes one you're allowed to change. <code>=</code> doesn't mean "equals" here, it means "from now on, this name holds this": so <code>x = x + 1</code> is fine, it means "x becomes one more than it was".</p>
+  <div class="code" data-title="Run it: variables"><textarea>
+const km = 4;            // a ride's distance
+const perKm = 2.6;       // minutes per km
+let minutes = perKm * km;
+print("before the start-up time:", minutes);
+minutes = minutes + 6;   // add the 6 minutes every ride costs
+print("total:", minutes);
+</textarea></div>
+  <div class="q" data-num="7">
+    <p>Without running it: what does this print? <code>let a = 5; a = a * 2; a = a - 3; print(a);</code></p>
+    <div class="why">\(a\) is 5, then \(5 \times 2 = 10\), then \(10 - 3 = 7\). Each line uses the value the line before left behind. Paste it into a box to check.</div>
+  </div>
+
+  <h2>3. Lists</h2>
+  <p>ML is about many examples at once, so you'll constantly hold lists of numbers. In JavaScript a list is an <b>array</b>, written with square brackets. Items are numbered <b>from 0</b>: the first item is <code>xs[0]</code>. <code>xs.length</code> is how many there are, and <code>xs.push(v)</code> adds one to the end.</p>
+  <div class="code" data-title="Run it: arrays"><textarea>
+const xs = [4, 8, 15, 16, 23, 42];
+print("first:", xs[0], "third:", xs[2], "how many:", xs.length);
+xs.push(100);
+print("after push:", xs);
+const point = [3, -1];   // a pair: a 2D point or vector, as in chapter 1
+print("x =", point[0], "y =", point[1]);
+</textarea></div>
+  <div class="q" data-num="23">
+    <p>For <code>const xs = [4, 8, 15, 16, 23, 42]</code>, what is <code>xs[4]</code>?</p>
+    <div class="why">Counting from 0: xs[0] = 4, xs[1] = 8, xs[2] = 15, xs[3] = 16, xs[4] = 23. Counting from zero trips everyone up at first.</div>
+  </div>
+
+  <h2>4. Loops: do it for every item</h2>
+  <p>A <b>loop</b> repeats code. <code>for (const x of xs)</code> runs the block in curly braces once per item, with <code>x</code> being each item in turn. <code>for (let i = 0; i &lt; n; i++)</code> counts: start <code>i</code> at 0, keep going while <code>i &lt; n</code>, add 1 each time (<code>i++</code>). Adding things up in a loop is the most common pattern in this whole path: the mean, the error, the gradient.</p>
+  <div class="code" data-title="Run it: sum and mean"><textarea>
+const xs = [4, 8, 15, 16, 23, 42];
+let total = 0;
+for (const x of xs) {
+  total = total + x;     // or total += x
+}
+print("sum:", total, "mean:", total / xs.length);
+
+// counting from 1 to 5 and squaring each
+for (let i = 1; i <= 5; i++) print(i, "squared is", i * i);
+</textarea></div>
+  <div class="q" data-num="385">
+    <p>Change the box to add up the squares \(1^2 + 2^2 + \dots + 10^2\). What is the total?</p>
+    <div class="why">385. One way: <code>let s = 0; for (let i = 1; i &lt;= 10; i++) s += i * i; print(s);</code>. In math this is written \(\sum_{i=1}^{10} i^2\): the big sigma is a loop.</div>
+  </div>
+
+  <h2>5. Functions: name a recipe</h2>
+  <p>A <b>function</b> takes inputs and gives back an output, exactly like a function in math. The short form <code>(x) =&gt; 2 * x + 1</code> means "given x, give back 2x + 1". For longer recipes, use curly braces and <code>return</code>. A model is a function: input in, prediction out.</p>
+  <div class="code" data-title="Run it: functions"><textarea>
+const f = (x) => 2 * x + 1;
+print(f(3), f(10));
+
+const mean = (list) => {
+  let s = 0;
+  for (const v of list) s += v;
+  return s / list.length;
+};
+print("mean of [2, 4, 9]:", mean([2, 4, 9]));
+
+const predict = (km) => 2.6 * km + 6;   // last lesson's taxi model
+print("4 km:", predict(4), "minutes");
+</textarea></div>
+  <div class="q" data-num="13">
+    <p>If <code>const g = (x) =&gt; x * x - 3</code>, what is <code>g(4)</code>?</p>
+    <div class="why">\(4 \times 4 - 3 = 13\).</div>
+  </div>
+  <p>You'll also meet two shortcuts that do a loop for you. <code>xs.map((x) =&gt; x * 2)</code> makes a new list with the function applied to every item, and <code>xs.reduce((s, x) =&gt; s + x, 0)</code> walks the list carrying a running total (starting at 0). They do exactly what the loops above do, in one line.</p>
+
+  <h2>6. Putting it together: a model's error</h2>
+  <p>Six taxi rides, each a pair <code>[km, minutes]</code>. The model guesses <code>a × km + b</code>. The mean squared error, from the last lesson, is: for every ride, take guess minus truth, square it, add them all up, divide by how many. Here it is in code, and two helpers that every page uses: <code>table(rows)</code> shows a table and <code>plot(numbers)</code> draws a line chart.</p>
+  <div class="code" data-title="Build it: the mean squared error"><textarea>
+const rides = [[1, 9], [2, 11], [3, 14], [5, 19], [8, 27], [10, 33]];
+const a = 2.5, b = 6;
+const predict = (km) => a * km + b;
+
+let total = 0;
+const rows = [["km", "true minutes", "guess", "error²"]];
+for (const [km, minutes] of rides) {     // take each pair apart into its two numbers
+  const guess = predict(km), err = guess - minutes;
+  total += err * err;
+  rows.push([km, minutes, guess, err * err]);
+}
+table(rows);
+print("mean squared error:", total / rides.length);
+
+// the error for many different values of a (b stays 6): where is it smallest?
+const errors = [];
+for (let tryA = 1; tryA <= 4; tryA += 0.1) {
+  let s = 0;
+  for (const [km, minutes] of rides) s += (tryA * km + b - minutes) ** 2;
+  errors.push([tryA, s / rides.length]);
+}
+plot(errors, { label: "error for a from 1 to 4" });
+</textarea></div>
+  <div class="q" data-num="0.9583" data-tol="0.002">
+    <p>Run the box. With \(a = 2.5\) and \(b = 6\), what is the mean squared error? Then try other values of <code>a</code> and <code>b</code> and see if you can get it lower.</p>
+    <div class="why">0.958: the squared errors are 0.25, 0, 0.25, 0.25, 1 and 4, which add up to 5.75, divided by 6. The plot is the error as you turn the knob \(a\): a valley. Training means finding the bottom of that valley without trying every value, which is what stage 1 is about.</div>
+  </div>
+
+  <h2>7. The same thing in Python</h2>
+  <p>From stage 4 on, you'll also write Python, the language ML teams use. The ideas are identical; the spelling changes a little:</p>
+  <div class="wide"><table class="rules">
+    <tr><th>JavaScript (this path so far)</th><th>Python</th></tr>
+    <tr><td><code>const a = 2.5;</code></td><td><code>a = 2.5</code></td></tr>
+    <tr><td><code>const xs = [4, 8, 15];</code></td><td><code>xs = [4, 8, 15]</code></td></tr>
+    <tr><td><code>for (const x of xs) {
+  total += x;
+}</code></td><td><code>for x in xs:
+    total += x</code></td></tr>
+    <tr><td><code>const f = (x) =&gt; 2 * x + 1;</code></td><td><code>def f(x):
+    return 2 * x + 1</code></td></tr>
+    <tr><td><code>xs.map((x) =&gt; x * 2)</code></td><td><code>[x * 2 for x in xs]</code></td></tr>
+    <tr><td><code>print("mean:", total / xs.length)</code></td><td><code>print("mean:", total / len(xs))</code></td></tr>
+  </table></div>
+  <p>Python uses indentation instead of curly braces, and no semicolons. With NumPy (stage 4) most loops disappear entirely: the mean squared error becomes one line, <code>np.mean((a * km + b - minutes) ** 2)</code>.</p>
+
+  <h2>8. What to carry forward</h2>
+  <ul>
+    <li><code>const</code> / <code>let</code> name values; <code>=</code> means "becomes".</li>
+    <li>Arrays hold lists of examples, counted from 0; <code>for (const x of xs)</code> visits each one.</li>
+    <li>Adding up inside a loop is the pattern behind means, errors and gradients; \(\sum\) in a formula is a loop in code.</li>
+    <li>A function is a recipe from inputs to an output, and a model is a function.</li>
+    <li>Every code box has <code>print</code>, <code>table</code> and <code>plot</code>, and you can always <b>Reset</b>.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+window.blipContext = () => ({ page: "AI from scratch, start 2: just enough JavaScript for the path (print, arithmetic, const/let variables, arrays from index 0, for loops, sums and means, arrow functions, map/reduce, computing mean squared error, the same code in Python)" });
+</script>
+</body>
+</html>

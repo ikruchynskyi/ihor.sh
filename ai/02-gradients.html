@@ -168,9 +168,10 @@ const wExact = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.reduc
 print("exact:   y =", wExact.toFixed(3), "x +", (my - wExact * mx).toFixed(3));
 </textarea></div>
 
-  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/gradient-descent">gradient descent</a> and <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a>. Previous: <a href="./01-matrices-are-moves.html">Matrices are moves</a>.</p>
+  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/gradient-descent">gradient descent</a> and <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a>. All lessons: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

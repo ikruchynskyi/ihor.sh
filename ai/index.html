@@ -4,84 +4,142 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AI From Scratch</title>
-  <meta name="description" content="Machine learning from scratch, 3Blue1Brown style: the math made visible (vectors, matrices, gradients), then neural networks, backprop, CNNs, transformers, agents and computer vision, every chapter interactive." />
+  <meta name="description" content="One path from zero to junior ML engineer: what machine learning is, just enough code and math, how networks learn, classic ML and evaluation, the Python toolkit, vision and language models, LLM engineering and production, every lesson interactive with pictures you drag, questions and code you run." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
     main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
-    ol { padding: 0; list-style: none; counter-reset: ch; }
-    ol li { counter-increment: ch; padding: 14px 16px; margin: 10px 0; }
-    ol li::before { content: "Chapter " counter(ch); display: block; font-size: .8rem; color: var(--muted); }
-    ol li.soon { opacity: .55; }
-    ol li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
-    h2.part { margin: 40px 0 0; font-size: 1.15rem; }
-    ol.calc li::before { content: "Calculus " counter(ch); }
-    .route { padding: 4px 16px; }
-    .route p { margin: 10px 0; }
-    .route b { display: block; font-size: .8rem; color: var(--muted); font-weight: 600; }
+    ol.path { padding: 0; list-style: none; }
+    ol.path li { padding: 12px 16px; margin: 10px 0; }
+    ol.path li.soon { opacity: .55; }
+    ol.path li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
+    .tag { display: block; font-size: .8rem; color: var(--muted); }
+    h2.stage { margin: 48px 0 4px; font-size: 1.2rem; }
+    .goal { margin: 4px 0; font-size: 1rem; }
+    .milestone { font-size: 1rem; border-left: 4px solid var(--accent); padding: 4px 12px; margin: 12px 0 0; }
+    .check li { margin: 4px 0; }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow">ihor.sh · AI</p>
   <h1>AI from scratch</h1>
-  <p class="lede">How machine learning actually works, built up from pictures you can drag: first the math (vectors, matrices, derivatives, gradients, integrals, probability), then neural networks you can watch learn, then the ideas behind today's models: convolutions, attention, agents and vision. Every idea comes three ways: a picture you can drag, the math behind it worked out with real numbers, and code you can edit and run right in the page to build it yourself, from a dot product up to an autograd engine and a transformer block. Questions along the way ask you to predict before you're told.</p>
-  <p>The road goes from zero to <b>ML engineer</b>: Part 1 is how models learn; Parts 2–5 are what the job adds: data and evaluation, training in practice, building with LLMs, and running models in production. Faded chapters are planned and on their way.</p>
-  <h2 class="part">The route</h2>
-  <p>Chapter numbers are a catalog, not an order. Taken in this order, every lesson only leans on the ones before it:</p>
-  <div class="card route">
-    <p><b>1 · The math of learning</b><a href="./01-matrices-are-moves.html">Matrices</a> → <a href="./02-gradients.html">Gradients</a> → <a href="./c1-derivatives.html">Derivatives</a> → <a href="./c2-many-variables.html">Partials, gradients, Jacobians</a></p>
-    <p><b>2 · A network learns</b><a href="./03-a-neuron.html">A neuron</a> → <a href="./04-backprop.html">Backprop</a> → <a href="./c3-taylor-and-curvature.html">Taylor and curvature</a> → <a href="./05-probability-and-loss.html">Probability and loss</a> → <a href="./c4-integrals.html">Integrals and expectations</a></p>
-    <p><b>3 · Judging a model</b><a href="./11-overfitting.html">Overfitting</a> → <a href="./12-measuring-a-model.html">Measuring a model</a> → <a href="./13-trees-and-boosting.html">Trees and boosting</a></p>
-    <p><b>4 · Seeing and reading</b><a href="./06-convolutions.html">Convolutions</a> → <a href="./09-vision.html">Vision in practice</a> → <a href="./07-attention.html">Attention</a> → <a href="./10-tiny-transformer.html">A tiny transformer</a></p>
-    <p><b>5 · Acting</b><a href="./08-agents.html">Agents</a></p>
-  </div>
-  <h2 class="part">Foundations · Calculus for ML</h2>
-  <p>Chapters 2 and 4 give the intuition; these four lessons give the tools: the rules, many variables, curvature and integrals, each with sliders, questions and code.</p>
-  <ol class="calc">
-    <li class="card"><a href="./c1-derivatives.html"><b>Derivatives: the rules of change</b></a><p>Secants turning into tangents, the seven rules, eˣ and log-probabilities, activation slopes and vanishing gradients, and gradient checking.</p></li>
-    <li class="card"><a href="./c2-many-variables.html"><b>Many inputs: partials, gradients, Jacobians</b></a><p>Slopes on a landscape you drag over, the gradients of MSE and weight matrices, the Jacobian as a local matrix, and backprop as vector-Jacobian products.</p></li>
-    <li class="card"><a href="./c3-taylor-and-curvature.html"><b>Taylor series and curvature</b></a><p>Polynomials that hug a curve, why the learning rate must stay under 2/k, zigzags in stretched valleys, Newton's method, and saddles.</p></li>
-    <li class="card"><a href="./c4-integrals.html"><b>Integrals: adding up the infinitely small</b></a><p>Strips under a curve, the fundamental theorem, densities and the bell curve, and why a minibatch's noise shrinks like 1/√N.</p></li>
+  <p class="lede">One path from zero to <b>junior ML engineer</b>. If you can do school arithmetic, you can start: stage 0 gives you just enough code and math, and every idea after that comes three ways: a picture you drag, the math worked out with real numbers, and code you edit and run right in the page. Questions along the way ask you to predict before you're told.</p>
+  <p>Take the lessons in order: each one only leans on the ones before it, and every lesson ends with a link to the next. Each stage ends with a milestone project. Faded lessons are planned and on their way.</p>
+
+  <h2 class="stage">Stage 0 · Start here</h2>
+  <p class="goal">For anyone. What machine learning is, how these pages work, and the bits of code and math the rest of the path uses.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Start 1</span><a href="./s1-what-is-ml.html"><b>What machine learning is</b></a><p>A model is a function with knobs. Turn them by hand to fit real points, then watch the computer turn them for you. Supervised, unsupervised and reinforcement learning, and what an ML engineer does all day.</p></li>
+    <li class="card"><span class="tag">Start 2</span><a href="./s2-just-enough-code.html"><b>Just enough code</b></a><p>Variables, lists, loops and functions, each in a box you run. Ends with you computing a model's error yourself.</p></li>
+    <li class="card soon"><span class="tag">Start 3 · planned</span><b>Math warm-up</b><p>Functions and graphs, powers and logs, the Σ sign, and reading a formula out loud.</p></li>
   </ol>
-  <h2 class="part">Part 1 · How models learn</h2>
-  <ol>
-    <li class="card"><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, adding tip to tail, a matrix as a move of the whole plane, the determinant as area, and a network layer as "move, then fold".</p></li>
-    <li class="card"><a href="./02-gradients.html"><b>Gradients: which way is downhill</b></a><p>Derivatives as slopes you can feel, the gradient as an arrow, gradient descent rolling a ball into a valley.</p></li>
-    <li class="card"><a href="./03-a-neuron.html"><b>A neuron from scratch</b></a><p>Weights, a bias and a bend: one neuron learning to separate two clouds of points, live.</p></li>
-    <li class="card"><a href="./04-backprop.html"><b>Backprop you can watch</b></a><p>The chain rule as a relay of blame through a small network, step by step.</p></li>
-    <li class="card"><a href="./05-probability-and-loss.html"><b>Probability and loss</b></a><p>Softmax, cross-entropy, and why a model "guesses" instead of knowing.</p></li>
-    <li class="card"><a href="./06-convolutions.html"><b>Seeing: convolutions</b></a><p>Filters sliding over images, feature maps, and a digit recognizer trained in your browser.</p></li>
-    <li class="card"><a href="./07-attention.html"><b>Attention and transformers</b></a><p>Words as vectors, attention as weighted averages, a tiny transformer you can poke.</p></li>
-    <li class="card"><a href="./08-agents.html"><b>Agents</b></a><p>Tools, planning and evals, using Blip, the companion on this site, as the worked example.</p></li>
-    <li class="card"><a href="./09-vision.html"><b>Vision in practice</b></a><p>Detection and segmentation on real camera images, including NYC traffic cameras.</p></li>
-    <li class="card"><a href="./10-tiny-transformer.html"><b>A tiny transformer</b></a><p>A real GPT, one block and 36,000 numbers, trained in your browser on NYC subway station names.</p></li>
+  <p class="milestone"><b>Milestone:</b> explain to a friend what "training a model" means, and fit a line to data in code.</p>
+
+  <h2 class="stage">Stage 1 · The math of learning</h2>
+  <p class="goal">Vectors and matrices, derivatives and gradients, probability and data, all as pictures first.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Chapter 1</span><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, a matrix as a move of the whole plane, the determinant as area, a network layer as "move, then fold".</p></li>
+    <li class="card soon"><span class="tag">Linear algebra 1 · planned</span><b>Systems of equations, rank and inverses</b><p>Equations as lines and planes you drag, elimination step by step, rank, and which matrices can be undone.</p></li>
+    <li class="card"><span class="tag">Chapter 2</span><a href="./02-gradients.html"><b>Gradients: which way is downhill</b></a><p>Derivatives as slopes you can feel, the gradient as an arrow, a ball rolling into a valley.</p></li>
+    <li class="card"><span class="tag">Calculus 1</span><a href="./c1-derivatives.html"><b>Derivatives: the rules of change</b></a><p>Secants turning into tangents, the seven rules, eˣ and log-probabilities, activation slopes and vanishing gradients, gradient checking.</p></li>
+    <li class="card"><span class="tag">Calculus 2</span><a href="./c2-many-variables.html"><b>Many inputs: partials, gradients, Jacobians</b></a><p>Slopes on a landscape you drag over, the gradients of MSE and weight matrices, the Jacobian, and backprop as vector-Jacobian products.</p></li>
+    <li class="card soon"><span class="tag">Probability 1 · planned</span><b>Probability and Bayes</b><p>The rules, Monty Hall and the birthday problem simulated, Bayes against the base rate, and a spam filter you train.</p></li>
+    <li class="card soon"><span class="tag">Probability 2 · planned</span><b>Describing data</b><p>Mean, median, spread, box plots and density estimates on real subway data; covariance, correlation and the multivariate bell.</p></li>
+    <li class="card soon"><span class="tag">Linear algebra 2 · planned</span><b>Eigenvectors and PCA</b><p>The arrows a matrix only stretches, a Markov chain ranking this site's pages, and squeezing data onto its most important axes.</p></li>
   </ol>
-  <h2 class="part">Part 2 · Data and evaluation</h2>
-  <ol style="counter-reset: ch 10">
-    <li class="card"><a href="./11-overfitting.html"><b>Overfitting: train, validation, test</b></a><p>A polynomial that bends too much, the U-shaped validation curve, three piles of data, regularization, more data, and k-fold cross-validation.</p></li>
-    <li class="card"><a href="./12-measuring-a-model.html"><b>Measuring a model</b></a><p>Accuracy's lies, precision and recall, ROC curves, calibration, and picking a threshold for what a mistake costs.</p></li>
-    <li class="card"><a href="./13-trees-and-boosting.html"><b>The models that still win on tables</b></a><p>Linear and logistic regression, decision trees and gradient-boosted trees: what most companies' ML actually runs on.</p></li>
-    <li class="card soon"><b>Features and leakage</b><p>Cleaning, scaling, encoding, imbalance, and the leaks that make a model look brilliant until launch.</p></li>
+  <p class="milestone"><b>Milestone:</b> fit linear regression three ways, by solving equations, by gradient descent, and by checking the gradient numerically.</p>
+
+  <h2 class="stage">Stage 2 · How a network learns</h2>
+  <p class="goal">Neurons, backprop, losses and why training works or blows up.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Chapter 3</span><a href="./03-a-neuron.html"><b>A neuron from scratch</b></a><p>Weights, a bias and a bend: one neuron learning to separate two clouds of points, live.</p></li>
+    <li class="card"><span class="tag">Chapter 4</span><a href="./04-backprop.html"><b>Backprop you can watch</b></a><p>The chain rule as a relay of blame through a small network, step by step.</p></li>
+    <li class="card"><span class="tag">Calculus 3</span><a href="./c3-taylor-and-curvature.html"><b>Taylor series and curvature</b></a><p>Why the learning rate must stay under 2/k, zigzags in stretched valleys, Newton's method, and saddles.</p></li>
+    <li class="card"><span class="tag">Chapter 5</span><a href="./05-probability-and-loss.html"><b>Probability and loss</b></a><p>Softmax, cross-entropy, and why a model "guesses" instead of knowing.</p></li>
+    <li class="card"><span class="tag">Calculus 4</span><a href="./c4-integrals.html"><b>Integrals: adding up the infinitely small</b></a><p>Strips under a curve, densities and the bell curve, and why a minibatch's noise shrinks like 1/√N.</p></li>
+    <li class="card soon"><span class="tag">Probability 3 · planned</span><b>From data to parameters: MLE and MAP</b><p>The central limit theorem, where MSE and cross-entropy come from, and regularization as a prior.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Deep networks, layer by layer</b><p>An L-layer network trained in the page: a whole batch as one matrix, getting the shapes right, why random init and why depth.</p></li>
   </ol>
-  <h2 class="part">Part 3 · Training in practice</h2>
-  <ol style="counter-reset: ch 14">
-    <li class="card soon"><b>Optimizers and schedules</b><p>SGD, momentum and Adam racing down the same valley; learning-rate warmup and decay; batch size.</p></li>
-    <li class="card soon"><b>Making deep nets train</b><p>Initialization, normalization, residual connections, dropout, and reading a loss curve that's gone wrong.</p></li>
-    <li class="card soon"><b>GPUs and scale</b><p>Tensors, batching, mixed precision, the memory math of a model, and splitting work across GPUs.</p></li>
+  <p class="milestone"><b>Milestone:</b> a multi-layer network written from scratch that learns a spiral, with its gradients checked.</p>
+
+  <h2 class="stage">Stage 3 · Classic ML and judging models</h2>
+  <p class="goal">What most companies' ML actually is: tables, splits, metrics, trees, and deciding what to fix next.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Chapter 11</span><a href="./11-overfitting.html"><b>Overfitting: train, validation, test</b></a><p>A polynomial that bends too much, the U-shaped validation curve, regularization, more data, and k-fold cross-validation.</p></li>
+    <li class="card"><span class="tag">Chapter 12</span><a href="./12-measuring-a-model.html"><b>Measuring a model</b></a><p>Accuracy's lies, precision and recall, ROC curves, calibration, and picking a threshold for what a mistake costs.</p></li>
+    <li class="card soon"><span class="tag">Probability 4 · planned</span><b>Confidence and tests: is model B really better?</b><p>Confidence intervals, p-values, errors of both kinds, power, t-tests and A/B tests.</p></li>
+    <li class="card"><span class="tag">Chapter 13</span><a href="./13-trees-and-boosting.html"><b>The models that still win on tables</b></a><p>Linear and logistic regression, decision trees and gradient-boosted trees.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Features and leakage</b><p>Cleaning, scaling, encoding, imbalance, and the leaks that make a model look brilliant until launch.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Clusters and anomalies</b><p>k-means you watch iterate, and spotting unusual events in this site's own archives.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>ML strategy: what to fix next</b><p>Error analysis, human-level performance, mismatched data, and a case study where your decisions have consequences.</p></li>
   </ol>
-  <h2 class="part">Part 4 · LLM engineering</h2>
-  <ol style="counter-reset: ch 17">
-    <li class="card soon"><b>Embeddings and retrieval</b><p>Meaning as a vector, nearest neighbors, and retrieval-augmented generation on this site's own search.</p></li>
-    <li class="card soon"><b>Fine-tuning and LoRA</b><p>Teaching a pretrained model a new task by changing a sliver of its weights.</p></li>
-    <li class="card soon"><b>Evaluating LLMs</b><p>Test sets for open-ended answers, model-graded evals, and catching regressions before users do.</p></li>
+  <p class="milestone"><b>Milestone:</b> predict broken elevators from this site's outage archive with a boosted-tree model, an honest time split and a cost-based threshold.</p>
+
+  <h2 class="stage">Stage 4 · The engineer's toolkit</h2>
+  <p class="goal">The tools the job uses: Python, NumPy, pandas, scikit-learn and PyTorch, plus the tricks that make deep networks train.</p>
+  <ol class="path">
+    <li class="card soon"><span class="tag">Toolkit 1 · planned</span><b>Python and NumPy</b><p>The language of ML, running in your browser: arrays, broadcasting, and this path's from-scratch code rewritten in a few lines.</p></li>
+    <li class="card soon"><span class="tag">Toolkit 2 · planned</span><b>pandas and scikit-learn</b><p>Loading, cleaning and exploring a real table, then pipelines, cross-validation and grid search in a dozen lines.</p></li>
+    <li class="card soon"><span class="tag">Toolkit 3 · planned</span><b>PyTorch</b><p>Tensors, autograd, modules and the training loop: the network from stage 2, the way it's written at work.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Optimizers and schedules</b><p>Momentum, RMSprop and Adam racing down the same valley; learning-rate warmup and decay; tuning hyperparameters on a log scale.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Making deep nets train</b><p>Initialization, normalization, batch norm, dropout, residual connections, and reading a loss curve that's gone wrong.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>GPUs and scale</b><p>Batching, mixed precision, the memory math of a model, and splitting work across GPUs.</p></li>
   </ol>
-  <h2 class="part">Part 5 · Production</h2>
-  <ol style="counter-reset: ch 20">
-    <li class="card soon"><b>Serving a model</b><p>Latency, batching, caching and quantization: making predictions fast and cheap.</p></li>
-    <li class="card soon"><b>MLOps</b><p>Experiments you can reproduce, versioned data and models, monitoring drift, and A/B tests.</p></li>
-    <li class="card soon"><b>Capstone: predict broken elevators</b><p>End to end on this site's own archive of MTA elevator outages: data, model, evaluation, a live service, and monitoring.</p></li>
+  <p class="milestone"><b>Milestone:</b> the elevator model again in pandas and scikit-learn, and an image classifier trained in PyTorch, both in a notebook you keep.</p>
+
+  <h2 class="stage">Stage 5 · Seeing and reading</h2>
+  <p class="goal">The architectures behind vision and language models.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Chapter 6</span><a href="./06-convolutions.html"><b>Seeing: convolutions</b></a><p>Filters sliding over images, feature maps, and a digit recognizer trained in your browser.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Deep CNNs and transfer learning</b><p>ResNets, MobileNets, data augmentation, and a pretrained network taught your own photos in minutes.</p></li>
+    <li class="card"><span class="tag">Chapter 9</span><a href="./09-vision.html"><b>Vision in practice</b></a><p>Detection and segmentation on real camera images, including NYC traffic cameras.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Inside a detector</b><p>Bounding boxes, anchors, the YOLO grid, IoU and non-max suppression, and U-Net segmentation.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Recurrent networks</b><p>Memory in a loop, LSTM and GRU gates, and a char-RNN racing chapter 10's transformer on the same data.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Word vectors</b><p>word2vec trained in the page, analogies, and the biases words carry.</p></li>
+    <li class="card"><span class="tag">Chapter 7</span><a href="./07-attention.html"><b>Attention and transformers</b></a><p>Words as vectors, attention as weighted averages, a tiny transformer you can poke.</p></li>
+    <li class="card"><span class="tag">Chapter 10</span><a href="./10-tiny-transformer.html"><b>A tiny transformer</b></a><p>A real GPT, one block and 36,000 numbers, trained in your browser on NYC subway station names.</p></li>
   </ol>
+  <p class="milestone"><b>Milestone:</b> fine-tune a pretrained image model on your own categories and report its precision and recall per class.</p>
+
+  <h2 class="stage">Stage 6 · LLM engineering</h2>
+  <p class="goal">Building products on language models: retrieval, fine-tuning, evaluation and agents.</p>
+  <ol class="path">
+    <li class="card soon"><span class="tag">planned</span><b>Embeddings and retrieval</b><p>Meaning as a vector, nearest neighbors, and retrieval-augmented generation on this site's own search.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Fine-tuning and LoRA</b><p>Teaching a pretrained model a new task by changing a sliver of its weights.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Evaluating LLMs</b><p>Test sets for open-ended answers, model-graded evals, and catching regressions before users do.</p></li>
+    <li class="card"><span class="tag">Chapter 8</span><a href="./08-agents.html"><b>Agents</b></a><p>Tools, planning and evals, using Blip, the companion on this site, as the worked example.</p></li>
+  </ol>
+  <p class="milestone"><b>Milestone:</b> a question-answering bot over a set of documents, with an eval set that proves it's grounded.</p>
+
+  <h2 class="stage">Stage 7 · Production</h2>
+  <p class="goal">Getting a model to users and keeping it working.</p>
+  <ol class="path">
+    <li class="card soon"><span class="tag">planned</span><b>Serving a model</b><p>Latency, batching, caching and quantization: making predictions fast and cheap.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>MLOps</b><p>Experiments you can reproduce, versioned data and models, monitoring drift, and A/B tests.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Capstone: predict broken elevators, live</b><p>End to end on this site's MTA elevator archive: data, model, evaluation, a live service, and monitoring.</p></li>
+  </ol>
+  <p class="milestone"><b>Milestone:</b> the capstone running as a service, with a dashboard that would tell you when it starts to drift.</p>
+
+  <h2 class="stage">Electives</h2>
+  <p class="goal">Take any of these once stage 5 is done.</p>
+  <ol class="path">
+    <li class="card soon"><span class="tag">planned</span><b>Reinforcement learning</b><p>Rewards, the Bellman equation, Q-learning, and a lunar lander that learns to land.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Recommenders</b><p>Collaborative filtering, two-tower retrieval and ranking.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Listening: speech and wake words</b><p>Spectrograms and a "Hey Blip" detector trained from your microphone.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Seq2seq and beam search</b><p>Encoder-decoder translation, beam search, BLEU, and where attention came from.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Faces and style</b><p>Siamese networks, triplet loss, and neural style transfer.</p></li>
+  </ol>
+
+  <h2 class="stage">At the end, you can</h2>
+  <ul class="check">
+    <li>Frame a problem as ML (or decide it shouldn't be), pick a metric that matches the cost of mistakes, and set a baseline.</li>
+    <li>Load, clean and split real data without leaking the answer, in pandas.</li>
+    <li>Train and tune linear models, boosted trees and neural networks, in scikit-learn and PyTorch, and explain what every line does down to the gradient.</li>
+    <li>Diagnose a model: bias or variance, error analysis, learning curves, a loss curve that's gone wrong.</li>
+    <li>Use pretrained vision and language models: transfer learning, embeddings, retrieval, fine-tuning, and evals for LLM features.</li>
+    <li>Ship a model behind an API and monitor it, and say with numbers whether a new version is better.</li>
+  </ul>
 </main>
 </body>
 </html>

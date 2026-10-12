@@ -72,7 +72,7 @@
   </div>
   <p class="legend"><i style="background:#f4d35e"></i>gradient descent <i style="background:#fc6255"></i>Newton</p>
   <p class="readout" id="r3"></p>
-  <p>Section 2's rule now applies per direction: η must stay under \(2/a\) for the steep direction, so the gentle direction shrinks by only \(1 - \eta b\) per step, under \(1 - 2/\kappa\). The steps needed grow in proportion to \(\kappa\). Gradient descent zigzags across the valley while barely moving along it. Real networks have condition numbers in the thousands and up, which is why plain gradient descent is slow and why optimizers like momentum and Adam exist (Part 3).</p>
+  <p>Section 2's rule now applies per direction: η must stay under \(2/a\) for the steep direction, so the gentle direction shrinks by only \(1 - \eta b\) per step, under \(1 - 2/\kappa\). The steps needed grow in proportion to \(\kappa\). Gradient descent zigzags across the valley while barely moving along it. Real networks have condition numbers in the thousands and up, which is why plain gradient descent is slow and why optimizers like momentum and Adam exist (stage 4).</p>
   <p><b>Newton's method</b> fixes it outright: step by \(-H^{-1}\nabla L\) instead of \(-\eta \nabla L\). Dividing by the curvature makes every direction equally easy; on a quadratic it lands on the minimum in one step, whatever \(\kappa\) is. Tick the box.</p>
   <div class="q" data-num="1e18" data-show="10¹⁸">
     <p>So why don't we train networks with Newton's method? A model has \(10^9\) parameters. How many entries does its Hessian have?</p>
@@ -141,9 +141,10 @@ table(rows);
     <li><b>Newton</b> divides by curvature and converges fast, but a Hessian with \(n^2\) entries is out of reach for big models; practical optimizers approximate it.</li>
     <li><b>Saddles, not local minima,</b> are the typical flat spots in high dimensions.</li>
   </ul>
-  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Before: <a href="./c2-many-variables.html">Calculus 2: gradients and Jacobians</a> · Next: <a href="./c4-integrals.html">Calculus 4: integrals, densities and expectations</a></p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a></p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { C, graph, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

@@ -143,9 +143,10 @@ print("buggy derivative at 0.5, relative error:", relErr(buggy(0.5), central(sig
     <li><b>Work in logs</b>: log-probabilities add instead of multiplying, don't underflow, and give gradients like "1 minus the probability".</li>
     <li><b>Check gradients numerically</b> with central differences and \(h \approx 10^{-5}\) when you write a derivative by hand; trust backprop for training.</li>
   </ul>
-  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Next: <a href="./c2-many-variables.html">Calculus 2: many inputs, gradients and Jacobians</a></p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a></p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { C, graph, erf, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

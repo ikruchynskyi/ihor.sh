@@ -175,11 +175,12 @@ plot(losses, { label: "cross-entropy per epoch" });
   <div class="stage"><div class="bars" id="tr"></div>
     <div class="row" style="margin-top:12px"><label>right answer <select id="truth"><option>cat</option><option selected>dog</option><option>bird</option></select></label><button id="step4">One training step</button><button id="reset4">Reset</button></div></div>
   <p class="readout" id="r4"></p>
-  <p>Every classifier and every language model is trained with exactly this push, on billions of examples. Next we'll give networks eyes: <a href="./06-convolutions.html"><b>convolutions</b></a>, filters that slide over images.</p>
+  <p>Every classifier and every language model is trained with exactly this push, on billions of examples. Later on the path we'll give networks eyes: <a href="./06-convolutions.html"><b>convolutions</b></a>, filters that slide over images.</p>
 
-  <p class="muted">Previous: <a href="./04-backprop.html">Backprop you can watch</a> · All chapters: <a href="./">AI from scratch</a>.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

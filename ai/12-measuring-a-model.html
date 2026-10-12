@@ -26,7 +26,7 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 12 · Part 2: data and evaluation</p>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 12 · Stage 3: classic ML and judging models</p>
   <h1>Measuring a model</h1>
   <p class="lede">"It's 99% accurate" is the most common way an ML project fools its own team. A model's quality isn't one number: it depends on how rare the thing you're looking for is, where you draw the line between yes and no, and what each kind of mistake costs. This chapter is the vocabulary for saying what a classifier is actually good for.</p>
 
@@ -107,9 +107,10 @@ print(`AUC = ${good} / ${pairs} = ${(good / pairs).toFixed(3)}`);
     <li><b>Calibration</b>, if anyone will read the probabilities.</li>
     <li><b>Slices</b>: the same numbers per country, device, customer type. A model that's fine on average can fail a whole group.</li>
   </ul>
-  <p class="muted">Previous: <a href="./11-overfitting.html">Overfitting: train, validation, test</a> · All chapters: <a href="./">AI from scratch</a>. Next in Part 2: the models that still win on tables.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

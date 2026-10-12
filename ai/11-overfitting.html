@@ -24,7 +24,7 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 11 · Part 2: data and evaluation</p>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 11 · Stage 3: classic ML and judging models</p>
   <h1>Overfitting: train, validation, test</h1>
   <p class="lede">A model that gets every training example right can still be useless. The whole job is the examples it hasn't seen: tomorrow's subway delays, the next email, a photo nobody labeled. This chapter is about the one habit that separates an ML engineer from someone who trains models: never trusting a score on data the model learned from.</p>
 
@@ -117,11 +117,12 @@ print(`cross-validation picks degree ${best.degree}; the noise alone is 0.25² =
     <li><b>Split first</b>, before looking at the data closely; by time if the world changes; by user or document if they repeat.</li>
     <li><b>Have a baseline</b>: the dumbest reasonable model (predict the average, yesterday's value, the majority class). A fancy model that doesn't beat it isn't working.</li>
     <li><b>Read both curves</b>: high train and high validation error, make the model bigger or the features better; low train but high validation, regularize or get more data.</li>
-    <li><b>Report test once</b>, and keep watching after launch: the world drifts, and next month is a validation set you didn't choose (Part 5, monitoring).</li>
+    <li><b>Report test once</b>, and keep watching after launch: the world drifts, and next month is a validation set you didn't choose (stage 7, monitoring).</li>
   </ul>
-  <p class="muted">Previous: <a href="./10-tiny-transformer.html">A tiny transformer</a> · All chapters: <a href="./">AI from scratch</a>. Next in Part 2: measuring a model (precision, recall, ROC, calibration).</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

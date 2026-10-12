@@ -21,7 +21,7 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 13 · Part 2: data and evaluation</p>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 13 · Stage 3: classic ML and judging models</p>
   <h1>The models that still win on tables</h1>
   <p class="lede">Most machine learning in companies isn't images or chat: it's tables. Rows of customers, payments, trips, sensor readings; columns of numbers and categories. On that kind of data, the winners are usually not neural networks but two older ideas: <b>logistic regression</b> (a line) and <b>gradient-boosted decision trees</b> (many small questions, each fixing the last ones' mistakes). An ML engineer reaches for these first.</p>
 
@@ -96,13 +96,14 @@ print("Each stump alone is a single step; 200 of them, each nudging by 10%, trac
     <tr><th>Data</th><th>Start with</th><th>Why</th></tr>
     <tr><td>A table of mixed columns, thousands to millions of rows</td><td>Gradient-boosted trees</td><td>Strong out of the box, handles scale, categories and missing values, fast, explainable enough. Studies comparing deep nets and trees on many tabular datasets keep finding trees ahead or tied.</td></tr>
     <tr><td>Few rows, need to explain every weight (credit, medicine)</td><td>Logistic regression</td><td>Each coefficient is a readable effect; hard to overfit; regulators understand it.</td></tr>
-    <tr><td>Images, audio, text, video</td><td>Neural networks (Part 1)</td><td>The structure (pixels near pixels, words in order) is what convolutions and attention exploit; trees can't.</td></tr>
-    <tr><td>A table plus text or images</td><td>Embeddings from a network as extra columns for boosted trees</td><td>Part 4 shows how to turn text into vectors.</td></tr>
+    <tr><td>Images, audio, text, video</td><td>Neural networks (stages 2 and 5)</td><td>The structure (pixels near pixels, words in order) is what convolutions and attention exploit; trees can't.</td></tr>
+    <tr><td>A table plus text or images</td><td>Embeddings from a network as extra columns for boosted trees</td><td>Stage 6 shows how to turn text into vectors.</td></tr>
   </table>
   <p>Whatever you pick, chapter 11 and 12 still rule: a baseline first, splits that respect time, and the metric that matches the cost of a mistake.</p>
-  <p class="muted">Previous: <a href="./12-measuring-a-model.html">Measuring a model</a> · All chapters: <a href="./">AI from scratch</a>. Next in Part 2: features and leakage.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

@@ -144,7 +144,7 @@ table(rows);
   <p>Nudging works, but it needs one extra forward pass <em>per weight</em>. Backprop gets every gradient from one forward and one backward pass, about the cost of three forward passes, however many weights there are.</p>
   <div class="row"><label>weights in the network <input type="range" id="n" min="1" max="12" step="0.1" value="6"></label></div>
   <p class="readout" id="r4"></p>
-  <p>That gap is why networks with billions of weights can be trained at all. Everything since, convolutions for images and attention for language, is new shapes of graphs with the same forward and backward passes running through them. Next: what the loss should actually be when a network has to choose between answers, <a href="./05-probability-and-loss.html"><b>probability and loss</b></a>.</p>
+  <p>That gap is why networks with billions of weights can be trained at all. Everything since, convolutions for images and attention for language, is new shapes of graphs with the same forward and backward passes running through them. Coming up on the path: what the loss should actually be when a network has to choose between answers, <a href="./05-probability-and-loss.html"><b>probability and loss</b></a>.</p>
   <div class="q" data-num="1000001" data-tol="0" data-show="1,000,001">
     <p>A network has a million weights. How many forward passes does the "nudge each weight" method need for one full gradient (one for the starting loss, plus one per nudged weight)?</p>
     <div class="why">\(1 + 10^6\). Backprop gets the same million numbers for about the cost of 3 forward passes: a forward, and a backward that does roughly twice a forward's arithmetic. For GPT-sized models (\(10^{11}\) weights) that's the difference between possible and not.</div>
@@ -172,9 +172,10 @@ plot(losses, { label: "loss while learning XOR" });
 for (const [x, y] of data) print(x, "→", net(x).data.toFixed(3), " (want", y + ")");
 </textarea></div>
 
-  <p class="muted">Previous: <a href="./03-a-neuron.html">A neuron from scratch</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/backpropagation-calculus">Backpropagation calculus</a> and Andrej Karpathy's micrograd.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/backpropagation-calculus">Backpropagation calculus</a> and Andrej Karpathy's micrograd.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

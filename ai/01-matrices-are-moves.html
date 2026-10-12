@@ -163,9 +163,10 @@ const params = (sizes) => sizes.slice(1).reduce((n, m, i) => n + m * sizes[i] + 
 print("784 → 128 → 10 has", params([784, 128, 10]), "parameters");
 </textarea></div>
 
-  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. Coming next in this world: gradients, a neuron from scratch, backprop you can watch, then CNNs, transformers, agents and vision.</p>
+  <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. All lessons: <a href="./">AI from scratch</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { C, scene, grid, axes, arrow, fmt, say } from "/ai/plane.js";
 

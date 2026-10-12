@@ -137,9 +137,10 @@ for (const x of [[0, 0], [0, 1], [1, 0], [1, 1]]) print(x, "→ hidden", xor(x).
 </textarea></div>
   <p>But how did that hidden layer learn? Each of its neurons had to figure out its share of the blame for the final answer, through the neuron after it. Passing blame backwards like that is <a href="./04-backprop.html"><b>backpropagation</b></a>: the next chapter.</p>
 
-  <p class="muted">Previous: <a href="./02-gradients.html">Gradients</a> · All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">Neural Networks</a> series.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">Neural Networks</a> series.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
 <script type="module">
 import { C, scene, axes, arrow, fmt, say } from "/ai/plane.js";
 const $ = (id) => document.getElementById(id);

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Machine Learning Is</title>
+  <meta name="description" content="AI from scratch, start here: machine learning for complete beginners. A model is a function with knobs: fit a line to taxi rides by hand, then watch the computer turn the knobs itself. Supervised, unsupervised and reinforcement learning, and what an ML engineer does." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; }
+    canvas.low { aspect-ratio: 4 / 1; margin-top: 6px; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Start 1 · Stage 0: start here</p>
+  <h1>What machine learning is</h1>
+  <p class="lede">You don't need any math or code for this lesson. By the end you'll have trained a model twice, once with your own hands and once by letting the computer do it, and you'll know what an ML engineer actually does all day. Everything else on this path builds on the one idea here: a model is a function with knobs, and learning means turning the knobs until the model agrees with the examples.</p>
+
+  <h2>1. Rules you write vs rules you learn</h2>
+  <p>A normal program follows rules a person wrote: "sales tax is 8.875% of the price". That works when someone <i>can</i> write the rule. Now try writing the rule for "this photo contains a cat". Pointy ears? Some cats have folded ears. Whiskers? So do dogs. Every rule breaks.</p>
+  <p>Machine learning flips it around. Instead of the rule, you give the computer <b>examples with answers</b>: ten thousand photos, each labeled "cat" or "not cat". The computer finds a rule that matches the examples, and you hope it works on photos it has never seen. That hope, and making sure it's justified, is most of the job.</p>
+  <div class="q" data-answer="b">
+    <p>Which of these is a job for machine learning rather than a hand-written rule?</p>
+    <ul><li data-k="a" data-says="The rule is known exactly: multiply by the rate. A plain program does it perfectly.">Working out the sales tax on a receipt</li><li data-k="b">Reading a handwritten street address off an envelope</li><li data-k="c" data-says="Sorting has exact, well-known rules. No examples needed.">Sorting a list of names alphabetically</li></ul>
+    <div class="why">Nobody can write down the rules for every person's handwriting, but it's easy to collect millions of envelopes along with the address that turned out to be right. When the rule is hard to write and examples are easy to get, that's machine learning's territory.</div>
+  </div>
+
+  <h2>2. A model is a function with knobs</h2>
+  <p>Here's a small, made-up example: 40 taxi rides, each a dot. Across is how far the ride went, up is how many minutes it took. We want to predict the time for a ride we haven't taken yet. The simplest guess is a straight line:</p>
+  <p class="formula">\[ \text{minutes} = a \times \text{km} + b \]</p>
+  <p>That formula is the <b>model</b>, and \(a\) and \(b\) are its <b>knobs</b> (ML people call them <b>parameters</b> or <b>weights</b>). \(a\) is minutes per kilometer; \(b\) is the time every ride costs no matter how short: getting in, the first red light. Turn the knobs and try to make the <b style="color:#58c4dd">blue line</b> run through the middle of the dots. Each <b style="color:#fc6255">red stick</b> is one ride's mistake: how far the line's guess is from what really happened.</p>
+  <canvas id="fit" width="800" height="400" aria-label="Taxi rides as dots, the model's line, and each ride's error"></canvas>
+  <div class="row">
+    <label>a (minutes per km) <input type="range" id="a" min="0" max="6" step="0.05" value="1"> <b id="aV" class="math"></b></label>
+    <label>b (minutes at the start) <input type="range" id="b" min="0" max="20" step="0.1" value="15"> <b id="bV" class="math"></b></label>
+    <button type="button" id="train">Let the computer train it</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <canvas id="lossCv" class="low" width="800" height="200" aria-label="The error after each training step"></canvas>
+  <p>How do we say how good a line is, with one number? Square each red stick (so misses above and below both count, and big misses count a lot) and average them. That's the <b>mean squared error</b>, the readout above. Getting it small is the whole goal. A good fit here gets it down to about 8.5; you can't reach zero, because two rides of the same length don't take the same time. Traffic is noise no line can predict.</p>
+  <div class="q" data-num="17">
+    <p>With \(a = 3\) and \(b = 5\), how many minutes does the model predict for a 4 km ride?</p>
+    <div class="why">\(3 \times 4 + 5 = 17\). That's all "running a model" means: put the input into the formula and read off the output. A huge language model does the same thing, with billions of knobs instead of two.</div>
+  </div>
+
+  <h2>3. Training: let the computer turn the knobs</h2>
+  <p>Press <b>Let the computer train it</b>. The computer does what you did, but carefully: for each knob it asks "if I nudge you up a tiny bit, does the error go up or down?", then moves every knob a small step in the direction that lowers the error, and repeats. The strip under the picture shows the error after each step. That loop is <b>training</b>, and the method is called <b>gradient descent</b>. Stage 1 shows exactly how the computer gets the "up or down" answer (it's a derivative), and stage 2 shows the same loop training a neural network.</p>
+  <div class="q" data-answer="a">
+    <p>After training, the error stops falling at about 8.5 and never reaches zero. Why?</p>
+    <ul><li data-k="a">The rides really vary: traffic and lights aren't in the data, so no line can hit every dot</li><li data-k="b" data-says="Training worked: try moving the knobs by hand from where it stopped, and the error only gets bigger.">Training stopped too early: more steps would reach zero</li><li data-k="c" data-says="There's no bug: the line found is the best possible straight line for these dots.">There's a bug in the training</li></ul>
+    <div class="why">A model can only use what it's given. With just the distance, about 8.5 is the best any line can do. To do better you'd add information (time of day, weather, borough), which is called <b>feature engineering</b>, or use a more flexible model. Telling "my model is bad" apart from "the data can't say more" is a core skill on this path (stage 3).</div>
+  </div>
+  <p>One honest warning: the real test of a model is rides it <i>hasn't</i> seen. A model that fits its examples perfectly but fails on new ones is useless, and that trap, called <b>overfitting</b>, gets a whole lesson in stage 3.</p>
+
+  <h2>4. Three ways to learn</h2>
+  <table class="rules">
+    <tr><th>kind</th><th>what you give it</th><th>examples</th></tr>
+    <tr><td><b>Supervised</b></td><td>examples <i>with</i> the right answers</td><td>ride → minutes; photo → "cat"; email → spam or not; sentence → next word (that's how chatbots are trained)</td></tr>
+    <tr><td><b>Unsupervised</b></td><td>examples with no answers; find structure</td><td>group customers who behave alike; spot an unusual night on the subway</td></tr>
+    <tr><td><b>Reinforcement</b></td><td>a world to act in and a score (reward)</td><td>a game-playing program; a robot learning to walk; tuning a chatbot from people's thumbs up</td></tr>
+  </table>
+  <p>The taxi model was supervised: every ride came with its true time. Most ML at work is supervised.</p>
+  <div class="q" data-answer="b">
+    <p>You have a year of hourly crowd counts for every subway station, with no labels, and want to find stations whose days look alike. Which kind is that?</p>
+    <ul><li data-k="a" data-says="There's no right answer attached to each station to learn from.">Supervised</li><li data-k="b">Unsupervised</li><li data-k="c" data-says="Nothing is acting in a world or collecting rewards here.">Reinforcement</li></ul>
+    <div class="why">No answers, just looking for groups: unsupervised learning (clustering, in stage 3).</div>
+  </div>
+
+  <h2>5. What an ML engineer does</h2>
+  <p>Training is maybe a tenth of the job. The rest is a loop, and this path teaches every step of it:</p>
+  <table class="rules">
+    <tr><th>step</th><th>the question</th><th>where you learn it</th></tr>
+    <tr><td>Frame</td><td>What exactly are we predicting, and how will we know it's good enough?</td><td>stage 3</td></tr>
+    <tr><td>Data</td><td>Where do examples come from? Are the answers right? Is anything leaking the answer?</td><td>stages 3–4</td></tr>
+    <tr><td>Baseline</td><td>What does the simplest possible model score?</td><td>stage 3</td></tr>
+    <tr><td>Model</td><td>Which model, which knobs, and how to train it</td><td>stages 1, 2, 4, 5</td></tr>
+    <tr><td>Evaluate</td><td>How good is it on data it never saw, and where does it fail?</td><td>stage 3</td></tr>
+    <tr><td>Ship and watch</td><td>Make it fast and cheap, put it in front of users, notice when the world changes</td><td>stages 6–7</td></tr>
+  </table>
+
+  <h2>6. How these pages work</h2>
+  <p>Boxes marked <b>Your turn</b> ask you to predict before you're told: guessing first, even wrong, is how it sticks. Sliders and dots in pictures can be dragged. And code boxes run right in the page. Try this one: press <b>Run</b>, then change a number and run it again.</p>
+  <div class="code" data-title="Run it: your first model in code"><textarea>
+const a = 2.6, b = 6;              // the knobs
+const predict = (km) => a * km + b; // the model
+print("a 4 km ride takes about", predict(4), "minutes");
+print("a 10 km ride takes about", predict(10), "minutes");
+</textarea></div>
+  <p>Don't worry if the code looks foreign: the next lesson teaches exactly enough to read and change everything on this path. And Blip, the companion in the corner, can answer questions about whatever page you're on.</p>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li><b>Machine learning</b> finds a rule from examples, for problems where nobody can write the rule.</li>
+    <li><b>A model</b> is a formula with knobs (parameters); <b>running</b> it means putting an input in and reading the output.</li>
+    <li><b>Training</b> means turning the knobs to make one number, the error (loss), as small as possible. Gradient descent does it by repeatedly nudging every knob downhill.</li>
+    <li><b>Noise</b> sets a floor: a model can't predict what isn't in its inputs.</li>
+    <li>What counts is how the model does on <b>examples it hasn't seen</b>.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 40 made-up rides: minutes ≈ 2.6 km + 6, plus traffic noise
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rand = mulberry32(11), gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+const rides = Array.from({ length: 40 }, () => { const km = 0.5 + 11.5 * rand(); return [km, Math.max(2, 2.6 * km + 6 + 3 * gauss())]; });
+const mse = (a, b) => rides.reduce((s, [x, y]) => s + (a * x + b - y) ** 2, 0) / rides.length;
+let losses = [], running = false, praised = false;
+
+function r1() {
+  const a = +$("a").value, b = +$("b").value, P = graph("fit", [0, 13], [0, 50], { step: [1, 5] });
+  for (const [x, y] of rides) P.seg(x, y, x, a * x + b, C.red, 2);
+  P.curve((x) => a * x + b, C.blue, 3);
+  for (const [x, y] of rides) P.dot(x, y, C.yellow, 5);
+  P.text("km →", 12.1, 1.5, "#8f98a8"); P.text("minutes", 0.15, 47.5, "#8f98a8");
+  const e = mse(a, b);
+  $("aV").textContent = a.toFixed(2); $("bV").textContent = b.toFixed(1);
+  $("r1").textContent = `model: minutes = ${a.toFixed(2)} × km + ${b.toFixed(1)} · mean squared error = ${e.toFixed(2)}`;
+  const L = graph("lossCv", [0, Math.max(1, losses.length - 1)], [0, Math.max(10, ...losses.slice(0, 1), e)], { step: [1e9, 1e9], labels: false });
+  if (losses.length > 1) L.curve((t) => losses[Math.round(t)], C.yellow, 2);
+  L.text(losses.length ? `error by training step (${losses.length - 1} steps)` : "the error after each training step appears here", 0, Math.max(10, ...losses.slice(0, 1), e) * 0.82, "#8f98a8");
+  if (!running && !praised && e < 11) { praised = true; say("Nice fit! That's training by hand. Now let the computer try.", "happy"); }
+}
+for (const id of ["a", "b"]) $(id).oninput = () => { losses = []; r1(); };
+
+// gradient descent on the mean squared error, a few dozen steps per frame
+$("train").onclick = () => {
+  if (running) return;
+  running = true; losses = [mse(+$("a").value, +$("b").value)];
+  let a = +$("a").value, b = +$("b").value, frame = 0;
+  const step = () => {
+    for (let k = 0; k < 15; k++) {
+      let ga = 0, gb = 0;
+      for (const [x, y] of rides) { const err = a * x + b - y; ga += (2 * err * x) / rides.length; gb += (2 * err) / rides.length; }
+      a -= 0.015 * ga; b -= 0.015 * gb;
+      losses.push(mse(a, b));
+    }
+    $("a").value = a; $("b").value = b; r1();
+    if (++frame < 200) requestAnimationFrame(step);
+    else { running = false; say(`Trained: a = ${a.toFixed(2)} minutes per km, b = ${b.toFixed(1)} minutes to start. The rides were made from a hidden rule, 2.6 and 6: 40 noisy rides get you close, not exact.`, "happy"); }
+  };
+  requestAnimationFrame(step);
+};
+r1();
+
+window.blipContext = () => ({ page: "AI from scratch, start 1: what machine learning is (rules vs examples, a model as a function with knobs, mean squared error, training by gradient descent, noise, supervised/unsupervised/reinforcement learning, what an ML engineer does)", readouts: [$("r1").textContent] });
+</script>
+</body>
+</html>
