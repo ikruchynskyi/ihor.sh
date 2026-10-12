@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Overfitting and Validation</title>
+  <meta name="description" content="AI from scratch, chapter 11: why a model that's perfect on its training data can be useless, train/validation/test splits, the U-shaped validation curve, regularization, why more data helps, and k-fold cross-validation, with a polynomial you can bend live." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; }
+    .fit { aspect-ratio: 2 / 1; } .curve { aspect-ratio: 3 / 1; margin-top: 6px; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .split { display: flex; height: 26px; font: 13px ui-monospace, Menlo, monospace; color: #10131a; margin: 10px 0; }
+    .split span { display: flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 11 · Part 2: data and evaluation</p>
+  <h1>Overfitting: train, validation, test</h1>
+  <p class="lede">A model that gets every training example right can still be useless. The whole job is the examples it hasn't seen: tomorrow's subway delays, the next email, a photo nobody labeled. This chapter is about the one habit that separates an ML engineer from someone who trains models: never trusting a score on data the model learned from.</p>
+
+  <h2>1. A curve that bends too much</h2>
+  <p>Twenty noisy measurements of some smooth process (the dashed line, which in real life you never get to see). We fit a polynomial to the <b style="color:#58c4dd">blue training points</b> by least squares (chapter 2's downhill, solved exactly), and check it on <b style="color:#f4d35e">yellow validation points</b> it never saw. Raise the degree.</p>
+  <canvas id="fit" class="fit" width="800" height="400" aria-label="Noisy points, the hidden true curve, and the fitted polynomial"></canvas>
+  <div class="row"><label>degree <input type="range" id="deg" min="0" max="15" step="1" value="3"> <b id="degV" class="math">3</b></label><button type="button" id="again">New noise</button></div>
+  <p class="legend"><i style="background:#58c4dd"></i>train <i style="background:#f4d35e"></i>validation <i style="background:#fc6255"></i>the fit</p>
+  <canvas id="curve" class="curve" width="800" height="260" aria-label="Train and validation error by polynomial degree"></canvas>
+  <p class="readout" id="r1"></p>
+  <p>Low degrees can't bend enough: both errors are high (<b>underfitting</b>, high bias). Somewhere in the middle the validation error bottoms out. Past that, the training error keeps falling toward zero while the validation error shoots up: the curve threads through the noise itself (<b>overfitting</b>, high variance). It's memorizing, not learning.</p>
+  <div class="q" data-num="0" data-tol="0.0001">
+    <p>15 training points and a polynomial of degree 14 (15 numbers to choose). What is the training error?</p>
+    <div class="why">Zero (up to rounding): with as many free numbers as points, the polynomial can pass through every point exactly. A perfect training score, and it tells you nothing.</div>
+  </div>
+  <details class="deeper" open><summary>The math: what least squares minimizes, and the two kinds of error</summary>
+    <p>For degree \(d\) the model is \(\hat y = w_0 + w_1 x + \dots + w_d x^d\). With the training inputs as rows of a matrix \(X\) (each row \(1, x, x^2, \dots\)), least squares picks the weights that minimize the mean squared error, and they have a closed form:</p>
+    <p class="formula">\[ \text{MSE} = \frac{1}{n}\sum_i (y_i - \hat y_i)^2, \qquad w = (X^\top X)^{-1} X^\top y \]</p>
+    <p>The expected error on new data splits into three parts: \(\text{bias}^2\) (the model is too simple to follow the truth), <b>variance</b> (it changes a lot with which noisy points it happened to get), and the noise itself, which no model can remove. Raising the degree trades bias for variance. The validation curve's U shape is that trade.</p>
+  </details>
+
+  <h2>2. Three piles of data</h2>
+  <div class="split"><span style="flex:70;background:#58c4dd">train 70%</span><span style="flex:15;background:#f4d35e">validation 15%</span><span style="flex:15;background:#83c167">test 15%</span></div>
+  <p><b>Train</b>: what the model learns from. <b>Validation</b>: what you look at to choose things (the degree here; later the learning rate, the architecture, when to stop). <b>Test</b>: touched once, at the end, to report the score. Why the third pile? Because choosing the degree by validation error is itself a kind of fitting: try enough options and one will look good on those particular points by luck. The test set is the only number nobody optimized against.</p>
+  <div class="q" data-answer="b">
+    <p>You try 40 model variants and keep the one with the best <b>test</b> score. What's wrong?</p>
+    <ul><li data-k="a" data-says="Trying many variants is normal; the problem is which data picked the winner.">Nothing, as long as the test set is big</li><li data-k="b">The test set was used to choose, so its score is now optimistic; you no longer have an honest estimate</li><li data-k="c" data-says="Training time isn't the issue here.">Training 40 models takes too long</li></ul>
+    <div class="why">Picking the best of 40 on the test set rewards luck on those exact examples. Choose on validation, report on test, once. If you must go back, you need fresh test data.</div>
+  </div>
+  <p>Real data hides worse traps than luck. <b>Leakage</b>: something in the inputs that gives the answer away but won't exist at prediction time (a "refund issued" column when predicting fraud). <b>Time</b>: for anything that changes, split by date (train on the past, validate on later weeks), never at random, or the model sees the future. <b>Duplicates</b>: the same photo, user or document in two piles inflates every score.</p>
+
+  <h2>3. Regularization: let it bend, but charge for it</h2>
+  <p>Instead of fewer parameters, keep degree 12 and add a penalty for large weights to what we minimize (ridge regression, also called weight decay in deep learning). Wiggly curves need big weights, so they get expensive.</p>
+  <p class="formula">\[ \text{minimize}\quad \frac{1}{n}\sum_i (y_i - \hat y_i)^2 + \lambda \sum_j w_j^2 \qquad\Rightarrow\qquad w = (X^\top X + n\lambda I)^{-1} X^\top y \]</p>
+  <canvas id="fit2" class="fit" width="800" height="400" aria-label="Degree 12 fit with a ridge penalty"></canvas>
+  <div class="row"><label>λ (log scale) <input type="range" id="lam" min="-9" max="1" step="0.25" value="-9"> <b id="lamV" class="math"></b></label></div>
+  <p class="readout" id="r2"></p>
+  <p>At λ near zero it's the wild degree-12 curve from above; raise it and the wiggles flatten, validation error drops, then too much λ flattens everything into underfitting again. Same U, different knob. Dropout, early stopping and data augmentation are other knobs with the same purpose.</p>
+
+  <h2>4. The best regularizer: more data</h2>
+  <p>Degree 12 again, no penalty, but now choose how many training points it gets.</p>
+  <canvas id="fit3" class="fit" width="800" height="400" aria-label="Degree 12 fit with more or fewer training points"></canvas>
+  <div class="row"><label>training points <input type="range" id="nTrain" min="14" max="300" step="1" value="20"> <b id="nV" class="math"></b></label></div>
+  <p class="readout" id="r3"></p>
+  <p>With 300 points, the same flexible model has nowhere to hide its wiggles: the noise averages out and it traces the true curve. This is why big models need big data, and why "get more (clean, representative) data" beats almost any clever trick.</p>
+
+  <h2>5. Cross-validation: when data is scarce</h2>
+  <p>With only a few hundred examples, holding out 15% for validation leaves the estimate noisy. <b>k-fold cross-validation</b> splits the data into k parts, trains k times (each part takes a turn as validation), and averages the k scores. Every example is used for validation exactly once. Then train the final model on everything (still keeping the test set aside).</p>
+  <div class="code" data-title="Build it: choose the degree by 5-fold cross-validation"><textarea>
+// Data: a hidden curve plus noise (the same kind as above)
+let seed = 7; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const truth = (x) => 0.8 * Math.sin(2.5 * x) + 0.3 * x;
+const data = Array.from({ length: 40 }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + 0.25 * gauss() }; });
+
+// Least squares for a polynomial: solve (XᵀX + λI) w = Xᵀy by Gaussian elimination
+function fit(pts, d, lam = 1e-9) {
+  const A = Array.from({ length: d + 1 }, () => new Array(d + 2).fill(0));
+  for (const { x, y } of pts) { const p = Array.from({ length: d + 1 }, (_, j) => x ** j);
+    for (let i = 0; i <= d; i++) { for (let j = 0; j <= d; j++) A[i][j] += p[i] * p[j]; A[i][d + 1] += p[i] * y; } }
+  for (let i = 0; i <= d; i++) A[i][i] += lam * pts.length;
+  for (let c = 0; c <= d; c++) { let m = c; for (let r = c + 1; r <= d; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+    [A[c], A[m]] = [A[m], A[c]]; for (let r = 0; r <= d; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= d + 1; k++) A[r][k] -= f * A[c][k]; } }
+  return A.map((row, i) => row[d + 1] / row[i]);
+}
+const mse = (w, pts) => pts.reduce((s, { x, y }) => s + (y - w.reduce((a, wj, j) => a + wj * x ** j, 0)) ** 2, 0) / pts.length;
+
+// 5 folds: every point is validation exactly once
+const k = 5, rows = [];
+for (let d = 0; d <= 12; d++) {
+  let cv = 0;
+  for (let f = 0; f < k; f++) {
+    const val = data.filter((_, i) => i % k === f), train = data.filter((_, i) => i % k !== f);
+    cv += mse(fit(train, d), val) / k;
+  }
+  rows.push({ degree: d, "train MSE (all 40)": +mse(fit(data, d), data).toFixed(4), "5-fold CV MSE": +cv.toFixed(4) });
+}
+table(rows);
+const best = rows.reduce((a, b) => (b["5-fold CV MSE"] < a["5-fold CV MSE"] ? b : a));
+print(`cross-validation picks degree ${best.degree}; the noise alone is 0.25² = 0.0625, the floor no model can beat`);
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>Why is the cross-validation error never below about 0.0625 here, at any degree?</p>
+    <ul><li data-k="a">That's the noise variance (0.25²): even the true curve misses each point by the noise</li><li data-k="b" data-says="More folds give a steadier estimate, not a lower floor.">Because 5 folds is too few</li><li data-k="c" data-says="Higher degrees can fit the training points better, but validation points carry fresh noise.">Polynomials can't fit sine waves</li></ul>
+    <div class="why">The irreducible error: new points come with new noise that nothing learned from other points can predict. When your validation error sits near the noise floor, you're done with this model; when it's far above, there's room.</div>
+  </div>
+
+  <h2>6. What an ML engineer actually does with this</h2>
+  <ul>
+    <li><b>Split first</b>, before looking at the data closely; by time if the world changes; by user or document if they repeat.</li>
+    <li><b>Have a baseline</b>: the dumbest reasonable model (predict the average, yesterday's value, the majority class). A fancy model that doesn't beat it isn't working.</li>
+    <li><b>Read both curves</b>: high train and high validation error, make the model bigger or the features better; low train but high validation, regularize or get more data.</li>
+    <li><b>Report test once</b>, and keep watching after launch: the world drifts, and next month is a validation set you didn't choose (Part 5, monitoring).</li>
+  </ul>
+  <p class="muted">Previous: <a href="./10-tiny-transformer.html">A tiny transformer</a> · All chapters: <a href="./">AI from scratch</a>. Next in Part 2: measuring a model (precision, recall, ROC, calibration).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const truth = (x) => 0.8 * Math.sin(2.5 * x) + 0.3 * x, NOISE = 0.25;
+let seed = 11;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647, gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const draw = (n) => Array.from({ length: n }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + NOISE * gauss() }; });
+let train, val, big;
+const fresh = () => { train = draw(20); val = draw(60); big = draw(300); };
+fresh();
+
+// least squares with a ridge penalty, by Gaussian elimination with pivoting
+function fit(pts, d, lam = 1e-10) {
+  const A = Array.from({ length: d + 1 }, () => new Float64Array(d + 2));
+  for (const { x, y } of pts) { let pi = 1; const p = []; for (let j = 0; j <= d; j++) { p.push(pi); pi *= x; }
+    for (let i = 0; i <= d; i++) { for (let j = 0; j <= d; j++) A[i][j] += p[i] * p[j]; A[i][d + 1] += p[i] * y; } }
+  for (let i = 0; i <= d; i++) A[i][i] += lam * pts.length;
+  for (let c = 0; c <= d; c++) {
+    let m = c; for (let r = c + 1; r <= d; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+    [A[c], A[m]] = [A[m], A[c]];
+    for (let r = 0; r <= d; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k <= d + 1; k++) A[r][k] -= f * A[c][k]; }
+  }
+  return Array.from(A, (row, i) => row[d + 1] / row[i]);
+}
+const predict = (w, x) => { let s = 0, p = 1; for (const wj of w) { s += wj * p; p *= x; } return s; };
+const mse = (w, pts) => pts.reduce((s, { x, y }) => s + (y - predict(w, x)) ** 2, 0) / pts.length;
+
+// a plot of points and curves on [-1, 1] × [-2, 2]
+function plot(id, pts, w, valPts) {
+  const cv = $(id), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (x) => ((x + 1.05) / 2.1) * W, Y = (y) => H / 2 - (y / 2.2) * (H / 2);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "#2a2f3a"; g.lineWidth = 1; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(W, Y(0)); g.stroke();
+  const line = (f, color, width, dash = []) => { g.setLineDash(dash); g.strokeStyle = color; g.lineWidth = width; g.beginPath(); for (let i = 0; i <= 400; i++) { const x = -1.05 + (2.1 * i) / 400, y = Math.max(-3, Math.min(3, f(x))); i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)); } g.stroke(); g.setLineDash([]); };
+  line(truth, "#8f98a8", 2, [6, 6]);
+  const dot = (p, color, r) => { g.fillStyle = color; g.beginPath(); g.arc(X(p.x), Y(p.y), r, 0, 7); g.fill(); };
+  for (const p of valPts ?? []) dot(p, "#f4d35e", 3.5);
+  for (const p of pts) dot(p, "#58c4dd", pts.length > 100 ? 2.5 : 5);
+  line((x) => predict(w, x), "#fc6255", 3);
+}
+
+// 1. degree slider, and the U curve of train vs validation error
+function curve(cur) {
+  const cv = $("curve"), g = cv.getContext("2d"), W = cv.width, H = cv.height, rows = [];
+  for (let d = 0; d <= 15; d++) { const w = fit(train, d); rows.push([mse(w, train), mse(w, val)]); }
+  const X = (d) => 50 + (d / 15) * (W - 70), L = (e) => Math.log10(Math.max(1e-4, e)), Y = (e) => 20 + ((1 - (L(e) + 4) / 5)) * (H - 50); // 1e-4 … 10, log scale
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#8f98a8"; g.font = "13px ui-monospace, monospace";
+  for (const e of [1e-3, 1e-2, 1e-1, 1]) { g.fillStyle = "#2a2f3a"; g.fillRect(50, Y(e), W - 70, 1); g.fillStyle = "#8f98a8"; g.fillText(String(e), 4, Y(e) + 4); }
+  g.setLineDash([4, 4]); g.strokeStyle = "#83c167"; g.beginPath(); g.moveTo(50, Y(NOISE ** 2)); g.lineTo(W - 20, Y(NOISE ** 2)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = "#83c167"; g.fillText("noise floor", W - 110, Y(NOISE ** 2) - 6);
+  for (const [k, color] of [[0, "#58c4dd"], [1, "#f4d35e"]]) { g.strokeStyle = color; g.lineWidth = 2.5; g.beginPath(); rows.forEach((r, d) => (d ? g.lineTo(X(d), Y(r[k])) : g.moveTo(X(d), Y(r[k])))); g.stroke(); }
+  g.fillStyle = "#fc6255"; g.fillRect(X(cur) - 1, 10, 2, H - 40);
+  g.fillStyle = "#8f98a8"; for (let d = 0; d <= 15; d += 3) g.fillText(String(d), X(d) - 4, H - 8); g.fillText("degree →", W - 90, H - 8);
+  return rows;
+}
+let warned = false;
+function r1() {
+  const d = +$("deg").value, w = fit(train, d), rows = curve(d), best = rows.reduce((b, r, i) => (r[1] < rows[b][1] ? i : b), 0);
+  $("degV").textContent = d; plot("fit", train, w, val);
+  $("r1").textContent = `degree ${d}: train MSE ${rows[d][0].toFixed(4)} · validation MSE ${rows[d][1].toFixed(4)} · best validation at degree ${best}`;
+  if (d >= 12 && !warned) { warned = true; say("Look at it wiggle! Perfect on blue, terrible on yellow.", "think"); }
+}
+$("deg").oninput = r1;
+$("again").onclick = () => { seed = (Math.random() * 1e9) | 0; fresh(); r1(); r2(); r3(); };
+r1();
+
+// 2. ridge at degree 12
+function r2() {
+  const lg = +$("lam").value, lam = 10 ** lg, w = fit(train, 12, lam);
+  $("lamV").textContent = `10^${lg}`; plot("fit2", train, w, val);
+  $("r2").textContent = `degree 12, λ = ${lam.toExponential(1)}: train MSE ${mse(w, train).toFixed(4)} · validation MSE ${mse(w, val).toFixed(4)} · biggest weight ${Math.max(...w.map(Math.abs)).toFixed(1)}`;
+}
+$("lam").oninput = r2; r2();
+
+// 3. more data at degree 12
+function r3() {
+  const n = +$("nTrain").value, pts = big.slice(0, n), w = fit(pts, 12);
+  $("nV").textContent = n; plot("fit3", pts, w, val);
+  $("r3").textContent = `degree 12 on ${n} points: train MSE ${mse(w, pts).toFixed(4)} · validation MSE ${mse(w, val).toFixed(4)} (the noise floor is ${(NOISE ** 2).toFixed(4)})`;
+}
+$("nTrain").oninput = r3; r3();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 11: overfitting, train/validation/test, regularization, more data, cross-validation", degree: +$("deg").value, ridgeLambda: 10 ** +$("lam").value, trainingPoints: +$("nTrain").value, readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>

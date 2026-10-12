@@ -14,6 +14,7 @@
     ol li::before { content: "Chapter " counter(ch); display: block; font-size: .8rem; color: var(--muted); }
     ol li.soon { opacity: .55; }
     ol li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
+    h2.part { margin: 40px 0 0; font-size: 1.15rem; }
   </style>
 </head>
 <body>
@@ -21,6 +22,8 @@
   <p class="eyebrow">ihor.sh · AI</p>
   <h1>AI from scratch</h1>
   <p class="lede">How machine learning actually works, built up from pictures you can drag: first the math (vectors, matrices, gradients, probability), then neural networks you can watch learn, then the ideas behind today's models: convolutions, attention, agents and vision. Every idea comes three ways: a picture you can drag, the math behind it worked out with real numbers, and code you can edit and run right in the page to build it yourself, from a dot product up to an autograd engine and a transformer block. Questions along the way ask you to predict before you're told.</p>
+  <p>The road goes from zero to <b>ML engineer</b>: Part 1 is how models learn; Parts 2–5 are what the job adds: data and evaluation, training in practice, building with LLMs, and running models in production. Faded chapters are planned and on their way.</p>
+  <h2 class="part">Part 1 · How models learn</h2>
   <ol>
     <li class="card"><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, adding tip to tail, a matrix as a move of the whole plane, the determinant as area, and a network layer as "move, then fold".</p></li>
     <li class="card"><a href="./02-gradients.html"><b>Gradients: which way is downhill</b></a><p>Derivatives as slopes you can feel, the gradient as an arrow, gradient descent rolling a ball into a valley.</p></li>
@@ -32,6 +35,31 @@
     <li class="card"><a href="./08-agents.html"><b>Agents</b></a><p>Tools, planning and evals, using Blip, the companion on this site, as the worked example.</p></li>
     <li class="card"><a href="./09-vision.html"><b>Vision in practice</b></a><p>Detection and segmentation on real camera images, including NYC traffic cameras.</p></li>
     <li class="card"><a href="./10-tiny-transformer.html"><b>A tiny transformer</b></a><p>A real GPT, one block and 36,000 numbers, trained in your browser on NYC subway station names.</p></li>
+  </ol>
+  <h2 class="part">Part 2 · Data and evaluation</h2>
+  <ol style="counter-reset: ch 10">
+    <li class="card"><a href="./11-overfitting.html"><b>Overfitting: train, validation, test</b></a><p>A polynomial that bends too much, the U-shaped validation curve, three piles of data, regularization, more data, and k-fold cross-validation.</p></li>
+    <li class="card soon"><b>Measuring a model</b><p>Accuracy's lies, precision and recall, ROC curves, calibration, and picking a threshold for what a mistake costs.</p></li>
+    <li class="card soon"><b>The models that still win on tables</b><p>Linear and logistic regression, decision trees and gradient-boosted trees: what most companies' ML actually runs on.</p></li>
+    <li class="card soon"><b>Features and leakage</b><p>Cleaning, scaling, encoding, imbalance, and the leaks that make a model look brilliant until launch.</p></li>
+  </ol>
+  <h2 class="part">Part 3 · Training in practice</h2>
+  <ol style="counter-reset: ch 14">
+    <li class="card soon"><b>Optimizers and schedules</b><p>SGD, momentum and Adam racing down the same valley; learning-rate warmup and decay; batch size.</p></li>
+    <li class="card soon"><b>Making deep nets train</b><p>Initialization, normalization, residual connections, dropout, and reading a loss curve that's gone wrong.</p></li>
+    <li class="card soon"><b>GPUs and scale</b><p>Tensors, batching, mixed precision, the memory math of a model, and splitting work across GPUs.</p></li>
+  </ol>
+  <h2 class="part">Part 4 · LLM engineering</h2>
+  <ol style="counter-reset: ch 17">
+    <li class="card soon"><b>Embeddings and retrieval</b><p>Meaning as a vector, nearest neighbors, and retrieval-augmented generation on this site's own search.</p></li>
+    <li class="card soon"><b>Fine-tuning and LoRA</b><p>Teaching a pretrained model a new task by changing a sliver of its weights.</p></li>
+    <li class="card soon"><b>Evaluating LLMs</b><p>Test sets for open-ended answers, model-graded evals, and catching regressions before users do.</p></li>
+  </ol>
+  <h2 class="part">Part 5 · Production</h2>
+  <ol style="counter-reset: ch 20">
+    <li class="card soon"><b>Serving a model</b><p>Latency, batching, caching and quantization: making predictions fast and cheap.</p></li>
+    <li class="card soon"><b>MLOps</b><p>Experiments you can reproduce, versioned data and models, monitoring drift, and A/B tests.</p></li>
+    <li class="card soon"><b>Capstone: predict broken elevators</b><p>End to end on this site's own archive of MTA elevator outages: data, model, evaluation, a live service, and monitoring.</p></li>
   </ol>
 </main>
 </body>
