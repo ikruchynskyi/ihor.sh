@@ -12,6 +12,8 @@
     #iq { width: 160px; height: 160px; border-radius: 8px; }
     #pics figure { margin: 10px 0; font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
     #pics canvas { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; }
+    .passes .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 6px; }
+    .passes ul { margin: 4px 0; padding-left: 18px; }
     .status { font: 0.9rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); min-height: 1.4em; }
   </style>
 </head>
@@ -19,7 +21,15 @@
 <main>
   <p class="eyebrow"><a href="./">ihor.sh · radio</a></p>
   <h1>Meteor pass recorder</h1>
-  <p>Russia's Meteor-M satellites send weather pictures as <b>LRPT</b>: digital QPSK, 72,000 symbols a second, about 120 kHz wide. Start the dongle a minute before the pass, press record, and stop when it sets. The page decodes the picture live as the signal comes in (Doppler is tracked automatically, no retuning), and the IQ file lets you decode it again later. Pass times are on the <a href="./repeaters/#sats">repeaters page</a>; how LRPT works is <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
+  <p>Russia's Meteor-M satellites send weather pictures as <b>LRPT</b>: digital QPSK, 72,000 symbols a second, about 120 kHz wide. Start the dongle a minute before the pass, press record, and stop when it sets. The page decodes the picture live as the signal comes in (Doppler is tracked automatically, no retuning), and the IQ file lets you decode it again later. Pass times are just below; how LRPT works is <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
+
+  <div class="pane passes">
+    <b>Next passes</b> <span class="muted">(in your time; ≥ 40° up decodes best)</span>
+    <div class="cols">
+      <div><span class="muted">Over the server's dongle in New York: what you hear with "Use the server's dongle", wherever you are</span><ul id="p-srv"><li>Computing…</li></ul></div>
+      <div><span class="muted">Over you <span id="p-me-where"></span>: for your own USB dongle</span><ul id="p-me"><li><button type="button" id="locate">📍 Use my location</button></li></ul></div>
+    </div>
+  </div>
 
   <div class="pane">
     <label>Satellite <select id="sat"><option value="137.9">Meteor-M2 3 · 137.900 MHz</option><option value="137.1">Meteor-M2 4 · 137.100 MHz</option></select></label>

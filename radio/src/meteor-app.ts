@@ -128,3 +128,23 @@ async function decodeFile(f: Blob, name: string) {
   const n = rx!.packets.stats.images;
   status.textContent = n ? `Finished ${name}: ${n} picture strips.` : `Finished ${name}: no picture (${rx!.stats.frames ? "frames found but no image packets" : "the decoder never locked: the signal was too weak or absent"}).`;
 }
+
+// --- passes: over the server's dongle (New York, whoever is listening) and over the reader (for their own USB dongle) ---
+const SERVER = { lat: 40.71, lon: -74.01 };
+const hhmm = (iso: string, day = false) => new Date(iso).toLocaleString([], day ? { weekday: "short", hour: "numeric", minute: "2-digit" } : { hour: "numeric", minute: "2-digit" });
+async function passList(where: { lat: number; lon: number }, ul: HTMLElement) {
+  const d = await fetch(`/api/radio/sats?lat=${where.lat.toFixed(2)}&lon=${where.lon.toFixed(2)}&hours=48`).then((r) => r.json()).catch(() => null);
+  const id = el<HTMLSelectElement>("sat").value === "137.9" ? "meteor-m2-3" : "meteor-m2-4", ps = d?.passes?.filter((p: any) => p.sat === id) ?? [];
+  ul.innerHTML = !d?.passes ? "<li>Couldn't compute passes right now.</li>" : ps.length ? ps.map((p: any) => `<li>${p.upNow ? "<b>up now</b> · " : ""}${hhmm(p.riseIso, true)}–${hhmm(p.setIso)} · <b>${p.maxElevation}°</b>${p.maxElevation >= 40 ? " (good)" : p.maxElevation < 20 ? " (low)" : ""} · ${String(p.path).replace(/[<&]/g, "")}</li>`).join("") : "<li>None at least 10° up in the next 48 hours.</li>";
+}
+const qp = new URLSearchParams(location.search), qLat = parseFloat(qp.get("lat") ?? ""), qLon = parseFloat(qp.get("lon") ?? "");
+let me: { lat: number; lon: number } | null = Number.isFinite(qLat) && Number.isFinite(qLon) ? { lat: qLat, lon: qLon } : null;
+const refreshPasses = () => { passList(SERVER, el("p-srv")); if (me) { el("p-me-where").textContent = `(${me.lat.toFixed(1)}°, ${me.lon.toFixed(1)}°)`; passList(me, el("p-me")); } };
+el("locate").addEventListener("click", () => {
+  if (!navigator.geolocation) { el("p-me").innerHTML = "<li>This browser can't share its location.</li>"; return; }
+  el("p-me").innerHTML = "<li>Asking your browser for your location…</li>";
+  navigator.geolocation.getCurrentPosition((pos) => { me = { lat: pos.coords.latitude, lon: pos.coords.longitude }; refreshPasses(); },
+    () => { el("p-me").innerHTML = '<li>Location not shared. Pick your spot on the <a href="./repeaters/#sats">repeaters map</a> instead.</li>'; });
+});
+el<HTMLSelectElement>("sat").addEventListener("change", refreshPasses);
+refreshPasses(); setInterval(refreshPasses, 5 * 60e3);

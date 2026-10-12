@@ -227,13 +227,17 @@ async function loadSats() {
   sats = await fetch(`/api/radio/sats?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&hours=24`).then((r) => r.json()).catch(() => null);
   if (!sats || sats.error) { $("satBody").textContent = "Couldn't compute passes right now."; return; }
   const next = sats.passes.slice(0, 14);
-  $("satSum").textContent = next.length ? `next: ${next[0].name.split(" ")[0]} ${next[0].rise.split(", ").pop()}` : "";
-  $("satBody").innerHTML = `<p>Passes over the map's center in the next 24 h (≥ 10° up). Click one to draw the satellite and its track.</p>
-    ${next.map((p: any) => `<div class="pass" data-sat="${esc(p.sat)}"><b>${esc(p.rise.split(", ").slice(1).join(", "))}</b> ${esc(p.name)} · <b>${p.maxElevation}°</b> · ${p.minutes} min${p.upNow ? " · <b>up now</b>" : ""} · ${esc(p.path)}<br><span class="muted">${esc(p.kind)}: ↓ ${esc(p.down)}${p.up ? ` · ↑ ${esc(p.up)}` : ""}${p.status !== "active" ? ` · ${esc(p.status)}` : ""}${p.sat.startsWith("meteor") ? ` · <a href="../meteor.html">record it &amp; get the picture →</a>` : ""}</span></div>`).join("")}
+  const local = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleString([], o); // the reader's own time zone
+  $("satSum").textContent = next.length ? `next: ${next[0].name.split(" ")[0]} ${local(next[0].riseIso, { hour: "numeric", minute: "2-digit" })}` : "";
+  $("satBody").innerHTML = `<p>Passes over the map's center (${c.lat.toFixed(1)}°, ${c.lng.toFixed(1)}°) in the next 24 h (≥ 10° up), in your time. Click one to draw the satellite and its track. <button type="button" id="satMe">📍 Passes over me</button></p>
+    ${next.map((p: any) => `<div class="pass" data-sat="${esc(p.sat)}"><b>${esc(local(p.riseIso, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</b> ${esc(p.name)} · <b>${p.maxElevation}°</b> · ${p.minutes} min${p.upNow ? " · <b>up now</b>" : ""} · ${esc(p.path)}<br><span class="muted">${esc(p.kind)}: ↓ ${esc(p.down)}${p.up ? ` · ↑ ${esc(p.up)}` : ""}${p.status !== "active" ? ` · ${esc(p.status)}` : ""}${p.sat.startsWith("meteor") ? ` · <a href="../meteor.html?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}">record it &amp; get the picture →</a>` : ""}</span></div>`).join("")}
     <p>Where is it now?</p><div class="satbtns">${sats.satellites.map((s: any) => `<button type="button" data-sat="${esc(s.id)}" title="${esc(s.notes)}">${esc(s.name.split(" (")[0])}</button>`).join("")}</div>
     <p class="muted">Orbits from CelesTrak; status hand-kept (check <a href="https://www.amsat.org/status/" target="_blank" rel="noopener">AMSAT's status page</a> for today's reports). <button type="button" id="satHere">Recompute for this map center</button></p>`;
   $("satBody").querySelectorAll("[data-sat]").forEach((el) => ((el as HTMLElement).onclick = () => showSat((el as HTMLElement).dataset.sat!)));
   $("satHere").onclick = loadSats;
+  $("satMe").onclick = () => navigator.geolocation?.getCurrentPosition(
+    (pos) => { map.setView([pos.coords.latitude, pos.coords.longitude], 9); loadSats(); },
+    () => { $("satMe").textContent = "Location not shared: move the map to where you are, then recompute"; });
 }
 async function showSat(id: string) {
   satShown = id;

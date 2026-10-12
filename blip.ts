@@ -135,10 +135,10 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   satellite_passes: {
-    description: `The next passes of the amateur-radio satellites over a place (SGP4 from CelesTrak): ${HAM_SATS.map((x) => x.name).join(", ")}. Each pass: rise time (New York time), minutes, highest elevation, path, the uplink/downlink and status. Filter by satellite or kind (FM repeater, linear transponder, digipeater, ISS, weather pictures).`,
-    parameters: { sat: { type: "string", description: "Optional satellite id or name part, e.g. so-50, rs-44, iss, meteor" }, kind: { type: "string", description: "Optional kind" }, hours: { type: "number", description: "How far ahead (default 24, up to 72)" }, lat: { type: "number" }, lon: { type: "number" }, place: { type: "string", description: "Or a place name (default New York)" } },
+    description: `The next passes of the amateur-radio satellites over any place in the world (SGP4 from CelesTrak): ${HAM_SATS.map((x) => x.name).join(", ")}. Each pass: rise time (New York time; riseIso/setIso in UTC for other time zones), minutes, highest elevation, path, the uplink/downlink and status. Filter by satellite or kind (FM repeater, linear transponder, digipeater, ISS, weather pictures).`,
+    parameters: { sat: { type: "string", description: "Optional satellite id or name part, e.g. so-50, rs-44, iss, meteor" }, kind: { type: "string", description: "Optional kind" }, hours: { type: "number", description: "How far ahead (default 24, up to 72)" }, lat: { type: "number" }, lon: { type: "number" }, place: { type: "string", description: "Or a place name anywhere (default New York)" } },
     run: async ({ sat, kind, hours, lat, lon, place }) => {
-      const at = lat != null || place ? await pointOf(lat, lon, place) : null;
+      const at = lat != null || place ? await pointAnywhere(lat, lon, place) : null;
       const d = await hamPasses(at?.lat, at?.lon, Math.min(72, Number(hours) || 24));
       const q = String(sat ?? "").toLowerCase(), k = String(kind ?? "").toLowerCase();
       const list = d.passes.filter((p: any) => (!q || p.sat.includes(q) || p.name.toLowerCase().includes(q)) && (!k || p.kind.toLowerCase().includes(k)));
@@ -156,15 +156,15 @@ const TOOLS: Record<string, Tool> = {
   iss_passes: {
     description: "When the International Space Station passes over a place in the next 3 days (computed with SGP4 from CelesTrak's latest orbit): rise time (New York time), how long, highest elevation, direction across the sky, and whether it's visible to the eye (only at dusk or dawn, when it's sunlit and your sky is dark). Default place: NYC; pass the visitor's location for 'over me'.",
     parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" }, place: { type: "string", description: "Or a place name" } },
-    run: async ({ lat, lon, place }) => { const at = lat != null || place ? await pointOf(lat, lon, place) : null; return issPasses(at?.lat, at?.lon); },
+    run: async ({ lat, lon, place }) => { const at = lat != null || place ? await pointAnywhere(lat, lon, place) : null; return issPasses(at?.lat, at?.lon); },
   },
   satellite_now: {
     description: "Where an amateur-radio satellite (or the ISS) is right now: position, height, whether it's above a place's horizon and where to point, its frequencies, and a mapLink to the repeaters page showing it with its track.",
-    parameters: { sat: { type: "string", description: `Satellite id: ${HAM_SATS.map((x) => x.id).join(", ")}` }, place: { type: "string", description: "Optional: the view from here (default NYC)" } }, required: ["sat"],
-    run: async ({ sat, place }) => {
+    parameters: { sat: { type: "string", description: `Satellite id: ${HAM_SATS.map((x) => x.id).join(", ")}` }, lat: { type: "number" }, lon: { type: "number" }, place: { type: "string", description: "Optional: the view from here, anywhere in the world (default NYC)" } }, required: ["sat"],
+    run: async ({ sat, lat, lon, place }) => {
       const q = String(sat).toLowerCase(), s = HAM_SATS.find((x) => x.id === q || x.name.toLowerCase().includes(q));
       if (!s) return { error: `Unknown satellite; one of ${HAM_SATS.map((x) => x.id).join(", ")}.` };
-      const at = place ? await pointOf(undefined, undefined, place) : { lat: 40.73, lon: -73.95, label: "NYC" };
+      const at = (lat != null || place ? await pointAnywhere(lat, lon, place) : null) ?? { lat: 40.73, lon: -73.95, label: "NYC" };
       const t: any = await satTrack(s.id, at?.lat, at?.lon, 0);
       return { ...t, track: undefined, from: at?.label, mapLink: `/radio/repeaters/?sat=${s.id}` };
     },
