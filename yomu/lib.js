@@ -238,3 +238,37 @@ export function cloze(ex, settings, filled = null) {
 export const choiceLabel = (s, settings) => (settings.script === "romaji" && !hasKanji(s) ? romaji(toHiragana(s)) : s);
 /** Shuffle (Fisher–Yates) a copy. */
 export const shuffle = (a) => { const x = [...a]; for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
+
+// ---------- kanji links: every kanji in a word opens its page (kanji.html, data from Jisho via the server) ----------
+export const kanjiHref = (k) => `/yomu/kanji.html?k=${encodeURIComponent(k)}`;
+export const kanjiLinks = (s) => [...s].map((c) => (hasKanji(c) ? `<a class="klink" href="${kanjiHref(c)}" title="${esc(c)}: open its kanji page">${esc(c)}</a>` : esc(c))).join("");
+/** A word in the current script: kanji (linked) with furigana over the kanji only, kana, or romaji. */
+export function wordHtml(w, r, settings = state.settings, furigana = true) {
+  if (settings.script === "romaji") return esc(romaji(r));
+  if (settings.script === "kana" || !hasKanji(w)) return esc(settings.script === "kana" ? r : w);
+  const html = ruby(w, r).replace(/<ruby>(.*?)<rt>/, (_, mid) => `<ruby>${kanjiLinks(mid.replace(/&amp;/g, "&"))}<rt>`);
+  return furigana && settings.furigana !== "none" ? html : kanjiLinks(w);
+}
+
+// ---------- checking a typed answer, as forgiving as a teacher ----------
+const lev = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
+const gloss = (s) => s.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9' ]/g, " ").replace(/\b(to|a|an|the|be|one's|someone|something|sth)\b/g, " ").replace(/\s+/g, " ").trim();
+/** Does an English answer match a word's meanings ("to eat, to have a meal")? Any listed sense counts; small typos and
+ *  the leading "to"/"a" don't matter; a shorter answer counts if its words are the core of a short sense. */
+export function meaningMatches(answer, meanings) {
+  const a = gloss(answer);
+  if (!a) return false;
+  return meanings.split(/[;,/]/).map(gloss).filter(Boolean).some((g) => g === a || lev(g, a) <= Math.max(1, Math.floor(g.length / 6))
+    || (a.length >= 3 && g.split(" ").length <= 3 && a.split(" ").every((w) => g.split(" ").includes(w)) && a.split(" ").length * 2 >= g.split(" ").length));
+}
+// romaji: Kunrei and wapuro spellings (si, tu, zi, sya…) to Hepburn, and long vowels written any way (ou, oo, o) count the same
+const KUNREI = [["sya", "sha"], ["syu", "shu"], ["syo", "sho"], ["tya", "cha"], ["tyu", "chu"], ["tyo", "cho"], ["zya", "ja"], ["zyu", "ju"], ["zyo", "jo"], ["jya", "ja"], ["jyu", "ju"], ["jyo", "jo"], ["si", "shi"], ["ti", "chi"], ["tu", "tsu"], ["hu", "fu"], ["zi", "ji"]];
+const roma = (s) => { let x = s.toLowerCase().replace(/[^a-z]/g, ""); for (const [k, h] of KUNREI) x = x.replaceAll(k, h); return x.replace(/shhi/g, "shi").replace(/chhi/g, "chi").replace(/tssu/g, "tsu").replace(/ou|oo/g, "o").replace(/uu/g, "u").replace(/aa/g, "a").replace(/ii/g, "i").replace(/ee|ei/g, "e").replace(/nn/g, "n"); };
+/** Does a Japanese answer (kana, kanji or romaji) match the word? */
+export function readingMatches(answer, word, reading) {
+  const a = answer.trim().replace(/\s+/g, "");
+  if (!a) return false;
+  if (a === word || toHiragana(a) === toHiragana(reading)) return true;
+  return /^[a-z' -]+$/i.test(a) && roma(a) === roma(romaji(reading));
+}

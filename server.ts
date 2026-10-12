@@ -26,6 +26,7 @@ import { startEvening, events as eveningEvents, eventById, planEvening } from ".
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./sky.ts";
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
+import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
@@ -368,7 +369,7 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -429,6 +430,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/site/search") {
       const hits = await siteSearch(String(url.searchParams.get("q") ?? "").slice(0, 120), Math.min(20, Number(url.searchParams.get("n")) || 8));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=300" }).end(JSON.stringify({ hits }));
+    }
+    if (url.pathname === "/api/yomu/kanji" || url.pathname === "/api/yomu/search") { // Jisho, fetched once and cached in yomu/data/jisho (yomu-dict.ts)
+      try {
+        const d = url.pathname === "/api/yomu/kanji" ? await kanjiInfo(String(url.searchParams.get("k") ?? "")) : await wordSearch(String(url.searchParams.get("q") ?? ""));
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(d));
+      } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);

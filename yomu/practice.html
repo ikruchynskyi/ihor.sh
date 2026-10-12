@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Word Practice</title>
+  <meta name="description" content="Practice every JLPT word from N5 to N1 (8,131 words): type the meaning or the Japanese, Japanese to English or English to Japanese, with spaced repetition, new words that come back within the round, audio, and every kanji linked to its page." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .opts { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 6px 0; }
+    .opts .grp { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .opts button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+    .prompt { font-size: 56px; line-height: 1.25; margin: 10px 0; }
+    .prompt.en { font-size: 28px; }
+    #ans { font-size: 1.3rem; width: 100%; max-width: 460px; }
+    .verdict { font-size: 1.2rem; margin: 10px 0; }
+    .grades { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; } .grades button.sug { outline: 2px solid var(--accent); }
+    .kparts { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; } .kparts a { text-decoration: none; border: 1px solid var(--line); padding: 2px 8px; }
+    .kparts .jp { font-size: 1.4rem; }
+    a.klink { color: inherit; text-decoration: underline dotted; text-underline-offset: 4px; }
+    .bar { height: 6px; background: var(--line); margin: 6px 0; } .bar i { display: block; height: 100%; background: var(--accent); }
+    .stat { font-size: .9rem; color: var(--muted); }
+    kbd { border: 1px solid var(--line); padding: 0 4px; font-size: .8rem; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Word practice · <a href="/yomu/kanji.html">Kanji dictionary</a></p>
+  <h1>Practice words, N5 to N1</h1>
+  <div id="settings"></div>
+  <section class="card2">
+    <div class="opts"><span>Levels</span><span class="grp" id="lv"></span></div>
+    <div class="opts"><span>Direction</span><span class="grp" id="dir"></span></div>
+    <div class="opts"><span>Answer by</span><span class="grp" id="how"></span><span>New words per round</span><span class="grp" id="nnew"></span></div>
+    <p class="stat" id="stats"></p>
+    <p><button id="start">Start a round</button> <span class="muted">Reviews that are due come first, then new words. A round is up to 30 reviews.</span></p>
+  </section>
+  <section class="card2" id="round" hidden></section>
+  <details class="card2"><summary>How this works (and why)</summary>
+    <p><b>Recall, don't recognize.</b> Typing the answer from memory is harder than picking it from four, and that effort is what makes it stick. Choosing is there for days when typing is too much.</p>
+    <p><b>Both directions.</b> Reading Japanese (日本語 → English) and saying it (English → 日本語) are different skills; mixed rounds train both.</p>
+    <p><b>Spacing.</b> Each word comes back just before you'd forget it: a day, then a few, then weeks. A new word reappears a few cards later in the same round, and a miss comes back until you get it. Grade honestly: "Hard" and "Again" are how the schedule learns.</p>
+    <p><b>Kanji are clickable.</b> Every kanji opens its page: readings, stroke order, other words using it, real sentences. Knowing a kanji's meaning makes the next ten words that use it easier.</p>
+    <p class="muted">Typing Japanese: kana, kanji or romaji all work (shinbun or sinbun, toukyou or tokyo). Keys: <kbd>Enter</kbd> check / next, <kbd>1</kbd>–<kbd>4</kbd> grade. Word lists: JLPT lists by Jonathan Waller with JMdict glosses (EDRDG, CC BY-SA).</p>
+  </details>
+</main>
+<script type="module">
+import { state, save, settingsBar, esc, speak, romaji, toHiragana, hasKanji, addCard, wordCard, inDeck, grade, vocab, data, DECK_LEVELS, wordHtml, kanjiHref, meaningMatches, readingMatches, shuffle, gain, blip } from "/yomu/lib.js";
+import { pic } from "/yomu/pics.js";
+const $ = (id) => document.getElementById(id);
+const P = (state.practice = { levels: ["N5"], dir: "jp-en", how: "type", newN: 10, ...state.practice });
+const kanjiMeaning = new Map((await data("kanji")).map((x) => [x.k, x.m.slice(0, 2).join(", ")]));
+const lists = Object.fromEntries(await Promise.all(DECK_LEVELS.map(async (lv) => [lv, (await vocab(lv)).map((w) => ({ ...w, lv }))])));
+const idOf = (w) => "w:" + w.w;
+const pool = () => P.levels.flatMap((lv) => lists[lv]);
+
+// ---------- options ----------
+function opts() {
+  const btn = (attr, v, label, on) => `<button class="mini" ${attr}="${v}" aria-pressed="${on}">${label}</button>`;
+  $("lv").innerHTML = DECK_LEVELS.map((l) => btn("data-lv", l, `${l} <span class="muted">${lists[l].length}</span>`, P.levels.includes(l))).join("");
+  $("dir").innerHTML = [["jp-en", "日本語 → English"], ["en-jp", "English → 日本語"], ["mixed", "Mixed"]].map(([v, l]) => btn("data-dir", v, l, P.dir === v)).join("");
+  $("how").innerHTML = [["type", "typing"], ["choose", "choosing"]].map(([v, l]) => btn("data-how", v, l, P.how === v)).join("");
+  $("nnew").innerHTML = [0, 5, 10, 20].map((n) => btn("data-n", n, n || "none", P.newN === n)).join("");
+  const words = pool(), now = Date.now(), inD = words.filter((w) => inDeck(idOf(w)));
+  const due = inD.filter((w) => state.srs[idOf(w)].due <= now).length, learned = inD.filter((w) => state.srs[idOf(w)].interval >= 21).length, leeches = inD.filter((w) => (state.srs[idOf(w)].lapses ?? 0) >= 4).length;
+  $("stats").innerHTML = `${P.levels.join(" + ")}: ${words.length} words · <b>${due}</b> due now · ${inD.length - learned} learning · ${learned} learned (3+ weeks) · ${words.length - inD.length} new left${leeches ? ` · ${leeches} 🐌 leech${leeches > 1 ? "es" : ""}` : ""}
+    <div class="bar" title="learned / all"><i style="width:${(100 * learned) / Math.max(1, words.length)}%"></i></div>`;
+}
+document.querySelector("section.card2").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.lv) { const l = b.dataset.lv; P.levels = P.levels.includes(l) ? P.levels.filter((x) => x !== l) : [...P.levels, l]; if (!P.levels.length) P.levels = [l]; }
+  else if (b.dataset.dir) P.dir = b.dataset.dir; else if (b.dataset.how) P.how = b.dataset.how; else if (b.dataset.n) P.newN = +b.dataset.n; else return;
+  save(); opts();
+});
+settingsBar($("settings"), () => { opts(); if (cur) draw(); });
+opts();
+
+// ---------- a round ----------
+// steps: { w, kind: "meet" | "test", dir, retry } — meeting a new word schedules its first test three cards later;
+// a miss puts the word back four cards later until it's right; only the first try of a card is graded for the schedule.
+let queue = [], cur = null, phase = "ask", typed = "", correct = false, tally = { seen: 0, right: 0, newMet: 0, start: 0 };
+const pickDir = () => (P.dir === "mixed" ? (Math.random() < 0.5 ? "jp-en" : "en-jp") : P.dir);
+function startRound() {
+  const words = pool(), now = Date.now();
+  const due = shuffle(words.filter((w) => inDeck(idOf(w)) && state.srs[idOf(w)].due <= now)).slice(0, 30);
+  const fresh = words.filter((w) => !inDeck(idOf(w))).slice(0, P.newN);
+  queue = shuffle(due).map((w) => ({ w, kind: "test", dir: pickDir() }));
+  fresh.forEach((w, i) => queue.splice(Math.min(queue.length, i * 3), 0, { w, kind: "meet" })); // new words spread through the round
+  if (!queue.length) { $("round").hidden = false; $("round").innerHTML = `<b>Nothing due and no new words left in ${P.levels.join(" + ")}.</b> Add a level, or come back tomorrow.`; return; }
+  tally = { seen: 0, right: 0, newMet: 0, start: Date.now() };
+  $("round").hidden = false; next();
+}
+function next() {
+  cur = queue.shift();
+  if (!cur) return finish();
+  phase = cur.kind === "meet" ? "meet" : "ask"; typed = ""; correct = false;
+  draw();
+}
+const answerHtml = (w) => {
+  const ks = [...new Set([...w.w].filter(hasKanji))];
+  return `<div class="jp prompt">${wordHtml(w.w, w.r)}</div>
+    <p class="jp" style="font-size:1.2rem">${esc(w.r)}${state.settings.script !== "romaji" ? ` <span class="muted">${esc(romaji(toHiragana(w.r)))}</span>` : ""} <button class="mini" id="say" aria-label="Play">▶</button> <span class="muted">${w.lv}</span></p>
+    <p style="font-size:1.15rem"><b>${esc(w.m)}</b></p>
+    ${ks.length ? `<div class="kparts">${ks.map((k) => `<a href="${kanjiHref(k)}" title="Open ${esc(k)}'s page"><span class="jp">${esc(k)}</span> <span class="muted">${esc(kanjiMeaning.get(k) ?? "")}</span></a>`).join("")}</div>` : ""}`;
+};
+function draw() {
+  const box = $("round"), w = cur.w, left = queue.length, srs = state.srs[idOf(w)], leech = (srs?.lapses ?? 0) >= 4;
+  const head = `<p class="stat">${tally.seen} done · ${left} to go${tally.seen ? ` · ${Math.round((100 * tally.right) / tally.seen)}% right` : ""} · <button class="mini" id="quit">End round</button></p>`;
+  if (phase === "meet") {
+    box.innerHTML = `${head}<p class="muted">New word</p>${pic(w.m) ? `<div class="pic" style="font-size:2rem">${pic(w.m)}</div>` : ""}${answerHtml(w)}
+      <p class="muted">Say it out loud. It comes back in a few cards to test you.</p><button id="go">Got it <kbd>Enter</kbd></button>`;
+    speak(w.r);
+    $("go").onclick = () => { tally.newMet++; queue.splice(Math.min(queue.length, 3), 0, { w, kind: "test", dir: pickDir(), fresh: true }); next(); };
+  } else if (phase === "ask") {
+    const jp = cur.dir === "jp-en";
+    const prompt = jp ? `<div class="jp prompt">${state.settings.script === "kanji" ? esc(w.w) : wordHtml(w.w, w.r)}</div>` : `<div class="prompt en">${pic(w.m) ? `${pic(w.m)} ` : ""}${esc(w.m)}</div>`;
+    const choices = P.how === "choose" ? shuffle([w, ...shuffle(pool().filter((x) => x.w !== w.w && x.m !== w.m)).slice(0, 3)]) : null;
+    box.innerHTML = `${head}<p class="muted">${jp ? "What does it mean?" : "How do you say it in Japanese?"}${cur.retry ? " · once more" : ""}${leech ? ` · 🐌 a leech: ask Blip for a mnemonic` : ""}</p>${prompt}
+      ${choices ? `<div class="choices">${choices.map((c, i) => `<button data-c="${i}" ${jp ? "" : 'class="jp"'}>${jp ? esc(c.m.split(/[;,]/).slice(0, 2).join(",")) : wordHtml(c.w, c.r, state.settings, false)}</button>`).join("")}</div>`
+        : `<form id="f"><input id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" lang="${jp ? "en" : "ja"}" placeholder="${jp ? "the meaning in English" : "kana, kanji or romaji"}"> <button>Check</button> <button type="button" id="dunno">I don't know</button></form>`}`;
+    if (jp && state.settings.script !== "kanji") speak(w.r);
+    if (choices) box.querySelectorAll("[data-c]").forEach((b) => (b.onclick = () => check(choices[+b.dataset.c] === w, choices[+b.dataset.c].w)));
+    else { $("ans").focus(); $("f").onsubmit = (e) => { e.preventDefault(); const a = $("ans").value; if (a.trim()) check(jp ? meaningMatches(a, w.m) : readingMatches(a, w.w, w.r), a); }; $("dunno").onclick = () => check(false, ""); }
+  } else {
+    const sug = correct ? 2 : 0, graded = !cur.retry;
+    box.innerHTML = `${head}<p class="verdict">${correct ? '<span class="right">✓ Right</span>' : `<span class="wrong">✗ ${typed ? `“${esc(typed)}” isn't it` : "Here it is"}</span>${typed && P.how === "type" ? ` <button class="mini" id="override" title="Your answer was right, the checker was too strict">I was right</button>` : ""}`}</p>
+      ${answerHtml(w)}
+      ${graded ? `<p class="muted">How well did you know it?</p><div class="grades">${["Again", "Hard", "Good", "Easy"].map((g, i) => `<button data-g="${i}" class="${i === sug ? "sug" : ""}">${g} <kbd>${i + 1}</kbd></button>`).join("")}</div>`
+        : `<button id="go">Next <kbd>Enter</kbd></button>`}`;
+    speak(w.r);
+    if (graded) box.querySelectorAll("[data-g]").forEach((b) => (b.onclick = () => rate(+b.dataset.g)));
+    else $("go").onclick = () => rate(-1);
+    $("override")?.addEventListener("click", () => { correct = true; tally.right++; draw(); });
+  }
+  $("say")?.addEventListener("click", () => speak(w.r));
+  $("quit").onclick = finish;
+}
+function check(ok, answer) {
+  correct = ok; typed = answer; phase = "show"; tally.seen++; if (ok) tally.right++;
+  draw();
+}
+/** Grade the first try (−1: a retry, not graded). A miss comes back four cards later until it's right. */
+function rate(g) {
+  const w = cur.w, id = idOf(w);
+  if (g >= 0) {
+    if (!inDeck(id)) addCard(...wordCard(w));
+    const c = state.srs[id]; if (g === 0 && c.reps > 0) c.lapses = (c.lapses ?? 0) + 1; // forgot something it knew: a lapse
+    grade(id, g); gain(g === 0 ? 0 : 2);
+  }
+  if (!correct || g === 0) queue.splice(Math.min(queue.length, 4), 0, { w, kind: "test", dir: cur.dir, retry: true });
+  next();
+}
+function finish() {
+  const mins = Math.max(1, Math.round((Date.now() - tally.start) / 60000));
+  $("round").innerHTML = `<b>Round done.</b> ${tally.seen} answers, ${tally.seen ? Math.round((100 * tally.right) / tally.seen) : 0}% right, ${tally.newMet} new word${tally.newMet === 1 ? "" : "s"}, about ${mins} min. <button id="again">Another round</button>`;
+  if (tally.seen >= 10 && tally.right === tally.seen) blip("Every single one! 完璧!", "happy", 6);
+  cur = null; queue = []; opts();
+  $("again").onclick = startRound;
+}
+$("start").onclick = startRound;
+addEventListener("keydown", (e) => {
+  if (!cur || e.target.closest?.("input:not(#ans), select")) return;
+  if (phase === "meet" && e.key === "Enter") { e.preventDefault(); $("go").click(); }
+  else if (phase === "show" && /^[1-4]$/.test(e.key) && e.target.id !== "ans") $(`round`).querySelector(`[data-g="${+e.key - 1}"]`)?.click();
+  else if (phase === "show" && e.key === "Enter") { e.preventDefault(); ($("round").querySelector("[data-g].sug") ?? $("go"))?.click(); }
+});
+
+window.blipContext = () => ({ page: "Yomu word practice (JLPT N5–N1, typed recall, spaced repetition)", role: "You are a Japanese tutor. For the current word give a mnemonic from its kanji, a short example sentence with reading and translation, and related words.",
+  levels: P.levels, direction: P.dir, current: cur ? { word: cur.w.w, reading: cur.w.r, meaning: cur.w.m, level: cur.w.lv, stage: phase, lapses: state.srs[idOf(cur.w)]?.lapses ?? 0 } : "not in a round", stats: $("stats").innerText });
+window.blipActions = { say_japanese: { label: "spoke Japanese", description: "Say a Japanese word or sentence aloud.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => speak(String(text ?? "")) } };
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@
   <h1 id="title">…</h1>
   <div id="settings"></div>
   <p class="choices" id="tabs"></p>
+  <p class="muted">Want to type the answers? <a href="/yomu/practice.html">Practice words</a> (both directions, spaced repetition). Any kanji: <a href="/yomu/kanji.html">the kanji dictionary</a>.</p>
   <section class="card2" id="session"></section>
   <p><input id="q" type="search" placeholder="Search by meaning, reading or kanji" aria-label="Search" style="width:100%;max-width:420px"> <span class="muted" id="count"></span></p>
   <div id="detail"></div>
@@ -20,7 +21,7 @@
   <p><button id="more" hidden>Show more</button></p>
 </main>
 <script type="module">
-import { state, gain, settingsBar, esc, speak, strokes, romaji, toHiragana, addCard, wordCard, kanjiCard, inDeck, vocab, kanjiDeck, DECK_LEVELS as LEVELS, shuffle, blip } from "/yomu/lib.js";
+import { state, gain, settingsBar, esc, speak, strokes, romaji, toHiragana, addCard, wordCard, kanjiCard, inDeck, vocab, kanjiDeck, DECK_LEVELS as LEVELS, shuffle, blip, wordHtml, kanjiHref } from "/yomu/lib.js";
 import { pic } from "/yomu/pics.js";
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -46,14 +47,14 @@ function render() {
   $("grid").className = type === "kanji" ? "ktiles" : "vocab";
   $("grid").innerHTML = list.slice(0, limit).map((x, i) => type === "kanji"
     ? `<button class="ktile jp${inDeck(idOf(x)) ? " done" : ""}" data-i="${items.indexOf(x)}" title="${esc(meaning(x))}">${esc(x.k)}</button>`
-    : `<div class="${inDeck(idOf(x)) ? "done" : ""}">${pic(x.m) ? `<span class="pic" aria-hidden="true">${pic(x.m)}</span>` : ""}<span class="jp">${x.w === x.r || state.settings.script !== "kanji" ? esc(show(x.r)) : `<ruby>${esc(x.w)}<rt>${esc(x.r)}</rt></ruby>`}</span> <button class="mini" data-say="${esc(x.r)}" aria-label="Play">▶</button><br><span class="muted">${esc(x.m)}</span></div>`).join("");
+    : `<div class="${inDeck(idOf(x)) ? "done" : ""}">${pic(x.m) ? `<span class="pic" aria-hidden="true">${pic(x.m)}</span>` : ""}<span class="jp">${x.w === x.r || state.settings.script !== "kanji" ? esc(show(x.r)) : wordHtml(x.w, x.r)}</span> <button class="mini" data-say="${esc(x.r)}" aria-label="Play">▶</button><br><span class="muted">${esc(x.m)}</span></div>`).join("");
   $("more").hidden = list.length <= limit;
   $("grid").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => detail(items[+b.dataset.i])));
   $("grid").querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => speak(b.dataset.say)));
 }
 function detail(k) {
   $("detail").innerHTML = `<div class="card2 kanji"><div><div class="glyph">${esc(k.k)}</div><div class="stroke" id="ks"></div></div><div>
-    <p><b>${esc(k.m.join(", "))}</b> <span class="muted">· ${k.s} strokes</span></p>
+    <p><b>${esc(k.m.join(", "))}</b> <span class="muted">· ${k.s} strokes · <a href="${kanjiHref(k.k)}">full page: sentences, compounds, radical →</a></span></p>
     <p>On (Chinese) reading: <span class="jp">${esc(k.on.join("、") || "—")}</span><br>Kun (Japanese) reading: <span class="jp">${esc(k.kun.join("、") || "—")}</span></p>
     ${k.ex.map(([w, r, m]) => `<div><span class="jp">${state.settings.script === "kanji" ? `<ruby>${esc(w)}<rt>${esc(r)}</rt></ruby>` : esc(show(r))}</span> <button class="mini" data-say="${esc(r)}">▶</button> <span class="muted">${esc(m)}</span></div>`).join("")}
     <p><button class="mini" id="kadd">${inDeck(idOf(k)) ? "✓ In your deck" : "+ Add to review"}</button> <button class="mini" id="kre">✍ Strokes again</button></p></div></div>`;

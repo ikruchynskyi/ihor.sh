@@ -20,3 +20,18 @@ const ex = [["肉", "にく", null], ["は", null, null, "p"], ["食", "た", nu
 assert.equal(renderTokens(ex, { script: "romaji" }).replace(/<[^>]+>/g, ""), "niku wa tabemasen.");
 assert.equal(renderTokens([["学生", "がくせい", null], ["です", null, null]], { script: "romaji" }).replace(/<[^>]+>/g, ""), "gakusei desu");
 console.log("yomu ruby/romaji ok");
+
+// typed answers
+import { meaningMatches, readingMatches } from "./lib.js";
+assert.ok(meaningMatches("eat", "to eat, to have a meal"));
+assert.ok(meaningMatches("to eat", "to eat, to have a meal"));
+assert.ok(meaningMatches("have a meal", "to eat, to have a meal"));
+assert.ok(meaningMatches("languge", "language"), "one-letter typo");
+assert.ok(meaningMatches("developing", "developing (film)"));
+assert.ok(!meaningMatches("drink", "to eat, to have a meal"));
+assert.ok(!meaningMatches("a", "to eat"));
+assert.ok(readingMatches("たべる", "食べる", "たべる") && readingMatches("食べる", "食べる", "たべる") && readingMatches("TABERU", "食べる", "たべる"));
+assert.ok(readingMatches("tookyou", "東京", "とうきょう") && readingMatches("tokyo", "東京", "とうきょう") && readingMatches("toukyou", "東京", "とうきょう"));
+assert.ok(readingMatches("sinbun", "新聞", "しんぶん") && readingMatches("shinbun", "新聞", "しんぶん") && readingMatches("タベル", "食べる", "たべる"));
+assert.ok(!readingMatches("nomu", "食べる", "たべる"));
+console.log("typed answers ok");
