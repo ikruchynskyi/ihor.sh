@@ -69,6 +69,14 @@
   <div class="row"><label>starts with <input id="prefix" value="Court Sq" style="font:18px ui-monospace,monospace;width:12em"></label></div>
   <canvas id="inside" width="800" height="240" aria-label="Next-character probabilities and attention weights"></canvas>
   <p class="readout" id="insideR"></p>
+  <p>That's one row of the attention table. Here is all of it: every letter of your text is a row, and its squares show where that letter looked while guessing the one after it. Everything above the diagonal is empty: that's the mask. Train a few hundred steps and watch the pattern form. Hover a row to read it.</p>
+  <canvas id="grid" width="800" height="400" aria-label="The full attention table: one row per letter, darker squares where it looked"></canvas>
+  <p class="readout" id="gridR"></p>
+  <div class="q" data-answer="c">
+    <p>The top row (the start mark ⏎) is always one fully lit square. Why?</p>
+    <ul><li data-k="a" data-says="Training changes every row; this one stays the same even untrained.">It's learned that the start matters most</li><li data-k="b" data-says="Position embeddings don't set the weights; the mask and softmax do.">Its position embedding is special</li><li data-k="c">The mask leaves it only itself to look at, and softmax over one score gives it weight 1</li></ul>
+    <div class="why">Row 1 has one finite score (itself) and −∞ everywhere else, so softmax gives (1, 0, 0, …), trained or not. Chapter 7 asked the same about its first word.</div>
+  </div>
 
   <div class="code" data-title="Build it: attention for one sequence, the core of every transformer"><textarea>
 // X: one row per position (here 4 positions, 3 numbers each). Wq, Wk, Wv: the learned 3×3 matrices.
@@ -96,6 +104,7 @@ const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", 
 const text = "\n" + (await (await fetch("/ai/data/stations.txt")).text()), names = new Set(text.split("\n").filter(Boolean)), chars = [...new Set(text)].sort();
 $("corpus").innerHTML = [...names].map((n) => `<span>${n.replace(/[&<>]/g, "")}</span>`).join("");
 let model, ids, losses = [], running = false, timer = 0, samplesAt = 0;
+let grid, gridT = 0, gridShown = [], hoverRow = -1; // the full attention table (drawGrid)
 const fresh = () => { model = new TinyGPT(chars, { d: 48, T: 32, seed: Math.floor(Math.random() * 1e9) }); ids = model.encode(text); losses = []; drawLoss(); inside(); };
 const lr = () => 10 ** +$("lr").value;
 $("lrv").textContent = lr().toExponential(1); $("lr").oninput = () => ($("lrv").textContent = lr().toExponential(1));
@@ -132,7 +141,7 @@ $("reset").onclick = () => { running = false; clearTimeout(timer); $("go").textC
 $("gen").onclick = () => samples(10);
 
 function inside() {
-  const pre = $("prefix").value.slice(0, 31), { probs, attention } = model.next("\n" + pre, 1), top = probs.map((p, j) => [chars[j], p]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const pre = $("prefix").value.slice(0, 31), { probs, attention, grid: all, t } = model.next("\n" + pre, 1), top = probs.map((p, j) => [chars[j], p]).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const cv = $("inside"), g = cv.getContext("2d"), W = cv.width;
   g.fillStyle = "#14171d"; g.fillRect(0, 0, W, cv.height);
   g.font = "13px ui-monospace, monospace"; g.fillStyle = "#8a93a3"; g.fillText("next character", 10, 18);
@@ -141,7 +150,33 @@ function inside() {
   const shown = ["⏎", ...pre], mx = Math.max(...attention);
   shown.forEach((c, i) => { const a = attention[i] ?? 0, x = 440 + (i % 12) * 28, y = 34 + Math.floor(i / 12) * 34; g.fillStyle = `rgba(244,211,94,${0.1 + 0.9 * (a / mx)})`; g.fillRect(x, y, 24, 26); g.fillStyle = "#14171d"; g.font = "bold 15px ui-monospace, monospace"; g.fillText(c === " " ? "␣" : c, x + 7, y + 18); g.font = "13px ui-monospace, monospace"; });
   $("insideR").textContent = `after "${pre}": most likely ${top.slice(0, 3).map(([c, p]) => `"${c === "\n" ? "⏎" : c}" ${(p * 100).toFixed(0)}%`).join(", ")}${losses.length < 200 ? " (train it first: an untrained model guesses evenly)" : ""}`;
+  grid = all; gridT = t; gridShown = shown; drawGrid();
 }
+// the whole t×t table: row i = where letter i looked (each row adds to 1), columns = the letters it could see
+function vis(c) { return c === " " ? "␣" : c; }
+function gridGeom() { const cell = Math.min(24, Math.floor(700 / Math.max(gridT, 1))); return { cell, x0: 60, y0: 40 }; }
+function drawGrid() {
+  const cv = $("grid"), { cell, x0, y0 } = gridGeom(), H = y0 + gridT * cell + 10;
+  if (cv.height !== H) cv.height = H;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, cv.width, cv.height);
+  g.font = `${Math.min(14, cell - 6)}px ui-monospace, monospace`; g.textAlign = "center";
+  g.fillStyle = "#8a93a3"; g.fillText("looked at →", x0 + 50, 14);
+  gridShown.forEach((c, j) => { g.fillStyle = "#d7dde5"; g.fillText(vis(c), x0 + j * cell + cell / 2, y0 - 8); });
+  for (let i = 0; i < gridT; i++) {
+    g.fillStyle = i === hoverRow ? "#f4d35e" : "#d7dde5"; g.fillText(vis(gridShown[i]), x0 - 16, y0 + i * cell + cell * 0.7);
+    for (let j = 0; j <= i; j++) { g.fillStyle = `rgba(244,211,94,${0.06 + 0.94 * grid[i * gridT + j]})`; g.fillRect(x0 + j * cell + 1, y0 + i * cell + 1, cell - 2, cell - 2); }
+    if (i === hoverRow) { g.strokeStyle = "#58c4dd"; g.lineWidth = 2; g.strokeRect(x0, y0 + i * cell, (i + 1) * cell, cell); }
+  }
+  g.textAlign = "start";
+}
+$("grid").onmousemove = (e) => {
+  const cv = $("grid"), r = cv.getBoundingClientRect(), { cell, y0 } = gridGeom(), i = Math.floor(((e.clientY - r.top) * (cv.height / r.height) - y0) / cell);
+  if (i === hoverRow || i < 0 || i >= gridT) return;
+  hoverRow = i; drawGrid();
+  const row = gridShown.slice(0, i + 1).map((c, j) => [c, grid[i * gridT + j]]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  $("gridR").textContent = `"${vis(gridShown[i])}" (letter ${i + 1}) looked at ${row.map(([c, w]) => `"${vis(c)}" ${(w * 100).toFixed(0)}%`).join(", ")}`;
+};
 $("prefix").oninput = inside;
 window.blipContext = () => ({ page: "AI chapter 10: a tiny transformer trained in the browser on NYC subway station names", steps: losses.length, loss: losses.length ? +(losses.slice(-50).reduce((a, b) => a + b, 0) / Math.min(50, losses.length)).toFixed(2) : null, temperature: +$("temp").value });
 </script>

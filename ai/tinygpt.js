@@ -93,12 +93,13 @@ export class TinyGPT {
     return loss;
   }
 
-  /** The next character's probabilities after `context` (a string), at a temperature, and the attention of the last position. */
+  /** The next character's probabilities after `context` (a string), at a temperature, the attention of the last position,
+   *  and every position's (`grid`: t×t, row i = where position i looked). */
   next(context, temperature = 1) {
     const ids = this.encode(context).slice(-this.T), L = this.forward(ids, 1, ids.length), V = this.V, last = ids.length - 1;
     const logits = Array.from({ length: V }, (_, j) => L[last * V + j] / temperature), mx = Math.max(...logits), e = logits.map((x) => Math.exp(x - mx)), z = e.reduce((a, b) => a + b, 0);
     const A = this.cache.As[0], t = ids.length;
-    return { probs: e.map((x) => x / z), attention: Array.from({ length: t }, (_, j) => A[last * t + j]) };
+    return { probs: e.map((x) => x / z), attention: Array.from({ length: t }, (_, j) => A[last * t + j]), grid: A, t };
   }
   /** A new name: characters sampled one at a time until the end-of-name mark. */
   sample(temperature = 0.8, start = "\n", max = 40) {

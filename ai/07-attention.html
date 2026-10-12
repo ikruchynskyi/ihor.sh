@@ -24,6 +24,11 @@
     .block { background: #14171d; color: #d7dde5; padding: 14px; font: 15px ui-monospace, Menlo, monospace; line-height: 2; text-align: center; }
     .block span { display: inline-block; padding: 2px 12px; border: 2px solid #4a5262; margin: 2px; }
     .formula { text-align: center; }
+    .heads { background: #14171d; color: #d7dde5; padding: 12px; font: 16px ui-monospace, Menlo, monospace; overflow-x: auto; }
+    .heads table { font: inherit; } .heads td, .heads th { border: 0; padding: 3px; text-align: center; color: #d7dde5; }
+    .heads th { color: #8f98a8; font-weight: normal; text-align: left; white-space: nowrap; }
+    .heads td button { font: inherit !important; text-transform: none; padding: 4px 8px; width: 100%; }
+    .heads td.cell { min-width: 3.4em; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -111,6 +116,21 @@ print("attention weights (each row adds to 1):"); table(weights);
 print("new vectors:"); table(out);
 print("with the causal mask:"); table(attention(X, W(1), W(2), W(3), true).weights);
 </textarea></div>
+
+  <h3>Many heads: several questions at once</h3>
+  <p>One head asks one question. But "bank" wants two answers: <i>what is this sentence about?</i> and <i>which word came right before me?</i> ("the bank" vs "river bank"). So a transformer runs several <b>heads</b> side by side, each with its own \(W_Q\) and \(W_K\), and glues their outputs together.</p>
+  <p>To give a head something to find positions with, each word gets two more numbers: a point on a circle at angle \(45° \times\) its position. <b>Head 1</b>'s matrices read only the meaning numbers, exactly as above. <b>Head 2</b>'s read only the position numbers, and its \(W_Q\) is a rotation (chapter 1's matrix as a move) by \(-45° \times k\), scaled up so softmax is decisive. The query of the word at position \(i\) then points straight at the key of position \(i - k\): a head that always looks \(k\) words back, whatever the words are. Click a word above, or here.</p>
+  <div class="row"><label>head 2 looks back <input type="range" id="lag" min="1" max="3" value="1"> <b id="lagv">1</b> word(s)</label></div>
+  <div class="heads" id="heads"></div>
+  <p class="readout" id="r3"></p>
+  <p>Trained models find heads like these on their own: researchers have found "previous-token" heads in nearly every language model, and heads that link a pronoun to its noun. Then one more matrix, \(W_O\), mixes the glued outputs back to the model's width:</p>
+  <p class="formula">\[ \operatorname{MultiHead}(X) = \big[\, \text{head}_1 \;\big|\; \text{head}_2 \;\big|\; \dots \;\big|\; \text{head}_h \,\big]\, W_O \]</p>
+  <p>Heads cost nothing extra: a model of width 4096 with 32 heads gives each head \(d_k = 4096 / 32 = 128\) numbers, so the total work is the same as one big head, but it can ask 32 different questions.</p>
+  <div class="q" data-answer="b">
+    <p>Causal mask on, head 2 looking back 1 word. Where does the <b>first</b> word's head 2 attend?</p>
+    <ul><li data-k="a" data-says="There is no word before the first one, and the mask hides the later ones.">To the word before it</li><li data-k="b">To itself: it's the only word it may see, so it gets all the weight, even though its query points elsewhere</li><li data-k="c" data-says="Softmax always hands out weights that add to 1, even over one word.">Nowhere: its output is zero</li></ul>
+    <div class="why">The query points at position −1, which doesn't exist. Every later word is masked, so softmax has one score to work with and gives it weight 1. Real models often use the first token as a parking spot like this ("attention sinks").</div>
+  </div>
 
   <h2>3. A transformer is attention + a layer, stacked</h2>
   <div class="block">
@@ -220,9 +240,31 @@ const r2 = scene("s2", (s) => {
 $("words").addEventListener("click", (e) => { const j = e.target.closest("[data-j]")?.dataset.j; if (j == null) return; sel = +j; r2(); const words = SENTS[+$("sent").value]; if (words[sel] === "bank") { const s = attention(words, sel).out[0]; say(Math.abs(s) < 0.15 ? "Bank... of what? I can't tell yet." : s < 0 ? "Bank by a river. Grassy!" : "Bank with a loan. Money!", "think"); } });
 $("sent").onchange = () => { sel = SENTS[+$("sent").value].indexOf("bank"); r2(); };
 $("mask").onchange = r2;
-sel = SENTS[0].indexOf("bank"); r2();
+// Many heads: head 1 = the meaning attention above; head 2 = position only, its query rotated k·45° back.
+const TH = Math.PI / 4, SHARP = 12;
+function headTwo(n, q, k) {
+  const pq = [Math.cos((q - k) * TH), Math.sin((q - k) * TH)];                    // W_Q · position(q): rotated k steps back
+  const scores = Array.from({ length: n }, (_, j) => ($("mask").checked && j > q ? -Infinity : (SHARP * (pq[0] * Math.cos(j * TH) + pq[1] * Math.sin(j * TH))) / Math.SQRT2));
+  const m = Math.max(...scores), e = scores.map((s) => (s === -Infinity ? 0 : Math.exp(s - m))), z = e.reduce((a, b) => a + b, 0);
+  return e.map((v) => v / z);
+}
+function heads() {
+  const words = SENTS[+$("sent").value], k = +$("lag").value;
+  $("lagv").textContent = k;
+  if (sel == null) { $("heads").innerHTML = ""; $("r3").textContent = ""; return; }
+  const rows = [["head 1: meaning", attention(words, sel).w, "252,98,85"], [`head 2: ${k} back`, headTwo(words.length, sel, k), "88,196,221"]];
+  const cell = (w, rgb) => `<td class="cell" style="background:rgba(${rgb},${(0.08 + 0.92 * w).toFixed(2)})">${w ? (w * 100).toFixed(0) + "%" : "·"}</td>`;
+  $("heads").innerHTML = `<table><tr><th></th>${words.map((w, j) => `<td><button data-j="${j}" class="${j === sel ? "sel" : ""}">${w}</button></td>`).join("")}</tr>` +
+    rows.map(([name, w, rgb]) => `<tr><th>${name}</th>${w.map((x) => cell(x, rgb)).join("")}</tr>`).join("") + "</table>";
+  const top = (w) => { const o = w.map((x, j) => (j === sel ? -1 : x)), j = o.indexOf(Math.max(...o)); return o[j] > 0 ? `"${words[j]}" ${(w[j] * 100).toFixed(0)}%` : "only itself"; };
+  $("r3").textContent = `"${words[sel]}", besides itself: head 1 looks most at ${top(rows[0][1])} · head 2 at ${top(rows[1][1])} · output = [head 1's mix | head 2's mix] · W_O`;
+}
+$("heads").addEventListener("click", (e) => { const j = e.target.closest("[data-j]")?.dataset.j; if (j == null) return; sel = +j; r2(); heads(); });
+$("lag").oninput = heads;
+for (const el of [$("words"), $("sent"), $("mask")]) el.addEventListener(el === $("words") ? "click" : "change", heads);
+sel = SENTS[0].indexOf("bank"); r2(); heads();
 
-window.blipContext = () => ({ page: "AI from scratch, chapter 7: Attention and transformers", analogy: [$("a1").value, $("b1").value, $("c1").value, $("ans1").textContent], sentence: SENTS[+$("sent").value].join(" "), selectedWord: sel == null ? null : SENTS[+$("sent").value][sel], causalMask: $("mask").checked });
+window.blipContext = () => ({ page: "AI from scratch, chapter 7: Attention and transformers", analogy: [$("a1").value, $("b1").value, $("c1").value, $("ans1").textContent], sentence: SENTS[+$("sent").value].join(" "), selectedWord: sel == null ? null : SENTS[+$("sent").value][sel], causalMask: $("mask").checked, head2LooksBack: +$("lag").value });
 </script>
 </body>
 </html>
