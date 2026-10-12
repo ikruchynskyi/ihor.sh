@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trees and Boosting</title>
+  <meta name="description" content="AI from scratch, chapter 13: the models most companies' tabular ML actually runs on. Logistic regression's straight line, a decision tree you grow split by split, Gini impurity, and gradient boosting built tree by tree on the leftover errors, with the learning rate as a brake." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; } .wide { aspect-ratio: 2 / 1; } .strip { aspect-ratio: 4 / 1; margin-top: 6px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 13 · Part 2: data and evaluation</p>
+  <h1>The models that still win on tables</h1>
+  <p class="lede">Most machine learning in companies isn't images or chat: it's tables. Rows of customers, payments, trips, sensor readings; columns of numbers and categories. On that kind of data, the winners are usually not neural networks but two older ideas: <b>logistic regression</b> (a line) and <b>gradient-boosted decision trees</b> (many small questions, each fixing the last ones' mistakes). An ML engineer reaches for these first.</p>
+
+  <h2>1. A line, and where it fails</h2>
+  <p>Each dot is a subway trip: <b>x</b> is how far it went, <b>y</b> how busy the hour was, both scaled to −1…1. <b style="color:#fc6255">Red</b> trips ran late, <b style="color:#58c4dd">blue</b> ones didn't. Logistic regression (chapter 3's single neuron) draws one straight line between them.</p>
+  <canvas id="plane" class="sq" width="520" height="520" aria-label="Trips as dots, and the model's regions"></canvas>
+  <div class="row"><label><input type="radio" name="m" value="logreg" checked> logistic regression</label><label><input type="radio" name="m" value="tree"> decision tree, depth <input type="range" id="depth" min="1" max="12" value="3"> <b id="depthV">3</b></label></div>
+  <p class="readout" id="r1"></p>
+  <p>The real rule here bends (long trips at rush hour run late, and so do short ones at the very busiest times), so a line gets maybe 70–80% right. You could hand-craft features (x², x·y…) to bend it, and people do. A tree finds the bends itself.</p>
+
+  <h2>2. A decision tree: twenty questions</h2>
+  <p>Pick the decision tree above. It asks one yes/no question about one column ("is x &lt; 0.31?"), then another question on each side, and so on: the plane gets cut into boxes, and each box predicts its majority. Raise the depth and watch chapter 11 happen again: deep trees carve a box around every noisy dot (train accuracy → 100%) and validation accuracy drops.</p>
+  <p>How does it pick a question? It tries every column and every cut point, and keeps the one that makes the two sides <b>purest</b>. Purity is measured by <b>Gini impurity</b>: the chance two random dots from the box have different colors.</p>
+  <p class="formula">\[ G = 1 - \sum_k p_k^2 \qquad \text{split score} = \frac{n_L}{n} G_L + \frac{n_R}{n} G_R \ \ (\text{lower is better}) \]</p>
+  <div class="q" data-num="0.48" data-tol="0.005">
+    <p>A box holds 6 late trips and 4 on-time ones. What is its Gini impurity?</p>
+    <div class="why">\(1 - (0.6^2 + 0.4^2) = 1 - (0.36 + 0.16) = 0.48\). A pure box has 0; a 50/50 box has 0.5, the worst for two classes.</div>
+  </div>
+  <p>Trees are why tables are friendly to them: no need to scale columns (a cut at "&lt; 31 minutes" works at any scale), categories become cuts, missing values can get their own branch, and the model explains itself: you can print the questions.</p>
+
+  <h2>3. Gradient boosting: small trees that fix each other</h2>
+  <p>One deep tree overfits; one shallow tree underfits. <b>Boosting</b> adds many shallow trees, each fit to what the previous ones still got wrong (the <b>residuals</b>), and adds only a fraction of each (the <b>learning rate</b>). Here it predicts a number (a noisy curve, as in chapter 11) with trees of depth 2.</p>
+  <canvas id="boost" class="wide" width="800" height="400" aria-label="The data, the boosted prediction, and the residuals"></canvas>
+  <div class="row"><label>trees <input type="range" id="nTrees" min="0" max="300" value="10"> <b id="nTreesV">10</b></label><label>learning rate <input type="range" id="eta" min="0.02" max="1" step="0.02" value="0.1"> <b id="etaV">0.10</b></label></div>
+  <canvas id="bcurve" class="strip" width="800" height="200" aria-label="Train and validation error as trees are added"></canvas>
+  <p class="readout" id="r3"></p>
+  <p>With one tree, the prediction is three or four flat steps. Each new tree is fit to the gap between the steps and the dots, and the prediction creeps toward the curve. A small learning rate creeps slowly but generalizes better (many small corrections average out the noise); a learning rate of 1 lurches and overfits within a few dozen trees. In practice: a small rate, many trees, and stop where validation error is lowest (<b>early stopping</b>, the yellow curve's minimum).</p>
+  <details class="deeper" open><summary>The math: why it's called gradient boosting</summary>
+    <p>With squared error \(L = \tfrac12 (y - F(x))^2\), the residual \(y - F(x)\) is exactly the negative gradient of the loss with respect to the prediction. So each round is chapter 2's gradient descent, except the step is a tree fit to the gradient:</p>
+    <p class="formula">\[ r_i = -\frac{\partial L}{\partial F(x_i)} = y_i - F_{m-1}(x_i), \qquad h_m = \text{tree fit to } (x_i, r_i), \qquad F_m = F_{m-1} + \eta\, h_m \]</p>
+    <p>For classification, swap in the log-loss from chapter 5 and the same recipe works. XGBoost, LightGBM and CatBoost are this algorithm with fast split finding, regularized leaves and many engineering tricks.</p>
+  </details>
+  <div class="q" data-answer="c">
+    <p>Validation error is lowest at 140 trees and rises after. What do you ship?</p>
+    <ul><li data-k="a" data-says="More trees past the minimum fit the noise: chapter 11's right half of the U.">300 trees: more is better</li><li data-k="b" data-says="That throws away the rounds that were still helping.">10 trees, to be safe</li><li data-k="c">The model at 140 trees (early stopping), then check it once on the test set</li></ul>
+    <div class="why">The number of trees is a knob chosen on validation data, like the polynomial degree. Libraries do it for you: give them a validation set and an early-stopping patience.</div>
+  </div>
+
+  <div class="code" data-title="Build it: gradient boosting with depth-1 trees (stumps), from scratch"><textarea>
+// data: x in −1…1, y a noisy curve
+let seed = 5; const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; // mulberry32
+const truth = (x) => 0.8 * Math.sin(2.5 * x) + 0.3 * x;
+const pts = Array.from({ length: 200 }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + 0.25 * (rand() + rand() + rand() - 1.5) }; });
+const train = pts.slice(0, 150), val = pts.slice(150);
+
+// a stump: one cut, a value on each side; it picks the cut that best fits the residuals r
+function stump(xs, r) {
+  const order = xs.map((x, i) => i).sort((a, b) => xs[a] - xs[b]);
+  let best = null, sumL = 0, n = r.length, sum = r.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < n - 1; k++) {
+    sumL += r[order[k]];
+    const nL = k + 1, nR = n - nL, gain = sumL ** 2 / nL + (sum - sumL) ** 2 / nR; // bigger = less squared error left
+    if (!best || gain > best.gain) best = { gain, cut: (xs[order[k]] + xs[order[k + 1]]) / 2, left: sumL / nL, right: (sum - sumL) / nR };
+  }
+  return (x) => (x < best.cut ? best.left : best.right);
+}
+
+const eta = 0.1, trees = [], F = (x) => trees.reduce((s, h) => s + eta * h(x), 0);
+const mse = (set) => set.reduce((s, p) => s + (p.y - F(p.x)) ** 2, 0) / set.length;
+const rows = [];
+for (let m = 1; m <= 200; m++) {
+  const r = train.map((p) => p.y - F(p.x)); // residuals: what's still wrong
+  trees.push(stump(train.map((p) => p.x), r));
+  if ([1, 5, 20, 50, 100, 200].includes(m)) rows.push({ trees: m, "train MSE": +mse(train).toFixed(4), "validation MSE": +mse(val).toFixed(4) });
+}
+table(rows);
+print("Each stump alone is a single step; 200 of them, each nudging by 10%, trace a smooth curve.");
+</textarea></div>
+
+  <h2>4. When to use what</h2>
+  <table class="cmp">
+    <tr><th>Data</th><th>Start with</th><th>Why</th></tr>
+    <tr><td>A table of mixed columns, thousands to millions of rows</td><td>Gradient-boosted trees</td><td>Strong out of the box, handles scale, categories and missing values, fast, explainable enough. Studies comparing deep nets and trees on many tabular datasets keep finding trees ahead or tied.</td></tr>
+    <tr><td>Few rows, need to explain every weight (credit, medicine)</td><td>Logistic regression</td><td>Each coefficient is a readable effect; hard to overfit; regulators understand it.</td></tr>
+    <tr><td>Images, audio, text, video</td><td>Neural networks (Part 1)</td><td>The structure (pixels near pixels, words in order) is what convolutions and attention exploit; trees can't.</td></tr>
+    <tr><td>A table plus text or images</td><td>Embeddings from a network as extra columns for boosted trees</td><td>Part 4 shows how to turn text into vectors.</td></tr>
+  </table>
+  <p>Whatever you pick, chapter 11 and 12 still rule: a baseline first, splits that respect time, and the metric that matches the cost of a mistake.</p>
+  <p class="muted">Previous: <a href="./12-measuring-a-model.html">Measuring a model</a> · All chapters: <a href="./">AI from scratch</a>. Next in Part 2: features and leakage.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+let seed = 21;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+
+// ---------- 2-D classification: the hidden rule bends; 10% of labels are flipped (noise) ----------
+const rule = (x, y) => y > 0.55 * Math.sin(3 * x) - 0.15 + 0.35 * x * x ? 1 : 0;
+const make = (n) => Array.from({ length: n }, () => { const x = 2 * rand() - 1, y = 2 * rand() - 1; let c = rule(x, y); if (rand() < 0.1) c = 1 - c; return { x, y, c }; });
+const train = make(400), val = make(400);
+const acc = (f, set) => set.filter((p) => f(p.x, p.y) === p.c).length / set.length;
+
+// logistic regression by gradient descent (chapter 3)
+function logreg() {
+  let w = [0, 0, 0];
+  for (let it = 0; it < 600; it++) {
+    const g = [0, 0, 0];
+    for (const p of train) { const z = w[0] + w[1] * p.x + w[2] * p.y, q = 1 / (1 + Math.exp(-z)), e = q - p.c; g[0] += e; g[1] += e * p.x; g[2] += e * p.y; }
+    w = w.map((v, i) => v - (0.5 * g[i]) / train.length);
+  }
+  return { w, f: (x, y) => (w[0] + w[1] * x + w[2] * y > 0 ? 1 : 0) };
+}
+const LR = logreg();
+
+// a classification tree (CART, Gini), grown to a depth
+function grow(pts, depth) {
+  const ones = pts.filter((p) => p.c).length, major = ones * 2 >= pts.length ? 1 : 0;
+  if (depth === 0 || pts.length < 4 || ones === 0 || ones === pts.length) return { leaf: major };
+  const gini = (a, n) => (n ? 1 - (a / n) ** 2 - ((n - a) / n) ** 2 : 0);
+  let best = null;
+  for (const k of ["x", "y"]) {
+    const s = [...pts].sort((a, b) => a[k] - b[k]); let a = 0;
+    for (let i = 0; i < s.length - 1; i++) {
+      a += s[i].c; if (s[i][k] === s[i + 1][k]) continue;
+      const nL = i + 1, nR = s.length - nL, score = (nL * gini(a, nL) + nR * gini(ones - a, nR)) / s.length;
+      if (!best || score < best.score) best = { score, k, cut: (s[i][k] + s[i + 1][k]) / 2 };
+    }
+  }
+  if (!best) return { leaf: major };
+  return { k: best.k, cut: best.cut, l: grow(pts.filter((p) => p[best.k] < best.cut), depth - 1), r: grow(pts.filter((p) => p[best.k] >= best.cut), depth - 1) };
+}
+const predictTree = (t, x, y) => (t.leaf !== undefined ? t.leaf : (t.k === "x" ? x : y) < t.cut ? predictTree(t.l, x, y) : predictTree(t.r, x, y));
+const leaves = (t) => (t.leaf !== undefined ? 1 : leaves(t.l) + leaves(t.r));
+const trees = new Map(); const treeAt = (d) => trees.get(d) ?? trees.set(d, grow(train, d)).get(d);
+
+function drawPlane() {
+  const cv = $("plane"), g = cv.getContext("2d"), W = cv.width, X = (v) => ((v + 1) / 2) * W, Y = (v) => ((1 - v) / 2) * W, model = document.querySelector("input[name=m]:checked").value, d = +$("depth").value;
+  const f = model === "tree" ? (x, y) => predictTree(treeAt(d), x, y) : LR.f;
+  const img = g.createImageData(W, W);
+  for (let py = 0; py < W; py++) for (let px = 0; px < W; px++) { const c = f((px / W) * 2 - 1, 1 - (py / W) * 2), o = 4 * (py * W + px); img.data[o] = c ? 90 : 25; img.data[o + 1] = c ? 35 : 45; img.data[o + 2] = c ? 40 : 70; img.data[o + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  g.strokeStyle = "rgba(255,255,255,.35)"; g.setLineDash([4, 4]); g.beginPath();
+  for (let i = 0; i <= 200; i++) { const x = -1 + i / 100, y = 0.55 * Math.sin(3 * x) - 0.15 + 0.35 * x * x; i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)); } g.stroke(); g.setLineDash([]);
+  for (const p of train) { g.fillStyle = p.c ? "#fc6255" : "#58c4dd"; g.beginPath(); g.arc(X(p.x), Y(p.y), 3.5, 0, 7); g.fill(); }
+  g.fillStyle = "#d7dde5"; g.font = "13px ui-monospace, monospace"; g.fillText("dashed: the hidden rule", 8, 18);
+  $("depthV").textContent = d;
+  $("r1").textContent = model === "tree"
+    ? `tree of depth ${d}, ${leaves(treeAt(d))} boxes: train ${(acc(f, train) * 100).toFixed(1)}% · validation ${(acc(f, val) * 100).toFixed(1)}% (10% of labels are noise, so ~90% is the ceiling)`
+    : `logistic regression: train ${(acc(f, train) * 100).toFixed(1)}% · validation ${(acc(f, val) * 100).toFixed(1)}% · its line: ${LR.w[0].toFixed(2)} + ${LR.w[1].toFixed(2)}·x + ${LR.w[2].toFixed(2)}·y = 0`;
+}
+document.querySelectorAll("input[name=m]").forEach((r) => (r.onchange = drawPlane));
+$("depth").oninput = () => { document.querySelector("input[name=m][value=tree]").checked = true; drawPlane(); if (+$("depth").value >= 10) say("Every noisy dot gets its own box. Classic overfitting!", "think"); };
+drawPlane();
+
+// ---------- boosting depth-2 regression trees on a noisy 1-D curve ----------
+const truth = (x) => 0.8 * Math.sin(2.5 * x) + 0.3 * x;
+const bTrain = Array.from({ length: 120 }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + 0.25 * gauss() }; }), bVal = Array.from({ length: 200 }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + 0.25 * gauss() }; });
+function regTree(xs, r, depth) { // a regression tree on one input: cuts that reduce squared error the most
+  const n = r.length, mean = r.reduce((a, b) => a + b, 0) / (n || 1);
+  if (depth === 0 || n < 6) return () => mean;
+  const order = xs.map((_, i) => i).sort((a, b) => xs[a] - xs[b]); let sumL = 0, best = null; const sum = mean * n;
+  for (let k = 2; k < n - 3; k++) { sumL += r[order[k - 1]]; const nL = k, gain = sumL ** 2 / nL + (sum - sumL) ** 2 / (n - nL); if (!best || gain > best.gain) best = { gain, cut: (xs[order[k - 1]] + xs[order[k]]) / 2 }; }
+  if (!best) return () => mean;
+  const L = order.filter((i) => xs[i] < best.cut), R = order.filter((i) => xs[i] >= best.cut);
+  const l = regTree(L.map((i) => xs[i]), L.map((i) => r[i]), depth - 1), rr = regTree(R.map((i) => xs[i]), R.map((i) => r[i]), depth - 1);
+  return (x) => (x < best.cut ? l(x) : rr(x));
+}
+let ensemble = { eta: -1, trees: [], errs: [] };
+function boostTo(eta) { // grow 300 trees once per learning rate; the slider then just picks how many to use
+  if (ensemble.eta === eta) return;
+  const xs = bTrain.map((p) => p.x), F = bTrain.map(() => 0), Fv = bVal.map(() => 0), ts = [], errs = [];
+  const err = () => [F.reduce((s, f, i) => s + (bTrain[i].y - f) ** 2, 0) / F.length, Fv.reduce((s, f, i) => s + (bVal[i].y - f) ** 2, 0) / Fv.length];
+  errs.push(err());
+  for (let m = 0; m < 300; m++) {
+    const h = regTree(xs, bTrain.map((p, i) => p.y - F[i]), 2); ts.push(h);
+    bTrain.forEach((p, i) => (F[i] += eta * h(p.x))); bVal.forEach((p, i) => (Fv[i] += eta * h(p.x)));
+    errs.push(err());
+  }
+  ensemble = { eta, trees: ts, errs };
+}
+function drawBoost() {
+  const eta = +$("eta").value, n = +$("nTrees").value; boostTo(eta);
+  const F = (x) => ensemble.trees.slice(0, n).reduce((s, h) => s + eta * h(x), 0);
+  const cv = $("boost"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (x) => ((x + 1.05) / 2.1) * W, Y = (y) => H / 2 - (y / 2.2) * (H / 2);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.setLineDash([6, 6]); g.strokeStyle = "#8f98a8"; g.beginPath(); for (let i = 0; i <= 400; i++) { const x = -1.05 + (2.1 * i) / 400; i ? g.lineTo(X(x), Y(truth(x))) : g.moveTo(X(x), Y(truth(x))); } g.stroke(); g.setLineDash([]);
+  for (const p of bTrain) { g.fillStyle = "#58c4dd"; g.beginPath(); g.arc(X(p.x), Y(p.y), 3.5, 0, 7); g.fill(); g.strokeStyle = "rgba(252,98,85,.35)"; g.beginPath(); g.moveTo(X(p.x), Y(p.y)); g.lineTo(X(p.x), Y(F(p.x))); g.stroke(); }
+  g.strokeStyle = "#fc6255"; g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 600; i++) { const x = -1.05 + (2.1 * i) / 600; i ? g.lineTo(X(x), Y(F(x))) : g.moveTo(X(x), Y(F(x))); } g.stroke(); g.lineWidth = 1;
+  g.fillStyle = "#8f98a8"; g.font = "13px ui-monospace, monospace"; g.fillText("red: the boosted prediction · thin lines: residuals the next tree will fit", 8, 18);
+  // the error curves
+  const c2 = $("bcurve"), h = c2.getContext("2d"), W2 = c2.width, H2 = c2.height, errs = ensemble.errs, max = Math.max(...errs.flat().slice(0, 4), 0.3);
+  const X2 = (m) => 40 + (m / 300) * (W2 - 50), Y2 = (e) => H2 - 20 - (Math.min(e, max) / max) * (H2 - 30);
+  h.fillStyle = "#14171d"; h.fillRect(0, 0, W2, H2);
+  h.setLineDash([4, 4]); h.strokeStyle = "#83c167"; h.beginPath(); h.moveTo(40, Y2(0.0625)); h.lineTo(W2 - 10, Y2(0.0625)); h.stroke(); h.setLineDash([]);
+  for (const [k, color] of [[0, "#58c4dd"], [1, "#f4d35e"]]) { h.strokeStyle = color; h.lineWidth = 2; h.beginPath(); errs.forEach((e, m) => (m ? h.lineTo(X2(m), Y2(e[k])) : h.moveTo(X2(m), Y2(e[k])))); h.stroke(); }
+  const best = errs.reduce((b, e, m) => (e[1] < errs[b][1] ? m : b), 0);
+  h.fillStyle = "#f4d35e"; h.beginPath(); h.arc(X2(best), Y2(errs[best][1]), 5, 0, 7); h.fill();
+  h.fillStyle = "#fc6255"; h.fillRect(X2(n) - 1, 4, 2, H2 - 24);
+  h.fillStyle = "#8f98a8"; h.font = "12px ui-monospace, monospace"; h.fillText("trees →", W2 - 64, H2 - 4); h.fillText("MSE: train (blue), validation (yellow), noise floor (green)", 44, 14);
+  $("nTreesV").textContent = n; $("etaV").textContent = eta.toFixed(2);
+  $("r3").textContent = `${n} trees at learning rate ${eta.toFixed(2)}: train MSE ${errs[n][0].toFixed(4)} · validation MSE ${errs[n][1].toFixed(4)} · best validation ${errs[best][1].toFixed(4)} at ${best} trees`;
+}
+$("nTrees").oninput = drawBoost; $("eta").oninput = drawBoost;
+drawBoost();
+
+window.blipContext = () => ({ page: "AI from scratch, chapter 13: logistic regression, decision trees (Gini), gradient boosting with learning rate and early stopping; why trees win on tabular data", model: document.querySelector("input[name=m]:checked").value, treeDepth: +$("depth").value, plane: $("r1").textContent, boosting: $("r3").textContent });
+</script>
+</body>
+</html>
