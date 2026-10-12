@@ -76,7 +76,7 @@ function metrics(n: MeshNode, d: Map<number, Field[]>) {
 /** One FromRadio message from the node. Exported for tests. */
 export function fromRadio(buf: Buffer) {
   const m = pb(buf);
-  const my = sub(m, 3); if (my) mesh.myNum = num(my, 1) ?? mesh.myNum;
+  const my = sub(m, 3); if (my) { mesh.myNum = num(my, 1) ?? mesh.myNum; gotMyInfo = true; }
   const ni = sub(m, 4);
   if (ni) {
     const n = node(num(ni, 1)!);
@@ -124,9 +124,9 @@ const FILE = path.join(import.meta.dirname, "data", "mesh.json");
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, myNum: mesh.myNum, ports: mesh.ports, encrypted: mesh.encrypted })); } catch {} }, 2000);
+  saveTimer = setTimeout(() => { try { writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, ports: mesh.ports, encrypted: mesh.encrypted })); } catch {} }, 2000);
 }
-try { const d = JSON.parse(readFileSync(FILE, "utf8")); for (const n of d.nodes) mesh.nodes.set(n.num, n); mesh.messages = d.messages ?? []; mesh.myNum = d.myNum ?? 0; mesh.ports = d.ports ?? {}; mesh.encrypted = d.encrypted ?? {}; } catch {}
+try { const d = JSON.parse(readFileSync(FILE, "utf8")); for (const n of d.nodes) mesh.nodes.set(n.num, n); mesh.messages = d.messages ?? []; mesh.ports = d.ports ?? {}; mesh.encrypted = d.encrypted ?? {}; } catch {}
 
 /** Frames are 0x94 0xC3, a 2-byte big-endian length, then a protobuf. Anything else on the line is the node's debug log. */
 export function deframer(onFrame: (b: Buffer) => void, onLog: (line: string) => void = () => {}) {
@@ -154,6 +154,7 @@ let fd = -1, stream: ReturnType<typeof createReadStream> | null = null;
 const send = (toRadio: Buffer) => { if (fd >= 0) writeSync(fd, frame(toRadio)); };
 const findPort = () => process.env.MESH_PORT || readdirSync("/dev").filter((f) => /^cu\.(usbserial|usbmodem|SLAB_USBtoUART|wchusbserial)/.test(f)).map((f) => `/dev/${f}`)[0] || "";
 
+let gotMyInfo = false;
 export function startMesh() {
   const port = findPort();
   if (!port || !existsSync(port)) { setTimeout(startMesh, 60_000); return; }
@@ -172,8 +173,10 @@ export function startMesh() {
   stream.on("close", () => { if (fd >= 0) restart("serial closed"); });
   // Wake the serial API (a run of 0xC3), then ask for everything it knows.
   writeSync(fd, Buffer.alloc(32, 0xc3));
-  // Opening the port can reset the board (it then boots for a few seconds), so ask again until it answers.
-  const ask = (k: number) => { if (fd < 0 || mesh.connected || k > 6) return; try { writeSync(fd, Buffer.alloc(32, 0xc3)); send(enc.u(3, Math.floor(Math.random() * 1e9))); } catch {} setTimeout(() => ask(k + 1), 4000); };
+  // Opening the port can reset the board (it then boots for a few seconds), so ask again until it says who it is (any
+  // other traffic doesn't count: a board that was swapped must report its own node number, not the last one's).
+  gotMyInfo = false;
+  const ask = (k: number) => { if (fd < 0 || gotMyInfo || k > 10) return; try { writeSync(fd, Buffer.alloc(32, 0xc3)); send(enc.u(3, Math.floor(Math.random() * 1e9))); } catch {} setTimeout(() => ask(k + 1), 4000); };
   setTimeout(() => ask(0), 200);
   // A heartbeat keeps the node in API mode (it falls back to plain logs after a quiet spell).
   const beat = setInterval(() => { if (fd < 0) return clearInterval(beat); try { send(enc.bytes(7, Buffer.alloc(0))); } catch (e) { clearInterval(beat); restart(`write: ${(e as Error).message}`); } }, 60_000);
