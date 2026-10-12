@@ -28,7 +28,7 @@ import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
 import { buildIndex, siteSearch } from "./search.ts";
-import { hamPasses, satTrack } from "./sat.ts";
+import { hamPasses, satTrack, satEcef } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
 import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
@@ -418,6 +418,10 @@ const server = http.createServer(async (req, res) => {
         } catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
       }
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
+    }
+    if (url.pathname === "/api/radio/sat-ecef") { // a satellite's positions over a pass, for mapping its pictures (sat.ts)
+      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await satEcef(String(url.searchParams.get("id")), Number(url.searchParams.get("from")), Number(url.searchParams.get("to"))))); }
+      catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (url.pathname === "/api/radio/sats" || url.pathname === "/api/radio/sat-track" || url.pathname === "/api/radio/propagation") { // the ham satellites and space weather (sat.ts, spacewx.ts)
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), ok = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180;

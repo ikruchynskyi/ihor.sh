@@ -2,10 +2,11 @@
 // QPSK demod (lrpt.ts's chain at any sample rate) → Viterbi in all 8 QPSK ambiguities until the sync word shows →
 // 1024-byte CADUs, de-randomized → VCDUs (VCID 5) → CCSDS packets → per-channel (APID 64–69) strips of 14 8×8 blocks,
 // Huffman-coded like JPEG with the quality factor in each packet.
-// ponytail: no Reed-Solomon correction (bad frames are decoded anyway; their blocks come out as noise); add RS(255,223)
-// ×4 interleave if weak passes need it.
+// Reed-Solomon (rs.ts) repairs each frame; until one frame has passed it (proof that the code is what we think), frames it
+// can't fix are used anyway, after that they are dropped.
 import { fft } from "./dsp.ts";
 import { Viterbi, PN, rrc, ASM, ZZ, idct } from "./lrpt.ts";
+import { rsDecodeInterleaved } from "./rs.ts";
 
 export const SYM_RATE = 72000, CADU_BITS = 1020 * 8, WIDTH = 196 * 8; // 196 blocks across, 1568 pixels
 const TAU = 2 * Math.PI;
@@ -62,13 +63,14 @@ export function decodeMcus(d: Uint8Array, q: number, out: Uint8Array): number {
 export class Channel {
   rows: Uint8Array[] = []; // 8-pixel-high strips, WIDTH wide
   rowSeq: number[] = [];   // the packet counter (unwrapped) where each row's line starts: lines channels up for combining
+  rowMs: number[] = [];    // the satellite's clock (ms of its day) for each row: puts the picture on the map
   private lastMcu = 999; private lastSeq = -1; private abs = -1;
-  add(mcu: number, seq: number, px: Uint8Array) {
+  add(mcu: number, seq: number, px: Uint8Array, ms = 0) {
     // a new line of blocks: the position went back to the left, or the packet counter jumped further than the position
     // (a line's other packets were lost). ponytail: whole lost lines aren't left as gaps, so the picture shrinks a little.
     const steps = (mcu - this.lastMcu) / 14, jump = (seq - this.lastSeq + 16384) % 16384;
     this.abs = this.abs < 0 ? seq : this.abs + jump; // the 14-bit counter wraps every few minutes
-    if (mcu <= this.lastMcu || jump >= steps + 10) { this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(this.abs - mcu / 14); }
+    if (mcu <= this.lastMcu || jump >= steps + 10) { this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(this.abs - mcu / 14); this.rowMs.push(ms); }
     this.lastMcu = mcu; this.lastSeq = seq;
     const row = this.rows[this.rows.length - 1];
     for (let y = 0; y < 8; y++) row.set(px.subarray(y * 112, y * 112 + 112).subarray(0, Math.min(112, WIDTH - mcu * 8)), y * WIDTH + mcu * 8);
@@ -138,15 +140,15 @@ export class Packets {
     const mcu = p[14], q = p[19], px = new Uint8Array(112 * 8);
     if (mcu % 14 || mcu >= 196 || !decodeMcus(p.subarray(20), q, px)) return;
     let ch = this.channels.get(apid); if (!ch) this.channels.set(apid, (ch = new Channel()));
-    ch.add(mcu, ((p[2] & 0x3f) << 8) | p[3], px); this.stats.images++; this.onImage?.(apid);
+    ch.add(mcu, ((p[2] & 0x3f) << 8) | p[3], px, ((p[8] << 24) | (p[9] << 16) | (p[10] << 8) | p[11]) >>> 0); this.stats.images++; this.onImage?.(apid);
   }
 }
 
 // ---------- IQ → symbols → frames ----------
-export interface MeteorStats { symbols: number; freqHz: number; locked: boolean; frames: number; evm: number }
+export interface MeteorStats { symbols: number; freqHz: number; locked: boolean; frames: number; evm: number; rsFixed: number; rsBad: number; rsProven: boolean }
 export class MeteorReceiver {
   readonly packets = new Packets();
-  stats: MeteorStats = { symbols: 0, freqHz: 0, locked: false, frames: 0, evm: 0 };
+  stats: MeteorStats = { symbols: 0, freqHz: 0, locked: false, frames: 0, evm: 0, rsFixed: 0, rsBad: 0, rsProven: false };
   constellation: [number, number][] = [];
   private sps: number; private H: Float32Array; private mf: Float32Array; private y: number[] = []; private t: number; private rate: number;
   private prevI = 0; private prevQ = 0; private agc = 1; private phase = 0; private freq = 0; private freqKnown = false; private acq: number[] = [];
@@ -233,6 +235,9 @@ export class MeteorReceiver {
     const f = new Uint8Array(1020);
     for (let i = 0; i < 1020; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; f[i] = v ^ this.inv ^ PN[i % 255]; }
     this.stats.frames++;
+    const fixed = rsDecodeInterleaved(f);
+    if (fixed >= 0) { this.stats.rsProven = true; this.stats.rsFixed += fixed; }
+    else { this.stats.rsBad++; if (this.stats.rsProven) return; } // too damaged to repair: its packets would only add noise
     this.packets.vcdu(f);
   }
 }

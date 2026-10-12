@@ -5,6 +5,7 @@ import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
 import { MeteorReceiver, WIDTH, composite } from "./meteor.ts";
+import { Projector, rowTimes, drawLines } from "./meteor-map.ts";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el("status"), cv = el<HTMLCanvasElement>("wf"), g = cv.getContext("2d")!, wf = new Waterfall(512, 300);
@@ -77,13 +78,15 @@ el("rec").addEventListener("click", () => {
 
 // --- the decoder: pictures per channel, the constellation, and the Doppler it is tracking ---------------------------------
 const cg = el<HTMLCanvasElement>("iq").getContext("2d")!, drawn = new Map<number, number>();
-function newDecoder(fs: number) {
-  rx = new MeteorReceiver(fs); drawn.clear(); el("pics").innerHTML = ""; el("combine").hidden = el("c-fig").hidden = true; comboSet = "";
+/** Which satellite and roughly when: for putting the picture on the map. */
+let dctx = { sat: "meteor-m2-3", ref: Date.now() };
+function newDecoder(fs: number, sat = el<HTMLSelectElement>("sat").value, ref = Date.now()) {
+  dctx = { sat, ref }; rx = new MeteorReceiver(fs); drawn.clear(); el("pics").innerHTML = ""; el("combine").hidden = el("c-fig").hidden = true; comboSet = "";
 }
 function paint() {
   if (!rx) return;
   const st = rx.stats, pk = rx.packets.stats;
-  el("dstat").textContent = `${st.locked ? "🔒 locked" : "searching"} · offset ${(st.freqHz / 1000).toFixed(2)} kHz (Doppler + dongle error, tracked automatically) · ${st.frames} frames · ${pk.packets} packets · ${pk.images} picture strips`;
+  el("dstat").textContent = `${st.locked ? "🔒 locked" : "searching"} · offset ${(st.freqHz / 1000).toFixed(2)} kHz (Doppler + dongle error, tracked automatically) · ${st.frames} frames · ${pk.packets} packets · ${pk.images} picture strips · error correction: ${st.rsProven ? `${st.rsFixed} bytes repaired, ${st.rsBad} frames beyond repair` : st.frames ? `no frame passed yet (${st.rsBad} tried)` : "waiting"}`;
   cg.fillStyle = "#000"; cg.fillRect(0, 0, 160, 160); cg.fillStyle = st.locked ? "#4de1ff" : "#888";
   for (const [i, q] of rx.constellation.slice(-600)) cg.fillRect(80 + i * 50, 80 - q * 50, 1.5, 1.5);
   for (const [apid, ch] of rx.packets.channels) {
@@ -126,8 +129,26 @@ el("c-go").addEventListener("click", () => {
   const img = composite(rx.packets.channels, apids), c = el<HTMLCanvasElement>("c-pic");
   if (!img.height) return;
   c.width = img.width; c.height = img.height; c.getContext("2d")!.putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
-  el("c-fig").hidden = false;
+  el("c-fig").hidden = false; el("c-note").textContent = "";
+  if (el<HTMLInputElement>("c-map").checked) addMap(c, rx.packets.channels.get(apids[0])!.rowMs);
 });
+
+// coastlines and borders (Natural Earth 1:50m), where the scanner saw them
+let world: { coast: number[][]; borders: number[][] } | null = null;
+async function addMap(c: HTMLCanvasElement, rowMs: number[]) {
+  const note = el("c-note"), times = rowTimes(rowMs, dctx.ref);
+  if (!times) { note.textContent = "Can't place it on the map: the picture's clock doesn't match when it was recorded."; return; }
+  note.textContent = "Drawing the map…";
+  try {
+    world ??= await fetch("./data/world-lines.json").then((r) => r.json());
+    const tr = await fetch(`/api/radio/sat-ecef?id=${dctx.sat}&from=${Math.round(times[0] - 60e3)}&to=${Math.round(times[times.length - 1] + 60e3)}`).then((r) => r.json());
+    if (!tr.points) throw new Error(tr.error ?? "no orbit");
+    const pr = new Projector(tr.points, times, el<HTMLInputElement>("c-mirror").checked), g = c.getContext("2d")!;
+    drawLines(g, pr, world!.borders, "rgba(255,255,255,0.75)", 1.5); drawLines(g, pr, world!.coast, "#f4d35e", 2);
+    const hm = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    note.textContent = `Map lines for ${dctx.sat.replace("meteor-m2-", "Meteor-M2 ")}, ${hm(times[0])}–${hm(times[times.length - 1])}. If the coast is a mirror image of the clouds' edges, tick "mirror" and combine again.`;
+  } catch (e) { note.textContent = `Couldn't draw the map: ${(e as Error).message}`; }
+}
 el("c-save").addEventListener("click", (e) => {
   e.preventDefault();
   const link = document.createElement("a"); link.href = el<HTMLCanvasElement>("c-pic").toDataURL("image/png");
@@ -147,7 +168,9 @@ el("file").addEventListener("change", () => { const f = el<HTMLInputElement>("fi
 async function decodeFile(f: Blob, name: string) {
   if (decodingFile) { status.textContent = "Already decoding a recording; wait for it to finish."; return; }
   const fs = +(name.match(/(\d+)sps/)?.[1] ?? el<HTMLInputElement>("frate").value);
-  decodingFile = true; newDecoder(fs);
+  // the satellite and the time, from our own file names (…meteor-m2-4-137.9MHz-2026-10-121524-240000sps.cu8, UTC)
+  const nt = name.match(/(\d{4})-(\d{2})-(\d{2})(\d{2})(\d{2})-\d+sps/), ref = nt ? Date.UTC(+nt[1], +nt[2] - 1, +nt[3], +nt[4], +nt[5]) : (f as File).lastModified ?? Date.now();
+  decodingFile = true; newDecoder(fs, name.match(/meteor-m2-\d/)?.[0] ?? el<HTMLSelectElement>("sat").value, ref);
   el("pics").scrollIntoView({ behavior: "smooth", block: "start" });
   const step = 4 << 20;
   for (let at = 0; at < f.size; at += step) {
@@ -180,3 +203,20 @@ el("locate").addEventListener("click", () => {
 });
 el<HTMLSelectElement>("sat").addEventListener("change", refreshPasses);
 refreshPasses(); setInterval(refreshPasses, 5 * 60e3);
+
+// --- zoom: any picture, full size, smoothly scaled ---
+const zoom = el<HTMLDialogElement>("zoom"), zimg = el<HTMLImageElement>("z-img");
+function openZoom(src: HTMLCanvasElement, rows: number) {
+  const out = document.createElement("canvas"); out.width = src.width; out.height = rows;
+  out.getContext("2d")!.drawImage(src, 0, 0);
+  zimg.src = out.toDataURL("image/png"); zimg.dataset.w = String(out.width);
+  setZoom(); zoom.showModal();
+}
+function setZoom() { const pct = +el<HTMLInputElement>("z-r").value; el("z-o").textContent = `${pct}%`; zimg.style.width = `${(+zimg.dataset.w! * pct) / 100}px`; }
+el("z-r").addEventListener("input", setZoom);
+el("z-x").addEventListener("click", () => zoom.close());
+el("pics").addEventListener("click", (e) => {
+  const c = (e.target as HTMLElement).closest<HTMLCanvasElement>("canvas"); if (!c || !rx) return;
+  openZoom(c, rx.packets.channels.get(+c.id.slice(2))!.rows.length * 8);
+});
+el("c-pic").addEventListener("click", () => { const c = el<HTMLCanvasElement>("c-pic"); openZoom(c, c.height); });

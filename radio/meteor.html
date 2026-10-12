@@ -15,6 +15,12 @@
     #pics canvas { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; }
     .passes .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 6px; }
     .passes ul { margin: 4px 0; padding-left: 18px; }
+    #pics canvas, #c-pic { cursor: zoom-in; }
+    #zoom { width: min(96vw, 1600px); max-height: 92vh; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); }
+    #zoom::backdrop { background: rgb(0 0 0 / 0.7); }
+    .zbar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; position: sticky; top: 0; background: var(--card); }
+    .zbox { overflow: auto; max-height: calc(92vh - 56px); }
+    #z-img { display: block; image-rendering: auto; max-width: none; }
     .status { font: 0.9rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); min-height: 1.4em; }
   </style>
 </head>
@@ -48,9 +54,16 @@
   <div id="combine" class="pane" hidden>
     <b>Combine channels into color</b>
     <div class="row">Red <select id="c-r"></select> Green <select id="c-g"></select> Blue <select id="c-b"></select> <button class="btn" id="c-go" type="button">Combine</button></div>
-    <p class="note">Channel 2, 2, 1 gives natural-looking color: land yellow-green, sea dark, clouds white. Combine again as more of the pass comes in.</p>
+    <div class="row"><label><input type="checkbox" id="c-map" checked> Coastlines and borders</label> <label class="muted"><input type="checkbox" id="c-mirror"> mirror</label></div>
+    <p class="note">Channel 2, 2, 1 gives natural-looking color: land yellow-green, sea dark, clouds white. Combine again as more of the pass comes in. For one channel in gray with the map, pick it three times. Click any picture to zoom.</p>
+    <p class="status" id="c-note"></p>
     <figure id="c-fig" hidden><canvas id="c-pic"></canvas><figcaption>Combined · <a href="#" id="c-save">save PNG</a></figcaption></figure>
   </div>
+
+  <dialog id="zoom" aria-label="Picture, zoomed">
+    <div class="zbar"><label>Zoom <input type="range" id="z-r" min="25" max="400" step="5" value="100"></label> <output id="z-o">100%</output> <button type="button" class="btn" id="z-x">Close</button></div>
+    <div class="zbox"><img id="z-img" alt="The received picture, zoomed"></div>
+  </dialog>
 
   <h2>Recordings</h2>
   <ul id="saves"></ul>

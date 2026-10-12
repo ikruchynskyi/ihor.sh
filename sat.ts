@@ -227,6 +227,15 @@ export async function hamPasses(lat = 40.7128, lon = -74.006, hours = 24, minEl 
   out.sort((a, b) => a.riseIso.localeCompare(b.riseIso));
   return { from: { lat: +lat.toFixed(3), lon: +lon.toFixed(3) }, hours, satellites: HAM_SATS.map(({ id, name, kind, up, down, notes, status, pictures }) => ({ id, name, kind, up, down, notes, status, pictures })), passes: out };
 }
+/** Earth-fixed positions (km) once a second from `from` to `to` (ms, at most 30 minutes): for putting a satellite's
+ *  pictures on the map. */
+export async function satEcef(id: string, from: number, to: number) {
+  const sat = HAM_SATS.find((s) => s.id === id); if (!sat) throw new Error("unknown satellite");
+  if (!(to > from) || to - from > 30 * 60e3) throw new Error("from/to: up to 30 minutes");
+  const tle = await tleFor(sat.catnr), out: number[][] = [];
+  for (let t = Math.floor(from / 1000) * 1000; t <= to; t += 1000) out.push([t, ...toEcef(sgp4(tle, (t - tle.epoch) / 60000).r, t).map((v) => +v.toFixed(3))]);
+  return { id, points: out };
+}
 /** Where a satellite is now and its ground track for the next `minutes` (for drawing on a map), plus the view from a place. */
 export async function satTrack(id: string, lat?: number, lon?: number, minutes = 100) {
   const sat = HAM_SATS.find((s) => s.id === id); if (!sat) throw new Error("unknown satellite");

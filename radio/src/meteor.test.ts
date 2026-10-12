@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { MeteorReceiver, DC, qTable, Channel, align, composite } from "./meteor.ts";
 import { ConvEncoder, PN, ASM } from "./lrpt.ts";
+import { rsEncode } from "./rs.ts";
 
 // 1. Image packets: 14 flat 8×8 blocks each (DC only), brightness ramping across the line.
 const q = 80, q0 = qTable(q)[0], level = (line: number, m: number) => 40 + ((m * 3 + line * 20) % 160);
@@ -34,6 +35,10 @@ for (let v = 0; v * 882 < stream.length; v++) {
   let fhp = 0x7ff; for (let i = 0; i < 882; i++) if (starts.has(v * 882 + i)) { fhp = i; break; }
   f[8] = fhp >> 8; f[9] = fhp & 0xff;
   for (let i = 0; i < 882; i++) f[10 + i] = stream[v * 882 + i] ?? 0;
+  for (let c = 0; c < 4; c++) { // Reed-Solomon check bytes, 4 codewords interleaved
+    const d = Uint8Array.from({ length: 223 }, (_, j) => f[j * 4 + c]), par = rsEncode(d);
+    for (let j = 0; j < 32; j++) f[(223 + j) * 4 + c] = par[j];
+  }
   cadus.push(ASM >>> 24, (ASM >> 16) & 0xff, (ASM >> 8) & 0xff, ASM & 0xff, ...f.map((b, i) => b ^ PN[i % 255]));
 }
 
@@ -71,8 +76,8 @@ for (const row of ch.rows) { // which line each row is (the first frames are los
   const ok = (line: number) => got.filter((v, m) => v && Math.abs(v - level(line, m)) <= 4).length;
   good += Math.max(...Array.from({ length: 12 }, (_, l) => ok(l))); checked += got.filter((v) => v).length;
 }
-console.log(`${good} of ${checked} blocks exact (no Reed-Solomon: a bit error spoils the rest of its packet)`);
-assert.ok(checked > 1500 && good / checked > 0.95);
+console.log(`${good} of ${checked} blocks exact; Reed-Solomon fixed ${rx.stats.rsFixed} bytes, ${rx.stats.rsBad} frames beyond repair`);
+assert.ok(rx.stats.rsProven && checked > 1500 && good === checked);
 // 5. Lining channels up: one shared counter, each line sent as 14 packets of APID 64, then 65, then 66, then telemetry.
 // Channel 65 loses line 3 completely; the counter wraps at 16384 in the middle.
 {
