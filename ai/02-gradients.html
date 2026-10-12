@@ -24,7 +24,7 @@
 <main>
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 2</p>
   <h1>Gradients: which way is downhill</h1>
-  <p class="lede">Last chapter ended with a promise: training a network means finding the right numbers for its matrices. There are millions of them, so nobody tries them one by one. Instead, the network measures how wrong it is and asks a simple question: <em>if I nudge this number a little, does it get better or worse?</em> That question has a name, the derivative, and the whole of deep learning is built on asking it very fast.</p>
+  <p class="lede">Last chapter ended with a promise: training a network means finding the right numbers for its matrices. There are millions of them, so nobody tries them one by one. Instead, the network measures how wrong it is and asks a simple question: <em>if I nudge this number a little, does it get better or worse?</em> That question has a name, the derivative, and the whole of deep learning is built on asking it very fast. (This chapter is the intuition; for the full toolkit, the rules, many variables and curvature, continue with <a href="./c1-derivatives.html">Calculus 1</a> afterwards.)</p>
 
   <h2>1. A slope is "how much does it change?"</h2>
   <p>Here's a bumpy curve. The <span class="y">yellow line</span> joins your point to another point a step <span class="math">h</span> to the right: it rises some amount over a run of <span class="math">h</span>. Drag the <span class="b">blue point</span> along the curve, and shrink <span class="math">h</span>.</p>

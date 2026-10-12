@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gradients and Jacobians for Machine Learning</title>
+  <meta name="description" content="AI from scratch, calculus 2: partial derivatives on a landscape you can drag over, the gradient and directional derivatives, the gradients of ML's common shapes (dot products, MSE, weight matrices), the Jacobian as the local matrix of a warp, and backprop as vector-Jacobian products." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; touch-action: none; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 2 · Foundations</p>
+  <h1>Many inputs: partials, gradients, Jacobians</h1>
+  <p class="lede">A real loss doesn't depend on one number, it depends on millions of weights at once. This lesson takes the derivative from a curve to a landscape: slopes along each axis, the gradient arrow that combines them, the shapes of the gradients you'll meet in every model, and the Jacobian, the matrix that says how a whole layer bends space near a point. Backprop turns out to be nothing but multiplying Jacobians in the right order.</p>
+
+  <h2>1. Slopes on a landscape</h2>
+  <p>Here is \(f(x, y) = x^2 + xy + 2y^2\) seen from above: brighter is higher, and each band is one unit of height, so band edges are <b>contour lines</b>. Drag the <b style="color:#f4d35e">yellow point</b>. Freeze \(y\) and walk in \(x\): the slope you feel is the <b>partial derivative</b> \(\partial f/\partial x\), computed by treating \(y\) as a constant. Same for \(y\).</p>
+  <p class="formula">\[ \frac{\partial f}{\partial x} = 2x + y, \qquad \frac{\partial f}{\partial y} = x + 4y, \qquad \nabla f = \begin{pmatrix} 2x + y \\ x + 4y \end{pmatrix} \]</p>
+  <canvas id="land" width="800" height="400" aria-label="A height map of f(x, y) with a draggable point, the gradient arrow and a direction arrow"></canvas>
+  <div class="row"><label>direction θ <input type="range" id="th" min="0" max="360" step="5" value="30"> <b id="thV" class="math"></b></label></div>
+  <p class="legend"><i style="background:#f4d35e"></i>gradient ∇f <i style="background:#58c4dd"></i>your direction u <i style="background:#83c167"></i>along the contour</p>
+  <p class="readout" id="r1"></p>
+  <p>Stack the partials into a vector and you get the <b>gradient</b> \(\nabla f\). Walk in any direction \(u\) (a unit vector) and your slope is the <b>directional derivative</b> \(\nabla f \cdot u = |\nabla f|\cos\alpha\), where \(\alpha\) is the angle between them. Turn θ and watch the readout: the slope is biggest, exactly \(|\nabla f|\), when \(u\) points along the gradient, and it's zero when you walk along the contour. That's why the gradient always crosses contour lines at right angles, and why "step against the gradient" is the fastest way down.</p>
+  <div class="q" data-num="5">
+    <p>What is \(\partial f/\partial y\) at the point \((1, 1)\)?</p>
+    <div class="why">\(x + 4y = 1 + 4 = 5\). Drag the point to (1, 1) to see it in the readout. The \(xy\) term contributes \(x\), the \(2y^2\) term contributes \(4y\), and \(x^2\) contributes nothing since it doesn't involve \(y\).</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>In which direction is the directional derivative zero?</p>
+    <ul><li data-k="a" data-says="That's where it's biggest: +|∇f|.">Along the gradient</li><li data-k="b" data-says="That's where it's most negative: −|∇f|, the way gradient descent walks.">Against the gradient</li><li data-k="c">Along the contour line, at right angles to the gradient</li></ul>
+    <div class="why">\(\nabla f \cdot u = |\nabla f|\cos 90° = 0\). Walking along a contour keeps the height constant, which is what a contour line means.</div>
+  </div>
+
+  <h2>2. The gradients you'll meet every day</h2>
+  <p>In ML the inputs are vectors and matrices, and a handful of gradients cover nearly everything. Each can be checked one partial at a time, like section 1:</p>
+  <table class="rules">
+    <tr><th>function (a number)</th><th>gradient</th><th>why</th></tr>
+    <tr><td>\(w \cdot x\)</td><td>\(\nabla_w = x\)</td><td>\(\partial/\partial w_i\) of \(\sum w_j x_j\) leaves \(x_i\)</td></tr>
+    <tr><td>\(\lVert w \rVert^2\)</td><td>\(\nabla_w = 2w\)</td><td>each \(w_i^2\) gives \(2w_i\) (weight decay's pull toward 0)</td></tr>
+    <tr><td>\(\tfrac1n \lVert Xw - y \rVert^2\)</td><td>\(\nabla_w = \tfrac2n X^\top (Xw - y)\)</td><td>MSE: the errors, sent back through the data</td></tr>
+    <tr><td>\(L(Wx)\), with \(g = \nabla L\) at \(Wx\)</td><td>\(\nabla_W = g\,x^\top\)</td><td>weight \(W_{ij}\) touches only output \(i\), with strength \(x_j\)</td></tr>
+  </table>
+  <p>The last row is the one backprop uses for every layer: the gradient for a weight matrix is an <b>outer product</b>, "blame on each output" times "input on each wire". And there's a <b>shape rule</b> that catches most bugs: the gradient of a number with respect to anything has the same shape as that thing. \(W\) is 3×4, so \(\nabla_W L\) is 3×4.</p>
+  <div class="q" data-num="12">
+    <p>A layer has a weight matrix \(W\) of shape 3×4. How many numbers are in \(\partial L / \partial W\)?</p>
+    <div class="why">12, the same shape as \(W\): one partial per weight. \(g x^\top\) is (3×1)(1×4) = 3×4.</div>
+  </div>
+  <p>Now the MSE gradient, checked against central differences (Calculus 1) and then used to train. The data comes from \(y = 1 + 3x_1 - 2x_2\) plus noise; the first column of \(X\) is all ones, so \(w_0\) is the bias.</p>
+  <div class="code" id="linreg" data-title="Build it: the MSE gradient, checked"><textarea>
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rand = mulberry32(42), gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+const X = [], y = [];
+for (let i = 0; i < 50; i++) { const x1 = 2 * rand() - 1, x2 = 2 * rand() - 1; X.push([1, x1, x2]); y.push(1 + 3 * x1 - 2 * x2 + 0.1 * gauss()); }
+
+const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
+const loss = (w) => X.reduce((s, row, i) => s + (dot(row, w) - y[i]) ** 2, 0) / X.length;
+// the formula: (2/n) Xᵀ(Xw − y)
+const grad = (w) => {
+  const g = [0, 0, 0];
+  X.forEach((row, i) => { const err = dot(row, w) - y[i]; row.forEach((v, j) => (g[j] += (2 * err * v) / X.length)); });
+  return g;
+};
+// one partial at a time: nudge w[j] alone
+const numeric = (w, j, h = 1e-5) => { const up = [...w], dn = [...w]; up[j] += h; dn[j] -= h; return (loss(up) - loss(dn)) / (2 * h); };
+
+const at = [0.5, -1, 2];
+table([["", "formula", "central difference"], ...[0, 1, 2].map((j) => [`∂L/∂w${j}`, grad(at)[j], numeric(at, j)])]);
+</textarea></div>
+  <div class="code" data-uses="linreg" data-title="Run it: 200 steps downhill"><textarea>
+let w = [0, 0, 0];
+const lr = 0.3, curve = [];
+for (let step = 0; step < 200; step++) {
+  const g = grad(w);
+  w = w.map((v, j) => v - lr * g[j]);
+  curve.push(loss(w));
+}
+plot(curve, { label: "loss by step" });
+print("learned w:", w, "(true: [1, 3, -2])");
+print("final loss:", loss(w), "(the noise alone is about 0.1² = 0.01)");
+</textarea></div>
+
+  <h2>3. The Jacobian: a matrix for every point</h2>
+  <p>Chapter 1 showed a matrix as a move of the whole plane that keeps grid lines straight. A layer with a nonlinearity bends them. Below, \(F(x, y) = (x + 0.4\sin 1.5y,\; y + 0.4\sin 1.5x)\) warps the grid. But zoom in on any point and the bend disappears: <b>near a point, every smooth map looks like a matrix</b>. That matrix is the <b>Jacobian</b>, the table of every output's partial with respect to every input:</p>
+  <p class="formula">\[ J = \begin{pmatrix} \partial F_1/\partial x & \partial F_1/\partial y \\ \partial F_2/\partial x & \partial F_2/\partial y \end{pmatrix} = \begin{pmatrix} 1 & 0.6\cos 1.5y \\ 0.6\cos 1.5x & 1 \end{pmatrix} \]</p>
+  <canvas id="jac" width="800" height="400" aria-label="A warped grid, a small square, its curved image and the Jacobian's parallelogram"></canvas>
+  <div class="row"><label>square side <input type="range" id="side" min="0.05" max="1.5" step="0.05" value="0.8"> <b id="sideV" class="math"></b></label></div>
+  <p class="legend"><i style="background:#58c4dd"></i>the square (drag it) <i style="background:#f4d35e"></i>where F sends it <i style="background:#fc6255"></i>where J predicts</p>
+  <p class="readout" id="r3"></p>
+  <p>Shrink the square: the yellow curved patch and the red parallelogram become the same shape, the 2D version of the secant turning into the tangent. And just as in chapter 1, the Jacobian's <b>determinant</b> is the local area scale: the patch's area divided by the square's tends to \(\det J\). That fact comes back in Calculus 4, when a change of variables has to keep a probability's total area at 1.</p>
+  <div class="q" data-num="0.06">
+    <p>At some point the Jacobian is \(\begin{pmatrix} 2 & 0 \\ 0 & 3 \end{pmatrix}\). A tiny patch of area 0.01 around it is mapped to a patch of about what area?</p>
+    <div class="why">\(\det J = 2 \cdot 3 = 6\), so about \(6 \times 0.01 = 0.06\). Widths double, heights triple.</div>
+  </div>
+
+  <h2>4. Backprop is Jacobians, multiplied left to right</h2>
+  <p>A network is a chain: \(x \to h_1 \to h_2 \to \dots \to L\). The multivariable chain rule says the Jacobian of a chain is the <b>product of the Jacobians</b> of its links:</p>
+  <p class="formula">\[ \frac{\partial L}{\partial x} = \underbrace{\frac{\partial L}{\partial h_k}}_{1 \times m} \; \underbrace{\frac{\partial h_k}{\partial h_{k-1}}}_{m \times m} \cdots \underbrace{\frac{\partial h_1}{\partial x}}_{m \times n} \]</p>
+  <p>Matrix products are associative, so you can multiply in either order and get the same answer, but not for the same price. The loss is one number, so the leftmost factor is a single row. Multiply <b>left to right</b> and every step is a row times a matrix: a <b>vector-Jacobian product</b>, about \(m^2\) work, and the result is still one row. That is <b>reverse mode</b>, and it's exactly what backprop does in chapter 4. Multiply right to left (<b>forward mode</b>) and you carry whole matrices along, which only pays off when there are few inputs and many outputs.</p>
+  <p>Better still, nobody ever builds those \(m \times m\) matrices. The Jacobian of an elementwise \(\tanh\) is diagonal, so its vector-Jacobian product is just "multiply each entry by \(1 - h^2\)"; for \(h = Wx\) it's "row times \(W\)". Every layer in a framework ships one small function: given the blame on my output, return the blame on my input.</p>
+  <div class="code" data-title="Build it: backprop as vector-Jacobian products"><textarea>
+// h1 = tanh(W1 x), h2 = tanh(W2 h1), L = sum of h2². x has 3 numbers, h1 has 4, h2 has 2.
+const W1 = [[0.5, -0.3, 0.8], [0.1, 0.9, -0.4], [-0.7, 0.2, 0.3], [0.4, 0.4, 0.4]];
+const W2 = [[0.6, -0.5, 0.2, 0.9], [-0.3, 0.8, 0.7, -0.1]];
+const matvec = (W, v) => W.map((row) => row.reduce((s, w, j) => s + w * v[j], 0));
+const vecmat = (g, W) => W[0].map((_, j) => g.reduce((s, gi, i) => s + gi * W[i][j], 0)); // row times matrix
+const forward = (x) => { const h1 = matvec(W1, x).map(Math.tanh), h2 = matvec(W2, h1).map(Math.tanh); return { h1, h2, L: h2.reduce((s, v) => s + v * v, 0) }; };
+
+const x = [1, -0.5, 2], { h1, h2, L } = forward(x);
+let g = h2.map((v) => 2 * v);                // ∂L/∂h2
+g = g.map((gi, i) => gi * (1 - h2[i] ** 2)); // through tanh: a diagonal Jacobian
+const gW2 = g.map((gi) => h1.map((hj) => gi * hj)); // ∂L/∂W2 = g h1ᵀ, the outer product
+g = vecmat(g, W2);                           // through W2: row times matrix
+g = g.map((gi, i) => gi * (1 - h1[i] ** 2)); // through tanh
+const dx = vecmat(g, W1);                    // through W1: ∂L/∂x
+
+const num = x.map((_, j) => { const up = [...x], dn = [...x]; up[j] += 1e-5; dn[j] -= 1e-5; return (forward(up).L - forward(dn).L) / 2e-5; });
+print("L =", L);
+table([["", "backprop", "central difference"], ...x.map((_, j) => [`∂L/∂x${j}`, dx[j], num[j]])]);
+print("∂L/∂W2 has the shape of W2:", gW2.length, "×", gW2[0].length);
+</textarea></div>
+  <div class="q" data-num="1">
+    <p>A model has a billion parameters and one loss. How many backward passes does reverse mode need to get the derivative for every parameter?</p>
+    <div class="why">One. A backward pass carries one row (the loss's gradient) through the chain and hands back all billion partials at once, for about the cost of a couple of forward passes. Forward mode would need a pass per parameter: a billion of them. That gap is why deep learning runs on reverse mode.</div>
+  </div>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li><b>A partial derivative</b> is a slope with every other input frozen; the <b>gradient</b> stacks them into the arrow of steepest ascent, at right angles to the contours.</li>
+    <li><b>The slope in direction \(u\)</b> is \(\nabla f \cdot u\): biggest along the gradient, zero along a contour, most negative against it.</li>
+    <li><b>Shape rule:</b> \(\nabla_W L\) has \(W\)'s shape, and for a linear layer it is the outer product \(g\,x^\top\).</li>
+    <li><b>The Jacobian</b> is the local matrix of any smooth map; its determinant is the local area scale.</li>
+    <li><b>Backprop = vector-Jacobian products</b>, left to right from the loss: one backward pass for any number of parameters.</li>
+  </ul>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Before: <a href="./c1-derivatives.html">Calculus 1: derivatives</a> · Next: <a href="./c3-taylor-and-curvature.html">Calculus 3: Taylor series and curvature</a></p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { C, scene, arrow, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 1. the landscape f = x² + xy + 2y² on [−3, 3] × [−1.5, 1.5], painted once
+const f = (x, y) => x * x + x * y + 2 * y * y, gf = (x, y) => [2 * x + y, x + 4 * y];
+const cv = $("land"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+const X = (x) => ((x + 3) / 6) * W, Y = (y) => H - ((y + 1.5) / 3) * H, toX = (px) => (px / W) * 6 - 3, toY = (py) => ((H - py) / H) * 3 - 1.5;
+const heat = document.createElement("canvas"); heat.width = W; heat.height = H;
+{
+  const hg = heat.getContext("2d"), img = hg.createImageData(W, H);
+  for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+    const v = f(toX(px), toY(py)), t = Math.min(1, Math.sqrt(v / 18)), band = Math.floor(v) % 2 ? 0.82 : 1, k = 4 * (py * W + px);
+    img.data[k] = (20 + 200 * t) * band; img.data[k + 1] = (30 + 80 * t) * band; img.data[k + 2] = (50 + 60 * (1 - t)) * band; img.data[k + 3] = 255;
+  }
+  hg.putImageData(img, 0, 0);
+}
+const pt = [1, 0.5];
+let dragging = false, told = false;
+const pos = (e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
+const moveTo = (e) => { const [px, py] = pos(e); pt[0] = Math.max(-3, Math.min(3, Math.round(toX(px) * 4) / 4)); pt[1] = Math.max(-1.5, Math.min(1.5, Math.round(toY(py) * 4) / 4)); r1(); };
+cv.addEventListener("pointerdown", (e) => { dragging = true; cv.setPointerCapture(e.pointerId); moveTo(e); });
+cv.addEventListener("pointermove", (e) => dragging && moveTo(e));
+cv.addEventListener("pointerup", () => (dragging = false));
+function r1() {
+  const [x, y] = pt, gr = gf(x, y), n = Math.hypot(...gr), th = (+$("th").value * Math.PI) / 180, u = [Math.cos(th), Math.sin(th)], du = gr[0] * u[0] + gr[1] * u[1];
+  g.drawImage(heat, 0, 0);
+  const P = { g, toPx: ([a, b]) => [X(a), Y(b)] };
+  if (n > 1e-9) {
+    const s = Math.min(1.2, 0.25 * n) / n, c = [-gr[1] / n, gr[0] / n];
+    g.setLineDash([8, 6]); arrow(P, [x - 0.8 * c[0], y - 0.8 * c[1]], [x + 0.8 * c[0], y + 0.8 * c[1]], C.green, 3); g.setLineDash([]);
+    arrow(P, [x, y], [x + s * gr[0], y + s * gr[1]], C.yellow, 4);
+  }
+  arrow(P, [x, y], [x + 0.7 * u[0], y + 0.7 * u[1]], C.blue, 4);
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(x), Y(y), 9, 0, 7); g.fill();
+  $("thV").textContent = `${$("th").value}°`;
+  $("r1").textContent = `(x, y) = (${x}, ${y}) · f = ${f(x, y).toFixed(3)} · ∂f/∂x = ${gr[0].toFixed(2)} · ∂f/∂y = ${gr[1].toFixed(2)} · |∇f| = ${n.toFixed(3)} · slope along u: ∇f·u = ${du.toFixed(3)}`;
+  if (n > 0.5 && Math.abs(du) < 0.02 && !told) { told = true; say("Zero slope: you're walking along the contour, at right angles to the gradient.", "happy"); }
+}
+$("th").oninput = r1; r1();
+
+// 3. the Jacobian of F(x, y) = (x + 0.4 sin 1.5y, y + 0.4 sin 1.5x)
+const F = ([x, y]) => [x + 0.4 * Math.sin(1.5 * y), y + 0.4 * Math.sin(1.5 * x)];
+const J = ([x, y]) => [[1, 0.6 * Math.cos(1.5 * y)], [0.6 * Math.cos(1.5 * x), 1]];
+const sq = { p: [0.5, -0.5], color: C.blue };
+const shoelace = (pts) => Math.abs(pts.reduce((s, [x, y], i) => { const [u, v] = pts[(i + 1) % pts.length]; return s + x * v - u * y; }, 0)) / 2;
+const square = (p, s, n = 40) => { const c = [[0, 0], [s, 0], [s, s], [0, s]], out = [];
+  for (let k = 0; k < 4; k++) for (let i = 0; i < n; i++) { const [a, b] = [c[k], c[(k + 1) % 4]], t = i / n; out.push([p[0] + a[0] + (b[0] - a[0]) * t, p[1] + a[1] + (b[1] - a[1]) * t]); }
+  return out; };
+const poly = ({ g, toPx }, pts, stroke, fill, dash = []) => { g.setLineDash(dash); g.beginPath(); pts.forEach((p, i) => { const [x, y] = toPx(p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); if (fill) { g.fillStyle = fill; g.fill(); } g.strokeStyle = stroke; g.lineWidth = 2.5; g.stroke(); g.setLineDash([]); };
+const render = scene("jac", (s) => {
+  const { g, toPx } = s, side = +$("side").value;
+  g.strokeStyle = C.grid; g.lineWidth = 1.5;
+  for (let k = -12; k <= 12; k++) for (const vert of [true, false]) {
+    g.beginPath();
+    for (let t = 0; t <= 80; t++) { const u = -6 + (12 * t) / 80, [x, y] = toPx(F(vert ? [k / 2, u] : [u, k / 2])); t ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  }
+  const p = sq.p, Fp = F(p), j = J(p), raw = square(p, side);
+  poly(s, raw, C.blue, null, [6, 5]);
+  poly(s, raw.map(F), C.yellow, C.fill);
+  poly(s, raw.map(([x, y]) => [Fp[0] + j[0][0] * (x - p[0]) + j[0][1] * (y - p[1]), Fp[1] + j[1][0] * (x - p[0]) + j[1][1] * (y - p[1])]), C.red);
+}, () => [sq], () => {
+  const side = +$("side").value, p = sq.p, j = J(p), det = j[0][0] * j[1][1] - j[0][1] * j[1][0], area = shoelace(square(p, side).map(F));
+  $("sideV").textContent = side.toFixed(2);
+  $("r3").textContent = `at (${p[0]}, ${p[1]}): J = [[1, ${j[0][1].toFixed(3)}], [${j[1][0].toFixed(3)}, 1]] · det J = ${det.toFixed(4)} · patch area / square area = ${(area / side ** 2).toFixed(4)}`;
+}, { unit: 80 });
+$("side").oninput = render;
+
+window.blipContext = () => ({ page: "AI from scratch, calculus 2: partial derivatives, gradient and directional derivative, gradients of dot products/MSE/weight matrices, the Jacobian and its determinant, backprop as vector-Jacobian products (reverse mode)", readouts: [$("r1").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>

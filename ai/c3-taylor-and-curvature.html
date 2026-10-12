@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taylor Series and Curvature for Machine Learning</title>
+  <meta name="description" content="AI from scratch, calculus 3: Taylor polynomials you can grow term by term, why gradient descent works and when the learning rate blows it up (eta below 2/k), the Hessian and the condition number behind zigzagging training, Newton's method, and saddle points in high dimensions." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 3 · Foundations</p>
+  <h1>Taylor series and curvature</h1>
+  <p class="lede">The derivative says which way is downhill. It doesn't say how far you can go before downhill turns into uphill. That's the second derivative's job: curvature. This lesson builds functions out of polynomials, uses that to explain exactly when gradient descent works and when a learning rate makes it explode, and shows why stretched valleys make training zigzag and why the obvious fix, Newton's method, is out of reach for neural networks.</p>
+
+  <h2>1. Any smooth function is a polynomial, up close</h2>
+  <p>Calculus 1 replaced a curve by its tangent line near a point \(c\). Why stop at a line? Match the value, the slope, the curvature, and so on, one derivative per term:</p>
+  <p class="formula">\[ f(x) \approx f(c) + f'(c)(x - c) + \frac{f''(c)}{2!}(x - c)^2 + \frac{f'''(c)}{3!}(x - c)^3 + \dots \]</p>
+  <canvas id="tay" width="800" height="400" aria-label="A function and its Taylor polynomial around a center point"></canvas>
+  <div class="row">
+    <label>f(x) = <select id="tf"><option value="exp">eˣ</option><option value="sin">sin x</option><option value="ln">ln(1 + x)</option></select></label>
+    <label>center c <input type="range" id="tc" min="-2" max="2" step="0.1" value="0"> <b id="tcV" class="math"></b></label>
+    <label>order <input type="range" id="to" min="0" max="8" step="1" value="2"> <b id="toV" class="math"></b></label>
+  </div>
+  <p class="legend"><i style="background:#58c4dd"></i>f <i style="background:#f4d35e"></i>its Taylor polynomial</p>
+  <p class="readout" id="r1"></p>
+  <p>Order 0 is a flat line, order 1 the tangent, order 2 a parabola that also bends the right way. Each new term hugs the curve over a wider stretch. For \(e^x\) and \(\sin x\) adding terms eventually works everywhere; for \(\ln(1+x)\) around 0 it only helps for \(x\) between −1 and 1, and beyond that more terms make it <i>worse</i>. Try it.</p>
+  <div class="q" data-num="1.105" data-tol="0.0006">
+    <p>Using the order-2 polynomial of \(e^x\) at \(c = 0\), that is \(1 + x + x^2/2\), estimate \(e^{0.1}\).</p>
+    <div class="why">\(1 + 0.1 + 0.005 = 1.105\). The true value is 1.10517: the next term, \(0.1^3/6 \approx 0.00017\), is all that's missing. Near the center, each term is much smaller than the last.</div>
+  </div>
+  <p>ML lives almost entirely on the first two orders. The loss near the current weights is a slope plus a curvature: \(L(w + \Delta) \approx L(w) + L'(w)\,\Delta + \tfrac12 L''(w)\,\Delta^2\). The next sections are this one line put to work.</p>
+
+  <h2>2. Why gradient descent works, and when it blows up</h2>
+  <p>Gradient descent steps \(\Delta = -\eta L'\). Put that into the second-order picture:</p>
+  <p class="formula">\[ L(w - \eta L') \approx L - \eta L'^2 + \tfrac12 L'' \eta^2 L'^2 = L - \eta L'^2 \left(1 - \tfrac12 \eta L''\right) \]</p>
+  <p>For small \(\eta\) the loss drops: that's the guarantee. But the bracket turns negative once \(\eta > 2/L''\): the step overshoots so far that the far side of the valley is higher than where you started. The cleanest case is the parabola \(L = \tfrac12 k w^2\), with slope \(kw\) and curvature \(k\) everywhere. One step does \(w \leftarrow w - \eta k w = (1 - \eta k)\,w\). Each step multiplies the distance to the bottom by \(1 - \eta k\):</p>
+  <canvas id="gd" width="800" height="400" aria-label="Gradient descent steps bouncing on a parabola"></canvas>
+  <div class="row">
+    <label>curvature k <input type="range" id="gk" min="0.5" max="4" step="0.1" value="2"> <b id="gkV" class="math"></b></label>
+    <label>learning rate η <input type="range" id="ge" min="0.05" max="1.2" step="0.01" value="0.3"> <b id="geV" class="math"></b></label>
+    <label>steps <input type="range" id="gs" min="0" max="20" step="1" value="8"> <b id="gsV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r2"></p>
+  <p>Below \(\eta = 1/k\) the ball creeps down one side. At exactly \(1/k\) it lands on the bottom in one step. Between \(1/k\) and \(2/k\) it overshoots and bounces, but each bounce is smaller. Past \(2/k\) every bounce is bigger: the loss goes to infinity, the "loss is NaN" you'll see in real training. A real network has different curvatures in different directions, and the <b>steepest</b> one sets the limit for all of them.</p>
+  <div class="q" data-num="0.5" data-tol="0.001">
+    <p>The curvature is \(k = 4\). Below what learning rate does gradient descent converge?</p>
+    <div class="why">\(|1 - 4\eta| < 1\) means \(0 < \eta < 0.5\), that is \(2/k\). Set k = 4 above and slide η across 0.5.</div>
+  </div>
+
+  <h2>3. Stretched valleys: the Hessian and the condition number</h2>
+  <p>With many weights, the curvature becomes a matrix of second partials, the <b>Hessian</b> \(H_{ij} = \partial^2 L / \partial w_i \partial w_j\) (it's the Jacobian of the gradient, from Calculus 2). Take the simplest valley, \(L = \tfrac12(b x^2 + a y^2)\): the Hessian is \(\begin{pmatrix} b & 0 \\ 0 & a \end{pmatrix}\), gentle along the valley (\(b = 1\), in \(x\)) and steep across it (\(a\), in \(y\)). The ratio \(\kappa = a/b\), the largest curvature over the smallest, is the <b>condition number</b>.</p>
+  <canvas id="hess" width="800" height="400" aria-label="Gradient descent zigzagging down a stretched elliptical valley"></canvas>
+  <div class="row">
+    <label>steepness a <input type="range" id="ha" min="1" max="20" step="0.5" value="10"> <b id="haV" class="math"></b></label>
+    <label>η <input type="range" id="he" min="0.01" max="1" step="0.005" value="0.18"> <b id="heV" class="math"></b></label>
+    <label><input type="checkbox" id="hn"> Newton's step</label>
+  </div>
+  <p class="legend"><i style="background:#f4d35e"></i>gradient descent <i style="background:#fc6255"></i>Newton</p>
+  <p class="readout" id="r3"></p>
+  <p>Section 2's rule now applies per direction: η must stay under \(2/a\) for the steep direction, so the gentle direction shrinks by only \(1 - \eta b\) per step, under \(1 - 2/\kappa\). The steps needed grow in proportion to \(\kappa\). Gradient descent zigzags across the valley while barely moving along it. Real networks have condition numbers in the thousands and up, which is why plain gradient descent is slow and why optimizers like momentum and Adam exist (Part 3).</p>
+  <p><b>Newton's method</b> fixes it outright: step by \(-H^{-1}\nabla L\) instead of \(-\eta \nabla L\). Dividing by the curvature makes every direction equally easy; on a quadratic it lands on the minimum in one step, whatever \(\kappa\) is. Tick the box.</p>
+  <div class="q" data-num="1e18" data-show="10¹⁸">
+    <p>So why don't we train networks with Newton's method? A model has \(10^9\) parameters. How many entries does its Hessian have?</p>
+    <div class="why">\(10^9 \times 10^9 = 10^{18}\): eight exabytes in 64-bit floats, before you even try to invert it (about \(n^3 = 10^{27}\) operations). Optimizers settle for cheap hints of curvature instead, like Adam's per-weight running average of squared gradients.</div>
+  </div>
+  <p>Away from a toy, Newton's method shows its real strength: near a minimum, the number of correct digits roughly <b>doubles</b> each step. Here it is against gradient descent on \(f(x) = e^x - 2x\), whose minimum is at \(x = \ln 2\) (where \(f' = e^x - 2 = 0\)):</p>
+  <div class="code" data-title="Run it: gradient descent vs Newton"><textarea>
+const d1 = (x) => Math.exp(x) - 2; // f′
+const d2 = (x) => Math.exp(x);     // f″, the curvature
+const best = Math.LN2;
+let gd = 0, nt = 0;
+const rows = [["step", "GD error", "Newton error"]];
+for (let step = 1; step <= 8; step++) {
+  gd -= 0.3 * d1(gd);        // a fixed step size
+  nt -= d1(nt) / d2(nt);     // divide by the curvature
+  rows.push([step, Math.abs(gd - best).toExponential(2), Math.abs(nt - best).toExponential(2)]);
+}
+table(rows);
+</textarea></div>
+  <p>Gradient descent's error shrinks by a fixed factor each step. Newton's error is roughly squared each step: 0.04, 0.0009, \(4 \times 10^{-7}\), \(8 \times 10^{-14}\), then exact to the last digit.</p>
+
+  <h2>4. Minimum, maximum or saddle</h2>
+  <p>Where the gradient is zero, the Hessian's <b>eigenvalues</b> (the curvatures along its principal directions, chapter 1's "stretch factors") decide what you're standing on:</p>
+  <table class="rules">
+    <tr><th>eigenvalues</th><th>point</th><th>picture</th></tr>
+    <tr><td>all positive</td><td>minimum</td><td>a bowl: up in every direction</td></tr>
+    <tr><td>all negative</td><td>maximum</td><td>a hilltop</td></tr>
+    <tr><td>mixed signs</td><td>saddle</td><td>a mountain pass: up along the ridge, down across it</td></tr>
+  </table>
+  <div class="q" data-answer="c">
+    <p>At a point where the gradient is zero, the Hessian has eigenvalues 3 and −2. What is it?</p>
+    <ul><li data-k="a" data-says="A minimum needs every curvature positive.">A minimum</li><li data-k="b" data-says="A maximum needs every curvature negative.">A maximum</li><li data-k="c">A saddle</li></ul>
+    <div class="why">Curving up one way (3) and down the other (−2) is a saddle, like \(1.5x^2 - y^2\).</div>
+  </div>
+  <p>In a million dimensions, a minimum needs a million curvatures to all come out positive. If signs were coin flips, that's \(2^{-1{,}000{,}000}\). So almost every flat spot a big network meets is a <b>saddle</b>, not a bad local minimum, and gradient noise is usually enough to slide off it. Random symmetric matrices show the trend:</p>
+  <div class="code" data-title="Run it: how rare are minima in high dimensions?"><textarea>
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rand = mulberry32(3), gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+// A matrix has only positive eigenvalues exactly when its Cholesky factorization succeeds.
+const allPositive = (A) => {
+  const n = A.length, L = A.map(() => Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
+    let s = A[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+    if (i === j) { if (s <= 0) return false; L[i][i] = Math.sqrt(s); } else L[i][j] = s / L[j][j];
+  }
+  return true;
+};
+const rows = [["dimension", "share of random Hessians that are minima"]];
+for (const n of [1, 2, 3, 4, 5, 6, 8]) {
+  let hits = 0;
+  for (let trial = 0; trial < 20000; trial++) {
+    const A = Array.from({ length: n }, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) A[i][j] = A[j][i] = gauss(); // symmetric, like every Hessian
+    if (allPositive(A)) hits++;
+  }
+  rows.push([n, hits / 20000]);
+}
+table(rows);
+</textarea></div>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li><b>Taylor:</b> near a point, a smooth function is its value + slope × Δ + ½ curvature × Δ² + …; ML mostly uses the first two orders.</li>
+    <li><b>Learning rate limit:</b> gradient descent is stable only for \(\eta &lt; 2/\lambda_{\max}\), where \(\lambda_{\max}\) is the steepest curvature. Past it, the loss explodes.</li>
+    <li><b>Condition number</b> \(\kappa = \lambda_{\max}/\lambda_{\min}\): the bigger it is, the more gradient descent zigzags, and the steps needed grow like \(\kappa\).</li>
+    <li><b>Newton</b> divides by curvature and converges fast, but a Hessian with \(n^2\) entries is out of reach for big models; practical optimizers approximate it.</li>
+    <li><b>Saddles, not local minima,</b> are the typical flat spots in high dimensions.</li>
+  </ul>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Before: <a href="./c2-many-variables.html">Calculus 2: gradients and Jacobians</a> · Next: <a href="./c4-integrals.html">Calculus 4: integrals, densities and expectations</a></p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 1. Taylor polynomials: k-th derivative at c for each function
+const fact = (k) => (k < 2 ? 1 : k * fact(k - 1));
+const TF = {
+  exp: { f: Math.exp, d: (k, c) => Math.exp(c), x: [-3, 3], y: [-1, 8], c: [-2, 2] },
+  sin: { f: Math.sin, d: (k, c) => Math.sin(c + (k * Math.PI) / 2), x: [-7, 7], y: [-2.5, 2.5], c: [-3, 3] },
+  ln: { f: (x) => (x > -1 ? Math.log1p(x) : NaN), d: (k, c) => (k ? ((-1) ** (k - 1) * fact(k - 1)) / (1 + c) ** k : Math.log1p(c)), x: [-1.5, 4], y: [-3, 2.5], c: [-0.5, 2] },
+};
+$("tf").oninput = () => { const F = TF[$("tf").value]; $("tc").min = F.c[0]; $("tc").max = F.c[1]; $("tc").value = 0; r1(); };
+let wowed = false;
+function r1() {
+  const F = TF[$("tf").value], c = +$("tc").value, n = +$("to").value, coef = Array.from({ length: n + 1 }, (_, k) => F.d(k, c) / fact(k));
+  const T = (x) => coef.reduce((s, a, k) => s + a * (x - c) ** k, 0);
+  const P = graph("tay", F.x, F.y, { step: [1, 1] });
+  P.curve(F.f, C.blue, 3); P.curve(T, C.yellow, 3); P.dot(c, F.f(c), C.yellow);
+  $("tcV").textContent = c.toFixed(1); $("toV").textContent = n;
+  const err = (x) => Math.abs(F.f(x) - T(x));
+  $("r1").textContent = `error at c + 0.5: ${err(c + 0.5).toExponential(2)} · at c + 1: ${err(c + 1).toExponential(2)} · at c + 2: ${err(c + 2).toExponential(2)}`;
+  if ($("tf").value === "ln" && n >= 6 && c + 2 > 1.2 && err(c + 2) > 1 && !wowed) { wowed = true; say("More terms, worse fit! ln(1 + x)'s series only works within distance 1 + c of the center.", "thinking"); }
+}
+for (const id of ["tc", "to"]) $(id).oninput = r1;
+r1();
+
+// 2. gradient descent on L = ½ k w²
+function r2() {
+  const k = +$("gk").value, eta = +$("ge").value, n = +$("gs").value, L = (w) => 0.5 * k * w * w, P = graph("gd", [-3, 3], [-0.5, 8.5], { step: [1, 1] });
+  P.curve(L, C.blue, 3);
+  let w = 2.5;
+  for (let i = 0; i < n; i++) { const nw = (1 - eta * k) * w; P.seg(w, L(w), nw, L(nw), C.yellow, 2); P.dot(w, L(w), C.yellow, 4); w = nw; }
+  P.dot(w, L(w), C.red, 7);
+  const r = 1 - eta * k, verdict = Math.abs(r) >= 1 ? "diverges: every bounce is bigger" : r < 0 ? "bounces but converges" : r === 0 ? "lands in one step" : "creeps down one side";
+  $("gkV").textContent = k.toFixed(1); $("geV").textContent = eta.toFixed(2); $("gsV").textContent = n;
+  $("r2").textContent = `factor per step 1 − ηk = ${r.toFixed(2)} · limit 2/k = ${(2 / k).toFixed(3)} · w after ${n} steps = ${w.toPrecision(3)} · ${verdict}`;
+}
+for (const id of ["gk", "ge", "gs"]) $(id).oninput = r2;
+r2();
+
+// 3. the stretched valley ½(x² + a y²): gentle along x, steep across y
+function r3() {
+  const a = +$("ha").value, b = 1, eta = +$("he").value, P = graph("hess", [-4, 4], [-2, 2], { step: [1, 1] }), start = [-3.5, 1.5];
+  for (let lv = 1; lv <= 12; lv++) {
+    const c = 0.12 * lv * lv; P.g.strokeStyle = C.axis; P.g.lineWidth = 1.5; P.g.beginPath();
+    for (let t = 0; t <= 100; t++) { const th = (t / 100) * 2 * Math.PI, x = Math.sqrt((2 * c) / b) * Math.cos(th), y = Math.sqrt((2 * c) / a) * Math.sin(th); t ? P.g.lineTo(P.X(x), P.Y(y)) : P.g.moveTo(P.X(x), P.Y(y)); }
+    P.g.stroke();
+  }
+  let p = [...start], steps = 0;
+  for (; steps < 2000 && Math.hypot(...p) >= 0.01 && Math.hypot(...p) < 1e6; steps++) {
+    const q = [p[0] * (1 - eta * b), p[1] * (1 - eta * a)];
+    if (steps < 80) P.seg(p[0], p[1], q[0], q[1], C.yellow, 2);
+    p = q;
+  }
+  if ($("hn").checked) { P.seg(start[0], start[1], 0, 0, C.red, 3); P.dot(0, 0, C.red, 6); }
+  P.dot(start[0], start[1], C.yellow);
+  $("haV").textContent = a; $("heV").textContent = eta.toFixed(3);
+  const ok = eta < 2 / a, need = Math.hypot(...p) < 0.01 ? `${steps} steps` : steps >= 2000 ? "over 2000 steps" : "never (diverged)";
+  $("r3").textContent = `κ = a/b = ${a} · stable needs η < 2/a = ${(2 / a).toFixed(3)} ${ok ? "✓" : "✗"} · gradient descent reaches the bottom (within 0.01) in ${need}` + ($("hn").checked ? " · Newton: 1 step" : "");
+}
+for (const id of ["ha", "he", "hn"]) $(id).oninput = r3;
+r3();
+
+window.blipContext = () => ({ page: "AI from scratch, calculus 3: Taylor polynomials, why gradient descent works and the learning-rate limit 2/k, the Hessian, condition number and zigzagging, Newton's method, saddle points", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>

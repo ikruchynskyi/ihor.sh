@@ -54,3 +54,31 @@ export function arrow({ g, toPx }, from, to, color, width = 4) {
 export const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(2)).toString();
 export const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
 
+
+/**
+ * A function graph on a canvas: clears it to the stage color and draws a grid (lines every step, labeled) for x in
+ * [x0, x1], y in [y0, y1]. Returns the canvas context and helpers that draw in those coordinates.
+ */
+export function graph(id, [x0, x1], [y0, y1], { step = [1, 1], labels = true } = {}) {
+  const cv = typeof id === "string" ? document.getElementById(id) : id, g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const X = (x) => ((x - x0) / (x1 - x0)) * W, Y = (y) => H - ((y - y0) / (y1 - y0)) * H;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, Menlo, monospace"; g.lineWidth = 1;
+  for (const [axis, lo, hi, s] of [["x", x0, x1, step[0]], ["y", y0, y1, step[1]]]) for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) {
+    const p = axis === "x" ? X(v) : Y(v), zero = Math.abs(v) < 1e-9;
+    g.fillStyle = zero ? C.axis : C.grid; axis === "x" ? g.fillRect(p, 0, zero ? 2 : 1, H) : g.fillRect(0, p, W, zero ? 2 : 1);
+    if (labels && !zero) { g.fillStyle = "#8f98a8"; axis === "x" ? g.fillText(+v.toFixed(3), p + 3, H - 6) : g.fillText(+v.toFixed(3), 4, p - 3); }
+  }
+  const curve = (f, color, width = 3, dash = [], from = x0, to = x1) => {
+    g.setLineDash(dash); g.strokeStyle = color; g.lineWidth = width; g.beginPath(); let pen = false;
+    for (let i = 0; i <= 600; i++) { const x = from + ((to - from) * i) / 600, y = f(x);
+      if (!Number.isFinite(y)) { pen = false; continue; } const py = Math.max(-H, Math.min(2 * H, Y(y)));
+      pen ? g.lineTo(X(x), py) : g.moveTo(X(x), py); pen = true; }
+    g.stroke(); g.setLineDash([]);
+  };
+  const dot = (x, y, color, r = 6) => { g.fillStyle = color; g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.fill(); };
+  const seg = (ax, ay, bx, by, color, width = 2, dash = []) => { g.setLineDash(dash); g.strokeStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(X(ax), Y(ay)); g.lineTo(X(bx), Y(by)); g.stroke(); g.setLineDash([]); };
+  const text = (s, x, y, color = C.text) => { g.fillStyle = color; g.fillText(s, X(x), Y(y)); };
+  return { g, W, H, X, Y, curve, dot, seg, text };
+}
+// erf to about 1e-7 (Abramowitz and Stegun 7.1.26), for the normal distribution's area and GELU
+export const erf = (x) => { const s = Math.sign(x), t = 1 / (1 + 0.3275911 * Math.abs(x)); return s * (1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)); };

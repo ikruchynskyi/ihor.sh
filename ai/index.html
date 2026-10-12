@@ -15,14 +15,35 @@
     ol li.soon { opacity: .55; }
     ol li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
     h2.part { margin: 40px 0 0; font-size: 1.15rem; }
+    ol.calc li::before { content: "Calculus " counter(ch); }
+    .route { padding: 4px 16px; }
+    .route p { margin: 10px 0; }
+    .route b { display: block; font-size: .8rem; color: var(--muted); font-weight: 600; }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow">ihor.sh · AI</p>
   <h1>AI from scratch</h1>
-  <p class="lede">How machine learning actually works, built up from pictures you can drag: first the math (vectors, matrices, gradients, probability), then neural networks you can watch learn, then the ideas behind today's models: convolutions, attention, agents and vision. Every idea comes three ways: a picture you can drag, the math behind it worked out with real numbers, and code you can edit and run right in the page to build it yourself, from a dot product up to an autograd engine and a transformer block. Questions along the way ask you to predict before you're told.</p>
+  <p class="lede">How machine learning actually works, built up from pictures you can drag: first the math (vectors, matrices, derivatives, gradients, integrals, probability), then neural networks you can watch learn, then the ideas behind today's models: convolutions, attention, agents and vision. Every idea comes three ways: a picture you can drag, the math behind it worked out with real numbers, and code you can edit and run right in the page to build it yourself, from a dot product up to an autograd engine and a transformer block. Questions along the way ask you to predict before you're told.</p>
   <p>The road goes from zero to <b>ML engineer</b>: Part 1 is how models learn; Parts 2–5 are what the job adds: data and evaluation, training in practice, building with LLMs, and running models in production. Faded chapters are planned and on their way.</p>
+  <h2 class="part">The route</h2>
+  <p>Chapter numbers are a catalog, not an order. Taken in this order, every lesson only leans on the ones before it:</p>
+  <div class="card route">
+    <p><b>1 · The math of learning</b><a href="./01-matrices-are-moves.html">Matrices</a> → <a href="./02-gradients.html">Gradients</a> → <a href="./c1-derivatives.html">Derivatives</a> → <a href="./c2-many-variables.html">Partials, gradients, Jacobians</a></p>
+    <p><b>2 · A network learns</b><a href="./03-a-neuron.html">A neuron</a> → <a href="./04-backprop.html">Backprop</a> → <a href="./c3-taylor-and-curvature.html">Taylor and curvature</a> → <a href="./05-probability-and-loss.html">Probability and loss</a> → <a href="./c4-integrals.html">Integrals and expectations</a></p>
+    <p><b>3 · Judging a model</b><a href="./11-overfitting.html">Overfitting</a> → <a href="./12-measuring-a-model.html">Measuring a model</a> → <a href="./13-trees-and-boosting.html">Trees and boosting</a></p>
+    <p><b>4 · Seeing and reading</b><a href="./06-convolutions.html">Convolutions</a> → <a href="./09-vision.html">Vision in practice</a> → <a href="./07-attention.html">Attention</a> → <a href="./10-tiny-transformer.html">A tiny transformer</a></p>
+    <p><b>5 · Acting</b><a href="./08-agents.html">Agents</a></p>
+  </div>
+  <h2 class="part">Foundations · Calculus for ML</h2>
+  <p>Chapters 2 and 4 give the intuition; these four lessons give the tools: the rules, many variables, curvature and integrals, each with sliders, questions and code.</p>
+  <ol class="calc">
+    <li class="card"><a href="./c1-derivatives.html"><b>Derivatives: the rules of change</b></a><p>Secants turning into tangents, the seven rules, eˣ and log-probabilities, activation slopes and vanishing gradients, and gradient checking.</p></li>
+    <li class="card"><a href="./c2-many-variables.html"><b>Many inputs: partials, gradients, Jacobians</b></a><p>Slopes on a landscape you drag over, the gradients of MSE and weight matrices, the Jacobian as a local matrix, and backprop as vector-Jacobian products.</p></li>
+    <li class="card"><a href="./c3-taylor-and-curvature.html"><b>Taylor series and curvature</b></a><p>Polynomials that hug a curve, why the learning rate must stay under 2/k, zigzags in stretched valleys, Newton's method, and saddles.</p></li>
+    <li class="card"><a href="./c4-integrals.html"><b>Integrals: adding up the infinitely small</b></a><p>Strips under a curve, the fundamental theorem, densities and the bell curve, and why a minibatch's noise shrinks like 1/√N.</p></li>
+  </ol>
   <h2 class="part">Part 1 · How models learn</h2>
   <ol>
     <li class="card"><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, adding tip to tail, a matrix as a move of the whole plane, the determinant as area, and a network layer as "move, then fold".</p></li>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Integrals for Machine Learning</title>
+  <meta name="description" content="AI from scratch, calculus 4: integrals as sums of thin strips, the fundamental theorem of calculus, probability densities and the normal curve, expectations, and why a training loss is an integral that every minibatch estimates by Monte Carlo with error shrinking like 1/sqrt(N)." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 4 · Foundations</p>
+  <h1>Integrals: adding up the infinitely small</h1>
+  <p class="lede">Derivatives cut things into tiny changes; integrals add tiny pieces back up. In ML that's how probability works for anything continuous (a height, a delay, a pixel value), and it's what a loss really is: an average over every input the model could ever see. You never get to compute that average exactly. You estimate it from a batch, and this lesson shows how good that estimate is and what it costs to make it better.</p>
+
+  <h2>1. Area as a sum of thin strips</h2>
+  <p>To find the area under a curve, slice it into \(n\) strips, treat each as a rectangle, and add them up. The rectangle's height can come from the strip's left edge, its middle, or its right edge. Add strips and all three close in on the same number, the <b>integral</b>:</p>
+  <p class="formula">\[ \int_a^b f(x)\,dx = \lim_{n \to \infty} \sum_{i=1}^{n} f(x_i)\,\Delta x, \qquad \Delta x = \frac{b - a}{n} \]</p>
+  <canvas id="riem" width="800" height="400" aria-label="Rectangles under a curve approximating its area"></canvas>
+  <div class="row">
+    <label>f <select id="rf"><option value="sq">x² on [0, 1]</option><option value="sin">sin x on [0, π]</option></select></label>
+    <label>strips n <input type="range" id="rn" min="1" max="60" step="1" value="5"> <b id="rnV" class="math"></b></label>
+    <label>height from <select id="rm"><option value="0">left edge</option><option value="0.5">middle</option><option value="1">right edge</option></select></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>Left and right edges miss by an amount proportional to \(1/n\); the middle is far better, with errors like \(1/n^2\), the same pattern as forward vs central differences in Calculus 1.</p>
+  <div class="q" data-num="0.3333" data-tol="0.001" data-show="1/3">
+    <p>What is the exact area under \(x^2\) from 0 to 1? (Slide n up and watch where the sums go.)</p>
+    <div class="why">\(\int_0^1 x^2\,dx = \tfrac13\). Section 2 shows how to get it without any strips: an antiderivative of \(x^2\) is \(x^3/3\), and \(1/3 - 0 = 1/3\).</div>
+  </div>
+
+  <h2>2. The fundamental theorem: area grows at the speed of the curve</h2>
+  <p>Let \(A(x)\) be the area under \(f\) from 0 up to \(x\). Push \(x\) a bit further by \(dx\) and the area gains one thin strip of height \(f(x)\), so \(dA = f(x)\,dx\). In other words, the <b>slope of the area function is the curve itself</b>: \(A'(x) = f(x)\). Integration undoes differentiation.</p>
+  <canvas id="ftc" width="800" height="400" aria-label="A curve with the area under it shaded, and the area function with its tangent"></canvas>
+  <div class="row"><label>x <input type="range" id="fx" min="0" max="4" step="0.05" value="1.5"> <b id="fxV" class="math"></b></label></div>
+  <p class="legend"><i style="background:#58c4dd"></i>f(t) = 1 + 0.8 sin 2t <i style="background:#f4d35e"></i>area so far A(x) <i style="background:#83c167"></i>A's tangent</p>
+  <p class="readout" id="r2"></p>
+  <p>So to compute \(\int_a^b f\), find any function \(F\) whose derivative is \(f\) (an <b>antiderivative</b>) and subtract: \(\int_a^b f(x)\,dx = F(b) - F(a)\). Every rule from Calculus 1 read backwards is an integration rule.</p>
+  <details class="deeper"><summary>Antiderivatives worth knowing</summary>
+    <table class="rules">
+      <tr><th>\(f(x)\)</th><th>an antiderivative \(F(x)\)</th></tr>
+      <tr><td>\(x^n\) (\(n \ne -1\))</td><td>\(x^{n+1}/(n+1)\)</td></tr>
+      <tr><td>\(1/x\)</td><td>\(\ln x\)</td></tr>
+      <tr><td>\(e^{x}\), \(e^{kx}\)</td><td>\(e^x\), \(e^{kx}/k\)</td></tr>
+      <tr><td>\(\sin x\), \(\cos x\)</td><td>\(-\cos x\), \(\sin x\)</td></tr>
+      <tr><td>\(e^{-x^2/2}\)</td><td>no formula with ordinary functions: it's \(\sqrt{\pi/2}\,\mathrm{erf}(x/\sqrt2)\), which computers tabulate</td></tr>
+    </table>
+    <p>The last row is why the normal distribution's probabilities come from a special function, used in the next section.</p>
+  </details>
+
+  <h2>3. Densities: probability is area</h2>
+  <p>A continuous random number, say tomorrow's subway delay, can take infinitely many values, so any single exact value has probability 0. What it has instead is a <b>density</b> \(p(x)\): probability per unit of \(x\). The probability of landing in an interval is the area under the density there, and the total area is 1. The most important density is the <b>normal</b> (Gaussian), the bell curve with center \(\mu\) and width \(\sigma\):</p>
+  <p class="formula">\[ p(x) = \frac{1}{\sigma\sqrt{2\pi}}\, e^{-(x - \mu)^2 / 2\sigma^2}, \qquad P(a &lt; X &lt; b) = \int_a^b p(x)\,dx \]</p>
+  <canvas id="norm" width="800" height="400" aria-label="A normal density with a shaded interval"></canvas>
+  <div class="row">
+    <label>μ <input type="range" id="nm" min="-2" max="2" step="0.1" value="0"> <b id="nmV" class="math"></b></label>
+    <label>σ <input type="range" id="ns" min="0.1" max="2" step="0.05" value="1"> <b id="nsV" class="math"></b></label>
+    <label>a <input type="range" id="na" min="-4" max="4" step="0.1" value="-1"> <b id="naV" class="math"></b></label>
+    <label>b <input type="range" id="nb" min="-4" max="4" step="0.1" value="1"> <b id="nbV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-answer="a">
+    <p>Can a density be bigger than 1?</p>
+    <ul><li data-k="a">Yes: only the area has to be at most 1</li><li data-k="b" data-says="Set σ to 0.1 and read the peak.">No: it's a probability, so it can't exceed 1</li></ul>
+    <div class="why">A density is probability <i>per unit</i>. With \(\sigma = 0.1\) the bell's peak is \(1/(0.1\sqrt{2\pi}) \approx 3.99\): tall but narrow, still area 1. This is why a model's "likelihood" for continuous data can be above 1, and its negative log-likelihood negative.</div>
+  </div>
+  <div class="q" data-num="0.683" data-tol="0.002">
+    <p>Set \(a = \mu - \sigma\) and \(b = \mu + \sigma\). What is \(P(|X - \mu| &lt; \sigma)\)?</p>
+    <div class="why">About 0.683, whatever \(\mu\) and \(\sigma\) are: \(\mathrm{erf}(1/\sqrt2)\). Within 2σ it's 0.954, within 3σ 0.997, the "68–95–99.7 rule".</div>
+  </div>
+  <details class="deeper"><summary>Change of variables: where the Jacobian's determinant comes back</summary>
+    <p>If \(X\) has density \(p\) and \(Y = 2X\), \(Y\) is spread over twice the range, so its density must be half as tall to keep area 1: \(p_Y(y) = p(y/2)/2\). In general, for an invertible map \(y = F(x)\) in any number of dimensions, \(p_Y(y) = p_X(x) / |\det J_F(x)|\), the area scale from Calculus 2. Normalizing flows, a family of generative models, are built entirely on this formula: they stack invertible layers whose Jacobian determinants are cheap to compute.</p>
+  </details>
+
+  <h2>4. The loss is an integral; a batch is a guess at it</h2>
+  <p>The average of \(f(X)\) when \(X\) has density \(p\) is the <b>expectation</b>, an integral that weighs each value by how likely it is:</p>
+  <p class="formula">\[ \mathbb{E}[f(X)] = \int f(x)\,p(x)\,dx \]</p>
+  <p>The loss you really care about is one of these: the average error over <i>every</i> input the world could send, \(\mathbb{E}_{x \sim p}[\text{loss}(x)]\). Nobody knows \(p\), so nobody can compute it. What you can do is draw \(N\) examples and average: \(\frac1N \sum \text{loss}(x_i)\). That is a <b>Monte Carlo</b> estimate, and a minibatch's loss and gradient are exactly that. How good is it? Here are estimates of \(\mathbb{E}[X^2] = 1\) for a standard normal \(X\), as samples pile up (the x-axis is logarithmic: each grid line is ten times more samples):</p>
+  <canvas id="mc" width="800" height="400" aria-label="A Monte Carlo estimate converging as samples grow, inside a 1 over root N band"></canvas>
+  <div class="row">
+    <label>N = 10^<input type="range" id="mn" min="0" max="4" step="0.1" value="2"> <b id="mnV" class="math"></b></label>
+    <button type="button" id="mnew">New samples</button>
+  </div>
+  <p class="legend"><i style="background:#f4d35e"></i>running estimate <i style="background:#58c4dd"></i>truth ± one standard error</p>
+  <p class="readout" id="r4"></p>
+  <p>The estimate wanders inside a band that narrows like \(\sigma/\sqrt N\), where \(\sigma\) is the spread of a single sample (here \(\sqrt2\)). That square root is the law of the land for every minibatch: <b>to halve the noise you need four times the data</b>. It's why gradient noise drops slowly as batches grow, and why huge batches give diminishing returns.</p>
+  <div class="q" data-num="4">
+    <p>Your batch gradient is too noisy. How many times bigger must the batch be to cut its noise in half?</p>
+    <div class="why">Noise \(\propto 1/\sqrt N\), so half the noise needs \(\sqrt N\) twice as big: \(N\) four times as big. Ten times less noise costs a hundred times more data.</div>
+  </div>
+  <p>Why sample at all, when section 1's strips are so accurate? In one dimension, strips win easily. But a grid with 10 points per axis needs \(10^d\) points in \(d\) dimensions, and an image has hundreds of thousands of dimensions. The Monte Carlo error is \(\sigma/\sqrt N\) in <i>any</i> number of dimensions:</p>
+  <div class="code" data-title="Run it: strips vs sampling for E[X²]"><textarea>
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rand = mulberry32(5), gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+const p = (x) => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI); // the standard normal density
+const f = (x) => x * x;                                          // E[X²] is exactly 1
+
+// strips: the midpoint rule for ∫ f(x) p(x) dx over [−8, 8] (the tails beyond are negligible)
+const midpoint = (N) => { const dx = 16 / N; let s = 0; for (let i = 0; i < N; i++) { const x = -8 + (i + 0.5) * dx; s += f(x) * p(x) * dx; } return s; };
+// sampling: average f over N draws from p
+const monteCarlo = (N) => { let s = 0; for (let i = 0; i < N; i++) s += f(gauss()); return s / N; };
+
+const rows = [["N", "midpoint error", "Monte Carlo error", "√2/√N"]];
+for (const N of [10, 100, 1000, 10000, 100000]) rows.push([N, Math.abs(midpoint(N) - 1), Math.abs(monteCarlo(N) - 1), Math.SQRT2 / Math.sqrt(N)]);
+table(rows);
+print("A grid with 10 points per axis in 100 dimensions needs 10^100 points; sampling's error doesn't care about dimension.");
+</textarea></div>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li><b>An integral is a sum of thin strips</b>, and the midpoint rule is far more accurate than the edges.</li>
+    <li><b>Fundamental theorem:</b> the area function's slope is the curve, so \(\int_a^b f = F(b) - F(a)\) for any antiderivative \(F\).</li>
+    <li><b>Probability is area under a density</b>; a density can exceed 1, its total area can't. A change of variables divides by \(|\det J|\).</li>
+    <li><b>Expectations are integrals</b>, and the true loss is one. A minibatch is a Monte Carlo estimate with noise \(\propto 1/\sqrt N\): 4× the batch for half the noise.</li>
+  </ul>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Before: <a href="./c3-taylor-and-curvature.html">Calculus 3: Taylor series and curvature</a> · Back to the road: <a href="./05-probability-and-loss.html">Chapter 5: probability and loss</a></p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { C, graph, erf, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const shade = (P, f, a, b, color) => { P.g.fillStyle = color; P.g.beginPath(); P.g.moveTo(P.X(a), P.Y(0)); for (let i = 0; i <= 200; i++) { const x = a + ((b - a) * i) / 200; P.g.lineTo(P.X(x), P.Y(f(x))); } P.g.lineTo(P.X(b), P.Y(0)); P.g.fill(); };
+
+// 1. Riemann sums
+const RF = { sq: { f: (x) => x * x, a: 0, b: 1, exact: 1 / 3, x: [-0.1, 1.1], y: [-0.1, 1.1], step: [0.25, 0.25] }, sin: { f: Math.sin, a: 0, b: Math.PI, exact: 2, x: [-0.2, 3.4], y: [-0.1, 1.2], step: [0.5, 0.25] } };
+let close = false;
+function r1() {
+  const F = RF[$("rf").value], n = +$("rn").value, m = +$("rm").value, dx = (F.b - F.a) / n, P = graph("riem", F.x, F.y, { step: F.step });
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const x0 = F.a + i * dx, h = F.f(x0 + m * dx); sum += h * dx;
+    P.g.fillStyle = C.fill; P.g.fillRect(P.X(x0), P.Y(h), P.X(x0 + dx) - P.X(x0), P.Y(0) - P.Y(h));
+    P.g.strokeStyle = C.yellow; P.g.lineWidth = 1; P.g.strokeRect(P.X(x0), P.Y(h), P.X(x0 + dx) - P.X(x0), P.Y(0) - P.Y(h));
+  }
+  P.curve(F.f, C.blue, 3);
+  $("rnV").textContent = n;
+  $("r1").textContent = `sum of ${n} strips = ${sum.toFixed(5)} · exact = ${F.exact.toFixed(5)} · error = ${Math.abs(sum - F.exact).toExponential(2)}`;
+  if (m === 0.5 && n >= 20 && !close) { close = true; say("Middle heights: the error is already tiny. It shrinks like 1/n².", "happy"); }
+}
+for (const id of ["rf", "rn", "rm"]) $(id).oninput = r1;
+r1();
+
+// 2. the fundamental theorem
+const f2 = (t) => 1 + 0.8 * Math.sin(2 * t), A = (x) => x + 0.4 * (1 - Math.cos(2 * x));
+function r2() {
+  const x = +$("fx").value, P = graph("ftc", [-0.2, 4.2], [-0.3, 5], { step: [0.5, 1] });
+  shade(P, f2, 0, x, "rgba(88,196,221,0.25)");
+  P.curve(f2, C.blue, 3); P.curve(A, C.yellow, 3);
+  P.curve((t) => A(x) + f2(x) * (t - x), C.green, 2, [8, 6], x - 0.8, x + 0.8);
+  P.dot(x, A(x), C.yellow); P.dot(x, f2(x), C.blue);
+  $("fxV").textContent = x.toFixed(2);
+  $("r2").textContent = `area from 0 to ${x.toFixed(2)}: A = ${A(x).toFixed(4)} · slope of A there ≈ ${((A(x + 1e-5) - A(x - 1e-5)) / 2e-5).toFixed(4)} · height of f there = ${f2(x).toFixed(4)}`;
+}
+$("fx").oninput = r2; r2();
+
+// 3. the normal density
+const Phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+function r3() {
+  const mu = +$("nm").value, s = +$("ns").value, lo = Math.min(+$("na").value, +$("nb").value), hi = Math.max(+$("na").value, +$("nb").value);
+  const p = (x) => Math.exp(-((x - mu) ** 2) / (2 * s * s)) / (s * Math.sqrt(2 * Math.PI)), peak = p(mu), top = Math.max(0.6, peak * 1.15);
+  const P = graph("norm", [-4.5, 4.5], [-top * 0.06, top], { step: [1, top > 2 ? 1 : 0.1] });
+  shade(P, p, lo, hi, "rgba(244,211,94,0.35)"); P.curve(p, C.blue, 3);
+  const prob = Phi((hi - mu) / s) - Phi((lo - mu) / s);
+  for (const [id, v] of [["nm", mu], ["ns", s], ["na", +$("na").value], ["nb", +$("nb").value]]) $(id + "V").textContent = v.toFixed(id === "ns" ? 2 : 1);
+  $("r3").textContent = `P(${lo.toFixed(1)} < X < ${hi.toFixed(1)}) = ${prob.toFixed(4)} · peak height ${peak.toFixed(3)} · total area 1`;
+}
+for (const id of ["nm", "ns", "na", "nb"]) $(id).oninput = r3;
+r3();
+
+// 4. Monte Carlo: the running mean of X² for X ~ N(0, 1)
+let run = [];
+const draw = () => { run = []; let s = 0; for (let i = 1; i <= 10000; i++) { const g = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); s += g * g; run.push(s / i); } };
+function r4() {
+  const e = +$("mn").value, N = Math.round(10 ** e), P = graph("mc", [0, 4], [-0.6, 3], { step: [1, 0.5] });
+  P.curve((x) => 1 + Math.SQRT2 / Math.sqrt(10 ** x), C.blue, 2, [6, 5]); P.curve((x) => 1 - Math.SQRT2 / Math.sqrt(10 ** x), C.blue, 2, [6, 5]); P.curve(() => 1, C.blue, 1);
+  P.curve((x) => run[Math.min(9999, Math.round(10 ** x) - 1)], C.yellow, 2);
+  P.seg(e, -0.6, e, 3, C.text, 1, [4, 4]); P.dot(e, run[N - 1], C.yellow);
+  P.text("log₁₀ N →", 3.35, -0.45, "#8f98a8");
+  $("mnV").textContent = `${e.toFixed(1)} = ${N}`;
+  $("r4").textContent = `after ${N} samples: estimate ${run[N - 1].toFixed(4)} · true 1 · typical error √2/√N = ${(Math.SQRT2 / Math.sqrt(N)).toFixed(4)}`;
+}
+$("mn").oninput = r4; $("mnew").onclick = () => { draw(); r4(); };
+draw(); r4();
+
+window.blipContext = () => ({ page: "AI from scratch, calculus 4: Riemann sums and the midpoint rule, the fundamental theorem of calculus, probability densities and the normal distribution, change of variables, expectation, Monte Carlo and minibatch noise 1/sqrt(N)", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent, $("r4").textContent] });
+</script>
+</body>
+</html>

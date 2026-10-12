@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Derivatives for Machine Learning</title>
+  <meta name="description" content="AI from scratch, calculus 1: the derivative as zooming in until a curve is a line, the handful of rules that differentiate anything, why e^x and ln run machine learning, activation functions and vanishing gradients, and derivatives by computer with gradient checking." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; }
+    .legend { font: 14px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 1 · Foundations</p>
+  <h1>Derivatives: the rules of change</h1>
+  <p class="lede">Training a model means asking one question millions of times: if I nudge this number, how much does the error change? That number is a derivative. This lesson builds it from a picture, gives you the handful of rules that differentiate any network, and shows the two places engineers get burned: activations whose slopes vanish, and derivatives computed carelessly by the computer.</p>
+
+  <h2>1. Zoom in until the curve is a line</h2>
+  <p>Pick a point \(a\) on a curve and a second point a distance \(h\) further along. The <b style="color:#fc6255">red line</b> through both has slope "rise over run". Shrink \(h\): the red line turns into the <b style="color:#83c167">green tangent</b>, the line the curve looks like if you zoom in far enough. Its slope is the <b>derivative</b>.</p>
+  <p class="formula">\[ f'(a) = \lim_{h \to 0} \frac{f(a+h) - f(a)}{h} \]</p>
+  <canvas id="sec" width="800" height="400" aria-label="A curve with a secant line and the tangent line at a point"></canvas>
+  <div class="row">
+    <label>f(x) = <select id="fn"><option value="sq">x²</option><option value="cube">x³ − x</option><option value="sin">sin x</option><option value="exp">eˣ</option></select></label>
+    <label>a <input type="range" id="a" min="-2" max="2" step="0.05" value="1"> <b id="aV" class="math"></b></label>
+    <label>h <input type="range" id="h" min="-3" max="0.3" step="0.05" value="0"> <b id="hV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>Notice the gap between the two slopes shrinks in step with \(h\): halve \(h\), halve the gap. For \(x^2\) you can see why: \(\frac{(a+h)^2 - a^2}{h} = \frac{2ah + h^2}{h} = 2a + h\). Let \(h\) go to zero and what's left is \(2a\).</p>
+  <div class="q" data-num="6.1">
+    <p>For \(f(x) = x^2\) at \(a = 3\) with \(h = 0.1\), what is the red line's slope \(\frac{f(a+h) - f(a)}{h}\)?</p>
+    <div class="why">\((3.1^2 - 9)/0.1 = (9.61 - 9)/0.1 = 6.1\), which is \(2a + h\). The true slope at 3 is 6.</div>
+  </div>
+  <p>A derivative is also a <b>sensitivity</b>: near \(a\), \(f(a + \Delta) \approx f(a) + f'(a)\,\Delta\). If the loss has derivative 6 with respect to a weight, nudging that weight up by 0.001 raises the loss by about 0.006. Gradient descent (chapter 2) is just this sentence used backwards.</p>
+
+  <h2>2. Seven rules differentiate everything</h2>
+  <p>Nobody takes limits by hand. Every function a network computes is built from a few pieces, and each piece has a rule:</p>
+  <table class="rules">
+    <tr><th>function</th><th>derivative</th><th>in words</th></tr>
+    <tr><td>\(c\)</td><td>\(0\)</td><td>a constant doesn't change</td></tr>
+    <tr><td>\(x^n\)</td><td>\(n x^{n-1}\)</td><td>power rule (works for \(n = -1\), \(\tfrac12\), any \(n\))</td></tr>
+    <tr><td>\(c\,f + g\)</td><td>\(c\,f' + g'\)</td><td>derivatives add and scale</td></tr>
+    <tr><td>\(f \cdot g\)</td><td>\(f' g + f g'\)</td><td>product rule: each one changes while the other holds</td></tr>
+    <tr><td>\(f(g(x))\)</td><td>\(f'(g(x)) \cdot g'(x)\)</td><td>chain rule: multiply the slopes along the way</td></tr>
+    <tr><td>\(e^x\)</td><td>\(e^x\)</td><td>its own slope (section 3)</td></tr>
+    <tr><td>\(\ln x\)</td><td>\(1/x\)</td><td>the log flattens as it grows</td></tr>
+  </table>
+  <p>Plus \(\sin' = \cos\) and \(\cos' = -\sin\) for waves. Two worked examples: \(\frac{d}{dx}\, x^2 \sin x = 2x \sin x + x^2 \cos x\) (product rule), and the bell curve \(\frac{d}{dx}\, e^{-x^2} = e^{-x^2} \cdot (-2x)\) (chain rule: outside slope times inside slope). The chain rule is the one that matters most: a network is a long chain of functions, and backprop (chapter 4) is the chain rule run from the loss backwards.</p>
+  <div class="q" data-num="10">
+    <p>\(f(x) = 3x^4 - 2x + 7\). What is \(f'(1)\)?</p>
+    <div class="why">\(f'(x) = 12x^3 - 2\), so \(f'(1) = 10\). The 7 disappears: shifting a function up doesn't change its slope.</div>
+  </div>
+  <div class="q" data-num="3">
+    <p>What is the slope of \(e^{3x}\) at \(x = 0\)?</p>
+    <div class="why">Chain rule: \(e^{3x} \cdot 3\), and \(e^0 = 1\), so 3. The inside's slope multiplies everything.</div>
+  </div>
+  <details class="deeper"><summary>Why the product rule looks like that</summary>
+    <p>Picture \(f \cdot g\) as the area of a rectangle with sides \(f\) and \(g\). Nudge \(x\): the sides grow by \(df\) and \(dg\), and the area gains a strip \(g\,df\), a strip \(f\,dg\), and a corner \(df\,dg\). The corner is a small number times a small number, so it vanishes faster than the strips when you divide by the nudge. What remains is \(f'g + fg'\).</p>
+  </details>
+
+  <h2>3. e<sup>x</sup> and ln: the two functions ML is made of</h2>
+  <p>\(e^x\) is the function that grows at a rate equal to its size: its slope everywhere is its own value. That makes it the natural way to turn any score into something positive with a clean derivative, which is exactly what softmax does (chapter 5). Its inverse, \(\ln x\), has slope \(1/x\): steep near zero, flat for large \(x\).</p>
+  <p>Logs are everywhere in ML for two reasons. First, \(\ln(ab) = \ln a + \ln b\): the probability of a whole sentence is a product of a thousand token probabilities, and the log turns it into a sum, which has a far easier derivative. Second, the product doesn't fit in a computer:</p>
+  <div class="code" data-title="Run it: why models work with log-probabilities"><textarea>
+// 400 predictions, each given probability 0.1. The chance of all of them is 0.1^400 = 1e-400.
+let product = 1, logSum = 0;
+for (let i = 0; i < 400; i++) { product *= 0.1; logSum += Math.log(0.1); }
+print("product of the probabilities:", product); // the smallest float64 is about 5e-324, so this underflows to 0
+print("sum of the log-probabilities:", logSum); // about -921, no problem at all
+print("as a power of ten:", logSum / Math.LN10);
+</textarea></div>
+  <p>The loss for a prediction is \(-\ln p\), where \(p\) is the probability the model gave the right answer. Its derivative is \(-1/p\): when the model is confidently wrong (tiny \(p\)), the slope is huge and the correction is strong.</p>
+  <div class="q" data-num="100">
+    <p>The model gave the right answer probability \(p = 0.01\). How many times steeper is \(-\ln p\) there than at \(p = 1\)?</p>
+    <div class="why">The slope's size is \(1/p\): 100 at \(p = 0.01\), 1 at \(p = 1\). Confident mistakes get pushed a hundred times harder.</div>
+  </div>
+
+  <h2>4. Activations and their slopes</h2>
+  <p>Between layers, a network bends its numbers with an activation function. Backprop multiplies by the activation's <b>derivative</b> at every layer, so its shape decides whether learning signals survive the trip. <b style="color:#58c4dd">Blue</b> is the function, <b style="color:#f4d35e">yellow</b> its derivative.</p>
+  <canvas id="act" width="800" height="400" aria-label="An activation function and its derivative"></canvas>
+  <div class="row">
+    <label>activation <select id="af"><option value="sigmoid">sigmoid σ</option><option value="tanh">tanh</option><option value="relu">ReLU</option><option value="softplus">softplus</option><option value="gelu">GELU</option></select></label>
+    <label>x <input type="range" id="ax" min="-5" max="5" step="0.1" value="0"> <b id="axV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r4"></p>
+  <p>The sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) has a neat derivative, \(\sigma'(x) = \sigma(x)\,(1 - \sigma(x))\), and it is never more than 0.25. Stack ten sigmoid layers and the chain rule multiplies ten of those slopes together: the signal reaching the first layer is at most \(0.25^{10}\), about one millionth. That's the <b>vanishing gradient</b> that stalled deep networks for years. ReLU (slope exactly 1 for positive inputs) fixed most of it; its weakness is slope 0 for negative inputs, where a neuron can "die" and never recover. GELU, used in transformers, is a smooth ReLU.</p>
+  <div class="q" data-num="0.25">
+    <p>What is the largest value the sigmoid's derivative ever takes?</p>
+    <div class="why">At \(x = 0\), \(\sigma = 0.5\), so \(\sigma' = 0.5 \times 0.5 = 0.25\). Everywhere else it's smaller.</div>
+  </div>
+  <div class="q" data-num="0.5">
+    <p>Use the chain rule: what is the slope of \(\ln \sigma(x)\) at \(x = 0\)?</p>
+    <div class="why">\(\frac{d}{dx} \ln \sigma(x) = \frac{\sigma'(x)}{\sigma(x)} = 1 - \sigma(x)\), which is 0.5 at 0. That simple "1 minus the probability" is why logistic regression and cross-entropy have such clean gradients (chapter 5's "what you said minus what was true").</div>
+  </div>
+
+  <h2>5. Derivatives by computer, and checking them</h2>
+  <p>A computer can estimate a slope straight from the definition with a small \(h\): the <b>forward difference</b> \(\frac{f(x+h) - f(x)}{h}\), or the more accurate <b>central difference</b> \(\frac{f(x+h) - f(x-h)}{2h}\). Smaller \(h\) should be better. Here is the actual error for \(f = \sin\) at \(x = 1\), on a log scale (each grid line is ten times more):</p>
+  <canvas id="err" width="800" height="400" aria-label="Error of forward and central differences against step size, log-log"></canvas>
+  <div class="row"><label>h = 10^<input type="range" id="eh" min="-16" max="0" step="0.5" value="-4"> <b id="ehV" class="math"></b></label></div>
+  <p class="legend"><i style="background:#fc6255"></i>forward difference <i style="background:#58c4dd"></i>central difference</p>
+  <p class="readout" id="r5"></p>
+  <p>Going right to left, both errors fall as \(h\) shrinks (forward like \(h\), central like \(h^2\)), then turn around and climb. Below about \(h = 10^{-8}\), \(f(x+h)\) and \(f(x)\) agree in almost all of their 16 digits, and subtracting them leaves mostly rounding noise, which is then divided by a tiny \(h\). Floating point puts a floor under how precisely you can measure a slope this way.</p>
+  <div class="q" data-answer="b">
+    <p>Roughly which \(h\) gives the forward difference its smallest error?</p>
+    <ul><li data-k="a" data-says="Look at the left end of the red line: rounding noise divided by a tiny h explodes.">As small as possible, 1e-16</li><li data-k="b">About 1e-8, the square root of float64's precision</li><li data-k="c" data-says="That's where the approximation itself is still poor: the error is about h/2 times the curvature.">About 0.1</li></ul>
+    <div class="why">The approximation error grows like \(h\), the rounding error like \(10^{-16}/h\); they balance near \(h = \sqrt{10^{-16}} = 10^{-8}\). For the central difference the sweet spot is near \(10^{-5}\), with an error around \(10^{-11}\).</div>
+  </div>
+  <p>Why not train with numerical derivatives? They cost one or two extra evaluations of the whole network <i>per parameter</i>: a billion-parameter model would need two billion forward passes for one step. Backprop gets every derivative for about the cost of two or three forward passes. So engineers use numerical derivatives for one job: <b>gradient checking</b>, comparing them against the hand-derived or backprop gradient on a few inputs to catch bugs.</p>
+  <div class="code" data-title="Build it: a gradient check"><textarea>
+const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+const dSigmoid = (x) => sigmoid(x) * (1 - sigmoid(x)); // the rule from section 4
+const central = (f, x, h = 1e-5) => (f(x + h) - f(x - h)) / (2 * h);
+// relative error: below about 1e-7 means the derivative is right
+const relErr = (a, b) => Math.abs(a - b) / Math.max(1e-12, Math.abs(a) + Math.abs(b));
+
+const rows = [];
+for (const x of [-4, -1, 0, 0.5, 3]) {
+  const analytic = dSigmoid(x), numeric = central(sigmoid, x);
+  rows.push({ x, analytic, numeric, "relative error": relErr(analytic, numeric) });
+}
+table(rows);
+
+// A typical bug: a sign slip. The check catches it at once.
+const buggy = (x) => sigmoid(x) * (1 + sigmoid(x));
+print("buggy derivative at 0.5, relative error:", relErr(buggy(0.5), central(sigmoid, 0.5)));
+</textarea></div>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li><b>A derivative is a sensitivity</b>: change in output per change in input, near this point. Training is reading these sensitivities and stepping against them.</li>
+    <li><b>The chain rule multiplies slopes</b> along a chain of functions. Deep networks are long chains, so slopes that are always small (sigmoid) or zero (dead ReLU) starve the early layers.</li>
+    <li><b>Work in logs</b>: log-probabilities add instead of multiplying, don't underflow, and give gradients like "1 minus the probability".</li>
+    <li><b>Check gradients numerically</b> with central differences and \(h \approx 10^{-5}\) when you write a derivative by hand; trust backprop for training.</li>
+  </ul>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Next: <a href="./c2-many-variables.html">Calculus 2: many inputs, gradients and Jacobians</a></p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { C, graph, erf, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 1. secant and tangent
+const FN = {
+  sq: { f: (x) => x * x, d: (x) => 2 * x, y: [-1.5, 6.5] },
+  cube: { f: (x) => x ** 3 - x, d: (x) => 3 * x * x - 1, y: [-4, 4] },
+  sin: { f: Math.sin, d: Math.cos, y: [-1.6, 1.6] },
+  exp: { f: Math.exp, d: Math.exp, y: [-1, 8] },
+};
+let hinted = false;
+function r1() {
+  const F = FN[$("fn").value], a = +$("a").value, h = 10 ** +$("h").value, fa = F.f(a), fb = F.f(a + h);
+  const sec = (fb - fa) / h, tan = F.d(a), P = graph("sec", [-2.5, 2.5], F.y, { step: [0.5, F.y[1] > 5 ? 1 : 0.5] });
+  P.curve(F.f, C.blue);
+  P.curve((x) => fa + tan * (x - a), C.green, 2, [8, 6]);
+  P.curve((x) => fa + sec * (x - a), C.red, 2);
+  P.dot(a, fa, C.yellow); P.dot(a + h, fb, C.red, 5);
+  $("aV").textContent = a.toFixed(2); $("hV").textContent = h < 0.01 ? h.toExponential(1) : h.toFixed(3);
+  $("r1").textContent = `secant slope (f(a+h) − f(a))/h = ${sec.toFixed(5)} · tangent slope f′(a) = ${tan.toFixed(5)} · gap ${Math.abs(sec - tan).toExponential(2)}`;
+  if (h < 0.002 && !hinted) { hinted = true; say("The red and green lines are now the same line. That's the derivative.", "happy"); }
+}
+for (const id of ["fn", "a", "h"]) $(id).oninput = r1;
+r1();
+
+// 4. activations and their derivatives
+const sig = (x) => 1 / (1 + Math.exp(-x)), Phi = (x) => 0.5 * (1 + erf(x / Math.SQRT2)), phi = (x) => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
+const ACT = {
+  sigmoid: [sig, (x) => sig(x) * (1 - sig(x))],
+  tanh: [Math.tanh, (x) => 1 - Math.tanh(x) ** 2],
+  relu: [(x) => Math.max(0, x), (x) => (x > 0 ? 1 : 0)],
+  softplus: [(x) => Math.max(x, 0) + Math.log1p(Math.exp(-Math.abs(x))), sig],
+  gelu: [(x) => x * Phi(x), (x) => Phi(x) + x * phi(x)],
+};
+function r4() {
+  const [f, d] = ACT[$("af").value], x = +$("ax").value, P = graph("act", [-5, 5], [-1.5, 3], { step: [1, 0.5] });
+  P.curve(d, C.yellow, 3); P.curve(f, C.blue, 3); P.dot(x, f(x), C.blue); P.dot(x, d(x), C.yellow);
+  let peak = 0; for (let t = -5; t <= 5; t += 0.01) peak = Math.max(peak, d(t));
+  $("axV").textContent = x.toFixed(1);
+  $("r4").textContent = `f(${x.toFixed(1)}) = ${f(x).toFixed(4)} · f′(${x.toFixed(1)}) = ${d(x).toFixed(4)} · biggest slope anywhere ≈ ${peak.toFixed(3)} · ten layers of it: at most ${peak ** 10 < 0.01 ? (peak ** 10).toExponential(1) : (peak ** 10).toFixed(2)}`;
+}
+$("af").oninput = r4; $("ax").oninput = r4; r4();
+
+// 5. forward and central difference error vs h, log-log
+const lg = (v) => Math.log10(Math.max(1e-17, Math.abs(v))), exact = Math.cos(1);
+const fwd = (h) => (Math.sin(1 + h) - Math.sin(1)) / h - exact, ctr = (h) => (Math.sin(1 + h) - Math.sin(1 - h)) / (2 * h) - exact;
+function r5() {
+  const e = +$("eh").value, h = 10 ** e, P = graph("err", [-16, 0], [-14, 0], { step: [2, 2] });
+  P.curve((x) => lg(fwd(10 ** x)), C.red, 2); P.curve((x) => lg(ctr(10 ** x)), C.blue, 2);
+  P.seg(e, -14, e, 0, C.yellow, 1, [4, 4]);
+  P.text("log₁₀ h →", -2.6, -13.4, "#8f98a8"); P.text("log₁₀ error", -15.6, -0.6, "#8f98a8");
+  $("ehV").textContent = e;
+  $("r5").textContent = `h = 1e${e}: forward error ${Math.abs(fwd(h)).toExponential(1)} · central error ${Math.abs(ctr(h)).toExponential(1)}`;
+}
+$("eh").oninput = r5; r5();
+
+window.blipContext = () => ({ page: "AI from scratch, calculus 1: derivatives, rules, e^x and ln, activation derivatives and vanishing gradients, numerical differentiation and gradient checking", readouts: [$("r1").textContent, $("r4").textContent, $("r5").textContent] });
+</script>
+</body>
+</html>
