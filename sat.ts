@@ -40,7 +40,7 @@ export function sgp4(el: Tle, tsince: number) {
   const omgdot = -0.5 * temp1 * (1 - 5 * th2) + 0.0625 * temp2 * (7 - 114 * th2 + 395 * th4) + temp3 * (3 - 36 * th2 + 49 * th4);
   const xnodot = -temp1 * cosi + (0.5 * temp2 * (4 - 19 * th2) + 2 * temp3 * (3 - 7 * th2)) * cosi;
   const omgcof = bstar * c3 * Math.cos(w0), xmcof = e0 > 1e-4 ? -(2 / 3) * coef * bstar / eeta : 0, xnodcf = 3.5 * betao2 * (-temp1 * cosi) * c1, t2cof = 1.5 * c1;
-  const xlcof = (0.125 * A30 * sini * (3 + 5 * cosi)) / (1 + cosi), aycof = 0.25 * A30 * sini, delmo = (1 + eta * Math.cos(m0)) ** 3, sinmo = Math.sin(m0), x7thm1 = 7 * th2 - 1;
+  const xlcof = (0.125 * (A30 / CK2) * sini * (3 + 5 * cosi)) / (1 + cosi), aycof = 0.25 * (A30 / CK2) * sini, delmo = (1 + eta * Math.cos(m0)) ** 3, sinmo = Math.sin(m0), x7thm1 = 7 * th2 - 1;
   const simple = perigee < 220; // very low orbits drop the higher drag terms
   const d2 = 4 * aodp * tsi * c1 * c1, temp = (d2 * tsi * c1) / 3, d3 = (17 * aodp + s4) * temp, d4 = 0.5 * temp * aodp * tsi * (221 * aodp + 31 * s4) * c1;
   const t3cof = d2 + 2 * c1 * c1, t4cof = 0.25 * (3 * d3 + c1 * (12 * d2 + 10 * c1 * c1)), t5cof = 0.2 * (3 * d4 + 12 * c1 * d3 + 6 * d2 * d2 + 15 * c1 * c1 * (2 * d2 + c1 * c1));
@@ -116,7 +116,8 @@ export { compass };
 
 /** Passes over a place in the next `hours`, each with rise/peak/set times and whether it's visible to the eye. */
 export function passes(el: Tle, lat: number, lon: number, from = Date.now(), hours = 72, minEl = 10): Pass[] {
-  const s = site(lat, lon), out: Pass[] = [], step = 30_000, end = from + hours * 3600e3;
+  const s = site(lat, lon), out: Pass[] = [], step = 30_000, end = from + hours * 3600e3, asked = from;
+  from -= 30 * 60e3; // start back far enough that a pass already in progress is found from its rise
   const elAt = (t: number) => look(el, t, s).el;
   const edge = (a: number, b: number) => { for (let k = 0; k < 20; k++) { const m = (a + b) / 2; if ((elAt(m) > 0) === (elAt(a) > 0)) a = m; else b = m; } return (a + b) / 2; };
   let prev = elAt(from), t = from;
@@ -133,7 +134,7 @@ export function passes(el: Tle, lat: number, lon: number, from = Date.now(), hou
           const p = L.ecef, along = dot(p, sun), perp = Math.sqrt(Math.max(0, dot(p, p) - along * along)), lit = along > 0 || perp > 6371;
           if (L.el > 10 && lit && sunEl < -6) { visible = true; break; }
         }
-        out.push({ rise, peak, set, maxEl, riseAz: look(el, rise, s).az, peakAz: look(el, peak, s).az, setAz: look(el, set, s).az, visible, magnitudeHint: maxEl > 60 ? "very bright, nearly overhead" : maxEl > 35 ? "bright" : "low in the sky" });
+        if (set > asked) out.push({ rise, peak, set, maxEl, riseAz: look(el, rise, s).az, peakAz: look(el, peak, s).az, setAz: look(el, set, s).az, visible, magnitudeHint: maxEl > 60 ? "very bright, nearly overhead" : maxEl > 35 ? "bright" : "low in the sky" });
       }
       t = set + step; prev = elAt(t); continue;
     }
@@ -217,7 +218,7 @@ export async function hamPasses(lat = 40.7128, lon = -74.006, hours = 24, minEl 
   for (const sat of HAM_SATS) {
     const tle = tles.get(sat.catnr); if (!tle) continue;
     for (const p of passes(tle, lat, lon, Date.now(), hours, minEl).slice(0, 4))
-      out.push({ sat: sat.id, name: sat.name, kind: sat.kind, rise: nyTime(p.rise), riseIso: new Date(p.rise).toISOString(), setIso: new Date(p.set).toISOString(), minutes: Math.round((p.set - p.rise) / 60000), maxElevation: Math.round(p.maxEl),
+      out.push({ sat: sat.id, name: sat.name, kind: sat.kind, rise: nyTime(p.rise), upNow: p.rise <= Date.now(), riseIso: new Date(p.rise).toISOString(), setIso: new Date(p.set).toISOString(), minutes: Math.round((p.set - p.rise) / 60000), maxElevation: Math.round(p.maxEl),
         path: `${compass(p.riseAz)} → ${compass(p.peakAz)} → ${compass(p.setAz)}`, up: sat.up, down: sat.down, status: sat.status });
   }
   out.sort((a, b) => a.riseIso.localeCompare(b.riseIso));
