@@ -72,7 +72,8 @@ window.fetch=function(a){var u;try{u=new URL(typeof a==="string"?a:a&&a.url||"",
 if(u.origin!==location.origin||u.pathname.indexOf("/api/")!==0)return f.apply(window,arguments);
 var id=++W.n,rec={key:u.pathname,at:performance.now()};W.active.set(id,rec);tell();
 var done=function(){W.active.delete(id);var ms=performance.now()-rec.at;if(ms>1500){var o=W.typical[rec.key];W.typical[rec.key]=Math.round(o?o*.7+ms*.3:ms);try{localStorage.setItem("ihor-wait",JSON.stringify(W.typical))}catch(e){}}tell()};
-var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>`;
+var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
+<link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#07090f">`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
@@ -718,7 +719,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
-    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/manifest.json", "/icon-192.png", "/icon-512.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();
