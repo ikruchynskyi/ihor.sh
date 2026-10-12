@@ -1,0 +1,11 @@
+.git
+.env
+data
+**/node_modules
+radio/dist
+*.cu8
+*.cf32
+*.raw
+*.wav
+IDEAS.md
+cloudflared

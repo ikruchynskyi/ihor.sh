@@ -1,0 +1,39 @@
+# Running on another host: see MIGRATE.md
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      OLLAMA_URL: http://ollama:11434
+    volumes:
+      - ./.env:/app/.env          # SESSION_SECRET / MESH_OWNER_KEY get appended here on first start
+      - ./data:/app/data
+    # Meshtastic radio, Linux names it /dev/ttyACM0 or /dev/ttyUSB0 (uncomment + set MESH_PORT in .env):
+    # devices: ["/dev/ttyACM0:/dev/ttyACM0"]
+
+  # Shares web's network, so the 127.0.0.1:8073 calls in server.ts and the SDR's "local only" admin API keep working.
+  sdr:
+    build: .
+    restart: unless-stopped
+    working_dir: /app/radio
+    command: ["node", "server.ts"]
+    network_mode: service:web
+    devices: ["/dev/bus/usb:/dev/bus/usb"]   # RTL-SDR dongle (Linux host only; delete this line if there's none)
+
+  # Same network as web, so config.yml's  service: http://localhost:8080  is unchanged.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    network_mode: service:web
+    volumes: ["./cloudflared:/etc/cloudflared:ro"]
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --credentials-file /etc/cloudflared/tunnel.json
+
+  ollama:
+    image: ollama/ollama
+    restart: unless-stopped
+    volumes: ["ollama:/root/.ollama"]
+    # NVIDIA GPU:  deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+
+volumes:
+  ollama:
