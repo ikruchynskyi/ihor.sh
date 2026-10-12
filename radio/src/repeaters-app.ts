@@ -250,10 +250,14 @@ async function showSat(id: string) {
   // the ground track, cut where it crosses the date line
   const segs: number[][][] = [[]];
   for (const [la, lo] of t.track) { const seg = segs.at(-1)!; if (seg.length && Math.abs(lo - seg.at(-1)![1]) > 180) segs.push([]); segs.at(-1)!.push([la, lo]); }
-  for (const seg of segs) if (seg.length > 1) L.polyline(seg, { color: "#4de1ff", weight: 2, opacity: 0.8, dashArray: "4 6" }).addTo(satLayer);
+  for (const seg of segs) if (seg.length > 1) { // a dark casing under a bright line: readable over ocean and land alike
+    L.polyline(seg, { color: "#000", weight: 7, opacity: 0.55 }).addTo(satLayer);
+    L.polyline(seg, { color: "#ffd23f", weight: 3.5, opacity: 1 }).addTo(satLayer);
+  }
   const icon = L.divIcon({ className: "", html: `<div style="font-size:26px;line-height:26px;filter:drop-shadow(0 0 3px #000)">🛰</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
   const v = t.view;
-  L.marker([t.now[0], t.now[1]], { icon }).bindPopup(`<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>${t.now[2]} km up over ${t.now[0].toFixed(1)}°, ${t.now[1].toFixed(1)}°${v ? `<br>${v.aboveHorizon ? `<b>Above the horizon here:</b> ${v.elevation}° up, ${esc(v.direction)} (${v.azimuth}°)` : "Below the horizon here"}` : ""}<br>↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}${t.sat.pictures ? `<br><a href="${picUrl(t.sat.pictures)}">receive its pictures →</a>` : ""}<br><span class="muted">${esc(t.sat.notes)} · ${esc(t.sat.status)}</span>`).addTo(satLayer).openPopup();
+  L.marker([t.now[0], t.now[1]], { icon }).bindPopup(`<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>${t.now[2]} km up over ${t.now[0].toFixed(1)}°, ${t.now[1].toFixed(1)}°${v ? `<br>${v.aboveHorizon ? `<b>Above the horizon here:</b> ${v.elevation}° up, ${esc(v.direction)} (${v.azimuth}°)` : "Below the horizon here"}` : ""}<br>↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}${t.sat.pictures ? `<br><a href="${picUrl(t.sat.pictures)}">receive its pictures →</a>` : ""}<br><span class="muted">${esc(t.sat.notes)} · ${esc(t.sat.status)}</span>`, { autoPan: false }).addTo(satLayer).openPopup();
+  map.setView([t.now[0], t.now[1]], 2); // the satellite in the middle, zoomed out far enough for its track
   clearInterval(satTimer);
   satTimer = setInterval(() => { if (satShown === id) showSatQuiet(id); }, 15_000);
 }
@@ -273,7 +277,6 @@ if (rptId) pendingRpt = Number(rptId);
 await loadArea();
 if (params.get("sat")) {
   await showSat(params.get("sat")!);
-  satLayer.eachLayer((l: any) => { if (l.getPopup?.()) map.setView(l.getLatLng(), 3); });
 }
 
 (window as any).blipActions = {
