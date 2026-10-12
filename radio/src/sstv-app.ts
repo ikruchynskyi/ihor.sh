@@ -145,12 +145,16 @@ el("mc-go").addEventListener("click", async () => {
   } catch (e) { status.textContent = `No microphone: ${(e as Error).message}`; }
 });
 
+// ?f=145.880 (from a satellite's "receive its pictures" link): open on the radio, tuned there
+const qf = parseFloat(new URLSearchParams(location.search).get("f") ?? "");
+if (Number.isFinite(qf)) document.querySelector<HTMLButtonElement>('#srcs [data-src="radio"]')!.click();
+
 // --- 4. Radio --------------------------------------------------------------------------------------------------------------------
 {
   let rx: Receiver | null = null, key = "", d: SstvDecoder | null = null;
   const player = new LivePlayer();
   lab(el("rd-lab"), {
-    freqMHz: 145.8, everyChunk: true,
+    freqMHz: Number.isFinite(qf) ? qf : 145.8, everyChunk: true,
     onStart: () => { stopCurrent(); stopCurrent = () => {}; },
     onSamples: (cu8, rate, center, target) => {
       const k = `${rate}|${center}|${target}`;

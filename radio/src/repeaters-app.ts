@@ -222,6 +222,8 @@ loadWx(); setInterval(loadWx, 10 * 60_000);
 // ---------- ham satellites: the next passes over the map's center, and any bird's position and track on the map (server: sat.ts) ----------
 const satLayer = L.layerGroup().addTo(map);
 let sats: any = null, satShown: string | null = null, satTimer: ReturnType<typeof setInterval> | undefined;
+/** The picture page for a satellite, with its settings and the place passes are computed for. */
+const picUrl = (page: string) => { const c = map.getCenter(); return `../${page}&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`; };
 async function loadSats() {
   const c = map.getCenter();
   sats = await fetch(`/api/radio/sats?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&hours=24`).then((r) => r.json()).catch(() => null);
@@ -230,7 +232,7 @@ async function loadSats() {
   const local = (iso: string, o: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleString([], o); // the reader's own time zone
   $("satSum").textContent = next.length ? `next: ${next[0].name.split(" ")[0]} ${local(next[0].riseIso, { hour: "numeric", minute: "2-digit" })}` : "";
   $("satBody").innerHTML = `<p>Passes over the map's center (${c.lat.toFixed(1)}°, ${c.lng.toFixed(1)}°) in the next 24 h (≥ 10° up), in your time. Click one to draw the satellite and its track. <button type="button" id="satMe">📍 Passes over me</button></p>
-    ${next.map((p: any) => `<div class="pass" data-sat="${esc(p.sat)}"><b>${esc(local(p.riseIso, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</b> ${esc(p.name)} · <b>${p.maxElevation}°</b> · ${p.minutes} min${p.upNow ? " · <b>up now</b>" : ""} · ${esc(p.path)}<br><span class="muted">${esc(p.kind)}: ↓ ${esc(p.down)}${p.up ? ` · ↑ ${esc(p.up)}` : ""}${p.status !== "active" ? ` · ${esc(p.status)}` : ""}${p.sat.startsWith("meteor") ? ` · <a href="../meteor.html?lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}">record it &amp; get the picture →</a>` : ""}</span></div>`).join("")}
+    ${next.map((p: any) => `<div class="pass" data-sat="${esc(p.sat)}"><b>${esc(local(p.riseIso, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</b> ${esc(p.name)} · <b>${p.maxElevation}°</b> · ${p.minutes} min${p.upNow ? " · <b>up now</b>" : ""} · ${esc(p.path)}<br><span class="muted">${esc(p.kind)}: ↓ ${esc(p.down)}${p.up ? ` · ↑ ${esc(p.up)}` : ""}${p.status !== "active" ? ` · ${esc(p.status)}` : ""}${p.pictures ? ` · <a href="${picUrl(p.pictures)}">receive its pictures →</a>` : ""}</span></div>`).join("")}
     <p>Where is it now?</p><div class="satbtns">${sats.satellites.map((s: any) => `<button type="button" data-sat="${esc(s.id)}" title="${esc(s.notes)}">${esc(s.name.split(" (")[0])}</button>`).join("")}</div>
     <p class="muted">Orbits from CelesTrak; status hand-kept (check <a href="https://www.amsat.org/status/" target="_blank" rel="noopener">AMSAT's status page</a> for today's reports). <button type="button" id="satHere">Recompute for this map center</button></p>`;
   $("satBody").querySelectorAll("[data-sat]").forEach((el) => ((el as HTMLElement).onclick = () => showSat((el as HTMLElement).dataset.sat!)));
@@ -251,7 +253,7 @@ async function showSat(id: string) {
   for (const seg of segs) if (seg.length > 1) L.polyline(seg, { color: "#4de1ff", weight: 2, opacity: 0.8, dashArray: "4 6" }).addTo(satLayer);
   const icon = L.divIcon({ className: "", html: `<div style="font-size:26px;line-height:26px;filter:drop-shadow(0 0 3px #000)">🛰</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
   const v = t.view;
-  L.marker([t.now[0], t.now[1]], { icon }).bindPopup(`<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>${t.now[2]} km up over ${t.now[0].toFixed(1)}°, ${t.now[1].toFixed(1)}°${v ? `<br>${v.aboveHorizon ? `<b>Above the horizon here:</b> ${v.elevation}° up, ${esc(v.direction)} (${v.azimuth}°)` : "Below the horizon here"}` : ""}<br>↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}<br><span class="muted">${esc(t.sat.notes)} · ${esc(t.sat.status)}</span>`).addTo(satLayer).openPopup();
+  L.marker([t.now[0], t.now[1]], { icon }).bindPopup(`<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>${t.now[2]} km up over ${t.now[0].toFixed(1)}°, ${t.now[1].toFixed(1)}°${v ? `<br>${v.aboveHorizon ? `<b>Above the horizon here:</b> ${v.elevation}° up, ${esc(v.direction)} (${v.azimuth}°)` : "Below the horizon here"}` : ""}<br>↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}${t.sat.pictures ? `<br><a href="${picUrl(t.sat.pictures)}">receive its pictures →</a>` : ""}<br><span class="muted">${esc(t.sat.notes)} · ${esc(t.sat.status)}</span>`).addTo(satLayer).openPopup();
   clearInterval(satTimer);
   satTimer = setInterval(() => { if (satShown === id) showSatQuiet(id); }, 15_000);
 }

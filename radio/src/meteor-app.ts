@@ -14,13 +14,15 @@ const MAX_REC_S = 20 * 60, MAX_KEPT = 3;
 let chunks: Uint8Array[] = [], bytes = 0, recording = false, outFs = 0, rms = 0.05;
 
 const freq = () => el<HTMLSelectElement>("sat").selectedOptions[0].dataset.f!; // MHz
+{ const want = new URLSearchParams(location.search).get("sat"), sel = el<HTMLSelectElement>("sat"); // ?sat=meteor-m2-4 from the repeaters page
+  const i = Array.from(sel.options).findIndex((o) => o.value === want); if (i >= 0) sel.selectedIndex = i; }
 el<HTMLSelectElement>("sat").addEventListener("change", () => {
   const f = el("rd-lab").querySelector<HTMLInputElement>(".lab-f")!;
   f.value = freq(); f.dispatchEvent(new Event("change"));
 });
 
 lab(el("rd-lab"), {
-  freqMHz: 137.9, everyChunk: true,
+  freqMHz: +freq(), everyChunk: true,
   onSamples: (cu8, rate, center, target) => {
     const key = `${rate}|${center}|${target}`;
     if (!chain || chain.key !== key) {
