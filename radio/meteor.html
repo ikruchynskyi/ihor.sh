@@ -8,6 +8,10 @@
   <style>
     .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 8px 0 16px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
     #wf { width: 100%; max-width: 640px; height: 300px; background: #000; border-radius: 8px; display: block; }
+    .dec { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    #iq { width: 160px; height: 160px; border-radius: 8px; }
+    #pics figure { margin: 10px 0; font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    #pics canvas { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; }
     .status { font: 0.9rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); min-height: 1.4em; }
   </style>
 </head>
@@ -15,7 +19,7 @@
 <main>
   <p class="eyebrow"><a href="./">ihor.sh · radio</a></p>
   <h1>Meteor pass recorder</h1>
-  <p>Russia's Meteor-M satellites send weather pictures as <b>LRPT</b>: digital QPSK, 72,000 symbols a second, about 120 kHz wide. Start the dongle a minute before the pass, press record, and stop when it sets. You get an IQ file to decode into a picture. Pass times are on the <a href="./repeaters/#sats">repeaters page</a>; how LRPT works is <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
+  <p>Russia's Meteor-M satellites send weather pictures as <b>LRPT</b>: digital QPSK, 72,000 symbols a second, about 120 kHz wide. Start the dongle a minute before the pass, press record, and stop when it sets. The page decodes the picture live as the signal comes in (Doppler is tracked automatically, no retuning), and the IQ file lets you decode it again later. Pass times are on the <a href="./repeaters/#sats">repeaters page</a>; how LRPT works is <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
 
   <div class="pane">
     <label>Satellite <select id="sat"><option value="137.9">Meteor-M2 3 · 137.900 MHz</option><option value="137.1">Meteor-M2 4 · 137.100 MHz</option></select></label>
@@ -26,12 +30,17 @@
   <canvas id="wf" width="640" height="300" aria-label="Waterfall around the satellite's frequency; the dashed lines mark the LRPT signal's width"></canvas>
   <p class="status" id="status" aria-live="polite">Start the dongle, then record. The signal is a flat-topped hump between the yellow lines, sliding a few kHz with Doppler.</p>
 
+  <h2>Pictures</h2>
+  <div class="dec"><canvas id="iq" width="160" height="160" aria-label="QPSK constellation: four tight dots when the signal is clean"></canvas><p class="status" id="dstat">The decoder runs while the dongle is on. Four tight dots in the square mean a clean signal; pictures appear below, one per channel.</p></div>
+  <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin"> (8-bit IQ centered on the satellite; sample rate from the file name, else <input id="frate" type="number" value="240000" style="width:7em"> S/s)</p>
+  <div id="pics"></div>
+
   <h2>Recordings</h2>
   <ul id="saves"></ul>
 
   <h2>Turning it into a picture</h2>
   <ul>
-    <li>Open the file in <a href="https://github.com/SatDump/SatDump">SatDump</a>: <i>Offline processing</i> → <i>METEOR M2-x LRPT 72k</i>, baseband format <b>cu8</b>, sample rate from the file name. It demodulates, Viterbi-decodes, de-randomizes and decodes Meteor's JPEG into the visible and infrared channels.</li>
+    <li>This page decodes in your browser (no Reed-Solomon error correction yet, so damaged packets show as streaks). For the best result, open the file in <a href="https://github.com/SatDump/SatDump">SatDump</a>: <i>Offline processing</i> → <i>METEOR M2-x LRPT 72k</i>, baseband format <b>cu8</b>, sample rate from the file name. It demodulates, Viterbi-decodes, de-randomizes and decodes Meteor's JPEG into the visible and infrared channels.</li>
     <li>Antenna: a V-dipole (two 53 cm rods at 120°, horizontal, outdoors) beats anything on a windowsill. Passes under 20° rarely decode.</li>
     <li>Files are about 30 MB a minute and stay in this tab until you save them.</li>
   </ul>

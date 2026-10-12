@@ -61,12 +61,12 @@ export class Viterbi {
 }
 
 // ---------- pictures: 8×8 DCT blocks, like JPEG ----------
-const ZZ = (() => { const z: number[] = []; for (let s = 0; s < 15; s++) for (let i = 0; i <= s; i++) { const r = s % 2 ? i : s - i, c = s - r; if (r < 8 && c < 8) z.push(r * 8 + c); } return z; })();
+export const ZZ = (() => { const z: number[] = []; for (let s = 0; s < 15; s++) for (let i = 0; i <= s; i++) { const r = s % 2 ? i : s - i, c = s - r; if (r < 8 && c < 8) z.push(r * 8 + c); } return z; })();
 const Q = Array.from({ length: 64 }, (_, k) => (k ? 3 + 2 * ((k >> 3) + (k & 7)) : 16)); // the average (DC) needs room: ±1024/16; finer detail, coarser steps
 const cosT = Array.from({ length: 64 }, (_, k) => Math.cos(((2 * (k >> 3) + 1) * (k & 7) * Math.PI) / 16)); // [x][u]
 const cu = (u: number) => (u ? 1 : Math.SQRT1_2);
 function dct(block: Float32Array) { const out = new Float32Array(64); for (let v = 0; v < 8; v++) for (let u = 0; u < 8; u++) { let s = 0; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) s += block[y * 8 + x] * cosT[x * 8 + u] * cosT[y * 8 + v]; out[v * 8 + u] = 0.25 * cu(u) * cu(v) * s; } return out; }
-function idct(c: Float32Array) { const out = new Float32Array(64); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { let s = 0; for (let v = 0; v < 8; v++) for (let u = 0; u < 8; u++) s += cu(u) * cu(v) * c[v * 8 + u] * cosT[x * 8 + u] * cosT[y * 8 + v]; out[y * 8 + x] = 0.25 * s; } return out; }
+export function idct(c: Float32Array) { const out = new Float32Array(64); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { let s = 0; for (let v = 0; v < 8; v++) for (let u = 0; u < 8; u++) s += cu(u) * cu(v) * c[v * 8 + u] * cosT[x * 8 + u] * cosT[y * 8 + v]; out[y * 8 + x] = 0.25 * s; } return out; }
 
 /** One strip (8 rows × W, gray 0–255) → the frame's payload: the first KEEP zig-zag coefficients of each block, quantized. */
 export function encodeStrip(rows: Uint8Array, keep = KEEP): Int8Array {
@@ -115,7 +115,7 @@ const toBits = (bytes: Uint8Array) => { const b = new Uint8Array(bytes.length * 
 
 // ---------- the radio: QPSK with root-raised-cosine pulses ----------
 export function rrc(alpha = 0.6, span = 8, sps = SPS): Float32Array {
-  const n = span * sps + 1, h = new Float32Array(n), m = (n - 1) / 2; let e = 0;
+  const n = Math.round(span * sps) + 1, h = new Float32Array(n), m = (n - 1) / 2; let e = 0;
   for (let i = 0; i < n; i++) {
     const t = (i - m) / sps;
     if (t === 0) h[i] = 1 - alpha + (4 * alpha) / Math.PI;

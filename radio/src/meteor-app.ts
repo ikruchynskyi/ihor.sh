@@ -4,10 +4,11 @@ import "./ham/ham.css";
 import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
+import { MeteorReceiver, WIDTH } from "./meteor.ts";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el("status"), cv = el<HTMLCanvasElement>("wf"), g = cv.getContext("2d")!, wf = new Waterfall(512, 300);
-let chain: { key: string; mix: Mixer; dec: FirDecimator; fs: number } | null = null;
+let chain: { key: string; mix: Mixer; dec: FirDecimator; fs: number } | null = null, rx: MeteorReceiver | null = null;
 let chunks: Uint8Array[] = [], bytes = 0, recording = false, outFs = 0, rms = 0.05;
 
 el<HTMLSelectElement>("sat").addEventListener("change", () => {
@@ -26,6 +27,8 @@ lab(el("rd-lab"), {
     }
     const iq = chain.dec.process(chain.mix.process(Float32Array.from(cu8, (v) => (v - 127.5) / 127.5)));
     wf.push(spectrumOfIQ(iq, 512, 8));
+    if (!rx || rx.fs !== chain.fs) newDecoder(chain.fs);
+    rx!.push(iq);
     if (!recording) return;
     // slow AGC: keep the RMS around 32 counts so the weak signal uses the bytes' range without clipping
     let p = 0; for (const v of iq) p += v * v; rms = 0.9 * rms + 0.1 * Math.sqrt(p / iq.length || 1e-12);
@@ -57,4 +60,56 @@ el("rec").addEventListener("click", () => {
   if (recording) return stopRec();
   recording = true; chunks = []; bytes = 0; outFs = 0; el("rec").textContent = "Stop and save";
   status.textContent = "Recording… start the dongle above if it isn't running.";
+});
+
+// --- the decoder: pictures per channel, the constellation, and the Doppler it is tracking ---------------------------------
+const cg = el<HTMLCanvasElement>("iq").getContext("2d")!, drawn = new Map<number, number>();
+function newDecoder(fs: number) {
+  rx = new MeteorReceiver(fs); drawn.clear(); el("pics").innerHTML = "";
+}
+function paint() {
+  if (!rx) return;
+  const st = rx.stats, pk = rx.packets.stats;
+  el("dstat").textContent = `${st.locked ? "🔒 locked" : "searching"} · offset ${(st.freqHz / 1000).toFixed(2)} kHz (Doppler + dongle error, tracked automatically) · ${st.frames} frames · ${pk.packets} packets · ${pk.images} picture strips`;
+  cg.fillStyle = "#000"; cg.fillRect(0, 0, 160, 160); cg.fillStyle = st.locked ? "#4de1ff" : "#888";
+  for (const [i, q] of rx.constellation.slice(-600)) cg.fillRect(80 + i * 50, 80 - q * 50, 1.5, 1.5);
+  for (const [apid, ch] of rx.packets.channels) {
+    let c = document.getElementById(`ch${apid}`) as HTMLCanvasElement | null;
+    if (!c) { el("pics").insertAdjacentHTML("beforeend", `<figure><canvas id="ch${apid}" width="${WIDTH}" height="0"></canvas><figcaption>Channel ${apid - 63} (APID ${apid}) · <a href="#" data-save="${apid}">save PNG</a></figcaption></figure>`); c = document.getElementById(`ch${apid}`) as HTMLCanvasElement; drawn.set(apid, 0); }
+    const need = ch.rows.length * 8;
+    if (need > c.height) { // growing a canvas clears it: grow in steps, then repaint everything
+      const g = c.getContext("2d")!, keep = c.height ? g.getImageData(0, 0, WIDTH, c.height) : null;
+      c.height = need + 128; if (keep) g.putImageData(keep, 0, 0);
+    }
+    const g = c.getContext("2d")!;
+    for (let r = Math.max(0, drawn.get(apid)! - 1); r < ch.rows.length; r++) { // the last row may have filled in since
+      const img = new ImageData(WIDTH, 8), row = ch.rows[r];
+      for (let i = 0; i < row.length; i++) { img.data[4 * i] = img.data[4 * i + 1] = img.data[4 * i + 2] = row[i]; img.data[4 * i + 3] = 255; }
+      g.putImageData(img, 0, r * 8);
+    }
+    drawn.set(apid, ch.rows.length);
+  }
+}
+setInterval(paint, 1000);
+el("pics").addEventListener("click", (e) => {
+  const a = (e.target as HTMLElement).closest<HTMLAnchorElement>("[data-save]"); if (!a || !rx) return;
+  e.preventDefault();
+  const apid = +a.dataset.save!, src = el<HTMLCanvasElement>(`ch${apid}`), out = document.createElement("canvas");
+  out.width = WIDTH; out.height = rx.packets.channels.get(apid)!.rows.length * 8; out.getContext("2d")!.drawImage(src, 0, 0);
+  const link = document.createElement("a"); link.href = out.toDataURL("image/png"); link.download = `meteor-ch${apid - 63}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}.png`; link.click();
+});
+
+// A saved recording (8-bit IQ centered on the satellite), decoded faster than real time.
+el("file").addEventListener("change", async () => {
+  const f = el<HTMLInputElement>("file").files?.[0]; if (!f) return;
+  const fs = +(f.name.match(/(\d+)sps/)?.[1] ?? el<HTMLInputElement>("frate").value);
+  newDecoder(fs);
+  const step = 4 << 20;
+  for (let at = 0; at < f.size; at += step) {
+    const b = new Uint8Array(await f.slice(at, at + step).arrayBuffer());
+    rx!.push(Float32Array.from(b, (v) => (v - 127.5) / 127.5));
+    status.textContent = `Decoding ${f.name}: ${((100 * Math.min(f.size, at + step)) / f.size).toFixed(0)}% (${fs / 1000} kS/s)`;
+    await new Promise((r) => setTimeout(r));
+  }
+  paint(); status.textContent = `Finished ${f.name}.`;
 });
