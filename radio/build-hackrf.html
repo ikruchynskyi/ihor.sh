@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Build for HackRF Pro</title>
+  <meta name="description" content="A developer's guide to driving a HackRF Pro from your own code over WebUSB: the firmware's vendor requests, sample rate and baseband filter, the three gain stages and what can and can't hurt the radio, signed samples, streaming at 19 MB/s, and how our server shares an 8 MHz window." />
+  <style>
+    table { border-collapse: collapse; width: 100%; font: 0.86rem/1.45 ui-sans-serif, system-ui, sans-serif; margin: 12px 0 20px; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+    th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+    .table { overflow-x: auto; }
+    nav.toc { font: 0.9rem ui-sans-serif, system-ui, sans-serif; display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 18px 0 8px; }
+    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+    .cols > div { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); font-size: 0.95rem; }
+    .cols h3 { margin: 0 0 6px; font: 600 1rem ui-sans-serif, system-ui, sans-serif; }
+    .calc { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); margin: 14px 0; }
+    .calc label { display: inline-flex; gap: 6px; align-items: center; margin-right: 14px; }
+    .calc input { width: 7em; }
+    .calc output { display: block; margin-top: 8px; font: 0.9rem/1.6 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+    .warn { border-left: 3px solid #ff5c8a; padding: 4px 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Radio · developer guide · <a href="./build.html">Build for your own dongle</a> → HackRF Pro</p>
+  <h1>Build for HackRF Pro</h1>
+  <p>The <a href="./build.html">RTL-SDR guide</a> drove a $30 dongle by writing its chips' registers one by one. A HackRF Pro is the other kind of radio: a microcontroller and an FPGA run Great Scott Gadgets' firmware, and you talk to that firmware instead. You send a handful of USB requests (a frequency, a sample rate, three gains) and samples stream back. Our driver is one file of TypeScript (<code>radio/src/hackrf.ts</code>, about 120 lines), no libhackrf, and it runs the server SDR behind <a href="./">Spectrum Lab</a> today.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#why">Why a second radio</a><a href="#open">Opening it</a><a href="#requests">The vendor requests</a><a href="#rate">Rate &amp; filter</a>
+    <a href="#gain">Three gain stages</a><a href="#safe">What can hurt it</a><a href="#data">Signed samples</a><a href="#stream">Streaming</a><a href="#server">Sharing 8 MHz</a><a href="#code">The real code</a><a href="#trouble">Troubleshooting</a>
+  </nav>
+
+  <h2 id="why">Why a second radio</h2>
+  <div class="cols">
+    <div><h3>RTL-SDR (Nooelec)</h3>2.4 MHz of spectrum at once, 8-bit. 24–1766 MHz. A spike at the center frequency. Receive only. You program the RTL2832U demodulator and the R820T tuner yourself.</div>
+    <div><h3>HackRF Pro</h3>Up to 20 MS/s: here 9.6 MS/s, an <b>8 MHz</b> window, every FM station from 94 to 103 MHz in one picture. A TCXO (stable clock), no DC spike. 8-bit at full speed. It can transmit, which this driver never does. The firmware does the chip-level work.</div>
+  </div>
+  <p>Wider isn't more sensitive: still 8 bits per sample, so a strong station and a faint one share the same 48 dB or so of range. What you gain is coverage: a whole band at once, so a scanner can watch every channel instead of hopping between them.</p>
+
+  <h2 id="open">Opening it</h2>
+  <p>USB vendor 0x1d50, product 0x6089: the same IDs as the HackRF One, which is how one driver serves both. Claim interface 0 and ask who it is:</p>
+<pre><code>const dev = (await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1d50, productId: 0x6089 }] }));
+await dev.open(); await dev.selectConfiguration(1); await dev.claimInterface(0);
+const v = await dev.controlTransferIn({ requestType: "vendor", recipient: "device", request: 15, value: 0, index: 0 }, 255);
+new TextDecoder().decode(v.data).replace(/\0.*$/, "");   // "v2.4.0": the firmware version</code></pre>
+  <p>Request 14 reads a board ID (One or Pro). In Node the same calls work through the <code>usb</code> package's WebUSB object, which is what our server does.</p>
+
+  <h2 id="requests">The vendor requests we use</h2>
+  <p>Every control is a vendor request to the device, numbered as in libhackrf's <code>hackrf.c</code>. Values travel in the setup packet's <code>value</code>/<code>index</code>, or as a few little-endian bytes of data.</p>
+  <div class="table"><table>
+    <tr><th>#</th><th>Request</th><th>How</th></tr>
+    <tr><td>1</td><td>Transceiver mode</td><td>out, value 0 = off, 1 = receive (2 = transmit: never sent here)</td></tr>
+    <tr><td>6</td><td>Sample rate</td><td>out, 8 bytes: <code>uint32 freq_hz, uint32 divider</code> (rate = freq / divider; whole rates use divider 1)</td></tr>
+    <tr><td>7</td><td>Baseband filter</td><td>out, value = bandwidth &amp; 0xffff, index = bandwidth &gt;&gt; 16 (Hz)</td></tr>
+    <tr><td>14</td><td>Board ID</td><td>in, 1 byte</td></tr>
+    <tr><td>15</td><td>Version string</td><td>in, up to 255 bytes</td></tr>
+    <tr><td>16</td><td>Frequency</td><td>out, 8 bytes: <code>uint32 MHz, uint32 Hz</code> (98.7 MHz = 98, 700000)</td></tr>
+    <tr><td>17</td><td>RF amp</td><td>out, value 0 or 1 (+14 dB in front of everything)</td></tr>
+    <tr><td>19</td><td>LNA gain</td><td>in, 1 byte back (1 = accepted); index = 0–40 dB in steps of 8</td></tr>
+    <tr><td>20</td><td>VGA gain</td><td>in, 1 byte back; index = 0–62 dB in steps of 2</td></tr>
+  </table></div>
+  <p>Compare the RTL-SDR: setting a frequency there means computing the R820T's PLL dividers and writing them over I²C, through the RTL2832U's register bridge. Here it's one request: the firmware does the PLL math.</p>
+
+  <h2 id="rate">Sample rate and the baseband filter</h2>
+  <p>The rate is 2–20 MS/s. In front of the ADC sits a low-pass <b>baseband filter</b> with fixed steps (1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 14, 15, 20, 24, 28 MHz, total width). It has to be narrower than the rate, or what lies beyond ±rate/2 folds back into the picture (aliasing). libhackrf picks the widest step under ¾ of the rate; we ask for 8 MHz at 9.6 MS/s, so the usable window is the filter's ±4 MHz.</p>
+  <p>Why 9.6 and not 10 or 8? Our server cuts each listener a slice of the window (240 kHz for one station, 1.2 MHz for a wider look) by mixing and decimating, and decimating by a whole number is what keeps that cheap and exact: 9.6 MHz ÷ 240 kHz = 40 = 5 × 4 × 2. Try a few rates:</p>
+  <div class="calc">
+    <label>Sample rate <input id="cRate" type="number" step="0.1" min="2" max="20" value="9.6" /> MS/s</label>
+    <output id="cOut"></output>
+  </div>
+  <p>The minimum, 2 MS/s, matters too: our APRS decoder wants 1.024 MS/s, below what the HackRF can do, so the server asks for twice that (2.048) and the decoder decimates one step more.</p>
+
+  <h2 id="gain">Three gain stages</h2>
+  <div class="cols">
+    <div><h3>RF amp, 0 or 14 dB</h3>At the antenna, before the mixer. For weak signals, and the stage strong signals overload first.</div>
+    <div><h3>LNA, 0–40 dB, steps of 8</h3>The low-noise amp in the receive chain. Raise it first for weak signals: gain early sets the noise figure.</div>
+    <div><h3>VGA, 0–62 dB, steps of 2</h3>Baseband gain, after the mixer, just before the ADC: it scales what reaches the 8-bit converter.</div>
+  </div>
+  <p>The rule of thumb: enough gain that the noise floor rises a few dB when you add more (then the receiver's own noise isn't the limit), and not so much that the ADC hits its rails. Spectrum Lab shows the ADC level in dBFS and the share of samples at full scale; its <b>Auto gain</b> button tries LNA 0–40, then VGA 8–44, on the station you're tuned to, and keeps the best signal-to-noise with no clipping. On NYC's FM band it chose LNA 16, VGA 20 (21 dB over the noise). The server remembers a setting per band, because what suits broadcast FM is far too little for a 2 m repeater.</p>
+
+  <h2 id="safe">What can and can't hurt it</h2>
+  <p class="warn"><b>LNA and VGA can't damage the radio.</b> Too much of either only clips the ADC: a distorted, useless picture, but no harm. What can: a very strong signal into the antenna port (a transmitter close by), made worse by the <b>RF amp</b>; switching on <b>antenna power</b> (a bias tee) into an antenna that shorts DC; and transmitting into the wrong thing. So:</p>
+  <ul>
+    <li><b>No transmit, no antenna power.</b> Our driver doesn't implement either request: there's nothing to misuse.</li>
+    <li><b>The RF amp is refused near strong transmitters.</b> The server won't turn it on while the window covers FM broadcast, VHF or UHF TV, cellular downlinks or paging, and switches it off itself if you tune there with it on.</li>
+    <li><b>A clipping watchdog.</b> Every half second the server measures the ADC: if more than 0.2% of samples sit at full scale, it backs off (amp first, then whichever of VGA and LNA is nearer its top) one step every 1.5 s until it stops. Measured here: LNA 40 + VGA 62 on the FM band clips about 0.5% of samples at −6.7 dBFS; the watchdog walked it down to LNA 24, VGA 38 in about ten seconds.</li>
+  </ul>
+  <p>The limits live in the server (<code>radio/server.ts</code>), not the page, so no visitor, page or API call can get around them.</p>
+
+  <h2 id="data">Signed samples</h2>
+  <p>Both radios send interleaved I, Q bytes, but the RTL-SDR's are unsigned (0–255, 127.5 is zero, the <code>.cu8</code> format) and the HackRF's are signed (−128–127, <code>.cs8</code>). Everything downstream of our drivers expects <code>.cu8</code>, so the HackRF driver converts, and the conversion is one XOR: flipping the top bit of a two's-complement byte adds 128.</p>
+<pre><code>// signed → unsigned: s + 128 === s ^ 0x80 for every byte; four at a time
+const w = new Uint32Array(bytes.buffer, 0, bytes.length &gt;&gt; 2);
+for (let i = 0; i &lt; w.length; i++) w[i] ^= 0x80808080;</code></pre>
+
+  <h2 id="stream">Streaming at 19 MB/s</h2>
+  <p>Switch the transceiver to receive (request 1, value 1) and read bulk endpoint 1 (0x81) in 256 KiB transfers, four in flight, oldest first, exactly as in the <a href="./build.html#stream">RTL-SDR guide</a>. At 9.6 MS/s that's 19.2 MB/s, comfortable for USB 2.0's ~40 MB/s. One lesson cost us a crash: when a read fails, the other three still in flight fail too ("Cancelled"), and in Node an unawaited rejected promise ends the process. So the loop always settles the queue on its way out:</p>
+<pre><code>try { while (streaming) { const r = await queue.shift(); queue.push(dev.transferIn(1, 262144)); onData(r.data); } }
+finally { streaming = false; await Promise.allSettled(queue); }   // in-flight reads settle, nobody crashes</code></pre>
+
+  <h2 id="server">Sharing 8 MHz</h2>
+  <p>The server opens whichever radio is plugged in. Unplug the HackRF, plug the Nooelec back in, and it's a 2.4 MHz window again; nothing else changes. With the HackRF, each listener's 240 kHz slice is mixed down and decimated ÷5 ÷4 ÷2 from the 9.6 MS/s stream: one listener costs about half a CPU core on a Mac mini, in plain TypeScript. Spectrum Lab's strip above the waterfall shows the whole window live, with the US band plan over it if you tick Band plan.</p>
+
+  <h2 id="code">Read the real code</h2>
+  <p>The driver, exactly as it runs on this site (loaded from the source when the page is built). <b>Click a highlighted part</b> for what it does.</p>
+  <div id="cv-hackrf"></div>
+  <ul>
+    <li><code>radio/src/hackrf.ts</code>: the driver (requests, gains, streaming, the signed-to-unsigned XOR).</li>
+    <li><code>radio/scripts/node-usb.ts</code>: picks the HackRF or the RTL-SDR, whichever is connected.</li>
+    <li><code>radio/server.ts</code>: the window per radio, the amp blocklist, the clipping watchdog, gain per band.</li>
+    <li><code>radio/scripts/hw-test.ts</code>: plug in, run it, and it decodes an FM station's stereo pilot to prove the chain works (it did: 48 dB on 98.7 MHz).</li>
+  </ul>
+
+  <h2 id="trouble">Troubleshooting</h2>
+  <div class="table"><table>
+    <tr><th>Symptom</th><th>Fix</th></tr>
+    <tr><td>Linux: access denied</td><td>A udev rule: <code>SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6089", MODE="0660", GROUP="plugdev"</code> (the <code>hackrf</code> package ships one), then replug.</td></tr>
+    <tr><td>Everything is one smear, ADC near 0 dBFS</td><td>Clipping: lower VGA, then LNA. Is the RF amp on near a strong transmitter?</td></tr>
+    <tr><td>Weak, noisy signal</td><td>Raise the LNA before the VGA; the RF amp only away from broadcast bands; a better antenna beats all of it.</td></tr>
+    <tr><td>Rate refused</td><td>2–20 MS/s only; for slices on our server, a rate that divides into 240 kHz and 1.2 MHz (the calculator above).</td></tr>
+    <tr><td>Busy / can't claim</td><td>Another program (GQRX, SDR++, hackrf_transfer) has it open; one owner at a time.</td></tr>
+  </table></div>
+  <p class="muted">Back to <a href="./build.html">Build for your own dongle</a> (RTL-SDR) · <a href="./">Spectrum Lab</a></p>
+</main>
+<script type="module" src="/src/build-hackrf.ts"></script>
+</body>
+</html>
