@@ -23,7 +23,9 @@
     #chat li { padding: 6px 8px; margin: 4px 0; border-left: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--bg, #000) 50%, transparent); }
     #chat li.mine { border-left-color: var(--accent, #ffb347); }
     #chat li.dm { border-left-color: #ff5c8a; }
-    #chat li b { cursor: pointer; }
+    #chat li b, #trace b[data-num] { cursor: pointer; text-decoration: underline dotted; }
+    #nodes li.flash { background: color-mix(in srgb, var(--accent, #ffb347) 25%, transparent); }
+    #trace { margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); font-size: .9rem; } #trace[hidden] { display: none; }
     #chat .t { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
     .badge { display: inline-block; min-width: 26px; padding: 1px 4px; border-radius: 4px; font: 700 11px ui-monospace, Menlo, monospace; text-align: center; color: #10131a; border: 1px solid #10131a; box-shadow: 0 0 3px #000; white-space: nowrap; }
     #send { display: flex; gap: 6px; margin-top: 8px; }
@@ -45,12 +47,13 @@
       <p class="muted"><b>Meshtastic</b> turns cheap LoRa radios (915 MHz in the US, under a watt) into a text-messaging mesh with no phones, internet or towers. Each radio repeats what it hears, up to a few <b>hops</b>, so messages travel across the city from rooftop to rooftop. Our node sits on a desk on USB; this page shows every node it has heard and the public channel's chat.</p>
       <p class="muted">Under the hood: the node speaks protobuf over serial, framed by the bytes <code>0x94 0xC3</code> and a length. Our server decodes it with a few dozen lines of our own TypeScript (no Meshtastic library). <b>SNR</b> is how far above the noise a signal arrived (LoRa still decodes below 0 dB, down to about −20); <b>hops</b> is how many radios relayed it. Positions are as nodes broadcast them, usually rounded on purpose.</p>
     </details>
+    <div id="trace" hidden aria-live="polite"></div>
     <div class="tabs2" id="tabs"></div>
     <ul id="nodes" hidden></ul>
     <ul id="chat" aria-live="polite"></ul>
     <form id="send" hidden><input id="msg" maxlength="200" placeholder="Message everyone on this channel" aria-label="Message" autocomplete="off"><button>Send</button></form>
     <details class="owner" id="ownerBox"><summary class="muted">Node owner</summary>
-      <p class="muted">The owner can send to the mesh and see direct messages sent to this node. Visitors see the public channels only.</p>
+      <p class="muted">The owner can send to the mesh, see direct messages sent to this node, and traceroute any node (📡 in its popup or list entry). Visitors see the public channels only.</p>
       <form id="login"><input id="key" type="password" placeholder="owner key" aria-label="Owner key" autocomplete="current-password"><button>Sign in</button></form>
       <button id="logout" hidden>Sign out</button>
       <p class="muted" id="ownerMsg"></p>

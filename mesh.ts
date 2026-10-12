@@ -114,6 +114,7 @@ function packet(p: Map<number, Field[]>) {
     } else if (port === 3) position(n, pb(body));
     else if (port === 4) user(n, pb(body));
     else if (port === 67) { const t = pb(body), dm = sub(t, 2); if (dm) metrics(n, dm); }
+    else if (port === 70 && trace && (u32(d, 6) === trace.id || from === trace.to)) traced(from, pb(body));
   } catch {} // a malformed payload from someone's radio isn't our problem
   emit("node", n);
 }
@@ -189,6 +190,47 @@ export function sendText(text: string, channel = 0) {
   send(enc.bytes(1, pkt));
   const msg: MeshMsg = { id, from: mesh.myNum, to: BROADCAST, channel, text, at: Date.now(), mine: true };
   mesh.messages.push(msg); emit("message", msg); save();
+  return id;
+}
+
+// ---------- traceroute: which nodes carry a packet to another node and back ----------
+// A packet on TRACEROUTE_APP (70) asking for a response; every node that relays it adds its number and the SNR it heard
+// it at (RouteDiscovery: route, snr_towards; on the way back route_back, snr_back). Nodes whose firmware doesn't take
+// part show up as 0xFFFFFFFF, and an SNR of −128 means unknown. It transmits, so the server lets only the owner ask.
+const UNKNOWN = 0xffffffff, TRACE_HOPS = 5;
+let trace: { id: number; to: number; timer: ReturnType<typeof setTimeout> } | null = null;
+export type Hop = { num: number; id: string; name?: string; snr?: number };
+/** A repeated field, packed (one blob) or one value at a time: fixed32 node numbers, or int32 varints (SNR × 4). */
+function packed(m: Map<number, Field[]>, f: number, kind: "u32" | "int") {
+  return (m.get(f) ?? []).flatMap((v): number[] => {
+    if (!Buffer.isBuffer(v)) return [typeof v === "bigint" ? Number(BigInt.asIntN(64, v)) : v > 0x7fffffff && kind === "int" ? v - 2 ** 32 : v];
+    if (kind === "u32") return Array.from({ length: v.length >> 2 }, (_, i) => v.readUInt32LE(4 * i));
+    const out: number[] = [];
+    for (let i = 0; i < v.length; ) { let r = 0n, s = 0n, b; do { b = v[i++]; r |= BigInt(b & 0x7f) << s; s += 7n; } while (b & 0x80 && i < v.length); out.push(Number(BigInt.asIntN(64, r))); }
+    return out;
+  });
+}
+const hop = (num: number, snr?: number): Hop => ({ num, id: num === UNKNOWN ? "?" : hexId(num), name: num === UNKNOWN ? "unknown relay" : mesh.nodes.get(num)?.long ?? mesh.nodes.get(num)?.short, snr: snr == null || snr === -128 ? undefined : snr / 4 });
+/** A RouteDiscovery reply from `from` as the two paths, us → them and them → us, each hop with the SNR it was heard at. */
+export function routeOf(from: number, rd: Map<number, Field[]>) {
+  const route = packed(rd, 1, "u32"), snrT = packed(rd, 2, "int"), back = packed(rd, 3, "u32"), snrB = packed(rd, 4, "int");
+  return { towards: [mesh.myNum, ...route, from].map((n, i) => (i ? hop(n, snrT[i - 1]) : hop(n))),
+    back: snrB.length || back.length ? [from, ...back, mesh.myNum].map((n, i) => (i ? hop(n, snrB[i - 1]) : hop(n))) : null };
+}
+function traced(from: number, rd: Map<number, Field[]>) {
+  if (!trace) return;
+  clearTimeout(trace.timer); trace = null;
+  emit("traceroute", { to: from, at: Date.now(), ...routeOf(from, rd) });
+}
+/** Ask the mesh for the route to node `to`. The answer comes as a "traceroute" event (or one with an error after a minute). */
+export function traceroute(to: number) {
+  if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
+  if (!(to > 0 && to < UNKNOWN) || to === mesh.myNum) throw new Error("Pick another node to trace.");
+  if (trace) throw new Error("A traceroute is already waiting for its answer.");
+  const id = (Math.random() * 0xffffffff) >>> 0;
+  const data = Buffer.concat([enc.u(1, 70), enc.bytes(2, Buffer.alloc(0)), enc.u(3, 1)]); // an empty RouteDiscovery, want_response
+  send(enc.bytes(1, Buffer.concat([enc.fixed(2, to), enc.u(3, 0), enc.bytes(4, data), enc.fixed(6, id), enc.u(9, TRACE_HOPS)])));
+  trace = { id, to, timer: setTimeout(() => { trace = null; emit("traceroute", { to, at: Date.now(), error: "No answer within a minute: the node may be out of reach, asleep, or the reply got lost." }); }, 60_000) };
   return id;
 }
 

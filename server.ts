@@ -17,7 +17,7 @@ import { roomStream, roomPost } from "./room.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
-import { meshState, onMesh, sendText, startMesh, isPublic, type MeshMsg } from "./mesh.ts";
+import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
@@ -365,7 +365,7 @@ const MESH_KEY = process.env.MESH_OWNER_KEY || (() => {
 const MESH_COOKIE = createHmac("sha256", SESSION_SECRET).update(`mesh-owner:${MESH_KEY}`).digest("base64url");
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", MESH_COOKIE);
-let meshSentAt = 0;
+let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
 const METERED = ["/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
@@ -598,7 +598,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no" });
       const put = (ev: string, data: unknown) => res.write(`event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`);
       put("state", meshState(owner));
-      const off = onMesh((ev, data) => { if (ev !== "message" || owner || isPublic(data as MeshMsg)) put(ev, data); });
+      const off = onMesh((ev, data) => { if (ev === "traceroute" ? owner : ev !== "message" || owner || isPublic(data as MeshMsg)) put(ev, data); }); // traceroutes: the owner's own
       const ping = setInterval(() => res.write(": ping\n\n"), 25_000);
       req.on("close", () => { off(); clearInterval(ping); });
       return;
@@ -620,6 +620,14 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
       const { text, channel } = JSON.parse(raw || "{}");
       try { const id = sendText(String(text ?? "").trim(), Math.max(0, Math.min(7, Number(channel) || 0))); meshSentAt = Date.now(); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ id })); }
+      catch (e) { return json403(res, (e as Error).message, 400); }
+    }
+    if (url.pathname === "/api/mesh/traceroute" && req.method === "POST") { // it transmits on every node along the way: the owner only, and not often
+      if (!meshOwner(req)) return json403(res, "Only the node's owner can traceroute: it transmits.");
+      if (Date.now() - meshTraceAt < 30_000) return json403(res, "One traceroute every 30 seconds: it uses airtime on every node along the way.", 429);
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 200) return res.writeHead(413).end(); }
+      try { const id = traceroute(Number(JSON.parse(raw || "{}").num)); meshTraceAt = Date.now(); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ id })); }
       catch (e) { return json403(res, (e as Error).message, 400); }
     }
     if (url.pathname === "/api/blip/tools") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(toolCatalog()));

@@ -10,7 +10,7 @@ type State = { connected: boolean; me: string | null; myNum: number; region: str
 const $ = (id: string) => document.getElementById(id)!;
 const ROLES = ["client", "client (muted)", "router", "router + client", "repeater", "tracker", "sensor", "TAK", "client (hidden)", "lost and found", "TAK tracker", "router (late)"];
 const map = makeMap("map", 11);
-const nodes = new Map<number, Node>(), markers = new Map<number, any>(), links = L.layerGroup().addTo(map);
+const nodes = new Map<number, Node>(), markers = new Map<number, any>(), links = L.layerGroup().addTo(map), traceLayer = L.layerGroup().addTo(map);
 let S: State | null = null, tab = "0", fitted = false;
 
 const name = (n?: Node) => (n ? n.long || n.short || n.id : "?");
@@ -29,7 +29,7 @@ function upsert(n: Node) {
   nodes.set(n.num, n);
   if (n.lat == null) return;
   const icon = L.divIcon({ className: "", html: `<span class="badge" style="background:${color(n)}">${esc(n.short || n.id.slice(-4))}</span>`, iconSize: null, iconAnchor: [14, 9] });
-  const popup = `<b>${esc(name(n))}</b> <span class="muted">${esc(n.id)}</span><br>${details(n)}`;
+  const popup = `<b>${esc(name(n))}</b> <span class="muted">${esc(n.id)}</span><br>${details(n)}${traceButton(n)}`;
   const m = markers.get(n.num);
   if (m) m.setLatLng([n.lat, n.lon]).setIcon(icon).setPopupContent(popup);
   else markers.set(n.num, L.marker([n.lat, n.lon], { icon, title: name(n) }).bindPopup(popup).addTo(map));
@@ -42,7 +42,45 @@ function drawLinks() {
   for (const n of nodes.values()) if (n !== me && n.hops === 0 && n.lat != null && !n.viaMqtt)
     L.polyline([[me.lat, me.lon], [n.lat, n.lon]], { color: "#5cff9d", weight: 2, opacity: 0.6, dashArray: "4 6" }).bindTooltip(`${esc(name(n))}: SNR ${n.snr?.toFixed(1) ?? "?"} dB`).addTo(links);
 }
-function focus(num: number) { const n = nodes.get(num), m = markers.get(num); if (n?.lat != null) { map.setView([n.lat, n.lon], Math.max(map.getZoom(), 13)); m?.openPopup(); } }
+/** Show a node: on the map if it has shared a position, else its entry in the node list. */
+function focus(num: number) {
+  const n = nodes.get(num), m = markers.get(num);
+  if (n?.lat != null) { map.setView([n.lat, n.lon], Math.max(map.getZoom(), 13)); m?.openPopup(); return; }
+  tab = "nodes"; renderTabs();
+  const li = $("nodes").querySelector(`li[data-num="${num}"]`) as HTMLElement | null;
+  li?.scrollIntoView({ block: "center" }); li?.classList.add("flash"); setTimeout(() => li?.classList.remove("flash"), 1600);
+  if (!li) dispatchEvent(new CustomEvent("blip:say", { detail: { text: `${name(n)} hasn't been heard in the last 3 days.`, mood: "think" } }));
+}
+
+// ---------- traceroute (the owner's: it transmits) ----------
+type Hop = { num: number; id: string; name?: string; snr?: number };
+const traceButton = (n: Node) => (S?.owner && n.num !== S.myNum ? `<br><button type="button" data-trace="${n.num}" title="Ask the mesh which nodes carry a message to ${esc(name(n))} and back (transmits; one every 30 s)">📡 Traceroute</button>` : "");
+async function startTrace(num: number) {
+  $("trace").hidden = false; $("trace").innerHTML = `📡 Tracing the route to <b>${esc(name(nodes.get(num)))}</b>… (up to a minute)`;
+  try { await post("/api/mesh/traceroute", { num }); }
+  catch (e) { $("trace").textContent = `📡 ${(e as Error).message}`; }
+}
+const hopText = (h: Hop) => `<b data-num="${h.num}">${esc(h.name || h.id)}</b>${h.snr != null ? ` <span class="muted">${h.snr.toFixed(2)} dB</span>` : ""}`;
+function showTrace(t: { to: number; error?: string; towards?: Hop[]; back?: Hop[] | null }) {
+  traceLayer.clearLayers();
+  const box = $("trace"); box.hidden = false;
+  if (t.error) { box.innerHTML = `📡 ${esc(name(nodes.get(t.to)))}: ${esc(t.error)}`; return; }
+  // each leg between nodes we know the position of, labeled with the SNR the receiving end heard it at
+  const draw = (path: Hop[], color: string, dash?: string) => {
+    for (let i = 1; i < path.length; i++) {
+      const a = nodes.get(path[i - 1].num), b = nodes.get(path[i].num);
+      if (a?.lat == null || b?.lat == null) continue;
+      L.polyline([[a.lat, a.lon], [b.lat, b.lon]], { color, weight: 4, opacity: 0.85, dashArray: dash }).bindTooltip(`${esc(name(a))} → ${esc(name(b))}${path[i].snr != null ? `: SNR ${path[i].snr!.toFixed(2)} dB` : ""}`).addTo(traceLayer);
+    }
+  };
+  draw(t.towards!, "#ffb347"); if (t.back) draw(t.back, "#c59bff", "6 6");
+  const where = [...t.towards!, ...(t.back ?? [])].map((h) => nodes.get(h.num)).filter((n) => n?.lat != null).map((n) => [n!.lat, n!.lon]);
+  if (where.length > 1) map.fitBounds(where, { padding: [40, 40], maxZoom: 14 });
+  const missing = t.towards!.filter((h) => nodes.get(h.num)?.lat == null).length;
+  box.innerHTML = `📡 <b>Route to ${esc(name(nodes.get(t.to)))}</b>, ${t.towards!.length - 2} hop${t.towards!.length === 3 ? "" : "s"} between:<br><span style="color:#ffb347">→</span> ${t.towards!.map(hopText).join(" → ")}` +
+    (t.back ? `<br><span style="color:#c59bff">←</span> ${t.back.map(hopText).join(" → ")}` : "") +
+    `<br><span class="muted">SNR: how far above the noise each node heard the one before. ${missing ? `${missing} node${missing > 1 ? "s" : ""} on the way ${missing > 1 ? "haven't" : "hasn't"} shared a position, so ${missing > 1 ? "their legs aren't" : "its legs aren't"} drawn.` : ""}</span> <button type="button" id="traceClear">Clear</button>`;
+}
 
 function renderInfo() {
   if (!S) return;
@@ -80,13 +118,19 @@ function quietNote() {
 }
 function renderNodes() {
   const list = [...nodes.values()].sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0));
-  $("nodes").innerHTML = list.map((n) => `<li data-num="${n.num}"><span class="badge" style="background:${color(n)}">${esc(n.short || n.id.slice(-4))}</span> <b>${esc(name(n))}</b>${n.lat == null ? ' <span class="muted">(no position)</span>' : ""}<br><span class="muted">${details(n)}</span></li>`).join("");
+  $("nodes").innerHTML = list.map((n) => `<li data-num="${n.num}"><span class="badge" style="background:${color(n)}">${esc(n.short || n.id.slice(-4))}</span> <b>${esc(name(n))}</b>${n.lat == null ? ' <span class="muted">(no position)</span>' : ""}<br><span class="muted">${details(n)}</span>${traceButton(n)}</li>`).join("");
 }
 function renderAll() { renderInfo(); renderTabs(); renderChat(); renderNodes(); drawLinks(); }
 
 $("tabs").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("button"); if (b) { tab = b.dataset.tab!; renderTabs(); renderChat(); } });
+document.addEventListener("click", (e) => { // traceroute buttons live in popups and the node list
+  const t = (e.target as HTMLElement).closest("[data-trace]") as HTMLElement | null;
+  if (t) { e.stopPropagation(); startTrace(+t.dataset.trace!); return; }
+  if ((e.target as HTMLElement).id === "traceClear") { traceLayer.clearLayers(); $("trace").hidden = true; }
+}, true);
 $("nodes").addEventListener("click", (e) => { const li = (e.target as HTMLElement).closest("li"); if (li?.dataset.num) focus(+li.dataset.num); });
 $("chat").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("[data-num]") as HTMLElement | null; if (b) focus(+b.dataset.num!); });
+$("trace").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("[data-num]") as HTMLElement | null; if (b) focus(+b.dataset.num!); });
 
 // ---------- live ----------
 let es: EventSource;
@@ -105,6 +149,7 @@ function listen() {
     S.messages.push(m); renderChat();
     if (!m.mine) dispatchEvent(new CustomEvent("blip:say", { detail: { text: `${name(nodes.get(m.from))} on the mesh: ${m.text.slice(0, 80)}`, mood: "happy", hop: 4 } }));
   });
+  es.addEventListener("traceroute", (e) => showTrace(JSON.parse((e as MessageEvent).data)));
   es.addEventListener("ready", () => fetch("/api/mesh/state").then((r) => r.json()).then((d) => { S = d; renderAll(); }).catch(() => {}));
   es.onerror = () => { $("live").textContent = "RECONNECTING…"; $("live").className = ""; };
 }
@@ -119,6 +164,7 @@ $("login").addEventListener("submit", async (e) => {
 });
 $("logout").onclick = async () => { await post("/api/mesh/owner", { key: "logout" }).catch(() => {}); listen(); };
 const ownerUI = () => { ($("login") as HTMLElement).hidden = !!S?.owner; $("logout").hidden = !S?.owner; };
+// (the owner's traceroute buttons appear with the next state, which re-renders the popups and the list)
 setInterval(ownerUI, 1000);
 $("send").addEventListener("submit", async (e) => {
   e.preventDefault();
