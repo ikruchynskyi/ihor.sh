@@ -5,13 +5,14 @@ declare const L: any;
 
 type Node = { num: number; id: string; long?: string; short?: string; role?: number; lat?: number; lon?: number; alt?: number; posAt?: number; snr?: number; rssi?: number; heard?: number; hops?: number; battery?: number; voltage?: number; chUtil?: number; airTx?: number; uptime?: number; viaMqtt?: boolean };
 type Msg = { id: number; from: number; to: number; channel: number; text: string; at: number; snr?: number; rssi?: number; hops?: number; mine?: boolean };
-type State = { connected: boolean; me: string | null; myNum: number; region: string; preset: string; channels: { index: number; name: string }[]; packets: number; nodes: Node[]; messages: Msg[]; owner: boolean; ports?: Record<string, number>; encryptedByChannelHash?: Record<string, number> };
+type State = { tracing?: { to: number; since: number } | null; connected: boolean; me: string | null; myNum: number; region: string; preset: string; channels: { index: number; name: string }[]; packets: number; nodes: Node[]; messages: Msg[]; owner: boolean; ports?: Record<string, number>; encryptedByChannelHash?: Record<string, number> };
 
 const $ = (id: string) => document.getElementById(id)!;
 const ROLES = ["client", "client (muted)", "router", "router + client", "repeater", "tracker", "sensor", "TAK", "client (hidden)", "lost and found", "TAK tracker", "router (late)"];
 const map = makeMap("map", 11);
 const nodes = new Map<number, Node>(), markers = new Map<number, any>(), links = L.layerGroup().addTo(map), traceLayer = L.layerGroup().addTo(map);
 let S: State | null = null, tab = "0", fitted = false;
+let sortBy = "heard"; try { sortBy = localStorage.getItem("mesh:sort") || "heard"; } catch {}
 
 const name = (n?: Node) => (n ? n.long || n.short || n.id : "?");
 const color = (n: Node) => (n.num === S?.myNum ? "#ff5c8a" : n.viaMqtt ? "#8f98a8" : n.hops === 0 ? "#5cff9d" : (n.hops ?? 9) <= 2 ? "#f4d35e" : "#4de1ff");
@@ -54,14 +55,27 @@ function focus(num: number) {
 
 // ---------- traceroute (the owner's: it transmits) ----------
 type Hop = { num: number; id: string; name?: string; snr?: number };
-const traceButton = (n: Node) => (S?.owner && n.num !== S.myNum ? `<br><button type="button" data-trace="${n.num}" title="Ask the mesh which nodes carry a message to ${esc(name(n))} and back (transmits; one every 30 s)">📡 Traceroute</button>` : "");
+const traceButton = (n: Node) => (S?.owner && n.num !== S.myNum ? `<br><button type="button" data-trace="${n.num}" ${tracing ? "disabled" : ""} title="Ask the mesh which nodes carry a message to ${esc(name(n))} and back (transmits; one every 30 s)">${tracing?.to === n.num ? "📡 Tracing…" : "📡 Traceroute"}</button>` : "");
+// While a traceroute waits for its answer (up to a minute): a spinner and countdown above the tabs, a pulsing ring on the
+// target on the map, and every 📡 button disabled. The server says if one is pending, so a reload keeps showing it.
+let tracing: { to: number; since: number } | null = null, traceTick: ReturnType<typeof setInterval> | undefined, pulse: any = null;
+function setTracing(t: { to: number; since: number } | null) {
+  tracing = t; clearInterval(traceTick); pulse?.remove(); pulse = null;
+  document.querySelectorAll<HTMLButtonElement>("[data-trace]").forEach((b) => { b.disabled = !!t; b.textContent = t && +b.dataset.trace! === t.to ? "📡 Tracing…" : "📡 Traceroute"; });
+  if (!t) return;
+  const n = nodes.get(t.to);
+  if (n?.lat != null) pulse = L.circleMarker([n.lat, n.lon], { radius: 18, color: "#ffb347", weight: 3, fill: false, className: "tracing-ring" }).addTo(map);
+  const box = $("trace"), show = () => { const s = Math.round((Date.now() - t.since) / 1000); box.innerHTML = `<span class="spin" aria-hidden="true"></span> 📡 Tracing the route to <b data-num="${t.to}">${esc(name(n))}</b>… ${s} s <span class="muted">(gives up at 60 s)</span>`; };
+  box.hidden = false; show(); traceTick = setInterval(show, 1000);
+}
 async function startTrace(num: number) {
-  $("trace").hidden = false; $("trace").innerHTML = `📡 Tracing the route to <b>${esc(name(nodes.get(num)))}</b>… (up to a minute)`;
+  setTracing({ to: num, since: Date.now() });
   try { await post("/api/mesh/traceroute", { num }); }
-  catch (e) { $("trace").textContent = `📡 ${(e as Error).message}`; }
+  catch (e) { setTracing(null); $("trace").hidden = false; $("trace").textContent = `📡 ${(e as Error).message}`; }
 }
 const hopText = (h: Hop) => `<b data-num="${h.num}">${esc(h.name || h.id)}</b>${h.snr != null ? ` <span class="muted">${h.snr.toFixed(2)} dB</span>` : ""}`;
 function showTrace(t: { to: number; error?: string; towards?: Hop[]; back?: Hop[] | null }) {
+  setTracing(null);
   traceLayer.clearLayers();
   const box = $("trace"); box.hidden = false;
   if (t.error) { box.innerHTML = `📡 ${esc(name(nodes.get(t.to)))}: ${esc(t.error)}`; return; }
@@ -92,7 +106,7 @@ function renderTabs() {
   const chans = S.channels.length ? S.channels : [{ index: 0, name: "Primary" }];
   const t = [...chans.map((c) => [String(c.index), `# ${c.name}`]), ...(S.owner ? [["dm", "✉ Direct"]] : []), ["nodes", `Nodes (${nodes.size})`]];
   $("tabs").innerHTML = t.map(([k, label]) => `<button data-tab="${k}" aria-pressed="${k === tab}">${esc(label)}</button>`).join("");
-  $("nodes").hidden = tab !== "nodes"; $("chat").hidden = tab === "nodes";
+  $("nodes").hidden = tab !== "nodes"; $("chat").hidden = tab === "nodes"; $("sortBox").hidden = tab !== "nodes";
   ($("send") as HTMLFormElement).hidden = !S.owner || tab === "nodes" || tab === "dm";
 }
 function renderChat() {
@@ -117,7 +131,8 @@ function quietNote() {
     (snr != null && snr < -12 ? ` It also hears the mesh weakly: a median SNR of ${snr.toFixed(1)} dB, close to LongFast's limit of about −17.5 dB, so it catches only part of the traffic (an antenna by a window helps most).` : "");
 }
 function renderNodes() {
-  const list = [...nodes.values()].sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0));
+  const byHeard = (a: Node, b: Node) => (b.heard ?? 0) - (a.heard ?? 0), hops = (n: Node) => (n.num === S?.myNum ? -1 : n.viaMqtt ? 98 : n.hops ?? 99); // us first; via the internet and unknown last
+  const list = [...nodes.values()].sort(sortBy === "hops" ? (a, b) => hops(a) - hops(b) || byHeard(a, b) : byHeard);
   $("nodes").innerHTML = list.map((n) => `<li data-num="${n.num}"><span class="badge" style="background:${color(n)}">${esc(n.short || n.id.slice(-4))}</span> <b>${esc(name(n))}</b>${n.lat == null ? ' <span class="muted">(no position)</span>' : ""}<br><span class="muted">${details(n)}</span>${traceButton(n)}</li>`).join("");
 }
 function renderAll() { renderInfo(); renderTabs(); renderChat(); renderNodes(); drawLinks(); }
@@ -128,6 +143,8 @@ document.addEventListener("click", (e) => { // traceroute buttons live in popups
   if (t) { e.stopPropagation(); startTrace(+t.dataset.trace!); return; }
   if ((e.target as HTMLElement).id === "traceClear") { traceLayer.clearLayers(); $("trace").hidden = true; }
 }, true);
+($("sort") as HTMLSelectElement).value = sortBy;
+$("sort").addEventListener("change", () => { sortBy = ($("sort") as HTMLSelectElement).value; try { localStorage.setItem("mesh:sort", sortBy); } catch {} renderNodes(); });
 $("nodes").addEventListener("click", (e) => { const li = (e.target as HTMLElement).closest("li"); if (li?.dataset.num) focus(+li.dataset.num); });
 $("chat").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("[data-num]") as HTMLElement | null; if (b) focus(+b.dataset.num!); });
 $("trace").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("[data-num]") as HTMLElement | null; if (b) focus(+b.dataset.num!); });
@@ -140,6 +157,7 @@ function listen() {
   es.addEventListener("state", (e) => {
     S = JSON.parse((e as MessageEvent).data);
     nodes.clear(); S!.nodes.forEach(upsert); renderAll();
+    if (S!.tracing && !tracing) setTracing(S!.tracing);
     if (!fitted && markers.size) { map.fitBounds(L.featureGroup([...markers.values()]).getBounds().pad(0.15), { maxZoom: 13 }); fitted = true; }
   });
   es.addEventListener("node", (e) => { const n = JSON.parse((e as MessageEvent).data); upsert(n); renderInfo(); renderNodes(); drawLinks(); });

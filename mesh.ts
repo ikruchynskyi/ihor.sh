@@ -198,7 +198,7 @@ export function sendText(text: string, channel = 0) {
 // it at (RouteDiscovery: route, snr_towards; on the way back route_back, snr_back). Nodes whose firmware doesn't take
 // part show up as 0xFFFFFFFF, and an SNR of −128 means unknown. It transmits, so the server lets only the owner ask.
 const UNKNOWN = 0xffffffff, TRACE_HOPS = 5;
-let trace: { id: number; to: number; timer: ReturnType<typeof setTimeout> } | null = null;
+let trace: { id: number; to: number; since: number; timer: ReturnType<typeof setTimeout> } | null = null;
 export type Hop = { num: number; id: string; name?: string; snr?: number };
 /** A repeated field, packed (one blob) or one value at a time: fixed32 node numbers, or int32 varints (SNR × 4). */
 function packed(m: Map<number, Field[]>, f: number, kind: "u32" | "int") {
@@ -230,7 +230,7 @@ export function traceroute(to: number) {
   const id = (Math.random() * 0xffffffff) >>> 0;
   const data = Buffer.concat([enc.u(1, 70), enc.bytes(2, Buffer.alloc(0)), enc.u(3, 1)]); // an empty RouteDiscovery, want_response
   send(enc.bytes(1, Buffer.concat([enc.fixed(2, to), enc.u(3, 0), enc.bytes(4, data), enc.fixed(6, id), enc.u(9, TRACE_HOPS)])));
-  trace = { id, to, timer: setTimeout(() => { trace = null; emit("traceroute", { to, at: Date.now(), error: "No answer within a minute: the node may be out of reach, asleep, or the reply got lost." }); }, 60_000) };
+  trace = { id, to, since: Date.now(), timer: setTimeout(() => { trace = null; emit("traceroute", { to, at: Date.now(), error: "No answer within a minute: the node may be out of reach, asleep, or the reply got lost." }); }, 60_000) };
   return id;
 }
 
@@ -243,5 +243,6 @@ export function meshState(owner = false) {
     packets: mesh.packets, lastPacket: mesh.lastPacket, ports: mesh.ports, encryptedByChannelHash: mesh.encrypted,
     nodes: [...mesh.nodes.values()].filter((n) => n.num === mesh.myNum || (n.heard ?? 0) > since).sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0)),
     messages: owner ? mesh.messages : mesh.messages.filter((m) => m.to === BROADCAST), owner,
+    tracing: owner && trace ? { to: trace.to, since: trace.since } : null, // a traceroute waiting for its answer (the owner's page shows it)
   };
 }

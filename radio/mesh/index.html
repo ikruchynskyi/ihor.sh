@@ -25,7 +25,11 @@
     #chat li.dm { border-left-color: #ff5c8a; }
     #chat li b, #trace b[data-num] { cursor: pointer; text-decoration: underline dotted; }
     #nodes li.flash { background: color-mix(in srgb, var(--accent, #ffb347) 25%, transparent); }
-    #trace { margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); font-size: .9rem; } #trace[hidden] { display: none; }
+    #trace { margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); font-size: .9rem; } #trace[hidden], #sortBox[hidden] { display: none; }
+    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--accent, #ffb347); border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tracing-ring { animation: ring 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes ring { from { opacity: 1; transform: scale(.6); } to { opacity: 0; transform: scale(1.6); } }
     #chat .t { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
     .badge { display: inline-block; min-width: 26px; padding: 1px 4px; border-radius: 4px; font: 700 11px ui-monospace, Menlo, monospace; text-align: center; color: #10131a; border: 1px solid #10131a; box-shadow: 0 0 3px #000; white-space: nowrap; }
     #send { display: flex; gap: 6px; margin-top: 8px; }
@@ -49,6 +53,7 @@
     </details>
     <div id="trace" hidden aria-live="polite"></div>
     <div class="tabs2" id="tabs"></div>
+    <label id="sortBox" class="muted" hidden>Sort by <select id="sort"><option value="heard">last heard</option><option value="hops">hops (direct first)</option></select></label>
     <ul id="nodes" hidden></ul>
     <ul id="chat" aria-live="polite"></ul>
     <form id="send" hidden><input id="msg" maxlength="200" placeholder="Message everyone on this channel" aria-label="Message" autocomplete="off"><button>Send</button></form>
