@@ -11,6 +11,7 @@
     .dec { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
     #iq { width: 160px; height: 160px; border-radius: 8px; }
     #pics figure { margin: 10px 0; font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    #c-pic { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; margin-top: 8px; }
     #pics canvas { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; }
     .passes .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 6px; }
     .passes ul { margin: 4px 0; padding-left: 18px; }
@@ -44,6 +45,12 @@
   <div class="dec"><canvas id="iq" width="160" height="160" aria-label="QPSK constellation: four tight dots when the signal is clean"></canvas><p class="status" id="dstat">The decoder runs while the dongle is on. Four tight dots in the square mean a clean signal; pictures appear below, one per channel.</p></div>
   <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin"> (8-bit IQ centered on the satellite; sample rate from the file name, else <input id="frate" type="number" value="240000" style="width:7em"> S/s)</p>
   <div id="pics"></div>
+  <div id="combine" class="pane" hidden>
+    <b>Combine channels into color</b>
+    <div class="row">Red <select id="c-r"></select> Green <select id="c-g"></select> Blue <select id="c-b"></select> <button class="btn" id="c-go" type="button">Combine</button></div>
+    <p class="note">Channel 2, 2, 1 gives natural-looking color: land yellow-green, sea dark, clouds white. Combine again as more of the pass comes in.</p>
+    <figure id="c-fig" hidden><canvas id="c-pic"></canvas><figcaption>Combined · <a href="#" id="c-save">save PNG</a></figcaption></figure>
+  </div>
 
   <h2>Recordings</h2>
   <ul id="saves"></ul>

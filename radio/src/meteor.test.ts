@@ -1,7 +1,7 @@
 // Run: node src/meteor.test.ts. A synthetic Meteor-M pass in the real frame format (packets → M_PDU → VCDU → PN → ASM →
 // convolutional code → RRC QPSK at 240 kS/s, with Doppler, an unknown phase, mirrored I/Q and noise), decoded back to pixels.
 import assert from "node:assert/strict";
-import { MeteorReceiver, DC, qTable } from "./meteor.ts";
+import { MeteorReceiver, DC, qTable, Channel, align, composite } from "./meteor.ts";
 import { ConvEncoder, PN, ASM } from "./lrpt.ts";
 
 // 1. Image packets: 14 flat 8×8 blocks each (DC only), brightness ramping across the line.
@@ -73,4 +73,17 @@ for (const row of ch.rows) { // which line each row is (the first frames are los
 }
 console.log(`${good} of ${checked} blocks exact (no Reed-Solomon: a bit error spoils the rest of its packet)`);
 assert.ok(checked > 1500 && good / checked > 0.95);
+// 5. Lining channels up: one shared counter, each line sent as 14 packets of APID 64, then 65, then 66, then telemetry.
+// Channel 65 loses line 3 completely; the counter wraps at 16384 in the middle.
+{
+  const chs = new Map([64, 65, 66].map((a) => [a, new Channel()])), px = new Uint8Array(112 * 8);
+  let seq = 16384 - 100;
+  for (let line = 0; line < 8; line++) for (const a of [64, 65, 66, 70]) for (let k = 0; k < 14; k++, seq++) if (a !== 70 && !(a === 65 && line === 3)) chs.get(a)!.add(k * 14, seq % 16384, px);
+  assert.deepEqual(align(chs.get(65)!, 65, chs.get(64)!, 64), [0, 1, 2, 4, 5, 6, 7], "65 → 64 looks back");
+  assert.deepEqual(align(chs.get(64)!, 64, chs.get(65)!, 65), [0, 1, 2, -1, 3, 4, 5, 6], "64 → 65 looks forward, the lost line stays blank");
+  assert.deepEqual(align(chs.get(64)!, 64, chs.get(66)!, 66), [0, 1, 2, 3, 4, 5, 6, 7]);
+  const img = composite(chs, [65, 65, 64]);
+  assert.equal(img.height, 7 * 8, "as tall as the red channel");
+  console.log("channels line up across a lost line and the counter wrap");
+}
 console.log("all checks passed");

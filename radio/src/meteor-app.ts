@@ -4,7 +4,7 @@ import "./ham/ham.css";
 import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
-import { MeteorReceiver, WIDTH } from "./meteor.ts";
+import { MeteorReceiver, WIDTH, composite } from "./meteor.ts";
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el("status"), cv = el<HTMLCanvasElement>("wf"), g = cv.getContext("2d")!, wf = new Waterfall(512, 300);
@@ -78,7 +78,7 @@ el("rec").addEventListener("click", () => {
 // --- the decoder: pictures per channel, the constellation, and the Doppler it is tracking ---------------------------------
 const cg = el<HTMLCanvasElement>("iq").getContext("2d")!, drawn = new Map<number, number>();
 function newDecoder(fs: number) {
-  rx = new MeteorReceiver(fs); drawn.clear(); el("pics").innerHTML = "";
+  rx = new MeteorReceiver(fs); drawn.clear(); el("pics").innerHTML = ""; el("combine").hidden = el("c-fig").hidden = true; comboSet = "";
 }
 function paint() {
   if (!rx) return;
@@ -102,8 +102,37 @@ function paint() {
     }
     drawn.set(apid, ch.rows.length);
   }
+  comboMenus();
 }
 setInterval(paint, 1000);
+
+// --- combining channels into one color picture ---
+let comboSet = "";
+function comboMenus() { // called from paint: offer the channels received so far, keeping the reader's picks
+  const apids = [...rx!.packets.channels.keys()].sort((a, b) => a - b), key = apids.join();
+  el("combine").hidden = apids.length < 2;
+  if (key === comboSet || apids.length < 2) return;
+  comboSet = key;
+  const has = (a: number) => apids.includes(a), pick = { "c-r": has(65) ? 65 : apids[1], "c-g": has(65) ? 65 : apids[1], "c-b": has(64) ? 64 : apids[0] };
+  for (const [id, def] of Object.entries(pick)) {
+    const sel = el<HTMLSelectElement>(id), keep = +sel.value;
+    sel.innerHTML = apids.map((a) => `<option value="${a}">Channel ${a - 63}</option>`).join("");
+    sel.value = String(has(keep) ? keep : def);
+  }
+}
+el("c-go").addEventListener("click", () => {
+  if (!rx) return;
+  const apids = ["c-r", "c-g", "c-b"].map((id) => +el<HTMLSelectElement>(id).value) as [number, number, number];
+  const img = composite(rx.packets.channels, apids), c = el<HTMLCanvasElement>("c-pic");
+  if (!img.height) return;
+  c.width = img.width; c.height = img.height; c.getContext("2d")!.putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
+  el("c-fig").hidden = false;
+});
+el("c-save").addEventListener("click", (e) => {
+  e.preventDefault();
+  const link = document.createElement("a"); link.href = el<HTMLCanvasElement>("c-pic").toDataURL("image/png");
+  link.download = `meteor-color-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}.png`; link.click();
+});
 el("pics").addEventListener("click", (e) => {
   const a = (e.target as HTMLElement).closest<HTMLAnchorElement>("[data-save]"); if (!a || !rx) return;
   e.preventDefault();

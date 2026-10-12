@@ -61,16 +61,44 @@ export function decodeMcus(d: Uint8Array, q: number, out: Uint8Array): number {
 // ---------- the picture: one growing image per APID ----------
 export class Channel {
   rows: Uint8Array[] = []; // 8-pixel-high strips, WIDTH wide
-  private lastMcu = 999; private lastSeq = -1;
+  rowSeq: number[] = [];   // the packet counter (unwrapped) where each row's line starts: lines channels up for combining
+  private lastMcu = 999; private lastSeq = -1; private abs = -1;
   add(mcu: number, seq: number, px: Uint8Array) {
     // a new line of blocks: the position went back to the left, or the packet counter jumped further than the position
     // (a line's other packets were lost). ponytail: whole lost lines aren't left as gaps, so the picture shrinks a little.
     const steps = (mcu - this.lastMcu) / 14, jump = (seq - this.lastSeq + 16384) % 16384;
-    if (mcu <= this.lastMcu || jump >= steps + 10) this.rows.push(new Uint8Array(WIDTH * 8));
+    this.abs = this.abs < 0 ? seq : this.abs + jump; // the 14-bit counter wraps every few minutes
+    if (mcu <= this.lastMcu || jump >= steps + 10) { this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(this.abs - mcu / 14); }
     this.lastMcu = mcu; this.lastSeq = seq;
     const row = this.rows[this.rows.length - 1];
     for (let y = 0; y < 8; y++) row.set(px.subarray(y * 112, y * 112 + 112).subarray(0, Math.min(112, WIDTH - mcu * 8)), y * WIDTH + mcu * 8);
   }
+}
+
+/** For each row of `base`, the row of `other` from the same scan line (-1 where `other` lost it). Each line is sent one
+ *  channel after another, so their counters differ by a fixed offset: the most common gap to the other channel's nearest
+ *  line, looking forward for a later channel and back for an earlier one. ponytail: assumes lines go out in APID order. */
+export function align(base: Channel, baseApid: number, other: Channel, otherApid: number): number[] {
+  if (base === other) return base.rows.map((_, i) => i);
+  const fwd = otherApid > baseApid, count = new Map<number, number>(), o = other.rowSeq;
+  for (const s of base.rowSeq) {
+    let near = NaN; for (const t of o) if (fwd ? t >= s && !(t >= near) : t <= s && !(t <= near)) near = t;
+    if (!Number.isNaN(near)) count.set(near - s, (count.get(near - s) ?? 0) + 1);
+  }
+  let d = 0, best = 0; for (const [k, n] of count) if (n > best) { best = n; d = k; }
+  return base.rowSeq.map((s) => { let bi = -1, be = 4; o.forEach((t, i) => { const e = Math.abs(t - s - d); if (e < be) { be = e; bi = i; } }); return bi; });
+}
+/** A color picture from three channels (red, green, blue APIDs; one may repeat), lined up by scan line. */
+export function composite(chs: Map<number, Channel>, apids: [number, number, number]) {
+  const base = chs.get(apids[0])!, maps = apids.map((a) => align(base, apids[0], chs.get(a)!, a)), n = WIDTH * 8;
+  const data = new Uint8ClampedArray(base.rows.length * n * 4);
+  for (let r = 0; r < base.rows.length; r++)
+    for (let k = 0; k < 3; k++) {
+      const m = maps[k][r], src = m >= 0 ? chs.get(apids[k])!.rows[m] : null; if (!src) continue;
+      for (let p = 0; p < n; p++) data[(r * n + p) * 4 + k] = src[p];
+    }
+  for (let i = 3; i < data.length; i += 4) data[i] = 255;
+  return { data, width: WIDTH, height: base.rows.length * 8 };
 }
 
 // ---------- frames → packets ----------
