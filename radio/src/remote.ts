@@ -7,7 +7,9 @@
 
 const MIN_CHUNK = 64 * 1024; // network reads arrive in odd sizes; regroup into blocks of ~64 KB
 
-export type Band = { center: number; rate: number; half: number; gain: number | null; listeners: number; slices: { tag: string; center: number; width: number }[] };
+export type Band = { center: number; rate: number; half: number; gain: number | null; listeners: number; slices: { tag: string; center: number; width: number }[];
+  device?: "rtl" | "hackrf" | ""; tuner?: string; hackrf?: { lna: number; vga: number; amp: boolean; filter: number; ampBlocked: string };
+  level?: { dbfs: number; clipPct: number }; protect?: { text: string; at: number } | null; gainBand?: string; gainRemembered?: boolean };
 
 export class RemoteSdr {
   tunerName = "";
@@ -41,6 +43,8 @@ export class RemoteSdr {
     this.centerFrequency = (await this.post("/api/slice", { id: this.id, center: freq })).center;
   }
   async setGain(db: number | null) { await this.post("/api/tune", { gain: db }); } // shared by everyone
+  /** The radio's shared controls: { gain } (RTL-SDR) or { lna, vga, amp } (HackRF). Throws the server's reason when refused. */
+  async tune(body: object) { return this.post("/api/tune", body); }
 
   /** The whole window as everyone sees it: "band" (center, gain, listeners, slices) and "row" (spectrum bytes). */
   overview(on: (ev: "band" | "row", data: any) => void) {

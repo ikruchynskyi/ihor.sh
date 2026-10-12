@@ -1,12 +1,19 @@
-// Opens an RTL-SDR from Node with our own driver, using the `usb` package's WebUSB implementation
-// for raw USB access. Shared by the LAN server and the hardware test.
+// Opens the radio from Node with our own drivers, using the `usb` package's WebUSB implementation
+// for raw USB access: an RTL-SDR dongle, or a HackRF when that's what is plugged in. Shared by the LAN server and the hardware test.
 import { WebUSB } from "usb";
-import { RtlSdr, isDongle, type UsbDevice } from "../src/rtlsdr.ts";
+import { RtlSdr, isDongle as isRtl, type UsbDevice } from "../src/rtlsdr.ts";
+import { HackRf, isHackRf } from "../src/hackrf.ts";
 
-export async function openDongle(): Promise<RtlSdr> {
+export type Sdr = RtlSdr | HackRf;
+const isDongle = (d: { vendorId: number; productId: number }) => isRtl(d) || isHackRf(d);
+
+export async function openDongle(): Promise<Sdr> {
+  const usb = () => new WebUSB({ allowAllDevices: true }).getDevices();
+  const hack = (await usb()).find(isHackRf);
+  if (hack) return HackRf.open(shim(hack));
   // A fresh WebUSB object each attempt: after a reset the dongle re-enumerates as a new device.
   return RtlSdr.openWithRetry(async () => {
-    const dev = (await new WebUSB({ allowAllDevices: true }).getDevices()).find(isDongle);
+    const dev = (await usb()).find(isRtl);
     return dev ? shim(dev) : undefined;
   });
 }

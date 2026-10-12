@@ -14,3 +14,4 @@ __pycache__/
 radio/fm-scan.json
 # tunnel credentials for compose.yaml
 cloudflared/
+radio/gains.json

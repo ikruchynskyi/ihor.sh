@@ -9,8 +9,9 @@
 import http from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { openDongle, resetDongle, looksStalled } from "./scripts/node-usb.ts";
-import type { RtlSdr } from "./src/rtlsdr.ts";
+import { openDongle, resetDongle, looksStalled, type Sdr } from "./scripts/node-usb.ts";
+import { HackRf } from "./src/hackrf.ts";
+import { bandKey } from "./src/bandplan.ts";
 import { decodeCU8 } from "./src/iq.ts";
 import { avgSpectrum, firLowpass, FirDecimator } from "./src/dsp.ts";
 import { AprsReceiver, Stations } from "./src/aprs.ts";
@@ -42,12 +43,72 @@ const stations = new Stations();
 const tracker = new Tracker(REF.lat, REF.lon);
 let adsbTail = new Float32Array(0), adsbDirty = false;
 
-const tuning = { center: 98.45e6, gain: 30 as number | null };
+const tuning = { center: 98.45e6, gain: 30 as number | null, lna: 24, vga: 24, amp: false }; // gain: the RTL-SDR's; lna/vga/amp: the HackRF's
+
+// Two radios, whichever is plugged in. The RTL-SDR: a 2.4 MHz window. The HackRF: 9.6 MS/s through an 8 MHz baseband
+// filter, an 8 MHz window that still divides evenly into the 240 kHz and 1.2 MHz slices (÷40, ÷8).
+const HACKRF_RATE = 9_600_000, HACKRF_FILTER = 8_000_000;
+// Where the HackRF's 14 dB RF amp may not be on: bands with strong transmitters around NYC, which can overload it (and,
+// close enough, damage it). LNA and VGA gain can't hurt the radio, only clip the signal; the watchdog below handles that.
+const LOUD: [number, number, string][] = [[87.5e6, 108e6, "FM broadcast"], [174e6, 216e6, "VHF TV"], [512e6, 608e6, "UHF TV"], [617e6, 652e6, "cellular"], [728e6, 757e6, "cellular"], [860e6, 894e6, "cellular"], [929e6, 932e6, "paging"]];
+const ampBlocked = (center = tuning.center) => { const h = half(), b = LOUD.find(([lo, hi]) => center + h > lo && center - h < hi); return b ? `${b[2]} (${b[0] / 1e6}–${b[1] / 1e6} MHz) is in the window` : ""; };
+/** The HackRF's gains as tuning says, with the amp forced off where it isn't allowed. */
+async function applyHackrf(s: Sdr | null = sdr) {
+  if (!(s instanceof HackRf)) return;
+  if (tuning.amp && ampBlocked()) tuning.amp = false;
+  await s.setGains(tuning.lna, tuning.vga);
+  if (s.amp !== tuning.amp) await s.setAmp(tuning.amp);
+}
+
+// Gain is remembered per band (kept in gains.json): FM broadcast wants far less than a 2 m repeater, so moving the
+// window into another band brings back what was last set there.
+const GAINS_FILE = path.resolve(import.meta.dirname, "gains.json"); // git-ignored
+type Gains = { gain: number | null; lna: number; vga: number; amp: boolean };
+const gainMemory: Record<string, Gains> = await readFile(GAINS_FILE, "utf8").then(JSON.parse).catch(() => ({}));
+let gainBand = bandKey(tuning.center);
+function rememberGain() {
+  gainMemory[gainBand] = { gain: tuning.gain, lna: tuning.lna, vga: tuning.vga, amp: tuning.amp };
+  writeFile(GAINS_FILE, JSON.stringify(gainMemory, null, 1)).catch(() => {});
+}
+/** After the window moved: into another band, that band's gain (if any was set there) on the radio. */
+async function followBand() {
+  const k = bandKey(tuning.center);
+  if (k === gainBand) return;
+  gainBand = k;
+  const m = gainMemory[k];
+  if (!m) return;
+  Object.assign(tuning, m);
+  if (mode !== "iq") return;
+  if (sdr instanceof HackRf) await applyHackrf(); else await sdr?.setGain(tuning.gain);
+}
+
+// The ADC's level, from every 7th byte: RMS in dBFS and the share of samples at the rails. Clipping on the HackRF backs
+// the gain off by itself (amp first, then whichever of VGA and LNA is pushed harder), a step every 1.5 s (a level
+// reading covers 0.5 s, so it has to show the last step first) until it stops: nobody can leave it clipping.
+let acc = { sum: 0, n: 0, clip: 0, at: Date.now() }, level = { dbfs: -99, clipPct: 0 }, protectNote: { text: string; at: number } | null = null, lastProtect = 0;
+function measure(chunk: Uint8Array) {
+  for (let i = 0; i < chunk.length; i += 7) { const v = chunk[i] - 127.5; acc.sum += v * v; acc.n++; if (v * v >= 126 ** 2) acc.clip++; }
+  if (Date.now() - acc.at < 500) return;
+  level = { dbfs: +(10 * Math.log10(acc.sum / acc.n / 127.5 ** 2 + 1e-12)).toFixed(1), clipPct: +((100 * acc.clip) / acc.n).toFixed(2) };
+  acc = { sum: 0, n: 0, clip: 0, at: Date.now() };
+  if (level.clipPct > 0.2 && mode === "iq" && sdr instanceof HackRf && Date.now() - lastProtect > 1500) void protect(sdr);
+  tellBand(); // twice a second: the meters on the pages
+}
+async function protect(s: HackRf) {
+  lastProtect = Date.now();
+  const vgaFirst = tuning.vga / 62 >= tuning.lna / 40 || !tuning.lna; // the stage nearer its top: LNA 40 is its max, VGA 62
+  const text = tuning.amp ? ((tuning.amp = false), "RF amp switched off") : vgaFirst && tuning.vga > 0 ? ((tuning.vga = Math.max(0, tuning.vga - 6)), `VGA lowered to ${tuning.vga} dB`) : tuning.lna > 0 ? ((tuning.lna -= 8), `LNA lowered to ${tuning.lna} dB`) : "";
+  if (!text) return;
+  protectNote = { text: `${text}: the signal was clipping (${level.clipPct}% of samples at full scale)`, at: Date.now() };
+  rememberGain(); // what's safe here is what this band gets next time
+  console.log(`protect: ${protectNote.text}`);
+  await applyHackrf(s).catch((e) => console.error("protect:", e.message));
+}
 const clients = new Set<http.ServerResponse>();
 const congested = new Set<http.ServerResponse>();
-let sdr: RtlSdr | null = null;
+let sdr: Sdr | null = null;
 let streaming: Promise<void> | null = null;
-let opening: Promise<RtlSdr> | null = null;
+let opening: Promise<Sdr> | null = null;
 let idle: NodeJS.Timeout | undefined;
 
 /** Send each chunk to every listener; a listener that can't keep up skips chunks instead of lagging. */
@@ -67,11 +128,11 @@ function push(name: Decoder, event: string, data: unknown) {
 // Stall watchdog: now and then, check that the dongle sends samples and not a replayed buffer; if it
 // does, USB-reset it and reopen in the same mode (listeners and viewers stay connected).
 let chunkCount = 0, recovering = false;
-async function recover() {
+async function recover(why = "stalled (replaying a buffer)") {
   if (recovering) return;
   recovering = true;
   const want = mode === "idle" ? "iq" : mode;
-  console.error(`dongle stalled (replaying a buffer) in ${want} mode: resetting it`);
+  console.error(`dongle ${why} in ${want} mode: resetting it`);
   try {
     await release();
     console.log(`USB reset: ${(await resetDongle()) ? "ok" : "failed"}`);
@@ -84,6 +145,7 @@ async function recover() {
 /** Every chunk from the dongle goes where the current mode needs it. */
 function onChunk(chunk: Uint8Array) {
   if (++chunkCount % 64 === 8 && !recovering && looksStalled(chunk)) { recover(); return; }
+  measure(chunk);
   if (scanSink) return scanSink(decodeCU8(chunk));
   if (mode === "iq") {
     fanOut(chunk); // raw listeners (on this computer's network only)
@@ -159,13 +221,16 @@ const slices = new Map<string, Slice>();
 const overviewers = new Set<http.ServerResponse>();
 const listening = () => clients.size + slices.size;
 const USABLE = 0.45; // of the sample rate, each side of center: the dongle's filter rolls off beyond
-const half = () => USABLE * (sdr?.sampleRate ?? RATE);
+const half = () => (sdr instanceof HackRf && sdr.filter ? Math.min(USABLE * sdr.sampleRate, sdr.filter / 2) : USABLE * (sdr?.sampleRate ?? RATE)); // a HackRF: its baseband filter's edge
 const BUDGET = Number(process.env.STREAM_BUDGET ?? 3_500_000); // bytes/s of upload for all slices together (~28 Mbit/s)
 const WIDTHS = [240_000, 1_200_000];
 function stages(rate: number, width: number) {
   const pass = 0.45 * width, out: FirDecimator[] = [];
   let r = rate;
-  for (const f of width === 240_000 ? [5, 2] : [2]) { // anything above (r/f − pass) would fold back onto the passband
+  const factors: number[] = []; // 2.4 MS/s → 240 k: ÷5 ÷2; 9.6 MS/s → 240 k: ÷5 ÷4 ÷2
+  if (rate % width) throw new Error(`${rate} S/s doesn't divide into ${width}`);
+  for (let left = rate / width, f = 5; left > 1; ) if (left % f === 0) { factors.push(f); left /= f; } else if (--f < 2) throw new Error(`${rate} S/s doesn't divide into ${width}`);
+  for (const f of factors) { // anything above (r/f − pass) would fold back onto the passband
     const o = r / f, stop = o - pass;
     out.push(new FirDecimator(firLowpass((pass + stop) / 2 / r, (stop - pass) / r), f, 2));
     r = o;
@@ -206,7 +271,8 @@ async function place(id: string | null, f: number, width: number) {
   const tries = others.length ? [(lo + hi) / 2, ...[...others, { center: f, width }].flatMap((s) => [s.center - s.width / 2 - 40e3, s.center + s.width / 2 + 40e3])] : [f - w2 - 50e3];
   const c = tries.find((t) => fitsAll(t) && !inSlice(t)) ?? (lo + hi) / 2;
   tuning.center = Math.round(c);
-  if (mode === "iq") await sdr?.setCenterFrequency(tuning.center);
+  if (mode === "iq") { await sdr?.setCenterFrequency(tuning.center); if (tuning.amp && ampBlocked()) await applyHackrf(); }
+  await followBand();
   return f;
 }
 // The whole window for everyone, ~7 rows a second (dB above the floor, ¼ dB per step), plus who listens where.
@@ -219,24 +285,28 @@ function overview(x: Float32Array) {
   const msg = `event: row\ndata: ${Buffer.from(row).toString("base64")}\n\n`;
   for (const r of overviewers) r.write(msg);
 }
-const band = () => ({ center: tuning.center, rate: sdr?.sampleRate ?? RATE, half: half(), gain: tuning.gain, listeners: listening(),
+const radio = () => sdr instanceof HackRf ? { device: "hackrf", tuner: sdr.tunerName, hackrf: { lna: tuning.lna, vga: tuning.vga, amp: tuning.amp, filter: sdr.filter, ampBlocked: ampBlocked() } }
+  : { device: sdr ? "rtl" : "", tuner: sdr?.tunerName ?? "" };
+const band = () => ({ center: tuning.center, rate: sdr?.sampleRate ?? RATE, half: half(), gain: tuning.gain, listeners: listening(), ...radio(), level, protect: protectNote, gainBand, gainRemembered: !!gainMemory[gainBand],
   slices: [...slices.values()].map((s) => ({ tag: s.tag, center: s.center, width: s.width })) });
 function tellBand() { const msg = `event: band\ndata: ${JSON.stringify(band())}\n\n`; for (const r of overviewers) r.write(msg); }
 
 /** Open the dongle for `want` (raw IQ at the listeners' tuning, or a decoder's own settings). */
-function ensureSdr(want: "iq" | Decoder = "iq"): Promise<RtlSdr> {
+function ensureSdr(want: "iq" | Decoder = "iq"): Promise<Sdr> {
   if (sdr && mode === want) return Promise.resolve(sdr);
   opening ??= (async () => {
     if (sdr) await release();
     const d = want === "iq" ? null : DECODERS[want];
     const s = await openDongle();
-    await s.setSampleRate(d?.rate ?? RATE);
+    const hack = s instanceof HackRf, rate = d?.rate ?? (hack ? HACKRF_RATE : RATE), min = hack ? s.minRate : 0; // a HackRF starts at 2 MS/s: 1.024 → 2.048
+    const r = rate < min ? rate * Math.ceil(min / rate) : rate;
+    await (hack ? s.setSampleRate(r, d ? undefined : HACKRF_FILTER) : s.setSampleRate(r));
     await s.setCenterFrequency(d?.center ?? tuning.center);
-    await s.setGain(d ? d.gain : tuning.gain);
+    if (hack && !d) await applyHackrf(s); else await s.setGain(d ? d.gain : tuning.gain);
     mode = want;
-    if (want === "aprs") aprsRx = new AprsReceiver(DECODERS.aprs.rate, 144.39e6 - DECODERS.aprs.center);
+    if (want === "aprs") aprsRx = new AprsReceiver(s.sampleRate, 144.39e6 - DECODERS.aprs.center);
     adsbTail = new Float32Array(0);
-    streaming = s.stream(onChunk).catch((e) => { console.error("stream:", e.message); });
+    streaming = s.stream(onChunk).catch((e) => { console.error("stream:", e.message); if (sdr === s) recover("stream failed"); }); // a USB error mid-stream: reset and reopen, listeners stay connected
     console.log(`dongle open for ${want}: ${s.tunerName}, ${s.sampleRate} S/s`);
     return (sdr = s);
   })().finally(() => (opening = null));
@@ -286,7 +356,7 @@ function json(res: http.ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
 }
 
-const state = () => ({ tuner: sdr?.tunerName ?? "", rate: sdr?.sampleRate ?? RATE, center: tuning.center, gain: tuning.gain, listeners: listening(), half: half(),
+const state = () => ({ ...radio(), rate: sdr?.sampleRate ?? RATE, center: tuning.center, gain: tuning.gain, listeners: listening(), half: half(),
   mode, watchers: { aprs: watchers.aprs.size, adsb: watchers.adsb.size } });
 
 const server = http.createServer(async (req, res) => {
@@ -297,15 +367,23 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/tune" && req.method === "POST") {
       let body = "";
       for await (const c of req) body += c;
-      const { center, gain } = JSON.parse(body || "{}");
+      const { center, gain, lna, vga, amp } = JSON.parse(body || "{}");
       if (typeof center === "number") { // moves the whole window, so only when it still covers every slice
         if (center < 24e6 || center > 1.766e9) return json(res, 400, { error: "Frequency must be 24–1766 MHz" });
         const out = [...slices.values()].find((s) => Math.abs(s.center - center) + s.width / 2 > half());
         if (out) return json(res, 409, { error: `Someone is listening at ${fmtMHz(out.center)} MHz, outside that window.` });
         tuning.center = center;
         if (mode === "iq") await sdr?.setCenterFrequency(center);
+        await followBand();
       }
-      if (gain === null || typeof gain === "number") { tuning.gain = gain; if (mode === "iq") await sdr?.setGain(gain); }
+      if (gain === null || typeof gain === "number") { tuning.gain = gain; if (mode === "iq" && !(sdr instanceof HackRf)) await sdr?.setGain(gain); }
+      // the HackRF's own controls, clamped to what the chips take; the amp only where ampBlocked() allows it
+      if (typeof lna === "number" && Number.isFinite(lna)) tuning.lna = Math.max(0, Math.min(40, 8 * Math.round(lna / 8)));
+      if (typeof vga === "number" && Number.isFinite(vga)) tuning.vga = Math.max(0, Math.min(62, 2 * Math.round(vga / 2)));
+      if (amp === true && ampBlocked()) return json(res, 409, { error: `The RF amp stays off here: ${ampBlocked()}, and strong transmitters there can overload it.`, ...state() });
+      if (typeof amp === "boolean") tuning.amp = amp;
+      if (mode === "iq") await applyHackrf();
+      if (gain !== undefined || lna !== undefined || vga !== undefined || amp !== undefined) rememberGain();
       tellBand();
       return json(res, 200, state());
     }

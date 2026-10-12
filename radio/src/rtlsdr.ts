@@ -274,13 +274,19 @@ export class RtlSdr {
     await this.writeReg(USBB, USB_EPA_CTL, 0x0000, 2);
     this.streaming = true;
     const queue = Array.from({ length: QUEUE }, () => this.dev.transferIn(BULK_ENDPOINT, BUFFER_BYTES));
-    while (this.streaming) {
-      const r = await queue.shift()!;
-      if (this.streaming) queue.push(this.dev.transferIn(BULK_ENDPOINT, BUFFER_BYTES));
-      if (r.status !== "ok" || !r.data) throw new Error(`USB bulk read failed: ${r.status}`);
-      onData(new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength));
+    try {
+      while (this.streaming) {
+        const r = await queue.shift()!;
+        if (this.streaming) queue.push(this.dev.transferIn(BULK_ENDPOINT, BUFFER_BYTES));
+        if (r.status !== "ok" || !r.data) throw new Error(`USB bulk read failed: ${r.status}`);
+        onData(new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength));
+      }
+    } finally {
+      // let in-flight transfers finish before anyone touches the device; after a failed read the others reject too
+      // ("Cancelled"), and left unawaited that rejection would take a Node process down
+      this.streaming = false;
+      await Promise.allSettled(queue);
     }
-    await Promise.allSettled(queue); // let in-flight transfers finish before anyone touches the device
   }
 
   stop() { this.streaming = false; }
