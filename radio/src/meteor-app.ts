@@ -27,8 +27,7 @@ lab(el("rd-lab"), {
     }
     const iq = chain.dec.process(chain.mix.process(Float32Array.from(cu8, (v) => (v - 127.5) / 127.5)));
     wf.push(spectrumOfIQ(iq, 512, 8));
-    if (!rx || rx.fs !== chain.fs) newDecoder(chain.fs);
-    rx!.push(iq);
+    if (!decodingFile) { if (!rx || rx.fs !== chain.fs) newDecoder(chain.fs); rx!.push(iq); }
     if (!recording) return;
     // slow AGC: keep the RMS around 32 counts so the weak signal uses the bytes' range without clipping
     let p = 0; for (const v of iq) p += v * v; rms = 0.9 * rms + 0.1 * Math.sqrt(p / iq.length || 1e-12);
@@ -52,10 +51,16 @@ function stopRec() {
   if (!bytes) { status.textContent = "Nothing recorded (is the dongle running?)."; return; }
   const name = `meteor-${el<HTMLSelectElement>("sat").value}MHz-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${outFs}sps.cu8`;
   const url = URL.createObjectURL(new Blob(chunks as BlobPart[]));
-  el("saves").insertAdjacentHTML("afterbegin", `<li><a href="${url}" download="${name}">${name}</a> · ${(bytes / 2 / outFs / 60).toFixed(1)} min, ${(bytes / 1e6).toFixed(0)} MB</li>`);
-  status.textContent = `Saved below. Decode it in SatDump: baseband, format cu8, sample rate ${outFs}.`;
+  el("saves").insertAdjacentHTML("afterbegin", `<li data-url="${url}" data-name="${name}"><a href="${url}" download="${name}">${name}</a> · ${(bytes / 2 / outFs / 60).toFixed(1)} min, ${(bytes / 1e6).toFixed(0)} MB · <button type="button" data-act="decode">Decode</button> <button type="button" data-act="delete">Delete</button></li>`);
+  status.textContent = "Saved below: Decode turns it into pictures here, the link downloads it.";
   chunks = []; bytes = 0;
 }
+el("saves").addEventListener("click", async (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]"), li = b?.closest<HTMLElement>("li"); if (!b || !li) return;
+  const { url, name } = li.dataset as { url: string; name: string };
+  if (b.dataset.act === "delete") { URL.revokeObjectURL(url); li.remove(); return; }
+  decodeFile(await fetch(url).then((r) => r.blob()), name);
+});
 el("rec").addEventListener("click", () => {
   if (recording) return stopRec();
   recording = true; chunks = []; bytes = 0; outFs = 0; el("rec").textContent = "Stop and save";
@@ -100,16 +105,21 @@ el("pics").addEventListener("click", (e) => {
 });
 
 // A saved recording (8-bit IQ centered on the satellite), decoded faster than real time.
-el("file").addEventListener("change", async () => {
-  const f = el<HTMLInputElement>("file").files?.[0]; if (!f) return;
-  const fs = +(f.name.match(/(\d+)sps/)?.[1] ?? el<HTMLInputElement>("frate").value);
-  newDecoder(fs);
+let decodingFile = false;
+el("file").addEventListener("change", () => { const f = el<HTMLInputElement>("file").files?.[0]; if (f) decodeFile(f, f.name); });
+async function decodeFile(f: Blob, name: string) {
+  if (decodingFile) { status.textContent = "Already decoding a recording; wait for it to finish."; return; }
+  const fs = +(name.match(/(\d+)sps/)?.[1] ?? el<HTMLInputElement>("frate").value);
+  decodingFile = true; newDecoder(fs);
+  el("pics").scrollIntoView({ behavior: "smooth", block: "start" });
   const step = 4 << 20;
   for (let at = 0; at < f.size; at += step) {
     const b = new Uint8Array(await f.slice(at, at + step).arrayBuffer());
     rx!.push(Float32Array.from(b, (v) => (v - 127.5) / 127.5));
-    status.textContent = `Decoding ${f.name}: ${((100 * Math.min(f.size, at + step)) / f.size).toFixed(0)}% (${fs / 1000} kS/s)`;
+    status.textContent = `Decoding ${name}: ${((100 * Math.min(f.size, at + step)) / f.size).toFixed(0)}% (${fs / 1000} kS/s)`;
     await new Promise((r) => setTimeout(r));
   }
-  paint(); status.textContent = `Finished ${f.name}.`;
-});
+  decodingFile = false; paint();
+  const n = rx!.packets.stats.images;
+  status.textContent = n ? `Finished ${name}: ${n} picture strips.` : `Finished ${name}: no picture (${rx!.stats.frames ? "frames found but no image packets" : "the decoder never locked: the signal was too weak or absent"}).`;
+}
