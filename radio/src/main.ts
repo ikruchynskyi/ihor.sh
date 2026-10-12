@@ -6,11 +6,16 @@ import { RemoteSdr, type Band } from "./remote.ts";
 import { GAINS } from "./r820t.ts";
 import { streamOut } from "./player.ts";
 import { joinRoom } from "./room.ts";
+import { drawBandPlan, bandsAt } from "./bandplan.ts";
+import { RdsDecoder, type RdsInfo } from "./rds.ts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const num = (id: string) => parseFloat($<HTMLInputElement>(id).value) || 0;
 const css = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const modeNow = () => $<HTMLSelectElement>("mode").value as Mode;
+// The band plan over the spectrum and the server's window, when ticked (remembered).
+function bandPlanOn() { return $<HTMLInputElement>("bandPlan").checked; }
+try { $<HTMLInputElement>("bandPlan").checked = localStorage.getItem("bandplan") === "1"; } catch {}
 const N = 1024; // FFT size for the stage plots
 
 let iq: Float32Array = new Float32Array(0);
@@ -48,7 +53,7 @@ function plot(c: HTMLCanvasElement, series: { y: Float32Array; color: string }[]
 }
 
 // --- settings that stick (per browser) -------------------------------------------------------
-const SAVED = ["vol", "agc", "sql", "nr", "voice", "step", "wfRange"];
+const SAVED = ["vol", "agc", "sql", "sqlAuto", "nr", "voice", "step", "wfRange"];
 try {
   const s = JSON.parse(localStorage.getItem("spectrum-lab") || "{}");
   for (const id of SAVED) if (id in s) { const el = $<HTMLInputElement>(id); el.type === "checkbox" ? (el.checked = s[id]) : (el.value = s[id]); }
@@ -175,6 +180,7 @@ function drawScope() {
     h.fillStyle = css("--plot") + "33"; h.fill();
   }
   if (hoverF !== null) { h.fillStyle = css("--fg"); h.fillRect(X(hoverF), 0, 1, SH - axisH); }
+  if (bandPlanOn()) drawBandPlan(h, C + view.lo, C + view.hi, SW, 0, 15 * dpr, dpr);
   // dB labels on the grid lines
   h.textAlign = "left"; h.textBaseline = "bottom"; h.fillStyle = css("--muted");
   const every = Y(lo) - Y(lo + 10) < 16 * dpr ? 20 : 10; // fewer labels when the lines are close
@@ -272,7 +278,7 @@ scope.addEventListener("pointermove", (e) => {
   }
   if (drag.kind === "sql") { // drag the squelch line; below the chart's bottom turns it off
     const db = dbAt(e) ?? chartDb().lo, { lo } = chartDb();
-    $<HTMLInputElement>("sql").value = String(db <= lo + 1 ? SQL_OFF : Math.round(db));
+    $<HTMLInputElement>("sql").value = String(db <= lo + 1 ? SQL_OFF : Math.round(db)); $<HTMLInputElement>("sqlAuto").checked = false;
     drag.moved = true; meter(); drawScope(); return;
   }
   if (Math.abs(e.clientX - drag.x) > 3) drag.moved = true;
@@ -416,8 +422,14 @@ $("vol").addEventListener("input", setVolume);
 
 // --- the audio chain, shared by live sources and file playback ---------------------------------------
 const AGC = { slow: [1.5, 0.5], medium: [0.4, 0.25], fast: [0.1, 0.05] } as Record<string, [number, number]>; // release, hang (s)
-type Chain = { rx: Receiver; agc: Agc | null; nr: NoiseReducer; hp: Biquad; lp: Biquad; gate: number; cushion: number };
+type Chain = { rx: Receiver; agc: Agc | null; nr: NoiseReducer; hp: Biquad; lp: Biquad; gate: number; cushion: number; rds: RdsDecoder | null };
 let chain: Chain | null = null;
+/** RDS, under the tuning readout: call letters, the station's name, program type and RadioText (often the song). */
+function showRds(i: RdsInfo | null) {
+  const el = $("rds");
+  el.hidden = !i?.groups;
+  if (i?.groups) el.textContent = `📻 ${[i.call, i.ps, i.pty].filter(Boolean).join(" · ") || `PI ${i.pi}`}${i.rt ? ` — ${i.rt}` : ""}`;
+}
 function newChain() {
   const rx = new Receiver(fs, num("offset") * 1e3, modeNow(), num("bw") * 1e3, num("shift") * 1e3);
   const a = AGC[$<HTMLSelectElement>("agc").value];
@@ -426,7 +438,9 @@ function newChain() {
     nr: chain && chain.rx.audioFs === rx.audioFs ? chain.nr : new NoiseReducer(), // keeps what it learned about the noise
     hp: new Biquad(rx.audioFs, 300, "highpass"), lp: new Biquad(rx.audioFs, 3000, "lowpass"), gate: chain?.gate ?? 0,
     cushion: sdr instanceof RemoteSdr ? 0.35 : 0.15, // the server's stream crosses the internet: a bigger cushion
+    rds: modeNow() === "WFM" ? new RdsDecoder(rx.chanFs, showRds) : null, // broadcast FM: the station's name and what's playing
   };
+  showRds(null);
   if (sdr) { cw = new CwSignalDecoder(); cwShow(); }
 }
 $("agc").addEventListener("change", () => { if (chain) newChain(); });
@@ -434,6 +448,9 @@ $("agc").addEventListener("change", () => { if (chain) newChain(); });
 // The squelch works in the chart's dB: it opens when the strongest bin inside the passband rises above the line
 // you drew, and closes 3 dB below it (so a signal right at the line doesn't flicker).
 const SQL_OFF = -130;
+// Auto squelch: the line rides this far above the noise floor, so the hiss stays muted and any carrier opens it (the
+// repeaters page's scanner does the same with its 10 dB). Dragging the line or the slider sets it by hand instead.
+const AUTO_SQL_DB = 12;
 let sqLevel = NaN, sqOpen = true;
 function passbandPeak(db: Float32Array) {
   const [a, b] = passband(), bin = (f: number) => Math.round((f / fs) * WF_N + WF_N / 2);
@@ -449,9 +466,11 @@ function listen(x: Float32Array, db: Float32Array) {
   if (!c) return;
   const peak = passbandPeak(db);
   sqLevel = Number.isNaN(sqLevel) ? peak : 0.5 * sqLevel + 0.5 * peak;
+  if ($<HTMLInputElement>("sqlAuto").checked && !Number.isNaN(wf.floor)) $<HTMLInputElement>("sql").value = String(Math.round(wf.floor + AUTO_SQL_DB));
   if (!sqOpen && sqLevel > num("sql")) sqOpen = true;
   else if (sqOpen && sqLevel < num("sql") - 3) sqOpen = false;
   const o = c.rx.process(x);
+  if (c.rds && o.demod) c.rds.process(o.demod);
   if (o.env && sdr) { cw.process(o.env, o.envFs); if (performance.now() - cwDrawn > 150) { cwDrawn = performance.now(); cwShow(); } }
   const open = num("sql") <= SQL_OFF || sqOpen;
   let a = o.audio;
@@ -477,11 +496,9 @@ function meter() {
   $("smSql").hidden = off;
   $("smText").textContent = !on ? "" : `signal ${sqLevel.toFixed(0)} dB · noise ${wf.floor.toFixed(0)} dB · SNR ${(sqLevel - wf.floor).toFixed(0)} dB${off ? "" : sqOpen ? " · squelch open" : " · squelched"}`;
 }
-$("sql").addEventListener("input", () => { meter(); drawScope(); });
-$("sqlAuto").addEventListener("click", () => {
-  // just above what the band hears now: tune to an empty channel (only noise in the band) first
-  if (!chain || Number.isNaN(sqLevel)) return void ($("smText").textContent = "Play or listen first, on an empty channel.");
-  $<HTMLInputElement>("sql").value = String(Math.round(sqLevel + 3));
+$("sql").addEventListener("input", () => { $<HTMLInputElement>("sqlAuto").checked = false; meter(); drawScope(); });
+$("sqlAuto").addEventListener("change", () => {
+  if (!$<HTMLInputElement>("sqlAuto").checked) $<HTMLInputElement>("sql").value = String(SQL_OFF); // auto off: squelch off
   saveSettings(); meter(); drawScope();
 });
 
@@ -634,6 +651,7 @@ async function disconnect() {
   const s = sdr;
   sdr = null;
   stopOverview?.(); stopOverview = null; $("overview").hidden = true; $("overviewNote").hidden = true; ovRows.length = 0;
+  $("hrf").hidden = true; $("autoGain").hidden = true; $("radioStat").hidden = true; $("gainBox").hidden = false; band = null;
   s?.stop();
   await streaming;
   await s?.close().catch(() => {});
@@ -663,7 +681,78 @@ function onBand(ev: "band" | "row", d: any) {
   const gainNow = d.gain === null ? "auto" : String(d.gain);
   if ($<HTMLSelectElement>("gain").value !== gainNow && Array.from($<HTMLSelectElement>("gain").options).some((o) => o.value === gainNow)) $<HTMLSelectElement>("gain").value = gainNow;
   if (moved) ovRows.length = 0; // the old rows were of another window
-  liveCount(); drawOverview();
+  syncRadio(d); liveCount(); drawOverview();
+}
+// The server's radio: the RTL-SDR's one gain, or the HackRF's LNA, VGA and RF amp; and how hard its ADC is driven.
+let vgaDragging = false;
+function syncRadio(d: Band) {
+  const hack = d.device === "hackrf";
+  $("hrf").hidden = !hack; $("gainBox").hidden = hack; $("autoGain").hidden = false;
+  if (hack && d.hackrf) {
+    $<HTMLSelectElement>("lna").value = String(d.hackrf.lna);
+    if (!vgaDragging) { $<HTMLInputElement>("vga").value = String(d.hackrf.vga); $("vgaV").textContent = String(d.hackrf.vga); }
+    const amp = $<HTMLInputElement>("amp");
+    amp.checked = d.hackrf.amp; amp.disabled = !!d.hackrf.ampBlocked && !d.hackrf.amp;
+    $("ampBox").title = d.hackrf.ampBlocked ? `Off here: ${d.hackrf.ampBlocked}, and strong transmitters there can overload the amp.` : "Adds 14 dB in front of everything, for weak signals. It switches itself off if the signal clips.";
+  }
+  const lv = d.level, guard = d.protect && Date.now() - d.protect.at < 30_000 ? d.protect.text : "";
+  $("radioStat").hidden = false;
+  $("radioStat").textContent = `${d.tuner || "Server radio"} · ${((2 * d.half) / 1e6).toFixed(1)} MHz usable window${d.gainBand ? ` · gain for ${d.gainBand}${d.gainRemembered ? "" : " (none set here yet: try Auto gain)"}` : ""}${lv ? ` · ADC ${lv.dbfs} dBFS${lv.clipPct > 0.1 ? ` · ⚠ clipping ${lv.clipPct}%` : ""}` : ""}${guard ? ` · 🛡 ${guard}` : ""}`;
+  $("ovWidth").textContent = (d.rate / 1e6).toFixed(1);
+}
+/** Change the shared radio's gain controls; a refusal (the amp near broadcast) is shown and the controls snap back. */
+async function tuneRadio(body: object) {
+  if (!(sdr instanceof RemoteSdr)) return "Connect to the server SDR first.";
+  try { await sdr.tune(body); return ""; }
+  catch (e) { liveStatus((e as Error).message); if (band) syncRadio(band); return (e as Error).message; }
+}
+$("lna").addEventListener("change", () => tuneRadio({ lna: Number($<HTMLSelectElement>("lna").value) }));
+$("vga").addEventListener("input", () => { vgaDragging = true; $("vgaV").textContent = $<HTMLInputElement>("vga").value; });
+$("vga").addEventListener("change", async () => { await tuneRadio({ vga: Number($<HTMLInputElement>("vga").value) }); vgaDragging = false; });
+$("amp").addEventListener("change", () => tuneRadio({ amp: $<HTMLInputElement>("amp").checked }));
+$("bandPlan").addEventListener("change", () => { try { localStorage.setItem("bandplan", bandPlanOn() ? "1" : "0"); } catch {} drawScope(); drawOverview(); });
+
+// Auto gain: try settings on the station you're tuned to and keep the best signal-to-noise that doesn't clip (lowest
+// gain wins a tie: less gain, less intermodulation). The radio is shared, so everyone hears the steps; ~15 s.
+let autoRunning = false;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function autoGain(): Promise<string> {
+  const r = sdr;
+  if (!(r instanceof RemoteSdr) || !band) return "Connect to the server SDR first.";
+  if (autoRunning) return "Auto gain is already running.";
+  autoRunning = true; $<HTMLButtonElement>("autoGain").disabled = true;
+  const hack = band.device === "hackrf", before = hack ? { lna: band.hackrf!.lna, vga: band.hackrf!.vga, amp: band.hackrf!.amp } : { gain: band.gain };
+  const fmt = (b: any) => (hack ? `LNA ${b.lna}, VGA ${b.vga}${b.amp ? ", amp on" : ""}` : `gain ${b.gain} dB`);
+  let best = { body: before as any, snr: -Infinity };
+  const tryIt = async (body: any) => {
+    await r.tune(body); await sleep(900); // until rows at the new gain fill the spectrum
+    let snr = 0; for (let i = 0; i < 5; i++) { await sleep(150); if (wf.rows[0]) snr += (passbandPeak(wf.rows[0]) - median(wf.rows[0])) / 5; }
+    const clip = band?.level?.clipPct ?? 0;
+    liveStatus(`Auto gain: ${fmt(body)} → ${snr.toFixed(0)} dB over the noise${clip > 0.1 ? `, clipping ${clip}%` : ""}`);
+    if (clip <= 0.1 && snr > best.snr + 0.5) best = { body, snr };
+    return clip > 0.1;
+  };
+  try {
+    if (hack) {
+      for (const lna of [0, 8, 16, 24, 32, 40]) if (await tryIt({ lna, vga: 20, amp: false })) break;
+      const lna = best.body.lna ?? 16;
+      for (const vga of [8, 14, 20, 26, 32, 38, 44]) if (await tryIt({ lna, vga, amp: false })) break;
+      if (!band.hackrf?.ampBlocked && best.snr < 20) await tryIt({ ...best.body, amp: true }); // a weak signal: does the amp help?
+    } else for (const g of GAINS.filter((_, i) => i % 4 === 1)) if (await tryIt({ gain: g / 10 })) break;
+    if (best.snr < 6) { await r.tune(before); return `Nothing to optimize on: tune to a signal first (it stayed under 6 dB over the noise). Gain left at ${fmt(before)}.`; }
+    await r.tune(best.body);
+    return `Auto gain: ${fmt(best.body)}, ${best.snr.toFixed(0)} dB over the noise, no clipping.`;
+  } catch (e) { await r.tune(before).catch(() => {}); return `Auto gain stopped: ${(e as Error).message}`; }
+  finally { autoRunning = false; $<HTMLButtonElement>("autoGain").disabled = false; }
+}
+$("autoGain").addEventListener("click", async () => liveStatus(await autoGain()));
+/** The strongest signals in the server's whole window right now (from the newest overview row): MHz and dB over its floor. */
+function windowPeaks() {
+  const row = ovRows[0];
+  if (!row || !band) return [];
+  const out: { mhz: number; db: number }[] = [];
+  for (let i = 2; i < 1022; i++) if (row[i] >= 56 && row[i] === Math.max(...row.subarray(i - 2, i + 3))) out.push({ mhz: +((band.center - band.rate / 2 + ((i + 0.5) / 1024) * band.rate) / 1e6).toFixed(3), db: row[i] / 4 - 8 });
+  return out.sort((a, b) => b.db - a.db).filter((p, i, a) => a.findIndex((q) => Math.abs(q.mhz - p.mhz) < 0.05) === i).slice(0, 8);
 }
 function drawOverview() {
   const c = $<HTMLCanvasElement>("overview");
@@ -679,7 +768,9 @@ function drawOverview() {
   }
   g.fillStyle = "rgba(0,0,0,.55)"; g.fillRect(0, 0, X(band.center - band.half), H - axisH); g.fillRect(X(band.center + band.half), 0, W, H - axisH); // the edges the dongle rolls off
   g.font = `${10 * dpr}px ui-sans-serif, system-ui, sans-serif`; g.fillStyle = css("--muted"); g.textAlign = "center";
-  for (let f = Math.ceil((band.center - band.rate / 2) / 2e5) * 2e5; f < band.center + band.rate / 2; f += 2e5) g.fillText((f / 1e6).toFixed(1), X(f), H - 2 * dpr);
+  const tick = band.rate > 3e6 ? 1e6 : 2e5; // a label every 0.2 MHz on the RTL-SDR's 2.4 MHz, every 1 MHz on the HackRF's 9.6
+  for (let f = Math.ceil((band.center - band.rate / 2) / tick) * tick; f < band.center + band.rate / 2; f += tick) g.fillText((f / 1e6).toFixed(tick < 1e6 ? 1 : 0), X(f), H - 2 * dpr);
+  if (bandPlanOn()) drawBandPlan(g, band.center - band.rate / 2, band.center + band.rate / 2, W, 0, 13 * dpr, dpr);
 }
 $("overview").addEventListener("click", (e) => {
   if (!band) return;
@@ -742,6 +833,15 @@ $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true))
 (window as any).blipActions = {
   tune: { label: "tuned the radio", description: "Tune Spectrum Lab's live receiver to a frequency in MHz (e.g. 98.7 FM, 162.55 NOAA weather, 119.1 JFK tower). Sets the listen frequency if no SDR is connected yet.", parameters: { mhz: { type: "number", description: "Frequency in MHz, 24 to 1766" } },
     run: async ({ mhz }: { mhz: number }) => { const f = Number(mhz); if (!(f >= 24 && f <= 1766)) return; $<HTMLInputElement>("liveFreq").value = f.toFixed(3); await tuneTo(f * 1e6); } },
+  set_mode: { label: "set the demodulator", description: "Pick the demodulator and its bandwidth: WFM (broadcast FM, ~200 kHz), NFM (two-way radio, 10–16 kHz), AM (airband, 6–10 kHz), USB/LSB (2.4–3 kHz), CW.", parameters: { mode: { type: "string", description: "WFM, NFM, AM, USB, LSB or CW" }, bandwidth_khz: { type: "number", description: "optional; the mode's default if left out" } },
+    run: ({ mode, bandwidth_khz }: { mode: string; bandwidth_khz?: number }) => { const m = String(mode).toUpperCase() as Mode; if (!(m in DEFAULT_BW)) return; setMode(m, Number(bandwidth_khz) > 0 ? Number(bandwidth_khz) : undefined); retune(); } },
+  set_gain: { label: "set the radio's gain", description: "Set the server radio's gain (shared by everyone listening). HackRF: lna 0–40 in steps of 8, vga 0–62 in steps of 2, amp true/false (refused near strong broadcast bands). RTL-SDR: gain_db 0–49.6. Check radio.adc in the context: clipPct over 0.1 means too much gain (lower LNA first, then VGA); a high noise floor with a weak signal wants more LNA. Prefer auto_gain unless asked for specific values.",
+    parameters: { lna: { type: "number", description: "HackRF LNA dB" }, vga: { type: "number", description: "HackRF VGA dB" }, amp: { type: "boolean", description: "HackRF RF amp" }, gain_db: { type: "number", description: "RTL-SDR gain dB" } },
+    run: async ({ lna, vga, amp, gain_db }: { lna?: number; vga?: number; amp?: boolean; gain_db?: number }) => { const b: any = {}; if (lna != null) b.lna = Number(lna); if (vga != null) b.vga = Number(vga); if (amp != null) b.amp = amp === true || String(amp) === "true"; if (gain_db != null) b.gain = Number(gain_db); const err = await tuneRadio(b); if (err) dispatchEvent(new CustomEvent("blip:say", { detail: { text: err, mood: "think" } })); } },
+  auto_gain: { label: "optimized the gain", description: "Best reception for the station tuned now: tries gain settings on the server radio and keeps the best signal-to-noise without clipping (about 15 s; everyone listening hears it). Tune to the signal first.", parameters: {},
+    run: async () => { const msg = await autoGain(); liveStatus(msg); dispatchEvent(new CustomEvent("blip:say", { detail: { text: msg, mood: /Nothing|stopped|Connect/.test(msg) ? "think" : "happy" } })); } },
+  band_plan: { label: "toggled the band plan", description: "Show or hide the US band plan (who is allowed where) over the spectrum.", parameters: { on: { type: "boolean", description: "true to show" } },
+    run: ({ on }: { on: boolean }) => { $<HTMLInputElement>("bandPlan").checked = on === true || String(on) === "true"; $("bandPlan").dispatchEvent(new Event("change")); } },
 };
 
 // Leaving the page ends the stream, so the server stops counting this listener at once.
@@ -775,6 +875,13 @@ $("demo").click();
   page: "Spectrum Lab (a software radio: mix, filter, decimate, demodulate)", mode: modeNow(),
   frequencyMHz: +fmtMHz(centerHz() + num("offset") * 1e3), tuneOffsetKHz: num("offset"), bandwidthKHz: num("bw"), filterShiftKHz: num("shift"), live: !!sdr,
   listeningTogether: room.summary(),
-  squelchDb: num("sql") > SQL_OFF ? num("sql") : "off", signalDb: chain && !Number.isNaN(sqLevel) ? Math.round(sqLevel) : undefined, noiseFloorDb: Math.round(wf.floor),
+  squelchDb: num("sql") > SQL_OFF ? num("sql") : "off", autoSquelch: $<HTMLInputElement>("sqlAuto").checked, signalDb: chain && !Number.isNaN(sqLevel) ? Math.round(sqLevel) : undefined, noiseFloorDb: Math.round(wf.floor),
   cw: modeNow() === "CW" ? { decoded: cw.text, wpm: Math.round(cw.wpm), snrDb: Math.round(cw.snrDb) } : undefined,
+  snrDb: chain && !Number.isNaN(sqLevel) ? Math.round(sqLevel - wf.floor) : undefined,
+  rds: chain?.rds?.info.groups ? { callLetters: chain.rds.info.call, stationName: chain.rds.info.ps, programType: chain.rds.info.pty, radioText: chain.rds.info.rt, piCode: chain.rds.info.pi } : undefined,
+  bandPlanHere: bandsAt(centerHz() + num("offset") * 1e3), bandPlanShown: bandPlanOn(),
+  // the server radio, for judging reception: the gain stages, how hard the ADC is driven (clipping = too much gain), what the guard did
+  radio: band ? { device: band.device === "hackrf" ? "HackRF" : "RTL-SDR", tuner: band.tuner, windowMHz: [+((band.center - band.rate / 2) / 1e6).toFixed(2), +((band.center + band.rate / 2) / 1e6).toFixed(2)], usableMHz: +((2 * band.half) / 1e6).toFixed(1),
+    gain: band.device === "hackrf" ? { lnaDb: band.hackrf?.lna, vgaDb: band.hackrf?.vga, ampOn: band.hackrf?.amp, ampNotAllowedBecause: band.hackrf?.ampBlocked || undefined, basebandFilterMHz: (band.hackrf?.filter ?? 0) / 1e6 } : { gainDb: band.gain ?? "auto" },
+    adc: band.level, lastProtection: band.protect?.text, strongestSignalsInWindow: windowPeaks() } : "not connected to the server SDR",
 });
