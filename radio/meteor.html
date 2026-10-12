@@ -42,7 +42,7 @@
   <ul>
     <li>This page decodes in your browser (no Reed-Solomon error correction yet, so damaged packets show as streaks). For the best result, open the file in <a href="https://github.com/SatDump/SatDump">SatDump</a>: <i>Offline processing</i> → <i>METEOR M2-x LRPT 72k</i>, baseband format <b>cu8</b>, sample rate from the file name. It demodulates, Viterbi-decodes, de-randomizes and decodes Meteor's JPEG into the visible and infrared channels.</li>
     <li>Antenna: a V-dipole (two 53 cm rods at 120°, horizontal, outdoors) beats anything on a windowsill. Passes under 20° rarely decode.</li>
-    <li>Files are about 30 MB a minute and stay in this tab until you save them.</li>
+    <li>Files are about 30 MB a minute and live only in this tab (nothing is uploaded): a recording stops itself at 20 minutes, and the tab keeps the last 3. Download the ones you want to keep.</li>
   </ul>
 </main>
 <script type="module" src="/src/meteor-app.ts"></script>

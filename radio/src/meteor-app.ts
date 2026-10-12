@@ -9,6 +9,8 @@ import { MeteorReceiver, WIDTH } from "./meteor.ts";
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el("status"), cv = el<HTMLCanvasElement>("wf"), g = cv.getContext("2d")!, wf = new Waterfall(512, 300);
 let chain: { key: string; mix: Mixer; dec: FirDecimator; fs: number } | null = null, rx: MeteorReceiver | null = null;
+// Recordings live in this tab's memory (about 30 MB a minute), never on the server: cap their length and how many are kept.
+const MAX_REC_S = 20 * 60, MAX_KEPT = 3;
 let chunks: Uint8Array[] = [], bytes = 0, recording = false, outFs = 0, rms = 0.05;
 
 el<HTMLSelectElement>("sat").addEventListener("change", () => {
@@ -34,6 +36,7 @@ lab(el("rd-lab"), {
     const k = 32 / rms, out = new Uint8Array(iq.length);
     for (let i = 0; i < iq.length; i++) out[i] = Math.max(0, Math.min(255, Math.round(127.5 + iq[i] * k)));
     chunks.push(out); bytes += out.length; outFs = chain.fs;
+    if (bytes / 2 / outFs >= MAX_REC_S) { stopRec(); status.textContent += ` Stopped at ${MAX_REC_S / 60} minutes (longer than any pass).`; return; }
     status.textContent = `Recording: ${(bytes / 2 / outFs).toFixed(0)} s, ${(bytes / 1e6).toFixed(0)} MB at ${outFs / 1000} kS/s.`;
   },
 });
@@ -52,7 +55,9 @@ function stopRec() {
   const name = `meteor-${el<HTMLSelectElement>("sat").value}MHz-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}-${outFs}sps.cu8`;
   const url = URL.createObjectURL(new Blob(chunks as BlobPart[]));
   el("saves").insertAdjacentHTML("afterbegin", `<li data-url="${url}" data-name="${name}"><a href="${url}" download="${name}">${name}</a> · ${(bytes / 2 / outFs / 60).toFixed(1)} min, ${(bytes / 1e6).toFixed(0)} MB · <button type="button" data-act="decode">Decode</button> <button type="button" data-act="delete">Delete</button></li>`);
-  status.textContent = "Saved below: Decode turns it into pictures here, the link downloads it.";
+  const kept = el("saves").querySelectorAll<HTMLElement>("li");
+  for (let i = MAX_KEPT; i < kept.length; i++) { URL.revokeObjectURL(kept[i].dataset.url!); kept[i].remove(); }
+  status.textContent = `Saved below: Decode turns it into pictures here, the link downloads it.${kept.length > MAX_KEPT ? ` (Only the last ${MAX_KEPT} are kept; download the ones you want.)` : ""}`;
   chunks = []; bytes = 0;
 }
 el("saves").addEventListener("click", async (e) => {
