@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confidence and Tests: A/B Testing</title>
+  <meta name="description" content="AI from scratch, probability 4: confidence intervals you can watch miss, the t-distribution, hypotheses and p-values, type I and II errors and power, sample sizes, paired tests for comparing two models on the same test set, why peeking at an A/B test inflates false positives, and how to tell if model B is really better than model A." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    canvas.tall { aspect-ratio: 4 / 3; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .wide { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 4 · Stage 3: classic ML and judging models</p>
+  <h1>Confidence and tests: A/B testing</h1>
+  <p class="lede">Your new model scores 85% on the test set; the old one scored 82%. Ship it? Maybe the test set happened to suit it. Every number measured on a sample wobbles, and this lesson is about how much: confidence intervals that say how far off an estimate might be, tests that ask whether a difference is real or luck, and the sample sizes that make the answer trustworthy. These are the tools behind every A/B test in production and every "B beats A" claim in a paper.</p>
+
+  <h2>1. A confidence interval, and what "95%" means</h2>
+  <p>Estimate a mean from \(n\) data points and the result wobbles from sample to sample, with spread \(\sigma / \sqrt n\) (Probability 3). So report a range: the <b>95% confidence interval</b></p>
+  <p class="formula">\[ \bar x \pm t \cdot \frac{s}{\sqrt n} \]</p>
+  <p>where \(s\) is the sample standard deviation and \(t\) is about 2 (exactly 1.96 for big samples; section 2 says why it's bigger for small ones). The term after \(\pm\) is the <b>margin of error</b>. Below, the computer takes 100 samples from a population whose true mean is the dashed line, and draws each sample's interval. <span class="g">Green</span> ones caught the truth, <span class="r">red</span> ones missed.</p>
+  <canvas id="ci" class="tall" width="800" height="600" aria-label="100 confidence intervals, most covering the true mean"></canvas>
+  <div class="row">
+    <label>sample size n <input type="range" id="cin" min="3" max="100" step="1" value="10"> <b id="cinV" class="math"></b></label>
+    <label>confidence <select id="cil"><option value="0.8">80%</option><option value="0.9">90%</option><option value="0.95" selected>95%</option><option value="0.99">99%</option></select></label>
+    <label><input type="checkbox" id="useZ"> use 1.96 instead of t</label>
+    <button id="ciNew">100 new samples</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>That's the honest meaning of 95%: the <b>method</b> catches the truth 95% of the time. Any single interval either contains the true mean or doesn't; you just don't know which. Bigger \(n\) makes intervals narrower, but the share that miss stays the same.</p>
+  <div class="q" data-num="1.96" data-tol="0.01">
+    <p>A sample of 100 has mean 50 and standard deviation 10. What's the 95% margin of error (use 1.96)?</p>
+    <div class="why">\(1.96 \times 10 / \sqrt{100} = 1.96\). The interval is 48.04 to 51.96. To halve the margin you'd need four times the data.</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>Which statement about a 95% interval [48.0, 52.0] is right?</p>
+    <ul><li data-k="a" data-says="The true mean isn't random: it's either in there or not. The 95% is about the procedure, over many samples.">There's a 95% chance the true mean is between 48 and 52</li><li data-k="b">If we repeated the sampling many times, 95% of the intervals built this way would contain the true mean</li><li data-k="c" data-says="Intervals are about the mean, not individual values: most data points fall far outside a narrow interval for the mean.">95% of the data lies between 48 and 52</li></ul>
+    <div class="why">Subtle but it matters. (A Bayesian credible interval, from Probability 3's posterior, <i>does</i> mean "95% probability the value is in here", given the prior. With lots of data the two usually agree in practice.)</div>
+  </div>
+
+  <h2>2. Small samples need the t-distribution</h2>
+  <p>Tick <b>use 1.96 instead of t</b> with \(n = 5\): about one interval in eight misses instead of one in twenty. With few points, \(s\) itself is a shaky estimate of \(\sigma\), and sometimes it comes out too small, so the intervals need to be wider. The <b>t-distribution</b> (found by a Guinness brewer, W. S. Gosset, testing small batches of barley) is the bell curve with fatter tails that accounts for that. It has <b>degrees of freedom</b> \(n - 1\); by 30 or so it's nearly normal, and its 95% cutoff is close to 1.96.</p>
+  <div class="wide"><table class="rules">
+    <tr><th>n</th><th>3</th><th>5</th><th>10</th><th>30</th><th>100</th><th>∞</th></tr>
+    <tr><td>95% t value</td><td>4.30</td><td>2.78</td><td>2.26</td><td>2.05</td><td>1.98</td><td>1.96</td></tr>
+  </table></div>
+
+  <h2>3. A test: could it be luck?</h2>
+  <p>A <b>hypothesis test</b> asks one specific question. Start from the boring explanation, the <b>null hypothesis</b> \(H_0\): "there's no difference; any gap is sampling noise". Then compute the <b>p-value</b>: if \(H_0\) were true, how often would noise alone produce a gap at least as big as the one you saw? A small p-value (by convention below 0.05) means the gap would be surprising under the null, so you <b>reject</b> it.</p>
+  <p>Model A gets 82% of a test set right, model B 85%. Both were scored on the <i>same</i> examples. Change the test set size:</p>
+  <canvas id="ab" width="800" height="400" aria-label="The null distribution of the accuracy difference, with the observed difference and the p-value's tails"></canvas>
+  <div class="row">
+    <label>test examples <input type="range" id="abN" min="50" max="5000" step="50" value="500"> <b id="abNV" class="math"></b></label>
+    <label>A accuracy <input type="range" id="accA" min="0.5" max="0.99" step="0.005" value="0.82"> <b id="accAV" class="math"></b></label>
+    <label>B accuracy <input type="range" id="accB" min="0.5" max="0.99" step="0.005" value="0.85"> <b id="accBV" class="math"></b></label>
+    <label>both agree on <input type="range" id="agree" min="0.5" max="1" step="0.005" value="0.9"> <b id="agreeV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r2"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p><b>Unpaired</b> (two separate test sets): the difference of two proportions has standard error \(\sqrt{p_A(1 - p_A)/n + p_B(1 - p_B)/n}\); divide the gap by it to get \(z\), and the p-value is the area of both bell tails beyond \(\pm z\).</p>
+    <p><b>Paired</b> (one test set, the right way for models): examples both models get right, or both wrong, say nothing about which is better. Only the disagreements count. Let \(b\) = A right and B wrong, \(c\) = A wrong and B right. Under \(H_0\) each disagreement is a coin flip, so (McNemar's test)</p>
+    <p class="formula">\[ z = \frac{c - b}{\sqrt{b + c}} \]</p>
+    <p>With 500 examples, 90% agreement means 50 disagreements; B's 3-point edge is 15 more of them going B's way: \(c = 32.5,\ b = 17.5\), \(z = 15/\sqrt{50} \approx 2.12\), \(p \approx 0.034\). The unpaired test on the same numbers gives \(z \approx 1.28\), \(p \approx 0.20\): it can't see past the shared noise.</p>
+  </details>
+  <div class="q" data-answer="a">
+    <p>What does \(p = 0.034\) mean here?</p>
+    <ul><li data-k="a">If the two models were truly equally good, a gap this big in B's favor (or A's) would show up only about 3.4% of the time</li><li data-k="b" data-says="That's the most common misreading. A p-value is computed assuming H₀ is true; it can't also be the probability that H₀ is true.">There's a 3.4% chance the models are equally good</li><li data-k="c" data-says="Significance says the gap probably isn't zero; it says nothing about whether 3 points is worth shipping.">B is definitely 3 points better</li></ul>
+    <div class="why">And "significant" isn't "important": with a million test examples, a 0.1-point gap is significant and probably irrelevant. Always report the size of the difference with its confidence interval, not just p.</div>
+  </div>
+
+  <h2>4. Two ways to be wrong, and power</h2>
+  <div class="wide"><table class="rules">
+    <tr><th></th><th>no real difference</th><th>a real difference</th></tr>
+    <tr><td><b>you say "B is better"</b></td><td><span class="r">Type I error</span> (false positive), probability \(\alpha\)</td><td>correct: probability = <b>power</b></td></tr>
+    <tr><td><b>you say "can't tell"</b></td><td>correct</td><td><span class="r">Type II error</span> (false negative), probability \(\beta\)</td></tr>
+  </table></div>
+  <p>Chapter 12's confusion matrix, for decisions about models. The threshold \(\alpha = 0.05\) caps false positives. <b>Power</b> \(= 1 - \beta\) is the chance of detecting a real effect, and it depends on the effect's size, the noise, and \(n\). The <span class="b">blue</span> bell is what the measured difference looks like with no real effect; the <span class="y">yellow</span> one with a real effect. Everything right of the red line is "significant".</p>
+  <canvas id="pow" width="800" height="400" aria-label="Null and alternative distributions with alpha and power shaded"></canvas>
+  <div class="row">
+    <label>real effect (in standard errors at n = 100) <input type="range" id="eff" min="0" max="5" step="0.05" value="2"> <b id="effV" class="math"></b></label>
+    <label>sample size × <input type="range" id="nMul" min="0.25" max="4" step="0.25" value="1"> <b id="nMulV" class="math"></b></label>
+    <label>α <select id="alpha"><option>0.01</option><option selected>0.05</option><option>0.1</option></select></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <p>Before a test, you pick \(\alpha\), the smallest effect worth detecting, and the power you want (80% is the custom), and that fixes \(n\). For comparing two proportions at \(\alpha = 0.05\) and 80% power, a handy rule:</p>
+  <p class="formula">\[ n \text{ per group} \approx \frac{16\, p(1 - p)}{\delta^2} \]</p>
+  <div class="q" data-num="14400" data-tol="0.02">
+    <p>A sign-up page converts 10% of visitors. To detect a lift to 11% (\(\delta = 0.01\)), about how many visitors does each version need?</p>
+    <div class="why">\(16 \times 0.1 \times 0.9 / 0.01^2 = 14{,}400\) per version. Small effects on rare events need big samples, which is why A/B tests run for weeks, and why "we tried it on 200 users and it looked better" means little.</div>
+  </div>
+
+  <h2>5. Peeking ruins the test</h2>
+  <p>The 5% false-positive promise holds for <b>one</b> look at a pre-planned sample size. Checking an A/B test every day and stopping the moment \(p < 0.05\) gives noise many chances to cross the line. This simulation runs 1000 <b>A/A tests</b> (both versions identical, so every "win" is false) and peeks after every 100 visitors:</p>
+  <div class="code" data-title="Run it: how peeking inflates false positives"><textarea>
+const Phi = (z) => 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z ** 3)));   // close approximation of the normal CDF
+const pTwoSided = (z) => 2 * (1 - Phi(Math.abs(z)));
+
+function aaTest(visitorsPerArm, peekEvery, rate = 0.1) {
+  let a = 0, b = 0;
+  for (let n = 1; n <= visitorsPerArm; n++) {
+    a += Math.random() < rate; b += Math.random() < rate;                     // the same rate: no real difference
+    if (n % peekEvery === 0 || n === visitorsPerArm) {
+      const pa = a / n, pb = b / n, se = Math.sqrt((pa * (1 - pa) + pb * (1 - pb)) / n);
+      if (se > 0 && pTwoSided((pb - pa) / se) < 0.05) return true;            // "significant": stop and ship
+      if (peekEvery >= visitorsPerArm) return false;
+    }
+  }
+  return false;
+}
+for (const peek of [5000, 1000, 100]) {
+  let wins = 0;
+  for (let t = 0; t < 1000; t++) wins += aaTest(5000, peek);
+  print(`look every ${peek} visitors: ${(wins / 10).toFixed(1)}% of identical tests declared a winner`);
+}
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>The same trap shows up in ML. You try 20 hyperparameter settings and report the best one's test score. What's wrong?</p>
+    <ul><li data-k="a" data-says="Trying many settings is fine; the problem is where the best one gets scored.">Nothing, as long as each run used the same test set</li><li data-k="b" data-says="More tries makes it worse, not better.">You should have tried more settings</li><li data-k="c">Picking the best of 20 on the test set is 20 peeks: its score is optimistic, like a lucky A/B winner</li></ul>
+    <div class="why">That's why chapter 11 keeps a validation set for choosing and touches the test set once. With many comparisons, either hold out fresh data for the final check or correct the threshold (Bonferroni: use \(\alpha / k\) for \(k\) comparisons).</div>
+  </div>
+
+  <h2>6. A/B tests in production</h2>
+  <p>Offline test sets only go so far: the real question is whether users are better off. An online <b>A/B test</b> randomly splits traffic between the current model (A) and the new one (B) and compares a business metric. The checklist:</p>
+  <ol>
+    <li><b>Decide first</b>: the metric, the smallest effect worth shipping, \(\alpha\), power, and so \(n\) and the duration. Write it down.</li>
+    <li><b>Randomize by user</b>, not by request, so one person sees one version.</li>
+    <li><b>Check the split</b>: if you meant 50/50 and got 50.8/49.2 on a million users, something's broken (a "sample ratio mismatch").</li>
+    <li><b>Run full weeks</b>: behavior differs on weekends; novelty wears off.</li>
+    <li><b>Don't peek to stop</b> (or use methods designed for it, like sequential tests).</li>
+    <li><b>Report the effect with its interval</b>, plus guardrail metrics (latency, errors, complaints) that must not get worse.</li>
+  </ol>
+  <div class="q" data-answer="b">
+    <p>Two models are scored on the same 500 test questions. Which test fits?</p>
+    <ul><li data-k="a" data-says="That treats the two scores as independent samples, which throws away the pairing and its noise reduction.">A two-sample test of proportions</li><li data-k="b">A paired test on the disagreements (McNemar), or a paired bootstrap</li></ul>
+    <div class="why">The same questions are easy or hard for both models, and pairing cancels that shared difficulty, as the section 3 picture showed. Chapter 8's Blip eval compares models exactly this way.</div>
+  </div>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li>A <b>confidence interval</b> \(\bar x \pm t\, s/\sqrt n\) catches the truth in 95% of samples; the 95% describes the method, not one interval.</li>
+    <li>Small samples need the <b>t-distribution</b>'s wider cutoffs.</li>
+    <li>A <b>p-value</b> is how often noise alone would produce a gap this big if there were no real difference. It's not the chance the null is true, and significant isn't the same as important.</li>
+    <li><b>Type I</b> = false alarm (\(\alpha\)); <b>Type II</b> = missed effect (\(\beta\)); <b>power</b> = \(1 - \beta\) grows with effect size and \(n\). Plan \(n\) before you start.</li>
+    <li>Compare models on the same test set with a <b>paired</b> test. Don't peek and stop; many comparisons need a stricter threshold or fresh data.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, erf, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const Phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+const zq = (p) => { let lo = -10, hi = 10; for (let k = 0; k < 80; k++) { const m = (lo + hi) / 2; Phi(m) < p ? (lo = m) : (hi = m); } return (lo + hi) / 2; };
+// Student's t: density by the log-gamma formula, CDF by Simpson's rule from 0, quantile by bisection
+const lgamma = (z) => { const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5]; let x = z, y = z, t = x + 5.5; t -= (x + 0.5) * Math.log(t); let s = 1.000000000190015; for (const k of c) s += k / ++y; return -t + Math.log((2.5066282746310005 * s) / x); };
+const tpdf = (x, v) => Math.exp(lgamma((v + 1) / 2) - lgamma(v / 2) - 0.5 * Math.log(v * Math.PI) - ((v + 1) / 2) * Math.log(1 + (x * x) / v));
+const tcdf = (x, v) => { const n = 400, h = Math.abs(x) / n; let s = tpdf(0, v) + tpdf(Math.abs(x), v); for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * tpdf(i * h, v); return 0.5 + Math.sign(x) * (s * h) / 3; };
+const tq = (p, v) => { let lo = 0, hi = 60; for (let k = 0; k < 50; k++) { const m = (lo + hi) / 2; tcdf(m, v) < p ? (lo = m) : (hi = m); } return (lo + hi) / 2; };
+const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+
+// 1–2. 100 confidence intervals
+let samples = [];
+const MU = 50, SIG = 10;
+const newSamples = () => { const n = +$("cin").value; samples = Array.from({ length: 100 }, () => Array.from({ length: n }, () => MU + SIG * gauss())); r1(); };
+function r1() {
+  const n = +$("cin").value, lev = +$("cil").value, useZ = $("useZ").checked, crit = useZ ? zq(0.5 + lev / 2) : tq(0.5 + lev / 2, n - 1);
+  if (!samples.length || samples[0].length !== n) { newSamples(); return; }
+  const P = graph("ci", [30, 70], [0, 101], { step: [5, 1e9] });
+  P.seg(MU, 0, MU, 101, C.text, 1.5, [6, 5]);
+  let hits = 0;
+  samples.forEach((xs, i) => {
+    const m = xs.reduce((s, x) => s + x, 0) / n, sd = Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (n - 1)), e = (crit * sd) / Math.sqrt(n), ok = Math.abs(m - MU) <= e;
+    hits += ok; P.seg(Math.max(30, m - e), i + 0.5, Math.min(70, m + e), i + 0.5, ok ? C.green : C.red, 2.5); P.dot(m, i + 0.5, ok ? C.green : C.red, 2.5);
+  });
+  $("cinV").textContent = n;
+  $("r1").textContent = `${hits} of 100 intervals contain the true mean 50 · cutoff ${crit.toFixed(2)} (${useZ ? "normal" : `t with ${n - 1} degrees of freedom`}) · aiming for ${Math.round(lev * 100)}`;
+}
+$("cin").oninput = newSamples; $("cil").oninput = $("useZ").onchange = r1; $("ciNew").onclick = newSamples;
+
+// 3. model A vs model B: paired vs unpaired
+function r2() {
+  const N = +$("abN").value, pa = +$("accA").value, pb = +$("accB").value;
+  let ag = +$("agree").value;
+  const minDis = Math.abs(pb - pa); if (1 - ag < minDis) { ag = 1 - minDis; $("agree").value = ag; }
+  const dis = N * (1 - ag), c = (dis + N * (pb - pa)) / 2, b = (dis - N * (pb - pa)) / 2;
+  const zP = b + c > 0 ? (c - b) / Math.sqrt(b + c) : 0, se = Math.sqrt((pa * (1 - pa) + pb * (1 - pb)) / N), zU = (pb - pa) / se;
+  const pP = 2 * (1 - Phi(Math.abs(zP))), pU = 2 * (1 - Phi(Math.abs(zU)));
+  const seP = Math.sqrt(b + c) / N, gap = pb - pa, w = Math.max(se, seP) * 4.5;
+  const P = graph("ab", [-w, w], [0, 1.15], { step: [w > 0.05 ? 0.02 : w > 0.02 ? 0.01 : 0.005, 1e9] });
+  for (const [s, col] of [[se, "rgba(143,152,168,0.9)"], [seP, C.blue]]) {
+    const f = (x) => Math.exp(-((x / s) ** 2) / 2);
+    P.g.fillStyle = col === C.blue ? "rgba(88,196,221,0.35)" : "rgba(143,152,168,0.25)";
+    for (const side of [1, -1]) { P.g.beginPath(); P.g.moveTo(P.X(side * Math.abs(gap)), P.Y(0)); for (let x = Math.abs(gap); x <= w; x += w / 200) P.g.lineTo(P.X(side * x), P.Y(f(x))); P.g.lineTo(P.X(side * w), P.Y(0)); P.g.fill(); }
+    P.curve(f, col, col === C.blue ? 3 : 2, col === C.blue ? [] : [6, 4]);
+  }
+  P.seg(gap, 0, gap, 1.1, C.yellow, 3); P.text(`observed gap ${(100 * gap).toFixed(1)} points`, gap + w * 0.02, 1.08, C.yellow);
+  P.text("paired: noise if equal", -w * 0.98, 1.08, C.blue); P.text("unpaired (dashed)", -w * 0.98, 0.98, "#8f98a8");
+  for (const [id, v] of [["abNV", N], ["accAV", `${(100 * pa).toFixed(1)}%`], ["accBV", `${(100 * pb).toFixed(1)}%`], ["agreeV", `${(100 * ag).toFixed(1)}%`]]) $(id).textContent = v;
+  $("r2").textContent = `disagreements: A right only ${b.toFixed(1)}, B right only ${c.toFixed(1)} · paired z = ${zP.toFixed(2)}, p = ${pP.toFixed(3)}${pP < 0.05 ? " (significant)" : ""} · unpaired z = ${zU.toFixed(2)}, p = ${pU.toFixed(3)}${pU < 0.05 ? " (significant)" : ""}`;
+}
+for (const id of ["abN", "accA", "accB", "agree"]) $(id).oninput = r2;
+
+// 4. power
+function r3() {
+  const d0 = +$("eff").value, k = +$("nMul").value, a = +$("alpha").value, d = d0 * Math.sqrt(k), zc = zq(1 - a / 2), power = 1 - Phi(zc - d) + Phi(-zc - d);
+  const P = graph("pow", [-4, 9], [0, 0.45], { step: [1, 1e9] }), f = (x, m) => Math.exp(-((x - m) ** 2) / 2) / Math.sqrt(2 * Math.PI);
+  const shade = (m, from, to, col) => { P.g.fillStyle = col; P.g.beginPath(); P.g.moveTo(P.X(from), P.Y(0)); for (let x = from; x <= to; x += 0.02) P.g.lineTo(P.X(x), P.Y(f(x, m))); P.g.lineTo(P.X(to), P.Y(0)); P.g.fill(); };
+  shade(d, zc, 9, "rgba(244,211,94,0.35)"); shade(0, zc, 9, "rgba(252,98,85,0.55)");
+  P.curve((x) => f(x, 0), C.blue, 3); P.curve((x) => f(x, d), C.yellow, 3);
+  P.seg(zc, 0, zc, 0.44, C.red, 2.5); P.text("significant →", zc + 0.1, 0.42, C.red);
+  P.text("no effect", -3.8, 0.42, C.blue); P.text(`real effect (${d.toFixed(2)} SE)`, d - 1, 0.43, C.yellow);
+  $("effV").textContent = d0.toFixed(2); $("nMulV").textContent = k;
+  $("r3").textContent = `cutoff z = ${zc.toFixed(2)} · false-positive rate α = ${a} (red) · power ${(100 * power).toFixed(1)}% (yellow area) · missed β = ${(100 * (1 - power)).toFixed(1)}%`;
+  if (power >= 0.8 && power < 0.82) say("80% power: the usual target.", "happy");
+}
+for (const id of ["eff", "nMul", "alpha"]) $(id).oninput = r3;
+
+newSamples(); r2(); r3();
+window.blipContext = () => ({ page: "AI from scratch, probability 4: confidence intervals (100 simulated, coverage, t vs 1.96 for small n), margin of error, hypothesis tests and p-values, comparing two models on one test set (paired McNemar vs unpaired), type I/II errors and power, sample size n ≈ 16p(1−p)/δ², peeking and multiple comparisons, A/B testing in production", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>
