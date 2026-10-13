@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Describing Data</title>
+  <meta name="description" content="AI from scratch, probability 2: describing real data, 340 NYC subway elevator and escalator outages. Mean vs median and outliers, variance and standard deviation, z-scores, quantiles and box plots, histograms vs kernel density estimates, skewness and log scales, QQ plots, joint/marginal/conditional tables, covariance and correlation (and how a few extreme points fake it), and the two-dimensional bell curve with a covariance ellipse you shape." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    canvas.strip { aspect-ratio: 4 / 1; }
+    canvas.square { aspect-ratio: 1 / 1; max-width: 460px; margin: 0 auto; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .joint { border-collapse: collapse; margin: 10px auto; font: 16px ui-monospace, Menlo, monospace; }
+    .joint td, .joint th { border: 1px solid var(--line); padding: 6px 14px; text-align: right; }
+    .joint .m { color: var(--muted); }
+    .wide { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 2 · Stage 1: the math of learning</p>
+  <h1>Describing data</h1>
+  <p class="lede">Before any model, an ML engineer looks at the data: what's typical, how spread out it is, what shape it has, what goes with what. This lesson does that on real data from this site: every NYC subway elevator and escalator outage our archive saw finish between 9 and 12 October 2026, 340 of them. It's messy, lopsided real-world data, which is the point: half the summaries people reach for first give the wrong picture of it.</p>
+
+  <h2>1. What's typical: mean, median, mode</h2>
+  <p>Each dot is one outage, placed by how many hours it lasted (shaken up and down a little so they don't hide each other). The <span class="y">yellow line</span> is the <b>mean</b>, the plain average. The <span class="b">blue line</span> is the <b>median</b>, the middle value: half the outages were shorter, half longer.</p>
+  <canvas id="strip" class="strip" width="800" height="200" aria-label="Every outage's duration as a dot, with the mean and median"></canvas>
+  <div class="row"><label><input type="checkbox" id="logS"> log scale</label><button id="addOut">Add one 2000-hour outage</button></div>
+  <p class="readout" id="r1"></p>
+  <p>On the plain scale almost everything is squashed against the left edge by a few outages that lasted weeks. The mean, 8.2 hours, sits where hardly any outage is. The median, 1.6 hours, is what a rider actually meets. Press <b>Add one</b>: a single extreme value drags the mean up by hours while the median barely moves. The median is <b>robust</b>: outliers can't push it around.</p>
+  <p class="formula">\[ \bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i \qquad \text{median} = \text{the middle value after sorting} \]</p>
+  <p>The <b>mode</b> is the most common value. It's most useful for categories: here the most common reason is "Under Investigation".</p>
+  <div class="q" data-answer="b">
+    <p>A dashboard should show "how long an outage typically lasts". Which number?</p>
+    <ul><li data-k="a" data-says="The mean is 8.2 hours, longer than 95% of outages: a handful of weeks-long ones inflate it.">The mean</li><li data-k="b">The median</li></ul>
+    <div class="why">With lopsided data like waiting times, prices or incomes, the median describes the typical case. The mean still matters when totals matter: total hours of lost access is \(n \times\) mean, so a planner budgeting repair crews wants the mean.</div>
+  </div>
+
+  <h2>2. How spread out: variance and standard deviation</h2>
+  <p>Two datasets can share a mean and still look nothing alike. The <b>variance</b> is the average squared distance from the mean, and the <b>standard deviation</b> \(\sigma\) is its square root, which brings it back to the data's units:</p>
+  <p class="formula">\[ \sigma^2 = \frac{1}{n} \sum_{i=1}^{n} (x_i - \bar{x})^2, \qquad \sigma = \sqrt{\sigma^2} \]</p>
+  <p>(When you estimate the spread of a whole population from a sample, you divide by \(n - 1\) instead; Probability 3 explains why. With hundreds of points the difference is tiny.) Squaring makes big deviations count a lot, so like the mean, the standard deviation is easily blown up by outliers: for our outages it's 56 hours, wider than nearly every outage.</p>
+  <div class="q" data-num="2">
+    <p>The numbers 2, 4, 4, 4, 5, 5, 7, 9 have mean 5. What's their standard deviation (dividing by \(n\))?</p>
+    <div class="why">Distances from 5: −3, −1, −1, −1, 0, 0, 2, 4. Squared: 9, 1, 1, 1, 0, 0, 4, 16, which add up to 32. Divided by 8: variance 4. Square root: \(\sigma = 2\).</div>
+  </div>
+  <p><b>Standardizing</b> turns any value into "how many standard deviations from the mean": the <b>z-score</b> \(z = (x - \bar{x}) / \sigma\). After it, every feature has mean 0 and spread 1. That's exactly the <b>feature scaling</b> models need: Calculus 3 showed gradient descent zigzagging in a stretched valley, and putting all features on the same scale is what un-stretches it.</p>
+  <div class="q" data-num="1.5" data-tol="0.001">
+    <p>Test scores have mean 70 and standard deviation 10. What's the z-score of a score of 85?</p>
+    <div class="why">\((85 - 70)/10 = 1.5\): one and a half standard deviations above average.</div>
+  </div>
+
+  <h2>3. Quantiles and box plots</h2>
+  <p>The median splits the data in half. <b>Quantiles</b> split it anywhere: the 25th percentile (first quartile, Q1) has a quarter of the data below it, the 75th (Q3) three quarters. The <b>interquartile range</b> IQR = Q3 − Q1 is the spread of the middle half, and like the median, outliers can't touch it.</p>
+  <p>A <b>box plot</b> draws exactly that: the box runs from Q1 to Q3 with a line at the median, the whiskers reach the furthest points within 1.5 IQR of the box, and anything beyond is drawn on its own as a possible outlier. The faint shape behind each box is a <b>violin</b>: the same data's density (section 4), mirrored. Here are elevators and escalators side by side, on a log scale:</p>
+  <canvas id="box" width="800" height="360" aria-label="Box and violin plots of outage hours for elevators and escalators"></canvas>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-answer="a">
+    <p>Which kind of outage typically lasts longer?</p>
+    <ul><li data-k="a">Elevators: their whole box sits to the right</li><li data-k="b" data-says="Look at the medians: the escalator line is left of the elevator one, and so is its whole box.">Escalators</li></ul>
+    <div class="why">Elevator outages have a median of about 2.5 hours against about 1.2 for escalators, and their middle half reaches further too. That matters more than it sounds: an elevator outage is the one that cuts off a wheelchair user, so the MTA reports them separately.</div>
+  </div>
+
+  <h2>4. The shape: histograms and density estimates</h2>
+  <p>A <b>histogram</b> cuts the range into bins and counts the points in each. Its look depends a lot on the bin width you pick. A <b>kernel density estimate</b> (KDE) instead puts a small bell curve on every point and adds them up, giving a smooth estimate of the density (Calculus 4). Its knob is the <b>bandwidth</b>, the width of each little bell. The x-axis here is \(\log_{10}\) of hours: 0 is 1 hour, 1 is 10 hours, 2 is 100.</p>
+  <canvas id="hist" width="800" height="400" aria-label="Histogram and kernel density estimate of log outage hours"></canvas>
+  <div class="row">
+    <label>bins <input type="range" id="bins" min="4" max="80" step="1" value="20"> <b id="binsV" class="math"></b></label>
+    <label>bandwidth <input type="range" id="bw" min="0.01" max="0.6" step="0.01" value="0.12"> <b id="bwV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r4"></p>
+  <div class="q" data-answer="c">
+    <p>Slide the bandwidth all the way down. The curve turns into a comb of spikes, one per point. What's that like?</p>
+    <ul><li data-k="a" data-says="It's the opposite: a huge bandwidth smears everything into one blob, which is underfitting.">Underfitting</li><li data-k="b" data-says="It describes these 340 points perfectly but would be wrong about the next outage: that's not more accurate, that's memorizing.">A more accurate estimate</li><li data-k="c">Overfitting: it memorizes these exact points instead of the shape behind them</li></ul>
+    <div class="why">Too small a bandwidth (or too many bins) copies the noise; too big hides real bumps. Picking it is the same trade-off as model complexity in chapter 11. Rules of thumb exist (Silverman's: about \(1.06\,\sigma\,n^{-1/5}\), here about 0.16), and so does cross-validation.</div>
+  </div>
+  <p>On the log scale the shape is a single hump, leaning a little right. On the plain scale it's wildly <b>skewed</b>: a big pile near zero and a long tail to the right. <b>Skewness</b> measures that lopsidedness (0 for symmetric, positive for a long right tail), and <b>kurtosis</b> measures how heavy the tails are compared with a bell curve. Durations, prices, incomes and file sizes are all right-skewed, and taking logs is the standard fix: models (and averages) behave much better on \(\log x\) than on \(x\).</p>
+
+  <h2>5. Is it a bell curve? The QQ plot</h2>
+  <p>Many methods assume data is roughly normal (a bell curve). To check, sort the data, standardize it, and plot each point against where it <i>would</i> be if the data were perfectly normal: the matching quantile of the bell curve. Normal data falls on the diagonal; skew bends it away.</p>
+  <canvas id="qq" class="square" width="500" height="500" aria-label="QQ plot of outage durations against a normal distribution"></canvas>
+  <div class="row"><label><input type="checkbox" id="logQ" checked> take logs first</label></div>
+  <p class="readout" id="r5"></p>
+  <div class="q" data-answer="b">
+    <p>Untick "take logs first". The points curve sharply up at the right end. What does that mean?</p>
+    <ul><li data-k="a" data-says="Then the right end would sag below the line instead.">The biggest values are smaller than a bell curve would give</li><li data-k="b">The biggest values are far bigger than a bell curve would allow: a long right tail</li><li data-k="c" data-says="A QQ plot that bends away from the line is exactly the sign it isn't.">The data is normal</li></ul>
+    <div class="why">On the plain scale the longest outages are 10+ standard deviations out, where a bell curve has essentially nothing. With logs, skewness drops from about 12 to 1.3 and the middle of the data sits right on the line: the durations are roughly <b>log-normal</b>, meaning their logs are close to normal. The top end still bends up, though: the longest outages (planned work lasting days or weeks) are a different kind of event from everyday breakdowns, and real data often mixes groups like that.</div>
+  </div>
+
+  <h2>6. Two variables: joint, marginal, conditional</h2>
+  <p>With two variables at once, count every combination. This is the <b>joint</b> table of kind × "fixed within 2 hours?". The totals in the margins are the <b>marginal</b> counts: each variable on its own, ignoring the other.</p>
+  <div class="wide"><table class="joint" id="joint"></table></div>
+  <p>A <b>conditional</b> distribution picks one row and divides by its total: "of the elevator outages, what share ran over 2 hours?". That's Probability 1's \(P(A \mid B)\), counted from real data.</p>
+  <div class="q" data-num="0.582" data-tol="0.003">
+    <p>From the table: what is \(P(\text{over 2 h} \mid \text{elevator})\)?</p>
+    <div class="why">92 of the 158 elevator outages ran over 2 hours: \(92/158 \approx 0.582\). For escalators it's \(50/182 \approx 0.275\). Very different, so kind and duration are <b>not independent</b>: knowing the kind changes the odds.</div>
+  </div>
+
+  <h2>7. Covariance and correlation</h2>
+  <p>For each outage the MTA posts an estimated return time. Does the estimate predict how long it actually takes? Each dot is one outage: across is the estimate, up is the truth.</p>
+  <canvas id="scat" class="square" width="500" height="500" aria-label="Estimated against actual outage hours"></canvas>
+  <div class="row"><label><input type="checkbox" id="logC" checked> log scale</label></div>
+  <p class="readout" id="r6"></p>
+  <p><b>Covariance</b> measures whether two variables move together: the average of (x's distance from its mean) times (y's distance from its mean). When both are above or both below their means, the product is positive. <b>Correlation</b> \(r\) divides by both standard deviations, which pins it between −1 (a perfect falling line) and +1 (a perfect rising line), with 0 meaning no straight-line relation:</p>
+  <p class="formula">\[ \operatorname{cov}(x, y) = \frac{1}{n} \sum_i (x_i - \bar{x})(y_i - \bar{y}), \qquad r = \frac{\operatorname{cov}(x, y)}{\sigma_x \sigma_y} \]</p>
+  <p>A correlation is also just the mean product of z-scores: standardize both, multiply pairwise, average.</p>
+  <div class="q" data-answer="c">
+    <p>Untick "log scale". The correlation jumps from about 0.65 to 0.99. Did the estimates get better?</p>
+    <ul><li data-k="a" data-says="It's the same data. Only the scale changed, and correlation isn't the same on x and on log x.">Yes, plain hours are the right scale for estimates</li><li data-k="b" data-says="Look at the picture: almost every dot is in a tiny clump at the corner.">Yes: the dots line up perfectly</li><li data-k="c">No: a handful of outages that lasted days, whose estimates came close, sit so far out that they decide the whole number</li></ul>
+    <div class="why">Covariance multiplies distances from the mean, so the 10 outages that lasted over a day (3% of the data, mostly planned repairs with decent estimates) dominate everything. Among the 326 outages under 12 hours, the plain-scale \(r\) is only 0.2. Always look at the scatter plot before trusting a correlation. The log scale's 0.65 is the honest answer: the estimate helps, but often misses by a factor of several.</div>
+  </div>
+  <p>Two more warnings. Correlation only sees <b>straight-line</b> relations: points on a perfect circle have \(r = 0\). And correlation isn't causation: elevator outages correlate with longer estimates and longer durations, but the estimate doesn't cause the repair to take longer; the kind of breakdown drives both.</p>
+
+  <h2>8. The two-dimensional bell curve</h2>
+  <p>The bell curve has a version for several variables at once, the <b>multivariate normal</b>. In 2D it's a hill whose contour lines are ellipses. It's described by the two means and a <b>covariance matrix</b>: each variable's variance on the diagonal, their covariance off it:</p>
+  <p class="formula">\[ \Sigma = \begin{pmatrix} \sigma_x^2 & \rho\,\sigma_x \sigma_y \\ \rho\,\sigma_x \sigma_y & \sigma_y^2 \end{pmatrix} \]</p>
+  <p>Shape it: the dots are 600 samples, the rings are 1 and 2 standard deviations.</p>
+  <canvas id="gauss" class="square" width="500" height="500" aria-label="Samples from a 2D normal distribution with its covariance ellipses"></canvas>
+  <div class="row">
+    <label>σx <input type="range" id="sx" min="0.2" max="3" step="0.05" value="1.5"> <b id="sxV" class="math"></b></label>
+    <label>σy <input type="range" id="sy" min="0.2" max="3" step="0.05" value="1"> <b id="syV" class="math"></b></label>
+    <label>correlation ρ <input type="range" id="rho" min="-0.99" max="0.99" step="0.01" value="0.6"> <b id="rhoV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r7"></p>
+  <div class="q" data-num="3" data-tol="0.001">
+    <p>With \(\sigma_x = 2\), \(\sigma_y = 3\) and \(\rho = 0.5\), what's the covariance (the off-diagonal number)?</p>
+    <div class="why">\(\rho\,\sigma_x\sigma_y = 0.5 \times 2 \times 3 = 3\).</div>
+  </div>
+  <p>The ellipse's long axis is the direction the data varies most, and finding those axes is exactly what <b>PCA</b> does, using the covariance matrix's eigenvectors (Linear algebra 2). The same shape shows up as the Gaussian anomaly detector in stage 3: points outside the outer ring are rare.</p>
+
+  <h2>9. All of it in code</h2>
+  <div class="code" data-title="Run it: describing the outage data"><textarea>
+const { rows } = await (await fetch("/ai/data/outages.json")).json();
+const hours = rows.map((r) => r[0]), est = rows.map((r) => r[1]);
+
+const mean = (v) => v.reduce((s, x) => s + x, 0) / v.length;
+const sd = (v) => { const m = mean(v); return Math.sqrt(mean(v.map((x) => (x - m) ** 2))); };
+// quantile by linear interpolation between sorted neighbors (NumPy's default)
+const quantile = (v, q) => { const s = [...v].sort((a, b) => a - b), i = (s.length - 1) * q, lo = Math.floor(i); return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo); };
+const corr = (x, y) => { const mx = mean(x), my = mean(y); return mean(x.map((xi, i) => (xi - mx) * (y[i] - my))) / (sd(x) * sd(y)); };
+
+print("n =", hours.length, " mean =", mean(hours).toFixed(2), " median =", quantile(hours, 0.5));
+print("sd =", sd(hours).toFixed(1), " Q1 =", quantile(hours, 0.25).toFixed(2), " Q3 =", quantile(hours, 0.75).toFixed(2));
+const z = hours.map((x) => (x - mean(hours)) / sd(hours));
+print("biggest z-score:", Math.max(...z).toFixed(1), "standard deviations out");
+print("correlation, estimate vs actual:", corr(est, hours).toFixed(3), " on logs:", corr(est.map(Math.log), hours.map(Math.log)).toFixed(3));
+
+// how often each reason appears, most common first (that one is the mode)
+const byReason = {};
+for (const r of rows) byReason[r[3]] = (byReason[r[3]] ?? 0) + 1;
+table([["reason", "count"], ...Object.entries(byReason).sort((a, b) => b[1] - a[1])]);
+</textarea></div>
+
+  <h2>10. What to carry forward</h2>
+  <ul>
+    <li><b>Mean</b> vs <b>median</b>: on skewed data the median is the typical value; the mean is what totals need. Medians and quantiles shrug off outliers; means and standard deviations don't.</li>
+    <li><b>Standard deviation</b> is the typical distance from the mean; a <b>z-score</b> measures in those units, and standardizing features is how you scale them for training.</li>
+    <li><b>Box plots</b> show quartiles and outliers; <b>histograms</b> and <b>KDEs</b> show shape, with a bin width or bandwidth that can over- or underfit.</li>
+    <li>Right-skewed data (durations, prices) often becomes well-behaved after a <b>log</b>. A <b>QQ plot</b> checks normality.</li>
+    <li>Joint tables give <b>marginals</b> (sum a row) and <b>conditionals</b> (divide by a row).</li>
+    <li><b>Correlation</b> is covariance rescaled to [−1, 1]; a few extreme points can decide it, and it's blind to curves. Look at the scatter plot.</li>
+    <li>The <b>multivariate normal</b> is described by means and a covariance matrix; its ellipses lead to PCA.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, erf, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const { rows } = await (await fetch("/ai/data/outages.json")).json();
+const mean = (v) => v.reduce((s, x) => s + x, 0) / v.length;
+const sd = (v) => { const m = mean(v); return Math.sqrt(mean(v.map((x) => (x - m) ** 2))); };
+const quant = (s, q) => { const i = (s.length - 1) * q, lo = Math.floor(i); return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo); }; // s sorted
+const sorted = (v) => [...v].sort((a, b) => a - b);
+const hours = rows.map((r) => r[0]), lg = hours.map(Math.log10);
+const f1 = (v) => (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2));
+
+// 1. strip of every outage
+const rand = mulberry32(5), jitter = hours.map(() => rand());
+let extra = false;
+function r1() {
+  const log = $("logS").checked, data = extra ? [...hours, 2000] : hours, s = sorted(data), m = mean(data), med = quant(s, 0.5);
+  const tx = log ? Math.log10 : (x) => x, P = log ? graph("strip", [-1.6, 3.5], [0, 1], { step: [1, 1e9] }) : graph("strip", [0, extra ? 2050 : 750], [0, 1], { step: [100, 1e9] });
+  data.forEach((x, i) => P.dot(tx(x), 0.12 + 0.76 * (jitter[i] ?? 0.5), i >= hours.length ? C.red : "rgba(215,221,229,0.55)", i >= hours.length ? 6 : 3));
+  P.seg(tx(m), 0, tx(m), 1, C.yellow, 3); P.seg(tx(med), 0, tx(med), 1, C.blue, 3);
+  if (log) for (const [v, t] of [[0.1, "6 min"], [1, "1 h"], [10, "10 h"], [100, "100 h"], [1000, "1000 h"]]) P.text(t, Math.log10(v) + 0.03, 0.9, "#8f98a8");
+  $("r1").textContent = `${data.length} outages · mean ${f1(m)} h · median ${f1(med)} h${extra ? " · the red dot moved the mean by " + f1(m - mean(hours)) + " h and the median by " + f1(med - quant(sorted(hours), 0.5)) + " h" : ""}`;
+}
+$("logS").onchange = r1;
+$("addOut").onclick = () => { extra = !extra; $("addOut").textContent = extra ? "Remove it" : "Add one 2000-hour outage"; r1(); if (extra) say("One outlier, and the mean jumps. The median barely notices.", "surprised"); };
+
+// 3. box and violin per kind, on log10 hours
+const kde = (v, bw) => (x) => v.reduce((s, xi) => s + Math.exp(-0.5 * ((x - xi) / bw) ** 2), 0) / (v.length * bw * Math.sqrt(2 * Math.PI));
+function r3() {
+  const P = graph("box", [-1.6, 3.2], [0, 2], { step: [1, 1e9] }), { g } = P, out = [];
+  [["EL", "elevators", 1.45, C.yellow], ["ES", "escalators", 0.55, C.blue]].forEach(([k, name, yc, col]) => {
+    const v = rows.filter((r) => r[2] === k).map((r) => Math.log10(r[0])), s = sorted(v), q1 = quant(s, 0.25), q2 = quant(s, 0.5), q3 = quant(s, 0.75), iqr = q3 - q1;
+    const lo = s.find((x) => x >= q1 - 1.5 * iqr), hi = [...s].reverse().find((x) => x <= q3 + 1.5 * iqr), d = kde(v, 0.12);
+    g.fillStyle = col; g.globalAlpha = 0.16; g.beginPath();
+    for (let x = -1.6; x <= 3.2; x += 0.02) g.lineTo(P.X(x), P.Y(yc + 0.35 * d(x)));
+    for (let x = 3.2; x >= -1.6; x -= 0.02) g.lineTo(P.X(x), P.Y(yc - 0.35 * d(x)));
+    g.fill(); g.globalAlpha = 1;
+    P.seg(lo, yc, q1, yc, col, 2); P.seg(q3, yc, hi, yc, col, 2); P.seg(lo, yc - 0.08, lo, yc + 0.08, col, 2); P.seg(hi, yc - 0.08, hi, yc + 0.08, col, 2);
+    g.strokeStyle = col; g.lineWidth = 2.5; g.strokeRect(P.X(q1), P.Y(yc + 0.15), P.X(q3) - P.X(q1), P.Y(yc - 0.15) - P.Y(yc + 0.15));
+    P.seg(q2, yc - 0.15, q2, yc + 0.15, C.text, 3);
+    for (const x of s) if (x < lo || x > hi) P.dot(x, yc, C.red, 4);
+    P.text(name, -1.55, yc + 0.22, col);
+    out.push(`${name}: median ${f1(10 ** q2)} h, middle half ${f1(10 ** q1)}–${f1(10 ** q3)} h`);
+  });
+  for (const [v, t] of [[0.1, "6 min"], [1, "1 h"], [10, "10 h"], [100, "100 h"], [1000, "1000 h"]]) P.text(t, Math.log10(v) + 0.03, 0.05, "#8f98a8");
+  $("r3").textContent = out.join(" · ");
+}
+
+// 4. histogram + KDE of log10 hours
+function r4() {
+  const nb = +$("bins").value, bw = +$("bw").value, [a, b] = [-1.6, 3.2], w = (b - a) / nb, counts = new Array(nb).fill(0);
+  for (const x of lg) counts[Math.min(nb - 1, Math.floor((x - a) / w))]++;
+  const P = graph("hist", [a, b], [0, 1.6], { step: [1, 0.5] });
+  counts.forEach((c, i) => { const h = c / (lg.length * w); P.g.fillStyle = "rgba(88,196,221,0.55)"; P.g.fillRect(P.X(a + i * w) + 1, P.Y(h), P.X(a + w) - P.X(a) - 2, P.Y(0) - P.Y(h)); });
+  P.curve(kde(lg, bw), C.yellow, 3);
+  $("binsV").textContent = nb; $("bwV").textContent = bw.toFixed(2);
+  $("r4").textContent = `${nb} bins, each ×${(10 ** w).toFixed(2)} wide in hours · bandwidth ${bw.toFixed(2)}` + (bw < 0.04 ? " · spiky: memorizing the points" : bw > 0.4 ? " · oversmoothed: real bumps vanish" : "");
+}
+$("bins").oninput = $("bw").oninput = r4;
+
+// 5. QQ plot against the standard normal
+const Phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+const PhiInv = (p) => { let lo = -8, hi = 8; for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; Phi(mid) < p ? (lo = mid) : (hi = mid); } return (lo + hi) / 2; };
+const moments = (v) => { const m = mean(v), s = sd(v); return [mean(v.map((x) => ((x - m) / s) ** 3)), mean(v.map((x) => ((x - m) / s) ** 4)) - 3]; };
+function r5() {
+  const v = $("logQ").checked ? lg : hours, m = mean(v), s = sd(v), z = sorted(v.map((x) => (x - m) / s)), n = z.length;
+  const P = graph("qq", [-3.5, 3.5], [-3.5, 3.5], { step: [1, 1] });
+  P.curve((x) => x, "#8f98a8", 1.5, [6, 6]);
+  z.forEach((zi, i) => P.dot(PhiInv((i + 0.5) / n), zi, C.yellow, 3.5));
+  P.text("normal quantiles →", 1.2, -3.3, "#8f98a8"); P.text("data (z-scores)", -3.4, 3.2, "#8f98a8");
+  const [sk, ku] = moments(v);
+  $("r5").textContent = `${$("logQ").checked ? "log hours" : "hours"} · skewness ${sk.toFixed(2)} · excess kurtosis ${ku.toFixed(1)} · largest z ${z.at(-1).toFixed(1)}${z.at(-1) > 3.5 ? " (off the top)" : ""} · a bell curve has 0 and 0`;
+}
+$("logQ").onchange = r5;
+
+// 6. joint table
+{
+  const cell = (k, long) => rows.filter((r) => r[2] === k && (r[0] > 2) === long).length, K = [["EL", "elevator"], ["ES", "escalator"]];
+  const t = K.map(([k]) => [cell(k, false), cell(k, true)]);
+  $("joint").innerHTML = `<tr><th></th><th>within 2 h</th><th>over 2 h</th><th class="m">total</th></tr>`
+    + K.map(([, name], i) => `<tr><th>${name}</th><td>${t[i][0]}</td><td>${t[i][1]}</td><td class="m">${t[i][0] + t[i][1]}</td></tr>`).join("")
+    + `<tr><th class="m">total</th><td class="m">${t[0][0] + t[1][0]}</td><td class="m">${t[0][1] + t[1][1]}</td><td class="m">${rows.length}</td></tr>`;
+}
+
+// 7. estimated vs actual
+const corr = (x, y) => { const mx = mean(x), my = mean(y); return mean(x.map((xi, i) => (xi - mx) * (y[i] - my))) / (sd(x) * sd(y)); };
+function r6() {
+  const log = $("logC").checked, tx = log ? Math.log10 : (x) => x, xs = rows.map((r) => tx(r[1])), ys = rows.map((r) => tx(r[0]));
+  const P = log ? graph("scat", [-1.6, 3.2], [-1.6, 3.2], { step: [1, 1] }) : graph("scat", [0, 750], [0, 750], { step: [100, 100] });
+  P.curve((x) => x, "#8f98a8", 1.5, [6, 6]);
+  xs.forEach((x, i) => P.dot(x, ys[i], rows[i][2] === "EL" ? C.yellow : C.blue, 3.5));
+  P.text(log ? "estimate (log₁₀ h) →" : "estimate (h) →", log ? 1.4 : 520, log ? -1.45 : 15, "#8f98a8");
+  const mx = mean(xs), my = mean(ys), cv = mean(xs.map((x, i) => (x - mx) * (ys[i] - my)));
+  $("r6").textContent = `covariance ${cv.toFixed(log ? 3 : 0)} · correlation r = ${corr(xs, ys).toFixed(3)} · dashed: estimate = actual · yellow elevators, blue escalators`;
+}
+$("logC").onchange = r6;
+
+// 8. 2D normal: fixed standard normal pairs, stretched and sheared by the sliders
+const rg = mulberry32(9), gauss = () => Math.sqrt(-2 * Math.log(1 - rg())) * Math.cos(2 * Math.PI * rg());
+const Z = Array.from({ length: 600 }, () => [gauss(), gauss()]);
+function r7() {
+  const sx = +$("sx").value, sy = +$("sy").value, rho = +$("rho").value, c = Math.sqrt(1 - rho * rho);
+  const T = ([a, b]) => [sx * a, sy * (rho * a + c * b)], P = graph("gauss", [-6, 6], [-6, 6], { step: [1, 1] }), pts = Z.map(T);
+  for (const [x, y] of pts) P.dot(x, y, "rgba(88,196,221,0.6)", 3);
+  for (const k of [1, 2]) { P.g.strokeStyle = C.yellow; P.g.lineWidth = 2.5; P.g.beginPath(); for (let t = 0; t <= 2 * Math.PI + 0.01; t += 0.05) { const [x, y] = T([k * Math.cos(t), k * Math.sin(t)]); P.g.lineTo(P.X(x), P.Y(y)); } P.g.stroke(); }
+  $("sxV").textContent = sx.toFixed(2); $("syV").textContent = sy.toFixed(2); $("rhoV").textContent = rho.toFixed(2);
+  $("r7").textContent = `Σ = [${(sx * sx).toFixed(2)} ${(rho * sx * sy).toFixed(2)}; ${(rho * sx * sy).toFixed(2)} ${(sy * sy).toFixed(2)}] · correlation of the 600 samples: ${corr(pts.map((p) => p[0]), pts.map((p) => p[1])).toFixed(3)}`;
+}
+for (const id of ["sx", "sy", "rho"]) $(id).oninput = r7;
+
+r1(); r3(); r4(); r5(); r6(); r7();
+window.blipContext = () => ({ page: "AI from scratch, probability 2: describing data on 340 real NYC subway elevator/escalator outages (mean 8.2 h vs median 1.6 h, outliers, variance and standard deviation, z-scores and feature scaling, quantiles, IQR, box and violin plots, histogram bins vs KDE bandwidth as over/underfitting, skewness, kurtosis, log scale, QQ plots and log-normal data, joint/marginal/conditional tables, covariance and correlation decided by a few extreme points, the 2D normal and its covariance matrix and ellipses)", readouts: ["r1", "r3", "r4", "r5", "r6", "r7"].map((id) => $(id).textContent) });
+</script>
+</body>
+</html>
