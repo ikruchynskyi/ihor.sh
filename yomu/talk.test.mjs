@@ -14,5 +14,26 @@ assert.equal(score("はじめましてサムです", turn("jikoshoukai", 0)).ver
 assert.equal(score("フランスから来ました", turn("jikoshoukai", 1)).verdict, "great");
 assert.equal(score("二年ぐらいです", turn("jikoshoukai", 3)).verdict, "great");
 assert.equal(score("", turn("hoteru", 1)).verdict, "silent");
-for (const s of SCENES) for (const t of s.turns) assert.ok(t.you.length && t.goal, `${s.id}: every turn needs a goal and answers`);
-console.log(`talk ok: ${SCENES.length} scenes, ${SCENES.reduce((a, s) => a + s.turns.length, 0)} turns`);
+
+// Romaji input support
+assert.equal(score("hai, onegaishimasu", turn("konbini", 0)).verdict, "great");
+assert.equal(score("iie, irimasen", turn("konbini", 1)).verdict, "great");
+assert.equal(score("ka-do de onegaishimasu", turn("konbini", 2)).verdict, "great");
+assert.equal(score("card de onegaishimasu", turn("konbini", 2)).verdict, "great");
+assert.equal(score("sumimasen eki wa doko desu ka", turn("michi", 0)).verdict, "great");
+assert.equal(score("arigatou gozaimasu", turn("michi", 2)).verdict, "great");
+assert.equal(score("futari desu", turn("resutoran", 0)).verdict, "great");
+assert.equal(score("mizu o kudasai", turn("resutoran", 1)).verdict, "great");
+
+// Turn data invariants: goals, accepted answers, and hints
+for (const s of SCENES) {
+  for (const t of s.turns) {
+    assert.ok(t.you.length && t.goal, `${s.id}: every turn needs a goal and answers`);
+    assert.ok(t.hints?.length, `${s.id}: every turn needs suggestions`);
+    for (const h of t.hints) {
+      assert.ok(h.ja && h.romaji && h.en, `${s.id}: hint needs ja, romaji, en`);
+    }
+  }
+}
+
+console.log(`talk ok: ${SCENES.length} scenes, ${SCENES.reduce((a, s) => a + s.turns.length, 0)} turns (all romaji & hints verified)`);

@@ -3,43 +3,84 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yomu Talk</title>
+  <title>Talk: everyday Japanese scenes · Yomu</title>
   <meta name="description" content="Speak Japanese in everyday scenes: Blip plays the convenience-store clerk, a passer-by, a waiter, a station worker and a hotel receptionist; you answer out loud (or type), and each answer is checked against what a Japanese speaker would accept, with the model answer to listen to." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
     .scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; }
     .scenes button { text-align: left; padding: 10px 12px; display: flex; align-items: center; gap: 12px; }
     .scenes img { width: 96px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; }
-    .chat { margin: 14px 0; }
-    .line { padding: 8px 12px; margin: 8px 0; border-radius: 12px; max-width: 85%; }
-    .line.blip { background: color-mix(in srgb, var(--accent, #c2410c) 12%, transparent); }
-    .line.you { margin-left: auto; text-align: right; border: 1px solid var(--line, #ddd); }
-    .line .jp { font-size: 1.25rem; }
-    .goal { font-weight: 600; margin: 10px 0 4px; }
-    .verdict.great { color: #2f9e44; } .verdict.close { color: #e8590c; } .verdict.again { color: #e03131; }
-    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #typed { font-size: 1.15rem; min-width: 260px; }
+    .chat { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
+    .talk-bubble { padding: 10px 14px; border-radius: 14px; max-width: 82%; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; }
+    .talk-bubble.blip {
+      background: color-mix(in srgb, var(--accent, #c2410c) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent, #c2410c) 25%, transparent);
+      align-self: flex-start;
+      margin-right: auto;
+    }
+    .talk-bubble.you {
+      background: var(--card, #fff);
+      border: 1px solid var(--line, #ddd);
+      align-self: flex-end;
+      margin-left: auto;
+      text-align: right;
+    }
+    .talk-bubble .who-name { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #6b6a66); margin-bottom: 2px; }
+    .talk-bubble .jp { font-size: 1.3rem; line-height: 1.5; word-break: break-word; }
+    .talk-bubble .en { font-size: 0.95rem; color: var(--muted, #6b6a66); line-height: 1.4; }
+    .turn-prompt { background: color-mix(in srgb, var(--card, #fff) 80%, var(--line, #ddd)); border: 1px solid var(--line, #ddd); border-radius: 12px; padding: 14px 16px; margin: 14px 0 10px; }
+    .goal { font-weight: 600; font-size: 1.05rem; margin: 0 0 10px; }
+    .hints-box { margin-top: 8px; }
+    .hints-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #6b6a66); margin-bottom: 6px; font-weight: 600; }
+    .hints { display: flex; flex-wrap: wrap; gap: 8px; }
+    .hint-chip {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+      border-radius: 20px; border: 1px solid var(--line, #ddd); background: var(--card, #fff);
+      cursor: pointer; font-size: 0.95rem; transition: all 0.15s ease; text-align: left;
+    }
+    .hint-chip:hover { border-color: var(--accent, #c2410c); transform: translateY(-1px); }
+    .hint-chip .h-jp { font-weight: 600; color: var(--fg, #1d1d1b); font-size: 1.05rem; }
+    .hint-chip .h-romaji { font-size: 0.82rem; color: var(--muted, #6b6a66); }
+    .hint-chip .h-en { font-size: 0.85rem; color: var(--muted, #6b6a66); }
+    .hint-chip .h-play {
+      background: none; border: none; padding: 0 4px; cursor: pointer; font-size: 1.05rem;
+      color: var(--accent, #c2410c); line-height: 1; border-radius: 4px;
+    }
+    .hint-chip .h-play:hover { transform: scale(1.15); }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    #typed { font-size: 1.1rem; min-width: 280px; flex: 1 1 280px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--card, #fff); color: var(--fg, #1d1d1b); }
+    .result-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; min-height: 32px; font-size: 1.05rem; }
+    .verdict.great { color: #2b8a3e; font-weight: 600; }
+    .verdict.close { color: #d97706; font-weight: 600; }
+    .verdict.again { color: #c92a2a; font-weight: 600; }
+    .act-btn { padding: 4px 10px; font-size: 0.9rem; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Talk</p>
   <h1>Talk: everyday scenes</h1>
-  <p class="lede">Blip plays the other person. Listen, then answer out loud (press 🎤) or type it. Your answer is checked against the replies a Japanese speaker would accept, in kanji or kana; close answers get a nudge and the model answer to hear. The scenes are written by hand for N5 and N4.</p>
+  <p class="lede">Blip plays the other person. Listen, then answer out loud (press 🎤) or type it in Japanese or Romaji. Your answer is checked against the replies a Japanese speaker would accept; close answers get a nudge and the model answer to hear. The scenes are written by hand for N5 and N4.</p>
   <div id="settings"></div>
   <p class="muted" id="mic"></p>
   <div class="scenes" id="scenes"></div>
   <section id="play" hidden>
     <h2 id="sceneTitle"></h2>
     <div class="chat" id="chat"></div>
-    <p class="goal" id="goal"></p>
+    <div class="turn-prompt" id="turnPrompt">
+      <p class="goal" id="goal"></p>
+      <div id="hintsBox" class="hints-box">
+        <div class="hints-label">Suggested phrases (click to use or 🔊 to hear):</div>
+        <div id="hints" class="hints"></div>
+      </div>
+    </div>
     <div class="controls">
       <button id="say" type="button">🎤 Answer out loud</button>
-      <form id="typeForm" style="display:contents"><input id="typed" lang="ja" placeholder="or type it (日本語で)"><button type="submit">Check</button></form>
-      <button id="hint" type="button">💡 Show an answer</button>
+      <form id="typeForm" style="display:contents"><input id="typed" lang="ja" placeholder="Type in Japanese or Romaji (e.g. sumimasen)..." autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit">Check</button></form>
+      <button id="hint" type="button">💡 Show answer</button>
       <button id="skip" type="button">Skip</button>
     </div>
-    <p id="result" aria-live="polite"></p>
+    <div class="result-row" id="result" aria-live="polite"></div>
   </section>
 </main>
 <script type="module">
@@ -52,43 +93,147 @@ if (!canListen()) $("say").hidden = true;
 const done = () => state.talk ?? (state.talk = {});
 $("scenes").innerHTML = SCENES.map((s) => `<button class="card2" data-s="${s.id}"><img src="/yomu/img/talk-${s.id}.jpg" alt="" loading="lazy" width="96" height="64"><span class="txt"><b>${esc(s.title)}</b> <span class="muted">${s.level}</span><br><span lang="ja">${esc(s.where)}</span> · ${esc(s.desc)}${done()[s.id] ? `<br><span class="muted">best: ${done()[s.id]}%</span>` : ""}</span></button>`).join("");
 let scene = null, k = 0, results = [];
-const show = (who, jp, en) => { $("chat").insertAdjacentHTML("beforeend", `<div class="line ${who}"><div class="jp" lang="ja">${esc(jp)}</div>${en && state.settings.translation ? `<div class="muted">${esc(en)}</div>` : ""}</div>`); $("chat").lastElementChild.scrollIntoView({ block: "nearest" }); };
+const show = (who, jp, en) => {
+  const whoLabel = who === "blip" ? "Blip" : "You";
+  $("chat").insertAdjacentHTML("beforeend", `
+    <div class="talk-bubble ${who}">
+      <span class="who-name">${whoLabel}</span>
+      <div class="jp" lang="ja">${esc(jp)}</div>
+      ${en && state.settings.translation ? `<div class="en">${esc(en)}</div>` : ""}
+    </div>
+  `);
+  $("chat").lastElementChild.scrollIntoView({ block: "nearest" });
+};
+
+function renderHints(t) {
+  if (!t.hints || !t.hints.length) {
+    $("hintsBox").hidden = true;
+    return;
+  }
+  $("hintsBox").hidden = false;
+  $("hints").innerHTML = t.hints.map((h, i) => `
+    <div class="hint-chip" data-idx="${i}" role="button" tabindex="0" title="Click to use this phrase">
+      <span class="h-jp" lang="ja">${esc(h.ja)}</span>
+      <span class="h-romaji">(${esc(h.romaji)})</span>
+      <span class="h-en">· ${esc(h.en)}</span>
+      <button class="h-play" type="button" data-say="${esc(h.ja)}" title="Listen to pronunciation">🔊</button>
+    </div>
+  `).join("");
+}
+
 async function step() {
   const t = scene.turns[k];
   $("result").textContent = ""; $("typed").value = "";
   if (!t) return finish();
-  // don't wait forever on a voice that never finishes (no Japanese voice installed): about as long as the line takes
-  if (t.blip) { show("blip", t.blip, t.en); await Promise.race([speak(t.blip), new Promise((r) => setTimeout(r, 1500 + t.blip.length * 180))]); }
+  if (t.blip) {
+    show("blip", t.blip, t.en);
+    await Promise.race([speak(t.blip), new Promise((r) => setTimeout(r, 1500 + t.blip.length * 180))]);
+  }
   $("goal").textContent = `Your turn: ${t.goal}`;
+  renderHints(t);
 }
+
 function finish() {
   const pct = Math.round((results.filter((r) => r === "great").length + 0.5 * results.filter((r) => r === "close").length) / scene.turns.length * 100);
-  $("goal").textContent = ""; $("result").innerHTML = `<b>Scene done: ${pct}%</b>. <button id="again" type="button">Play it again</button>`;
+  $("goal").textContent = "";
+  $("hintsBox").hidden = true;
+  $("result").innerHTML = `<b>Scene done: ${pct}%</b>. <button id="again" type="button">Play it again</button>`;
   done()[scene.id] = Math.max(done()[scene.id] ?? 0, pct); save(); gain(Math.round(pct / 10));
   blip(pct >= 80 ? "すごい！ You'd get through that for real." : "Good practice! Try it once more: it gets easier fast.", "happy");
   $("again").onclick = () => start(scene.id);
 }
+
 async function answer(text) {
   const t = scene.turns[k];
   const tries = String(text).split(" / ").map((x) => ({ x, r: score(x, t.you) })).sort((a, b) => b.r.score - a.r.score)[0];
   const { x, r } = tries;
   show("you", x || "…");
-  const msg = { great: "✓ Perfect.", close: `Close! A natural way to say it: 「${r.best}」`, again: `Not quite. Try: 「${r.best}」`, silent: "I didn't hear anything: try again, a bit louder and closer to the mic." }[r.verdict];
-  $("result").innerHTML = `<span class="verdict ${r.verdict}">${esc(msg)}</span> ${r.verdict !== "great" && r.verdict !== "silent" ? `<button id="hear" type="button">🔊 Hear it</button>` : ""}`;
+  const msg = {
+    great: "✓ Perfect.",
+    close: `Close! A natural way to say it: 「${r.best}」`,
+    again: `Not quite. Try: 「${r.best}」`,
+    silent: "I didn't hear anything: try again, a bit louder and closer to the mic."
+  }[r.verdict];
+
+  let actionsHtml = "";
+  if (r.verdict !== "great" && r.verdict !== "silent" && r.best) {
+    actionsHtml = `
+      <button id="hear" class="act-btn" type="button">🔊 Hear it</button>
+      <button id="useBest" class="act-btn" type="button">✍️ Use 「${esc(r.best)}」</button>
+    `;
+  }
+
+  $("result").innerHTML = `<span class="verdict ${r.verdict}">${esc(msg)}</span> ${actionsHtml}`;
   $("hear")?.addEventListener("click", () => speak(r.best));
+  $("useBest")?.addEventListener("click", () => {
+    $("typed").value = r.best;
+    answer(r.best);
+  });
+
   if (r.verdict === "silent") return;
   results[k] = r.verdict;
-  if (r.verdict === "great" || r.verdict === "close") { k++; setTimeout(step, r.verdict === "great" ? 700 : 2200); }
+  if (r.verdict === "great" || r.verdict === "close") {
+    k++;
+    setTimeout(step, r.verdict === "great" ? 700 : 2200);
+  }
 }
+
 function start(id) {
   scene = SCENES.find((s) => s.id === id); k = 0; results = [];
   $("play").hidden = false; $("sceneTitle").textContent = `${scene.title} · ${scene.where}`; $("chat").innerHTML = "";
   $("play").scrollIntoView({ behavior: "smooth" }); step();
 }
+
 $("scenes").addEventListener("click", (e) => { const id = e.target.closest("[data-s]")?.dataset.s; if (id) start(id); });
 $("say").onclick = async () => { $("say").disabled = true; $("say").textContent = "🎤 Listening…"; const heard = await listen(); $("say").disabled = false; $("say").textContent = "🎤 Answer out loud"; answer(heard); };
 $("typeForm").onsubmit = (e) => { e.preventDefault(); if ($("typed").value.trim()) answer($("typed").value.trim()); };
-$("hint").onclick = () => { const t = scene.turns[k]; const a = t.you.find((x) => !x.startsWith("re:")); $("result").innerHTML = `One answer: 「${esc(a)}」 <button id="hear2" type="button">🔊</button>`; $("hear2").onclick = () => speak(a); };
+
+$("hints").onclick = (e) => {
+  const playBtn = e.target.closest(".h-play");
+  if (playBtn) {
+    e.stopPropagation();
+    speak(playBtn.dataset.say);
+    return;
+  }
+  const chip = e.target.closest(".hint-chip");
+  if (chip) {
+    const idx = Number(chip.dataset.idx);
+    const t = scene.turns[k];
+    const phrase = t?.hints?.[idx]?.ja;
+    if (phrase) {
+      $("typed").value = phrase;
+      answer(phrase);
+    }
+  }
+};
+
+$("hints").onkeydown = (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    const chip = e.target.closest(".hint-chip");
+    if (chip) {
+      e.preventDefault();
+      const idx = Number(chip.dataset.idx);
+      const t = scene.turns[k];
+      const phrase = t?.hints?.[idx]?.ja;
+      if (phrase) {
+        $("typed").value = phrase;
+        answer(phrase);
+      }
+    }
+  }
+};
+
+$("hint").onclick = () => {
+  const t = scene.turns[k];
+  const a = t.hints?.[0]?.ja || t.you.find((x) => !x.startsWith("re:"));
+  $("result").innerHTML = `Suggested answer: 「${esc(a)}」 <button id="hearHint" class="act-btn" type="button">🔊 Hear it</button> <button id="useHint" class="act-btn" type="button">✍️ Use this</button>`;
+  $("hearHint")?.addEventListener("click", () => speak(a));
+  $("useHint")?.addEventListener("click", () => {
+    $("typed").value = a;
+    answer(a);
+  });
+};
+
 $("skip").onclick = () => { results[k] = "skipped"; k++; step(); };
 window.blipContext = () => ({ page: "Yomu Talk: Japanese role-play scenes", scene: scene?.title ?? null, turn: scene ? k + 1 : null, goal: scene?.turns[k]?.goal ?? null });
 </script>
