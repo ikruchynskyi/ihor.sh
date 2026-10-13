@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eigenvectors and PCA</title>
+  <meta name="description" content="AI from scratch, linear algebra 2: bases and coordinates, eigenvectors as the arrows a matrix only stretches (drag one until it lines up), eigenvalues from the characteristic polynomial, power iteration, a Markov chain ranking this site's own 169 pages (PageRank), projections, and PCA finding the main axis of real subway outage data, with the link to the Hessian's curvature." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; }
+    canvas.drag { cursor: grab; } canvas.drag:active { cursor: grabbing; }
+    canvas.bars { aspect-ratio: 2 / 1; }
+    canvas.square { aspect-ratio: 1 / 1; max-width: 480px; margin: 0 auto; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 2 · Stage 1: the math of learning</p>
+  <h1>Eigenvectors and PCA</h1>
+  <p class="lede">A matrix moves the whole plane (chapter 1), and most arrows get knocked off their line. But a few special directions only get stretched. Those are the <b>eigenvectors</b>, and they're the matrix's skeleton: they say where repeating a move ends up, how Google first ranked the web, which way a loss valley is steepest, and which direction in your data matters most. This lesson finds them by hand, by algebra and by repetition, then uses them to rank this site's own pages and to squeeze real data down to its most important axis.</p>
+
+  <h2>1. A basis is a choice of steps</h2>
+  <p>Chapter 1 described every point with two steps, \(\hat\imath = (1, 0)\) and \(\hat\jmath = (0, 1)\). Nothing forces that choice. Any two arrows that don't lie on one line can reach every point of the plane by mixing them (their <b>span</b> is the whole plane), so they form a <b>basis</b>, and a point's <b>coordinates</b> are just how much of each step you take. Linear algebra 1's column picture was this exact question.</p>
+  <div class="q" data-num="3">
+    <p>In the basis \(u = (1, 1)\), \(w = (1, -1)\), the point \((5, 1)\) is \(a\,u + b\,w\). What is \(a\)?</p>
+    <div class="why">\(a(1, 1) + b(1, -1) = (a + b, a - b) = (5, 1)\), so \(a = 3\), \(b = 2\). Same point, different coordinates. The trick of this lesson is choosing the basis that makes a matrix simplest.</div>
+  </div>
+
+  <h2>2. The arrows a matrix only stretches</h2>
+  <p>Drag the <span class="b">blue arrow</span> \(v\). The <span class="y">yellow arrow</span> is where the matrix sends it, \(Av\). Usually it points somewhere else. Find the directions where yellow lies exactly along blue: there \(Av = \lambda v\) for some number \(\lambda\), the <b>eigenvalue</b>, and \(v\) is an <b>eigenvector</b>. The dashed lines show where they are once you've looked.</p>
+  <canvas id="eig" class="drag" width="800" height="600" aria-label="Drag a vector and see where the matrix sends it"></canvas>
+  <div class="row">
+    <label>matrix <select id="mat">
+      <option value="sym">[2 1; 1 2] stretch</option>
+      <option value="tri">[3 1; 0 2]</option>
+      <option value="neg">[1 2; 2 1]</option>
+      <option value="shear">[1 1; 0 1] shear</option>
+      <option value="rot">[0 −1; 1 0] rotate</option>
+    </select></label>
+    <label><input type="checkbox" id="showE"> show the eigen-directions</label>
+    <button id="iter">Apply A over and over</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-num="3">
+    <p>For \(\begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}\), drag \(v\) to \((1, 1)\). It's an eigenvector: what's its eigenvalue?</p>
+    <div class="why">\(Av = (2 + 1, 1 + 2) = (3, 3) = 3v\), so \(\lambda = 3\). Now try \((1, -1)\): \(Av = (1, -1)\), \(\lambda = 1\), stretched by nothing at all.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>Pick "rotate". Can you find an eigenvector?</p>
+    <ul><li data-k="a" data-says="Try it: (1, 0) goes to (0, 1). Every arrow turns a quarter turn.">Yes, along the axes</li><li data-k="b" data-says="(1, 1) goes to (−1, 1): turned, not stretched.">Yes, along the diagonal</li><li data-k="c">No: a rotation turns every arrow, so none stays on its line</li></ul>
+    <div class="why">A rotation has no real eigenvectors. (Its eigenvalues are complex numbers, which is how complex numbers secretly describe turning; the radio course runs on that.) The shear has just one eigen-direction, the horizontal line it slides along. A symmetric matrix like the first one always has a full set, at right angles to each other.</div>
+  </div>
+
+  <h2>3. Finding them with algebra</h2>
+  <p>\(Av = \lambda v\) means \((A - \lambda I)v = 0\) for a nonzero \(v\): the matrix \(A - \lambda I\) squashes some arrow to zero, so it must be singular, which means its determinant is zero (Linear algebra 1). That gives an equation for \(\lambda\) alone:</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>For \(A = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}\), the <b>characteristic polynomial</b> is</p>
+    <p class="formula">\[ \det(A - \lambda I) = \det \begin{pmatrix} 2 - \lambda & 1 \\ 1 & 2 - \lambda \end{pmatrix} = (2 - \lambda)^2 - 1 = 0 \]</p>
+    <p>so \(2 - \lambda = \pm 1\): \(\lambda = 3\) or \(\lambda = 1\). For each, solve \((A - \lambda I)v = 0\): with \(\lambda = 3\), \(\begin{pmatrix} -1 & 1 \\ 1 & -1 \end{pmatrix} v = 0\) says \(v_1 = v_2\), the diagonal \((1, 1)\). Any multiple works too: eigenvectors are really eigen-<i>directions</i>.</p>
+    <p>For any 2×2 matrix the polynomial is \(\lambda^2 - (\text{trace})\lambda + \det = 0\), where the trace is the sum of the diagonal. So the eigenvalues always <b>add up to the trace</b> and <b>multiply to the determinant</b>: the area scale from chapter 1 is the product of the stretches along the eigen-directions.</p>
+  </details>
+  <div class="q" data-num="3">
+    <p>What's the largest eigenvalue of \(\begin{pmatrix} 3 & 1 \\ 0 & 2 \end{pmatrix}\)? (Hint: for a triangular matrix, look at the diagonal.)</p>
+    <div class="why">\(\det(A - \lambda I) = (3 - \lambda)(2 - \lambda) - 1 \cdot 0\), so \(\lambda = 3\) or \(2\). The zero below the diagonal kills the cross term. Check: they add to the trace 5 and multiply to the determinant 6.</div>
+  </div>
+  <div class="q" data-num="-1">
+    <p>\(\begin{pmatrix} 1 & 2 \\ 2 & 1 \end{pmatrix}\) has trace 2 and determinant −3. One eigenvalue is 3. What's the other?</p>
+    <div class="why">They add to 2, so the other is \(-1\) (and \(3 \times -1 = -3\), the determinant, checks). A negative eigenvalue flips: pick that matrix and drag \(v\) to \((1, -1)\); the yellow arrow points straight back the other way.</div>
+  </div>
+
+  <h2>4. Repeat a move, and the biggest eigenvalue wins</h2>
+  <p>Press <b>Apply A over and over</b> above. Each press of the move stretches the part of \(v\) along each eigenvector by its own \(\lambda\). After \(k\) moves that's \(\lambda^k\): the part along the biggest eigenvalue grows fastest and takes over, so the arrow swings onto the <b>dominant eigenvector</b>. That's <b>power iteration</b>, the simplest way to find an eigenvector: multiply, rescale, repeat.</p>
+  <p class="formula">\[ v = c_1 e_1 + c_2 e_2 \quad\Rightarrow\quad A^k v = c_1 \lambda_1^k e_1 + c_2 \lambda_2^k e_2 \]</p>
+  <p>How fast it lines up depends on the ratio \(|\lambda_2 / \lambda_1|\): the second part shrinks by that factor every step. Writing a matrix in its own eigenbasis, \(A = V \Lambda V^{-1}\) with the eigenvalues on the diagonal of \(\Lambda\), turns "apply it \(k\) times" into "raise each eigenvalue to the \(k\)": \(A^k = V \Lambda^k V^{-1}\).</p>
+
+  <h2>5. A random walk over this site: PageRank</h2>
+  <p>Imagine a reader who clicks random links on this site forever. Which pages do they spend the most time on? Put everyone on one page, then each step, each page shares its readers equally among the pages it links to. That's a matrix times a vector, repeated: a <b>Markov chain</b>. This is the real link graph of this site's 169 pages (as of 12 October 2026). Everyone starts on the last ham radio lesson.</p>
+  <canvas id="pr" class="bars" width="800" height="400" aria-label="Share of readers on the top pages after each step of the random walk"></canvas>
+  <div class="row"><button id="st1">1 step</button><button id="st10">10 steps</button><button id="st0">Start over</button></div>
+  <p class="readout" id="r2"></p>
+  <p>The shares settle into a fixed list no matter where the readers started. That fixed point is a vector \(r\) with \(Mr = r\): an eigenvector with eigenvalue 1, and that's <b>PageRank</b>, the idea Google was founded on. One fix makes it work: with probability 0.15 each step, a reader gets bored and jumps to a random page (the <b>damping</b>). Without it, readers could get stuck in a corner of pages that only link to each other, and the answer would depend on where they started.</p>
+  <div class="q" data-answer="b">
+    <p>Run it from the start and watch the readout's "change since last step". It shrinks by about the same factor each step. Why so steady?</p>
+    <ul><li data-k="a" data-says="Damping doesn't slow anything; it's what speeds convergence up.">Damping slows the readers down</li><li data-k="b">Power iteration: the leftover error shrinks by \(|\lambda_2/\lambda_1|\) each step, and with damping \(|\lambda_2| \le 0.85\) while \(\lambda_1 = 1\)</li><li data-k="c" data-says="The total share always stays exactly 1; only how it's spread out changes.">Readers are leaving the site</li></ul>
+    <div class="why">Section 4's ratio rule in action. The jump-to-a-random-page part guarantees every other eigenvalue is at most 0.85 in size, so each step removes at least 15% of the remaining error: about 50 steps gets 3 decimals.</div>
+  </div>
+
+  <h2>6. Projection: the shadow on a line</h2>
+  <p>To <b>project</b> a point onto a line through the origin with direction \(u\) (length 1), drop a perpendicular: the shadow is \((x \cdot u)\,u\), and the number \(x \cdot u\) is the point's coordinate along that line. The leftover, \(x - (x \cdot u)u\), is at right angles to \(u\), so by Pythagoras, length² of \(x\) = shadow² + leftover².</p>
+  <div class="q" data-num="5">
+    <p>Project \(x = (3, 4)\) onto the direction \(u = (0.6, 0.8)\). What's its coordinate \(x \cdot u\)?</p>
+    <div class="why">\(3 \times 0.6 + 4 \times 0.8 = 1.8 + 3.2 = 5\). That's the full length of \(x\): it already lies along \(u\), so nothing is left over.</div>
+  </div>
+
+  <h2>7. PCA: the direction your data cares about most</h2>
+  <p>Back to Probability 2's outages: each dot is one outage, across the MTA's estimate, up the actual time, both as \(\log_{10}\) hours with the mean subtracted. Turn the line. Each dot casts a <span class="y">shadow</span> on it, and the <span class="r">red sticks</span> are what the line misses. Find the angle where the shadows spread out the most.</p>
+  <canvas id="pca" class="square" width="500" height="500" aria-label="Outage data with a line you rotate and each point's projection onto it"></canvas>
+  <div class="row">
+    <label>angle <input type="range" id="ang" min="0" max="180" step="0.5" value="10"> <b id="angV" class="math"></b></label>
+    <button id="findPC">Let PCA find it</button>
+  </div>
+  <p class="readout" id="r3"></p>
+  <p>Two goals turn out to be one. Spreading the shadows as wide as possible and making the red sticks as short as possible are the same thing, because shadow² + stick² is fixed for every dot (Pythagoras again). And the best direction is no search at all: the variance along a unit direction \(u\) is \(u^\top \Sigma u\), with \(\Sigma\) the covariance matrix from Probability 2, and that's largest exactly along \(\Sigma\)'s <b>top eigenvector</b>, with the eigenvalue as the variance captured. That's <b>principal component analysis</b>:</p>
+  <ol>
+    <li>Subtract the mean of every feature (often also divide by its standard deviation).</li>
+    <li>Compute the covariance matrix \(\Sigma\).</li>
+    <li>Its eigenvectors, sorted by eigenvalue, are the principal components; each eigenvalue is how much variance that direction holds.</li>
+    <li>Keep the top few and describe every example by its coordinates along them.</li>
+  </ol>
+  <div class="q" data-num="0.862" data-tol="0.005">
+    <p>Press <b>Let PCA find it</b>. What share of the total variance does the first component hold?</p>
+    <div class="why">\(\lambda_1 / (\lambda_1 + \lambda_2) = 0.293 / (0.293 + 0.047) \approx 0.862\). One number per outage, its position along that line, keeps 86% of the variation in two. The direction runs at about 62°, steeper than 45° because actual times vary more than the estimates do.</div>
+  </div>
+  <p>In 2D that's a curiosity. With a 28×28 image (784 numbers) or a word embedding (768), it's how you compress, denoise, and plot data you can't see: a few components often hold most of the variance. PCA is also the first thing to try for <b>visualizing embeddings</b> in stage 6. Its limit: it only finds straight directions; curved structure needs other tools.</p>
+
+  <h2>8. Eigenvalues are curvature</h2>
+  <p>Calculus 3's Hessian, the matrix of second derivatives, is symmetric, so it has eigenvectors at right angles. They're the valley's main axes, and each eigenvalue is the curvature along its axis. The <b>condition number</b> \(\lambda_{\max} / \lambda_{\min}\) is how stretched the valley is, and why gradient descent zigzags: the learning rate must stay under \(2/\lambda_{\max}\), so the flattest direction crawls along at a speed set by \(\lambda_{\min}/\lambda_{\max}\). Standardizing features (Probability 2) and PCA <b>whitening</b> (rotate onto the components, then divide each by its standard deviation) both push those eigenvalues toward equal, which is why scaled inputs train faster.</p>
+  <div class="q">
+    <p>A loss valley's Hessian has eigenvalues 100 and 1. Using the biggest learning rate that's still stable, roughly how many steps does it take to shrink the error along the flat direction by a factor of \(e\)?</p>
+    <div class="why">The rate must be below \(2/100\); take about \(1/100\). Along the flat direction (curvature 1) each step then shrinks the error by a factor of about \(1 - 1/100\), so it takes about 100 steps per factor of \(e\): the condition number. Fix the scaling and both directions converge in a step or two.</div>
+  </div>
+
+  <h2>9. All of it in code</h2>
+  <div class="code" data-title="Run it: power iteration, PCA and PageRank"><textarea>
+// power iteration: multiply, rescale, repeat
+const mul = (A, v) => A.map((row) => row.reduce((s, a, j) => s + a * v[j], 0));
+const norm = (v) => Math.hypot(...v);
+function topEigen(A, steps = 100) {
+  let v = A.map(() => Math.random());
+  for (let k = 0; k < steps; k++) { const w = mul(A, v); v = w.map((x) => x / norm(w)); }
+  return { vector: v, value: mul(A, v).reduce((s, x, i) => s + x * v[i], 0) };   // λ = v·Av for a unit v
+}
+print("[2 1; 1 2]:", topEigen([[2, 1], [1, 2]]));
+
+// PCA on the outage data: covariance matrix, then its top eigenvector
+const { rows } = await (await fetch("/ai/data/outages.json")).json();
+const pts = rows.map((r) => [Math.log10(r[1]), Math.log10(r[0])]);
+const m = [0, 1].map((j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
+const S = [0, 1].map((a) => [0, 1].map((b) => pts.reduce((s, p) => s + (p[a] - m[a]) * (p[b] - m[b]), 0) / pts.length));
+const pc = topEigen(S), total = S[0][0] + S[1][1];
+print("covariance:", S.map((r) => r.map((x) => +x.toFixed(4))));
+print("first component:", pc.vector.map((x) => x.toFixed(3)), "holds", (100 * pc.value / total).toFixed(1) + "% of the variance");
+
+// PageRank: power iteration on the site's link graph, with damping 0.85
+const { pages } = await (await fetch("/ai/data/links.json")).json();
+const n = pages.length;
+let r = new Array(n).fill(1 / n);
+for (let k = 0; k < 60; k++) {
+  const next = new Array(n).fill(0.15 / n);
+  pages.forEach(([, , links], i) => { for (const j of links) next[j] += 0.85 * r[i] / links.length; });
+  r = next;
+}
+table([["page", "PageRank"], ...pages.map((p, i) => [p[1], r[i]]).sort((a, b) => b[1] - a[1]).slice(0, 8)]);
+</textarea></div>
+
+  <h2>10. What to carry forward</h2>
+  <ul>
+    <li>A <b>basis</b> is any set of independent steps; coordinates depend on which one you pick.</li>
+    <li><b>Eigenvectors</b> keep their direction: \(Av = \lambda v\). Find \(\lambda\) from \(\det(A - \lambda I) = 0\); they add to the trace and multiply to the determinant. Rotations have none (real ones); symmetric matrices have a full set at right angles.</li>
+    <li>Repeating a matrix lines everything up with the <b>dominant eigenvector</b> (power iteration), at a speed set by \(|\lambda_2/\lambda_1|\).</li>
+    <li>A <b>Markov chain</b>'s long-run state is its eigenvalue-1 eigenvector. With damping, that's <b>PageRank</b>.</li>
+    <li><b>PCA</b>: center the data, take the covariance matrix's top eigenvectors; each eigenvalue is the variance that direction holds.</li>
+    <li>The <b>Hessian's</b> eigenvalues are curvatures; their ratio, the condition number, sets how slowly gradient descent crawls.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, scene, grid, axes, arrow, graph, fmt, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 2–4. eigenvectors: drag v, see Av
+const MATS = { sym: [[2, 1], [1, 2]], tri: [[3, 1], [0, 2]], neg: [[1, 2], [2, 1]], shear: [[1, 1], [0, 1]], rot: [[0, -1], [1, 0]] };
+const v = { p: [2, 0.5], color: C.blue };
+let trail = [], found = new Set();
+const A = () => MATS[$("mat").value], app = (M, [x, y]) => [M[0][0] * x + M[0][1] * y, M[1][0] * x + M[1][1] * y];
+function eigen([[a, b], [c, d]]) {
+  const t = a + d, D = a * d - b * c, disc = (t * t) / 4 - D;
+  if (disc < -1e-12) return [];
+  const ls = disc < 1e-12 ? [t / 2] : [t / 2 + Math.sqrt(disc), t / 2 - Math.sqrt(disc)];
+  return ls.map((l) => ({ l, dir: Math.abs(b) > 1e-12 ? [b, l - a] : Math.abs(c) > 1e-12 ? [l - d, c] : Math.abs(a - l) < 1e-12 ? [1, 0] : [0, 1] }));
+}
+const r1 = scene("eig", (s) => {
+  grid(s); axes(s);
+  if ($("showE").checked) for (const { dir } of eigen(A())) { const k = 12 / Math.hypot(...dir); s.g.setLineDash([8, 6]); s.g.strokeStyle = C.green; s.g.lineWidth = 2; s.g.beginPath(); s.g.moveTo(...s.toPx([-k * dir[0], -k * dir[1]])); s.g.lineTo(...s.toPx([k * dir[0], k * dir[1]])); s.g.stroke(); s.g.setLineDash([]); }
+  trail.forEach((p, i) => arrow(s, [0, 0], p, `rgba(244,211,94,${0.15 + (0.6 * i) / trail.length})`, 2));
+  arrow(s, [0, 0], app(A(), v.p), C.yellow, 4); arrow(s, [0, 0], v.p, C.blue, 5);
+}, () => [v], () => {
+  const Av = app(A(), v.p), n1 = Math.hypot(...v.p), n2 = Math.hypot(...Av);
+  if (!n1) { $("r1").textContent = "drag v away from the origin"; return; }
+  const cross = v.p[0] * Av[1] - v.p[1] * Av[0], dot = v.p[0] * Av[0] + v.p[1] * Av[1], ang = (Math.atan2(Math.abs(cross), dot) * 180) / Math.PI;
+  const lined = n2 > 1e-9 && Math.abs(cross) < 1e-9, lam = lined ? Math.sign(dot) * (n2 / n1) : null;
+  $("r1").textContent = `v = (${fmt(v.p[0])}, ${fmt(v.p[1])}) → Av = (${fmt(Av[0])}, ${fmt(Av[1])})` + (n2 < 1e-9 ? " · squashed to zero: eigenvalue 0" : lined ? ` · lined up! an eigenvector with λ = ${fmt(lam)}${lam < 0 ? " (flipped)" : ""}` : ` · turned by ${ang.toFixed(1)}°`);
+  const key = `${$("mat").value}:${lined ? fmt(lam) : ""}`;
+  if (lined && !found.has(key)) { found.add(key); say(`An eigenvector! The matrix only stretches it, by ${fmt(lam)}.`, "happy"); }
+});
+$("mat").oninput = () => { trail = []; r1(); };
+$("showE").onchange = r1;
+v.fix = () => (trail = []);
+$("iter").onclick = () => {
+  let p = v.p, k = 0; trail = [];
+  const step = () => {
+    p = app(A(), p); const n = Math.hypot(...p);
+    if (n < 1e-9) return;
+    p = p.map((x) => (3 * x) / n); trail.push(p); r1();
+    if (++k < 8) setTimeout(step, 250);
+    else $("r1").textContent += ` · after 8 moves (rescaled): (${p[0].toFixed(2)}, ${p[1].toFixed(2)})` + ($("mat").value === "rot" ? ": it just keeps turning" : "");
+  };
+  step();
+};
+
+// 5. PageRank on the site's own links
+const { pages } = await (await fetch("/ai/data/links.json")).json();
+const N = pages.length, start = Math.max(0, pages.findIndex((p) => p[0].endsWith("16-logic-and-op-amps.html")));
+let r = [], prevChange = null, steps = 0;
+const reset = () => { r = new Array(N).fill(0); r[start] = 1; steps = 0; prevChange = null; drawPR(); };
+function stepPR() {
+  const next = new Array(N).fill(0.15 / N);
+  pages.forEach(([, , links], i) => { for (const j of links) next[j] += (0.85 * r[i]) / links.length; });
+  prevChange = next.reduce((s, x, i) => s + Math.abs(x - r[i]), 0); r = next; steps++;
+}
+function drawPR() {
+  const top = r.map((x, i) => [x, i]).sort((a, b) => b[0] - a[0]).slice(0, 12), mx = Math.max(0.25, top[0][0] * 1.05);
+  const P = graph("pr", [-0.55 * mx, mx], [0, 12.4], { step: [1e9, 1e9], labels: false });
+  top.forEach(([x, i], k) => {
+    const y = 11.6 - k;
+    P.g.fillStyle = k ? C.blue : C.yellow; P.g.fillRect(P.X(0), P.Y(y + 0.35), P.X(x) - P.X(0), P.Y(y - 0.35) - P.Y(y + 0.35));
+    const t = pages[i][1].length > 30 ? pages[i][1].slice(0, 29) + "…" : pages[i][1];
+    P.text(t, -0.54 * mx, y - 0.15, "#d7dde5"); P.text(`${(100 * x).toFixed(1)}%`, x + 0.01 * mx, y - 0.15, "#8f98a8");
+  });
+  $("r2").textContent = `step ${steps}` + (prevChange === null ? ": everyone is on one page" : ` · change since last step: ${prevChange.toFixed(4)}`) + ` · ${N} pages`;
+}
+$("st1").onclick = () => { stepPR(); drawPR(); };
+$("st10").onclick = () => { for (let k = 0; k < 10; k++) stepPR(); drawPR(); if (steps >= 40 && prevChange < 0.01) say("Settled! That's the eigenvector with eigenvalue 1: PageRank.", "happy"); };
+$("st0").onclick = reset;
+
+// 7. PCA on centered log outage data
+const { rows } = await (await fetch("/ai/data/outages.json")).json();
+const raw = rows.map((r) => [Math.log10(r[1]), Math.log10(r[0])]), mu = [0, 1].map((j) => raw.reduce((s, p) => s + p[j], 0) / raw.length);
+const pts = raw.map((p) => [p[0] - mu[0], p[1] - mu[1]]);
+const S = [0, 1].map((a) => [0, 1].map((b) => pts.reduce((s, p) => s + p[a] * p[b], 0) / pts.length)), total = S[0][0] + S[1][1];
+const [pc1] = eigen(S), pcAng = ((Math.atan2(pc1.dir[1], pc1.dir[0]) * 180) / Math.PI + 180) % 180;
+let best = 0;
+function r3() {
+  const deg = +$("ang").value, t = (deg * Math.PI) / 180, u = [Math.cos(t), Math.sin(t)], P = graph("pca", [-2.8, 2.8], [-2.8, 2.8], { step: [1, 1] });
+  let along = 0;
+  for (const p of pts) { const c = p[0] * u[0] + p[1] * u[1]; along += c * c; P.seg(p[0], p[1], c * u[0], c * u[1], "rgba(252,98,85,0.35)", 1); }
+  P.seg(-3 * u[0], -3 * u[1], 3 * u[0], 3 * u[1], C.text, 2);
+  for (const p of pts) P.dot(p[0], p[1], "rgba(88,196,221,0.75)", 3);
+  for (const p of pts) { const c = p[0] * u[0] + p[1] * u[1]; P.dot(c * u[0], c * u[1], C.yellow, 2.5); }
+  P.text("estimate →", 1.7, -2.7, "#8f98a8"); P.text("actual", -2.75, 2.6, "#8f98a8");
+  along /= pts.length;
+  $("angV").textContent = `${deg.toFixed(1)}°`;
+  $("r3").textContent = `variance along the line ${along.toFixed(3)} (${((100 * along) / total).toFixed(1)}% of ${total.toFixed(3)}) · mean squared red stick ${(total - along).toFixed(3)}` + (Math.abs(deg - pcAng) < 0.6 ? " · the first principal component" : "");
+  if (along / total > 0.855 && best <= 0.855) say("That's about the best angle: the first principal component.", "happy");
+  best = Math.max(best, along / total);
+}
+$("ang").oninput = r3;
+$("findPC").onclick = () => { $("ang").value = pcAng.toFixed(1); r3(); };
+
+reset(); r3();
+window.blipContext = () => ({ page: "AI from scratch, linear algebra 2: bases and coordinates, eigenvectors and eigenvalues (drag v until Av lines up; rotation has none, shear one, symmetric matrices a full orthogonal set), characteristic polynomial, trace and determinant, power iteration and the dominant eigenvector, a Markov chain over this site's 169 pages = PageRank with damping 0.85, projection, PCA on the subway outage data (first component ≈ 62°, 86% of the variance), Hessian eigenvalues as curvature and the condition number, whitening", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>
