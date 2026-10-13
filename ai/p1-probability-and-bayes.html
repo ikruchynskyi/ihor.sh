@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Probability and Bayes</title>
+  <meta name="description" content="AI from scratch, probability 1: probability as counting on two dice, the complement and sum rules, independence, the birthday problem and Monty Hall simulated, conditional probability, Bayes' rule on a crowd of 1000 people, a naive Bayes spam filter you train, and distributions (Bernoulli, binomial, uniform; PMF, PDF, CDF) with sampling by inverting the CDF." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    canvas.square { aspect-ratio: 1 / 1; max-width: 420px; margin: 0 auto; }
+    canvas.low { aspect-ratio: 4 / 1; margin-top: 6px; }
+    canvas.crowd { aspect-ratio: 8 / 5; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .wide { overflow-x: auto; }
+    .doors { display: flex; gap: 12px; justify-content: center; margin: 12px 0; }
+    .doors button { width: 96px; height: 130px; font-size: 2rem; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 1 · Stage 1: the math of learning</p>
+  <h1>Probability and Bayes</h1>
+  <p class="lede">Every model on this path ends up saying how sure it is: "82% cat", "next word: <i>the</i>, 31%". This lesson builds the rules those numbers obey, from counting dice to Bayes' rule, the one formula for changing your mind when evidence arrives. You'll test two famous puzzles by simulation (your intuition will lose at least once), train a spam filter, and learn to make a computer draw random numbers from any distribution you like.</p>
+
+  <h2>1. Probability is counting</h2>
+  <p>Roll two dice. There are 36 equally likely outcomes, one per square below (across: the first die, up: the second). When every outcome is equally likely, the probability of an <b>event</b> is just</p>
+  <p class="formula">\[ P(A) = \frac{\text{outcomes in } A}{\text{all outcomes}} \]</p>
+  <p>Pick two events. Squares only in \(A\) are <span class="b">blue</span>, only in \(B\) <span class="r">red</span>, in both <span class="y">yellow</span>.</p>
+  <canvas id="dice" class="square" width="480" height="480" aria-label="The 36 outcomes of two dice, colored by the chosen events"></canvas>
+  <div class="row">
+    <label>A: <select id="evA"></select></label>
+    <label>B: <select id="evB"></select></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>Three rules fall straight out of counting:</p>
+  <div class="wide"><table class="rules">
+    <tr><th>rule</th><th>formula</th><th>why</th></tr>
+    <tr><td><b>Complement</b></td><td>\(P(\text{not } A) = 1 - P(A)\)</td><td>every square is either in \(A\) or not</td></tr>
+    <tr><td><b>Sum rule</b></td><td>\(P(A \text{ or } B) = P(A) + P(B) - P(A \text{ and } B)\)</td><td>adding counts the yellow squares twice, so take them off once</td></tr>
+    <tr><td><b>Independence</b></td><td>\(P(A \text{ and } B) = P(A) \cdot P(B)\)</td><td>only when knowing one tells you nothing about the other, like two separate dice</td></tr>
+  </table></div>
+  <div class="q" data-num="0.1667" data-tol="0.005">
+    <p>What is the probability that two dice add up to 7? (Pick "sum is 7" and count.)</p>
+    <div class="why">Six squares, (1,6), (2,5), (3,4), (4,3), (5,2), (6,1), out of 36: \(6/36 = 1/6 \approx 0.167\). 7 is the most likely sum: it's the longest diagonal.</div>
+  </div>
+  <div class="q" data-num="0.3056" data-tol="0.005">
+    <p>What's the probability of at least one six? Use the complement: first find the chance of <i>no</i> six.</p>
+    <div class="why">No six means each die shows 1–5: \(\frac{5}{6} \cdot \frac{5}{6} = \frac{25}{36}\) (independent dice multiply). So at least one six is \(1 - \frac{25}{36} = \frac{11}{36} \approx 0.306\). "At least one" questions are almost always easiest through "none".</div>
+  </div>
+
+  <h2>2. When intuition fails, simulate</h2>
+  <p>How many people must be in a room before it's more likely than not that two share a birthday? Most people guess around 180. Slide \(n\) and see the exact chance (yellow curve), then let the computer fill 1000 random rooms to check.</p>
+  <canvas id="bday" width="800" height="400" aria-label="Chance of a shared birthday against the number of people"></canvas>
+  <div class="row">
+    <label>people in the room <input type="range" id="n" min="2" max="70" step="1" value="23"> <b id="nV" class="math"></b></label>
+    <button id="simB">Simulate 1000 rooms</button>
+  </div>
+  <p class="readout" id="r2"></p>
+  <details class="deeper"><summary>The math, step by step</summary>
+    <p>Through the complement: the chance that all \(n\) birthdays are <i>different</i>. The first person can have any day; the second must miss that one (364 of 365 days), the third must miss two (363/365), and so on:</p>
+    <p class="formula">\[ P(\text{no match}) = \frac{365}{365} \cdot \frac{364}{365} \cdot \frac{363}{365} \cdots \frac{365 - n + 1}{365}, \qquad P(\text{match}) = 1 - P(\text{no match}) \]</p>
+    <p>The surprise is because a match can be between <i>any</i> two people: 23 people make \(23 \cdot 22 / 2 = 253\) pairs, and each pair is another chance.</p>
+  </details>
+  <div class="q" data-num="23">
+    <p>What's the smallest room where a shared birthday is more likely than not?</p>
+    <div class="why">23 people: 50.7%. With 50 people it's 97%. The same "many pairs" effect is why hash collisions, duplicate IDs and duplicate training examples show up far sooner than you'd expect.</div>
+  </div>
+  <p>Now a game show. A car is behind one of three doors, goats behind the other two. You pick a door. The host, who knows where the car is, opens a <i>different</i> door with a goat, and offers you a switch. Should you? Play a few rounds, then let the computer play a thousand.</p>
+  <div class="doors" id="doors"><button data-d="0">🚪</button><button data-d="1">🚪</button><button data-d="2">🚪</button></div>
+  <div class="row" style="justify-content:center"><button id="stay" disabled>Stay</button><button id="swap" disabled>Switch</button><button id="sim3">Play 1000 of each</button></div>
+  <p class="readout" id="r3" style="text-align:center"></p>
+  <div class="q" data-answer="b">
+    <p>Before you play many rounds: does switching help?</p>
+    <ul><li data-k="a" data-says="Run the simulation: staying wins about a third of the time, switching about two thirds.">No: two doors are left, so it's 50/50</li><li data-k="b">Yes: switching wins 2/3 of the time</li><li data-k="c" data-says="The host's door is always a goat, so it can't hurt you; it's the other door that's interesting.">It hurts: the host is trying to trick you</li></ul>
+    <div class="why">Your first pick is right 1/3 of the time, and staying keeps exactly that. The other 2/3 of the time the car is behind one of the two doors you didn't pick, and the host has just shown you which one it isn't. Switching collects that whole 2/3. The host's choice isn't random, and that's the information.</div>
+  </div>
+
+  <h2>3. Conditional probability: shrink the world</h2>
+  <p>"Given that \(B\) happened" means: throw away every outcome where it didn't, and count again inside what's left.</p>
+  <p class="formula">\[ P(A \mid B) = \frac{P(A \text{ and } B)}{P(B)} \]</p>
+  <p>Read the bar as "given". Here's the same dice square, with the outcomes outside \(B\) dimmed:</p>
+  <canvas id="dice2" class="square" width="480" height="480" aria-label="The dice outcomes inside B, with A highlighted"></canvas>
+  <div class="row">
+    <label>A: <select id="evA2"></select></label>
+    <label>given B: <select id="evB2"></select></label>
+  </div>
+  <p class="readout" id="r4"></p>
+  <div class="q" data-num="0.5" data-tol="0.001">
+    <p>The first die shows a 6. What's the probability the sum is at least 10 now? (Before you knew, it was 6/36.)</p>
+    <div class="why">Inside "first die is 6" there are 6 squares, and 3 of them reach 10 or more (6+4, 6+5, 6+6): \(3/6 = 0.5\). Learning something changed the probability from 1/6 to 1/2.</div>
+  </div>
+  <p>Two events are <b>independent</b> exactly when conditioning changes nothing: \(P(A \mid B) = P(A)\). Try "a double" given "first die is 6": still 1/6. Every classifier in this course is a conditional probability: \(P(\text{cat} \mid \text{these pixels})\).</p>
+
+  <h2>4. Bayes' rule: turning a probability around</h2>
+  <p>A test for a disease catches 90% of people who have it (its <b>sensitivity</b>) and wrongly flags 9% of healthy people (its <b>false positive rate</b>). One person in a hundred has the disease. You test positive. How worried should you be? Here are 1000 people: <span class="r">red</span> have the disease, grey don't, and a bright dot means a positive test.</p>
+  <canvas id="crowd" class="crowd" width="800" height="500" aria-label="1000 people: who is sick and who tested positive"></canvas>
+  <div class="row">
+    <label>have the disease <input type="range" id="prev" min="0.001" max="0.3" step="0.001" value="0.01"> <b id="prevV" class="math"></b></label>
+    <label>sensitivity <input type="range" id="sens" min="0.5" max="1" step="0.01" value="0.9"> <b id="sensV" class="math"></b></label>
+    <label>false positives <input type="range" id="fpr" min="0" max="0.3" step="0.005" value="0.09"> <b id="fprV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r5"></p>
+  <p>Count the bright dots: most of them are grey. Ten people are sick and 9 of them test positive, but 990 are healthy and 9% of them, about 89, test positive too. A positive test means you're one of about 98 bright dots, and only 9 of those are red: about 9%. That's <b>Bayes' rule</b>:</p>
+  <p class="formula">\[ P(\text{sick} \mid +) = \frac{P(+ \mid \text{sick})\, P(\text{sick})}{P(+)} = \frac{0.9 \times 0.01}{0.9 \times 0.01 + 0.09 \times 0.99} \approx 0.092 \]</p>
+  <div class="levels">
+    <div><b>The picture</b>Keep only the bright dots (the evidence happened). The answer is the red share of them.</div>
+    <div><b>The math</b>\(P(H \mid E) = \dfrac{P(E \mid H)\,P(H)}{P(E)}\): the <b>prior</b> \(P(H)\) times the <b>likelihood</b> \(P(E \mid H)\), divided by how common the evidence is overall. The result is the <b>posterior</b>.</div>
+  </div>
+  <div class="q" data-num="0.0917" data-tol="0.003">
+    <p>With 1% sick, 90% sensitivity and 9% false positives, what is \(P(\text{sick} \mid +)\) to three decimals?</p>
+    <div class="why">\(0.009 / (0.009 + 0.0891) = 0.009 / 0.0981 \approx 0.092\). A good test on a rare condition still gives mostly false alarms. Chapter 12 meets the same trap as a fraud detector's precision collapsing when fraud is rare.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>Which change raises \(P(\text{sick} \mid +)\) the most, starting from those numbers? Try each on the sliders.</p>
+    <ul><li data-k="a">Cutting false positives from 9% to 1%</li><li data-k="b" data-says="Sensitivity is already 90%: going to 99% adds less than one red bright dot per thousand people. The 89 grey bright dots are the problem.">Raising sensitivity from 90% to 99%</li></ul>
+    <div class="why">With a rare condition the false alarms from the huge healthy crowd dominate, so the false positive rate is what matters: at 1% the posterior jumps to about 47%. Testing only people with symptoms (a higher prior) works too, which is why doctors don't screen everyone for everything.</div>
+  </div>
+
+  <h2>5. A spam filter from Bayes' rule</h2>
+  <p>Turn it around for email: \(P(\text{spam} \mid \text{words})\). Bayes says that's proportional to \(P(\text{spam}) \cdot P(\text{words} \mid \text{spam})\), and the "naive" part assumes words appear independently given the class, so the likelihood is a product over words:</p>
+  <p class="formula">\[ P(\text{spam} \mid w_1 \dots w_k) \;\propto\; P(\text{spam}) \prod_{i=1}^{k} P(w_i \mid \text{spam}) \]</p>
+  <p>Each \(P(w \mid \text{spam})\) is counted from examples: how often the word appears in spam. Two practical tricks from the math warm-up: add 1 to every count (so an unseen word doesn't zero out the whole product), and add logs instead of multiplying (so long emails don't underflow). The independence assumption is plainly false ("free" and "prize" go together) yet the filter works well, which is a theme in ML: a wrong model can still be a useful one.</p>
+  <div class="code" data-title="Build it: naive Bayes, trained on 16 messages"><textarea>
+const spam = ["win a free prize now", "free money click now", "claim your free gift card", "you won a cash prize click here",
+  "cheap pills buy now", "limited offer win money now", "urgent your account won a prize", "free entry win cash"];
+const ham = ["are we still on for lunch", "can you send the report today", "the train is late again", "dinner at seven tonight",
+  "here is the report from the meeting", "call me when you get home", "lunch tomorrow at noon", "did you see the game last night"];
+
+// training = counting words in each class
+const count = (msgs) => { const c = {}; let total = 0; for (const m of msgs) for (const w of m.split(" ")) { c[w] = (c[w] ?? 0) + 1; total++; } return { c, total }; };
+const S = count(spam), H = count(ham);
+const vocab = new Set([...Object.keys(S.c), ...Object.keys(H.c)]).size;
+const logP = (w, k) => Math.log(((k.c[w] ?? 0) + 1) / (k.total + vocab));   // add-one smoothing
+
+function classify(msg) {
+  let s = Math.log(spam.length / (spam.length + ham.length)), h = Math.log(ham.length / (spam.length + ham.length));  // priors
+  const rows = [["word", "log P(w|spam)", "log P(w|ham)"]];
+  for (const w of msg.toLowerCase().split(/\W+/).filter(Boolean)) { s += logP(w, S); h += logP(w, H); rows.push([w, logP(w, S), logP(w, H)]); }
+  table(rows);
+  return 1 / (1 + Math.exp(h - s));          // P(spam | words): the two scores turned back into a probability
+}
+print("P(spam) =", classify("win a free lunch now").toFixed(3));
+print("P(spam) =", classify("see you at lunch tomorrow").toFixed(3));
+</textarea></div>
+  <div class="q">
+    <p>Change the last messages and run again. Find a short message that's clearly not spam but the filter calls spam. Why does it fail?</p>
+    <div class="why">"are you free now" scores 88% spam and "free tonight?" 74%: "free" and "now" only ever appeared in spam, and with 16 training messages the filter has no idea they're normal words too. More data fixes most of it. The last line, \(1/(1 + e^{h - s})\), is the sigmoid from the warm-up: two log-scores become one probability, the same trick logistic regression (chapter 13) uses.</div>
+  </div>
+
+  <h2>6. Distributions: every value's probability at once</h2>
+  <p>A <b>random variable</b> is a number that comes out of a random process: the sum of two dice, the number of heads in 10 flips. Its <b>distribution</b> says how likely each value is. Three you'll meet constantly:</p>
+  <ul>
+    <li><b>Bernoulli(\(p\))</b>: one yes/no trial, 1 with probability \(p\), else 0. A click, a fraud, a correct prediction.</li>
+    <li><b>Binomial(\(n, p\))</b>: the number of yeses in \(n\) independent Bernoulli trials. \(P(k) = \binom{n}{k} p^k (1-p)^{n-k}\), where \(\binom{n}{k}\) ("n choose k") counts the orders the \(k\) yeses could come in.</li>
+    <li><b>Uniform</b>: every value in a range equally likely. <code>Math.random()</code> is uniform between 0 and 1.</li>
+  </ul>
+  <p>Below, the bars are the binomial's <b>PMF</b> (probability mass function: the probability of each exact value) and the <span class="g">green steps</span> its <b>CDF</b> (cumulative distribution function: the probability of that value <i>or less</i>, a running sum of the bars).</p>
+  <canvas id="binom" width="800" height="400" aria-label="Binomial distribution: bars for each count and the cumulative curve"></canvas>
+  <div class="row">
+    <label>trials n <input type="range" id="bn" min="1" max="40" step="1" value="4"> <b id="bnV" class="math"></b></label>
+    <label>chance p <input type="range" id="bp" min="0" max="1" step="0.01" value="0.5"> <b id="bpV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r6"></p>
+  <div class="q" data-num="0.375" data-tol="0.002">
+    <p>Four fair coin flips: what's the probability of exactly 2 heads?</p>
+    <div class="why">\(\binom{4}{2} = 6\) orders (HHTT, HTHT, HTTH, THHT, THTH, TTHH), each with chance \(0.5^4 = 1/16\): \(6/16 = 0.375\). The tallest bar in the picture with n = 4, p = 0.5.</div>
+  </div>
+  <p>For values that can be anything in a range (a time, a height), single exact values have probability zero, so a <b>PDF</b> (density) replaces the bars, and probability is <i>area</i> under it (Calculus 4). The CDF works the same for both: it climbs from 0 to 1, and \(P(a < X \le b) = F(b) - F(a)\).</p>
+
+  <h2>7. Drawing samples from any distribution</h2>
+  <p>A computer only makes uniform random numbers. To get waiting times for a train that comes on average every 4 minutes (an <b>exponential</b> distribution, CDF \(F(x) = 1 - e^{-x/4}\)), use the CDF backwards: pick a uniform \(u\) between 0 and 1 on the up axis, go across until you hit the CDF, and drop down. That \(x\) is your sample. Steep parts of the CDF catch many \(u\)'s, so values land there often.</p>
+  <canvas id="icdf" width="800" height="400" aria-label="Inverting the CDF: a uniform number on the vertical axis mapped to a sample"></canvas>
+  <canvas id="hist" class="low" width="800" height="200" aria-label="Histogram of the samples drawn so far"></canvas>
+  <div class="row"><button id="one">Draw 1</button><button id="many">Draw 500</button><button id="clr">Clear</button></div>
+  <p class="readout" id="r7"></p>
+  <details class="deeper"><summary>The math, step by step</summary>
+    <p>Solve \(u = F(x)\) for \(x\): \(u = 1 - e^{-x/4}\), so \(e^{-x/4} = 1 - u\), so \(x = -4 \ln(1 - u)\). If \(U\) is uniform, then \(P(F^{-1}(U) \le x) = P(U \le F(x)) = F(x)\): the samples have exactly the CDF we wanted.</p>
+    <p>For a list of options it's the same idea with a staircase CDF: walk the running total of the probabilities until it passes \(u\). That's exactly how chapter 5 and the tiny transformer pick the next word from softmax's probabilities.</p>
+  </details>
+  <div class="q" data-num="2.77" data-tol="0.01">
+    <p>Which waiting time does \(u = 0.5\) map to? (Half of all waits are shorter than this: it's the <b>median</b>.)</p>
+    <div class="why">\(x = -4 \ln(0.5) = 4 \ln 2 \approx 2.77\) minutes. Shorter than the 4-minute average, because a few very long waits pull the average up.</div>
+  </div>
+  <div class="code" data-title="Run it: sampling by inverting the CDF"><textarea>
+// exponential waits with a 4-minute mean
+const wait = () => -4 * Math.log(1 - Math.random());
+const xs = Array.from({ length: 10000 }, wait);
+print("mean of 10,000 samples:", (xs.reduce((s, x) => s + x, 0) / xs.length).toFixed(3), "(should be near 4)");
+
+// a discrete distribution: walk the running total until it passes u
+const words = ["the", "a", "train", "late"], probs = [0.5, 0.25, 0.15, 0.1];
+const pick = () => { const u = Math.random(); let run = 0; for (let i = 0; i < probs.length; i++) { run += probs[i]; if (u < run) return words[i]; } return words.at(-1); };
+const tally = {};
+for (let i = 0; i < 10000; i++) { const w = pick(); tally[w] = (tally[w] ?? 0) + 1; }
+print("10,000 picks:", tally);
+</textarea></div>
+
+  <h2>8. What to carry forward</h2>
+  <ul>
+    <li>With equally likely outcomes, probability is counting. <b>Complement</b>: \(1 - P(A)\). <b>Sum rule</b>: subtract the overlap. <b>Independent</b> events multiply.</li>
+    <li>When a puzzle feels slippery (birthdays, Monty Hall), <b>simulate</b> it: a few lines of code beat intuition.</li>
+    <li>\(P(A \mid B)\) counts inside \(B\) only. Independence means conditioning changes nothing.</li>
+    <li><b>Bayes</b>: posterior ∝ likelihood × prior. Rare things stay unlikely after weak evidence; false positives from a big crowd dominate.</li>
+    <li><b>Naive Bayes</b>: count words per class, add one, add logs.</li>
+    <li>PMF for counts, PDF for continuous values (area is probability), CDF for both. Inverting the CDF turns uniform random numbers into any distribution.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const frac = (k, n) => `${k}/${n} = ${(k / n).toFixed(3)}`;
+
+// 1 and 3. events on two dice
+const EV = {
+  none: ["nothing", () => false], s7: ["sum is 7", (a, b) => a + b === 7], s10: ["sum is 10 or more", (a, b) => a + b >= 10],
+  dbl: ["a double", (a, b) => a === b], six: ["at least one 6", (a, b) => a === 6 || b === 6], f6: ["first die is 6", (a) => a === 6],
+  odd: ["both odd", (a, b) => a % 2 && b % 2], even: ["sum is even", (a, b) => (a + b) % 2 === 0],
+};
+const fill = (sel, keys, v) => { sel.innerHTML = keys.map((k) => `<option value="${k}">${EV[k][0]}</option>`).join(""); sel.value = v; };
+fill($("evA"), ["s7", "s10", "dbl", "six", "f6", "odd", "even"], "s7");
+fill($("evB"), ["none", "s7", "s10", "dbl", "six", "f6", "odd", "even"], "dbl");
+fill($("evA2"), ["s7", "s10", "dbl", "six", "odd", "even"], "s10");
+fill($("evB2"), ["f6", "dbl", "six", "even", "s7"], "f6");
+function dice(id, A, B, given) {
+  const P = graph(id, [0.5, 6.5], [0.5, 6.5], { step: [1e9, 1e9] }), { g } = P, s = P.X(1) - P.X(0);
+  let nA = 0, nB = 0, nAB = 0;
+  for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+    const inA = !!A(a, b), inB = !!B(a, b);
+    nA += inA; nB += inB; nAB += inA && inB;
+    g.globalAlpha = given && !inB ? 0.18 : 1;
+    g.fillStyle = inA && inB ? C.yellow : inA ? C.blue : inB ? (given ? "#3a4252" : C.red) : "#262b35";
+    g.fillRect(P.X(a - 0.5) + 3, P.Y(b + 0.5) + 3, s - 6, s - 6);
+    g.fillStyle = inA || (inB && !given) ? "#14171d" : "#8f98a8"; g.font = "15px ui-monospace, Menlo, monospace"; g.fillText(`${a},${b}`, P.X(a) - 14, P.Y(b) + 5);
+  }
+  g.globalAlpha = 1;
+  return { nA, nB, nAB };
+}
+function r1() {
+  const a = $("evA").value, b = $("evB").value, { nA, nB, nAB } = dice("dice", EV[a][1], EV[b][1]);
+  $("r1").textContent = b === "none" ? `P(${EV[a][0]}) = ${frac(nA, 36)} · P(not) = ${frac(36 - nA, 36)}`
+    : `P(A) = ${nA}/36, P(B) = ${nB}/36, P(A and B) = ${nAB}/36 · P(A or B) = ${nA} + ${nB} − ${nAB} = ${frac(nA + nB - nAB, 36)}` + (nAB * 36 === nA * nB ? " · independent: P(A)·P(B) = P(A and B)" : "");
+}
+function r4() {
+  const a = $("evA2").value, b = $("evB2").value, { nA, nB, nAB } = dice("dice2", EV[a][1], EV[b][1], true);
+  $("r4").textContent = `P(${EV[a][0]}) = ${frac(nA, 36)} · P(${EV[a][0]} | ${EV[b][0]}) = ${frac(nAB, nB)}` + (nAB * 36 === nA * nB ? " · unchanged: independent" : "");
+}
+$("evA").oninput = $("evB").oninput = r1;
+$("evA2").oninput = $("evB2").oninput = r4;
+
+// 2. birthdays
+const match = (n) => { let p = 1; for (let i = 0; i < n; i++) p *= (365 - i) / 365; return 1 - p; };
+let simB = null;
+function r2() {
+  const n = +$("n").value, P = graph("bday", [0, 70], [0, 1], { step: [10, 0.25] });
+  P.seg(0, 0.5, 70, 0.5, "#8f98a8", 1, [6, 6]);
+  P.curve((x) => match(Math.round(x)), C.yellow, 3);
+  P.seg(n, 0, n, match(n), C.blue, 2, [4, 4]); P.dot(n, match(n), C.blue, 7);
+  if (simB?.n === n) P.dot(n, simB.p, C.green, 6);
+  P.text("people →", 62, 0.04, "#8f98a8");
+  $("nV").textContent = n;
+  $("r2").textContent = `${n} people, ${n * (n - 1) / 2} pairs · chance of a shared birthday: ${(100 * match(n)).toFixed(1)}%` + (simB?.n === n ? ` · simulated: ${(100 * simB.p).toFixed(1)}% of 1000 rooms (green dot)` : "");
+}
+$("n").oninput = r2;
+$("simB").onclick = () => {
+  const n = +$("n").value; let hits = 0;
+  for (let r = 0; r < 1000; r++) { const seen = new Set(); for (let i = 0; i < n; i++) { const d = Math.floor(Math.random() * 365); if (seen.has(d)) { hits++; break; } seen.add(d); } }
+  simB = { n, p: hits / 1000 }; r2();
+};
+
+// 2. Monty Hall
+const doors = [...$("doors").children], tally = { stay: [0, 0], swap: [0, 0] };
+let car = 0, pick = -1, opened = -1;
+function newGame() { car = Math.floor(Math.random() * 3); pick = opened = -1; doors.forEach((d) => { d.textContent = "🚪"; d.disabled = false; }); $("stay").disabled = $("swap").disabled = true; }
+const score = () => ["stay", "swap"].map((k) => `${k === "stay" ? "staying" : "switching"} won ${tally[k][0]} of ${tally[k][1]}${tally[k][1] ? ` (${Math.round((100 * tally[k][0]) / tally[k][1])}%)` : ""}`).join(" · ");
+doors.forEach((d, i) => (d.onclick = () => {
+  if (pick === -2) newGame();
+  if (pick >= 0) return;
+  pick = i;
+  const goats = [0, 1, 2].filter((k) => k !== pick && k !== car);
+  opened = goats[Math.floor(Math.random() * goats.length)];
+  doors[opened].textContent = "🐐"; doors[opened].disabled = true; doors[pick].textContent = "👉";
+  $("stay").disabled = $("swap").disabled = false;
+  $("r3").textContent = `You picked door ${pick + 1}. The host opens door ${opened + 1}: a goat. Stay or switch?`;
+}));
+const finish = (how) => {
+  const final = how === "stay" ? pick : [0, 1, 2].find((k) => k !== pick && k !== opened), win = final === car;
+  tally[how][1]++; tally[how][0] += win;
+  doors.forEach((d, k) => { d.textContent = k === car ? "🚗" : "🐐"; d.disabled = false; });
+  $("stay").disabled = $("swap").disabled = true;
+  $("r3").textContent = `${win ? "A car!" : "A goat."} ${score()} · pick a door to play again`;
+  pick = -2;
+};
+$("stay").onclick = () => finish("stay");
+$("swap").onclick = () => finish("swap");
+$("sim3").onclick = () => {
+  for (let r = 0; r < 1000; r++) for (const how of ["stay", "swap"]) {
+    const c = Math.floor(Math.random() * 3), p = Math.floor(Math.random() * 3), o = [0, 1, 2].find((k) => k !== p && k !== c);
+    tally[how][1]++; tally[how][0] += (how === "stay" ? p : 3 - p - o) === c;
+  }
+  $("r3").textContent = score();
+  say("Switching wins about two thirds of the time. Told you!", "happy");
+};
+newGame();
+$("r3").textContent = "Pick a door.";
+
+// 4. Bayes on a crowd of 1000
+let lastPost = 0;
+function r5() {
+  const prev = +$("prev").value, sens = +$("sens").value, fpr = +$("fpr").value;
+  const sick = Math.round(1000 * prev), tp = Math.round(sick * sens), fp = Math.round((1000 - sick) * fpr);
+  const cv = $("crowd"), g = cv.getContext("2d");
+  g.fillStyle = C.stage; g.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < 1000; i++) {
+    const isSick = i < sick, pos = isSick ? i < tp : i - sick < fp, x = 20 + (i % 40) * 19.5, y = 22 + Math.floor(i / 40) * 19;
+    g.fillStyle = isSick ? C.red : "#8f98a8"; g.globalAlpha = pos ? 1 : 0.22;
+    g.beginPath(); g.arc(x, y, pos ? 7 : 5, 0, 7); g.fill();
+  }
+  g.globalAlpha = 1;
+  const post = tp / Math.max(1, tp + fp);
+  $("prevV").textContent = `${(100 * prev).toFixed(1)}%`; $("sensV").textContent = `${Math.round(100 * sens)}%`; $("fprV").textContent = `${(100 * fpr).toFixed(1)}%`;
+  $("r5").textContent = `${sick} sick, ${tp} of them test positive · ${1000 - sick} healthy, ${fp} test positive anyway · P(sick | positive) = ${tp}/${tp + fp} = ${(100 * post).toFixed(1)}% (exact: ${(100 * sens * prev / (sens * prev + fpr * (1 - prev))).toFixed(1)}%)`;
+  if (post > 0.45 && lastPost <= 0.45) say("Now a positive test really means something!", "surprised");
+  lastPost = post;
+}
+for (const id of ["prev", "sens", "fpr"]) $(id).oninput = r5;
+
+// 6. binomial PMF and CDF
+const choose = (n, k) => { let c = 1; for (let i = 1; i <= k; i++) c = (c * (n - k + i)) / i; return c; };
+function r6() {
+  const n = +$("bn").value, p = +$("bp").value, pmf = Array.from({ length: n + 1 }, (_, k) => choose(n, k) * p ** k * (1 - p) ** (n - k));
+  const P = graph("binom", [-0.5, n + 0.5], [0, 1.05], { step: [n > 20 ? 5 : n > 10 ? 2 : 1, 0.25] }), w = (P.X(1) - P.X(0)) * 0.7;
+  let run = 0;
+  pmf.forEach((v, k) => {
+    P.g.fillStyle = C.blue; P.g.fillRect(P.X(k) - w / 2, P.Y(v), w, P.Y(0) - P.Y(v));
+    P.seg(k - 0.5, run, k - 0.5, run + v, C.green, 2); run += v; P.seg(k - 0.5, run, k + 0.5, run, C.green, 2);
+  });
+  const mode = pmf.indexOf(Math.max(...pmf));
+  $("bnV").textContent = n; $("bpV").textContent = p.toFixed(2);
+  $("r6").textContent = `most likely: ${mode} (P = ${pmf[mode].toFixed(3)}) · average n·p = ${(n * p).toFixed(2)} · P(2 or fewer) = ${pmf.slice(0, 3).reduce((s, v) => s + v, 0).toFixed(3)}`;
+}
+$("bn").oninput = $("bp").oninput = r6;
+
+// 7. inverse-CDF sampling of exponential waits (mean 4 minutes)
+const F = (x) => 1 - Math.exp(-x / 4), inv = (u) => -4 * Math.log(1 - u);
+let samples = [], lastU = null;
+function r7() {
+  const P = graph("icdf", [0, 16], [0, 1.05], { step: [2, 0.25] });
+  P.curve(F, C.green, 3);
+  if (lastU !== null) { const x = inv(lastU); P.seg(0, lastU, Math.min(x, 16), lastU, C.yellow, 2); P.seg(x, lastU, x, 0, C.yellow, 2, [5, 4]); P.dot(0, lastU, C.yellow); P.dot(x, 0, C.blue); }
+  P.text("u (uniform)", 0.2, 0.97, C.yellow); P.text("wait, minutes →", 13.4, 0.05, "#8f98a8");
+  const H = graph("hist", [0, 16], [0, 0.3], { step: [2, 1e9], labels: false }), bins = new Array(32).fill(0);
+  for (const x of samples) if (x < 16) bins[Math.floor(x * 2)]++;
+  bins.forEach((c, i) => { const h = samples.length ? c / samples.length / 0.5 : 0; H.g.fillStyle = C.blue; H.g.fillRect(H.X(i / 2) + 1, H.Y(h), H.X(0.5) - H.X(0) - 2, H.Y(0) - H.Y(h)); });
+  H.curve((x) => Math.exp(-x / 4) / 4, C.yellow, 2);
+  const mean = samples.reduce((s, x) => s + x, 0) / (samples.length || 1);
+  $("r7").textContent = lastU === null ? "press Draw to sample · the yellow curve on the strip is the density the samples should match"
+    : `u = ${lastU.toFixed(3)} → wait = −4 ln(1 − u) = ${inv(lastU).toFixed(2)} min · ${samples.length} samples, mean ${mean.toFixed(2)} (theory: 4)`;
+}
+const draw = (k) => { for (let i = 0; i < k; i++) { lastU = Math.random(); samples.push(inv(lastU)); } r7(); };
+$("one").onclick = () => draw(1);
+$("many").onclick = () => draw(500);
+$("clr").onclick = () => { samples = []; lastU = null; r7(); };
+
+r1(); r2(); r4(); r5(); r6(); r7();
+window.blipContext = () => ({ page: "AI from scratch, probability 1: probability as counting on two dice, complement, sum rule, independence, the birthday problem and Monty Hall simulated, conditional probability, Bayes' rule on 1000 people (prior, likelihood, posterior, false positives with rare conditions), a naive Bayes spam filter (add-one smoothing, log-probabilities), Bernoulli/binomial/uniform, PMF vs PDF vs CDF, sampling by inverting the CDF (exponential waits, discrete picks like softmax sampling)", readouts: ["r1", "r2", "r3", "r4", "r5", "r6", "r7"].map((id) => $(id).textContent) });
+</script>
+</body>
+</html>
