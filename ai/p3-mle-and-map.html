@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>From Data to Parameters: MLE and MAP</title>
+  <meta name="description" content="AI from scratch, probability 3: samples vs populations and why sample variance divides by n − 1, the law of large numbers, the central limit theorem with dice turning into a bell, maximum likelihood for a coin, a Gaussian and linear regression (where MSE and cross-entropy come from), Bayesian updating with a Beta prior, MAP estimates, and why L2 regularization is a Gaussian prior." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 3 · Stage 2: how a network learns</p>
+  <h1>From data to parameters: MLE and MAP</h1>
+  <p class="lede">Training a model means picking its knobs from data. But why the mean squared error? Why cross-entropy? Why does adding \(\lambda \lVert w \rVert^2\) help? They aren't arbitrary choices: they all come out of one principle, <b>pick the knobs that make the data you actually saw most likely</b>, plus one honest addition, <b>what you believed before seeing it</b>. This lesson builds both from coin flips up, and on the way shows why averages work at all.</p>
+
+  <h2>1. A sample is not the population</h2>
+  <p>The thing you want to know about (every outage there will ever be, every email ever sent) is the <b>population</b>. What you have is a <b>sample</b>: some of it. Numbers computed from the sample, like its mean \(\bar x\), are <b>estimates</b> of the population's true values, like its mean \(\mu\), and they'd come out a bit different with a different sample.</p>
+  <p>One estimate has a famous twist. Measure spread around the sample's own mean, and you come up short, because the sample mean sits in the middle of <i>these</i> points, closer to them than the true mean usually is. Dividing by \(n - 1\) instead of \(n\) corrects for that exactly. Below, the computer draws 4000 samples of size \(n\) from a bell curve whose true variance is 1, and averages both versions:</p>
+  <canvas id="var" width="800" height="400" aria-label="Average sample variance dividing by n and by n minus 1, against the true variance"></canvas>
+  <div class="row"><label>sample size n <input type="range" id="vn" min="2" max="30" step="1" value="3"> <b id="vnV" class="math"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <p class="formula">\[ s^2 = \frac{1}{n - 1} \sum_{i=1}^{n} (x_i - \bar{x})^2 \]</p>
+  <details class="deeper"><summary>Why exactly \(n - 1\)?</summary>
+    <p>The deviations \(x_i - \bar x\) always add up to zero, so once you know \(n - 1\) of them, the last is forced: only \(n - 1\) of them are free (<b>degrees of freedom</b>). Worked out, the expected value of \(\sum (x_i - \bar x)^2\) is \((n - 1)\sigma^2\), not \(n\sigma^2\): you lose exactly one \(\sigma^2\), the variance of \(\bar x\) itself times \(n\). Dividing by \(n - 1\) gives back \(\sigma^2\) on average: an <b>unbiased</b> estimate.</p>
+  </details>
+  <div class="q" data-num="4">
+    <p>Sample: 2, 4, 6. What's \(s^2\), dividing by \(n - 1\)?</p>
+    <div class="why">Mean 4, squared deviations 4, 0, 4, sum 8. Divided by \(n - 1 = 2\): \(s^2 = 4\). (Dividing by 3 would give 2.67.) NumPy's <code>np.var</code> divides by \(n\) unless you pass <code>ddof=1</code>; pandas' <code>.var()</code> divides by \(n - 1\). Yes, really.</div>
+  </div>
+
+  <h2>2. Why averages work: the law of large numbers</h2>
+  <p>Roll a die again and again and keep the running average. Early on it jumps around; with more rolls it settles on 3.5, the die's true mean. That's the <b>law of large numbers</b>: the sample mean of independent draws converges to the population mean. It's why a training set's average loss is a fair stand-in for the loss on the whole world, and why more data helps.</p>
+  <canvas id="lln" width="800" height="400" aria-label="Running average of die rolls settling on 3.5"></canvas>
+  <div class="row"><button id="roll1">Roll 10</button><button id="roll2">Roll 1000</button><button id="roll0">Start over</button></div>
+  <p class="readout" id="r2"></p>
+  <p>How fast? Calculus 4 showed it: the spread of an average of \(n\) draws is \(\sigma / \sqrt n\). Four times the data halves the error, which is why the last few points of accuracy are so expensive.</p>
+  <div class="q" data-num="0.171" data-tol="0.004">
+    <p>A die has standard deviation about 1.708. What's the standard deviation of the average of 100 rolls?</p>
+    <div class="why">\(1.708 / \sqrt{100} = 0.171\). So the average of 100 rolls almost always lands within about \(3.5 \pm 0.34\) (two standard deviations).</div>
+  </div>
+
+  <h2>3. Why bell curves are everywhere: the central limit theorem</h2>
+  <p>Add up several random numbers. Whatever shape each one has (flat like a die, lopsided like a train wait), the <i>sum</i> heads toward the same bell curve. That's the <b>central limit theorem</b>, and it's why measurement errors, heights and averages are so often normal: they're sums of many small independent effects. The bars are 5000 sums; the yellow curve is the bell with the same mean and spread.</p>
+  <canvas id="clt" width="800" height="400" aria-label="Histogram of sums of random draws turning into a bell curve"></canvas>
+  <div class="row">
+    <label>add up <select id="base"><option value="die">dice</option><option value="exp">train waits (exponential)</option><option value="coin">coin flips (0 or 1)</option></select></label>
+    <label>how many <input type="range" id="k" min="1" max="40" step="1" value="1"> <b id="kV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-answer="b">
+    <p>Pick train waits with "how many" at 1, then raise it. What happens to the lopsided shape?</p>
+    <ul><li data-k="a" data-says="Raise it to 30 and look again: the long tail fades into a symmetric hump.">It stays lopsided, since each wait is lopsided</li><li data-k="b">It gets more symmetric and bell-shaped as more waits are added</li></ul>
+    <div class="why">Skewed pieces take longer than a die to get there (a single wait is very lopsided), but the sum of 30 already looks normal. The theorem needs independent pieces with finite variance; it doesn't care about their shape.</div>
+  </div>
+
+  <h2>4. Maximum likelihood: which knob makes the data least surprising?</h2>
+  <p>You flip a coin 10 times and get 7 heads. What's your best guess for its chance of heads, \(p\)? For any \(p\), the probability of exactly that sequence is \(p^7 (1 - p)^3\), called the <b>likelihood</b> of \(p\). It's a function of the knob, with the data held fixed. Drag \(p\) and find the top:</p>
+  <canvas id="lik" width="800" height="400" aria-label="Likelihood and log-likelihood of a coin's chance of heads"></canvas>
+  <div class="row">
+    <label>p <input type="range" id="p" min="0.01" max="0.99" step="0.01" value="0.4"> <b id="pV" class="math"></b></label>
+    <label>heads <input type="range" id="h" min="0" max="20" step="1" value="7"> <b id="hV" class="math"></b></label>
+    <label>flips <input type="range" id="n" min="1" max="20" step="1" value="10"> <b id="nV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r4"></p>
+  <p>The <b>maximum likelihood estimate</b> (MLE) is the \(p\) at the top, and here it's exactly what common sense says: \(7/10\). In practice you maximize the <b>log</b>-likelihood instead (green): same top, but products become sums (the math warm-up), and its derivative is easy:</p>
+  <p class="formula">\[ \ell(p) = h \ln p + (n - h) \ln(1 - p), \qquad \ell'(p) = \frac{h}{p} - \frac{n - h}{1 - p} = 0 \;\Rightarrow\; p = \frac{h}{n} \]</p>
+  <div class="q" data-num="0.7" data-tol="0.001">
+    <p>With 7 heads in 10 flips, where is the likelihood highest?</p>
+    <div class="why">At \(p = 0.7\). Set the derivative of the log-likelihood to zero (Linear algebra 1's least squares did the same for a line) and the answer is the fraction of heads.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>Set heads to 0 and flips to 3. The MLE says \(p = 0\): this coin can <i>never</i> land heads. What's wrong?</p>
+    <ul><li data-k="a">Three flips is too little data to rule anything out, but MLE trusts the data completely</li><li data-k="b" data-says="The math is right: with 0 heads, p = 0 really is the most likely value. The problem is what it ignores.">The calculation has a bug</li></ul>
+    <div class="why">MLE has no notion of "I've barely looked". It's the same trap as P1's spam filter seeing a word only in spam, and the cure is the same: a little prior belief. That's section 6.</div>
+  </div>
+
+  <h2>5. Where the loss functions come from</h2>
+  <p>Now the payoff. Apply "maximize the log-likelihood" to the models on this path, and the standard losses fall out. Maximizing a log-likelihood is the same as <b>minimizing the negative log-likelihood</b> (NLL), so a loss is just an NLL in disguise.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p><b>A bell curve.</b> Data \(x_1 \dots x_n\) from a normal with mean \(\mu\) and spread \(\sigma\). Each point's density is \(\frac{1}{\sqrt{2\pi}\sigma} e^{-(x_i - \mu)^2 / 2\sigma^2}\), so</p>
+    <p class="formula">\[ -\ell(\mu, \sigma) = \sum_i \frac{(x_i - \mu)^2}{2\sigma^2} + n \ln \sigma + \text{const} \]</p>
+    <p>Setting the derivatives to zero gives \(\mu = \bar x\) and \(\sigma^2 = \frac1n \sum (x_i - \bar x)^2\): the sample mean, and the variance <i>dividing by \(n\)</i>, the slightly-too-small one from section 1. MLE isn't always unbiased.</p>
+    <p><b>Linear regression.</b> Suppose each target is the line plus bell-curve noise: \(y_i = w x_i + b + \epsilon_i\), \(\epsilon_i \sim \mathcal N(0, \sigma^2)\). Then \(-\ell = \frac{1}{2\sigma^2} \sum_i (y_i - w x_i - b)^2 + \text{const}\). With \(\sigma\) fixed, the only part that depends on the knobs is the sum of squared errors. <b>Minimizing MSE is maximum likelihood under Gaussian noise.</b></p>
+    <p><b>Classification.</b> If the model says "class \(k\) with probability \(\hat p_k\)" and the truth is class \(y\), the likelihood of that example is \(\hat p_y\), so \(-\ell = -\sum_i \ln \hat p_{y_i}\). That's <b>cross-entropy</b>, chapter 5's loss. For two classes with a sigmoid, it's the coin's log-likelihood above with \(p\) coming from the model.</p>
+  </details>
+  <div class="q" data-answer="c">
+    <p>Your regression targets have rare, huge outliers (like Probability 2's outage hours). Squared error lets them dominate. In likelihood terms, why?</p>
+    <ul><li data-k="a" data-says="The loss isn't the problem in itself; it's what the loss assumes about the noise.">Squared error has a bug with big numbers</li><li data-k="b" data-says="The model's capacity has nothing to do with it; even the right line gets pulled.">The model is too small</li><li data-k="c">MSE assumes bell-curve noise, where a 10σ error is essentially impossible, so the fit bends over backwards to avoid it</li></ul>
+    <div class="why">Choosing a loss is choosing a noise model. Heavier-tailed noise (a Laplace distribution) gives the absolute error \(|y - \hat y|\), which fits the median and shrugs off outliers; the Huber loss mixes the two. Or take logs of a skewed target first, as Probability 2 suggested.</div>
+  </div>
+
+  <h2>6. Bayesian updating: start with a belief, let data move it</h2>
+  <p>Bayes' rule (Probability 1) works on knobs too. Put a <b>prior</b> on \(p\), a probability for every possible value, and multiply by the likelihood to get the <b>posterior</b>: what you believe after the data. For a coin, the natural prior is a <b>Beta</b>(\(a\), \(b\)) distribution, which acts like \(a - 1\) heads and \(b - 1\) tails you'd already seen. After \(h\) heads and \(t\) tails, the posterior is Beta(\(a + h\), \(b + t\)).</p>
+  <canvas id="beta" width="800" height="400" aria-label="Prior, likelihood and posterior for a coin's chance of heads"></canvas>
+  <div class="row">
+    <label>prior a <input type="range" id="ba" min="1" max="20" step="1" value="2"> <b id="baV" class="math"></b></label>
+    <label>prior b <input type="range" id="bb" min="1" max="20" step="1" value="2"> <b id="bbV" class="math"></b></label>
+    <button id="flip">Flip the mystery coin</button><button id="flip20">Flip 20</button><button id="flip0">Forget the flips</button>
+  </div>
+  <p class="readout" id="r5"></p>
+  <p>The <span class="b">blue</span> curve is the prior, <span class="g">green</span> the likelihood of the flips so far (scaled to fit), <span class="y">yellow</span> the posterior. With few flips, the prior holds the posterior back from extreme answers; with many, the data takes over and the prior hardly matters. The mystery coin's true \(p\) is hidden. Flip until you're sure.</p>
+  <p>The top of the posterior is the <b>MAP</b> (maximum a posteriori) estimate:</p>
+  <p class="formula">\[ \hat p_{\text{MAP}} = \frac{h + a - 1}{n + a + b - 2} \qquad \text{with } a = b = 2: \quad \frac{h + 1}{n + 2} \]</p>
+  <div class="q" data-num="0.667" data-tol="0.003">
+    <p>Prior Beta(2, 2), then 3 heads and 1 tail. What's the MAP estimate?</p>
+    <div class="why">Posterior Beta(5, 3); its peak is \((5 - 1)/(5 + 3 - 2) = 4/6 \approx 0.667\), a little less extreme than the MLE's 3/4. With a = b = 2 the MAP is \((h + 1)/(n + 2)\): exactly the "add one to each count" smoothing from P1's spam filter. Smoothing was a prior all along.</div>
+  </div>
+
+  <h2>7. L2 regularization is a prior</h2>
+  <p>Do the same with a model's weights. Put a bell-curve prior on each weight, centered on 0 with spread \(\tau\): "I expect weights to be small". The log of that prior is \(-w^2 / 2\tau^2\), so maximizing the posterior means minimizing</p>
+  <p class="formula">\[ \underbrace{\frac{1}{2\sigma^2} \sum_i (y_i - \hat y_i)^2}_{\text{NLL: the MSE}} \; + \; \underbrace{\frac{1}{2\tau^2} \lVert w \rVert^2}_{\text{− log prior}} \]</p>
+  <p>That's chapter 11's <b>L2 regularization</b> (ridge regression), with \(\lambda = \sigma^2/\tau^2\): a strong belief in small weights (small \(\tau\)) is a big \(\lambda\). Below, five noisy points from the line \(y = 0.5x\); the <span class="g">green</span> line is the MLE (least squares through the origin), the <span class="y">yellow</span> one the MAP. Tighten the prior and watch it pull the slope toward 0:</p>
+  <canvas id="ridge" width="800" height="400" aria-label="Least squares slope and MAP slope under a Gaussian prior"></canvas>
+  <div class="row"><label>prior spread τ <input type="range" id="tau" min="0.02" max="2" step="0.01" value="0.3"> <b id="tauV" class="math"></b></label><button id="newPts">New noisy points</button></div>
+  <p class="readout" id="r6"></p>
+  <div class="q" data-answer="b">
+    <p>When does the prior matter most?</p>
+    <ul><li data-k="a" data-says="With lots of data the likelihood term grows with n while the prior stays the same size, so the prior fades.">With lots of data</li><li data-k="b">With little or noisy data, or many weights per example</li></ul>
+    <div class="why">The NLL is a sum over examples, so it grows with \(n\); the prior's term doesn't. Regularization matters most exactly where overfitting does (chapter 11): few examples, many knobs. A weight decay of 0.01 in a training config is this prior with a fixed width.</div>
+  </div>
+
+  <h2>8. All of it in code</h2>
+  <div class="code" data-title="Run it: MLE, Beta updating and ridge as MAP"><textarea>
+// MLE for a bell curve: the mean, and the variance dividing by n
+const xs = [2.1, 3.4, 1.9, 2.8, 3.0, 2.5];
+const mu = xs.reduce((s, x) => s + x, 0) / xs.length;
+const varMLE = xs.reduce((s, x) => s + (x - mu) ** 2, 0) / xs.length;
+print("MLE mean", mu.toFixed(3), " MLE variance", varMLE.toFixed(3), " unbiased s²", (varMLE * xs.length / (xs.length - 1)).toFixed(3));
+
+// a coin: MLE vs MAP with a Beta(2, 2) prior, as flips come in
+const flips = [1, 1, 1, 0, 1, 0, 0, 1, 1, 1];   // 1 = heads
+let h = 0;
+flips.forEach((f, i) => { h += f; const n = i + 1; print(`after ${n}: MLE ${(h / n).toFixed(2)}  MAP ${((h + 1) / (n + 2)).toFixed(2)}`); });
+
+// ridge regression through the origin is MAP with a Gaussian prior on w:
+// minimize Σ(y − w x)²/(2σ²) + w²/(2τ²)  →  w = Σxy / (Σx² + σ²/τ²)
+const pts = [[1, 0.9], [2, 0.6], [3, 1.9], [4, 1.7], [5, 2.8]], sigma = 0.5;
+const sxy = pts.reduce((s, [x, y]) => s + x * y, 0), sxx = pts.reduce((s, [x]) => s + x * x, 0);
+for (const tau of [10, 1, 0.3, 0.1]) print(`τ = ${tau}: w = ${(sxy / (sxx + sigma ** 2 / tau ** 2)).toFixed(3)}  (λ = σ²/τ² = ${(sigma ** 2 / tau ** 2).toFixed(2)})`);
+</textarea></div>
+
+  <h2>9. What to carry forward</h2>
+  <ul>
+    <li>Sample statistics estimate population values. Sample variance divides by \(n - 1\) to be unbiased.</li>
+    <li><b>Law of large numbers</b>: averages converge, with error shrinking like \(\sigma/\sqrt n\). <b>Central limit theorem</b>: sums of many independent pieces become bell-shaped.</li>
+    <li><b>MLE</b>: pick the knobs that make the observed data most likely; in practice minimize the negative log-likelihood.</li>
+    <li>Gaussian noise → <b>MSE</b>. Categorical outputs → <b>cross-entropy</b>. Heavy-tailed noise → absolute error. A loss is a noise model.</li>
+    <li><b>Bayesian updating</b>: posterior ∝ likelihood × prior. A Beta prior on a coin acts like pretend flips; add-one smoothing is one.</li>
+    <li><b>MAP</b> = MLE plus a prior. A Gaussian prior on weights is <b>L2 regularization</b>, with \(\lambda = \sigma^2/\tau^2\).</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rnd = mulberry32(3), gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+const bar = (P, x0, x1, h, color) => { P.g.fillStyle = color; P.g.fillRect(P.X(x0), P.Y(h), P.X(x1) - P.X(x0), P.Y(0) - P.Y(h)); };
+
+// 1. n vs n − 1
+function r1() {
+  const n = +$("vn").value; let a = 0, b = 0;
+  for (let k = 0; k < 4000; k++) { const xs = Array.from({ length: n }, gauss), m = xs.reduce((s, x) => s + x, 0) / n, ss = xs.reduce((s, x) => s + (x - m) ** 2, 0); a += ss / n; b += ss / (n - 1); }
+  a /= 4000; b /= 4000;
+  const P = graph("var", [0, 3], [0, 1.4], { step: [1e9, 0.25] });
+  bar(P, 0.35, 1.15, a, C.red); bar(P, 1.85, 2.65, b, C.green); P.seg(0, 1, 3, 1, C.yellow, 2, [6, 6]);
+  P.text("divide by n", 0.45, 0.06, "#14171d"); P.text("divide by n − 1", 1.9, 0.06, "#14171d"); P.text("true variance 1", 2.2, 1.04, C.yellow);
+  $("vnV").textContent = n;
+  $("r1").textContent = `n = ${n}: average of 4000 sample variances · ÷n gives ${a.toFixed(3)} (theory ${((n - 1) / n).toFixed(3)}) · ÷(n−1) gives ${b.toFixed(3)} (theory 1)`;
+}
+$("vn").oninput = r1;
+
+// 2. law of large numbers
+let rolls = [];
+function r2() {
+  const N = Math.max(10, rolls.length), P = graph("lln", [0, N], [1, 6], { step: [N > 200 ? Math.pow(10, Math.floor(Math.log10(N))) : 10, 1] });
+  P.seg(0, 3.5, N, 3.5, C.yellow, 2, [6, 6]);
+  if (rolls.length) { let s = 0; const avg = rolls.map((r, i) => (s += r) / (i + 1)); P.curve((x) => avg[Math.max(0, Math.min(avg.length - 1, Math.round(x) - 1))], C.blue, 2.5, [], 1, rolls.length); }
+  const m = rolls.length ? rolls.reduce((s, x) => s + x, 0) / rolls.length : null;
+  $("r2").textContent = m === null ? "roll to start · dashed: the true mean 3.5" : `${rolls.length} rolls · running average ${m.toFixed(3)} · off by ${Math.abs(m - 3.5).toFixed(3)} (typical: ${(1.708 / Math.sqrt(rolls.length)).toFixed(3)})`;
+}
+const roll = (k) => { for (let i = 0; i < k; i++) rolls.push(1 + Math.floor(Math.random() * 6)); r2(); };
+$("roll1").onclick = () => roll(10); $("roll2").onclick = () => roll(1000); $("roll0").onclick = () => { rolls = []; r2(); };
+
+// 3. central limit theorem
+const BASE = { die: [() => 1 + Math.floor(Math.random() * 6), 3.5, 35 / 12], exp: [() => -4 * Math.log(1 - Math.random()), 4, 16], coin: [() => +(Math.random() < 0.5), 0.5, 0.25] };
+function r3() {
+  const [draw, mu1, var1] = BASE[$("base").value], k = +$("k").value, mu = k * mu1, sd = Math.sqrt(k * var1);
+  const sums = Array.from({ length: 5000 }, () => { let s = 0; for (let i = 0; i < k; i++) s += draw(); return s; });
+  const lo = Math.max(0, mu - 4.2 * sd), hi = mu + 4.2 * sd, discrete = $("base").value !== "exp", w = discrete ? 1 : (hi - lo) / 50;
+  const bins = new Map(); for (const s of sums) { const b = discrete ? Math.round(s) : lo + Math.floor((s - lo) / w) * w; bins.set(b, (bins.get(b) ?? 0) + 1); }
+  const pdf = (x) => Math.exp(-(((x - mu) / sd) ** 2) / 2) / (sd * Math.sqrt(2 * Math.PI)), top = Math.max(pdf(mu), ...[...bins.values()].map((c) => c / (5000 * w))) * 1.1;
+  const P = graph("clt", [lo, hi], [0, top], { step: [Math.max(1, Math.round((hi - lo) / 10)), 1e9] });
+  for (const [b, c] of bins) bar(P, discrete ? b - 0.4 : b, discrete ? b + 0.4 : b + w * 0.9, c / (5000 * w), "rgba(88,196,221,0.7)");
+  P.curve(pdf, C.yellow, 3);
+  $("kV").textContent = k;
+  $("r3").textContent = `sums of ${k} · mean ${mu.toFixed(1)}, standard deviation ${sd.toFixed(2)} · yellow: the bell curve with the same mean and spread`;
+}
+$("base").oninput = $("k").oninput = r3;
+
+// 4. coin likelihood
+function r4() {
+  const n = +$("n").value; if (+$("h").value > n) $("h").value = n;
+  const h = +$("h").value, p = +$("p").value, L = (q) => q ** h * (1 - q) ** (n - h), mle = h / n, Lmax = L(Math.min(0.999, Math.max(0.001, mle)));
+  const ll = (q) => h * Math.log(q) + (n - h) * Math.log(1 - q);
+  const P = graph("lik", [0, 1], [0, 1.08], { step: [0.1, 1e9] });
+  P.curve((q) => L(q) / Lmax, C.blue, 3, [], 0.001, 0.999);
+  const llTop = ll(Math.min(0.999, Math.max(0.001, mle)));
+  P.curve((q) => Math.max(0, 1 + (ll(q) - llTop) / 8), C.green, 2, [6, 4], 0.005, 0.995); // the top 8 units of log-likelihood
+  P.seg(p, 0, p, L(p) / Lmax, C.yellow, 2); P.dot(p, L(p) / Lmax, C.yellow);
+  P.seg(mle, 0, mle, 1.05, "#8f98a8", 1, [3, 4]);
+  P.text("likelihood (scaled to 1 at the top)", 0.02, 1.02, C.blue); P.text("log-likelihood (its top 8 units)", 0.02, 0.94, C.green);
+  for (const [id, v] of [["pV", p.toFixed(2)], ["hV", h], ["nV", n]]) $(id).textContent = v;
+  $("r4").textContent = `${h} heads in ${n} · likelihood at p = ${p.toFixed(2)}: ${L(p).toExponential(3)} · log-likelihood ${ll(p).toFixed(3)} · top at p = h/n = ${mle.toFixed(3)}`;
+}
+for (const id of ["p", "h", "n"]) $(id).oninput = r4;
+
+// 6. Beta prior → posterior with a mystery coin
+const secret = 0.2 + 0.6 * Math.random();
+let heads = 0, tails = 0;
+const lgamma = (z) => { const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5]; let x = z, y = z, t = x + 5.5; t -= (x + 0.5) * Math.log(t); let s = 1.000000000190015; for (const k of c) s += k / ++y; return -t + Math.log((2.5066282746310005 * s) / x); };
+const betaPdf = (a, b) => (x) => Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - lgamma(a) - lgamma(b) + lgamma(a + b));
+function r5() {
+  const a = +$("ba").value, b = +$("bb").value, A = a + heads, B = b + tails, n = heads + tails, post = betaPdf(A, B), prior = betaPdf(a, b);
+  const grid = Array.from({ length: 199 }, (_, i) => (i + 1) / 200), top = Math.max(...grid.map(post), ...grid.map(prior)) * 1.1;
+  const P = graph("beta", [0, 1], [0, top], { step: [0.1, 1e9] });
+  P.curve(prior, C.blue, 2.5, [], 0.002, 0.998);
+  if (n) { const lk = (x) => heads * Math.log(x) + tails * Math.log(1 - x), m = Math.max(...grid.map(lk)); P.curve((x) => Math.exp(lk(x) - m) * top * 0.85, C.green, 2, [6, 4], 0.002, 0.998); }
+  P.curve(post, C.yellow, 3, [], 0.002, 0.998);
+  const map = A + B > 2 ? (A - 1) / (A + B - 2) : 0.5;
+  P.seg(map, 0, map, post(Math.min(0.999, Math.max(0.001, map))), C.yellow, 1.5, [3, 4]);
+  $("baV").textContent = a; $("bbV").textContent = b;
+  $("r5").textContent = `prior Beta(${a}, ${b}) · ${heads} heads, ${tails} tails · posterior Beta(${A}, ${B}) · MAP ${map.toFixed(3)}` + (n ? ` · MLE ${(heads / n).toFixed(3)}` : "") + ` · posterior mean ${(A / (A + B)).toFixed(3)}` + (n >= 100 ? ` · the coin's secret p: ${secret.toFixed(3)}` : " · the coin's secret is revealed after 100 flips");
+}
+const flip = (k) => { for (let i = 0; i < k; i++) Math.random() < secret ? heads++ : tails++; r5(); if (heads + tails >= 100 && heads + tails - k < 100) say(`The secret was ${secret.toFixed(3)}. How close was your posterior?`, "happy"); };
+$("flip").onclick = () => flip(1); $("flip20").onclick = () => flip(20); $("flip0").onclick = () => { heads = tails = 0; r5(); };
+$("ba").oninput = $("bb").oninput = r5;
+
+// 7. ridge as MAP: slope through the origin
+let pts = [];
+const newPts = () => { pts = [1, 2, 3, 4, 5].map((x) => [x, 0.5 * x + 0.6 * gauss()]); r6(); };
+function r6() {
+  const tau = +$("tau").value, sigma = 0.6, sxy = pts.reduce((s, [x, y]) => s + x * y, 0), sxx = pts.reduce((s, [x]) => s + x * x, 0);
+  const wMLE = sxy / sxx, wMAP = sxy / (sxx + sigma ** 2 / tau ** 2);
+  const P = graph("ridge", [0, 6], [-1, 5], { step: [1, 1] });
+  P.curve((x) => 0.5 * x, "#8f98a8", 1.5, [6, 6]); P.curve((x) => wMLE * x, C.green, 3); P.curve((x) => wMAP * x, C.yellow, 3);
+  for (const [x, y] of pts) P.dot(x, y, C.blue, 6);
+  P.text("dashed: the true line y = 0.5x", 0.1, 4.6, "#8f98a8");
+  $("tauV").textContent = tau.toFixed(2);
+  $("r6").textContent = `MLE slope ${wMLE.toFixed(3)} · MAP slope ${wMAP.toFixed(3)} · λ = σ²/τ² = ${(sigma ** 2 / tau ** 2).toFixed(2)} (noise σ = ${sigma})`;
+}
+$("tau").oninput = r6; $("newPts").onclick = newPts;
+
+r1(); r2(); r3(); r4(); r5(); newPts();
+window.blipContext = () => ({ page: "AI from scratch, probability 3: samples vs populations, unbiased sample variance (n − 1), law of large numbers (σ/√n), central limit theorem (sums of dice, exponential waits, coins), maximum likelihood for a coin (h/n), for a Gaussian (mean, variance ÷ n) and for regression (MSE = Gaussian noise; cross-entropy = categorical; absolute error = Laplace), Beta prior and posterior, MAP = (h + a − 1)/(n + a + b − 2), add-one smoothing as a prior, L2 regularization as a Gaussian prior (λ = σ²/τ²)", readouts: ["r1", "r2", "r3", "r4", "r5", "r6"].map((id) => $(id).textContent) });
+</script>
+</body>
+</html>
