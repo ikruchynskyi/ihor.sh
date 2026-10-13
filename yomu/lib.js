@@ -503,22 +503,25 @@ export async function strokes(ch, el) {
 }
 
 // ---------- the settings bar every page shows ----------
-export function settingsBar(el, onChange) {
+export function settingsBar(el, onChange, opts = {}) {
   const s = state.settings;
+  const showVoice = opts.voice !== false;
   el.innerHTML = `<div class="yset" role="group" aria-label="Display">
     <span>Script</span>${[["kanji", "漢字 + furigana"], ["kana", "かな only"], ["romaji", "Romaji"]].map(([v, l]) => `<button data-s="${v}" aria-pressed="${s.script === v}">${l}</button>`).join("")}
     <label>Furigana <select id="yfuri"><option value="all">on all kanji</option><option value="unknown">only on words I don't know</option><option value="none">off</option></select></label>
     <label><input type="checkbox" id="ytr" ${s.translation ? "checked" : ""}> English</label>
     <label><input type="checkbox" id="yslow" ${s.slow ? "checked" : ""}> Slow mode</label>
-    <label>Voice <select id="yvoice"><option value="kokoro">Kokoro Kumo (Neural)</option><option value="browser">Browser voice</option></select></label>
+    ${showVoice ? `<label>Voice <select id="yvoice"><option value="kokoro">Kokoro Kumo (Neural)</option><option value="browser">Browser voice</option></select></label>` : ""}
     <span class="yxp" title="XP and streak">★ ${state.xp} XP · 🔥 ${state.streak.days} day${state.streak.days === 1 ? "" : "s"}</span></div>`;
   el.querySelector("#yfuri").value = s.furigana;
-  el.querySelector("#yvoice").value = s.voice || "kokoro";
-  el.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { s.script = b.dataset.s; save(); settingsBar(el, onChange); onChange?.(); }));
+  if (showVoice) {
+    el.querySelector("#yvoice").value = s.voice || "kokoro";
+    el.querySelector("#yvoice").onchange = (e) => { s.voice = e.target.value; save(); onChange?.(); };
+  }
+  el.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { s.script = b.dataset.s; save(); settingsBar(el, onChange, opts); onChange?.(); }));
   el.querySelector("#yfuri").onchange = (e) => { s.furigana = e.target.value; save(); onChange?.(); };
   el.querySelector("#ytr").onchange = (e) => { s.translation = e.target.checked; save(); onChange?.(); };
   el.querySelector("#yslow").onchange = (e) => { s.slow = e.target.checked; s.rate = e.target.checked ? 0.7 : 1.0; save(); onChange?.(); };
-  el.querySelector("#yvoice").onchange = (e) => { s.voice = e.target.value; save(); onChange?.(); };
   addEventListener("yomu:xp", () => { const x = el.querySelector(".yxp"); if (x) x.textContent = `★ ${state.xp} XP · 🔥 ${state.streak.days} day${state.streak.days === 1 ? "" : "s"}`; });
 }
 

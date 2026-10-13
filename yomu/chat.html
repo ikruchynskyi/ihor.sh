@@ -59,7 +59,7 @@ const TOPICS = {
 };
 $("levels").innerHTML = LEVELS.map((l) => `<a class="btn${l === level ? "" : " alt"}" href="?level=${l}" ${l === level ? 'aria-current="page"' : ""}>${l}</a>`).join("");
 $("topics").innerHTML = TOPICS[level].map((t) => `<button type="button" data-topic="${esc(t)}">${esc(t)}</button>`).join("");
-settingsBar($("settings"), () => renderLog());
+settingsBar($("settings"), () => renderLog(), { voice: false });
 if (canListen()) $("mic").hidden = false;
 
 // The conversation, kept per level in this browser (sessionStorage: a fresh start next visit).
