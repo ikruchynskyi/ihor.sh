@@ -20,7 +20,7 @@ import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
-const MAX_STEPS = 6;
+const MAX_STEPS = 6, DEEP_STEPS = 16;
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 
@@ -389,23 +389,25 @@ function pageTools(page: any) {
       parameters: { type: "object", properties: Object.fromEntries(Object.entries(a.parameters ?? {}).slice(0, 8).map(([k, v]: [string, any]) => [k, { type: ["string", "number", "boolean"].includes(v?.type) ? v.type : "string", description: String(v?.description ?? "").slice(0, 200) }])), required: [] } } }));
 }
 
-/** One model call: Ollama Cloud's model first, the local model if the cloud fails, times out or has no key. */
-async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = []) {
+/** One model call: Ollama Cloud's model first, the local model if the cloud fails, times out or has no key.
+ *  deep (the chat's "think hard" box): high reasoning effort, room for it in the token budget, and longer timeouts. */
+async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [], deep = false) {
   const tools = withTools ? { tools: [...toolSpecs, ...extraTools] } : {};
+  const budget = { options: { num_predict: deep ? 8000 : 1500 } };
   const key = process.env.OLLAMA_CLOUD_KEY;
   if (key) {
     try {
       const r = await fetch("https://ollama.com/api/chat", {
-        method: "POST", signal: AbortSignal.timeout(45_000), headers: { Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: CLOUD_MODEL, stream: false, options: { num_predict: 1500 }, messages, ...tools }),
+        method: "POST", signal: AbortSignal.timeout(deep ? 180_000 : 45_000), headers: { Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: CLOUD_MODEL, stream: false, ...(deep ? { think: "high" } : {}), ...budget, messages, ...tools }),
       });
       if (r.ok) return (await r.json()).message as Msg;
       console.warn(`blip: cloud ${r.status}, using the local model`);
     } catch (e) { console.warn(`blip: cloud failed (${(e as Error).message}), using the local model`); }
   }
   const r = await fetch(`${OLLAMA}/api/chat`, {
-    method: "POST", signal: AbortSignal.timeout(120_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: localThink(false), options: { num_predict: 1500 }, messages, ...tools }),
+    method: "POST", signal: AbortSignal.timeout(deep ? 300_000 : 120_000),
+    body: JSON.stringify({ model: MODEL, stream: false, think: deep ? (MODEL.startsWith("gpt-oss") ? "high" : true) : localThink(false), ...budget, messages, ...tools }),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   return (await r.json()).message as Msg;
@@ -427,31 +429,37 @@ export async function ask(body: any, system: string, onStep?: (s: Step) => void)
   last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}">\n${str(page.text, 6000)}\n</page>\n`
     + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + (visited ? `<visitor_has_explored>${visited}</visitor_has_explored>\n` : "") + `\n${last.content}`;
 
+  const deep = body?.deep === true, maxSteps = deep ? DEEP_STEPS : MAX_STEPS;
+  if (deep) system += `\n\nThe visitor turned on "think hard": this may be a hard or many-part task. Split it into parts, call every tool each part needs (several in one turn when they don't depend on each other), check the results against the question and fill gaps with more calls, then answer every part. You have up to ${DEEP_STEPS} rounds of tool calls.`;
   const messages: Msg[] = [{ role: "system", content: system }, ...history];
   const used: string[] = [], extra = pageTools(page), pageNames = new Set(extra.map((t: any) => t.function.name));
   const actions: { name: string; args: unknown }[] = [];
   // With body.trace, every step comes back too (the AI world's agents chapter replays them).
   const trace: { step: number; tool: string; args: unknown; result: string; data: string }[] | undefined = body?.trace ? [] : undefined;
-  const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps: MAX_STEPS } : {}) });
-  for (let step = 0; step < MAX_STEPS; step++) {
+  const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps } : {}) });
+  for (let step = 0; step < maxSteps; step++) {
     onStep?.({ kind: "think", n: step });
-    const msg = await chat(messages, true, extra);
+    const msg = await chat(messages, true, extra, deep);
     if (!msg.tool_calls?.length) return done(msg.content ?? "");
     messages.push({ role: "assistant", content: msg.content ?? "", tool_calls: msg.tool_calls });
-    for (const call of msg.tool_calls) {
+    // Several calls in one turn run at the same time; their results go back in the order they were asked for.
+    const outs = await Promise.all(msg.tool_calls.map(async (call: any) => {
       const name = call.function?.name, tool = TOOLS[name];
-      if (!pageNames.has(name)) used.push(name);
       onStep?.({ kind: "tool", tool: name, args: call.function.arguments ?? {}, n: step });
-      let out: unknown;
-      if (pageNames.has(name)) { actions.push({ name, args: call.function.arguments ?? {} }); messages.push({ role: "tool", tool_name: name, content: JSON.stringify({ ok: true, note: "done on the visitor's page" }) }); continue; }
-      try { out = tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
-      catch (e) { out = { error: (e as Error).message }; }
+      if (pageNames.has(name)) return { ok: true, note: "done on the visitor's page" };
+      try { return tool ? await tool.run(call.function.arguments ?? {}) : { error: `unknown tool ${name}` }; }
+      catch (e) { return { error: (e as Error).message }; }
+    }));
+    for (const [i, call] of msg.tool_calls.entries()) {
+      const name = call.function?.name, out = outs[i];
+      if (pageNames.has(name)) { actions.push({ name, args: call.function.arguments ?? {} }); messages.push({ role: "tool", tool_name: name, content: JSON.stringify(out) }); continue; }
+      used.push(name);
       messages.push({ role: "tool", tool_name: name, content: JSON.stringify(out).slice(0, 8000) });
       trace?.push({ step: step + 1, tool: name, args: call.function.arguments ?? {}, result: JSON.stringify(out).slice(0, 400), data: JSON.stringify(out).slice(0, 8000) }); // data: what the faithfulness check reads
     }
   }
-  onStep?.({ kind: "think", n: MAX_STEPS });
-  const final = await chat(messages, false); // out of steps: answer with what we have
+  onStep?.({ kind: "think", n: maxSteps });
+  const final = await chat(messages, false, [], deep); // out of steps: answer with what we have
   return done(final.content ?? "");
 }
 

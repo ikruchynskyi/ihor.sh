@@ -145,6 +145,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #4de1ff; outline-
 .panel footer { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; padding: 4px 14px 12px; font: calc(8px * var(--px, 1)) var(--pixel, "Press Start 2P", monospace); color: var(--muted, #7f8bc4); }
 .panel footer a, .panel footer button { color: var(--muted, #7f8bc4); background: none; box-shadow: none; padding: 4px 0; text-decoration: none; font: inherit; }
 .panel footer a:hover, .panel footer button:hover { color: var(--accent, #ffb347); }
+.panel footer .deep { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; } .panel footer .deep:has(:checked) { color: var(--accent, #ffb347); }
 .tab { position: fixed; right: 12px; bottom: 0; pointer-events: auto; }
 /* touch devices have no B key: a round 💬 by Blip opens the chat (long-pressing Blip does too) */
 .ask { display: none; position: fixed; right: 14px; bottom: calc(100px + var(--blip-floor, 0px)); width: 46px; height: 46px; padding: 0; border-radius: 50%; font-size: 22px; line-height: 46px; text-align: center; pointer-events: auto; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
@@ -201,7 +202,7 @@ root.innerHTML = `<style>${CSS}</style>
     <div class="log" aria-live="polite"></div>
     <div class="wardrobe" hidden></div>
     <form><span class="caret" aria-hidden="true">▶</span><input aria-label="Your question" autocomplete="off" maxlength="500" placeholder="Ask me anything about this page…"><button>SEND</button></form>
-    <footer><span>B OPEN · ESC CLOSE</span><a href="/">⌂ HOME</a><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
+    <footer><span>B OPEN · ESC CLOSE</span><a href="/">⌂ HOME</a><label class="deep" title="Slower: Blip reasons harder and may call many tools, for hard or many-part questions"><input type="checkbox"> 🧠 THINK HARD</label><button type="button" class="new">NEW CHAT</button><button type="button" class="wear">👕 WARDROBE</button><button type="button" class="hide">HIDE BLIP</button></footer>
   </section>
 </div>`;
 const $ = (s) => root.querySelector(s);
@@ -679,6 +680,11 @@ function closeDialog() {
 $(".x").onclick = closeDialog;
 $(".scrim").onclick = closeDialog;
 $(".hide").onclick = hide;
+// "Think hard": high reasoning and many tool rounds on the server, for hard or many-part questions. Remembered per browser.
+const deepBox = $(".deep input");
+deepBox.checked = !!local.get("blip:deep");
+deepBox.onchange = () => { local.set("blip:deep", deepBox.checked ? "1" : ""); input.maxLength = deepBox.checked ? 2000 : 500; };
+input.maxLength = deepBox.checked ? 2000 : 500;
 $(".new").onclick = () => { history = []; save(); renderLog(); input.focus(); };
 $(".wear").onclick = () => { const w = $(".wardrobe"); w.hidden = !w.hidden; if (!w.hidden && wardrobe) wardrobe.panel(w); };
 // Keys typed into Blip stay in Blip: pages with keyboard shortcuts (Space, R, 1–4…) never see them.
@@ -737,7 +743,8 @@ const pageInfo = () => ({
 
 let pending = false;
 async function send(q) {
-  q = q.trim().slice(0, 500);
+  const deep = deepBox.checked;
+  q = q.trim().slice(0, deep ? 2000 : 500);
   if (!q || pending) return;
   pending = true; input.value = "";
   history.push({ role: "user", content: q }); save(); renderLog();
@@ -747,10 +754,10 @@ async function send(q) {
   setMood("think"); const pinging = setInterval(ping, 700);
   // What Blip is doing, live: the server streams a line per step (thinking, each tool) before the answer.
   const t0 = performance.now();
-  let doing = "thinking";
-  const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 ? " · the model is slow right now, hang on" : ""}`; }, 500);
+  let doing = deep ? "thinking hard" : "thinking";
+  const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ? " · the model is slow right now, hang on" : ""}`; }, 500);
   try {
-    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history, page: pageInfo(), stream: true }) })
+    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history, page: pageInfo(), stream: true, deep }) })
       .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
     let data = {};
     if (!r.ok || !/x-ndjson/.test(r.headers.get("content-type") ?? "")) data = await r.json().catch(() => ({}));
@@ -765,7 +772,7 @@ async function send(q) {
           const row = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
           if (!row) continue;
           const j = JSON.parse(row);
-          if (j.step) { doing = j.step.kind === "tool" ? (TOOL_DOING[j.step.tool] ?? allActions()[j.step.tool]?.label ?? j.step.tool.replace(/_/g, " ")) : j.step.n ? "putting it together" : "thinking"; hop(3); }
+          if (j.step) { doing = j.step.kind === "tool" ? (TOOL_DOING[j.step.tool] ?? allActions()[j.step.tool]?.label ?? j.step.tool.replace(/_/g, " ")) : j.step.n ? (deep ? `thinking hard · round ${j.step.n + 1}` : "putting it together") : doing; hop(3); }
           else data = j;
         }
         if (done) break;
