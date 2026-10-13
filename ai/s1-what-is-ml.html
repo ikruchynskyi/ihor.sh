@@ -23,7 +23,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Start 1 · Stage 0: start here</p>
   <h1>What machine learning is</h1>
   <p class="lede">You don't need any math or code for this lesson. By the end you'll have trained a model twice, once with your own hands and once by letting the computer do it, and you'll know what an ML engineer actually does all day. Everything else on this path builds on the one idea here: a model is a function with knobs, and learning means turning the knobs until the model agrees with the examples.</p>
@@ -93,10 +93,13 @@
   <h2>6. How these pages work</h2>
   <p>Boxes marked <b>Your turn</b> ask you to predict before you're told: guessing first, even wrong, is how it sticks. Sliders and dots in pictures can be dragged. And code boxes run right in the page. Try this one: press <b>Run</b>, then change a number and run it again.</p>
   <div class="code" data-title="Run it: your first model in code"><textarea>
-const a = 2.6, b = 6;              // the knobs
-const predict = (km) => a * km + b; // the model
-print("a 4 km ride takes about", predict(4), "minutes");
-print("a 10 km ride takes about", predict(10), "minutes");
+a, b = 2.6, 6                 # the knobs
+
+def predict(km):              # the model
+    return a * km + b
+
+print("a 4 km ride takes about", predict(4), "minutes")
+print("a 10 km ride takes about", predict(10), "minutes")
 </textarea></div>
   <p>Don't worry if the code looks foreign: the next lesson teaches exactly enough to read and change everything on this path. And Blip, the companion in the corner, can answer questions about whatever page you're on.</p>
 

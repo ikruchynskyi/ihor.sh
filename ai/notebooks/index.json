@@ -1,8 +1,23 @@
 {
+ "s1-what-is-ml.html": {
+  "notebook": "s1-what-is-ml.ipynb",
+  "title": "AI from scratch: your first models",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/s1-what-is-ml.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-your-first-models"
+ },
  "s2-just-enough-code.html": {
   "notebook": "s2-just-enough-code.ipynb",
   "title": "AI from scratch: just enough Python",
   "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/s2-just-enough-code.ipynb",
+  "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-just-enough-python"
+ },
+ "s3-math-warm-up.html": {
+  "notebook": "s3-math-warm-up.ipynb",
+  "title": "AI from scratch: math warm-up in NumPy",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/s3-math-warm-up.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-math-warm-up-in-numpy"
  }
 }

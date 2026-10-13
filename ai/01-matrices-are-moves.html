@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow">AI from scratch · Chapter 1</p>
   <h1>Matrices are moves</h1>
   <p class="lede">Every neural network, from a digit recognizer to the model behind a chatbot, is mostly one operation repeated billions of times: multiply by a matrix. So before any "AI", let's get a feel for what a matrix <em>does</em>. Not as a grid of numbers, but as a way of moving space. Drag everything.</p>
@@ -39,15 +39,17 @@
     <div class="why">\(\sqrt{3^2 + 4^2} = \sqrt{9 + 16} = \sqrt{25} = 5\). The arrow is the long side of a right triangle with sides 3 and 4.</div>
   </div>
   <div class="code" data-title="Build it: vectors are just arrays"><textarea>
-// A vector is a plain array of numbers. Length = square root of the sum of squares.
-const length = (v) => Math.sqrt(v.reduce((sum, x) => sum + x * x, 0));
+import numpy as np
 
-print("length of [3, 4] =", length([3, 4]));
+# A vector is an array of numbers. Its length: the square root of the sum of squares.
+v = np.array([3, 4])
+print("length of [3, 4] by hand:", np.sqrt(np.sum(v ** 2)))
+print("the same with NumPy:     ", np.linalg.norm(v))
 
-// The same function works in any number of dimensions.
-// A 28×28 grayscale image is a vector of 784 numbers between 0 and 1:
-const image = Array.from({ length: 28 * 28 }, () => Math.random());
-print("an image has", image.length, "numbers; its length is", length(image));
+# The same works in any number of dimensions.
+# A 28×28 grayscale image is a vector of 784 numbers between 0 and 1:
+image = np.random.rand(28 * 28)
+print("an image has", image.size, "numbers; its length is", np.linalg.norm(image))
 </textarea></div>
 
   <h2>2. Adding is walking one arrow, then the other</h2>
@@ -71,19 +73,17 @@ print("an image has", image.length, "numbers; its length is", length(image));
     <div class="why">\(\cos 90^\circ = 0\), so \(\lVert a \rVert \lVert b \rVert \cos\theta = 0\). Perpendicular arrows share nothing: walking along one makes no progress along the other.</div>
   </div>
   <div class="code" data-title="Build it: add, scale, dot"><textarea>
-const add = (a, b) => a.map((x, i) => x + b[i]);
-const scale = (c, a) => a.map((x) => c * x);
-const dot = (a, b) => a.reduce((sum, x, i) => sum + x * b[i], 0);
-const length = (v) => Math.sqrt(dot(v, v));        // a vector dotted with itself is its length squared
+import numpy as np
 
-const a = [3, 1], b = [1, 2.5];
-print("a + b =", add(a, b));
-print("2a =", scale(2, a));
-print("a · b =", dot(a, b));
+a, b = np.array([3, 1]), np.array([1, 2.5])
+print("a + b =", a + b)               # adds coordinate by coordinate
+print("2a =", 2 * a)                  # scales every coordinate
+print("a · b =", a @ b)               # the dot product: multiply matching coordinates, add (also np.dot(a, b))
+print("a · a =", a @ a, "= length² =", np.linalg.norm(a) ** 2)
 
-// The angle between them, from a·b = |a||b|cos θ
-const angle = Math.acos(dot(a, b) / (length(a) * length(b))) * 180 / Math.PI;
-print("angle between a and b:", angle.toFixed(1), "degrees");
+# The angle between them, from a·b = |a||b|cos θ
+cos = (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
+print("angle between a and b:", np.degrees(np.arccos(cos)).round(1), "degrees")
 </textarea></div>
 
   <h2>3. A matrix moves the whole plane</h2>
@@ -108,22 +108,20 @@ print("angle between a and b:", angle.toFixed(1), "degrees");
     <div class="why">\(2 \cdot 0.5 - 1 \cdot 1 = 0\). The second column (1, 0.5) is half the first (2, 1), so both basis arrows land on the same line: the plane is squashed flat and the move can't be undone.</div>
   </div>
   <div class="code" data-title="Build it: matrix times vector, matrix times matrix"><textarea>
-// A matrix as an array of rows. Each output = dot product of a row with v.
-const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
-const matVec = (M, v) => M.map((row) => dot(row, v));
-const column = (M, j) => M.map((row) => row[j]);
-// (B·A): apply B to each column of A, then put the columns back together as rows
-const matMul = (B, A) => B.map((row) => A[0].map((_, j) => dot(row, column(A, j))));
-const det = ([[a, b], [c, d]]) => a * d - b * c;
+import numpy as np
 
-const rotate = [[0, -1], [1, 0]];   // columns: î → (0, 1), ĵ → (−1, 0)
-const shear = [[1, 1], [0, 1]];
+rotate = np.array([[0, -1],
+                   [1,  0]])     # columns: where î and ĵ land, î → (0, 1), ĵ → (−1, 0)
+shear  = np.array([[1, 1],
+                   [0, 1]])
+v = np.array([2, 1])
 
-print("rotate (2, 1):", matVec(rotate, [2, 1]));
-print("rotate twice:", matMul(rotate, rotate), "(a half turn)");
-print("shear then rotate:", matMul(rotate, shear));
-print("rotate then shear:", matMul(shear, rotate), "(different! order matters)");
-print("det(shear) =", det(shear), " det(rotate) =", det(rotate));
+print("rotate (2, 1):", rotate @ v)                  # @ is matrix multiplication
+print("by rows, each output is a dot product:", [row @ v for row in rotate])
+print("rotate twice (a half turn):\n", rotate @ rotate)
+print("shear then rotate:\n", rotate @ shear)
+print("rotate then shear (different! order matters):\n", shear @ rotate)
+print("det(shear) =", np.linalg.det(shear).round(6), " det(rotate) =", np.linalg.det(rotate).round(6))
 </textarea></div>
 
   <h2>4. A neural network layer: a move, then a bend</h2>
@@ -147,20 +145,32 @@ print("det(shear) =", det(shear), " det(rotate) =", det(rotate));
     <div class="why">\(784 \times 128\) weights, one per input-output pair, plus 128 biases: \(100{,}352 + 128 = 100{,}480\).</div>
   </div>
   <div class="code" data-title="Build it: a two-layer network's forward pass"><textarea>
-const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
-const relu = (v) => v.map((z) => Math.max(0, z));
-const layer = (W, b, x) => W.map((row, i) => dot(row, x) + b[i]);    // W·x + b
+import numpy as np
 
-// 2 inputs → 3 hidden numbers → 1 output. These weights are made up; chapter 2 shows how to learn them.
-const W1 = [[1, -1], [0.5, 1], [-1, 0.5]], b1 = [0, -0.5, 0.2];
-const W2 = [[1, -2, 0.5]], b2 = [0.1];
-const net = (x) => layer(W2, b2, relu(layer(W1, b1, x)));
+def relu(z):
+    return np.maximum(0, z)          # negative numbers become 0
 
-for (const x of [[0, 0], [1, 0], [0, 1], [1, 1]]) print(x, "→", net(x));
+def layer(W, b, x):
+    return W @ x + b                 # a move: W·x + b
 
-// Count the parameters of a 784 → 128 → 10 digit reader
-const params = (sizes) => sizes.slice(1).reduce((n, m, i) => n + m * sizes[i] + m, 0);
-print("784 → 128 → 10 has", params([784, 128, 10]), "parameters");
+# 2 inputs → 3 hidden numbers → 1 output. These weights are made up; chapter 2 shows how to learn them.
+W1 = np.array([[1, -1], [0.5, 1], [-1, 0.5]]); b1 = np.array([0, -0.5, 0.2])
+W2 = np.array([[1, -2, 0.5]]);                 b2 = np.array([0.1])
+
+def net(x):
+    return layer(W2, b2, relu(layer(W1, b1, x)))
+
+for x in [[0, 0], [1, 0], [0, 1], [1, 1]]:
+    print(x, "→", net(np.array(x)))
+
+# All four inputs at once: put them in the columns of a matrix. Same code, one matrix product per layer.
+X = np.array([[0, 1, 0, 1],
+              [0, 0, 1, 1]])
+print("as one batch:", W2 @ relu(W1 @ X + b1[:, None]) + b2[:, None])
+
+# Count the parameters of a 784 → 128 → 10 digit reader
+sizes = [784, 128, 10]
+print("784 → 128 → 10 has", sum(m * n + m for n, m in zip(sizes, sizes[1:])), "parameters")
 </textarea></div>
 
   <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, which goes much deeper. All lessons: <a href="./">AI from scratch</a>.</p>

@@ -23,7 +23,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Start 3 · Stage 0: start here</p>
   <h1>Math warm-up</h1>
   <p class="lede">Machine learning papers look scary mostly because of their notation. Underneath, the first few stages use school math: functions, powers, logarithms and adding things up. This lesson goes over exactly those, each with a picture you drag and a box you run, and ends with you reading real ML formulas out loud like sentences. If something here already feels easy, skim it and do the questions.</p>
@@ -71,7 +71,7 @@
     <p>A config file says <code>lr = 3e-4</code>. Write that learning rate as a plain decimal.</p>
     <div class="why">\(3 \times 10^{-4} = 3 \times 0.0001 = 0.0003\). 3e-4 is a famously common learning rate for the Adam optimizer (stage 4).</div>
   </div>
-  <p>The number \(e \approx 2.718\) is special because \(e^x\) grows at a rate equal to its own value (Calculus 1 shows why that makes it the easy one). You'll mostly see it in \(e^x\), written <code>Math.exp(x)</code> in code.</p>
+  <p>The number \(e \approx 2.718\) is special because \(e^x\) grows at a rate equal to its own value (Calculus 1 shows why that makes it the easy one). You'll mostly see it in \(e^x\), written <code>np.exp(x)</code> in code.</p>
 
   <h2>3. Logarithms: counting the multiplications</h2>
   <p>A <b>logarithm</b> answers "what power?". \(\log_2 8 = 3\) because \(2^3 = 8\): it counts how many 2s you multiply to get 8. \(\log_{10} 1000 = 3\) counts the zeros. And the <b>natural log</b> \(\ln x\) is the power of \(e\): \(\ln x = t\) means \(e^t = x\). So \(\ln\) undoes \(e^x\), and the two graphs are mirror images across the dashed line \(y = x\). Drag \(t\):</p>
@@ -80,16 +80,22 @@
   <p class="readout" id="r2"></p>
   <p>The one rule that matters most in ML: <b>a log turns multiplying into adding</b>, \(\ln(ab) = \ln a + \ln b\). (It follows from the first power rule: multiplying powers of \(e\) adds the exponents.) A model's probability of a whole dataset is the product of its probabilities for each example: thousands of numbers below 1 multiplied together. That underflows to exactly 0 on a computer, so models work with the <b>sum of the logs</b> instead. Run it:</p>
   <div class="code" data-title="Run it: why models use log-probabilities"><textarea>
-// a model gives each of 2000 examples a probability of 0.6
-let product = 1, logSum = 0;
-for (let i = 0; i < 2000; i++) {
-  product = product * 0.6;
-  logSum = logSum + Math.log(0.6);   // Math.log is ln
-}
-print("product of the probabilities:", product);   // too small for the computer: 0
-print("sum of their logs:", logSum);              // a perfectly ordinary number
-print("ln(2 * 3) =", Math.log(2 * 3), " ln 2 + ln 3 =", Math.log(2) + Math.log(3));
-print("log base 2 of 1024:", Math.log2(1024));
+import math
+import numpy as np
+
+# a model gives each of 2000 examples a probability of 0.3
+product, log_sum = 1.0, 0.0
+for i in range(2000):
+    product = product * 0.3
+    log_sum = log_sum + math.log(0.3)   # math.log is ln
+print("product of the probabilities:", product)   # too small for the computer: 0.0
+print("sum of their logs:", log_sum)              # a perfectly ordinary number
+
+# the same with NumPy, no loop: an array of 2000 probabilities
+p = np.full(2000, 0.3)
+print("NumPy:", np.prod(p), "vs", np.sum(np.log(p)))
+print("ln(2·3) =", math.log(2 * 3), "  ln 2 + ln 3 =", math.log(2) + math.log(3))
+print("log base 2 of 1024:", math.log2(1024))
 </textarea></div>
   <div class="q" data-num="10">
     <p>What is \(\log_2 1024\)? (How many times do you double 1 to reach 1024?)</p>
@@ -170,19 +176,24 @@ print("log base 2 of 1024:", Math.log2(1024));
   </div>
   <p>Here are all three formulas as code. Notice how directly each line matches its formula:</p>
   <div class="code" data-title="Run it: formulas into code"><textarea>
-const sigma = (z) => 1 / (1 + Math.exp(-z));       // σ(z) = 1 / (1 + e^(−z))
-const w = 2, b = -1;
-const yHat = (x) => sigma(w * x + b);              // ŷ = σ(w x + b)
-print("ŷ for x = 0:", yHat(0), " for x = 2:", yHat(2));
+import numpy as np
 
-const ys = [1, 0, 1, 1], xs = [2, -1, 0.5, 3];
-let sum = 0;
-for (let i = 0; i < xs.length; i++) sum += (yHat(xs[i]) - ys[i]) ** 2;   // Σ (ŷᵢ − yᵢ)²
-print("L =", sum / xs.length);                                           // (1/n) Σ …
+def sigma(z):                          # σ(z) = 1 / (1 + e^(−z))
+    return 1 / (1 + np.exp(-z))
 
-let theta = 3; const eta = 0.1, grad = 4;
-theta = theta - eta * grad;                        // θ ← θ − η ∇L
-print("θ after one step:", theta);
+w, b = 2, -1
+def y_hat(x):                          # ŷ = σ(w x + b)
+    return sigma(w * x + b)
+print("ŷ for x = 0:", y_hat(0), " for x = 2:", y_hat(2))
+
+xs = np.array([2, -1, 0.5, 3])
+ys = np.array([1, 0, 1, 1])
+L = np.mean((y_hat(xs) - ys) ** 2)     # (1/n) Σ (ŷᵢ − yᵢ)²: the whole sum in one line
+print("L =", L)
+
+theta, eta, grad = 3, 0.1, 4
+theta = theta - eta * grad             # θ ← θ − η ∇L
+print("θ after one step:", theta)
 </textarea></div>
   <p>One small trap: math counts examples from 1 (\(x_1\) to \(x_n\)), code counts from 0 (<code>xs[0]</code> to <code>xs[n - 1]</code>). Same examples, shifted labels.</p>
 

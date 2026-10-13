@@ -9,7 +9,8 @@ notebook with the kaggle CLI (needs KAGGLE_API_TOKEN).
 
     python ai/notebooks/build.py                 # build every notebook
     python ai/notebooks/build.py --solutions DIR  # write runnable copies with answers into DIR (for testing)
-    python ai/notebooks/build.py --kaggle         # build, then publish every notebook to Kaggle
+    python ai/notebooks/build.py --kaggle [names]  # build, then publish to Kaggle (all, or those whose name matches)
+A source containing "# kaggle: gpu" is published with Kaggle's GPU turned on.
 """
 import json, re, subprocess, sys, tempfile
 from pathlib import Path
@@ -56,12 +57,12 @@ def build(path: Path, dest: Path, solutions: bool):
     dest.write_text(json.dumps(nb, indent=1, ensure_ascii=False) + "\n")
 
 
-def publish(nb: Path, title: str):
+def publish(nb: Path, title: str, gpu: bool):
     with tempfile.TemporaryDirectory() as d:
         (Path(d) / nb.name).write_bytes(nb.read_bytes())
         (Path(d) / "kernel-metadata.json").write_text(json.dumps({
             "id": f"{KAGGLE_USER}/{slug(title)}", "title": title, "code_file": nb.name, "language": "python",
-            "kernel_type": "notebook", "is_private": "false", "enable_gpu": "false", "enable_internet": "true",
+            "kernel_type": "notebook", "is_private": "false", "enable_gpu": "true" if gpu else "false", "enable_internet": "true",
             "dataset_sources": [], "competition_sources": [], "kernel_sources": [], "model_sources": []}))
         r = subprocess.run(["kaggle", "kernels", "push", "-p", d], capture_output=True, text=True)
         print(nb.name, "→", (r.stdout + r.stderr).strip().splitlines()[-1] if (r.stdout + r.stderr).strip() else r.returncode)
@@ -75,10 +76,13 @@ if __name__ == "__main__":
         build(src, dest_dir / f"{src.stem}.ipynb", solutions)
         title = title_of(src.read_text())
         index[f"{src.stem}.html"] = {"notebook": f"{src.stem}.ipynb", "title": title, "colab": f"{COLAB}{src.stem}.ipynb",
+                                     "gpu": "# kaggle: gpu" in src.read_text(),
                                      "kaggle": f"https://www.kaggle.com/code/{KAGGLE_USER}/{slug(title)}"}
         print(("solutions → " if solutions else "") + str(dest_dir / f"{src.stem}.ipynb"))
     if not solutions:
         (HERE / "index.json").write_text(json.dumps(index, indent=1) + "\n")
     if "--kaggle" in sys.argv:
         for page, n in index.items():
-            publish(HERE / n["notebook"], n["title"])
+            if only := [a for a in sys.argv[2:] if not a.startswith("-")]:
+                if not any(o in page for o in only): continue
+            publish(HERE / n["notebook"], n["title"], n["gpu"])
