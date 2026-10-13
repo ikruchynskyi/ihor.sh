@@ -1,5 +1,7 @@
 // Ham radio data for the radio world: callsign lookups (FCC records via callook.info, US callsigns) and
-// repeaters (HearHam's open directory, robots.txt allows; fetched once a day, kept for the NYC region).
+// repeaters (HearHam's open directory, robots.txt allows; fetched once a day; NY/NJ/CT FM from RepeaterBook, see below).
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const json = async (url: string) => {
   const r = await fetch(url, { headers: { "user-agent": "ihor.sh radio (+https://ihor.sh/radio/repeaters/)" }, signal: AbortSignal.timeout(60_000) });
@@ -44,9 +46,23 @@ export async function repeaters() {
         operational: r.operational !== 0, restriction: r.restriction ?? "", band: band(out),
       };
     });
-    cache = { at: Date.now(), list };
+    cache = { at: Date.now(), list: withRepeaterBook(list) };
   }
   return cache.list;
+}
+
+// NY, NJ and CT FM repeaters come from the user's RepeaterBook copy (ham-import.ts → data/repeaters-rb.json) when it
+// exists: HearHam's FM entries there are dropped (they go stale, e.g. K2ETN's Alpine machine that now IDs as W2NJR),
+// its digital ones stay. A HearHam entry is in those states if its city says so, or, with no state named, if it sits
+// within 25 km of an imported repeater.
+// ponytail: the 25 km rule can catch a stateless entry just over the PA/MA/VT line; state polygons if that shows up.
+const REGION = /,\s*(New York|NY|New Jersey|NJ|Connecticut|CT)( USA)?\s*$/i;
+function withRepeaterBook(list: Repeater[]) {
+  let rb: Repeater[];
+  try { rb = JSON.parse(readFileSync(path.join(import.meta.dirname, "data", "repeaters-rb.json"), "utf8")); } catch { return list; }
+  const near = (r: Repeater) => rb.some((x) => Math.abs(x.lat - r.lat) < 0.25 && Math.abs(x.lon - r.lon) < 0.33 && Math.hypot((x.lat - r.lat) * 111, (x.lon - r.lon) * 84) < 25);
+  const inRegion = (r: Repeater) => REGION.test(r.city) || (!r.city.includes(",") && near(r));
+  return [...list.filter((r) => !(/FM/i.test(r.mode) && inRegion(r))), ...rb];
 }
 
 /** Repeaters inside a map box (worldwide), nearest to its center first, at most `limit`. */
