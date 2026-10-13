@@ -1,0 +1,2359 @@
+{
+ "id": "n3-16",
+ "level": "N3",
+ "unit": 16,
+ "title": {
+  "ja": "鎌倉の実家での昼食会",
+  "en": "Luncheon at Yuki’s Family Home (Unit 4 Review)"
+ },
+ "scene": "A traditional Japanese house with an engawa veranda in Kamakura. Yuki's parents invite Sam for a formal seasonal luncheon, engaging in polite Japanese manners.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "鎌倉",
+     "かまくら",
+     "Kamakura"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "実家",
+     "じっか",
+     "parents' house"
+    ],
+    [
+     "だよ",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, this is my family home in Kamakura!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "立派",
+     "りっぱ",
+     "splendid"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "日本家屋",
+     "にほんかおく",
+     "Japanese house"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "庭",
+     "にわ",
+     "garden"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "松",
+     "まつ",
+     "pine tree"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "木",
+     "き",
+     "tree"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "綺麗",
+     "きれい",
+     "beautiful"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What a splendid traditional Japanese home! The pine tree in the garden is gorgeous."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "いらっしゃい",
+     null,
+     "welcome"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "よく",
+     null,
+     "well"
+    ],
+    [
+     "お越しくださいました",
+     "おこしくださいました",
+     "came (honorific)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "お上がり",
+     "おあがり",
+     "step inside (honorific)"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome! Thank you so much for coming! Sam, please step inside."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "お邪魔",
+     "おじゃま",
+     "intrusion"
+    ],
+    [
+     "させていただきます",
+     null,
+     "permit me to do (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お招き",
+     "おまねき",
+     "invitation"
+    ],
+    [
+     "いただき",
+     null,
+     "receive (humble)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Pardon my intrusion! Thank you very much for inviting me!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "くん",
+     null,
+     "suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "話",
+     "はなし",
+     "talks"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "よく",
+     null,
+     "often"
+    ],
+    [
+     "伺って",
+     "うかがって",
+     "heard (humble)"
+    ],
+    [
+     "おります",
+     null,
+     "am doing (humble)"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, I have heard so much about you from Yuki."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心ばかり",
+     "こころばかり",
+     "token of heart"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お土産",
+     "おみやげ",
+     "gift"
+    ],
+    [
+     "で",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "お召し上がり",
+     "おめしあがり",
+     "eat (honorific)"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Here is a small token gift. Please enjoy it."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "まあ",
+     null,
+     "my goodness"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ご丁寧に",
+     "ごていねいに",
+     "so politely"
+    ],
+    [
+     "恐れ入ります",
+     "おそれいります",
+     "humbled/grateful"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "お菓子",
+     "おかし",
+     "sweets"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My goodness, thank you so much for being so thoughtful! What lovely sweets."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ご挨拶",
+     "ごあいさつ",
+     "greetings"
+    ],
+    [
+     "申し上げます",
+     "もうしあげます",
+     "state (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Blip also offers formal greetings!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "ははは",
+     null,
+     "hahaha"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "愉快な",
+     "ゆかいな",
+     "delightful"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "さあ",
+     null,
+     "come now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "昼食",
+     "ちゅうしょく",
+     "lunch"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "支度",
+     "したく",
+     "preparation"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "できました",
+     null,
+     "is ready"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha, what a delightful robot! Come now, lunch preparations are all set."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "旬",
+     "しゅん",
+     "in season"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "食材",
+     "しょくざい",
+     "ingredients"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "使った",
+     "つかった",
+     "used"
+    ],
+    [
+     "和食",
+     "わしょく",
+     "Japanese cuisine"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "彩り",
+     "いろどり",
+     "coloring"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "鮮やか",
+     "あざやか",
+     "vivid"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, traditional Japanese dishes using seasonal ingredients! The colors are so vivid!"
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "鎌倉",
+     "かまくら",
+     "Kamakura"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "地魚",
+     "じざかな",
+     "local fish"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "地元",
+     "じもと",
+     "local"
+    ],
+    [
+     "野菜",
+     "やさい",
+     "vegetables"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "使って",
+     "つかって",
+     "using"
+    ],
+    [
+     "作りました",
+     "つくりました",
+     "made"
+    ],
+    [
+     "の",
+     null,
+     "explanatory",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I prepared this using Kamakura local fish and vegetables."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ご馳走",
+     "ごちそう",
+     "feast"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "いただきます",
+     null,
+     "will receive (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "煮物",
+     "にもの",
+     "simmered dish"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "truly"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I humbly receive this feast! ...This simmered dish is truly delicious!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "くん",
+     null,
+     "suffix",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "箸",
+     "はし",
+     "chopsticks"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "使い方",
+     "つかいかた",
+     "how to use"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "お上手",
+     "おじょうず",
+     "skillful (polite)"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, your use of chopsticks is very skillful too."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "教えてくれた",
+     "おしえてくれた",
+     "taught me"
+    ],
+    [
+     "おかげで",
+     null,
+     "thanks to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "上手に",
+     "じょうずに",
+     "skillfully"
+    ],
+    [
+     "持てる",
+     "もてる",
+     "can hold"
+    ],
+    [
+     "ように",
+     null,
+     "manner"
+    ],
+    [
+     "なりました",
+     null,
+     "became"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thanks to Yuki teaching me, I became able to hold them properly."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "熱心に",
+     "ねっしんに",
+     "enthusiastically"
+    ],
+    [
+     "練習",
+     "れんしゅう",
+     "practice"
+    ],
+    [
+     "している",
+     null,
+     "is doing"
+    ],
+    [
+     "んだよ",
+     null,
+     "is, you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam practices enthusiastically every single day, you know."
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "感心",
+     "かんしん",
+     "admiration"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "生活",
+     "せいかつ",
+     "daily life"
+    ],
+    [
+     "には",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "慣れた",
+     "なれた",
+     "got used to"
+    ],
+    [
+     "かい",
+     null,
+     "question (informal)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm impressed. Have you gotten used to daily life in Japan already?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最初",
+     "さいしょ",
+     "at first"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "乗り換え",
+     "のりかえ",
+     "transfer"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "迷う",
+     "まよう",
+     "get lost"
+    ],
+    [
+     "こと",
+     null,
+     "matter"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ありました",
+     null,
+     "existed"
+    ],
+    [
+     "が",
+     null,
+     "but",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "皆さん",
+     "みなさん",
+     "everyone"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "おかげで",
+     null,
+     "thanks to"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "楽しい",
+     "たのしい",
+     "fun"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! At first I sometimes got lost during train transfers, but thanks to everyone, every day is delightful."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "お茶",
+     "おちゃ",
+     "tea"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お代わり",
+     "おかわり",
+     "refill"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "いかが",
+     null,
+     "how about"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Would you care for another cup of tea?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いただきます",
+     null,
+     "will receive"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "香り",
+     "かおり",
+     "fragrance"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "豊か",
+     "ゆたか",
+     "rich"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, yes please! The aroma is very rich."
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "庭",
+     "にわ",
+     "garden"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "縁側",
+     "えんがわ",
+     "veranda"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "季節",
+     "きせつ",
+     "season"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "花",
+     "はな",
+     "flowers"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ご覧",
+     "ごらん",
+     "look (honorific)"
+    ],
+    [
+     "になります",
+     null,
+     "become"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Would you like to view the seasonal flowers from the garden veranda?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ぜひ",
+     null,
+     "by all means"
+    ],
+    [
+     "拝見",
+     "はいけん",
+     "view (humble)"
+    ],
+    [
+     "させて",
+     null,
+     "permit"
+    ],
+    [
+     "いただきます",
+     null,
+     "receive (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I would love to view them by all means!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "縁側",
+     "えんがわ",
+     "veranda"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "風鈴",
+     "ふうりん",
+     "wind chime"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "チリンチリン",
+     null,
+     "tinkling"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "鳴って",
+     "なって",
+     "ringing"
+    ],
+    [
+     "います",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The wind chime on the veranda is tinkling in the breeze!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "涼しげな",
+     "すずしげな",
+     "refreshingly cool"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's such a lovely and refreshing sound, isn't it."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "木造",
+     "もくぞう",
+     "wooden"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "建築",
+     "けんちく",
+     "architecture"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "自然",
+     "しぜん",
+     "nature"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "調和",
+     "ちょうわ",
+     "harmony"
+    ],
+    [
+     "していて",
+     null,
+     "is doing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心",
+     "こころ",
+     "heart"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "落ち着きます",
+     "おちつきます",
+     "calms down"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wooden architecture and nature are in such harmony, it brings peace to the heart."
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "文化",
+     "ぶんか",
+     "culture"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "良さ",
+     "よさ",
+     "merit"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "深く",
+     "ふかく",
+     "deeply"
+    ],
+    [
+     "理解",
+     "りかい",
+     "understanding"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "くれて",
+     null,
+     "gave favor"
+    ],
+    [
+     "嬉しい",
+     "うれしい",
+     "glad"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'm delighted that you understand the beauty of Japanese culture so deeply."
+  },
+  {
+   "who": "お母さん",
+   "t": [
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "いつでも",
+     null,
+     "anytime"
+    ],
+    [
+     "遊び",
+     "あそび",
+     "visit"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "いらしてください",
+     null,
+     "come (honorific)"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Please come visit us again anytime."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "おもてなし",
+     null,
+     "hospitality"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "心",
+     "こころ",
+     "heart"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "感謝",
+     "かんしゃ",
+     "gratitude"
+    ],
+    [
+     "申し上げます",
+     "もうしあげます",
+     "state (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much! I express my heartfelt gratitude for your warm hospitality."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "お母さん",
+     "おかあさん",
+     "mom"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "ご飯",
+     "ごはん",
+     "meal"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Mom, thank you for the delicious meal!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "鎌倉",
+     "かまくら",
+     "Kamakura"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "歴史",
+     "れきし",
+     "history"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "記録",
+     "きろく",
+     "recording"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "complete"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Kamakura history data recording is complete!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "大仏",
+     "だいぶつ",
+     "Great Buddha"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お参り",
+     "おまいり",
+     "shrine/temple visit"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "なら",
+     null,
+     "if (nara)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "近道",
+     "ちかみち",
+     "shortcut"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "教えてあげよう",
+     "おしえてあげよう",
+     "shall teach for you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If you are going to visit the Great Buddha, let me show you a shortcut."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ぜひ",
+     null,
+     "by all means"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "いただきたい",
+     null,
+     "would like to receive"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'd love for you to show us by all means!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "江ノ電",
+     "えのでん",
+     "Enoden train"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "乗って",
+     "のって",
+     "ride"
+    ],
+    [
+     "向かおう",
+     "むかおう",
+     "let's head"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's take the Enoden train and head there!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございました",
+     null,
+     "was (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! Thank you so much for today!"
+  },
+  {
+   "who": "お父さん",
+   "t": [
+    [
+     "気をつけて",
+     "きをつけて",
+     "take care"
+    ],
+    [
+     "行ってきなさい",
+     "いってきなさい",
+     "go and come back"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Take care and have a wonderful time!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n3-review-sasete-itadaku",
+   "title": "Humble Permission: ～させていただく",
+   "explain": "Causative + いただく expresses doing an action with the other person's gracious permission (お邪魔させていただきます, 拝見させていただきます).",
+   "examples": [
+    {
+     "t": [
+      [
+       "自己紹介",
+       "じこしょうかい",
+       "self-introduction"
+      ],
+      [
+       "させて",
+       null,
+       "permit"
+      ],
+      [
+       "いただきます",
+       null,
+       "receive (humble)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Allow me to introduce myself."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "本日のスケジュールを説明＿＿＿＿＿。",
+     "hint": "Allow me to explain today's schedule.",
+     "choices": [
+      "させていただきます",
+      "されます",
+      "なさいます"
+     ],
+     "answer": 0,
+     "why": "〜させていただきます is polite humble permission."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#sasete-itadaku"
+  },
+  {
+   "id": "n3-review-okage-sei",
+   "title": "Causes & Attribution: ～おかげで & ～せいで",
+   "explain": "Noun の / Verb plain + おかげで attributes a positive outcome to someone or something ('thanks to...'). + せいで attributes blame or a negative outcome ('because of / due to...').",
+   "examples": [
+    {
+     "t": [
+      [
+       "先生",
+       "せんせい",
+       "teacher"
+      ],
+      [
+       "の",
+       null,
+       "of",
+       "p"
+      ],
+      [
+       "おかげで",
+       null,
+       "thanks to"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "合格",
+       "ごうかく",
+       "passing"
+      ],
+      [
+       "できました",
+       null,
+       "could do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Thanks to my teacher, I was able to pass."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "友達が手伝ってくれた＿＿＿、早く終わった。",
+     "hint": "Thanks to my friend helping me, it finished early.",
+     "choices": [
+      "おかげで",
+      "せいで",
+      "ために"
+     ],
+     "answer": 0,
+     "why": "おかげで expresses gratitude for positive outcome."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#okage-de"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "招",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [
+    "まね.く"
+   ],
+   "m": "beckon, invite",
+   "ex": [
+    [
+     "招待",
+     "しょうたい",
+     "invitation"
+    ],
+    [
+     "お招き",
+     "おまねき",
+     "invitation"
+    ]
+   ]
+  },
+  {
+   "k": "庭",
+   "on": [
+    "テイ"
+   ],
+   "kun": [
+    "にわ"
+   ],
+   "m": "garden, yard",
+   "ex": [
+    [
+     "庭園",
+     "ていえん",
+     "garden"
+    ]
+   ]
+  },
+  {
+   "k": "鮮",
+   "on": [
+    "セン"
+   ],
+   "kun": [
+    "あざ.やか"
+   ],
+   "m": "vivid, fresh",
+   "ex": [
+    [
+     "鮮やか",
+     "あざやか",
+     "vivid"
+    ],
+    [
+     "新鮮",
+     "しんせん",
+     "fresh"
+    ]
+   ]
+  },
+  {
+   "k": "彩",
+   "on": [
+    "サイ"
+   ],
+   "kun": [
+    "いろど.る"
+   ],
+   "m": "coloring",
+   "ex": [
+    [
+     "彩り",
+     "いろどり",
+     "coloring"
+    ]
+   ]
+  },
+  {
+   "k": "縁",
+   "on": [
+    "エン"
+   ],
+   "kun": [
+    "ふち"
+   ],
+   "m": "edge, relation",
+   "ex": [
+    [
+     "縁側",
+     "えんがわ",
+     "veranda"
+    ]
+   ]
+  },
+  {
+   "k": "拝",
+   "on": [
+    "ハイ"
+   ],
+   "kun": [
+    "おが.む"
+   ],
+   "m": "worship, see (humble)",
+   "ex": [
+    [
+     "拝見",
+     "はいけん",
+     "viewing (humble)"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  3,
+  11
+ ],
+ "questions": [
+  {
+   "q": "サムさんはなぜ箸を上手に使えるようになりましたか。",
+   "en": "Why did Sam become able to use chopsticks skillfully?",
+   "choices": [
+    "ゆきさんが教えてくれたおかげで",
+    "箸の学校に通ったから",
+    "子供のころから使っていたから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "お父さんはサムさんたちに何を教えてくれましたか。",
+   "en": "What did the father teach Sam and Yuki?",
+   "choices": [
+    "大仏への近道",
+    "料理の作り方",
+    "松の木の育て方"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a time you visited someone's home and practiced polite table etiquette in Japanese."
+}

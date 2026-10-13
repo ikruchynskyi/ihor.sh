@@ -1,0 +1,2732 @@
+{
+ "id": "n5-13",
+ "level": "N5",
+ "unit": 13,
+ "title": {
+  "ja": "はじめての日曜日",
+  "en": "A Full Sunday in New York"
+ },
+ "scene": "Greenwich Village, New York. Sam meets Yuki and Blip on a Sunday morning for coffee, a flea market walk, and radio listening in the park.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おはよう",
+     null,
+     "good morning"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good morning, Yuki!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "おはよう",
+     null,
+     "good morning"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good morning, Sam. It's a nice morning, isn't it?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おはよう",
+     null,
+     "good morning"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Good morning, Yuki!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "元気",
+     "げんき",
+     "well, energetic"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "です",
+     null,
+     "is/am/are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip is full of energy too! Today is Sunday."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "カフェ",
+     null,
+     "café"
+    ],
+    [
+     "で",
+     null,
+     "at/in",
+     "p"
+    ],
+    [
+     "朝ごはん",
+     "あさごはん",
+     "breakfast"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "食べましょう",
+     "たべましょう",
+     "let's eat"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. Let's eat breakfast at this café."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "いらっしゃいませ",
+     null,
+     "welcome"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "に",
+     null,
+     "to/for",
+     "p"
+    ],
+    [
+     "します",
+     null,
+     "will make it / choose"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome! What would you like?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "コーヒー",
+     null,
+     "coffee"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "二つ",
+     "ふたつ",
+     "two (things)"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パン",
+     null,
+     "bread"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "二つ",
+     "ふたつ",
+     "two (things)"
+    ],
+    [
+     "ください",
+     null,
+     "please give me"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Two coffees and two breads, please."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "かしこまりました",
+     null,
+     "certainly"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Certainly!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "注文",
+     "ちゅうもん",
+     "order"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "上手",
+     "じょうず",
+     "skillful"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, your Japanese ordering is very good!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まだまだ",
+     null,
+     "not yet / still a long way"
+    ],
+    [
+     "です",
+     null,
+     "is/am/are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "勉強",
+     "べんきょう",
+     "study"
+    ],
+    [
+     "します",
+     null,
+     "do (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, I still have a long way to go. But I study every day."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "きのう",
+     null,
+     "yesterday"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "しました",
+     null,
+     "did (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What did you do yesterday?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "きのう",
+     null,
+     "yesterday"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "午前",
+     "ごぜん",
+     "morning / a.m."
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "で",
+     null,
+     "in/at",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "作りました",
+     "つくりました",
+     "made (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yesterday morning, I built a radio in my room."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "手伝いました",
+     "てつだいました",
+     "helped (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "でした",
+     null,
+     "was (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip helped too! It was a new antenna."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "へえ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "午後",
+     "ごご",
+     "afternoon / p.m."
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "どこ",
+     null,
+     "where"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きました",
+     "いきました",
+     "went (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, that's amazing! Where did you go in the afternoon?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "地下鉄",
+     "ちかてつ",
+     "subway"
+    ],
+    [
+     "で",
+     null,
+     "by (means)",
+     "p"
+    ],
+    [
+     "図書館",
+     "としょかん",
+     "library"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きました",
+     "いきました",
+     "went (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I went to the library by subway with a friend."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "図書館",
+     "としょかん",
+     "library"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "三冊",
+     "さんさつ",
+     "three (bound volumes)"
+    ],
+    [
+     "借りました",
+     "かりました",
+     "borrowed (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I borrowed three books at the library."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "どんな",
+     null,
+     "what kind of"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "でした",
+     null,
+     "was (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What kind of books were they?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "歴史",
+     "れきし",
+     "history"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電子",
+     "でんし",
+     "electronic"
+    ],
+    [
+     "工作",
+     "こうさく",
+     "craft / engineering"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "book"
+    ],
+    [
+     "でした",
+     null,
+     "was (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "They were books on Japanese history and electronics tinkering."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "勉強熱心",
+     "べんきょうねっしん",
+     "studious / devoted to study"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, you are really hardworking!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "きのう",
+     null,
+     "yesterday"
+    ],
+    [
+     "何を",
+     "なにを",
+     "what (object)"
+    ],
+    [
+     "しました",
+     null,
+     "did (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What did you do yesterday, Yuki?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "美術館",
+     "びじゅつかん",
+     "art museum"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きました",
+     "いきました",
+     "went (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "きれい",
+     null,
+     "pretty/clean"
+    ],
+    [
+     "でした",
+     null,
+     "was (polite)"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I went to an art museum with a friend. It was very beautiful!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お待たせ",
+     "おまたせ",
+     "waiting"
+    ],
+    [
+     "しました",
+     null,
+     "did (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "コーヒー",
+     null,
+     "coffee"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "クロワッサン",
+     null,
+     "croissant"
+    ],
+    [
+     "です",
+     null,
+     "is/are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for waiting. Here is your coffee and croissants."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いただきます",
+     null,
+     "bon appétit (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much. Let's eat!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いただきます",
+     null,
+     "bon appétit"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ん",
+     null,
+     "mm"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "パン",
+     null,
+     "bread"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's eat! Mmm, this bread is warm, isn't it?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "パン",
+     null,
+     "bread"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "食べません",
+     "たべません",
+     "do not eat (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "ですから",
+     null,
+     "because is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip does not eat bread. Because I'm a robot!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あはは",
+     null,
+     "hahaha"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そうでした",
+     null,
+     "that was so"
+    ],
+    [
+     "ね",
+     null,
+     "wasn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ごめんなさい",
+     null,
+     "I'm sorry"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha, that's right! I'm sorry, Blip."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ごちそうさまでした",
+     null,
+     "thank you for the meal"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "公園",
+     "こうえん",
+     "park"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "散歩",
+     "さんぽ",
+     "walk"
+    ],
+    [
+     "に",
+     null,
+     "for/purpose",
+     "p"
+    ],
+    [
+     "行きましょう",
+     "いきましょう",
+     "let's go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for the meal. Let's go to the park for a walk."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行きましょう",
+     "いきましょう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "公園",
+     "こうえん",
+     "park"
+    ],
+    [
+     "で",
+     null,
+     "in/at",
+     "p"
+    ],
+    [
+     "バザー",
+     null,
+     "bazaar/flea market"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "しています",
+     null,
+     "is holding/doing"
+    ],
+    [
+     "よ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, let's go! They're holding a flea market in the park, you know."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "見て",
+     "みて",
+     "look"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あれ",
+     null,
+     "that over there"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, look please. What is that over there?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "どれ",
+     null,
+     "which one"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あの",
+     null,
+     "that over there"
+    ],
+    [
+     "テーブル",
+     null,
+     "table"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "top/on"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "物",
+     "もの",
+     "thing"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Which one? The thing on that table over there?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あの",
+     null,
+     "that over there"
+    ],
+    [
+     "黒い",
+     "くろい",
+     "black"
+    ],
+    [
+     "箱",
+     "はこ",
+     "box"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, that black box."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あれ",
+     null,
+     "that over there"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ],
+    [
+     "レコードプレーヤー",
+     null,
+     "record player"
+    ],
+    [
+     "ですよ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That is an old record player, you know!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おもしろい",
+     null,
+     "interesting"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それ",
+     null,
+     "that"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "いくら",
+     null,
+     "how much"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, that's interesting! How much is that?"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "二千",
+     "にせん",
+     "2000"
+    ],
+    [
+     "円",
+     "えん",
+     "yen"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "じゃなくて",
+     null,
+     "not, rather"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "二十",
+     "にじゅう",
+     "20"
+    ],
+    [
+     "ドル",
+     null,
+     "dollars"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "This is 2000 yen... I mean, 20 dollars."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "安い",
+     "やすい",
+     "cheap"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "my",
+     "p"
+    ],
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "狭い",
+     "せまい",
+     "cramped/small"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日は",
+     "きょうは",
+     "today (topic)"
+    ],
+    [
+     "買いません",
+     "かいません",
+     "will not buy (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's cheap! But because my room is small, I won't buy it today."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "信号",
+     "しんごう",
+     "signal"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "受信",
+     "じゅしん",
+     "reception"
+    ],
+    [
+     "しました",
+     null,
+     "did (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, the antenna received a signal!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "えっ",
+     null,
+     "huh"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wait, really!? What sound is it?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "モールス",
+     null,
+     "Morse"
+    ],
+    [
+     "信号",
+     "しんごう",
+     "code/signal"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ツーツーツー",
+     null,
+     "dah dah dah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "トトト",
+     null,
+     "dit dit dit"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's Morse code. Dah dah dah, dit dit dit!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アマチュア",
+     null,
+     "amateur"
+    ],
+    [
+     "無線",
+     "むせん",
+     "radio"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "person"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "楽しい",
+     "たのしい",
+     "fun"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, it's an amateur radio operator! Sundays in New York are fun, aren't they?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! It's a wonderful Sunday."
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n5-review-desu-masu",
+   "title": "です & ます Review: Polite Present & Past",
+   "explain": "Use です / でした for nouns and adjectives; use ます / ました for action verbs. Negative forms are じゃありません / ではありません and ません / ませんでした.",
+   "examples": [
+    {
+     "t": [
+      [
+       "きのう",
+       null,
+       "yesterday"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "日曜日",
+       "にちようび",
+       "Sunday"
+      ],
+      [
+       "でした",
+       null,
+       "was (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Yesterday was Sunday."
+    },
+    {
+     "t": [
+      [
+       "朝ごはん",
+       "あさごはん",
+       "breakfast"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "食べました",
+       "たべました",
+       "ate (polite)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I ate breakfast."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "きのう何を作りました＿。",
+     "hint": "What did you make yesterday?",
+     "choices": [
+      "か",
+      "は",
+      "の"
+     ],
+     "answer": 0,
+     "why": "か turns a polite past question into an inquiry."
+    },
+    {
+     "q": "パンを食べ＿＿＿＿。ロボットですから。",
+     "hint": "I don't eat bread. Because I'm a robot.",
+     "choices": [
+      "ません",
+      "ました",
+      "でした"
+     ],
+     "answer": 0,
+     "why": "ません is the polite present negative of 食べる."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#da-desu"
+  },
+  {
+   "id": "n5-review-kore-sore-are",
+   "title": "これ・それ・あれ vs この・その・あの",
+   "explain": "これ/それ/あれ stand on their own as nouns ('this/that/that over there'). この/その/あの must be directly followed by a noun ('this table / that box').",
+   "examples": [
+    {
+     "t": [
+      [
+       "これ",
+       null,
+       "this"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "何",
+       "なに",
+       "what"
+      ],
+      [
+       "ですか",
+       null,
+       "is it",
+       "p"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "What is this?"
+    },
+    {
+     "t": [
+      [
+       "あの",
+       null,
+       "that over there"
+      ],
+      [
+       "箱",
+       "はこ",
+       "box"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "黒い",
+       "くろい",
+       "black"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "That box over there is black."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "＿＿テーブルの上に何がありますか。",
+     "hint": "What is on that table over there?",
+     "choices": [
+      "あの",
+      "あれ",
+      "それ"
+     ],
+     "answer": 0,
+     "why": "あの directly modifies the noun テーブル."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#ko-so-a-do"
+  },
+  {
+   "id": "n5-review-particles",
+   "title": "Essential Particles: を, に, へ, で, と, も",
+   "explain": "を marks direct objects; に marks time or purpose; へ marks direction; で marks location of action or means of transit; と connects nouns or marks a companion ('with'); も means 'also'.",
+   "examples": [
+    {
+     "t": [
+      [
+       "地下鉄",
+       "ちかてつ",
+       "subway"
+      ],
+      [
+       "で",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "公園",
+       "こうえん",
+       "park"
+      ],
+      [
+       "へ",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行きました",
+       "いきました",
+       "went"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I went to the park by subway."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "友だち＿いっしょに話しました。",
+     "hint": "I talked with my friend.",
+     "choices": [
+      "と",
+      "を",
+      "へ"
+     ],
+     "answer": 0,
+     "why": "と marks the companion doing the action together."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#particles"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "日",
+   "on": [
+    "ニチ",
+    "ジツ"
+   ],
+   "kun": [
+    "ひ",
+    "か"
+   ],
+   "m": "day, sun",
+   "ex": [
+    [
+     "日曜日",
+     "にちようび",
+     "Sunday"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ]
+   ]
+  },
+  {
+   "k": "朝",
+   "on": [
+    "チョウ"
+   ],
+   "kun": [
+    "あさ"
+   ],
+   "m": "morning",
+   "ex": [
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "今朝",
+     "けさ",
+     "this morning"
+    ]
+   ]
+  },
+  {
+   "k": "食",
+   "on": [
+    "ショク"
+   ],
+   "kun": [
+    "た.べる"
+   ],
+   "m": "eat, food",
+   "ex": [
+    [
+     "食べる",
+     "たべる",
+     "to eat"
+    ],
+    [
+     "朝食",
+     "ちょうしょく",
+     "breakfast"
+    ]
+   ]
+  },
+  {
+   "k": "行",
+   "on": [
+    "コウ",
+    "ギョウ"
+   ],
+   "kun": [
+    "い.く",
+    "ゆ.く"
+   ],
+   "m": "go",
+   "ex": [
+    [
+     "行く",
+     "いく",
+     "to go"
+    ],
+    [
+     "銀行",
+     "ぎんこう",
+     "bank"
+    ]
+   ]
+  },
+  {
+   "k": "買",
+   "on": [
+    "バイ"
+   ],
+   "kun": [
+    "か.う"
+   ],
+   "m": "buy",
+   "ex": [
+    [
+     "買う",
+     "かう",
+     "to buy"
+    ],
+    [
+     "買い物",
+     "かいもの",
+     "shopping"
+    ]
+   ]
+  },
+  {
+   "k": "友",
+   "on": [
+    "ユウ"
+   ],
+   "kun": [
+    "とも"
+   ],
+   "m": "friend",
+   "ex": [
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "友人",
+     "ゆうじん",
+     "friend (formal)"
+    ]
+   ]
+  },
+  {
+   "k": "天",
+   "on": [
+    "テン"
+   ],
+   "kun": [
+    "あまつ"
+   ],
+   "m": "heaven, sky",
+   "ex": [
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "天ぷら",
+     "てんぷら",
+     "tempura"
+    ]
+   ]
+  },
+  {
+   "k": "気",
+   "on": [
+    "キ"
+   ],
+   "kun": [],
+   "m": "spirit, mood, air",
+   "ex": [
+    [
+     "元気",
+     "げんき",
+     "healthy, energetic"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  6,
+  14,
+  34
+ ],
+ "questions": [
+  {
+   "q": "サムさんはきのうの午前に何をしましたか。",
+   "en": "What did Sam do yesterday morning?",
+   "choices": [
+    "部屋でラジオを作りました",
+    "一日中寝ていました",
+    "一人で映画を見ました"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんとゆきさんは何で朝ごはんを食べましたか。",
+   "en": "Where did Sam and Yuki eat breakfast?",
+   "choices": [
+    "カフェ",
+    "サムさんの部屋",
+    "図書館"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "レコードプレーヤーはいくらでしたか。",
+   "en": "How much was the record player?",
+   "choices": [
+    "二十ドル",
+    "二千ドル",
+    "無料（ゼロ円）"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "ブリップは何を受信しましたか。",
+   "en": "What did Blip receive?",
+   "choices": [
+    "モールス信号",
+    "テレビのニュース",
+    "音楽のラジオ"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe what you did yesterday and what you like to do on Sunday mornings in Japanese."
+}

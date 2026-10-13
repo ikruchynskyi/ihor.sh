@@ -1,0 +1,2244 @@
+{
+ "id": "n2-14",
+ "level": "N2",
+ "unit": 14,
+ "title": {
+  "ja": "スマートシティ市民公聴会",
+  "en": "Civic Hearing on Urban Sensor Privacy (Unit 4–6 Review)"
+ },
+ "scene": "Yokohama City Hall auditorium. Sam, Yuki, and Kenji address residents' privacy concerns regarding environmental sensor beacons.",
+ "lines": [
+  {
+   "who": "司会",
+   "t": [
+    [
+     "本日",
+     "ほんじつ",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "横浜",
+     "よこはま",
+     "Yokohama"
+    ],
+    [
+     "スマート",
+     null,
+     "smart"
+    ],
+    [
+     "シティ",
+     null,
+     "city"
+    ],
+    [
+     "公聴会",
+     "こうちょうかい",
+     "public hearing"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お越しいただき",
+     "おこしいただき",
+     "coming (humble)"
+    ],
+    [
+     "ありがとうございます",
+     null,
+     "thank you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much for attending today's Yokohama Smart City public hearing."
+  },
+  {
+   "who": "市民代表",
+   "t": [
+    [
+     "街頭",
+     "がいとう",
+     "streets"
+    ],
+    [
+     "センサー",
+     null,
+     "sensors"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "設置",
+     "せっち",
+     "installation"
+    ],
+    [
+     "に伴って",
+     "にともなって",
+     "along with",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "個人の",
+     "こじんの",
+     "individuals'"
+    ],
+    [
+     "プライバシー",
+     null,
+     "privacy"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "侵害",
+     "しんがい",
+     "infringement"
+    ],
+    [
+     "される",
+     null,
+     "be done (passive)"
+    ],
+    [
+     "おそれがある",
+     null,
+     "there is a risk that",
+     "p"
+    ],
+    [
+     "のでは",
+     null,
+     "isn't it"
+    ],
+    [
+     "ありませんか",
+     null,
+     "is it not"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Along with installing street sensors, isn't there a risk that individual privacy could be infringed upon?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ご懸念",
+     "ごけねん",
+     "concerns"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "重々",
+     "じゅうじゅう",
+     "thoroughly"
+    ],
+    [
+     "理解",
+     "りかい",
+     "understand"
+    ],
+    [
+     "しております",
+     null,
+     "are doing (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "設計",
+     "せっけい",
+     "design"
+    ],
+    [
+     "にあたって",
+     "にあたって",
+     "prior to",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "カメラ",
+     null,
+     "cameras"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "個人",
+     "こじん",
+     "individual"
+    ],
+    [
+     "識別",
+     "しきべつ",
+     "identification"
+    ],
+    [
+     "センサー",
+     null,
+     "sensors"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "一切",
+     "いっさい",
+     "entirely"
+    ],
+    [
+     "排除",
+     "はいじょ",
+     "eliminated"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We thoroughly appreciate your concerns. Prior to designing this, we entirely eliminated all cameras and individual identification sensors."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "収集",
+     "しゅうしゅう",
+     "collection"
+    ],
+    [
+     "するのは",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "気温",
+     "きおん",
+     "temperature"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "湿度",
+     "しつど",
+     "humidity"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨量",
+     "うりょう",
+     "rainfall"
+    ],
+    [
+     "などの",
+     null,
+     "such as",
+     "p"
+    ],
+    [
+     "環境",
+     "かんきょう",
+     "environmental"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "のみ",
+     null,
+     "only"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What we collect is exclusively environmental data such as temperature, humidity, and rainfall."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ハードウェア",
+     null,
+     "hardware"
+    ],
+    [
+     "回路",
+     "かいろ",
+     "circuitry"
+    ],
+    [
+     "レベル",
+     null,
+     "level"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "画像",
+     "がぞう",
+     "image"
+    ],
+    [
+     "・",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "音声",
+     "おんせい",
+     "audio"
+    ],
+    [
+     "端子",
+     "たんし",
+     "ports"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "物理的に",
+     "ぶつりてきに",
+     "physically"
+    ],
+    [
+     "非搭載",
+     "ひとうさい",
+     "unmounted"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Video and audio ports are physically omitted at the hardware circuit level!"
+  },
+  {
+   "who": "市民代表",
+   "t": [
+    [
+     "物理的に",
+     "ぶつりてきに",
+     "physically"
+    ],
+    [
+     "搭載",
+     "とうさい",
+     "mounted"
+    ],
+    [
+     "されていない",
+     null,
+     "not done"
+    ],
+    [
+     "のですね",
+     null,
+     "is it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それなら",
+     null,
+     "in that case"
+    ],
+    [
+     "盗撮",
+     "とうさつ",
+     "secret filming"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "心配",
+     "しんぱい",
+     "worry"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ありません",
+     null,
+     "not exist"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "So they are physically non-existent on the board. In that case, there is no fear of surreptitious surveillance."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行政",
+     "ぎょうせい",
+     "government"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "一方的な",
+     "いっぽうてきな",
+     "unilateral"
+    ],
+    [
+     "決定",
+     "けってい",
+     "decision"
+    ],
+    [
+     "にとどまらず",
+     "にとどまらず",
+     "not stopping at",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "住民の",
+     "じゅうみんの",
+     "residents'"
+    ],
+    [
+     "皆様",
+     "みなさま",
+     "everyone"
+    ],
+    [
+     "との",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "対話",
+     "たいわ",
+     "dialogue"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "通じて",
+     "つうじて",
+     "through",
+     "p"
+    ],
+    [
+     "信頼",
+     "しんらい",
+     "trust"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "築きたい",
+     "きずきたい",
+     "want to build"
+    ],
+    [
+     "のです",
+     null,
+     "it is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. Not stopping at unilateral administrative decree, we want to build trust through dialogue with residents."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "メッシュ",
+     null,
+     "mesh"
+    ],
+    [
+     "ネットワーク",
+     null,
+     "network"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "導入",
+     "どうにゅう",
+     "introduction"
+    ],
+    [
+     "を契機に",
+     "をけいきに",
+     "triggered by",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "水害",
+     "すいがい",
+     "flood disaster"
+    ],
+    [
+     "時",
+     "じ",
+     "time"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "水位",
+     "すいい",
+     "water level"
+    ],
+    [
+     "警報",
+     "けいほう",
+     "alarms"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "迅速に",
+     "じんそくに",
+     "swiftly"
+    ],
+    [
+     "伝達",
+     "でんたつ",
+     "conveyed"
+    ],
+    [
+     "されつつあります",
+     "されつつあります",
+     "in process of",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Triggered by our mesh rollout, flood water level alerts during storms are in the process of being delivered swiftly."
+  },
+  {
+   "who": "市民代表",
+   "t": [
+    [
+     "昨年の",
+     "さくねんの",
+     "last year's"
+    ],
+    [
+     "大雨",
+     "おおあめ",
+     "heavy rain"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "時",
+     "とき",
+     "time"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "避難",
+     "ひなん",
+     "evacuation"
+    ],
+    [
+     "どころではない",
+     "どころではない",
+     "out of question",
+     "p"
+    ],
+    [
+     "ほど",
+     null,
+     "extent"
+    ],
+    [
+     "川が",
+     "かわが",
+     "river"
+    ],
+    [
+     "急増",
+     "きゅうぞう",
+     "surged"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "早期",
+     "そうき",
+     "early"
+    ],
+    [
+     "警報",
+     "けいほう",
+     "warning"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "助かります",
+     "たすかります",
+     "is helpful"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "During last year's torrential rains, the river rose so fast that evacuating was almost impossible, so early warnings are lifesaving."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "住民の",
+     "じゅうみんの",
+     "residents'"
+    ],
+    [
+     "皆様",
+     "みなさま",
+     "everyone"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "安心",
+     "あんしん",
+     "peace of mind"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "応えて",
+     "にこたえて",
+     "in response to",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "警報",
+     "けいほう",
+     "alert"
+    ],
+    [
+     "基準",
+     "きじゅん",
+     "thresholds"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "さらに",
+     null,
+     "further"
+    ],
+    [
+     "きめ細かく",
+     "きめこまかく",
+     "finely"
+    ],
+    [
+     "設定",
+     "せってい",
+     "configure"
+    ],
+    [
+     "いたします",
+     null,
+     "do (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In response to residents' need for peace of mind, we will calibrate alert thresholds even more delicately."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "市民",
+     "しみん",
+     "citizens"
+    ],
+    [
+     "満足",
+     "まんぞく",
+     "satisfaction"
+    ],
+    [
+     "度",
+     "ど",
+     "rate"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "八十八",
+     "はちじゅうはち",
+     "88"
+    ],
+    [
+     "パーセント",
+     null,
+     "percent"
+    ],
+    [
+     "へと",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "改善",
+     "かいぜん",
+     "improvement"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Citizen approval rate improved to 88 percent!"
+  },
+  {
+   "who": "市民代表",
+   "t": [
+    [
+     "丁寧な",
+     "ていねいな",
+     "courteous"
+    ],
+    [
+     "説明",
+     "せつめい",
+     "explanations"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとうございました",
+     null,
+     "thank you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安心",
+     "あんしん",
+     "relieved"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "見守る",
+     "みまもる",
+     "watch over"
+    ],
+    [
+     "ことに",
+     null,
+     "decided to"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for the thorough explanations. We feel reassured and will follow the project with support."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ご理解",
+     "ごりかい",
+     "understanding"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "いただき",
+     null,
+     "receive"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感謝",
+     "かんしゃ",
+     "gratitude"
+    ],
+    [
+     "に堪えません",
+     "にたえません",
+     "overwhelmed with",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We are overwhelmed with gratitude for your understanding!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "対話",
+     "たいわ",
+     "dialogue"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "大切さ",
+     "たいせつさ",
+     "importance"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "痛感",
+     "つうかん",
+     "felt keenly"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We felt the profound importance of community dialogue keenly today."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "人の",
+     "ひとの",
+     "people's"
+    ],
+    [
+     "信頼",
+     "しんらい",
+     "trust"
+    ],
+    [
+     "があってこそ",
+     null,
+     "only because"
+    ],
+    [
+     "生きる",
+     "いきる",
+     "lives"
+    ],
+    [
+     "ものね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, technology only truly comes alive when grounded in human trust."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "公聴会",
+     "こうちょうかい",
+     "hearing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "満場",
+     "まんじょう",
+     "unanimous"
+    ],
+    [
+     "一致",
+     "いっち",
+     "consent"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "承認",
+     "しょうにん",
+     "approved"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Hearing concluded with unanimous civic consent!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "alright"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "横浜",
+     "よこはま",
+     "Yokohama"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "設置",
+     "せっち",
+     "installation"
+    ],
+    [
+     "工事",
+     "こうじ",
+     "construction"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "順調に",
+     "じゅんちょうに",
+     "smoothly"
+    ],
+    [
+     "進めよう",
+     "すすめよう",
+     "let's advance"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Alright, let's proceed smoothly with the Yokohama deployment as well!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "港の",
+     "みなとの",
+     "port's"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "吹かれながら",
+     "ふかれながら",
+     "while blown"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "赤レンガ",
+     "あかれんが",
+     "Red Brick"
+    ],
+    [
+     "倉庫",
+     "そうこ",
+     "Warehouse"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "散歩",
+     "さんぽ",
+     "stroll"
+    ],
+    [
+     "しましょう",
+     null,
+     "let's"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's take a stroll over to the Red Brick Warehouses while enjoying the harbor breeze."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "横浜",
+     "よこはま",
+     "Yokohama"
+    ],
+    [
+     "港",
+     "こう",
+     "port"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "景色",
+     "けしき",
+     "scenery"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "開放的",
+     "かいほうてき",
+     "open/expansive"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "大好き",
+     "だいすき",
+     "love"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The open harbor view of Yokohama Port is something I love so much!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大型",
+     "おおがた",
+     "large"
+    ],
+    [
+     "客船",
+     "きゃくせん",
+     "passenger ship"
+    ],
+    [
+     "出港",
+     "しゅっこう",
+     "departure"
+    ],
+    [
+     "汽笛",
+     "きてき",
+     "steam whistle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ボォォォ",
+     null,
+     "boooo"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Detected steam horn of departing ocean liner! Boooo!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "異国",
+     "いこく",
+     "foreign lands"
+    ],
+    [
+     "情緒",
+     "じょうちょ",
+     "atmosphere"
+    ],
+    [
+     "あふれる",
+     null,
+     "overflowing"
+    ],
+    [
+     "良い",
+     "よい",
+     "good"
+    ],
+    [
+     "街",
+     "まち",
+     "city"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is such a wonderful city brimming with cosmopolitan flair."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "成功",
+     "せいこう",
+     "success"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "胸に",
+     "むねに",
+     "in heart"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "明日からの",
+     "あしたからの",
+     "from tomorrow"
+    ],
+    [
+     "作業",
+     "さぎょう",
+     "work"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "気合を",
+     "きあいを",
+     "spirit"
+    ],
+    [
+     "入れます",
+     "いれます",
+     "put in"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Keeping today's success in my heart, I will put all my energy into tomorrow's work!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "中華街",
+     "ちゅうかがい",
+     "Chinatown"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "飲茶",
+     "やむちゃ",
+     "dim sum"
+    ],
+    [
+     "でも",
+     null,
+     "or something",
+     "p"
+    ],
+    [
+     "食べて",
+     "たべて",
+     "eat"
+    ],
+    [
+     "帰りましょう",
+     "かえりましょう",
+     "let's return"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Shall we have some dim sum in Chinatown before heading home?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "小籠包",
+     "しょうろんぽう",
+     "xiao long bao"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大賛成",
+     "だいさんせい",
+     "completely agree"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Xiao long bao! I completely agree!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "肉汁",
+     "にくじゅう",
+     "meat broth"
+    ],
+    [
+     "温度",
+     "おんど",
+     "temperature"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "火傷",
+     "やけど",
+     "burns"
+    ],
+    [
+     "注意",
+     "ちゅうい",
+     "caution"
+    ],
+    [
+     "アラート",
+     null,
+     "alert"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "事前",
+     "じぜん",
+     "in advance"
+    ],
+    [
+     "設定",
+     "せってい",
+     "configured"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Soup dumpling scalding broth burn prevention alert pre-configured!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ははは",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "舌を",
+     "したを",
+     "tongue"
+    ],
+    [
+     "火傷",
+     "やけど",
+     "burn"
+    ],
+    [
+     "しない",
+     null,
+     "not do"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "気をつけます",
+     "きをつけます",
+     "will be careful"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! We will be careful not to burn our tongues!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "気の利く",
+     "きのきく",
+     "thoughtful"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, what an extraordinarily thoughtful robot!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "さあ",
+     null,
+     "come on"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行きましょう",
+     "いきましょう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Come on, let's go!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "楽しい",
+     "たのしい",
+     "fun"
+    ],
+    [
+     "夜に",
+     "よるに",
+     "to night"
+    ],
+    [
+     "なりそう",
+     "なりそう",
+     "looks to be"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It looks like it will be a delightfully fun evening."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "中華街",
+     "ちゅうかがい",
+     "Chinatown"
+    ],
+    [
+     "ルート",
+     null,
+     "route"
+    ],
+    [
+     "案内",
+     "あんない",
+     "guidance"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "開始",
+     "かいし",
+     "started"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Chinatown route guidance initiated!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "みんなで",
+     null,
+     "together"
+    ],
+    [
+     "前進",
+     "ぜんしん",
+     "forward"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Forward together!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, let's go!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "osore-ga-aru-review",
+   "title": "～おそれがある: there is a risk/fear that (Review)",
+   "explain": "Formal warning of dangerous consequence or damage.",
+   "examples": [
+    {
+     "t": [
+      [
+       "権利",
+       "けんり",
+       "rights"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "侵害",
+       "しんがい",
+       "infringement"
+      ],
+      [
+       "される",
+       null,
+       "be done"
+      ],
+      [
+       "おそれがある",
+       null,
+       "there is a risk",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There is a risk that rights may be infringed."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "大雨で土砂崩れが起きる＿＿。",
+     "hint": "There is a risk that landslides may occur due to heavy rain.",
+     "choices": [
+      "おそれがある",
+      "どころではない",
+      "に際して"
+     ],
+     "answer": 0,
+     "why": "おそれがある expresses warning of impending danger."
+    }
+   ]
+  },
+  {
+   "id": "ni-atatte-review",
+   "title": "～にあたって: upon, prior to (Review)",
+   "explain": "Formal timing for preparation before a milestone.",
+   "examples": [
+    {
+     "t": [
+      [
+       "設計",
+       "せっけい",
+       "design"
+      ],
+      [
+       "にあたって",
+       null,
+       "prior to",
+       "p"
+      ],
+      [
+       "配慮",
+       "はいりょ",
+       "consideration"
+      ],
+      [
+       "する",
+       null,
+       "do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Exercising care prior to designing."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "開会＿＿、ご挨拶を申し上げます。",
+     "hint": "Upon opening, I offer my greetings.",
+     "choices": [
+      "にあたって",
+      "かねない",
+      "末に"
+     ],
+     "answer": 0,
+     "why": "にあたって marks formal commencement timing."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "聴",
+   "on": [
+    "チョウ"
+   ],
+   "kun": [
+    "き.く"
+   ],
+   "m": [
+    "hear",
+    "listen"
+   ],
+   "ex": [
+    [
+     "公聴会",
+     "こうちょうかい",
+     "public hearing"
+    ],
+    [
+     "聴覚",
+     "ちょうかく",
+     "sense of hearing"
+    ]
+   ]
+  },
+  {
+   "k": "排",
+   "on": [
+    "ハイ"
+   ],
+   "kun": [],
+   "m": [
+    "repel",
+    "eliminate"
+   ],
+   "ex": [
+    [
+     "排除",
+     "はいじょ",
+     "elimination"
+    ],
+    [
+     "排出",
+     "はいしゅつ",
+     "emission"
+    ]
+   ]
+  },
+  {
+   "k": "侵",
+   "on": [
+    "シン"
+   ],
+   "kun": [
+    "おか.す"
+   ],
+   "m": [
+    "invade",
+    "encroach"
+   ],
+   "ex": [
+    [
+     "侵害",
+     "しんがい",
+     "infringement"
+    ],
+    [
+     "侵入",
+     "しんにゅう",
+     "intrusion"
+    ]
+   ]
+  },
+  {
+   "k": "害",
+   "on": [
+    "ガイ"
+   ],
+   "kun": [],
+   "m": [
+    "harm",
+    "damage"
+   ],
+   "ex": [
+    [
+     "損害",
+     "そんがい",
+     "damage"
+    ],
+    [
+     "公害",
+     "こうがい",
+     "pollution"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "市民公聴会で住民が最も懸念した事項は何でしたか？",
+   "choices": [
+    "センサーによる個人のプライバシー侵害リスク",
+    "センサーの電気代",
+    "センサーの色"
+   ],
+   "answer": 0,
+   "why": "街頭センサーの設置に伴う個人のプライバシー侵害リスクについて質問が出されました。"
+  },
+  {
+   "q": "サムとゆきはプライバシーを守るためにどのようなハードウェア設計にしましたか？",
+   "choices": [
+    "回路レベルで画像や音声端子を物理的に一切非搭載にした",
+    "録画データをネットに常時公開した",
+    "夜間だけ撮影するようにした"
+   ],
+   "answer": 0,
+   "why": "カメラやマイクを回路レベルで物理的に非搭載としたと説明しています。"
+  }
+ ],
+ "talk": "You are Kenji answering civic questions on privacy and IoT sensors in Yokohama."
+}

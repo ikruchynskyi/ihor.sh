@@ -1,0 +1,2564 @@
+{
+ "id": "n4-15",
+ "level": "N4",
+ "unit": 15,
+ "title": {
+  "ja": "成田空港のお出迎えと手土産",
+  "en": "Narita Welcome & The Souvenir Exchange (Unit 3 Review)"
+ },
+ "scene": "Narita International Airport arrival lobby. Yuki introduces Sam to Ken, exchanging American chocolates and local railway gifts while hearing airport weather reports.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "紹介",
+     "しょうかい",
+     "introduction"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大学",
+     "だいがく",
+     "university"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "サークル",
+     null,
+     "club"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "友だち",
+     "ともだち",
+     "friend"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ケン",
+     null,
+     "Ken"
+    ],
+    [
+     "君",
+     "くん",
+     "suffix",
+     "p"
+    ],
+    [
+     "だよ",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, let me introduce you! This is Ken from my university club!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "初めまして",
+     "はじめまして",
+     "nice to meet you"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "話",
+     "はなし",
+     "stories"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "a lot"
+    ],
+    [
+     "聞いて",
+     "きいて",
+     "heard"
+    ],
+    [
+     "いました",
+     null,
+     "was"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you, Sam! I've heard so much about you from Yuki!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ケン",
+     null,
+     "Ken"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "初めまして",
+     "はじめまして",
+     "nice to meet you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "わざわざ",
+     null,
+     "expressly"
+    ],
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "まで",
+     null,
+     "until/to",
+     "p"
+    ],
+    [
+     "来て",
+     "きて",
+     "come"
+    ],
+    [
+     "くれて",
+     null,
+     "favor for me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you, Ken! Thank you so much for taking the trouble to come to the airport for me!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ブルックリン",
+     null,
+     "Brooklyn"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "チョコレート",
+     null,
+     "chocolate"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "買ってきた",
+     "かってきた",
+     "bought and brought"
+    ],
+    [
+     "ので",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please take"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Here is chocolate from Brooklyn, New York. I bought and brought it, so please enjoy!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お土産",
+     "おみやげ",
+     "souvenir"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "いただいて",
+     null,
+     "receive (humble)"
+    ],
+    [
+     "すみません",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "おいしそう",
+     null,
+     "looks delicious"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, thank you so much for the souvenir! It looks delicious!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "僕",
+     "ぼく",
+     "I"
+    ],
+    [
+     "からも",
+     null,
+     "from me too",
+     "p"
+    ],
+    [
+     "プレゼント",
+     null,
+     "present"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "路線図",
+     "ろせんず",
+     "route map"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "Suica",
+     null,
+     "Suica card"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "買ってあげます",
+     "かってあげます",
+     "buy for you"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I have a gift too. I'll get you a Tokyo route map and a Suica card!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "親切",
+     "しんせつ",
+     "kind"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "もらって",
+     null,
+     "receive favor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "助かります",
+     "たすかります",
+     "it helps me"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You being so kind really helps me out!"
+  },
+  {
+   "who": "アナウンス",
+   "t": [
+    [
+     "気象庁",
+     "きしょうちょう",
+     "Meteorological Agency"
+    ],
+    [
+     "に",
+     null,
+     "according to",
+     "p"
+    ],
+    [
+     "よりますと",
+     null,
+     "according to"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "関東",
+     "かんとう",
+     "Kanto"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "降る",
+     "ふる",
+     "fall"
+    ],
+    [
+     "そう",
+     null,
+     "hearsay"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "According to the Meteorological Agency, I hear it will snow tonight in Kanto."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "降る",
+     "ふる",
+     "fall"
+    ],
+    [
+     "らしい",
+     null,
+     "seems/hearsay"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "特急",
+     "とっきゅう",
+     "limited express"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "遅れる",
+     "おくれる",
+     "be delayed"
+    ],
+    [
+     "かもしれない",
+     null,
+     "might"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Since it seems it will snow, the express train might be delayed."
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "スカイライナー",
+     null,
+     "Skyliner"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "切符",
+     "きっぷ",
+     "ticket"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "買った",
+     "かった",
+     "bought"
+    ],
+    [
+     "ほう",
+     null,
+     "better"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "良さそう",
+     "よさそう",
+     "looks good"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It looks like we'd better buy Skyliner tickets right now."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "冷たい",
+     "つめたい",
+     "cold"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "吹いている",
+     "ふいている",
+     "blowing"
+    ],
+    [
+     "みたい",
+     null,
+     "seems like"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! It seems like a chilly wind is blowing outside!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ケン",
+     null,
+     "Ken"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "切符",
+     "きっぷ",
+     "ticket"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "買い方",
+     "かいかた",
+     "how to buy"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "もらえます",
+     null,
+     "can receive favor"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ken, could you show me how to buy the tickets?"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "もちろん",
+     null,
+     "of course"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "券売機",
+     "けんばいき",
+     "ticket vending machine"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "お金",
+     "おかね",
+     "money"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "チャージ",
+     null,
+     "recharge"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "あげる",
+     null,
+     "give favor"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Of course! I will recharge the money for you at the ticket vending machine!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "千円",
+     "せんえん",
+     "1000 yen"
+    ],
+    [
+     "札",
+     "さつ",
+     "bill"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "入れて",
+     "いれて",
+     "insert"
+    ],
+    [
+     "みても",
+     null,
+     "even if try"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "May I try inserting a 1,000-yen bill?"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そこ",
+     null,
+     "there"
+    ],
+    [
+     "に",
+     null,
+     "into",
+     "p"
+    ],
+    [
+     "入れる",
+     "いれる",
+     "insert"
+    ],
+    [
+     "と",
+     null,
+     "if/when",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "画面",
+     "がめん",
+     "screen"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "金額",
+     "きんがく",
+     "amount"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "出る",
+     "でる",
+     "appears"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah, when you insert it there, the amount will show up on the screen."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "入りました",
+     "はいりました",
+     "went in"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "自動改札機",
+     "じどうかいさつき",
+     "automatic ticket gate"
+    ],
+    [
+     "を",
+     null,
+     "through",
+     "p"
+    ],
+    [
+     "通れる",
+     "とおれる",
+     "can pass through"
+    ],
+    [
+     "ん",
+     null,
+     "explanatory"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It went in! With this, I can pass through the automatic gates, right!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ピッ",
+     null,
+     "beep"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "タッチ",
+     null,
+     "touch"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "だけで",
+     null,
+     "just by"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "便利",
+     "べんり",
+     "convenient"
+    ],
+    [
+     "だよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You just tap it with a beep, so it's super convenient."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "路線図",
+     "ろせんず",
+     "route map"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "駅名",
+     "えきめい",
+     "station names"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "a lot"
+    ],
+    [
+     "並んで",
+     "ならんで",
+     "lined up"
+    ],
+    [
+     "います",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! There are so many station names lined up on the route map!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "乗り換え",
+     "のりかえ",
+     "transfer"
+    ],
+    [
+     "アプリ",
+     null,
+     "app"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "入れて",
+     "いれて",
+     "put in"
+    ],
+    [
+     "おくと",
+     null,
+     "if keep in advance"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "迷わない",
+     "まよわない",
+     "won't get lost"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "僕",
+     "ぼく",
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "教えてあげよう",
+     "おしえてあげよう",
+     "shall teach for you"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If you install a transit app in advance, you won't get lost. Let me teach you how."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "アプリ",
+     null,
+     "app"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "設定",
+     "せってい",
+     "setup"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "もらって",
+     null,
+     "receive favor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "助かりました",
+     "たすかりました",
+     "was helped"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Having you set up the app for me truly saved me!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "乗る",
+     "のる",
+     "ride"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "展望",
+     "てんぼう",
+     "observation"
+    ],
+    [
+     "デッキ",
+     null,
+     "deck"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行ってみない",
+     "いってみない",
+     "won't try going?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Before getting on the train, wouldn't you like to check out the observation deck?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "展望",
+     "てんぼう",
+     "observation"
+    ],
+    [
+     "デッキ",
+     null,
+     "deck"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぜひ",
+     null,
+     "by all means"
+    ],
+    [
+     "行ってみたい",
+     "いってみたい",
+     "want to try going"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The observation deck? I'd love to check it out by all means!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "離着陸",
+     "りちゃくりく",
+     "takeoffs and landings"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "間近",
+     "まぢか",
+     "up close"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "見られる",
+     "みられる",
+     "can see"
+    ],
+    [
+     "そう",
+     null,
+     "hearsay"
+    ],
+    [
+     "だよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I hear you can watch airplane takeoffs and landings right up close."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "吹いて",
+     "ふいて",
+     "blowing"
+    ],
+    [
+     "寒そう",
+     "さむそう",
+     "looks cold"
+    ],
+    [
+     "ですが",
+     null,
+     "although"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "カメラ",
+     null,
+     "camera"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "起動",
+     "きどう",
+     "start up"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! It looks chilly with the wind blowing, but I am activating the camera!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大きな",
+     "おおきな",
+     "big"
+    ],
+    [
+     "ジャンボ機",
+     "じゃんぼき",
+     "jumbo jet"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "飛び立つ",
+     "とびたつ",
+     "take off"
+    ],
+    [
+     "ところ",
+     null,
+     "just about to"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, a big jumbo jet is just about to take off!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "夕日",
+     "ゆうひ",
+     "evening sun"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "当たって",
+     "あたって",
+     "shining upon"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "金色",
+     "きんいろ",
+     "golden color"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "光って",
+     "ひかって",
+     "shining"
+    ],
+    [
+     "見える",
+     "みえる",
+     "appears"
+    ],
+    [
+     "ね",
+     null,
+     "doesn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "With the sunset hitting it, it looks shining gold!"
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "そろそろ",
+     null,
+     "soon"
+    ],
+    [
+     "お腹",
+     "おなか",
+     "stomach"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "空いてきた",
+     "すいてきた",
+     "started getting empty"
+    ],
+    [
+     "んじゃない",
+     null,
+     "isn't it?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "上",
+     "うえ",
+     "above"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "階",
+     "かい",
+     "floor"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Aren't you getting hungry by now? Let's go to the upper floor!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ラーメン屋",
+     "らーめんや",
+     "ramen shop"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "exists"
+    ],
+    [
+     "そう",
+     null,
+     "hearsay"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "スープ",
+     null,
+     "soup"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "飲みたい",
+     "のみたい",
+     "want to drink"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I hear there's a ramen shop! I'd love to have warm soup!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あそこ",
+     null,
+     "over there"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "味噌",
+     "みそ",
+     "miso"
+    ],
+    [
+     "ラーメン",
+     null,
+     "ramen"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "濃厚",
+     "のうこう",
+     "rich"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "らしい",
+     null,
+     "hearsay/seems"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I hear their miso ramen is rich and delicious."
+  },
+  {
+   "who": "ケン",
+   "t": [
+    [
+     "よし",
+     null,
+     "all right"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "おいしい",
+     null,
+     "delicious"
+    ],
+    [
+     "餃子",
+     "ぎょうざ",
+     "gyoza"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "奢ってあげよう",
+     "おごってあげよう",
+     "treat you to (volitional)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "All right, let me treat Sam to delicious gyoza too!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "そんな",
+     null,
+     "such a favor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ご馳走",
+     "ごちそう",
+     "feast/treat"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "なって",
+     null,
+     "become"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "んですか",
+     null,
+     "is it really",
+     "p"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can I really let you treat me like that!? Thank you so much!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "成田空港",
+     "なりたくうこう",
+     "Narita Airport"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "美味しくて",
+     "おいしくて",
+     "delicious and"
+    ],
+    [
+     "楽しい",
+     "たのしい",
+     "fun"
+    ],
+    [
+     "場所",
+     "ばしょ",
+     "place"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Narita Airport is a delicious and fun place!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "well then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お腹",
+     "おなか",
+     "stomach"
+    ],
+    [
+     "いっぱい",
+     null,
+     "full"
+    ],
+    [
+     "食べてから",
+     "たべてから",
+     "after eating"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "向かおう",
+     "むかおう",
+     "let's head"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Well then, after eating our fill, let's head to Tokyo!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "旅",
+     "たび",
+     "journey"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "最高",
+     "さいこう",
+     "best"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "スタート",
+     null,
+     "start"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! This is the best start to our Japan journey!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n4-review-favors",
+   "title": "Giving and Receiving Favors: あげる, くれる, もらう",
+   "explain": "V-てあげる: do a favor for someone. V-てくれる: someone does a favor for me. V-てもらう: receive a favor from someone.",
+   "examples": [
+    {
+     "t": [
+      [
+       "切符",
+       "きっぷ",
+       "ticket"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "買って",
+       "かって",
+       "bought"
+      ],
+      [
+       "くれました",
+       null,
+       "gave favor"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "He bought tickets for me."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "友達が空港まで迎えに来て＿＿＿＿。",
+     "hint": "My friend came to pick me up at the airport for me.",
+     "choices": [
+      "くれた",
+      "あげた",
+      "もらった"
+     ],
+     "answer": 0,
+     "why": "てくれる indicates a favor done for the speaker."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#te-ageru"
+  },
+  {
+   "id": "n4-review-conjecture-hearsay",
+   "title": "Hearsay & Conjecture: ～そうだ, ～らしい, ～みたいだ",
+   "explain": "V/Adj plain + そうだ reports hearsay ('I heard that...'). Adj stem + そうだ expresses visual impression ('looks like'). ～らしい expresses reliable inference/hearsay. ～みたいだ expresses colloquial resemblance or conjecture.",
+   "examples": [
+    {
+     "t": [
+      [
+       "雪",
+       "ゆき",
+       "snow"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "降る",
+       "ふる",
+       "fall"
+      ],
+      [
+       "そう",
+       null,
+       "hearsay"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I hear it will snow."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "天気予報によると、明日は晴れる＿＿＿です。",
+     "hint": "According to the weather forecast, I heard it will be sunny tomorrow.",
+     "choices": [
+      "そう",
+      "みたい",
+      "らしい"
+     ],
+     "answer": 0,
+     "why": "〜によると pairs with 〜そうだ for reported news."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#sou-da"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "紹",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [],
+   "m": "introduce",
+   "ex": [
+    [
+     "紹介",
+     "しょうかい",
+     "introduction"
+    ]
+   ]
+  },
+  {
+   "k": "産",
+   "on": [
+    "サン"
+   ],
+   "kun": [
+    "う.む"
+   ],
+   "m": "produce",
+   "ex": [
+    [
+     "お土産",
+     "おみやげ",
+     "souvenir"
+    ]
+   ]
+  },
+  {
+   "k": "吹",
+   "on": [
+    "スイ"
+   ],
+   "kun": [
+    "ふ.く"
+   ],
+   "m": "blow",
+   "ex": [
+    [
+     "吹く",
+     "ふく",
+     "to blow"
+    ]
+   ]
+  },
+  {
+   "k": "札",
+   "on": [
+    "サツ"
+   ],
+   "kun": [
+    "ふだ"
+   ],
+   "m": "bill, tag",
+   "ex": [
+    [
+     "千円札",
+     "せんえんさつ",
+     "1000-yen bill"
+    ]
+   ]
+  },
+  {
+   "k": "額",
+   "on": [
+    "ガク"
+   ],
+   "kun": [
+    "ひたい"
+   ],
+   "m": "amount, forehead",
+   "ex": [
+    [
+     "金額",
+     "きんがく",
+     "monetary amount"
+    ]
+   ]
+  },
+  {
+   "k": "望",
+   "on": [
+    "ボウ",
+    "モウ"
+   ],
+   "kun": [
+    "のぞ.む"
+   ],
+   "m": "hope, view",
+   "ex": [
+    [
+     "展望",
+     "てんぼう",
+     "view/observation"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  5,
+  12
+ ],
+ "questions": [
+  {
+   "q": "ケンさんはサムさんに何をプレゼントしましたか。",
+   "en": "What did Ken gift to Sam?",
+   "choices": [
+    "路線図とSuicaカード",
+    "日本茶とお菓子",
+    "富士山の写真"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "三人はラーメンを食べる前にどこへ行きましたか。",
+   "en": "Where did the three go before eating ramen?",
+   "choices": [
+    "飛行機が見える展望デッキ",
+    "お土産屋さん",
+    "免税店"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a gift you exchanged with a friend in Japanese."
+}

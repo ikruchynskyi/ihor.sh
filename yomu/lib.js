@@ -100,7 +100,7 @@ export const kanaLine = (tokens) => tokens.map(tok).map(reading).join("");
 
 // ---------- progress (this browser only) ----------
 const KEY = "yomu";
-const DEFAULTS = { settings: { script: "kanji", furigana: "all", translation: true, rate: 0.85 }, known: {}, srs: {}, done: {}, xp: 0, streak: { last: "", days: 0 }, start: null };
+const DEFAULTS = { settings: { script: "kanji", furigana: "all", translation: true, rate: 0.85, slow: false, voice: "kokoro" }, known: {}, srs: {}, done: {}, xp: 0, streak: { last: "", days: 0 }, start: null };
 export const state = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return structuredClone(DEFAULTS); } })();
 state.settings = { ...DEFAULTS.settings, ...state.settings };
 export const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
@@ -131,24 +131,257 @@ export function grade(id, g) {
 }
 export const dueCards = () => Object.entries(state.srs).filter(([, c]) => c.due <= Date.now()).map(([id, c]) => ({ id, ...c }));
 
-// ---------- speech ----------
+// ---------- speech (Kokoro Kumo neural AI voice + browser fallback) ----------
 let jaVoice = null;
-const pickVoice = () => (jaVoice = speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => Number(/Google|Kyoko|Otoya|O-ren/i.test(b.name)) - Number(/Google|Kyoko|Otoya|O-ren/i.test(a.name)))[0] ?? null);
+const pickVoice = () => (jaVoice = ("speechSynthesis" in W ? speechSynthesis.getVoices() : []).filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => Number(/Google|Kyoko|Otoya|O-ren/i.test(b.name)) - Number(/Google|Kyoko|Otoya|O-ren/i.test(a.name)))[0] ?? null);
 if ("speechSynthesis" in W) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-export const canSpeak = () => "speechSynthesis" in W && !!jaVoice;
-/** Read Japanese aloud (the browser's Japanese voice). Resolves when done. */
-export function speak(text, rate = state.settings.rate) {
+export const canSpeak = () => true;
+
+let player = null;
+let currentAudio = null;
+let activeAudioDone = null;
+function getPlayer() {
+  if (!player && typeof Audio !== "undefined") player = new Audio();
+  return player;
+}
+
+export function stopAudio() {
+  if (player) {
+    try {
+      player.pause();
+    } catch {}
+  }
+  if (currentAudio && currentAudio !== player) {
+    try { currentAudio.pause(); } catch {}
+    currentAudio = null;
+  }
+  if (activeAudioDone) {
+    const fn = activeAudioDone;
+    activeAudioDone = null;
+    fn(false);
+  }
+  if ("speechSynthesis" in W) {
+    try { speechSynthesis.cancel(); } catch {}
+  }
+  if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: false } }));
+}
+
+const DEFAULT_AUDIO_V = 1791901234;
+
+async function fetchManifest(relPath) {
+  if (typeof window === "undefined" && typeof process !== "undefined") {
+    try {
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      const p = path.join(process.cwd(), relPath.replace(/^\//, ""));
+      const raw = await fs.readFile(p, "utf-8");
+      return JSON.parse(raw);
+    } catch {}
+  }
+  return fetch(relPath).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+}
+
+let manifestData = null;
+let manifestPromise = null;
+/** Fetch manifest of pre-generated story audio lines (Irodori-TTS). */
+export async function getStoryAudioManifest() {
+  if (manifestData) return manifestData;
+  return (manifestPromise ??= fetchManifest("/yomu/data/audio/stories/manifest.json")
+    .then((data) => (manifestData = data)));
+}
+
+/** Returns the URL of pre-rendered story audio (Irodori-TTS). */
+export function storyAudioUrl(storyId, lineIdx, isSlow = state.settings.slow) {
+  const v = (manifestData && manifestData._v) ? manifestData._v : DEFAULT_AUDIO_V;
+  const suffix = isSlow ? "_slow" : "";
+  return `/yomu/data/audio/stories/${encodeURIComponent(storyId)}_${lineIdx}${suffix}.mp3?v=${v}`;
+}
+
+let wordManifestData = null;
+let wordManifestPromise = null;
+/** Fetch manifest of pre-generated vocabulary word audio (Irodori-TTS). */
+export async function getWordAudioManifest() {
+  if (wordManifestData) return wordManifestData;
+  return (wordManifestPromise ??= fetchManifest("/yomu/data/audio/words/manifest.json")
+    .then((data) => (wordManifestData = data)));
+}
+
+/** Returns the URL of pre-rendered word audio (Irodori-TTS) if available, or null. */
+export function wordAudioUrl(word) {
+  const w = String(word ?? "").trim();
+  const cleanWord = w.replace(/[。、！？!?,.\s]+$/g, "").trim();
+  const hash = wordManifestData?.words?.[w] || wordManifestData?.words?.[cleanWord];
+  if (!hash) return null;
+  const v = (wordManifestData && wordManifestData._v) ? wordManifestData._v : DEFAULT_AUDIO_V;
+  return `/yomu/data/audio/words/${hash}.mp3?v=${v}`;
+}
+
+let kanaManifestData = null;
+let kanaManifestPromise = null;
+/** Fetch manifest of pre-generated kana audio (Irodori-TTS). */
+export async function getKanaAudioManifest() {
+  if (kanaManifestData) return kanaManifestData;
+  return (kanaManifestPromise ??= fetchManifest("/yomu/data/audio/kana/manifest.json")
+    .then((data) => (kanaManifestData = data)));
+}
+
+/** Returns the URL of pre-rendered kana audio (Irodori-TTS) if available, or null. */
+export function kanaAudioUrl(kana) {
+  const k = String(kana ?? "").trim();
+  const hash = kanaManifestData?.kana?.[k] || kanaManifestData?.kana?.[toHiragana(k)];
+  if (!hash) return null;
+  const v = (kanaManifestData && kanaManifestData._v) ? kanaManifestData._v : DEFAULT_AUDIO_V;
+  return `/yomu/data/audio/kana/${hash}.mp3?v=${v}`;
+}
+
+let grammarManifestData = null;
+let grammarManifestPromise = null;
+/** Fetch manifest of pre-generated grammar audio (Irodori-TTS). */
+export async function getGrammarAudioManifest() {
+  if (grammarManifestData) return grammarManifestData;
+  return (grammarManifestPromise ??= fetchManifest("/yomu/data/audio/grammar/manifest.json")
+    .then((data) => (grammarManifestData = data)));
+}
+
+/** Returns the URL of pre-rendered grammar audio (Irodori-TTS) if available, or null. */
+export function grammarAudioUrl(text) {
+  const t = String(text ?? "").trim();
+  const tClean = t.replace(/[。. \t\r\n]+$/, "");
+  const hash = grammarManifestData?.grammar?.[t] || grammarManifestData?.grammar?.[tClean];
+  if (!hash) return null;
+  const v = (grammarManifestData && grammarManifestData._v) ? grammarManifestData._v : DEFAULT_AUDIO_V;
+  return `/yomu/data/audio/grammar/${hash}.mp3?v=${v}`;
+}
+
+let talkManifestData = null;
+let talkManifestPromise = null;
+/** Fetch manifest of pre-generated talk scene audio (Irodori-TTS). */
+export async function getTalkAudioManifest() {
+  if (talkManifestData) return talkManifestData;
+  return (talkManifestPromise ??= fetchManifest("/yomu/data/audio/talk/manifest.json")
+    .then((data) => (talkManifestData = data)));
+}
+
+/** Returns the URL of pre-rendered talk audio (Irodori-TTS) if available, or null. */
+export function talkAudioUrl(text) {
+  const t = String(text ?? "").trim();
+  const hash = talkManifestData?.talk?.[t];
+  if (!hash) return null;
+  const v = (talkManifestData && talkManifestData._v) ? talkManifestData._v : DEFAULT_AUDIO_V;
+  return `/yomu/data/audio/talk/${hash}.mp3?v=${v}`;
+}
+
+// Pre-load manifests in browser context
+if (typeof window !== "undefined") {
+  getStoryAudioManifest();
+  getWordAudioManifest();
+  getKanaAudioManifest();
+  getGrammarAudioManifest();
+  getTalkAudioManifest();
+}
+
+/** Read Japanese aloud (pre-rendered neural audio, local Irodori-TTS, or browser voice). Resolves when done. */
+export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.rate), audioUrl = null) {
+  stopAudio();
+  const clean = String(text ?? "").trim();
+  const cleanWord = clean.replace(/[。、！？!?,.\s]+$/g, "").trim();
+  if (!clean && !audioUrl) return Promise.resolve(false);
+
+  const speed = state.settings.slow ? 0.7 : (Number(rate) || 1.0);
+
+  // If using neural audio (either pre-rendered static audio or on-demand local TTS)
+  if (state.settings.voice !== "browser" && typeof Audio !== "undefined") {
+    return new Promise((resolve) => {
+      const audio = getPlayer();
+      if (!audio) return browserSpeak(clean, speed).then(resolve);
+
+      const staticResolved = audioUrl || wordAudioUrl(clean) || wordAudioUrl(cleanWord) || kanaAudioUrl(clean) || grammarAudioUrl(clean) || talkAudioUrl(clean);
+      const targetUrl = staticResolved || `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`;
+      currentAudio = audio;
+
+      // If playing pre-generated slow audio file, playbackRate stays 1.0; otherwise apply playbackRate
+      try {
+        const isFileAlreadySlow = targetUrl.includes("_slow.mp3");
+        audio.playbackRate = isFileAlreadySlow ? 1.0 : speed;
+        audio.defaultPlaybackRate = audio.playbackRate;
+        audio.preservesPitch = true;
+      } catch {}
+
+      if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: true } }));
+
+      let finished = false;
+      const done = (ok) => {
+        if (finished) return;
+        finished = true;
+        if (activeAudioDone === done) activeAudioDone = null;
+        audio.onended = null;
+        audio.onerror = null;
+        if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: false } }));
+        resolve(ok);
+      };
+      activeAudioDone = done;
+
+      audio.onended = () => done(true);
+      audio.onerror = () => {
+        // If static audio URL failed (e.g. 404), fall back to /api/yomu/tts
+        if (targetUrl !== `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`) {
+          audio.onerror = () => browserSpeak(clean, speed).then(done);
+          audio.src = `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`;
+          audio.play().catch(() => browserSpeak(clean, speed).then(done));
+        } else {
+          browserSpeak(clean, speed).then(done);
+        }
+      };
+
+      if (!audio.src.endsWith(targetUrl) && audio.src !== targetUrl) {
+        audio.src = targetUrl;
+      } else {
+        try { audio.currentTime = 0; } catch {}
+      }
+
+      const p = audio.play();
+      if (p) {
+        p.catch((err) => {
+          if (err && err.name === "AbortError") {
+            done(false);
+            return;
+          }
+          console.warn("Audio play rejected:", err);
+          browserSpeak(clean, rate).then(done);
+        });
+      }
+    });
+  }
+
+  return browserSpeak(clean, rate);
+}
+
+export function browserSpeak(text, rate = state.settings.rate) {
   return new Promise((done) => {
     if (!("speechSynthesis" in W)) return done(false);
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "ja-JP"; u.rate = rate; if (jaVoice) u.voice = jaVoice;
-    u.onend = () => done(true); u.onerror = () => done(false);
-    speechSynthesis.speak(u);
-    dispatchEvent(new CustomEvent("blip:key", { detail: { on: true } }));
-    u.addEventListener("end", () => dispatchEvent(new CustomEvent("blip:key", { detail: { on: false } })));
+    let resolved = false;
+    const finish = (ok) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: false } }));
+      done(ok);
+    };
+    const timer = setTimeout(() => finish(false), 5000);
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP"; u.rate = rate; if (jaVoice) u.voice = jaVoice;
+      u.onend = () => finish(true);
+      u.onerror = () => finish(false);
+      if (typeof dispatchEvent === "function") dispatchEvent(new CustomEvent("blip:key", { detail: { on: true } }));
+      speechSynthesis.speak(u);
+    } catch {
+      finish(false);
+    }
   });
 }
+
 const Recognition = W.SpeechRecognition ?? W.webkitSpeechRecognition;
 export const canListen = () => !!Recognition;
 /** Listen for Japanese speech; resolves with what was heard (or "" on silence/error). */
@@ -171,6 +404,81 @@ export function similarity(a, b) {
   for (let j = 1; j <= y.length; j++) d[0][j] = j;
   for (let i = 1; i <= x.length; i++) for (let j = 1; j <= y.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1));
   return 1 - d[x.length][y.length] / Math.max(x.length, y.length);
+}
+
+// ---------- pitch accent (Kanjium NHK data) ----------
+let pitchCache = null;
+export async function getPitchData() {
+  return (pitchCache ??= fetch("/yomu/data/pitch.json")
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => ({})));
+}
+
+const SMALL_KANA = new Set("ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ");
+/** Split kana into phonological morae (combining small kana with previous character). */
+export function splitMorae(kana) {
+  const s = toHiragana(String(kana ?? "")).replace(/[^぀-ゟー]/g, "");
+  const morae = [];
+  for (let i = 0; i < s.length; i++) {
+    if (i + 1 < s.length && SMALL_KANA.has(s[i + 1])) {
+      morae.push(s[i] + s[i + 1]);
+      i++;
+    } else {
+      morae.push(s[i]);
+    }
+  }
+  return morae;
+}
+
+/**
+ * Returns pitch accent information for a word and its reading:
+ * { pitch: number[], p: number, type: "heiban"|"atamadaka"|"nakadaka"|"odaka", name: string, moras: { mora: string, high: boolean, drop: boolean }[] } | null
+ */
+export async function pitchInfo(word, reading) {
+  const map = await getPitchData();
+  const w = String(word ?? "").trim(), r = toHiragana(String(reading ?? word ?? "").trim());
+  const nums = map[`${w}|${r}`] ?? map[w] ?? map[r] ?? null;
+  if (!nums || !nums.length) return null;
+
+  const moras = splitMorae(r);
+  const N = moras.length;
+  if (!N) return null;
+
+  const P = nums[0];
+  let type = "heiban", name = "平板";
+  if (P === 0) { type = "heiban"; name = "平板 (flat)"; }
+  else if (P === 1) { type = "atamadaka"; name = "頭高 (head-high)"; }
+  else if (P === N) { type = "odaka"; name = "尾高 (tail-high)"; }
+  else if (P > 1 && P < N) { type = "nakadaka"; name = "中高 (mid-high)"; }
+  else { type = "nakadaka"; name = `[${P}]`; }
+
+  const moraStates = moras.map((m, i) => {
+    const moraNum = i + 1;
+    let high = false;
+    if (P === 0) {
+      high = moraNum > 1;
+    } else if (P === 1) {
+      high = moraNum === 1;
+    } else {
+      high = moraNum > 1 && moraNum <= P;
+    }
+    const drop = moraNum === P;
+    return { mora: m, high, drop };
+  });
+
+  return { pitch: nums, p: P, type, name, moras: moraStates };
+}
+
+/** HTML for pitch accent contour visualization and badge. */
+export function renderPitch(info) {
+  if (!info) return "";
+  const curve = info.moras.map((m) =>
+    `<span class="mora ${m.high ? "high" : "low"}${m.drop ? " drop" : ""}">${esc(m.mora)}${m.drop ? '<span class="downstep">ꜜ</span>' : ""}</span>`
+  ).join("");
+  return `<div class="pitch-info" title="Pitch accent: ${info.name}">
+    <span class="pitch-badge ${info.type}">[${info.p}] ${info.name}</span>
+    <span class="pitch-curve">${curve}</span>
+  </div>`;
 }
 
 // ---------- stroke order (KanjiVG, CC BY-SA 3.0, by Ulrich Apel) ----------
@@ -201,13 +509,16 @@ export function settingsBar(el, onChange) {
     <span>Script</span>${[["kanji", "漢字 + furigana"], ["kana", "かな only"], ["romaji", "Romaji"]].map(([v, l]) => `<button data-s="${v}" aria-pressed="${s.script === v}">${l}</button>`).join("")}
     <label>Furigana <select id="yfuri"><option value="all">on all kanji</option><option value="unknown">only on words I don't know</option><option value="none">off</option></select></label>
     <label><input type="checkbox" id="ytr" ${s.translation ? "checked" : ""}> English</label>
-    <label>Voice speed <input type="range" id="yrate" min="0.5" max="1.2" step="0.05" value="${s.rate}"></label>
+    <label><input type="checkbox" id="yslow" ${s.slow ? "checked" : ""}> Slow mode</label>
+    <label>Voice <select id="yvoice"><option value="kokoro">Kokoro Kumo (Neural)</option><option value="browser">Browser voice</option></select></label>
     <span class="yxp" title="XP and streak">★ ${state.xp} XP · 🔥 ${state.streak.days} day${state.streak.days === 1 ? "" : "s"}</span></div>`;
   el.querySelector("#yfuri").value = s.furigana;
+  el.querySelector("#yvoice").value = s.voice || "kokoro";
   el.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { s.script = b.dataset.s; save(); settingsBar(el, onChange); onChange?.(); }));
   el.querySelector("#yfuri").onchange = (e) => { s.furigana = e.target.value; save(); onChange?.(); };
   el.querySelector("#ytr").onchange = (e) => { s.translation = e.target.checked; save(); onChange?.(); };
-  el.querySelector("#yrate").oninput = (e) => { s.rate = Number(e.target.value); save(); };
+  el.querySelector("#yslow").onchange = (e) => { s.slow = e.target.checked; s.rate = e.target.checked ? 0.7 : 1.0; save(); onChange?.(); };
+  el.querySelector("#yvoice").onchange = (e) => { s.voice = e.target.value; save(); onChange?.(); };
   addEventListener("yomu:xp", () => { const x = el.querySelector(".yxp"); if (x) x.textContent = `★ ${state.xp} XP · 🔥 ${state.streak.days} day${state.streak.days === 1 ? "" : "s"}`; });
 }
 
@@ -216,8 +527,8 @@ export const blip = (text, mood = "happy", hop = 0) => dispatchEvent(new CustomE
 // ---------- the full JLPT decks (data/*.json, built by src/data.py and src/grammar.py) ----------
 const loaded = {};
 export const data = (name) => (loaded[name] ??= fetch(`/yomu/data/${name}.json`).then((r) => r.json()));
-export const LEVELS = ["N5", "N4", "N3"]; // grammar, stories and placement go up to N3
-export const DECK_LEVELS = [...LEVELS, "N2", "N1"]; // kanji and word decks go all the way
+export const LEVELS = ["N5", "N4", "N3", "N2", "N1"]; // full JLPT spectrum from beginner to mastery
+export const DECK_LEVELS = [...LEVELS]; // kanji, word and grammar decks go all the way
 export const vocab = (level) => data(`vocab-${level.toLowerCase()}`);
 export const kanjiDeck = async (level) => (await data("kanji")).filter((k) => `N${k.n}` === level);
 export const grammarDeck = async (level) => (await data("grammar")).filter((g) => !level || g.level === level);

@@ -1,0 +1,2088 @@
+{
+ "id": "n1-11",
+ "level": "N1",
+ "unit": 11,
+ "title": {
+  "ja": "歴史的景観の保全とリニア新幹線",
+  "en": "Heritage Preservation vs Maglev Infrastructure"
+ },
+ "scene": "The historic post town of Narai-juku in the Kiso Valley. Yuki, Kenji, Sam, and Blip inspect seismic sensors monitoring subterranean tunneling for the Chuo Shinkansen maglev line.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "木曽路の",
+     "きそじの",
+     "Kiso Valley's"
+    ],
+    [
+     "宿場町",
+     "しゅくばまち",
+     "post town"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "奈良井宿",
+     "ならいじゅく",
+     "Narai-juku"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "町並み",
+     "まちなみ",
+     "townscape"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "息を呑むほど",
+     "いきをのむほど",
+     "breathtakingly"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The post town of Narai-juku along the Kiso Road—the historic streetscape is breathtakingly beautiful."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "江戸時代",
+     "えどじだい",
+     "Edo period"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "千本格子",
+     "せんぼんごうし",
+     "slender wooden latticework"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "連なる",
+     "つらなる",
+     "line up"
+    ],
+    [
+     "景観",
+     "けいかん",
+     "landscape"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "身を置くと",
+     "みをおくと",
+     "when placing oneself"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感無量の",
+     "かんむりょうの",
+     "deeply emotional"
+    ],
+    [
+     "極み",
+     "きわみ",
+     "pinnacle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "喜ばしい",
+     "よろこばしい",
+     "delightful"
+    ],
+    [
+     "限りだ",
+     "かぎりだ",
+     "to the utmost",
+     "p"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Standing among the continuous fine latticework from the Edo period, I am deeply moved to the absolute utmost."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "だが",
+     null,
+     "however"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "静寂な",
+     "せいじゃくな",
+     "peaceful"
+    ],
+    [
+     "山肌の",
+     "やまはだの",
+     "mountain's"
+    ],
+    [
+     "地下深くを",
+     "ちかふかくを",
+     "deep subterranean"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "時速五百キロの",
+     "じそくごひゃくきろの",
+     "500 km/h"
+    ],
+    [
+     "超電導リニア",
+     "ちょうでんどうりにあ",
+     "maglev"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "貫通",
+     "かんつう",
+     "tunneling through"
+    ],
+    [
+     "しようとしている",
+     null,
+     "is about to do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "However, deep beneath this peaceful mountain face, the superconducting maglev at 500 km/h is set to pierce through."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "伝統の",
+     "でんとうの",
+     "tradition's"
+    ],
+    [
+     "景観",
+     "けいかん",
+     "landscape"
+    ],
+    [
+     "保全と",
+     "ほぜんと",
+     "preservation and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "国家的な",
+     "こっかてきな",
+     "national"
+    ],
+    [
+     "超高速",
+     "ちょうこうそく",
+     "ultra-high-speed"
+    ],
+    [
+     "交通網の",
+     "こうつうもうの",
+     "transit network's"
+    ],
+    [
+     "整備",
+     "せいび",
+     "construction"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "葛藤",
+     "かっとう",
+     "conflict"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Preserving traditional landscapes versus developing a nationwide ultra-high-speed transit artery... truly a historic dilemma."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "地元の人々の",
+     "じもとのひとびとの",
+     "local residents'"
+    ],
+    [
+     "故郷への",
+     "こきょうへの",
+     "toward hometown"
+    ],
+    [
+     "愛着は",
+     "あいちゃくは",
+     "deep affection"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "深く",
+     "ふかく",
+     "deeply"
+    ],
+    [
+     "敬愛",
+     "けいあい",
+     "respect"
+    ],
+    [
+     "してやまない",
+     "してやまない",
+     "never cease to",
+     "p"
+    ],
+    [
+     "ものよ",
+     null,
+     "thing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The deep affection that local residents hold for their historic homeland is something we can never cease respecting."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地下",
+     "ちか",
+     "subterranean"
+    ],
+    [
+     "微小",
+     "びしょう",
+     "micro"
+    ],
+    [
+     "振動",
+     "しんどう",
+     "vibration"
+    ],
+    [
+     "センシング",
+     null,
+     "sensing"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "木造",
+     "もくぞう",
+     "wooden"
+    ],
+    [
+     "建築群への",
+     "けんちくぐんへの",
+     "to buildings"
+    ],
+    [
+     "共振",
+     "きょうしん",
+     "resonance"
+    ],
+    [
+     "影響",
+     "えいきょう",
+     "impact"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "測定",
+     "そくてい",
+     "measured"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "in progress"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Subterranean micro-vibration sensing active! Resonance impact on historical wooden structures being monitored!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "何百年もの",
+     "なんびゃくねんもの",
+     "hundreds of years"
+    ],
+    [
+     "風雪に",
+     "ふうせつに",
+     "wind and snow"
+    ],
+    [
+     "耐えてきた",
+     "たえてきた",
+     "endured"
+    ],
+    [
+     "文化遺産",
+     "ぶんかいさん",
+     "cultural heritage"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "振動で",
+     "しんどうで",
+     "by vibrations"
+    ],
+    [
+     "損なわれるような",
+     "そこなわれるような",
+     "damaged like"
+    ],
+    [
+     "ことがあっては",
+     null,
+     "if such happens"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "見るに堪えない",
+     "みるにたえない",
+     "unbearable to behold",
+     "p"
+    ],
+    [
+     "からな",
+     null,
+     "because"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Were cultural heritage that has endured hundreds of years of wind and snow to be damaged by vibrations, it would be unbearable to behold."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "だからこそ",
+     null,
+     "that is why"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "我々の",
+     "われわれの",
+     "our"
+    ],
+    [
+     "高精度",
+     "こうせいど",
+     "high-precision"
+    ],
+    [
+     "制振",
+     "せいしん",
+     "vibration-damping"
+    ],
+    [
+     "シールド技術",
+     "しーるどぎじゅつ",
+     "shield tech"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "トンネル",
+     null,
+     "tunnel"
+    ],
+    [
+     "工法に",
+     "こうほうに",
+     "engineering method"
+    ],
+    [
+     "導入",
+     "どうにゅう",
+     "introduce"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "のですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That is precisely why we introduced our high-precision vibration-damping shield technology to the tunneling methodology."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "地下",
+     "ちか",
+     "underground"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "伝わる",
+     "つたわる",
+     "transmit"
+    ],
+    [
+     "波動を",
+     "はどうを",
+     "waves"
+    ],
+    [
+     "逆相殺",
+     "ぎゃくそうさい",
+     "counter-cancel"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "アクティブ",
+     null,
+     "active"
+    ],
+    [
+     "ダンパー",
+     null,
+     "damper"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Active damping systems that cancel out shockwaves transmitted from underground with inverted wave harmonics."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "減衰率",
+     "げんすいりつ",
+     "attenuation rate"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "九十八点四",
+     "きゅうじゅうはちてんよん",
+     "98.4"
+    ],
+    [
+     "パーセント",
+     null,
+     "%"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地表",
+     "ちひょう",
+     "ground surface"
+    ],
+    [
+     "振動",
+     "しんどう",
+     "vibration"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自然界の",
+     "しぜんかいの",
+     "nature's"
+    ],
+    [
+     "微動レベル",
+     "びどうれべる",
+     "microtremor level"
+    ],
+    [
+     "以下",
+     "いか",
+     "below"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Attenuation rate: 98.4%! Ground vibrations kept below natural ambient microtremor levels!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "素晴らしい",
+     "すばらしい",
+     "splendid"
+    ],
+    [
+     "成果だ",
+     "せいかだ",
+     "result is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これならば",
+     null,
+     "if this"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "古き良き",
+     "ふるきよき",
+     "good old"
+    ],
+    [
+     "町並みを",
+     "まちなみを",
+     "townscape"
+    ],
+    [
+     "完全に",
+     "かんぜんに",
+     "completely"
+    ],
+    [
+     "守り抜ける",
+     "まもりぬける",
+     "can protect through"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Splendid result. With this, we can protect the cherished old townscape in its entirety."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "土木工学と",
+     "どぼくこうがくと",
+     "civil engineering and"
+    ],
+    [
+     "文化財保護が",
+     "ぶんかざいほごが",
+     "cultural property conservation"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最新技術で",
+     "さいしんぎじゅつで",
+     "with cutting-edge tech"
+    ],
+    [
+     "手を取り合えた",
+     "てをとりあえた",
+     "joined hands"
+    ],
+    [
+     "瞬間ですね",
+     "しゅんかんですね",
+     "is moment"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is a moment where civil engineering and cultural conservation have joined hands through cutting-edge technology!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "対立",
+     "たいりつ",
+     "confrontation"
+    ],
+    [
+     "ではなく",
+     null,
+     "not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "共存を",
+     "きょうぞんを",
+     "coexistence"
+    ],
+    [
+     "模索する",
+     "もさくする",
+     "seek out"
+    ],
+    [
+     "こと",
+     null,
+     "thing"
+    ],
+    [
+     "こそが",
+     null,
+     "precisely (subj)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "真の",
+     "しんの",
+     "true"
+    ],
+    [
+     "持続可能",
+     "じぞくかのう",
+     "sustainable"
+    ],
+    [
+     "社会への",
+     "しゃかいへの",
+     "toward society"
+    ],
+    [
+     "道ね",
+     null,
+     "path is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Seeking coexistence rather than confrontation—that is precisely the path toward a genuinely sustainable society."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "サム君",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地域の人々との",
+     "ちいきのひとびとの",
+     "with local residents"
+    ],
+    [
+     "対話会で",
+     "たいわかいで",
+     "at townhall meeting"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "このデータを",
+     "このでーたを",
+     "this data"
+    ],
+    [
+     "丁寧に",
+     "ていねいに",
+     "courteously"
+    ],
+    [
+     "説明して",
+     "せつめいして",
+     "explain and"
+    ],
+    [
+     "くれたまえ",
+     null,
+     "please do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, please explain this empirical data courteously at the dialogue meeting with the local residents."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "承知しました",
+     "しょうちしました",
+     "understood"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "不安に",
+     "ふあんに",
+     "to anxiety"
+    ],
+    [
+     "寄り添い",
+     "よりそい",
+     "standing beside"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "誠心誠意",
+     "せいしんせいい",
+     "wholehearted sincerity"
+    ],
+    [
+     "説明します",
+     "せつめいします",
+     "will explain"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Understood. I will listen to their anxieties and explain everything with wholehearted sincerity!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "住民説明用",
+     "じゅうみんせつめいよう",
+     "for civic explanation"
+    ],
+    [
+     "三次元可視化",
+     "さんじげんかしか",
+     "3D visualization"
+    ],
+    [
+     "モデル",
+     null,
+     "model"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "スタンバイ",
+     null,
+     "standby"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! 3D visualization model for civic briefings on standby!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "住民の",
+     "じゅうみんの",
+     "residents'"
+    ],
+    [
+     "皆様も",
+     "みなさまも",
+     "everyone"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップの",
+     "ぶりっぷの",
+     "Blip's"
+    ],
+    [
+     "分かりやすい",
+     "わかりやすい",
+     "easy-to-understand"
+    ],
+    [
+     "図解に",
+     "ずかいに",
+     "diagrams"
+    ],
+    [
+     "安心される",
+     "あんしんされる",
+     "reassured"
+    ],
+    [
+     "はずよ",
+     null,
+     "should be"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The residents will surely be deeply reassured by Blip's clear and intuitive graphical diagrams."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "技術の",
+     "ぎじゅつの",
+     "technology's"
+    ],
+    [
+     "本質は",
+     "ほんしつは",
+     "essence"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人の心を",
+     "ひとのこころを",
+     "people's hearts"
+    ],
+    [
+     "安らかに",
+     "やすらかに",
+     "peacefully"
+    ],
+    [
+     "することに",
+     "することに",
+     "in making"
+    ],
+    [
+     "あるのだからな",
+     null,
+     "because lies in"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Because the true essence of technology lies in bringing peace and trust to human hearts."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "夕暮れ時の",
+     "ゆうぐれときの",
+     "at twilight"
+    ],
+    [
+     "奈良井宿に",
+     "ならいじゅくに",
+     "in Narai-juku"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "提灯の",
+     "ちょうちんの",
+     "lanterns'"
+    ],
+    [
+     "明かりが",
+     "あかりが",
+     "lights (subj)"
+    ],
+    [
+     "灯り始めました",
+     "ともりはじめました",
+     "began to light up"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In twilight Narai-juku, the warm glow of paper lanterns has begun to light up the street."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "幻想的な",
+     "げんそうてきな",
+     "magical"
+    ],
+    [
+     "温もりに",
+     "ぬくもりに",
+     "warmth"
+    ],
+    [
+     "包まれて",
+     "つつまれて",
+     "enfolded"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心が",
+     "こころが",
+     "heart"
+    ],
+    [
+     "洗われる",
+     "あらわれる",
+     "cleansed"
+    ],
+    [
+     "ようね",
+     null,
+     "looks like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Enfolded in this magical warmth, one's spirit feels completely cleansed."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "提灯の",
+     "ちょうちんの",
+     "lanterns'"
+    ],
+    [
+     "照度",
+     "しょうど",
+     "illuminance"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "二十ルクス",
+     "にじゅうるくす",
+     "20 lux"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安らぎ",
+     "やすらぎ",
+     "serenity"
+    ],
+    [
+     "指数",
+     "しすう",
+     "index"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最大値",
+     "さいだいち",
+     "maximum"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Lantern illuminance: 20 lux! Serenity rating: maximum!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "便利さだけを",
+     "べんりさだけを",
+     "only convenience"
+    ],
+    [
+     "追求して",
+     "ついきゅうして",
+     "pursuing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "静けさを",
+     "しずけさを",
+     "serenity"
+    ],
+    [
+     "失っては",
+     "うしなっては",
+     "if lose"
+    ],
+    [
+     "ならない",
+     null,
+     "must not"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We must never lose this timeless serenity by pursuing mere superficial convenience."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "高速移動の",
+     "こうそくいどうの",
+     "high-speed transit's"
+    ],
+    [
+     "恩恵と",
+     "おんけいと",
+     "benefits and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "変わらぬ",
+     "かわらぬ",
+     "unchanging"
+    ],
+    [
+     "郷愁の",
+     "きょうしゅうの",
+     "nostalgia's"
+    ],
+    [
+     "調和",
+     "ちょうわ",
+     "harmony"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これこそが",
+     null,
+     "precisely this"
+    ],
+    [
+     "成熟した",
+     "せいじゅくした",
+     "mature"
+    ],
+    [
+     "文明ですね",
+     "ぶんめいですね",
+     "civilization is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Balancing the blessings of high-speed transit with unchanging poetic heritage—this is true civilizational maturity."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "立派な",
+     "りっぱな",
+     "magnificent"
+    ],
+    [
+     "見識よ",
+     "けんしきよ",
+     "insight is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, that is a truly magnificent perception."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "公聴会の",
+     "こうちょうかいの",
+     "hearing's"
+    ],
+    [
+     "会場へ",
+     "かいじょうへ",
+     "to venue"
+    ],
+    [
+     "向かおう",
+     "むかおう",
+     "let's head"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "誠意を",
+     "せいいを",
+     "sincerity"
+    ],
+    [
+     "尽くして",
+     "つくして",
+     "committing"
+    ],
+    [
+     "語りかけるんだ",
+     "かたりかけるんだ",
+     "speak to them"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, let us head toward the civic hearing. Address them with full, unreserved sincerity."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "未来と",
+     "みらいと",
+     "future and"
+    ],
+    [
+     "歴史を",
+     "れきしを",
+     "history"
+    ],
+    [
+     "繋ぐため",
+     "つなぐため",
+     "in order to bridge"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全力を",
+     "ぜんりょくを",
+     "all strength"
+    ],
+    [
+     "尽くします",
+     "つくします",
+     "will exhaust"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! To bridge the future and history, I will give my absolute all!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "応援",
+     "おうえん",
+     "cheering"
+    ],
+    [
+     "モード",
+     null,
+     "mode"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "勇気",
+     "ゆうき",
+     "courage"
+    ],
+    [
+     "ブースト",
+     null,
+     "boosted"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Cheering mode for Sam! Courage boosted!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心強いわ",
+     "こころづよいわ",
+     "so heartening"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行きましょう",
+     "いきましょう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, so heartening! Let's go!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "一歩ずつ",
+     "いっぽずつ",
+     "step by step"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "着実に",
+     "ちゃくじつに",
+     "steadily"
+    ],
+    [
+     "歩みを進めよう",
+     "あゆみをすすめよう",
+     "let's advance our steps"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Step by step, let us advance our walk steadily."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "歴史の",
+     "れきしの",
+     "history's"
+    ],
+    [
+     "息吹を",
+     "いぶきを",
+     "breath"
+    ],
+    [
+     "背中に",
+     "せなかに",
+     "at our back"
+    ],
+    [
+     "受けて",
+     "うけて",
+     "receiving"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "前進します",
+     "ぜんしんします",
+     "will march forward"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "With the living breath of history at our backs, we march forward!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "未来へ",
+     "みらいへ",
+     "to future"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ともに",
+     null,
+     "together"
+    ],
+    [
+     "歩みましょう",
+     "あゆみましょう",
+     "let's walk"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Toward a beautiful future, let us walk together!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ミッション",
+     null,
+     "mission"
+    ],
+    [
+     "スタート",
+     null,
+     "start"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Mission start!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "kagiri-da",
+   "title": "～限りだ: extremely, to the utmost (emotive evaluation)",
+   "explain": "Attached to emotive adjectives (喜ばしい, 羨ましい, 恐ろしい) expressing maximum emotional extremity.",
+   "examples": [
+    {
+     "t": [
+      [
+       "喜ばしい",
+       "よろこばしい",
+       "delightful"
+      ],
+      [
+       "限りだ",
+       null,
+       "to the utmost",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It is delightful to the utmost."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "昔の仲間と再会できて、嬉しい＿＿。",
+     "hint": "I am joyous to the utmost to be reunited with old comrades.",
+     "choices": [
+      "限りだ",
+      "に相違ない",
+      "つつある"
+     ],
+     "answer": 0,
+     "why": "限りだ emphasizes the utmost limits of an emotional sensation."
+    }
+   ]
+  },
+  {
+   "id": "ni-taenai",
+   "title": "～に堪えない: unbearable to (too painful or unendurable)",
+   "explain": "Verb plain form + に堪えない expresses that something is too tragic or distressing to bear witnessing (見るに堪えない, 聞くに堪えない).",
+   "examples": [
+    {
+     "t": [
+      [
+       "見る",
+       "みる",
+       "look"
+      ],
+      [
+       "に堪えない",
+       null,
+       "unbearable to see",
+       "p"
+      ],
+      [
+       "惨状",
+       "さんじょう",
+       "tragic state"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It is a disaster too tragic to bear seeing."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "大事故の凄惨な光景は、正視する＿＿。",
+     "hint": "The gruesome scene of the major accident was unbearable to look at directly.",
+     "choices": [
+      "に堪えない",
+      "をおいて他にない",
+      "きらいがある"
+     ],
+     "answer": 0,
+     "why": "に堪えない indicates unbearable distress when observing or hearing something."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "宿",
+   "on": [
+    "シュク"
+   ],
+   "kun": [
+    "やど",
+    "やど.る"
+   ],
+   "m": [
+    "inn",
+    "station"
+   ],
+   "ex": [
+    [
+     "宿場町",
+     "しゅくばまち",
+     "post town"
+    ],
+    [
+     "宿泊",
+     "しゅくはく",
+     "lodging"
+    ]
+   ]
+  },
+  {
+   "k": "格子",
+   "on": [
+    "コウシ"
+   ],
+   "kun": [],
+   "m": [
+    "lattice",
+    "grid"
+   ],
+   "ex": [
+    [
+     "格子",
+     "こうし",
+     "lattice/grid"
+    ]
+   ]
+  },
+  {
+   "k": "衰",
+   "on": [
+    "スイ"
+   ],
+   "kun": [
+    "おとろ.える"
+   ],
+   "m": [
+    "decline",
+    "wane"
+   ],
+   "ex": [
+    [
+     "減衰",
+     "げんすい",
+     "attenuation/damping"
+    ],
+    [
+     "衰退",
+     "すいたい",
+     "decline"
+    ]
+   ]
+  },
+  {
+   "k": "灯",
+   "on": [
+    "トウ"
+   ],
+   "kun": [
+    "ひ",
+    "ともしび"
+   ],
+   "m": [
+    "lamp",
+    "light"
+   ],
+   "ex": [
+    [
+     "点灯",
+     "てんとう",
+     "lighting up"
+    ],
+    [
+     "灯火",
+     "ともしび",
+     "lamplight"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "奈良井宿でリニア新幹線建設に関して懸念されていた問題は何ですか？",
+   "choices": [
+    "地下深くのトンネル掘削による微小振動が木造建築遺産を損なうこと",
+    "新幹線が宿場町の通りを直接走ること",
+    "切符が高すぎること"
+   ],
+   "answer": 0,
+   "why": "地下深くを貫通するリニアの振動が伝統的木造建築に与える影響が懸念されていました。"
+  },
+  {
+   "q": "サムたちが導入した対策技術は何ですか？",
+   "choices": [
+    "地下からの波動を逆相殺する高精度アクティブ制振ダンパー",
+    "町全体をゴムで包む技術",
+    "電車を止めること"
+   ],
+   "answer": 0,
+   "why": "波動を逆相殺するアクティブダンパーにより振動を自然界レベル以下に抑えています。"
+  }
+ ],
+ "talk": "You are Yuki discussing heritage preservation vs high-speed infrastructure with Sam at Narai-juku."
+}

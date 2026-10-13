@@ -1,0 +1,2705 @@
+{
+ "id": "n3-17",
+ "level": "N3",
+ "unit": 17,
+ "title": {
+  "ja": "夕暮れの祇園：職人との偶然の出会い",
+  "en": "Dusk in Gion: Meeting a Kyoto Artisan (Unit 5 Review)"
+ },
+ "scene": "Gion, Kyoto at dusk. A sudden rainstorm prompts Sam, Yuki, and Blip to duck into a historic bamboo craft workshop, witnessing master umbrella craftsmen.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "夕暮れ",
+     "ゆうぐれ",
+     "dusk"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "祇園",
+     "ぎおん",
+     "Gion"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "石畳",
+     "いしだたみ",
+     "stone pavement"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "風情",
+     "ふぜい",
+     "elegance/taste"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "exists"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The stone-paved alleys of Gion at dusk have such timeless elegance!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "古い",
+     "ふるい",
+     "historic"
+    ],
+    [
+     "町家",
+     "まちや",
+     "traditional townhouse"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "並んでいて",
+     "ならんでいて",
+     "are lined up"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まるで",
+     null,
+     "as if"
+    ],
+    [
+     "タイムスリップ",
+     null,
+     "time slip"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "みたいだ",
+     null,
+     "seems like"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Historic townhouses are lined up, it feels as if we time-slipped!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "急",
+     "きゅう",
+     "sudden"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "黒い",
+     "くろい",
+     "black"
+    ],
+    [
+     "雲",
+     "くも",
+     "clouds"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "空",
+     "そら",
+     "sky"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "覆いました",
+     "おおいました",
+     "covered"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Dark clouds suddenly covered the sky!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あっ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "言った",
+     "いった",
+     "spoke"
+    ],
+    [
+     "とたん",
+     null,
+     "just as soon as"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "大粒",
+     "おおつぶ",
+     "large drops"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "降ってきた",
+     "ふってきた",
+     "came falling"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, just as you said that, large raindrops came pouring down!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あそこ",
+     null,
+     "over there"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "軒下",
+     "のきした",
+     "under eaves"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "雨宿り",
+     "あまやどり",
+     "shelter from rain"
+    ],
+    [
+     "しよう",
+     "しよう",
+     "let's do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "早く",
+     "はやく",
+     "quickly"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's take shelter under those eaves over there! Quick!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "おや",
+     null,
+     "oh my"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ずぶ濡れ",
+     "ずぶぬれ",
+     "soaking wet"
+    ],
+    [
+     "だね",
+     null,
+     "aren't you",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "へ",
+     null,
+     "into",
+     "p"
+    ],
+    [
+     "お入り",
+     "おはいり",
+     "enter (honorific)"
+    ],
+    [
+     "なさい",
+     null,
+     "do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh my, you're soaking wet. Please, come inside."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨宿り",
+     "あまやどり",
+     "rain shelter"
+    ],
+    [
+     "させて",
+     null,
+     "permit"
+    ],
+    [
+     "いただきます",
+     null,
+     "receive (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much! Thank you for letting us shelter from the rain!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここ",
+     null,
+     "here"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "和傘",
+     "わがさ",
+     "Japanese umbrella"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "工房",
+     "こうぼう",
+     "workshop"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow... is this a Japanese traditional umbrella workshop?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "そうだよ",
+     null,
+     "that's right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "竹",
+     "たけ",
+     "bamboo"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "和紙",
+     "わし",
+     "washi paper"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "京和傘",
+     "きょうわがさ",
+     "Kyoto umbrella"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "作っている",
+     "つくっている",
+     "am making"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's right. I make Kyoto paper umbrellas using bamboo and washi paper."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "なんて",
+     null,
+     "what a"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "色合い",
+     "いろあい",
+     "color scheme"
+    ],
+    [
+     "なんだ",
+     null,
+     "is it"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "幾何学的",
+     "きかがくてき",
+     "geometric"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "骨組み",
+     "ほねぐみ",
+     "framework"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "見事",
+     "みごと",
+     "splendid"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What gorgeous coloring! The geometric framework is magnificent!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "竹",
+     "たけ",
+     "bamboo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "骨",
+     "ほね",
+     "ribs"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "削っている",
+     "けずっている",
+     "whittling"
+    ],
+    [
+     "うちに",
+     null,
+     "while in middle of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "手",
+     "て",
+     "hands"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "感覚",
+     "かんかく",
+     "sensation"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "厚み",
+     "あつみ",
+     "thickness"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "分かる",
+     "わかる",
+     "understand"
+    ],
+    [
+     "ように",
+     null,
+     "manner"
+    ],
+    [
+     "なる",
+     null,
+     "becomes"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "While shaving the bamboo ribs, your hands come to sense the exact thickness by touch."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "長年",
+     "ながねん",
+     "many years"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "修業",
+     "しゅぎょう",
+     "training"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "積んだ",
+     "つんだ",
+     "accumulated"
+    ],
+    [
+     "に違いない",
+     null,
+     "must surely have"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You must surely have accumulated decades of intense training!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "傘",
+     "かさ",
+     "umbrella"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "開いた",
+     "ひらいた",
+     "opened"
+    ],
+    [
+     "とたん",
+     null,
+     "just as soon as"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パッと",
+     null,
+     "suddenly"
+    ],
+    [
+     "広がる",
+     "ひろがる",
+     "spreads"
+    ],
+    [
+     "張り",
+     "はり",
+     "tension"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "命",
+     "いのち",
+     "life"
+    ],
+    [
+     "なんだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The tension that snaps open the instant the umbrella is unfolded is its very life."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "放射状",
+     "ほうしゃじょう",
+     "radial"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "骨組み",
+     "ほねぐみ",
+     "framework"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "四十八本",
+     "よんじゅうはっぽん",
+     "48 ribs"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "竹",
+     "たけ",
+     "bamboo"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "均等",
+     "きんとう",
+     "even/equal"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "並んで",
+     "ならんで",
+     "lined up"
+    ],
+    [
+     "います",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Beautiful radial framework! Forty-eight bamboo ribs are aligned with perfect symmetry!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "おや",
+     null,
+     "oh my"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "よく",
+     null,
+     "well"
+    ],
+    [
+     "数えた",
+     "かぞえた",
+     "counted"
+    ],
+    [
+     "ね",
+     null,
+     "didn't you",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "機械",
+     "きかい",
+     "machine"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "目",
+     "め",
+     "eyes"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "たいした",
+     null,
+     "impressive"
+    ],
+    [
+     "もんだ",
+     null,
+     "thing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh, you counted well! Machine eyes are quite impressive too."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "弾く",
+     "はじく",
+     "repel"
+    ],
+    [
+     "ため",
+     null,
+     "in order to"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "油",
+     "あぶら",
+     "oil"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "塗る",
+     "ぬる",
+     "apply"
+    ],
+    [
+     "ん",
+     null,
+     "explanatory"
+    ],
+    [
+     "ですよね",
+     null,
+     "isn't it, right",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You coat it with oil to repel rain, right?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "えごま",
+     null,
+     "perilla"
+    ],
+    [
+     "油",
+     "あぶら",
+     "oil"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "塗って",
+     "ぬって",
+     "apply"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "天日",
+     "てんぴ",
+     "sunlight"
+    ],
+    [
+     "で",
+     null,
+     "under",
+     "p"
+    ],
+    [
+     "じっくり",
+     null,
+     "thoroughly"
+    ],
+    [
+     "乾かす",
+     "かわかす",
+     "dry"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そうする",
+     null,
+     "doing so"
+    ],
+    [
+     "と",
+     null,
+     "when/if",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "日",
+     "ひ",
+     "day"
+    ],
+    [
+     "でも",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "水",
+     "みず",
+     "water"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "通さない",
+     "とおさない",
+     "not let through"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We apply perilla oil and thoroughly sun-dry it. When you do that, it won't let water through even on rainy days."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "自然",
+     "しぜん",
+     "nature"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "素材",
+     "そざい",
+     "materials"
+    ],
+    [
+     "だけで",
+     null,
+     "only with"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こんなに",
+     null,
+     "this much"
+    ],
+    [
+     "機能的",
+     "きのうてき",
+     "functional"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "道具",
+     "どうぐ",
+     "tool"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "作れる",
+     "つくれる",
+     "can make"
+    ],
+    [
+     "なんて",
+     null,
+     "such a thing"
+    ],
+    [
+     "驚き",
+     "おどろき",
+     "surprise"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's amazing that such a functional tool can be made using only natural materials!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "昔",
+     "むかし",
+     "old days"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "知恵",
+     "ちえ",
+     "wisdom"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "結晶",
+     "けっしょう",
+     "crystallization"
+    ],
+    [
+     "さ",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨音",
+     "あまおと",
+     "rain sound"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "和紙",
+     "わし",
+     "washi paper"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "当たる",
+     "あたる",
+     "strike"
+    ],
+    [
+     "時",
+     "とき",
+     "time"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "独特",
+     "どくとく",
+     "unique"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "風情",
+     "ふぜい",
+     "charm"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "exists"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's the crystallization of ancient wisdom. The sound of rain striking washi paper is unique and charming too."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "どんな",
+     null,
+     "what kind of"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "する",
+     null,
+     "does"
+    ],
+    [
+     "んですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What kind of sound does it make?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "ビニール傘",
+     "びにーるがさ",
+     "plastic umbrella"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "バタバタ",
+     null,
+     "flapping"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "違って",
+     "ちがって",
+     "differing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "トントン",
+     null,
+     "gentle tapping"
+    ],
+    [
+     "と",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "太鼓",
+     "たいこ",
+     "drum"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ような",
+     null,
+     "like"
+    ],
+    [
+     "優しい",
+     "やさしい",
+     "gentle"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "する",
+     null,
+     "does"
+    ],
+    [
+     "のさ",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Unlike the slapping noise of a plastic umbrella, it makes a gentle tapping sound like a small drum."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "素敵",
+     "すてき",
+     "lovely"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "日",
+     "ひ",
+     "day"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "楽しみに",
+     "たのしみに",
+     "look forward to"
+    ],
+    [
+     "なる",
+     null,
+     "become"
+    ],
+    [
+     "傘",
+     "かさ",
+     "umbrella"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How lovely! It's an umbrella that makes you look forward to rainy days."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "お話",
+     "おはなし",
+     "talk"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "伺っている",
+     "うかがっている",
+     "listening (humble)"
+    ],
+    [
+     "うちに",
+     null,
+     "while"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "雨",
+     "あめ",
+     "rain"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "小降り",
+     "こぶり",
+     "light rain"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "なってきた",
+     null,
+     "has become"
+    ],
+    [
+     "みたい",
+     null,
+     "seems like"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "While listening to you speak, it seems the rain outside has turned into a drizzle."
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "夕立",
+     "ゆうだち",
+     "evening shower"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "通り過ぎる",
+     "とおりすぎる",
+     "pass by"
+    ],
+    [
+     "の",
+     null,
+     "nominalizer"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "早い",
+     "はやい",
+     "fast"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Evening showers pass by quickly, after all."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "突然",
+     "とつぜん",
+     "sudden"
+    ],
+    [
+     "お邪魔",
+     "おじゃま",
+     "intrusion"
+    ],
+    [
+     "したのに",
+     null,
+     "even though did"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "親切",
+     "しんせつ",
+     "kindness"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "くださって",
+     null,
+     "gave favor"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございました",
+     null,
+     "was (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even though we suddenly intruded, thank you so much for kindly showing us your craft!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "いいってことよ",
+     null,
+     "think nothing of it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雨宿り",
+     "あまやどり",
+     "rain shelter"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "何かの",
+     "なにかの",
+     "some kind of"
+    ],
+    [
+     "縁",
+     "えん",
+     "destiny/bond"
+    ],
+    [
+     "だから",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Think nothing of it. Sheltering from rain is a form of fateful connection too."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "思い出",
+     "おもいで",
+     "memories"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "一つ",
+     "ひとつ",
+     "one"
+    ],
+    [
+     "増えた",
+     "ふえた",
+     "increased"
+    ],
+    [
+     "ね",
+     null,
+     "didn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We gained yet another special Kyoto memory, didn't we!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "濡れた",
+     "ぬれた",
+     "wet"
+    ],
+    [
+     "石畳",
+     "いしだたみ",
+     "stone pavement"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "灯籠",
+     "とうろう",
+     "lantern"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "明かり",
+     "あかり",
+     "light"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "映って",
+     "うつって",
+     "reflects"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "幻想的",
+     "げんそうてき",
+     "magical/mystical"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! Lantern lights reflect on the wet stone pavement, it's so magical."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "カメラ",
+     null,
+     "camera"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "夜景",
+     "やけい",
+     "night view"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "撮影",
+     "さつえい",
+     "photograph"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Photographing the beautiful night view with my camera!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "夜",
+     "よる",
+     "night"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "冷える",
+     "ひえる",
+     "gets cold"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "風邪",
+     "かぜ",
+     "cold"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "引かない",
+     "ひかない",
+     "not catch"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "気をつけて",
+     "きをつけて",
+     "take care"
+    ],
+    [
+     "お帰り",
+     "おかえり",
+     "return"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It gets chilly at night, so take care not to catch cold as you head home."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございました",
+     null,
+     "was (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! Thank you so very much!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "さあ",
+     null,
+     "come now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "湯豆腐",
+     "ゆどうふ",
+     "boiled tofu"
+    ],
+    [
+     "でも",
+     null,
+     "or something",
+     "p"
+    ],
+    [
+     "食べに",
+     "たべに",
+     "for eating"
+    ],
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Come now, let's go eat warm Yudofu tofu!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "賛成",
+     "さんせい",
+     "agree"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "京都",
+     "きょうと",
+     "Kyoto"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "夜",
+     "よる",
+     "night"
+    ],
+    [
+     "を",
+     null,
+     "through",
+     "p"
+    ],
+    [
+     "満喫",
+     "まんきつ",
+     "fully enjoy"
+    ],
+    [
+     "しよう",
+     "しよう",
+     "let's do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Agreed! Let's fully enjoy Kyoto's night!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "豆腐",
+     "とうふ",
+     "tofu"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "出発",
+     "しゅっぱつ",
+     "departure"
+    ],
+    [
+     "進行",
+     "しんこう",
+     "ahead"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Full speed ahead to delicious tofu!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n3-review-te-iru-uchini",
+   "title": "Natural Transition: ～ているうちに (While Doing...)",
+   "explain": "V-ている + うちに expresses that while an ongoing action was occurring, a change naturally or unconsciously took place.",
+   "examples": [
+    {
+     "t": [
+      [
+       "話している",
+       "はなしている",
+       "talking"
+      ],
+      [
+       "うちに",
+       null,
+       "while in middle of"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "仲良くなった",
+       "なかよくなった",
+       "became good friends"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "While talking, we became good friends."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "本を読んでいる＿＿＿、眠ってしまった。",
+     "hint": "While reading a book, I fell asleep.",
+     "choices": [
+      "うちに",
+      "までに",
+      "ために"
+     ],
+     "answer": 0,
+     "why": "〜ているうちに expresses an unprompted change during an ongoing state."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#te-iru-uchini"
+  },
+  {
+   "id": "n3-review-totan",
+   "title": "Immediate Succession: ～たとたん (Just as Soon as...)",
+   "explain": "V-た + とたん (に) describes an unexpected or instantaneous event that happens the moment a preceding action finishes.",
+   "examples": [
+    {
+     "t": [
+      [
+       "窓",
+       "まど",
+       "window"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "開けた",
+       "あけた",
+       "opened"
+      ],
+      [
+       "とたん",
+       null,
+       "just as soon as"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "強風",
+       "きょうふう",
+       "strong wind"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "入ってきた",
+       "はいってきた",
+       "entered"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The moment I opened the window, strong wind rushed in."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "立ち上がっ＿＿＿、めまいがした。",
+     "hint": "The moment I stood up, I felt dizzy.",
+     "choices": [
+      "たとたん",
+      "たところ",
+      "たばかり"
+     ],
+     "answer": 0,
+     "why": "〜たとたん highlights instantaneous subsequent trigger."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#totan"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "風",
+   "on": [
+    "フウ"
+   ],
+   "kun": [
+    "かぜ"
+   ],
+   "m": "wind, style",
+   "ex": [
+    [
+     "風情",
+     "ふぜい",
+     "taste/atmosphere"
+    ]
+   ]
+  },
+  {
+   "k": "情",
+   "on": [
+    "ジョウ"
+   ],
+   "kun": [
+    "なさ.け"
+   ],
+   "m": "feeling, condition",
+   "ex": [
+    [
+     "風情",
+     "ふぜい",
+     "atmosphere"
+    ],
+    [
+     "感情",
+     "かんじょう",
+     "emotion"
+    ]
+   ]
+  },
+  {
+   "k": "畳",
+   "on": [
+    "ジョウ"
+   ],
+   "kun": [
+    "たたみ"
+   ],
+   "m": "tatami, fold",
+   "ex": [
+    [
+     "石畳",
+     "いしだたみ",
+     "stone pavement"
+    ]
+   ]
+  },
+  {
+   "k": "削",
+   "on": [
+    "サク"
+   ],
+   "kun": [
+    "けず.る"
+   ],
+   "m": "whittle, plane",
+   "ex": [
+    [
+     "削る",
+     "けずる",
+     "to shave/whittle"
+    ]
+   ]
+  },
+  {
+   "k": "放",
+   "on": [
+    "ホウ"
+   ],
+   "kun": [
+    "はな.す"
+   ],
+   "m": "release, emit",
+   "ex": [
+    [
+     "放射状",
+     "ほうしゃじょう",
+     "radial pattern"
+    ]
+   ]
+  },
+  {
+   "k": "均",
+   "on": [
+    "キン"
+   ],
+   "kun": [],
+   "m": "level, equal",
+   "ex": [
+    [
+     "均等",
+     "きんとう",
+     "equality/uniformity"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  3,
+  11
+ ],
+ "questions": [
+  {
+   "q": "職人さんは何を削っているうちに厚みが分かるようになりましたか。",
+   "en": "While shaving what did the craftsman come to know the thickness by touch?",
+   "choices": [
+    "傘の竹の骨",
+    "木の板",
+    "鉛筆"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "和傘に雨が当たる時はどんな音がしますか。",
+   "en": "What kind of sound does rain make when striking a washi umbrella?",
+   "choices": [
+    "トントンと太鼓のような優しい音",
+    "バタバタと大きな音",
+    "カチカチと硬い音"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a traditional craft or handmade tool you experienced in Japan."
+}

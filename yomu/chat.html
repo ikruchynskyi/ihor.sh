@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yomu Chat</title>
-  <meta name="description" content="Free conversation in Japanese with Blip at your JLPT level (N5, N4 or N3): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Runs on a local model, so nothing you write leaves the machine." />
+  <meta name="description" content="Free conversation in Japanese with Blip at your JLPT level (N5 to N1): any topic you like, with only that level's grammar and words. Tap any word for its reading and meaning, any kanji for its readings, and see the English when you want it. Runs on a local model, so nothing you write leaves the machine." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
     .levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
@@ -44,13 +44,19 @@
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, addCard, hasKanji, data, blip } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, browserSpeak, listen, canListen, addCard, hasKanji, data, blip, pitchInfo, renderPitch } from "/yomu/lib.js";
 const $ = (id) => document.getElementById(id);
-const LEVELS = ["N5", "N4", "N3"];
+const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 const params = new URLSearchParams(location.search);
 const level = LEVELS.includes(params.get("level")) ? params.get("level") : "N5";
 document.title = `Chat in Japanese at ${level} · Yomu`;
-const TOPICS = { N5: ["自己紹介 · introduce yourself", "食べ物 · food", "週末 · the weekend", "家族 · family", "天気 · weather"], N4: ["旅行 · travel", "趣味 · hobbies", "仕事 · work", "日本の生活 · life in Japan", "映画 · movies"], N3: ["ニュース · the news", "将来の夢 · dreams for the future", "東京と New York", "好きな本 · a book you like", "最近の出来事 · something recent"] };
+const TOPICS = {
+  N5: ["自己紹介 · introduce yourself", "食べ物 · food", "週末 · the weekend", "家族 · family", "天気 · weather"],
+  N4: ["旅行 · travel", "趣味 · hobbies", "仕事 · work", "日本の生活 · life in Japan", "映画 · movies"],
+  N3: ["ニュース · the news", "将来の夢 · dreams for the future", "東京と New York", "好きな本 · a book you like", "最近の出来事 · something recent"],
+  N2: ["ビジネス・職場文化 · workplace & business", "環境問題とリサイクル · environment & sustainability", "テクノロジーと社会 · tech & society", "伝統工芸と現代 · tradition meets modernity", "メディアと世論 · media & public discourse"],
+  N1: ["人工知能の倫理と意識 · AI ethics & consciousness", "現代社会の構造的課題 · structural social issues", "哲学と古典美学 · philosophy & classical aesthetics", "国際秩序とデジタル主権 · global order & sovereignty", "文学と人間の条件 · literature & the human condition"]
+};
 $("levels").innerHTML = LEVELS.map((l) => `<a class="btn${l === level ? "" : " alt"}" href="?level=${l}" ${l === level ? 'aria-current="page"' : ""}>${l}</a>`).join("");
 $("topics").innerHTML = TOPICS[level].map((t) => `<button type="button" data-topic="${esc(t)}">${esc(t)}</button>`).join("");
 settingsBar($("settings"), () => renderLog());
@@ -80,7 +86,7 @@ async function send(text) {
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
     turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix }); keep();
-    gain(2); speak(d.ja);
+    gain(2); browserSpeak(d.ja);
   } catch (e) { $("status").textContent = e.message; turns.pop(); keep(); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
@@ -91,7 +97,7 @@ async function start(t) {
     const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || "The local model didn't answer. Try again in a moment.");
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "" }); keep(); speak(d.ja);
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "" }); keep(); browserSpeak(d.ja);
   } catch (e) { $("status").textContent = e.message; }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
@@ -103,7 +109,7 @@ $("mic").onclick = async () => { $("mic").disabled = true; $("mic").textContent 
 // Tap a word: reading, romaji, meaning, its kanji; tap the plain line (when the model's split didn't cover it): the English.
 $("log").addEventListener("click", async (e) => {
   const b = e.target.closest("button");
-  if (b?.dataset.play != null) return speak(turns[+b.dataset.play].content);
+  if (b?.dataset.play != null) return browserSpeak(turns[+b.dataset.play].content);
   if (b?.dataset.en != null) { const t = turns[+b.dataset.en]; t.showEn = !t.showEn; keep(); return renderLog(); }
   const w = e.target.closest(".w.g"); if (!w) return;
   if (w.dataset.line != null) { const t = turns[+w.dataset.line]; t.showEn = true; keep(); return renderLog(); }
@@ -116,12 +122,15 @@ async function showWord(t, el) {
   const pop = $("pop"), r = el.getBoundingClientRect();
   kanjiIndex ??= new Map((await data("kanji")).map((k) => [k.k, k]));
   const ks = [...t.s].filter((c) => hasKanji(c) && kanjiIndex.has(c));
-  pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div><div>${esc(t.g ?? "")}</div>
+  const pitch = await pitchInfo(t.s, reading(t));
+  pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
+    ${renderPitch(pitch)}
+    <div>${esc(t.g ?? "")}</div>
     ${ks.length ? `<div class="kanji-row">${ks.map((c) => `<button class="mini" data-k="${esc(c)}" title="${esc(kanjiIndex.get(c).m.join(", "))}">${esc(c)}</button>`).join("")}</div><div class="kmeta" id="kmeta"></div>` : ""}
     <div class="row"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button>`}<button class="mini" id="pClose">✕</button></div>`;
   pop.hidden = false;
   pop.style.left = `${Math.min(innerWidth - 310, r.left + scrollX)}px`; pop.style.top = `${r.bottom + scrollY + 6}px`;
-  $("pPlay").onclick = () => speak(reading(t));
+  $("pPlay").onclick = () => browserSpeak(t.s || reading(t));
   $("pClose").onclick = () => (pop.hidden = true);
   if ($("pAdd")) $("pAdd").onclick = () => { addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g ?? "", kind: "word" }); $("pAdd").textContent = "✓ Added"; gain(1); };
   pop.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const k = kanjiIndex.get(b.dataset.k); $("kmeta").innerHTML = `<b>${esc(k.k)}</b> ${esc(k.m.join(", "))} · <span class="jp">on: ${esc(k.on.join("、"))} · kun: ${esc(k.kun.join("、"))}</span> · N${k.n} · <a href="/yomu/deck.html?level=N${k.n}&type=kanji#${encodeURIComponent(k.k)}">deck</a>`; }));

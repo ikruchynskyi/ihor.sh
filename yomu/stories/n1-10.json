@@ -1,0 +1,2095 @@
+{
+ "id": "n1-10",
+ "level": "N1",
+ "unit": 10,
+ "title": {
+  "ja": "認知科学と直観の数理モデル",
+  "en": "Cognitive Neuroscience: Intuition vs Computation"
+ },
+ "scene": "A cognitive neuroscience laboratory seminar room. Kenji, Yuki, Sam, and Blip analyze brain-scan data of professional Shogi masters to model human intuition versus computational brute force.",
+ "lines": [
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "将棋の",
+     "しょうぎの",
+     "Shogi's"
+    ],
+    [
+     "名人戦",
+     "めいじんせん",
+     "Meijin match"
+    ],
+    [
+     "における",
+     "における",
+     "in",
+     "p"
+    ],
+    [
+     "棋士の",
+     "きしの",
+     "players'"
+    ],
+    [
+     "脳波",
+     "のうは",
+     "brainwaves"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "実に",
+     "じつに",
+     "truly"
+    ],
+    [
+     "興味深い",
+     "きょうみぶかい",
+     "fascinating"
+    ],
+    [
+     "結果が",
+     "けっかが",
+     "results (subj)"
+    ],
+    [
+     "出た",
+     "でた",
+     "came out"
+    ],
+    [
+     "な",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The brainwave data of Shogi grandmasters during the Meijin title match—truly fascinating findings have emerged."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "プロ棋士は",
+     "ぷろきしは",
+     "professional players"
+    ],
+    [
+     "何億通り",
+     "なんおくどおり",
+     "hundreds of millions"
+    ],
+    [
+     "もの",
+     null,
+     "emp"
+    ],
+    [
+     "手を",
+     "てを",
+     "moves"
+    ],
+    [
+     "計算",
+     "けいさん",
+     "calculate"
+    ],
+    [
+     "するのではなく",
+     null,
+     "not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一瞬で",
+     "いっしゅんで",
+     "in an instant"
+    ],
+    [
+     "最善手を",
+     "さいぜんてを",
+     "best move"
+    ],
+    [
+     "「閃いて」",
+     "ひらめいて",
+     "intuiting"
+    ],
+    [
+     "いるのね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Professional players don't calculate hundreds of millions of moves; rather, they intuitively perceive the optimal move in a flash."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "大脳基底核",
+     "だいのうきていかく",
+     "basal ganglia"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "活動が",
+     "かつどうが",
+     "activity (subj)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まるで",
+     null,
+     "as if"
+    ],
+    [
+     "光を",
+     "ひかりを",
+     "light"
+    ],
+    [
+     "放たんばかりに",
+     "はなたんばかりに",
+     "as if to emit",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "強烈に",
+     "きょうれつに",
+     "intensely"
+    ],
+    [
+     "活性化",
+     "かっせいか",
+     "activated"
+    ],
+    [
+     "しています",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The basal ganglia's neurological activity is intensely fired up, almost as if bursting with radiant light!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "直観",
+     "ちょっかん",
+     "intuition"
+    ],
+    [
+     "発火",
+     "はっか",
+     "firing"
+    ],
+    [
+     "時間",
+     "じかん",
+     "time"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "〇点二秒",
+     "れいてんにびょう",
+     "0.2 sec"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "探索木",
+     "たんさくぎ",
+     "search tree"
+    ],
+    [
+     "ノード",
+     null,
+     "nodes"
+    ],
+    [
+     "枝刈り",
+     "えだがり",
+     "pruned"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "九十九点九",
+     "きゅうじゅうきゅうてんきゅう",
+     "99.9"
+    ],
+    [
+     "パーセント",
+     null,
+     "%"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Intuitive firing time: 0.2 seconds! Search-tree branches pruned by 99.9%!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "膨大な",
+     "ぼうだいな",
+     "vast"
+    ],
+    [
+     "経験の",
+     "けいけんの",
+     "experience's"
+    ],
+    [
+     "蓄積",
+     "ちくせき",
+     "accumulation"
+    ],
+    [
+     "を皮切りに",
+     "をかわきりに",
+     "starting with",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "脳が",
+     "のうが",
+     "brain"
+    ],
+    [
+     "高次の",
+     "こうじの",
+     "higher-order"
+    ],
+    [
+     "パターン",
+     null,
+     "patterns"
+    ],
+    [
+     "認識を",
+     "にんしきを",
+     "recognition"
+    ],
+    [
+     "自律的に",
+     "じりつてきに",
+     "autonomously"
+    ],
+    [
+     "獲得",
+     "かくとく",
+     "acquire"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "証拠",
+     "しょうこ",
+     "evidence"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is proof that, starting from the accumulation of vast experience, the brain autonomously masters higher-order pattern recognition."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "直観は",
+     "ちょっかんは",
+     "intuition"
+    ],
+    [
+     "当てずっぽう",
+     "あてずっぽう",
+     "haphazard guess"
+    ],
+    [
+     "ではなく",
+     null,
+     "not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "極度に",
+     "きょくどに",
+     "extremely"
+    ],
+    [
+     "高度な",
+     "こうどな",
+     "sophisticated"
+    ],
+    [
+     "暗黙知の",
+     "あんもくちの",
+     "tacit knowledge's"
+    ],
+    [
+     "発露",
+     "はつろ",
+     "manifestation"
+    ],
+    [
+     "なのね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "So intuition is by no means haphazard guessing; it is the manifestation of extraordinarily sophisticated tacit knowledge."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "計算機",
+     "けいさんき",
+     "computers"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "力まかせの",
+     "ちからまかせの",
+     "brute-force"
+    ],
+    [
+     "探索",
+     "たんさく",
+     "search"
+    ],
+    [
+     "とは",
+     null,
+     "as for",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "根本的に",
+     "こんぽんてきに",
+     "fundamentally"
+    ],
+    [
+     "メカニズム",
+     null,
+     "mechanism"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "異なります",
+     "ことなります",
+     "differs"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The mechanism differs fundamentally from a computer's brute-force algorithmic search, doesn't it?"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "いかに",
+     null,
+     "however much"
+    ],
+    [
+     "AIが",
+     null,
+     "AI"
+    ],
+    [
+     "進化",
+     "しんか",
+     "evolve"
+    ],
+    [
+     "しようとも",
+     null,
+     "even though"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人間性の",
+     "にんげんせいの",
+     "humanity's"
+    ],
+    [
+     "神秘を",
+     "しんぴを",
+     "mystery"
+    ],
+    [
+     "侮る",
+     "あなどる",
+     "belittle/look down"
+    ],
+    [
+     "べからず",
+     "べからず",
+     "must not",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "However advanced AI may become, one must never disparage the profound mysteries of human consciousness."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「侮るべからず」",
+     "あなどるべからず",
+     "must not belittle"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人間脳",
+     "にんげんのう",
+     "human brain"
+    ],
+    [
+     "への",
+     null,
+     "toward",
+     "p"
+    ],
+    [
+     "敬意",
+     "けいい",
+     "respect"
+    ],
+    [
+     "度数",
+     "どすう",
+     "frequency"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最大値",
+     "さいだいち",
+     "maximum value"
+    ],
+    [
+     "設定",
+     "せってい",
+     "set"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! 'Must not belittle'! Respect rating toward the human brain set to maximum!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップも",
+     null,
+     "Blip too"
+    ],
+    [
+     "人間の",
+     "にんげんの",
+     "human"
+    ],
+    [
+     "直観力に",
+     "ちょっかんりょくに",
+     "intuitive power"
+    ],
+    [
+     "感服",
+     "かんぷく",
+     "impressed"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "ようね",
+     null,
+     "looks like"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, it seems Blip is truly in awe of human intuitive power as well."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "直観の",
+     "ちょっかんの",
+     "intuition's"
+    ],
+    [
+     "メカニズムを",
+     "めかにずむを",
+     "mechanism"
+    ],
+    [
+     "数理的に",
+     "すうりてきに",
+     "mathematically"
+    ],
+    [
+     "モデル化",
+     "もでるか",
+     "model"
+    ],
+    [
+     "できれば",
+     null,
+     "if can"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "より",
+     null,
+     "more"
+    ],
+    [
+     "人間と親和性の高い",
+     "にんげんとしんわせいのたかい",
+     "harmonious with humans"
+    ],
+    [
+     "AIが",
+     null,
+     "AI (subj)"
+    ],
+    [
+     "創れます",
+     "つくれます",
+     "can create"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If we can model this intuitive mechanism mathematically, we could design AI that harmonizes even more seamlessly with humans."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "うむ",
+     null,
+     "um"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "単なる",
+     "たんなる",
+     "mere"
+    ],
+    [
+     "統計的",
+     "とうけいてき",
+     "statistical"
+    ],
+    [
+     "相関",
+     "そうかん",
+     "correlation"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "超えた",
+     "こえた",
+     "transcending"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本質的な",
+     "ほんしつてきな",
+     "essential"
+    ],
+    [
+     "意味理解の",
+     "いみりかいの",
+     "semantic understanding's"
+    ],
+    [
+     "次元",
+     "じげん",
+     "dimension"
+    ],
+    [
+     "だな",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Indeed. A dimension of true semantic understanding that transcends mere statistical correlations."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "言語獲得や",
+     "げんごかくとくや",
+     "language acquisition and"
+    ],
+    [
+     "芸術的",
+     "げいじゅつてき",
+     "artistic"
+    ],
+    [
+     "創造性も",
+     "そうぞうせいも",
+     "creativity too"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "直観と",
+     "ちょっかんと",
+     "intuition and"
+    ],
+    [
+     "深く",
+     "ふかく",
+     "deeply"
+    ],
+    [
+     "結びついて",
+     "むすびついて",
+     "tied to"
+    ],
+    [
+     "いるはずよ",
+     null,
+     "must be"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Language acquisition and artistic creativity must also be deeply bound to this very intuitive faculty."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "創造性",
+     "そうぞうせい",
+     "creativity"
+    ],
+    [
+     "モジュール",
+     null,
+     "module"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新規",
+     "しんき",
+     "novel"
+    ],
+    [
+     "数式モデル",
+     "すうしきもでる",
+     "mathematical model"
+    ],
+    [
+     "生成",
+     "せいせい",
+     "generation"
+    ],
+    [
+     "トライ",
+     null,
+     "try"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Creativity module attempting generation of novel mathematical formulation!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どんな",
+     null,
+     "what kind of"
+    ],
+    [
+     "数式",
+     "すうしき",
+     "formula"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ひらめいたの",
+     "ひらめいたの",
+     "intuit/flash"
+    ],
+    [
+     "かい",
+     null,
+     "question"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, what kind of formula did you just intuit?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美しさ",
+     "うつくしさ",
+     "beauty"
+    ],
+    [
+     "掛ける",
+     "かける",
+     "times"
+    ],
+    [
+     "友情",
+     "ゆうじょう",
+     "friendship"
+    ],
+    [
+     "イコール",
+     null,
+     "equals"
+    ],
+    [
+     "無限大",
+     "むげんだい",
+     "infinity"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Beauty times friendship equals infinity!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これ以上",
+     "これいじょう",
+     "beyond this"
+    ],
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "数理モデルは",
+     "すうりもでるは",
+     "mathematical model"
+    ],
+    [
+     "ないな",
+     null,
+     "does not exist"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! There is no mathematical model more beautiful than that!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "完璧な",
+     "かんぺきな",
+     "perfect"
+    ],
+    [
+     "解",
+     "かい",
+     "solution"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ノーベル賞級",
+     "のーべるしょうきゅう",
+     "Nobel prize class"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "直観よ",
+     "ちょっかんよ",
+     "intuition"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A perfect solution, Blip! Intuition worthy of a Nobel Prize!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "人間と",
+     "にんげんと",
+     "humans and"
+    ],
+    [
+     "AIの",
+     "AIの",
+     "AI's"
+    ],
+    [
+     "協働の",
+     "きょうどうの",
+     "collaboration's"
+    ],
+    [
+     "核心が",
+     "かくしんが",
+     "core (subj)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "そこに",
+     null,
+     "there"
+    ],
+    [
+     "あります",
+     null,
+     "exists"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The very core of human-AI collaboration lies right there."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "計算力と",
+     "けいさんりょくと",
+     "computational power and"
+    ],
+    [
+     "直観力",
+     "ちょっかんりょく",
+     "intuitive power"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "双方が",
+     "そうほうが",
+     "both sides"
+    ],
+    [
+     "補い合ってこそ",
+     "おぎないあってこそ",
+     "only when complementing",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "真の",
+     "しんの",
+     "true"
+    ],
+    [
+     "ブレイクスルーが",
+     null,
+     "breakthrough (subj)"
+    ],
+    [
+     "生まれる",
+     "うまれる",
+     "is born"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Computational firepower and intuitive insight—only when both complement each other will genuine scientific breakthroughs emerge."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私たちが",
+     "わたしたちが",
+     "we (subj)"
+    ],
+    [
+     "目指す",
+     "めざす",
+     "aim for"
+    ],
+    [
+     "未来の",
+     "みらいの",
+     "future's"
+    ],
+    [
+     "研究所の",
+     "けんきゅうじょの",
+     "institute's"
+    ],
+    [
+     "姿",
+     "すがた",
+     "shape/figure"
+    ],
+    [
+     "そのもの",
+     null,
+     "itself"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That is the very embodiment of the future research institute we aspire to build."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "直観を",
+     "ちょっかんを",
+     "intuition"
+    ],
+    [
+     "信じ",
+     "しんじ",
+     "believing in"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "論理で",
+     "ろんりで",
+     "with logic"
+    ],
+    [
+     "検証する",
+     "けんしょうする",
+     "verify"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "研究室で",
+     "けんきゅうしつで",
+     "in lab"
+    ],
+    [
+     "学んだ",
+     "まなんだ",
+     "learned"
+    ],
+    [
+     "最も",
+     "もっとも",
+     "most"
+    ],
+    [
+     "尊い",
+     "とうとい",
+     "precious"
+    ],
+    [
+     "教訓です",
+     "きょうくんです",
+     "lesson"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Trusting intuition and rigorously verifying with logic—that is the most precious lesson I have learned in this laboratory."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "教訓ログ",
+     "きょうくんろぐ",
+     "lesson log"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "永久",
+     "えいきゅう",
+     "permanent"
+    ],
+    [
+     "メモリに",
+     "めもりに",
+     "to memory"
+    ],
+    [
+     "書き込み",
+     "かきこみ",
+     "written"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Lesson log committed to permanent non-volatile memory!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "よろしい",
+     null,
+     "very good"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "では",
+     null,
+     "well then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "次の",
+     "つぎの",
+     "next"
+    ],
+    [
+     "棋譜解析の",
+     "きふかいせきの",
+     "game record analysis's"
+    ],
+    [
+     "セッションに",
+     "せっしょんに",
+     "to session"
+    ],
+    [
+     "進もう",
+     "すすめよう",
+     "let's proceed"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Very good. Now then, shall we proceed to the next game record analysis session?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "歴史的",
+     "れきしてき",
+     "historic"
+    ],
+    [
+     "名局の",
+     "めいきょくの",
+     "masterpiece game's"
+    ],
+    [
+     "データセットを",
+     "でーたせっとを",
+     "dataset"
+    ],
+    [
+     "読み込みましょう",
+     "よみこみましょう",
+     "let's load"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, let's load the dataset of historic masterstroke games."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "準備",
+     "じゅんび",
+     "preparation"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつでも",
+     null,
+     "anytime"
+    ],
+    [
+     "どうぞ",
+     null,
+     "go ahead"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Preparations complete! Ready whenever you are!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "名局",
+     "めいきょく",
+     "famous game"
+    ],
+    [
+     "棋譜",
+     "きふ",
+     "score/record"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "盤上",
+     "ばんじょう",
+     "on board"
+    ],
+    [
+     "展開",
+     "てんかい",
+     "unfolded"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Masterpiece game record unfolded on board!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "五十二手目の",
+     "ごじゅうにてめの",
+     "52nd move's"
+    ],
+    [
+     "銀打ち",
+     "ぎんうち",
+     "silver drop"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "常識では",
+     "じょうしきでは",
+     "in common sense"
+    ],
+    [
+     "あり得ない",
+     "ありえない",
+     "impossible"
+    ],
+    [
+     "手だ",
+     null,
+     "move is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "This Silver drop on move 52—it is a move inconceivable by conventional wisdom."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "それこそが",
+     null,
+     "precisely that"
+    ],
+    [
+     "直観の",
+     "ちょっかんの",
+     "intuition's"
+    ],
+    [
+     "極み",
+     "きわみ",
+     "pinnacle"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Precisely that is the absolute pinnacle of human intuition."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "美しい",
+     "うつくしい",
+     "beautiful"
+    ],
+    [
+     "一着",
+     "いっちゃく",
+     "single move"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "息を呑みます",
+     "いきをのみます",
+     "takes breath away"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A sublime move... it takes one's breath away."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "美しさ",
+     "うつくしさ",
+     "beauty"
+    ],
+    [
+     "指数",
+     "しすう",
+     "index"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "カンスト",
+     null,
+     "maxed out"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Aesthetic evaluation index: maxed out!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "我々も",
+     "われわれも",
+     "we too"
+    ],
+    [
+     "直観を",
+     "ちょっかんを",
+     "intuition"
+    ],
+    [
+     "研ぎ澄ませて",
+     "とぎすませて",
+     "sharpening and"
+    ],
+    [
+     "いこう",
+     null,
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, let us sharpen our own intuitions to the utmost!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n-bakari-ni",
+   "title": "～んばかりに: as if about to, almost bursting to",
+   "explain": "Attached to negative stem of verbs (放たんばかりに) to vividly express an extreme state poised to burst forth.",
+   "examples": [
+    {
+     "t": [
+      [
+       "光を",
+       "ひかりを",
+       "light"
+      ],
+      [
+       "放たんばかりに",
+       null,
+       "as if about to radiate",
+       "p"
+      ],
+      [
+       "輝く",
+       "かがやく",
+       "shines"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Shines as if about to burst with light."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "彼女は嬉しさのあまり、飛び上がら＿＿喜んだ。",
+     "hint": "Overcome with joy, she rejoiced as if about to leap into the air.",
+     "choices": [
+      "んばかりに",
+      "てやまない",
+      "を皮切りに"
+     ],
+     "answer": 0,
+     "why": "んばかりに describes an imminent extreme emotional or physical action."
+    }
+   ]
+  },
+  {
+   "id": "bekarazu",
+   "title": "～べからず: must not, shall not (classical prohibition)",
+   "explain": "Classical imperative suffix attached to verb dictionary form (侮るべからず) expressing strict admonition or prohibition.",
+   "examples": [
+    {
+     "t": [
+      [
+       "侮る",
+       "あなどる",
+       "disparage"
+      ],
+      [
+       "べからず",
+       null,
+       "must not",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "One must not disparage."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "芝生に入る＿＿。",
+     "hint": "Do not enter the grass (Keep off grass).",
+     "choices": [
+      "べからず",
+      "きらいがある",
+      "に際して"
+     ],
+     "answer": 0,
+     "why": "べからず is a formal classical prohibition (Must not / Keep off)."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "碁",
+   "on": [
+    "ゴ"
+   ],
+   "kun": [],
+   "m": [
+    "Go (game)"
+   ],
+   "ex": [
+    [
+     "囲碁",
+     "いご",
+     "game of Go"
+    ]
+   ]
+  },
+  {
+   "k": "侮",
+   "on": [
+    "ブ"
+   ],
+   "kun": [
+    "あなど.る"
+   ],
+   "m": [
+    "scorn",
+    "despise"
+   ],
+   "ex": [
+    [
+     "侮蔑",
+     "ぶべつ",
+     "contempt/scorn"
+    ],
+    [
+     "侮る",
+     "あなどる",
+     "belittle"
+    ]
+   ]
+  },
+  {
+   "k": "閃",
+   "on": [
+    "セン"
+   ],
+   "kun": [
+    "ひらめ.く"
+   ],
+   "m": [
+    "flash",
+    "spark"
+   ],
+   "ex": [
+    [
+     "閃光",
+     "せんこう",
+     "flash of light"
+    ],
+    [
+     "閃き",
+     "ひらめき",
+     "flash/inspiration"
+    ]
+   ]
+  },
+  {
+   "k": "刈",
+   "on": [],
+   "kun": [
+    "か.る"
+   ],
+   "m": [
+    "prune",
+    "shear"
+   ],
+   "ex": [
+    [
+     "枝刈り",
+     "えだがり",
+     "pruning (search trees)"
+    ],
+    [
+     "草刈り",
+     "くさかり",
+     "mowing"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "プロ棋士が最善手を指す際に脳内で起きている現象は何ですか？",
+   "choices": [
+    "何億手も計算するのではなく、大脳基底核が活性化し一瞬で直観している",
+    "サイコロを振ってランダムに決めている",
+    "眠って夢を見ている"
+   ],
+   "answer": 0,
+   "why": "何億手も計算するのではなく大脳基底核が活性化して直観的に閃いていると分析されています。"
+  },
+  {
+   "q": "ケンジがAIの進化に関連して述べた戒めは何ですか？",
+   "choices": [
+    "人間性の神秘を侮るべからず",
+    "将棋の駒をなくしてはならない",
+    "パソコンを水に濡らしてはならない"
+   ],
+   "answer": 0,
+   "why": "AIが進化しようとも人間性の神秘を侮るべからずと述べています。"
+  }
+ ],
+ "talk": "You are Kenji discussing cognitive neuroscience and Shogi masters' intuition with Sam."
+}

@@ -1,0 +1,2792 @@
+{
+ "id": "n3-22",
+ "level": "N3",
+ "unit": 22,
+ "title": {
+  "ja": "吹雪の山荘：命をつなぐ非常通信",
+  "en": "Blizzard at the Alpine Hut: Radio Relay (Unit 10 Master Review)"
+ },
+ "scene": "A remote mountain lodge in the Northern Alps during a blinding blizzard. Power and mobile signals cut out. Sam, Yuki, and Blip build an emergency radio repeater to save stranded climbers.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "猛吹雪",
+     "もうふぶき",
+     "fierce blizzard"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一寸先",
+     "いっすんさき",
+     "an inch ahead"
+    ],
+    [
+     "も",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "見えない",
+     "みえない",
+     "cannot see"
+    ],
+    [
+     "白の世界",
+     "しろのせかい",
+     "whiteout world"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Outside is a fierce blizzard, a whiteout world where you can't even see an inch ahead!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "晴れる",
+     "はれる",
+     "clear up"
+    ],
+    [
+     "はずだった",
+     null,
+     "was supposed to"
+    ],
+    [
+     "のに",
+     null,
+     "even though",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "山",
+     "やま",
+     "mountain"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "天気",
+     "てんき",
+     "weather"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "変わりやすい",
+     "かわりやすい",
+     "easy to change"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even though it was supposed to be sunny today, mountain weather changes so easily, doesn't it."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "停電",
+     "ていでん",
+     "blackout"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "発生",
+     "はっせい",
+     "occurrence"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "携帯電話",
+     "けいたいでんわ",
+     "cell phone"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "電波",
+     "でんぱ",
+     "signals"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "圏外",
+     "けんがい",
+     "out of service area"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! A blackout has occurred! Mobile phone signals are completely out of range too!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "困った",
+     "こまった",
+     "in trouble"
+    ],
+    [
+     "こと",
+     null,
+     "thing"
+    ],
+    [
+     "になった",
+     null,
+     "became"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "稜線",
+     "りょうせん",
+     "ridge line"
+    ],
+    [
+     "を",
+     null,
+     "through",
+     "p"
+    ],
+    [
+     "登っていた",
+     "のぼっていた",
+     "was climbing"
+    ],
+    [
+     "パーティー",
+     null,
+     "climbing party"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "まだ",
+     null,
+     "still"
+    ],
+    [
+     "戻ってきていない",
+     "もどってきていない",
+     "has not returned"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We're in serious trouble... The party climbing along the ridge hasn't returned yet."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "えっ",
+     null,
+     "what"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "吹雪",
+     "ふぶき",
+     "blizzard"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "遭難",
+     "そうなん",
+     "disaster/accident"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "かもしれない",
+     null,
+     "might have"
+    ],
+    [
+     "んですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What!? Could they have met with an accident in this blizzard!?"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "電話",
+     "でんわ",
+     "phone"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "通じない",
+     "つうじない",
+     "not connect"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "麓",
+     "ふもと",
+     "foot of mountain"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "救助隊",
+     "きゅうじょたい",
+     "rescue team"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "連絡",
+     "れんらく",
+     "contact"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "取れない",
+     "とれない",
+     "cannot reach"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Because phones don't connect, we can't reach the rescue team at the foot of the mountain."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "見過ごす",
+     "みすごす",
+     "overlook"
+    ],
+    [
+     "わけにはいかない",
+     null,
+     "cannot afford to"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "僕",
+     "ぼく",
+     "I"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "アマチュア",
+     null,
+     "amateur"
+    ],
+    [
+     "無線機",
+     "むせんき",
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "使いましょう",
+     "つかいましょう",
+     "let's use"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We can't just stand by and do nothing! Let's use my amateur radio!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "非常用",
+     "ひじょうよう",
+     "emergency"
+    ],
+    [
+     "バッテリー",
+     null,
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "exists"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "繋いで",
+     "つないで",
+     "connect"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, there is an emergency battery here! Connect it!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "屋根",
+     "やね",
+     "roof"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "高所",
+     "こうしょ",
+     "high place"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "設置",
+     "せっち",
+     "installation"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "必要があります",
+     "ひつようがあります",
+     "need to do"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! We need to install the antenna at a high point on the roof!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "雪",
+     "ゆき",
+     "snow"
+    ],
+    [
+     "だらけ",
+     null,
+     "covered in"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "屋根",
+     "やね",
+     "roof"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "滑る",
+     "すべる",
+     "slips"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "命綱",
+     "いのちづな",
+     "safety lifeline"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "つけて",
+     null,
+     "attach"
+    ],
+    [
+     "俺",
+     "おれ",
+     "I"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "登ろう",
+     "のぼろう",
+     "let me climb"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The roof covered in snow is slippery, so I'll attach a safety lifeline and climb up!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "マニュアル",
+     null,
+     "manual"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "指示",
+     "しじ",
+     "instructions"
+    ],
+    [
+     "どおりに",
+     null,
+     "as instructed"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "同軸",
+     "どうじく",
+     "coaxial"
+    ],
+    [
+     "ケーブル",
+     null,
+     "cable"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "窓",
+     "まど",
+     "window"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "引き込みました",
+     "ひきこみました",
+     "pulled inside"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Exactly as instructed in the manual, I pulled the coaxial cable inside through the window!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "電源",
+     "でんげん",
+     "power"
+    ],
+    [
+     "スイッチ",
+     null,
+     "switch"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "オン",
+     null,
+     "on"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Power switch, on!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "四百三十",
+     "よんひゃくさんじゅう",
+     "430"
+    ],
+    [
+     "メガヘルツ",
+     null,
+     "MHz"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "非常",
+     "ひじょう",
+     "emergency"
+    ],
+    [
+     "周波数",
+     "しゅうはすう",
+     "frequency"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "合わせました",
+     "あわせました",
+     "tuned"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Tuned to the 430 MHz emergency calling frequency!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "非常",
+     "ひじょう",
+     "emergency"
+    ],
+    [
+     "通信",
+     "つうしん",
+     "traffic"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こちらは",
+     null,
+     "this is"
+    ],
+    [
+     "北アルプス",
+     "きたあるぷす",
+     "North Alps"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "山荘",
+     "さんそう",
+     "mountain lodge"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "遭難",
+     "そうなん",
+     "distress"
+    ],
+    [
+     "者",
+     "しゃ",
+     "party"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "発生",
+     "はっせい",
+     "occurred"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "応答",
+     "おうとう",
+     "response"
+    ],
+    [
+     "願います",
+     "ねがいます",
+     "please"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Emergency traffic! This is Northern Alps mountain lodge! We have a distressed climbing party! Please respond!"
+  },
+  {
+   "who": "救助隊",
+   "t": [
+    [
+     "ザザッ",
+     null,
+     "static"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こちら",
+     null,
+     "this is"
+    ],
+    [
+     "山岳",
+     "さんがく",
+     "mountain"
+    ],
+    [
+     "救助隊",
+     "きゅうじょたい",
+     "rescue team"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感度",
+     "かんど",
+     "signal readability"
+    ],
+    [
+     "良好",
+     "りょうこう",
+     "loud and clear"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "状況",
+     "じょうきょう",
+     "situation"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "報告",
+     "ほうこく",
+     "report"
+    ],
+    [
+     "してください",
+     null,
+     "please"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Crackle... This is Mountain Rescue! Reading you loud and clear! Report your situation!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "繋がった",
+     "つながった",
+     "connected"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "救助隊",
+     "きゅうじょたい",
+     "rescue team"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "声",
+     "こえ",
+     "voice"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "届いた",
+     "とどいた",
+     "reached"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It connected! Our voice reached the rescue team!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "登山者",
+     "とざんしゃ",
+     "climbers"
+    ],
+    [
+     "三名",
+     "さんめい",
+     "3 people"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東",
+     "ひがし",
+     "east"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "尾根",
+     "おね",
+     "ridge"
+    ],
+    [
+     "付近",
+     "ふきん",
+     "vicinity"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "連絡",
+     "れんらく",
+     "contact"
+    ],
+    [
+     "途絶",
+     "とぜつ",
+     "interrupted"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "避難小屋",
+     "ひなんごや",
+     "emergency shelter"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "位置",
+     "いち",
+     "coordinates"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "伝えます",
+     "つたえます",
+     "will convey"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Three climbers, contact lost near eastern ridge! Relaying coordinates of the emergency shelter hut!"
+  },
+  {
+   "who": "救助隊",
+   "t": [
+    [
+     "了解",
+     "りょうかい",
+     "roger"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雪上車",
+     "せつじょうしゃ",
+     "snowcat vehicle"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "ただちに",
+     null,
+     "immediately"
+    ],
+    [
+     "向かいます",
+     "むかいます",
+     "heading out"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無線",
+     "むせん",
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "維持",
+     "いじ",
+     "maintain"
+    ],
+    [
+     "してください",
+     null,
+     "please"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Roger! Deploying snowcat vehicle immediately! Please maintain radio contact!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "バッテリー",
+     null,
+     "battery"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "切れる",
+     "きれる",
+     "runs out"
+    ],
+    [
+     "かわりに",
+     null,
+     "instead of"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "手回し",
+     "てまわし",
+     "hand-crank"
+    ],
+    [
+     "発電機",
+     "はつでんき",
+     "generator"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "給電",
+     "きゅうでん",
+     "power supply"
+    ],
+    [
+     "し続けます",
+     "しつづけます",
+     "will keep doing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! In place of draining batteries, I will keep supplying power with the hand-crank generator!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ハンドル",
+     null,
+     "handle"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "回す",
+     "まわす",
+     "turn"
+    ],
+    [
+     "の",
+     null,
+     "nominalizer"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "交代",
+     "こうたい",
+     "taking turns"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'll take turns cranking the handle too!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "発電",
+     "はつでん",
+     "power generation"
+    ],
+    [
+     "効率",
+     "こうりつ",
+     "efficiency"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "最適",
+     "さいてき",
+     "optimal"
+    ],
+    [
+     "レベル",
+     null,
+     "level"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "維持",
+     "いじ",
+     "maintenance"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "in middle of"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Power generation efficiency maintained at optimal level!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "外国人",
+     "がいこくじん",
+     "foreigner"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "若者",
+     "わかもの",
+     "young man"
+    ],
+    [
+     "にしては",
+     null,
+     "for a..."
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "なんて",
+     null,
+     "what a"
+    ],
+    [
+     "頼もしい",
+     "たのもしい",
+     "reliable"
+    ],
+    [
+     "んだ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感謝",
+     "かんしゃ",
+     "gratitude"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "For such a young foreigner, how remarkably reliable you are! I can't thank you enough!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "人の命",
+     "ひとのいのち",
+     "human life"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "かかっている",
+     "かかっている",
+     "is on the line"
+    ],
+    [
+     "んです",
+     null,
+     "explanatory"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全力を尽くす",
+     "ぜんりょくをつくす",
+     "do best"
+    ],
+    [
+     "のは",
+     null,
+     "thing"
+    ],
+    [
+     "当然",
+     "とうぜん",
+     "natural"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Because human lives are on the line, doing our absolute best is only natural!"
+  },
+  {
+   "who": "救助隊",
+   "t": [
+    [
+     "ザザッ",
+     null,
+     "crackle"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こちら",
+     null,
+     "this is"
+    ],
+    [
+     "救助隊",
+     "きゅうじょたい",
+     "rescue team"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "避難小屋",
+     "ひなんごや",
+     "emergency shelter"
+    ],
+    [
+     "にて",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "登山者",
+     "とざんしゃ",
+     "climbers"
+    ],
+    [
+     "三名",
+     "さんめい",
+     "3 people"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "発見",
+     "はっけん",
+     "discovery"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全員",
+     "ぜんいん",
+     "all members"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無事",
+     "ぶじ",
+     "safe"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Crackle... This is Rescue! Discovered the three climbers at the shelter hut! All members are safe!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よかった",
+     null,
+     "thank goodness"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "よかった",
+     null,
+     "thank goodness"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank goodness... Truly thank goodness!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "みんな",
+     null,
+     "everyone"
+    ],
+    [
+     "無事",
+     "ぶじ",
+     "safe"
+    ],
+    [
+     "だった",
+     null,
+     "was"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無線",
+     "むせん",
+     "radio"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "命",
+     "いのち",
+     "lives"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "救った",
+     "すくった",
+     "saved"
+    ],
+    [
+     "んだね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, everyone is safe! The radio saved lives!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "あんたがた",
+     null,
+     "you folks"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "おかげだ",
+     null,
+     "thanks to"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's all thanks to you folks! Truly thank you!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "非常通信",
+     "ひじょうつうしん",
+     "emergency traffic"
+    ],
+    [
+     "任務",
+     "にんむ",
+     "mission"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "完全",
+     "かんぜん",
+     "complete"
+    ],
+    [
+     "成功",
+     "せいこう",
+     "success"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Emergency radio communication mission, complete success!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "両方",
+     "りょうほう",
+     "both"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "学んできた",
+     "まなんできた",
+     "have learned"
+    ],
+    [
+     "からこそ",
+     null,
+     "precisely because"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "役に立てた",
+     "やくにたてた",
+     "could be of use"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Precisely because I learned both technology and Japanese, I was able to be of help!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "正確",
+     "せいかく",
+     "accurately"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "情報",
+     "じょうほう",
+     "information"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "伝えられた",
+     "つたえられた",
+     "could convey"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "誇らしい",
+     "ほこらしい",
+     "proud"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, being able to accurately convey emergency details in Japanese, I am truly proud of you!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "自分",
+     "じぶん",
+     "myself"
+    ],
+    [
+     "でも",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "ここまで",
+     null,
+     "up to here"
+    ],
+    [
+     "話せる",
+     "はなせる",
+     "can speak"
+    ],
+    [
+     "ように",
+     null,
+     "manner"
+    ],
+    [
+     "なった",
+     null,
+     "became"
+    ],
+    [
+     "なんて",
+     null,
+     "such a thing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "信じられない",
+     "しんじられない",
+     "unbelievable"
+    ],
+    [
+     "くらい",
+     null,
+     "so much"
+    ],
+    [
+     "嬉しい",
+     "うれしい",
+     "glad"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even to myself, having become able to speak this well makes me unbelievably happy!"
+  },
+  {
+   "who": "管理人",
+   "t": [
+    [
+     "吹雪",
+     "ふぶき",
+     "blizzard"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "止んだら",
+     "やんだら",
+     "when stops"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "山荘",
+     "さんそう",
+     "lodge"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "特製",
+     "とくせい",
+     "special"
+    ],
+    [
+     "鍋",
+     "なべ",
+     "hotpot"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ご馳走",
+     "ごちそう",
+     "feast/treat"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "な",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "When the blizzard stops, I'll treat you to the mountain lodge's special hotpot feast!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "喜んで",
+     "よろこんで",
+     "with pleasure"
+    ],
+    [
+     "いただきます",
+     null,
+     "receive"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much! We'll gladly receive it!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "N3",
+     null,
+     "N3 level"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "全マスター",
+     "ぜんますたー",
+     "full mastery"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "達成",
+     "たっせい",
+     "achievement"
+    ],
+    [
+     "いたしました",
+     null,
+     "did (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Full mastery of N3 achieved!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "おめでとう",
+     null,
+     "congratulations"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これからも",
+     null,
+     "from now on too"
+    ],
+    [
+     "ずっと",
+     null,
+     "always"
+    ],
+    [
+     "応援",
+     "おうえん",
+     "support"
+    ],
+    [
+     "している",
+     null,
+     "am doing"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, congratulations so very much! I will always be cheering for you from now on too!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "次",
+     "つぎ",
+     "next"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ステージ",
+     null,
+     "stage"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全力",
+     "ぜんりょく",
+     "full power"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "進んでいく",
+     "すすんでいく",
+     "advance forward"
+    ],
+    [
+     "ぞ",
+     null,
+     "determination",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you! Into the next stage, I will march forward with all my strength!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n3-review-darake",
+   "title": "Covered in Unpleasant Things: ～だらけ",
+   "explain": "Noun + だらけ expresses being covered in, riddled with, or full of something undesirable (雪だらけ, 泥だらけ, 間違いだらけ).",
+   "examples": [
+    {
+     "t": [
+      [
+       "部屋",
+       "へや",
+       "room"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "ゴミ",
+       null,
+       "trash"
+      ],
+      [
+       "だらけ",
+       null,
+       "full of"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The room is full of garbage."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "雨の中を走って、服が泥＿＿＿になった。",
+     "hint": "Running in the rain, my clothes became covered in mud.",
+     "choices": [
+      "だらけ",
+      "ばかり",
+      "ぎみ"
+     ],
+     "answer": 0,
+     "why": "泥だらけ denotes covered in mud."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#darake"
+  },
+  {
+   "id": "n3-review-wake-ni-wa-ikanai",
+   "title": "Moral / Social Obligation: ～わけにはいかない",
+   "explain": "Verb dictionary form + わけにはいかない expresses that social, moral, or situational circumstances prevent one from doing something ('cannot afford to / must not'). Negative: ～ないわけにはいかない ('cannot avoid doing / must do').",
+   "examples": [
+    {
+     "t": [
+      [
+       "諦める",
+       "あきらめる",
+       "give up"
+      ],
+      [
+       "わけにはいかない",
+       null,
+       "cannot afford to give up"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I cannot afford to give up."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "大切な約束があるから、休む＿＿＿＿。",
+     "hint": "Because I have an important promise, I cannot afford to take the day off.",
+     "choices": [
+      "わけにはいかない",
+      "わけがない",
+      "はずがない"
+     ],
+     "answer": 0,
+     "why": "〜わけにはいかない expresses impossibility due to duty."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#wake-ni-wa-ikanai"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "吹",
+   "on": [
+    "スイ"
+   ],
+   "kun": [
+    "ふ.く"
+   ],
+   "m": "blow, breathe",
+   "ex": [
+    [
+     "吹雪",
+     "ふぶき",
+     "blizzard"
+    ],
+    [
+     "猛吹雪",
+     "もうふぶき",
+     "fierce blizzard"
+    ]
+   ]
+  },
+  {
+   "k": "遭",
+   "on": [
+    "ソウ"
+   ],
+   "kun": [
+    "あ.う"
+   ],
+   "m": "encounter, meet with",
+   "ex": [
+    [
+     "遭難",
+     "そうなん",
+     "disaster/accident"
+    ]
+   ]
+  },
+  {
+   "k": "救",
+   "on": [
+    "キュウ"
+   ],
+   "kun": [
+    "すく.う"
+   ],
+   "m": "salvation, save, rescue",
+   "ex": [
+    [
+     "救助隊",
+     "きゅうじょたい",
+     "rescue team"
+    ]
+   ]
+  },
+  {
+   "k": "助",
+   "on": [
+    "ジョ"
+   ],
+   "kun": [
+    "たす.ける",
+    "たす.かる"
+   ],
+   "m": "help, assist",
+   "ex": [
+    [
+     "救助",
+     "きゅうじょ",
+     "rescue"
+    ]
+   ]
+  },
+  {
+   "k": "命",
+   "on": [
+    "メイ",
+    "ミョウ"
+   ],
+   "kun": [
+    "いのち"
+   ],
+   "m": "fate, life",
+   "ex": [
+    [
+     "命",
+     "いのち",
+     "life"
+    ],
+    [
+     "命綱",
+     "いのちづな",
+     "safety lifeline"
+    ]
+   ]
+  },
+  {
+   "k": "綱",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    "つな"
+   ],
+   "m": "rope, cord",
+   "ex": [
+    [
+     "命綱",
+     "いのちづな",
+     "lifeline"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  6,
+  13
+ ],
+ "questions": [
+  {
+   "q": "なぜ山荘から救助隊へ電話をかけることができませんでしたか。",
+   "en": "Why couldn't phone calls be made from the mountain lodge to the rescue team?",
+   "choices": [
+    "吹雪による停電で携帯の電波が圏外になったから",
+    "電話機が壊れたから",
+    "電話番号を知らなかったから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんはどうやって遭難の状況を救助隊に伝えましたか。",
+   "en": "How did Sam communicate the distress situation to the rescue team?",
+   "choices": [
+    "アマチュア無線の非常周波数を使って直接交信した",
+    "山を走って下りた",
+    "狼煙（のろし）を上げた"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe an emergency situation or severe weather experience and how communication tools helped in Japanese."
+}

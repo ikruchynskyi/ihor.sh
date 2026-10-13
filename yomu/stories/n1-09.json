@@ -1,0 +1,2334 @@
+{
+ "id": "n1-09",
+ "level": "N1",
+ "unit": 9,
+ "title": {
+  "ja": "深海生態系と地球資源の探査",
+  "en": "Deep-Sea Hydrothermal Vents & Planetary Life"
+ },
+ "scene": "Aboard the marine research vessel Shin'ei over the Izu-Ogasawara Trench. Kenji, Yuki, Sam, and Blip monitor an autonomous submersible exploring hydrothermal vents 4,000 meters down.",
+ "lines": [
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "水深",
+     "すいしん",
+     "depth"
+    ],
+    [
+     "四千メートル",
+     "よんせんめーとる",
+     "4,000m"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "潜水艇",
+     "せんすいてい",
+     "submersible"
+    ],
+    [
+     "からの",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "映像",
+     "えいぞう",
+     "video"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "届いた",
+     "とどいた",
+     "arrived"
+    ],
+    [
+     "ぞ",
+     null,
+     "particle"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Depth 4,000 meters—video telemetry from the submersible has just arrived."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "漆黒の",
+     "しっこくの",
+     "pitch-black"
+    ],
+    [
+     "深海",
+     "しんかい",
+     "deep sea"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "煙突のような",
+     "えんとつのような",
+     "chimney-like"
+    ],
+    [
+     "熱水噴出孔",
+     "ねっすいふんしゅつこう",
+     "hydrothermal vents"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "立ち並んで",
+     "たちならんで",
+     "standing"
+    ],
+    [
+     "います",
+     null,
+     "are"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In the pitch-black deep sea, chimney-like hydrothermal vents stand in majestic clusters!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "高熱と",
+     "こうねつと",
+     "high heat and"
+    ],
+    [
+     "超高圧",
+     "ちょうこうあつ",
+     "ultra-high pressure"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そして",
+     null,
+     "and"
+    ],
+    [
+     "太陽光",
+     "たいようこう",
+     "sunlight"
+    ],
+    [
+     "の一切",
+     "のいっさい",
+     "all of"
+    ],
+    [
+     "届かない",
+     "とどかない",
+     "does not reach"
+    ],
+    [
+     "極限",
+     "きょくげん",
+     "extreme"
+    ],
+    [
+     "環境",
+     "かんきょう",
+     "environment"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Scorching heat, crushing pressure, and an extreme environment untouched by a single photon of sunlight."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "過酷な",
+     "かこくな",
+     "harsh"
+    ],
+    [
+     "環境",
+     "かんきょう",
+     "environment"
+    ],
+    [
+     "といえども",
+     "といえども",
+     "even granting that",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無数の",
+     "むすうの",
+     "countless"
+    ],
+    [
+     "固有",
+     "こゆう",
+     "endemic"
+    ],
+    [
+     "生物",
+     "せいぶつ",
+     "creatures"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "独自の",
+     "どくじの",
+     "unique"
+    ],
+    [
+     "生態系",
+     "せいたいけい",
+     "ecosystem"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "築き上げている",
+     "きずきあげている",
+     "have built"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Harsh though this environment may be, countless endemic organisms have constructed their own thriving ecosystem."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "化学合成",
+     "かがくごうせい",
+     "chemosynthesis"
+    ],
+    [
+     "細菌",
+     "さいきん",
+     "bacteria"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "熱水の",
+     "ねっすいの",
+     "thermal water's"
+    ],
+    [
+     "硫化水素",
+     "りゅうかすいそ",
+     "hydrogen sulfide"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "エネルギー",
+     null,
+     "energy"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "生み出している",
+     "うみだしている",
+     "producing"
+    ],
+    [
+     "のですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Chemosynthetic bacteria synthesize energy directly from the hydrothermal hydrogen sulfide, don't they?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "チューブワーム",
+     null,
+     "tube worms"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "シロウリガイ",
+     null,
+     "vesicomyid clams"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生命反応",
+     "せいめいはんのう",
+     "vital signs"
+    ],
+    [
+     "多数",
+     "たすう",
+     "numerous"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "太陽依存度",
+     "たいよういぞんど",
+     "sun dependence"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゼロ",
+     null,
+     "zero"
+    ],
+    [
+     "パーセント",
+     null,
+     "%"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Tube worms, white clam colonies—vital signs detected in vast numbers! Solar dependence: zero percent!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "地球上",
+     "ちきゅうじょう",
+     "on Earth"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "生命の",
+     "せいめいの",
+     "life's"
+    ],
+    [
+     "起源",
+     "きげん",
+     "origin"
+    ],
+    [
+     "にかかわる",
+     "にかかわる",
+     "touching on/involving",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "根源的な",
+     "こんげんてきな",
+     "fundamental"
+    ],
+    [
+     "秘密",
+     "ひみつ",
+     "secret"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ここに",
+     null,
+     "here"
+    ],
+    [
+     "眠っている",
+     "ねむっている",
+     "is sleeping"
+    ],
+    [
+     "のよ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Profound fundamental secrets touching on the very origins of life on Earth slumber right here."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "生命の",
+     "せいめいの",
+     "life's"
+    ],
+    [
+     "誕生",
+     "たんじょう",
+     "birth"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "謎",
+     "なぞ",
+     "mystery"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "解き明かす",
+     "ときあかす",
+     "unravel"
+    ],
+    [
+     "につけ",
+     "につけ",
+     "whenever one does",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自然の",
+     "しぜんの",
+     "nature's"
+    ],
+    [
+     "偉大さ",
+     "いだいさ",
+     "greatness"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "息を呑む",
+     "いきをのむ",
+     "gasp"
+    ],
+    [
+     "思いが",
+     "おもいが",
+     "feeling (subj)"
+    ],
+    [
+     "するな",
+     null,
+     "does"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Whenever we unravel a mystery of life's inception, we cannot help but catch our breath at nature's boundless grandeur."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "海底熱水鉱床",
+     "かいていねっすいこうしょう",
+     "hydrothermal deposits"
+    ],
+    [
+     "には",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "金や",
+     "きんや",
+     "gold and"
+    ],
+    [
+     "銅",
+     "どう",
+     "copper"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "レアアース",
+     null,
+     "rare earths"
+    ],
+    [
+     "などの",
+     null,
+     "such as",
+     "p"
+    ],
+    [
+     "貴重な",
+     "きちょうな",
+     "precious"
+    ],
+    [
+     "資源",
+     "しげん",
+     "resources"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "豊富に",
+     "ほうふに",
+     "abundantly"
+    ],
+    [
+     "含まれています",
+     "ふくまれています",
+     "are included"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "These seafloor hydrothermal mineral deposits also contain abundant precious resources like gold, copper, and rare earths, right?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "資源開発",
+     "しげんかいはつ",
+     "resource extraction"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "環境保護",
+     "かんきょうほご",
+     "environmental protection"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "調和",
+     "ちょうわ",
+     "harmony"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "国際的な",
+     "こくさいてきな",
+     "international"
+    ],
+    [
+     "難問",
+     "なんもん",
+     "difficult dilemma"
+    ],
+    [
+     "だわ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Balancing mineral resource extraction with delicate ecosystem preservation is a major international dilemma."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "目先の",
+     "めさきの",
+     "immediate"
+    ],
+    [
+     "経済的",
+     "けいざいてき",
+     "economic"
+    ],
+    [
+     "利益",
+     "りえき",
+     "profits"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "目がくらみ",
+     "めがくらみ",
+     "blinded by"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "唯一無二の",
+     "ゆいいつむにの",
+     "one-and-only"
+    ],
+    [
+     "生態系",
+     "せいたいけい",
+     "ecosystem"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "破壊してはならない",
+     "はかいしてはならない",
+     "must not destroy"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blinded by short-term financial gains, we must never destroy an irreplaceable ecosystem."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "採掘",
+     "さいくつ",
+     "mining"
+    ],
+    [
+     "影響",
+     "えいきょう",
+     "impact"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "最小限に",
+     "さいしょうげんに",
+     "to minimum"
+    ],
+    [
+     "抑える",
+     "おさえる",
+     "suppress"
+    ],
+    [
+     "自律型",
+     "じりつがた",
+     "autonomous"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "探査技術",
+     "たんさぎじゅつ",
+     "exploration tech"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "鍵を握ります",
+     "かぎをにぎります",
+     "holds the key"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Autonomous robotic exploration technologies that keep environmental disturbances to a minimum hold the key."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "非破壊",
+     "ひはかい",
+     "non-destructive"
+    ],
+    [
+     "音響",
+     "おんきょう",
+     "acoustic"
+    ],
+    [
+     "ソナー",
+     null,
+     "sonar"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "深海探査",
+     "しんかいたんさ",
+     "deep sea probe"
+    ],
+    [
+     "実施",
+     "じっし",
+     "executed"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "in progress"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生物",
+     "せいぶつ",
+     "biological"
+    ],
+    [
+     "への",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "影響",
+     "えいきょう",
+     "impact"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゼロ",
+     null,
+     "zero"
+    ],
+    [
+     "デシベル",
+     null,
+     "dB"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Non-destructive acoustic sonar surveying in progress! Ecological disturbance: zero decibels!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップの",
+     "ぶりっぷの",
+     "Blip's"
+    ],
+    [
+     "ソナー",
+     null,
+     "sonar"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生物を",
+     "せいぶつを",
+     "creatures"
+    ],
+    [
+     "一切",
+     "いっさい",
+     "at all"
+    ],
+    [
+     "傷つけずに",
+     "きずつけずに",
+     "without harming"
+    ],
+    [
+     "三次元マップ",
+     "さんじげんまっぷ",
+     "3D map"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "生成",
+     "せいせい",
+     "generating"
+    ],
+    [
+     "している",
+     null,
+     "is doing"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip's sonar is synthesizing a full 3D topographical map without disturbing a single organism!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "見事な",
+     "みごとな",
+     "splendid"
+    ],
+    [
+     "ものだ",
+     null,
+     "thing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "技術は",
+     "ぎじゅつは",
+     "technology"
+    ],
+    [
+     "こうして",
+     null,
+     "like this"
+    ],
+    [
+     "自然への",
+     "しぜんへの",
+     "toward nature"
+    ],
+    [
+     "敬意",
+     "けいい",
+     "respect"
+    ],
+    [
+     "とともに",
+     null,
+     "together with",
+     "p"
+    ],
+    [
+     "使われねばならん",
+     "つかわれねばならん",
+     "must be used"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Splendid achievement. Technology must always be exercised with profound humility and reverence toward nature."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "木星の",
+     "もくせいの",
+     "Jupiter's"
+    ],
+    [
+     "衛星エウロパ",
+     "えいせいえうろぱ",
+     "moon Europa"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "氷の下の",
+     "こおりのしたの",
+     "beneath the ice"
+    ],
+    [
+     "海洋",
+     "かいよう",
+     "ocean"
+    ],
+    [
+     "にも",
+     null,
+     "also in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "このような",
+     null,
+     "like this"
+    ],
+    [
+     "熱水噴出孔",
+     "ねっすいふんしゅつこう",
+     "hydrothermal vents"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "あると",
+     null,
+     "that there are"
+    ],
+    [
+     "考えられています",
+     "かんがえられています",
+     "is considered"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is thought that similar hydrothermal vents exist beneath the thick ice crust of Jupiter's moon Europa as well."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "エウロパ",
+     null,
+     "Europa"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "参照",
+     "さんしょう",
+     "referenced"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地球外",
+     "ちきゅうがい",
+     "extraterrestrial"
+    ],
+    [
+     "生命体",
+     "せいめいたい",
+     "lifeforms"
+    ],
+    [
+     "探査",
+     "たんさ",
+     "probe"
+    ],
+    [
+     "プロトコル",
+     null,
+     "protocols"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "スタンバイ",
+     null,
+     "standby"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Europa mission data cross-referenced! Extraterrestrial life search protocols on standby!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "深海探査",
+     "しんかいたんさ",
+     "deep sea probe"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "宇宙探査",
+     "うちゅうたんさ",
+     "space probe"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "扉を",
+     "とびらを",
+     "door"
+    ],
+    [
+     "開く",
+     "ひらく",
+     "opens"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "壮大な",
+     "そうだいな",
+     "magnificent"
+    ],
+    [
+     "連鎖",
+     "れんさ",
+     "chain"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Deep-sea exploration unlocking the mysteries of outer space—what a magnificent scientific continuum."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "地球の",
+     "ちきゅうの",
+     "Earth's"
+    ],
+    [
+     "底",
+     "そこ",
+     "depths"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "星空の",
+     "ほしぞらの",
+     "starry sky's"
+    ],
+    [
+     "真理",
+     "しんり",
+     "truth"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "隠されている",
+     "かくされている",
+     "is hidden"
+    ],
+    [
+     "とは",
+     null,
+     "that",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "興味深い",
+     "きょうみぶかい",
+     "fascinating"
+    ],
+    [
+     "ものだ",
+     null,
+     "thing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That the cosmological truths of distant starry skies are hidden in Earth's ocean depths is endlessly captivating."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "未知を",
+     "みちを",
+     "the unknown"
+    ],
+    [
+     "知りたい",
+     "しりたい",
+     "want to know"
+    ],
+    [
+     "という",
+     null,
+     "that says"
+    ],
+    [
+     "人間の",
+     "にんげんの",
+     "human"
+    ],
+    [
+     "探究心",
+     "たんきゅうしん",
+     "inquiring spirit"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "尽きることが",
+     "つきることが",
+     "exhausting (subj)"
+    ],
+    [
+     "ありません",
+     null,
+     "does not exist"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Humankind's curious longing to understand the unknown is truly inexhaustible."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "探究心",
+     "たんきゅうしん",
+     "inquiring spirit"
+    ],
+    [
+     "と同時に",
+     "とどうじに",
+     "simultaneously with",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "謙虚さ",
+     "けんきょさ",
+     "humility"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "持ち続ける",
+     "もちつづける",
+     "keep holding"
+    ],
+    [
+     "ことが",
+     null,
+     "thing (subj)"
+    ],
+    [
+     "肝要",
+     "かんよう",
+     "essential"
+    ],
+    [
+     "よ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, but alongside inquiring drive, retaining profound humility is of the utmost essence."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "その通りだ",
+     "そのとおりだ",
+     "quite right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サンプル採取",
+     "さんぷるさいしゅ",
+     "sampling"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "必要最小限に",
+     "ひつようさいしょうげんに",
+     "to bare minimum"
+    ],
+    [
+     "留めよう",
+     "とどめよう",
+     "let's limit"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Quite right. Let us strictly restrict specimen sampling to the barest minimum."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "了解しました",
+     "りょうかいしました",
+     "understood"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "マニピュレーター",
+     null,
+     "manipulator arm"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "慎重に",
+     "しんちょうに",
+     "cautiously"
+    ],
+    [
+     "岩石片を",
+     "がんせきへんを",
+     "rock fragments"
+    ],
+    [
+     "一個だけ",
+     "いっこだけ",
+     "just one"
+    ],
+    [
+     "採取します",
+     "さいしゅします",
+     "will sample"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Understood. Using the robotic manipulator arm, we will cautiously retrieve only a single rock fragment."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "把持アーム",
+     "はじあーむ",
+     "gripping arm"
+    ],
+    [
+     "微細",
+     "びさい",
+     "micro-fine"
+    ],
+    [
+     "制御",
+     "せいぎょ",
+     "control"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "鉱物サンプル",
+     "こうぶつさんぷる",
+     "mineral sample"
+    ],
+    [
+     "格納",
+     "かくのう",
+     "stored"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Gripper arm micrometer control engaged! Mineral sample safely stored!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "完璧な",
+     "かんぺきな",
+     "perfect"
+    ],
+    [
+     "オペレーション",
+     null,
+     "operation"
+    ],
+    [
+     "だったわ",
+     null,
+     "was"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "二人とも",
+     "ふたりとも",
+     "both of you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That was a flawless operation, both of you!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "よし",
+     null,
+     "alright"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "母船の",
+     "ぼせんの",
+     "mothership's"
+    ],
+    [
+     "甲板に",
+     "かんぱんに",
+     "to deck"
+    ],
+    [
+     "潜水艇を",
+     "せんすいていを",
+     "submersible"
+    ],
+    [
+     "揚収",
+     "ようしゅう",
+     "recover"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "準備に",
+     "じゅんびに",
+     "for prep"
+    ],
+    [
+     "かかろう",
+     null,
+     "let's get to work"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Alright, let's prepare to recover the submersible back onto the mothership's deck."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "甲板員と",
+     "かんぱんいんと",
+     "with deck crew"
+    ],
+    [
+     "通信を",
+     "つうしんを",
+     "radio"
+    ],
+    [
+     "繋ぎます",
+     "つなぎます",
+     "will connect"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'll connect radio communications with the deck crew!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ウインチ",
+     null,
+     "winch"
+    ],
+    [
+     "巻揚機",
+     "まきあげき",
+     "hoisting motor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安全",
+     "あんぜん",
+     "safe"
+    ],
+    [
+     "モード",
+     null,
+     "mode"
+    ],
+    [
+     "確認",
+     "かくにん",
+     "confirmed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Winch hoist safety mode confirmed!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "海風が",
+     "うみかぜが",
+     "sea breeze"
+    ],
+    [
+     "心地よい",
+     "ここちよい",
+     "pleasant"
+    ],
+    [
+     "わね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "星空が",
+     "ほしぞらが",
+     "starry sky"
+    ],
+    [
+     "水平線まで",
+     "すいへいせんまで",
+     "to horizon"
+    ],
+    [
+     "広がっている",
+     "ひろがっている",
+     "spread out"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The ocean breeze is so refreshing. The starry sky stretches all the way to the horizon."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "深海から",
+     "しんかいから",
+     "from deep sea"
+    ],
+    [
+     "宇宙へ",
+     "うちゅうへ",
+     "to space"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "我々の",
+     "われわれの",
+     "our"
+    ],
+    [
+     "旅は",
+     "たびは",
+     "journey"
+    ],
+    [
+     "始まったばかりだ",
+     "はじまったばかりだ",
+     "has only just begun"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "From the ocean abyss to the cosmos... our journey has only just begun."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地球の",
+     "ちきゅうの",
+     "Earth's"
+    ],
+    [
+     "尊さを",
+     "とうとさを",
+     "preciousness"
+    ],
+    [
+     "胸に",
+     "むねに",
+     "in heart"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "研究を",
+     "けんきゅうを",
+     "research"
+    ],
+    [
+     "続けます",
+     "つづけます",
+     "will continue"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, holding the sacred preciousness of Earth close to heart, I will continue our research!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "航海日誌",
+     "こうかいにっし",
+     "logbook"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「深海と星の調和」",
+     "しんかいとほしのちょうわ",
+     "Harmony of Abyss and Stars"
+    ],
+    [
+     "と",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "記録",
+     "きろく",
+     "recorded"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Navigational logbook entered: 'Harmony of the Ocean Abyss and the Stars'!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "to-iedomo",
+   "title": "～といえども: even though, despite being (concession of fact)",
+   "explain": "Formal written concession indicating that even under such an extreme status or condition, an exception or truth holds.",
+   "examples": [
+    {
+     "t": [
+      [
+       "過酷な",
+       "かこくな",
+       "harsh"
+      ],
+      [
+       "環境",
+       "かんきょう",
+       "environment"
+      ],
+      [
+       "といえども",
+       null,
+       "even though",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "生命",
+       "せいめい",
+       "life"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "宿る",
+       "やどる",
+       "dwells"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Even though a harsh environment, life dwells there."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "いかに名医＿＿、すべての病気を治せるわけではない。",
+     "hint": "Even granted he is a renowned doctor, he cannot cure every illness.",
+     "choices": [
+      "といえども",
+      "を皮切りに",
+      "に際して"
+     ],
+     "answer": 0,
+     "why": "といえども introduces a concession regarding even an extraordinary person or circumstance."
+    }
+   ]
+  },
+  {
+   "id": "ni-tsuke",
+   "title": "～につけ: whenever one does, every time",
+   "explain": "Attached to verbs of cognition (見る, 聞く, 解き明かす) to express that whenever that occurs, a certain feeling inevitably arises.",
+   "examples": [
+    {
+     "t": [
+      [
+       "謎",
+       "なぞ",
+       "mystery"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "解く",
+       "とく",
+       "unravel"
+      ],
+      [
+       "につけ",
+       null,
+       "every time/whenever",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "驚く",
+       "おどろく",
+       "surprised"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Whenever unraveling the mystery, one is amazed."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "昔の写真を見る＿＿、懐かしい日々が思い出される。",
+     "hint": "Every time I look at old photographs, fond days are recalled.",
+     "choices": [
+      "につけ",
+      "きらいがある",
+      "てやまない"
+     ],
+     "answer": 0,
+     "why": "につけ conveys an emotional sentiment arising invariably each time an action occurs."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "漆",
+   "on": [
+    "シツ"
+   ],
+   "kun": [
+    "うるし"
+   ],
+   "m": [
+    "lacquer"
+   ],
+   "ex": [
+    [
+     "漆黒",
+     "しっこく",
+     "jet-black"
+    ],
+    [
+     "漆器",
+     "しっき",
+     "lacquerware"
+    ]
+   ]
+  },
+  {
+   "k": "淵",
+   "on": [
+    "エン"
+   ],
+   "kun": [
+    "ふち"
+   ],
+   "m": [
+    "abyss",
+    "deep water"
+   ],
+   "ex": [
+    [
+     "深淵",
+     "しんえん",
+     "abyss"
+    ],
+    [
+     "淵源",
+     "えんげん",
+     "origin/source"
+    ]
+   ]
+  },
+  {
+   "k": "硫",
+   "on": [
+    "リュウ"
+   ],
+   "kun": [],
+   "m": [
+    "sulfur"
+   ],
+   "ex": [
+    [
+     "硫黄",
+     "いおう",
+     "sulfur"
+    ],
+    [
+     "硫酸",
+     "りゅうさん",
+     "sulfuric acid"
+    ]
+   ]
+  },
+  {
+   "k": "揚",
+   "on": [
+    "ヨウ"
+   ],
+   "kun": [
+    "あ.げる",
+    "あ.がる"
+   ],
+   "m": [
+    "hoist",
+    "raise"
+   ],
+   "ex": [
+    [
+     "揚収",
+     "ようしゅう",
+     "recovery/hoisting"
+    ],
+    [
+     "高揚",
+     "こうよう",
+     "elevation/uplift"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "深海熱水噴出孔の生物がエネルギーを得ている仕組みは何ですか？",
+   "choices": [
+    "化学合成細菌が熱水の硫化水素からエネルギーを生み出す",
+    "太陽光を直接浴びて光合成する",
+    "海上の船から餌をもらう"
+   ],
+   "answer": 0,
+   "why": "化学合成細菌が熱水の硫化水素からエネルギーを生み出していると説明されています。"
+  },
+  {
+   "q": "深海熱水鉱床の探査においてケンジが強く戒めたことは何ですか？",
+   "choices": [
+    "目先の経済的利益に目がくらみ唯一無二の生態系を破壊すること",
+    "海水を飲むこと",
+    "潜水艇を赤色に塗ること"
+   ],
+   "answer": 0,
+   "why": "目先の経済的利益のために生態系を破壊してはならないと戒めています。"
+  }
+ ],
+ "talk": "You are Yuki discussing deep-sea extremophiles and planetary biology with Sam aboard the research vessel."
+}

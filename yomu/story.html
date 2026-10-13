@@ -9,8 +9,11 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · <span id="lvl"></span></p>
-  <h1 id="title">…</h1>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · <a href="/yomu/stories.html">Table of Contents</a> · <span id="lvl"></span></p>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:8px 0;">
+    <h1 id="title" style="margin:0">…</h1>
+    <select id="storyJump" aria-label="Jump to story" style="padding:5px 10px;font-size:0.85rem;border:1px solid var(--line);border-radius:6px;background:var(--card);max-width:280px;"></select>
+  </div>
   <figure class="scene" id="photo" hidden><img id="photoImg" alt="" loading="eager"><figcaption class="cap" id="photoCredit"></figcaption></figure>
   <p class="lede" id="scene"></p>
   <div id="settings"></div>
@@ -18,7 +21,7 @@
 
   <h2 class="step" id="s-story">1. The story</h2>
   <p class="muted">Tap any word for its reading and meaning. ▶ plays a line, 🎤 lets you say it back (Chrome checks your pronunciation; elsewhere it records you so you can compare).</p>
-  <div class="row"><button id="playAll">▶ Play the whole scene</button> <button id="readDone">I've read it ✓</button></div>
+  <div class="row" style="align-items:center;flex-wrap:wrap;gap:8px"><button id="playAll">▶ Play the whole scene</button> <button id="readDone">I've read it ✓</button></div>
   <div id="lines" class="jp"></div>
 
   <h2 class="step" id="s-words">2. New words</h2>
@@ -47,7 +50,7 @@
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, stopAudio, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip, pitchInfo, renderPitch, storyAudioUrl, wordAudioUrl, LEVELS } from "/yomu/lib.js";
 import { pic } from "/yomu/pics.js";
 import { photo } from "/yomu/photos.js";
 
@@ -77,9 +80,14 @@ const lineHtml = (l, i) => `<div class="line" id="l${i}" data-i="${i}"><div clas
   ${state.settings.translation ? `<div class="en">${esc(l.en)}</div>` : ""}<div class="en" id="fb${i}"></div></div>`;
 function renderLines() { $("lines").innerHTML = u.lines.map(lineHtml).join(""); }
 const lineText = (l) => plain(l.t);
+const playLine = (i) => speak(lineText(u.lines[i]), state.settings.rate, storyAudioUrl(id, i));
+
 $("lines").addEventListener("click", async (e) => {
   const b = e.target.closest("button");
-  if (b?.dataset.play) return speak(lineText(u.lines[+b.dataset.play]));
+  if (b?.dataset.play) {
+    if (playing) { playing = false; $("playAll").textContent = "▶ Play the whole scene"; }
+    return playLine(+b.dataset.play);
+  }
   if (b?.dataset.say) return shadow(+b.dataset.say, b);
   const w = e.target.closest(".w.g");
   if (w) showWord(u.lines[+w.closest(".line").dataset.i].t[+w.dataset.i], w);
@@ -116,27 +124,37 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 // Play the whole scene, karaoke-style.
 let playing = false;
 $("playAll").onclick = async () => {
-  if (playing) { playing = false; speechSynthesis.cancel(); return; }
+  if (playing) { playing = false; stopAudio(); return; }
   playing = true; $("playAll").textContent = "■ Stop";
+  let completed = false;
   for (let i = 0; i < u.lines.length && playing; i++) {
     document.querySelectorAll(".line.now").forEach((x) => x.classList.remove("now"));
     $(`l${i}`).classList.add("now"); $(`l${i}`).scrollIntoView({ block: "center", behavior: "smooth" });
-    await speak(lineText(u.lines[i]));
+    await playLine(i);
+    if (!playing) break;
+    await new Promise((r) => setTimeout(r, 80));
+    if (i === u.lines.length - 1) completed = true;
   }
   document.querySelectorAll(".line.now").forEach((x) => x.classList.remove("now"));
   playing = false; $("playAll").textContent = "▶ Play the whole scene";
-  complete("story", 10);
+  if (completed) complete("story", 10);
 };
 $("readDone").onclick = () => { complete("story", 10); location.hash = "#s-words"; };
 
-// Word popover: reading, romaji, meaning, audio, review, "I know it" (which hides its furigana in that mode).
-function showWord(raw, el) {
+// Word popover: reading, romaji, pitch accent, meaning, audio, review, "I know it" (which hides its furigana in that mode).
+async function showWord(raw, el) {
   const t = tok(raw), pop = $("pop"), r = el.getBoundingClientRect();
-  pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div><div>${esc(t.g)}</div>
+  const pitch = await pitchInfo(t.s, reading(t));
+  pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
+    ${renderPitch(pitch)}
+    <div>${esc(t.g)}</div>
     <div class="row"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}<button class="mini" id="pClose">✕</button></div>`;
   pop.hidden = false;
   pop.style.left = `${Math.min(innerWidth - 310, r.left + scrollX)}px`; pop.style.top = `${r.bottom + scrollY + 6}px`;
-  $("pPlay").onclick = () => speak(reading(t));
+  $("pPlay").onclick = () => {
+    const w = t.s || reading(t);
+    speak(w, state.settings.rate, wordAudioUrl(t.s) || wordAudioUrl(reading(t)) || wordAudioUrl(w));
+  };
   $("pClose").onclick = () => (pop.hidden = true);
   if ($("pAdd")) $("pAdd").onclick = () => { addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("pAdd").textContent = "✓ Added"; gain(1); };
   if ($("pKnow")) $("pKnow").onclick = () => { state.known[t.s] = !state.known[t.s]; save(); $("pKnow").textContent = state.known[t.s] ? "✓ Known" : "I know it"; renderLines(); };
@@ -147,7 +165,13 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = t
 const words = [...new Map(u.lines.flatMap((l) => l.t.map(tok)).filter((t) => t.g && t.k !== "p" && t.k !== "x").map((t) => [t.s, t])).values()];
 const renderVocab = () => ($("vocab").innerHTML = words.map((t, i) => `<div>${pic(t.g) ? `<span class="pic" aria-hidden="true">${pic(t.g)}</span>` : ""}<span class="jp">${hasKanji(t.s) && state.settings.script === "kanji" ? `<ruby>${esc(t.s)}<rt>${esc(t.r)}</rt></ruby>` : esc(state.settings.script === "romaji" ? romaji(reading(t)) : reading(t))}</span> <button class="mini" data-w="${i}" aria-label="Play">▶</button><br><span class="muted">${esc(t.g)}</span></div>`).join(""));
 renderVocab();
-$("vocab").addEventListener("click", (e) => { const i = e.target.closest("[data-w]")?.dataset.w; if (i != null) speak(reading(words[+i])); });
+$("vocab").addEventListener("click", (e) => {
+  const i = e.target.closest("[data-w]")?.dataset.w;
+  if (i != null) {
+    const w = words[+i];
+    speak(reading(w), state.settings.rate, wordAudioUrl(w.s) || wordAudioUrl(reading(w)));
+  }
+});
 $("addAll").onclick = () => { for (const t of words) addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("addAll").textContent = `✓ ${words.length} words in your review deck`; complete("words", 10); };
 
 // ---------- quizzes (grammar and questions share this) ----------
@@ -208,8 +232,8 @@ for (const li of u.build ?? []) {
     if (e.target.closest(".check")) {
       const got = [...slots.children].map((x) => +x.dataset.p), ok = got.length === pieces.length && got.every((v, i) => pieces[v].s === pieces[i].s);
       box.querySelector(".fb").innerHTML = ok ? '<b class="right">正解! (seikai: correct)</b>' : '<b class="wrong">Not yet: listen and try again</b>';
-      if (ok) { speak(plain(l.t)); if (++builtOk === (u.build ?? []).length) complete("build", 15); }
-      else speak(plain(l.t));
+      if (ok) { speak(plain(l.t), state.settings.rate, storyAudioUrl(id, li)); if (++builtOk === (u.build ?? []).length) complete("build", 15); }
+      else speak(plain(l.t), state.settings.rate, storyAudioUrl(id, li));
     }
   });
   $("build").append(box);
@@ -233,9 +257,28 @@ window.blipActions = {
   say_japanese: { label: "said it in Japanese", description: "Read a Japanese phrase aloud with the browser's Japanese voice.", parameters: { text: { type: "string", description: "Japanese text" } }, run: ({ text }) => speak(String(text ?? "")) },
 };
 
-// ---------- next unit ----------
-const i = catalog.findIndex((c) => c.id === id), nxt = catalog[i + 1];
-$("next").innerHTML = nxt ? `Next: <a href="/yomu/story.html?u=${nxt.id}">${esc(nxt.level)} unit ${nxt.unit}: <span class="jp">${esc(nxt.title.ja)}</span> (${esc(nxt.title.en)}) →</a>` : `<a href="/yomu/">Back to the map</a>`;
+// ---------- story navigation & Table of Contents ----------
+const i = catalog.findIndex((c) => c.id === id);
+const prev = i > 0 ? catalog[i - 1] : null;
+const nxt = i >= 0 && i < catalog.length - 1 ? catalog[i + 1] : null;
+
+if ($("storyJump") && catalog.length) {
+  const groups = Object.fromEntries(LEVELS.map((l) => [l, []]));
+  for (const item of catalog) (groups[item.level] ??= []).push(item);
+  $("storyJump").innerHTML = `<option value="">Jump to story (${catalog.length} stories)...</option>` +
+    Object.entries(groups).filter(([, list]) => list.length).map(([lvl, list]) => `<optgroup label="${lvl} (${list.length} stories)">` +
+      list.map((c) => `<option value="${c.id}" ${c.id === id ? "selected" : ""}>Unit ${c.unit}: ${c.title.ja} (${c.title.en})</option>`).join("") +
+    `</optgroup>`).join("");
+  $("storyJump").onchange = (e) => {
+    if (e.target.value) location.href = `/yomu/story.html?u=${encodeURIComponent(e.target.value)}`;
+  };
+}
+
+$("next").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px;">
+  ${prev ? `<a class="btn mini" href="/yomu/story.html?u=${prev.id}">← ${esc(prev.level)} U${prev.unit}: ${esc(prev.title.ja)}</a>` : `<span></span>`}
+  <a class="btn mini" href="/yomu/stories.html">📖 Table of Contents (87)</a>
+  ${nxt ? `<a class="btn mini" href="/yomu/story.html?u=${nxt.id}">${esc(nxt.level)} U${nxt.unit}: ${esc(nxt.title.ja)} →</a>` : `<span></span>`}
+</div>`;
 
 // A script or furigana change re-renders every section in place (progress, answers and built sentences stay).
 settingsBar($("settings"), () => {

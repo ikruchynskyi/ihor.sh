@@ -1,0 +1,2754 @@
+{
+ "id": "n5-14",
+ "level": "N5",
+ "unit": 14,
+ "title": {
+  "ja": "秋葉原からの小包",
+  "en": "The Care Package from Akihabara"
+ },
+ "scene": "Sam's Brooklyn apartment workbench. A heavy parcel from Akihabara arrives full of radio components and Japanese snacks.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "誰",
+     "だれ",
+     "who"
+    ],
+    [
+     "か",
+     null,
+     "indefinite",
+     "p"
+    ],
+    [
+     "ドア",
+     null,
+     "door"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ノック",
+     null,
+     "knock"
+    ],
+    [
+     "しています",
+     null,
+     "is knocking"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, someone is knocking on the door!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "配達員",
+     "はいたついん",
+     "courier/delivery person"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "person"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "立っています",
+     "たっています",
+     "is standing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! A delivery courier is standing outside!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はーい",
+     null,
+     "yes/coming"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "開けます",
+     "あけます",
+     "open (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Coming! I'll open it right now!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お部屋",
+     "おへや",
+     "room (polite)"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "国際",
+     "こくさい",
+     "international"
+    ],
+    [
+     "小包",
+     "こづつみ",
+     "parcel"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is this Sam's apartment? Here is an international parcel from Japan."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "です",
+     null,
+     "is/am"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, that's me. Thank you very much!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "箱",
+     "はこ",
+     "box"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "重い",
+     "おもい",
+     "heavy"
+    ],
+    [
+     "ですよ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, that's a big box! It's very heavy, you know."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "開けましょう",
+     "あけましょう",
+     "let's open"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, let's open it together!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "早く",
+     "はやく",
+     "quickly"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "見たい",
+     "みたい",
+     "want to see"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I want to see inside quickly!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はさみ",
+     null,
+     "scissors"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "取って",
+     "とって",
+     "take/pass"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Please pass the scissors."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "here you go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "机",
+     "つくえ",
+     "desk"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "上",
+     "うえ",
+     "top"
+    ],
+    [
+     "に",
+     null,
+     "in/on",
+     "p"
+    ],
+    [
+     "ありました",
+     null,
+     "there was"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Here you go. It was on top of the desk."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "a lot"
+    ],
+    [
+     "入っています",
+     "はいっています",
+     "are inside"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow! There are lots of parts inside!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "there is"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "いとこ",
+     null,
+     "cousin"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, there is a letter too! It's from my cousin in Tokyo."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "『",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "で",
+     null,
+     "in/at",
+     "p"
+    ],
+    [
+     "珍しい",
+     "めずらしい",
+     "rare"
+    ],
+    [
+     "真空管",
+     "しんくうかん",
+     "vacuum tube"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "見つけました",
+     "みつけました",
+     "found"
+    ],
+    [
+     "』",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "と",
+     null,
+     "quote",
+     "p"
+    ],
+    [
+     "書いて",
+     "かいて",
+     "writing"
+    ],
+    [
+     "あります",
+     null,
+     "is written"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It says: 'I found rare vacuum tubes in Akihabara.'"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "ガラス",
+     null,
+     "glass"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "part"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "きれいです",
+     null,
+     "is pretty/clear"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Amazing! This glass component is really beautiful, isn't it?"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "甘い",
+     "あまい",
+     "sweet"
+    ],
+    [
+     "におい",
+     null,
+     "smell"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "します",
+     null,
+     "does / senses"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "食べ物",
+     "たべもの",
+     "food"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "there is"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! There is a sweet smell! Is there food too?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "抹茶",
+     "まっちゃ",
+     "matcha"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お菓子",
+     "おかし",
+     "sweets"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "三箱",
+     "さんばこ",
+     "three boxes"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! There are three boxes of matcha sweets."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "抹茶",
+     "まっちゃ",
+     "matcha"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お菓子",
+     "おかし",
+     "sweets"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "有名",
+     "ゆうめい",
+     "famous"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おいしそうです",
+     "おいしそうです",
+     "looks delicious"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Matcha sweets are very famous, aren't they? They look delicious!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一つ",
+     "ひとつ",
+     "one (thing)"
+    ],
+    [
+     "食べて",
+     "たべて",
+     "eat"
+    ],
+    [
+     "みて",
+     null,
+     "try"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, please try eating one!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いただき",
+     null,
+     "receive"
+    ],
+    [
+     "ます",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "苦い",
+     "にがい",
+     "bitter"
+    ],
+    [
+     "ですが",
+     null,
+     "is, but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "おいしい",
+     null,
+     "delicious"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's taste! ...Wow, it's slightly bitter, but very delicious!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "なあ",
+     null,
+     "wishful particle",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "乾電池",
+     "かんでんち",
+     "dry cell battery"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "食べたい",
+     "たべたい",
+     "want to eat"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Lucky you! Blip wants to eat a fresh dry battery!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "後で",
+     "あとで",
+     "later"
+    ],
+    [
+     "充電",
+     "じゅうでん",
+     "charging"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "あげます",
+     null,
+     "give favor"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, I'll charge you up later!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今から",
+     "いまから",
+     "from now"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "組み立てませんか",
+     "くみたてませんか",
+     "won't we assemble?"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, won't you assemble an antenna with me using these parts now?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ぜひ",
+     null,
+     "by all means"
+    ],
+    [
+     "手伝い",
+     "てつだい",
+     "help"
+    ],
+    [
+     "たい",
+     null,
+     "want to"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "すれば",
+     null,
+     "if do"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sounds great! I'd love to help. What should I do?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "まず",
+     null,
+     "firstly"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "その",
+     null,
+     "that"
+    ],
+    [
+     "青い",
+     "あおい",
+     "blue"
+    ],
+    [
+     "銅線",
+     "どうせん",
+     "copper wire"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "持って",
+     "もって",
+     "hold"
+    ],
+    [
+     "いて",
+     null,
+     "be"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "First, please hold that blue copper wire."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "持っています",
+     "もっています",
+     "am holding"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "で",
+     null,
+     "with this",
+     "p"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I'm holding it! Is this okay?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "バッチリ",
+     null,
+     "perfect"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ハンダごて",
+     null,
+     "soldering iron"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "つなぎます",
+     null,
+     "connect (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "熱い",
+     "あつい",
+     "hot"
+    ],
+    [
+     "ですから",
+     null,
+     "because is"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "気をつけて",
+     "きをつけて",
+     "be careful"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, perfect! Now I'll solder it. It's hot, so please be careful."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温度",
+     "おんど",
+     "temperature"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "三百",
+     "さんびゃく",
+     "300"
+    ],
+    [
+     "度",
+     "ど",
+     "degrees"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安全",
+     "あんぜん",
+     "safe"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The temperature is 300 degrees! Safe!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "便利",
+     "べんり",
+     "convenient"
+    ],
+    [
+     "な",
+     null,
+     "adjective connector"
+    ],
+    [
+     "温度計",
+     "おんどけい",
+     "thermometer"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip, you are a very convenient thermometer!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "all right"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "できました",
+     null,
+     "is done"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "窓",
+     "まど",
+     "window"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "近く",
+     "ちかく",
+     "near"
+    ],
+    [
+     "に",
+     null,
+     "at/to",
+     "p"
+    ],
+    [
+     "置きましょう",
+     "おきましょう",
+     "let's place"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "All right, the antenna is finished! Let's place it near the window."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "きれい",
+     null,
+     "clean/pretty"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "できました",
+     null,
+     "could do / made"
+    ],
+    [
+     "ね",
+     null,
+     "didn't we",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電波",
+     "でんぱ",
+     "radio waves"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "届いています",
+     "とどいています",
+     "are reaching"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It turned out so neat! Are radio waves coming through?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "スイッチ",
+     null,
+     "switch"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "入れます",
+     "いれます",
+     "turn on (polite)"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ザー",
+     null,
+     "static noise"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "音楽",
+     "おんがく",
+     "music"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "聞こえます",
+     "きこえます",
+     "can hear"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'll turn on the switch, okay? ...Static... Ah! I can hear music!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ジャズ",
+     null,
+     "jazz"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "クリア",
+     null,
+     "clear"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, it's jazz! The sound is very clear."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "最高",
+     "さいこう",
+     "the best"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Parts from Akihabara are the best!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "いとこ",
+     null,
+     "cousin"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お礼",
+     "おれい",
+     "thanks"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "メール",
+     null,
+     "email"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "書きたい",
+     "かきたい",
+     "want to write"
+    ],
+    [
+     "です",
+     null,
+     "polite"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I want to write a thank-you email to your cousin, Yuki."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "いっしょに",
+     null,
+     "together"
+    ],
+    [
+     "書きましょう",
+     "かきましょう",
+     "let's write"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "きっと",
+     null,
+     "surely"
+    ],
+    [
+     "喜びます",
+     "よろこびます",
+     "will be happy"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's great! Let's write it together in Japanese. They will surely be delighted!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "行き",
+     "いき",
+     "go"
+    ],
+    [
+     "たく",
+     null,
+     "want to (inflection)"
+    ],
+    [
+     "なりました",
+     null,
+     "became"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! I really want to visit Akihabara now!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n5-review-adj",
+   "title": "い-Adjectives & な-Adjectives Review",
+   "explain": "い-adjectives end directly in い (大きい, 重い, 苦い); modify nouns directly. な-adjectives use な before nouns (有名な本, 便利な道具). When ending polite sentences, both take です.",
+   "examples": [
+    {
+     "t": [
+      [
+       "箱",
+       "はこ",
+       "box"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "とても",
+       null,
+       "very"
+      ],
+      [
+       "重い",
+       "おもい",
+       "heavy"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "The box is very heavy."
+    },
+    {
+     "t": [
+      [
+       "便利",
+       "べんり",
+       "convenient"
+      ],
+      [
+       "な",
+       null,
+       "connector"
+      ],
+      [
+       "道具",
+       "どうぐ",
+       "tool"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "It is a convenient tool."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "この部品は＿＿＿です。",
+     "hint": "This component is small.",
+     "choices": [
+      "小さい",
+      "小さく",
+      "小さな"
+     ],
+     "answer": 0,
+     "why": "大きい / 小さい are standard い-adjectives ending in です."
+    },
+    {
+     "q": "抹茶のお菓子は＿＿＿お菓子です。",
+     "hint": "Matcha sweets are famous sweets.",
+     "choices": [
+      "有名な",
+      "有名い",
+      "有名で"
+     ],
+     "answer": 0,
+     "why": "有名 is a な-adjective, so it requires な before a noun."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#adjectives"
+  },
+  {
+   "id": "n5-review-requests-te",
+   "title": "～てください & ～ています",
+   "explain": "Use V-てください to make polite requests ('please do...'). Use V-ています for actions happening right now ('is doing...').",
+   "examples": [
+    {
+     "t": [
+      [
+       "はさみ",
+       null,
+       "scissors"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "取って",
+       "とって",
+       "pass/take"
+      ],
+      [
+       "ください",
+       null,
+       "please"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Please pass the scissors."
+    },
+    {
+     "t": [
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "聞いて",
+       "きいて",
+       "listening to"
+      ],
+      [
+       "います",
+       null,
+       "am/is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I am listening to the radio."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "窓の近くに＿＿＿＿ください。",
+     "hint": "Please place it near the window.",
+     "choices": [
+      "置いて",
+      "置く",
+      "置きます"
+     ],
+     "answer": 0,
+     "why": "てください attaches to the て-form of the verb."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#te-form"
+  },
+  {
+   "id": "n5-review-desires-invites",
+   "title": "～たいです & ～ませんか / ～ましょう",
+   "explain": "Use V-stem + たいです to express personal desires ('I want to do...'). Use V-stem + ませんか to invite someone politely ('won't you...?'). Use V-stem + ましょう to agree or suggest ('let's...!').",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本",
+       "にほん",
+       "Japan"
+      ],
+      [
+       "へ",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行き",
+       "いき",
+       "go"
+      ],
+      [
+       "たい",
+       null,
+       "want to"
+      ],
+      [
+       "です",
+       null,
+       "polite"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I want to go to Japan."
+    },
+    {
+     "t": [
+      [
+       "いっしょに",
+       null,
+       "together"
+      ],
+      [
+       "作り",
+       "つくり",
+       "make"
+      ],
+      [
+       "ませんか",
+       null,
+       "won't we?"
+      ],
+      [
+       "？",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Won't we make it together?"
+    }
+   ],
+   "quiz": [
+    {
+     "q": "お礼の手紙を書き＿＿＿です。",
+     "hint": "I want to write a thank-you letter.",
+     "choices": [
+      "たい",
+      "ます",
+      "たく"
+     ],
+     "answer": 0,
+     "why": "V-stem + たいです expresses what the speaker wants to do."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#tai-desu"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "開",
+   "on": [
+    "カイ"
+   ],
+   "kun": [
+    "あ.ける",
+    "あ.く",
+    "ひら.く"
+   ],
+   "m": "open",
+   "ex": [
+    [
+     "開ける",
+     "あける",
+     "to open"
+    ],
+    [
+     "開始",
+     "かいし",
+     "start"
+    ]
+   ]
+  },
+  {
+   "k": "手",
+   "on": [
+    "シュ"
+   ],
+   "kun": [
+    "て"
+   ],
+   "m": "hand",
+   "ex": [
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "上手",
+     "じょうず",
+     "skillful"
+    ]
+   ]
+  },
+  {
+   "k": "紙",
+   "on": [
+    "シ"
+   ],
+   "kun": [
+    "かみ"
+   ],
+   "m": "paper",
+   "ex": [
+    [
+     "手紙",
+     "てがみ",
+     "letter"
+    ],
+    [
+     "折り紙",
+     "おりがみ",
+     "origami"
+    ]
+   ]
+  },
+  {
+   "k": "重",
+   "on": [
+    "ジュウ"
+   ],
+   "kun": [
+    "おも.い",
+    "かさ.なる"
+   ],
+   "m": "heavy, weight",
+   "ex": [
+    [
+     "重い",
+     "おもい",
+     "heavy"
+    ],
+    [
+     "体重",
+     "たいじゅう",
+     "body weight"
+    ]
+   ]
+  },
+  {
+   "k": "見",
+   "on": [
+    "ケン"
+   ],
+   "kun": [
+    "み.る",
+    "み.える",
+    "み.せる"
+   ],
+   "m": "see, look",
+   "ex": [
+    [
+     "見る",
+     "みる",
+     "to see"
+    ],
+    [
+     "見つける",
+     "みつける",
+     "to find"
+    ]
+   ]
+  },
+  {
+   "k": "作",
+   "on": [
+    "サク",
+    "サ"
+   ],
+   "kun": [
+    "つく.る"
+   ],
+   "m": "make, work",
+   "ex": [
+    [
+     "作る",
+     "つくる",
+     "to make"
+    ],
+    [
+     "作文",
+     "さくぶん",
+     "composition"
+    ]
+   ]
+  },
+  {
+   "k": "近",
+   "on": [
+    "キン"
+   ],
+   "kun": [
+    "ちか.い"
+   ],
+   "m": "near, close",
+   "ex": [
+    [
+     "近く",
+     "ちかく",
+     "near / vicinity"
+    ],
+    [
+     "近所",
+     "きんじょ",
+     "neighborhood"
+    ]
+   ]
+  },
+  {
+   "k": "音",
+   "on": [
+    "オン"
+   ],
+   "kun": [
+    "おと",
+    "ね"
+   ],
+   "m": "sound",
+   "ex": [
+    [
+     "音楽",
+     "おんがく",
+     "music"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  7,
+  21,
+  33
+ ],
+ "questions": [
+  {
+   "q": "小包はどこから届きましたか。",
+   "en": "Where did the package arrive from?",
+   "choices": [
+    "日本の秋葉原",
+    "ニューヨークの郵便局",
+    "ロンドンの学校"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "箱の中に部品のほかに何が入っていましたか。",
+   "en": "Besides parts, what was inside the box?",
+   "choices": [
+    "手紙とお菓子",
+    "時計とカメラ",
+    "古い教科書"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "完成したアンテナから何が聞こえましたか。",
+   "en": "What was heard from the completed antenna?",
+   "choices": [
+    "ジャズ音楽",
+    "雨の音",
+    "地下鉄のアナウンス"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは最後に誰にメールを書きたいと言いましたか。",
+   "en": "Who did Sam say he wants to write an email to at the end?",
+   "choices": [
+    "ゆきさんのいとこ",
+    "郵便配達の人",
+    "大学の先生"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a package or gift you received from someone and what was inside it in Japanese."
+}

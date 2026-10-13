@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu · Table of Contents: All 87 Stories</title>
+  <meta name="description" content="Complete Table of Contents for all 87 graded Japanese stories from JLPT N5 to N1. Graded reading with Yuki, Sam, and Blip, native studio audio, and unit capstones." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .toc-summary { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin: 12px 0 18px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+    .toc-summary .stat { display: flex; flex-direction: column; }
+    .toc-summary .stat b { font-size: 1.3rem; }
+    .toc-summary .stat span { font-size: 0.85rem; color: var(--muted); }
+    .toc-bar { flex: 1; min-width: 180px; height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+    .toc-bar i { display: block; height: 100%; background: var(--ok); transition: width .3s; }
+    
+    .toc-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; justify-content: space-between; }
+    .toc-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    .toc-filters button { font-size: 0.88rem; padding: 5px 12px; border: 1px solid var(--line); background: var(--card); cursor: pointer; border-radius: 6px; }
+    .toc-filters button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .toc-search { min-width: 240px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 0.9rem; background: var(--card); }
+    
+    .story-card { display: grid; grid-template-columns: 140px 1fr auto; gap: 16px; align-items: center; padding: 14px; margin: 10px 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; transition: border-color .15s, box-shadow .15s; text-decoration: none; color: inherit; }
+    .story-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .story-thumb { width: 140px; height: 95px; object-fit: cover; border-radius: 8px; flex: none; background: #eee; }
+    
+    .story-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 0.8rem; }
+    .badge { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    .badge.n5 { background: #e6fcf5; color: #0ca678; }
+    .badge.n4 { background: #e7f5ff; color: #1c7ed6; }
+    .badge.n3 { background: #f3f0ff; color: #7048e8; }
+    .badge.n2 { background: #fff4e6; color: #d9480f; }
+    .badge.n1 { background: #ffe3e3; color: #c92a2a; }
+    .badge.capstone { background: #fff9db; color: #f59f00; border: 1px solid #ffe066; }
+    .badge.done { background: #ebfbee; color: #2b8a3e; font-weight: bold; }
+    
+    .story-titles { margin: 2px 0 6px; }
+    .story-titles .ja { font-size: 1.25rem; font-weight: bold; margin-right: 8px; }
+    .story-titles .en { color: var(--muted); font-size: 0.95rem; }
+    .story-scene { font-size: 0.88rem; color: var(--muted); margin: 4px 0 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .story-tags { display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.78rem; }
+    .story-tag { padding: 2px 6px; background: color-mix(in srgb, var(--fg) 5%, transparent); border-radius: 4px; color: var(--muted); }
+    
+    .story-action { padding: 8px 14px; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 600; font-size: 0.88rem; white-space: nowrap; text-align: center; }
+    .story-card.cleared { border-left: 4px solid var(--ok); }
+    
+    @media (max-width: 640px) {
+      .story-card { grid-template-columns: 90px 1fr; gap: 10px; }
+      .story-thumb { width: 90px; height: 65px; }
+      .story-action { grid-column: span 2; width: 100%; box-sizing: border-box; }
+      .story-scene { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Table of Contents · <a href="/yomu/reader.html">Reader</a> · <a href="/yomu/practice.html">Practice</a></p>
+  <h1>All Stories · 目次</h1>
+  <p class="lede">87 graded Japanese dialogue stories from JLPT N5 to N1 (2,036 spoken turns). Follow Yuki, Sam, and Blip across New York and Japan with studio neural audio, tap-to-translate vocabulary, grammar drills, and comprehensive unit capstone reviews.</p>
+  
+  <div id="settings"></div>
+
+  <section class="toc-summary" id="summary">
+    <div class="stat"><b id="totalCount">87</b><span>Total Stories</span></div>
+    <div class="stat"><b id="clearedCount">0</b><span>Cleared Stories</span></div>
+    <div class="stat"><b id="turnCount">2,036</b><span>Audio Dialogues</span></div>
+    <div class="toc-bar" title="Overall progress"><i id="progressBar" style="width: 0%"></i></div>
+  </section>
+
+  <div class="toc-controls">
+    <div class="toc-filters" id="levelFilters">
+      <button data-level="all" aria-pressed="true">All (87)</button>
+      <button data-level="N5" aria-pressed="false">N5 (15)</button>
+      <button data-level="N4" aria-pressed="false">N4 (18)</button>
+      <button data-level="N3" aria-pressed="false">N3 (22)</button>
+      <button data-level="N2" aria-pressed="false">N2 (16)</button>
+      <button data-level="N1" aria-pressed="false">N1 (16)</button>
+    </div>
+    <div class="toc-filters" id="statusFilters">
+      <button data-status="all" aria-pressed="true">All Status</button>
+      <button data-status="cleared" aria-pressed="false">Cleared ✓</button>
+      <button data-status="unread" aria-pressed="false">Unread</button>
+    </div>
+    <input type="search" class="toc-search" id="search" placeholder="Search stories or grammar..." aria-label="Search stories" />
+  </div>
+
+  <div id="storyList"></div>
+</main>
+
+<script type="module">
+import { state, settingsBar, esc } from "/yomu/lib.js";
+
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"), () => renderList());
+
+const catalog = await fetch("/yomu/stories/index.json").then((r) => r.json());
+
+let currentLevel = "all";
+let currentStatus = "all";
+let currentQuery = "";
+
+function updateSummary() {
+  const cleared = catalog.filter((s) => state.done[s.id]?.finished).length;
+  $("clearedCount").textContent = cleared;
+  const pct = Math.round((cleared / catalog.length) * 100);
+  $("progressBar").style.width = `${pct}%`;
+}
+
+function renderList() {
+  updateSummary();
+  const q = currentQuery.trim().toLowerCase();
+  
+  const filtered = catalog.filter((s) => {
+    if (currentLevel !== "all" && s.level !== currentLevel) return false;
+    const isDone = !!state.done[s.id]?.finished;
+    if (currentStatus === "cleared" && !isDone) return false;
+    if (currentStatus === "unread" && isDone) return false;
+    if (q) {
+      const matchJa = (s.title.ja || "").toLowerCase().includes(q);
+      const matchEn = (s.title.en || "").toLowerCase().includes(q);
+      const matchGrammar = (s.grammar || []).some((g) => g.toLowerCase().includes(q));
+      const matchId = s.id.toLowerCase().includes(q);
+      if (!matchJa && !matchEn && !matchGrammar && !matchId) return false;
+    }
+    return true;
+  });
+
+  if (!filtered.length) {
+    $("storyList").innerHTML = `<p class="muted" style="text-align:center;padding:40px 0;">No stories matched your filter criteria.</p>`;
+    return;
+  }
+
+  $("storyList").innerHTML = filtered.map((s) => {
+    const isDone = !!state.done[s.id]?.finished;
+    const isCapstone = (s.unit >= 13);
+    const lvlClass = s.level.toLowerCase();
+    
+    return `<a class="story-card ${isDone ? "cleared" : ""}" href="/yomu/story.html?u=${s.id}">
+      <img class="story-thumb" src="/yomu/img/${s.id}.jpg" alt="${esc(s.title.en)}" loading="lazy" />
+      <div class="story-info">
+        <div class="story-meta">
+          <span class="badge ${lvlClass}">${esc(s.level)}</span>
+          <span>Unit ${s.unit}</span>
+          ${isCapstone ? `<span class="badge capstone">⭐ Capstone Review</span>` : ""}
+          ${isDone ? `<span class="badge done">✓ Cleared</span>` : ""}
+        </div>
+        <div class="story-titles">
+          <span class="ja jp">${esc(s.title.ja)}</span>
+          <span class="en">${esc(s.title.en)}</span>
+        </div>
+        <div class="story-tags">
+          ${(s.grammar || []).slice(0, 3).map((g) => `<span class="story-tag">${esc(g.split(":")[0])}</span>`).join("")}
+          ${(s.kanji || []).length ? `<span class="story-tag">${(s.kanji || []).length} kanji</span>` : ""}
+        </div>
+      </div>
+      <span class="story-action">${isDone ? "Review →" : "Read →"}</span>
+    </a>`;
+  }).join("");
+}
+
+$("levelFilters").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-level]");
+  if (!btn) return;
+  $("levelFilters").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", "false"));
+  btn.setAttribute("aria-pressed", "true");
+  currentLevel = btn.dataset.level;
+  renderList();
+});
+
+$("statusFilters").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-status]");
+  if (!btn) return;
+  $("statusFilters").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", "false"));
+  btn.setAttribute("aria-pressed", "true");
+  currentStatus = btn.dataset.status;
+  renderList();
+});
+
+$("search").addEventListener("input", (e) => {
+  currentQuery = e.target.value;
+  renderList();
+});
+
+renderList();
+</script>
+</body>
+</html>

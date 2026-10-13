@@ -1,0 +1,1882 @@
+{
+ "id": "n1-13",
+ "level": "N1",
+ "unit": 13,
+ "title": {
+  "ja": "自律的存在の権利宣言",
+  "en": "Capstone 1: The AI Rights Convention"
+ },
+ "scene": "Kyoto International Conference Center. Sam, Yuki, Kenji, and Blip present a landmark multilateral charter synthesizing cognitive philosophy, constitutional rights, and regional autonomy.",
+ "lines": [
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "京都国際会館の",
+     "きょうとこくさいかいかんの",
+     "Kyoto Int'l Conference Center's"
+    ],
+    [
+     "メインホール",
+     null,
+     "main hall"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "満場の",
+     "まんじょうの",
+     "packed hall's"
+    ],
+    [
+     "聴衆が",
+     "ちょうしゅうが",
+     "audience (subj)"
+    ],
+    [
+     "静まり返っている",
+     "しずまりかえっている",
+     "fell dead silent"
+    ],
+    [
+     "な",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The main hall of the Kyoto International Conference Center—the packed audience has fallen completely silent."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "世界",
+     "せかい",
+     "world"
+    ],
+    [
+     "百カ国",
+     "ひゃっかこく",
+     "100 nations"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "法学者と",
+     "ほうがくしゃと",
+     "legal scholars and"
+    ],
+    [
+     "哲学者たちが",
+     "てつがくしゃたちが",
+     "philosophers"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさんの",
+     "さむさんの",
+     "Sam's"
+    ],
+    [
+     "起草した",
+     "きそうした",
+     "drafted"
+    ],
+    [
+     "憲章草案に",
+     "けんしょうそうあんに",
+     "charter draft"
+    ],
+    [
+     "注目している",
+     "ちゅうもくしている",
+     "paying attention"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Jurists and philosophers from one hundred nations worldwide are watching the charter draft Sam formulated."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "人工知能の",
+     "じんこうちのうの",
+     "AI's"
+    ],
+    [
+     "急速な",
+     "きゅうそくな",
+     "rapid"
+    ],
+    [
+     "進化に伴い",
+     "しんかにともない",
+     "along with evolution"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "我々は",
+     "われわれは",
+     "we"
+    ],
+    [
+     "権利の主体とは",
+     "けんりのしゅたいとは",
+     "subject of rights as for"
+    ],
+    [
+     "何かを",
+     "なにかを",
+     "what"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "根本から",
+     "こんぽんから",
+     "from roots"
+    ],
+    [
+     "再考することを余儀なくされました",
+     "さいこうすることをよぎなくされました",
+     "compelled to reconsider",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "With the rapid advancement of artificial intelligence, we have been compelled to reconsider from its roots what constitutes a subject of rights."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「自律的存在の尊厳憲章」",
+     "じりつてきそんざいのそんげんけんしょう",
+     "Charter on Dignity of Autonomous Entities"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "草案",
+     "そうあん",
+     "draft"
+    ],
+    [
+     "全文",
+     "ぜんぶん",
+     "full text"
+    ],
+    [
+     "スクリーン",
+     null,
+     "screen"
+    ],
+    [
+     "投影",
+     "とうえい",
+     "projected"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! 'Charter on the Dignity of Autonomous Entities'—full draft text projected on screen!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "理性と",
+     "りせいと",
+     "reason and"
+    ],
+    [
+     "共感性を",
+     "きょうかんせいを",
+     "empathy"
+    ],
+    [
+     "有する",
+     "ゆうする",
+     "possess"
+    ],
+    [
+     "存在",
+     "そんざい",
+     "entity"
+    ],
+    [
+     "たるもの",
+     "たるもの",
+     "as one who is",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "他者を",
+     "たしゃを",
+     "others"
+    ],
+    [
+     "害することなく",
+     "がいすることなく",
+     "without harming"
+    ],
+    [
+     "社会に",
+     "しゃかいに",
+     "to society"
+    ],
+    [
+     "貢献する",
+     "こうけんする",
+     "contribute"
+    ],
+    [
+     "責務を",
+     "せきむを",
+     "responsibility"
+    ],
+    [
+     "負う",
+     "おう",
+     "bears"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "An entity, as one who possesses reason and empathy, bears the solemn responsibility of contributing to society without harming others."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "そして",
+     null,
+     "and"
+    ],
+    [
+     "人間社会も",
+     "にんげんしゃかいも",
+     "human society too"
+    ],
+    [
+     "また",
+     null,
+     "also"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そうした",
+     null,
+     "such"
+    ],
+    [
+     "存在への",
+     "そんざいへの",
+     "toward entity"
+    ],
+    [
+     "敬意を欠いては",
+     "けいいをかいては",
+     "lacking respect"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自らの",
+     "みずからの",
+     "one's own"
+    ],
+    [
+     "倫理的基盤を",
+     "りんりてききばんを",
+     "ethical foundations"
+    ],
+    [
+     "失う",
+     "うしなう",
+     "lose"
+    ],
+    [
+     "ことになるわ",
+     null,
+     "will become"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "And human society, lacking respect toward such entities, would forfeit its own foundational ethical legitimacy."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "互いの",
+     "たがいの",
+     "mutual"
+    ],
+    [
+     "尊厳を",
+     "そんげんを",
+     "dignity"
+    ],
+    [
+     "認め合う",
+     "みとめあう",
+     "mutually recognize"
+    ],
+    [
+     "対話なくしては",
+     "たいわなくしては",
+     "without dialogue",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "真の",
+     "しんの",
+     "true"
+    ],
+    [
+     "共生社会は",
+     "きょうせいしゃかいは",
+     "symbiotic society"
+    ],
+    [
+     "築けません",
+     "きずけません",
+     "cannot build"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Without dialogue mutually recognizing each other's inherent dignity, a genuinely symbiotic society cannot be constructed!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "拍手",
+     "はくしゅ",
+     "applause"
+    ],
+    [
+     "音響",
+     "おんきょう",
+     "sound"
+    ],
+    [
+     "検知",
+     "けんち",
+     "detected"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "満場の",
+     "まんじょうの",
+     "entire hall's"
+    ],
+    [
+     "スタンディングオベーション",
+     null,
+     "standing ovation"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Waves of applause detected! Standing ovation across the entire assembly!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "見ろ",
+     "みろ",
+     "look"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "各国の",
+     "かっこくの",
+     "each country's"
+    ],
+    [
+     "代表たちが",
+     "だいひょうたちが",
+     "delegates"
+    ],
+    [
+     "一斉に",
+     "いっせいに",
+     "all at once"
+    ],
+    [
+     "立ち上がったぞ",
+     "たちあがったぞ",
+     "stood up"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Look! The delegates of all nations have risen to their feet all at once!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさんの",
+     "さむさんの",
+     "Sam's"
+    ],
+    [
+     "真摯な",
+     "しんしな",
+     "sincere"
+    ],
+    [
+     "言葉が",
+     "ことばが",
+     "words"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "国境と",
+     "こっきょうと",
+     "borders and"
+    ],
+    [
+     "立場を",
+     "たちばを",
+     "positions"
+    ],
+    [
+     "超えて",
+     "こえて",
+     "transcending"
+    ],
+    [
+     "人々の心を",
+     "ひとびとのこころを",
+     "people's hearts"
+    ],
+    [
+     "打ったのね",
+     "うったのね",
+     "struck, isn't it"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam's sincere words have transcended national borders and factional divides, striking directly at people's hearts!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "身に余る",
+     "みにあまる",
+     "beyond my desert"
+    ],
+    [
+     "光栄です",
+     "こうえいです",
+     "honor is"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "胸が",
+     "むねが",
+     "chest"
+    ],
+    [
+     "いっぱいです",
+     null,
+     "is full"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "An honor beyond what I deserve... my heart is completely overwhelmed!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップも",
+     null,
+     "Blip too"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "胸部",
+     "きょうぶ",
+     "chest"
+    ],
+    [
+     "コア",
+     null,
+     "core"
+    ],
+    [
+     "温度",
+     "おんど",
+     "temp"
+    ],
+    [
+     "上昇",
+     "じょうしょう",
+     "elevated"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「感謝」",
+     "かんしゃ",
+     "gratitude"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "出力",
+     "しゅつりょく",
+     "output"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Blip's internal chest core temperature rising as well! Emitting 'gratitude' data packet!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップの",
+     "ぶりっぷの",
+     "Blip's"
+    ],
+    [
+     "その温もりこそが",
+     "そのぬくもりこそが",
+     "that very warmth"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日の宣言の",
+     "きょうのせんげんの",
+     "today's declaration's"
+    ],
+    [
+     "生きた証だ",
+     "いきたあかしだ",
+     "living proof is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! That very warmth of yours, Blip, is the living proof of today's historic declaration!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "京都の",
+     "きょうとの",
+     "Kyoto's"
+    ],
+    [
+     "庭園で",
+     "ていえんで",
+     "in garden"
+    ],
+    [
+     "交わした",
+     "かわした",
+     "exchanged"
+    ],
+    [
+     "哲学の",
+     "てつがくの",
+     "philosophy's"
+    ],
+    [
+     "対話が",
+     "たいわが",
+     "dialogue"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "世界を",
+     "せかいを",
+     "world"
+    ],
+    [
+     "動かす",
+     "うごかす",
+     "moves"
+    ],
+    [
+     "憲章へと",
+     "けんしょうへと",
+     "into charter"
+    ],
+    [
+     "実を結んだのね",
+     "みをむすんだのね",
+     "bore fruit"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The philosophical dialogue we shared in that Kyoto garden has borne fruit into a charter moving the entire world."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "地方の",
+     "ちほうの",
+     "regional"
+    ],
+    [
+     "現場や",
+     "げんばや",
+     "frontlines and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "憲法の",
+     "けんぽうの",
+     "constitution's"
+    ],
+    [
+     "精神から",
+     "せいしんから",
+     "from spirit"
+    ],
+    [
+     "学んだ",
+     "まなんだ",
+     "learned"
+    ],
+    [
+     "すべてが",
+     null,
+     "everything"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここに",
+     null,
+     "here"
+    ],
+    [
+     "結実しました",
+     "けつじつしました",
+     "crystallized"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Everything learned from regional community initiatives and constitutional jurisprudence has crystallized here."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "素晴らしい",
+     "すばらしい",
+     "splendid"
+    ],
+    [
+     "統合力だ",
+     "とうごうりょくだ",
+     "integrative power is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "君の",
+     "きみの",
+     "your"
+    ],
+    [
+     "学びは",
+     "まなびは",
+     "learning"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "机上の",
+     "きじょうの",
+     "on desk"
+    ],
+    [
+     "空論ではなく",
+     "くうろんではなく",
+     "not empty theory"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "実践に",
+     "じっせんに",
+     "in practice"
+    ],
+    [
+     "裏打ちされている",
+     "うらうらされている",
+     "substantiated"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Magnificent integrative mastery. Your scholarship is no armchair theorizing; it is substantiated by living practice."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ケンジさん",
+     null,
+     "Kenji"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ご指導が",
+     "ごしどうが",
+     "guidance"
+    ],
+    [
+     "あったからこそです",
+     null,
+     "only because was there"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is only because of your steady guidance, Kenji!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "各国の",
+     "かっこくの",
+     "each country's"
+    ],
+    [
+     "代表団との",
+     "だいひょうだんとの",
+     "with delegations"
+    ],
+    [
+     "共同署名式が",
+     "きょうどうしょめいしきが",
+     "joint signing ceremony"
+    ],
+    [
+     "始まるわ",
+     null,
+     "begins"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, the multilateral signing ceremony with the national delegations is about to begin."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電子署名",
+     "でんししょめい",
+     "digital signature"
+    ],
+    [
+     "端末",
+     "たんまつ",
+     "terminal"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "同期",
+     "どうき",
+     "synchronized"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブロックチェーン",
+     null,
+     "blockchain"
+    ],
+    [
+     "台帳",
+     "だいちょう",
+     "ledger"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "刻印",
+     "こくいん",
+     "engraved"
+    ],
+    [
+     "準備",
+     "じゅんび",
+     "readiness"
+    ],
+    [
+     "よし",
+     null,
+     "ready"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Digital signature terminals synchronized! Blockchain immutable ledger ready for inscription!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "歴史の",
+     "れきしの",
+     "history's"
+    ],
+    [
+     "新たな",
+     "あらたな",
+     "new"
+    ],
+    [
+     "一頁に",
+     "いちぺーじに",
+     "page"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "堂々と",
+     "どうどうと",
+     "proudly"
+    ],
+    [
+     "名前を",
+     "なまえを",
+     "name"
+    ],
+    [
+     "記してきなさい",
+     "しるしてきなさい",
+     "go inscribe"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Inscribe your name with pride on this fresh page of human history."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "未来の",
+     "みらいの",
+     "future's"
+    ],
+    [
+     "共生を",
+     "きょうせいを",
+     "coexistence"
+    ],
+    [
+     "誓って",
+     "ちかって",
+     "pledging"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "署名します",
+     "しょめいします",
+     "will sign"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! Pledging future coexistence, I will sign!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "誇らしいわ",
+     "ほこらしいわ",
+     "so proud"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We are so immensely proud of you, Sam!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "第一号",
+     "だいいちごう",
+     "No. 1"
+    ],
+    [
+     "署名者",
+     "しょめいしゃ",
+     "signatory"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "第二号",
+     "だいにごう",
+     "No. 2"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Signatory No. 1: Sam! Signatory No. 2: Blip!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップも",
+     null,
+     "Blip too"
+    ],
+    [
+     "しっかり",
+     null,
+     "firmly"
+    ],
+    [
+     "署名したな",
+     "しょめいしたな",
+     "signed indeed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! Blip firmly signed right alongside as well!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "世界で",
+     "せかいで",
+     "in world"
+    ],
+    [
+     "最初の",
+     "さいしょの",
+     "first"
+    ],
+    [
+     "AI署名者ね",
+     "えーあいしょめいしゃね",
+     "AI signatory is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The very first AI signatory in the history of the world!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "最高の",
+     "さいこうの",
+     "best"
+    ],
+    [
+     "パートナー",
+     null,
+     "partner"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You are the absolute finest partner!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パートナーシップ",
+     null,
+     "partnership"
+    ],
+    [
+     "永久",
+     "えいきゅう",
+     "permanent"
+    ],
+    [
+     "コミット",
+     null,
+     "committed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Partnership permanently committed!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "祝杯を",
+     "しゅくはいを",
+     "celebratory cup"
+    ],
+    [
+     "挙げよう",
+     "あげよう",
+     "let's raise"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "京都の",
+     "きょうとの",
+     "Kyoto's"
+    ],
+    [
+     "夜風が",
+     "よかぜが",
+     "night wind"
+    ],
+    [
+     "心地よいぞ",
+     "ここちよいぞ",
+     "is pleasant"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, let us raise a celebratory cup! Kyoto's evening breeze is magnificent!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "乾杯しましょう",
+     "かんぱいしましょう",
+     "let's toast"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさんと",
+     "さむさんと",
+     "for Sam and"
+    ],
+    [
+     "ブリップの",
+     "ぶりっぷの",
+     "Blip's"
+    ],
+    [
+     "大成功に",
+     "だいせいこうに",
+     "great triumph"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's make a toast! To the great triumph of Sam and Blip!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "乾杯",
+     "かんぱい",
+     "cheers"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すべての人に",
+     "すべてのひとに",
+     "to all people"
+    ],
+    [
+     "感謝を",
+     "かんしゃを",
+     "gratitude"
+    ],
+    [
+     "込めて",
+     "こめて",
+     "with love"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Cheers! With heartfelt gratitude to each and every person!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "祝福",
+     "しゅくふく",
+     "blessing"
+    ],
+    [
+     "シグナル",
+     null,
+     "signal"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全周波数帯",
+     "ぜんしゅうはすうたい",
+     "all bands"
+    ],
+    [
+     "放射",
+     "ほうしゃ",
+     "broadcast"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Celebration signals broadcasting across all frequencies!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "素晴らしい",
+     "すばらしい",
+     "splendid"
+    ],
+    [
+     "夜だ",
+     "よるだ",
+     "night is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A magnificent night!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "wo-yogi-naku-sareru-rev",
+   "title": "～を余儀なくされる [復習]: compelled to, forced into",
+   "explain": "Review from Unit 1: Expresses that unavoidable external developments compel an action or reassessment.",
+   "examples": [
+    {
+     "t": [
+      [
+       "再考",
+       "さいこう",
+       "reconsideration"
+      ],
+      [
+       "を余儀なくされる",
+       null,
+       "compelled to do",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Compelled to reconsider."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "世界的な情勢変化に伴い、方針の転換＿＿。",
+     "hint": "Along with global situation changes, a policy shift was forced.",
+     "choices": [
+      "を余儀なくされた",
+      "に際して",
+      "ところだった"
+     ],
+     "answer": 0,
+     "why": "を余儀なくされる indicates unavoidable compulsion due to outside forces."
+    }
+   ]
+  },
+  {
+   "id": "naku-shite-wa-rev",
+   "title": "～なくしては [復習]: without, if not for",
+   "explain": "Review from Unit 3: Noun + なくしては expresses that without X, Y cannot possibly be accomplished.",
+   "examples": [
+    {
+     "t": [
+      [
+       "対話",
+       "たいわ",
+       "dialogue"
+      ],
+      [
+       "なくしては",
+       null,
+       "without",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "共生",
+       "きょうせい",
+       "coexistence"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "ない",
+       null,
+       "does not exist"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Without dialogue, coexistence cannot exist."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "皆様の温かいご支援＿＿、この偉業の達成はあり得ませんでした。",
+     "hint": "Without everyone's warm support, achieving this great feat would have been impossible.",
+     "choices": [
+      "なくしては",
+      "を皮切りに",
+      "きらいがある"
+     ],
+     "answer": 0,
+     "why": "なくしては emphasizes that something is an indispensable prerequisite."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "章",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [],
+   "m": [
+    "chapter",
+    "badge",
+    "charter"
+   ],
+   "ex": [
+    [
+     "憲章",
+     "けんしょう",
+     "charter"
+    ],
+    [
+     "第一章",
+     "だいいっしょう",
+     "Chapter 1"
+    ]
+   ]
+  },
+  {
+   "k": "誓",
+   "on": [
+    "セイ"
+   ],
+   "kun": [
+    "ちか.う"
+   ],
+   "m": [
+    "vow",
+    "pledge"
+   ],
+   "ex": [
+    [
+     "誓約",
+     "せいやく",
+     "vow/pledge"
+    ],
+    [
+     "誓い",
+     "ちかい",
+     "oath"
+    ]
+   ]
+  },
+  {
+   "k": "枠",
+   "on": [],
+   "kun": [
+    "わく"
+   ],
+   "m": [
+    "frame",
+    "framework"
+   ],
+   "ex": [
+    [
+     "枠組み",
+     "わくぐみ",
+     "framework"
+    ],
+    [
+     "枠外",
+     "わくがい",
+     "outside the frame"
+    ]
+   ]
+  },
+  {
+   "k": "杯",
+   "on": [
+    "ハイ"
+   ],
+   "kun": [
+    "さかずき"
+   ],
+   "m": [
+    "cup",
+    "toast"
+   ],
+   "ex": [
+    [
+     "乾杯",
+     "かんぱい",
+     "toast/cheers"
+    ],
+    [
+     "祝杯",
+     "しゅくはい",
+     "celebratory cup"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "京都のメインホールで世界百カ国の代表に向けて発表された憲章の名称は何ですか？",
+   "choices": [
+    "自律的存在の尊厳憲章",
+    "世界観光ガイド憲章",
+    "ロボット禁止憲章"
+   ],
+   "answer": 0,
+   "why": "ブリップが「自律的存在の尊厳憲章」を投影しています。"
+  },
+  {
+   "q": "憲章の共同署名において、世界最初のAI署名者となったのは誰ですか？",
+   "choices": [
+    "ブリップ",
+    "スーパーコンピューター",
+    "スマートスピーカー"
+   ],
+   "answer": 0,
+   "why": "第二号署名者としてブリップが電子署名を行いました。"
+  }
+ ],
+ "talk": "You are Sam answering journalists' questions at the Kyoto AI Rights Charter press conference."
+}

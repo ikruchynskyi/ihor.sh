@@ -1,0 +1,2531 @@
+{
+ "id": "n3-13",
+ "level": "N3",
+ "unit": 13,
+ "title": {
+  "ja": "時差ボケと深夜のコンビニ",
+  "en": "Jetlag & Midnight at the Konbini (Unit 1 Review)"
+ },
+ "scene": "A brightly lit convenience store in Shinjuku at 2:30 AM. Sam suffers from severe jetlag and slight chills, finding comforting hot food and practical conversation with the veteran clerk.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "時計",
+     "とけい",
+     "clock"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "見たら",
+     "みたら",
+     "when looked"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "夜中",
+     "よなか",
+     "middle of night"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "二時半",
+     "にじはん",
+     "2:30"
+    ],
+    [
+     "だった",
+     null,
+     "was"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "When I looked at the clock, it was already 2:30 in the middle of the night."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "時差ボケ",
+     "じさぼけ",
+     "jetlag"
+    ],
+    [
+     "で",
+     null,
+     "due to",
+     "p"
+    ],
+    [
+     "眠れない",
+     "ねむれない",
+     "cannot sleep"
+    ],
+    [
+     "わけ",
+     null,
+     "reason/case"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! So the reason you can't sleep is jetlag, right?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "昼間",
+     "ひるま",
+     "daytime"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "時間",
+     "じかん",
+     "time"
+    ],
+    [
+     "だから",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "目",
+     "め",
+     "eyes"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "冴えて",
+     "さえて",
+     "wide awake"
+    ],
+    [
+     "眠れない",
+     "ねむれない",
+     "cannot sleep"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah, because it's daytime in New York right now, my eyes are wide awake and I can't sleep."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "体温",
+     "たいおん",
+     "body temp"
+    ],
+    [
+     "センサー",
+     null,
+     "sensor"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "反応",
+     "はんのう",
+     "reaction"
+    ],
+    [
+     "しています",
+     null,
+     "is doing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a bit"
+    ],
+    [
+     "熱っぽい",
+     "ねつっぽい",
+     "feverish"
+    ],
+    [
+     "ですよ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My temperature sensor is reacting! Sam, you seem slightly feverish!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "もっと",
+     null,
+     "more"
+    ],
+    [
+     "寝ておけばよかった",
+     "ねておけばよかった",
+     "should have slept in advance"
+    ],
+    [
+     "なあ",
+     null,
+     "wistful",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a bit"
+    ],
+    [
+     "風邪気味",
+     "かぜぎみ",
+     "slight cold"
+    ],
+    [
+     "かも",
+     null,
+     "maybe"
+    ],
+    [
+     "しれない",
+     null,
+     "cannot know"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I really should have slept more on the plane. I might have a slight touch of a cold."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無理",
+     "むり",
+     "impossible/overdoing"
+    ],
+    [
+     "しちゃだめ",
+     null,
+     "must not do"
+    ],
+    [
+     "だよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "コンビニ",
+     null,
+     "konbini"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "飲み物",
+     "のみもの",
+     "drink"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "マスク",
+     null,
+     "mask"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "買ってこよう",
+     "かってこよう",
+     "let's buy and bring"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, you shouldn't push yourself! Let's go to the convenience store and buy hot drinks and a mask!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "こんな",
+     null,
+     "such a"
+    ],
+    [
+     "夜中",
+     "よなか",
+     "midnight"
+    ],
+    [
+     "でも",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お店",
+     "おみせ",
+     "shop"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "開いて",
+     "あいて",
+     "open"
+    ],
+    [
+     "いる",
+     null,
+     "is"
+    ],
+    [
+     "の",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is the shop really open even at such a late hour?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "コンビニ",
+     null,
+     "konbini"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "二十四時間",
+     "にじゅうよじかん",
+     "24 hours"
+    ],
+    [
+     "開いている",
+     "あいている",
+     "open"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "外国人",
+     "がいこくじん",
+     "foreigner"
+    ],
+    [
+     "にとって",
+     null,
+     "for"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "really"
+    ],
+    [
+     "便利",
+     "べんり",
+     "convenient"
+    ],
+    [
+     "なんだよ",
+     null,
+     "it is",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Japanese convenience stores are open 24 hours, so for foreigners too they are really convenient."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "わあ",
+     null,
+     "wow"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "明かり",
+     "あかり",
+     "light"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ついていて",
+     null,
+     "is on"
+    ],
+    [
+     "安心",
+     "あんしん",
+     "relief"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "ね",
+     null,
+     "doesn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "入ってみよう",
+     "はいってみよう",
+     "let's try entering"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wow, seeing the lights on gives such peace of mind! Let's go inside."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "いらっしゃいませ",
+     null,
+     "welcome"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "深夜",
+     "しんや",
+     "late night"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "お買い物",
+     "おかいもの",
+     "shopping"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お疲れ様",
+     "おつかれさま",
+     "thank you for hard work"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome! Thank you for stopping by so late at night!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あのう",
+     null,
+     "excuse me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "喉",
+     "のど",
+     "throat"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "痛くて",
+     "いたくて",
+     "hurts and"
+    ],
+    [
+     "寒気がする",
+     "さむけがする",
+     "feel chills"
+    ],
+    [
+     "んですが",
+     null,
+     "explanatory-polite"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おすすめ",
+     null,
+     "recommendation"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "exists"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Excuse me, my throat hurts and I have chills; do you have any recommendations?"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "それなら",
+     null,
+     "in that case"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生姜湯",
+     "しょうがゆ",
+     "hot ginger tea"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "レモン",
+     null,
+     "lemon"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ホットドリンク",
+     null,
+     "hot drink"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "一番",
+     "いちばん",
+     "number one"
+    ],
+    [
+     "ですよ",
+     null,
+     "is, you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In that case, hot ginger drink and hot lemon drink are the absolute best."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "おでん",
+     null,
+     "oden"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ある",
+     null,
+     "exists"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大根",
+     "だいこん",
+     "daikon"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "たまご",
+     null,
+     "egg"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "食べると",
+     "たべると",
+     "when eat"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "体",
+     "からだ",
+     "body"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "芯",
+     "しん",
+     "core"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "温まる",
+     "あたたまる",
+     "warms up"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "There's oden too! If you eat daikon and egg, you warm up from your core."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "湯気",
+     "ゆげ",
+     "steam"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "立っていて",
+     "たっていて",
+     "rising"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "美味しそう",
+     "おいしそう",
+     "looks delicious"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おでん",
+     null,
+     "oden"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "買おう",
+     "かおう",
+     "let's buy"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Steam is rising, it looks so delicious! Let's buy oden too."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ビタミン",
+     null,
+     "vitamin"
+    ],
+    [
+     "C",
+     null,
+     "C"
+    ],
+    [
+     "入り",
+     "いり",
+     "containing"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ゼリー",
+     null,
+     "jelly drink"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "見つけました",
+     "みつけました",
+     "found"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! I also found jelly drinks containing Vitamin C!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "風邪",
+     "かぜ",
+     "cold"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "初期",
+     "しょき",
+     "early stage"
+    ],
+    [
+     "には",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "水分",
+     "すいぶん",
+     "hydration"
+    ],
+    [
+     "補給",
+     "ほきゅう",
+     "replenishment"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "何より",
+     "なにより",
+     "above all"
+    ],
+    [
+     "大切",
+     "たいせつ",
+     "important"
+    ],
+    [
+     "ですから",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In the early stages of a cold, staying hydrated is more important than anything, after all."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "店員",
+     "てんいん",
+     "clerk"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "親切",
+     "しんせつ",
+     "kind"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "くれて",
+     null,
+     "gave favor"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you so much for explaining so kindly, shopkeeper!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "旅先",
+     "たびさき",
+     "travel destination"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "体調",
+     "たいちょう",
+     "physical condition"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "崩す",
+     "くずす",
+     "break down"
+    ],
+    [
+     "と",
+     null,
+     "if/when",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "心細い",
+     "こころぼそい",
+     "helpless/lonely"
+    ],
+    [
+     "ものですから",
+     null,
+     "because naturally"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Because when you fall ill on a trip, it naturally feels so lonely."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "冷えピタ",
+     null,
+     "cooling gel sheet"
+    ],
+    [
+     "シート",
+     null,
+     "sheet"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "おでこ",
+     null,
+     "forehead"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "貼って",
+     "はって",
+     "stick"
+    ],
+    [
+     "おけば",
+     null,
+     "if stick in advance"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "熱",
+     "ねつ",
+     "fever"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "下がりやすい",
+     "さがりやすい",
+     "easy to drop"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If you put a cooling gel pad on your forehead in advance, your fever will come down more easily."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ケア",
+     null,
+     "care"
+    ],
+    [
+     "グッズ",
+     null,
+     "goods"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "種類",
+     "しゅるい",
+     "variety"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "豊富",
+     "ほうふ",
+     "abundant"
+    ],
+    [
+     "なんだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Japanese wellness goods have such an abundant variety, don't they!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お会計",
+     "おかいけい",
+     "bill/checkout"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "千二百",
+     "せんにひゃく",
+     "1200"
+    ],
+    [
+     "円",
+     "えん",
+     "yen"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "なります",
+     null,
+     "becomes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "もの",
+     null,
+     "things"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "冷たい",
+     "つめたい",
+     "cold"
+    ],
+    [
+     "もの",
+     null,
+     "things"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "袋",
+     "ふくろ",
+     "bag"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "お分け",
+     "おわけ",
+     "divide"
+    ],
+    [
+     "いたしましょう",
+     null,
+     "shall do (humble)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Your total is 1,200 yen. Shall I separate the hot and cold items into different bags?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一緒",
+     "いっしょ",
+     "together"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すぐ",
+     null,
+     "right away"
+    ],
+    [
+     "宿",
+     "やど",
+     "inn"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "戻ります",
+     "もどります",
+     "will return"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, together is fine! Because we're heading right back to our lodge."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "かしこまりました",
+     null,
+     "certainly"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "お大事に",
+     "おだいじに",
+     "take care of yourself"
+    ],
+    [
+     "なさって",
+     null,
+     "do (honorific)"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Certainly. Please take very good care of yourself."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございました",
+     null,
+     "was (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you very much!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "風",
+     "かぜ",
+     "wind"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "相変わらず",
+     "あいかわらず",
+     "as always"
+    ],
+    [
+     "冷たい",
+     "つめたい",
+     "cold"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The outside wind is cold as ever!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "急いで",
+     "いそいで",
+     "hurrying"
+    ],
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "帰って",
+     "かえって",
+     "return"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生姜湯",
+     "しょうがゆ",
+     "ginger tea"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "飲もう",
+     "のもう",
+     "let's drink"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's hurry back to the room and drink the ginger tea!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "宿",
+     "やど",
+     "inn"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着いた",
+     "ついた",
+     "arrived"
+    ],
+    [
+     "とたん",
+     null,
+     "as soon as"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ホッとした",
+     null,
+     "felt relieved"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah, as soon as we got back to the inn, I felt a wave of relief."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "温かい",
+     "あたたかい",
+     "warm"
+    ],
+    [
+     "おでん",
+     null,
+     "oden"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "一口",
+     "ひとくち",
+     "one bite"
+    ],
+    [
+     "食べてみて",
+     "たべてみて",
+     "try eating"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Try taking a bite of the warm oden."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ふうふう",
+     null,
+     "blowing hot food"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "出汁",
+     "だし",
+     "dashi broth"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "染みていて",
+     "しみていて",
+     "soaked in"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "すごく",
+     null,
+     "very"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生き返る",
+     "いきかえる",
+     "revive"
+    ],
+    [
+     "ようだ",
+     null,
+     "feels like"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blow blow... Ah, the dashi is soaked right through, it's so delicious! I feel like I'm coming back to life!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生姜湯",
+     "しょうがゆ",
+     "ginger tea"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "適温",
+     "てきおん",
+     "suitable temp"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "なりました",
+     null,
+     "became"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The ginger tea reached the perfect temperature too!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "喉",
+     "のど",
+     "throat"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "すっきり",
+     null,
+     "refreshed"
+    ],
+    [
+     "して",
+     null,
+     "did"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "体",
+     "からだ",
+     "body"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ぽかぽか",
+     null,
+     "warm and toasty"
+    ],
+    [
+     "してきた",
+     null,
+     "started to become"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "My throat feels soothed and my whole body started feeling warm and toasty."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "これで",
+     null,
+     "with this"
+    ],
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "まで",
+     null,
+     "until",
+     "p"
+    ],
+    [
+     "ぐっすり",
+     null,
+     "soundly"
+    ],
+    [
+     "眠れそう",
+     "ねむれそう",
+     "looks able to sleep"
+    ],
+    [
+     "だね",
+     null,
+     "doesn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now it looks like you'll be able to sleep soundly until morning."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "付き合って",
+     "つきあって",
+     "keeping company"
+    ],
+    [
+     "くれて",
+     null,
+     "gave favor"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yuki, Blip, thank you so much for accompanying me!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "おやすみなさい",
+     null,
+     "good night"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "よい",
+     null,
+     "good"
+    ],
+    [
+     "夢",
+     "ゆめ",
+     "dreams"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Good night, sweet dreams!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n3-review-ba-yokatta",
+   "title": "Regret: ～ばよかった (Should Have Done)",
+   "explain": "V-ばよかった expresses regret about an action not taken in the past ('I should have...'). For negatives: ～なければよかった ('I shouldn't have...').",
+   "examples": [
+    {
+     "t": [
+      [
+       "もっと",
+       null,
+       "more"
+      ],
+      [
+       "早く",
+       "はやく",
+       "early"
+      ],
+      [
+       "寝ればよかった",
+       "ねればよかった",
+       "should have slept"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I should have gone to bed earlier."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "傘を持って来れ＿＿＿＿。",
+     "hint": "I should have brought an umbrella.",
+     "choices": [
+      "ばよかった",
+      "ばいい",
+      "たらいい"
+     ],
+     "answer": 0,
+     "why": "〜ばよかった expresses past regret."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ba-yokatta"
+  },
+  {
+   "id": "n3-review-gimi-ppoi",
+   "title": "Tendencies: ～気味 & ～っぽい",
+   "explain": "Noun/Stem + 気味 (ぎみ) indicates a slight unfavorable sensation (風邪気味, 疲れ気味). Noun/Stem + っぽい indicates a strong quality/trait (熱っぽい, 怒りっぽい).",
+   "examples": [
+    {
+     "t": [
+      [
+       "最近",
+       "さいきん",
+       "recently"
+      ],
+      [
+       "少し",
+       "すこし",
+       "a bit"
+      ],
+      [
+       "風邪気味",
+       "かぜぎみ",
+       "slight cold"
+      ],
+      [
+       "です",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I have a slight touch of a cold recently."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "今日は体が重くて、少し熱＿＿＿です。",
+     "hint": "My body is heavy today, and I feel slightly feverish.",
+     "choices": [
+      "っぽい",
+      "気味",
+      "そう"
+     ],
+     "answer": 0,
+     "why": "熱っぽい describes feeling feverish."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#gimi"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "差",
+   "on": [
+    "サ"
+   ],
+   "kun": [
+    "さ.す"
+   ],
+   "m": "distinction, difference",
+   "ex": [
+    [
+     "時差",
+     "じさ",
+     "time difference"
+    ]
+   ]
+  },
+  {
+   "k": "疲",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "つか.れる"
+   ],
+   "m": "exhausted, tired",
+   "ex": [
+    [
+     "疲れる",
+     "つかれる",
+     "to get tired"
+    ]
+   ]
+  },
+  {
+   "k": "冴",
+   "on": [
+    "コ"
+   ],
+   "kun": [
+    "さ.える"
+   ],
+   "m": "be clear, lucid",
+   "ex": [
+    [
+     "冴える",
+     "さえる",
+     "to be clear/wide awake"
+    ]
+   ]
+  },
+  {
+   "k": "姜",
+   "on": [
+    "キョウ"
+   ],
+   "kun": [
+    "しょうが"
+   ],
+   "m": "ginger",
+   "ex": [
+    [
+     "生姜湯",
+     "しょうがゆ",
+     "hot ginger drink"
+    ]
+   ]
+  },
+  {
+   "k": "補",
+   "on": [
+    "ホ"
+   ],
+   "kun": [
+    "おぎな.う"
+   ],
+   "m": "supplement, supply",
+   "ex": [
+    [
+     "補給",
+     "ほきゅう",
+     "supply/replenishment"
+    ]
+   ]
+  },
+  {
+   "k": "富",
+   "on": [
+    "フ",
+    "フウ"
+   ],
+   "kun": [
+    "と.む"
+   ],
+   "m": "wealth, abundant",
+   "ex": [
+    [
+     "豊富",
+     "ほうふ",
+     "abundant"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  4,
+  11
+ ],
+ "questions": [
+  {
+   "q": "サムさんはなぜ夜中に目が冴えていましたか。",
+   "en": "Why was Sam wide awake in the middle of the night?",
+   "choices": [
+    "時差ボケで昼夜のリズムが合わないから",
+    "コーヒーを飲みすぎたから",
+    "部屋がうるさかったから"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "コンビニの店員さんは何を勧めましたか。",
+   "en": "What did the convenience store clerk recommend?",
+   "choices": [
+    "生姜湯とレモンのホットドリンク",
+    "冷たいアイスクリーム",
+    "辛い激辛ラーメン"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe what you usually do when you suffer from jetlag or catch a cold while traveling in Japanese."
+}

@@ -1,0 +1,2879 @@
+{
+ "id": "n5-15",
+ "level": "N5",
+ "unit": 15,
+ "title": {
+  "ja": "旅立ちのパッキング：日本へ！",
+  "en": "Packing for Japan: The Final Departure"
+ },
+ "scene": "Sam's Brooklyn apartment the evening before flying to Tokyo. Yuki and Blip help Sam check baggage restrictions, packing lists, and departure plans.",
+ "lines": [
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "こんばんは",
+     null,
+     "good evening"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パッキング",
+     null,
+     "packing"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "終わりました",
+     "おわりました",
+     "finished (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good evening, Sam! Have you finished packing?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "こんばんは",
+     null,
+     "good evening"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まだ",
+     null,
+     "not yet"
+    ],
+    [
+     "終わっていません",
+     "おわっていません",
+     "has not finished"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "荷物",
+     "にもつ",
+     "luggage"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "多すぎます",
+     "おおすぎます",
+     "is too much"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Good evening, Yuki. Not finished yet... I have way too much luggage!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "スーツケース",
+     null,
+     "suitcase"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "閉まりません",
+     "しまりません",
+     "will not close"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The suitcase won't close! Beep!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a little"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "見せて",
+     "みせて",
+     "show"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "what"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "入っています",
+     "はいっています",
+     "is inside"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, please show me inside for a moment. What is in here?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "服",
+     "ふく",
+     "clothes"
+    ],
+    [
+     "や",
+     null,
+     "and (list)",
+     "p"
+    ],
+    [
+     "本",
+     "ほん",
+     "books"
+    ],
+    [
+     "や",
+     null,
+     "and (list)",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "たくさん",
+     null,
+     "a lot"
+    ],
+    [
+     "あります",
+     null,
+     "there are"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "There are clothes, books, and lots of radio parts."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "大きい",
+     "おおきい",
+     "big"
+    ],
+    [
+     "バッテリー",
+     null,
+     "battery"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "スーツケース",
+     null,
+     "suitcase"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入れては",
+     "いれては",
+     "put in and"
+    ],
+    [
+     "いけません",
+     null,
+     "must not"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, you must not put this large battery in the checked suitcase!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "えっ",
+     null,
+     "huh"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そうなんですか",
+     null,
+     "is that so?"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "預けては",
+     "あずけては",
+     "check in and"
+    ],
+    [
+     "だめ",
+     null,
+     "no good"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Wait, really!? Is it not allowed to check it in?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "リチウム",
+     null,
+     "lithium"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "手荷物",
+     "てにもつ",
+     "carry-on bag"
+    ],
+    [
+     "で",
+     null,
+     "in/by",
+     "p"
+    ],
+    [
+     "持っていかなければ",
+     "もっていかなければ",
+     "if not take"
+    ],
+    [
+     "なりません",
+     null,
+     "will not do (obligation)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. You must take lithium batteries in your carry-on baggage."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "なるほど",
+     null,
+     "I see"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "tell/teach"
+    ],
+    [
+     "くれて",
+     null,
+     "favor for me"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "危ない",
+     "あぶない",
+     "dangerous"
+    ],
+    [
+     "ところ",
+     null,
+     "place/situation"
+    ],
+    [
+     "でした",
+     null,
+     "was (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I see! Thank you for telling me. That was a close call."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "手荷物",
+     "てにもつ",
+     "carry-on"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入っても",
+     "はいっても",
+     "even if enters"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can Blip go into the carry-on baggage too?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "もちろん",
+     null,
+     "of course"
+    ],
+    [
+     "ですよ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "大切",
+     "たいせつ",
+     "precious"
+    ],
+    [
+     "な",
+     null,
+     "adjective connector"
+    ],
+    [
+     "相棒",
+     "あいぼう",
+     "partner"
+    ],
+    [
+     "ですから",
+     null,
+     "because is"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Of course! Because Blip is Sam's precious partner!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "私",
+     "わたし",
+     "I"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行った",
+     "いった",
+     "went"
+    ],
+    [
+     "こと",
+     null,
+     "experience/fact"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ありません",
+     null,
+     "do not have"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "緊張",
+     "きんちょう",
+     "nervous"
+    ],
+    [
+     "しています",
+     null,
+     "am doing"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I have never been to Japan before. I'm feeling a little nervous."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "ですよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "最初",
+     "さいしょ",
+     "beginning"
+    ],
+    [
+     "より",
+     null,
+     "compared to",
+     "p"
+    ],
+    [
+     "ずっと",
+     null,
+     "much more"
+    ],
+    [
+     "上手",
+     "じょうず",
+     "skillful"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "なりました",
+     null,
+     "became"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You'll be fine! Because your Japanese has become much better than at the beginning."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございます",
+     null,
+     "polite end"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "に",
+     null,
+     "in/at",
+     "p"
+    ],
+    [
+     "着いたら",
+     "ついたら",
+     "when/if arrive"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まず",
+     null,
+     "first"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行く",
+     "いく",
+     "go"
+    ],
+    [
+     "つもり",
+     null,
+     "intention"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you. When I arrive in Japan, I intend to go to Akihabara first."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "着く",
+     "つく",
+     "arrive"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "入国",
+     "にゅうこく",
+     "entry into country"
+    ],
+    [
+     "カード",
+     null,
+     "card"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "書かなければ",
+     "かかなければ",
+     "if not write"
+    ],
+    [
+     "なりません",
+     null,
+     "will not do (obligation)"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That sounds great! But before arriving at the airport, you must fill out the arrival card, you know."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "書きます",
+     "かきます",
+     "write (polite)"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ペン",
+     null,
+     "pen"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ポケット",
+     null,
+     "pocket"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入れて",
+     "いれて",
+     "put in"
+    ],
+    [
+     "おきます",
+     null,
+     "keep in advance"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I will write it inside the airplane. I will keep a pen in my pocket in advance."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "中",
+     "なか",
+     "inside"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "映画",
+     "えいが",
+     "movie"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "見たり",
+     "みたり",
+     "watch and such"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "音楽",
+     "おんがく",
+     "music"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "聞いたり",
+     "きいたり",
+     "listen and such"
+    ],
+    [
+     "できます",
+     null,
+     "can do"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, can we watch movies, listen to music, and such inside the airplane?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "できます",
+     null,
+     "can do"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "でも",
+     null,
+     "but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "寝た",
+     "ねた",
+     "slept"
+    ],
+    [
+     "ほう",
+     null,
+     "alternative/side"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "時差",
+     "じさ",
+     "time difference / jetlag"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "exists"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, we can! But it's better to sleep. Because there is a time difference, you know."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "そうですね",
+     null,
+     "that's right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニューヨーク",
+     null,
+     "New York"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "十三",
+     "じゅうさん",
+     "13"
+    ],
+    [
+     "時間",
+     "じかん",
+     "hours"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "時差",
+     "じさ",
+     "time difference"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "exists"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's true. New York and Tokyo have a thirteen-hour time difference."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "聞きながら",
+     "ききながら",
+     "while listening"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "残りの",
+     "のこりの",
+     "remaining"
+    ],
+    [
+     "荷物",
+     "にもつ",
+     "luggage"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "片づけます",
+     "かたづけます",
+     "tidy up (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "While listening to the radio, I will pack up the remaining belongings."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "そうそう",
+     null,
+     "by the way / oh yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お金",
+     "おかね",
+     "money"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "両替",
+     "りょうがえ",
+     "currency exchange"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "もう",
+     null,
+     "already"
+    ],
+    [
+     "しました",
+     null,
+     "did (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh by the way, have you already exchanged your money?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "きのう",
+     null,
+     "yesterday"
+    ],
+    [
+     "銀行",
+     "ぎんこう",
+     "bank"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "五万円",
+     "ごまんえん",
+     "50,000 yen"
+    ],
+    [
+     "両替",
+     "りょうがえ",
+     "exchange"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "では",
+     null,
+     "in (topic)",
+     "p"
+    ],
+    [
+     "クレジットカード",
+     null,
+     "credit card"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "使えます",
+     "つかえます",
+     "can use"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I exchanged 50,000 yen at the bank yesterday. Can credit cards be used in Japan?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "使えます",
+     "つかえます",
+     "can use"
+    ],
+    [
+     "が",
+     null,
+     "but",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ],
+    [
+     "お店",
+     "おみせ",
+     "shop"
+    ],
+    [
+     "では",
+     null,
+     "in (topic)",
+     "p"
+    ],
+    [
+     "現金",
+     "げんきん",
+     "cash"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ほう",
+     null,
+     "alternative"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You can use them, but cash is better in small shops, you know."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "乗り方",
+     "のりかた",
+     "how to ride"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "難しくない",
+     "むずかしくない",
+     "not difficult"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is taking trains in Tokyo not difficult?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "Suica",
+     null,
+     "Suica IC card"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "買えば",
+     "かえば",
+     "if buy"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "改札",
+     "かいさつ",
+     "ticket gate"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "タッチ",
+     null,
+     "touch"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "だけ",
+     null,
+     "only"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "便利",
+     "べんり",
+     "convenient"
+    ],
+    [
+     "ですよ",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If you buy a Suica card, you only have to touch it at the ticket gates. It's very convenient, you know."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "山手線",
+     "やまのてせん",
+     "Yamanote Line"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "乗れます",
+     "のれます",
+     "can ride"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Can robots ride the Yamanote Line too? Beep!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "あはは",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "小さい",
+     "ちいさい",
+     "small"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "なら",
+     null,
+     "if",
+     "p"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "ですよ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! If it's a small robot, you'll be completely fine!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "明日",
+     "あした",
+     "tomorrow"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "何時",
+     "なんじ",
+     "what time"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "起きなければ",
+     "おきなければ",
+     "if not wake up"
+    ],
+    [
+     "なりません",
+     null,
+     "will not do (obligation)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What time must you wake up tomorrow?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "朝",
+     "あさ",
+     "morning"
+    ],
+    [
+     "六時",
+     "ろくじ",
+     "6 o'clock"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "起きなければ",
+     "おきなければ",
+     "if not wake up"
+    ],
+    [
+     "なりません",
+     null,
+     "must"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "JFK空港",
+     "ジェイエフケイくうこう",
+     "JFK airport"
+    ],
+    [
+     "まで",
+     null,
+     "until/to",
+     "p"
+    ],
+    [
+     "一時間",
+     "いちじかん",
+     "one hour"
+    ],
+    [
+     "半",
+     "はん",
+     "half"
+    ],
+    [
+     "かかります",
+     null,
+     "takes (polite)"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I must wake up at six in the morning. Because it takes an hour and a half to JFK Airport."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "早く",
+     "はやく",
+     "early"
+    ],
+    [
+     "寝た",
+     "ねた",
+     "slept"
+    ],
+    [
+     "ほう",
+     null,
+     "side"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "成田空港",
+     "なりたくうこう",
+     "Narita Airport"
+    ],
+    [
+     "では",
+     null,
+     "at (topic)",
+     "p"
+    ],
+    [
+     "私の",
+     "わたしの",
+     "my"
+    ],
+    [
+     "家族",
+     "かぞく",
+     "family"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "待っています",
+     "まっています",
+     "is waiting"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You had better sleep early tonight. My family will be waiting at Narita Airport!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "楽しみ",
+     "たのしみ",
+     "looking forward to it"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆき",
+     "ゆき",
+     "Yuki"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今まで",
+     "いままで",
+     "until now"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teaching"
+    ],
+    [
+     "くれて",
+     null,
+     "favor for me"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "ございました",
+     null,
+     "was (polite)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! I am really looking forward to it. Yuki, thank you so much for teaching me Japanese all this time!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "どういたしまして",
+     null,
+     "you're welcome"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "会いましょう",
+     "あいましょう",
+     "let's meet"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "気をつけて",
+     "きをつけて",
+     "take care"
+    ],
+    [
+     "行って",
+     "いって",
+     "go"
+    ],
+    [
+     "らっしゃい",
+     null,
+     "and come back"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You're welcome! Let's meet in Tokyo! Have a safe flight!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "出発",
+     "しゅっぱつ",
+     "departure"
+    ],
+    [
+     "進行",
+     "しんこう",
+     "ahead"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Full speed ahead to Japan!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n5-review-ta-koto-ga-aru",
+   "title": "～たことがあります: Past Experience",
+   "explain": "Use V-た + ことがあります to say you have experienced doing something. The negative is ～たことがありません ('have never done').",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本",
+       "にほん",
+       "Japan"
+      ],
+      [
+       "へ",
+       null,
+       "to",
+       "p"
+      ],
+      [
+       "行った",
+       "いった",
+       "went"
+      ],
+      [
+       "こと",
+       null,
+       "fact/experience"
+      ],
+      [
+       "が",
+       null,
+       "subject",
+       "p"
+      ],
+      [
+       "ありません",
+       null,
+       "do not have"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I have never been to Japan."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "富士山を＿＿＿ことがありますか。",
+     "hint": "Have you ever climbed Mt. Fuji?",
+     "choices": [
+      "登った",
+      "登る",
+      "登ります"
+     ],
+     "answer": 0,
+     "why": "たことがあります requires the plain past (た-form)."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#ta-form"
+  },
+  {
+   "id": "n5-review-obligation",
+   "title": "～なければなりません & ～なくてもいいです",
+   "explain": "Use V-なければなりません to express obligations ('must do...'). Use V-なくてもいいです to express lack of obligation ('do not have to do...').",
+   "examples": [
+    {
+     "t": [
+      [
+       "六時",
+       "ろくじ",
+       "6 o'clock"
+      ],
+      [
+       "に",
+       null,
+       "at",
+       "p"
+      ],
+      [
+       "起きなければ",
+       "おきなければ",
+       "if not wake up"
+      ],
+      [
+       "なりません",
+       null,
+       "will not do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I must wake up at six."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "早く寝＿＿＿＿＿＿なりません。",
+     "hint": "I must sleep early.",
+     "choices": [
+      "なければ",
+      "なくても",
+      "ないで"
+     ],
+     "answer": 0,
+     "why": "なければなりません expresses necessity/obligation."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#nakereba"
+  },
+  {
+   "id": "n5-review-nagara-tari",
+   "title": "～ながら & ～たり～たりします",
+   "explain": "V-stem + ながら indicates two actions done at the same time by the same person ('while doing'). V-た + り ... V-た + りします lists non-exhaustive representative actions.",
+   "examples": [
+    {
+     "t": [
+      [
+       "ラジオ",
+       null,
+       "radio"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "聞きながら",
+       "ききながら",
+       "while listening"
+      ],
+      [
+       "勉強します",
+       "べんきょうします",
+       "study"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I study while listening to the radio."
+    },
+    {
+     "t": [
+      [
+       "映画",
+       "えいが",
+       "movie"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "見たり",
+       "みたり",
+       "watch and such"
+      ],
+      [
+       "寝たり",
+       "ねたり",
+       "sleep and such"
+      ],
+      [
+       "します",
+       null,
+       "do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I do things like watch movies and sleep."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "歩き＿＿＿スマホを見てはいけません。",
+     "hint": "You must not look at your smartphone while walking.",
+     "choices": [
+      "ながら",
+      "たり",
+      "まえに"
+     ],
+     "answer": 0,
+     "why": "ながら attaches to the verb stem (歩き) to express simultaneous action."
+    }
+   ],
+   "lesson": "grammar.html?level=N5#nagara"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "荷",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "に"
+   ],
+   "m": "baggage, cargo",
+   "ex": [
+    [
+     "荷物",
+     "にもつ",
+     "luggage"
+    ],
+    [
+     "出荷",
+     "しゅっか",
+     "shipment"
+    ]
+   ]
+  },
+  {
+   "k": "物",
+   "on": [
+    "ブツ",
+    "モツ"
+   ],
+   "kun": [
+    "もの"
+   ],
+   "m": "thing",
+   "ex": [
+    [
+     "荷物",
+     "にもつ",
+     "luggage"
+    ],
+    [
+     "食べ物",
+     "たべもの",
+     "food"
+    ]
+   ]
+  },
+  {
+   "k": "池",
+   "on": [
+    "チ"
+   ],
+   "kun": [
+    "いけ"
+   ],
+   "m": "pond, reservoir",
+   "ex": [
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ],
+    [
+     "池",
+     "いけ",
+     "pond"
+    ]
+   ]
+  },
+  {
+   "k": "電",
+   "on": [
+    "デン"
+   ],
+   "kun": [],
+   "m": "electricity",
+   "ex": [
+    [
+     "電車",
+     "でんしゃ",
+     "train"
+    ],
+    [
+     "電池",
+     "でんち",
+     "battery"
+    ]
+   ]
+  },
+  {
+   "k": "飛",
+   "on": [
+    "ヒ"
+   ],
+   "kun": [
+    "と.ぶ",
+    "と.ばす"
+   ],
+   "m": "fly",
+   "ex": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "飛ぶ",
+     "とぶ",
+     "to fly"
+    ]
+   ]
+  },
+  {
+   "k": "機",
+   "on": [
+    "キ"
+   ],
+   "kun": [
+    "はた"
+   ],
+   "m": "machine, opportunity",
+   "ex": [
+    [
+     "飛行機",
+     "ひこうき",
+     "airplane"
+    ],
+    [
+     "機械",
+     "きかい",
+     "machine"
+    ]
+   ]
+  },
+  {
+   "k": "空",
+   "on": [
+    "クウ"
+   ],
+   "kun": [
+    "そら",
+    "あ.く",
+    "から"
+   ],
+   "m": "sky, empty",
+   "ex": [
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "空気",
+     "くうき",
+     "air"
+    ]
+   ]
+  },
+  {
+   "k": "港",
+   "on": [
+    "コウ"
+   ],
+   "kun": [
+    "みなと"
+   ],
+   "m": "harbor, port",
+   "ex": [
+    [
+     "空港",
+     "くうこう",
+     "airport"
+    ],
+    [
+     "港",
+     "みなと",
+     "harbor"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  7,
+  13,
+  21
+ ],
+ "questions": [
+  {
+   "q": "バッテリーはどのように持っていかなければなりませんか。",
+   "en": "How must the battery be carried?",
+   "choices": [
+    "手荷物に入れる",
+    "預けるスーツケースに入れる",
+    "郵送する"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは日本へ行ったことがありますか。",
+   "en": "Has Sam ever been to Japan before?",
+   "choices": [
+    "一度も行ったことがない",
+    "去年行ったことがある",
+    "子どものころ住んでいた"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "サムさんは明日何時に起きなければなりませんか。",
+   "en": "What time must Sam wake up tomorrow?",
+   "choices": [
+    "朝六時",
+    "朝八時",
+    "昼の十二時"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "成田空港で誰がサムさんを待っていますか。",
+   "en": "Who is waiting for Sam at Narita Airport?",
+   "choices": [
+    "ゆきさんの家族",
+    "大学の教授",
+    "ラジオショップの店員"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Imagine you are packing for a trip to Japan. Tell Blip what items you must pack and what you intend to do when you arrive."
+}

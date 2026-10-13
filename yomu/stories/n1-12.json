@@ -1,0 +1,2154 @@
+{
+ "id": "n1-12",
+ "level": "N1",
+ "unit": 12,
+ "title": {
+  "ja": "科学革命とパラダイムの転換",
+  "en": "Epistemology: Thomas Kuhn & Paradigm Shifts"
+ },
+ "scene": "A historic library reading room at the University of Tokyo. Sam, Yuki, Kenji, and Blip study the epistemological shift from classical physics to quantum computation.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "トーマス・クーンの",
+     null,
+     "Thomas Kuhn's"
+    ],
+    [
+     "『科学革命の構造』",
+     "かがくかくめいのこうぞう",
+     "Structure of Scientific Revolutions"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何度",
+     "なんど",
+     "many times"
+    ],
+    [
+     "読み返しても",
+     "よみかえしても",
+     "even rereading"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "知的な",
+     "ちてきな",
+     "intellectual"
+    ],
+    [
+     "興奮に",
+     "こうふんに",
+     "excitement"
+    ],
+    [
+     "胸を打たれます",
+     "むねをうたれます",
+     "struck in heart"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thomas Kuhn's 'The Structure of Scientific Revolutions'—no matter how many times I reread it, I am struck with intense intellectual excitement."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "科学の",
+     "かがくの",
+     "science's"
+    ],
+    [
+     "進歩は",
+     "しんぽは",
+     "progress"
+    ],
+    [
+     "単なる",
+     "たんなる",
+     "mere"
+    ],
+    [
+     "知識の",
+     "ちしきの",
+     "knowledge's"
+    ],
+    [
+     "累積",
+     "るいせき",
+     "accumulation"
+    ],
+    [
+     "ではなく",
+     null,
+     "not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "根本的な",
+     "こんぽんてきな",
+     "fundamental"
+    ],
+    [
+     "世界観の",
+     "せかいかんの",
+     "worldview's"
+    ],
+    [
+     "転換",
+     "てんかん",
+     "transformation"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "パラダイムシフト",
+     null,
+     "paradigm shift"
+    ],
+    [
+     "によって",
+     null,
+     "through"
+    ],
+    [
+     "もたらされる",
+     null,
+     "brought about"
+    ],
+    [
+     "という",
+     null,
+     "that says"
+    ],
+    [
+     "洞察だな",
+     "どうさつだな",
+     "insight is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The insight that scientific progress is not mere accumulation of facts, but brought about by fundamental transformations in worldviews—paradigm shifts."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "天動説から",
+     "てんどうせつから",
+     "from geocentric theory"
+    ],
+    [
+     "地動説へ",
+     "ちどうせつへ",
+     "to heliocentric theory"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "転換を",
+     "てんかんを",
+     "transition"
+    ],
+    [
+     "皮切りに",
+     "かわきりに",
+     "starting with",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "量子力学の",
+     "りょうしりきがくの",
+     "quantum mechanics'"
+    ],
+    [
+     "誕生に至るまで",
+     "たんじょうにいたるまで",
+     "all the way to birth"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人類の",
+     "じんるいの",
+     "humanity's"
+    ],
+    [
+     "認識の",
+     "にんしきの",
+     "epistemic"
+    ],
+    [
+     "跳躍には",
+     "ちょうやくには",
+     "in leaps"
+    ],
+    [
+     "驚嘆を禁じ得ない",
+     "きょうたんをきんじえない",
+     "cannot suppress marvel",
+     "p"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Starting with the shift from geocentrism to heliocentrism, all the way to quantum mechanics, one cannot suppress marvel at humanity's epistemic leaps."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ニュートン",
+     null,
+     "Newtonian"
+    ],
+    [
+     "力学",
+     "りきがく",
+     "mechanics"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "量子",
+     "りょうし",
+     "quantum"
+    ],
+    [
+     "もつれ",
+     null,
+     "entanglement"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "認識",
+     "にんしき",
+     "cognition"
+    ],
+    [
+     "マトリクス",
+     null,
+     "matrix"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "次元",
+     "じげん",
+     "dimensional"
+    ],
+    [
+     "跳躍",
+     "ちょうやく",
+     "leap"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! From Newtonian mechanics to quantum entanglement! Cognitive matrix dimensional leap completed!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "古典的な",
+     "こてんてきな",
+     "classical"
+    ],
+    [
+     "決定論に",
+     "けっていろんに",
+     "to determinism"
+    ],
+    [
+     "即して",
+     "そくして",
+     "in accordance with",
+     "p"
+    ],
+    [
+     "思考",
+     "しこう",
+     "thinking"
+    ],
+    [
+     "していては",
+     null,
+     "if doing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "量子",
+     "りょうし",
+     "quantum"
+    ],
+    [
+     "コンピューティングの",
+     null,
+     "computing's"
+    ],
+    [
+     "本質は",
+     "ほんしつは",
+     "essence"
+    ],
+    [
+     "捉えられません",
+     "とらえられません",
+     "cannot grasp"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If we reason strictly in accordance with classical determinism, we cannot grasp the essence of quantum computing."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "そうだ",
+     null,
+     "is so"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "常識と",
+     "じょうしきと",
+     "common sense and"
+    ],
+    [
+     "思われていた",
+     "おもわれていた",
+     "thought to be"
+    ],
+    [
+     "前提そのものを",
+     "ぜんていそのものを",
+     "premises themselves"
+    ],
+    [
+     "疑う",
+     "うたがう",
+     "doubt"
+    ],
+    [
+     "勇気が",
+     "ゆうきが",
+     "courage (subj)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新たな",
+     "あらたな",
+     "new"
+    ],
+    [
+     "真理への",
+     "しんりへの",
+     "to truth"
+    ],
+    [
+     "扉を",
+     "とびらを",
+     "door"
+    ],
+    [
+     "押し開く",
+     "おしひらく",
+     "pushes open"
+    ],
+    [
+     "のだ",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Precisely so. The courage to question the very premises regarded as common sense is what pushes open the door to new truth."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "既存の",
+     "きぞんの",
+     "existing"
+    ],
+    [
+     "枠組みを",
+     "わくぐみを",
+     "frameworks"
+    ],
+    [
+     "学び尽くした",
+     "まなびつくした",
+     "thoroughly learned"
+    ],
+    [
+     "上で",
+     "うえで",
+     "upon doing so"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "それを",
+     "それを",
+     "it"
+    ],
+    [
+     "乗り越えていく",
+     "のりこえていく",
+     "surpass"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これこそが",
+     null,
+     "precisely this"
+    ],
+    [
+     "学問の",
+     "がくもんの",
+     "scholarship's"
+    ],
+    [
+     "真髄ね",
+     "しんずいね",
+     "essence is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Mastering existing frameworks to the very brim, and then transcending them—that is the true essence of scholarship."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "守破離",
+     "しゅはり",
+     "Shu-Ha-Ri"
+    ],
+    [
+     "プロトコル",
+     null,
+     "protocol"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「守」",
+     "しゅ",
+     "Shu (protect)"
+    ],
+    [
+     "＝",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "規範遵守",
+     "きはんじゅんしゅ",
+     "observe norms"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「破」",
+     "は",
+     "Ha (break)"
+    ],
+    [
+     "＝",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "枠組み打破",
+     "わくぐみだは",
+     "break mold"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「離」",
+     "り",
+     "Ri (transcend)"
+    ],
+    [
+     "＝",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "超越創造",
+     "ちょうえつそうぞう",
+     "transcend & create"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The Shu-Ha-Ri protocol! Shu = master fundamentals! Ha = break the mold! Ri = transcend and create!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本の",
+     "にほんの",
+     "Japan's"
+    ],
+    [
+     "武道や",
+     "ぶどうや",
+     "martial arts and"
+    ],
+    [
+     "芸道の",
+     "げいどうの",
+     "traditional arts'"
+    ],
+    [
+     "「守破離」",
+     "しゅはり",
+     "Shu-Ha-Ri"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "引き合いに出すとは",
+     "ひきあいにだすとは",
+     "to cite as analogy"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "見事な",
+     "みごとな",
+     "splendid"
+    ],
+    [
+     "着眼点だ",
+     "ちゃくがんてんだ",
+     "viewpoint is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! Blip, drawing the martial arts concept of Shu-Ha-Ri as an analogy—what a splendid viewpoint!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "守破離",
+     "しゅはり",
+     "Shu-Ha-Ri"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "科学革命の",
+     "かがくかくめいの",
+     "scientific revolution's"
+    ],
+    [
+     "構造と",
+     "こうぞうと",
+     "structure and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "完全に",
+     "かんぜんに",
+     "completely"
+    ],
+    [
+     "響き合っています",
+     "ひびきあっています",
+     "resonates together"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Shu-Ha-Ri... it resonates completely with the very structure of scientific revolutions!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "東洋の",
+     "とうようの",
+     "Eastern"
+    ],
+    [
+     "身体知と",
+     "しんたいちと",
+     "embodied knowledge and"
+    ],
+    [
+     "西洋の",
+     "せいようの",
+     "Western"
+    ],
+    [
+     "科学哲学が",
+     "かがくてつがくが",
+     "philosophy of science"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここで",
+     null,
+     "here"
+    ],
+    [
+     "美しく",
+     "うつくしく",
+     "beautifully"
+    ],
+    [
+     "結びついた",
+     "むすびついた",
+     "connected"
+    ],
+    [
+     "わね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Eastern embodied wisdom and Western philosophy of science connect beautifully right here."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "サム君",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "君が",
+     "きみが",
+     "you"
+    ],
+    [
+     "日本で",
+     "にほんでき",
+     "in Japan"
+    ],
+    [
+     "学んできた",
+     "まなんできた",
+     "have learned"
+    ],
+    [
+     "すべての",
+     null,
+     "all"
+    ],
+    [
+     "経験が",
+     "けいけんが",
+     "experiences"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "君自身の",
+     "きみじしんの",
+     "your own"
+    ],
+    [
+     "パラダイムシフトを",
+     "ぱらだいむしふとを",
+     "paradigm shift"
+    ],
+    [
+     "促してきた",
+     "うながしてきた",
+     "has prompted"
+    ],
+    [
+     "んじゃないかね",
+     null,
+     "isn't it so"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, haven't all the experiences you have absorbed here in Japan prompted your very own personal paradigm shift?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "初めは",
+     "はじめは",
+     "at first"
+    ],
+    [
+     "言葉も",
+     "ことばも",
+     "language too"
+    ],
+    [
+     "文化も",
+     "ぶんかも",
+     "culture too"
+    ],
+    [
+     "戸惑うこと",
+     "とまどうこと",
+     "confusing things"
+    ],
+    [
+     "ばかりでしたが",
+     null,
+     "were only, but"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "皆様と",
+     "みなさまと",
+     "with everyone"
+    ],
+    [
+     "語り合う中で",
+     "かたりあうなかで",
+     "in conversing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "世界の見え方が",
+     "せかいのみえかたが",
+     "way of seeing world"
+    ],
+    [
+     "根本から",
+     "こんぽんから",
+     "from roots"
+    ],
+    [
+     "変わりました",
+     "かわりました",
+     "changed"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! At first the language and customs were bewildering, but conversing with you all, the way I perceive the world has changed from its roots."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "異なる",
+     "ことなる",
+     "different"
+    ],
+    [
+     "言語や",
+     "げんごや",
+     "languages and"
+    ],
+    [
+     "文化を",
+     "ぶんかを",
+     "cultures"
+    ],
+    [
+     "学ぶことは",
+     "まなぶことは",
+     "learning"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自分の中に",
+     "じぶんのなかに",
+     "inside oneself"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "宇宙を",
+     "うちゅうを",
+     "universe"
+    ],
+    [
+     "持つことと",
+     "もつことと",
+     "having"
+    ],
+    [
+     "同じなのよ",
+     null,
+     "same as is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Acquiring a different language and culture is identical to harboring an entirely new universe within oneself."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさんの",
+     "さむさんの",
+     "Sam's"
+    ],
+    [
+     "認知的",
+     "にんちてき",
+     "cognitive"
+    ],
+    [
+     "多様性",
+     "たようせい",
+     "diversity"
+    ],
+    [
+     "パラメータ",
+     null,
+     "parameters"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無限大",
+     "むげんだい",
+     "infinite"
+    ],
+    [
+     "拡張",
+     "かくちょう",
+     "expansion"
+    ],
+    [
+     "観測",
+     "かんそく",
+     "observed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Sam's cognitive diversity parameters: observed expanding to infinity!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "無限大か",
+     "むげんだいか",
+     "infinity, eh"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "立派な",
+     "りっぱな",
+     "magnificent"
+    ],
+    [
+     "研究者に",
+     "けんきゅうしゃに",
+     "into researcher"
+    ],
+    [
+     "育ったな",
+     "そだったな",
+     "grown into"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム君",
+     null,
+     "Sam"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! Infinity! You have grown into a truly magnificent scholar, Sam."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ケンジ先生",
+     "けんじせんせい",
+     "Prof. Kenji"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆきさん",
+     null,
+     "Yuki"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "そして",
+     null,
+     "and"
+    ],
+    [
+     "ブリップが",
+     null,
+     "Blip"
+    ],
+    [
+     "いてくれたからです",
+     "いてくれたからです",
+     "because were there"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is all because Prof. Kenji, Yuki, and Blip were beside me."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "私たちこそ",
+     "わたしたちこそ",
+     "we ourselves"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サムさんの",
+     "さむさんの",
+     "Sam's"
+    ],
+    [
+     "純粋な",
+     "じゅんすいな",
+     "pure"
+    ],
+    [
+     "情熱から",
+     "じょうねつから",
+     "from passion"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "たくさんの",
+     null,
+     "a lot of"
+    ],
+    [
+     "刺激を",
+     "しげきを",
+     "inspiration"
+    ],
+    [
+     "もらったわ",
+     null,
+     "received"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is we who have drawn so much inspiration from your pure, tireless passion, Sam."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "相互作用",
+     "そうごさよう",
+     "interaction"
+    ],
+    [
+     "シナジー",
+     null,
+     "synergy"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "百点満点",
+     "ひゃくてんまんてん",
+     "100/100 perfect"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Interpersonal synergy score: 100 out of 100!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "科学も",
+     "かがくも",
+     "science too"
+    ],
+    [
+     "人生も",
+     "じんせいも",
+     "life too"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "終わりのない",
+     "おわりのない",
+     "endless"
+    ],
+    [
+     "探究の旅だ",
+     "たんきゅうのたびだ",
+     "journey of inquiry is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Both science and human life are endless journeys of curious inquiry."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "一つの",
+     "ひとつの",
+     "one"
+    ],
+    [
+     "パラダイムを",
+     "ぱらだいむを",
+     "paradigm"
+    ],
+    [
+     "極めたら",
+     "きわめたら",
+     "once mastering"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "また次の",
+     "またつぎの",
+     "yet next"
+    ],
+    [
+     "地平へ",
+     "ちへいへ",
+     "to horizon"
+    ],
+    [
+     "漕ぎ出す",
+     "こぎだす",
+     "row out"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ワクワクします",
+     "わくわくします",
+     "thrilling"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Once mastering one paradigm, we row out toward yet another uncharted horizon... exhilarating!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "その探究心を",
+     "そのたんきゅうしんを",
+     "that inquiring spirit"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつまでも",
+     null,
+     "forever"
+    ],
+    [
+     "大切に",
+     "たいせつに",
+     "cherished"
+    ],
+    [
+     "持ち続けて",
+     "もちつづけて",
+     "keep holding"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Please cherish that inquiring spirit and keep it glowing bright forever."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "生涯の",
+     "しょうがいの",
+     "lifelong"
+    ],
+    [
+     "宝物として",
+     "たからものとして",
+     "as treasure"
+    ],
+    [
+     "抱きしめます",
+     "だきしめます",
+     "will hold close"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I will hold it close to my chest as a lifelong treasure!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "宝物ログ",
+     "たからものろぐ",
+     "treasure log"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ハート型",
+     "はーとがた",
+     "heart-shaped"
+    ],
+    [
+     "暗号化",
+     "あんごうか",
+     "encryption"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Treasure log: heart-shaped encrypted backup completed!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ハート型暗号とは",
+     "はーとがたあんごうとは",
+     "heart encryption, what a"
+    ],
+    [
+     "洒落ているな",
+     "しゃれているな",
+     "stylish"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha, heart-shaped encryption—how stylish of you, Blip!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップも",
+     null,
+     "Blip too"
+    ],
+    [
+     "すっかり",
+     null,
+     "completely"
+    ],
+    [
+     "詩人に",
+     "しじんに",
+     "into poet"
+    ],
+    [
+     "なったわね",
+     null,
+     "became"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, Blip has completely blossomed into a poet as well."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "科学と",
+     "かがくと",
+     "science and"
+    ],
+    [
+     "詩が",
+     "しが",
+     "poetry"
+    ],
+    [
+     "一つに",
+     "ひとつに",
+     "into one"
+    ],
+    [
+     "溶け合う世界",
+     "とけあうせかい",
+     "world where melts"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "素晴らしいです",
+     "すばらしいです",
+     "is wonderful"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A world where rigorous science and tender poetry melt into one—how sublime."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "それこそが",
+     null,
+     "precisely that"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "我々が",
+     "われわれが",
+     "we"
+    ],
+    [
+     "目指すべき",
+     "めざすべき",
+     "ought to aim for"
+    ],
+    [
+     "学問の",
+     "がくもんの",
+     "scholarship's"
+    ],
+    [
+     "理想郷だな",
+     "りそうきょうだな",
+     "Utopia is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That is precisely the ideal realm of scholarship we ought to strive toward."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "さあ",
+     null,
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "図書館を",
+     "としょかんを",
+     "library"
+    ],
+    [
+     "後にして",
+     "あとにして",
+     "leave behind and"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "夕涼みに",
+     "ゆうすずみに",
+     "for evening cool"
+    ],
+    [
+     "出かけましょう",
+     "でかけましょう",
+     "let's head out"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Now, shall we step out from the library and enjoy the evening cool?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "安田講堂の",
+     "やすだこうどうの",
+     "Yasuda Auditorium's"
+    ],
+    [
+     "前を",
+     "まえを",
+     "in front of"
+    ],
+    [
+     "散歩しましょう",
+     "さんぽしましょう",
+     "let's walk"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, let's take a stroll past the Yasuda Auditorium!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アカデミック",
+     null,
+     "academic"
+    ],
+    [
+     "散歩",
+     "さんぽ",
+     "stroll"
+    ],
+    [
+     "モード",
+     null,
+     "mode"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "発進",
+     "はっしん",
+     "depart"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Academic stroll mode: departing now!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "行こう",
+     "いこう",
+     "let's go"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "未来は",
+     "みらいは",
+     "future is"
+    ],
+    [
+     "明るいぞ",
+     "あかるいぞ",
+     "bright"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's go! The future is bright!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "wo-kinji-enai",
+   "title": "～を禁じ得ない: cannot suppress, cannot help feeling",
+   "explain": "Attached to emotion nouns (驚嘆, 怒り, 涙, 同情) expressing that an intense feeling wells up uncontrollably.",
+   "examples": [
+    {
+     "t": [
+      [
+       "驚嘆",
+       "きょうたん",
+       "marvel"
+      ],
+      [
+       "を禁じ得ない",
+       null,
+       "cannot suppress",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Cannot suppress marvel."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "彼の不屈の闘志に、感嘆の念＿＿。",
+     "hint": "At his indomitable fighting spirit, I cannot suppress feelings of admiration.",
+     "choices": [
+      "を禁じ得ない",
+      "どころではない",
+      "きらいがある"
+     ],
+     "answer": 0,
+     "why": "を禁じ得ない expresses an irresistible swelling of admiration, indignation, or sympathy."
+    }
+   ]
+  },
+  {
+   "id": "ni-sokushite",
+   "title": "～に即して: in accordance with, true to (standards, reality)",
+   "explain": "Indicates adhering strictly to factual reality, regulations, or established standards.",
+   "examples": [
+    {
+     "t": [
+      [
+       "決定論",
+       "けっていろん",
+       "determinism"
+      ],
+      [
+       "に即して",
+       null,
+       "in accordance with",
+       "p"
+      ],
+      [
+       "考える",
+       "かんがえる",
+       "think"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Think in accordance with determinism."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "現場の実情＿＿、柔軟に対策を講じるべきだ。",
+     "hint": "We should devise measures flexibly in accordance with on-the-ground actualities.",
+     "choices": [
+      "に即して",
+      "を皮切りに",
+      "てやまない"
+     ],
+     "answer": 0,
+     "why": "に即して indicates acting or thinking in accordance with actual facts or norms."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "蓋",
+   "on": [
+    "ガイ"
+   ],
+   "kun": [
+    "ふた",
+    "けだ.し"
+   ],
+   "m": [
+    "cover",
+    "lid",
+    "probably"
+   ],
+   "ex": [
+    [
+     "蓋然性",
+     "がいぜんせい",
+     "probability"
+    ],
+    [
+     "天蓋",
+     "てんがい",
+     "canopy"
+    ]
+   ]
+  },
+  {
+   "k": "跳",
+   "on": [
+    "チョウ"
+   ],
+   "kun": [
+    "と.ぶ",
+    "は.ねる"
+   ],
+   "m": [
+    "leap",
+    "jump"
+   ],
+   "ex": [
+    [
+     "跳躍",
+     "ちょうやく",
+     "leap/jump"
+    ],
+    [
+     "跳馬",
+     "ちょうば",
+     "vaulting horse"
+    ]
+   ]
+  },
+  {
+   "k": "髄",
+   "on": [
+    "ズイ"
+   ],
+   "kun": [],
+   "m": [
+    "marrow",
+    "essence"
+   ],
+   "ex": [
+    [
+     "真髄",
+     "しんずい",
+     "quintessence/core"
+    ],
+    [
+     "骨髄",
+     "こつずい",
+     "bone marrow"
+    ]
+   ]
+  },
+  {
+   "k": "唱",
+   "on": [
+    "ショウ"
+   ],
+   "kun": [
+    "とな.える"
+   ],
+   "m": [
+    "chant",
+    "advocate"
+   ],
+   "ex": [
+    [
+     "提唱",
+     "ていしょう",
+     "advocacy"
+    ],
+    [
+     "合唱",
+     "がっしょう",
+     "chorus"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "トーマス・クーンが指摘した科学進歩の真の原動力は何ですか？",
+   "choices": [
+    "単なる知識の累積ではなく、世界観の根本的転換（パラダイムシフト）",
+    "研究費の無制限な増額",
+    "新しい実験室の建築"
+   ],
+   "answer": 0,
+   "why": "単なる知識の累積ではなくパラダイムシフトによってもたらされると説明されています。"
+  },
+  {
+   "q": "ブリップが科学革命と類似していると挙げた日本の伝統的な概念は何ですか？",
+   "choices": [
+    "武道や芸道の「守破離」",
+    "お花見の団子",
+    "電車の時刻表"
+   ],
+   "answer": 0,
+   "why": "規範を守り、打破し、超越創造する「守破離」を引き合いに出しています。"
+  }
+ ],
+ "talk": "You are Kenji exploring Thomas Kuhn's philosophy of science and paradigm shifts with Sam."
+}

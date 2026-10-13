@@ -1,0 +1,2621 @@
+{
+ "id": "n4-18",
+ "level": "N4",
+ "unit": 18,
+ "title": {
+  "ja": "技術コンテストの本番",
+  "en": "The Tokyo Maker Expo Presentation (Unit 6 Master Review)"
+ },
+ "scene": "Tokyo Big Sight exhibition hall. Sam, Yuki, and Blip present their open-source satellite radio decoder to judges at the Tokyo Maker Expo.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "十時",
+     "じゅうじ",
+     "10 o'clock"
+    ],
+    [
+     "までに",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "ブース",
+     null,
+     "booth"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "展示",
+     "てんじ",
+     "display"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "完成",
+     "かんせい",
+     "completion"
+    ],
+    [
+     "させなければ",
+     null,
+     "must complete (causative)"
+    ],
+    [
+     "ならない",
+     null,
+     "must"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We have to finish setting up the booth display by 10 o'clock!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ちゃんと",
+     null,
+     "properly"
+    ],
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "電波",
+     "でんぱ",
+     "radio waves"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "受信",
+     "じゅしん",
+     "reception"
+    ],
+    [
+     "できる",
+     null,
+     "can do"
+    ],
+    [
+     "かどうか",
+     null,
+     "whether or not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "テスト",
+     null,
+     "test"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "みて",
+     null,
+     "try"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Try testing whether the antenna can properly receive the satellite signals or not."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "あと",
+     null,
+     "in"
+    ],
+    [
+     "十分",
+     "じゅっぷん",
+     "10 minutes"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "東京",
+     "とうきょう",
+     "Tokyo"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "上空",
+     "じょうくう",
+     "sky above"
+    ],
+    [
+     "を",
+     null,
+     "through",
+     "p"
+    ],
+    [
+     "通過",
+     "つうか",
+     "passage"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "はずだ",
+     null,
+     "should be"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The satellite should pass over Tokyo in ten minutes!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "追尾",
+     "ついび",
+     "tracking"
+    ],
+    [
+     "システム",
+     null,
+     "system"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "正常",
+     "せいじょう",
+     "normal"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "作動",
+     "さどう",
+     "operation"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "middle of"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Tracking system operational and running normally!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "審査員",
+     "しんさいん",
+     "judge"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "person"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "来たら",
+     "きたら",
+     "if/when comes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自信",
+     "じしん",
+     "confidence"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "持って",
+     "もって",
+     "hold"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "説明",
+     "せつめい",
+     "explanation"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "ほしい",
+     null,
+     "want you to"
+    ],
+    [
+     "な",
+     null,
+     "wish",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, when the judges arrive, I want you to explain it with confidence in Japanese!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "緊張",
+     "きんちょう",
+     "nervous"
+    ],
+    [
+     "して",
+     null,
+     "did"
+    ],
+    [
+     "話せなかった",
+     "はなせなかった",
+     "could not speak"
+    ],
+    [
+     "けど",
+     null,
+     "though",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "練習",
+     "れんしゅう",
+     "practice"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "ように",
+     null,
+     "make habit to"
+    ],
+    [
+     "している",
+     null,
+     "am doing"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! I used to be nervous and couldn't speak, but because I make a point of practicing every day, I'll be fine!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "こんにちは",
+     null,
+     "hello"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "こちらの",
+     null,
+     "this"
+    ],
+    [
+     "システム",
+     null,
+     "system"
+    ],
+    [
+     "について",
+     null,
+     "about",
+     "p"
+    ],
+    [
+     "説明",
+     "せつめい",
+     "explanation"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "いただけます",
+     null,
+     "can receive favor"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hello! Could you tell us about this system?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "喜んで",
+     "よろこんで",
+     "with pleasure"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "気象",
+     "きしょう",
+     "weather"
+    ],
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "画像",
+     "がぞう",
+     "image"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "誰",
+     "だれ",
+     "anyone"
+    ],
+    [
+     "でも",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "簡単に",
+     "かんたんに",
+     "easily"
+    ],
+    [
+     "受信",
+     "じゅしん",
+     "reception"
+    ],
+    [
+     "できるように",
+     null,
+     "so that can"
+    ],
+    [
+     "設計",
+     "せっけい",
+     "design"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, with pleasure! We designed it so anyone can easily receive weather satellite imagery."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "どのような",
+     null,
+     "what kind of"
+    ],
+    [
+     "仕組み",
+     "しくみ",
+     "mechanism"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "動いて",
+     "うごいて",
+     "operating"
+    ],
+    [
+     "いる",
+     null,
+     "is"
+    ],
+    [
+     "の",
+     null,
+     "nominalizer"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Under what mechanism is it operating?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "アンテナ",
+     null,
+     "antenna"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "自動",
+     "じどう",
+     "automatic"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "軌道",
+     "きどう",
+     "orbit"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "追う",
+     "おう",
+     "chase/track"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "なっています",
+     null,
+     "is configured"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The antenna is set up so that it automatically tracks the satellite orbit."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "画像",
+     "がぞう",
+     "image"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "受信",
+     "じゅしん",
+     "reception"
+    ],
+    [
+     "いたしました",
+     null,
+     "did (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! We have received the image from the satellite!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "おお",
+     null,
+     "oh!"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雲",
+     "くも",
+     "clouds"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "形",
+     "かたち",
+     "shape"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "はっきりと",
+     null,
+     "clearly"
+    ],
+    [
+     "映って",
+     "うつって",
+     "projected"
+    ],
+    [
+     "います",
+     null,
+     "is"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "素晴らしい",
+     "すばらしい",
+     "wonderful"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oh! The shape of the clouds is projected so clearly! Wonderful!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "災害",
+     "さいがい",
+     "disaster"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "時",
+     "とき",
+     "time"
+    ],
+    [
+     "にも",
+     null,
+     "also in",
+     "p"
+    ],
+    [
+     "役立ちそう",
+     "やくだちそう",
+     "looks useful"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "停電",
+     "ていでん",
+     "power outage"
+    ],
+    [
+     "しても",
+     null,
+     "even if"
+    ],
+    [
+     "使えます",
+     "つかえます",
+     "can use"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It looks like it would be useful during disasters too. Can it be used even during a power outage?"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "乾電池",
+     "かんでんち",
+     "dry-cell battery"
+    ],
+    [
+     "だけでも",
+     null,
+     "even just with",
+     "p"
+    ],
+    [
+     "丸一日",
+     "まるいちにち",
+     "full whole day"
+    ],
+    [
+     "動く",
+     "うごく",
+     "operate"
+    ],
+    [
+     "ように",
+     null,
+     "in a way that"
+    ],
+    [
+     "作って",
+     "つくって",
+     "make"
+    ],
+    [
+     "あります",
+     null,
+     "exists (state)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! It is built so that it can operate for a whole day on just dry-cell batteries."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "通信",
+     "つうしん",
+     "communications"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "途絶えた",
+     "とだえた",
+     "interrupted"
+    ],
+    [
+     "場合",
+     "ばあい",
+     "case/event"
+    ],
+    [
+     "でも",
+     null,
+     "even in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "雲",
+     "くも",
+     "clouds"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "台風",
+     "たいふう",
+     "typhoon"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "動き",
+     "うごき",
+     "movement"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "直接",
+     "ちょくせつ",
+     "directly"
+    ],
+    [
+     "確認",
+     "かくにん",
+     "confirmation"
+    ],
+    [
+     "できる",
+     null,
+     "can do"
+    ],
+    [
+     "んです",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Even if communications are cut off, one can directly confirm cloud and typhoon movements."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "実用的",
+     "じつようてき",
+     "practical"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "社会",
+     "しゃかい",
+     "society"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "貢献",
+     "こうけん",
+     "contribution"
+    ],
+    [
+     "できる",
+     null,
+     "can do"
+    ],
+    [
+     "素晴らしい",
+     "すばらしい",
+     "wonderful"
+    ],
+    [
+     "研究",
+     "けんきゅう",
+     "research"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It is practical and makes a great contribution to society, wonderful research!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "回路図",
+     "かいろず",
+     "circuit schematic"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "プログラム",
+     null,
+     "program"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ウェブサイト",
+     null,
+     "website"
+    ],
+    [
+     "で",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "公開",
+     "こうかい",
+     "public release"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "あります",
+     null,
+     "exists (state)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The circuit schematics and programs are publicly published on our website."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "オープンソース",
+     null,
+     "open source"
+    ],
+    [
+     "なんですね",
+     null,
+     "it is, right"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "世界中",
+     "せかいじゅう",
+     "whole world"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "利用",
+     "りよう",
+     "use"
+    ],
+    [
+     "できます",
+     null,
+     "can do"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It's open source! That means people all around the world can use it!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "審査員",
+     "しんさいん",
+     "judge"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "方",
+     "かた",
+     "person (polite)"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "高く",
+     "たかく",
+     "highly"
+    ],
+    [
+     "評価",
+     "ひょうか",
+     "evaluation"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "くださいました",
+     null,
+     "gave favor (honorific)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The honored judge evaluated us very highly!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大成功",
+     "だいせいこう",
+     "huge success"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "上手に",
+     "じょうずに",
+     "skillfully"
+    ],
+    [
+     "話せる",
+     "はなせる",
+     "can speak"
+    ],
+    [
+     "ように",
+     null,
+     "manner"
+    ],
+    [
+     "なった",
+     null,
+     "became"
+    ],
+    [
+     "ね",
+     null,
+     "didn't you",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, that was a huge success! You have truly become able to speak Japanese skillfully!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "最初",
+     "さいしょ",
+     "at first"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "単語",
+     "たんご",
+     "words"
+    ],
+    [
+     "しか",
+     null,
+     "only",
+     "p"
+    ],
+    [
+     "言えなかった",
+     "いえなかった",
+     "could not say"
+    ],
+    [
+     "けれど",
+     null,
+     "though",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "自分の思い",
+     "じぶんのおもい",
+     "own thoughts"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "伝えられる",
+     "つたえられる",
+     "can convey"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "At first I could only say single words, but now I can convey my own thoughts!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "毎日",
+     "まいにち",
+     "every day"
+    ],
+    [
+     "諦めずに",
+     "あきらめずに",
+     "without giving up"
+    ],
+    [
+     "努力",
+     "どりょく",
+     "effort"
+    ],
+    [
+     "した",
+     null,
+     "did"
+    ],
+    [
+     "成果",
+     "せいか",
+     "results"
+    ],
+    [
+     "だね",
+     null,
+     "aren't they",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Those are the fruits of you making effort every day without giving up!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "みんな",
+     null,
+     "everyone"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "応援",
+     "おうえん",
+     "support"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "おかげ",
+     null,
+     "thanks to"
+    ],
+    [
+     "だ",
+     null,
+     "is"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "ありがとう",
+     null,
+     "thank you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's all thanks to everyone's support! Truly thank you!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "次",
+     "つぎ",
+     "next"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "N3",
+     null,
+     "N3 level"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ステージ",
+     null,
+     "stage"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "出発",
+     "しゅっぱつ",
+     "departure"
+    ],
+    [
+     "進行",
+     "しんこう",
+     "ahead"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Next, full speed ahead to the N3 stage!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "N3",
+     null,
+     "N3"
+    ],
+    [
+     "では",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "もっと",
+     null,
+     "more"
+    ],
+    [
+     "深い",
+     "ふかい",
+     "deep"
+    ],
+    [
+     "表現",
+     "ひょうげん",
+     "expressions"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "社会",
+     "しゃかい",
+     "society"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ニュース",
+     null,
+     "news"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "読める",
+     "よめる",
+     "can read"
+    ],
+    [
+     "ように",
+     null,
+     "so that"
+    ],
+    [
+     "なる",
+     null,
+     "become"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In N3 you'll become able to read deeper expressions and societal news too!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "文化",
+     "ぶんか",
+     "culture"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "もっと",
+     null,
+     "more"
+    ],
+    [
+     "深く",
+     "ふかく",
+     "deeply"
+    ],
+    [
+     "知りたい",
+     "しりたい",
+     "want to know"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! I want to understand Japanese culture and technology more deeply."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "語彙",
+     "ごい",
+     "vocabulary"
+    ],
+    [
+     "データ",
+     null,
+     "data"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "アップデート",
+     null,
+     "update"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "complete"
+    ],
+    [
+     "しました",
+     null,
+     "did"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Blip's vocabulary data update is completed too!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "頼もしい",
+     "たのもしい",
+     "reliable"
+    ],
+    [
+     "ね",
+     null,
+     "aren't you",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "二人",
+     "ふたり",
+     "two of you"
+    ],
+    [
+     "とも",
+     null,
+     "both"
+    ],
+    [
+     "かっこよかった",
+     null,
+     "were cool"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How reliable! You both were so cool today!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "コンテスト",
+     null,
+     "contest"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "賞",
+     "しょう",
+     "award"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "取れる",
+     "とれる",
+     "can win"
+    ],
+    [
+     "かどうか",
+     null,
+     "whether or not"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "夕方",
+     "ゆうがた",
+     "evening"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "発表",
+     "はっぴょう",
+     "announcement"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ドキドキ",
+     null,
+     "heart-thumping"
+    ],
+    [
+     "する",
+     null,
+     "does"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Whether we can take home a contest prize or not, the evening announcement has my heart pounding!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "結果",
+     "けっか",
+     "result"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "どうであれ",
+     null,
+     "no matter what"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "お祝い",
+     "おいわい",
+     "celebration"
+    ],
+    [
+     "に",
+     null,
+     "for",
+     "p"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "ご飯",
+     "ごはん",
+     "meal"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "食べよう",
+     "たべよう",
+     "let's eat"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Whatever the result is, let's have a delicious meal today to celebrate!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大賛成",
+     "だいさんせい",
+     "completely agree"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Completely agree!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "all right"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "もっと",
+     null,
+     "more"
+    ],
+    [
+     "上級",
+     "じょうきゅう",
+     "advanced"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "目指して",
+     "めざして",
+     "aiming for"
+    ],
+    [
+     "頑張る",
+     "がんばる",
+     "do best"
+    ],
+    [
+     "ぞ",
+     null,
+     "determination",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "All right, aiming for more advanced Japanese, I'll do my best!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "一緒に",
+     "いっしょに",
+     "together"
+    ],
+    [
+     "頑張ろう",
+     "がんばろう",
+     "let's do best"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's do our best together!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "おう",
+     null,
+     "yeah!"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これからも",
+     null,
+     "from now on too"
+    ],
+    [
+     "よろしく",
+     null,
+     "regards"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! Looking forward to working together from now on too!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n4-review-you-ni-suru",
+   "title": "～ようにする & ～ようになる (Habits & Transitions)",
+   "explain": "ようにする indicates conscious effort/habit ('make sure to'). ようになる indicates transition or achievement over time ('come to be able to').",
+   "examples": [
+    {
+     "t": [
+      [
+       "毎日",
+       "まいにち",
+       "every day"
+      ],
+      [
+       "練習",
+       "れんしゅう",
+       "practice"
+      ],
+      [
+       "する",
+       null,
+       "do"
+      ],
+      [
+       "ように",
+       null,
+       "make sure to"
+      ],
+      [
+       "しています",
+       null,
+       "am doing"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I make a point of practicing every day."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "日本語が話せる＿＿＿なりました。",
+     "hint": "I have come to be able to speak Japanese.",
+     "choices": [
+      "ように",
+      "ために",
+      "そうに"
+     ],
+     "answer": 0,
+     "why": "ようになる expresses progress over time."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#you-ni-naru"
+  },
+  {
+   "id": "n4-review-ka-dou-ka",
+   "title": "Embedded Questions: ～かどうか & ～か",
+   "explain": "Plain clause + かどうか indicates 'whether or not'. With question words (何, いつ, どこ), attach plain clause + か.",
+   "examples": [
+    {
+     "t": [
+      [
+       "受信",
+       "じゅしん",
+       "reception"
+      ],
+      [
+       "できる",
+       null,
+       "can do"
+      ],
+      [
+       "かどうか",
+       null,
+       "whether or not"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "テスト",
+       null,
+       "test"
+      ],
+      [
+       "します",
+       null,
+       "do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I will test whether it can receive."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "明日行く＿＿＿分かりません。",
+     "hint": "I don't know whether I will go tomorrow or not.",
+     "choices": [
+      "かどうか",
+      "ように",
+      "ために"
+     ],
+     "answer": 0,
+     "why": "かどうか creates an embedded yes/no question clause."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#ka-dou-ka"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "展",
+   "on": [
+    "テン"
+   ],
+   "kun": [],
+   "m": "exhibit",
+   "ex": [
+    [
+     "展示",
+     "てんじ",
+     "exhibition"
+    ]
+   ]
+  },
+  {
+   "k": "衛",
+   "on": [
+    "エイ"
+   ],
+   "kun": [],
+   "m": "defense",
+   "ex": [
+    [
+     "衛星",
+     "えいせい",
+     "satellite"
+    ]
+   ]
+  },
+  {
+   "k": "乾",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    "かわ.く",
+    "かわ.かす"
+   ],
+   "m": "dry",
+   "ex": [
+    [
+     "乾電池",
+     "かんでんち",
+     "dry-cell battery"
+    ]
+   ]
+  },
+  {
+   "k": "絶",
+   "on": [
+    "ゼツ"
+   ],
+   "kun": [
+    "た.える",
+    "た.やす"
+   ],
+   "m": "sever, cease",
+   "ex": [
+    [
+     "途絶える",
+     "とだえる",
+     "to cease/discontinue"
+    ]
+   ]
+  },
+  {
+   "k": "努",
+   "on": [
+    "ド"
+   ],
+   "kun": [
+    "つと.める"
+   ],
+   "m": "effort",
+   "ex": [
+    [
+     "努力",
+     "どりょく",
+     "effort"
+    ]
+   ]
+  },
+  {
+   "k": "果",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "は.たす",
+    "は.てる"
+   ],
+   "m": "fruit, result",
+   "ex": [
+    [
+     "成果",
+     "せいか",
+     "fruit/result"
+    ],
+    [
+     "結果",
+     "けっか",
+     "result"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  1,
+  7
+ ],
+ "questions": [
+  {
+   "q": "ブースの準備は何時までに終わらせなければなりませんでしたか。",
+   "en": "By what time did the booth preparation have to be finished?",
+   "choices": [
+    "十時まで",
+    "十二時まで",
+    "午後三時まで"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "この受信機は停電した時でも使えますか。",
+   "en": "Can this receiver be used even during a power outage?",
+   "choices": [
+    "乾電池だけで丸一日動くように作られている",
+    "停電の時は使えない",
+    "ソーラーパネルが絶対に必要"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a presentation or project you showed to others in Japanese."
+}

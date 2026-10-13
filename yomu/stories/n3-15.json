@@ -1,0 +1,2626 @@
+{
+ "id": "n3-15",
+ "level": "N3",
+ "unit": 15,
+ "title": {
+  "ja": "秋葉原ラジオセンターの職人たち",
+  "en": "The Craftsmen of Akihabara (Unit 3 Review)"
+ },
+ "scene": "Beneath the JR Chuo Line tracks at Akihabara Radio Center. Sam seeks out a veteran craftsman to diagnose an antique radio inductor coil.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "高架下",
+     "こうかした",
+     "under elevated tracks"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "通路",
+     "つうろ",
+     "passageway"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "電子",
+     "でんし",
+     "electronic"
+    ],
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ぎっしり",
+     null,
+     "tightly packed"
+    ],
+    [
+     "並んで",
+     "ならんで",
+     "lined up"
+    ],
+    [
+     "いて",
+     null,
+     "is"
+    ],
+    [
+     "すごい",
+     null,
+     "amazing"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "This walkway under the elevated tracks is amazing with electronic components tightly packed all over!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "戦後",
+     "せんご",
+     "postwar"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "闇市",
+     "やみいち",
+     "black market"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "時代",
+     "じだい",
+     "era"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "続く",
+     "つづく",
+     "continuing"
+    ],
+    [
+     "老舗",
+     "しにせ",
+     "historic shop"
+    ],
+    [
+     "ばかり",
+     null,
+     "only"
+    ],
+    [
+     "なんだよ",
+     null,
+     "is, you know",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "These are all historic shops that have been continuing since the postwar era."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "磁気",
+     "じき",
+     "magnetic"
+    ],
+    [
+     "センサー",
+     null,
+     "sensor"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "激しく",
+     "はげしく",
+     "vigorously"
+    ],
+    [
+     "反応",
+     "はんのう",
+     "reaction"
+    ],
+    [
+     "しています",
+     null,
+     "is doing"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! My magnetic sensor is reacting vigorously!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "いらっしゃい",
+     null,
+     "welcome"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "若い",
+     "わかい",
+     "young"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "珍しい",
+     "めずらしい",
+     "unusual"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何か",
+     "なにか",
+     "something"
+    ],
+    [
+     "探し",
+     "さがし",
+     "looking for"
+    ],
+    [
+     "かい",
+     null,
+     "question (informal)",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome. It's unusual to see young folks. Looking for something?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "初めまして",
+     "はじめまして",
+     "nice to meet you"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "昭和",
+     "しょうわ",
+     "Showa"
+    ],
+    [
+     "三十年代",
+     "さんじゅうねんだい",
+     "30s (1955-65)"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "コイル",
+     null,
+     "coil"
+    ],
+    [
+     "について",
+     null,
+     "regarding",
+     "p"
+    ],
+    [
+     "教えて",
+     "おしえて",
+     "teach"
+    ],
+    [
+     "いただきたい",
+     null,
+     "would like to receive"
+    ],
+    [
+     "んです",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Nice to meet you! I would like to ask you about this radio coil from the 1960s."
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "ほう",
+     null,
+     "oho"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "見せて",
+     "みせて",
+     "show me"
+    ],
+    [
+     "ごらん",
+     null,
+     "try"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これ",
+     null,
+     "this"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "貴重",
+     "きちょう",
+     "precious"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "手巻き",
+     "てまき",
+     "hand-wound"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "高周波",
+     "こうしゅうは",
+     "high frequency"
+    ],
+    [
+     "コイル",
+     null,
+     "coil"
+    ],
+    [
+     "だね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Oho, let me see... This is a precious hand-wound high-frequency coil."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "さすが",
+     null,
+     "as expected"
+    ],
+    [
+     "職人",
+     "しょくにん",
+     "master craftsman"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一目",
+     "ひとめ",
+     "one glance"
+    ],
+    [
+     "見た",
+     "みた",
+     "looked"
+    ],
+    [
+     "だけで",
+     null,
+     "just by"
+    ],
+    [
+     "分かる",
+     "わかる",
+     "understand"
+    ],
+    [
+     "んですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "As expected of a master craftsman! You could tell in just a single glance!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "五十年",
+     "ごじゅうねん",
+     "50 years"
+    ],
+    [
+     "も",
+     null,
+     "as much as",
+     "p"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "仕事",
+     "しごと",
+     "work"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "やっていて",
+     null,
+     "doing"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "分からない",
+     "わからない",
+     "not understand"
+    ],
+    [
+     "わけがない",
+     null,
+     "there's no way"
+    ],
+    [
+     "だろう",
+     null,
+     "right?"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Having done this job for fifty years, there's no way I wouldn't know!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "断線",
+     "だんせん",
+     "broken wire"
+    ],
+    [
+     "している",
+     null,
+     "is doing"
+    ],
+    [
+     "みたい",
+     null,
+     "seems like"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "出ない",
+     "でない",
+     "not come out"
+    ],
+    [
+     "んです",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "直す",
+     "なおす",
+     "repair"
+    ],
+    [
+     "こと",
+     null,
+     "matter"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "できます",
+     null,
+     "can do"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "It seems a wire is broken, and no sound comes out. Can it be repaired?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "エナメル",
+     null,
+     "enamel"
+    ],
+    [
+     "線",
+     "せん",
+     "wire"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "端",
+     "はし",
+     "end"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "切れている",
+     "きれている",
+     "cut/broken"
+    ],
+    [
+     "だけだ",
+     null,
+     "only that"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちょっと",
+     null,
+     "a moment"
+    ],
+    [
+     "貸して",
+     "かして",
+     "lend"
+    ],
+    [
+     "みな",
+     null,
+     "try"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The tip of the enameled wire is just snapped. Lend it to me for a second."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "職人",
+     "しょくにん",
+     "artisan"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "手",
+     "て",
+     "hands"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "動き",
+     "うごき",
+     "movement"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ものすごく",
+     null,
+     "extremely"
+    ],
+    [
+     "素早い",
+     "すばやい",
+     "nimble/fast"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The artisan's hand movements are extraordinarily nimble!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "ほら",
+     null,
+     "look"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ハンダ",
+     null,
+     "solder"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "繋ぎ直した",
+     "つなぎなおした",
+     "reconnected"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "テスター",
+     null,
+     "multimeter"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "導通",
+     "どうつう",
+     "continuity"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "測って",
+     "はかって",
+     "measure"
+    ],
+    [
+     "ごらん",
+     null,
+     "try"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "See, I reconnected it with solder. Try checking continuity with the tester."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "抵抗値",
+     "ていこうち",
+     "resistance value"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "正常",
+     "せいじょう",
+     "normal"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "戻りました",
+     "もどりました",
+     "returned"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あっという間",
+     "あっというま",
+     "blink of eye"
+    ],
+    [
+     "でした",
+     null,
+     "was"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The resistance value returned to normal! It was in the blink of an eye!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "神業",
+     "かみわざ",
+     "divine skill"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That truly is miraculous skill!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "ついでに",
+     null,
+     "while at it"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "酸化",
+     "さんか",
+     "oxidation"
+    ],
+    [
+     "防止",
+     "ぼうし",
+     "prevention"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ニス",
+     null,
+     "varnish"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "塗って",
+     "ぬって",
+     "apply"
+    ],
+    [
+     "おいた",
+     null,
+     "did in advance"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "あと",
+     null,
+     "another"
+    ],
+    [
+     "三十年",
+     "さんじゅうねん",
+     "30 years"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "持つ",
+     "もつ",
+     "will last"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "While I was at it, I coated it with anti-oxidation varnish in advance, so it'll last another thirty years."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "お礼",
+     "おれい",
+     "gratitude/payment"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "おいくら",
+     null,
+     "how much"
+    ],
+    [
+     "ですか",
+     null,
+     "is it",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "How much do I owe you for the repair?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "若い",
+     "わかい",
+     "young"
+    ],
+    [
+     "あんた",
+     null,
+     "you"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "古い",
+     "ふるい",
+     "old"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "大切",
+     "たいせつ",
+     "precious"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "してくれる",
+     null,
+     "gives favor"
+    ],
+    [
+     "ん",
+     null,
+     "explanatory"
+    ],
+    [
+     "なら",
+     null,
+     "if (nara)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "代金",
+     "だいきん",
+     "fee"
+    ],
+    [
+     "なんて",
+     null,
+     "things like"
+    ],
+    [
+     "いらない",
+     null,
+     "don't need"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If a young fellow like you is taking good care of an antique radio, I don't need any fee from you."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "そんな",
+     null,
+     "such a favor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当に",
+     "ほんとうに",
+     "truly"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "んですか",
+     null,
+     "is it really",
+     "p"
+    ],
+    [
+     "！？",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感謝",
+     "かんしゃ",
+     "gratitude"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "言葉",
+     "ことば",
+     "words"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ありません",
+     null,
+     "have none"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Is that really all right!? I don't even have words to express my gratitude!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "その代わり",
+     "そのかわり",
+     "in return"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "鳴らして",
+     "ならして",
+     "play/sound"
+    ],
+    [
+     "やって",
+     null,
+     "do for it"
+    ],
+    [
+     "おくれ",
+     null,
+     "please"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In return, make sure you let it play beautiful sound, okay?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "必ず",
+     "かならず",
+     "without fail"
+    ],
+    [
+     "綺麗",
+     "きれい",
+     "beautiful"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "音",
+     "おと",
+     "sound"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "響かせます",
+     "ひびかせます",
+     "will make resonate"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! I will make it resonate with beautiful sound without fail!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "職人",
+     "しょくにん",
+     "artisan"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "歴史",
+     "れきし",
+     "history"
+    ],
+    [
+     "について",
+     null,
+     "regarding",
+     "p"
+    ],
+    [
+     "少し",
+     "すこし",
+     "a little"
+    ],
+    [
+     "聞かせて",
+     "きかせて",
+     "let hear"
+    ],
+    [
+     "いただけます",
+     null,
+     "can receive favor"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Craftsman, could you tell us a bit about the history of Akihabara?"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "ああ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "戦後",
+     "せんご",
+     "postwar"
+    ],
+    [
+     "すぐ",
+     null,
+     "right after"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "アメリカ",
+     null,
+     "America"
+    ],
+    [
+     "軍",
+     "ぐん",
+     "military"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "放出品",
+     "ほうしゅつひん",
+     "surplus goods"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "無線機",
+     "むせんき",
+     "radios"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "分解",
+     "ぶんかい",
+     "disassembly"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "売っていた",
+     "うっていた",
+     "was selling"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, right after the war, folks disassembled surplus US military radios and sold the parts."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "廃品",
+     "はいひん",
+     "waste goods"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "再利用",
+     "さいりよう",
+     "reuse"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "新しい",
+     "あたらしい",
+     "new"
+    ],
+    [
+     "機械",
+     "きかい",
+     "machines"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "作った",
+     "つくった",
+     "made"
+    ],
+    [
+     "わけですね",
+     null,
+     "that's why, right"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "So people reused scrap materials and built brand-new devices, that's why!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "そうさ",
+     null,
+     "that's right"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "物",
+     "もの",
+     "things"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ない",
+     null,
+     "lacking"
+    ],
+    [
+     "時代",
+     "じだい",
+     "era"
+    ],
+    [
+     "だったから",
+     null,
+     "because was",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "工夫",
+     "くふう",
+     "ingenuity"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "しかなかった",
+     null,
+     "no choice but to"
+    ],
+    [
+     "んだ",
+     null,
+     "explanatory"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Exactly. Because it was an era with no supplies, we had no choice but to use ingenuity."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ものづくり",
+     null,
+     "making things"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "原点",
+     "げんてん",
+     "starting point"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "感じます",
+     "かんじます",
+     "feel"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! I can feel the very starting point of craftsmanship!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "部品",
+     "ぶひん",
+     "parts"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "一つ一つ",
+     "ひとつひとつ",
+     "each and every"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人",
+     "ひと",
+     "people"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "知恵",
+     "ちえ",
+     "wisdom"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "詰まっている",
+     "つまっている",
+     "is packed"
+    ],
+    [
+     "ん",
+     null,
+     "explanatory"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In each and every component, human wisdom is packed tight, isn't it."
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "こと",
+     null,
+     "thing"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "言う",
+     "いう",
+     "say"
+    ],
+    [
+     "ね",
+     null,
+     "don't you",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お前",
+     "おまえ",
+     "you"
+    ],
+    [
+     "さん",
+     null,
+     "polite suffix",
+     "p"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ような",
+     null,
+     "like"
+    ],
+    [
+     "若者",
+     "わかもの",
+     "youth"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "来てくれて",
+     null,
+     "come for us"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "嬉しい",
+     "うれしい",
+     "glad"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You say good things. Having a young fellow like you visit makes me glad today."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "来て",
+     "きて",
+     "come"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本当",
+     "ほんとう",
+     "really"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "よかったね",
+     null,
+     "was great",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Coming to Akihabara was truly wonderful, wasn't it, Sam!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "教科書",
+     "きょうかしょ",
+     "textbook"
+    ],
+    [
+     "では",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "学べない",
+     "まなべない",
+     "cannot learn"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "本物",
+     "ほんもの",
+     "real thing"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "歴史",
+     "れきし",
+     "history"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "触れられました",
+     "ふれられました",
+     "could touch"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! I got to touch authentic history that you can't learn in textbooks!"
+  },
+  {
+   "who": "職人",
+   "t": [
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "いつでも",
+     null,
+     "anytime"
+    ],
+    [
+     "顔",
+     "かお",
+     "face"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "出しな",
+     null,
+     "show/visit"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お茶",
+     "おちゃ",
+     "tea"
+    ],
+    [
+     "くらい",
+     null,
+     "at least"
+    ],
+    [
+     "淹れてやる",
+     "いれてやる",
+     "will brew for you"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "な",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Show your face around here again anytime. I'll at least brew you some tea."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "必ず",
+     "かならず",
+     "without fail"
+    ],
+    [
+     "また",
+     null,
+     "again"
+    ],
+    [
+     "伺います",
+     "うかがいます",
+     "will visit (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! I will visit again without fail!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "秋葉原",
+     "あきはばら",
+     "Akihabara"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "絆",
+     "きずな",
+     "bonds"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "深まりました",
+     "ふかまりました",
+     "deepened"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Bonds in Akihabara have deepened!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "じゃあ",
+     null,
+     "well then"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "宿",
+     "やど",
+     "inn"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "戻って",
+     "もどって",
+     "return"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ラジオ",
+     null,
+     "radio"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "組み立てよう",
+     "くみたてよう",
+     "let's assemble"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Well then, let's head back to the lodge and assemble the radio!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "よし",
+     null,
+     "all right"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜",
+     "こんや",
+     "tonight"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "放送",
+     "ほうそう",
+     "broadcast"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "聞く",
+     "きく",
+     "listen"
+    ],
+    [
+     "の",
+     null,
+     "nominalizer"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "待ちきれない",
+     "まちきれない",
+     "can't wait"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "All right, I can't wait to listen to tonight's broadcast!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n3-review-ni-tsuite",
+   "title": "Topic Focus: ～について & ～に関して",
+   "explain": "Noun + について indicates 'about / regarding X'. Noun + に関して (にかんして) is a more formal equivalent.",
+   "examples": [
+    {
+     "t": [
+      [
+       "日本",
+       "にほん",
+       "Japan"
+      ],
+      [
+       "の",
+       null,
+       "of",
+       "p"
+      ],
+      [
+       "歴史",
+       "れきし",
+       "history"
+      ],
+      [
+       "について",
+       null,
+       "about",
+       "p"
+      ],
+      [
+       "調べました",
+       "しらべました",
+       "investigated"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I looked into the history of Japan."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "この部品＿＿＿詳しく教えてください。",
+     "hint": "Please tell me in detail about this component.",
+     "choices": [
+      "について",
+      "にとって",
+      "につれて"
+     ],
+     "answer": 0,
+     "why": "について marks the topic under inquiry."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#ni-tsuite"
+  },
+  {
+   "id": "n3-review-wake-ga-nai",
+   "title": "Strong Denial: ～わけがない (There is No Way)",
+   "explain": "Plain form + わけがない expresses speaker's conviction that something is completely impossible ('there is no reason / no way that...').",
+   "examples": [
+    {
+     "t": [
+      [
+       "知っている",
+       "しっている",
+       "know"
+      ],
+      [
+       "わけがない",
+       null,
+       "no way that..."
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "There is no way he knows."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "そんな難しい試験に一日で合格できる＿＿＿＿。",
+     "hint": "There's no way one can pass such a hard test in one day.",
+     "choices": [
+      "わけがない",
+      "わけだ",
+      "はずだ"
+     ],
+     "answer": 0,
+     "why": "わけがない strongly negates feasibility."
+    }
+   ],
+   "lesson": "grammar.html?level=N3#wake-ga-nai"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "職",
+   "on": [
+    "ショク"
+   ],
+   "kun": [],
+   "m": "employment, trade",
+   "ex": [
+    [
+     "職人",
+     "しょくにん",
+     "artisan/craftsman"
+    ]
+   ]
+  },
+  {
+   "k": "技",
+   "on": [
+    "ギ"
+   ],
+   "kun": [
+    "わざ"
+   ],
+   "m": "skill, art",
+   "ex": [
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "神業",
+     "かみわざ",
+     "miraculous skill"
+    ]
+   ]
+  },
+  {
+   "k": "線",
+   "on": [
+    "セン"
+   ],
+   "kun": [],
+   "m": "line, wire",
+   "ex": [
+    [
+     "断線",
+     "だんせん",
+     "disconnected wire"
+    ]
+   ]
+  },
+  {
+   "k": "測",
+   "on": [
+    "ソク"
+   ],
+   "kun": [
+    "はか.る"
+   ],
+   "m": "fathom, measure",
+   "ex": [
+    [
+     "測る",
+     "はかる",
+     "to measure"
+    ]
+   ]
+  },
+  {
+   "k": "抵",
+   "on": [
+    "テイ"
+   ],
+   "kun": [],
+   "m": "resist",
+   "ex": [
+    [
+     "抵抗",
+     "ていこう",
+     "resistance"
+    ]
+   ]
+  },
+  {
+   "k": "抗",
+   "on": [
+    "コウ"
+   ],
+   "kun": [],
+   "m": "oppose, resist",
+   "ex": [
+    [
+     "抵抗値",
+     "ていこうち",
+     "resistance value"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  0,
+  4,
+  7
+ ],
+ "questions": [
+  {
+   "q": "職人さんは壊れたコイルをどうやって直しましたか。",
+   "en": "How did the craftsman repair the broken coil?",
+   "choices": [
+    "切れたエナメル線をハンダで繋ぎ直した",
+    "新しいコイルと交換した",
+    "接着剤で固めた"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "職人さんは修理代金をいくら請求しましたか。",
+   "en": "How much fee did the craftsman charge for the repair?",
+   "choices": [
+    "古いラジオを大切にする若者だからとお金を取らなかった",
+    "五千円請求した",
+    "一万円請求した"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Describe a craftsman or repair specialist you met and the skills they possessed in Japanese."
+}

@@ -27,6 +27,7 @@ import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNe
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
+import { kokoroTTS } from "./yomu-tts.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
 import { propagation } from "./spacewx.ts";
@@ -49,7 +50,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   learn: { dir: path.join(ROOT, "learn"), label: "World 6 · Learn & build" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".json": "application/json", ".wav": "audio/wav", ".cu8": "application/octet-stream" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".json": "application/json", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
 // dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
 // this cap is only a backstop.
@@ -326,6 +327,33 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
       return res.writeHead(200, { "content-type": "text/markdown; charset=utf-8", "x-markdown-tokens": String(Math.ceil(md.length / 4)), "cache-control": "no-cache" }).end(md);
     }
   }
+  if (ext === ".mp3" || ext === ".wav") {
+    const range = (res.req as http.IncomingMessage).headers.range;
+    const total = data.length;
+    const ctype = TYPES[ext] ?? "audio/mpeg";
+    const cacheHeader = search?.has("v") ? "public, max-age=31536000, immutable" : "no-cache";
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10) || 0;
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+      const chunksize = end - start + 1;
+      res.writeHead(206, {
+        "content-range": `bytes ${start}-${end}/${total}`,
+        "accept-ranges": "bytes",
+        "content-length": chunksize,
+        "content-type": ctype,
+        "cache-control": cacheHeader,
+      });
+      return res.end(data.subarray(start, end + 1));
+    }
+    res.writeHead(200, {
+      "accept-ranges": "bytes",
+      "content-length": total,
+      "content-type": ctype,
+      "cache-control": cacheHeader,
+    });
+    return res.end(data);
+  }
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
   res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath, search ? await pageMeta(urlPath, search) : null) : data);
@@ -442,13 +470,26 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(d));
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
+    if (url.pathname === "/api/yomu/tts") { // Kokoro neural TTS (Kumo jm_kumo voice)
+      const text = String(url.searchParams.get("text") ?? "").trim().slice(0, 500);
+      const speed = Math.max(0.5, Math.min(2.0, Number(url.searchParams.get("speed")) || 1.0));
+      if (!text) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "text parameter required" }));
+      try {
+        const buf = await kokoroTTS(text, speed);
+        return res.writeHead(200, {
+          "content-type": "audio/mpeg",
+          "cache-control": "public, max-age=604800, immutable",
+          "content-length": buf.length,
+        }).end(buf);
+      } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
-      if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4 or N3" }));
+      if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
       try { const out = await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80)); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
       catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }

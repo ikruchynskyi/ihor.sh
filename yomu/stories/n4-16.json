@@ -1,0 +1,2254 @@
+{
+ "id": "n4-16",
+ "level": "N4",
+ "unit": 16,
+ "title": {
+  "ja": "下町の老舗旅館でチェックイン",
+  "en": "Checking into an Asakusa Ryokan (Unit 4 Review)"
+ },
+ "scene": "A historic traditional Japanese inn (ryokan) in Asakusa, Tokyo. The innkeeper greets Sam and Yuki with formal honorifics, guiding them through Japanese customs.",
+ "lines": [
+  {
+   "who": "店員",
+   "t": [
+    [
+     "いらっしゃいませ",
+     null,
+     "welcome"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お待ち",
+     "おまち",
+     "waiting"
+    ],
+    [
+     "しておりました",
+     null,
+     "have been doing (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Welcome! We have been eagerly expecting you."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "本日",
+     "ほんじつ",
+     "today (formal)"
+    ],
+    [
+     "予約",
+     "よやく",
+     "reservation"
+    ],
+    [
+     "いたしました",
+     null,
+     "did (humble)"
+    ],
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "と",
+     null,
+     "quote",
+     "p"
+    ],
+    [
+     "申し",
+     "もうし",
+     "say (humble)"
+    ],
+    [
+     "ます",
+     null,
+     "polite"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I am Sam, who made a reservation for today."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "様",
+     "さま",
+     "honored guest"
+    ],
+    [
+     "で",
+     null,
+     "is/at",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (very polite)"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お部屋",
+     "おへや",
+     "room (polite)"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "準備",
+     "じゅんび",
+     "preparation"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "整って",
+     "ととのって",
+     "arranged"
+    ],
+    [
+     "おります",
+     null,
+     "exists (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Mr. Sam, yes! Your room preparations are all in order."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ちゃんとした",
+     null,
+     "proper"
+    ],
+    [
+     "日本語",
+     "にほんご",
+     "Japanese"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "挨拶",
+     "あいさつ",
+     "greeting"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "言えた",
+     "いえた",
+     "could say"
+    ],
+    [
+     "ね",
+     null,
+     "didn't you",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, you spoke proper Japanese greetings so well!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "先生",
+     "せんせい",
+     "teacher"
+    ],
+    [
+     "に",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "何回",
+     "なんかい",
+     "how many times"
+    ],
+    [
+     "も",
+     null,
+     "as much as",
+     "p"
+    ],
+    [
+     "練習",
+     "れんしゅう",
+     "practice"
+    ],
+    [
+     "させられた",
+     null,
+     "was made to do"
+    ],
+    [
+     "から",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "ね",
+     null,
+     "you know",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That's because my teacher made me practice it over and over!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "こちら",
+     null,
+     "this way"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "ご案内",
+     "ごあんない",
+     "guidance"
+    ],
+    [
+     "いたします",
+     null,
+     "do (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お荷物",
+     "おにもつ",
+     "luggage"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "お持ち",
+     "おもち",
+     "carry"
+    ],
+    [
+     "いたしましょう",
+     null,
+     "shall carry (humble)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I will guide you this way. May I carry your luggage for you?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "大丈夫",
+     "だいじょうぶ",
+     "all right"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自分",
+     "じぶん",
+     "myself"
+    ],
+    [
+     "で",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "持ちます",
+     "もちます",
+     "will carry"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, that's okay! I'll carry it myself!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "畳",
+     "たたみ",
+     "tatami"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "におい",
+     null,
+     "fragrance"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "します",
+     null,
+     "does"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! It smells like fresh tatami straw!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "靴",
+     "くつ",
+     "shoes"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "お脱ぎ",
+     "おぬぎ",
+     "take off"
+    ],
+    [
+     "になって",
+     null,
+     "become (honorific)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "スリッパ",
+     null,
+     "slippers"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "お履き",
+     "おはき",
+     "wear"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Please take off your shoes and put on slippers."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "わかりました",
+     null,
+     "understood"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, understood."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お部屋",
+     "おへや",
+     "room"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "中庭",
+     "なかにわ",
+     "courtyard garden"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "ご覧",
+     "ごらん",
+     "look (honorific)"
+    ],
+    [
+     "になれます",
+     null,
+     "can see (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お茶",
+     "おちゃ",
+     "tea"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "お淹れ",
+     "おいれ",
+     "brew (honorific)"
+    ],
+    [
+     "いたしましょう",
+     null,
+     "shall brew (humble)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "You can view the courtyard garden from your room. Shall I brew some tea for you?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "ぜひ",
+     null,
+     "by all means"
+    ],
+    [
+     "お願い",
+     "おねがい",
+     "request"
+    ],
+    [
+     "いたします",
+     null,
+     "do (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, please by all means!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "かしこまりました",
+     null,
+     "certainly"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お茶菓子",
+     "おちゃがし",
+     "tea sweets"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "ご用意",
+     "ごようい",
+     "preparation"
+    ],
+    [
+     "いたしました",
+     null,
+     "did (humble)"
+    ],
+    [
+     "ので",
+     null,
+     "because",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "どうぞ",
+     null,
+     "please"
+    ],
+    [
+     "お召し上がり",
+     "おめしあがり",
+     "eat/drink (honorific)"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Certainly. We have also prepared tea sweets, so please help yourselves."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いただき",
+     null,
+     "receive (humble)"
+    ],
+    [
+     "ます",
+     null,
+     "polite"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "とても",
+     null,
+     "very"
+    ],
+    [
+     "上品",
+     "じょうひん",
+     "refined"
+    ],
+    [
+     "な",
+     null,
+     "na-particle",
+     "p"
+    ],
+    [
+     "味",
+     "あじ",
+     "flavor"
+    ],
+    [
+     "で",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "おいしい",
+     null,
+     "delicious"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for the treat! It has a very refined and delicious taste."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "抹茶",
+     "まっちゃ",
+     "matcha"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "苦味",
+     "にがみ",
+     "bitterness"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "和菓子",
+     "わがし",
+     "wagashi"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "甘さ",
+     "あまさ",
+     "sweetness"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "よく",
+     null,
+     "well"
+    ],
+    [
+     "合っている",
+     "あっている",
+     "match"
+    ],
+    [
+     "ね",
+     null,
+     "don't they",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The matcha bitterness and wagashi sweetness match so well together."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お気に召して",
+     "おきにめして",
+     "take liking to (honorific)"
+    ],
+    [
+     "いただけて",
+     null,
+     "receive favor"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何より",
+     "なにより",
+     "more than anything"
+    ],
+    [
+     "で",
+     null,
+     "at/is",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We are glad above all that you enjoy it."
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お風呂",
+     "おふろ",
+     "bath"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "二階",
+     "にかい",
+     "second floor"
+    ],
+    [
+     "に",
+     null,
+     "on",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつでも",
+     null,
+     "anytime"
+    ],
+    [
+     "お入り",
+     "おはいり",
+     "enter"
+    ],
+    [
+     "になれます",
+     null,
+     "can enter (honorific)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The bath is on the second floor. You may enter anytime."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "温泉",
+     "おんせん",
+     "hot spring"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "入る",
+     "はいる",
+     "enter"
+    ],
+    [
+     "前",
+     "まえ",
+     "before"
+    ],
+    [
+     "に",
+     null,
+     "particle",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "体",
+     "からだ",
+     "body"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "洗わなければ",
+     "あらわなければ",
+     "if not wash"
+    ],
+    [
+     "いけない",
+     null,
+     "cannot be"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, remember you must wash your body before entering the bath."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "うん",
+     null,
+     "yeah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本",
+     "にほん",
+     "Japan"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "マナー",
+     null,
+     "manners"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "守って",
+     "まもって",
+     "observe"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆっくり",
+     null,
+     "relaxingly"
+    ],
+    [
+     "入りたい",
+     "はいりたい",
+     "want to enter"
+    ],
+    [
+     "と",
+     null,
+     "quote",
+     "p"
+    ],
+    [
+     "思います",
+     "おもいます",
+     "think"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yeah! I'll observe Japanese manners and relax in the bath."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "浴衣",
+     "ゆかた",
+     "yukata robe"
+    ],
+    [
+     "も",
+     null,
+     "also",
+     "p"
+    ],
+    [
+     "置いて",
+     "おいて",
+     "placed"
+    ],
+    [
+     "あります",
+     null,
+     "is (state)"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Yukata robes are laid out too!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "お食事",
+     "おしょくじ",
+     "meal"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "午後",
+     "ごご",
+     "p.m."
+    ],
+    [
+     "七時",
+     "しちじ",
+     "7 o'clock"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "お部屋",
+     "おへや",
+     "room"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "お運び",
+     "おはこび",
+     "carry/deliver"
+    ],
+    [
+     "いたします",
+     null,
+     "do (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We will deliver dinner to your room from 7:00 PM."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "部屋",
+     "へや",
+     "room"
+    ],
+    [
+     "で",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "食べられる",
+     "たべられる",
+     "can eat (potential)"
+    ],
+    [
+     "んです",
+     null,
+     "explanatory"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "贅沢",
+     "ぜいたく",
+     "luxury"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We can eat right in our room! That feels so luxurious!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "アレルギー",
+     null,
+     "allergies"
+    ],
+    [
+     "などは",
+     null,
+     "such as",
+     "p"
+    ],
+    [
+     "お持ち",
+     "おもち",
+     "have (honorific)"
+    ],
+    [
+     "で",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "いらっしゃいます",
+     null,
+     "are (honorific)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Do you have any food allergies?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いいえ",
+     null,
+     "no"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "何",
+     "なに",
+     "anything"
+    ],
+    [
+     "でも",
+     null,
+     "even",
+     "p"
+    ],
+    [
+     "食べられます",
+     "たべられます",
+     "can eat (potential)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "楽しみ",
+     "たのしみ",
+     "looking forward"
+    ],
+    [
+     "にして",
+     null,
+     "look forward to"
+    ],
+    [
+     "おります",
+     null,
+     "am doing (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "No, I can eat anything! I am eagerly looking forward to it."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ロボット",
+     null,
+     "robot"
+    ],
+    [
+     "用",
+     "よう",
+     "for use of"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "充電",
+     "じゅうでん",
+     "charging"
+    ],
+    [
+     "コンセント",
+     null,
+     "power outlet"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "exists (polite)"
+    ],
+    [
+     "か",
+     null,
+     "question",
+     "p"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Does there exist a charging outlet for robot use?"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "床の間",
+     "とこのま",
+     "alcove"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "脇",
+     "わき",
+     "side"
+    ],
+    [
+     "に",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "exists (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ご自由",
+     "ごじゆう",
+     "freely"
+    ],
+    [
+     "に",
+     null,
+     "adverbial",
+     "p"
+    ],
+    [
+     "お使い",
+     "おつかい",
+     "use"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "ませ",
+     null,
+     "polite ending",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, there is one beside the alcove. Please feel free to use it."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サム",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "玄関",
+     "げんかん",
+     "entryway"
+    ],
+    [
+     "で",
+     null,
+     "at",
+     "p"
+    ],
+    [
+     "靴",
+     "くつ",
+     "shoes"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "向き",
+     "むき",
+     "direction"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "揃えて",
+     "そろえて",
+     "align"
+    ],
+    [
+     "おいた",
+     null,
+     "did in advance"
+    ],
+    [
+     "？",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, did you align the direction of your shoes in the entryway in advance?"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "あ",
+     null,
+     "ah"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今",
+     "いま",
+     "now"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "外",
+     "そと",
+     "outside"
+    ],
+    [
+     "に",
+     null,
+     "toward",
+     "p"
+    ],
+    [
+     "向けて",
+     "むけて",
+     "facing"
+    ],
+    [
+     "揃えて",
+     "そろえて",
+     "align"
+    ],
+    [
+     "おいた",
+     null,
+     "did in advance"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Ah, right now I aligned them facing toward the outside in advance!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "素晴らしい",
+     "すばらしい",
+     "splendid"
+    ],
+    [
+     "お心遣い",
+     "おこころづかい",
+     "consideration (honorific)"
+    ],
+    [
+     "で",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (polite)"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感心",
+     "かんしん",
+     "admiration"
+    ],
+    [
+     "いたしました",
+     null,
+     "did (humble)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What wonderful consideration! I am very impressed."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "浴衣",
+     "ゆかた",
+     "yukata"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "着て",
+     "きて",
+     "wear"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "浅草",
+     "あさくさ",
+     "Asakusa"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "夜",
+     "よる",
+     "night"
+    ],
+    [
+     "を",
+     null,
+     "through",
+     "p"
+    ],
+    [
+     "散歩",
+     "さんぽ",
+     "stroll"
+    ],
+    [
+     "したい",
+     null,
+     "want to do"
+    ],
+    [
+     "な",
+     null,
+     "wish",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I'd love to wear the yukata and take an evening stroll around Asakusa!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "いい",
+     null,
+     "good"
+    ],
+    [
+     "ね",
+     null,
+     "isn't it",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "仲見世",
+     "なかみせ",
+     "Nakamise shopping street"
+    ],
+    [
+     "通り",
+     "どおり",
+     "street"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ライトアップ",
+     null,
+     "light-up illumination"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "綺麗",
+     "きれい",
+     "beautiful"
+    ],
+    [
+     "だよ",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "That sounds lovely! The lights along Nakamise Street are gorgeous!"
+  },
+  {
+   "who": "店員",
+   "t": [
+    [
+     "門限",
+     "もんげん",
+     "curfew"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "十一時",
+     "じゅういちじ",
+     "11 o'clock"
+    ],
+    [
+     "で",
+     null,
+     "is",
+     "p"
+    ],
+    [
+     "ございます",
+     null,
+     "is (polite)"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "お気をつけて",
+     "おきをつけて",
+     "take care (honorific)"
+    ],
+    [
+     "お出かけ",
+     "おでかけ",
+     "going out (honorific)"
+    ],
+    [
+     "ください",
+     null,
+     "please"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The curfew is 11:00 PM. Please take care as you head out."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "行ってまいります",
+     "いってまいります",
+     "we are heading out (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, we are heading out!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "浅草",
+     "あさくさ",
+     "Asakusa"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "夜",
+     "よる",
+     "night"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "探検",
+     "たんけん",
+     "exploration"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "出発",
+     "しゅっぱつ",
+     "departure"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Night exploration of Asakusa, departing now!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "n4-review-keigo",
+   "title": "Keigo Review: 尊敬語 & 謙譲語",
+   "explain": "尊敬語 raises the listener (お脱ぎになる, ご案内, お召し上がりになる), 謙譲語 lowers the speaker (申します, いたします, おります, 行ってまいります).",
+   "examples": [
+    {
+     "t": [
+      [
+       "ご案内",
+       "ごあんない",
+       "guidance"
+      ],
+      [
+       "いたします",
+       null,
+       "do (humble)"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I will guide you."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "お名前は何とおっしゃい＿＿＿か。",
+     "hint": "What is your honored name?",
+     "choices": [
+      "ます",
+      "たい",
+      "ない"
+     ],
+     "answer": 0,
+     "why": "おっしゃる is the honorific (Sonkeigo) of 言う."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#keigo"
+  },
+  {
+   "id": "n4-review-causative-passive",
+   "title": "Causative & Causative-Passive: ～させる & ～させられる",
+   "explain": "Causative (～させる) indicates making/letting someone do something. Causative-passive (～させられる) indicates being made to do something reluctantly.",
+   "examples": [
+    {
+     "t": [
+      [
+       "先生",
+       "せんせい",
+       "teacher"
+      ],
+      [
+       "に",
+       null,
+       "by",
+       "p"
+      ],
+      [
+       "練習",
+       "れんしゅう",
+       "practice"
+      ],
+      [
+       "させられた",
+       null,
+       "was made to do"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "I was made to practice by my teacher."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "子供の時、野菜を食べ＿＿＿＿。",
+     "hint": "When I was a child, I was made to eat vegetables.",
+     "choices": [
+      "させられました",
+      "させました",
+      "しました"
+     ],
+     "answer": 0,
+     "why": "〜させられる expresses being forced or made to do something."
+    }
+   ],
+   "lesson": "grammar.html?level=N4#causative-passive"
+  }
+ ],
+ "kanji": [
+  {
+   "k": "館",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    "やかた"
+   ],
+   "m": "building",
+   "ex": [
+    [
+     "旅館",
+     "りょかん",
+     "inn"
+    ]
+   ]
+  },
+  {
+   "k": "畳",
+   "on": [
+    "ジョウ"
+   ],
+   "kun": [
+    "たたみ"
+   ],
+   "m": "tatami",
+   "ex": [
+    [
+     "畳",
+     "たたみ",
+     "tatami mat"
+    ]
+   ]
+  },
+  {
+   "k": "脱",
+   "on": [
+    "ダツ"
+   ],
+   "kun": [
+    "ぬ.ぐ"
+   ],
+   "m": "undress",
+   "ex": [
+    [
+     "脱ぐ",
+     "ぬぐ",
+     "to take off clothes"
+    ]
+   ]
+  },
+  {
+   "k": "菓",
+   "on": [
+    "カ"
+   ],
+   "kun": [],
+   "m": "sweets, fruit",
+   "ex": [
+    [
+     "お茶菓子",
+     "おちゃがし",
+     "tea sweets"
+    ]
+   ]
+  },
+  {
+   "k": "品",
+   "on": [
+    "ヒン"
+   ],
+   "kun": [
+    "しな"
+   ],
+   "m": "goods, refined",
+   "ex": [
+    [
+     "上品",
+     "じょうひん",
+     "refined/elegant"
+    ]
+   ]
+  },
+  {
+   "k": "限",
+   "on": [
+    "ゲン"
+   ],
+   "kun": [
+    "かぎ.る"
+   ],
+   "m": "limit",
+   "ex": [
+    [
+     "門限",
+     "もんげん",
+     "curfew"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  1,
+  5,
+  8
+ ],
+ "questions": [
+  {
+   "q": "サムさんは先生に何をさせられましたか。",
+   "en": "What was Sam made to do by his teacher?",
+   "choices": [
+    "挨拶の日本語を練習させられた",
+    "掃除をさせられた",
+    "切符を買わされた"
+   ],
+   "answer": 0
+  },
+  {
+   "q": "旅館の門限は何時ですか。",
+   "en": "What time is the inn's curfew?",
+   "choices": [
+    "十一時",
+    "十時",
+    "十二時"
+   ],
+   "answer": 0
+  }
+ ],
+ "talk": "Practice checking in at a Japanese inn using polite and humble expressions."
+}

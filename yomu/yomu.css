@@ -96,3 +96,32 @@ figure.hero { aspect-ratio: 16 / 6; }
 .units li { display: flex; align-items: center; gap: 10px; }
 .units .thumb { width: 72px; height: 48px; object-fit: cover; border-radius: 8px; flex: none; }
 @media (max-width: 600px) { figure.scene { aspect-ratio: 16 / 9; border-radius: 10px; } figure.hero { aspect-ratio: 16 / 8; } }
+
+/* pitch accent contour & badges */
+.pitch-info { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; font-size: .88rem; }
+.pitch-badge { font-size: .75rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; border: 1px solid var(--line); }
+.pitch-badge.heiban { background: color-mix(in srgb, #2b8a3e 15%, transparent); color: #2b8a3e; border-color: #2b8a3e; }
+.pitch-badge.atamadaka { background: color-mix(in srgb, #c92a2a 15%, transparent); color: #c92a2a; border-color: #c92a2a; }
+.pitch-badge.nakadaka { background: color-mix(in srgb, #1c7ed6 15%, transparent); color: #1c7ed6; border-color: #1c7ed6; }
+.pitch-badge.odaka { background: color-mix(in srgb, #e8590c 15%, transparent); color: #e8590c; border-color: #e8590c; }
+.pitch-curve { display: inline-flex; align-items: center; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.15rem; line-height: 1.3; }
+.pitch-curve .mora { position: relative; padding: 2px 4px; border-top: 2px solid transparent; }
+.pitch-curve .mora.high { border-top-color: var(--accent); }
+.pitch-curve .mora.low { border-top-color: transparent; }
+.pitch-curve .mora.drop { border-right: 2px solid var(--accent); }
+.pitch-curve .downstep { color: var(--accent); font-weight: bold; font-size: .85em; margin-left: 1px; }
+
+/* reader page styles */
+.reader-box textarea { width: 100%; min-height: 140px; box-sizing: border-box; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.1rem; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.reader-stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; align-items: center; font-size: .9rem; color: var(--muted); }
+.meter { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); width: 100%; margin: 6px 0; }
+.meter span { height: 100%; }
+.m-n5 { background: #40c057; } .m-n4 { background: #20c997; } .m-n3 { background: #15aabf; } .m-n2 { background: #4c6ef5; } .m-n1 { background: #7950f2; } .m-other { background: #868e96; }
+.meter-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: .78rem; margin: 4px 0 14px; }
+.meter-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.meter-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.reader-article { margin-top: 18px; line-height: 2.2; }
+.reader-p { margin-bottom: 24px; }
+.reader-sent { padding: 4px 6px; border-radius: 6px; transition: background .15s; }
+.reader-sent:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+

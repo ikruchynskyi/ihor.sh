@@ -35,7 +35,7 @@ def particles(tokens, blank):
     return out
 
 out = []
-for n in (5, 4, 3):
+for n in (5, 4, 3, 2, 1):
     mod = importlib.import_module(f"grammar_n{n}")
     for i, (pid, pattern, meaning, explain, examples, slug) in enumerate(mod.POINTS):
         exs = []
@@ -50,8 +50,10 @@ for p in out:
     pool = sorted({e["answer"] for q in out if q["level"] == p["level"] and q["id"] != p["id"] for e in q["examples"]})
     rnd = random.Random(p["id"])
     for e in p["examples"]:
-        wrong = rnd.sample([a for a in pool if a != e["answer"] and abs(len(a) - len(e["answer"])) <= 3] or pool, 2)
-        e["choices"] = rnd.sample([e["answer"], *wrong], 3)
+        filtered = [a for a in pool if a != e["answer"] and abs(len(a) - len(e["answer"])) <= 3]
+        choices_pool = filtered if len(filtered) >= 2 else [a for a in pool if a != e["answer"]]
+        wrong = rnd.sample(choices_pool, min(2, len(choices_pool)))
+        e["choices"] = rnd.sample([e["answer"], *wrong], len(wrong) + 1)
 root = pathlib.Path(__file__).parent.parent / "data"
 (root / "grammar.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
-print({lvl: sum(1 for p in out if p["level"] == lvl) for lvl in ("N5", "N4", "N3")}, "grammar points")
+print({lvl: sum(1 for p in out if p["level"] == lvl) for lvl in ("N5", "N4", "N3", "N2", "N1")}, "grammar points")

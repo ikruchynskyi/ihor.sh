@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yomu Custom Text Reader</title>
+  <meta name="description" content="Paste any Japanese text to read with tap-to-translate ruby furigana, pitch accent contours, Kokoro neural audio, pronunciation shadowing, difficulty breakdown, and 1-click spaced repetition cards." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+    .samples button { font-size: .88rem !important; padding: 4px 10px !important; text-transform: none !important; }
+    .reader-card { padding: 16px; margin: 14px 0; }
+    .reader-box textarea { width: 100%; min-height: 140px; box-sizing: border-box; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 1.15rem; line-height: 1.7; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); resize: vertical; }
+    .reader-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .reader-actions button { font-size: .95rem !important; }
+    .reader-stats { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 6px; font-size: .92rem; align-items: center; }
+    .meter-wrap { margin: 8px 0 14px; }
+    .meter { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--line); width: 100%; }
+    .meter span { height: 100%; transition: width .3s ease; }
+    .m-n5 { background: #40c057; } .m-n4 { background: #20c997; } .m-n3 { background: #15aabf; } .m-n2 { background: #4c6ef5; } .m-n1 { background: #7950f2; } .m-other { background: #868e96; }
+    .meter-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: .78rem; margin-top: 6px; }
+    .meter-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .meter-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+    .article-wrap { line-height: 2.3; margin: 20px 0; font-size: 1.35rem; }
+    .article-p { margin-bottom: 22px; }
+    .article-sent { padding: 2px 4px; border-radius: 6px; transition: background .15s; }
+    .article-sent:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .sent-act { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 4px; }
+    .sent-act button { padding: 2px 6px !important; font-size: 11px !important; line-height: 1 !important; opacity: .7; }
+    .sent-act button:hover { opacity: 1; }
+    .shadow-fb { font-size: .88rem; color: var(--muted); margin: 4px 0 8px; line-height: 1.4; }
+    #pop .kanji-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    #pop .kanji-row a { font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif; font-size: 1.25rem; border: 1px solid var(--line); padding: 2px 6px; text-decoration: none; color: inherit; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Reader</p>
+  <h1>Custom Text Reader</h1>
+  <p class="lede">Paste any Japanese article, story, news, or lyrics. Every word gets tap-to-translate furigana and authentic pitch accent, line audio in Kokoro's neural voice, pronunciation shadowing, and one-click spaced review.</p>
+
+  <div id="settings"></div>
+
+  <section class="card2 reader-card" id="inputCard">
+    <div class="samples">
+      <span class="muted" style="align-self:center">Try a sample:</span>
+      <button type="button" data-sample="sakura">🌸 桜の季節 (N4/N5 news)</button>
+      <button type="button" data-sample="momotaro">🍑 桃太郎 (Folktale excerpt)</button>
+      <button type="button" data-sample="cafe">☕ 週末のカフェ (Everyday dialogue)</button>
+    </div>
+    <div class="reader-box">
+      <textarea id="rawText" placeholder="ここに日本語を貼り付けてください (Paste Japanese text here)..."></textarea>
+    </div>
+    <div class="reader-actions">
+      <button id="btnRead" class="btn">Read &amp; Analyze</button>
+      <button id="btnClear" type="button" class="mini">Clear</button>
+      <label class="muted" style="margin-left:auto;font-size:.85rem">Saved: <select id="savedSelect"><option value="">-- recent texts --</option></select></label>
+    </div>
+  </section>
+
+  <section id="analysisCard" class="card2" hidden>
+    <div class="reader-stats" id="statsText"></div>
+    <div class="meter-wrap">
+      <div class="meter" id="levelMeter"></div>
+      <div class="meter-legend" id="meterLegend"></div>
+    </div>
+  </section>
+
+  <article id="articleView" class="article-wrap jp" hidden></article>
+</main>
+
+<div id="pop" hidden></div>
+
+<script type="module">
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, similarity, addCard, hasKanji, vocab, data, DECK_LEVELS, pitchInfo, renderPitch, kanjiHref } from "/yomu/lib.js";
+
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"), () => renderCurrent());
+
+// Samples
+const SAMPLES = {
+  sakura: `日本の春は、桜の花が咲く季節です。
+三月の終わりから四月のはじめにかけて、たくさんの人が公園に集まって花見をします。
+桜の木の下で、家族や友達と一緒にお弁当を食べたり、お茶を飲んだりして楽しい時間を過ごします。
+満開の桜はとても美しく、風が吹くと花びらが雪のように舞います。`,
+  momotaro: `昔々、ある所におじいさんとおばあさんが住んでいました。
+おじいさんは山へ柴刈りに、おばあさんは川へ洗濯に行きました。
+おばあさんが川で洗濯をしていると、川上から大きな桃がどんぶらこ、どんぶらこと流れてきました。
+おばあさんはその大きな桃を家に持ち帰り、おじいさんと一緒に切ってみることにしました。
+すると、中から元気な男の赤ちゃんが生まれました。`,
+  cafe: `ゆき：サムさん、こんにちは！今日はお天気がいいですね。
+サム：こんにちは、ゆきさん。本当に気持ちのいい日ですね。渋谷のカフェに行きませんか。
+ゆき：いいですね！あそこの抹茶ラテとチーズケーキはとても美味しいですよ。
+サム：楽しみです。歩いて十分ぐらいですから、散歩しながら行きましょう。`,
+};
+
+// 1. Dictionaries initialization
+const [n5, n4, n3, n2, n1, kanjiList] = await Promise.all([vocab("N5"), vocab("N4"), vocab("N3"), vocab("N2"), vocab("N1"), data("kanji")]);
+const VOCAB_MAP = new Map();
+const WORD_LEVEL = new Map();
+
+for (const [lvl, list] of [["N1", n1], ["N2", n2], ["N3", n3], ["N4", n4], ["N5", n5]]) {
+  for (const item of list) {
+    VOCAB_MAP.set(item.w, item);
+    WORD_LEVEL.set(item.w, lvl);
+  }
+}
+const KANJI_MAP = new Map(kanjiList.map((k) => [k.k, k]));
+
+const PARTICLES = new Set(["は", "が", "を", "に", "で", "と", "へ", "も", "から", "まで", "より", "ね", "よ", "か", "の", "や", "ばかり", "だけ", "ほど", "くらい", "ぐらい", "ので", "のに"]);
+const AUX = new Map([
+  ["です", { r: "です", m: "be verb (polite)" }],
+  ["でした", { r: "でした", m: "was (past polite)" }],
+  ["ではありません", { r: "ではありません", m: "is not (formal)" }],
+  ["じゃありません", { r: "じゃありません", m: "is not (polite)" }],
+  ["ます", { r: "ます", m: "verb suffix (polite present)" }],
+  ["ました", { r: "ました", m: "verb suffix (polite past)" }],
+  ["ません", { r: "ません", m: "verb suffix (polite negative)" }],
+  ["たい", { r: "たい", m: "want to" }],
+  ["ない", { r: "ない", m: "negative suffix" }],
+  ["ている", { r: "ている", m: "is doing (progressive / state)" }],
+  ["てください", { r: "てください", m: "please do" }],
+]);
+
+/** Client-side longest-match dictionary tokenizer */
+function tokenizeLine(text) {
+  const tokens = [];
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (/[。、！？!?…「」『』\s\n\r・]/.test(ch)) {
+      tokens.push([ch, null, null, "x"]);
+      i++;
+      continue;
+    }
+    // Try matching auxiliary verbs
+    let auxMatched = null;
+    for (let len = Math.min(8, text.length - i); len >= 2; len--) {
+      const sub = text.slice(i, i + len);
+      if (AUX.has(sub)) {
+        const item = AUX.get(sub);
+        auxMatched = [sub, item.r, item.m, "aux"];
+        i += len;
+        break;
+      }
+    }
+    if (auxMatched) { tokens.push(auxMatched); continue; }
+
+    // Longest match from VOCAB_MAP (up to 8 chars)
+    let vocabMatched = null;
+    for (let len = Math.min(8, text.length - i); len >= 2; len--) {
+      const sub = text.slice(i, i + len);
+      if (VOCAB_MAP.has(sub)) {
+        const item = VOCAB_MAP.get(sub);
+        vocabMatched = [sub, item.r === sub ? null : item.r, item.m, null];
+        i += len;
+        break;
+      }
+    }
+    if (vocabMatched) { tokens.push(vocabMatched); continue; }
+
+    // 1-character particle
+    if (PARTICLES.has(ch)) {
+      tokens.push([ch, null, "particle", "p"]);
+      i++;
+      continue;
+    }
+
+    // 1-character dictionary word
+    if (VOCAB_MAP.has(ch)) {
+      const item = VOCAB_MAP.get(ch);
+      tokens.push([ch, item.r === ch ? null : item.r, item.m, null]);
+      i++;
+      continue;
+    }
+
+    // 1-character kanji lookup
+    if (KANJI_MAP.has(ch)) {
+      const k = KANJI_MAP.get(ch);
+      const r = k.kun[0]?.replace(/[.-]/g, "") || k.on[0] || "";
+      tokens.push([ch, r, k.m.join(", "), null]);
+      i++;
+      continue;
+    }
+
+    // Accumulate untracked kana/letters
+    let j = i + 1;
+    while (
+      j < text.length &&
+      !/[。、！？!?…「」『』\s\n\r・]/.test(text[j]) &&
+      !KANJI_MAP.has(text[j]) &&
+      !VOCAB_MAP.has(text.slice(j, j + 2)) &&
+      !PARTICLES.has(text[j]) &&
+      !AUX.has(text.slice(j, j + 2))
+    ) {
+      j++;
+    }
+    tokens.push([text.slice(i, j), null, null, null]);
+    i = j;
+  }
+  return tokens;
+}
+
+// Stored text state
+let currentParsed = null;
+
+function parseText(raw) {
+  const paragraphs = raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const out = [];
+  for (const para of paragraphs) {
+    const rawSentences = para.split(/(?<=[。！？!?\n])/).map((s) => s.trim()).filter(Boolean);
+    const sentObjects = rawSentences.map((s) => ({
+      raw: s,
+      tokens: tokenizeLine(s),
+    }));
+    out.push(sentObjects);
+  }
+  return out;
+}
+
+function analyzeText(paragraphs) {
+  let chars = 0, words = 0;
+  const levelCounts = { N5: 0, N4: 0, N3: 0, N2: 0, N1: 0, other: 0 };
+  const seenWords = new Set();
+
+  for (const para of paragraphs) {
+    for (const sent of para) {
+      for (const t of sent.tokens) {
+        if (t[3] === "x") continue;
+        const s = t[0];
+        chars += s.length;
+        if (!seenWords.has(s)) {
+          seenWords.add(s);
+          words++;
+          const lvl = WORD_LEVEL.get(s);
+          if (lvl && levelCounts[lvl] != null) levelCounts[lvl]++;
+          else if (KANJI_MAP.has(s)) {
+            const kn = `N${KANJI_MAP.get(s).n}`;
+            if (levelCounts[kn] != null) levelCounts[kn]++;
+            else levelCounts.other++;
+          } else {
+            levelCounts.other++;
+          }
+        }
+      }
+    }
+  }
+
+  const knownPct = Math.round(
+    ([...seenWords].filter((w) => state.known[w]).length / Math.max(1, words)) * 100
+  );
+
+  return { chars, words, levelCounts, knownPct };
+}
+
+function renderAnalysis(stats) {
+  const total = Math.max(1, stats.words);
+  const pcts = {
+    N5: Math.round((stats.levelCounts.N5 / total) * 100),
+    N4: Math.round((stats.levelCounts.N4 / total) * 100),
+    N3: Math.round((stats.levelCounts.N3 / total) * 100),
+    N2: Math.round((stats.levelCounts.N2 / total) * 100),
+    N1: Math.round((stats.levelCounts.N1 / total) * 100),
+    other: Math.max(0, 100 - (stats.levelCounts.N5 + stats.levelCounts.N4 + stats.levelCounts.N3 + stats.levelCounts.N2 + stats.levelCounts.N1)),
+  };
+
+  // Estimated level
+  let est = "Beginner (N5)";
+  const n54 = pcts.N5 + pcts.N4;
+  if (pcts.N1 > 15 || pcts.N2 > 25) est = "Advanced (N1–N2)";
+  else if (pcts.N3 > 25) est = "Intermediate (N3)";
+  else if (n54 >= 60) est = "Elementary (N4–N5)";
+
+  $("statsText").innerHTML = `<b>${stats.chars}</b> characters · <b>${stats.words}</b> unique words · <b>${est}</b> · <span class="muted">${stats.knownPct}% words marked known</span>`;
+
+  $("levelMeter").innerHTML = `
+    <span class="m-n5" style="width:${pcts.N5}%" title="N5: ${pcts.N5}%"></span>
+    <span class="m-n4" style="width:${pcts.N4}%" title="N4: ${pcts.N4}%"></span>
+    <span class="m-n3" style="width:${pcts.N3}%" title="N3: ${pcts.N3}%"></span>
+    <span class="m-n2" style="width:${pcts.N2}%" title="N2: ${pcts.N2}%"></span>
+    <span class="m-n1" style="width:${pcts.N1}%" title="N1: ${pcts.N1}%"></span>
+    <span class="m-other" style="width:${pcts.other}%" title="Other/Kana: ${pcts.other}%"></span>
+  `;
+
+  $("meterLegend").innerHTML = `
+    <span><i class="m-n5"></i> N5 (${pcts.N5}%)</span>
+    <span><i class="m-n4"></i> N4 (${pcts.N4}%)</span>
+    <span><i class="m-n3"></i> N3 (${pcts.N3}%)</span>
+    <span><i class="m-n2"></i> N2 (${pcts.N2}%)</span>
+    <span><i class="m-n1"></i> N1 (${pcts.N1}%)</span>
+    <span><i class="m-other"></i> Other (${pcts.other}%)</span>
+  `;
+
+  $("analysisCard").hidden = false;
+}
+
+function renderCurrent() {
+  if (!currentParsed) return;
+  const container = $("articleView");
+  container.innerHTML = currentParsed
+    .map((para, pi) => `
+      <div class="article-p">${para
+        .map((sent, si) => `
+          <span class="article-sent" id="s-${pi}-${si}" data-pi="${pi}" data-si="${si}">
+            <span class="sent-text">${renderTokens(sent.tokens, state.settings, state.known)}</span>
+            <span class="sent-act">
+              <button class="mini" data-play="${pi}-${si}" aria-label="Play sentence" title="Play with Kokoro neural voice">▶</button>
+              ${canListen() ? `<button class="mini" data-shadow="${pi}-${si}" aria-label="Shadow sentence" title="Practice saying this line">🎤</button>` : ""}
+            </span>
+            <div class="shadow-fb" id="fb-${pi}-${si}"></div>
+          </span>`)
+        .join("")}
+      </div>`)
+    .join("");
+  container.hidden = false;
+}
+
+// Click handling for words, play and shadowing
+$("articleView").addEventListener("click", async (e) => {
+  const playBtn = e.target.closest("[data-play]");
+  if (playBtn) {
+    const [pi, si] = playBtn.dataset.play.split("-").map(Number);
+    const sent = currentParsed[pi][si];
+    return speak(sent.raw);
+  }
+
+  const shadowBtn = e.target.closest("[data-shadow]");
+  if (shadowBtn) {
+    const [pi, si] = shadowBtn.dataset.shadow.split("-").map(Number);
+    const sent = currentParsed[pi][si];
+    const fb = $(`fb-${pi}-${si}`);
+    fb.textContent = "Listening… say the sentence";
+    shadowBtn.disabled = true;
+    const heard = await listen();
+    shadowBtn.disabled = false;
+    if (!heard) return (fb.textContent = "Didn't catch that. Try speaking closer to mic.");
+    const score = Math.max(...heard.split(" / ").map((h) => similarity(h, sent.raw)));
+    fb.innerHTML = `Heard: <span class="jp">${esc(heard.split(" / ")[0])}</span> · <b class="${score > 0.75 ? "right" : "wrong"}">${Math.round(score * 100)}% match</b>`;
+    if (score > 0.75) gain(3);
+    return;
+  }
+
+  const w = e.target.closest(".w");
+  if (!w) return;
+  const sentEl = w.closest(".article-sent");
+  if (!sentEl) return;
+  const [pi, si] = [sentEl.dataset.pi, sentEl.dataset.si].map(Number);
+  const tokenIdx = +w.dataset.i;
+  const rawToken = currentParsed[pi][si].tokens[tokenIdx];
+  showWordPopover(rawToken, w);
+});
+
+// Popover
+async function showWordPopover(raw, el) {
+  const t = tok(raw), pop = $("pop"), r = el.getBoundingClientRect();
+  const pitch = await pitchInfo(t.s, reading(t));
+  const ks = [...t.s].filter(hasKanji);
+
+  pop.innerHTML = `
+    <div class="big jp">${esc(t.s)}</div>
+    <div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
+    ${renderPitch(pitch)}
+    <div>${esc(t.g || "(vocabulary lookup)")}</div>
+    ${ks.length ? `<div class="kanji-row">${ks.map((c) => `<a href="${kanjiHref(c)}" target="_blank" title="${esc(c)}'s dictionary page">${esc(c)}</a>`).join("")}</div>` : ""}
+    <div class="row" style="margin-top:8px">
+      <button class="mini" id="pPlay">▶ Hear</button>
+      ${t.k === "p" ? "" : `<button class="mini" id="pAdd">${state.srs["w:" + t.s] ? "✓ In Review" : "+ Review"}</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}
+      <button class="mini" id="pClose">✕</button>
+    </div>`;
+
+  pop.hidden = false;
+  pop.style.left = `${Math.min(innerWidth - 320, r.left + scrollX)}px`;
+  pop.style.top = `${r.bottom + scrollY + 6}px`;
+
+  $("pPlay").onclick = () => speak(t.s || reading(t));
+  $("pClose").onclick = () => (pop.hidden = true);
+  if ($("pAdd")) {
+    $("pAdd").onclick = () => {
+      addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g || t.s, kind: "word" });
+      $("pAdd").textContent = "✓ Added";
+      gain(1);
+    };
+  }
+  if ($("pKnow")) {
+    $("pKnow").onclick = () => {
+      state.known[t.s] = !state.known[t.s];
+      save();
+      $("pKnow").textContent = state.known[t.s] ? "✓ Known" : "I know it";
+      renderCurrent();
+    };
+  }
+}
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = true; });
+document.addEventListener("click", (e) => { if (!e.target.closest("#pop") && !e.target.closest(".w")) $("pop").hidden = true; });
+
+// Read button
+$("btnRead").onclick = () => {
+  const text = $("rawText").value.trim();
+  if (!text) return;
+  currentParsed = parseText(text);
+  saveHistory(text);
+  const stats = analyzeText(currentParsed);
+  renderAnalysis(stats);
+  renderCurrent();
+  $("articleView").scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+$("btnClear").onclick = () => {
+  $("rawText").value = "";
+  $("analysisCard").hidden = true;
+  $("articleView").hidden = true;
+  currentParsed = null;
+};
+
+// Samples
+document.querySelectorAll("[data-sample]").forEach((b) => {
+  b.onclick = () => {
+    const s = SAMPLES[b.dataset.sample];
+    if (s) {
+      $("rawText").value = s;
+      $("btnRead").click();
+    }
+  };
+});
+
+// History in localStorage
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem("yomu_saved_texts") || "[]"); } catch { return []; }
+}
+function saveHistory(text) {
+  const list = getSaved().filter((t) => t.text !== text);
+  const title = text.slice(0, 30).replace(/\n/g, " ") + (text.length > 30 ? "…" : "");
+  list.unshift({ title, text, at: Date.now() });
+  try { localStorage.setItem("yomu_saved_texts", JSON.stringify(list.slice(0, 15))); } catch {}
+  updateSavedDropdown();
+}
+function updateSavedDropdown() {
+  const list = getSaved();
+  $("savedSelect").innerHTML = `<option value="">-- recent texts (${list.length}) --</option>` +
+    list.map((item, i) => `<option value="${i}">${esc(item.title)}</option>`).join("");
+}
+$("savedSelect").onchange = (e) => {
+  const idx = +e.target.value;
+  const list = getSaved();
+  if (list[idx]) {
+    $("rawText").value = list[idx].text;
+    $("btnRead").click();
+  }
+};
+updateSavedDropdown();
+
+// Preload pitch accent data in background
+pitchInfo("日本語", "にほんご");
+</script>
+</body>
+</html>

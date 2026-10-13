@@ -45,7 +45,7 @@
   </details>
 </main>
 <script type="module">
-import { state, save, settingsBar, esc, speak, romaji, toHiragana, hasKanji, addCard, wordCard, inDeck, grade, vocab, data, DECK_LEVELS, wordHtml, kanjiHref, meaningMatches, readingMatches, shuffle, gain, blip } from "/yomu/lib.js";
+import { state, save, settingsBar, esc, speak, romaji, toHiragana, hasKanji, addCard, wordCard, inDeck, grade, vocab, data, DECK_LEVELS, wordHtml, kanjiHref, meaningMatches, readingMatches, shuffle, gain, blip, pitchInfo, renderPitch } from "/yomu/lib.js";
 import { pic } from "/yomu/pics.js";
 const $ = (id) => document.getElementById(id);
 const P = (state.practice = { levels: ["N5"], dir: "jp-en", how: "type", newN: 10, ...state.practice });
@@ -98,7 +98,13 @@ function next() {
 }
 const answerHtml = (w) => {
   const ks = [...new Set([...w.w].filter(hasKanji))];
+  setTimeout(async () => {
+    const p = await pitchInfo(w.w, w.r);
+    const el = document.getElementById("pPitch");
+    if (el && p) el.innerHTML = renderPitch(p);
+  }, 0);
   return `<div class="jp prompt">${wordHtml(w.w, w.r)}</div>
+    <div id="pPitch"></div>
     <p class="jp" style="font-size:1.2rem">${esc(w.r)}${state.settings.script !== "romaji" ? ` <span class="muted">${esc(romaji(toHiragana(w.r)))}</span>` : ""} <button class="mini" id="say" aria-label="Play">▶</button> <span class="muted">${w.lv}</span></p>
     <p style="font-size:1.15rem"><b>${esc(w.m)}</b></p>
     ${ks.length ? `<div class="kparts">${ks.map((k) => `<a href="${kanjiHref(k)}" title="Open ${esc(k)}'s page"><span class="jp">${esc(k)}</span> <span class="muted">${esc(kanjiMeaning.get(k) ?? "")}</span></a>`).join("")}</div>` : ""}`;

@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const ROOT = import.meta.dirname;
-const LEVELS = ["N5", "N4", "N3"] as const;
+const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
 export type Level = (typeof LEVELS)[number];
 export type Turn = { role: "user" | "assistant"; content: string };
 export type Reply = { ja: string; en: string; words: { s: string; r: string; g: string }[]; fix: string };
@@ -33,6 +33,8 @@ const STYLE: Record<Level, string> = {
   N5: "Very simple: です/ます forms, basic particles, present and past, the most common 700 words. Kanji only for the most basic words (日, 人, 学生, 本), the rest in kana.",
   N4: "Everyday conversation: plain and polite forms, て-form chains, ～たい, ～ことがある, conditionals; the common 1,500 words. Normal kanji for N5–N4 words.",
   N3: "Natural everyday Japanese: nuance (～ようだ, ～そうだ, ～ば, passive and causative), opinions and reasons; the common 3,500 words. Normal kanji.",
+  N2: "Advanced conversational Japanese: business etiquette, social discourse, nuanced expressions (～に違いない, ～わけにはいかない, ～をめぐって); the common 6,000 words. Full kanji with natural usage.",
+  N1: "Mastery-level Japanese: sophisticated discourse, abstract concepts, literary nuance, formal keigo and rare idioms (～を皮切りに, ～ごとき, ～んばかりに); expansive vocabulary. Rich kanji.",
 };
 
 /** One turn of conversation. `turns` are the learner's and Blip's previous lines (Blip's as Japanese only). */

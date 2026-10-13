@@ -1,0 +1,1899 @@
+{
+ "id": "n1-14",
+ "level": "N1",
+ "unit": 14,
+ "title": {
+  "ja": "日本科学白書の執筆合宿",
+  "en": "Capstone 2: White Paper on Renewable Energy"
+ },
+ "scene": "A quiet mountain lodge retreat in Karuizawa, Nagano. Sam, Yuki, Kenji, and Blip draft the definitive White Paper combining energy transition, bioethics, and demographic adaptation.",
+ "lines": [
+  {
+   "who": "サム",
+   "t": [
+    [
+     "軽井沢の",
+     "かるいざわの",
+     "Karuizawa's"
+    ],
+    [
+     "白樺林に",
+     "しらかばばやしに",
+     "in birch woods"
+    ],
+    [
+     "囲まれた",
+     "かこまれた",
+     "surrounded"
+    ],
+    [
+     "山荘",
+     "さんそう",
+     "mountain lodge"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "執筆に",
+     "しっぴつに",
+     "for writing"
+    ],
+    [
+     "最高の",
+     "さいこうの",
+     "best"
+    ],
+    [
+     "環境ですね",
+     "かんきょうですね",
+     "environment is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A mountain lodge nestled in Karuizawa's white birch woods—an optimal haven for deep writing."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "都会の",
+     "とかいの",
+     "city's"
+    ],
+    [
+     "喧騒を",
+     "けんそうを",
+     "hubbub"
+    ],
+    [
+     "離れて",
+     "はなれて",
+     "leaving"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本の",
+     "にほんの",
+     "Japan's"
+    ],
+    [
+     "未来三十年を",
+     "みらいさんじゅうねんを",
+     "next 30 years"
+    ],
+    [
+     "見据える",
+     "みすえる",
+     "look steadily into"
+    ],
+    [
+     "科学技術白書を",
+     "かがくぎじゅつはくしょを",
+     "White Paper on Sci & Tech"
+    ],
+    [
+     "執筆する",
+     "しっぴつする",
+     "authoring"
+    ],
+    [
+     "合宿よ",
+     "がっしゅくよ",
+     "retreat is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Far from urban frenzy, this is our retreat to author the Science & Technology White Paper projecting Japan's next thirty years."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "過去の",
+     "かこの",
+     "past's"
+    ],
+    [
+     "成功体験に",
+     "せいこうたいけんに",
+     "successful experiences"
+    ],
+    [
+     "しがみつく",
+     "しがみつく",
+     "clinging to"
+    ],
+    [
+     "きらいがある",
+     "きらいがある",
+     "have a bad tendency to",
+     "p"
+    ],
+    [
+     "行政の",
+     "ぎょうせいの",
+     "bureaucracy's"
+    ],
+    [
+     "発想を",
+     "はっそうを",
+     "mindsets"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ここで",
+     null,
+     "here"
+    ],
+    [
+     "根本から",
+     "こんぽんから",
+     "from roots"
+    ],
+    [
+     "打ち破らねばならん",
+     "うちやぶらねばならん",
+     "must shatter"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "We must shatter administrative mindsets here from the ground up, which all too often have a bad tendency to cling to past successes."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "小手先の",
+     "こてさきの",
+     "superficial"
+    ],
+    [
+     "予算配分",
+     "よさんはいぶん",
+     "budget allocation"
+    ],
+    [
+     "ならいざ知らず",
+     "ならいざしらず",
+     "might be one thing, but",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "国家百年の",
+     "こっかひゃくねんの",
+     "century-long"
+    ],
+    [
+     "計を",
+     "けいを",
+     "plan"
+    ],
+    [
+     "立てる",
+     "たてる",
+     "make"
+    ],
+    [
+     "大転換ですからね",
+     "だいてんかんですからね",
+     "because great shift"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Superficial budget reallocation might be one thing, but this is a transformative visionary blueprint spanning a hundred years."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "再エネ",
+     "さいえね",
+     "renewables"
+    ],
+    [
+     "自給率",
+     "じきゅうりつ",
+     "self-sufficiency"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "二〇五〇年",
+     "にせんごじゅうねん",
+     "year 2050"
+    ],
+    [
+     "シミュレーション",
+     null,
+     "simulation"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "地熱",
+     "ちねつ",
+     "geothermal"
+    ],
+    [
+     "・",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "洋上風力",
+     "ようじょうふうりょく",
+     "offshore wind"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "百パーセント",
+     "ひゃくぱーせんと",
+     "100%"
+    ],
+    [
+     "達成可能",
+     "たっせいかのう",
+     "achievable"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Renewable energy self-sufficiency 2050 simulation: Geothermal and offshore wind can achieve 100% self-sufficiency!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "火山国",
+     "かざんこく",
+     "volcanic country"
+    ],
+    [
+     "であり",
+     null,
+     "and being"
+    ],
+    [
+     "海洋国",
+     "かいようこく",
+     "maritime nation"
+    ],
+    [
+     "である",
+     null,
+     "is"
+    ],
+    [
+     "日本の",
+     "にほんの",
+     "Japan's"
+    ],
+    [
+     "地理的",
+     "ちりてき",
+     "geographic"
+    ],
+    [
+     "特性を",
+     "とくせいを",
+     "characteristics"
+    ],
+    [
+     "最大限に",
+     "さいだいげんに",
+     "maximally"
+    ],
+    [
+     "生かす",
+     "いかす",
+     "harness"
+    ],
+    [
+     "戦略ね",
+     "せんりゃくね",
+     "strategy is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A visionary strategy that maximizes Japan's unique geographic reality as both a volcanic and maritime island nation."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "地域社会への",
+     "ちいきしゃかいへの",
+     "to local communities"
+    ],
+    [
+     "利益還元を",
+     "りえきかんげんを",
+     "profit dividend"
+    ],
+    [
+     "伴ってこそ",
+     "ともなってこそ",
+     "only when accompanied"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "住民の",
+     "じゅうみんの",
+     "residents'"
+    ],
+    [
+     "全面的な",
+     "ぜんめんてきな",
+     "full-fledged"
+    ],
+    [
+     "賛同が",
+     "さんどうが",
+     "endorsement"
+    ],
+    [
+     "得られる",
+     "えられる",
+     "can obtain"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Only when accompanied by genuine economic dividends returning to local communities can we secure total civic endorsement."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "第５章の",
+     "だいごしょうの",
+     "Chapter 5's"
+    ],
+    [
+     "「人口動態と",
+     "じんこうどうたいと",
+     "Demographics and"
+    ],
+    [
+     "分散型社会」",
+     "ぶんさんがたしゃかい",
+     "Decentralized Society"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "草稿",
+     "そうこう",
+     "draft"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "仕上がりました",
+     "しあがりました",
+     "finished"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The draft for Chapter 5, 'Demographic Dynamics and the Decentralized Society,' is completely finalized!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "どれどれ",
+     null,
+     "let's see"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "素晴らしいわ",
+     "すばらしいわ",
+     "splendid"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "徳島の",
+     "とくしまの",
+     "Tokushima's"
+    ],
+    [
+     "神山町や",
+     "かみやまちょうや",
+     "Kamiyama and"
+    ],
+    [
+     "各地の",
+     "かくちの",
+     "various places'"
+    ],
+    [
+     "実例が",
+     "じつれいが",
+     "case studies"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "説得力をもって",
+     "せっとくりょくをもって",
+     "with persuasiveness"
+    ],
+    [
+     "論述されている",
+     "ろんじゅつされている",
+     "discussed"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let's see... Magnificent! Case studies from Kamiyama in Tokushima and across the country are expounded with powerful persuasion."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "サム君",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "現地を",
+     "げんちを",
+     "frontlines"
+    ],
+    [
+     "実際に",
+     "じっさいに",
+     "actually"
+    ],
+    [
+     "歩いて",
+     "あるいて",
+     "walked"
+    ],
+    [
+     "調査した",
+     "ちょうさした",
+     "researched"
+    ],
+    [
+     "経験が",
+     "けいけんが",
+     "experience"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "文章に",
+     "ぶんしょうに",
+     "in sentences"
+    ],
+    [
+     "命を",
+     "いのちを",
+     "life"
+    ],
+    [
+     "吹き込んでいる",
+     "ふきこんでいる",
+     "breathing into"
+    ],
+    [
+     "ぞ",
+     null,
+     "particle"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, your hands-on fieldwork walking the grounds yourself has breathed vibrant life into these pages."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "現地で",
+     "げんちで",
+     "on site"
+    ],
+    [
+     "出会った",
+     "であった",
+     "met"
+    ],
+    [
+     "方々の",
+     "かたがたの",
+     "people's"
+    ],
+    [
+     "笑顔を",
+     "えがおを",
+     "smiles"
+    ],
+    [
+     "思い浮かべながら",
+     "おもいうかべながら",
+     "while recalling"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一文字ずつ",
+     "いちもじずつ",
+     "letter by letter"
+    ],
+    [
+     "心を込めて",
+     "こころをこめて",
+     "with all heart"
+    ],
+    [
+     "書きました",
+     "かきました",
+     "wrote"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Recalling the warm smiles of the people I met in those towns, I drafted every single word with all my heart."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "感情",
+     "かんじょう",
+     "sentiment"
+    ],
+    [
+     "共鳴度",
+     "きょうめいど",
+     "resonance"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全パラグラフ",
+     null,
+     "all paragraphs"
+    ],
+    [
+     "において",
+     "において",
+     "in",
+     "p"
+    ],
+    [
+     "九十九パーセント",
+     "きゅうじゅうきゅうぱーせんと",
+     "99%"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Emotional resonance score: 99% across every single paragraph!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "白書でありながら",
+     "はくしょでありながら",
+     "while a white paper"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "血の通った",
+     "ちのかよった",
+     "warm-blooded"
+    ],
+    [
+     "未来への",
+     "みらいへの",
+     "to future"
+    ],
+    [
+     "手紙のようだ",
+     "てがみのようだ",
+     "like a letter"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Though an official White Paper, it reads like a warm, living love letter to the future."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "政策文書に",
+     "せいさくぶんしょに",
+     "in policy docs"
+    ],
+    [
+     "最も",
+     "もっとも",
+     "most"
+    ],
+    [
+     "必要なのは",
+     "ひつようなのは",
+     "what is needed"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "まさに",
+     null,
+     "truly"
+    ],
+    [
+     "この",
+     null,
+     "this"
+    ],
+    [
+     "「体温」",
+     "たいおん",
+     "body heat"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "What policy documents need above all else is precisely this living human warmth."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "明日の朝",
+     "あしたのあさ",
+     "tomorrow morning"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "内閣府へ",
+     "ないかくふへ",
+     "to Cabinet Office"
+    ],
+    [
+     "提出する",
+     "ていしゅつする",
+     "submit"
+    ],
+    [
+     "最終版の",
+     "さいしゅうばんの",
+     "final edition's"
+    ],
+    [
+     "製本を",
+     "せいほんを",
+     "binding"
+    ],
+    [
+     "行いましょう",
+     "おこないましょう",
+     "let's carry out"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Tomorrow morning, let us finalize the official binding of the definitive manuscript to submit to the Cabinet Office."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "うむ",
+     null,
+     "um"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "今夜は",
+     "こんやは",
+     "tonight"
+    ],
+    [
+     "暖炉の",
+     "だんろの",
+     "fireplace's"
+    ],
+    [
+     "火を",
+     "ひを",
+     "fire"
+    ],
+    [
+     "囲んで",
+     "かこんで",
+     "gather around"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ゆっくり",
+     null,
+     "relaxingly"
+    ],
+    [
+     "語り合おう",
+     "かたりあおう",
+     "let's converse"
+    ],
+    [
+     "じゃないか",
+     null,
+     "shall we"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Indeed. Tonight let's gather around the fireplace flames and share heartfelt conversation."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "信州の",
+     "しんしゅうの",
+     "Shinshu's"
+    ],
+    [
+     "美味しい",
+     "おいしい",
+     "delicious"
+    ],
+    [
+     "林檎茶を",
+     "りんごちゃを",
+     "apple tea"
+    ],
+    [
+     "淹れました",
+     "いれました",
+     "brewed"
+    ],
+    [
+     "よ",
+     null,
+     "assurance",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I've brewed delicious Shinshu apple tea for everyone."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いい香りが",
+     "いいかおりが",
+     "nice aroma (subj)"
+    ],
+    [
+     "部屋中に",
+     "へやじゅうに",
+     "through room"
+    ],
+    [
+     "漂っています",
+     "ただよっています",
+     "is drifting"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Such a comforting fragrance is drifting throughout the room!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "林檎",
+     "りんご",
+     "apple"
+    ],
+    [
+     "アロマ",
+     null,
+     "aroma"
+    ],
+    [
+     "成分",
+     "せいぶん",
+     "components"
+    ],
+    [
+     "検知",
+     "けんち",
+     "detected"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "リラックス",
+     null,
+     "relaxation"
+    ],
+    [
+     "ホルモン",
+     null,
+     "hormones"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "分泌",
+     "ぶんぴつ",
+     "secretion"
+    ],
+    [
+     "促進",
+     "そくしん",
+     "boosted"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Apple aroma compounds detected! Relaxation hormone pathways activated!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップも",
+     null,
+     "Blip too"
+    ],
+    [
+     "すっかり",
+     null,
+     "completely"
+    ],
+    [
+     "くつろいでいるな",
+     "くつろいでいるな",
+     "relaxing indeed"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! Blip is thoroughly relaxed as well."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この白書が",
+     "このはくしょが",
+     "this white paper"
+    ],
+    [
+     "きっかけとなって",
+     "きっかけとなって",
+     "becoming trigger"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "きっと",
+     null,
+     "surely"
+    ],
+    [
+     "日本中の",
+     "にほんじゅうの",
+     "across Japan"
+    ],
+    [
+     "若者が",
+     "わかものが",
+     "youth"
+    ],
+    [
+     "立ち上がるわ",
+     "たちあがるわ",
+     "will rise up"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Sam, with this White Paper as a spark, young people across Japan will surely rise to action."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "未来を",
+     "みらいを",
+     "future"
+    ],
+    [
+     "創るのは",
+     "つくるのは",
+     "making"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "制度だけでなく",
+     "せいどだけでなく",
+     "not only institutions"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "一人ひとりの",
+     "ひとりひとりの",
+     "each person's"
+    ],
+    [
+     "志ですからね",
+     "こころざしですからね",
+     "because aspiration"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Because forging the future depends not merely on institutions, but on the heartfelt aspirations of each individual."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "その",
+     null,
+     "that"
+    ],
+    [
+     "志の",
+     "こころざしの",
+     "aspiration's"
+    ],
+    [
+     "火を",
+     "ひを",
+     "torch"
+    ],
+    [
+     "灯すのが",
+     "ともすのが",
+     "kindling"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "この白書の",
+     "このはくしょの",
+     "this white paper's"
+    ],
+    [
+     "最大の",
+     "さいだいの",
+     "greatest"
+    ],
+    [
+     "使命だ",
+     "しめいだ",
+     "mission is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Kindling that very torch of civic aspiration is the paramount mission of this White Paper."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "志の火",
+     "こころざしのひ",
+     "torch of aspiration"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "デジタルアーカイブ",
+     null,
+     "digital archive"
+    ],
+    [
+     "点火",
+     "てんか",
+     "ignited"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "永遠に",
+     "えいえんに",
+     "eternally"
+    ],
+    [
+     "消えない",
+     "きえない",
+     "never goes out"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Torch of aspiration ignited in the digital archive! It will never extinguish!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "永遠に",
+     "えいえんに",
+     "eternally"
+    ],
+    [
+     "消えない",
+     "きえない",
+     "never goes out"
+    ],
+    [
+     "灯火",
+     "ともしび",
+     "flame"
+    ],
+    [
+     "……",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "素敵な",
+     "すてきな",
+     "lovely"
+    ],
+    [
+     "表現ね",
+     "ひょうげんね",
+     "expression is"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "An eternally unquenchable flame... what a lovely phrase, Blip."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "軽井沢の",
+     "かるいざわの",
+     "Karuizawa's"
+    ],
+    [
+     "夜空に",
+     "よぞらに",
+     "in night sky"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "満天の",
+     "まんてんの",
+     "sky full of"
+    ],
+    [
+     "星が",
+     "ほしが",
+     "stars"
+    ],
+    [
+     "瞬いています",
+     "またたいています",
+     "are twinkling"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "In Karuizawa's night sky, a full canopy of stars is twinkling brightly."
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "明日は",
+     "あしたは",
+     "tomorrow"
+    ],
+    [
+     "快晴だ",
+     "かいせいだ",
+     "clear skies"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "堂々と",
+     "どうどうと",
+     "proudly"
+    ],
+    [
+     "東京へ",
+     "とうきょうへ",
+     "to Tokyo"
+    ],
+    [
+     "戻ろう",
+     "もどろう",
+     "let's return"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Tomorrow will be clear. Let us return proudly to Tokyo!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本の",
+     "にほんの",
+     "Japan's"
+    ],
+    [
+     "未来へ",
+     "みらいへ",
+     "to future"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "確かな",
+     "たしかな",
+     "firm"
+    ],
+    [
+     "一歩を",
+     "いっぽを",
+     "step"
+    ],
+    [
+     "届けます",
+     "とどけます",
+     "will deliver"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes! We will deliver a resolute step toward Japan's future!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "お疲れ様でした",
+     "おつかれさまでした",
+     "thank you for hard work"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "皆さん",
+     "みなさん",
+     "everyone"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Splendid work, everyone!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "白書",
+     "はくしょ",
+     "white paper"
+    ],
+    [
+     "脱稿",
+     "だっこう",
+     "manuscript completed"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "バンザイ",
+     null,
+     "hurrah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! White Paper manuscript completed! Banzai!"
+  },
+  {
+   "who": "ケンジ",
+   "t": [
+    [
+     "ハハハ",
+     null,
+     "hahaha"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "バンザイ",
+     null,
+     "hurrah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hahaha! Banzai!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "バンザイ",
+     null,
+     "hurrah"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Banzai!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "nara-iza-shirazu-rev",
+   "title": "～ならいざ知らず [復習]: might be one thing, but (drastic contrast)",
+   "explain": "Review from Unit 4: Noun + ならいざ知らず indicates that while X might be excused, the present case Y is completely different and serious.",
+   "examples": [
+    {
+     "t": [
+      [
+       "小手先",
+       "こてさき",
+       "superficial"
+      ],
+      [
+       "ならいざ知らず",
+       null,
+       "might be one thing, but",
+       "p"
+      ],
+      [
+       "、",
+       null,
+       null,
+       "x"
+      ],
+      [
+       "大転換",
+       "だいてんかん",
+       "great shift"
+      ],
+      [
+       "だ",
+       null,
+       "is"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Superficial tricks might be one thing, but this is a great shift."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "昔の基準＿＿、現代の社会において差別は断じて許されない。",
+     "hint": "Past standards might be one thing, but in modern society discrimination is never tolerated.",
+     "choices": [
+      "ならいざ知らず",
+      "に堪えない",
+      "てやまない"
+     ],
+     "answer": 0,
+     "why": "ならいざ知らず contrasts an exceptional past or condition with an uncompromising present rule."
+    }
+   ]
+  },
+  {
+   "id": "kirai-ga-aru-rev",
+   "title": "～きらいがある [復習]: have a tendency to (undesirable pattern)",
+   "explain": "Review from Unit 6: Verb/noun + きらいがある indicates a regrettable trend or bad habit.",
+   "examples": [
+    {
+     "t": [
+      [
+       "固執する",
+       "こしつする",
+       "cling to"
+      ],
+      [
+       "きらいがある",
+       null,
+       "tend to (regrettably)",
+       "p"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Have a tendency to cling stubbornly."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "専門家は専門用語を多用し、一般人に分かりにくくする＿＿。",
+     "hint": "Experts have a tendency to overuse technical jargon, making things opaque to laypeople.",
+     "choices": [
+      "きらいがある",
+      "をおいて他にない",
+      "限りだ"
+     ],
+     "answer": 0,
+     "why": "きらいがある points out an undesirable habitual tendency."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "樺",
+   "on": [
+    "カ"
+   ],
+   "kun": [
+    "かば"
+   ],
+   "m": [
+    "birch"
+   ],
+   "ex": [
+    [
+     "白樺",
+     "しらかば",
+     "white birch"
+    ]
+   ]
+  },
+  {
+   "k": "稿",
+   "on": [
+    "コウ"
+   ],
+   "kun": [],
+   "m": [
+    "manuscript",
+    "draft"
+   ],
+   "ex": [
+    [
+     "草稿",
+     "そうこう",
+     "draft/notes"
+    ],
+    [
+     "脱稿",
+     "だっこう",
+     "completion of manuscript"
+    ]
+   ]
+  },
+  {
+   "k": "炉",
+   "on": [
+    "ロ"
+   ],
+   "kun": [
+    "いろり"
+   ],
+   "m": [
+    "hearth",
+    "furnace"
+   ],
+   "ex": [
+    [
+     "暖炉",
+     "だんろ",
+     "fireplace"
+    ],
+    [
+     "溶鉱炉",
+     "ようこうろ",
+     "blast furnace"
+    ]
+   ]
+  },
+  {
+   "k": "樺",
+   "on": [
+    "カ"
+   ],
+   "kun": [],
+   "m": [
+    "birch"
+   ],
+   "ex": [
+    [
+     "白樺林",
+     "しらかばばやし",
+     "birch woods"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "軽井沢の合宿で執筆された科学技術白書が目指している期間はどれくらいですか？",
+   "choices": [
+    "未来三十年を見据える国家百年の計",
+    "来週の予定",
+    "昨日の振り返り"
+   ],
+   "answer": 0,
+   "why": "日本の未来三十年を見据え、国家百年の計を立てる大転換であると述べられています。"
+  },
+  {
+   "q": "サムが第５章を執筆する際に込めた想いはどのようなものですか？",
+   "choices": [
+    "現地で出会った地域の人々の笑顔を思い浮かべながら心を込めて書いた",
+    "インターネットの文章をそのままコピーした",
+    "早く終わらせて寝ようとした"
+   ],
+   "answer": 0,
+   "why": "現地で出会った方々の笑顔を思い浮かべながら一文字ずつ心を込めて書いたと語っています。"
+  }
+ ],
+ "talk": "You are Yuki discussing the authoring of the Science & Technology White Paper with Sam in Karuizawa."
+}

@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yomu Placement Test</title>
-  <meta name="description" content="A five-minute adaptive Japanese placement test: kana, then N5, N4 and N3 words, kanji and grammar. It stops when it finds your level and sets where your Yomu course starts." />
+  <meta name="description" content="A five-minute adaptive Japanese placement test: kana, then N5 to N1 words, kanji and grammar. It stops when it finds your level and sets where your Yomu course starts." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Placement</p>
   <h1>Where are you now?</h1>
-  <p class="lede">A few questions per stage: kana, then N5, N4 and N3 words, kanji and grammar. It stops at the first stage that's too hard. Don't guess: “I don't know” helps it place you right.</p>
+  <p class="lede">A few questions per stage: kana, then N5 to N1 words, kanji and grammar. It stops at the first stage that's too hard. Don't guess: “I don't know” helps it place you right.</p>
   <div id="settings"></div>
   <section class="card2" id="box"></section>
 </main>
@@ -68,18 +68,18 @@ function ask() {
 }
 function done(failedAt) {
   const kana = (results.kana ?? 0) >= PASS;
-  const level = !kana ? "N5" : failedAt && failedAt !== "kana" ? failedAt : failedAt ? "N5" : "N3";
+  const level = !kana ? "N5" : failedAt && failedAt !== "kana" ? failedAt : failedAt ? "N5" : "N1";
   state.start = { level, kana, how: "placement test" }; save();
   const lines = Object.entries(results).map(([k, v]) => `<li>${k === "kana" ? "Kana" : k}: ${Math.round(v * 100)}% ${v >= PASS ? "✓" : ""}</li>`).join("");
   const advice = !kana ? "Start with hiragana: a week of drills and you'll read your first story."
-    : !failedAt ? "You passed everything up to N3! Use the N3 grammar list and decks to fill gaps, and keep reviewing."
+    : !failedAt ? "You passed everything up to N1! You are ready for advanced stories, debates, and literature."
     : level === "N5" ? "Start at <b>N5</b> with the first story. Your kana is solid!" : `Start at <b>${level}</b>. Skim earlier levels' grammar lists to fill any gaps.`;
   $("box").innerHTML = `<h2 style="margin-top:0">Your starting point: ${kana ? level : "kana"}</h2><ul>${lines}</ul><p>${advice}</p>
     <a class="btn" href="${kana ? "/yomu/" : "/yomu/kana.html"}">Go</a> <button id="again">Retake</button>`;
   $("again").onclick = () => { si = 0; for (const k in results) delete results[k]; begin(); };
   blip(kana ? `You start at ${level}. がんばって!` : "Let's start with hiragana!", "happy", 6);
 }
-$("box").innerHTML = `<p>About 30 questions at most. Ready?</p><button id="go">Start the test</button>`;
+$("box").innerHTML = `<p>Adaptive test across all JLPT levels (N5 to N1). Ready?</p><button id="go">Start the test</button>`;
 $("go").onclick = begin;
 window.blipContext = () => ({ page: "Yomu placement test", role: "Don't give away answers while the test is running; encourage the visitor and explain results afterwards.", stage: order[si], results });
 </script>

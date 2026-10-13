@@ -1,0 +1,2171 @@
+{
+ "id": "n1-03",
+ "level": "N1",
+ "unit": 3,
+ "title": {
+  "ja": "デジタル主権と憲法的自由",
+  "en": "Constitutional Law: Digital Privacy vs State Surveillance"
+ },
+ "scene": "A law symposium amphitheater at University of Tokyo. Sam, Yuki, and Professor Tanaka deliberate state decryption mandates vs individual privacy rights.",
+ "lines": [
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "本日",
+     "ほんじつ",
+     "today"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "憲法",
+     "けんぽう",
+     "constitutional"
+    ],
+    [
+     "学",
+     "がく",
+     "law"
+    ],
+    [
+     "シンポジウム",
+     null,
+     "symposium"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "暗号",
+     "あんごう",
+     "encryption"
+    ],
+    [
+     "バックドア",
+     null,
+     "backdoor"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "是非",
+     "ぜひ",
+     "pros and cons"
+    ],
+    [
+     "をめぐって",
+     "をめぐって",
+     "surrounding",
+     "p"
+    ],
+    [
+     "熱論",
+     "ねつろん",
+     "heated debate"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "交わされました",
+     "かわされました",
+     "was exchanged"
+    ],
+    [
+     "ね",
+     null,
+     "tag",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "At today's constitutional law symposium, heated debate was exchanged surrounding the pros and cons of government encryption backdoors."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "国家",
+     "こっか",
+     "state"
+    ],
+    [
+     "による",
+     null,
+     "by"
+    ],
+    [
+     "通信",
+     "つうしん",
+     "communications"
+    ],
+    [
+     "傍受",
+     "ぼうじゅ",
+     "interception"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "許容",
+     "きょよう",
+     "permit"
+    ],
+    [
+     "すれば",
+     null,
+     "if (ba)"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "プライバシー",
+     null,
+     "privacy"
+    ],
+    [
+     "侵害",
+     "しんがい",
+     "infringement"
+    ],
+    [
+     "に至っては",
+     "にいたっては",
+     "as for extreme",
+     "p"
+    ],
+    [
+     "取り返しのつかない",
+     "とりかえしのつかない",
+     "irreversible"
+    ],
+    [
+     "事態",
+     "じたい",
+     "state of affairs"
+    ],
+    [
+     "になりかねません",
+     "になりかねません",
+     "could easily become",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If state communications interception is sanctioned, as for privacy infringement it could easily reach an irreversible state of affairs."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "表現の自由",
+     "ひょうげんのじゆう",
+     "freedom of expression"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "通信の秘密",
+     "つうしんのひみつ",
+     "secrecy of communication"
+    ],
+    [
+     "なくしては",
+     "なくしては",
+     "without",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "民主主義",
+     "みんしゅしゅぎ",
+     "democracy"
+    ],
+    [
+     "そのもの",
+     null,
+     "itself"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "根底",
+     "こんてい",
+     "foundation"
+    ],
+    [
+     "から",
+     null,
+     "from",
+     "p"
+    ],
+    [
+     "揺らぎます",
+     "ゆらぎます",
+     "shakes"
+    ],
+    [
+     "ものね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Without freedom of expression and secrecy of communications, democracy itself is shaken to its very foundations."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "日本国",
+     "にほんこく",
+     "Japan"
+    ],
+    [
+     "憲法",
+     "けんぽう",
+     "Constitution"
+    ],
+    [
+     "第二十一",
+     "だいにじゅういち",
+     "21st"
+    ],
+    [
+     "条",
+     "じょう",
+     "Article"
+    ],
+    [
+     "第二",
+     "だいに",
+     "2nd"
+    ],
+    [
+     "項",
+     "こう",
+     "Paragraph"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "「通信の秘密は、これを侵してはならない」",
+     "つうしんのひみつはこれをおかしてはならない",
+     "secrecy of communication shall not be violated"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Article 21, Paragraph 2 of the Constitution of Japan: 'The secrecy of any means of communication shall not be violated'!"
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "法学者",
+     "ほうがくしゃ",
+     "legal scholars"
+    ],
+    [
+     "たるもの",
+     "たるもの",
+     "as one who is",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "時代の",
+     "じだいの",
+     "era's"
+    ],
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "変化",
+     "へんか",
+     "change"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "即して",
+     "そくして",
+     "in accordance with",
+     "p"
+    ],
+    [
+     "憲法",
+     "けんぽう",
+     "constitutional"
+    ],
+    [
+     "価値",
+     "かち",
+     "values"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "擁護",
+     "ようご",
+     "defend"
+    ],
+    [
+     "する",
+     null,
+     "do"
+    ],
+    [
+     "義務",
+     "ぎむ",
+     "duty"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "あります",
+     null,
+     "exists"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "As true legal scholars, one holds a solemn duty to defend constitutional values in close alignment with technological changes of the era."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "暗号",
+     "あんごう",
+     "cryptography"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "バックドア",
+     null,
+     "backdoor"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "設ければ",
+     "もうければ",
+     "if create"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "善意の",
+     "ぜんいの",
+     "well-intentioned"
+    ],
+    [
+     "政府",
+     "せいふ",
+     "government"
+    ],
+    [
+     "ならいざ知らず",
+     "ならいざ知らず",
+     "might be so, but not for",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "悪意の",
+     "あくいの",
+     "malicious"
+    ],
+    [
+     "攻撃者",
+     "こうげきしゃ",
+     "attackers"
+    ],
+    [
+     "に",
+     null,
+     "by",
+     "p"
+    ],
+    [
+     "悪用",
+     "あくよう",
+     "exploited"
+    ],
+    [
+     "される",
+     null,
+     "be done"
+    ],
+    [
+     "危険",
+     "きけん",
+     "danger"
+    ],
+    [
+     "極まりない",
+     "きわまりない",
+     "extreme/boundless",
+     "p"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "If backdoors are engineered into cryptography, for a benevolent government it might be acceptable, but for malicious hackers the danger of exploitation is boundless."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "数学的",
+     "すうがくてき",
+     "mathematical"
+    ],
+    [
+     "真理",
+     "しんり",
+     "truth"
+    ],
+    [
+     "に",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "例外",
+     "れいがい",
+     "exceptions"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "設ける",
+     "もうける",
+     "create"
+    ],
+    [
+     "ことは",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "できない",
+     null,
+     "cannot"
+    ],
+    [
+     "わね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "One simply cannot engineer selective exceptions into mathematical truth."
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "ええ",
+     null,
+     "yes"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "市民の",
+     "しみんの",
+     "citizens'"
+    ],
+    [
+     "デジタル",
+     null,
+     "digital"
+    ],
+    [
+     "主権",
+     "しゅけん",
+     "sovereignty"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "守る",
+     "まもる",
+     "protect"
+    ],
+    [
+     "ことこそ",
+     null,
+     "that indeed"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "自由な",
+     "じゆうな",
+     "free"
+    ],
+    [
+     "社会",
+     "しゃかい",
+     "society"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "要",
+     "かなめ",
+     "keystone"
+    ],
+    [
+     "なのです",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes. Protecting citizens' digital sovereignty is precisely the keystone of a free society."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "エンドツーエンド",
+     null,
+     "end-to-end"
+    ],
+    [
+     "暗号化",
+     "あんごうか",
+     "encryption"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人権",
+     "じんけん",
+     "human rights"
+    ],
+    [
+     "防壁",
+     "ぼうへき",
+     "shield"
+    ],
+    [
+     "として",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "機能",
+     "きのう",
+     "functions"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "in progress"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! End-to-end encryption functioning as an impenetrable shield for human rights!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "エンジニア",
+     null,
+     "engineers"
+    ],
+    [
+     "として",
+     null,
+     "as",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "市民の",
+     "しみんの",
+     "citizens'"
+    ],
+    [
+     "自由",
+     "じゆう",
+     "freedom"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "守る",
+     "まもる",
+     "defend"
+    ],
+    [
+     "コード",
+     null,
+     "code"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "書き続けたい",
+     "かきつづけたい",
+     "want to keep writing"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "As an engineer, I want to keep writing code that fiercely protects the freedom of citizens."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "誇り高い",
+     "ほこりたかい",
+     "proud"
+    ],
+    [
+     "志",
+     "こころざし",
+     "ambition"
+    ],
+    [
+     "ね",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "法",
+     "ほう",
+     "law"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "手を取り合って",
+     "てをとりあって",
+     "holding hands"
+    ],
+    [
+     "こそ",
+     null,
+     "only because"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "真の",
+     "しんの",
+     "true"
+    ],
+    [
+     "正義",
+     "せいぎ",
+     "justice"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "守られる",
+     "まもられる",
+     "is protected"
+    ],
+    [
+     "わ",
+     null,
+     "tag"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "A noble ambition. Only when technology and law join hands can true justice be defended."
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "サムさん",
+     null,
+     "Sam"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "ような",
+     null,
+     "like"
+    ],
+    [
+     "技術者",
+     "ぎじゅつしゃ",
+     "engineers"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "増える",
+     "ふえる",
+     "increase"
+    ],
+    [
+     "ことを",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "願っ",
+     "ねがっ",
+     "wish"
+    ],
+    [
+     "てやみません",
+     "てやみません",
+     "do not cease to",
+     "p"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I do not cease to pray that more engineers like you, Sam, will rise to the occasion."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "身に余る",
+     "みにあまる",
+     "undeserved"
+    ],
+    [
+     "お言葉",
+     "おことば",
+     "words"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "光栄",
+     "こうえい",
+     "honor"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Your words are more than I deserve; it is an immense honor!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "憲法",
+     "けんぽう",
+     "constitutional"
+    ],
+    [
+     "ゼミ",
+     null,
+     "seminar"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "満場",
+     "まんじょう",
+     "unanimous"
+    ],
+    [
+     "一致",
+     "いっち",
+     "consent"
+    ],
+    [
+     "で",
+     null,
+     "with",
+     "p"
+    ],
+    [
+     "拍手",
+     "はくしゅ",
+     "applause"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! The constitutional seminar erupts in unanimous applause!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "さあ",
+     null,
+     "come on"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "赤門",
+     "あかもん",
+     "Red Gate"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "抜けて",
+     "ぬけて",
+     "pass through"
+    ],
+    [
+     "本郷の",
+     "ほんごうの",
+     "Hongo's"
+    ],
+    [
+     "喫茶店",
+     "きっさてん",
+     "cafe"
+    ],
+    [
+     "へ",
+     null,
+     "to",
+     "p"
+    ],
+    [
+     "行きましょう",
+     "いきましょう",
+     "let's go"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Come on, let's pass through the Red Gate and visit a classic cafe in Hongo."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "文豪たち",
+     "ぶんごうたち",
+     "literary masters"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "通った",
+     "かよった",
+     "frequented"
+    ],
+    [
+     "歴史ある",
+     "れきしある",
+     "historic"
+    ],
+    [
+     "街ですね",
+     "まちですね",
+     "city isn't it"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The historic neighborhood frequented by classic literary masters!"
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "夏目漱石",
+     "なつめそうせき",
+     "Soseki Natsume"
+    ],
+    [
+     "や",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "森鴎外",
+     "もりおうがい",
+     "Ogai Mori"
+    ],
+    [
+     "ゆかりの",
+     null,
+     "connected to"
+    ],
+    [
+     "店角",
+     "みせかど",
+     "storefronts"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ご案内",
+     "ごあんない",
+     "guide"
+    ],
+    [
+     "しましょう",
+     null,
+     "let's"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Let me guide you through the historic spots connected to Soseki Natsume and Ogai Mori."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "文学の",
+     "ぶんがくの",
+     "literature's"
+    ],
+    [
+     "香り",
+     "かおり",
+     "fragrance"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "漂う",
+     "ただよう",
+     "drifting"
+    ],
+    [
+     "街並み",
+     "まちなみ",
+     "streets"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "素敵",
+     "すてき",
+     "lovely"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Streets carrying the scent of classic literature are so charming."
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "明治の",
+     "めいじの",
+     "Meiji era's"
+    ],
+    [
+     "名作",
+     "めいさく",
+     "masterpieces"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "全文",
+     "ぜんぶん",
+     "full text"
+    ],
+    [
+     "照合",
+     "しょうごう",
+     "cross-check"
+    ],
+    [
+     "完了",
+     "かんりょう",
+     "complete"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Full texts of Meiji masterpieces successfully cross-referenced!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "いつでも",
+     null,
+     "anytime"
+    ],
+    [
+     "即答",
+     "そくとう",
+     "immediate answer"
+    ],
+    [
+     "できる",
+     null,
+     "can"
+    ],
+    [
+     "ブリップ",
+     null,
+     "Blip"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "歩く",
+     "あるく",
+     "walking"
+    ],
+    [
+     "図書館ね",
+     "としょかんね",
+     "library"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, Blip who answers instantly is a walking library!"
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "心強い",
+     "こころづよい",
+     "heartening"
+    ],
+    [
+     "相棒",
+     "あいぼう",
+     "partner"
+    ],
+    [
+     "です",
+     null,
+     "is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "He is such an indispensable companion."
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "珈琲",
+     "こーひー",
+     "coffee"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "深煎りの",
+     "ふかいりの",
+     "dark roast"
+    ],
+    [
+     "苦味",
+     "にがみ",
+     "bitterness"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "思索の",
+     "しさくの",
+     "contemplation's"
+    ],
+    [
+     "お供に",
+     "おともに",
+     "companion"
+    ],
+    [
+     "最高",
+     "さいこう",
+     "best"
+    ],
+    [
+     "ですよ",
+     null,
+     "it is"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "The bitter aroma of dark-roast coffee is the finest companion for contemplation."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "いただきます",
+     null,
+     "thank you for treat"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "落ち着く",
+     "おちつく",
+     "calm"
+    ],
+    [
+     "空間",
+     "くうかん",
+     "space"
+    ],
+    [
+     "ですね",
+     null,
+     "isn't it"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you! What a soothing space."
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "デジタル",
+     null,
+     "digital"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "世界",
+     "せかい",
+     "world"
+    ],
+    [
+     "に",
+     null,
+     "in",
+     "p"
+    ],
+    [
+     "生きる",
+     "いきる",
+     "live"
+    ],
+    [
+     "からこそ",
+     null,
+     "precisely because"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "アナログの",
+     "あなろぐの",
+     "analog"
+    ],
+    [
+     "温もり",
+     "ぬくもり",
+     "warmth"
+    ],
+    [
+     "が",
+     null,
+     "subject",
+     "p"
+    ],
+    [
+     "大切ね",
+     "たいせつね",
+     "important"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Precisely because we live in a digital world, analog warmth is all the more essential."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "深く",
+     "ふかく",
+     "deeply"
+    ],
+    [
+     "同感",
+     "どうかん",
+     "agree"
+    ],
+    [
+     "します",
+     null,
+     "do"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "I agree deeply."
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "技術",
+     "ぎじゅつ",
+     "technology"
+    ],
+    [
+     "と",
+     null,
+     "and",
+     "p"
+    ],
+    [
+     "人文学",
+     "じんぶんがく",
+     "humanities"
+    ],
+    [
+     "の",
+     null,
+     "of",
+     "p"
+    ],
+    [
+     "融合",
+     "ゆうごう",
+     "fusion"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "これからも",
+     null,
+     "from now on too"
+    ],
+    [
+     "探求",
+     "たんきゅう",
+     "pursue"
+    ],
+    [
+     "して",
+     null,
+     "do"
+    ],
+    [
+     "いってください",
+     null,
+     "please go on"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Please continue exploring the rich fusion of technology and the humanities."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "はい",
+     null,
+     "yes"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "精進",
+     "しょうじん",
+     "devote"
+    ],
+    [
+     "いたします",
+     null,
+     "do (humble)"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Yes, I will devote myself wholeheartedly!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "人文学",
+     "じんぶんがく",
+     "humanities"
+    ],
+    [
+     "データベース",
+     null,
+     "database"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "常時",
+     "じょうじ",
+     "continuous"
+    ],
+    [
+     "アップデート",
+     null,
+     "update"
+    ],
+    [
+     "中",
+     "ちゅう",
+     "in progress"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! Humanities knowledge base continuously updating!"
+  },
+  {
+   "who": "ゆき",
+   "t": [
+    [
+     "ふふ",
+     null,
+     "chuckle"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "頼もしいわね",
+     "たのもしいわね",
+     "how reliable"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Hehe, how reliable!"
+  },
+  {
+   "who": "田中教授",
+   "t": [
+    [
+     "今日",
+     "きょう",
+     "today"
+    ],
+    [
+     "は",
+     null,
+     "topic",
+     "p"
+    ],
+    [
+     "有意義な",
+     "ゆういぎな",
+     "meaningful"
+    ],
+    [
+     "ひと時",
+     "ひととき",
+     "moment"
+    ],
+    [
+     "を",
+     null,
+     "object",
+     "p"
+    ],
+    [
+     "ありがとうございました",
+     null,
+     "thank you very much"
+    ],
+    [
+     "。",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Thank you for such a meaningful afternoon together."
+  },
+  {
+   "who": "サム",
+   "t": [
+    [
+     "こちらこそ",
+     null,
+     "likewise"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "ありがとうございました",
+     null,
+     "thank you very much"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Likewise, thank you so very much!"
+  },
+  {
+   "who": "ブリップ",
+   "t": [
+    [
+     "ピピッ",
+     null,
+     "beep"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "知の探求",
+     "ちのたんきゅう",
+     "quest of knowledge"
+    ],
+    [
+     "、",
+     null,
+     null,
+     "x"
+    ],
+    [
+     "永遠に",
+     "えいえんに",
+     "forever"
+    ],
+    [
+     "続け",
+     "つづけ",
+     "continue"
+    ],
+    [
+     "！",
+     null,
+     null,
+     "x"
+    ]
+   ],
+   "en": "Beep! May the quest for knowledge continue forever!"
+  }
+ ],
+ "grammar": [
+  {
+   "id": "naku-shite-wa",
+   "title": "～なくしては: without, if lacking (indispensable foundation)",
+   "explain": "Noun + なくしては expresses that without element A, outcome B is utterly impossible.",
+   "examples": [
+    {
+     "t": [
+      [
+       "自由",
+       "じゆう",
+       "freedom"
+      ],
+      [
+       "なくしては",
+       null,
+       "without",
+       "p"
+      ],
+      [
+       "民主主義",
+       "みんしゅしゅぎ",
+       "democracy"
+      ],
+      [
+       "は",
+       null,
+       "topic",
+       "p"
+      ],
+      [
+       "成り立たない",
+       "なりたたない",
+       "cannot exist"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "Without freedom, democracy cannot exist."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "信頼関係＿＿、共同研究は成功しない。",
+     "hint": "Without mutual trust, joint research cannot succeed.",
+     "choices": [
+      "なくしては",
+      "に際して",
+      "おそれがある"
+     ],
+     "answer": 0,
+     "why": "なくしては indicates an indispensable requirement."
+    }
+   ]
+  },
+  {
+   "id": "taru-mono",
+   "title": "～たるもの: as one who is (noble role/duty)",
+   "explain": "Noun + たるもの expresses the ethical obligation required of a person in a solemn office.",
+   "examples": [
+    {
+     "t": [
+      [
+       "法学者",
+       "ほうがくしゃ",
+       "legal scholar"
+      ],
+      [
+       "たるもの",
+       null,
+       "as one who is",
+       "p"
+      ],
+      [
+       "憲法",
+       "けんぽう",
+       "constitution"
+      ],
+      [
+       "を",
+       null,
+       "object",
+       "p"
+      ],
+      [
+       "守る",
+       "まもる",
+       "defend"
+      ],
+      [
+       "。",
+       null,
+       null,
+       "x"
+      ]
+     ],
+     "en": "As a legal scholar, defending the constitution."
+    }
+   ],
+   "quiz": [
+    {
+     "q": "リーダー＿＿、常に先頭に立って行動すべきだ。",
+     "hint": "As a true leader, one ought to stand at the forefront and act.",
+     "choices": [
+      "たるもの",
+      "ずくめ",
+      "かねない"
+     ],
+     "answer": 0,
+     "why": "たるもの denotes high moral or professional duty."
+    }
+   ]
+  }
+ ],
+ "kanji": [
+  {
+   "k": "傍",
+   "on": [
+    "ボウ"
+   ],
+   "kun": [
+    "かたわ.ら",
+    "そば"
+   ],
+   "m": [
+    "bystander",
+    "side"
+   ],
+   "ex": [
+    [
+     "傍受",
+     "ぼうじゅ",
+     "interception"
+    ],
+    [
+     "傍観",
+     "ぼうかん",
+     "looking on"
+    ]
+   ]
+  },
+  {
+   "k": "擁",
+   "on": [
+    "ヨウ"
+   ],
+   "kun": [],
+   "m": [
+    "embrace",
+    "protect"
+   ],
+   "ex": [
+    [
+     "擁護",
+     "ようご",
+     "defense/protection"
+    ],
+    [
+     "擁立",
+     "ようりつ",
+     "backing"
+    ]
+   ]
+  },
+  {
+   "k": "豪",
+   "on": [
+    "ゴウ"
+   ],
+   "kun": [],
+   "m": [
+    "overpowering",
+    "splendid"
+   ],
+   "ex": [
+    [
+     "文豪",
+     "ぶんごう",
+     "literary master"
+    ],
+    [
+     "富豪",
+     "ふごう",
+     "wealthy person"
+    ]
+   ]
+  },
+  {
+   "k": "鑑",
+   "on": [
+    "カン"
+   ],
+   "kun": [
+    "かがみ",
+    "かんが.みる"
+   ],
+   "m": [
+    "specimen",
+    "learn from"
+   ],
+   "ex": [
+    [
+     "鑑みる",
+     "かんがみる",
+     "in light of"
+    ],
+    [
+     "図鑑",
+     "ずかん",
+     "illustrated guide"
+    ]
+   ]
+  }
+ ],
+ "build": [
+  2,
+  6
+ ],
+ "questions": [
+  {
+   "q": "シンポジウムでサムが暗号バックドアに反対した理由は何ですか？",
+   "choices": [
+    "一度例外を作れば悪意の攻撃者にも悪用されプライバシーが破壊されるため",
+    "暗号を作るのが面倒なため",
+    "政府にお金がないため"
+   ],
+   "answer": 0,
+   "why": "善意の政府ならいざ知らず、悪意の攻撃者に悪用される危険が極まりないと指摘しています。"
+  },
+  {
+   "q": "ブリップが引用した日本国憲法の条文は何ですか？",
+   "choices": [
+    "通信の秘密を侵してはならないとする第21条第2項",
+    "納税の義務",
+    "勤労の義務"
+   ],
+   "answer": 0,
+   "why": "第21条第2項の「通信の秘密は、これを侵してはならない」を引用しています。"
+  }
+ ],
+ "talk": "You are Professor Tanaka discussing constitutional privacy rights and digital encryption with Sam."
+}

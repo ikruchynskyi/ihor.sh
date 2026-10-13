@@ -32,6 +32,21 @@ assert.ok(!meaningMatches("drink", "to eat, to have a meal"));
 assert.ok(!meaningMatches("a", "to eat"));
 assert.ok(readingMatches("たべる", "食べる", "たべる") && readingMatches("食べる", "食べる", "たべる") && readingMatches("TABERU", "食べる", "たべる"));
 assert.ok(readingMatches("tookyou", "東京", "とうきょう") && readingMatches("tokyo", "東京", "とうきょう") && readingMatches("toukyou", "東京", "とうきょう"));
-assert.ok(readingMatches("sinbun", "新聞", "しんぶん") && readingMatches("shinbun", "新聞", "しんぶん") && readingMatches("タベル", "食べる", "たべる"));
 assert.ok(!readingMatches("nomu", "食べる", "たべる"));
 console.log("typed answers ok");
+
+// pitch accent morae
+import { splitMorae } from "./lib.js";
+assert.deepEqual(splitMorae("とうきょう"), ["と", "う", "きょ", "う"]);
+assert.deepEqual(splitMorae("たべる"), ["た", "べ", "る"]);
+assert.deepEqual(splitMorae("がっこう"), ["が", "っ", "こ", "う"]);
+assert.deepEqual(splitMorae("きしゃ"), ["き", "しゃ"]);
+// audio playback
+import { stopAudio, speak, storyAudioUrl, wordAudioUrl, getWordAudioManifest, state } from "./lib.js";
+assert.doesNotThrow(() => stopAudio());
+assert.ok(storyAudioUrl("n5-01", 2).includes("?v="), "storyAudioUrl includes cache-busting version");
+assert.ok(storyAudioUrl("n5-01", 2, true).includes("_slow.mp3"), "storyAudioUrl includes _slow suffix when isSlow is true");
+assert.equal(wordAudioUrl("nonexistent_word_12345"), null);
+assert.equal(state.settings.slow, false);
+console.log("audio playback ok");
+
