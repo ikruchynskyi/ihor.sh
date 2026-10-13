@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deep Networks, Layer by Layer</title>
+  <meta name="description" content="AI from scratch: an L-layer neural network from scratch. Layer notation and shapes, a whole batch as one matrix with broadcasting, backprop in matrix form, why zero initialization fails and how He init fixes it, why depth beats width (a sawtooth that doubles with every layer), parameters vs hyperparameters, and a deep network learning a spiral live in the page." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    canvas.square { aspect-ratio: 1 / 1; max-width: 480px; margin: 0 auto; }
+    canvas.low { aspect-ratio: 5 / 1; margin-top: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .wide { overflow-x: auto; }
+    #arch { font: 16px ui-monospace, Menlo, monospace; width: 12em; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Stage 2: how a network learns</p>
+  <h1>Deep networks, layer by layer</h1>
+  <p class="lede">Chapter 3 built one neuron and chapter 4 pushed blame backward through two. Real networks have many layers of many neurons, and they train on a whole batch of examples at once. This lesson writes that down properly: the notation every paper uses, the matrix shapes (most deep learning bugs are shape bugs), backprop for any depth, and two things that decide whether training works at all, how you start the weights and how deep you go. Then you train one on a spiral, live.</p>
+
+  <h2>1. The notation: layer \(l\), unit \(i\), example \(m\)</h2>
+  <p>Number the layers 0 (the input) to \(L\) (the output). Layer \(l\) has \(n_l\) units. Each layer does what chapter 1 called "move, then bend": a matrix and a bias, then an activation \(g\):</p>
+  <p class="formula">\[ z^{[l]} = W^{[l]} a^{[l-1]} + b^{[l]}, \qquad a^{[l]} = g(z^{[l]}), \qquad a^{[0]} = x \]</p>
+  <p>Square brackets count layers. \(W^{[l]}\) has one row per unit in layer \(l\) and one column per unit feeding it, so its shape is \((n_l, n_{l-1})\); \(b^{[l]}\) has shape \((n_l, 1)\). Type a network's layer sizes to see every shape and the number of knobs:</p>
+  <div class="row"><label>layer sizes <input id="arch" value="2, 16, 16, 1"></label></div>
+  <div class="wide"><table class="rules" id="shapes"></table></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-num="337">
+    <p>How many parameters (weights plus biases) does a 2, 16, 16, 1 network have? Work it out, then check the table.</p>
+    <div class="why">Layer 1: \(16 \times 2 + 16 = 48\). Layer 2: \(16 \times 16 + 16 = 272\). Layer 3: \(1 \times 16 + 1 = 17\). Total 337. The middle square layer dominates: parameter counts grow with width <i>squared</i>.</div>
+  </div>
+
+  <h2>2. A whole batch is one matrix</h2>
+  <p>Running examples one at a time in a loop wastes the hardware. Instead, stack \(m\) examples as the <b>columns</b> of a matrix \(X\) with shape \((n_0, m)\). Then one matrix product computes the layer for all of them at once:</p>
+  <p class="formula">\[ Z^{[l]} = W^{[l]} A^{[l-1]} + b^{[l]}, \qquad (n_l, m) = (n_l, n_{l-1}) \cdot (n_{l-1}, m) + (n_l, 1) \]</p>
+  <p>Adding a \((n_l, 1)\) bias to a \((n_l, m)\) matrix isn't strictly allowed, so every library <b>broadcasts</b> it: copies the column across all \(m\) examples. Capital letters for batches, small for one example. This is <b>vectorization</b>, and it's why GPUs (stage 4) matter: one big matrix product runs thousands of times faster than the same arithmetic in a loop.</p>
+  <div class="q" data-answer="c">
+    <p>A batch of 500 examples enters a 2, 16, 16, 1 network. What's the shape of \(Z^{[1]}\)?</p>
+    <ul><li data-k="a" data-says="That's W¹'s shape. Z has one column per example.">(16, 2)</li><li data-k="b" data-says="Rows are units here, columns are examples (some libraries flip this; be consistent).">(500, 16)</li><li data-k="c">(16, 500)</li></ul>
+    <div class="why">\((16, 2) \cdot (2, 500) = (16, 500)\): one row per unit, one column per example. Writing the shapes under every line of a formula is the fastest bug-finder in deep learning. (PyTorch puts examples in rows, \((m, n)\), and writes \(XW^\top\); same idea, transposed.)</div>
+  </div>
+  <div class="code" id="mx" data-title="Build it: matrix helpers with a shape check"><textarea>
+// matrices as arrays of rows; every operation checks shapes and says which ones clashed
+const shape = (A) => [A.length, A[0].length];
+function matmul(A, B) {
+  const [n, k] = shape(A), [k2, m] = shape(B);
+  if (k !== k2) throw new Error(`matmul: (${n}, ${k}) · (${k2}, ${m}): inner sizes ${k} and ${k2} differ`);
+  return A.map((row) => Array.from({ length: m }, (_, j) => row.reduce((s, a, t) => s + a * B[t][j], 0)));
+}
+const addBias = (Z, b) => Z.map((row, i) => row.map((v) => v + b[i][0]));          // broadcast (n, 1) across m columns
+const T = (A) => A[0].map((_, j) => A.map((row) => row[j]));                       // transpose
+const map = (A, f) => A.map((row) => row.map(f));
+const randn = (n, m, s = 1) => Array.from({ length: n }, () => Array.from({ length: m }, () => s * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random())));
+
+const X = randn(2, 5), W1 = randn(16, 2), b1 = randn(16, 1, 0);
+print("Z1 shape:", shape(addBias(matmul(W1, X), b1)));
+try { matmul(X, W1); } catch (e) { print("as expected:", e.message); }
+</textarea></div>
+
+  <h2>3. Backprop for any depth</h2>
+  <p>Chapter 4's relay of blame, written once for every layer and every example at once. With a sigmoid output and cross-entropy loss (chapter 5), the blame at the output is just "prediction minus truth". Then each layer hands blame back through its weights and its activation's slope:</p>
+  <div class="wide"><table class="rules">
+    <tr><th>step</th><th>formula</th><th>shape</th></tr>
+    <tr><td>output blame</td><td>\(dZ^{[L]} = A^{[L]} - Y\)</td><td>\((n_L, m)\)</td></tr>
+    <tr><td>weight gradient</td><td>\(dW^{[l]} = \frac{1}{m}\, dZ^{[l]} A^{[l-1]\top}\)</td><td>\((n_l, n_{l-1})\), same as \(W^{[l]}\)</td></tr>
+    <tr><td>bias gradient</td><td>\(db^{[l]} = \frac{1}{m} \sum_{\text{columns}} dZ^{[l]}\)</td><td>\((n_l, 1)\), same as \(b^{[l]}\)</td></tr>
+    <tr><td>blame to the layer below</td><td>\(dA^{[l-1]} = W^{[l]\top} dZ^{[l]}\)</td><td>\((n_{l-1}, m)\)</td></tr>
+    <tr><td>through the bend</td><td>\(dZ^{[l-1]} = dA^{[l-1]} \odot g'(Z^{[l-1]})\)</td><td>\((n_{l-1}, m)\)</td></tr>
+  </table></div>
+  <p>\(\odot\) is element-by-element multiplication. The shapes check themselves: every gradient has exactly the shape of the thing it updates, and \(W^\top\) is the only way to get from \(n_l\) rows back to \(n_{l-1}\). The bias gradient sums over the examples because one bias serves them all (Calculus 2: a value used many times collects blame from every use). These are the same vector-Jacobian products from Calculus 2, batched.</p>
+
+  <h2>4. Train one: a spiral</h2>
+  <p>Two interleaved spirals, 100 points each. No straight line, or small set of them, separates them. The background shows what the network currently answers everywhere: <span style="color:#58c4dd;font-weight:700">blue</span> or <span style="color:#fc6255;font-weight:700">red</span>, paler where it's unsure. Press <b>Train</b>.</p>
+  <canvas id="spiral" class="square" width="480" height="480" aria-label="Two spirals and the network's decision regions"></canvas>
+  <canvas id="lossCv" class="low" width="800" height="160" aria-label="Loss over training steps"></canvas>
+  <div class="row">
+    <label>layers <select id="netSel">
+      <option value="2,16,16,1">2-16-16-1 (337 parameters)</option>
+      <option value="2,16,16,16,1">2-16-16-16-1 (609)</option>
+      <option value="2,84,1">2-84-1, one wide layer (337)</option>
+      <option value="2,4,1">2-4-1, tiny (17)</option>
+    </select></label>
+    <label>activation <select id="actSel"><option value="tanh">tanh</option><option value="relu">ReLU</option></select></label>
+    <label>start weights <select id="initSel"><option value="he">random, scaled (He/Xavier)</option><option value="small">random × 0.01</option><option value="zero">all zero</option></select></label>
+    <label>learning rate <select id="lrSel"><option>0.05</option><option>0.1</option><option>0.3</option><option selected>0.5</option><option>1</option><option>3</option><option>10</option></select></label>
+  </div>
+  <div class="row"><button id="go">Train</button><button id="reset">New start</button></div>
+  <p class="readout" id="r2"></p>
+  <p>Things to try, each one a lesson of its own:</p>
+  <ul>
+    <li><b>All zero</b>: the loss sits at 0.693 (a coin flip, \(\ln 2\)) forever.</li>
+    <li><b>Random × 0.01</b> with three hidden layers: it barely moves for thousands of steps.</li>
+    <li><b>One wide layer</b>, same 337 parameters: it learns, but far more slowly. In our tests it reached about 82% after 8000 steps, while two layers of 16 hit 100% by about 4000.</li>
+    <li><b>Learning rate 10</b>: the loss jumps around or blows up (Calculus 3's \(2/k\) limit). <b>0.05</b>: it crawls.</li>
+  </ul>
+  <div class="q" data-answer="b">
+    <p>Why does starting with all weights at zero never work?</p>
+    <ul><li data-k="a" data-says="The gradients aren't zero everywhere: the output bias still learns. The problem is subtler.">Zero weights make every gradient zero</li><li data-k="b">Every unit in a layer computes the same thing and gets the same gradient, so they stay identical copies forever</li><li data-k="c" data-says="The learning rate can't help: whatever step one unit takes, its twins take exactly the same one.">The learning rate is too small</li></ul>
+    <div class="why">With identical starting weights, the units are interchangeable: same inputs, same outputs, same blame, same update, forever. Sixteen units act like one. Random starting values <b>break the symmetry</b> so each unit can specialize.</div>
+  </div>
+
+  <h2>5. How big should the random start be?</h2>
+  <p>Too small, and signals shrink layer after layer: with weights around 0.01 the activations a few layers in are nearly zero, so the gradients are too, and a deep network sits frozen (that's the "× 0.01" option). Too big, and they explode, or tanh units saturate where their slope is 0 (Calculus 1's vanishing gradients). The fix is to keep each layer's output about as spread out as its input.</p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>One unit sums \(n_{l-1}\) inputs times weights: \(z = \sum_j w_j a_j\). If the weights and inputs are independent with mean 0, variances add (Probability 3), so \(\operatorname{Var}(z) = n_{l-1} \operatorname{Var}(w) \operatorname{Var}(a)\). To keep \(\operatorname{Var}(z) = \operatorname{Var}(a)\), choose</p>
+    <p class="formula">\[ \operatorname{Var}(w) = \frac{1}{n_{l-1}} \;\;\text{(Xavier, for tanh)}, \qquad \operatorname{Var}(w) = \frac{2}{n_{l-1}} \;\;\text{(He, for ReLU)} \]</p>
+    <p>ReLU gets the extra 2 because it zeroes half its inputs, halving the variance. So in code: <code>W = randn(n_l, n_prev) * sqrt(2 / n_prev)</code>. Stage 4's "making deep nets train" adds normalization layers that keep this balance during training too.</p>
+  </details>
+  <div class="q" data-num="0.25" data-tol="0.002">
+    <p>A ReLU layer takes 32 inputs. With He initialization, what's the standard deviation of its starting weights?</p>
+    <div class="why">\(\sqrt{2/32} = \sqrt{1/16} = 0.25\).</div>
+  </div>
+
+  <h2>6. Why deep and not just wide?</h2>
+  <p>One hidden layer can in principle approximate any reasonable function, but it may need absurdly many units. Depth lets a network <b>reuse</b> what earlier layers built. The cleanest picture is a fold. Two ReLU units make a tent: up, then down, on \([0, 1]\). Feed the tent into another tent and you get two teeth; again, four. Each layer of just 2 units <b>doubles</b> the number of straight pieces:</p>
+  <canvas id="saw" width="800" height="400" aria-label="Composing a tent function with itself: the pieces double with each layer"></canvas>
+  <div class="row"><label>layers <input type="range" id="depth" min="1" max="7" step="1" value="1"> <b id="depthV" class="math"></b></label></div>
+  <p class="readout" id="r3"></p>
+  <p>A single hidden layer of ReLUs makes one straight piece per unit (roughly), so matching \(2^k\) pieces takes about \(2^k\) units; depth does it with \(2k\). Real tasks are built the same way, from parts of parts: edges → corners → shapes → objects in an image (chapter 6), letters → words → phrases in text. Deep networks match that structure. A classic example: the parity of \(n\) bits (is the count of 1s odd?) takes a one-hidden-layer network about \(2^{n-1}\) units but a deep tree of XORs only about \(n\).</p>
+  <div class="q" data-num="32">
+    <p>How many straight pieces does the sawtooth have after 5 layers?</p>
+    <div class="why">\(2^5 = 32\), from just 10 ReLU units. A single hidden layer would need about 32.</div>
+  </div>
+
+  <h2>7. Parameters vs hyperparameters</h2>
+  <div class="wide"><table class="rules">
+    <tr><th></th><th>who sets it</th><th>examples</th></tr>
+    <tr><td><b>Parameters</b></td><td>training, by gradient descent</td><td>every \(W^{[l]}\) and \(b^{[l]}\)</td></tr>
+    <tr><td><b>Hyperparameters</b></td><td>you, before training (then you compare runs on validation data, chapter 11)</td><td>number of layers and units, activation, learning rate, number of steps, initialization, batch size, regularization strength \(\lambda\)</td></tr>
+  </table></div>
+  <p>Choosing hyperparameters is empirical: try, measure on held-out data, adjust. Applied deep learning is a loop of exactly that, and stage 4 shows how to search them sensibly (random search, log scales for the learning rate).</p>
+  <div class="q" data-answer="b">
+    <p>Which of these does gradient descent learn?</p>
+    <ul><li data-k="a" data-says="You pick it before training; the weights don't decide it.">The learning rate</li><li data-k="b">The bias of the third unit in layer 2</li><li data-k="c" data-says="That's architecture: decided before training starts.">The number of hidden layers</li></ul>
+    <div class="why">Biases and weights are parameters. Everything that shapes how training runs is a hyperparameter.</div>
+  </div>
+
+  <h2>8. The whole network in code</h2>
+  <p>Everything above in one program: initialize, forward, loss, backward, update, for any list of layer sizes. Batch as columns, shapes checked by the helpers from section 2.</p>
+  <div class="code" data-uses="mx" data-title="Build it: an L-layer network from scratch"><textarea>
+// two spirals, examples as columns: X is (2, m), Y is (1, m)
+const m = 200, pts = [];
+for (let c = 0; c < 2; c++) for (let i = 0; i < m / 2; i++) { const t = i / (m / 2), r = 0.15 + 0.85 * t, a = 3.5 * Math.PI * t + c * Math.PI + 0.15 * randn(1, 1)[0][0]; pts.push([r * Math.cos(a), r * Math.sin(a), c]); }
+const X = [pts.map((p) => p[0]), pts.map((p) => p[1])], Y = [pts.map((p) => p[2])];
+
+const sizes = [2, 16, 16, 1], lr = 0.5;   // 2500 steps take a few seconds
+const net = sizes.slice(1).map((n, l) => ({ W: randn(n, sizes[l], Math.sqrt(1 / sizes[l])), b: randn(n, 1, 0) }));   // Xavier, for tanh
+const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+
+const losses = [];
+for (let step = 0; step <= 2500; step++) {
+  // forward: keep every layer's A for the backward pass
+  const A = [X];
+  net.forEach(({ W, b }, l) => A.push(map(addBias(matmul(W, A[l]), b), l === net.length - 1 ? sigmoid : Math.tanh)));
+  const P = A.at(-1)[0];
+  const loss = -P.reduce((s, p, i) => s + (Y[0][i] ? Math.log(p) : Math.log(1 - p)), 0) / m;
+  if (step % 100 === 0) losses.push([step, loss]);
+  // backward
+  let dZ = [P.map((p, i) => p - Y[0][i])];                                        // (1, m)
+  for (let l = net.length - 1; l >= 0; l--) {
+    const dW = map(matmul(dZ, T(A[l])), (v) => v / m);                            // same shape as W
+    const db = dZ.map((row) => [row.reduce((s, v) => s + v, 0) / m]);             // same shape as b
+    if (l > 0) dZ = matmul(T(net[l].W), dZ).map((row, i) => row.map((v, j) => v * (1 - A[l][i][j] ** 2)));   // tanh' = 1 − a²
+    net[l].W = net[l].W.map((row, i) => row.map((w, j) => w - lr * dW[i][j]));
+    net[l].b = net[l].b.map((row, i) => [row[0] - lr * db[i][0]]);
+  }
+}
+plot(losses, { label: "loss every 100 steps" });
+print("final loss:", losses.at(-1)[1].toFixed(4));
+</textarea></div>
+
+  <h2>9. What to carry forward</h2>
+  <ul>
+    <li>Layer \(l\): \(Z^{[l]} = W^{[l]} A^{[l-1]} + b^{[l]}\), \(A^{[l]} = g(Z^{[l]})\). \(W^{[l]}\) is \((n_l, n_{l-1})\); a batch is \((n, m)\) with examples as columns; biases broadcast.</li>
+    <li>Backprop for any depth: \(dZ^{[L]} = A^{[L]} - Y\), \(dW = \frac1m dZ\,A^\top\), \(db\) sums over examples, \(dA = W^\top dZ\), times \(g'\). Every gradient has its parameter's shape.</li>
+    <li><b>Random</b> initialization breaks symmetry; <b>scaled</b> initialization (\(1/n\) Xavier, \(2/n\) He) keeps signals from vanishing or exploding.</li>
+    <li><b>Depth</b> builds on itself: each layer can double the pieces; deep beats wide for the same parameters on structured problems.</li>
+    <li><b>Parameters</b> are learned; <b>hyperparameters</b> are chosen by you and checked on validation data.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+// 1. shapes table
+function r1() {
+  const sizes = $("arch").value.split(/[,\s]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 12);
+  if (sizes.length < 2) { $("shapes").innerHTML = ""; $("r1").textContent = "type at least two sizes, like 2, 16, 1"; return; }
+  let total = 0;
+  $("shapes").innerHTML = `<tr><th>layer</th><th>W shape</th><th>b shape</th><th>parameters</th></tr>` + sizes.slice(1).map((n, l) => {
+    const p = n * sizes[l] + n; total += p;
+    return `<tr><td>${l + 1}</td><td>(${n}, ${sizes[l]})</td><td>(${n}, 1)</td><td>${n} × ${sizes[l]} + ${n} = ${p.toLocaleString()}</td></tr>`;
+  }).join("");
+  $("r1").textContent = `${sizes.length - 1} layers with weights · ${total.toLocaleString()} parameters`;
+}
+$("arch").oninput = r1;
+
+// 4. the spiral trainer (examples as rows here; same math as the table)
+const R = mulberry32(1), gauss = () => Math.sqrt(-2 * Math.log(1 - R())) * Math.cos(2 * Math.PI * R());
+const pts = []; for (let c = 0; c < 2; c++) for (let i = 0; i < 100; i++) { const t = i / 100, r = 0.15 + 0.85 * t, a = 3.5 * Math.PI * t + c * Math.PI + 0.15 * gauss(); pts.push([r * Math.cos(a), r * Math.sin(a), c]); }
+const G = { tanh: [Math.tanh, (z, a) => 1 - a * a], relu: [(z) => (z > 0 ? z : 0), (z) => (z > 0 ? 1 : 0)] };
+let net, act, steps, losses, running = false, lastAcc = 0, cheered = false;
+function init() {
+  const sizes = $("netSel").value.split(",").map(Number), kind = $("initSel").value;
+  act = $("actSel").value; steps = 0; losses = []; cheered = false;
+  const r = mulberry32(7), gs = () => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+  net = sizes.slice(1).map((n, l) => { const s = kind === "zero" ? 0 : kind === "small" ? 0.01 : Math.sqrt((act === "relu" ? 2 : 1) / sizes[l]);
+    return { W: Array.from({ length: n }, () => Array.from({ length: sizes[l] }, () => s * gs())), b: new Array(n).fill(0) }; });
+}
+function forward(x) {
+  let a = x; const As = [a], Zs = [];
+  net.forEach(({ W, b }, l) => { const z = W.map((row, i) => row.reduce((s, w, j) => s + w * a[j], b[i])), last = l === net.length - 1;
+    a = z.map((v) => (last ? 1 / (1 + Math.exp(-v)) : G[act][0](v))); Zs.push(z); As.push(a); });
+  return { As, Zs };
+}
+function trainStep(lr) {
+  const m = pts.length, grads = net.map(({ W, b }) => ({ W: W.map((row) => row.map(() => 0)), b: b.map(() => 0) }));
+  let loss = 0, right = 0;
+  for (const [x0, x1, y] of pts) {
+    const { As, Zs } = forward([x0, x1]), p = As.at(-1)[0];
+    loss -= y ? Math.log(p + 1e-12) : Math.log(1 - p + 1e-12); right += (p > 0.5) === !!y;
+    let dz = [p - y];
+    for (let l = net.length - 1; l >= 0; l--) {
+      const a = As[l];
+      dz.forEach((d, i) => { grads[l].b[i] += d / m; a.forEach((v, j) => (grads[l].W[i][j] += (d * v) / m)); });
+      if (l > 0) dz = a.map((v, j) => net[l].W.reduce((s, row, i) => s + row[j] * dz[i], 0) * G[act][1](Zs[l - 1][j], v));
+    }
+  }
+  net.forEach(({ W, b }, l) => { W.forEach((row, i) => row.forEach((_, j) => (row[j] -= lr * grads[l].W[i][j]))); b.forEach((_, i) => (b[i] -= lr * grads[l].b[i])); });
+  steps++; return { loss: loss / m, acc: right / m };
+}
+function draw() {
+  const cv = $("spiral"), g = cv.getContext("2d"), N = 60, s = cv.width / N, img = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    const x = -1.2 + (2.4 * (i + 0.5)) / N, y = 1.2 - (2.4 * (j + 0.5)) / N, p = forward([x, y]).As.at(-1)[0], k = Math.abs(p - 0.5) * 2;
+    img.push([i, j, p > 0.5 ? `rgba(252,98,85,${0.12 + 0.45 * k})` : `rgba(88,196,221,${0.12 + 0.45 * k})`]);
+  }
+  g.fillStyle = C.stage; g.fillRect(0, 0, cv.width, cv.height);
+  for (const [i, j, f] of img) { g.fillStyle = f; g.fillRect(i * s, j * s, s + 0.5, s + 0.5); }
+  for (const [x, y, c] of pts) { g.fillStyle = c ? C.red : C.blue; g.strokeStyle = "#14171d"; g.lineWidth = 1.5; g.beginPath(); g.arc(((x + 1.2) / 2.4) * cv.width, ((1.2 - y) / 2.4) * cv.height, 4.5, 0, 7); g.fill(); g.stroke(); }
+  const top = Math.max(0.8, ...losses.map((l) => l[1]).slice(0, 1)), L = graph("lossCv", [0, Math.max(100, steps)], [0, top], { step: [1e9, 1e9], labels: false });
+  if (losses.length > 1) { L.g.strokeStyle = C.yellow; L.g.lineWidth = 2; L.g.beginPath(); losses.forEach(([k, v], i) => (i ? L.g.lineTo(L.X(k), L.Y(Math.min(top, v))) : L.g.moveTo(L.X(k), L.Y(Math.min(top, v))))); L.g.stroke(); }
+  L.seg(0, Math.LN2, Math.max(100, steps), Math.LN2, "#8f98a8", 1, [5, 5]); L.text("ln 2: a coin flip", 4, Math.LN2 + 0.05, "#8f98a8");
+}
+function readout() {
+  const last = losses.at(-1);
+  const params = net.reduce((s, { W, b }) => s + W.length * W[0].length + b.length, 0);
+  $("r2").textContent = `${$("netSel").selectedOptions[0].text.split(" ")[0]} · ${act} · ${params} parameters · step ${steps}` + (last ? ` · loss ${last[1].toFixed(3)} · accuracy ${(100 * lastAcc).toFixed(0)}%` : "");
+}
+function loop() {
+  if (!running) return;
+  const lr = +$("lrSel").value;
+  for (let k = 0; k < 15; k++) { const { loss, acc } = trainStep(lr); losses.push([steps, Number.isFinite(loss) ? loss : 9]); lastAcc = acc; }
+  draw(); readout();
+  if (lastAcc === 1 && !cheered) { cheered = true; say(`Every point right after ${steps} steps!`, "happy"); }
+  if (steps >= 12000) { running = false; $("go").textContent = "Train"; return; }
+  requestAnimationFrame(loop);
+}
+$("go").onclick = () => { running = !running; $("go").textContent = running ? "Pause" : "Train"; if (running) requestAnimationFrame(loop); };
+$("reset").onclick = () => { init(); draw(); readout(); };
+for (const id of ["netSel", "actSel", "initSel"]) $(id).oninput = () => { init(); draw(); readout(); };
+
+// 6. tent maps composed
+const relu = (z) => Math.max(0, z), tent = (x) => 2 * relu(x) - 4 * relu(x - 0.5); // on [0, 1]: up to 1 at ½, back to 0 at 1
+function r3() {
+  const k = +$("depth").value, f = (x) => { for (let i = 0; i < k; i++) x = tent(x); return x; };
+  const P = graph("saw", [0, 1], [-0.05, 1.1], { step: [0.25, 0.5] });
+  P.g.strokeStyle = C.yellow; P.g.lineWidth = 2.5; P.g.beginPath();
+  for (let i = 0; i <= 2000; i++) { const x = i / 2000; i ? P.g.lineTo(P.X(x), P.Y(f(x))) : P.g.moveTo(P.X(x), P.Y(f(x))); }
+  P.g.stroke();
+  $("depthV").textContent = k;
+  $("r3").textContent = `${k} layer${k > 1 ? "s" : ""} × 2 ReLU units = ${2 * k} units · ${2 ** k} straight pieces`;
+}
+$("depth").oninput = r3;
+
+r1(); init(); draw(); readout(); r3();
+window.blipContext = () => ({ page: "AI from scratch, deep networks layer by layer: notation z[l] = W[l] a[l−1] + b[l], shapes (n_l, n_{l−1}), batches as (n, m) matrices with broadcasting, vectorized backprop (dZ = A − Y, dW = dZ A^T / m, db sums over examples, dA = W^T dZ), zero init symmetry, Xavier/He init variance, a spiral trained live with selectable depth/activation/init/learning rate, why depth (tent maps doubling pieces, parity), parameters vs hyperparameters", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>
