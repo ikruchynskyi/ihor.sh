@@ -19,7 +19,7 @@ import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
-const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
+const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
 const MAX_STEPS = 6, DEEP_STEPS = 16;
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
@@ -399,7 +399,7 @@ async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [],
     try {
       const r = await fetch("https://ollama.com/api/chat", {
         method: "POST", signal: AbortSignal.timeout(deep ? 180_000 : 45_000), headers: { Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: CLOUD_MODEL, stream: false, ...(deep ? { think: "high" } : {}), ...budget, messages, ...tools }),
+        body: JSON.stringify({ model: CLOUD_MODEL, stream: false, ...(deep ? { think: true } : {}), ...budget, messages, ...tools }),
       });
       if (r.ok) return (await r.json()).message as Msg;
       console.warn(`blip: cloud ${r.status}, using the local model`);

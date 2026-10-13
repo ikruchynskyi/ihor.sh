@@ -4,7 +4,7 @@
 import { needEmbedding, saveEmbedding, candidates, jobText, type Query } from "./jobs.ts";
 
 import { OLLAMA, LOCAL_MODEL, localThink } from "./llm.ts";
-const EMBED = "nomic-embed-text", CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "deepseek-v4.1-flash";
+const EMBED = "nomic-embed-text", CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
 
 async function embed(texts: string[]): Promise<Float32Array[]> {
   const r = await fetch(`${OLLAMA}/api/embed`, { method: "POST", body: JSON.stringify({ model: EMBED, input: texts, truncate: true }), signal: AbortSignal.timeout(120_000) });
