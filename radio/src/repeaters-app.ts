@@ -35,8 +35,24 @@ function popup(r: Repeater) {
     <span class="freq">${r.outputMHz.toFixed(4)} MHz</span> · offset ${fmtOff(r.offsetMHz)} MHz (transmit on ${r.inputMHz.toFixed(4)})<br>
     ${r.toneUp ? `Tone ${esc(r.toneUp)} Hz` : "No tone listed"} · ${esc(r.mode)}${r.network ? ` · ${esc(r.network)}${r.node ? ` node ${esc(r.node)}` : ""}` : ""}${r.operational ? "" : " · <b>not operational</b>"}${r.restriction ? ` · ${esc(r.restriction)}` : ""}<br>
     ${r.description ? `<span class="muted">${esc(r.description).replace(/\n/g, "<br>")}</span><br>` : ""}
+    ${heardHere(r)}${US_CALL.test(r.callsign) ? `<span class="lic" data-lic="${esc(r.callsign)}"></span>` : ""}
     <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${scannable(r) ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
 }
+// Directories go stale (clubs hand repeaters to other clubs), so the popup adds what's known now: other callsigns the
+// captions heard identifying on this frequency, and a warning when the FCC has no active license for the listed call.
+const US_CALL = /^(A[A-L]|[KNW])[A-Z]?\d[A-Z]{1,3}$/;
+function heardHere(r: Repeater) {
+  const other = log.heard.filter((h) => h.mhz && Math.abs(h.mhz - r.outputMHz) < 0.003 && h.call !== r.callsign);
+  return other.length ? `<b>Heard identifying here:</b> ${other.map((h) => `${esc(h.call)} (${tfmt(h.at)})`).join(", ")}<br>` : "";
+}
+const licenses = new Map<string, Promise<any>>();
+map.on("popupopen", (e: any) => {
+  const el = e.popup.getElement()?.querySelector("[data-lic]");
+  if (!el) return;
+  const call = el.dataset.lic;
+  if (!licenses.has(call)) licenses.set(call, fetch(`/api/radio/callsign?call=${encodeURIComponent(call)}`).then((r) => r.json()).catch(() => null));
+  licenses.get(call)!.then((d) => { if (d && !d.found) el.innerHTML = `⚠ <b>No active FCC license for ${esc(call)}</b>: this listing may be out of date (the repeater may now ID under another call).<br>`; });
+});
 const marks = new Map<number, any>(); // repeater id → its marker
 let pendingRpt: number | null = null; // a ?rpt= link's repeater, opened once the area around it has loaded
 function render() {
