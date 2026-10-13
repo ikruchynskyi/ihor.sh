@@ -81,13 +81,14 @@ function renderSession() {
   }
   const x = batch[at];
   if (phase === "look") {
-    box.innerHTML = `<p class="muted">Look and listen ${at + 1}/${batch.length}</p>
+    box.innerHTML = `<p class="muted">${type === "kanji" ? "Look and learn" : "Look and listen"} ${at + 1}/${batch.length}</p>
       ${type === "words" && pic(meaning(x)) ? `<div class="pic" aria-hidden="true">${pic(meaning(x))}</div>` : ""}
       <div class="jp" style="font-size:64px;line-height:1.2">${esc(type === "kanji" ? x.k : x.w === x.r ? show(x.w) : x.w)}</div>
       <p class="jp">${esc(show(readingOf(x)))}</p><p><b>${esc(meaning(x))}</b></p>
-      ${type === "kanji" ? `<div class="stroke" id="ls"></div>${x.ex[0] ? `<p class="jp">${esc(x.ex[0][0])} (${esc(show(x.ex[0][1]))}) · ${esc(x.ex[0][2])}</p>` : ""}` : ""}
+      ${type === "kanji" ? `<div class="stroke" id="ls"></div>${x.ex[0] ? `<p class="jp">${esc(x.ex[0][0])} (${esc(show(x.ex[0][1]))}) <button class="mini" id="playEx" type="button" aria-label="Play example word">▶</button> · ${esc(x.ex[0][2])}</p>` : ""}` : ""}
       <button id="next">${at + 1 < batch.length ? "Next →" : "Quiz me →"}</button>`;
-    speak(type === "kanji" ? x.ex[0]?.[1] ?? x.kun[0]?.replace(/[.-]/g, "") ?? x.on[0] : x.r);
+    if (type === "words") speak(x.r);
+    else if ($("playEx") && x.ex?.[0]) $("playEx").onclick = () => speak(x.ex[0][1] ?? x.ex[0][0]);
     if (type === "kanji") strokes(x.k, $("ls"));
     $("next").onclick = () => { if (++at >= batch.length) { phase = "quiz"; at = 0; batch = shuffle(batch); } renderSession(); };
     return;
