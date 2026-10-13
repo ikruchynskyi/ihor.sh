@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Math Warm-up for Machine Learning</title>
+  <meta name="description" content="AI from scratch, start here: the school math the rest of the path leans on, redone for ML. Functions and their graphs, powers and scientific notation, logarithms and why models use log-probabilities, the sigma sign as a loop, and the Greek letters and symbols you'll meet, ending with reading real ML formulas out loud." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; aspect-ratio: 2 / 1; }
+    canvas.square { aspect-ratio: 1 / 1; max-width: 460px; margin: 0 auto; }
+    .formula { text-align: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .wide { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Start 3 · Stage 0: start here</p>
+  <h1>Math warm-up</h1>
+  <p class="lede">Machine learning papers look scary mostly because of their notation. Underneath, the first few stages use school math: functions, powers, logarithms and adding things up. This lesson goes over exactly those, each with a picture you drag and a box you run, and ends with you reading real ML formulas out loud like sentences. If something here already feels easy, skim it and do the questions.</p>
+
+  <h2>1. Functions and their graphs</h2>
+  <p>A <b>function</b> takes a number in and gives a number out. \(f(x) = x^2\) says "call the input \(x\), the output is \(x\) times \(x\)": so \(f(3) = 9\). The <b>graph</b> of a function is every pair (input, output) drawn as a dot: across is the input, up is the output. Pick a function and drag \(x\): the yellow dot is \((x, f(x))\).</p>
+  <canvas id="fn" width="800" height="400" aria-label="The graph of the chosen function with the point at the chosen x"></canvas>
+  <div class="row">
+    <label>function <select id="fnSel">
+      <option value="line">f(x) = 2x + 1 (a line)</option>
+      <option value="sq">f(x) = x² (a bowl)</option>
+      <option value="exp">f(x) = eˣ (grows fast)</option>
+      <option value="ln">f(x) = ln x (grows slowly)</option>
+      <option value="sig">f(x) = 1 / (1 + e⁻ˣ) (an S)</option>
+    </select></label>
+    <label>x <input type="range" id="x" min="-4" max="4" step="0.05" value="1.5"> <b id="xV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>You'll meet all five again. The <b>line</b> is the taxi model from Start 1. The <b>bowl</b> is what an error looks like as you turn a knob: one lowest point, and training rolls into it. \(e^x\) and \(\ln x\) are the next two sections. The <b>S-curve</b>, called the <b>sigmoid</b>, squeezes any number into the range 0 to 1, so a model can turn a score into a probability (chapter 3 builds a neuron with it).</p>
+  <div class="q" data-num="3">
+    <p>If \(f(x) = x^2 - 2x\), what is \(f(3)\)?</p>
+    <div class="why">Put 3 in for every \(x\): \(3^2 - 2 \times 3 = 9 - 6 = 3\).</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>Pick the sigmoid and drag \(x\) far to the right, then far to the left. What happens to the output?</p>
+    <ul><li data-k="a" data-says="Look at the readout at x = 4: it's 0.98, and it never passes 1 however far you go.">It keeps growing without limit</li><li data-k="b">It gets close to 1 on the right and close to 0 on the left, but never reaches either</li><li data-k="c" data-says="It changes most around x = 0 and hardly at all far out; it's never constant.">It's 0.5 everywhere</li></ul>
+    <div class="why">That's exactly why it's used for "probability of yes": any score, however big or negative, lands strictly between 0 and 1, and a score of 0 means 50/50.</div>
+  </div>
+  <p>Many functions take <b>several inputs</b>: \(f(a, b) = a \times 4 + b\) is the taxi model's guess for a 4 km ride as you turn both knobs. Stage 1 draws functions of two inputs as landscapes you walk over.</p>
+
+  <h2>2. Powers, and very big and very small numbers</h2>
+  <p>\(2^5\) means five 2s multiplied: \(2 \times 2 \times 2 \times 2 \times 2 = 32\). Three rules follow just from counting how many copies get multiplied:</p>
+  <div class="wide"><table class="rules">
+    <tr><th>rule</th><th>example</th><th>why</th></tr>
+    <tr><td>\(a^m \times a^n = a^{m+n}\)</td><td>\(2^3 \times 2^4 = 2^7 = 128\)</td><td>3 copies, then 4 more</td></tr>
+    <tr><td>\(a^{-n} = 1 / a^n\)</td><td>\(2^{-3} = 1/8 = 0.125\)</td><td>each step down the powers divides by 2: 8, 4, 2, 1, ½, ¼, ⅛</td></tr>
+    <tr><td>\(a^{1/2} = \sqrt{a}\)</td><td>\(9^{1/2} = 3\)</td><td>\(9^{1/2} \times 9^{1/2} = 9^1\), so it's the number that squares to 9</td></tr>
+  </table></div>
+  <p>ML numbers come in wildly different sizes: a learning rate of 0.001, a model with 7,000,000,000 weights. <b>Scientific notation</b> writes them as a number times a power of 10: \(0.001 = 10^{-3}\) and \(7{,}000{,}000{,}000 = 7 \times 10^9\). Code writes the same thing as <code>1e-3</code> and <code>7e9</code>: "e" here means "times ten to the", nothing to do with the number \(e\).</p>
+  <div class="q" data-num="0.125">
+    <p>What is \(2^{-3}\) as a decimal?</p>
+    <div class="why">\(2^{-3} = 1 / 2^3 = 1/8 = 0.125\).</div>
+  </div>
+  <div class="q" data-num="0.0003" data-tol="0.000001">
+    <p>A config file says <code>lr = 3e-4</code>. Write that learning rate as a plain decimal.</p>
+    <div class="why">\(3 \times 10^{-4} = 3 \times 0.0001 = 0.0003\). 3e-4 is a famously common learning rate for the Adam optimizer (stage 4).</div>
+  </div>
+  <p>The number \(e \approx 2.718\) is special because \(e^x\) grows at a rate equal to its own value (Calculus 1 shows why that makes it the easy one). You'll mostly see it in \(e^x\), written <code>Math.exp(x)</code> in code.</p>
+
+  <h2>3. Logarithms: counting the multiplications</h2>
+  <p>A <b>logarithm</b> answers "what power?". \(\log_2 8 = 3\) because \(2^3 = 8\): it counts how many 2s you multiply to get 8. \(\log_{10} 1000 = 3\) counts the zeros. And the <b>natural log</b> \(\ln x\) is the power of \(e\): \(\ln x = t\) means \(e^t = x\). So \(\ln\) undoes \(e^x\), and the two graphs are mirror images across the dashed line \(y = x\). Drag \(t\):</p>
+  <canvas id="mir" class="square" width="500" height="500" aria-label="eˣ and ln x as mirror images across the line y = x"></canvas>
+  <div class="row"><label>t <input type="range" id="t" min="-2" max="2" step="0.01" value="1"> <b id="tV" class="math"></b></label></div>
+  <p class="readout" id="r2"></p>
+  <p>The one rule that matters most in ML: <b>a log turns multiplying into adding</b>, \(\ln(ab) = \ln a + \ln b\). (It follows from the first power rule: multiplying powers of \(e\) adds the exponents.) A model's probability of a whole dataset is the product of its probabilities for each example: thousands of numbers below 1 multiplied together. That underflows to exactly 0 on a computer, so models work with the <b>sum of the logs</b> instead. Run it:</p>
+  <div class="code" data-title="Run it: why models use log-probabilities"><textarea>
+// a model gives each of 2000 examples a probability of 0.6
+let product = 1, logSum = 0;
+for (let i = 0; i < 2000; i++) {
+  product = product * 0.6;
+  logSum = logSum + Math.log(0.6);   // Math.log is ln
+}
+print("product of the probabilities:", product);   // too small for the computer: 0
+print("sum of their logs:", logSum);              // a perfectly ordinary number
+print("ln(2 * 3) =", Math.log(2 * 3), " ln 2 + ln 3 =", Math.log(2) + Math.log(3));
+print("log base 2 of 1024:", Math.log2(1024));
+</textarea></div>
+  <div class="q" data-num="10">
+    <p>What is \(\log_2 1024\)? (How many times do you double 1 to reach 1024?)</p>
+    <div class="why">1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024: ten doublings, so 10. Logs turn huge ranges into small, even steps, which is why plots of training loss often use a log scale.</div>
+  </div>
+  <div class="q" data-num="-2.079" data-tol="0.01">
+    <p>Three examples each get probability 0.5. What is \(\ln(0.5 \times 0.5 \times 0.5)\)? (\(\ln 0.5 \approx -0.693\).)</p>
+    <div class="why">\(\ln 0.5 + \ln 0.5 + \ln 0.5 = 3 \times (-0.693) = -2.079\). Logs of probabilities are always negative or zero (since probabilities are at most 1), which is why the loss in chapter 5, cross-entropy, puts a minus sign in front.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>What is \(\ln 1\)?</p>
+    <ul><li data-k="a" data-says="That's e⁰'s value, not ln 1. ln asks: which power of e gives 1?">1</li><li data-k="b" data-says="ln 1 is defined: any number to the power 0 is 1.">It doesn't exist</li><li data-k="c">0</li></ul>
+    <div class="why">\(e^0 = 1\), so \(\ln 1 = 0\). A model that gives the right answer probability 1 has a log-probability of 0: no loss at all.</div>
+  </div>
+
+  <h2>4. The Σ sign is a loop</h2>
+  <p>The big Greek S, \(\Sigma\) (sigma), means "add these up". The bits around it say what to add:</p>
+  <p class="formula">\[ \sum_{i=1}^{4} i^2 = 1^2 + 2^2 + 3^2 + 4^2 = 30 \]</p>
+  <p>Read it as: "for \(i\) from 1 to 4, add up \(i^2\)". Underneath is where the counter starts, on top is where it stops, and to the right is what you add each time. It's exactly the loop from Start 2. Change the sum below:</p>
+  <div class="row">
+    <label>add up <select id="sumSel">
+      <option value="i">i</option>
+      <option value="sq" selected>i²</option>
+      <option value="half">1 / 2ⁱ</option>
+      <option value="two">2</option>
+    </select></label>
+    <label>for i from 1 to n = <input type="range" id="n" min="1" max="12" step="1" value="4"> <b id="nV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <p>Datasets are written with a counter too: \(x_1, x_2, \dots, x_n\) are the \(n\) examples, and \(x_i\) is "the \(i\)-th one". With that, the <b>mean</b> is</p>
+  <p class="formula">\[ \bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i \]</p>
+  <p>"x-bar is one over n times the sum of all the x's": add them up, divide by how many. (The 1/n out front does the dividing.) And a <b>product</b> of many terms uses the big Greek P, \(\prod\), the same way.</p>
+  <div class="q" data-num="20">
+    <p>What is \(\sum_{i=1}^{4} 2i\)?</p>
+    <div class="why">\(2 + 4 + 6 + 8 = 20\). Or take the 2 outside: \(2 \times (1 + 2 + 3 + 4) = 2 \times 10\). Constants can always come out of a sum, a trick that tidies up a lot of derivations.</div>
+  </div>
+  <div class="q" data-num="1">
+    <p>Set the sum to \(1/2^i\) and slide \(n\) up to 12. If you kept adding forever, what number would the sum get closer and closer to?</p>
+    <div class="why">\(\frac12 + \frac14 + \frac18 + \dots\) heads to 1: each new term covers half the gap that's left. Infinitely many terms can add up to a finite number. Stage 4's momentum optimizer is built on a sum just like this one.</div>
+  </div>
+
+  <h2>5. The symbols you'll meet</h2>
+  <p>ML borrows Greek letters for its knobs and settings. There are only a handful, and each one is used for the same thing almost everywhere:</p>
+  <div class="wide"><table class="rules">
+    <tr><th>symbol</th><th>say it</th><th>usually means</th></tr>
+    <tr><td>\(w, b\)</td><td>w, b</td><td>weights and bias: a model's knobs</td></tr>
+    <tr><td>\(\theta\)</td><td>theta</td><td>all the knobs together</td></tr>
+    <tr><td>\(\eta\) or \(\alpha\)</td><td>eta, alpha</td><td>learning rate: how big a step training takes</td></tr>
+    <tr><td>\(\lambda\)</td><td>lambda</td><td>how hard to punish big weights (regularization, stage 3)</td></tr>
+    <tr><td>\(\sigma\)</td><td>sigma (small)</td><td>the sigmoid function, or a spread (standard deviation)</td></tr>
+    <tr><td>\(\mu\)</td><td>mu</td><td>a mean</td></tr>
+    <tr><td>\(\epsilon\)</td><td>epsilon</td><td>a tiny number, or noise</td></tr>
+    <tr><td>\(\hat{y}\)</td><td>y-hat</td><td>the model's guess (the true answer is plain \(y\))</td></tr>
+    <tr><td>\(L\)</td><td>L</td><td>the loss: one number saying how wrong the model is</td></tr>
+    <tr><td>\(\nabla L\)</td><td>grad L, the gradient</td><td>which way each knob should move to raise the loss (stage 1)</td></tr>
+    <tr><td>\(\approx\), \(\leftarrow\), \(\in\)</td><td>about, becomes, is in</td><td>\(x \in [0, 1]\): x is between 0 and 1; \(w \leftarrow w - 1\): w becomes w − 1</td></tr>
+    <tr><td>\(\mathbf{x}\), \(W\)</td><td>bold x, capital W</td><td>a list of numbers (a vector) and a table of numbers (a matrix), chapter 1</td></tr>
+  </table></div>
+  <p>Don't memorize the table: come back to it. After a few lessons the letters read like words.</p>
+
+  <h2>6. Reading a formula out loud</h2>
+  <p>Every formula is a sentence. Read it left to right, say each symbol's name, and turn it into a recipe. Try each one before revealing.</p>
+  <div class="q">
+    <p>Read this one out loud, as a recipe: \[ \hat{y} = \sigma(w x + b) \]</p>
+    <div class="why">"y-hat equals sigma of w x plus b." Recipe: multiply the input by the weight, add the bias, push the result through the S-curve. The output is the model's guess, a number between 0 and 1. That is one neuron, the whole of chapter 3.</div>
+  </div>
+  <div class="q">
+    <p>And this one: \[ L = \frac{1}{n} \sum_{i=1}^{n} (\hat{y}_i - y_i)^2 \]</p>
+    <div class="why">"L equals one over n times the sum, for i from 1 to n, of y-hat i minus y i, squared." Recipe: for every example, take the guess minus the truth and square it; add those up; divide by how many. That's the mean squared error you computed in Start 2's last box.</div>
+  </div>
+  <div class="q">
+    <p>And the most important line in all of ML: \[ \theta \leftarrow \theta - \eta \, \nabla L(\theta) \]</p>
+    <div class="why">"theta becomes theta minus eta times the gradient of L at theta." Recipe: find which way each knob would raise the loss, step every knob a small amount (\(\eta\)) the other way, repeat. That's gradient descent, the "Let the computer train it" button from Start 1. Stage 1 is about computing \(\nabla L\).</div>
+  </div>
+  <div class="q" data-num="2.6" data-tol="0.001">
+    <p>Do one step of that by hand: the knob is \(\theta = 3\), the learning rate is \(\eta = 0.1\), and the gradient is \(\nabla L = 4\). What is \(\theta\) after the step?</p>
+    <div class="why">\(3 - 0.1 \times 4 = 3 - 0.4 = 2.6\). The gradient is positive, meaning a bigger \(\theta\) gives a bigger loss, so the knob moves down.</div>
+  </div>
+  <p>Here are all three formulas as code. Notice how directly each line matches its formula:</p>
+  <div class="code" data-title="Run it: formulas into code"><textarea>
+const sigma = (z) => 1 / (1 + Math.exp(-z));       // σ(z) = 1 / (1 + e^(−z))
+const w = 2, b = -1;
+const yHat = (x) => sigma(w * x + b);              // ŷ = σ(w x + b)
+print("ŷ for x = 0:", yHat(0), " for x = 2:", yHat(2));
+
+const ys = [1, 0, 1, 1], xs = [2, -1, 0.5, 3];
+let sum = 0;
+for (let i = 0; i < xs.length; i++) sum += (yHat(xs[i]) - ys[i]) ** 2;   // Σ (ŷᵢ − yᵢ)²
+print("L =", sum / xs.length);                                           // (1/n) Σ …
+
+let theta = 3; const eta = 0.1, grad = 4;
+theta = theta - eta * grad;                        // θ ← θ − η ∇L
+print("θ after one step:", theta);
+</textarea></div>
+  <p>One small trap: math counts examples from 1 (\(x_1\) to \(x_n\)), code counts from 0 (<code>xs[0]</code> to <code>xs[n - 1]</code>). Same examples, shifted labels.</p>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li>A <b>function</b> maps inputs to an output; its <b>graph</b> plots every (input, output) pair. A model is a function.</li>
+    <li><b>Powers</b> multiply copies; negative powers divide; <code>3e-4</code> means \(3 \times 10^{-4}\).</li>
+    <li>A <b>log</b> asks "which power?", undoes \(e^x\), and turns products into sums, which is why models add log-probabilities instead of multiplying probabilities.</li>
+    <li>\(\Sigma\) is a loop that adds; \(\frac{1}{n}\Sigma\) is a mean.</li>
+    <li>Greek letters are just names for knobs and settings: \(\theta\) the knobs, \(\eta\) the step size, \(\hat{y}\) the guess, \(L\) the loss.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const sig = (x) => 1 / (1 + Math.exp(-x));
+const FNS = { line: (x) => 2 * x + 1, sq: (x) => x * x, exp: Math.exp, ln: (x) => (x > 0 ? Math.log(x) : NaN), sig };
+const NAMES = { line: "2x + 1", sq: "x²", exp: "e^x", ln: "ln x", sig: "1 / (1 + e^-x)" };
+let sigFar = false;
+function r1() {
+  const k = $("fnSel").value, f = FNS[k], x = +$("x").value, y = f(x), P = graph("fn", [-4, 4], [-3, 7], { step: [1, 1] });
+  P.curve(f, C.blue, 3);
+  if (Number.isFinite(y) && y < 7) { P.seg(x, 0, x, y, C.yellow, 1.5, [5, 5]); P.seg(0, y, x, y, C.yellow, 1.5, [5, 5]); P.dot(x, y, C.yellow); }
+  $("xV").textContent = x.toFixed(2);
+  $("r1").textContent = !Number.isFinite(y) ? `ln x only takes positive inputs: there is no power of e that gives ${x.toFixed(2)}`
+    : `f(${x.toFixed(2)}) = ${NAMES[k].replaceAll("x", `(${x.toFixed(2)})`)} = ${y.toFixed(4)}` + (y >= 7 ? " (above the picture)" : "");
+  if (k === "sig" && Math.abs(x) >= 3.9 && !sigFar) { sigFar = true; say(`At x = ${x.toFixed(1)} the S-curve gives ${y.toFixed(3)}: close to ${x > 0 ? 1 : 0}, never past it.`, "happy"); }
+}
+function r2() {
+  const t = +$("t").value, et = Math.exp(t), P = graph("mir", [-3, 7], [-3, 7], { step: [1, 1] });
+  P.curve((x) => x, "#8f98a8", 1.5, [6, 6]);
+  P.curve(Math.exp, C.blue, 3); P.curve((x) => (x > 0 ? Math.log(x) : NaN), C.green, 3);
+  P.seg(t, et, et, t, C.yellow, 1.5, [4, 4]); P.dot(t, et, C.yellow); P.dot(et, t, C.yellow);
+  P.text("eˣ", 1.8, 6.4, C.blue); P.text("ln x", 6, 2.1, C.green); P.text("y = x", 5.3, 5.8, "#8f98a8");
+  $("tV").textContent = t.toFixed(2);
+  $("r2").textContent = `e^${t.toFixed(2)} = ${et.toFixed(3)}, so ln ${et.toFixed(3)} = ${t.toFixed(2)}: the same pair, flipped`;
+}
+const TERMS = { i: (i) => i, sq: (i) => i * i, half: (i) => 1 / 2 ** i, two: () => 2 };
+const SHOW = { i: (i) => `${i}`, sq: (i) => `${i * i}`, half: (i) => `1/${2 ** i}`, two: () => "2" };
+const LATEX = { i: "i", sq: "i²", half: "1/2ⁱ", two: "2" };
+function r3() {
+  const k = $("sumSel").value, n = +$("n").value, idx = Array.from({ length: n }, (_, j) => j + 1), s = idx.reduce((a, i) => a + TERMS[k](i), 0);
+  $("nV").textContent = n;
+  $("r3").textContent = `Σ for i = 1..${n} of ${LATEX[k]} = ${idx.map(SHOW[k]).join(" + ")} = ${+s.toFixed(6)}`;
+}
+$("fnSel").oninput = $("x").oninput = r1;
+$("t").oninput = r2;
+$("sumSel").oninput = $("n").oninput = r3;
+r1(); r2(); r3();
+window.blipContext = () => ({ page: "AI from scratch, start 3: math warm-up (functions and graphs: line, x², eˣ, ln x, sigmoid; power rules, negative and fractional powers, scientific notation like 3e-4; logarithms as 'which power', ln undoing eˣ, ln(ab) = ln a + ln b and why models sum log-probabilities instead of multiplying probabilities; the Σ sign as a loop, the mean as (1/n)Σ; common Greek letters θ η λ σ μ ε, ŷ, L, ∇L; reading ŷ = σ(wx + b), mean squared error and the gradient descent update θ ← θ − η∇L out loud)", readouts: [$("r1").textContent, $("r2").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>
