@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Systems of Equations, Rank and Inverses</title>
+  <meta name="description" content="AI from scratch, linear algebra 1: equations as lines you drag, one answer or none or infinitely many, the row and column pictures of Ax = b, linear dependence and rank, Gaussian elimination step by step, the identity and the inverse (and why a nearly flat matrix is dangerous), and linear regression solved exactly with the normal equations." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #14171d; touch-action: none; }
+    canvas.drag { cursor: grab; } canvas.drag:active { cursor: grabbing; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .math { font-family: ui-monospace, Menlo, monospace; }
+    .formula { text-align: center; }
+    .b { color: #58c4dd; font-weight: 700; } .y { color: #f4d35e; font-weight: 700; } .g { color: #83c167; font-weight: 700; } .r { color: #fc6255; font-weight: 700; }
+    .aug { border-collapse: collapse; font: 17px ui-monospace, Menlo, monospace; margin: 10px auto; }
+    .aug td { padding: 4px 14px; text-align: right; }
+    .aug td.eq { border-left: 2px solid var(--line); }
+    .aug tr.piv td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .aug tr.hit td { background: color-mix(in srgb, #2f9e44 14%, transparent); }
+    .aug th { font-weight: 400; color: var(--muted); padding: 0 14px; text-align: right; }
+    #elimSay { min-height: 3.4em; }
+    .wide { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 1 · Stage 1: the math of learning</p>
+  <h1>Systems of equations, rank and inverses</h1>
+  <p class="lede">Chapter 1 showed a matrix as a move of the plane. This lesson asks the reverse question: given where something landed, where did it start? That's solving a system of equations, and it decides whether a model has one best answer, none, or infinitely many. You'll drag equations as lines, run elimination step by step, meet the inverse matrix (and why a nearly flat one is dangerous), and end by fitting linear regression exactly, with no training loop at all.</p>
+
+  <h2>1. Two equations are two lines</h2>
+  <p>A coffee and two bagels cost $7. Three coffees and a bagel cost $11. What does each cost? Call a coffee \(x\) and a bagel \(y\):</p>
+  <p class="formula">\[ \begin{aligned} x + 2y &= 7 \\ 3x + y &= 11 \end{aligned} \]</p>
+  <p>Each equation on its own allows many answers: every point on a line. The <span class="b">blue line</span> is every \((x, y)\) with \(x + 2y = 7\), the <span class="y">yellow line</span> every one with \(3x + y = 11\). The answer has to be on both, so it's where they <b>cross</b>. Drag the dots to tilt and move each line.</p>
+  <canvas id="lines" class="drag" width="800" height="600" aria-label="Two equations as two draggable lines and where they cross"></canvas>
+  <div class="row"><button id="pCafe">Coffee and bagels</button><button id="pPar">Parallel</button><button id="pSame">Same line twice</button></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-num="3">
+    <p>Read it off the picture (or solve it): what does a coffee cost?</p>
+    <div class="why">The lines cross at \((3, 2)\): coffee $3, bagel $2. Check: \(3 + 2 \times 2 = 7\) and \(3 \times 3 + 2 = 11\).</div>
+  </div>
+  <p>Two lines can do only three things: cross once (<b>one answer</b>), run side by side (<b>no answer</b>), or lie on top of each other (<b>infinitely many</b>). Press <b>Parallel</b> and <b>Same line twice</b> to see the other two.</p>
+  <div class="q" data-answer="b">
+    <p>A shop says: "a coffee and a bagel are $5" and "two coffees and two bagels are $12". How many answers?</p>
+    <ul><li data-k="a" data-says="Try any pair adding to 5: two of each would then cost 10, never 12.">One</li><li data-k="b">None</li><li data-k="c" data-says="That would need the second sentence to say $10, a mere repeat of the first.">Infinitely many</li></ul>
+    <div class="why">Halve the second: \(x + y = 6\). The first says \(x + y = 5\). Same tilt, different place: parallel lines, a <b>contradiction</b>. With $10 instead of $12 it would be the same line twice: true, but no new information.</div>
+  </div>
+
+  <h2>2. Two pictures of \(Ax = b\)</h2>
+  <p>Stack the numbers into a matrix and the system becomes one line, \(Ax = b\):</p>
+  <p class="formula">\[ \underbrace{\begin{pmatrix} 1 & 2 \\ 3 & 1 \end{pmatrix}}_{A} \underbrace{\begin{pmatrix} x \\ y \end{pmatrix}}_{x} = \underbrace{\begin{pmatrix} 7 \\ 11 \end{pmatrix}}_{b} \]</p>
+  <p>Read <b>by rows</b>, it's the two lines above. Read <b>by columns</b>, it's chapter 1's picture: "\(x\) of the first column plus \(y\) of the second must land on \(b\)". Which mix of the arrows <span class="g">(1, 3)</span> and <span class="r">(2, 1)</span> reaches the <span class="y">yellow target</span> (7, 11)? Turn the knobs:</p>
+  <canvas id="cols" width="800" height="600" aria-label="The column picture: mixing two column arrows to reach a target"></canvas>
+  <div class="row">
+    <label>x (coffees) <input type="range" id="cx" min="-1" max="5" step="0.25" value="1"> <b id="cxV" class="math"></b></label>
+    <label>y (bagels) <input type="range" id="cy" min="-1" max="5" step="0.25" value="1"> <b id="cyV" class="math"></b></label>
+  </div>
+  <p class="readout" id="r2"></p>
+  <p>The column picture explains <i>when</i> there's an answer. If the two columns point in different directions, mixing them reaches every point of the plane, so every \(b\) has exactly one recipe. If they lie on one line, mixes of them stay on that line: a \(b\) off it is unreachable, and a \(b\) on it has endless recipes. And "columns on one line" is exactly chapter 1's <b>determinant zero</b>: the matrix squashes the plane flat.</p>
+  <div class="levels">
+    <div><b>The picture</b>Rows: lines that must all pass through the answer. Columns: arrows you mix to land on the target.</div>
+    <div><b>The math</b>\(\det A = a d - b c \neq 0\): exactly one solution, for every \(b\). \(\det A = 0\): none or infinitely many, depending on \(b\). The matrix is then called <b>singular</b>.</div>
+  </div>
+  <div class="q" data-num="-5">
+    <p>What is \(\det \begin{pmatrix} 1 & 2 \\ 3 & 1 \end{pmatrix}\), the coffee matrix? (So: does every pair of prices have exactly one answer?)</p>
+    <div class="why">\(1 \times 1 - 2 \times 3 = -5\). Not zero, so whatever the two totals are, there's exactly one pair of prices that explains them. (The minus sign just says the move flips the plane over.)</div>
+  </div>
+
+  <h2>3. Dependence and rank: how many equations really count</h2>
+  <p>Add a third sentence: "four coffees and three bagels cost $18". Is that new information? No: it's the first two receipts added together, \((x + 2y) + (3x + y) = 7 + 11\). An equation that's a mix of others is <b>linearly dependent</b> on them: it can be true (and then it adds nothing) or contradict them (and then there's no answer), but it can never pin down anything new.</p>
+  <p>The <b>rank</b> of a matrix counts the equations that really count: the most rows you can pick with none being a mix of the others. Remarkably, it's always the same as the most independent <i>columns</i>. In the column picture, rank is the dimension of everywhere \(Ax\) can reach: a point (rank 0), a line (rank 1), the plane (rank 2), and so on.</p>
+  <div class="q" data-num="2">
+    <p>What is the rank of \(\begin{pmatrix} 1 & 2 & 3 \\ 2 & 4 & 6 \\ 1 & 0 & 1 \end{pmatrix}\)?</p>
+    <div class="why">Row 2 is twice row 1, so it adds nothing. Rows 1 and 3 point in different directions, so they're independent. Rank 2: three equations, but only two of them count, and with three unknowns that leaves a whole line of answers (or none).</div>
+  </div>
+  <p>Why an ML engineer cares: a dataset is a matrix, one row per example, one column per feature. If one column is a mix of others (price in dollars <i>and</i> price in cents, or "rooms" alongside "bedrooms + other rooms"), the matrix loses rank and a linear model's knobs stop having one best value: you can shift weight between the twin columns forever without changing a single prediction. And when Part 4 fine-tunes a big model with <b>LoRA</b>, it's betting the change it needs is <b>low rank</b>: a huge matrix of updates built from a few independent columns.</p>
+  <div class="q" data-answer="c">
+    <p>A house-price dataset has columns "area in m²" and "area in ft²" (always 10.76 times the first). What happens to a linear model's weights?</p>
+    <ul><li data-k="a" data-says="Nothing's wrong with the predictions; the problem is the weights themselves.">The predictions get worse</li><li data-k="b" data-says="The duplicate column doesn't add information, so it can't help.">The model gets more accurate, thanks to the extra column</li><li data-k="c">Infinitely many weight pairs give the same predictions, so the weights mean nothing on their own</li></ul>
+    <div class="why">Any weight on ft² can be traded for 10.76 times it on m². The fix is to drop one twin, or to add a penalty on big weights (regularization, chapter 11), which picks one sensible answer out of the infinitely many.</div>
+  </div>
+
+  <h2>4. Elimination, step by step</h2>
+  <p>With three unknowns, each equation is a plane in 3D and drawing stops helping. What a computer does instead is <b>Gaussian elimination</b>: use the first equation to remove \(x\) from all the others, then the new second to remove \(y\) from the ones below, and so on, until the last row has one unknown. Then solve from the bottom up. The only moves allowed are ones that keep the answers the same: subtract a multiple of one row from another, or swap two rows.</p>
+  <div class="row">
+    <label>system <select id="sys">
+      <option value="one">one answer</option>
+      <option value="dep">a repeated equation</option>
+      <option value="bad">a contradiction</option>
+    </select></label>
+    <button id="next">Next step</button><button id="again">Start over</button>
+  </div>
+  <div class="wide"><table class="aug" id="elim"></table></div>
+  <p class="readout" id="elimSay"></p>
+  <div class="q" data-num="-1">
+    <p>On "one answer", the first step is "row 2 minus 2 × row 1". Before pressing it: what will row 2's \(y\) number become?</p>
+    <div class="why">Row 2 has \(y\)-number 1, row 1 has 1, so \(1 - 2 \times 1 = -1\). (Its \(x\)-number becomes \(2 - 2 \times 1 = 0\): that's the point of the step.)</div>
+  </div>
+  <div class="q">
+    <p>Run "a contradiction" to the end. Its last row becomes \(0x + 0y + 0z = 1\). What does that row tell you, and how is it different from the repeated equation's last row?</p>
+    <div class="why">"0 = 1" can never be true, so there's no answer at all: the third equation contradicts the other two. The repeated system ends with "0 = 0", always true, so it just drops out, leaving two equations for three unknowns and a whole line of answers. Either way the rank is 2: elimination counts the rank as the rows left with a <b>pivot</b> (a first nonzero number).</div>
+  </div>
+  <p>Here's elimination as code, written the way libraries do it: before each step it swaps up the row with the biggest number in the current column (<b>partial pivoting</b>), because dividing by a tiny pivot magnifies rounding errors.</p>
+  <div class="code" id="solve" data-title="Build it: Gaussian elimination from scratch"><textarea>
+// Solve A x = b. Returns x, or null if A is singular (rank too low for one answer).
+function solve(A, b) {
+  const n = A.length, M = A.map((row, i) => [...row, b[i]]);   // the augmented matrix [A | b]
+  for (let c = 0; c < n; c++) {
+    // pivot: bring up the row with the biggest |number| in column c
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;                 // no pivot: singular
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = c + 1; r < n; r++) {                           // clear column c below the pivot
+      const f = M[r][c] / M[c][c];
+      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) {                            // back substitution, bottom up
+    let s = M[r][n];
+    for (let k = r + 1; k < n; k++) s -= M[r][k] * x[k];
+    x[r] = s / M[r][r];
+  }
+  return x;
+}
+
+print("coffee and bagels:", solve([[1, 2], [3, 1]], [7, 11]));
+print("three unknowns:", solve([[1, 1, 1], [2, 1, -1], [-1, 2, 2]], [6, 1, 9]));
+print("a repeated equation:", solve([[1, 1, 1], [2, 1, -1], [3, 2, 0]], [6, 1, 7]));
+</textarea></div>
+  <p>Elimination on \(n\) unknowns takes about \(n^3/3\) multiplications: a thousand unknowns is a third of a billion, a fraction of a second. That cube is why, for millions of unknowns (a neural network's weights), nobody solves equations: gradient descent takes cheap steps instead.</p>
+
+  <h2>5. The identity and the inverse</h2>
+  <p>The <b>identity</b> matrix \(I\) has 1s down the diagonal and 0s elsewhere: it's the move that doesn't move anything, \(Iv = v\). The <b>inverse</b> \(A^{-1}\) is the move that undoes \(A\): \(A^{-1} A = A A^{-1} = I\). If you had it, solving would be one multiplication: \(x = A^{-1} b\).</p>
+  <p>Drag the columns of \(A\) (<span class="g">green</span> and <span class="r">red</span>, as in chapter 1). The dashed arrows are the columns of \(A^{-1}\), the move that puts the grid back. Then press <b>Nearly flat</b>.</p>
+  <canvas id="inv" class="drag" width="800" height="600" aria-label="A matrix's columns, the moved grid, and the inverse's columns as dashed arrows"></canvas>
+  <div class="row"><button id="iReset">Reset</button><button id="iNear">Nearly flat</button><button id="iFlat">Flat</button></div>
+  <p class="readout" id="r3"></p>
+  <details class="deeper" open><summary>The math, step by step</summary>
+    <p>For a 2×2 matrix there's a formula: swap the diagonal, negate the other two, divide by the determinant:</p>
+    <p class="formula">\[ \begin{pmatrix} a & b \\ c & d \end{pmatrix}^{-1} = \frac{1}{ad - bc} \begin{pmatrix} d & -b \\ -c & a \end{pmatrix} \]</p>
+    <p>Check it on \(A = \begin{pmatrix} 2 & 1 \\ 1 & 1 \end{pmatrix}\): \(\det A = 2 - 1 = 1\), so \(A^{-1} = \begin{pmatrix} 1 & -1 \\ -1 & 2 \end{pmatrix}\), and multiplying, row 1 times column 1 is \(1 \cdot 2 + (-1) \cdot 1 = 1\), row 1 times column 2 is \(1 \cdot 1 + (-1) \cdot 1 = 0\): the identity, as promised.</p>
+    <p>Dividing by the determinant is the whole story. When \(\det A = 0\), the plane was squashed flat, many points landed on the same spot, and no move can tell them apart again: <b>no inverse</b>. When \(\det A\) is tiny, the inverse exists but is huge, so a tiny change in \(b\) (a rounding error, a noisy measurement) makes a huge change in \(x\). That's an <b>ill-conditioned</b> system, the same stretched valley that made gradient descent zigzag in Calculus 3.</p>
+    <p>Determinants multiply, because areas do: doing \(B\) then \(A\) scales area by \(\det B\), then by \(\det A\), so \(\det(AB) = \det A \cdot \det B\). Undoing must scale it back, so \(\det(A^{-1}) = 1 / \det A\).</p>
+  </details>
+  <div class="q" data-num="2">
+    <p>For \(A = \begin{pmatrix} 2 & 1 \\ 1 & 1 \end{pmatrix}\), what's the bottom-right number of \(A^{-1}\)?</p>
+    <div class="why">Swap the diagonal (2 and 1 trade places), negate the off-diagonal, divide by \(\det A = 1\): \(\begin{pmatrix} 1 & -1 \\ -1 & 2 \end{pmatrix}\). Bottom-right is 2. Drag the picture back to Reset and the readout agrees.</div>
+  </div>
+  <div class="q" data-num="0.25">
+    <p>A matrix stretches areas by 4. By how much does its inverse stretch them?</p>
+    <div class="why">\(\det(A^{-1}) = 1/4 = 0.25\): undoing a ×4 must shrink everything back by 4.</div>
+  </div>
+  <div class="q" data-num="6">
+    <p>\(\det A = 2\) and \(\det B = 3\). What is \(\det(AB)\)?</p>
+    <div class="why">\(2 \times 3 = 6\): the area triples, then doubles.</div>
+  </div>
+  <p>A practical rule: in code, almost never compute an inverse just to solve \(Ax = b\). Elimination is faster and loses less to rounding. In NumPy that's <code>np.linalg.solve(A, b)</code>, not <code>np.linalg.inv(A) @ b</code>.</p>
+
+  <h2>6. Linear regression with no training loop</h2>
+  <p>Start 2's six taxi rides give six equations for two knobs, \(a \cdot \text{km} + b = \text{minutes}\), one per ride. Six lines through a two-knob plane don't meet in one point: there's <b>no exact answer</b>. Least squares asks for the next best thing, the \((a, b)\) with the smallest squared error. Its gradient (Calculus 2) is zero exactly where</p>
+  <p class="formula">\[ X^\top X \, w = X^\top y \]</p>
+  <p>with \(X\) the rides' table (a column of km and a column of 1s), \(y\) the minutes, \(w = (a, b)\). These are the <b>normal equations</b>: always a square system, 2 equations for 2 knobs here, which our <code>solve</code> handles in one go.</p>
+  <div class="code" data-uses="solve" data-title="Run it: least squares, solved exactly"><textarea>
+const rides = [[1, 9], [2, 11], [3, 14], [5, 19], [8, 27], [10, 33]];
+const X = rides.map(([km]) => [km, 1]), y = rides.map(([, min]) => min);
+const T = (M) => M[0].map((_, j) => M.map((row) => row[j]));               // transpose: rows ↔ columns
+const mul = (A, B) => A.map((row) => B[0].map((_, j) => row.reduce((s, v, k) => s + v * B[k][j], 0)));
+
+const XtX = mul(T(X), X);                         // [[Σ km², Σ km], [Σ km, n]]
+const Xty = mul(T(X), y.map((v) => [v])).map((r) => r[0]);
+print("XᵀX =", XtX, " Xᵀy =", Xty);
+const [a, b] = solve(XtX, Xty);
+print("best line: minutes =", a.toFixed(3), "× km +", b.toFixed(3));
+print("mean squared error:", (rides.reduce((s, [km, m]) => s + (a * km + b - m) ** 2, 0) / rides.length).toFixed(4));
+
+// Twin features: km and km again. XᵀX goes singular and there's no single best answer.
+const X2 = rides.map(([km]) => [km, km, 1]);
+print("with a duplicated column:", solve(mul(T(X2), X2), mul(T(X2), y.map((v) => [v])).map((r) => r[0])));
+</textarea></div>
+  <div class="q" data-num="2.671" data-tol="0.002">
+    <p>Run it: what slope \(a\) does least squares find?</p>
+    <div class="why">\(a = 1007/377 \approx 2.671\) minutes per km, \(b \approx 5.923\). Start 2 found a mean squared error of 0.958 with \(a = 2.5\); the exact answer gets about 0.089, and no line does better. Gradient descent walks to this same point; the normal equations jump straight there.</div>
+  </div>
+  <p>So why does ML bother with gradient descent? Because this only works when the error is a bowl (a linear model with squared error), and only while \(X^\top X\) is small enough to eliminate: with \(n\) features it's \(n \times n\), and the cost grows like \(n^3\). A network bends its inputs (chapter 1's ReLU), its error isn't a simple bowl, and it has millions of knobs. Gradient descent works for all of it.</p>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li>A system \(Ax = b\) has <b>rows</b> (equations as lines or planes that must all meet) and <b>columns</b> (arrows to mix so they land on \(b\)).</li>
+    <li>\(\det A \neq 0\): one answer for every \(b\). \(\det A = 0\) (<b>singular</b>): none or infinitely many.</li>
+    <li><b>Rank</b> counts the independent rows, which always equals the independent columns. Duplicate features cost a dataset rank.</li>
+    <li><b>Elimination</b> clears columns below each pivot, then solves bottom up; about \(n^3/3\) work.</li>
+    <li>The <b>inverse</b> undoes a move and exists only when \(\det A \neq 0\); a tiny determinant means a fragile, ill-conditioned problem. \(\det(AB) = \det A \det B\), \(\det A^{-1} = 1/\det A\).</li>
+    <li>Least squares is a square system, \(X^\top X w = X^\top y\): linear regression solved exactly.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, scene, grid, axes, arrow, graph, fmt, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 1. two lines, each through two draggable dots
+const L = [{ p: [{ p: [1, 3], color: C.blue }, { p: [5, 1], color: C.blue }], color: C.blue }, { p: [{ p: [2, 5], color: C.yellow }, { p: [4, -1], color: C.yellow }], color: C.yellow }];
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+// the line through p and q as a x + b y = c, in smallest whole numbers (dots snap to quarters)
+function eq([p, q]) {
+  let a = Math.round((q.p[1] - p.p[1]) * 4), b = Math.round((p.p[0] - q.p[0]) * 4);
+  if (!a && !b) return null;
+  const g = gcd(Math.abs(a), Math.abs(b)), s = (a || b) < 0 ? -1 : 1;
+  a = (s * a) / g; b = (s * b) / g;
+  return { a, b, c: a * p.p[0] + b * p.p[1] };
+}
+const show = ({ a, b, c }) => `${a === 1 ? "" : a === -1 ? "−" : a ? a : ""}${a ? "x" : ""}${b ? `${a ? (b < 0 ? " − " : " + ") : b < 0 ? "−" : ""}${Math.abs(b) === 1 ? "" : Math.abs(b)}y` : ""} = ${+c.toFixed(3)}`;
+let lastCase = "one";
+const r1 = scene("lines", (s) => {
+  grid(s); axes(s);
+  for (const l of L) {
+    const [p, q] = l.p.map((h) => h.p), d = [q[0] - p[0], q[1] - p[1]];
+    if (!d[0] && !d[1]) continue;
+    const { g, toPx } = s, [x1, y1] = toPx([p[0] - 30 * d[0], p[1] - 30 * d[1]]), [x2, y2] = toPx([p[0] + 30 * d[0], p[1] + 30 * d[1]]);
+    g.strokeStyle = l.color; g.lineWidth = 3; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  }
+  const e1 = eq(L[0].p), e2 = eq(L[1].p);
+  if (e1 && e2) { const D = e1.a * e2.b - e2.a * e1.b; if (D) { const [x, y] = s.toPx([(e1.c * e2.b - e2.c * e1.b) / D, (e1.a * e2.c - e2.a * e1.c) / D]); s.g.fillStyle = C.green; s.g.beginPath(); s.g.arc(x, y, 8, 0, 7); s.g.fill(); } }
+}, () => L.flatMap((l) => l.p), () => {
+  const e1 = eq(L[0].p), e2 = eq(L[1].p);
+  if (!e1 || !e2) { $("r1").textContent = "pull a line's two dots apart"; return; }
+  const D = e1.a * e2.b - e2.a * e1.b, same = !D && e1.a * L[1].p[0].p[0] + e1.b * L[1].p[0].p[1] === e1.c;
+  const kind = D ? "one" : same ? "same" : "none";
+  $("r1").textContent = `blue: ${show(e1)} · yellow: ${show(e2)} · ` + (kind === "one" ? `they cross at (${fmt((e1.c * e2.b - e2.c * e1.b) / D)}, ${fmt((e1.a * e2.c - e2.a * e1.c) / D)}): one answer`
+    : kind === "same" ? "the same line: infinitely many answers" : "parallel: no answer");
+  if (kind !== lastCase) { lastCase = kind; if (kind !== "one") say(kind === "same" ? "Same line twice! Every point on it works." : "Parallel lines never meet: no answer.", "surprised"); }
+});
+const setL = (pts) => { pts.forEach((p, k) => (L[k >> 1].p[k & 1].p = p)); r1(); };
+$("pCafe").onclick = () => setL([[1, 3], [5, 1], [2, 5], [4, -1]]);
+$("pPar").onclick = () => setL([[1, 3], [5, 1], [-1, 2], [3, 0]]);
+$("pSame").onclick = () => setL([[1, 3], [5, 1], [-3, 5], [3, 2]]);
+
+// 2. the column picture: x·(1, 3) + y·(2, 1) aiming at (7, 11)
+function r2() {
+  const x = +$("cx").value, y = +$("cy").value, P = graph("cols", [-1.5, 17.1667], [-1.5, 12.5], { step: [2, 2] });
+  const head = (ax, ay, bx, by, color) => {
+    P.seg(ax, ay, bx, by, color, 4);
+    const [X1, Y1, X2, Y2] = [P.X(ax), P.Y(ay), P.X(bx), P.Y(by)], t = Math.atan2(Y2 - Y1, X2 - X1);
+    if (Math.hypot(X2 - X1, Y2 - Y1) < 6) return;
+    P.g.fillStyle = color; P.g.beginPath(); P.g.moveTo(X2, Y2); P.g.lineTo(X2 - 14 * Math.cos(t - 0.4), Y2 - 14 * Math.sin(t - 0.4)); P.g.lineTo(X2 - 14 * Math.cos(t + 0.4), Y2 - 14 * Math.sin(t + 0.4)); P.g.fill();
+  };
+  const m = [x, 3 * x], end = [x + 2 * y, 3 * x + y], hit = end[0] === 7 && end[1] === 11;
+  P.dot(7, 11, C.yellow, 9);
+  head(0, 0, ...end, "rgba(88,196,221,0.7)"); head(0, 0, ...m, C.green); head(...m, ...end, C.red);
+  P.text("b = (7, 11)", 7.4, 11.2, C.yellow);
+  $("cxV").textContent = x; $("cyV").textContent = y;
+  $("r2").textContent = `${x}·(1, 3) + ${y}·(2, 1) = (${end[0]}, ${end[1]})` + (hit ? " ✓ on target: coffee 3, bagel 2" : ` · ${Math.hypot(end[0] - 7, end[1] - 11).toFixed(2)} away from (7, 11)`);
+  if (hit) say("Bullseye! The column mix that lands on b is the answer.", "happy");
+}
+$("cx").oninput = $("cy").oninput = r2;
+
+// 4. elimination, one row operation per press
+const SYS = {
+  one: [[1, 1, 1, 6], [2, 1, -1, 1], [-1, 2, 2, 9]],
+  dep: [[1, 1, 1, 6], [2, 1, -1, 1], [3, 2, 0, 7]],
+  bad: [[1, 1, 1, 6], [2, 1, -1, 1], [3, 2, 0, 8]],
+};
+const num = (v) => { const r = Math.round(v * 1000) / 1000; return Object.is(r, -0) ? "0" : String(r).replace("-", "−"); };
+const V = ["x", "y", "z"];
+function plan(M0) {
+  const M = M0.map((r) => [...r]), out = [{ M: M.map((r) => [...r]), say: "The system as an augmented matrix: one row per equation, the unknowns' numbers on the left of the bar, the totals on the right." }];
+  let r = 0;
+  for (let c = 0; c < 3 && r < 3; c++) {
+    let k = r; while (k < 3 && Math.abs(M[k][c]) < 1e-9) k++;
+    if (k === 3) continue;
+    if (k !== r) { [M[r], M[k]] = [M[k], M[r]]; out.push({ M: M.map((x) => [...x]), piv: r, say: `Row ${r + 1} has no ${V[c]}, so swap it with row ${k + 1}.` }); }
+    for (let i = r + 1; i < 3; i++) {
+      if (Math.abs(M[i][c]) < 1e-9) continue;
+      const f = M[i][c] / M[r][c];
+      for (let j = c; j < 4; j++) M[i][j] -= f * M[r][j];
+      out.push({ M: M.map((x) => [...x]), piv: r, hit: i, say: `Row ${i + 1} ${f > 0 ? "minus" : "plus"} ${num(Math.abs(f))} × row ${r + 1}: clears ${V[c]} out of row ${i + 1}. (The pivot is the ${num(M[r][c])} in row ${r + 1}.)` });
+    }
+    r++;
+  }
+  const zero = M.findIndex((row) => row.slice(0, 3).every((v) => Math.abs(v) < 1e-9));
+  if (zero >= 0) {
+    out.push({ M, hit: zero, say: Math.abs(M[zero][3]) < 1e-9 ? `Row ${zero + 1} became 0 = 0: always true, it repeated the others. Rank 2, so one unknown is free: infinitely many answers (a whole line of them).` : `Row ${zero + 1} became 0 = ${num(M[zero][3])}: impossible. The equations contradict each other: no answer. Rank 2.` });
+    return out;
+  }
+  const x = [0, 0, 0];
+  for (let i = 2; i >= 0; i--) {
+    const rest = [0, 1, 2].filter((k) => k > i);
+    let s = M[i][3]; for (let k = i + 1; k < 3; k++) s -= M[i][k] * x[k];
+    x[i] = s / M[i][i];
+    out.push({ M, hit: i, say: `Back substitution, row ${i + 1}: ${num(M[i][i])}${V[i]}${rest.length ? ` + (the known ${rest.map((k) => V[k]).join(", ")})` : ""} = ${num(M[i][3])}, so ${V[i]} = ${num(x[i])}.` });
+  }
+  out.push({ M, say: `Done: x = ${num(x[0])}, y = ${num(x[1])}, z = ${num(x[2])}. Three pivots: rank 3, exactly one answer.` });
+  return out;
+}
+let steps = [], at = 0;
+function r4() {
+  const s = steps[at];
+  $("elim").innerHTML = `<tr><th>x</th><th>y</th><th>z</th><th>=</th></tr>` + s.M.map((row, i) => `<tr class="${i === s.hit ? "hit" : i === s.piv ? "piv" : ""}">${row.map((v, j) => `<td${j === 3 ? ' class="eq"' : ""}>${num(v)}</td>`).join("")}</tr>`).join("");
+  $("elimSay").textContent = `Step ${at} of ${steps.length - 1}. ${s.say}`;
+  $("next").disabled = at === steps.length - 1;
+}
+const start = () => { steps = plan(SYS[$("sys").value]); at = 0; r4(); };
+$("sys").oninput = $("again").onclick = start;
+$("next").onclick = () => { if (at < steps.length - 1) { at++; r4(); } };
+
+// 5. the inverse: A's columns are draggable, A⁻¹'s columns dashed
+const ia = { p: [2, 1], color: C.green }, ja = { p: [1, 1], color: C.red };
+let wasFlat = false;
+const r5 = scene("inv", (s) => {
+  const A = [[ia.p[0], ja.p[0]], [ia.p[1], ja.p[1]]], det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  grid(s, [[1, 0], [0, 1]], false, "#1d222c"); grid(s, A, false, "#3a4f6e"); axes(s);
+  if (Math.abs(det) > 1e-9) {
+    s.g.setLineDash([8, 6]);
+    const inv = [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]];
+    arrow(s, [0, 0], [inv[0][0], inv[1][0]], C.green, 3); arrow(s, [0, 0], [inv[0][1], inv[1][1]], C.red, 3);
+    s.g.setLineDash([]);
+  }
+  arrow(s, [0, 0], ia.p, C.green, 5); arrow(s, [0, 0], ja.p, C.red, 5);
+}, () => [ia, ja], () => {
+  const [a, c] = ia.p, [b, d] = ja.p, det = a * d - b * c;
+  if (Math.abs(det) < 1e-9) { $("r3").textContent = `A = [${fmt(a)} ${fmt(b)}; ${fmt(c)} ${fmt(d)}] · det = 0: squashed flat, no inverse`; if (!wasFlat) say("Flat! Nothing can undo that.", "dizzy"); wasFlat = true; return; }
+  wasFlat = false;
+  $("r3").textContent = `A = [${fmt(a)} ${fmt(b)}; ${fmt(c)} ${fmt(d)}] · det A = ${fmt(det)} · A⁻¹ = [${fmt(d / det)} ${fmt(-b / det)}; ${fmt(-c / det)} ${fmt(a / det)}] · det A⁻¹ = ${fmt(1 / det)}` + (Math.abs(det) < 0.5 ? " · nearly flat: the inverse is huge" : "");
+});
+const setA = (i, j) => { ia.p = i; ja.p = j; r5(); };
+$("iReset").onclick = () => setA([2, 1], [1, 1]);
+$("iNear").onclick = () => setA([2, 1], [1.75, 1]);
+$("iFlat").onclick = () => setA([2, 1], [1, 0.5]);
+
+r2(); start();
+window.blipContext = () => ({ page: "AI from scratch, linear algebra 1: systems of equations (two equations as two lines: one, none or infinitely many answers), row and column pictures of Ax = b, singular matrices and det = 0, linear dependence and rank (duplicate features, LoRA's low rank), Gaussian elimination with pivots and back substitution, the identity and inverse (2×2 formula, ill-conditioning when det is tiny, det(AB) = det A det B, det A⁻¹ = 1/det A), least squares via the normal equations XᵀX w = Xᵀy", readouts: [$("r1").textContent, $("r2").textContent, $("elimSay").textContent, $("r3").textContent] });
+</script>
+</body>
+</html>
