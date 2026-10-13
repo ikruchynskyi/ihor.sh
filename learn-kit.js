@@ -14,6 +14,11 @@
 //     block's code first (quietly), so a chapter can build a program up in steps. Ctrl/⌘+Enter runs.
 //
 //   \( inline math \) and \[ display math \] anywhere in the text.
+//
+//   <div class="code" data-lang="python">…</div>  (or data-lang="python" on any ancestor, e.g. <main>) runs Python
+//     in the page with Pyodide: NumPy, pandas, scikit-learn and matplotlib load on first use. print() prints,
+//     matplotlib figures show as images, a last-line expression is shown (DataFrames as tables), get(url) fetches
+//     text from this site. data-uses works the same way.
 
 const css = `
 .q { border: 2px solid var(--line); border-radius: 12px; background: var(--card); padding: 14px 16px; margin: 18px 0; }
@@ -44,6 +49,9 @@ const css = `
 .code .out .err { color: var(--red, #e03131); }
 .code .out canvas { display: block; max-width: 100%; margin: 6px 0; background: #14171d; border-radius: 6px; }
 .code .out table { border-collapse: collapse; margin: 4px 0; } .code .out td { border: 1px solid var(--line); padding: 2px 8px; text-align: right; }
+.code .out .df { white-space: normal; overflow-x: auto; } .code .out .df th { border: 1px solid var(--line); padding: 2px 8px; text-align: right; font-weight: 600; }
+.code .out img { display: block; margin: 6px 0; border-radius: 6px; background: #fff; }
+.code .out .muted { color: var(--muted); }
 .deeper { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--card) 85%, transparent); padding: 4px 16px; margin: 18px 0; border-radius: 0 10px 10px 0; }
 .deeper > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
 .deeper[open] > summary { margin-bottom: 4px; }
@@ -101,7 +109,33 @@ function setupQuestion(q) {
 
 // ---------- runnable code ----------
 const blocks = new Map();
+// Python by Pyodide, loaded once per page on the first run (about 10 MB, then cached by the browser)
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
+let pyReady = null;
+function python() {
+  return (pyReady ??= new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = PYODIDE + "pyodide.js"; sc.onload = ok; sc.onerror = () => no(new Error("Couldn't load Python (offline?)")); document.head.append(sc); })
+    .then(() => window.loadPyodide({ indexURL: PYODIDE, env: { MPLBACKEND: "AGG" } }))
+    .then(async (py) => {
+      await py.runPythonAsync(`
+from pyodide.http import open_url
+def get(url):
+    "Text of a URL on this site (or any that allows it), e.g. get('/ai/data/outages.json')."
+    return open_url(url).read()
+def __figures():
+    import sys
+    if "matplotlib.pyplot" not in sys.modules: return []
+    import matplotlib.pyplot as plt, io, base64
+    out = []
+    for n in plt.get_fignums():
+        b = io.BytesIO(); plt.figure(n).savefig(b, format="png", dpi=100, bbox_inches="tight"); out.append(base64.b64encode(b.getvalue()).decode())
+    plt.close("all")
+    return out
+`);
+      return py;
+    }));
+}
 function setupCode(box) {
+  const isPy = box.closest("[data-lang]")?.dataset.lang === "python";
   const ta = box.querySelector("textarea"), original = ta.value.replace(/^\n/, "").replace(/\s+$/, "");
   ta.value = original; ta.spellcheck = false; ta.setAttribute("autocapitalize", "off");
   ta.rows = Math.min(28, original.split("\n").length + 1);
@@ -128,7 +162,36 @@ function setupCode(box) {
       g.strokeStyle = "#f4d35e"; g.lineWidth = 2; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.stroke();
       g.fillStyle = "#d7dde5"; g.font = "11px ui-monospace, monospace"; g.fillText(String(+y1.toPrecision(3)), 2, 12); g.fillText(String(+y0.toPrecision(3)), 2, h - 22); g.fillText(label, 44, h - 4);
     };
-    const prefix = (box.dataset.uses ?? "").split(/\s+/).filter(Boolean).map((id) => blocks.get(id)?.value ?? "").join("\n;\n");
+    const prefix = (box.dataset.uses ?? "").split(/\s+/).filter(Boolean).map((id) => blocks.get(id)?.value ?? "").join(isPy ? "\n" : "\n;\n");
+    if (isPy) {
+      const wait = document.createElement("div"); wait.className = "muted"; wait.textContent = pyReady ? "Running…" : "Starting Python (first run on this page loads about 10 MB)…"; out.append(wait);
+      bar.querySelector(".run").disabled = true;
+      try {
+        const py = await python();
+        const ns = py.globals.get("dict")(), all = prefix + "\n" + ta.value;
+        ns.set("get", py.globals.get("get"));
+        wait.textContent = "Loading libraries…";
+        await py.loadPackagesFromImports(all, { messageCallback: () => {} });
+        wait.remove();
+        py.setStdout({ batched: (t) => line(t) }); py.setStderr({ batched: (t) => { if (!/font cache/.test(t)) line(t, "err"); } });
+        if (prefix.trim()) { quiet.on = true; await py.runPythonAsync(prefix, { globals: ns }); quiet.on = false; }
+        const v = await py.runPythonAsync(ta.value, { globals: ns });
+        for (const png of py.globals.get("__figures")().toJs()) { const img = document.createElement("img"); img.src = `data:image/png;base64,${png}`; img.style.maxWidth = "100%"; out.append(img); }
+        if (v !== undefined && v !== null) {
+          const html = v?._repr_html_?.();
+          if (html) { const d = document.createElement("div"); d.className = "df"; d.innerHTML = html; out.append(d); } else line(typeof v === "object" ? py.globals.get("repr")(v) : String(v));
+          v?.destroy?.();
+        }
+        ns.destroy();
+        if (!out.childElementCount) line("(ran, printed nothing: add print(...) to see values)");
+      } catch (e) {
+        quiet.on = false; wait.remove();
+        const msg = String(e.message ?? e), lines = msg.trim().split("\n");
+        // a Python traceback: keep the part about the user's code, not Pyodide's internals
+        const from = lines.findIndex((l) => l.includes('File "<exec>"')); line((from >= 0 ? lines.slice(from) : lines.slice(-3)).join("\n"), "err");
+      } finally { bar.querySelector(".run").disabled = false; }
+      return;
+    }
     try {
       const fn = new (async function () {}).constructor("print", "plot", "table", "console", "__q", `__q.on = true;\n${prefix}\n;__q.on = false;\n${ta.value}`);
       await fn(print, plot, table, { log: print, error: (...a) => line(a.map(show).join(" "), "err") }, quiet);

@@ -18,3 +18,14 @@ if (i >= 0) {
     + (next ? `<div>Next: <a href="./${next.href}"><b>${next.title}</b></a> →</div>` : `<div>That's the end of the path so far. <a href="./">See what's coming</a>.</div>`);
   document.querySelector("main")?.append(nav);
 }
+// A lesson's practice notebook (ai/notebooks/index.json, written by ai/notebooks/build.py): Colab, Kaggle or download.
+const nb = (await fetch("/ai/notebooks/index.json").then((r) => r.json()).catch(() => ({})))[here];
+if (nb) {
+  const box = document.createElement("aside");
+  box.className = "card";
+  box.style.cssText = "margin: 40px 0 0; padding: 12px 16px; font-size: 1rem; border-left: 4px solid var(--accent);";
+  box.innerHTML = `<b>Practice notebook</b>: exercises with checks, in Python, on a free cloud machine.<br>`
+    + `<a href="${nb.colab}" target="_blank" rel="noopener">Open in Colab</a> · <a href="${nb.kaggle}" target="_blank" rel="noopener">Open on Kaggle</a> (then <i>Copy &amp; Edit</i>) · <a href="/ai/notebooks/${nb.notebook}" download>download .ipynb</a>`;
+  const main = document.querySelector("main"), navEl = main?.querySelector(":scope > nav.card");
+  navEl ? navEl.before(box) : main?.append(box);
+}
