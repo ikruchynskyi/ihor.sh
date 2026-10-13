@@ -38,8 +38,8 @@ function popup(r: Repeater) {
     ${heardHere(r)}${US_CALL.test(r.callsign) ? `<span class="lic" data-lic="${esc(r.callsign)}"></span>` : ""}
     <a href="#" data-call="${esc(r.callsign)}">Look up ${esc(r.callsign)}</a>${scannable(r) ? ` · <a href="#" data-monitor="${r.outputMHz}|${esc(r.callsign)} ${esc(r.city)}">🎧 Listen with captions</a> · <a href="../?listen=${r.outputMHz}">Spectrum Lab</a>` : ""}`;
 }
-// Directories go stale (clubs hand repeaters to other clubs), so the popup adds what's known now: other callsigns the
-// captions heard identifying on this frequency, and a warning when the FCC has no active license for the listed call.
+// Directories go stale (clubs hand repeaters to other clubs), so the popup adds what's known now: the listed call's FCC
+// record (or a warning when there's no active license), and other callsigns the captions heard on this frequency.
 const US_CALL = /^(A[A-L]|[KNW])[A-Z]?\d[A-Z]{1,3}$/;
 function heardHere(r: Repeater) {
   const other = log.heard.filter((h) => h.mhz && Math.abs(h.mhz - r.outputMHz) < 0.003 && h.call !== r.callsign);
@@ -51,7 +51,12 @@ map.on("popupopen", (e: any) => {
   if (!el) return;
   const call = el.dataset.lic;
   if (!licenses.has(call)) licenses.set(call, fetch(`/api/radio/callsign?call=${encodeURIComponent(call)}`).then((r) => r.json()).catch(() => null));
-  licenses.get(call)!.then((d) => { if (d && !d.found) el.innerHTML = `⚠ <b>No active FCC license for ${esc(call)}</b>: this listing may be out of date (the repeater may now ID under another call).<br>`; });
+  el.innerHTML = `<span class="muted">FCC: looking up ${esc(call)}…</span><br>`;
+  licenses.get(call)!.then((d) => {
+    el.innerHTML = !d ? `<span class="muted">FCC lookup failed</span><br>`
+      : !d.found ? `⚠ <b>No active FCC license for ${esc(call)}</b>: this listing may be out of date (the repeater may now ID under another call).<br>`
+      : `FCC: <b>${esc(d.name)}</b> · ${esc(d.type === "CLUB" ? "club" : d.licenseClass || d.type || "")}${d.trustee ? ` · trustee ${esc(d.trustee)}` : ""}${d.expires ? ` · expires ${esc(d.expires)}` : ""}${d.previous ? ` · was ${esc(d.previous)}` : ""}<br>`;
+  });
 });
 const marks = new Map<number, any>(); // repeater id → its marker
 let pendingRpt: number | null = null; // a ?rpt= link's repeater, opened once the area around it has loaded
