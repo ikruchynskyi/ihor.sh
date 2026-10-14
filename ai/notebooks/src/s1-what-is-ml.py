@@ -82,7 +82,7 @@ for step in range(3000):
     ### END SOLUTION
     history.append(mse(a, b))
 plt.plot(history); plt.yscale("log"); plt.xlabel("step"); plt.ylabel("error"); plt.show()
-print(f"a = {a:.3f}, b = {b:.3f}, error = {mse(a, b):.3f}")
+print("a =", a, " b =", b, " error =", mse(a, b))
 
 # %%
 best_a, best_b = np.polyfit(km, minutes, 1)        # the exact least-squares line, for comparison

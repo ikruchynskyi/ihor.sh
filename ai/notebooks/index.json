@@ -1,4 +1,18 @@
 {
+ "01-matrices-are-moves.html": {
+  "notebook": "01-matrices-are-moves.ipynb",
+  "title": "AI from scratch: matrices are moves",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/01-matrices-are-moves.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-matrices-are-moves"
+ },
+ "l1-systems-and-inverses.html": {
+  "notebook": "l1-systems-and-inverses.ipynb",
+  "title": "AI from scratch: systems, rank and least squares",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/l1-systems-and-inverses.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-systems-rank-and-least-squares"
+ },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",
   "title": "AI from scratch: your first models",

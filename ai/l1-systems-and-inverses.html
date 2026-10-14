@@ -29,7 +29,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 1 · Stage 1: the math of learning</p>
   <h1>Systems of equations, rank and inverses</h1>
   <p class="lede">Chapter 1 showed a matrix as a move of the plane. This lesson asks the reverse question: given where something landed, where did it start? That's solving a system of equations, and it decides whether a model has one best answer, none, or infinitely many. You'll drag equations as lines, run elimination step by step, meet the inverse matrix (and why a nearly flat one is dangerous), and end by fitting linear regression exactly, with no training loop at all.</p>
@@ -108,32 +108,28 @@
   </div>
   <p>Here's elimination as code, written the way libraries do it: before each step it swaps up the row with the biggest number in the current column (<b>partial pivoting</b>), because dividing by a tiny pivot magnifies rounding errors.</p>
   <div class="code" id="solve" data-title="Build it: Gaussian elimination from scratch"><textarea>
-// Solve A x = b. Returns x, or null if A is singular (rank too low for one answer).
-function solve(A, b) {
-  const n = A.length, M = A.map((row, i) => [...row, b[i]]);   // the augmented matrix [A | b]
-  for (let c = 0; c < n; c++) {
-    // pivot: bring up the row with the biggest |number| in column c
-    let p = c;
-    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
-    if (Math.abs(M[p][c]) < 1e-12) return null;                 // no pivot: singular
-    [M[c], M[p]] = [M[p], M[c]];
-    for (let r = c + 1; r < n; r++) {                           // clear column c below the pivot
-      const f = M[r][c] / M[c][c];
-      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
-    }
-  }
-  const x = new Array(n).fill(0);
-  for (let r = n - 1; r >= 0; r--) {                            // back substitution, bottom up
-    let s = M[r][n];
-    for (let k = r + 1; k < n; k++) s -= M[r][k] * x[k];
-    x[r] = s / M[r][r];
-  }
-  return x;
-}
+import numpy as np
 
-print("coffee and bagels:", solve([[1, 2], [3, 1]], [7, 11]));
-print("three unknowns:", solve([[1, 1, 1], [2, 1, -1], [-1, 2, 2]], [6, 1, 9]));
-print("a repeated equation:", solve([[1, 1, 1], [2, 1, -1], [3, 2, 0]], [6, 1, 7]));
+def solve(A, b):
+    "Solve A x = b by Gaussian elimination. Returns x, or None if A is singular (rank too low for one answer)."
+    M = np.column_stack([A, b]).astype(float)       # the augmented matrix [A | b]
+    n = len(A)
+    for c in range(n):
+        p = c + np.argmax(np.abs(M[c:, c]))         # pivot: bring up the row with the biggest |number| in column c
+        if abs(M[p, c]) &lt; 1e-12:
+            return None                             # no pivot: singular
+        M[[c, p]] = M[[p, c]]                       # swap rows c and p
+        for r in range(c + 1, n):                   # clear column c below the pivot
+            M[r] -= (M[r, c] / M[c, c]) * M[c]
+    x = np.zeros(n)
+    for r in range(n - 1, -1, -1):                  # back substitution, bottom up
+        x[r] = (M[r, n] - M[r, r + 1:n] @ x[r + 1:]) / M[r, r]
+    return x
+
+print("coffee and bagels:", solve(np.array([[1, 2], [3, 1]]), np.array([7, 11])))
+print("three unknowns:", solve(np.array([[1, 1, 1], [2, 1, -1], [-1, 2, 2]]), np.array([6, 1, 9])))
+print("a repeated equation:", solve(np.array([[1, 1, 1], [2, 1, -1], [3, 2, 0]]), np.array([6, 1, 7])))
+print("NumPy's own (LAPACK, the same idea):", np.linalg.solve([[1, 2], [3, 1]], [7, 11]))
 </textarea></div>
   <p>Elimination on \(n\) unknowns takes about \(n^3/3\) multiplications: a thousand unknowns is a third of a billion, a fraction of a second. That cube is why, for millions of unknowns (a neural network's weights), nobody solves equations: gradient descent takes cheap steps instead.</p>
 
@@ -169,21 +165,19 @@ print("a repeated equation:", solve([[1, 1, 1], [2, 1, -1], [3, 2, 0]], [6, 1, 7
   <p class="formula">\[ X^\top X \, w = X^\top y \]</p>
   <p>with \(X\) the rides' table (a column of km and a column of 1s), \(y\) the minutes, \(w = (a, b)\). These are the <b>normal equations</b>: always a square system, 2 equations for 2 knobs here, which our <code>solve</code> handles in one go.</p>
   <div class="code" data-uses="solve" data-title="Run it: least squares, solved exactly"><textarea>
-const rides = [[1, 9], [2, 11], [3, 14], [5, 19], [8, 27], [10, 33]];
-const X = rides.map(([km]) => [km, 1]), y = rides.map(([, min]) => min);
-const T = (M) => M[0].map((_, j) => M.map((row) => row[j]));               // transpose: rows ↔ columns
-const mul = (A, B) => A.map((row) => B[0].map((_, j) => row.reduce((s, v, k) => s + v * B[k][j], 0)));
+rides = np.array([[1, 9], [2, 11], [3, 14], [5, 19], [8, 27], [10, 33]])
+X = np.column_stack([rides[:, 0], np.ones(len(rides))])   # a column of km, a column of 1s
+y = rides[:, 1]
 
-const XtX = mul(T(X), X);                         // [[Σ km², Σ km], [Σ km, n]]
-const Xty = mul(T(X), y.map((v) => [v])).map((r) => r[0]);
-print("XᵀX =", XtX, " Xᵀy =", Xty);
-const [a, b] = solve(XtX, Xty);
-print("best line: minutes =", a.toFixed(3), "× km +", b.toFixed(3));
-print("mean squared error:", (rides.reduce((s, [km, m]) => s + (a * km + b - m) ** 2, 0) / rides.length).toFixed(4));
+print("XᵀX =\n", X.T @ X, "\nXᵀy =", X.T @ y)
+a, b = solve(X.T @ X, X.T @ y)                             # the normal equations
+print(f"best line: minutes = {a:.3f} × km + {b:.3f}")
+print("mean squared error:", np.mean((a * rides[:, 0] + b - y) ** 2).round(4))
+print("NumPy's least squares agrees:", np.linalg.lstsq(X, y, rcond=None)[0].round(3))
 
-// Twin features: km and km again. XᵀX goes singular and there's no single best answer.
-const X2 = rides.map(([km]) => [km, km, 1]);
-print("with a duplicated column:", solve(mul(T(X2), X2), mul(T(X2), y.map((v) => [v])).map((r) => r[0])));
+# Twin features: km and km again. XᵀX goes singular and there's no single best answer.
+X2 = np.column_stack([rides[:, 0], rides[:, 0], np.ones(len(rides))])
+print("with a duplicated column:", solve(X2.T @ X2, X2.T @ y), " rank of X2:", np.linalg.matrix_rank(X2))
 </textarea></div>
   <div class="q" data-num="2.671" data-tol="0.002">
     <p>Run it: what slope \(a\) does least squares find?</p>
