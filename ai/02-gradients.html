@@ -21,7 +21,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 2</p>
   <h1>Gradients: which way is downhill</h1>
   <p class="lede">Last chapter ended with a promise: training a network means finding the right numbers for its matrices. There are millions of them, so nobody tries them one by one. Instead, the network measures how wrong it is and asks a simple question: <em>if I nudge this number a little, does it get better or worse?</em> That question has a name, the derivative, and the whole of deep learning is built on asking it very fast. (This chapter is the intuition; for the full toolkit, the rules, many variables and curvature, continue with <a href="./c1-derivatives.html">Calculus 1</a> afterwards.)</p>
@@ -43,17 +43,22 @@
     <div class="why">\(\frac{16 - 9}{1} = 7\). That's \(2x + h = 6 + 1\). Shrink \(h\) to 0.1 and you get 6.1, then 6.01: it closes in on the true slope, \(2 \cdot 3 = 6\).</div>
   </div>
   <div class="code" data-title="Build it: a derivative by nudging"><textarea>
-const f = (x) => x * x;
-const slope = (f, x, h) => (f(x + h) - f(x)) / h;
+def f(x):
+    return x * x
 
-// True answer: 2x = 6 at x = 3. Shrink h and watch the estimate close in... then fall apart.
-for (const h of [1, 0.1, 0.01, 1e-4, 1e-8, 1e-12, 1e-15]) print("h =", h, " slope ≈", slope(f, 3, h));
+def slope(f, x, h):
+    return (f(x + h) - f(x)) / h
 
-// Why it falls apart: computers keep ~16 significant digits. f(3 + 1e-15) and f(3) agree
-// in almost all of them, so their difference is mostly rounding noise.
-// The fix used in practice: the centered difference, accurate to h² instead of h.
-const centered = (f, x, h) => (f(x + h) - f(x - h)) / (2 * h);
-print("centered, h = 1e-5:", centered(f, 3, 1e-5));
+# True answer: 2x = 6 at x = 3. Shrink h and watch the estimate close in... then fall apart.
+for h in [1, 0.1, 0.01, 1e-4, 1e-8, 1e-12, 1e-15]:
+    print("h =", h, " slope ≈", slope(f, 3, h))
+
+# Why it falls apart: computers keep ~16 significant digits. f(3 + 1e-15) and f(3) agree
+# in almost all of them, so their difference is mostly rounding noise.
+# The fix used in practice: the centered difference, accurate to h² instead of h.
+def centered(f, x, h):
+    return (f(x + h) - f(x - h)) / (2 * h)
+print("centered, h = 1e-5:", centered(f, 3, 1e-5))
 </textarea></div>
 
   <h2>2. Rolling downhill</h2>
@@ -86,20 +91,26 @@ print("centered, h = 1e-5:", centered(f, 3, 1e-5));
     <div class="why">Factor \(1 - 2 \cdot 1 = -1\): every step lands at minus where it was.</div>
   </div>
   <div class="code" data-title="Build it: gradient descent"><textarea>
-const f = (x) => x * x, df = (x) => 2 * x;     // the valley and its slope
+import numpy as np
+import matplotlib.pyplot as plt
 
-function descend(lr, x = 5, steps = 25) {
-  const path = [x];
-  for (let k = 0; k < steps; k++) { x = x - lr * df(x); path.push(x); }
-  return path;
-}
+def f(x):  return x * x          # the valley
+def df(x): return 2 * x          # its slope
 
-for (const lr of [0.1, 0.5, 0.9, 1.0]) {
-  const path = descend(lr);
-  print(`learning rate ${lr}: x after 25 steps = ${path.at(-1).toPrecision(3)}`);
-  plot(path, { label: `x at each step, learning rate ${lr}` });
-}
-// Try 1.05, and a bumpy curve like f = x**4 - 3*x**2 + x (slope 4x³ - 6x + 1) from different starts.
+def descend(lr, x=5.0, steps=25):
+    path = [x]
+    for _ in range(steps):
+        x = x - lr * df(x)
+        path.append(x)
+    return path
+
+plt.figure(figsize=(7, 3))
+for lr in [0.1, 0.5, 0.9, 1.0]:
+    path = descend(lr)
+    print(f"learning rate {lr}: x after 25 steps = {path[-1]:.3g}")
+    plt.plot(path, marker=".", label=f"lr {lr}")
+plt.xlabel("step"); plt.ylabel("x"); plt.legend(); plt.show()
+# Try 1.05, and a bumpy curve like f = x**4 - 3*x**2 + x (slope 4x³ - 6x + 1) from different starts.
 </textarea></div>
 
   <h2>3. Two inputs: the gradient is an arrow</h2>
@@ -142,30 +153,27 @@ for (const lr of [0.1, 0.5, 0.9, 1.0]) {
     <div class="why">\(\partial L/\partial b = \frac{2}{N}\sum r_i > 0\), and the step is \(b \leftarrow b - \eta \cdot (\text{positive})\): the line moves down toward the points.</div>
   </div>
   <div class="code" data-title="Build it: fit a line by gradient descent"><textarea>
-// Points scattered around y = 2x + 1
-const xs = [0, 1, 2, 3, 4, 5], ys = [1.2, 2.8, 5.3, 6.9, 9.1, 10.8];
-const N = xs.length;
+import numpy as np
+import matplotlib.pyplot as plt
 
-let w = 0, b = 0;
-const lr = 0.02, losses = [];
-for (let step = 0; step < 500; step++) {
-  let L = 0, dw = 0, db = 0;
-  for (let i = 0; i < N; i++) {
-    const r = w * xs[i] + b - ys[i];   // residual
-    L += r * r / N;
-    dw += 2 * r * xs[i] / N;           // ∂L/∂w
-    db += 2 * r / N;                   // ∂L/∂b
-  }
-  w -= lr * dw; b -= lr * db;
-  losses.push(L);
-}
-print("learned: y =", w.toFixed(3), "x +", b.toFixed(3), "  final loss", losses.at(-1).toFixed(4));
-plot(losses.slice(0, 120), { label: "loss over the first 120 steps" });
+# Points scattered around y = 2x + 1
+xs = np.array([0, 1, 2, 3, 4, 5])
+ys = np.array([1.2, 2.8, 5.3, 6.9, 9.1, 10.8])
 
-// For a straight line there's also an exact answer (least squares), so we can check:
-const mx = xs.reduce((a, c) => a + c) / N, my = ys.reduce((a, c) => a + c) / N;
-const wExact = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.reduce((s, x) => s + (x - mx) ** 2, 0);
-print("exact:   y =", wExact.toFixed(3), "x +", (my - wExact * mx).toFixed(3));
+w, b, lr = 0.0, 0.0, 0.02
+losses = []
+for step in range(500):
+    r = w * xs + b - ys                 # every residual at once
+    losses.append(np.mean(r ** 2))
+    dw = np.mean(2 * r * xs)            # ∂L/∂w
+    db = np.mean(2 * r)                 # ∂L/∂b
+    w, b = w - lr * dw, b - lr * db
+print(f"learned: y = {w:.3f} x + {b:.3f}   final loss {losses[-1]:.4f}")
+plt.figure(figsize=(6, 2.5)); plt.plot(losses[:120]); plt.title("loss over the first 120 steps"); plt.show()
+
+# For a straight line there's also an exact answer (least squares), so we can check:
+w_exact, b_exact = np.polyfit(xs, ys, 1)
+print(f"exact:   y = {w_exact:.3f} x + {b_exact:.3f}")
 </textarea></div>
 
   <p class="muted">Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/gradient-descent">gradient descent</a> and <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a>. All lessons: <a href="./">AI from scratch</a>.</p>

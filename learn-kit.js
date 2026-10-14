@@ -135,6 +135,8 @@ function python() {
     .then(() => window.loadPyodide({ indexURL: PYODIDE, env: { MPLBACKEND: "AGG" } }))
     .then(async (py) => {
       await py.runPythonAsync(`
+import warnings
+warnings.filterwarnings("ignore", message=".*non-interactive.*")   # plt.show() is fine here: figures appear below the box
 from pyodide.http import open_url
 def get(url):
     "Text of a URL on this site (or any that allows it), e.g. get('/ai/data/outages.json')."

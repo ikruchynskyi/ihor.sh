@@ -6,6 +6,27 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-matrices-are-moves"
  },
+ "02-gradients.html": {
+  "notebook": "02-gradients.ipynb",
+  "title": "AI from scratch: gradients and gradient descent",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/02-gradients.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gradients-and-gradient-descent"
+ },
+ "c1-derivatives.html": {
+  "notebook": "c1-derivatives.ipynb",
+  "title": "AI from scratch: derivatives and gradient checks",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/c1-derivatives.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-derivatives-and-gradient-checks"
+ },
+ "c2-many-variables.html": {
+  "notebook": "c2-many-variables.ipynb",
+  "title": "AI from scratch: gradients, Jacobians and backprop",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/c2-many-variables.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gradients-jacobians-and-backprop"
+ },
  "l1-systems-and-inverses.html": {
   "notebook": "l1-systems-and-inverses.ipynb",
   "title": "AI from scratch: systems, rank and least squares",

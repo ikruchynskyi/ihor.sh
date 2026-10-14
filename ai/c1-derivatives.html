@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 1 · Foundations</p>
   <h1>Derivatives: the rules of change</h1>
   <p class="lede">Training a model means asking one question millions of times: if I nudge this number, how much does the error change? That number is a derivative. This lesson builds it from a picture, gives you the handful of rules that differentiate any network, and shows the two places engineers get burned: activations whose slopes vanish, and derivatives computed carelessly by the computer.</p>
@@ -73,12 +73,16 @@
   <p>\(e^x\) is the function that grows at a rate equal to its size: its slope everywhere is its own value. That makes it the natural way to turn any score into something positive with a clean derivative, which is exactly what softmax does (chapter 5). Its inverse, \(\ln x\), has slope \(1/x\): steep near zero, flat for large \(x\).</p>
   <p>Logs are everywhere in ML for two reasons. First, \(\ln(ab) = \ln a + \ln b\): the probability of a whole sentence is a product of a thousand token probabilities, and the log turns it into a sum, which has a far easier derivative. Second, the product doesn't fit in a computer:</p>
   <div class="code" data-title="Run it: why models work with log-probabilities"><textarea>
-// 400 predictions, each given probability 0.1. The chance of all of them is 0.1^400 = 1e-400.
-let product = 1, logSum = 0;
-for (let i = 0; i < 400; i++) { product *= 0.1; logSum += Math.log(0.1); }
-print("product of the probabilities:", product); // the smallest float64 is about 5e-324, so this underflows to 0
-print("sum of the log-probabilities:", logSum); // about -921, no problem at all
-print("as a power of ten:", logSum / Math.LN10);
+import math
+
+# 400 predictions, each given probability 0.1. The chance of all of them is 0.1^400 = 1e-400.
+product, log_sum = 1.0, 0.0
+for i in range(400):
+    product *= 0.1
+    log_sum += math.log(0.1)
+print("product of the probabilities:", product)   # the smallest float is about 5e-324, so this underflows to 0
+print("sum of the log-probabilities:", log_sum)   # about -921, no problem at all
+print("as a power of ten:", log_sum / math.log(10))
 </textarea></div>
   <p>The loss for a prediction is \(-\ln p\), where \(p\) is the probability the model gave the right answer. Its derivative is \(-1/p\): when the model is confidently wrong (tiny \(p\)), the slope is huge and the correction is strong.</p>
   <div class="q" data-num="100">
@@ -118,22 +122,22 @@ print("as a power of ten:", logSum / Math.LN10);
   </div>
   <p>Why not train with numerical derivatives? They cost one or two extra evaluations of the whole network <i>per parameter</i>: a billion-parameter model would need two billion forward passes for one step. Backprop gets every derivative for about the cost of two or three forward passes. So engineers use numerical derivatives for one job: <b>gradient checking</b>, comparing them against the hand-derived or backprop gradient on a few inputs to catch bugs.</p>
   <div class="code" data-title="Build it: a gradient check"><textarea>
-const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-const dSigmoid = (x) => sigmoid(x) * (1 - sigmoid(x)); // the rule from section 4
-const central = (f, x, h = 1e-5) => (f(x + h) - f(x - h)) / (2 * h);
-// relative error: below about 1e-7 means the derivative is right
-const relErr = (a, b) => Math.abs(a - b) / Math.max(1e-12, Math.abs(a) + Math.abs(b));
+import numpy as np
+import pandas as pd
 
-const rows = [];
-for (const x of [-4, -1, 0, 0.5, 3]) {
-  const analytic = dSigmoid(x), numeric = central(sigmoid, x);
-  rows.push({ x, analytic, numeric, "relative error": relErr(analytic, numeric) });
-}
-table(rows);
+def sigmoid(x):  return 1 / (1 + np.exp(-x))
+def d_sigmoid(x): return sigmoid(x) * (1 - sigmoid(x))      # the rule from section 4
+def central(f, x, h=1e-5): return (f(x + h) - f(x - h)) / (2 * h)
+def rel_err(a, b):                                          # below about 1e-7 means the derivative is right
+    return np.abs(a - b) / np.maximum(1e-12, np.abs(a) + np.abs(b))
 
-// A typical bug: a sign slip. The check catches it at once.
-const buggy = (x) => sigmoid(x) * (1 + sigmoid(x));
-print("buggy derivative at 0.5, relative error:", relErr(buggy(0.5), central(sigmoid, 0.5)));
+x = np.array([-4, -1, 0, 0.5, 3])                           # all five points at once
+analytic, numeric = d_sigmoid(x), central(sigmoid, x)
+
+# A typical bug: a sign slip. The check catches it at once.
+def buggy(x): return sigmoid(x) * (1 + sigmoid(x))
+print("buggy derivative at 0.5, relative error:", rel_err(buggy(0.5), central(sigmoid, 0.5)))
+pd.DataFrame({"x": x, "analytic": analytic, "numeric": numeric, "relative error": rel_err(analytic, numeric)})
 </textarea></div>
 
   <h2>6. What to carry forward</h2>
