@@ -75,7 +75,7 @@ check(lambda: torch.allclose(J_lin, W), "the Jacobian of Wx is W")
 check(lambda: np.allclose(J_tanh.numpy(), J_tanh_formula, atol=1e-6), "tanh's Jacobian is diagonal: 1 − tanh²")
 
 # %% [markdown]
-# ## 3. Backprop by hand
+# ## 3. The chain rule through two layers (chapter 4 calls this backprop)
 # A small network: $h = \tanh(W_1 x)$, $\hat y = W_2 h$, $L = (\hat y - y)^2$. Compute the gradients of $L$ with
 # respect to `W1` and `W2` by hand (NumPy), going backwards:
 # $g = 2(\hat y - y)$; $\partial L/\partial W_2 = g\,h^\top$; then $g_h = W_2^\top g$, through tanh

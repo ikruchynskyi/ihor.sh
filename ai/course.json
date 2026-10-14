@@ -715,7 +715,7 @@
     ],
     "answer": 1,
     "why": "One partial derivative per weight: the same shape as W.",
-    "sec": 4
+    "sec": 2
    }
   ]
  },
@@ -986,6 +986,186 @@
     "answer": 0,
     "why": "Variance along a unit u is uᵀΣu, largest along Σ's top eigenvector.",
     "sec": 7
+   }
+  ]
+ },
+ "03-a-neuron.html": {
+  "goals": [
+   "Compute a neuron's output as a weighted sum, a shift and a sigmoid",
+   "Train it with log loss and gradient descent",
+   "Explain why one neuron can't learn XOR, and how a hidden layer fixes it"
+  ],
+  "cards": [
+   [
+    "A neuron",
+    "σ(w·x + b): a weighted sum, a shift, a squeeze into (0, 1)."
+   ],
+   [
+    "The neuron's decision edge",
+    "The line where w·x + b = 0 (output 0.5); w points to the side it calls 'yes'."
+   ],
+   [
+    "Log loss",
+    "−[y ln p + (1 − y) ln(1 − p)]: the surprise at the true answer."
+   ],
+   [
+    "Gradient of log loss for a neuron",
+    "(p − y)·x for w and (p − y) for b: what it said minus what was true."
+   ],
+   [
+    "Logistic regression",
+    "A single sigmoid neuron trained with log loss: still a workhorse model."
+   ],
+   [
+    "XOR",
+    "Opposite corners alike: no single line separates them, a hidden layer can."
+   ]
+  ],
+  "check": [
+   {
+    "q": "w = (2, −1), b = 1. What's w·x + b for x = (1, 1)?",
+    "options": [
+     "2",
+     "1",
+     "3"
+    ],
+    "answer": 0,
+    "why": "2·1 − 1·1 + 1 = 2, so the neuron outputs σ(2) ≈ 0.88.",
+    "sec": 1
+   },
+   {
+    "q": "Multiplying w and b by 5 makes the neuron…",
+    "options": [
+     "move its edge",
+     "more confident: outputs closer to 0 or 1, same edge",
+     "less accurate"
+    ],
+    "answer": 1,
+    "why": "The edge w·x + b = 0 stays put; everything else gets pushed further from 0.5.",
+    "sec": 1
+   },
+   {
+    "q": "The neuron says p = 0.9 for a point whose answer is 0. Its log loss there is…",
+    "options": [
+     "−ln 0.9 ≈ 0.11",
+     "−ln 0.1 ≈ 2.3",
+     "0.9"
+    ],
+    "answer": 1,
+    "why": "For y = 0 the loss is −ln(1 − p): confidently wrong costs a lot.",
+    "sec": 2
+   },
+   {
+    "q": "Which points pull hardest on the weights while training?",
+    "options": [
+     "Those it already gets right with confidence",
+     "Those it gets wrong",
+     "All equally"
+    ],
+    "answer": 1,
+    "why": "The gradient is (p − y)·x: big errors give big pulls, confident right answers almost none.",
+    "sec": 2
+   },
+   {
+    "q": "Why can't one neuron learn XOR?",
+    "options": [
+     "It needs more training",
+     "Its decision boundary is one straight line, and no line separates XOR",
+     "The sigmoid is too slow"
+    ],
+    "answer": 1,
+    "why": "Adding the inequalities for the two blue and two red corners gives a contradiction.",
+    "sec": 3
+   }
+  ]
+ },
+ "04-backprop.html": {
+  "goals": [
+   "Run a forward and a backward pass by hand through a small network",
+   "Build and check a tiny autograd engine",
+   "Explain why one backward pass gives every gradient at once"
+  ],
+  "cards": [
+   [
+    "Backprop",
+    "The chain rule carried backwards: each node passes blame to its inputs, times its local slope."
+   ],
+   [
+    "Local slope of a + b",
+    "1 to each input."
+   ],
+   [
+    "Local slope of a · b",
+    "Each input gets the other one."
+   ],
+   [
+    "A value used twice",
+    "Collects blame from both uses: gradients add up."
+   ],
+   [
+    "Gradient check",
+    "Compare backprop with nudging each weight (centered difference); they should agree to ~1e-7."
+   ],
+   [
+    "Reverse mode",
+    "One backward pass gives the loss's gradient for every parameter: why training huge networks is possible."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Out = a · b with a = 3, b = −2, and ∂L/∂out = 5. What's ∂L/∂a?",
+    "options": [
+     "15",
+     "−10",
+     "5"
+    ],
+    "answer": 1,
+    "why": "a's local slope is the other input, −2; times the incoming 5.",
+    "sec": 1
+   },
+   {
+    "q": "A weight is used in two places in the network. Its gradient is…",
+    "options": [
+     "the larger of the two blames",
+     "the sum of the blames from both uses",
+     "the average of them"
+    ],
+    "answer": 1,
+    "why": "The multivariable chain rule adds the paths.",
+    "sec": 2
+   },
+   {
+    "q": "Backprop says ∂L/∂w = 1.79; nudging w gives 1.79. Relative error 3e-9 means…",
+    "options": [
+     "a bug",
+     "backprop is right",
+     "the nudge was too big"
+    ],
+    "answer": 1,
+    "why": "Agreement to about 1e-7 or better is what a correct gradient looks like.",
+    "sec": 3
+   },
+   {
+    "q": "A model has a billion parameters. How many backward passes give all their gradients?",
+    "options": [
+     "one",
+     "a billion",
+     "one per layer"
+    ],
+    "answer": 0,
+    "why": "Reverse mode carries one row backwards and hands back every partial at once.",
+    "sec": 5
+   },
+   {
+    "q": "Through an element-wise tanh, the backward pass…",
+    "options": [
+     "multiplies the blame by a full Jacobian matrix",
+     "multiplies each entry by 1 − h²",
+     "does nothing"
+    ],
+    "answer": 1,
+    "why": "Its Jacobian is diagonal, so the vector-Jacobian product is element-wise.",
+    "sec": 5
    }
   ]
  }

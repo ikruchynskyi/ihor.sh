@@ -26,7 +26,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 4</p>
   <h1>Backprop you can watch</h1>
   <p class="lede">Chapter 3 ended with a hidden layer that learned XOR, and a question: how does a neuron deep inside a network know which way to change, when it only affects the answer through other neurons? The answer is to pass <em>blame</em> backwards, one step at a time. It's called backpropagation, and it's just the chain rule from calculus, done in the right order.</p>
@@ -73,44 +73,67 @@
     <ul><li data-k="a">−1.5: blames from every use add</li><li data-k="b" data-says="Multiplying is for slopes along one path. Separate uses add.">−1: they multiply</li><li data-k="c" data-says="Every use matters: a nudge to u moves both later nodes at once.">0.5: only the first use counts</li></ul>
     <div class="why">Nudge \(u\) by \(\varepsilon\): the first use changes the loss by \(0.5\varepsilon\), the second by \(-2\varepsilon\), together \(-1.5\varepsilon\).</div>
   </div>
-  <div class="code" id="engine" data-title="Build it: an autograd engine in 40 lines (like micrograd)"><textarea>
-// Every number remembers how it was made, so it can pass blame back to what made it.
-class Value {
-  constructor(data, parents = [], op = "") { this.data = data; this.grad = 0; this.parents = parents; this.op = op; this.backStep = () => {}; }
-  add(o) { o = o instanceof Value ? o : new Value(o);
-    const out = new Value(this.data + o.data, [this, o], "+");
-    out.backStep = () => { this.grad += out.grad; o.grad += out.grad; };            // slope 1 to each input
-    return out; }
-  mul(o) { o = o instanceof Value ? o : new Value(o);
-    const out = new Value(this.data * o.data, [this, o], "*");
-    out.backStep = () => { this.grad += o.data * out.grad; o.grad += this.data * out.grad; };  // slope = the other one
-    return out; }
-  sub(o) { return this.add(o instanceof Value ? o.mul(-1) : -o); }
-  pow(n) { const out = new Value(this.data ** n, [this], "^");
-    out.backStep = () => { this.grad += n * this.data ** (n - 1) * out.grad; };
-    return out; }
-  tanh() { const t = Math.tanh(this.data), out = new Value(t, [this], "tanh");
-    out.backStep = () => { this.grad += (1 - t * t) * out.grad; };
-    return out; }
-  backward() {
-    // Visit nodes so that each one comes after everything it depends on, then walk that list backwards.
-    const order = [], seen = new Set();
-    const visit = (v) => { if (seen.has(v)) return; seen.add(v); v.parents.forEach(visit); order.push(v); };
-    visit(this);
-    this.grad = 1;                     // ∂L/∂L
-    for (const v of order.reverse()) v.backStep();
-  }
-}
+  <div class="code" id="engine" data-title="Build it: an autograd engine in 60 lines (like micrograd)"><textarea>
+import math
 
-// The network from the picture above:
-const w1 = new Value(0.6), b1 = new Value(-0.2), w2 = new Value(-0.9), b2 = new Value(0.3);
-const x = 1.5, y = 0.8;
-const h = w1.mul(x).add(b1).tanh();
-const yhat = w2.mul(h).add(b2);
-const L = yhat.sub(y).pow(2);
-L.backward();
-print("loss", L.data);
-print("∂L/∂w1", w1.grad, " ∂L/∂b1", b1.grad, " ∂L/∂w2", w2.grad, " ∂L/∂b2", b2.grad);
+class Value:
+    "A number that remembers how it was made, so it can pass blame back to what made it."
+    def __init__(self, data, parents=()):
+        self.data, self.grad, self.parents = data, 0.0, parents
+        self.back_step = lambda: None
+
+    def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data + other.data, (self, other))
+        def back_step():                          # slope 1 to each input
+            self.grad += out.grad; other.grad += out.grad
+        out.back_step = back_step
+        return out
+
+    def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data * other.data, (self, other))
+        def back_step():                          # the slope is the other input
+            self.grad += other.data * out.grad; other.grad += self.data * out.grad
+        out.back_step = back_step
+        return out
+
+    def __pow__(self, n):
+        out = Value(self.data ** n, (self,))
+        def back_step(): self.grad += n * self.data ** (n - 1) * out.grad
+        out.back_step = back_step
+        return out
+
+    def tanh(self):
+        t = math.tanh(self.data); out = Value(t, (self,))
+        def back_step(): self.grad += (1 - t * t) * out.grad
+        out.back_step = back_step
+        return out
+
+    __radd__ = __add__; __rmul__ = __mul__
+    def __neg__(self): return self * -1
+    def __sub__(self, other): return self + (-other)
+
+    def backward(self):
+        # Order nodes so each comes after everything it depends on, then walk that list backwards.
+        order, seen = [], set()
+        def visit(v):
+            if v not in seen:
+                seen.add(v)
+                for p in v.parents: visit(p)
+                order.append(v)
+        visit(self)
+        self.grad = 1.0                           # ∂L/∂L
+        for v in reversed(order): v.back_step()
+
+# The network from the picture above:
+w1, b1, w2, b2 = Value(0.6), Value(-0.2), Value(-0.9), Value(0.3)
+x, y = 1.5, 0.8
+h = (w1 * x + b1).tanh()
+L = (w2 * h + b2 - y) ** 2
+L.backward()
+print("loss", L.data)
+print("∂L/∂w1", w1.grad, " ∂L/∂b1", b1.grad, " ∂L/∂w2", w2.grad, " ∂L/∂b2", b2.grad)
 </textarea></div>
 
   <h2>3. Did backprop get it right? Nudge and see</h2>
@@ -121,23 +144,21 @@ print("∂L/∂w1", w1.grad, " ∂L/∂b1", b1.grad, " ∂L/∂w2", w2.grad, " �
     <p>The one-sided nudge \(\frac{L(w + \varepsilon) - L(w)}{\varepsilon}\) is off by an amount proportional to \(\varepsilon\). The centered one, \(\frac{L(w + \varepsilon) - L(w - \varepsilon)}{2\varepsilon}\), is off by an amount proportional to \(\varepsilon^2\): with \(\varepsilon = 10^{-4}\), about \(10^{-8}\). Libraries compare it with backprop using a <b>relative error</b>, \(\frac{|g_{\text{backprop}} - g_{\text{nudge}}|}{|g_{\text{backprop}}| + |g_{\text{nudge}}|}\); below about \(10^{-7}\) means the backward code is right. Bigger means a bug, usually a forgotten <code>+=</code> or a wrong local slope.</p>
   </details>
   <div class="code" data-uses="engine" data-title="Build it: check the engine by nudging"><textarea>
-// Uses the Value class from the block above (it runs first, quietly).
-const lossAt = (p) => {
-  const h = new Value(p.w1).mul(1.5).add(p.b1).tanh();
-  return new Value(p.w2).mul(h).add(p.b2).sub(0.8).pow(2).data;
-};
-const p = { w1: 0.6, b1: -0.2, w2: -0.9, b2: 0.3 };
-const eps = 1e-4;
-const params = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, new Value(v)]));
-const hh = params.w1.mul(1.5).add(params.b1).tanh();
-params.w2.mul(hh).add(params.b2).sub(0.8).pow(2).backward();
-const rows = [["weight", "backprop", "nudge", "relative error"]];
-for (const k of Object.keys(p)) {
-  const up = lossAt({ ...p, [k]: p[k] + eps }), down = lossAt({ ...p, [k]: p[k] - eps });
-  const num = (up - down) / (2 * eps), g = params[k].grad;
-  rows.push([k, g, num, Math.abs(g - num) / (Math.abs(g) + Math.abs(num))]);
-}
-table(rows);
+import pandas as pd
+# Uses the Value class from the block above (it runs first, quietly).
+def loss_at(p):
+    h = (Value(p["w1"]) * 1.5 + p["b1"]).tanh()
+    return ((Value(p["w2"]) * h + p["b2"] - 0.8) ** 2).data
+
+p = {"w1": 0.6, "b1": -0.2, "w2": -0.9, "b2": 0.3}
+v = {k: Value(x) for k, x in p.items()}
+((v["w2"] * (v["w1"] * 1.5 + v["b1"]).tanh() + v["b2"] - 0.8) ** 2).backward()
+
+eps, rows = 1e-4, []
+for k in p:
+    num = (loss_at({**p, k: p[k] + eps}) - loss_at({**p, k: p[k] - eps})) / (2 * eps)
+    rows.append((k, v[k].grad, num, abs(v[k].grad - num) / (abs(v[k].grad) + abs(num))))
+pd.DataFrame(rows, columns=["weight", "backprop", "nudge", "relative error"])
 </textarea></div>
 
   <h2>4. Why this is the trick that made deep learning</h2>
@@ -150,29 +171,69 @@ table(rows);
     <div class="why">\(1 + 10^6\). Backprop gets the same million numbers for about the cost of 3 forward passes: a forward, and a backward that does roughly twice a forward's arithmetic. For GPT-sized models (\(10^{11}\) weights) that's the difference between possible and not.</div>
   </div>
   <div class="code" data-uses="engine" data-title="Build it: train a network on XOR with your engine"><textarea>
-// A 2 → 4 → 1 network built from Values, trained with the engine above. Chapter 3's XOR, learned from scratch.
-const rnd = () => new Value(Math.random() * 2 - 1);
-const W1 = Array.from({ length: 4 }, () => [rnd(), rnd()]), B1 = Array.from({ length: 4 }, rnd);
-const W2 = Array.from({ length: 4 }, rnd), B2 = rnd();
-const params = [...W1.flat(), ...B1, ...W2, B2];
-const net = ([a, b]) => {
-  const h = W1.map(([wa, wb], i) => wa.mul(a).add(wb.mul(b)).add(B1[i]).tanh());
-  return h.reduce((s, hi, i) => s.add(hi.mul(W2[i])), B2).tanh();      // output in −1…1
-};
-const data = [[[0, 0], -1], [[0, 1], 1], [[1, 0], 1], [[1, 1], -1]];
-const losses = [];
-for (let step = 0; step < 300; step++) {
-  const L = data.reduce((s, [x, y]) => s.add(net(x).sub(y).pow(2)), new Value(0));
-  params.forEach((p) => (p.grad = 0));    // forget last step's blame
-  L.backward();
-  params.forEach((p) => (p.data -= 0.05 * p.grad));
-  losses.push(L.data);
-}
-plot(losses, { label: "loss while learning XOR" });
-for (const [x, y] of data) print(x, "→", net(x).data.toFixed(3), " (want", y + ")");
+import random
+import matplotlib.pyplot as plt
+# A 2 → 4 → 1 network built from Values, trained with the engine above. Chapter 3's XOR, learned from scratch.
+rnd = lambda: Value(random.uniform(-1, 1))
+W1 = [[rnd(), rnd()] for _ in range(4)]; B1 = [rnd() for _ in range(4)]
+W2 = [rnd() for _ in range(4)]; B2 = rnd()
+params = [w for row in W1 for w in row] + B1 + W2 + [B2]
+
+def net(a, b):
+    h = [(wa * a + wb * b + bi).tanh() for (wa, wb), bi in zip(W1, B1)]
+    return (sum((hi * wi for hi, wi in zip(h, W2)), B2)).tanh()      # output in −1…1
+
+data = [((0, 0), -1), ((0, 1), 1), ((1, 0), 1), ((1, 1), -1)]
+losses = []
+for step in range(300):
+    L = sum(((net(*x) - y) ** 2 for x, y in data), Value(0))
+    for p in params: p.grad = 0                 # forget last step's blame
+    L.backward()
+    for p in params: p.data -= 0.05 * p.grad
+    losses.append(L.data)
+plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.title("loss while learning XOR"); plt.show()
+for x, y in data: print(x, "→", round(net(*x).data, 3), f" (want {y})")
 </textarea></div>
 
   <p class="muted">All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/backpropagation-calculus">Backpropagation calculus</a> and Andrej Karpathy's micrograd.</p>
+  <h2>5. Backprop as matrix products</h2>
+  <p>Calculus 2 introduced the Jacobian, the matrix of every output's slope with respect to every input. In that language the whole backward pass is one line. A network is a chain: \(x \to h_1 \to h_2 \to \dots \to L\). The multivariable chain rule says the Jacobian of a chain is the <b>product of the Jacobians</b> of its links:</p>
+  <p class="formula">\[ \frac{\partial L}{\partial x} = \underbrace{\frac{\partial L}{\partial h_k}}_{1 \times m} \; \underbrace{\frac{\partial h_k}{\partial h_{k-1}}}_{m \times m} \cdots \underbrace{\frac{\partial h_1}{\partial x}}_{m \times n} \]</p>
+  <p>Matrix products are associative, so you can multiply in either order and get the same answer, but not for the same price. The loss is one number, so the leftmost factor is a single row. Multiply <b>left to right</b> and every step is a row times a matrix: a <b>vector-Jacobian product</b>, about \(m^2\) work, and the result is still one row. That is <b>reverse mode</b>, and it's exactly what backprop does in chapter 4. Multiply right to left (<b>forward mode</b>) and you carry whole matrices along, which only pays off when there are few inputs and many outputs.</p>
+  <p>Better still, nobody ever builds those \(m \times m\) matrices. The Jacobian of an elementwise \(\tanh\) is diagonal, so its vector-Jacobian product is just "multiply each entry by \(1 - h^2\)"; for \(h = Wx\) it's "row times \(W\)". Every layer in a framework ships one small function: given the blame on my output, return the blame on my input.</p>
+  <div class="code" data-title="Build it: backprop as vector-Jacobian products"><textarea>
+import numpy as np
+import pandas as pd
+
+# h1 = tanh(W1 x), h2 = tanh(W2 h1), L = sum of h2². x has 3 numbers, h1 has 4, h2 has 2.
+W1 = np.array([[0.5, -0.3, 0.8], [0.1, 0.9, -0.4], [-0.7, 0.2, 0.3], [0.4, 0.4, 0.4]])
+W2 = np.array([[0.6, -0.5, 0.2, 0.9], [-0.3, 0.8, 0.7, -0.1]])
+
+def forward(x):
+    h1 = np.tanh(W1 @ x); h2 = np.tanh(W2 @ h1)
+    return h1, h2, np.sum(h2 ** 2)
+
+x = np.array([1, -0.5, 2])
+h1, h2, L = forward(x)
+g = 2 * h2                      # ∂L/∂h2
+g = g * (1 - h2 ** 2)           # through tanh: a diagonal Jacobian is an element-wise product
+gW2 = np.outer(g, h1)           # ∂L/∂W2 = g h1ᵀ, the outer product
+g = g @ W2                      # through W2: row vector times matrix
+g = g * (1 - h1 ** 2)           # through tanh
+dx = g @ W1                     # through W1: ∂L/∂x
+
+def nudge(j, h=1e-5):
+    e = np.zeros(3); e[j] = h
+    return (forward(x + e)[2] - forward(x - e)[2]) / (2 * h)
+
+print("L =", L, "  ∂L/∂W2 has the shape of W2:", gW2.shape)
+pd.DataFrame({"backprop": dx, "central difference": [nudge(j) for j in range(3)]}, index=["∂L/∂x0", "∂L/∂x1", "∂L/∂x2"])
+</textarea></div>
+  <div class="q" data-num="1">
+    <p>A model has a billion parameters and one loss. How many backward passes does reverse mode need to get the derivative for every parameter?</p>
+    <div class="why">One. A backward pass carries one row (the loss's gradient) through the chain and hands back all billion partials at once, for about the cost of a couple of forward passes. Forward mode would need a pass per parameter: a billion of them. That gap is why deep learning runs on reverse mode.</div>
+  </div>
+
 </main>
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>

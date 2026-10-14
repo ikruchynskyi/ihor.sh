@@ -13,6 +13,20 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gradients-and-gradient-descent"
  },
+ "03-a-neuron.html": {
+  "notebook": "03-a-neuron.ipynb",
+  "title": "AI from scratch: one neuron, on real data",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/03-a-neuron.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-one-neuron-on-real-data"
+ },
+ "04-backprop.html": {
+  "notebook": "04-backprop.ipynb",
+  "title": "AI from scratch: build an autograd engine",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/04-backprop.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-build-an-autograd-engine"
+ },
  "c1-derivatives.html": {
   "notebook": "c1-derivatives.ipynb",
   "title": "AI from scratch: derivatives and gradient checks",

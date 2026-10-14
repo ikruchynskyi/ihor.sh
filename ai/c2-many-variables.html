@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gradients and Jacobians for Machine Learning</title>
-  <meta name="description" content="AI from scratch, calculus 2: partial derivatives on a landscape you can drag over, the gradient and directional derivatives, the gradients of ML's common shapes (dot products, MSE, weight matrices), the Jacobian as the local matrix of a warp, and backprop as vector-Jacobian products." />
+  <meta name="description" content="AI from scratch, calculus 2: partial derivatives on a landscape you can drag over, the gradient and directional derivatives, the gradients of ML's common shapes (dot products, MSE, weight matrices), the Jacobian as the local matrix of a warp." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
@@ -107,51 +107,13 @@ print("final loss:", round(loss(w), 4), "(the noise alone is about 0.1² = 0.01)
     <div class="why">\(\det J = 2 \cdot 3 = 6\), so about \(6 \times 0.01 = 0.06\). Widths double, heights triple.</div>
   </div>
 
-  <h2>4. Backprop is Jacobians, multiplied left to right</h2>
-  <p>A network is a chain: \(x \to h_1 \to h_2 \to \dots \to L\). The multivariable chain rule says the Jacobian of a chain is the <b>product of the Jacobians</b> of its links:</p>
-  <p class="formula">\[ \frac{\partial L}{\partial x} = \underbrace{\frac{\partial L}{\partial h_k}}_{1 \times m} \; \underbrace{\frac{\partial h_k}{\partial h_{k-1}}}_{m \times m} \cdots \underbrace{\frac{\partial h_1}{\partial x}}_{m \times n} \]</p>
-  <p>Matrix products are associative, so you can multiply in either order and get the same answer, but not for the same price. The loss is one number, so the leftmost factor is a single row. Multiply <b>left to right</b> and every step is a row times a matrix: a <b>vector-Jacobian product</b>, about \(m^2\) work, and the result is still one row. That is <b>reverse mode</b>, and it's exactly what backprop does in chapter 4. Multiply right to left (<b>forward mode</b>) and you carry whole matrices along, which only pays off when there are few inputs and many outputs.</p>
-  <p>Better still, nobody ever builds those \(m \times m\) matrices. The Jacobian of an elementwise \(\tanh\) is diagonal, so its vector-Jacobian product is just "multiply each entry by \(1 - h^2\)"; for \(h = Wx\) it's "row times \(W\)". Every layer in a framework ships one small function: given the blame on my output, return the blame on my input.</p>
-  <div class="code" data-title="Build it: backprop as vector-Jacobian products"><textarea>
-import numpy as np
-import pandas as pd
-
-# h1 = tanh(W1 x), h2 = tanh(W2 h1), L = sum of h2². x has 3 numbers, h1 has 4, h2 has 2.
-W1 = np.array([[0.5, -0.3, 0.8], [0.1, 0.9, -0.4], [-0.7, 0.2, 0.3], [0.4, 0.4, 0.4]])
-W2 = np.array([[0.6, -0.5, 0.2, 0.9], [-0.3, 0.8, 0.7, -0.1]])
-
-def forward(x):
-    h1 = np.tanh(W1 @ x); h2 = np.tanh(W2 @ h1)
-    return h1, h2, np.sum(h2 ** 2)
-
-x = np.array([1, -0.5, 2])
-h1, h2, L = forward(x)
-g = 2 * h2                      # ∂L/∂h2
-g = g * (1 - h2 ** 2)           # through tanh: a diagonal Jacobian is an element-wise product
-gW2 = np.outer(g, h1)           # ∂L/∂W2 = g h1ᵀ, the outer product
-g = g @ W2                      # through W2: row vector times matrix
-g = g * (1 - h1 ** 2)           # through tanh
-dx = g @ W1                     # through W1: ∂L/∂x
-
-def nudge(j, h=1e-5):
-    e = np.zeros(3); e[j] = h
-    return (forward(x + e)[2] - forward(x - e)[2]) / (2 * h)
-
-print("L =", L, "  ∂L/∂W2 has the shape of W2:", gW2.shape)
-pd.DataFrame({"backprop": dx, "central difference": [nudge(j) for j in range(3)]}, index=["∂L/∂x0", "∂L/∂x1", "∂L/∂x2"])
-</textarea></div>
-  <div class="q" data-num="1">
-    <p>A model has a billion parameters and one loss. How many backward passes does reverse mode need to get the derivative for every parameter?</p>
-    <div class="why">One. A backward pass carries one row (the loss's gradient) through the chain and hands back all billion partials at once, for about the cost of a couple of forward passes. Forward mode would need a pass per parameter: a billion of them. That gap is why deep learning runs on reverse mode.</div>
-  </div>
-
-  <h2>5. What to carry forward</h2>
+  <h2>4. What to carry forward</h2>
   <ul>
     <li><b>A partial derivative</b> is a slope with every other input frozen; the <b>gradient</b> stacks them into the arrow of steepest ascent, at right angles to the contours.</li>
     <li><b>The slope in direction \(u\)</b> is \(\nabla f \cdot u\): biggest along the gradient, zero along a contour, most negative against it.</li>
     <li><b>Shape rule:</b> \(\nabla_W L\) has \(W\)'s shape, and for a linear layer it is the outer product \(g\,x^\top\).</li>
     <li><b>The Jacobian</b> is the local matrix of any smooth map; its determinant is the local area scale.</li>
-    <li><b>Backprop = vector-Jacobian products</b>, left to right from the loss: one backward pass for any number of parameters.</li>
+    <li>Chapter 4 puts these together: backprop is the chain rule carried backwards through a network, one Jacobian at a time.</li>
   </ul>
   <p class="muted">All chapters: <a href="./">AI from scratch</a></p>
 </main>
