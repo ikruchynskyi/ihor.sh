@@ -134,8 +134,8 @@ for epoch in range(2):
     print(f"after epoch {epoch + 1}: validation accuracy {accuracy():.3f}")
 
 # %% [markdown]
-# Before training, the new last layer guesses (about 50%). Two short passes over 2,000 photos usually get it to
-# 95% or better on photos it never saw. Every piece of that cell gets its own lesson later: images as numbers
+# Before training, the new last layer guesses (about 50%). Two short passes over 2,000 photos get it to about
+# 90–95% on photos it never saw; train on all 7,349 for longer and it passes 98%. Every piece of that cell gets its own lesson later: images as numbers
 # (chapter 6), the network (stage 2), the loss (chapter 5), the optimizer (stage 4), transfer learning (stage 5).
 #
 # ### 2.1 Your turn: what does it get wrong?
