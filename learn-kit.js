@@ -50,6 +50,11 @@ const css = `
 .code .ed > pre code { all: unset; font: inherit !important; white-space: pre; }
 .code .ed > textarea { position: relative; resize: vertical; background: transparent !important; color: transparent !important; caret-color: #f4d35e; }
 .code .ed > textarea::selection { background: rgba(88, 196, 221, 0.35); color: transparent; }
+.code .ac { position: absolute; z-index: 5; min-width: 220px; max-width: 420px; max-height: 220px; overflow: auto; background: #1b2029; border: 1px solid #3a4252; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.35); font: 13px/1.4 ui-monospace, Menlo, monospace; color: #d7dde5; }
+.code .ac div { padding: 2px 8px; cursor: pointer; white-space: nowrap; display: flex; gap: 8px; }
+.code .ac div.on { background: #2d3a52; }
+.code .ac i { color: #7d8796; font-style: normal; margin-left: auto; font-size: 11px; }
+.code .ac .doc { white-space: normal; color: #9aa4b2; font-size: 11.5px; border-top: 1px solid #3a4252; cursor: default; }
 .code .token.comment { color: #7d8796; font-style: italic; } .code .token.string, .code .token.triple-quoted-string { color: #83c167; }
 .code .token.number, .code .token.boolean { color: #f4d35e; } .code .token.keyword { color: #fc6255; }
 .code .token.builtin, .code .token.function { color: #58c4dd; } .code .token.decorator, .code .token.class-name { color: #e6a3f0; }
@@ -145,6 +150,20 @@ from pyodide.http import open_url
 def get(url):
     "Text of a URL on this site (or any that allows it), e.g. get('/ai/data/outages.json')."
     return open_url(url).read()
+def __complete(src, line, col, ns=None):
+    # Completions at (line, col) by Jedi: [name, kind, text to insert, one-line description]. With ns (the box's
+    # last run), Jedi also sees the live objects, so methods of arrays and DataFrames complete too.
+    import jedi
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cs = (jedi.Interpreter(src, [ns]) if ns is not None else jedi.Script(src)).complete(line, col)
+            if not cs and ns is not None:   # the source can hide a live object's type (np.array(...)); ask about this line alone
+                cur = src.split("\\n")[line - 1][:col]
+                cs = jedi.Interpreter(cur, [ns]).complete(1, len(cur))
+    except Exception:
+        return []
+    return [[c.name, c.type, c.complete, (c.description or "")[:90]] for c in cs[:60] if not c.name.startswith("__")]
 def __figures():
     import sys
     if "matplotlib.pyplot" not in sys.modules: return []
@@ -158,6 +177,62 @@ def __figures():
       return py;
     }));
 }
+// ---------- Python autocomplete: Jedi running in the same Pyodide (no server; works offline once loaded) ----------
+// One queue: Pyodide can report a package as loaded while an earlier request is still installing it, and Jedi then
+// finds nothing, so each request waits for the one before.
+let jediQueue = null;
+const jediReady = (code) => (jediQueue = (jediQueue ?? python().then(async (py) => { await py.loadPackage("jedi", { messageCallback: () => {} }); return py; }))
+  .then(async (py) => { await py.loadPackagesFromImports(code, { messageCallback: () => {} }).catch(() => {}); return py; }));
+function autocomplete(box, ed, ta, paint) {
+  const pop = document.createElement("div"); pop.className = "ac"; pop.hidden = true; ed.append(pop);
+  let items = [], sel = 0, timer = 0, asked = 0;
+  const prefixCode = () => (box.dataset.uses ?? "").split(/\s+/).filter(Boolean).map((id) => blocks.get(id)?.value ?? "").join("\n");
+  const close = () => { pop.hidden = true; items = []; };
+  const accept = () => {
+    const it = items[sel]; if (!it) return close();
+    ta.setRangeText(it[2], ta.selectionStart, ta.selectionEnd, "end"); close(); paint(); ta.focus();
+    if (it[1] === "function" || it[1] === "class") { ta.setRangeText("()", ta.selectionStart, ta.selectionStart, "end"); ta.selectionStart = ta.selectionEnd = ta.selectionStart - 1; paint(); }
+  };
+  const render = () => {
+    pop.innerHTML = items.map(([n, k], i) => `<div data-i="${i}" class="${i === sel ? "on" : ""}">${n.replace(/</g, "&lt;")}<i>${k}</i></div>`).join("")
+      + (items[sel]?.[3] ? `<div class="doc">${items[sel][3].replace(/</g, "&lt;")}</div>` : "");
+    pop.querySelector(".on")?.scrollIntoView({ block: "nearest" });
+  };
+  // where the caret is, in pixels: the font is monospace and the metrics are fixed in CSS
+  const cw = (() => { const c = document.createElement("canvas").getContext("2d"); c.font = "13.5px ui-monospace, Menlo, monospace"; return c.measureText("M").width; })();
+  async function ask(force = false) {
+    const before = ta.value.slice(0, ta.selectionStart), lineText = before.slice(before.lastIndexOf("\n") + 1);
+    const word = lineText.match(/[A-Za-z_][\w]*$/)?.[0] ?? "", afterDot = /\.\w*$/.test(lineText);
+    if (!force && !afterDot && word.length < 2) return close();
+    if (/#/.test(lineText.replace(/(["'])(?:\\.|(?!\1).)*\1/g, ""))) return close();     // inside a comment
+    const id = ++asked, pre = prefixCode(), py = await jediReady(pre + "\n" + ta.value);
+    if (id !== asked) return;
+    const line = pre ? pre.split("\n").length + before.split("\n").length : before.split("\n").length;
+    const res = py.globals.get("__complete")((pre ? pre + "\n" : "") + ta.value, line, lineText.length, box.ns ?? null).toJs();
+    if (id !== asked) return;
+    items = res.filter(([n]) => n.startsWith(word) || afterDot && !word); sel = 0;
+    if (!items.length || (items.length === 1 && items[0][2] === "")) return close();
+    const row = before.split("\n").length - 1;
+    pop.style.left = `${Math.min(12 + lineText.length * cw - ta.scrollLeft - word.length * cw, ta.clientWidth - 230)}px`;
+    const lineTop = 10 + row * 20.925 - ta.scrollTop;
+    pop.hidden = false; render();
+    // below the caret's line if it fits inside the box, otherwise above it (the box clips what overflows)
+    const below = lineTop + 20.925 + 2;
+    pop.style.top = `${below + pop.offsetHeight <= ed.clientHeight ? below : Math.max(0, lineTop - pop.offsetHeight - 2)}px`;
+  }
+  ta.addEventListener("focus", () => jediReady(ta.value), { once: true });            // warm up while they read
+  ta.addEventListener("input", (e) => { clearTimeout(timer); if (e.inputType?.startsWith("delete") && pop.hidden) return; timer = setTimeout(() => ask().catch((err) => console.warn("autocomplete:", err)), 180); });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === " " && e.ctrlKey) { e.preventDefault(); ask(true).catch((err) => console.warn("autocomplete:", err)); return; }
+    if (pop.hidden) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); e.stopImmediatePropagation(); sel = (sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length; render(); }
+    else if ((e.key === "Enter" && !e.metaKey && !e.ctrlKey) || e.key === "Tab") { e.preventDefault(); e.stopImmediatePropagation(); accept(); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
+  });
+  ta.addEventListener("blur", () => setTimeout(close, 150));
+  ta.addEventListener("scroll", close);
+  pop.addEventListener("mousedown", (e) => { const d = e.target.closest("[data-i]"); if (d) { e.preventDefault(); sel = +d.dataset.i; accept(); } });
+}
 function setupCode(box) {
   const isPy = box.closest("[data-lang]")?.dataset.lang === "python";
   const ta = box.querySelector("textarea"), original = ta.value.replace(/^\n/, "").replace(/\s+$/, "");
@@ -168,6 +243,7 @@ function setupCode(box) {
   hlCode.className = `language-${isPy ? "python" : "javascript"}`;
   ta.addEventListener("input", paint); ta.addEventListener("scroll", () => { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
   painters.push(paint); paint();
+  if (isPy) autocomplete(box, ed, ta, paint);
   ta.rows = Math.min(28, original.split("\n").length + 1);
   const bar = document.createElement("div"); bar.className = "bar";
   bar.innerHTML = `<b>${box.dataset.title ?? "Try it: edit the code and run it"}</b><button class="run">▶ Run</button><button class="reset">Reset</button>`;
@@ -212,7 +288,7 @@ function setupCode(box) {
           if (html) { const d = document.createElement("div"); d.className = "df"; d.innerHTML = html; out.append(d); } else line(typeof v === "object" ? py.globals.get("repr")(v) : String(v));
           v?.destroy?.();
         }
-        ns.destroy();
+        box.ns?.destroy(); box.ns = ns;                     // kept for autocomplete: Jedi can look at the live objects
         if (!out.childElementCount) line("(ran, printed nothing: add print(...) to see values)");
       } catch (e) {
         quiet.on = false; wait.remove();
@@ -247,6 +323,11 @@ function typeset() {
     .catch(() => {}); // offline: the TeX source stays readable
 }
 
+// Pages load this file as /learn-kit.js?v=… (the server's cache-buster), so a plain "/learn-kit.js" import elsewhere
+// would be a second copy of the module: other scripts use window.learnKit instead, and a second copy does nothing.
+const first = !window.learnKit;
+window.learnKit ??= { setupQuestion };
+if (first) {
 document.querySelectorAll(".q").forEach(setupQuestion);
 document.querySelectorAll(".code").forEach(setupCode);
 if (painters.length) loadPrism();
@@ -254,3 +335,4 @@ typeset();
 let solvedOnce = false;
 new MutationObserver(() => { if (!solvedOnce && document.querySelectorAll(".q.solved").length === document.querySelectorAll(".q").length && document.querySelectorAll(".q").length > 2) { solvedOnce = true; say("Every question on this page solved!", "happy"); } })
   .observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+}

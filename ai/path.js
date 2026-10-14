@@ -2,7 +2,6 @@
 // and /ai/course.json: a "before you start" box (prerequisites, goals, a quick recall of the last lesson), section
 // anchors, gap tracking for every question, a checkpoint quiz that marks the lesson done and adds its concept cards
 // to the review deck, the practice notebook, and previous/next links. Progress lives in ai/learn.js (this browser).
-import { setupQuestion } from "/learn-kit.js";
 import { state, course, path, finish, answered, slug } from "/ai/learn.js";
 
 const here = location.pathname.split("/").pop(), main = document.querySelector("main");
@@ -44,7 +43,7 @@ function checkpoint() {
     + me.check.map((c, n) => `<div class="q" data-answer="${"abcde"[c.answer]}" data-sec="${c.sec ?? ""}" data-n="${n}"><p>${n + 1}. ${esc(c.q)}</p><ul>${c.options.map((o, k) => `<li data-k="${"abcde"[k]}">${esc(o)}</li>`).join("")}</ul><div class="why">${esc(c.why)}${c.sec && sections[c.sec - 1] ? ` <a href="#${sections[c.sec - 1].id}">Back to that section</a>` : ""}</div></div>`).join("")
     + `<div class="result"></div>`;
   const qs = [...el.querySelectorAll(".q")];
-  qs.forEach(setupQuestion);
+  qs.forEach((q) => window.learnKit?.setupQuestion(q));
   addEventListener("learnkit:answer", ({ detail: { q, right, first } }) => {
     if (!el.contains(q) || !first) return;
     firsts.set(q, right);
