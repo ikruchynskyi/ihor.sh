@@ -62,7 +62,9 @@ export const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip
 export function graph(id, [x0, x1], [y0, y1], { step = [1, 1], labels = true } = {}) {
   const cv = typeof id === "string" ? document.getElementById(id) : id, g = cv.getContext("2d"), W = cv.width, H = cv.height;
   const X = (x) => ((x - x0) / (x1 - x0)) * W, Y = (y) => H - ((y - y0) / (y1 - y0)) * H;
-  g.fillStyle = C.stage; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, Menlo, monospace"; g.lineWidth = 1;
+  // labels scale with how much the page shrinks the canvas, so they stay about 13px on screen (a phone shrinks 800px to ~360)
+  const shown = cv.getBoundingClientRect().width, k = shown > 0 ? Math.max(1, Math.min(2.4, W / shown)) : 1;
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H); g.font = `${Math.round(13 * k)}px ui-monospace, Menlo, monospace`; g.lineWidth = 1;
   for (const [axis, lo, hi, s] of [["x", x0, x1, step[0]], ["y", y0, y1, step[1]]]) for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) {
     const p = axis === "x" ? X(v) : Y(v), zero = Math.abs(v) < 1e-9;
     g.fillStyle = zero ? C.axis : C.grid; axis === "x" ? g.fillRect(p, 0, zero ? 2 : 1, H) : g.fillRect(0, p, W, zero ? 2 : 1);

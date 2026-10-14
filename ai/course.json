@@ -2459,6 +2459,34 @@
    [
     "Gradio + Hugging Face Spaces",
     "Gradio wraps a Python function in a web page; Spaces hosts it for free from app.py + requirements.txt + model files."
+   ],
+   [
+    "Epoch",
+    "One full pass over the training data."
+   ],
+   [
+    "Batch (minibatch)",
+    "The handful of examples used for one gradient step: cheaper than all of them, and the noise helps."
+   ],
+   [
+    "Optimizer",
+    "The rule that turns gradients into weight updates: plain gradient descent, momentum, Adam (stage 4 compares them)."
+   ],
+   [
+    "Adam / AdamW",
+    "The usual default optimizer: gradient descent with momentum and a per-weight step size; AdamW adds weight decay."
+   ],
+   [
+    "Tensor",
+    "PyTorch's array: like a NumPy array, but it can live on a GPU and remembers how it was computed for backprop."
+   ],
+   [
+    "GPU",
+    "A processor with thousands of small cores: matrix products run tens of times faster than on a CPU."
+   ],
+   [
+    "Pretrained model / fine-tuning",
+    "A network already trained on a big dataset; fine-tuning trains it a little more on your task, usually with a new last layer."
    ]
   ],
   "check": [

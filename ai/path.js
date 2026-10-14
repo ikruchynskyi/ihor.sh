@@ -78,7 +78,7 @@ if (i >= 0 && main) {
   const nav = document.createElement("nav");
   nav.className = "card";
   nav.style.cssText = "margin: 40px 0 0; padding: 12px 16px; font-size: 1rem;";
-  nav.innerHTML = `<div style="font-size:.8rem;color:var(--muted)">On the path · ${stage} · lesson ${inStage.indexOf(lessons[i]) + 1} of ${inStage.length} ready · <a href="./review.html">review deck</a></div>`
+  nav.innerHTML = `<div style="font-size:.8rem;color:var(--muted)">On the path · ${stage} · lesson ${inStage.indexOf(lessons[i]) + 1} of ${inStage.length} ready · <a href="./review.html">review deck</a> · <a href="./glossary.html">glossary</a></div>`
     + (prev ? `<div>← Previous: <a href="./${prev.href}">${prev.title}</a></div>` : "")
     + (next ? `<div>Next: <a href="./${next.href}"><b>${next.title}</b></a> →</div>` : `<div>That's the end of the path so far. <a href="./">See what's coming</a>.</div>`);
   main.append(nav);

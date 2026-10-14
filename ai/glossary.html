@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Glossary</title>
+  <meta name="description" content="AI from scratch: every term on the path in one place, from 'model' to 'transformer block', each in a sentence or two and linked to the lesson that teaches it. Search it, read it A to Z, or in path order." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    #q { width: 100%; box-sizing: border-box; font-size: 17px; padding: 10px 12px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 10px 0; align-items: center; }
+    dl { margin: 0; }
+    dt { font-weight: 700; margin-top: 16px; }
+    dd { margin: 2px 0 0; }
+    dd small { color: var(--muted); }
+    h2 { margin: 36px 0 4px; font-size: 1.1rem; }
+    .count { color: var(--muted); font-size: .95rem; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Glossary</p>
+  <h1>Glossary</h1>
+  <p class="lede">Every key term on the path, in a sentence or two, with a link to the lesson that teaches it. These are the same cards that go into your <a href="./review.html">review deck</a> when you finish a lesson.</p>
+  <input id="q" type="search" placeholder="Search: gradient, softmax, overfitting…" aria-label="Search the glossary" autocomplete="off">
+  <div class="row"><label><input type="radio" name="order" value="az" checked> A to Z</label><label><input type="radio" name="order" value="path"> in path order</label><span class="count" id="count"></span></div>
+  <div id="list"></div>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module">
+import { course, path, state } from "/ai/learn.js";
+const $ = (id) => document.getElementById(id), C = await course, lessons = await path;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const titles = Object.fromEntries(lessons.map((l) => [l.href, l.title]));
+const rank = Object.fromEntries(lessons.map((l, i) => [l.href, i]));
+const terms = Object.entries(C).flatMap(([href, l]) => (l.cards ?? []).map(([term, meaning]) => ({ term, meaning, href })));
+function render() {
+  const q = $("q").value.trim().toLowerCase(), byPath = document.querySelector('[name="order"]:checked').value === "path";
+  const hits = terms.filter((t) => !q || t.term.toLowerCase().includes(q) || t.meaning.toLowerCase().includes(q))
+    .sort((a, b) => byPath ? (rank[a.href] ?? 999) - (rank[b.href] ?? 999) : a.term.localeCompare(b.term, "en", { sensitivity: "base" }));
+  const item = (t) => `<dt>${esc(t.term)}</dt><dd>${esc(t.meaning)} <small>· <a href="./${t.href}">${esc(titles[t.href] ?? t.href)}</a>${state.done[t.href] ? " ✓" : ""}</small></dd>`;
+  if (byPath) {
+    let html = "", last = null;
+    for (const t of hits) { if (t.href !== last) { if (last) html += "</dl>"; html += `<h2><a href="./${t.href}">${esc(titles[t.href] ?? t.href)}</a></h2><dl>`; last = t.href; } html += item(t); }
+    $("list").innerHTML = html + (last ? "</dl>" : "");
+  } else $("list").innerHTML = `<dl>${hits.map(item).join("")}</dl>`;
+  $("count").textContent = `${hits.length} of ${terms.length} terms`;
+}
+$("q").oninput = render;
+for (const r of document.querySelectorAll('[name="order"]')) r.onchange = render;
+const fromUrl = new URLSearchParams(location.search).get("q");
+if (fromUrl) $("q").value = fromUrl;
+render();
+window.blipContext = () => ({ page: "AI from scratch glossary: every concept card from the lessons, searchable, linked to the lesson that teaches it", search: $("q").value });
+</script>
+</body>
+</html>

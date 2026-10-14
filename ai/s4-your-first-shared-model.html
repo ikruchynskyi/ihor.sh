@@ -140,6 +140,16 @@ gr.Interface(predict, gr.Image(type="pil"), gr.Label(num_top_classes=5)).launch(
     <div class="why">One source of truth for preprocessing removes the most common deployment bug from section 1.</div>
   </div>
 
+  <details class="deeper" open><summary>Words you'll meet in the notebooks</summary>
+    <p>The practice notebooks use a few training words before the lessons that explain them in depth. For now:</p>
+    <ul>
+      <li><b>Epoch</b>: one full pass over the training data. <b>Batch</b>: the handful of examples used for one gradient step.</li>
+      <li><b>Optimizer</b>: the rule that turns gradients into weight updates; <b>Adam</b> (or AdamW) is the usual default.</li>
+      <li><b>Tensor</b>: PyTorch's array, which can live on a <b>GPU</b>, a processor that does matrix products tens of times faster.</li>
+      <li><b>Pretrained</b>: already trained on a big dataset; <b>fine-tuning</b>: training it a little more on your own task.</li>
+    </ul>
+    <p>The <a href="./glossary.html">glossary</a> has every term on the path in one place.</p>
+  </details>
   <h2>6. What to carry forward</h2>
   <ul>
     <li>A deployed model is <b>input → preprocessing → model → postprocessing</b>; the preprocessing must match training exactly.</li>
