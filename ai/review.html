@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Review Deck</title>
+  <meta name="description" content="AI from scratch: review the concept cards from the lessons you've finished, on a spaced-repetition schedule, and revisit the sections where you missed questions." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 48px 0 10px; }
+    .flash { border: 2px solid var(--line); border-radius: 14px; background: var(--card); padding: 24px 20px; text-align: center; min-height: 180px; }
+    .flash .front { font-size: 1.35rem; font-weight: 700; }
+    .flash .back { margin-top: 16px; font-size: 1.1rem; }
+    .flash .from { font-size: .85rem; color: var(--muted); margin-top: 14px; }
+    .grades { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+    .grades button small { display: block; font-size: .75rem; opacity: .75; }
+    .stats { color: var(--muted); font-size: 1rem; }
+    .gaps li { margin: 6px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Review</p>
+  <h1>Review deck</h1>
+  <p class="lede">Every lesson you finish adds its key ideas as cards. Each card comes back just before you'd forget it: soon at first, then days, then weeks apart. Answer in your head, open the card, and say honestly how it went. Ten minutes a few times a week keeps the whole path in your head.</p>
+  <p class="stats" id="stats"></p>
+  <div class="flash" id="flash" aria-live="polite"></div>
+
+  <h2>Gaps to revisit</h2>
+  <p>Sections where you missed a question on the first try. Getting two questions there right later clears them.</p>
+  <ul class="gaps" id="gaps"></ul>
+  <p class="muted">Progress is kept in this browser only. All lessons: <a href="./">AI from scratch</a>.</p>
+</main>
+<script type="module">
+import { state, course, path, grade, next, dueCards } from "/ai/learn.js";
+const $ = (id) => document.getElementById(id), C = await course, DAY = 864e5, titles = Object.fromEntries((await path).map((l) => [l.href, l.title]));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const card = (id) => { const [lesson, n] = id.split("#"); return { lesson, pair: C[lesson]?.cards?.[+n] }; };
+const when = (ms) => ms < 3600e3 ? `${Math.max(1, Math.round(ms / 60e3))} min` : ms < 2 * DAY ? `${Math.round(ms / 3600e3)} h` : `${Math.round(ms / DAY)} days`;
+// what each grade would schedule, shown on its button
+const preview = (id, g) => { const c = next(state.cards[id], g, 0); return g === 0 ? "10 min" : `${c.interval} day${c.interval === 1 ? "" : "s"}`; };
+let queue = dueCards().filter((id) => card(id).pair).sort(() => Math.random() - 0.5), reviewed = 0;
+function show() {
+  const total = Object.keys(state.cards).length, lessons = Object.keys(state.done).length;
+  $("stats").textContent = `${lessons} lesson${lessons === 1 ? "" : "s"} finished · ${total} cards · ${queue.length} due now${reviewed ? ` · ${reviewed} reviewed this session` : ""}`;
+  const id = queue[0];
+  if (!id) {
+    const upcoming = Object.values(state.cards).map((c) => c.due).sort((a, b) => a - b)[0];
+    $("flash").innerHTML = total
+      ? `<div class="front">All caught up ✓</div><div class="back">Next card in ${when(upcoming - Date.now())}. Meanwhile, the next lesson on the <a href="./">path</a>.</div>`
+      : `<div class="front">No cards yet</div><div class="back">Finish a lesson's checkpoint (its last section) and its cards appear here, starting with <a href="./s1-what-is-ml.html">What machine learning is</a>.</div>`;
+    return;
+  }
+  const { lesson, pair } = card(id);
+  $("flash").innerHTML = `<div class="front">${esc(pair[0])}</div><div class="back" hidden>${esc(pair[1])}</div>`
+    + `<div class="grades" id="g"><button id="reveal">Show the answer</button></div><div class="from">from <a href="./${lesson}">${esc(titles[lesson] ?? lesson)}</a></div>`;
+  $("reveal").onclick = () => {
+    $("flash").querySelector(".back").hidden = false;
+    $("g").innerHTML = ["Again", "Hard", "Good", "Easy"].map((t, g) => `<button data-g="${g}">${t}<small>${preview(id, g)}</small></button>`).join("");
+    $("g").querySelectorAll("button").forEach((b) => (b.onclick = () => { grade(id, +b.dataset.g); queue.shift(); if (+b.dataset.g === 0) queue.push(id); reviewed++; show(); }));
+  };
+}
+function gaps() {
+  const list = Object.values(state.gaps).sort((a, b) => b.misses - a.misses);
+  $("gaps").innerHTML = list.length ? list.map((g) => `<li><a href="./${g.lesson}#${g.section}">${esc(g.label)}</a> <span class="stats">missed ${g.misses}×</span></li>`).join("") : "<li>No gaps. 🎉</li>";
+}
+show(); gaps();
+window.blipContext = () => ({ page: "AI from scratch review deck: spaced-repetition concept cards from finished lessons and the list of knowledge gaps", due: queue.length, gaps: Object.values(state.gaps).map((g) => g.label) });
+</script>
+</body>
+</html>

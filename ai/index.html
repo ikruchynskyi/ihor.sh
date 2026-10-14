@@ -14,6 +14,11 @@
     ol.path li.soon { opacity: .55; }
     ol.path li p { margin: 4px 0 0; color: var(--muted); font-size: 1rem; }
     .tag { display: block; font-size: .8rem; color: var(--muted); }
+    ol.path li.done { border-left: 4px solid var(--green, #2f9e44); }
+    ol.path li.done .tag::after { content: " · ✓ done"; color: var(--green, #2f9e44); }
+    .stage-count { font-size: .85rem; font-weight: 400; color: var(--muted); margin-left: 8px; }
+    #you { padding: 12px 16px; margin: 18px 0; border-left: 4px solid var(--accent); font-size: 1rem; }
+    #you a.go { font-weight: 700; }
     h2.stage { margin: 48px 0 4px; font-size: 1.2rem; }
     .goal { margin: 4px 0; font-size: 1rem; }
     .milestone { font-size: 1rem; border-left: 4px solid var(--accent); padding: 4px 12px; margin: 12px 0 0; }
@@ -24,7 +29,7 @@
 <main>
   <p class="eyebrow">ihor.sh · AI</p>
   <h1>AI from scratch</h1>
-  <p class="lede">One path from zero to <b>junior ML engineer</b>. If you can do school arithmetic, you can start: stage 0 gives you just enough code and math, and every idea after that comes three ways: a picture you drag, the math worked out with real numbers, and code you edit and run right in the page. Questions along the way ask you to predict before you're told.</p>
+  <p class="lede">One path from zero to <b>junior ML engineer</b>. If you can do school arithmetic, you can start: stage 0 gives you just enough code and math, and every idea after that comes three ways: a picture you drag, the math worked out with real numbers, and Python code you edit and run right in the page, plus a practice notebook for every lesson. Questions along the way ask you to predict before you're told.</p>
   <p>Take the lessons in order: each one only leans on the ones before it, and every lesson ends with a link to the next. Each stage ends with a milestone project. Faded lessons are planned and on their way.</p>
 
   <h2 class="stage">Stage 0 · Start here</h2>
@@ -141,5 +146,22 @@
     <li>Ship a model behind an API and monitor it, and say with numbers whether a new version is better.</li>
   </ul>
 </main>
+<script type="module">
+// Your progress on the path (ai/learn.js, this browser only): finished lessons, where to continue, cards due, gaps.
+import { state, dueCards } from "/ai/learn.js";
+const live = [...document.querySelectorAll("ol.path li:not(.soon)")].map((li) => ({ li, href: li.querySelector("a")?.getAttribute("href")?.replace("./", "") }));
+for (const { li, href } of live) if (state.done[href]) li.classList.add("done");
+for (const h of document.querySelectorAll("h2.stage")) {
+  const ol = h.nextElementSibling?.nextElementSibling, mine = ol?.matches("ol.path") ? live.filter((l) => ol.contains(l.li)) : [];
+  if (mine.length) h.insertAdjacentHTML("beforeend", `<span class="stage-count">${mine.filter((l) => state.done[l.href]).length} of ${mine.length} done</span>`);
+}
+const next = live.find((l) => !state.done[l.href]), started = Object.keys(state.done).length, due = dueCards().length, gaps = Object.keys(state.gaps).length;
+const you = document.createElement("div");
+you.id = "you"; you.className = "card";
+you.innerHTML = (started ? `<div><b>Your progress:</b> ${started} of ${live.length} lessons finished.</div>` : `<div><b>New here?</b> Start at the top; each lesson ends with a short checkpoint that marks it done.</div>`)
+  + (next ? `<div>Continue: <a class="go" href="./${next.href}">${next.li.querySelector("b")?.textContent ?? next.href}</a> →</div>` : `<div>You've finished every lesson that's ready. 🎉</div>`)
+  + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · ${gaps} gap${gaps === 1 ? "" : "s"} to revisit` : ""}</div>` : "");
+document.querySelector(".lede")?.after(you);
+</script>
 </body>
 </html>

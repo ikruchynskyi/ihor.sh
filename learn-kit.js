@@ -75,7 +75,9 @@ document.head.insertAdjacentHTML("beforeend", `<style id="learn-kit">${css}</sty
 const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
 
 // ---------- questions ----------
-function setupQuestion(q) {
+// Every answer is announced (learnkit:answer {q, right, first}), so a course can track progress and gaps.
+const tell = (q, right) => { const first = !q.dataset.tried; q.dataset.tried = "1"; dispatchEvent(new CustomEvent("learnkit:answer", { detail: { q, right, first } })); };
+export function setupQuestion(q) {
   const solve = () => { q.classList.add("solved"); q.querySelectorAll("button, input").forEach((b) => { if (!b.classList.contains("keep")) b.disabled = true; }); };
   const says = document.createElement("p"); says.className = "says"; says.setAttribute("aria-live", "polite");
   const why = q.querySelector(".why");
@@ -83,6 +85,7 @@ function setupQuestion(q) {
     for (const li of q.querySelectorAll("li[data-k]")) {
       const b = document.createElement("button"); b.innerHTML = li.innerHTML; li.replaceChildren(b);
       b.onclick = () => {
+        tell(q, li.dataset.k === q.dataset.answer);
         if (li.dataset.k === q.dataset.answer) { li.classList.add("right"); says.className = "says ok"; says.textContent = "Right."; solve(); }
         else { li.classList.add("wrong"); b.disabled = true; says.className = "says no"; says.textContent = li.dataset.says || "Not quite. Try another."; }
       };
@@ -96,6 +99,7 @@ function setupQuestion(q) {
     const check = () => {
       const got = Number(inp.value.replace(",", ".").replace(/[^\d.eE+-]/g, ""));
       if (!inp.value.trim() || !Number.isFinite(got)) { says.className = "says no"; says.textContent = "Type a number."; return; }
+      tell(q, Math.abs(got - want) <= tol);
       if (Math.abs(got - want) <= tol) { says.className = "says ok"; says.textContent = `Right: ${q.dataset.show ?? want}.`; solve(); }
       else { says.className = "says no"; says.textContent = (got > want ? "Too big. " : "Too small. ") + (q.dataset.hint ?? "Try again."); }
     };
