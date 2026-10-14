@@ -27,6 +27,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-build-an-autograd-engine"
  },
+ "05-probability-and-loss.html": {
+  "notebook": "05-probability-and-loss.ipynb",
+  "title": "AI from scratch: softmax, cross-entropy and a 10-d",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/05-probability-and-loss.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-softmax-cross-entropy-and-a-10-d"
+ },
  "c1-derivatives.html": {
   "notebook": "c1-derivatives.ipynb",
   "title": "AI from scratch: derivatives and gradient checks",
@@ -40,6 +47,27 @@
   "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/c2-many-variables.ipynb",
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gradients-jacobians-and-backprop"
+ },
+ "c3-taylor-and-curvature.html": {
+  "notebook": "c3-taylor-and-curvature.ipynb",
+  "title": "AI from scratch: curvature, learning rates and New",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/c3-taylor-and-curvature.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-curvature-learning-rates-and-new"
+ },
+ "c4-integrals.html": {
+  "notebook": "c4-integrals.ipynb",
+  "title": "AI from scratch: integrals, densities and minibatc",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/c4-integrals.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-integrals-densities-and-minibatc"
+ },
+ "deep-networks.html": {
+  "notebook": "deep-networks.ipynb",
+  "title": "AI from scratch: deep networks, in NumPy and PyTor",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/deep-networks.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-deep-networks-in-numpy-and-pytor"
  },
  "l1-systems-and-inverses.html": {
   "notebook": "l1-systems-and-inverses.ipynb",
@@ -68,6 +96,13 @@
   "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p2-describing-data.ipynb",
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-describing-real-data-with-pandas"
+ },
+ "p3-mle-and-map.html": {
+  "notebook": "p3-mle-and-map.ipynb",
+  "title": "AI from scratch: maximum likelihood, priors and ri",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p3-mle-and-map.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-maximum-likelihood-priors-and-ri"
  },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",

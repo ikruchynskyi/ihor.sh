@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Stage 2: how a network learns</p>
   <h1>Deep networks, layer by layer</h1>
   <p class="lede">Chapter 3 built one neuron and chapter 4 pushed blame backward through two. Real networks have many layers of many neurons, and they train on a whole batch of examples at once. This lesson writes that down properly: the notation every paper uses, the matrix shapes (most deep learning bugs are shape bugs), backprop for any depth, and two things that decide whether training works at all, how you start the weights and how deep you go. Then you train one on a spiral, live.</p>
@@ -52,21 +52,20 @@
     <div class="why">\((16, 2) \cdot (2, 500) = (16, 500)\): one row per unit, one column per example. Writing the shapes under every line of a formula is the fastest bug-finder in deep learning. (PyTorch puts examples in rows, \((m, n)\), and writes \(XW^\top\); same idea, transposed.)</div>
   </div>
   <div class="code" id="mx" data-title="Build it: matrix helpers with a shape check"><textarea>
-// matrices as arrays of rows; every operation checks shapes and says which ones clashed
-const shape = (A) => [A.length, A[0].length];
-function matmul(A, B) {
-  const [n, k] = shape(A), [k2, m] = shape(B);
-  if (k !== k2) throw new Error(`matmul: (${n}, ${k}) · (${k2}, ${m}): inner sizes ${k} and ${k2} differ`);
-  return A.map((row) => Array.from({ length: m }, (_, j) => row.reduce((s, a, t) => s + a * B[t][j], 0)));
-}
-const addBias = (Z, b) => Z.map((row, i) => row.map((v) => v + b[i][0]));          // broadcast (n, 1) across m columns
-const T = (A) => A[0].map((_, j) => A.map((row) => row[j]));                       // transpose
-const map = (A, f) => A.map((row) => row.map(f));
-const randn = (n, m, s = 1) => Array.from({ length: n }, () => Array.from({ length: m }, () => s * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random())));
+import numpy as np
+rng = np.random.default_rng()
 
-const X = randn(2, 5), W1 = randn(16, 2), b1 = randn(16, 1, 0);
-print("Z1 shape:", shape(addBias(matmul(W1, X), b1)));
-try { matmul(X, W1); } catch (e) { print("as expected:", e.message); }
+X = rng.standard_normal((2, 5))                  # 2 features × 5 examples (examples as columns)
+W1 = rng.standard_normal((16, 2))
+b1 = np.zeros((16, 1))                           # (16, 1): NumPy broadcasts it across the 5 columns
+Z1 = W1 @ X + b1
+print("Z1 shape:", Z1.shape)
+print("broadcasting:", (np.ones((3, 4)) + np.array([[10], [20], [30]])).tolist())
+
+try:
+    X @ W1                                       # (2, 5) · (16, 2): the inner sizes don't match
+except ValueError as e:
+    print("as expected:", e)
 </textarea></div>
 
   <h2>3. Backprop for any depth</h2>
@@ -148,37 +147,44 @@ try { matmul(X, W1); } catch (e) { print("as expected:", e.message); }
   </div>
 
   <h2>8. The whole network in code</h2>
-  <p>Everything above in one program: initialize, forward, loss, backward, update, for any list of layer sizes. Batch as columns, shapes checked by the helpers from section 2.</p>
+  <p>Everything above in one program: initialize, forward, loss, backward, update, for any list of layer sizes. Batch as columns; NumPy refuses any product whose shapes don't fit, as section 2 showed.</p>
   <div class="code" data-uses="mx" data-title="Build it: an L-layer network from scratch"><textarea>
-// two spirals, examples as columns: X is (2, m), Y is (1, m)
-const m = 200, pts = [];
-for (let c = 0; c < 2; c++) for (let i = 0; i < m / 2; i++) { const t = i / (m / 2), r = 0.15 + 0.85 * t, a = 3.5 * Math.PI * t + c * Math.PI + 0.15 * randn(1, 1)[0][0]; pts.push([r * Math.cos(a), r * Math.sin(a), c]); }
-const X = [pts.map((p) => p[0]), pts.map((p) => p[1])], Y = [pts.map((p) => p[2])];
+import numpy as np
+import matplotlib.pyplot as plt
+rng = np.random.default_rng()
 
-const sizes = [2, 16, 16, 1], lr = 0.5;   // 2500 steps take a few seconds
-const net = sizes.slice(1).map((n, l) => ({ W: randn(n, sizes[l], Math.sqrt(1 / sizes[l])), b: randn(n, 1, 0) }));   // Xavier, for tanh
-const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+# two spirals, examples as columns: X is (2, m), Y is (1, m)
+m = 200
+t = np.tile(np.linspace(0, 1, m // 2, endpoint=False), 2); c = np.repeat([0, 1], m // 2)
+r, a = 0.15 + 0.85 * t, 3.5 * np.pi * t + c * np.pi + 0.15 * rng.standard_normal(m)
+X, Y = np.vstack([r * np.cos(a), r * np.sin(a)]), c[None, :]
 
-const losses = [];
-for (let step = 0; step <= 2500; step++) {
-  // forward: keep every layer's A for the backward pass
-  const A = [X];
-  net.forEach(({ W, b }, l) => A.push(map(addBias(matmul(W, A[l]), b), l === net.length - 1 ? sigmoid : Math.tanh)));
-  const P = A.at(-1)[0];
-  const loss = -P.reduce((s, p, i) => s + (Y[0][i] ? Math.log(p) : Math.log(1 - p)), 0) / m;
-  if (step % 100 === 0) losses.push([step, loss]);
-  // backward
-  let dZ = [P.map((p, i) => p - Y[0][i])];                                        // (1, m)
-  for (let l = net.length - 1; l >= 0; l--) {
-    const dW = map(matmul(dZ, T(A[l])), (v) => v / m);                            // same shape as W
-    const db = dZ.map((row) => [row.reduce((s, v) => s + v, 0) / m]);             // same shape as b
-    if (l > 0) dZ = matmul(T(net[l].W), dZ).map((row, i) => row.map((v, j) => v * (1 - A[l][i][j] ** 2)));   // tanh' = 1 − a²
-    net[l].W = net[l].W.map((row, i) => row.map((w, j) => w - lr * dW[i][j]));
-    net[l].b = net[l].b.map((row, i) => [row[0] - lr * db[i][0]]);
-  }
-}
-plot(losses, { label: "loss every 100 steps" });
-print("final loss:", losses.at(-1)[1].toFixed(4));
+sizes, lr = [2, 16, 16, 1], 0.5
+net = [{"W": rng.standard_normal((n, n_prev)) * np.sqrt(1 / n_prev), "b": np.zeros((n, 1))}   # Xavier, for tanh
+       for n_prev, n in zip(sizes, sizes[1:])]
+sigmoid = lambda z: 1 / (1 + np.exp(-z))
+
+losses = []
+for step in range(4001):                # most random starts are done by 4000; some take longer: run it again
+    # forward: keep every layer's A for the backward pass
+    A = [X]
+    for l, layer in enumerate(net):
+        Z = layer["W"] @ A[-1] + layer["b"]
+        A.append(sigmoid(Z) if l == len(net) - 1 else np.tanh(Z))
+    P = A[-1]
+    if step % 100 == 0:
+        losses.append(-np.mean(Y * np.log(P) + (1 - Y) * np.log(1 - P)))
+    # backward
+    dZ = P - Y                                                   # (1, m)
+    for l in reversed(range(len(net))):
+        dW = dZ @ A[l].T / m                                     # same shape as W
+        db = dZ.sum(axis=1, keepdims=True) / m                   # same shape as b
+        if l &gt; 0:
+            dZ = (net[l]["W"].T @ dZ) * (1 - A[l] ** 2)          # through W, then tanh' = 1 − a²
+        net[l]["W"] -= lr * dW; net[l]["b"] -= lr * db
+
+plt.figure(figsize=(6, 2.5)); plt.plot(np.arange(len(losses)) * 100, losses); plt.title("loss"); plt.show()
+print("final loss:", round(losses[-1], 4), " accuracy:", ((P &gt; 0.5) == Y).mean())
 </textarea></div>
 
   <h2>9. What to carry forward</h2>

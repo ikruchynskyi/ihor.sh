@@ -1168,5 +1168,455 @@
     "sec": 5
    }
   ]
+ },
+ "c3-taylor-and-curvature.html": {
+  "goals": [
+   "Approximate a function near a point with its Taylor polynomial",
+   "Explain the learning-rate limit 2/k and zigzags in stretched valleys",
+   "Classify a flat point as minimum, maximum or saddle from the Hessian"
+  ],
+  "cards": [
+   [
+    "Taylor (2nd order)",
+    "f(x+Δ) ≈ f(x) + f′(x)Δ + ½f″(x)Δ²: value, slope, curvature."
+   ],
+   [
+    "Learning-rate limit",
+    "Gradient descent is stable only for η < 2/λmax, λmax the steepest curvature."
+   ],
+   [
+    "Hessian",
+    "The matrix of second derivatives; its eigenvalues are the curvatures along its eigenvectors."
+   ],
+   [
+    "Condition number",
+    "λmax/λmin: how stretched the valley is; big means slow zigzagging descent."
+   ],
+   [
+    "Newton's method",
+    "x ← x − f′/f″: divide the step by the curvature; converges in a few steps near the minimum."
+   ],
+   [
+    "Saddle",
+    "Curving up some ways and down others (mixed-sign eigenvalues): most flat spots in big networks."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A valley has curvature k = 8. Which learning rate makes gradient descent blow up?",
+    "options": [
+     "0.1",
+     "0.2",
+     "0.3"
+    ],
+    "answer": 2,
+    "why": "The limit is 2/k = 0.25.",
+    "sec": 2
+   },
+   {
+    "q": "Why does gradient descent zigzag in a long narrow valley?",
+    "options": [
+     "The learning rate is set by the steep direction, so the flat one crawls while the steep one bounces",
+     "The gradient is computed wrong",
+     "Narrow valleys have no minimum"
+    ],
+    "answer": 0,
+    "why": "One step size has to suit both curvatures; the condition number measures the mismatch.",
+    "sec": 3
+   },
+   {
+    "q": "Standardizing the features of a linear regression…",
+    "options": [
+     "changes the best predictions",
+     "shrinks the condition number, so gradient descent converges faster",
+     "is only cosmetic"
+    ],
+    "answer": 1,
+    "why": "It puts all directions on a similar scale, un-stretching the valley.",
+    "sec": 3
+   },
+   {
+    "q": "At a flat point the Hessian's eigenvalues are 3 and −2. It's a…",
+    "options": [
+     "minimum",
+     "maximum",
+     "saddle"
+    ],
+    "answer": 2,
+    "why": "Up one way, down the other.",
+    "sec": 4
+   },
+   {
+    "q": "Newton's method divides the step by…",
+    "options": [
+     "the learning rate",
+     "the curvature",
+     "the gradient's length"
+    ],
+    "answer": 1,
+    "why": "x ← x − f′/f″: the curvature sets the step size automatically.",
+    "sec": 2
+   }
+  ]
+ },
+ "05-probability-and-loss.html": {
+  "goals": [
+   "Turn scores into probabilities with a numerically safe softmax",
+   "Explain cross-entropy as surprise and use its gradient p − y",
+   "Sample from a model with temperature and top-p"
+  ],
+  "cards": [
+   [
+    "Softmax",
+    "exp(score) / sum of exp(scores): positive numbers adding to 1."
+   ],
+   [
+    "Safe softmax",
+    "Subtract the largest score first: same answer, no overflow."
+   ],
+   [
+    "Temperature T",
+    "Divide scores by T: below 1 sharpens toward the favorite, above 1 flattens."
+   ],
+   [
+    "Cross-entropy",
+    "−ln(probability given to the right answer), averaged: the surprise at the truth."
+   ],
+   [
+    "Gradient of softmax + cross-entropy",
+    "p − y for each score: what it said minus what was true."
+   ],
+   [
+    "Top-p sampling",
+    "Keep the fewest most-likely options whose probabilities reach p, renormalize, sample."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Softmax of scores [1000, 999] computed naively gives…",
+    "options": [
+     "[0.73, 0.27]",
+     "NaN: e¹⁰⁰⁰ overflows",
+     "[1, 0]"
+    ],
+    "answer": 1,
+    "why": "Subtract the max first and it's [0.73, 0.27].",
+    "sec": 1
+   },
+   {
+    "q": "A model gives the right answer probability 0.25. Its cross-entropy there is…",
+    "options": [
+     "0.25",
+     "ln 4 ≈ 1.39",
+     "0.75"
+    ],
+    "answer": 1,
+    "why": "−ln 0.25 = ln 4.",
+    "sec": 2
+   },
+   {
+    "q": "An untrained 3-class model with equal scores has a loss of…",
+    "options": [
+     "0",
+     "ln 3 ≈ 1.10",
+     "1"
+    ],
+    "answer": 1,
+    "why": "Each class gets 1/3, and −ln(1/3) = ln 3.",
+    "sec": 2
+   },
+   {
+    "q": "Lowering the temperature makes sampling…",
+    "options": [
+     "more random",
+     "stick closer to the most likely option",
+     "faster"
+    ],
+    "answer": 1,
+    "why": "Dividing by a small T stretches the score gaps.",
+    "sec": 3
+   },
+   {
+    "q": "The gradient of the loss for the right class's score is p − 1. If p = 0.9, the score…",
+    "options": [
+     "goes up a little",
+     "goes down",
+     "goes up a lot"
+    ],
+    "answer": 0,
+    "why": "p − 1 = −0.1: a small push up, since it's already fairly confident.",
+    "sec": 4
+   }
+  ]
+ },
+ "c4-integrals.html": {
+  "goals": [
+   "Compute an area by strips and by a library",
+   "Read probabilities as areas under a density",
+   "Explain why a minibatch's gradient is noisy and how the noise shrinks"
+  ],
+  "cards": [
+   [
+    "Integral",
+    "The area under a curve: the limit of sums of thin strips."
+   ],
+   [
+    "Fundamental theorem",
+    "The area function grows at the speed of the curve: its derivative is the curve."
+   ],
+   [
+    "Density",
+    "Probability is area under it; the total area is 1."
+   ],
+   [
+    "68% rule",
+    "About 68% of a normal lies within one standard deviation of the mean, 95% within two."
+   ],
+   [
+    "Monte Carlo",
+    "Estimate an average (an integral) by averaging random samples; error shrinks like 1/√N."
+   ],
+   [
+    "Minibatch gradient",
+    "A noisy estimate of the full gradient; its noise falls like 1/√(batch size)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Ten times more strips makes the midpoint rule's error about…",
+    "options": [
+     "10× smaller",
+     "100× smaller",
+     "the same"
+    ],
+    "answer": 1,
+    "why": "Its error goes like the strip width squared.",
+    "sec": 1
+   },
+   {
+    "q": "For a density, P(a < X < b) is…",
+    "options": [
+     "the density's value at b",
+     "the area under it from a to b",
+     "the slope between a and b"
+    ],
+    "answer": 1,
+    "why": "Probability is area.",
+    "sec": 3
+   },
+   {
+    "q": "About what share of a normal lies more than 2 standard deviations above the mean?",
+    "options": [
+     "2.3%",
+     "5%",
+     "16%"
+    ],
+    "answer": 0,
+    "why": "5% lies outside ±2σ, half of it on each side.",
+    "sec": 3
+   },
+   {
+    "q": "To make a Monte Carlo estimate 10× more precise you need…",
+    "options": [
+     "10× more samples",
+     "100× more samples",
+     "√10× more samples"
+    ],
+    "answer": 1,
+    "why": "Error ∝ 1/√N.",
+    "sec": 4
+   },
+   {
+    "q": "Quadrupling the batch size makes the gradient's noise…",
+    "options": [
+     "4× smaller",
+     "2× smaller",
+     "unchanged"
+    ],
+    "answer": 1,
+    "why": "Noise ∝ 1/√B.",
+    "sec": 4
+   }
+  ]
+ },
+ "p3-mle-and-map.html": {
+  "goals": [
+   "Estimate parameters by maximum likelihood",
+   "Explain where MSE and cross-entropy come from",
+   "Update a prior with data and see L2 regularization as a prior"
+  ],
+  "cards": [
+   [
+    "Sample variance with n − 1",
+    "Divide by n − 1 to be unbiased: the sample mean sits closer to its own points."
+   ],
+   [
+    "Law of large numbers",
+    "Averages converge to the true mean; the error shrinks like σ/√n."
+   ],
+   [
+    "Central limit theorem",
+    "Sums of many independent pieces become bell-shaped, whatever each piece looks like."
+   ],
+   [
+    "Maximum likelihood",
+    "Choose the parameters that make the observed data most probable (minimize the negative log-likelihood)."
+   ],
+   [
+    "MSE from likelihood",
+    "Minimizing squared error = maximum likelihood under Gaussian noise."
+   ],
+   [
+    "L2 regularization",
+    "MAP with a Gaussian prior on the weights; λ = σ²/τ²."
+   ]
+  ],
+  "check": [
+   {
+    "q": "7 heads in 10 flips. The maximum-likelihood estimate of P(heads) is…",
+    "options": [
+     "0.5",
+     "0.7",
+     "0.67"
+    ],
+    "answer": 1,
+    "why": "For a coin the MLE is heads / flips.",
+    "sec": 4
+   },
+   {
+    "q": "Minimizing mean squared error is maximum likelihood when the noise is…",
+    "options": [
+     "Gaussian",
+     "uniform",
+     "Laplace (absolute error)"
+    ],
+    "answer": 0,
+    "why": "The Gaussian's log-density is a squared distance.",
+    "sec": 5
+   },
+   {
+    "q": "Sums of 30 skewed waiting times are…",
+    "options": [
+     "just as skewed",
+     "close to a bell curve",
+     "uniform"
+    ],
+    "answer": 1,
+    "why": "The central limit theorem: skewness falls like 1/√n.",
+    "sec": 3
+   },
+   {
+    "q": "Prior Beta(2, 2), then 3 heads and 1 tail. The posterior is…",
+    "options": [
+     "Beta(5, 3)",
+     "Beta(3, 1)",
+     "Beta(2, 2)"
+    ],
+    "answer": 0,
+    "why": "Add heads to a and tails to b.",
+    "sec": 6
+   },
+   {
+    "q": "A tighter prior on the weights (smaller τ) means…",
+    "options": [
+     "a bigger λ: weights shrink more",
+     "a smaller λ",
+     "no change"
+    ],
+    "answer": 0,
+    "why": "λ = σ²/τ².",
+    "sec": 7
+   }
+  ]
+ },
+ "deep-networks.html": {
+  "goals": [
+   "Write any layer as Z = WA + b with the right shapes",
+   "Backprop through any depth in matrix form",
+   "Choose initialization and depth sensibly"
+  ],
+  "cards": [
+   [
+    "Shape of W[l]",
+    "(units in layer l, units in layer l − 1)."
+   ],
+   [
+    "A batch as a matrix",
+    "Examples as columns: (features, m); the bias broadcasts across the columns."
+   ],
+   [
+    "Output blame with sigmoid + cross-entropy",
+    "dZ = A − Y."
+   ],
+   [
+    "dW and db",
+    "dW = dZ·Aᵀ/m (W's shape); db = row sums of dZ / m."
+   ],
+   [
+    "Zero initialization",
+    "Every unit in a layer stays identical forever: random starts break the symmetry."
+   ],
+   [
+    "Xavier / He",
+    "Weight variance 1/n (tanh) or 2/n (ReLU) keeps signals from vanishing or exploding."
+   ]
+  ],
+  "check": [
+   {
+    "q": "How many parameters does a 2-16-16-1 network have?",
+    "options": [
+     "337",
+     "289",
+     "35"
+    ],
+    "answer": 0,
+    "why": "48 + 272 + 17.",
+    "sec": 1
+   },
+   {
+    "q": "A batch of 500 examples enters a layer of 16 units from 2 inputs. Z has shape…",
+    "options": [
+     "(16, 500)",
+     "(500, 16)",
+     "(16, 2)"
+    ],
+    "answer": 0,
+    "why": "(16, 2)·(2, 500).",
+    "sec": 2
+   },
+   {
+    "q": "Why does the bias gradient sum over the examples?",
+    "options": [
+     "One bias serves every example, so it collects blame from each",
+     "To make it bigger",
+     "It doesn't"
+    ],
+    "answer": 0,
+    "why": "A value used many times adds up the blame from every use.",
+    "sec": 3
+   },
+   {
+    "q": "Starting a network with all weights at zero…",
+    "options": [
+     "trains slowly",
+     "never breaks symmetry: units stay copies of each other",
+     "works fine with ReLU"
+    ],
+    "answer": 1,
+    "why": "Same inputs, same blame, same updates, forever.",
+    "sec": 5
+   },
+   {
+    "q": "A ReLU layer has 32 inputs. He initialization uses weights with standard deviation…",
+    "options": [
+     "0.25",
+     "0.0625",
+     "1"
+    ],
+    "answer": 0,
+    "why": "√(2/32) = 0.25.",
+    "sec": 5
+   }
+  ]
  }
 }

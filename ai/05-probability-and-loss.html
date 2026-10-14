@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 5</p>
   <h1>Probability and loss</h1>
   <p class="lede">So far our networks said "blue or red". Real ones choose among many answers: which digit, which animal, which of 100,000 words comes next. They don't output an answer; they output <em>how much they believe in each one</em>. This chapter is about those beliefs: how scores become probabilities, how to measure a wrong belief, and why a chatbot's reply can change every time you ask.</p>
@@ -56,17 +56,24 @@
     <div class="why">Softmax only sees differences between scores. Try it with the sliders: drag all three the same amount.</div>
   </div>
   <div class="code" data-title="Build it: softmax, naive and safe"><textarea>
-const naive = (s) => { const e = s.map(Math.exp), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
-const softmax = (s, T = 1) => {
-  const m = Math.max(...s);                          // subtract the max: exponents ≤ 0, no overflow
-  const e = s.map((v) => Math.exp((v - m) / T)), z = e.reduce((a, b) => a + b);
-  return e.map((v) => v / z);
-};
+import numpy as np
 
-print("scores [2, 1, -0.5] →", softmax([2, 1, -0.5]));
-print("naive with big scores:", naive([1000, 999]));     // e^1000 = Infinity, Infinity/Infinity = NaN
-print("safe with big scores: ", softmax([1000, 999]));
-for (const T of [0.1, 0.5, 1, 2, 10]) print(`T = ${T}:`, softmax([2, 1, -0.5], T));
+def naive(s):
+    e = np.exp(s); return e / e.sum()
+
+def softmax(s, T=1.0):
+    s = np.asarray(s, dtype=float) / T
+    e = np.exp(s - s.max())                  # subtract the max: exponents ≤ 0, no overflow
+    return e / e.sum()
+
+print("scores [2, 1, -0.5] →", softmax([2, 1, -0.5]).round(3))
+print("naive with big scores:", naive(np.array([1000.0, 999.0])))     # e^1000 = inf, inf/inf = nan
+print("safe with big scores: ", softmax([1000, 999]).round(3))
+for T in [0.1, 0.5, 1, 2, 10]:
+    print(f"T = {T}:", softmax([2, 1, -0.5], T).round(3))
+
+from scipy.special import softmax as scipy_softmax          # libraries ship the safe version
+print("SciPy agrees:", np.allclose(scipy_softmax([1000, 999]), softmax([1000, 999])))
 </textarea></div>
 
   <h2>2. Loss as surprise: cross-entropy</h2>
@@ -107,25 +114,27 @@ for (const T of [0.1, 0.5, 1, 2, 10]) print(`T = ${T}:`, softmax([2, 1, -0.5], T
     <div class="why">Repeating text raises the probability of repeating it again (the model has just seen it), and greedy has no randomness to escape the loop.</div>
   </div>
   <div class="code" data-title="Build it: sampling, top-p, and checking it's fair"><textarea>
-const softmax = (s, T = 1) => { const m = Math.max(...s), e = s.map((v) => Math.exp((v - m) / T)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
-const words = ["mat", "floor", "chair", "roof", "keyboard", "moon"], logits = [3.1, 2.2, 1.6, 0.9, 1.2, -1.5];
+import numpy as np
+import pandas as pd
+rng = np.random.default_rng()
 
-function sample(p) {
-  let u = Math.random(), i = 0;
-  while (i < p.length - 1 && u >= p[i]) { u -= p[i]; i++; }   // walk the line until u falls in a stretch
-  return i;
-}
-function topP(p, keep = 0.9) {
-  const order = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]), out = p.map(() => 0);
-  let total = 0;
-  for (const [v, i] of order) { if (total >= keep) break; out[i] = v; total += v; }
-  return out.map((v) => v / total);                         // renormalize what's left
-}
+def softmax(s, T=1.0):
+    s = np.asarray(s, dtype=float) / T; e = np.exp(s - s.max()); return e / e.sum()
 
-const p = softmax(logits);
-const counts = words.map(() => 0);
-for (let k = 0; k < 10000; k++) counts[sample(p)]++;
-table([["word", "probability", "share of 10,000 samples", "after top-p 0.9"], ...words.map((w, i) => [w, p[i], counts[i] / 10000, topP(p)[i]])]);
+words = np.array(["mat", "floor", "chair", "roof", "keyboard", "moon"])
+logits = np.array([3.1, 2.2, 1.6, 0.9, 1.2, -1.5])
+p = softmax(logits)
+
+def top_p(p, keep=0.9):
+    order = np.argsort(-p)                                   # most likely first
+    cum = np.cumsum(p[order])
+    kept = order[: np.searchsorted(cum, keep) + 1]           # the fewest words whose total reaches keep
+    out = np.zeros_like(p); out[kept] = p[kept]
+    return out / out.sum()                                   # renormalize what's left
+
+samples = rng.choice(len(p), size=10_000, p=p)               # sampling: walk the line until u falls in a stretch
+pd.DataFrame({"probability": p, "share of 10,000 samples": np.bincount(samples, minlength=len(p)) / 10_000,
+              "after top-p 0.9": top_p(p)}, index=words).round(3)
 </textarea></div>
 
   <h2>4. The gradient is "what you said minus what was true"</h2>
@@ -145,32 +154,28 @@ table([["word", "probability", "share of 10,000 samples", "after top-p 0.9"], ..
     <div class="why">\(p - y = (0.7 - 0,\ 0.2 - 1,\ 0.1 - 0)\). Stepping against it lowers cat's score most, raises dog's, and lowers bird's a little. Note it adds to zero.</div>
   </div>
   <div class="code" data-title="Build it: a 3-class classifier from scratch (softmax regression)"><textarea>
-// Points in 3 clouds; the model: scores = W·x + b (3 scores), softmax, cross-entropy, gradient p − y.
-const centers = [[2, 0], [-1, 1.7], [-1, -1.7]];
-const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
-const data = [];
-for (let c = 0; c < 3; c++) for (let k = 0; k < 60; k++) data.push({ x: [centers[c][0] + gauss() * 0.8, centers[c][1] + gauss() * 0.8], y: c });
-const softmax = (s) => { const m = Math.max(...s), e = s.map((v) => Math.exp(v - m)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); };
+import numpy as np
+import matplotlib.pyplot as plt
+rng = np.random.default_rng()
 
-let W = [[0, 0], [0, 0], [0, 0]], b = [0, 0, 0];
-const losses = [];
-for (let epoch = 0; epoch < 100; epoch++) {
-  const gW = [[0, 0], [0, 0], [0, 0]], gb = [0, 0, 0];
-  let L = 0;
-  for (const { x, y } of data) {
-    const p = softmax(W.map((w, i) => w[0] * x[0] + w[1] * x[1] + b[i]));
-    L -= Math.log(p[y]) / data.length;
-    for (let i = 0; i < 3; i++) {
-      const g = (p[i] - (i === y ? 1 : 0)) / data.length;   // ∂L/∂score_i
-      gW[i][0] += g * x[0]; gW[i][1] += g * x[1]; gb[i] += g;
-    }
-  }
-  W = W.map((w, i) => [w[0] - 0.5 * gW[i][0], w[1] - 0.5 * gW[i][1]]); b = b.map((v, i) => v - 0.5 * gb[i]);
-  losses.push(L);
-}
-const acc = data.filter(({ x, y }) => { const s = W.map((w, i) => w[0] * x[0] + w[1] * x[1] + b[i]); return s.indexOf(Math.max(...s)) === y; }).length / data.length;
-print("accuracy", (acc * 100).toFixed(1) + "%", " final loss", losses.at(-1).toFixed(3), " (started at ln 3 =", Math.log(3).toFixed(3) + ")");
-plot(losses, { label: "cross-entropy per epoch" });
+# Points in 3 clouds; the model: scores = X·Wᵀ + b (3 scores each), softmax, cross-entropy, gradient p − y.
+centers = np.array([[2, 0], [-1, 1.7], [-1, -1.7]])
+y = np.repeat([0, 1, 2], 60)
+X = centers[y] + rng.normal(0, 0.8, (180, 2))
+Y = np.eye(3)[y]                                             # one-hot: row i has a 1 in column y_i
+
+def softmax_rows(S):
+    E = np.exp(S - S.max(axis=1, keepdims=True)); return E / E.sum(axis=1, keepdims=True)
+
+W, b, losses = np.zeros((3, 2)), np.zeros(3), []
+for epoch in range(100):
+    P = softmax_rows(X @ W.T + b)                            # (180, 3) probabilities
+    losses.append(-np.mean(np.log(P[np.arange(180), y])))   # cross-entropy
+    G = (P - Y) / len(y)                                     # ∂L/∂scores: what it said minus what was true
+    W -= 0.5 * G.T @ X; b -= 0.5 * G.sum(axis=0)
+acc = ((X @ W.T + b).argmax(axis=1) == y).mean()
+print(f"accuracy {acc:.1%}  final loss {losses[-1]:.3f}  (started at ln 3 = {np.log(3):.3f})")
+plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.title("cross-entropy per epoch"); plt.show()
 </textarea></div>
   <div class="stage"><div class="bars" id="tr"></div>
     <div class="row" style="margin-top:12px"><label>right answer <select id="truth"><option>cat</option><option selected>dog</option><option>bird</option></select></label><button id="step4">One training step</button><button id="reset4">Reset</button></div></div>

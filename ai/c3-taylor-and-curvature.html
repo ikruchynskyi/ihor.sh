@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 3 · Foundations</p>
   <h1>Taylor series and curvature</h1>
   <p class="lede">The derivative says which way is downhill. It doesn't say how far you can go before downhill turns into uphill. That's the second derivative's job: curvature. This lesson builds functions out of polynomials, uses that to explain exactly when gradient descent works and when a learning rate makes it explode, and shows why stretched valleys make training zigzag and why the obvious fix, Newton's method, is out of reach for neural networks.</p>
@@ -80,17 +80,19 @@
   </div>
   <p>Away from a toy, Newton's method shows its real strength: near a minimum, the number of correct digits roughly <b>doubles</b> each step. Here it is against gradient descent on \(f(x) = e^x - 2x\), whose minimum is at \(x = \ln 2\) (where \(f' = e^x - 2 = 0\)):</p>
   <div class="code" data-title="Run it: gradient descent vs Newton"><textarea>
-const d1 = (x) => Math.exp(x) - 2; // f′
-const d2 = (x) => Math.exp(x);     // f″, the curvature
-const best = Math.LN2;
-let gd = 0, nt = 0;
-const rows = [["step", "GD error", "Newton error"]];
-for (let step = 1; step <= 8; step++) {
-  gd -= 0.3 * d1(gd);        // a fixed step size
-  nt -= d1(nt) / d2(nt);     // divide by the curvature
-  rows.push([step, Math.abs(gd - best).toExponential(2), Math.abs(nt - best).toExponential(2)]);
-}
-table(rows);
+import numpy as np
+import pandas as pd
+
+d1 = lambda x: np.exp(x) - 2      # f′ of f(x) = eˣ − 2x
+d2 = lambda x: np.exp(x)          # f″, the curvature
+best = np.log(2)
+gd = nt = 0.0
+rows = []
+for step in range(1, 9):
+    gd -= 0.3 * d1(gd)            # a fixed step size
+    nt -= d1(nt) / d2(nt)         # divide by the curvature
+    rows.append((step, abs(gd - best), abs(nt - best)))
+pd.DataFrame(rows, columns=["step", "GD error", "Newton error"]).set_index("step").map(lambda v: f"{v:.2e}")
 </textarea></div>
   <p>Gradient descent's error shrinks by a fixed factor each step. Newton's error is roughly squared each step: 0.04, 0.0009, \(4 \times 10^{-7}\), \(8 \times 10^{-14}\), then exact to the last digit.</p>
 
@@ -109,28 +111,18 @@ table(rows);
   </div>
   <p>In a million dimensions, a minimum needs a million curvatures to all come out positive. If signs were coin flips, that's \(2^{-1{,}000{,}000}\). So almost every flat spot a big network meets is a <b>saddle</b>, not a bad local minimum, and gradient noise is usually enough to slide off it. Random symmetric matrices show the trend:</p>
   <div class="code" data-title="Run it: how rare are minima in high dimensions?"><textarea>
-function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const rand = mulberry32(3), gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
-// A matrix has only positive eigenvalues exactly when its Cholesky factorization succeeds.
-const allPositive = (A) => {
-  const n = A.length, L = A.map(() => Array(n).fill(0));
-  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
-    let s = A[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
-    if (i === j) { if (s <= 0) return false; L[i][i] = Math.sqrt(s); } else L[i][j] = s / L[j][j];
-  }
-  return true;
-};
-const rows = [["dimension", "share of random Hessians that are minima"]];
-for (const n of [1, 2, 3, 4, 5, 6, 8]) {
-  let hits = 0;
-  for (let trial = 0; trial < 20000; trial++) {
-    const A = Array.from({ length: n }, () => Array(n).fill(0));
-    for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) A[i][j] = A[j][i] = gauss(); // symmetric, like every Hessian
-    if (allPositive(A)) hits++;
-  }
-  rows.push([n, hits / 20000]);
-}
-table(rows);
+import numpy as np
+import pandas as pd
+rng = np.random.default_rng(3)
+
+# A symmetric matrix (like every Hessian) is a minimum exactly when all its eigenvalues are positive.
+rows = []
+for n in [1, 2, 3, 4, 5, 6, 8]:
+    A = rng.standard_normal((20_000, n, n))
+    H = (A + A.transpose(0, 2, 1)) / np.sqrt(2)            # 20,000 random symmetric matrices at once
+    is_min = (np.linalg.eigvalsh(H) &gt; 0).all(axis=1)       # eigvalsh works on the whole stack
+    rows.append((n, is_min.mean()))
+pd.DataFrame(rows, columns=["dimension", "share of random Hessians that are minima"])
 </textarea></div>
 
   <h2>5. What to carry forward</h2>
