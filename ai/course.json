@@ -1978,5 +1978,95 @@
     "sec": 5
    }
   ]
+ },
+ "06-convolutions.html": {
+  "goals": [
+   "See an image as a grid of numbers and a filter as a small sliding pattern",
+   "Compute a convolution, its output size and its parameter count",
+   "Explain why CNNs beat dense layers on images"
+  ],
+  "cards": [
+   [
+    "Convolution (in deep learning)",
+    "Slide a small filter over the image; at each spot multiply and add: one output number per position."
+   ],
+   [
+    "Feature map",
+    "The grid of a filter's responses: bright where its pattern appears."
+   ],
+   [
+    "Output size",
+    "⌊(n + 2p − k)/s⌋ + 1 for input n, kernel k, padding p, stride s."
+   ],
+   [
+    "Max pooling",
+    "Keep the biggest value in each small block: smaller maps, small shifts don't matter."
+   ],
+   [
+    "Weight sharing",
+    "One filter is reused at every position: few parameters, and a pattern is found wherever it is."
+   ],
+   [
+    "Channels",
+    "A filter spans all input channels (e.g. RGB); the number of filters is the output's depth."
+   ]
+  ],
+  "check": [
+   {
+    "q": "An image is 28×28. A 3×3 filter, no padding, stride 1, gives a map of…",
+    "options": [
+     "28×28",
+     "26×26",
+     "25×25"
+    ],
+    "answer": 1,
+    "why": "28 − 3 + 1 = 26.",
+    "sec": 2
+   },
+   {
+    "q": "Where does a vertical-edge filter respond most?",
+    "options": [
+     "In flat regions",
+     "Where brightness changes from left to right",
+     "Everywhere equally"
+    ],
+    "answer": 1,
+    "why": "Its left and right columns have opposite signs.",
+    "sec": 2
+   },
+   {
+    "q": "How many parameters in a 3×3 conv layer with 3 input channels and 64 filters?",
+    "options": [
+     "576",
+     "1,792",
+     "64"
+    ],
+    "answer": 1,
+    "why": "64 × 3 × 3 × 3 weights + 64 biases.",
+    "sec": 3
+   },
+   {
+    "q": "2×2 max pooling turns a 14×14 map into…",
+    "options": [
+     "7×7",
+     "12×12",
+     "28×28"
+    ],
+    "answer": 0,
+    "why": "Each 2×2 block becomes one number.",
+    "sec": 3
+   },
+   {
+    "q": "Why do CNNs need far fewer parameters than dense layers on images?",
+    "options": [
+     "They use smaller numbers",
+     "Each filter is shared across every position",
+     "They skip the bias"
+    ],
+    "answer": 1,
+    "why": "Weight sharing: one small filter, applied everywhere.",
+    "sec": 3
+   }
+  ]
  }
 }

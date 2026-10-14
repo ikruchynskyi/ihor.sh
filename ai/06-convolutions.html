@@ -29,7 +29,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 6</p>
   <h1>Seeing: convolutions</h1>
   <p class="lede">A photo of a cat and the same photo shifted one pixel to the left are, number by number, completely different. Yet they're obviously the same cat. A plain network from chapter 3 would have to learn "cat" separately at every position. Convolutional networks don't: they slide one small detector across the whole image. This chapter builds one and trains it, right here in your browser, to read digits you draw.</p>
@@ -76,30 +76,31 @@
     <div class="why">\(28 - 5 + 1 = 24\). Then 2 × 2 pooling halves it to 12.</div>
   </div>
   <div class="code" data-title="Build it: a convolution in a few lines"><textarea>
-// A 6×6 image: dark left half, bright right half
-const img = Array.from({ length: 6 }, () => [0, 0, 0, 1, 1, 1]);
-const vertical = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+import numpy as np
 
-function conv2d(I, K) {
-  const k = K.length, out = [];
-  for (let r = 0; r + k <= I.length; r++) {
-    const row = [];
-    for (let c = 0; c + k <= I[0].length; c++) {
-      let s = 0;
-      for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) s += I[r + i][c + j] * K[i][j];
-      row.push(s);
-    }
-    out.push(row);
-  }
-  return out;
-}
-const maxPool = (F) => F.filter((_, r) => r % 2 === 0).map((_, r) => F[0].filter((_, c) => c % 2 === 0).map((_, c) =>
-  Math.max(F[2 * r][2 * c], F[2 * r][2 * c + 1] ?? -Infinity, F[2 * r + 1]?.[2 * c] ?? -Infinity, F[2 * r + 1]?.[2 * c + 1] ?? -Infinity)));
+# A 6×6 image: dark left half, bright right half
+img = np.tile([0, 0, 0, 1, 1, 1], (6, 1))
+vertical = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
 
-print("image:"); table(img);
-const F = conv2d(img, vertical);
-print("feature map (4×4): the edge lights up in the middle columns"); table(F);
-print("after 2×2 max pooling:"); table(maxPool(F));
+def conv2d(I, K):
+    k = len(K)
+    out = np.zeros((I.shape[0] - k + 1, I.shape[1] - k + 1))
+    for r in range(out.shape[0]):
+        for c in range(out.shape[1]):
+            out[r, c] = np.sum(I[r:r + k, c:c + k] * K)      # multiply the patch by the filter, add up
+    return out
+
+def max_pool(F):                                              # 2×2 blocks → their maximum
+    h, w = F.shape[0] // 2, F.shape[1] // 2
+    return F[:2 * h, :2 * w].reshape(h, 2, w, 2).max(axis=(1, 3))
+
+print("image:\n", img)
+F = conv2d(img, vertical)
+print("feature map (4×4): the edge lights up in the middle columns\n", F)
+print("after 2×2 max pooling:\n", max_pool(F))
+
+from scipy.signal import correlate2d                          # the library version (deep learning's "convolution")
+print("SciPy agrees:", np.array_equal(correlate2d(img, vertical, mode="valid"), F))
 </textarea></div>
 
   <h2>3. Train a network that reads digits</h2>
@@ -116,29 +117,26 @@ print("after 2×2 max pooling:"); table(maxPool(F));
     <div class="why">The output is the 0.9 input, so its slope is 1 for that input and 0 for the rest.</div>
   </div>
   <div class="code" data-title="Build it: learn a filter by gradient descent"><textarea>
-// Can gradient descent rediscover the vertical-edge filter? Show it random images and the feature maps
-// the real filter makes, start from random weights, and train with the formula above.
-const conv = (I, K) => I.slice(0, -2).map((_, r) => I[0].slice(0, -2).map((_, c) => {
-  let s = 0; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) s += I[r + i][c + j] * K[i][j]; return s; }));
-const target = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
-const randImg = () => Array.from({ length: 8 }, () => Array.from({ length: 8 }, Math.random));
+import numpy as np
+import matplotlib.pyplot as plt
+from numpy.lib.stride_tricks import sliding_window_view
+rng = np.random.default_rng()
 
-let K = Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => Math.random() - 0.5));
-const losses = [];
-for (let step = 0; step < 300; step++) {
-  const I = randImg(), want = conv(I, target), got = conv(I, K);
-  const grad = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-  let L = 0;
-  got.forEach((row, r) => row.forEach((v, c) => {
-    const blame = 2 * (v - want[r][c]) / 36;               // ∂L/∂F[r][c] for mean squared error
-    L += (v - want[r][c]) ** 2 / 36;
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) grad[i][j] += blame * I[r + i][c + j];
-  }));
-  K = K.map((row, i) => row.map((w, j) => w - 0.3 * grad[i][j]));
-  losses.push(L);
-}
-plot(losses, { label: "loss: learned filter vs the vertical-edge filter" });
-print("learned filter:"); table(K.map((r) => r.map((w) => +w.toFixed(2))));
+# Can gradient descent rediscover the vertical-edge filter? Show it random images and the feature maps
+# the real filter makes, start from random weights, and train with the formula above.
+target = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+def patches(I):                       # every 3×3 patch of an 8×8 image: shape (6, 6, 3, 3)
+    return sliding_window_view(I, (3, 3))
+
+K, losses = rng.random((3, 3)) - 0.5, []
+for step in range(300):
+    P = patches(rng.random((8, 8)))
+    want, got = np.einsum("rcij,ij-&gt;rc", P, target), np.einsum("rcij,ij-&gt;rc", P, K)   # the convolution, all at once
+    blame = 2 * (got - want) / got.size                                              # ∂L/∂F for mean squared error
+    K -= 0.3 * np.einsum("rc,rcij-&gt;ij", blame, P)                                    # each weight: blame × the pixels it saw
+    losses.append(np.mean((got - want) ** 2))
+plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.yscale("log"); plt.title("loss: learned filter vs the vertical-edge filter"); plt.show()
+print("learned filter:\n", K.round(2))
 </textarea></div>
   <div class="row"><button id="train">Train (a few seconds)</button><progress id="prog" max="1" value="0"></progress><span class="readout" id="r3" style="margin:0"></span></div>
   <div class="stage">

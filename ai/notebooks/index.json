@@ -34,6 +34,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-softmax-cross-entropy-and-a-10-d"
  },
+ "06-convolutions.html": {
+  "notebook": "06-convolutions.ipynb",
+  "title": "AI from scratch: convolutions and a CNN that reads",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/06-convolutions.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-convolutions-and-a-cnn-that-reads"
+ },
  "11-overfitting.html": {
   "notebook": "11-overfitting.ipynb",
   "title": "AI from scratch: overfitting, regularization and l",
