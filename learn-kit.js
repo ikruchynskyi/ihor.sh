@@ -67,6 +67,17 @@ const css = `
 .code .out .df { white-space: normal; overflow-x: auto; } .code .out .df th { border: 1px solid var(--line); padding: 2px 8px; text-align: right; font-weight: 600; }
 .code .out img { display: block; margin: 6px 0; border-radius: 6px; background: #fff; }
 .code .out .muted { color: var(--muted); }
+/* phones: nothing wider than the screen, and buttons big enough for a thumb */
+main select, main input[type="file"], main svg:not(.katex svg) { max-width: 100%; }
+main svg:not(.katex svg) { height: auto; }
+.wide-scroll { overflow-x: auto; max-width: 100%; }
+@media (pointer: coarse), (max-width: 640px) {
+  .code .bar button { min-height: 40px; padding: 8px 14px !important; }
+  .q button.giveup, .q button.think { min-height: 40px; padding: 8px 6px !important; }
+  .q li button { min-height: 44px; }
+  .q .num input { min-height: 40px; font-size: 16px !important; }   /* 16px stops iOS from zooming into the field */
+  .code .ed > textarea, .code .ed > pre { font-size: 16px !important; }   /* both layers, so colors stay aligned
+}
 .deeper { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--card) 85%, transparent); padding: 4px 16px; margin: 18px 0; border-radius: 0 10px 10px 0; }
 .deeper > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
 .deeper[open] > summary { margin-bottom: 4px; }
@@ -216,7 +227,9 @@ function autocomplete(box, ed, ta, paint) {
     pop.querySelector(".on")?.scrollIntoView({ block: "nearest" });
   };
   // where the caret is, in pixels: the font is monospace and the metrics are fixed in CSS
-  const cw = (() => { const c = document.createElement("canvas").getContext("2d"); c.font = "13.5px ui-monospace, Menlo, monospace"; return c.measureText("M").width; })();
+  // the editor's real metrics (16px on phones, 13.5px elsewhere), so the popup lands under the caret
+  const metrics = () => { const cs = getComputedStyle(ta), c = document.createElement("canvas").getContext("2d"); c.font = `${cs.fontSize} ui-monospace, Menlo, monospace`;
+    return { cw: c.measureText("M").width, lh: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.55 }; };
   async function ask(force = false) {
     const before = ta.value.slice(0, ta.selectionStart), lineText = before.slice(before.lastIndexOf("\n") + 1);
     const word = lineText.match(/[A-Za-z_][\w]*$/)?.[0] ?? "", afterDot = /\.\w*$/.test(lineText);
@@ -229,12 +242,12 @@ function autocomplete(box, ed, ta, paint) {
     if (id !== asked) return;
     items = res.filter(([n]) => n.startsWith(word) || afterDot && !word); sel = 0;
     if (!items.length || (items.length === 1 && items[0][2] === "")) return close();
-    const row = before.split("\n").length - 1;
-    pop.style.left = `${Math.min(12 + lineText.length * cw - ta.scrollLeft - word.length * cw, ta.clientWidth - 230)}px`;
-    const lineTop = 10 + row * 20.925 - ta.scrollTop;
+    const row = before.split("\n").length - 1, { cw, lh } = metrics();
+    pop.style.left = `${Math.max(0, Math.min(12 + lineText.length * cw - ta.scrollLeft - word.length * cw, ta.clientWidth - 230))}px`;
+    const lineTop = 10 + row * lh - ta.scrollTop;
     pop.hidden = false; render();
     // below the caret's line if it fits inside the box, otherwise above it (the box clips what overflows)
-    const below = lineTop + 20.925 + 2;
+    const below = lineTop + lh + 2;
     pop.style.top = `${below + pop.offsetHeight <= ed.clientHeight ? below : Math.max(0, lineTop - pop.offsetHeight - 2)}px`;
   }
   ta.addEventListener("focus", () => jediReady(ta.value), { once: true });            // warm up while they read
@@ -348,6 +361,8 @@ if (first) {
 document.querySelectorAll(".q").forEach(setupQuestion);
 document.querySelectorAll(".code").forEach(setupCode);
 if (painters.length) loadPrism();
+// a table wider than the page scrolls sideways inside its own box instead of being cut off on a phone
+for (const t of document.querySelectorAll("main table")) if (!t.closest(".wide, .wide-scroll, .code") && t.scrollWidth > (t.parentElement?.clientWidth ?? 0)) { const w = document.createElement("div"); w.className = "wide-scroll"; t.before(w); w.append(t); }
 typeset();
 let solvedOnce = false;
 new MutationObserver(() => { if (!solvedOnce && document.querySelectorAll(".q.solved").length === document.querySelectorAll(".q").length && document.querySelectorAll(".q").length > 2) { solvedOnce = true; say("Every question on this page solved!", "happy"); } })

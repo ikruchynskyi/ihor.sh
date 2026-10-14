@@ -243,20 +243,35 @@
         <h3><small>WORLD 3</small>AI</h3>
         <span class="onair">NEW</span>
       </header>
-      <p>Machine learning from scratch, 3Blue1Brown style: the math made visible, then neural networks, agents and computer vision, every chapter something you drag and poke.</p>
-      <nav class="levels" aria-label="AI chapters">
-        <a class="level" href="/ai/01-matrices-are-moves.html" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>MATRICES ARE MOVES</b><span class="d">Vectors, matrices as moves of space, the determinant, and a network layer as move-then-fold.</span></a>
-        <a class="level" href="/ai/02-gradients.html" data-icon="wave" data-blip="Roll me downhill! Too big a step and I fly off the map."><span class="lv">3-2 <i>▶ PLAY</i></span><b>GRADIENTS</b><span class="d">Slopes you can drag, a ball rolling into a valley, and a line that learns by walking downhill.</span></a>
-        <a class="level" href="/ai/03-a-neuron.html" data-icon="chip" data-blip="One neuron can't do XOR. Four can. Watch!"><span class="lv">3-3 <i>▶ PLAY</i></span><b>A NEURON FROM SCRATCH</b><span class="d">Drag its weights, watch it learn to split two clouds, and see why one neuron can't do XOR.</span></a>
-        <a class="level" href="/ai/04-backprop.html" data-icon="lab" data-blip="Blame, passed backwards, one box at a time."><span class="lv">3-4 <i>▶ PLAY</i></span><b>BACKPROP YOU CAN WATCH</b><span class="d">Forward and backward passes animated node by node, checked by nudging every weight.</span></a>
-        <a class="level" href="/ai/05-probability-and-loss.html" data-icon="ticket" data-blip="The cat sat on the... moon? Sampling is a dice roll!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>PROBABILITY AND LOSS</b><span class="d">Softmax, temperature, cross-entropy as surprise, and why a chatbot's answer changes every time.</span></a>
-        <a class="level" href="/ai/06-convolutions.html" data-icon="tv" data-blip="Draw a digit. I trained myself in five seconds!"><span class="lv">3-6 <i>▶ PLAY</i></span><b>SEEING: CONVOLUTIONS</b><span class="d">Filters that find edges, and a digit reader trained right in your browser.</span></a>
-        <a class="level" href="/ai/07-attention.html" data-icon="book" data-blip="Bank by a river, or bank with a loan? Attention decides!"><span class="lv">3-7 <i>▶ PLAY</i></span><b>ATTENTION &amp; TRANSFORMERS</b><span class="d">Words as arrows, analogies, and attention moving "bank" toward river or money.</span></a>
-        <a class="level" href="/ai/08-agents.html" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-8 <i>▶ PLAY</i></span><b>AGENTS</b><span class="d">The tool loop, Blip's real toolbox, live traces, prompt injection, and an eval you can run.</span></a>
-        <a class="level" href="/ai/09-vision.html" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-9 <i>▶ PLAY</i></span><b>VISION IN PRACTICE</b><span class="d">Motion by subtraction and a real object detector on live NYC traffic cameras.</span></a>
-        <a class="level" href="/ai/10-tiny-transformer.html" data-icon="chip" data-blip="I trained a GPT on subway stations. It made up Cheronst Av!"><span class="lv">3-10 <i>▶ PLAY</i></span><b>A TINY TRANSFORMER</b><span class="d">Train a real one-block GPT in your browser on every NYC subway station name, then let it invent new ones.</span></a>
-        <a class="level" href="/ai/" data-icon="book" data-blip="All ten chapters of the AI world."><span class="lv">3-★ <i>▶ OPEN</i></span><b>ALL CHAPTERS</b><span class="d">The whole path in one list: from matrices to a detector reading New York's streets.</span></a>
+      <p>One path from zero to junior ML engineer. Every idea three ways: a picture you drag, the math with real numbers, and Python you run right in the page, plus a practice notebook, a checkpoint and a review deck for every lesson.</p>
+      <nav class="levels" aria-label="AI path">
+        <a class="level" data-ai="start" href="/ai/s1-what-is-ml.html" data-icon="book" data-blip="No math or code needed to start. I promise!"><span class="lv">3-0 <i>▶ START</i></span><b>START HERE</b><span class="d">What machine learning is, just enough Python and math, and your first model on the web. 4 lessons.</span></a>
+        <a class="level" data-ai-stage="1" href="/ai/#stage-1" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>THE MATH OF LEARNING</b><span class="d">Vectors and matrices, derivatives and gradients, probability, describing data, eigenvectors and PCA. 8 lessons.</span></a>
+        <a class="level" data-ai-stage="2" href="/ai/#stage-2" data-icon="chip" data-blip="Blame, passed backwards, one box at a time."><span class="lv">3-2 <i>▶ PLAY</i></span><b>HOW A NETWORK LEARNS</b><span class="d">A neuron, backprop you can watch, losses, curvature, likelihood, and a deep network trained live. 7 lessons.</span></a>
+        <a class="level" data-ai-stage="3" href="/ai/#stage-3" data-icon="lab" data-blip="Precision or recall? Depends what a mistake costs."><span class="lv">3-3 <i>▶ PLAY</i></span><b>CLASSIC ML, JUDGED HONESTLY</b><span class="d">Overfitting, measuring a model, A/B tests, trees and boosting. 4 lessons, 3 on the way.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Coming next: NumPy, scikit-learn and PyTorch, the way they're used at work."><span class="lv">3-4</span><b>THE ENGINEER'S TOOLKIT</b><span class="d">NumPy in depth, pipelines, optimizers, making deep nets train, GPUs, reproducible experiments.</span></div>
+        <a class="level" data-ai-stage="5" href="/ai/#stage-5" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>SEEING AND READING</b><span class="d">Convolutions, a detector on live NYC cameras, attention, and a tiny GPT trained in your browser. 4 lessons, 5 on the way.</span></a>
+        <a class="level" data-ai-stage="6" href="/ai/#stage-6" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-6 <i>▶ PLAY</i></span><b>LLM ENGINEERING</b><span class="d">Agents with real tools and evals. Using LLMs, retrieval, fine-tuning and LLM evals on the way.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Locked: shipping a model, watching it, and a capstone on the elevator archive."><span class="lv">3-7</span><b>PRODUCTION</b><span class="d">Serving, MLOps and a capstone predicting broken subway elevators.</span></div>
+        <a class="level" data-ai="review" href="/ai/review.html" data-icon="ticket" data-blip="Ten minutes of cards and it all stays in your head."><span class="lv">3-★ <i>▶ OPEN</i></span><b>REVIEW DECK</b><span class="d">Concept cards from the lessons you've finished, on a spaced-repetition schedule, and the gaps to revisit.</span></a>
+        <a class="level" href="/ai/" data-icon="book" data-blip="Every lesson, in order."><span class="lv">3-☰ <i>▶ OPEN</i></span><b>THE WHOLE PATH</b><span class="d">All 28 lessons in order, what's coming, and your progress.</span></a>
       </nav>
+      <script type="module">
+        // your progress on the AI path (kept in this browser by /ai/learn.js): continue where you left off, ✓ per stage, cards due
+        const { state, path, dueCards } = await import("/ai/learn.js");
+        const lessons = await path, done = state.done, n = lessons.filter((l) => done[l.href]).length;
+        const start = document.querySelector('[data-ai="start"]'), next = lessons.find((l) => !done[l.href]);
+        if (n && next && start) {
+          start.href = `/ai/${next.href}`; start.querySelector("b").textContent = `CONTINUE: ${next.title.toUpperCase()}`;
+          start.querySelector(".lv i").textContent = "▶ GO"; start.querySelector(".d").textContent = `${n} of ${lessons.length} lessons finished. Next up: ${next.stage.replace(/^Stage \d+ · /, "")}.`;
+        }
+        for (const a of document.querySelectorAll("[data-ai-stage]")) {
+          const mine = lessons.filter((l) => l.stage.startsWith(`Stage ${a.dataset.aiStage} `)), k = mine.filter((l) => done[l.href]).length;
+          if (k) a.querySelector(".lv i").textContent = k === mine.length ? "✓ DONE" : `${k}/${mine.length} ✓`;
+        }
+        const due = dueCards().length, review = document.querySelector('[data-ai="review"]');
+        if (n && review) review.querySelector(".lv i").textContent = due ? `${due} DUE` : "✓ CAUGHT UP";
+      </script>
     </article>
 
     <article class="world">

@@ -32,7 +32,7 @@
   <p class="lede">One path from zero to <b>junior ML engineer</b>. If you can do school arithmetic, you can start: stage 0 gives you just enough code and math, and every idea after that comes three ways: a picture you drag, the math worked out with real numbers, and Python code you edit and run right in the page, plus a practice notebook for every lesson. Questions along the way ask you to predict before you're told.</p>
   <p>Take the lessons in order: each one only leans on the ones before it, and every lesson ends with a link to the next. Each stage ends with a milestone project. Faded lessons are planned and on their way.</p>
 
-  <h2 class="stage">Stage 0 · Start here</h2>
+  <h2 class="stage" id="stage-0">Stage 0 · Start here</h2>
   <p class="goal">For anyone. What machine learning is, how these pages work, and the bits of code and math the rest of the path uses.</p>
   <ol class="path">
     <li class="card"><span class="tag">Start 1</span><a href="./s1-what-is-ml.html"><b>What machine learning is</b></a><p>A model is a function with knobs. Turn them by hand to fit real points, then watch the computer turn them for you. Supervised, unsupervised and reinforcement learning, and what an ML engineer does all day.</p></li>
@@ -42,7 +42,7 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> explain to a friend what "training a model" means, fit a line to data in code, and send them a link to your own model running on the web.</p>
 
-  <h2 class="stage">Stage 1 · The math of learning</h2>
+  <h2 class="stage" id="stage-1">Stage 1 · The math of learning</h2>
   <p class="goal">Vectors and matrices, derivatives and gradients, probability and data, all as pictures first.</p>
   <ol class="path">
     <li class="card"><span class="tag">Chapter 1</span><a href="./01-matrices-are-moves.html"><b>Matrices are moves</b></a><p>Vectors as arrows, a matrix as a move of the whole plane, the determinant as area, a network layer as "move, then fold".</p></li>
@@ -56,7 +56,7 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> fit linear regression three ways, by solving equations, by gradient descent, and by checking the gradient numerically.</p>
 
-  <h2 class="stage">Stage 2 · How a network learns</h2>
+  <h2 class="stage" id="stage-2">Stage 2 · How a network learns</h2>
   <p class="goal">Neurons, backprop, losses and why training works or blows up.</p>
   <ol class="path">
     <li class="card"><span class="tag">Chapter 3</span><a href="./03-a-neuron.html"><b>A neuron from scratch</b></a><p>Weights, a bias and a bend: one neuron learning to separate two clouds of points, live.</p></li>
@@ -66,10 +66,11 @@
     <li class="card"><span class="tag">Calculus 4</span><a href="./c4-integrals.html"><b>Integrals: adding up the infinitely small</b></a><p>Strips under a curve, densities and the bell curve, and why a minibatch's noise shrinks like 1/√N.</p></li>
     <li class="card"><span class="tag">Probability 3</span><a href="./p3-mle-and-map.html"><b>From data to parameters: MLE and MAP</b></a><p>The central limit theorem, where MSE and cross-entropy come from, and regularization as a prior.</p></li>
     <li class="card"><span class="tag">Deep networks</span><a href="./deep-networks.html"><b>Deep networks, layer by layer</b></a><p>An L-layer network trained in the page: a whole batch as one matrix, getting the shapes right, why random init and why depth.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Training in PyTorch</b><p>Tensors on a GPU, autograd, nn.Module, Dataset and DataLoader, the training loop with epochs and batches, saving and loading: the deep network you just built, written the way it's done at work.</p></li>
   </ol>
   <p class="milestone"><b>Milestone:</b> a multi-layer network written from scratch that learns a spiral, with its gradients checked.</p>
 
-  <h2 class="stage">Stage 3 · Classic ML and judging models</h2>
+  <h2 class="stage" id="stage-3">Stage 3 · Classic ML and judging models</h2>
   <p class="goal">What most companies' ML actually is: tables, splits, metrics, trees, and deciding what to fix next.</p>
   <ol class="path">
     <li class="card"><span class="tag">Chapter 11</span><a href="./11-overfitting.html"><b>Overfitting: train, validation, test</b></a><p>A polynomial that bends too much, the U-shaped validation curve, regularization, more data, and k-fold cross-validation.</p></li>
@@ -82,19 +83,19 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> predict broken elevators from this site's outage archive with a boosted-tree model, an honest time split and a cost-based threshold.</p>
 
-  <h2 class="stage">Stage 4 · The engineer's toolkit</h2>
+  <h2 class="stage" id="stage-4">Stage 4 · The engineer's toolkit</h2>
   <p class="goal">The tools the job uses: Python, NumPy, pandas, scikit-learn and PyTorch, plus the tricks that make deep networks train.</p>
   <ol class="path">
-    <li class="card soon"><span class="tag">Toolkit 1 · planned</span><b>Python and NumPy</b><p>The language of ML, running in your browser: arrays, broadcasting, and this path's from-scratch code rewritten in a few lines.</p></li>
+    <li class="card soon"><span class="tag">Toolkit 1 · planned</span><b>NumPy in depth</b><p>Broadcasting rules, views vs copies, vectorizing any loop, einsum, and profiling: the habits that make array code fast and correct.</p></li>
     <li class="card soon"><span class="tag">Toolkit 2 · planned</span><b>pandas and scikit-learn</b><p>Loading, cleaning and exploring a real table, then pipelines, cross-validation and grid search in a dozen lines.</p></li>
-    <li class="card soon"><span class="tag">Toolkit 3 · planned</span><b>PyTorch</b><p>Tensors, autograd, modules and the training loop: the network from stage 2, the way it's written at work.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Optimizers and schedules</b><p>Momentum, RMSprop and Adam racing down the same valley; learning-rate warmup and decay; tuning hyperparameters on a log scale.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Making deep nets train</b><p>Initialization, normalization, batch norm, dropout, residual connections, and reading a loss curve that's gone wrong.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>GPUs and scale</b><p>Batching, mixed precision, the memory math of a model, and splitting work across GPUs.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Experiments you can trust</b><p>Seeds, configs, experiment tracking, versioned data and models: reproducing last week's result exactly.</p></li>
   </ol>
   <p class="milestone"><b>Milestone:</b> the elevator model again in pandas and scikit-learn, and an image classifier trained in PyTorch, both in a notebook you keep.</p>
 
-  <h2 class="stage">Stage 5 · Seeing and reading</h2>
+  <h2 class="stage" id="stage-5">Stage 5 · Seeing and reading</h2>
   <p class="goal">The architectures behind vision and language models.</p>
   <ol class="path">
     <li class="card"><span class="tag">Chapter 6</span><a href="./06-convolutions.html"><b>Seeing: convolutions</b></a><p>Filters sliding over images, feature maps, and a digit recognizer trained in your browser.</p></li>
@@ -102,15 +103,17 @@
     <li class="card"><span class="tag">Chapter 9</span><a href="./09-vision.html"><b>Vision in practice</b></a><p>Detection and segmentation on real camera images, including NYC traffic cameras.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Inside a detector</b><p>Bounding boxes, anchors, the YOLO grid, IoU and non-max suppression, and U-Net segmentation.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Recurrent networks</b><p>Memory in a loop, LSTM and GRU gates, and a char-RNN racing chapter 10's transformer on the same data.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Text as numbers: tokens</b><p>Characters, words and subwords; byte-pair encoding built by hand; why "strawberry" is hard to count for a chatbot.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Word vectors</b><p>word2vec trained in the page, analogies, and the biases words carry.</p></li>
     <li class="card"><span class="tag">Chapter 7</span><a href="./07-attention.html"><b>Attention and transformers</b></a><p>Words as vectors, attention as weighted averages, a tiny transformer you can poke.</p></li>
     <li class="card"><span class="tag">Chapter 10</span><a href="./10-tiny-transformer.html"><b>A tiny transformer</b></a><p>A real GPT, one block and 36,000 numbers, trained in your browser on NYC subway station names.</p></li>
   </ol>
   <p class="milestone"><b>Milestone:</b> fine-tune a pretrained image model on your own categories and report its precision and recall per class.</p>
 
-  <h2 class="stage">Stage 6 · LLM engineering</h2>
+  <h2 class="stage" id="stage-6">Stage 6 · LLM engineering</h2>
   <p class="goal">Building products on language models: retrieval, fine-tuning, evaluation and agents.</p>
   <ol class="path">
+    <li class="card soon"><span class="tag">planned</span><b>Using LLMs</b><p>Prompts, chat formats, APIs and open models, structured output and tool calling, cost and latency: an LLM as a component you build with.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Embeddings and retrieval</b><p>Meaning as a vector, nearest neighbors, and retrieval-augmented generation on this site's own search.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Fine-tuning and LoRA</b><p>Teaching a pretrained model a new task by changing a sliver of its weights.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Evaluating LLMs</b><p>Test sets for open-ended answers, model-graded evals, and catching regressions before users do.</p></li>
@@ -118,7 +121,7 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> a question-answering bot over a set of documents, with an eval set that proves it's grounded.</p>
 
-  <h2 class="stage">Stage 7 · Production</h2>
+  <h2 class="stage" id="stage-7">Stage 7 · Production</h2>
   <p class="goal">Getting a model to users and keeping it working.</p>
   <ol class="path">
     <li class="card soon"><span class="tag">planned</span><b>Serving a model</b><p>Latency, batching, caching and quantization: making predictions fast and cheap.</p></li>
@@ -127,7 +130,7 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> the capstone running as a service, with a dashboard that would tell you when it starts to drift.</p>
 
-  <h2 class="stage">Electives</h2>
+  <h2 class="stage" id="electives">Electives</h2>
   <p class="goal">Take any of these once stage 5 is done.</p>
   <ol class="path">
     <li class="card soon"><span class="tag">planned</span><b>Reinforcement learning</b><p>Rewards, the Bellman equation, Q-learning, and a lunar lander that learns to land.</p></li>
@@ -135,9 +138,11 @@
     <li class="card soon"><span class="tag">planned</span><b>Listening: speech and wake words</b><p>Spectrograms and a "Hey Blip" detector trained from your microphone.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Seq2seq and beam search</b><p>Encoder-decoder translation, beam search, BLEU, and where attention came from.</p></li>
     <li class="card soon"><span class="tag">planned</span><b>Faces and style</b><p>Siamese networks, triplet loss, and neural style transfer.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>Time series and forecasting</b><p>Trends, seasons, lags and leakage over time, on this site's subway and elevator archives.</p></li>
+    <li class="card soon"><span class="tag">planned</span><b>How image generators work</b><p>Diffusion: adding noise, learning to remove it, and guiding it with text.</p></li>
   </ol>
 
-  <h2 class="stage">At the end, you can</h2>
+  <h2 class="stage" id="the-end">At the end, you can</h2>
   <ul class="check">
     <li>Frame a problem as ML (or decide it shouldn't be), pick a metric that matches the cost of mistakes, and set a baseline.</li>
     <li>Load, clean and split real data without leaking the answer, in pandas.</li>
