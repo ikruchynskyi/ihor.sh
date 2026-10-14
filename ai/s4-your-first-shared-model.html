@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your First Shared Model</title>
+  <meta name="description" content="AI from scratch, start here: what it means to deploy a model, a live image classifier running in your browser, what a model needs from an image (resizing, scaling, normalizing), turning scores into an answer, and putting your own model on the web with Gradio and Hugging Face Spaces." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin: 16px 0; }
+    .flow > div { flex: 1 1 150px; border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--card); font-size: 1rem; }
+    .flow > div b { display: block; color: var(--accent); }
+    .flow > span { align-self: center; font-size: 1.4rem; color: var(--muted); }
+    .demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .demo img { width: 100%; border-radius: 10px; background: #14171d; min-height: 160px; object-fit: contain; }
+    .bars div { margin: 6px 0; font-size: .95rem; }
+    .bars i { display: block; height: 10px; border-radius: 5px; background: var(--accent); margin-top: 2px; }
+    pre.static { background: #0f1218; color: #d7dde5; padding: 12px 14px; border-radius: 10px; overflow-x: auto; font: 13.5px/1.55 ui-monospace, Menlo, monospace; }
+    @media (max-width: 640px) { .demo { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Start 4 · Stage 0: start here</p>
+  <h1>Your first shared model</h1>
+  <p class="lede">A model on your laptop helps nobody else. In this lesson you see what it takes to put one on the web: the pieces every deployed model has, what happens to a photo before a network sees it, how scores become an answer, and the two free tools (Gradio and Hugging Face Spaces) that turn a trained model into a page anyone can use. The practice notebook does it for real: you train a pet-breed classifier and get a link you can send to a friend.</p>
+
+  <h2>1. What "deploying a model" means</h2>
+  <p>Training produces a file of numbers: the weights. To be useful, three more things wrap around it:</p>
+  <div class="flow">
+    <div><b>Input</b>A photo from a person: any size, any format.</div><span>→</span>
+    <div><b>Preprocess</b>Resize and scale it into exactly the array shape and range the model was trained on.</div><span>→</span>
+    <div><b>Model</b>The architecture plus the saved weights: numbers in, scores out.</div><span>→</span>
+    <div><b>Postprocess</b>Scores → probabilities → the top few labels, shown in the interface.</div>
+  </div>
+  <p>Get the preprocessing even slightly different from training (another image size, colors in a different order, a missing normalization) and a model that scored 95% in testing quietly turns useless. It's the most common deployment bug, so sections 3 and 4 do both steps by hand.</p>
+  <div class="q" data-answer="b">
+    <p>A team trains on photos scaled to 0–1, but the app sends raw pixel values 0–255. What happens?</p>
+    <ul><li data-k="a" data-says="Nothing checks the range: the numbers flow straight in, 255 times too big.">The app refuses the photos</li><li data-k="b">The model gets inputs far outside anything it saw in training, and its answers become garbage, with no error message</li><li data-k="c" data-says="Networks aren't scale-invariant: every weight was tuned for the training range.">Nothing: the model adapts</li></ul>
+    <div class="why">That's why preprocessing ships with the model, as code, not as a note in a README: the same function must run in training and in the app.</div>
+  </div>
+
+  <h2>2. Try one</h2>
+  <p>Below is MobileNet, a small network trained on ImageNet (1.2 million photos, 1,000 categories), running entirely in your browser. Pick a photo, or use the sample. Its top five guesses and their probabilities appear next to it.</p>
+  <div class="demo">
+    <img id="photo" alt="The photo being classified" crossorigin="anonymous">
+    <div>
+      <div class="row"><label>your photo <input type="file" id="file" accept="image/*"></label></div>
+      <div class="row"><button id="sample">Sample: a dog</button><button id="sample2">Sample: a NYC street</button></div>
+      <div class="bars" id="bars"></div>
+      <p class="readout" id="r1">Loading the model (about 4 MB)…</p>
+    </div>
+  </div>
+  <p>The street sample gets odd answers ("scoreboard", "mobile home"): ImageNet photos show one main object, so a busy street is outside what MobileNet learned. For counting cars, a detector is the right tool (chapter 9). Try something that isn't in its 1,000 categories at all, like a face, a drawing, or a screenshot. It still answers, often confidently. A classifier can only choose among the labels it knows; nothing in it says "none of these". That's worth remembering when you put your own model in front of people.</p>
+  <div class="q" data-answer="a">
+    <p>Your pet-breed model gets a photo of a car. What will it say?</p>
+    <ul><li data-k="a">Some breed, possibly with high confidence: it can only choose among breeds</li><li data-k="b" data-says="Nothing in a plain classifier can say 'none of these' unless you train it to.">"Not a pet"</li><li data-k="c" data-says="It always produces an answer: softmax always adds up to 1 over its labels.">Nothing</li></ul>
+    <div class="why">Softmax spreads 100% over the classes it knows. Apps handle this with a confidence threshold ("not sure"), an extra "other" class, or a first model that checks what kind of picture it is.</div>
+  </div>
+
+  <h2>3. What the model needs from a photo</h2>
+  <p>Pretrained image models expect the exact recipe used in training. For the ImageNet family it's: resize so the short side is 256 pixels, cut the central 224×224 square, scale pixel values from 0–255 to 0–1, then normalize each color channel with ImageNet's mean and standard deviation, and arrange the array as (batch, channels, height, width). Here's that recipe on a made-up 300×400 image:</p>
+  <div class="code" data-title="Run it: preprocessing, step by step"><textarea>
+import numpy as np
+
+photo = np.random.default_rng(0).integers(0, 256, size=(300, 400, 3), dtype=np.uint8)  # height × width × RGB, 0–255
+print("from the camera:", photo.shape, photo.dtype, photo.min(), "…", photo.max())
+
+# 1. resize so the short side is 256 (nearest pixel, to keep it short), 2. cut the central 224×224
+scale = 256 / min(photo.shape[:2])
+rows = (np.arange(int(photo.shape[0] * scale)) / scale).astype(int)
+cols = (np.arange(int(photo.shape[1] * scale)) / scale).astype(int)
+resized = photo[rows][:, cols]
+top, left = (resized.shape[0] - 224) // 2, (resized.shape[1] - 224) // 2
+crop = resized[top:top + 224, left:left + 224]
+
+# 3. 0–255 → 0–1, 4. normalize each channel the way ImageNet training did
+x = crop / 255.0
+mean, std = np.array([0.485, 0.456, 0.406]), np.array([0.229, 0.224, 0.225])
+x = (x - mean) / std
+
+# 5. channels first, plus a batch dimension: (1, 3, 224, 224)
+x = x.transpose(2, 0, 1)[None]
+print("for the network:", x.shape, x.dtype, round(x.min(), 2), "…", round(x.max(), 2))
+</textarea></div>
+  <div class="q" data-num="150528">
+    <p>How many numbers does the network receive for one 224×224 color image?</p>
+    <div class="why">\(224 \times 224 \times 3 = 150{,}528\). In PyTorch, torchvision's <code>weights.transforms()</code> does all five steps for you, which is the safest choice: it's the recipe the weights were trained with.</div>
+  </div>
+
+  <h2>4. From scores to an answer</h2>
+  <p>The network returns one score per class, called <b>logits</b>. Softmax (chapter 5) turns them into probabilities; the app shows the top few. Gradio's label widget expects exactly this: a dictionary from label to probability.</p>
+  <div class="code" data-title="Run it: logits to a top-5 answer"><textarea>
+import numpy as np
+
+labels = ["Abyssinian", "Bengal", "Birman", "Bombay", "British Shorthair", "beagle", "boxer", "pug", "samoyed", "shiba inu"]
+logits = np.array([0.3, 2.9, 0.1, -1.0, 1.2, 0.4, -0.5, 0.0, -2.0, 3.3])    # what the model returned
+
+def top_k(logits, labels, k=5):
+    p = np.exp(logits - logits.max()); p = p / p.sum()          # a safe softmax
+    best = np.argsort(-p)[:k]
+    return {labels[i]: round(float(p[i]), 3) for i in best}
+
+answer = top_k(logits, labels)
+print(answer)
+print("not sure" if max(answer.values()) < 0.5 else "confident", "(a threshold an app might use)")
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>The top probability is 0.45 and the next is 0.40. What should a careful app show?</p>
+    <ul><li data-k="a" data-says="0.45 is far from certain, and almost tied with the runner-up.">Just the top label</li><li data-k="b" data-says="The model did produce useful information: it narrowed things to two.">An error</li><li data-k="c">Both, with their probabilities, or a "not sure" message</li></ul>
+    <div class="why">Showing the top few with probabilities, as Gradio's Label does, lets people see when the model is torn. Hiding uncertainty is how a decent model earns a bad reputation.</div>
+  </div>
+
+  <h2>5. The app: Gradio, and a home on Hugging Face Spaces</h2>
+  <p><b>Gradio</b> is a Python library that builds a web interface around any function: you say what goes in (an image) and what comes out (a label with probabilities), and it makes the page. This is a whole app, the one the practice notebook writes as <code>app.py</code>:</p>
+  <pre class="static"><code>import gradio as gr, torch, torchvision, json
+
+labels = json.load(open("labels.json"))
+model = torchvision.models.resnet18(num_classes=len(labels))
+model.load_state_dict(torch.load("model.pt", map_location="cpu"))
+model.eval()
+preprocess = torchvision.models.ResNet18_Weights.DEFAULT.transforms()   # the training recipe
+
+def predict(img):
+    with torch.no_grad():
+        p = model(preprocess(img)[None]).softmax(-1)[0]
+    return {labels[i]: float(p[i]) for i in p.argsort(descending=True)[:5]}
+
+gr.Interface(predict, gr.Image(type="pil"), gr.Label(num_top_classes=5)).launch()</code></pre>
+  <p><b>Hugging Face Spaces</b> hosts apps like this for free (a small CPU, which is plenty for one image at a time). A Space is a Git repository with three files: <code>app.py</code>, <code>requirements.txt</code> (the libraries), and the model files. Push them and Spaces installs, starts the app and gives it a public address. The notebook does it with the <code>huggingface_hub</code> library in a few lines, using a free account's access token.</p>
+  <div class="q" data-answer="b">
+    <p>Why does the app load the preprocessing from torchvision's weights object instead of writing its own?</p>
+    <ul><li data-k="a" data-says="It's not about speed: both run in milliseconds.">It's faster</li><li data-k="b">It's guaranteed to be the same recipe the weights were trained with, so training and the app can't drift apart</li><li data-k="c" data-says="It's needed for correctness, not for Gradio.">Gradio requires it</li></ul>
+    <div class="why">One source of truth for preprocessing removes the most common deployment bug from section 1.</div>
+  </div>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>A deployed model is <b>input → preprocessing → model → postprocessing</b>; the preprocessing must match training exactly.</li>
+    <li>Image models want a fixed size, a 0–1 scale, per-channel normalization and a (batch, channels, height, width) array.</li>
+    <li>Logits → softmax → the top few labels with probabilities; show uncertainty, don't hide it.</li>
+    <li>A classifier always picks one of its labels, even for things it has never seen.</li>
+    <li><b>Gradio</b> wraps a function in a web page; <b>Hugging Face Spaces</b> hosts it for free.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Demo model: <a href="https://github.com/tensorflow/tfjs-models/tree/master/mobilenet">MobileNet for TensorFlow.js</a> (Apache 2.0). Sample photos: the PyTorch vision gallery (BSD) and NYC DOT's public traffic cameras. fast.ai's lesson 2 (<a href="https://course.fast.ai/Lessons/lesson2.html">course.fast.ai</a>) deploys a model the same way.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const add = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
+let model = null;
+async function classify() {
+  if (!model || !$("photo").complete || !$("photo").naturalWidth) return;
+  const top = await model.classify($("photo"), 5);
+  $("bars").innerHTML = top.map((t) => `<div>${t.className.split(",")[0]} <span style="color:var(--muted)">${(100 * t.probability).toFixed(1)}%</span><i style="width:${Math.max(2, 100 * t.probability)}%"></i></div>`).join("");
+  $("r1").textContent = top[0].probability < 0.5 ? "Top guess under 50%: a careful app would say it's not sure." : "Confident top guess.";
+  if (top[0].probability > 0.9) say(`${(100 * top[0].probability).toFixed(0)}% sure: ${top[0].className.split(",")[0]}!`, "happy");
+}
+$("photo").onload = classify;
+const show = (src) => { $("photo").src = src; };
+$("sample").onclick = () => show("https://raw.githubusercontent.com/pytorch/vision/main/gallery/assets/dog1.jpg");
+$("sample2").onclick = async () => {
+  const cams = await fetch("/api/nyc/cameras").then((r) => r.json()).catch(() => []);
+  const cam = (Array.isArray(cams) ? cams : []).filter((c) => c.area === "Manhattan")[Math.floor(Math.random() * 50)];
+  if (cam) show(`/api/nyc/camera-image?id=${cam.id}&t=${Date.now()}`);
+};
+$("file").onchange = () => { const f = $("file").files[0]; if (f) show(URL.createObjectURL(f)); };
+try {
+  await add("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js");
+  await add("https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js");
+  model = await window.mobilenet.load({ version: 2, alpha: 1.0 });
+  $("r1").textContent = "Model ready. Pick a photo.";
+  if (!$("photo").src) show("https://raw.githubusercontent.com/pytorch/vision/main/gallery/assets/dog1.jpg"); else classify();
+} catch (e) { $("r1").textContent = "Couldn't load the model (offline?)."; }
+window.blipContext = () => ({ page: "AI from scratch, start 4: deploying a model (input → preprocess → model → postprocess), MobileNet classifying a photo in the browser, image preprocessing (resize, crop 224, scale, ImageNet normalization, NCHW), logits → softmax → top-5 labels, uncertainty, out-of-distribution inputs, Gradio and Hugging Face Spaces", readouts: [$("r1").textContent, $("bars").innerText] });
+</script>
+</body>
+</html>

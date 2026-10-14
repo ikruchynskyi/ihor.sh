@@ -2428,5 +2428,95 @@
     "sec": 5
    }
   ]
+ },
+ "s4-your-first-shared-model.html": {
+  "goals": [
+   "Name the pieces of a deployed model: input, preprocessing, model, postprocessing",
+   "Prepare an image the way a pretrained model expects",
+   "Turn scores into an honest answer and put a model on the web"
+  ],
+  "cards": [
+   [
+    "A deployed model",
+    "Input → preprocessing → model (architecture + saved weights) → postprocessing → interface."
+   ],
+   [
+    "Preprocessing must match training",
+    "Same size, scale and normalization as in training, ideally the same code (weights.transforms())."
+   ],
+   [
+    "ImageNet preprocessing",
+    "Resize, center-crop 224, scale to 0–1, normalize per channel, shape (batch, 3, 224, 224)."
+   ],
+   [
+    "Logits → answer",
+    "Softmax the scores, show the top few labels with their probabilities."
+   ],
+   [
+    "Out-of-distribution input",
+    "A classifier always picks one of its labels, even for things it never saw."
+   ],
+   [
+    "Gradio + Hugging Face Spaces",
+    "Gradio wraps a Python function in a web page; Spaces hosts it for free from app.py + requirements.txt + model files."
+   ]
+  ],
+  "check": [
+   {
+    "q": "The app feeds 0–255 pixels to a model trained on 0–1 inputs. The result is…",
+    "options": [
+     "an error message",
+     "silently wrong answers",
+     "the same answers"
+    ],
+    "answer": 1,
+    "why": "Nothing checks the range; the model just sees inputs it never learned.",
+    "sec": 1
+   },
+   {
+    "q": "How many numbers does a 224×224 RGB image become?",
+    "options": [
+     "50,176",
+     "150,528",
+     "224"
+    ],
+    "answer": 1,
+    "why": "224 × 224 × 3.",
+    "sec": 3
+   },
+   {
+    "q": "A pet-breed model gets a photo of a car. It will…",
+    "options": [
+     "say 'not a pet'",
+     "name some breed, maybe confidently",
+     "refuse"
+    ],
+    "answer": 1,
+    "why": "Softmax spreads 100% over the classes it knows.",
+    "sec": 2
+   },
+   {
+    "q": "When fine-tuning a pretrained network, the new last layer usually gets…",
+    "options": [
+     "a smaller learning rate than the body",
+     "a bigger learning rate than the body",
+     "no training"
+    ],
+    "answer": 1,
+    "why": "It starts from random; the pretrained body only needs gentle adjusting.",
+    "sec": 5
+   },
+   {
+    "q": "Which files does a Gradio Space need?",
+    "options": [
+     "app.py, requirements.txt and the model files",
+     "only the notebook",
+     "a Dockerfile"
+    ],
+    "answer": 0,
+    "why": "Spaces installs the requirements and runs app.py.",
+    "sec": 5
+   }
+  ]
  }
 }
