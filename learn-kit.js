@@ -150,10 +150,27 @@ from pyodide.http import open_url
 def get(url):
     "Text of a URL on this site (or any that allows it), e.g. get('/ai/data/outages.json')."
     return open_url(url).read()
+__SUBPLOTS = None
+def __hint_types(src, caret_line):
+    # matplotlib types subplots() as returning (Figure, Any), so Jedi can't tell what ax is. For the standard idiom
+    # fig, ax = plt.subplots(...) we append annotations to that line (positions don't move): ax is one Axes, or a
+    # NumPy array of them when rows/columns are given.
+    global __SUBPLOTS
+    import re
+    __SUBPLOTS = __SUBPLOTS or re.compile(r"^(\\s*)(\\w+)\\s*,\\s*(\\w+)\\s*=\\s*(?:plt|pyplot|matplotlib\\.pyplot)\\.subplots\\((.*)\\)\\s*$")
+    lines = src.split("\\n")
+    for i, text in enumerate(lines):
+        m = __SUBPLOTS.match(text)
+        if m and i != caret_line - 1:
+            grid = re.search(r"\\b(nrows|ncols)\\s*=\\s*([2-9]|\\d\\d)|^\\s*([2-9]|\\d\\d)\\b", m.group(4))
+            ax_type = "numpy.ndarray" if grid else "matplotlib.axes.Axes"
+            lines[i] = text + f"; import numpy, matplotlib.axes, matplotlib.figure; {m.group(2)}: matplotlib.figure.Figure; {m.group(3)}: {ax_type}"
+    return "\\n".join(lines)
 def __complete(src, line, col, ns=None):
     # Completions at (line, col) by Jedi: [name, kind, text to insert, one-line description]. With ns (the box's
     # last run), Jedi also sees the live objects, so methods of arrays and DataFrames complete too.
     import jedi
+    src = __hint_types(src, line)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
