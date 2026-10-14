@@ -24,7 +24,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 10</p>
   <h1>A tiny transformer, trained here</h1>
   <p class="lede">Chapter 7 drew attention as pictures. This chapter builds the real thing: a GPT, the same design as the models behind chatbots, shrunk to one block and about 36,000 numbers so it trains in your browser in a minute. It reads every subway station name in New York, one character at a time, learning to guess the next one. Then it makes up stations that don't exist, but sound like they should.</p>
@@ -79,18 +79,20 @@
   </div>
 
   <div class="code" data-title="Build it: attention for one sequence, the core of every transformer"><textarea>
-// X: one row per position (here 4 positions, 3 numbers each). Wq, Wk, Wv: the learned 3×3 matrices.
-const X = [[1, 0, 1], [0, 1, 0], [1, 1, 0], [0, 0, 1]];
-const W = (seed) => [0, 1, 2].map((i) => [0, 1, 2].map((j) => Math.sin(seed + 3 * i + j)));
-const Wq = W(1), Wk = W(2), Wv = W(3);
-const mul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, x, k) => s + x * B[k][j], 0)));
-const Q = mul(X, Wq), K = mul(X, Wk), V = mul(X, Wv), d = 3;
-const attention = Q.map((q, i) => {
-  const scores = K.map((k, j) => (j <= i ? q.reduce((s, x, n) => s + x * k[n], 0) / Math.sqrt(d) : -Infinity)); // the causal mask
-  const e = scores.map((s) => Math.exp(s)), z = e.reduce((a, b) => a + b, 0), w = e.map((x) => x / z);        // softmax
-  return { weights: w.map((x) => +x.toFixed(2)), out: V[0].map((_, n) => +w.reduce((s, x, j) => s + x * V[j][n], 0).toFixed(2)) };
-});
-table(attention.map((a, i) => ({ position: i, "attends to (weights)": a.weights.join("  "), output: a.out.join(", ") })));
+import numpy as np
+import pandas as pd
+
+# X: one row per position (here 4 positions, 3 numbers each). Wq, Wk, Wv: the learned 3×3 matrices.
+X = np.array([[1, 0, 1], [0, 1, 0], [1, 1, 0], [0, 0, 1]], dtype=float)
+W = lambda seed: np.sin(seed + 3 * np.arange(3)[:, None] + np.arange(3)[None, :])
+Q, K, V = X @ W(1), X @ W(2), X @ W(3)
+
+scores = Q @ K.T / np.sqrt(3)
+scores[np.triu_indices(4, k=1)] = -np.inf          # the causal mask: no peeking at later positions
+weights = np.exp(scores - scores.max(1, keepdims=True)); weights /= weights.sum(1, keepdims=True)   # softmax per row
+out = weights @ V
+pd.DataFrame({"attends to (weights)": ["  ".join(f"{w:.2f}" for w in row) for row in weights],
+              "output": [", ".join(f"{v:.2f}" for v in row) for row in out]})
 </textarea></div>
 
   <p>That's the whole idea, at toy scale. The GPTs behind chatbots are this block, repeated dozens of times, about a million times wider, trained on trillions of word-pieces instead of 379 station names. Same arithmetic.</p>

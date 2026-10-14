@@ -23,7 +23,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 9</p>
   <h1>Vision in practice</h1>
   <p class="lede">Chapter 6 taught a network to read digits on a black square. Real images are messier: rain, glare, night, a bus blocking half the view. NYC publishes about 900 live traffic cameras, refreshed every couple of seconds. Let's point everything we've built at them: first plain arithmetic, then a real trained detector running in your browser.</p>
@@ -55,36 +55,27 @@
     <p>The threshold \(\theta\) trades noise against sensitivity: camera noise and compression wiggle pixels by a few levels, so a tiny \(\theta\) lights up the whole frame, while a big one misses dark cars on dark asphalt. To count objects, group touching 1-pixels into <b>connected components</b> (blobs) with a flood fill. That's exactly where two cars side by side become one blob.</p>
   </details>
   <div class="code" data-title="Build it: motion blobs from two frames"><textarea>
-// Two 12×20 "frames": a dark road with two bright cars that each moved 2 pixels right.
-const W = 20, H = 12, frame = (cars) => Array.from({ length: H }, (_, r) => Array.from({ length: W }, (_, c) =>
-  20 + Math.round(Math.random() * 6) + (cars.some(([r0, c0]) => r >= r0 && r < r0 + 3 && c >= c0 && c < c0 + 4) ? 180 : 0)));
-const F1 = frame([[2, 2], [7, 9]]), F2 = frame([[2, 4], [7, 11]]);
+import numpy as np
+from scipy import ndimage
+rng = np.random.default_rng()
 
-const threshold = 40;
-const M = F1.map((row, r) => row.map((v, c) => (Math.abs(F2[r][c] - v) > threshold ? 1 : 0)));
-print(M.map((row) => row.map((v) => (v ? "█" : "·")).join("")).join("\n"));
+# Two 12×20 "frames": a dark road with two bright cars that each moved 2 pixels right.
+def frame(cars):
+    f = 20 + rng.integers(0, 7, (12, 20))
+    for r0, c0 in cars:
+        f[r0:r0 + 3, c0:c0 + 4] += 180
+    return f
+F1, F2 = frame([(2, 2), (7, 9)]), frame([(2, 4), (7, 11)])
 
-// Connected components: flood-fill each unvisited 1-pixel and everything touching it.
-function blobs(M) {
-  const seen = M.map((r) => r.map(() => false)), found = [];
-  for (let r = 0; r < M.length; r++) for (let c = 0; c < M[0].length; c++) {
-    if (!M[r][c] || seen[r][c]) continue;
-    const stack = [[r, c]]; let size = 0; seen[r][c] = true;
-    while (stack.length) {
-      const [y, x] = stack.pop(); size++;
-      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const ny = y + dy, nx = x + dx;
-        if (M[ny]?.[nx] && !seen[ny][nx]) { seen[ny][nx] = true; stack.push([ny, nx]); }
-      }
-    }
-    found.push(size);
-  }
-  return found;
-}
-print("blobs (pixels each):", blobs(M));
-// Four blobs for two cars! Each car lights up only where it changed things: its front (now covering road) and its back
-// (road uncovered). The middle of the car is bright in both frames, so it cancels. Real counters compare against a
-// slowly updated "empty road" background instead of the previous frame. Try threshold = 3 (noise everywhere).
+M = np.abs(F2 - F1) &gt; 40                     # where did the picture change?
+print("\n".join("".join("█" if v else "·" for v in row) for row in M))
+
+# Connected components: scipy labels each group of touching changed pixels
+labels, n = ndimage.label(M)
+print("blobs:", n, " pixels each:", np.bincount(labels.ravel())[1:].tolist())
+# Four blobs for two cars! Each car lights up only where it changed things: its front (now covering road) and its back
+# (road uncovered). The middle of the car is bright in both frames, so it cancels. Real counters compare against a
+# slowly updated "empty road" background instead of the previous frame. Try a threshold of 3 (noise everywhere).
 </textarea></div>
 
   <h2>3. A trained detector</h2>
@@ -109,27 +100,31 @@ print("blobs (pixels each):", blobs(M));
     <div class="why">Precision = 8/10 = 0.8. Recall = 8/12 ≈ 0.67. Lowering the confidence threshold would raise recall and lower precision.</div>
   </div>
   <div class="code" data-title="Build it: IoU and non-maximum suppression"><textarea>
-// Boxes as [x, y, width, height, confidence]
-const iou = (a, b) => {
-  const w = Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0]));
-  const h = Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
-  const inter = w * h;
-  return inter / (a[2] * a[3] + b[2] * b[3] - inter);
-};
-function nms(boxes, limit = 0.5) {
-  const left = [...boxes].sort((a, b) => b[4] - a[4]), keep = [];
-  while (left.length) {
-    const best = left.shift();
-    keep.push(best);
-    for (let i = left.length - 1; i >= 0; i--) if (iou(best, left[i]) > limit) left.splice(i, 1);
-  }
-  return keep;
-}
-// A detector's raw output: three boxes on one car, two on another, and a weak stray one
-const raw = [[10, 10, 40, 30, 0.92], [12, 11, 40, 30, 0.85], [8, 9, 42, 31, 0.6], [100, 20, 50, 30, 0.88], [104, 22, 48, 28, 0.7], [60, 70, 20, 20, 0.3]];
-print("IoU of the first two:", iou(raw[0], raw[1]));
-print("half-shifted equal boxes:", iou([0, 0, 10, 10], [5, 0, 10, 10]));
-print("after NMS:"); table(nms(raw));
+import numpy as np
+import pandas as pd
+
+def iou(a, b):
+    "Boxes as [x, y, width, height]: intersection area / union area."
+    w = max(0, min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0]))
+    h = max(0, min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1]))
+    inter = w * h
+    return inter / (a[2] * a[3] + b[2] * b[3] - inter)
+
+def nms(boxes, limit=0.5):
+    "Keep the most confident box, drop the ones overlapping it by more than `limit`, repeat."
+    left, keep = sorted(boxes, key=lambda b: -b[4]), []
+    while left:
+        best = left.pop(0)
+        keep.append(best)
+        left = [b for b in left if iou(best, b) &lt;= limit]
+    return keep
+
+# A detector's raw output [x, y, w, h, confidence]: three boxes on one car, two on another, and a weak stray one
+raw = [[10, 10, 40, 30, 0.92], [12, 11, 40, 30, 0.85], [8, 9, 42, 31, 0.6], [100, 20, 50, 30, 0.88], [104, 22, 48, 28, 0.7], [60, 70, 20, 20, 0.3]]
+print("IoU of the first two:", round(iou(raw[0], raw[1]), 3))
+print("half-shifted equal boxes:", round(iou([0, 0, 10, 10], [5, 0, 10, 10]), 3))
+print("after NMS (torchvision.ops.nms does this on a GPU):")
+pd.DataFrame(nms(raw), columns=["x", "y", "w", "h", "confidence"])
 </textarea></div>
 
   <h2>4. Counting the city, right now</h2>

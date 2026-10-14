@@ -32,7 +32,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 7</p>
   <h1>Attention and transformers</h1>
   <p class="lede">Every chatbot you've used is a <b>transformer</b>: a stack of two operations repeated dozens of times. One of them is chapter 3's familiar layer. The other, <b>attention</b>, is the new idea, and it's what lets a model understand that "bank" means something different next to "river" than next to "loan". Here's attention with all the numbers visible.</p>
@@ -54,19 +54,20 @@
     <div class="why">\(\cos 180^\circ = -1\). In practice opposite meanings rarely end up opposite; "hot" and "cold" are used in very similar sentences, so their embeddings are quite close.</div>
   </div>
   <div class="code" data-title="Build it: embeddings and an analogy"><textarea>
-// Tiny hand-made embeddings: [royalty, gender (+ female), person-ness]
-const E = { king: [0.9, -0.8, 0.9], queen: [0.9, 0.8, 0.9], man: [0.1, -0.8, 0.9], woman: [0.1, 0.8, 0.9],
-            prince: [0.7, -0.7, 0.8], princess: [0.7, 0.7, 0.8], apple: [0, 0, -0.2], castle: [0.8, 0, -0.5] };
-const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0), len = (a) => Math.sqrt(dot(a, a));
-const cos = (a, b) => dot(a, b) / (len(a) * len(b));
-const add = (a, b) => a.map((x, i) => x + b[i]), sub = (a, b) => a.map((x, i) => x - b[i]);
+import numpy as np
 
-function analogy(a, b, c) {               // a is to b as c is to ?
-  const v = add(sub(E[b], E[a]), E[c]);
-  return Object.keys(E).filter((w) => ![a, b, c].includes(w)).map((w) => [w, cos(v, E[w])]).sort((x, y) => y[1] - x[1]);
-}
-print("man → woman as king → ?", analogy("man", "woman", "king").slice(0, 3));
-print("cos(king, queen) =", cos(E.king, E.queen), " cos(king, apple) =", cos(E.king, E.apple));
+# Tiny hand-made embeddings: [royalty, gender (+ female), person-ness]
+E = {"king": [0.9, -0.8, 0.9], "queen": [0.9, 0.8, 0.9], "man": [0.1, -0.8, 0.9], "woman": [0.1, 0.8, 0.9],
+     "prince": [0.7, -0.7, 0.8], "princess": [0.7, 0.7, 0.8], "apple": [0, 0, -0.2], "castle": [0.8, 0, -0.5]}
+E = {w: np.array(v) for w, v in E.items()}
+cos = lambda a, b: a @ b / (np.linalg.norm(a) * np.linalg.norm(b))
+
+def analogy(a, b, c):                     # a is to b as c is to ?
+    v = E[b] - E[a] + E[c]
+    return sorted(((w, round(float(cos(v, E[w])), 3)) for w in E if w not in (a, b, c)), key=lambda t: -t[1])
+
+print("man → woman as king → ?", analogy("man", "woman", "king")[:3])
+print("cos(king, queen) =", round(float(cos(E["king"], E["queen"])), 3), " cos(king, apple) =", round(float(cos(E["king"], E["apple"])), 3))
 </textarea></div>
 
   <h2>2. Attention: let the other words weigh in</h2>
@@ -97,24 +98,27 @@ print("cos(king, queen) =", cos(E.king, E.queen), " cos(king, apple) =", cos(E.k
     <div class="why">Its row of scores has one finite entry (itself) and \(-\infty\) everywhere else, so softmax gives \((1, 0, 0, \dots)\).</div>
   </div>
   <div class="code" id="attn" data-title="Build it: attention with matrices"><textarea>
-const matmul = (A, B) => A.map((row) => B[0].map((_, j) => row.reduce((s, a, k) => s + a * B[k][j], 0)));
-const T = (A) => A[0].map((_, j) => A.map((row) => row[j]));
-const softmaxRows = (S) => S.map((r) => { const m = Math.max(...r), e = r.map((v) => Math.exp(v - m)), z = e.reduce((a, b) => a + b); return e.map((v) => v / z); });
+import numpy as np
+import pandas as pd
 
-function attention(X, Wq, Wk, Wv, causal = false) {
-  const Q = matmul(X, Wq), K = matmul(X, Wk), V = matmul(X, Wv), dk = Q[0].length;
-  const scores = matmul(Q, T(K)).map((row, i) => row.map((s, j) => (causal && j > i ? -Infinity : s / Math.sqrt(dk))));
-  const weights = softmaxRows(scores);
-  return { weights, out: matmul(weights, V) };
-}
+def softmax_rows(S):
+    E = np.exp(S - S.max(axis=1, keepdims=True)); return E / E.sum(axis=1, keepdims=True)
 
-// 3 words, d = 4. Random-ish projection matrices (a trained model learns these).
-const X = [[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]];
-const W = (seed) => Array.from({ length: 4 }, (_, i) => Array.from({ length: 4 }, (_, j) => Math.sin(seed + 3 * i + j)));
-const { weights, out } = attention(X, W(1), W(2), W(3));
-print("attention weights (each row adds to 1):"); table(weights);
-print("new vectors:"); table(out);
-print("with the causal mask:"); table(attention(X, W(1), W(2), W(3), true).weights);
+def attention(X, Wq, Wk, Wv, causal=False):
+    Q, K, V = X @ Wq, X @ Wk, X @ Wv
+    scores = Q @ K.T / np.sqrt(Q.shape[1])                       # every word's query against every word's key
+    if causal:
+        scores = np.where(np.tri(len(X), dtype=bool), scores, -np.inf)   # a word can't look at later words
+    weights = softmax_rows(scores)
+    return weights, weights @ V                                  # new vectors: weighted mixes of the values
+
+# 3 words, d = 4. Fixed projection matrices (a trained model learns these).
+X = np.array([[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]], dtype=float)
+W = lambda seed: np.sin(seed + 3 * np.arange(4)[:, None] + np.arange(4)[None, :])
+weights, out = attention(X, W(1), W(2), W(3))
+print("attention weights (each row adds to 1):\n", weights.round(3))
+print("with the causal mask:\n", attention(X, W(1), W(2), W(3), causal=True)[0].round(3))
+pd.DataFrame(out.round(3), index=["word 0", "word 1", "word 2"])
 </textarea></div>
 
   <h3>Many heads: several questions at once</h3>
@@ -152,23 +156,24 @@ print("with the causal mask:"); table(attention(X, W(1), W(2), W(3), true).weigh
     <div class="why">\(12 \times 768^2 = 12 \times 589{,}824 = 7{,}077{,}888\).</div>
   </div>
   <div class="code" data-uses="attn" data-title="Build it: a whole transformer block"><textarea>
-// Uses attention() and matmul() from the block above.
-const layerNorm = (v) => { const m = v.reduce((a, b) => a + b) / v.length, s = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length + 1e-5); return v.map((x) => (x - m) / s); };
-const gelu = (x) => 0.5 * x * (1 + Math.tanh(0.7978845608 * (x + 0.044715 * x ** 3)));
-const Wr = (rows, cols, seed) => Array.from({ length: rows }, (_, i) => Array.from({ length: cols }, (_, j) => 0.5 * Math.sin(seed + 7 * i + j)));
+# Uses attention() from the block above.
+def layer_norm(X):
+    return (X - X.mean(axis=1, keepdims=True)) / np.sqrt(X.var(axis=1, keepdims=True) + 1e-5)
 
-function block(X) {
-  const d = X[0].length;
-  const a = attention(X.map(layerNorm), Wr(d, d, 1), Wr(d, d, 2), Wr(d, d, 3), true).out;
-  const H = X.map((x, i) => x.map((v, j) => v + a[i][j]));                         // residual
-  const up = matmul(H.map(layerNorm), Wr(d, 4 * d, 4)).map((r) => r.map(gelu));      // d → 4d, bend
-  const down = matmul(up, Wr(4 * d, d, 5));                                          // 4d → d
-  return H.map((h, i) => h.map((v, j) => v + down[i][j]));                           // residual
-}
-const words = [[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]];
-let Y = words;
-for (let layer = 0; layer < 3; layer++) Y = block(Y);
-print("3 words after 3 blocks (same shape in, same shape out):"); table(Y.map((r) => r.map((v) => +v.toFixed(3))));
+def gelu(x):
+    return 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x ** 3)))
+
+Wr = lambda rows, cols, seed: 0.5 * np.sin(seed + 7 * np.arange(rows)[:, None] + np.arange(cols)[None, :])
+
+def block(X):
+    d = X.shape[1]
+    H = X + attention(layer_norm(X), Wr(d, d, 1), Wr(d, d, 2), Wr(d, d, 3), causal=True)[1]   # attention + residual
+    return H + gelu(layer_norm(H) @ Wr(d, 4 * d, 4)) @ Wr(4 * d, d, 5)                     # MLP (d → 4d → d) + residual
+
+Y = np.array([[1, 0, 1, 0], [0, 2, 0, 2], [1, 1, 1, 1]], dtype=float)
+for layer in range(3):
+    Y = block(Y)
+print("3 words after 3 blocks (same shape in, same shape out):\n", Y.round(3))
 </textarea></div>
   <p>Later on the path: what happens when that next-word machine is allowed to call tools and act. That's <a href="./08-agents.html"><b>agents</b></a>, with Blip, the companion on this page, as the worked example.</p>
 

@@ -2068,5 +2068,365 @@
     "sec": 3
    }
   ]
+ },
+ "09-vision.html": {
+  "goals": [
+   "Find moving things by subtracting frames",
+   "Explain what a trained detector outputs: boxes, classes, confidences",
+   "Use IoU and non-maximum suppression to clean up detections"
+  ],
+  "cards": [
+   [
+    "Frame differencing",
+    "Subtract two frames: pixels that changed a lot are moving things (or noise)."
+   ],
+   [
+    "Connected components",
+    "Group touching changed pixels into blobs, one per object (roughly)."
+   ],
+   [
+    "Object detector output",
+    "A list of boxes, each with a class and a confidence."
+   ],
+   [
+    "IoU",
+    "Intersection over union of two boxes: 1 = identical, 0 = no overlap."
+   ],
+   [
+    "Non-maximum suppression",
+    "Keep the most confident box, drop boxes overlapping it heavily, repeat."
+   ],
+   [
+    "Confidence threshold",
+    "Higher means fewer, surer detections; lower catches more, with more mistakes."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Two equal boxes overlap by half their width. Their IoU is…",
+    "options": [
+     "0.5",
+     "1/3",
+     "2/3"
+    ],
+    "answer": 1,
+    "why": "Intersection 1/2, union 3/2 (in box areas): 1/3.",
+    "sec": 3
+   },
+   {
+    "q": "A detector returns three overlapping boxes on one car. NMS keeps…",
+    "options": [
+     "all three",
+     "the most confident one",
+     "the biggest one"
+    ],
+    "answer": 1,
+    "why": "The others overlap it heavily and get dropped.",
+    "sec": 3
+   },
+   {
+    "q": "Why does frame differencing show a moving car as two blobs?",
+    "options": [
+     "The camera is shaky",
+     "Only the car's front and back change; its middle is bright in both frames",
+     "Cars are two objects"
+    ],
+    "answer": 1,
+    "why": "Compare against an empty-road background instead.",
+    "sec": 2
+   },
+   {
+    "q": "Raising the confidence threshold makes the counts…",
+    "options": [
+     "higher",
+     "lower or equal",
+     "unpredictable"
+    ],
+    "answer": 1,
+    "why": "Fewer boxes pass a stricter cutoff.",
+    "sec": 4
+   },
+   {
+    "q": "COCO-trained detectors know…",
+    "options": [
+     "any object you name",
+     "80 everyday classes (car, bus, person…)",
+     "only cars"
+    ],
+    "answer": 1,
+    "why": "They're trained on COCO's 80 categories.",
+    "sec": 3
+   }
+  ]
+ },
+ "07-attention.html": {
+  "goals": [
+   "Treat words as vectors and compare them by cosine similarity",
+   "Compute scaled dot-product attention with queries, keys and values",
+   "Assemble a transformer block: attention, MLP, residuals, layer norm"
+  ],
+  "cards": [
+   [
+    "Embedding",
+    "A vector of numbers per token; similar meanings point in similar directions."
+   ],
+   [
+    "Query, key, value",
+    "Each token asks (query), advertises (key), and offers content (value); weights come from query·key."
+   ],
+   [
+    "Scaled dot-product attention",
+    "softmax(QKᵀ/√d)·V: every token becomes a weighted mix of the values."
+   ],
+   [
+    "Why divide by √d",
+    "Dot products grow like √d; without scaling, softmax gets nearly one-hot and gradients vanish."
+   ],
+   [
+    "Causal mask",
+    "Set future positions' scores to −∞ so a token can't look ahead: needed to predict the next token."
+   ],
+   [
+    "Transformer block",
+    "x + attention(norm(x)), then x + MLP(norm(x)): same shape in and out, stacked many times."
+   ]
+  ],
+  "check": [
+   {
+    "q": "In attention, the weights in each row…",
+    "options": [
+     "add up to 1 (a softmax)",
+     "are all equal",
+     "can be negative"
+    ],
+    "answer": 0,
+    "why": "Each token's output is a weighted average of the values.",
+    "sec": 2
+   },
+   {
+    "q": "Why is there a causal mask in a GPT?",
+    "options": [
+     "To save memory",
+     "So a token can't see the tokens it should predict",
+     "To make attention symmetric"
+    ],
+    "answer": 1,
+    "why": "Training predicts each next token, so later tokens must stay hidden.",
+    "sec": 2
+   },
+   {
+    "q": "Attention scores are divided by √d because…",
+    "options": [
+     "it's traditional",
+     "dot products grow with dimension, which would make softmax too peaked",
+     "it normalizes the values"
+    ],
+    "answer": 1,
+    "why": "Random dot products have spread √d.",
+    "sec": 2
+   },
+   {
+    "q": "Without positional information, attention treats a sentence as…",
+    "options": [
+     "a sequence",
+     "a bag of tokens: order is invisible",
+     "a tree"
+    ],
+    "answer": 1,
+    "why": "Swap two tokens and attention can't tell, so positions are added.",
+    "sec": 1
+   },
+   {
+    "q": "The residual connection in a block means…",
+    "options": [
+     "the layer's output is added to its input",
+     "the layer is skipped",
+     "the weights are shared"
+    ],
+    "answer": 0,
+    "why": "x + f(x): easy to keep information and train deep stacks.",
+    "sec": 3
+   }
+  ]
+ },
+ "10-tiny-transformer.html": {
+  "goals": [
+   "Frame language modeling as predicting the next token",
+   "Build and train a tiny GPT",
+   "Sample from it with temperature, and spot memorization"
+  ],
+  "cards": [
+   [
+    "Language model",
+    "A model of P(next token | previous tokens); generating = sampling one token at a time."
+   ],
+   [
+    "Character-level tokens",
+    "Each character is a token: a tiny vocabulary, long sequences."
+   ],
+   [
+    "Context window (block size)",
+    "How many previous tokens the model can see."
+   ],
+   [
+    "Training targets",
+    "The input shifted by one: every position predicts the next token."
+   ],
+   [
+    "Temperature",
+    "Divide the scores before softmax: low = safe and repetitive, high = creative and error-prone."
+   ],
+   [
+    "Memorization",
+    "With a small dataset, long training makes the model reproduce its training examples."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A GPT is trained to…",
+    "options": [
+     "classify sentences",
+     "predict the next token at every position",
+     "translate"
+    ],
+    "answer": 1,
+    "why": "Generation is that prediction, repeated.",
+    "sec": 1
+   },
+   {
+    "q": "A model that knew nothing, with a 68-character vocabulary, would have a loss of about…",
+    "options": [
+     "0",
+     "ln 68 ≈ 4.2",
+     "1"
+    ],
+    "answer": 1,
+    "why": "Uniform guessing: −ln(1/68).",
+    "sec": 3
+   },
+   {
+    "q": "Sampling at temperature 0.5 instead of 1.5 gives names that are…",
+    "options": [
+     "more varied and odder",
+     "safer and closer to common patterns",
+     "longer"
+    ],
+    "answer": 1,
+    "why": "Low temperature sharpens the distribution toward likely characters.",
+    "sec": 4
+   },
+   {
+    "q": "After long training on 379 names, most samples are real station names. That's…",
+    "options": [
+     "a bug",
+     "memorization (overfitting)",
+     "the model being perfect"
+    ],
+    "answer": 1,
+    "why": "Hold out names and stop when validation loss stops falling.",
+    "sec": 3
+   },
+   {
+    "q": "Why does the model need position embeddings?",
+    "options": [
+     "To know which character comes where",
+     "To store the vocabulary",
+     "For the loss"
+    ],
+    "answer": 0,
+    "why": "Attention alone ignores order.",
+    "sec": 2
+   }
+  ]
+ },
+ "08-agents.html": {
+  "goals": [
+   "Write the agent loop: model → tool call → result → … → answer",
+   "Guard tools: validate arguments, return fixable errors",
+   "Measure an agent with an eval set, error bars and paired comparisons"
+  ],
+  "cards": [
+   [
+    "Agent loop",
+    "Send messages to the model; if it calls a tool, run it, append the result, repeat until it answers."
+   ],
+   [
+    "Tool schema",
+    "A tool's name, description and JSON schema of arguments: what the model sees and must follow."
+   ],
+   [
+    "Guardrails",
+    "Validate arguments, cap the rounds, refuse unknown tools, and return errors the model can fix."
+   ],
+   [
+    "MCP",
+    "The Model Context Protocol: JSON-RPC for agents to list and call tools on a server."
+   ],
+   [
+    "Eval set",
+    "Many different labeled cases, written before tuning; measure with confidence intervals."
+   ],
+   [
+    "Comparing two agent versions",
+    "Run both on the same cases and use a paired test (McNemar)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "The model asks for a tool that doesn't exist. The agent should…",
+    "options": [
+     "crash",
+     "return an error message to the model so it can recover",
+     "ignore it silently"
+    ],
+    "answer": 1,
+    "why": "Errors are messages too.",
+    "sec": 1
+   },
+   {
+    "q": "Why validate a tool's arguments before running it?",
+    "options": [
+     "Models sometimes invent fields or wrong types",
+     "It's faster",
+     "Tools can't fail"
+    ],
+    "answer": 0,
+    "why": "Check first, and answer mistakes with a fixable error.",
+    "sec": 4
+   },
+   {
+    "q": "Why cap the number of rounds?",
+    "options": [
+     "To save tokens and stop loops that never end",
+     "Models can only do 4 steps",
+     "It improves accuracy"
+    ],
+    "answer": 0,
+    "why": "A confused model can call tools forever.",
+    "sec": 1
+   },
+   {
+    "q": "An eval of 20 cases shows 90%. A fair summary is…",
+    "options": [
+     "exactly 90%",
+     "about 90%, but plausibly anywhere from ~75% to ~100%",
+     "bad"
+    ],
+    "answer": 1,
+    "why": "Small evals have wide error bars.",
+    "sec": 5
+   },
+   {
+    "q": "Two agent versions answered the same 200 questions. Compare them with…",
+    "options": [
+     "a paired test on the disagreements",
+     "two separate averages",
+     "the bigger number"
+    ],
+    "answer": 0,
+    "why": "Same questions: pair them (McNemar).",
+    "sec": 5
+   }
+  ]
  }
 }

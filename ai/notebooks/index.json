@@ -41,6 +41,34 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-convolutions-and-a-cnn-that-reads"
  },
+ "07-attention.html": {
+  "notebook": "07-attention.ipynb",
+  "title": "AI from scratch: attention, by hand and in PyTorch",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/07-attention.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-attention-by-hand-and-in-pytorch"
+ },
+ "08-agents.html": {
+  "notebook": "08-agents.ipynb",
+  "title": "AI from scratch: an agent loop, guardrails, a real",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/08-agents.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-an-agent-loop-guardrails-a-real"
+ },
+ "09-vision.html": {
+  "notebook": "09-vision.ipynb",
+  "title": "AI from scratch: detecting objects on NYC traffic ",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/09-vision.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-detecting-objects-on-nyc-traffic"
+ },
+ "10-tiny-transformer.html": {
+  "notebook": "10-tiny-transformer.ipynb",
+  "title": "AI from scratch: build a GPT in PyTorch",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/10-tiny-transformer.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-build-a-gpt-in-pytorch"
+ },
  "11-overfitting.html": {
   "notebook": "11-overfitting.ipynb",
   "title": "AI from scratch: overfitting, regularization and l",
