@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 2 · Stage 1: the math of learning</p>
   <h1>Describing data</h1>
   <p class="lede">Before any model, an ML engineer looks at the data: what's typical, how spread out it is, what shape it has, what goes with what. This lesson does that on real data from this site: every NYC subway elevator and escalator outage our archive saw finish between 9 and 12 October 2026, 340 of them. It's messy, lopsided real-world data, which is the point: half the summaries people reach for first give the wrong picture of it.</p>
@@ -141,25 +141,23 @@
 
   <h2>9. All of it in code</h2>
   <div class="code" data-title="Run it: describing the outage data"><textarea>
-const { rows } = await (await fetch("/ai/data/outages.json")).json();
-const hours = rows.map((r) => r[0]), est = rows.map((r) => r[1]);
+import json
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-const mean = (v) => v.reduce((s, x) => s + x, 0) / v.length;
-const sd = (v) => { const m = mean(v); return Math.sqrt(mean(v.map((x) => (x - m) ** 2))); };
-// quantile by linear interpolation between sorted neighbors (NumPy's default)
-const quantile = (v, q) => { const s = [...v].sort((a, b) => a - b), i = (s.length - 1) * q, lo = Math.floor(i); return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo); };
-const corr = (x, y) => { const mx = mean(x), my = mean(y); return mean(x.map((xi, i) => (xi - mx) * (y[i] - my))) / (sd(x) * sd(y)); };
+data = json.loads(get("/ai/data/outages.json"))            # in a notebook: urllib from GitHub (see the practice notebook)
+df = pd.DataFrame(data["rows"], columns=data["columns"])
 
-print("n =", hours.length, " mean =", mean(hours).toFixed(2), " median =", quantile(hours, 0.5));
-print("sd =", sd(hours).toFixed(1), " Q1 =", quantile(hours, 0.25).toFixed(2), " Q3 =", quantile(hours, 0.75).toFixed(2));
-const z = hours.map((x) => (x - mean(hours)) / sd(hours));
-print("biggest z-score:", Math.max(...z).toFixed(1), "standard deviations out");
-print("correlation, estimate vs actual:", corr(est, hours).toFixed(3), " on logs:", corr(est.map(Math.log), hours.map(Math.log)).toFixed(3));
+print(df["hours"].describe().round(2))                     # count, mean, std, min, quartiles, max in one call
+z = (df["hours"] - df["hours"].mean()) / df["hours"].std(ddof=0)
+print("biggest z-score:", round(z.max(), 1), "standard deviations out")
+print("correlation, estimate vs actual:", round(df["estimated"].corr(df["hours"]), 3),
+      " on logs:", round(np.log(df["estimated"]).corr(np.log(df["hours"])), 3))
+print("median hours by kind:", df.groupby("kind")["hours"].median().to_dict())
 
-// how often each reason appears, most common first (that one is the mode)
-const byReason = {};
-for (const r of rows) byReason[r[3]] = (byReason[r[3]] ?? 0) + 1;
-table([["reason", "count"], ...Object.entries(byReason).sort((a, b) => b[1] - a[1])]);
+df.boxplot(column="hours", by="kind", figsize=(6, 3)); plt.yscale("log"); plt.suptitle(""); plt.title("hours by kind (log scale)")
+df["reason"].value_counts().to_frame()                     # how often each reason appears: the first is the mode
 </textarea></div>
 
   <h2>10. What to carry forward</h2>

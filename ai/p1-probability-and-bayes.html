@@ -28,7 +28,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 1 · Stage 1: the math of learning</p>
   <h1>Probability and Bayes</h1>
   <p class="lede">Every model on this path ends up saying how sure it is: "82% cat", "next word: <i>the</i>, 31%". This lesson builds the rules those numbers obey, from counting dice to Bayes' rule, the one formula for changing your mind when evidence arrives. You'll test two famous puzzles by simulation (your intuition will lose at least once), train a spam filter, and learn to make a computer draw random numbers from any distribution you like.</p>
@@ -131,27 +131,46 @@
   <p>Turn it around for email: \(P(\text{spam} \mid \text{words})\). Bayes says that's proportional to \(P(\text{spam}) \cdot P(\text{words} \mid \text{spam})\), and the "naive" part assumes words appear independently given the class, so the likelihood is a product over words:</p>
   <p class="formula">\[ P(\text{spam} \mid w_1 \dots w_k) \;\propto\; P(\text{spam}) \prod_{i=1}^{k} P(w_i \mid \text{spam}) \]</p>
   <p>Each \(P(w \mid \text{spam})\) is counted from examples: how often the word appears in spam. Two practical tricks from the math warm-up: add 1 to every count (so an unseen word doesn't zero out the whole product), and add logs instead of multiplying (so long emails don't underflow). The independence assumption is plainly false ("free" and "prize" go together) yet the filter works well, which is a theme in ML: a wrong model can still be a useful one.</p>
-  <div class="code" data-title="Build it: naive Bayes, trained on 16 messages"><textarea>
-const spam = ["win a free prize now", "free money click now", "claim your free gift card", "you won a cash prize click here",
-  "cheap pills buy now", "limited offer win money now", "urgent your account won a prize", "free entry win cash"];
-const ham = ["are we still on for lunch", "can you send the report today", "the train is late again", "dinner at seven tonight",
-  "here is the report from the meeting", "call me when you get home", "lunch tomorrow at noon", "did you see the game last night"];
+  <div class="code" id="nb" data-title="Build it: naive Bayes, trained on 16 messages"><textarea>
+import math, re
+from collections import Counter
+import pandas as pd
 
-// training = counting words in each class
-const count = (msgs) => { const c = {}; let total = 0; for (const m of msgs) for (const w of m.split(" ")) { c[w] = (c[w] ?? 0) + 1; total++; } return { c, total }; };
-const S = count(spam), H = count(ham);
-const vocab = new Set([...Object.keys(S.c), ...Object.keys(H.c)]).size;
-const logP = (w, k) => Math.log(((k.c[w] ?? 0) + 1) / (k.total + vocab));   // add-one smoothing
+spam = ["win a free prize now", "free money click now", "claim your free gift card", "you won a cash prize click here",
+        "cheap pills buy now", "limited offer win money now", "urgent your account won a prize", "free entry win cash"]
+ham = ["are we still on for lunch", "can you send the report today", "the train is late again", "dinner at seven tonight",
+       "here is the report from the meeting", "call me when you get home", "lunch tomorrow at noon", "did you see the game last night"]
 
-function classify(msg) {
-  let s = Math.log(spam.length / (spam.length + ham.length)), h = Math.log(ham.length / (spam.length + ham.length));  // priors
-  const rows = [["word", "log P(w|spam)", "log P(w|ham)"]];
-  for (const w of msg.toLowerCase().split(/\W+/).filter(Boolean)) { s += logP(w, S); h += logP(w, H); rows.push([w, logP(w, S), logP(w, H)]); }
-  table(rows);
-  return 1 / (1 + Math.exp(h - s));          // P(spam | words): the two scores turned back into a probability
-}
-print("P(spam) =", classify("win a free lunch now").toFixed(3));
-print("P(spam) =", classify("see you at lunch tomorrow").toFixed(3));
+# training = counting words in each class
+S = Counter(w for m in spam for w in m.split())
+H = Counter(w for m in ham for w in m.split())
+vocab = len(set(S) | set(H))
+def log_p(w, counts):                                   # add-one smoothing
+    return math.log((counts[w] + 1) / (sum(counts.values()) + vocab))
+
+def classify(msg):
+    s = math.log(len(spam) / (len(spam) + len(ham)))   # priors
+    h = math.log(len(ham) / (len(spam) + len(ham)))
+    for w in re.findall(r"\w+", msg.lower()):
+        s += log_p(w, S); h += log_p(w, H)
+    return 1 / (1 + math.exp(h - s))                    # P(spam | words): the two scores turned back into a probability
+
+for msg in ["win a free lunch now", "see you at lunch tomorrow"]:
+    print(f"P(spam | {msg!r}) = {classify(msg):.3f}")
+
+# the word-by-word evidence for one message
+pd.DataFrame([(w, log_p(w, S), log_p(w, H)) for w in "win a free lunch now".split()], columns=["word", "log P(w|spam)", "log P(w|ham)"])
+</textarea></div>
+  <div class="code" data-uses="nb" data-title="Run it: the same filter in scikit-learn"><textarea>
+# The same model, the way it's done at work: scikit-learn counts the words and fits it in two lines.
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+
+vec = CountVectorizer(token_pattern=r"\w+")
+X = vec.fit_transform(spam + ham)                       # one row per message, one column per word: the counts
+model = MultinomialNB(alpha=1.0).fit(X, [1] * len(spam) + [0] * len(ham))   # alpha = 1: add-one smoothing
+for msg in ["win a free lunch now", "see you at lunch tomorrow", "are you free now"]:
+    print(f"{msg!r}: P(spam) = {model.predict_proba(vec.transform([msg]))[0, 1]:.3f}")
 </textarea></div>
   <div class="q">
     <p>Change the last messages and run again. Find a short message that's clearly not spam but the filter calls spam. Why does it fail?</p>
@@ -193,17 +212,21 @@ print("P(spam) =", classify("see you at lunch tomorrow").toFixed(3));
     <div class="why">\(x = -4 \ln(0.5) = 4 \ln 2 \approx 2.77\) minutes. Shorter than the 4-minute average, because a few very long waits pull the average up.</div>
   </div>
   <div class="code" data-title="Run it: sampling by inverting the CDF"><textarea>
-// exponential waits with a 4-minute mean
-const wait = () => -4 * Math.log(1 - Math.random());
-const xs = Array.from({ length: 10000 }, wait);
-print("mean of 10,000 samples:", (xs.reduce((s, x) => s + x, 0) / xs.length).toFixed(3), "(should be near 4)");
+import numpy as np
+rng = np.random.default_rng()
 
-// a discrete distribution: walk the running total until it passes u
-const words = ["the", "a", "train", "late"], probs = [0.5, 0.25, 0.15, 0.1];
-const pick = () => { const u = Math.random(); let run = 0; for (let i = 0; i < probs.length; i++) { run += probs[i]; if (u < run) return words[i]; } return words.at(-1); };
-const tally = {};
-for (let i = 0; i < 10000; i++) { const w = pick(); tally[w] = (tally[w] ?? 0) + 1; }
-print("10,000 picks:", tally);
+# exponential waits with a 4-minute mean, by inverting the CDF: x = −4 ln(1 − u)
+u = rng.random(10_000)
+waits = -4 * np.log(1 - u)
+print("mean of 10,000 samples:", waits.mean().round(3), "(should be near 4)")
+print("NumPy's own exponential sampler:", rng.exponential(4, 10_000).mean().round(3))
+
+# a discrete distribution: find where u falls in the running total (np.cumsum + np.searchsorted)
+words = np.array(["the", "a", "train", "late"]); probs = np.array([0.5, 0.25, 0.15, 0.1])
+picks = words[np.searchsorted(np.cumsum(probs), rng.random(10_000))]
+tally = lambda xs: {str(w): int(n) for w, n in zip(*np.unique(xs, return_counts=True))}
+print("10,000 picks:", tally(picks))
+print("the same with rng.choice:", tally(rng.choice(words, 10_000, p=probs)))
 </textarea></div>
 
   <h2>8. What to carry forward</h2>

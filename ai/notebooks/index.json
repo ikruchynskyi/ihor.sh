@@ -34,6 +34,27 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-systems-rank-and-least-squares"
  },
+ "l2-eigenvectors-and-pca.html": {
+  "notebook": "l2-eigenvectors-and-pca.ipynb",
+  "title": "AI from scratch: eigenvectors, Markov chains and P",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/l2-eigenvectors-and-pca.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-eigenvectors-markov-chains-and-p"
+ },
+ "p1-probability-and-bayes.html": {
+  "notebook": "p1-probability-and-bayes.ipynb",
+  "title": "AI from scratch: probability, simulation and a rea",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p1-probability-and-bayes.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-probability-simulation-and-a-rea"
+ },
+ "p2-describing-data.html": {
+  "notebook": "p2-describing-data.ipynb",
+  "title": "AI from scratch: describing real data with pandas",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p2-describing-data.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-describing-real-data-with-pandas"
+ },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",
   "title": "AI from scratch: your first models",

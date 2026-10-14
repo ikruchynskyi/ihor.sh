@@ -1,146 +1,992 @@
 {
  "s1-what-is-ml.html": {
-  "goals": ["Explain what a model, its parameters and training are", "Tell supervised, unsupervised and reinforcement learning apart", "Say why a model can't fit noisy data perfectly"],
+  "goals": [
+   "Explain what a model, its parameters and training are",
+   "Tell supervised, unsupervised and reinforcement learning apart",
+   "Say why a model can't fit noisy data perfectly"
+  ],
   "cards": [
-   ["Model", "A function with knobs (parameters): input in, prediction out."],
-   ["Parameters (weights)", "The knobs of a model, set by training rather than by hand."],
-   ["Training", "Turning the knobs to make the loss on the examples as small as possible."],
-   ["Mean squared error", "Average of (prediction − truth)² over the examples: one number for how wrong a model is."],
-   ["Supervised vs unsupervised", "Supervised learns from examples with answers; unsupervised finds structure with no answers."],
-   ["Why the error stops above zero", "Noise: things the inputs don't capture (traffic, lights) can't be predicted by any model of those inputs."]
+   [
+    "Model",
+    "A function with knobs (parameters): input in, prediction out."
+   ],
+   [
+    "Parameters (weights)",
+    "The knobs of a model, set by training rather than by hand."
+   ],
+   [
+    "Training",
+    "Turning the knobs to make the loss on the examples as small as possible."
+   ],
+   [
+    "Mean squared error",
+    "Average of (prediction − truth)² over the examples: one number for how wrong a model is."
+   ],
+   [
+    "Supervised vs unsupervised",
+    "Supervised learns from examples with answers; unsupervised finds structure with no answers."
+   ],
+   [
+    "Why the error stops above zero",
+    "Noise: things the inputs don't capture (traffic, lights) can't be predicted by any model of those inputs."
+   ]
   ],
   "check": [
-   {"q": "Which task is a good fit for machine learning rather than a hand-written rule?", "options": ["Adding up a shopping bill", "Recognizing which photos contain a dog", "Sorting names alphabetically"], "answer": 1, "why": "Nobody can write the rule for 'dog', but examples with answers are easy to collect.", "sec": 1},
-   {"q": "In minutes = a × km + b, what are a and b?", "options": ["The inputs", "The parameters the training adjusts", "The error"], "answer": 1, "why": "km is the input, minutes the output; a and b are the knobs.", "sec": 2},
-   {"q": "What does gradient descent do at every step?", "options": ["Tries every possible value of each knob", "Moves each knob a little in the direction that lowers the error", "Adds more data"], "answer": 1, "why": "It asks which way is downhill for each knob and takes a small step that way, again and again.", "sec": 3},
-   {"q": "Grouping subway stations whose days look alike, with no labels, is…", "options": ["supervised learning", "unsupervised learning", "reinforcement learning"], "answer": 1, "why": "No answers attached: finding structure is unsupervised.", "sec": 4},
-   {"q": "What really tells you if a model is good?", "options": ["Its error on the examples it trained on", "Its error on examples it has never seen", "How many knobs it has"], "answer": 1, "why": "A model that only fits its training examples may fail on new ones (overfitting, stage 3).", "sec": 7}
+   {
+    "q": "Which task is a good fit for machine learning rather than a hand-written rule?",
+    "options": [
+     "Adding up a shopping bill",
+     "Recognizing which photos contain a dog",
+     "Sorting names alphabetically"
+    ],
+    "answer": 1,
+    "why": "Nobody can write the rule for 'dog', but examples with answers are easy to collect.",
+    "sec": 1
+   },
+   {
+    "q": "In minutes = a × km + b, what are a and b?",
+    "options": [
+     "The inputs",
+     "The parameters the training adjusts",
+     "The error"
+    ],
+    "answer": 1,
+    "why": "km is the input, minutes the output; a and b are the knobs.",
+    "sec": 2
+   },
+   {
+    "q": "What does gradient descent do at every step?",
+    "options": [
+     "Tries every possible value of each knob",
+     "Moves each knob a little in the direction that lowers the error",
+     "Adds more data"
+    ],
+    "answer": 1,
+    "why": "It asks which way is downhill for each knob and takes a small step that way, again and again.",
+    "sec": 3
+   },
+   {
+    "q": "Grouping subway stations whose days look alike, with no labels, is…",
+    "options": [
+     "supervised learning",
+     "unsupervised learning",
+     "reinforcement learning"
+    ],
+    "answer": 1,
+    "why": "No answers attached: finding structure is unsupervised.",
+    "sec": 4
+   },
+   {
+    "q": "What really tells you if a model is good?",
+    "options": [
+     "Its error on the examples it trained on",
+     "Its error on examples it has never seen",
+     "How many knobs it has"
+    ],
+    "answer": 1,
+    "why": "A model that only fits its training examples may fail on new ones (overfitting, stage 3).",
+    "sec": 7
+   }
   ]
  },
  "s2-just-enough-code.html": {
-  "goals": ["Read and change every code box on the path", "Use lists, loops and functions in Python", "Replace loops with NumPy, and show data with pandas and matplotlib"],
+  "goals": [
+   "Read and change every code box on the path",
+   "Use lists, loops and functions in Python",
+   "Replace loops with NumPy, and show data with pandas and matplotlib"
+  ],
   "cards": [
-   ["xs[0] in Python", "The first item: lists count from 0. xs[-1] is the last."],
-   ["for x in xs:", "Runs the indented lines once per item of xs."],
-   ["def f(x): return …", "Defines a function: a named recipe from inputs to an output."],
-   ["np.mean((guess - truth) ** 2)", "The mean squared error of whole arrays in one line, no loop."],
-   ["pandas DataFrame", "A table: rows of examples, named columns; df['col'] picks a column, df[cond] filters rows."],
-   ["Colab and Kaggle", "Free notebooks in the browser, with GPUs: where real ML code runs."]
+   [
+    "xs[0] in Python",
+    "The first item: lists count from 0. xs[-1] is the last."
+   ],
+   [
+    "for x in xs:",
+    "Runs the indented lines once per item of xs."
+   ],
+   [
+    "def f(x): return …",
+    "Defines a function: a named recipe from inputs to an output."
+   ],
+   [
+    "np.mean((guess - truth) ** 2)",
+    "The mean squared error of whole arrays in one line, no loop."
+   ],
+   [
+    "pandas DataFrame",
+    "A table: rows of examples, named columns; df['col'] picks a column, df[cond] filters rows."
+   ],
+   [
+    "Colab and Kaggle",
+    "Free notebooks in the browser, with GPUs: where real ML code runs."
+   ]
   ],
   "check": [
-   {"q": "xs = [4, 8, 15, 16]. What is xs[2]?", "options": ["8", "15", "16"], "answer": 1, "why": "Counting from 0: xs[0] = 4, xs[1] = 8, xs[2] = 15.", "sec": 3},
-   {"q": "What does range(1, 5) count?", "options": ["1, 2, 3, 4, 5", "1, 2, 3, 4", "0, 1, 2, 3, 4"], "answer": 1, "why": "range stops before its second number.", "sec": 4},
-   {"q": "km = np.array([1, 2, 3]). What is 2 * km + 1?", "options": ["[3, 5, 7]", "[2, 4, 6, 1]", "An error: you need a loop"], "answer": 0, "why": "NumPy does the arithmetic on every element at once.", "sec": 6},
-   {"q": "How does Python know which lines are inside a loop?", "options": ["Curly braces", "Indentation", "A semicolon at the end"], "answer": 1, "why": "The indented lines under 'for …:' are the loop body.", "sec": 4},
-   {"q": "In pandas, df[df['km'] > 2] gives…", "options": ["the km column", "the rows where km is more than 2", "a True/False value"], "answer": 1, "why": "A condition inside df[…] filters rows.", "sec": 8}
+   {
+    "q": "xs = [4, 8, 15, 16]. What is xs[2]?",
+    "options": [
+     "8",
+     "15",
+     "16"
+    ],
+    "answer": 1,
+    "why": "Counting from 0: xs[0] = 4, xs[1] = 8, xs[2] = 15.",
+    "sec": 3
+   },
+   {
+    "q": "What does range(1, 5) count?",
+    "options": [
+     "1, 2, 3, 4, 5",
+     "1, 2, 3, 4",
+     "0, 1, 2, 3, 4"
+    ],
+    "answer": 1,
+    "why": "range stops before its second number.",
+    "sec": 4
+   },
+   {
+    "q": "km = np.array([1, 2, 3]). What is 2 * km + 1?",
+    "options": [
+     "[3, 5, 7]",
+     "[2, 4, 6, 1]",
+     "An error: you need a loop"
+    ],
+    "answer": 0,
+    "why": "NumPy does the arithmetic on every element at once.",
+    "sec": 6
+   },
+   {
+    "q": "How does Python know which lines are inside a loop?",
+    "options": [
+     "Curly braces",
+     "Indentation",
+     "A semicolon at the end"
+    ],
+    "answer": 1,
+    "why": "The indented lines under 'for …:' are the loop body.",
+    "sec": 4
+   },
+   {
+    "q": "In pandas, df[df['km'] > 2] gives…",
+    "options": [
+     "the km column",
+     "the rows where km is more than 2",
+     "a True/False value"
+    ],
+    "answer": 1,
+    "why": "A condition inside df[…] filters rows.",
+    "sec": 8
+   }
   ]
  },
  "s3-math-warm-up.html": {
-  "goals": ["Read a graph and evaluate a function", "Use powers, scientific notation and logarithms", "Read an ML formula out loud and turn it into code"],
+  "goals": [
+   "Read a graph and evaluate a function",
+   "Use powers, scientific notation and logarithms",
+   "Read an ML formula out loud and turn it into code"
+  ],
   "cards": [
-   ["3e-4", "3 × 10⁻⁴ = 0.0003 (scientific notation, a common learning rate)."],
-   ["ln x", "The power of e that gives x: ln(eᵗ) = t. It undoes eˣ."],
-   ["ln(ab)", "ln a + ln b: logs turn products into sums, so models add log-probabilities."],
-   ["Σᵢ₌₁ⁿ xᵢ", "Add up x₁ to xₙ: a loop, or np.sum."],
-   ["Sigmoid σ(z)", "1 / (1 + e⁻ᶻ): squeezes any number into (0, 1), with σ(0) = 0.5."],
-   ["θ ← θ − η ∇L", "Gradient descent: move the knobs a step η against the gradient of the loss."]
+   [
+    "3e-4",
+    "3 × 10⁻⁴ = 0.0003 (scientific notation, a common learning rate)."
+   ],
+   [
+    "ln x",
+    "The power of e that gives x: ln(eᵗ) = t. It undoes eˣ."
+   ],
+   [
+    "ln(ab)",
+    "ln a + ln b: logs turn products into sums, so models add log-probabilities."
+   ],
+   [
+    "Σᵢ₌₁ⁿ xᵢ",
+    "Add up x₁ to xₙ: a loop, or np.sum."
+   ],
+   [
+    "Sigmoid σ(z)",
+    "1 / (1 + e⁻ᶻ): squeezes any number into (0, 1), with σ(0) = 0.5."
+   ],
+   [
+    "θ ← θ − η ∇L",
+    "Gradient descent: move the knobs a step η against the gradient of the loss."
+   ]
   ],
   "check": [
-   {"q": "If f(x) = x² − 2x, what is f(3)?", "options": ["3", "6", "9"], "answer": 0, "why": "9 − 6 = 3.", "sec": 1},
-   {"q": "What is 2⁻³?", "options": ["−8", "0.125", "−6"], "answer": 1, "why": "2⁻³ = 1/2³ = 1/8.", "sec": 2},
-   {"q": "Why do models add log-probabilities instead of multiplying probabilities?", "options": ["Logs are faster to type", "Multiplying thousands of numbers below 1 underflows to 0", "Probabilities can't be multiplied"], "answer": 1, "why": "The product gets too small for a computer; the sum of logs stays an ordinary number.", "sec": 3},
-   {"q": "What is Σᵢ₌₁⁴ 2i?", "options": ["8", "20", "16"], "answer": 1, "why": "2 + 4 + 6 + 8 = 20.", "sec": 4},
-   {"q": "One step of θ ← θ − η g with θ = 3, η = 0.1, g = 4 gives…", "options": ["2.6", "3.4", "2.96"], "answer": 0, "why": "3 − 0.1 × 4 = 2.6.", "sec": 6}
+   {
+    "q": "If f(x) = x² − 2x, what is f(3)?",
+    "options": [
+     "3",
+     "6",
+     "9"
+    ],
+    "answer": 0,
+    "why": "9 − 6 = 3.",
+    "sec": 1
+   },
+   {
+    "q": "What is 2⁻³?",
+    "options": [
+     "−8",
+     "0.125",
+     "−6"
+    ],
+    "answer": 1,
+    "why": "2⁻³ = 1/2³ = 1/8.",
+    "sec": 2
+   },
+   {
+    "q": "Why do models add log-probabilities instead of multiplying probabilities?",
+    "options": [
+     "Logs are faster to type",
+     "Multiplying thousands of numbers below 1 underflows to 0",
+     "Probabilities can't be multiplied"
+    ],
+    "answer": 1,
+    "why": "The product gets too small for a computer; the sum of logs stays an ordinary number.",
+    "sec": 3
+   },
+   {
+    "q": "What is Σᵢ₌₁⁴ 2i?",
+    "options": [
+     "8",
+     "20",
+     "16"
+    ],
+    "answer": 1,
+    "why": "2 + 4 + 6 + 8 = 20.",
+    "sec": 4
+   },
+   {
+    "q": "One step of θ ← θ − η g with θ = 3, η = 0.1, g = 4 gives…",
+    "options": [
+     "2.6",
+     "3.4",
+     "2.96"
+    ],
+    "answer": 0,
+    "why": "3 − 0.1 × 4 = 2.6.",
+    "sec": 6
+   }
   ]
  },
  "01-matrices-are-moves.html": {
-  "goals": ["Treat vectors as arrows and compute lengths and dot products", "See a matrix as a move of the whole plane", "Compute a network layer as a matrix product plus a bend"],
+  "goals": [
+   "Treat vectors as arrows and compute lengths and dot products",
+   "See a matrix as a move of the whole plane",
+   "Compute a network layer as a matrix product plus a bend"
+  ],
   "cards": [
-   ["Dot product a·b", "a₁b₁ + a₂b₂ + …: big when arrows agree, 0 at right angles, negative when opposed."],
-   ["Columns of a 2×2 matrix", "Where î = (1, 0) and ĵ = (0, 1) land after the move."],
-   ["Determinant", "How much the move scales areas; 0 means the plane is squashed flat and the move can't be undone."],
-   ["Matrix × matrix", "Doing one move after another; the order matters."],
-   ["A network layer", "relu(W x + b): a move by a matrix, a shift, then a bend."],
-   ["Why the bend (ReLU)", "Without it, stacked layers collapse into one matrix: still just one straight move."]
+   [
+    "Dot product a·b",
+    "a₁b₁ + a₂b₂ + …: big when arrows agree, 0 at right angles, negative when opposed."
+   ],
+   [
+    "Columns of a 2×2 matrix",
+    "Where î = (1, 0) and ĵ = (0, 1) land after the move."
+   ],
+   [
+    "Determinant",
+    "How much the move scales areas; 0 means the plane is squashed flat and the move can't be undone."
+   ],
+   [
+    "Matrix × matrix",
+    "Doing one move after another; the order matters."
+   ],
+   [
+    "A network layer",
+    "relu(W x + b): a move by a matrix, a shift, then a bend."
+   ],
+   [
+    "Why the bend (ReLU)",
+    "Without it, stacked layers collapse into one matrix: still just one straight move."
+   ]
   ],
   "check": [
-   {"q": "How long is the vector (3, 4)?", "options": ["7", "5", "12"], "answer": 1, "why": "√(9 + 16) = 5.", "sec": 1},
-   {"q": "Two vectors have dot product 0. They are…", "options": ["the same length", "at right angles (or one is zero)", "pointing opposite ways"], "answer": 1, "why": "a·b = |a||b|cos θ, and cos 90° = 0.", "sec": 2},
-   {"q": "A matrix's determinant is 0. What happened to the plane?", "options": ["It was rotated", "It was squashed onto a line (or a point)", "It was flipped over"], "answer": 1, "why": "Zero area left: many points land on the same spot, so the move can't be undone.", "sec": 3},
-   {"q": "Rotate 90° sends î to (0, 1) and ĵ to (−1, 0). Where does (2, 1) go?", "options": ["(1, 2)", "(−1, 2)", "(−2, −1)"], "answer": 1, "why": "2·(0, 1) + 1·(−1, 0) = (−1, 2).", "sec": 3},
-   {"q": "Why does a network need ReLU between its matrices?", "options": ["To make it faster", "Without a bend, stacked matrices are just one matrix", "To keep numbers positive for the computer"], "answer": 1, "why": "B(Ax) = (BA)x: any stack of matrices alone is a single straight move.", "sec": 4}
+   {
+    "q": "How long is the vector (3, 4)?",
+    "options": [
+     "7",
+     "5",
+     "12"
+    ],
+    "answer": 1,
+    "why": "√(9 + 16) = 5.",
+    "sec": 1
+   },
+   {
+    "q": "Two vectors have dot product 0. They are…",
+    "options": [
+     "the same length",
+     "at right angles (or one is zero)",
+     "pointing opposite ways"
+    ],
+    "answer": 1,
+    "why": "a·b = |a||b|cos θ, and cos 90° = 0.",
+    "sec": 2
+   },
+   {
+    "q": "A matrix's determinant is 0. What happened to the plane?",
+    "options": [
+     "It was rotated",
+     "It was squashed onto a line (or a point)",
+     "It was flipped over"
+    ],
+    "answer": 1,
+    "why": "Zero area left: many points land on the same spot, so the move can't be undone.",
+    "sec": 3
+   },
+   {
+    "q": "Rotate 90° sends î to (0, 1) and ĵ to (−1, 0). Where does (2, 1) go?",
+    "options": [
+     "(1, 2)",
+     "(−1, 2)",
+     "(−2, −1)"
+    ],
+    "answer": 1,
+    "why": "2·(0, 1) + 1·(−1, 0) = (−1, 2).",
+    "sec": 3
+   },
+   {
+    "q": "Why does a network need ReLU between its matrices?",
+    "options": [
+     "To make it faster",
+     "Without a bend, stacked matrices are just one matrix",
+     "To keep numbers positive for the computer"
+    ],
+    "answer": 1,
+    "why": "B(Ax) = (BA)x: any stack of matrices alone is a single straight move.",
+    "sec": 4
+   }
   ]
  },
  "l1-systems-and-inverses.html": {
-  "goals": ["Tell when a system has one, no or infinitely many answers", "Find a matrix's rank and know what a low rank means for a dataset", "Solve least squares with the normal equations"],
+  "goals": [
+   "Tell when a system has one, no or infinitely many answers",
+   "Find a matrix's rank and know what a low rank means for a dataset",
+   "Solve least squares with the normal equations"
+  ],
   "cards": [
-   ["Singular matrix", "det = 0: no inverse; Ax = b has no answer or infinitely many."],
-   ["Rank", "The number of independent rows (= independent columns): how many equations really count."],
-   ["Gaussian elimination", "Clear each column below its pivot, then solve bottom up; about n³/3 work."],
-   ["A⁻¹ for 2×2", "Swap the diagonal, negate the other two, divide by the determinant."],
-   ["Ill-conditioned", "A tiny determinant: the inverse is huge, so small errors in b become big errors in x."],
-   ["Normal equations", "XᵀX w = Xᵀy: the square system whose solution is the least-squares fit."]
+   [
+    "Singular matrix",
+    "det = 0: no inverse; Ax = b has no answer or infinitely many."
+   ],
+   [
+    "Rank",
+    "The number of independent rows (= independent columns): how many equations really count."
+   ],
+   [
+    "Gaussian elimination",
+    "Clear each column below its pivot, then solve bottom up; about n³/3 work."
+   ],
+   [
+    "A⁻¹ for 2×2",
+    "Swap the diagonal, negate the other two, divide by the determinant."
+   ],
+   [
+    "Ill-conditioned",
+    "A tiny determinant: the inverse is huge, so small errors in b become big errors in x."
+   ],
+   [
+    "Normal equations",
+    "XᵀX w = Xᵀy: the square system whose solution is the least-squares fit."
+   ]
   ],
   "check": [
-   {"q": "Two equations whose lines are parallel and different have…", "options": ["one answer", "no answer", "infinitely many answers"], "answer": 1, "why": "Parallel lines never meet: the equations contradict each other.", "sec": 1},
-   {"q": "A dataset has columns 'area in m²' and 'area in ft²'. What does that do?", "options": ["Makes predictions better", "Lowers the matrix's rank: the weights stop having one best value", "Nothing"], "answer": 1, "why": "One column is a multiple of the other, so weight can be traded between them forever.", "sec": 3},
-   {"q": "What is the rank of [[1, 2], [2, 4]]?", "options": ["0", "1", "2"], "answer": 1, "why": "The second row is twice the first: one independent row.", "sec": 3},
-   {"q": "In code, how should you solve Ax = b?", "options": ["np.linalg.inv(A) @ b", "np.linalg.solve(A, b)", "Either: they're equally good"], "answer": 1, "why": "Elimination is faster and loses less to rounding than computing the inverse.", "sec": 5},
-   {"q": "det A = 2 and det B = 3. det(AB) is…", "options": ["5", "6", "1.5"], "answer": 1, "why": "Areas multiply: 2 × 3.", "sec": 5}
+   {
+    "q": "Two equations whose lines are parallel and different have…",
+    "options": [
+     "one answer",
+     "no answer",
+     "infinitely many answers"
+    ],
+    "answer": 1,
+    "why": "Parallel lines never meet: the equations contradict each other.",
+    "sec": 1
+   },
+   {
+    "q": "A dataset has columns 'area in m²' and 'area in ft²'. What does that do?",
+    "options": [
+     "Makes predictions better",
+     "Lowers the matrix's rank: the weights stop having one best value",
+     "Nothing"
+    ],
+    "answer": 1,
+    "why": "One column is a multiple of the other, so weight can be traded between them forever.",
+    "sec": 3
+   },
+   {
+    "q": "What is the rank of [[1, 2], [2, 4]]?",
+    "options": [
+     "0",
+     "1",
+     "2"
+    ],
+    "answer": 1,
+    "why": "The second row is twice the first: one independent row.",
+    "sec": 3
+   },
+   {
+    "q": "In code, how should you solve Ax = b?",
+    "options": [
+     "np.linalg.inv(A) @ b",
+     "np.linalg.solve(A, b)",
+     "Either: they're equally good"
+    ],
+    "answer": 1,
+    "why": "Elimination is faster and loses less to rounding than computing the inverse.",
+    "sec": 5
+   },
+   {
+    "q": "det A = 2 and det B = 3. det(AB) is…",
+    "options": [
+     "5",
+     "6",
+     "1.5"
+    ],
+    "answer": 1,
+    "why": "Areas multiply: 2 × 3.",
+    "sec": 5
+   }
   ]
  },
  "02-gradients.html": {
-  "goals": ["Estimate a derivative by nudging", "Explain the gradient as the steepest-uphill arrow", "Run gradient descent and pick a sensible learning rate"],
+  "goals": [
+   "Estimate a derivative by nudging",
+   "Explain the gradient as the steepest-uphill arrow",
+   "Run gradient descent and pick a sensible learning rate"
+  ],
   "cards": [
-   ["Derivative", "How much the output changes per tiny change of the input: the slope."],
-   ["Centered difference", "(f(x+h) − f(x−h)) / 2h: a numerical slope accurate to h²."],
-   ["Gradient", "The arrow of all partial slopes; it points steepest uphill."],
-   ["Gradient descent step", "x ← x − learning rate × slope."],
-   ["Learning rate too big", "Steps overshoot the valley's bottom and bounce or blow up."],
-   ["Learning rate too small", "Every step is tiny: training crawls."]
+   [
+    "Derivative",
+    "How much the output changes per tiny change of the input: the slope."
+   ],
+   [
+    "Centered difference",
+    "(f(x+h) − f(x−h)) / 2h: a numerical slope accurate to h²."
+   ],
+   [
+    "Gradient",
+    "The arrow of all partial slopes; it points steepest uphill."
+   ],
+   [
+    "Gradient descent step",
+    "x ← x − learning rate × slope."
+   ],
+   [
+    "Learning rate too big",
+    "Steps overshoot the valley's bottom and bounce or blow up."
+   ],
+   [
+    "Learning rate too small",
+    "Every step is tiny: training crawls."
+   ]
   ],
   "check": [
-   {"q": "f(x) = x². What's the slope at x = 3?", "options": ["3", "6", "9"], "answer": 1, "why": "The derivative of x² is 2x.", "sec": 1},
-   {"q": "Why does a nudge of h = 1e-15 give a bad slope estimate?", "options": ["The formula is wrong for small h", "Rounding: f(x + h) and f(x) agree in almost every digit", "h must be an integer"], "answer": 1, "why": "Computers keep about 16 digits, so the difference is mostly rounding noise.", "sec": 1},
-   {"q": "Gradient descent on x² with learning rate 1.0 from x = 5…", "options": ["converges to 0", "jumps between 5 and −5 forever", "stops at 2.5"], "answer": 1, "why": "x − 1.0 × 2x = −x: it bounces forever.", "sec": 2},
-   {"q": "The gradient of a loss points…", "options": ["downhill", "uphill, the steepest way", "along a contour line"], "answer": 1, "why": "So training moves the opposite way: minus the gradient.", "sec": 3},
-   {"q": "Training a line, ∂L/∂w is positive. The update makes w…", "options": ["bigger", "smaller", "unchanged"], "answer": 1, "why": "w ← w − η × (positive) goes down, because a bigger w would raise the loss.", "sec": 4}
+   {
+    "q": "f(x) = x². What's the slope at x = 3?",
+    "options": [
+     "3",
+     "6",
+     "9"
+    ],
+    "answer": 1,
+    "why": "The derivative of x² is 2x.",
+    "sec": 1
+   },
+   {
+    "q": "Why does a nudge of h = 1e-15 give a bad slope estimate?",
+    "options": [
+     "The formula is wrong for small h",
+     "Rounding: f(x + h) and f(x) agree in almost every digit",
+     "h must be an integer"
+    ],
+    "answer": 1,
+    "why": "Computers keep about 16 digits, so the difference is mostly rounding noise.",
+    "sec": 1
+   },
+   {
+    "q": "Gradient descent on x² with learning rate 1.0 from x = 5…",
+    "options": [
+     "converges to 0",
+     "jumps between 5 and −5 forever",
+     "stops at 2.5"
+    ],
+    "answer": 1,
+    "why": "x − 1.0 × 2x = −x: it bounces forever.",
+    "sec": 2
+   },
+   {
+    "q": "The gradient of a loss points…",
+    "options": [
+     "downhill",
+     "uphill, the steepest way",
+     "along a contour line"
+    ],
+    "answer": 1,
+    "why": "So training moves the opposite way: minus the gradient.",
+    "sec": 3
+   },
+   {
+    "q": "Training a line, ∂L/∂w is positive. The update makes w…",
+    "options": [
+     "bigger",
+     "smaller",
+     "unchanged"
+    ],
+    "answer": 1,
+    "why": "w ← w − η × (positive) goes down, because a bigger w would raise the loss.",
+    "sec": 4
+   }
   ]
  },
  "c1-derivatives.html": {
-  "goals": ["Differentiate with the rules (power, product, chain…)", "Know the slopes of sigmoid, tanh and ReLU and why gradients vanish", "Check a derivative numerically"],
+  "goals": [
+   "Differentiate with the rules (power, product, chain…)",
+   "Know the slopes of sigmoid, tanh and ReLU and why gradients vanish",
+   "Check a derivative numerically"
+  ],
   "cards": [
-   ["Chain rule", "d/dx f(g(x)) = f′(g(x)) · g′(x): multiply the slopes along the chain."],
-   ["d/dx eˣ", "eˣ itself."],
-   ["d/dx ln x", "1 / x."],
-   ["Sigmoid slope", "σ(x)(1 − σ(x)), at most 0.25 (at x = 0)."],
-   ["Vanishing gradients", "Many layers multiply many small slopes, so early layers get almost no signal."],
-   ["Gradient check", "Compare your derivative with a centered difference; relative error under ~1e-7 means it's right."]
+   [
+    "Chain rule",
+    "d/dx f(g(x)) = f′(g(x)) · g′(x): multiply the slopes along the chain."
+   ],
+   [
+    "d/dx eˣ",
+    "eˣ itself."
+   ],
+   [
+    "d/dx ln x",
+    "1 / x."
+   ],
+   [
+    "Sigmoid slope",
+    "σ(x)(1 − σ(x)), at most 0.25 (at x = 0)."
+   ],
+   [
+    "Vanishing gradients",
+    "Many layers multiply many small slopes, so early layers get almost no signal."
+   ],
+   [
+    "Gradient check",
+    "Compare your derivative with a centered difference; relative error under ~1e-7 means it's right."
+   ]
   ],
   "check": [
-   {"q": "What's the derivative of (3x + 1)²?", "options": ["2(3x + 1)", "6(3x + 1)", "9x"], "answer": 1, "why": "Chain rule: 2(3x + 1) × 3.", "sec": 2},
-   {"q": "What's the derivative of ln x?", "options": ["eˣ", "1/x", "x ln x"], "answer": 1, "why": "ln undoes eˣ, and its slope is 1/x.", "sec": 3},
-   {"q": "The biggest slope a sigmoid ever has is…", "options": ["1", "0.25", "0.5"], "answer": 1, "why": "σ(0)(1 − σ(0)) = 0.5 × 0.5.", "sec": 4},
-   {"q": "Why do deep sigmoid networks learn slowly in their first layers?", "options": ["Too many parameters", "Backprop multiplies slopes of at most 0.25 per layer", "Sigmoid is slow to compute"], "answer": 1, "why": "Twenty layers of ≤ 0.25 gives less than 1e-12: the gradient vanishes.", "sec": 4},
-   {"q": "Your formula and the centered difference differ by a relative error of 0.6. What now?", "options": ["Fine: within rounding", "Your derivative has a bug", "Use a bigger h"], "answer": 1, "why": "Correct derivatives agree to about 1e-7; 0.6 means a real mistake (often a sign).", "sec": 5}
+   {
+    "q": "What's the derivative of (3x + 1)²?",
+    "options": [
+     "2(3x + 1)",
+     "6(3x + 1)",
+     "9x"
+    ],
+    "answer": 1,
+    "why": "Chain rule: 2(3x + 1) × 3.",
+    "sec": 2
+   },
+   {
+    "q": "What's the derivative of ln x?",
+    "options": [
+     "eˣ",
+     "1/x",
+     "x ln x"
+    ],
+    "answer": 1,
+    "why": "ln undoes eˣ, and its slope is 1/x.",
+    "sec": 3
+   },
+   {
+    "q": "The biggest slope a sigmoid ever has is…",
+    "options": [
+     "1",
+     "0.25",
+     "0.5"
+    ],
+    "answer": 1,
+    "why": "σ(0)(1 − σ(0)) = 0.5 × 0.5.",
+    "sec": 4
+   },
+   {
+    "q": "Why do deep sigmoid networks learn slowly in their first layers?",
+    "options": [
+     "Too many parameters",
+     "Backprop multiplies slopes of at most 0.25 per layer",
+     "Sigmoid is slow to compute"
+    ],
+    "answer": 1,
+    "why": "Twenty layers of ≤ 0.25 gives less than 1e-12: the gradient vanishes.",
+    "sec": 4
+   },
+   {
+    "q": "Your formula and the centered difference differ by a relative error of 0.6. What now?",
+    "options": [
+     "Fine: within rounding",
+     "Your derivative has a bug",
+     "Use a bigger h"
+    ],
+    "answer": 1,
+    "why": "Correct derivatives agree to about 1e-7; 0.6 means a real mistake (often a sign).",
+    "sec": 5
+   }
   ]
  },
  "c2-many-variables.html": {
-  "goals": ["Take partial derivatives and assemble the gradient", "Write the MSE gradient for a linear model as one matrix formula", "Read a Jacobian and its shape"],
+  "goals": [
+   "Take partial derivatives and assemble the gradient",
+   "Write the MSE gradient for a linear model as one matrix formula",
+   "Read a Jacobian and its shape"
+  ],
   "cards": [
-   ["Partial derivative ∂f/∂x", "The slope along x with every other input held still."],
-   ["Gradient of MSE for ŷ = Xw", "(2/n) Xᵀ(Xw − y)."],
-   ["Jacobian", "The m × n matrix of every output's slope with respect to every input."],
-   ["Jacobian of Wx", "W itself."],
-   ["Jacobian of tanh (element-wise)", "A diagonal matrix of 1 − tanh²(xᵢ)."],
-   ["A gradient's shape", "Always the same shape as the thing it differentiates (a weight matrix's gradient is a matrix like it)."]
+   [
+    "Partial derivative ∂f/∂x",
+    "The slope along x with every other input held still."
+   ],
+   [
+    "Gradient of MSE for ŷ = Xw",
+    "(2/n) Xᵀ(Xw − y)."
+   ],
+   [
+    "Jacobian",
+    "The m × n matrix of every output's slope with respect to every input."
+   ],
+   [
+    "Jacobian of Wx",
+    "W itself."
+   ],
+   [
+    "Jacobian of tanh (element-wise)",
+    "A diagonal matrix of 1 − tanh²(xᵢ)."
+   ],
+   [
+    "A gradient's shape",
+    "Always the same shape as the thing it differentiates (a weight matrix's gradient is a matrix like it)."
+   ]
   ],
   "check": [
-   {"q": "f(x, y) = x²y. What is ∂f/∂x?", "options": ["2xy", "x²", "2x"], "answer": 0, "why": "Treat y as a constant: the slope of x²·(const) is 2x·y.", "sec": 1},
-   {"q": "For ŷ = Xw with n examples, the MSE gradient is…", "options": ["(2/n) Xᵀ(Xw − y)", "(2/n) X(Xw − y)", "Xᵀy"], "answer": 0, "why": "Each residual is weighted by its row's features: Xᵀ times the residuals.", "sec": 2},
-   {"q": "f maps 3 numbers to 2 numbers. Its Jacobian's shape is…", "options": ["3 × 2", "2 × 3", "2 × 2"], "answer": 1, "why": "One row per output, one column per input.", "sec": 3},
-   {"q": "What is the Jacobian of f(x) = Wx?", "options": ["Wᵀ", "W", "x"], "answer": 1, "why": "Output i is row i of W dotted with x, so its slopes are row i of W.", "sec": 3},
-   {"q": "A weight matrix W has shape (4, 3). Its gradient ∂L/∂W has shape…", "options": ["(3, 4)", "(4, 3)", "(4,)"], "answer": 1, "why": "One partial derivative per weight: the same shape as W.", "sec": 4}
+   {
+    "q": "f(x, y) = x²y. What is ∂f/∂x?",
+    "options": [
+     "2xy",
+     "x²",
+     "2x"
+    ],
+    "answer": 0,
+    "why": "Treat y as a constant: the slope of x²·(const) is 2x·y.",
+    "sec": 1
+   },
+   {
+    "q": "For ŷ = Xw with n examples, the MSE gradient is…",
+    "options": [
+     "(2/n) Xᵀ(Xw − y)",
+     "(2/n) X(Xw − y)",
+     "Xᵀy"
+    ],
+    "answer": 0,
+    "why": "Each residual is weighted by its row's features: Xᵀ times the residuals.",
+    "sec": 2
+   },
+   {
+    "q": "f maps 3 numbers to 2 numbers. Its Jacobian's shape is…",
+    "options": [
+     "3 × 2",
+     "2 × 3",
+     "2 × 2"
+    ],
+    "answer": 1,
+    "why": "One row per output, one column per input.",
+    "sec": 3
+   },
+   {
+    "q": "What is the Jacobian of f(x) = Wx?",
+    "options": [
+     "Wᵀ",
+     "W",
+     "x"
+    ],
+    "answer": 1,
+    "why": "Output i is row i of W dotted with x, so its slopes are row i of W.",
+    "sec": 3
+   },
+   {
+    "q": "A weight matrix W has shape (4, 3). Its gradient ∂L/∂W has shape…",
+    "options": [
+     "(3, 4)",
+     "(4, 3)",
+     "(4,)"
+    ],
+    "answer": 1,
+    "why": "One partial derivative per weight: the same shape as W.",
+    "sec": 4
+   }
+  ]
+ },
+ "p1-probability-and-bayes.html": {
+  "goals": [
+   "Compute probabilities by counting, with the complement and sum rules",
+   "Check slippery answers by simulation",
+   "Use Bayes' rule, and see why rare conditions give mostly false alarms"
+  ],
+  "cards": [
+   [
+    "Complement rule",
+    "P(not A) = 1 − P(A): 'at least one' is easiest as 1 − P(none)."
+   ],
+   [
+    "Independent events",
+    "P(A and B) = P(A)·P(B); knowing one changes nothing about the other."
+   ],
+   [
+    "Conditional probability P(A | B)",
+    "Count inside B only: P(A and B) / P(B)."
+   ],
+   [
+    "Bayes' rule",
+    "P(H | E) = P(E | H)·P(H) / P(E): prior × likelihood, normalized."
+   ],
+   [
+    "Base-rate trap",
+    "A good test for a rare condition still gives mostly false positives: the healthy crowd is huge."
+   ],
+   [
+    "Naive Bayes",
+    "Count words per class, add one to every count, add log-probabilities, pick the bigger total."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What's the chance of at least one six in two dice rolls?",
+    "options": [
+     "2/6",
+     "11/36",
+     "1/36"
+    ],
+    "answer": 1,
+    "why": "1 − (5/6)² = 11/36: no six on both dice is (5/6)·(5/6).",
+    "sec": 1
+   },
+   {
+    "q": "In Monty Hall, after the host opens a goat door, switching wins…",
+    "options": [
+     "1/2 of the time",
+     "2/3 of the time",
+     "1/3 of the time"
+    ],
+    "answer": 1,
+    "why": "Your first pick is right 1/3 of the time; switching collects the other 2/3.",
+    "sec": 2
+   },
+   {
+    "q": "The first die shows 6. What's P(sum ≥ 10) now?",
+    "options": [
+     "1/6",
+     "1/2",
+     "1/3"
+    ],
+    "answer": 1,
+    "why": "Inside 'first die is 6' there are 6 outcomes, 3 of them reach 10+.",
+    "sec": 3
+   },
+   {
+    "q": "1% are sick; the test catches 90% and false-alarms on 9%. A positive test means…",
+    "options": [
+     "about a 90% chance of being sick",
+     "about a 9% chance",
+     "about a 50% chance"
+    ],
+    "answer": 1,
+    "why": "9 true positives vs about 89 false ones per 1000 people: 9/98.",
+    "sec": 4
+   },
+   {
+    "q": "Why does a spam filter add 1 to every word count?",
+    "options": [
+     "To make the numbers bigger",
+     "So an unseen word doesn't make a probability exactly 0",
+     "To speed up training"
+    ],
+    "answer": 1,
+    "why": "One zero in a product wipes out all other evidence; add-one smoothing prevents it.",
+    "sec": 5
+   }
+  ]
+ },
+ "p2-describing-data.html": {
+  "goals": [
+   "Choose between mean and median and spot outliers",
+   "Read box plots, histograms and density estimates, and fix skew with logs",
+   "Measure how two variables move together, and know when correlation lies"
+  ],
+  "cards": [
+   [
+    "Mean vs median",
+    "The median is the typical value on skewed data; the mean is what totals need. Outliers drag the mean, not the median."
+   ],
+   [
+    "Standard deviation",
+    "The typical distance from the mean: √(average squared distance)."
+   ],
+   [
+    "z-score",
+    "(x − mean) / standard deviation: how many standard deviations from the mean."
+   ],
+   [
+    "IQR",
+    "Q3 − Q1, the spread of the middle half; box plots flag points beyond 1.5 IQR."
+   ],
+   [
+    "Right-skewed data",
+    "A long right tail (durations, prices); taking logs often makes it near-normal."
+   ],
+   [
+    "Correlation r",
+    "Covariance scaled to [−1, 1]: a straight-line relation only, and a few extreme points can decide it."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Outage times: mean 8.2 h, median 1.6 h. What's 'typical'?",
+    "options": [
+     "8.2 h",
+     "1.6 h",
+     "Their average, 4.9 h"
+    ],
+    "answer": 1,
+    "why": "95% of outages are shorter than the mean: a few weeks-long ones inflate it.",
+    "sec": 1
+   },
+   {
+    "q": "What's the standard deviation of 2, 4, 4, 4, 5, 5, 7, 9 (dividing by n)?",
+    "options": [
+     "2",
+     "4",
+     "5"
+    ],
+    "answer": 0,
+    "why": "Mean 5, squared distances sum to 32, /8 = 4, √4 = 2.",
+    "sec": 2
+   },
+   {
+    "q": "A KDE with a tiny bandwidth turns into spikes. That's like…",
+    "options": [
+     "underfitting",
+     "overfitting",
+     "a perfect estimate"
+    ],
+    "answer": 1,
+    "why": "It memorizes the exact points instead of the shape behind them.",
+    "sec": 4
+   },
+   {
+    "q": "A QQ plot's points curve sharply up at the right end. The data has…",
+    "options": [
+     "a long right tail",
+     "no outliers",
+     "a perfect bell shape"
+    ],
+    "answer": 0,
+    "why": "The biggest values are far bigger than a bell curve would allow.",
+    "sec": 5
+   },
+   {
+    "q": "Estimated vs actual hours: r = 0.99 over all outages, 0.2 for those under 12 h. Why?",
+    "options": [
+     "Short outages are measured wrong",
+     "A handful of very long outages decide the overall r",
+     "Correlation always drops on smaller data"
+    ],
+    "answer": 1,
+    "why": "Covariance multiplies distances from the mean, so a few extreme points dominate.",
+    "sec": 7
+   }
+  ]
+ },
+ "l2-eigenvectors-and-pca.html": {
+  "goals": [
+   "Find eigenvectors by picture, algebra and power iteration",
+   "Explain PageRank as a Markov chain's eigenvector",
+   "Run PCA and read how much variance its components keep"
+  ],
+  "cards": [
+   [
+    "Eigenvector",
+    "A direction a matrix only stretches: Av = λv; λ is the eigenvalue."
+   ],
+   [
+    "Characteristic polynomial",
+    "det(A − λI) = 0; for 2×2: λ² − trace·λ + det = 0."
+   ],
+   [
+    "Power iteration",
+    "Multiply by A and rescale, repeatedly: the vector lines up with the biggest eigenvalue's eigenvector."
+   ],
+   [
+    "PageRank",
+    "The eigenvalue-1 eigenvector of a random surfer's Markov chain, with damping 0.85."
+   ],
+   [
+    "PCA",
+    "Center the data, take the covariance matrix's top eigenvectors; each eigenvalue is the variance that direction keeps."
+   ],
+   [
+    "Condition number",
+    "λmax / λmin of the Hessian: how stretched the loss valley is, and how slowly gradient descent crawls."
+   ]
+  ],
+  "check": [
+   {
+    "q": "For [[2, 1], [1, 2]], v = (1, 1) is an eigenvector. Its eigenvalue is…",
+    "options": [
+     "1",
+     "2",
+     "3"
+    ],
+    "answer": 2,
+    "why": "Av = (3, 3) = 3v.",
+    "sec": 2
+   },
+   {
+    "q": "A rotation by 90° has…",
+    "options": [
+     "two real eigenvectors",
+     "one real eigenvector",
+     "no real eigenvectors"
+    ],
+    "answer": 2,
+    "why": "It turns every arrow, so none stays on its line.",
+    "sec": 2
+   },
+   {
+    "q": "A 2×2 matrix has trace 2 and determinant −3; one eigenvalue is 3. The other is…",
+    "options": [
+     "−1",
+     "1",
+     "−3"
+    ],
+    "answer": 0,
+    "why": "They add to the trace (3 + (−1) = 2) and multiply to the determinant.",
+    "sec": 3
+   },
+   {
+    "q": "Why does PageRank need damping (random jumps)?",
+    "options": [
+     "To make it faster to compute",
+     "So readers can't get stuck in a corner of pages, and the answer doesn't depend on the start",
+     "To favor the home page"
+    ],
+    "answer": 1,
+    "why": "With jumps there's one steady state, reached from anywhere.",
+    "sec": 5
+   },
+   {
+    "q": "PCA's first component is…",
+    "options": [
+     "the direction of largest variance: the covariance matrix's top eigenvector",
+     "the first column of the data",
+     "the mean of the data"
+    ],
+    "answer": 0,
+    "why": "Variance along a unit u is uᵀΣu, largest along Σ's top eigenvector.",
+    "sec": 7
+   }
   ]
  }
 }

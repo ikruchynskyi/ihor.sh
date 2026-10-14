@@ -23,7 +23,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 2 · Stage 1: the math of learning</p>
   <h1>Eigenvectors and PCA</h1>
   <p class="lede">A matrix moves the whole plane (chapter 1), and most arrows get knocked off their line. But a few special directions only get stretched. Those are the <b>eigenvectors</b>, and they're the matrix's skeleton: they say where repeating a move ends up, how Google first ranked the web, which way a loss valley is steepest, and which direction in your data matters most. This lesson finds them by hand, by algebra and by repetition, then uses them to rank this site's own pages and to squeeze real data down to its most important axis.</p>
@@ -131,35 +131,42 @@
 
   <h2>9. All of it in code</h2>
   <div class="code" data-title="Run it: power iteration, PCA and PageRank"><textarea>
-// power iteration: multiply, rescale, repeat
-const mul = (A, v) => A.map((row) => row.reduce((s, a, j) => s + a * v[j], 0));
-const norm = (v) => Math.hypot(...v);
-function topEigen(A, steps = 100) {
-  let v = A.map(() => Math.random());
-  for (let k = 0; k < steps; k++) { const w = mul(A, v); v = w.map((x) => x / norm(w)); }
-  return { vector: v, value: mul(A, v).reduce((s, x, i) => s + x * v[i], 0) };   // λ = v·Av for a unit v
-}
-print("[2 1; 1 2]:", topEigen([[2, 1], [1, 2]]));
+import json
+import numpy as np
+import pandas as pd
 
-// PCA on the outage data: covariance matrix, then its top eigenvector
-const { rows } = await (await fetch("/ai/data/outages.json")).json();
-const pts = rows.map((r) => [Math.log10(r[1]), Math.log10(r[0])]);
-const m = [0, 1].map((j) => pts.reduce((s, p) => s + p[j], 0) / pts.length);
-const S = [0, 1].map((a) => [0, 1].map((b) => pts.reduce((s, p) => s + (p[a] - m[a]) * (p[b] - m[b]), 0) / pts.length));
-const pc = topEigen(S), total = S[0][0] + S[1][1];
-print("covariance:", S.map((r) => r.map((x) => +x.toFixed(4))));
-print("first component:", pc.vector.map((x) => x.toFixed(3)), "holds", (100 * pc.value / total).toFixed(1) + "% of the variance");
+# power iteration: multiply, rescale, repeat (np.linalg.eig does it properly, for every eigenvector at once)
+def top_eigen(A, steps=100):
+    v = np.random.rand(len(A))
+    for _ in range(steps):
+        v = A @ v; v = v / np.linalg.norm(v)
+    return v, v @ A @ v                       # λ = v·Av for a unit v
 
-// PageRank: power iteration on the site's link graph, with damping 0.85
-const { pages } = await (await fetch("/ai/data/links.json")).json();
-const n = pages.length;
-let r = new Array(n).fill(1 / n);
-for (let k = 0; k < 60; k++) {
-  const next = new Array(n).fill(0.15 / n);
-  pages.forEach(([, , links], i) => { for (const j of links) next[j] += 0.85 * r[i] / links.length; });
-  r = next;
-}
-table([["page", "PageRank"], ...pages.map((p, i) => [p[1], r[i]]).sort((a, b) => b[1] - a[1]).slice(0, 8)]);
+A = np.array([[2, 1], [1, 2]])
+print("power iteration:", top_eigen(A))
+print("np.linalg.eig:  ", np.linalg.eig(A))
+
+# PCA on the outage data: covariance matrix, then its eigenvectors
+data = json.loads(get("/ai/data/outages.json"))
+pts = np.log10(np.array([[r[1], r[0]] for r in data["rows"]]))       # (log estimate, log actual)
+cov = np.cov(pts, rowvar=False, ddof=0)
+values, vectors = np.linalg.eigh(cov)                                 # eigh: for symmetric matrices, sorted ascending
+print("covariance:\n", cov.round(4))
+print("first component:", vectors[:, -1].round(3), f"holds {100 * values[-1] / values.sum():.1f}% of the variance")
+
+from sklearn.decomposition import PCA                                 # the same in one line, as used at work
+print("scikit-learn PCA:", PCA(2).fit(pts).explained_variance_ratio_.round(3))
+
+# PageRank: power iteration on the site's link graph, with damping 0.85
+pages = json.loads(get("/ai/data/links.json"))["pages"]
+n = len(pages)
+M = np.zeros((n, n))
+for i, (_, _, links) in enumerate(pages):
+    M[links, i] = 1 / len(links)                                      # column i: page i shares its readers among its links
+r = np.full(n, 1 / n)
+for _ in range(60):
+    r = 0.15 / n + 0.85 * M @ r
+pd.DataFrame({"page": [p[1] for p in pages], "PageRank": r}).nlargest(8, "PageRank")
 </textarea></div>
 
   <h2>10. What to carry forward</h2>
