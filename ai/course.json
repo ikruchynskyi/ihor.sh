@@ -1618,5 +1618,365 @@
     "sec": 5
    }
   ]
+ },
+ "11-overfitting.html": {
+  "goals": [
+   "Recognize overfitting from train vs validation error",
+   "Use train/validation/test splits and cross-validation honestly",
+   "Regularize, and know when more data is the real fix"
+  ],
+  "cards": [
+   [
+    "Overfitting",
+    "Fitting the training data's noise: low training error, high error on new data."
+   ],
+   [
+    "Train / validation / test",
+    "Fit on train, choose on validation, report on test, touched once."
+   ],
+   [
+    "Cross-validation",
+    "Rotate which slice is the validation set; average the scores. For small datasets."
+   ],
+   [
+    "L2 regularization (ridge)",
+    "Add λ·Σw² to the loss: big weights cost, so the fit bends less."
+   ],
+   [
+    "Learning curve",
+    "Error vs training-set size: a big train–validation gap means more data will help."
+   ],
+   [
+    "Data leakage",
+    "Information from validation/test (or the future) sneaking into training, e.g. scaling or selecting features on all data."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Training error 0.01, validation error 0.40. The model is…",
+    "options": [
+     "underfitting",
+     "overfitting",
+     "just right"
+    ],
+    "answer": 1,
+    "why": "Great on what it saw, bad on new data.",
+    "sec": 1
+   },
+   {
+    "q": "You tried 50 settings and picked the best by validation score. Its validation score is…",
+    "options": [
+     "an unbiased estimate of new-data error",
+     "optimistic: that's why a separate test set exists",
+     "pessimistic"
+    ],
+    "answer": 1,
+    "why": "Choosing the best of many is itself a fit to the validation set.",
+    "sec": 2
+   },
+   {
+    "q": "Raising the ridge λ makes the model…",
+    "options": [
+     "more flexible",
+     "less flexible: weights shrink",
+     "unchanged"
+    ],
+    "answer": 1,
+    "why": "Big weights cost more, so the curve bends less.",
+    "sec": 3
+   },
+   {
+    "q": "Train and validation error are both high and close together. More data will…",
+    "options": [
+     "help a lot",
+     "barely help: the model is too simple",
+     "make it overfit"
+    ],
+    "answer": 1,
+    "why": "That's high bias: you need a more flexible model or better features.",
+    "sec": 4
+   },
+   {
+    "q": "Feature selection on all the data, then cross-validation, reports 75% on random noise. Why?",
+    "options": [
+     "Lucky folds",
+     "Leakage: the selection already saw every fold's labels",
+     "Too few features"
+    ],
+    "answer": 1,
+    "why": "Put every data-dependent step inside the pipeline.",
+    "sec": 5
+   }
+  ]
+ },
+ "12-measuring-a-model.html": {
+  "goals": [
+   "Read a confusion matrix and compute precision and recall",
+   "Compare models across thresholds with ROC and precision-recall curves",
+   "Choose a threshold by cost and check calibration"
+  ],
+  "cards": [
+   [
+    "Precision",
+    "Of the cases flagged, the share that were real: TP / (TP + FP)."
+   ],
+   [
+    "Recall",
+    "Of the real cases, the share caught: TP / (TP + FN)."
+   ],
+   [
+    "The accuracy trap",
+    "With rare positives, 'always no' scores high accuracy and catches nothing."
+   ],
+   [
+    "ROC AUC",
+    "The chance a random positive scores above a random negative; 0.5 is a coin flip."
+   ],
+   [
+    "Threshold by cost",
+    "Pick the cutoff that minimizes cost of false negatives + false positives, not 0.5 by default."
+   ],
+   [
+    "Calibration",
+    "Does a predicted 0.8 come true 80% of the time? Check with a calibration curve."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A fraud model flags 10 payments; 4 are fraud, and there were 8 frauds in total. Precision and recall?",
+    "options": [
+     "0.4 and 0.5",
+     "0.5 and 0.4",
+     "0.4 and 0.4"
+    ],
+    "answer": 0,
+    "why": "Precision 4/10, recall 4/8.",
+    "sec": 2
+   },
+   {
+    "q": "Fraud is 1 in 1000. 'Never fraud' has accuracy…",
+    "options": [
+     "50%",
+     "99.9%",
+     "0%"
+    ],
+    "answer": 1,
+    "why": "And recall 0: accuracy hides it.",
+    "sec": 1
+   },
+   {
+    "q": "Lowering the threshold usually…",
+    "options": [
+     "raises recall and lowers precision",
+     "raises both",
+     "lowers both"
+    ],
+    "answer": 0,
+    "why": "You flag more: catch more, but with more false alarms.",
+    "sec": 2
+   },
+   {
+    "q": "Misses cost 20× more than false alarms. The best threshold is probably…",
+    "options": [
+     "above 0.5",
+     "below 0.5",
+     "exactly 0.5"
+    ],
+    "answer": 1,
+    "why": "Accept more false alarms to avoid costly misses.",
+    "sec": 4
+   },
+   {
+    "q": "A model says 0.8 for many cases; 55% of them turn out positive. It is…",
+    "options": [
+     "well calibrated",
+     "overconfident",
+     "underconfident"
+    ],
+    "answer": 1,
+    "why": "Its probabilities run higher than reality.",
+    "sec": 5
+   }
+  ]
+ },
+ "13-trees-and-boosting.html": {
+  "goals": [
+   "Explain how a decision tree splits and why deep trees overfit",
+   "Explain bagging (random forests) and boosting",
+   "Pick between linear models and boosted trees for tabular data"
+  ],
+  "cards": [
+   [
+    "Decision tree",
+    "A sequence of yes/no questions on features; each leaf predicts an average or a majority."
+   ],
+   [
+    "Tree depth",
+    "Its complexity knob: deep trees memorize the training data."
+   ],
+   [
+    "Random forest",
+    "Average many deep trees grown on bootstrap samples with random feature subsets; errors partly cancel."
+   ],
+   [
+    "Gradient boosting",
+    "Add small trees one at a time, each fitting what the model still gets wrong (the residuals)."
+   ],
+   [
+    "Early stopping",
+    "Stop adding trees when a held-out score stops improving."
+   ],
+   [
+    "Permutation importance",
+    "Shuffle one feature and measure how much worse the model gets."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A tree with unlimited depth on noisy data will…",
+    "options": [
+     "underfit",
+     "memorize the training data",
+     "be the best model"
+    ],
+    "answer": 1,
+    "why": "Each leaf ends up holding one point.",
+    "sec": 2
+   },
+   {
+    "q": "In gradient boosting, each new tree is trained on…",
+    "options": [
+     "a random half of the features",
+     "what the current model still gets wrong",
+     "the original targets"
+    ],
+    "answer": 1,
+    "why": "It fits the residuals (for squared error).",
+    "sec": 3
+   },
+   {
+    "q": "Why does boosting use a small learning rate like 0.1?",
+    "options": [
+     "To train faster",
+     "So each tree only nudges, and many small steps generalize better",
+     "It's required"
+    ],
+    "answer": 1,
+    "why": "Small steps with many trees, stopped early, overfit less.",
+    "sec": 3
+   },
+   {
+    "q": "For a tabular dataset with mixed features and nonlinear effects, a strong first choice is…",
+    "options": [
+     "a deep neural network",
+     "gradient-boosted trees",
+     "k-nearest neighbors"
+    ],
+    "answer": 1,
+    "why": "Boosted trees win most tabular problems with little tuning.",
+    "sec": 4
+   },
+   {
+    "q": "What should you always fit before any fancy model?",
+    "options": [
+     "A baseline (the mean, or a linear model)",
+     "Nothing",
+     "The test set"
+    ],
+    "answer": 0,
+    "why": "Without a baseline you can't tell if the fancy model helps.",
+    "sec": 1
+   }
+  ]
+ },
+ "p4-confidence-and-tests.html": {
+  "goals": [
+   "Build and interpret confidence intervals",
+   "Run a hypothesis test and read a p-value correctly",
+   "Compare two models fairly and plan an A/B test's size"
+  ],
+  "cards": [
+   [
+    "95% confidence interval",
+    "A method that catches the true value in 95% of samples: x̄ ± t·s/√n."
+   ],
+   [
+    "p-value",
+    "How often noise alone would produce a gap this big if there were no real difference."
+   ],
+   [
+    "Type I / Type II error",
+    "False alarm (rate α) / missed real effect (rate β); power = 1 − β."
+   ],
+   [
+    "Paired test for two models",
+    "Compare them on the same test examples; only disagreements carry information (McNemar)."
+   ],
+   [
+    "Sample size per group",
+    "n ≈ 16·p(1−p)/δ² for α = 0.05 and 80% power."
+   ],
+   [
+    "Peeking",
+    "Checking repeatedly and stopping at p < 0.05 inflates false positives far above 5%."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A 95% interval is [48, 52]. Which is right?",
+    "options": [
+     "95% chance the true mean is in it",
+     "95% of intervals built this way contain the true mean",
+     "95% of the data is in it"
+    ],
+    "answer": 1,
+    "why": "The 95% describes the method.",
+    "sec": 1
+   },
+   {
+    "q": "p = 0.03 means…",
+    "options": [
+     "a 3% chance the null is true",
+     "if there were no difference, a gap this big would happen about 3% of the time",
+     "the effect is big"
+    ],
+    "answer": 1,
+    "why": "It's computed assuming the null is true.",
+    "sec": 3
+   },
+   {
+    "q": "Two models are scored on the same test set. The right test is…",
+    "options": [
+     "a two-sample test of proportions",
+     "a paired test on the disagreements",
+     "no test is needed"
+    ],
+    "answer": 1,
+    "why": "Pairing cancels the shared difficulty of examples.",
+    "sec": 3
+   },
+   {
+    "q": "Doubling the sample size makes the margin of error…",
+    "options": [
+     "half",
+     "about 1/√2 as big",
+     "twice as big"
+    ],
+    "answer": 1,
+    "why": "Margins shrink like 1/√n.",
+    "sec": 1
+   },
+   {
+    "q": "You check an A/B test daily and stop at the first p < 0.05. The false-positive rate is…",
+    "options": [
+     "5%",
+     "well above 5%",
+     "below 5%"
+    ],
+    "answer": 1,
+    "why": "Each look is another chance for noise to cross the line.",
+    "sec": 5
+   }
+  ]
  }
 }

@@ -20,7 +20,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 13 · Stage 3: classic ML and judging models</p>
   <h1>The models that still win on tables</h1>
   <p class="lede">Most machine learning in companies isn't images or chat: it's tables. Rows of customers, payments, trips, sensor readings; columns of numbers and categories. On that kind of data, the winners are usually not neural networks but two older ideas: <b>logistic regression</b> (a line) and <b>gradient-boosted decision trees</b> (many small questions, each fixing the last ones' mistakes). An ML engineer reaches for these first.</p>
@@ -61,34 +61,37 @@
   </div>
 
   <div class="code" data-title="Build it: gradient boosting with depth-1 trees (stumps), from scratch"><textarea>
-// data: x in −1…1, y a noisy curve
-let seed = 5; const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; // mulberry32
-const truth = (x) => 0.8 * Math.sin(2.5 * x) + 0.3 * x;
-const pts = Array.from({ length: 200 }, () => { const x = 2 * rand() - 1; return { x, y: truth(x) + 0.25 * (rand() + rand() + rand() - 1.5) }; });
-const train = pts.slice(0, 150), val = pts.slice(150);
+import numpy as np
+import pandas as pd
+rng = np.random.default_rng(5)
 
-// a stump: one cut, a value on each side; it picks the cut that best fits the residuals r
-function stump(xs, r) {
-  const order = xs.map((x, i) => i).sort((a, b) => xs[a] - xs[b]);
-  let best = null, sumL = 0, n = r.length, sum = r.reduce((a, b) => a + b, 0);
-  for (let k = 0; k < n - 1; k++) {
-    sumL += r[order[k]];
-    const nL = k + 1, nR = n - nL, gain = sumL ** 2 / nL + (sum - sumL) ** 2 / nR; // bigger = less squared error left
-    if (!best || gain > best.gain) best = { gain, cut: (xs[order[k]] + xs[order[k + 1]]) / 2, left: sumL / nL, right: (sum - sumL) / nR };
-  }
-  return (x) => (x < best.cut ? best.left : best.right);
-}
+# data: x in −1…1, y a noisy curve
+truth = lambda x: 0.8 * np.sin(2.5 * x) + 0.3 * x
+x = rng.uniform(-1, 1, 200); y = truth(x) + 0.25 * (rng.random(200) + rng.random(200) + rng.random(200) - 1.5)
+xt, yt, xv, yv = x[:150], y[:150], x[150:], y[150:]
 
-const eta = 0.1, trees = [], F = (x) => trees.reduce((s, h) => s + eta * h(x), 0);
-const mse = (set) => set.reduce((s, p) => s + (p.y - F(p.x)) ** 2, 0) / set.length;
-const rows = [];
-for (let m = 1; m <= 200; m++) {
-  const r = train.map((p) => p.y - F(p.x)); // residuals: what's still wrong
-  trees.push(stump(train.map((p) => p.x), r));
-  if ([1, 5, 20, 50, 100, 200].includes(m)) rows.push({ trees: m, "train MSE": +mse(train).toFixed(4), "validation MSE": +mse(val).toFixed(4) });
-}
-table(rows);
-print("Each stump alone is a single step; 200 of them, each nudging by 10%, trace a smooth curve.");
+def stump(xs, r):
+    "One cut, a value on each side: the cut that best fits the residuals r."
+    order = np.argsort(xs); rs = r[order]
+    n = len(r); nL = np.arange(1, n); sumL = np.cumsum(rs)[:-1]
+    gain = sumL ** 2 / nL + (rs.sum() - sumL) ** 2 / (n - nL)          # bigger = less squared error left
+    k = np.argmax(gain)
+    cut = (xs[order[k]] + xs[order[k + 1]]) / 2
+    left, right = sumL[k] / nL[k], (rs.sum() - sumL[k]) / (n - nL[k])
+    return lambda q: np.where(q &lt; cut, left, right)
+
+eta, trees, rows = 0.1, [], []
+F = lambda q: sum(eta * h(q) for h in trees) if trees else np.zeros_like(q)
+for m in range(1, 201):
+    trees.append(stump(xt, yt - F(xt)))                                  # fit what's still wrong
+    if m in (1, 5, 20, 50, 100, 200):
+        rows.append((m, np.mean((yt - F(xt)) ** 2), np.mean((yv - F(xv)) ** 2)))
+print("Each stump alone is a single step; 200 of them, each nudging by 10%, trace a smooth curve.")
+
+from sklearn.ensemble import GradientBoostingRegressor                  # the same algorithm, as used at work
+gb = GradientBoostingRegressor(n_estimators=200, learning_rate=0.1, max_depth=1).fit(xt[:, None], yt)
+print("scikit-learn, 200 stumps: validation MSE", round(np.mean((yv - gb.predict(xv[:, None])) ** 2), 4))
+pd.DataFrame(rows, columns=["trees", "train MSE", "validation MSE"]).set_index("trees").round(4)
 </textarea></div>
 
   <h2>4. When to use what</h2>

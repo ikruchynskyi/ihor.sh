@@ -24,7 +24,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 4 · Stage 3: classic ML and judging models</p>
   <h1>Confidence and tests: A/B testing</h1>
   <p class="lede">Your new model scores 85% on the test set; the old one scored 82%. Ship it? Maybe the test set happened to suit it. Every number measured on a sample wobbles, and this lesson is about how much: confidence intervals that say how far off an estimate might be, tests that ask whether a difference is real or luck, and the sample sizes that make the answer trustworthy. These are the tools behind every A/B test in production and every "B beats A" claim in a paper.</p>
@@ -106,26 +106,26 @@
   <h2>5. Peeking ruins the test</h2>
   <p>The 5% false-positive promise holds for <b>one</b> look at a pre-planned sample size. Checking an A/B test every day and stopping the moment \(p < 0.05\) gives noise many chances to cross the line. This simulation runs 1000 <b>A/A tests</b> (both versions identical, so every "win" is false) and peeks after every 100 visitors:</p>
   <div class="code" data-title="Run it: how peeking inflates false positives"><textarea>
-const Phi = (z) => 0.5 * (1 + Math.tanh(0.7978845608 * (z + 0.044715 * z ** 3)));   // close approximation of the normal CDF
-const pTwoSided = (z) => 2 * (1 - Phi(Math.abs(z)));
+import numpy as np
+from scipy import stats
+rng = np.random.default_rng()
 
-function aaTest(visitorsPerArm, peekEvery, rate = 0.1) {
-  let a = 0, b = 0;
-  for (let n = 1; n <= visitorsPerArm; n++) {
-    a += Math.random() < rate; b += Math.random() < rate;                     // the same rate: no real difference
-    if (n % peekEvery === 0 || n === visitorsPerArm) {
-      const pa = a / n, pb = b / n, se = Math.sqrt((pa * (1 - pa) + pb * (1 - pb)) / n);
-      if (se > 0 && pTwoSided((pb - pa) / se) < 0.05) return true;            // "significant": stop and ship
-      if (peekEvery >= visitorsPerArm) return false;
-    }
-  }
-  return false;
-}
-for (const peek of [5000, 1000, 100]) {
-  let wins = 0;
-  for (let t = 0; t < 1000; t++) wins += aaTest(5000, peek);
-  print(`look every ${peek} visitors: ${(wins / 10).toFixed(1)}% of identical tests declared a winner`);
-}
+def false_winners(peek_every, tests=1000, visitors=5000, rate=0.1):
+    "Run identical A/A tests (no real difference) and stop at the first look with p &lt; 0.05."
+    a = rng.random((tests, visitors)) &lt; rate; b = rng.random((tests, visitors)) &lt; rate   # every visitor of every test
+    looks = np.arange(peek_every, visitors + 1, peek_every)
+    n = looks[None, :]
+    pa, pb = a.cumsum(1)[:, looks - 1] / n, b.cumsum(1)[:, looks - 1] / n             # conversion rates at each look
+    se = np.sqrt((pa * (1 - pa) + pb * (1 - pb)) / n)
+    p = 2 * stats.norm.sf(np.abs(pb - pa) / np.where(se &gt; 0, se, np.inf))
+    return (p &lt; 0.05).any(axis=1).mean()                                                # declared a winner at any look
+
+for peek in [5000, 1000, 100]:
+    print(f"look every {peek} visitors: {100 * false_winners(peek):.1f}% of identical tests declared a winner")
+
+# Comparing two models on the same test set: McNemar's exact test on the disagreements
+b_only, c_only = 17, 33          # A right &amp; B wrong, A wrong &amp; B right
+print("McNemar exact p =", round(stats.binomtest(c_only, b_only + c_only, 0.5).pvalue, 4))
 </textarea></div>
   <div class="q" data-answer="c">
     <p>The same trap shows up in ML. You try 20 hyperparameter settings and report the best one's test score. What's wrong?</p>

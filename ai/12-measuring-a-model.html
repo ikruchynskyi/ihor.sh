@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-<main>
+<main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Chapter 12 · Stage 3: classic ML and judging models</p>
   <h1>Measuring a model</h1>
   <p class="lede">"It's 99% accurate" is the most common way an ML project fools its own team. A model's quality isn't one number: it depends on how rare the thing you're looking for is, where you draw the line between yes and no, and what each kind of mistake costs. This chapter is the vocabulary for saying what a classifier is actually good for.</p>
@@ -82,21 +82,27 @@
   <p>The bars show, for each bin of predicted probability, how often fraud really happened. On the diagonal, the model means what it says. The <b>expected calibration error</b> (ECE) is the average gap, weighted by how many predictions fell in each bin; with rare fraud nearly every prediction sits in the lowest bin, so look at the confident ones too (the readout), where overconfidence hurts. Temperature doesn't change the ranking, so the AUC stays exactly the same: calibration and discrimination are different properties.</p>
 
   <div class="code" data-title="Build it: confusion matrix, precision, recall and AUC from scratch"><textarea>
-// labels (1 = fraud) and a model's scores for 12 payments
-const y = [0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0];
-const s = [0.1, 0.4, 0.35, 0.2, 0.8, 0.3, 0.7, 0.9, 0.05, 0.15, 0.6, 0.45];
+import numpy as np
+import pandas as pd
 
-function confusion(t) {
-  let tp = 0, fp = 0, tn = 0, fn = 0;
-  y.forEach((yi, i) => { const flag = s[i] >= t; if (flag && yi) tp++; else if (flag) fp++; else if (yi) fn++; else tn++; });
-  return { t, tp, fp, tn, fn, precision: +(tp / (tp + fp || 1)).toFixed(2), recall: +(tp / (tp + fn)).toFixed(2), accuracy: +((tp + tn) / y.length).toFixed(2) };
-}
-table([0.3, 0.5, 0.7].map(confusion));
+# labels (1 = fraud) and a model's scores for 12 payments
+y = np.array([0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+s = np.array([0.1, 0.4, 0.35, 0.2, 0.8, 0.3, 0.7, 0.9, 0.05, 0.15, 0.6, 0.45])
 
-// AUC: the share of (fraud, honest) pairs where the fraud scores higher (ties count half)
-let good = 0, pairs = 0;
-y.forEach((a, i) => y.forEach((b, j) => { if (a === 1 && b === 0) { pairs++; good += s[i] > s[j] ? 1 : s[i] === s[j] ? 0.5 : 0; } }));
-print(`AUC = ${good} / ${pairs} = ${(good / pairs).toFixed(3)}`);
+def confusion(t):
+    flag = s &gt;= t
+    tp, fp = (flag &amp; (y == 1)).sum(), (flag &amp; (y == 0)).sum()
+    fn, tn = (~flag &amp; (y == 1)).sum(), (~flag &amp; (y == 0)).sum()
+    return dict(t=t, tp=tp, fp=fp, tn=tn, fn=fn, precision=tp / max(tp + fp, 1), recall=tp / (tp + fn), accuracy=(tp + tn) / len(y))
+
+# AUC: the share of (fraud, honest) pairs where the fraud scores higher (ties count half)
+diff = s[y == 1][:, None] - s[y == 0][None, :]          # every fraud score minus every honest score
+auc = np.mean((diff &gt; 0) + 0.5 * (diff == 0))
+from sklearn.metrics import roc_auc_score, precision_score, recall_score, confusion_matrix
+print(f"AUC = {auc:.3f}   scikit-learn: {roc_auc_score(y, s):.3f}")
+print("at t = 0.5, scikit-learn: precision", precision_score(y, s &gt;= 0.5), " recall", recall_score(y, s &gt;= 0.5),
+      " confusion [[tn, fp], [fn, tp]] =", confusion_matrix(y, s &gt;= 0.5).tolist())
+pd.DataFrame([confusion(t) for t in (0.3, 0.5, 0.7)]).round(2)
 </textarea></div>
 
   <h2>6. What to report</h2>

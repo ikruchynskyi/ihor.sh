@@ -34,6 +34,27 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-softmax-cross-entropy-and-a-10-d"
  },
+ "11-overfitting.html": {
+  "notebook": "11-overfitting.ipynb",
+  "title": "AI from scratch: overfitting, regularization and l",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/11-overfitting.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-overfitting-regularization-and-l"
+ },
+ "12-measuring-a-model.html": {
+  "notebook": "12-measuring-a-model.ipynb",
+  "title": "AI from scratch: measuring a classifier properly",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/12-measuring-a-model.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-measuring-a-classifier-properly"
+ },
+ "13-trees-and-boosting.html": {
+  "notebook": "13-trees-and-boosting.ipynb",
+  "title": "AI from scratch: trees, forests and boosting on ho",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/13-trees-and-boosting.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-trees-forests-and-boosting-on-ho"
+ },
  "c1-derivatives.html": {
   "notebook": "c1-derivatives.ipynb",
   "title": "AI from scratch: derivatives and gradient checks",
@@ -103,6 +124,13 @@
   "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p3-mle-and-map.ipynb",
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-maximum-likelihood-priors-and-ri"
+ },
+ "p4-confidence-and-tests.html": {
+  "notebook": "p4-confidence-and-tests.ipynb",
+  "title": "AI from scratch: is model B really better?",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/p4-confidence-and-tests.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-is-model-b-really-better"
  },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",
