@@ -43,7 +43,17 @@ const css = `
 .code .bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 .code .bar b { flex: 1; color: var(--fg); font-weight: 600; }
 .code .bar button { font-size: 0.8rem !important; padding: 3px 10px !important; }
-.code textarea { display: block; width: 100%; box-sizing: border-box; border: 0; margin: 0; padding: 10px 12px; resize: vertical; background: #0f1218; color: #d7dde5; font: 13.5px/1.55 ui-monospace, Menlo, monospace; tab-size: 2; white-space: pre; overflow: auto; outline: none; }
+/* the editor: a transparent textarea over a syntax-colored copy of its text (same metrics, kept in sync) */
+.code .ed { position: relative; background: #0f1218; }
+.code .ed > textarea, .code .ed > pre { display: block; width: 100%; box-sizing: border-box; margin: 0 !important; border: 0 !important; border-radius: 0 !important; padding: 10px 12px !important; font: 13.5px/1.55 ui-monospace, Menlo, monospace !important; letter-spacing: 0 !important; tab-size: 4; white-space: pre; overflow: auto; outline: none; box-shadow: none !important; }
+.code .ed > pre { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: transparent !important; color: #d7dde5; }
+.code .ed > pre code { all: unset; font: inherit !important; white-space: pre; }
+.code .ed > textarea { position: relative; resize: vertical; background: transparent !important; color: transparent !important; caret-color: #f4d35e; }
+.code .ed > textarea::selection { background: rgba(88, 196, 221, 0.35); color: transparent; }
+.code .token.comment { color: #7d8796; font-style: italic; } .code .token.string, .code .token.triple-quoted-string { color: #83c167; }
+.code .token.number, .code .token.boolean { color: #f4d35e; } .code .token.keyword { color: #fc6255; }
+.code .token.builtin, .code .token.function { color: #58c4dd; } .code .token.decorator, .code .token.class-name { color: #e6a3f0; }
+.code .token.punctuation, .code .token.operator { color: #a8b1be; }
 .code .out { margin: 0; padding: 8px 12px; font: 13px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; border-top: 1px solid var(--line); max-height: 340px; overflow: auto; }
 .code .out:empty { display: none; }
 .code .out .err { color: var(--red, #e03131); }
@@ -108,7 +118,15 @@ function setupQuestion(q) {
 }
 
 // ---------- runnable code ----------
-const blocks = new Map();
+const blocks = new Map(), painters = [];
+// syntax colors by Prism (cdnjs), loaded once if the page has code boxes; boxes show plain text until it arrives
+function loadPrism() {
+  window.Prism = { manual: true };
+  const base = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/";
+  const load = (src) => new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = base + src; sc.onload = ok; sc.onerror = no; document.head.append(sc); });
+  load("components/prism-core.min.js").then(() => load("components/prism-clike.min.js")).then(() => Promise.all([load("components/prism-python.min.js"), load("components/prism-javascript.min.js")]))
+    .then(() => painters.forEach((p) => p())).catch(() => {});
+}
 // Python by Pyodide, loaded once per page on the first run (about 10 MB, then cached by the browser)
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
 let pyReady = null;
@@ -138,6 +156,12 @@ function setupCode(box) {
   const isPy = box.closest("[data-lang]")?.dataset.lang === "python";
   const ta = box.querySelector("textarea"), original = ta.value.replace(/^\n/, "").replace(/\s+$/, "");
   ta.value = original; ta.spellcheck = false; ta.setAttribute("autocapitalize", "off");
+  const ed = document.createElement("div"), hl = document.createElement("pre"), hlCode = document.createElement("code");
+  ed.className = "ed"; hl.setAttribute("aria-hidden", "true"); hl.append(hlCode); ta.before(ed); ed.append(hl, ta);
+  const paint = () => { hlCode.textContent = ta.value + "\n"; window.Prism?.highlightElement?.(hlCode); hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; };
+  hlCode.className = `language-${isPy ? "python" : "javascript"}`;
+  ta.addEventListener("input", paint); ta.addEventListener("scroll", () => { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
+  painters.push(paint); paint();
   ta.rows = Math.min(28, original.split("\n").length + 1);
   const bar = document.createElement("div"); bar.className = "bar";
   bar.innerHTML = `<b>${box.dataset.title ?? "Try it: edit the code and run it"}</b><button class="run">▶ Run</button><button class="reset">Reset</button>`;
@@ -199,10 +223,10 @@ function setupCode(box) {
     } catch (e) { quiet.on = false; line(`${e.name}: ${e.message}`, "err"); }
   };
   bar.querySelector(".run").onclick = run;
-  bar.querySelector(".reset").onclick = () => { ta.value = original; out.replaceChildren(); };
+  bar.querySelector(".reset").onclick = () => { ta.value = original; out.replaceChildren(); paint(); };
   ta.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
-    if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); ta.setRangeText("  ", ta.selectionStart, ta.selectionEnd, "end"); }
+    if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); ta.setRangeText(isPy ? "    " : "  ", ta.selectionStart, ta.selectionEnd, "end"); paint(); }
   });
 }
 
@@ -219,6 +243,7 @@ function typeset() {
 
 document.querySelectorAll(".q").forEach(setupQuestion);
 document.querySelectorAll(".code").forEach(setupCode);
+if (painters.length) loadPrism();
 typeset();
 let solvedOnce = false;
 new MutationObserver(() => { if (!solvedOnce && document.querySelectorAll(".q.solved").length === document.querySelectorAll(".q").length && document.querySelectorAll(".q").length > 2) { solvedOnce = true; say("Every question on this page solved!", "happy"); } })
