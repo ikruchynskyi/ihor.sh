@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meteor Pass Recorder</title>
-  <meta name="description" content="Catch a Meteor-M weather satellite pass with an RTL-SDR: tune 137.9 or 137.1 MHz, watch the LRPT signal on a waterfall, record the IQ in your browser and decode it into a picture." />
+  <title>Meteor &amp; Weather Satellite Recorder</title>
+  <meta name="description" content="Catch Meteor-M2 3 and 4 LRPT weather satellite passes with an RTL-SDR: live orbit tracking map, waterfall, decoding to pictures in the browser, and IQ baseband recording for SatDump." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 8px 0 16px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
     #wf { width: 100%; max-width: 640px; height: 300px; background: #000; border-radius: 8px; display: block; }
@@ -13,8 +14,16 @@
     #pics figure { margin: 10px 0; font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
     #c-pic { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; margin-top: 8px; }
     #pics canvas { width: 100%; max-width: 784px; display: block; background: #000; border-radius: 6px; }
-    .passes .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 6px; }
+    #sat-map { width: 100%; height: 340px; border-radius: 8px; border: 1px solid var(--line); margin: 10px 0; background: #0b0f19; }
+    .dark-tiles { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); }
+    .sat-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 0.85rem; color: var(--muted); }
+    .sat-meta b { color: var(--fg); }
+    .rf-hint { font-size: 0.82rem; color: var(--muted); border-left: 3px solid #ff9f1c; padding: 6px 10px; margin: 10px 0 6px; background: rgba(255, 159, 28, 0.06); border-radius: 0 6px 6px 0; line-height: 1.4; }
+    .passes .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 8px; }
     .passes ul { margin: 4px 0; padding-left: 18px; }
+    #saves { list-style: none; padding: 0; margin: 8px 0; }
+    #saves li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border: 1px solid var(--line); font-size: 0.85rem; }
+    #saves a { word-break: break-all; }
     #pics canvas, #c-pic { cursor: zoom-in; }
     #zoom { width: min(96vw, 1600px); max-height: 92vh; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); }
     #zoom::backdrop { background: rgb(0 0 0 / 0.7); }
@@ -22,36 +31,61 @@
     .zbox { overflow: auto; max-height: calc(92vh - 56px); }
     #z-img { display: block; image-rendering: auto; max-width: none; }
     .status { font: 0.9rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); min-height: 1.4em; }
-  </style>
+    #sat { max-width: calc(100vw - 130px); }   /* long names would widen the page on phones */
+  #lvl[data-bad="true"] { color: #e03131; font-weight: 600; }
+</style>
 </head>
 <body>
 <main>
   <p class="eyebrow"><a href="./">ihor.sh · radio</a></p>
-  <h1>Meteor pass recorder</h1>
-  <p>Russia's Meteor-M satellites send weather pictures as <b>LRPT</b>: digital QPSK, 72,000 symbols a second, about 120 kHz wide. Start the dongle a minute before the pass, press record, and stop when it sets. The page decodes the picture live as the signal comes in (Doppler is tracked automatically, no retuning), and the IQ file lets you decode it again later. Pass times are just below; how LRPT works is <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
+  <h1>Meteor &amp; weather satellite recorder</h1>
+  <p>Catch Russia's <b>Meteor-M2 3 and 4</b> weather satellites with an RTL-SDR: digital LRPT pictures at 137.9 MHz (offset QPSK, 72,000 symbols/s, about 110 kHz wide). Watch the orbit on the map, decode the pictures right here, and record the raw signal to process in <a href="https://github.com/SatDump/SatDump">SatDump</a>. (NOAA 15, 18 and 19, the analog APT satellites, were switched off in 2025.) How digital satellite transmission works is in <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
 
   <div class="pane passes">
-    <b>Next passes</b> <span class="muted">(in your time; ≥ 40° up decodes best)</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <b>Live Satellite Orbit &amp; Passes</b>
+      <span class="muted" id="map-live-tag">🛰️ Live position updating every 10s</span>
+    </div>
+
+    <div id="sat-map" aria-label="Live satellite track, horizon reach and current position"></div>
+    <div class="sat-meta" id="sat-info">
+      <span>Subpoint: <b id="sat-subpoint">Computing…</b></span>
+      <span>Altitude: <b id="sat-alt">…</b></span>
+      <span>Elevation from NYC: <b id="sat-el">…</b></span>
+      <span>Next pass: <b id="sat-next-hint">Computing…</b></span>
+    </div>
+
     <div class="cols">
-      <div><span class="muted">Over the server's dongle in New York: what you hear with "Use the server's dongle", wherever you are</span><ul id="p-srv"><li>Computing…</li></ul></div>
+      <div><span class="muted">Over server dongle in New York: what you hear with "Use server dongle"</span><ul id="p-srv"><li>Computing…</li></ul></div>
       <div><span class="muted">Over you <span id="p-me-where"></span>: for your own USB dongle</span><ul id="p-me"><li><button type="button" id="locate">📍 Use my location</button></li></ul></div>
     </div>
   </div>
 
   <div class="pane">
-    <label>Satellite <select id="sat"><option value="meteor-m2-3" data-f="137.9">Meteor-M2 3 · 137.900 MHz</option><option value="meteor-m2-4" data-f="137.9">Meteor-M2 4 · 137.900 MHz</option><option value="meteor-m2-4" data-f="137.1">Meteor-M2 4 · 137.100 MHz (its backup)</option></select></label>
+    <label>Satellite <select id="sat">
+      <option value="meteor-m2-3" data-f="137.9">Meteor-M2 3 · 137.900 MHz (LRPT 72k)</option>
+      <option value="meteor-m2-4" data-f="137.9">Meteor-M2 4 · 137.900 MHz (LRPT 72k)</option>
+      <option value="meteor-m2-4" data-f="137.1">Meteor-M2 4 backup · 137.100 MHz (LRPT 72k)</option>
+    </select></label>
+
+    <div class="rf-hint">
+      <b>NYC Reception Note:</b> In NYC, FM broadcast filters (like Nooelec Flamingo) notch out 88–108 MHz, but high RF environments also have heavy pager transmitters (152–158 MHz), NOAA weather radio (162.4–162.55 MHz) and aviation (118–137 MHz). If RTL-SDR gain is set too high (e.g. max 49 dB), these out-of-band signals saturate the 8-bit ADC and bury the satellite in intermodulation noise (destroying the 4-dot constellation). Keep dongle gain moderate (about 20–36 dB) and watch the input level line under the recording button: it warns when samples clip. Meteor LRPT decodes best on passes above 35° with a clear view of the sky.
+    </div>
+
     <div id="rd-lab"></div>
     <button class="btn" id="rec" type="button">Start recording</button>
+    <label class="muted"><input type="checkbox" id="live" checked> decode live</label>
+    <p class="status" id="lvl">Input level: start the dongle to measure it.</p>
     <p class="status" id="clk-srv"></p>
     <p class="status" id="clk-me" hidden></p>
   </div>
 
-  <canvas id="wf" width="640" height="300" aria-label="Waterfall around the satellite's frequency; the dashed lines mark the LRPT signal's width"></canvas>
+  <canvas id="wf" width="640" height="300" aria-label="Waterfall around satellite frequency; dashed lines mark LRPT signal width"></canvas>
   <p class="status" id="status" aria-live="polite">Start the dongle, then record. The signal is a flat-topped hump between the yellow lines, sliding a few kHz with Doppler.</p>
 
-  <h2>Pictures</h2>
-  <div class="dec"><canvas id="iq" width="160" height="160" aria-label="QPSK constellation: four tight dots when the signal is clean"></canvas><p class="status" id="dstat">The decoder runs while the dongle is on. Four tight dots in the square mean a clean signal; pictures appear below, one per channel.</p></div>
-  <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin"> (8-bit IQ centered on the satellite; sample rate from the file name, else <input id="frate" type="number" value="240000" style="width:7em"> S/s)</p>
+  <h2>Pictures &amp; Demodulator</h2>
+  <div class="dec"><canvas id="iq" width="160" height="160" aria-label="Constellation: four tight dots when the signal is clean"></canvas><p class="status" id="dstat">The decoder runs while the dongle is on. Four tight dots in the square mean a clean signal; pictures appear below, one per channel.</p></div>
+  <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin,.f32,.cf32"> (8-bit unsigned or 32-bit float IQ centered on satellite; sample rate from file name, else <input id="frate" type="number" value="204800" style="width:7em"> S/s)</p>
   <div id="pics"></div>
   <div id="combine" class="pane" hidden>
     <b>Combine channels into color</b>
@@ -72,11 +106,16 @@
 
   <h2>Turning it into a picture</h2>
   <ul>
-    <li>This page decodes in your browser (no Reed-Solomon error correction yet, so damaged packets show as streaks). For the best result, open the file in <a href="https://github.com/SatDump/SatDump">SatDump</a>: <i>Offline processing</i> → <i>METEOR M2-x LRPT 72k</i>, baseband format <b>cu8</b>, sample rate from the file name. It demodulates, Viterbi-decodes, de-randomizes and decodes Meteor's JPEG into the visible and infrared channels.</li>
-    <li>Antenna: a V-dipole (two 53 cm rods at 120°, horizontal, outdoors) beats anything on a windowsill. Passes under 20° rarely decode.</li>
-    <li>Files are about 30 MB a minute and live only in this tab (nothing is uploaded): a recording stops itself at 20 minutes, and the tab keeps the last 3. Download the ones you want to keep.</li>
+    <li>This page decodes Meteor LRPT directly in your browser. For advanced offline processing, open recorded <code>.cu8</code> files in <a href="https://github.com/SatDump/SatDump" target="_blank" rel="noopener">SatDump</a>:
+      <ul>
+        <li><b>Meteor-M2 3 / 4:</b> Select <i>Offline processing</i> &rarr; <i>METEOR M2-x LRPT 72k</i>, baseband format <b>cu8</b>, and the sample rate in the file name (204800 with a USB dongle at its usual 1.024 MS/s).</li>
+      </ul>
+    </li>
+    <li>Antenna: a horizontal V-dipole (two 53 cm rods at 120° angle, oriented north-south) or QFH beats a whip antenna on a windowsill. Passes below 20° are subject to terrestrial obstruction and urban RF interference.</li>
+    <li>Files are about 25 MB a minute and live directly in browser memory (nothing is uploaded to a remote server): recordings stop automatically at 20 minutes, and the tab keeps the last 3. Click Download to save to disk.</li>
   </ul>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module" src="/src/meteor-app.ts"></script>
 </body>
 </html>

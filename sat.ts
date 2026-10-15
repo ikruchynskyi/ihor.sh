@@ -171,6 +171,8 @@ export const HAM_SATS: HamSat[] = [
   { id: "tevel2", catnr: 63217, name: "TEVEL-2 (nine satellites)", kind: "FM repeater", up: "145.970 MHz FM", down: "436.400 MHz FM", notes: "Nine Israeli school satellites (TEVEL2-1…9) share one frequency pair; one is on at a time. Passes shown for TEVEL2-1.", status: "active, one at a time" },
   { id: "meteor-m2-3", catnr: 57166, name: "Meteor-M2 3", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps)", notes: "Digital weather pictures you can decode: the radio course's LRPT chapter does exactly this.", status: "active", pictures: "meteor.html?sat=meteor-m2-3" },
   { id: "meteor-m2-4", catnr: 59051, name: "Meteor-M2 4", kind: "weather pictures", down: "137.900 MHz LRPT (72 kbps); 137.100 backup", notes: "The newer Meteor, on the same frequency as M2 3 (their passes rarely overlap); if the waterfall is empty at 137.9, try its backup 137.1.", status: "active", pictures: "meteor.html?sat=meteor-m2-4" },
+  { id: "cas-4a", catnr: 42761, name: "CAS-4A (Zhongyou 1A)", kind: "linear transponder", up: "145.870–145.890 MHz", down: "435.220–435.240 MHz SSB/CW (inverting) · 435.210 CW telemetry", notes: "Linear transponder on a Chinese microsatellite.", status: "active" },
+  { id: "cas-4b", catnr: 42759, name: "CAS-4B (Zhongyou 1B)", kind: "linear transponder", up: "145.925–145.945 MHz", down: "435.280–435.300 MHz SSB/CW (inverting) · 435.270 CW telemetry", notes: "Linear transponder on a Chinese microsatellite.", status: "active" },
   { id: "sonate-2", catnr: 59112, name: "SONATE-2", kind: "SSTV pictures", down: "145.880 MHz FM SSTV (Martin M1) · APRS digipeater", notes: "A Würzburg university cubesat that sends its own camera's pictures as SSTV.", status: "pictures when its camera schedule runs; check SatNOGS", pictures: "sstv.html?f=145.880&sat=sonate-2" },
 ];
 
@@ -184,11 +186,14 @@ async function loadTles() {
   if (tles.size && Date.now() - tlesAt < 6 * 3600e3) return;
   const saved = JSON.parse(await readFile(TLE_FILE, "utf8").catch(() => "null")) as { at: number; sets: [string, string, string][] } | null;
   const use = (sets: [string, string, string][], at: number) => { for (const [name, l1, l2] of sets) tles.set(Number(l1.slice(2, 7)), parseTle(l1, l2, name)); tlesAt = at; };
-  if (saved && Date.now() - saved.at < 6 * 3600e3) return use(saved.sets, saved.at);
+  if (saved && Date.now() - saved.at < 6 * 3600e3) {
+    use(saved.sets, saved.at);
+    if (HAM_SATS.every((s) => tles.has(s.catnr))) return;
+  }
   const sets: [string, string, string][] = [];
   try {
-    for (const group of ["amateur", "stations", "weather"]) {
-      const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`, { headers: { "user-agent": "ihor.sh (+https://ihor.sh/radio/)" }, signal: AbortSignal.timeout(20_000) });
+    for (const group of ["GROUP=amateur", "GROUP=stations", "GROUP=weather"]) {
+      const r = await fetch(`https://celestrak.org/NORAD/elements/gp.php?${group}&FORMAT=tle`, { headers: { "user-agent": "ihor.sh (+https://ihor.sh/radio/)" }, signal: AbortSignal.timeout(20_000) });
       if (!r.ok) throw new Error(`CelesTrak ${r.status}`);
       const lines = (await r.text()).trim().split(/\r?\n/).map((x) => x.trim());
       for (let i = 0; i + 2 < lines.length; i += 3) sets.push([lines[i], lines[i + 1], lines[i + 2]]);

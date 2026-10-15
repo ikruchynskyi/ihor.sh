@@ -1,6 +1,7 @@
 // CCSDS Reed-Solomon (255,223): 32 check bytes per 223 data bytes fix up to 16 wrong bytes anywhere in the block.
 // The CCSDS flavor (as in Phil Karn's libfec, which every Meteor/CCSDS decoder descends from): field polynomial
-// x⁸+x⁷+x²+x+1, roots α^(11·(112+i)), and bytes on the wire in the "dual basis" (a change of coordinates, Tal below).
+// x⁸+x⁷+x²+x+1, roots α^(11·(112+i)), and bytes on the wire in the "dual basis" (a change of coordinates, Tal below)
+// or, as Meteor-M2 3 and 4 send them, in the plain ("conventional") basis: `dual` picks which.
 // Berlekamp–Massey finds the error locator, Chien search its roots, Forney the error values.
 const NN = 255, NROOTS = 32, FCR = 112, PRIM = 11, A0 = NN;
 const alpha = new Uint8Array(256), index = new Uint8Array(256);
@@ -23,21 +24,21 @@ for (let i = 0; i < 256; i++) {
   toDual[i] = v; fromDual[v] = i;
 }
 
-/** 223 data bytes (dual basis) → 32 check bytes (dual basis). */
-export function rsEncode(data: Uint8Array): Uint8Array {
-  const d = data.map((v) => fromDual[v]), par = new Uint8Array(NROOTS);
+/** 223 data bytes → 32 check bytes, both in the dual basis (or the conventional one). */
+export function rsEncode(data: Uint8Array, dual = true): Uint8Array {
+  const d = dual ? data.map((v) => fromDual[v]) : data.slice(), par = new Uint8Array(NROOTS);
   for (let i = 0; i < NN - NROOTS; i++) {
     const fb = index[d[i] ^ par[0]];
     if (fb !== A0) for (let j = 1; j < NROOTS; j++) par[j] ^= alpha[mod(fb + gen[NROOTS - j])];
     par.copyWithin(0, 1);
     par[NROOTS - 1] = fb !== A0 ? alpha[mod(fb + gen[0])] : 0;
   }
-  return par.map((v) => toDual[v]);
+  return dual ? par.map((v) => toDual[v]) : par;
 }
 
 /** Corrects a 255-byte block in place. Returns how many bytes were wrong, or -1 if there are too many to fix. */
-export function rsDecode(block: Uint8Array): number {
-  const d = block.map((v) => fromDual[v]), s = new Uint8Array(NROOTS);
+export function rsDecode(block: Uint8Array, dual = true): number {
+  const d = dual ? block.map((v) => fromDual[v]) : block.slice(), s = new Uint8Array(NROOTS);
   // syndromes: the block evaluated at each root; all zero means no errors
   s.fill(d[0]);
   for (let j = 1; j < NN; j++) for (let i = 0; i < NROOTS; i++) s[i] = s[i] ? d[j] ^ alpha[mod(index[s[i]] + (FCR + i) * PRIM)] : d[j];
@@ -78,16 +79,16 @@ export function rsDecode(block: Uint8Array): number {
     let den = 0; for (let i = Math.min(deg, NROOTS - 1) & ~1; i >= 0; i -= 2) if (lam[i + 1] !== A0) den ^= alpha[mod(lam[i + 1] + i * root[j])];
     if (num1 && den) d[loc[j]] ^= alpha[mod(index[num1] + index[num2] + NN - index[den])];
   }
-  for (let i = 0; i < NN; i++) block[i] = toDual[d[i]];
+  for (let i = 0; i < NN; i++) block[i] = dual ? toDual[d[i]] : d[i];
   return deg;
 }
 
 /** A CADU body (1020 bytes) is 4 codewords interleaved byte by byte. Fixes it in place; -1 if any codeword can't be fixed. */
-export function rsDecodeInterleaved(f: Uint8Array, depth = 4): number {
+export function rsDecodeInterleaved(f: Uint8Array, depth = 4, dual = true): number {
   let total = 0; const cw = new Uint8Array(NN);
   for (let c = 0; c < depth; c++) {
     for (let j = 0; j < NN; j++) cw[j] = f[j * depth + c];
-    const n = rsDecode(cw); if (n < 0) return -1;
+    const n = rsDecode(cw, dual); if (n < 0) return -1;
     total += n; for (let j = 0; j < NN; j++) f[j * depth + c] = cw[j];
   }
   return total;

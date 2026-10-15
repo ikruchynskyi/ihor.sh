@@ -1,5 +1,5 @@
-// The real Meteor-M LRPT downlink (Meteor-M2 3 at 137.9 MHz, 72k symbols/s), from IQ samples to pictures:
-// QPSK demod (lrpt.ts's chain at any sample rate) → Viterbi in all 8 QPSK ambiguities until the sync word shows →
+// The real Meteor-M LRPT downlink (Meteor-M2 3 and 4 at 137.9 MHz, 72k symbols/s), from IQ samples to pictures:
+// offset-QPSK demod (lrpt.ts's chain at any sample rate) → Viterbi in all 8 ambiguities → NRZ-M until the sync word shows →
 // 1024-byte CADUs, de-randomized → VCDUs (VCID 5) → CCSDS packets → per-channel (APID 64–69) strips of 14 8×8 blocks,
 // Huffman-coded like JPEG with the quality factor in each packet.
 // Reed-Solomon (rs.ts) repairs each frame; until one frame has passed it (proof that the code is what we think), frames it
@@ -63,19 +63,31 @@ export function decodeMcus(d: Uint8Array, q: number, out: Uint8Array): number {
 export class Channel {
   rows: Uint8Array[] = []; // 8-pixel-high strips, WIDTH wide
   rowSeq: number[] = [];   // the packet counter (unwrapped) where each row's line starts: lines channels up for combining
-  rowMs: number[] = [];    // the satellite's clock (ms of its day) for each row: puts the picture on the map
-  private lastMcu = 999; private lastSeq = -1; private abs = -1;
+  rowMs: number[] = [];    // the satellite's clock (ms of its day) for each row, 0 for a lost line: puts the picture on the map
+  private lastMcu = 999; private lastSeq = -1; private abs = -1; private gaps: number[] = [];
   add(mcu: number, seq: number, px: Uint8Array, ms = 0) {
     // a new line of blocks: the position went back to the left, or the packet counter jumped further than the position
-    // (a line's other packets were lost). ponytail: whole lost lines aren't left as gaps, so the picture shrinks a little.
+    // (a line's other packets were lost)
     const steps = (mcu - this.lastMcu) / 14, jump = (seq - this.lastSeq + 16384) % 16384;
     this.abs = this.abs < 0 ? seq : this.abs + jump; // the 14-bit counter wraps every few minutes
-    if (mcu <= this.lastMcu || jump >= steps + 10) { this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(this.abs - mcu / 14); this.rowMs.push(ms); }
+    if (mcu <= this.lastMcu || jump >= steps + 10) {
+      const start = this.abs - mcu / 14, prev = this.rowSeq.at(-1);
+      if (prev !== undefined && start > prev) {
+        const period = this.period(); // counter steps per line, learned from the lines that arrived one after another
+        const missing = period ? Math.round((start - prev) / period) - 1 : 0, lost = missing <= MAX_FILL ? missing : 0;
+        for (let k = 1; k <= lost; k++) { this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(prev + k * period); this.rowMs.push(0); }
+        this.gaps.push(start - prev); if (this.gaps.length > 31) this.gaps.shift();
+      }
+      this.rows.push(new Uint8Array(WIDTH * 8)); this.rowSeq.push(start); this.rowMs.push(ms);
+    }
     this.lastMcu = mcu; this.lastSeq = seq;
     const row = this.rows[this.rows.length - 1];
     for (let y = 0; y < 8; y++) row.set(px.subarray(y * 112, y * 112 + 112).subarray(0, Math.min(112, WIDTH - mcu * 8)), y * WIDTH + mcu * 8);
   }
+  /** The usual counter gap between neighboring lines (the median, so lost lines don't skew it); 0 until two are seen. */
+  private period() { if (this.gaps.length < 2) return 0; const g = [...this.gaps].sort((a, b) => a - b); return g[g.length >> 1]; }
 }
+const MAX_FILL = 50; // lines a gap may stand for; a longer one (a counter glitch) isn't filled
 
 /** For each row of `base`, the row of `other` from the same scan line (-1 where `other` lost it). Each line is sent one
  *  channel after another, so their counters differ by a fixed offset: the most common gap to the other channel's nearest
@@ -145,43 +157,67 @@ export class Packets {
 }
 
 // ---------- IQ → symbols → frames ----------
+// Meteor-M2 3 and 4 send offset QPSK (Q runs half a symbol ahead of I), NRZ-M coded (a 1 is a change of bit), with the
+// Reed-Solomon bytes in the conventional basis: SatDump's "METEOR M2-x LRPT 72k" pipeline, which this follows.
+const ACQ_N = 8192;       // symbols per frequency measurement
+const ACQ_MIN_PEAK = 30;  // tallest z⁴ bin ÷ the average: noise alone gives about 10 (8192 bins), a signal at Es/N0 ≈ 1–2 dB about 30–40
+const MAX_FREQ = 0.8;     // rad/symbol ≈ ±9 kHz: Doppler (±3.3 kHz) plus any dongle's crystal error
+const SYNC_GAP = CADU_BITS + 32; // one sync word to the next
+
 export interface MeteorStats { symbols: number; freqHz: number; locked: boolean; frames: number; evm: number; rsFixed: number; rsBad: number; rsProven: boolean }
 export class MeteorReceiver {
   readonly packets = new Packets();
   stats: MeteorStats = { symbols: 0, freqHz: 0, locked: false, frames: 0, evm: 0, rsFixed: 0, rsBad: 0, rsProven: false };
   constellation: [number, number][] = [];
   private sps: number; private H: Float32Array; private mf: Float32Array; private y: number[] = []; private t: number; private rate: number;
-  private prevI = 0; private prevQ = 0; private agc = 1; private phase = 0; private freq = 0; private freqKnown = false; private acq: number[] = [];
-  private cphase = 0; private w = 0; private sinceAcq = 0;
-  // the 8 ambiguities: 4 rotations × (as sent | mirrored), each with its own Viterbi until one finds the sync word
-  private vit = Array.from({ length: 8 }, () => new Viterbi()); private hyp = -1; private inv = 0; private sr = new Uint32Array(8); private hits = new Uint8Array(8);
+  private prevI = 0; private prevQ = 0; private agc = 1;
+  // the oscillator that cancels the carrier, sample by sample: `freq` (rad/symbol) is set by the z⁴ measurement and then
+  // steered, with `phase`, by a carrier loop on every matched-filter sample, before I and Q are lined up
+  private phase = 0; private freq = 0; private freqKnown = false; private acq: number[] = []; private sinceAcq = 0;
+  // the 8 ambiguities. A 90° turn of offset QPSK swaps which channel runs half a symbol early, so it changes how the coded
+  // bits pair up, not only their signs: 4 pairings of this symbol's I and Q with each other or with the previous I ×
+  // 2 sign patterns (NRZ-M makes a full inversion harmless). Each gets its own Viterbi until one finds the sync word.
+  private vit = Array.from({ length: 8 }, () => new Viterbi()); private hyp = -1; private sr = new Uint32Array(8);
+  private nrz = new Uint8Array(8); private prevA = NaN;
+  private nbits = new Float64Array(8); private lastHit = new Float64Array(8).fill(-Infinity);
   private frameBits: number[] | null = null; private sinceSync = 0;
+  private rsDual: boolean | null = null; // which byte basis the Reed-Solomon code uses, once a frame proves it
 
   readonly fs: number;
   constructor(fs: number) {
     this.fs = fs; this.sps = fs / SYM_RATE; this.rate = this.sps; this.t = this.sps * 2 + 0.3;
-    this.H = rrc(0.6, 8, this.sps); this.mf = new Float32Array(2 * this.H.length);
+    this.H = rrc(0.5, 8, this.sps); this.mf = new Float32Array(2 * this.H.length);
   }
 
   /** Interleaved I/Q floats at `fs`, centered on the satellite's frequency. */
   push(x: Float32Array) {
-    const H = this.H, L = H.length, m = this.mf, dph = this.freq / this.sps;
+    const H = this.H, L = H.length, m = this.mf, y = this.y;
     for (let i = 0; i < x.length / 2; i++) {
-      this.phase -= dph; if (this.phase < -Math.PI) this.phase += TAU; else if (this.phase > Math.PI) this.phase -= TAU;
-      const c = Math.cos(this.phase), s = Math.sin(this.phase), I = x[2 * i] * c - x[2 * i + 1] * s, Q = x[2 * i] * s + x[2 * i + 1] * c;
+      this.phase += this.freq / this.sps;
+      if (this.phase > Math.PI) this.phase -= TAU; else if (this.phase < -Math.PI) this.phase += TAU;
+      const c = Math.cos(this.phase), s = Math.sin(this.phase), I = x[2 * i] * c + x[2 * i + 1] * s, Q = x[2 * i + 1] * c - x[2 * i] * s; // × e^(−j·phase)
       m.copyWithin(2, 0, 2 * L - 2); m[0] = I; m[1] = Q;
       let a = 0, b = 0; for (let j = 0; j < L; j++) { a += H[j] * m[2 * j]; b += H[j] * m[2 * j + 1]; }
-      this.y.push(a, b);
+      y.push(a, b);
+      if (this.freqKnown) { // carrier loop on every sample, before and independent of symbol timing (as SatDump does for OQPSK)
+        const err = (Math.sign(a) * b - Math.sign(b) * a) / (this.agc + 1e-12);
+        this.phase += (0.03 / this.sps) * err; this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + (0.0004 / this.sps) * err));
+      }
+      while (this.t + 2 < y.length / 2) this.timing();
     }
-    const y = this.y, at = (t: number) => { const k = Math.floor(t), f = t - k; return [y[2 * k] * (1 - f) + y[2 * k + 2] * f, y[2 * k + 1] * (1 - f) + y[2 * k + 3] * f]; };
-    while (this.t + 2 < y.length / 2) { // Gardner timing recovery
-      const [sI, sQ] = at(this.t), [mI, mQ] = at(this.t - this.rate / 2);
-      const e = (this.prevI - sI) * mI + (this.prevQ - sQ) * mQ;
-      this.prevI = sI; this.prevQ = sQ;
-      this.rate = Math.min(this.sps * 1.0005, Math.max(this.sps * 0.9995, this.rate + 0.00002 * e)); this.t += this.rate + 0.03 * e;
-      this.symbol(sI, sQ);
-    }
-    const drop = Math.max(0, Math.floor(this.t) - 4); y.splice(0, 2 * drop); this.t -= drop;
+    const drop = Math.max(0, Math.floor(this.t - this.rate) - 2); y.splice(0, 2 * drop); this.t -= drop;
+  }
+
+  /** Matched-filter output at a fractional sample position: k = 0 for I, 1 for Q. */
+  private at(t: number, k: number) { const y = this.y, n = Math.floor(t), f = t - n; return y[2 * n + k] * (1 - f) + y[2 * n + 2 + k] * f; }
+
+  /** Gardner timing recovery on I and on Q taken half a symbol earlier (offset QPSK lined up into plain QPSK). */
+  private timing() {
+    const h = this.rate / 2, I = this.at(this.t, 0), Q = this.at(this.t - h, 1), mI = this.at(this.t - h, 0), mQ = this.at(this.t - 2 * h, 1);
+    const e = ((this.prevI - I) * mI + (this.prevQ - Q) * mQ) / (this.agc * this.agc + 1e-12); // scaled, so the loop's speed doesn't depend on signal level
+    this.prevI = I; this.prevQ = Q;
+    this.rate = Math.min(this.sps * 1.0005, Math.max(this.sps * 0.9995, this.rate + 0.00001 * e)); this.t += this.rate + 0.015 * e;
+    this.symbol(I, Q);
   }
 
   private symbol(I: number, Q: number) {
@@ -189,53 +225,72 @@ export class MeteorReceiver {
     this.stats.symbols++;
     if (!this.freqKnown) { // 4th-power trick: z⁴ removes the QPSK data, leaving a spike at 4× the frequency offset
       this.acq.push(I, Q);
-      if (this.acq.length < 2 * 8192) return;
-      const N = 8192, re = new Float32Array(N), im = new Float32Array(N);
-      for (let k = 0; k < N; k++) { let zr = this.acq[2 * k], zi = this.acq[2 * k + 1]; for (let r = 0; r < 2; r++) { const t = zr * zr - zi * zi; zi = 2 * zr * zi; zr = t; } re[k] = zr; im[k] = zi; }
+      if (this.acq.length < 2 * ACQ_N) return;
+      const re = new Float32Array(ACQ_N), im = new Float32Array(ACQ_N);
+      for (let k = 0; k < ACQ_N; k++) {
+        let zr = this.acq[2 * k], zi = this.acq[2 * k + 1];
+        const mag = Math.hypot(zr, zi) || 1e-6;
+        zr /= mag; zi /= mag;
+        for (let r = 0; r < 2; r++) { const t = zr * zr - zi * zi; zi = 2 * zr * zi; zr = t; }
+        re[k] = zr; im[k] = zi;
+      }
       fft(re, im);
-      let best = 0, bin = 0; for (let k = 0; k < N; k++) { const pw = re[k] * re[k] + im[k] * im[k]; if (pw > best) { best = pw; bin = k; } }
-      this.freq += ((bin < N / 2 ? bin : bin - N) * TAU) / N / 4; this.freqKnown = true; this.acq = []; this.sinceAcq = 0; this.w = 0;
+      let best = 0, sum = 0, bin = 0;
+      for (let k = 0; k < ACQ_N; k++) { const pw = re[k] * re[k] + im[k] * im[k]; if (pw > best) { best = pw; bin = k; } sum += pw; }
+      if (best / (sum / ACQ_N || 1e-12) > ACQ_MIN_PEAK) {
+        this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + ((bin < ACQ_N / 2 ? bin : bin - ACQ_N) * TAU) / ACQ_N / 4));
+        this.freqKnown = true; this.sinceAcq = 0;
+      }
+      this.acq.splice(0, ACQ_N); // half the window either way: keep searching with the newer half, or start fresh after a lock
+      if (this.freqKnown) this.acq = [];
       return;
     }
-    // no sync for 6 frames' worth: measure the frequency again (starting from zero, the estimate may have been noise)
-    if (this.hyp < 0 && ++this.sinceAcq > 6 * 8192) { this.freqKnown = false; this.freq = 0; return; }
-    const c = Math.cos(this.cphase), s = Math.sin(this.cphase), zi = I * c + Q * s, zq = -I * s + Q * c;
-    const err = Math.sign(zi) * zq - Math.sign(zq) * zi; // Costas loop
-    this.w += 0.0004 * err; this.w = Math.max(-0.05, Math.min(0.05, this.w)); this.cphase += this.w + 0.03 * err;
-    if (this.cphase > Math.PI) this.cphase -= TAU; else if (this.cphase < -Math.PI) this.cphase += TAU;
-    this.stats.freqHz = ((this.freq + this.w) * SYM_RATE) / TAU;
-    this.stats.evm = 0.999 * this.stats.evm + 0.001 * ((Math.abs(zi) - 0.707) ** 2 + (Math.abs(zq) - 0.707) ** 2);
-    if (this.stats.symbols % 4 === 0) { this.constellation.push([zi, zq]); if (this.constellation.length > 1000) this.constellation.splice(0, 200); }
-    const soft: [number, number][] = [[zi, zq], [zq, -zi], [-zi, -zq], [-zq, zi], [zi, -zq], [-zq, -zi], [-zi, zq], [zq, zi]];
+    // no sync for 6 frames' worth: measure the frequency again from scratch (the estimate may have been a stray carrier)
+    if (this.hyp < 0 && ++this.sinceAcq > 6 * ACQ_N) { this.freqKnown = false; this.freq = 0; this.acq = []; return; }
+    this.stats.freqHz = (this.freq * SYM_RATE) / TAU;
+    this.stats.evm = 0.999 * this.stats.evm + 0.001 * ((Math.abs(I) - 0.707) ** 2 + (Math.abs(Q) - 0.707) ** 2);
+    if (this.stats.symbols % 4 === 0) { this.constellation.push([I, Q]); if (this.constellation.length > 1000) this.constellation.splice(0, 200); }
+    const pa = this.prevA, pairs: [number, number][] = [[I, Q], [Q, I], [Q, pa], [pa, Q]];
+    this.prevA = I;
     for (let h = 0; h < 8; h++) {
       if (this.hyp >= 0 && h !== this.hyp) continue;
-      const v = this.vit[h]; v.push(soft[h][0], soft[h][1]);
-      for (const b of v.out) this.bit(h, b);
+      const [x, y] = pairs[h >> 1];
+      if (Number.isNaN(x) || Number.isNaN(y)) continue; // the very first symbol has no previous I
+      const v = this.vit[h]; v.push(x, h & 1 ? -y : y);
+      for (const bit of v.out) this.bit(h, bit);
       v.out.length = 0;
     }
   }
 
-  private bit(h: number, b: number) {
-    this.sr[h] = (this.sr[h] << 1) | b;
+  private bit(h: number, raw: number) {
+    const b = raw ^ this.nrz[h]; this.nrz[h] = raw; // NRZ-M: a 1 means "the bit changed"
+    this.sr[h] = ((this.sr[h] << 1) | b) >>> 0; this.nbits[h]++;
     if (this.frameBits && h === this.hyp) {
       this.frameBits.push(b);
       if (this.frameBits.length === CADU_BITS) { this.frame(this.frameBits); this.frameBits = null; }
       return;
     }
     if (h === this.hyp) this.sinceSync++;
-    const e0 = pop(this.sr[h] ^ ASM), e1 = pop(~this.sr[h] ^ ASM);
-    if (e0 <= 3 || e1 <= 3) {
-      if (this.hyp < 0 && ++this.hits[h] >= 2) { this.hyp = h; this.inv = e1 < e0 ? 0xff : 0; }
+    if (pop(this.sr[h] ^ ASM) <= 3) {
+      if (this.hyp < 0) { // a sync word exactly a whole number of frames after the last one is no coincidence
+        const gap = this.nbits[h] - this.lastHit[h]; this.lastHit[h] = this.nbits[h];
+        if (gap % SYNC_GAP === 0 && gap <= 4 * SYNC_GAP) this.hyp = h;
+      }
       if (h === this.hyp) { this.frameBits = []; this.sinceSync = 0; this.stats.locked = true; }
     }
-    if (this.hyp >= 0 && this.sinceSync > 3 * CADU_BITS) { this.hyp = -1; this.hits.fill(0); this.stats.locked = false; this.sinceSync = 0; this.sinceAcq = 0; }
+    if (this.hyp >= 0 && this.sinceSync > 3 * SYNC_GAP) { this.hyp = -1; this.lastHit.fill(-Infinity); this.stats.locked = false; this.sinceSync = 0; this.sinceAcq = 0; this.freqKnown = false; this.acq = []; }
   }
 
   private frame(bits: number[]) {
     const f = new Uint8Array(1020);
-    for (let i = 0; i < 1020; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; f[i] = v ^ this.inv ^ PN[i % 255]; }
+    for (let i = 0; i < 1020; i++) { let v = 0; for (let k = 0; k < 8; k++) v = (v << 1) | bits[i * 8 + k]; f[i] = v ^ PN[i % 255]; }
     this.stats.frames++;
-    const fixed = rsDecodeInterleaved(f);
+    let fixed = -1;
+    for (const dual of [false, true]) { // until a frame passes, try both byte bases; then only the one that worked
+      if (fixed >= 0 || (this.rsDual !== null && this.rsDual !== dual)) continue;
+      const g = f.slice(), n = rsDecodeInterleaved(g, 4, dual);
+      if (n >= 0) { fixed = n; this.rsDual = dual; f.set(g); }
+    }
     if (fixed >= 0) { this.stats.rsProven = true; this.stats.rsFixed += fixed; }
     else { this.stats.rsBad++; if (this.stats.rsProven) return; } // too damaged to repair: its packets would only add noise
     this.packets.vcdu(f);

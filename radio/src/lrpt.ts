@@ -34,30 +34,35 @@ export class ConvEncoder {
 /** Soft-decision Viterbi decoder, streaming: push pairs of soft values (+ means bit 0), get decided bits back. */
 export class Viterbi {
   private m = new Float64Array(64); private n = new Float64Array(64);
-  private dec: Uint8Array[] = []; private D = 96; // traceback depth
+  private D = 96; private cap = 96 + 32;                       // traceback depth; bits are released 32 at a time
+  private dec = new Uint8Array((96 + 32) * 64); private len = 0; // survivor decisions, one row of 64 per step, oldest first
   out: number[] = [];
-  private exp = Array.from({ length: 128 }, (_, reg) => [1 - 2 * parity(reg & G1), 1 - 2 * parity(reg & G2)]);
+  /** For each next state: the expected (G1, G2) outputs, as ±1, from its two possible previous states. */
+  private static exp = (() => {
+    const e = new Float64Array(256);
+    for (let ns = 0; ns < 64; ns++) for (let k = 0; k < 2; k++) { const reg = ((ns >> 5) << 6) | ((ns & 31) << 1) | k; e[4 * ns + 2 * k] = 1 - 2 * parity(reg & G1); e[4 * ns + 2 * k + 1] = 1 - 2 * parity(reg & G2); }
+    return e;
+  })();
   push(a: number, b: number) {
-    const d = new Uint8Array(64), m = this.m, n = this.n;
+    const m = this.m, n = this.n, e = Viterbi.exp, dec = this.dec, row = this.len * 64;
+    let best = -Infinity;
     for (let ns = 0; ns < 64; ns++) {
-      const u = ns >> 5, p0 = (ns & 31) << 1, p1 = p0 | 1, e0 = this.exp[(u << 6) | p0], e1 = this.exp[(u << 6) | p1];
-      const m0 = m[p0] + a * e0[0] + b * e0[1], m1 = m[p1] + a * e1[0] + b * e1[1];
-      if (m1 > m0) { n[ns] = m1; d[ns] = 1; } else n[ns] = m0;
+      const p0 = (ns & 31) << 1, k = 4 * ns, m0 = m[p0] + a * e[k] + b * e[k + 1], m1 = m[p0 | 1] + a * e[k + 2] + b * e[k + 3];
+      if (m1 > m0) { n[ns] = m1; dec[row + ns] = 1; } else { n[ns] = m0; dec[row + ns] = 0; }
+      if (n[ns] > best) best = n[ns];
     }
-    let best = -Infinity; for (let i = 0; i < 64; i++) if (n[i] > best) best = n[i];
     for (let i = 0; i < 64; i++) m[i] = n[i] - best; // keep the numbers small
-    this.dec.push(d);
-    if (this.dec.length >= this.D + 32) this.trace(32);
+    if (++this.len >= this.cap) this.trace(32);
   }
   /** Trace back from the best state and release the oldest `k` bits. */
   private trace(k: number) {
     let s = 0, best = -Infinity; for (let i = 0; i < 64; i++) if (this.m[i] > best) { best = this.m[i]; s = i; }
-    const bits = new Uint8Array(this.dec.length);
-    for (let t = this.dec.length - 1; t >= 0; t--) { bits[t] = s >> 5; s = ((s & 31) << 1) | this.dec[t][s]; }
+    const bits = new Uint8Array(this.len);
+    for (let t = this.len - 1; t >= 0; t--) { bits[t] = s >> 5; s = ((s & 31) << 1) | this.dec[t * 64 + s]; }
     for (let t = 0; t < k; t++) this.out.push(bits[t]);
-    this.dec.splice(0, k);
+    this.dec.copyWithin(0, k * 64, this.len * 64); this.len -= k;
   }
-  flush() { if (this.dec.length) this.trace(this.dec.length); }
+  flush() { if (this.len) this.trace(this.len); }
 }
 
 // ---------- pictures: 8×8 DCT blocks, like JPEG ----------
