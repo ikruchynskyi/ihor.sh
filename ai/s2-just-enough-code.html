@@ -20,7 +20,7 @@
   <p class="lede">Every lesson on this path has code you can run and change, in <b>Python</b>, the language ML teams use every day. This lesson teaches exactly what you need to read it: numbers, names, lists, loops, functions and decisions, then the three libraries you'll see everywhere, <b>NumPy</b>, <b>pandas</b> and <b>matplotlib</b>. Nothing to install: each box runs right here in the page (the first run loads Python into your browser, which takes a few seconds). Change things, break things, press <b>Reset</b> to get the original back.</p>
 
   <h2>1. The computer as a calculator</h2>
-  <p><code>print(...)</code> shows whatever you put between the brackets; separate several things with commas. <code>*</code> is times, <code>/</code> is divide, <code>**</code> is "to the power of", and text goes in quotes. Lines starting with <code>#</code> are comments: notes for people, ignored by the computer. <code>import math</code> brings in square roots, \(e^x\) and logs.</p>
+  <p><code>print(...)</code> shows whatever you put between the brackets; separate several things with commas. <code>*</code> is times, <code>/</code> is divide, <code>**</code> is "to the power of", and text goes in quotes. Lines starting with <code>#</code> are comments: notes for people, ignored by the computer. <code>import math</code> brings in square roots and other math functions.</p>
   <div class="code" data-title="Run it: arithmetic"><textarea>
 import math
 print(3 + 4 * 2)           # times before plus, as in school: 11
@@ -31,7 +31,7 @@ print("one third is", 1 / 3)
 </textarea></div>
   <div class="q" data-num="59049">
     <p>Use the box: what is \(3^{10}\)? (Change a line to <code>print(3 ** 10)</code> and run.)</p>
-    <div class="why">59049. You'll see <code>**</code> for powers, and <code>math.sqrt</code>, <code>math.exp</code> (\(e^x\)) and <code>math.log</code> (\(\ln x\)) all over the path, or their NumPy versions <code>np.sqrt</code>, <code>np.exp</code>, <code>np.log</code>.</div>
+    <div class="why">59049. You'll see <code>**</code> for powers, and <code>math.sqrt</code>, <code>math.exp</code> (powers of e) and <code>math.log</code> (natural logs) all over the path, or their NumPy versions <code>np.sqrt</code>, <code>np.exp</code>, <code>np.log</code>.</div>
   </div>
 
   <p class="gist">Python is a calculator first: numbers, operations and print.</p>
@@ -82,7 +82,7 @@ for i in range(1, 6):     # 1 to 5, squaring each
 </textarea></div>
   <div class="q" data-num="385">
     <p>Change the box to add up the squares \(1^2 + 2^2 + \dots + 10^2\). What is the total?</p>
-    <div class="why">385. One way: <code>s = 0</code>, then <code>for i in range(1, 11): s += i * i</code>, then <code>print(s)</code>. In one line: <code>sum(i * i for i in range(1, 11))</code>. In math it's \(\sum_{i=1}^{10} i^2\): the big sigma is a loop.</div>
+    <div class="why">385. One way: <code>s = 0</code>, then <code>for i in range(1, 11): s += i * i</code>, then <code>print(s)</code>. In one line: <code>sum(i * i for i in range(1, 11))</code>. (The next lesson shows how math writes this with the big sigma sum).</div>
   </div>
 
   <p class="gist">A loop runs the same indented lines once for every item.</p>
@@ -224,7 +224,7 @@ df[long]                           # only the longer rides
   <h2>11. What to carry forward</h2>
   <ul>
     <li><code>=</code> means "becomes"; lists count from 0; indentation shows what's inside a loop or function.</li>
-    <li><code>for x in xs:</code> visits each item; \(\sum\) in a formula is a loop in code, or one NumPy call.</li>
+    <li><code>for x in xs:</code> visits each item; summing in a loop is what math writes with the sigma symbol.</li>
     <li><code>def</code> makes a function; a model is a function. <code>if</code> decides; <code>==</code> compares, <code>=</code> assigns.</li>
     <li><code>np</code> does arithmetic on whole arrays, <code>pd</code> holds tables, <code>plt</code> draws.</li>
     <li>Small experiments: here. Real work: notebooks in Colab or Kaggle.</li>

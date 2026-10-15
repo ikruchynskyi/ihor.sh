@@ -417,3 +417,201 @@ An end-of-course guided hands-on capstone project that ties together the entire 
 - **Milestone 7**: Production MLOps, PSI Drift & Model Card (latency tracking, embedding drift detection, structured Model Card).
 - **Deliverables**: Source repository + `milestone-7.ipynb` Colab/Kaggle notebook + Hugging Face Space URL + Model Card. Unlocks the "Capstone Engineer" distinction on `ai/portfolio.html`.
 
+---
+
+## 9. Stanford AI Curriculum Integration: Progressive, Zero-Gap Expansion
+
+A phased, step-by-step roadmap to integrate the theoretical depth and algorithmic rigor of Stanford’s premier AI curriculum (**CS221, CS229, CS230, CS231n, CS234, CS224U**) into `ihor.sh` without sacrificing accessibility, visual intuition, or zero-build-step simplicity.
+
+### 9.1 Pedagogical Ground Rules ("No Unearned Leaps")
+1. **Strict Scaffolding**: No lesson may assume notation, math symbols, library calls, or conceptual frameworks that were not explicitly taught or shown earlier in the sequence (`ai/notebooks/PEDAGOGY.md`).
+2. **Visual-First Intuition**: Every topic begins with an interactive HTML5/Canvas visualization before introducing algebraic formulations.
+3. **Real Data Anchor**: Theoretical concepts must be illustrated using real NYC or production data (e.g., MTA elevator outages, real traffic camera frames, NYC transit graphs).
+4. **Automated Ledger Verification**: Every change must maintain `0 errors, 0 warnings` on `python3 ai/notebooks/lint.py` and pass `npm run check`.
+
+---
+
+### 9.2 Step-by-Step Implementation Queue (One by One)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: Object Detection Geometry & Bounding Box Math (CS231n)         │
+│ Target: ai/09-vision.html · IoU, Anchor Boxes, Non-Maximum Suppression │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: Analytic Bias-Variance Decomposition (CS229)                   │
+│ Target: ai/11-overfitting.html · Derivation, irreducible noise, bounds │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: Programmatic Prompt Pipelines & DSPy (CS224U)                  │
+│ Target: ai/using-llms.html · Signatures, teleprompters, metric tuning  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 4: Behavioral Audits & NLI Contradiction Scoring (CS224U)         │
+│ Target: ai/evaluating-llms.html · Entailment, CheckList, Cohen's kappa │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 5: Kernel Geometry & Support Vector Dual Form (CS229)             │
+│ Target: ai/zoo-svm.html · Margin optimization, Mercer's theorem, RBF   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 6: Elective: Search, Planning & Constraint Satisfaction (CS221)   │
+│ Target: ai/search-and-reasoning.html · A*, Minimax, CSPs, AC-3         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 7: Elective: Modern RL & Alignment: From PPO to DPO (CS234)       │
+│ Target: ai/rl-and-alignment.html · Bellman, Policy Gradients, RLHF, DPO│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 8: Elective: Deep Generative Architectures & VAEs (CS236/CS231n)  │
+│ Target: ai/generative-foundations.html · ELBO, Reparameterization, VAE │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ STEP 9: Stanford Combine Practice Notebooks (CS231n / CS234)           │
+│ Targets: ai/notebooks/milestone-modular-nn.ipynb & milestone-dpo.ipynb │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 9.3 Prerequisites & Curriculum Fit Analysis (Per Step)
+
+#### Step 1: Object Detection Geometry & Bounding Box Math (CS231n)
+- **Target File**: `ai/09-vision.html`
+- **Stanford Inspiration**: CS231n Lecture on Spatial Localization, Faster R-CNN, and YOLO.
+- **Concepts Added**:
+  1. Coordinate representations: $[x_{\min}, y_{\min}, x_{\max}, y_{\max}]$ vs $[x_c, y_c, w, h]$.
+  2. Intersection over Union (IoU):
+     $$\text{IoU} = \frac{\text{Area}(B_1 \cap B_2)}{\text{Area}(B_1 \cup B_2)}$$
+  3. Interactive Canvas: Drag two bounding boxes over an NYC traffic camera frame; compute overlap area, union area, and IoU in real time.
+  4. Non-Maximum Suppression (NMS) algorithm: Sort by confidence score, greedily keep highest, suppress overlapping boxes with $\text{IoU} > \tau$.
+- **Prerequisites Required**:
+  - Taught in Stage 0 & 1: Cartesian coordinates, rectangle areas ($w \times h$), inequalities.
+  - Taught in Stage 5 (`06-convolutions.html`): Feature maps and sliding filters.
+  - *Dependency Risk*: Zero. All necessary math is elementary coordinate geometry.
+
+#### Step 2: Analytic Bias-Variance Decomposition (CS229)
+- **Target File**: `ai/11-overfitting.html`
+- **Stanford Inspiration**: CS229 Lecture on Learning Theory and Bias-Variance Tradeoff.
+- **Concepts Added**:
+  1. Expected generalization error decomposition:
+     $$\mathbb{E}[(y - \hat{f}(x))^2] = \underbrace{(\mathbb{E}[\hat{f}(x)] - f(x))^2}_{\text{Bias}^2} + \underbrace{\mathbb{E}[(\hat{f}(x) - \mathbb{E}[\hat{f}(x)])^2]}_{\text{Variance}} + \underbrace{\sigma^2}_{\text{Irreducible Noise}}$$
+  2. Step-by-step algebraic expansion without skipping lines: expanding $((\hat{f} - \mathbb{E}[\hat{f}]) + (\mathbb{E}[\hat{f}] - f) + \epsilon)^2$ where cross-terms vanish under expectation.
+  3. Interactive widget: Sample noisy sine waves, fit models of varying degree (degree 1, degree 3, degree 12), and watch the Bias$^2$, Variance, and Error curves evolve.
+- **Prerequisites Required**:
+  - Taught in Stage 1 (`p2-describing-data.html` & `p3-mle-and-map.html`): Expectation operator $\mathbb{E}[\cdot]$, variance, mean.
+  - Taught in Stage 0 (`s1-what-is-ml.html`): Model noise and MSE loss.
+  - *Dependency Risk*: Zero. Relies only on expectation rules taught in Probability 2.
+
+#### Step 3: Programmatic Prompt Pipelines & DSPy (CS224U)
+- **Target File**: `ai/using-llms.html`
+- **Stanford Inspiration**: CS224U Lecture on In-Context Learning and Christopher Potts’ DSPy framework.
+- **Concepts Added**:
+  1. The fragility of string prompt hacking vs declarative modular programming.
+  2. DSPy Signatures: formal input/output contracts (`Question -> Answer`, `Context, Question -> GroundedAnswer`).
+  3. Teleprompters / Optimizers: BootstrapFewShot and metric-driven prompt selection.
+  4. Interactive comparison: Static template prompt vs Compiled few-shot prompt on transit FAQ questions.
+- **Prerequisites Required**:
+  - Taught in `using-llms.html`: API calls, system prompts, few-shot demonstrations, JSON schema.
+  - Taught in Stage 0 (`s2-just-enough-code.html`): Python classes and dictionaries.
+  - *Dependency Risk*: Zero. Builds directly on existing LLM call patterns.
+
+#### Step 4: Behavioral Audits & NLI Contradiction Scoring (CS224U)
+- **Target File**: `ai/evaluating-llms.html`
+- **Stanford Inspiration**: CS224U Lectures on Natural Language Inference and Marco Tulio Ribeiro’s CheckList behavioral evaluation.
+- **Concepts Added**:
+  1. Natural Language Inference (NLI) 3-way formulation: Entailment, Neutral, Contradiction.
+  2. NLI as a deterministic, sub-10ms hallucination checker (checking if retrieved passage entails the generated answer).
+  3. CheckList testing taxonomy: Minimum Functionality Tests (MFT), Invariance Tests (INV), Directional Expectation Tests (DIR).
+  4. Inter-annotator agreement: Cohen’s Kappa $\kappa$ calculation and interpreting judge alignment.
+- **Prerequisites Required**:
+  - Taught in Stage 6 (`embeddings-and-retrieval.html`): Document chunks and RAG contexts.
+  - Taught in Stage 1 (`p1-probability-and-bayes.html`): Confusion matrices and contingency tables.
+  - *Dependency Risk*: Zero.
+
+#### Step 5: Kernel Geometry & Support Vector Dual Form (CS229)
+- **Target File**: `ai/zoo-svm.html`
+- **Stanford Inspiration**: CS229 Lectures on Optimal Margin Classifiers, Duality, and Kernels.
+- **Concepts Added**:
+  1. Maximum margin hyperplane: distance from separating plane $\frac{w^T x + b}{\|w\|}$.
+  2. The dual optimization problem:
+     $$\max_\alpha \sum_i \alpha_i - \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j y_i y_j \langle x_i, x_j \rangle \quad \text{s.t.} \quad 0 \le \alpha_i \le C, \sum_i \alpha_i y_i = 0$$
+  3. The Kernel Trick: Replacing inner product $\langle x_i, x_j \rangle$ with kernel function $K(x_i, x_j) = \exp(-\gamma \|x_i - x_j\|^2)$.
+  4. Interactive 2D plane: Non-linearly separable concentric rings transformed into separable 3D paraboloid ($z = x^2 + y^2$).
+- **Prerequisites Required**:
+  - Taught in Stage 1 (`01-matrices-are-moves.html` & `c5-convexity-and-constraints.html`): Dot products, vector norms $\|w\|$, Lagrange multipliers.
+  - Taught in Stage 3 (`zoo-svm.html`): Soft margins and slack variables.
+  - *Dependency Risk*: Zero.
+
+#### Step 6: Elective: Search, Planning & Constraint Satisfaction (CS221)
+- **New File**: `ai/search-and-reasoning.html`
+- **Stanford Inspiration**: CS221 Principles and Techniques (Liang & Sadigh).
+- **Core Narrative**: "Before deep networks learned from millions of examples, how did algorithms plan routes, play chess, and solve schedules?"
+- **Modules**:
+  1. State space formulation: States, Actions, Transition function $T(s, a)$, Cost function $c(s, a, s')$.
+  2. Uninformed vs Informed Search: Breadth-First, Uniform Cost, and **A* Search** with admissible heuristics ($h(n) \le h^*(n)$).
+  3. Interactive Map: A* pathfinding on the NYC subway network (Manhattan line transfers).
+  4. Adversarial Search: Game trees, Minimax, $\alpha$-$\beta$ pruning, depth limits.
+  5. Constraint Satisfaction Problems (CSP): Variables, Domains, Constraints; Backtracking search + Arc Consistency (AC-3). Worked example: Scheduling track repairs across interlocking subway lines.
+- **Curriculum Position**: Stage 8 Electives (`ai/index.html#electives`).
+- **Prerequisites**: Python basics (`s2`), graph concepts (`c1-derivatives` / `rail-stations.json`).
+
+#### Step 7: Elective: Modern RL & Alignment: From PPO to DPO (CS234)
+- **New File**: `ai/rl-and-alignment.html`
+- **Stanford Inspiration**: CS234 Reinforcement Learning (Emma Brunskill).
+- **Core Narrative**: "How do raw pretrained base models turn into helpful, aligned assistants that follow instructions without reward hacking?"
+- **Modules**:
+  1. Review of Markov Decision Processes & Bellman Optimality (expanding on `reinforcement-learning.html`).
+  2. Policy Gradients (REINFORCE) and Actor-Critic architecture.
+  3. Proximal Policy Optimization (PPO) clipped objective:
+     $$\mathcal{L}^{\text{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min\left(r_t(\theta)\hat{A}_t, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t\right) \right]$$
+  4. RLHF Pipeline: Preference data $(x, y_w, y_l)$, Bradley-Terry reward modeling, PPO alignment loop.
+  5. Direct Preference Optimization (DPO): Eliminating the fragile reward model and deriving the closed-form implicit reward loss.
+  6. Interactive Widget: Drag slider for KL penalty $\beta$ and observe preference probabilities shift on response pairs.
+- **Curriculum Position**: Stage 8 Electives (`ai/index.html#electives`).
+- **Prerequisites**: `reinforcement-learning.html`, `using-llms.html`, `fine-tuning-and-lora.html`.
+
+#### Step 8: Elective: Deep Generative Architectures & VAEs (CS236 / CS231n)
+- **New File**: `ai/generative-foundations.html`
+- **Stanford Inspiration**: CS236 Deep Generative Models & CS231n Generative Vision.
+- **Core Narrative**: "How do models generate continuous images and vectors from random noise without memorization?"
+- **Modules**:
+  1. Autoencoders (bottlenecks, latent space reconstruction).
+  2. The Variational Autoencoder (VAE) probabilistic perspective: Latent variable $z \sim \mathcal{N}(0, I)$, encoder $q_\phi(z|x)$, decoder $p_\theta(x|z)$.
+  3. Evidence Lower Bound (ELBO) derivation:
+     $$\log p(x) \ge \mathbb{E}_{q_\phi(z|x)}[\log p_\theta(x|z)] - D_{\text{KL}}(q_\phi(z|x) \parallel p(z))$$
+  4. The Reparameterization Trick: $z = \mu + \sigma \odot \epsilon$ enabling backpropagation through stochastic sampling.
+  5. Interactive 2D Latent Manifold: Sample points $(\mu_1, \mu_2)$ and watch handwritten transit digits morph smoothly.
+- **Curriculum Position**: Stage 8 Electives (`ai/index.html#electives`).
+- **Prerequisites**: `05-probability-and-loss.html`, `p5-information.html` (KL divergence), `deep-networks.html`.
+
+#### Step 9: The Stanford Combine Practice Notebooks
+- **Notebook 1**: `ai/notebooks/src/milestone-modular-nn.py` (CS231n modular layers):
+  - Student implements pure NumPy/PyTorch forward and backward passes for `Affine`, `ReLU`, `BatchNorm1d`, `Dropout`, and runs analytical gradient checks.
+- **Notebook 2**: `ai/notebooks/src/milestone-dpo-align.py` (CS234 / CS224U alignment):
+  - Student implements DPO loss in PyTorch on a pairwise dataset, evaluates policy margin shift, and tests alignment accuracy.
+
+---
+
+### 9.4 Verification & Quality Gates
+- **Zero Warnings**: Every updated lesson must pass `python3 ai/notebooks/lint.py` with `0 errors, 0 warnings`.
+- **Integrity**: `npm run check` must report `all 167 OK`.
+- **Responsive Standard**: Tested via headless Chromium at 390px mobile and 1280px desktop: `0 errors, 0px horizontal overflow`.
+
+
