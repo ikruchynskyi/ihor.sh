@@ -118,6 +118,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-integrals-densities-and-minibatc"
  },
+ "clusters-and-anomalies.html": {
+  "notebook": "clusters-and-anomalies.ipynb",
+  "title": "AI from scratch: clusters and anomalies",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/clusters-and-anomalies.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-clusters-and-anomalies"
+ },
  "deep-networks.html": {
   "notebook": "deep-networks.ipynb",
   "title": "AI from scratch: deep networks, in NumPy and PyTor",

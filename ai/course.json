@@ -2837,5 +2837,116 @@
     "sec": 6
    }
   ]
+ },
+ "clusters-and-anomalies.html": {
+  "goals": [
+   "Classify with k-nearest neighbors and choose k on held-out data",
+   "Run k-means step by step, and judge clusters honestly (inertia, silhouette, comparing with known labels)",
+   "Use a Gaussian mixture for soft clusters and a density",
+   "Flag anomalies by neighbor distance, density or an isolation forest, and say what a flag means"
+  ],
+  "needs": [
+   "features-and-leakage.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "k-nearest neighbors",
+    "Label a point by a vote of its k nearest labeled points; no training, all distance."
+   ],
+   [
+    "Small vs large k",
+    "k = 1 memorizes noise (overfits); a very large k blurs everything (underfits). Choose k on validation data."
+   ],
+   [
+    "k-means",
+    "Repeat: assign each point to the nearest center, move each center to the mean of its points."
+   ],
+   [
+    "Inertia",
+    "Sum of squared distances from points to their cluster centers; always falls as k grows."
+   ],
+   [
+    "n_init",
+    "k-means can end in a worse clustering from a bad start: run several starts, keep the lowest inertia."
+   ],
+   [
+    "Silhouette",
+    "Per point: how much closer to its own cluster than to the next one (−1 to 1)."
+   ],
+   [
+    "Clusters vs labels",
+    "Clusters describe the features you gave them, not the labels you hoped for."
+   ],
+   [
+    "Gaussian mixture",
+    "Soft clusters with shapes: each point gets a probability per blob; fitted by EM, sized with BIC."
+   ],
+   [
+    "Isolation forest",
+    "Random cuts isolate unusual points in few steps: few cuts = more anomalous."
+   ],
+   [
+    "Anomaly ≠ error",
+    "A detector ranks the unusual; people decide what it means, and 'normal' drifts over time."
+   ]
+  ],
+  "check": [
+   {
+    "q": "kNN with k = 1 scores 100% on its training rows and 59% AUC on new ones. What does that show?",
+    "options": [
+     "Overfitting: each training row is its own nearest neighbor, so only held-out data measures it",
+     "A bug in the test set",
+     "kNN can't be used for classification"
+    ],
+    "answer": 0,
+    "why": "Use a larger k, chosen on validation data.",
+    "sec": 1
+   },
+   {
+    "q": "Which step of k-means moves the centers?",
+    "options": [
+     "The move step: each center becomes the mean of the points assigned to it",
+     "The assign step",
+     "Neither: centers stay where they started"
+    ],
+    "answer": 0,
+    "why": "Assign and move alternate until no point changes cluster.",
+    "sec": 2
+   },
+   {
+    "q": "Inertia keeps falling from k = 2 to k = 8 with no clear elbow. What should you conclude?",
+    "options": [
+     "There may be no natural number of clusters: pick k by what's useful, and check what the clusters mean",
+     "k = 8 is best because inertia is lowest",
+     "k-means failed"
+    ],
+    "answer": 0,
+    "why": "Inertia always falls with k; the stations lie along lines, not in round groups.",
+    "sec": 3
+   },
+   {
+    "q": "What does a Gaussian mixture give that k-means doesn't?",
+    "options": [
+     "Probabilities of belonging to each cluster, and clusters with their own shapes and tilts",
+     "Guaranteed true clusters",
+     "Labels without fitting"
+    ],
+    "answer": 0,
+    "why": "It's a density: soft memberships, and a likelihood for every point (useful for anomalies).",
+    "sec": 4
+   },
+   {
+    "q": "An isolation forest flags a month-long elevator outage. What's the right reading?",
+    "options": [
+     "It's unusual; a person checks whether it's an error or just rare (here: planned maintenance)",
+     "It's a data error and should be deleted",
+     "The model is broken"
+    ],
+    "answer": 0,
+    "why": "Anomaly scores rank the unusual; meaning comes from someone who knows the domain.",
+    "sec": 5
+   }
+  ]
  }
 }

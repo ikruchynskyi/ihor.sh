@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clusters and Anomalies</title>
+  <meta name="description" content="AI from scratch, stage 3: learning from distances. k-nearest neighbors voting on a map of 396 commuter rail stations, k-means you step through, choosing k honestly, Gaussian mixtures as soft clusters, and anomaly detection on this site's subway elevator outage archive." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 600px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Clusters and anomalies · Stage 3: classic ML and judging models</p>
+  <h1>Clusters and anomalies</h1>
+  <p class="lede">Every model so far learned from labeled answers. Often there are none: a pile of customers, sensor readings or outages, and the questions "what kinds are there?" and "which of these is strange?". The tool behind both is the humblest idea in ML: <b>things that are close together are probably alike</b>. This lesson builds on distance: neighbors that vote, clusters that find themselves, soft clusters, and the odd ones out, on a map of 396 real commuter rail stations and this site's archive of subway elevator outages.</p>
+  <p class="muted">Stations: © OpenStreetMap contributors (ODbL). Positions are in kilometers from Manhattan, so distances mean something.</p>
+
+  <h2>1. Neighbors vote</h2>
+  <p>Each dot is a station of Metro-North (<b style="color:#83c167">green</b>), the Long Island Rail Road (<b style="color:#58c4dd">blue</b>) or NJ Transit (<b style="color:#f4a259">orange</b>). <b>k-nearest neighbors</b> (kNN) has no training at all: to label a new point, find the k closest known points and let them vote. Tap the map anywhere to see the vote; the shading is what kNN would answer at every spot.</p>
+  <canvas id="map" class="sq" width="600" height="600" aria-label="Commuter rail stations around New York, colored by railroad; tap to see the nearest stations vote"></canvas>
+  <div class="row">
+    <label><input type="radio" name="mode" value="knn" checked> neighbors vote</label>
+    <label><input type="radio" name="mode" value="kmeans"> k-means</label>
+  </div>
+  <div class="row" id="knnRow"><label>k = <input type="range" id="k" min="1" max="25" step="2" value="5"> <b id="kV">5</b></label></div>
+  <div class="row" id="kmRow" hidden>
+    <label>clusters = <input type="range" id="nc" min="2" max="8" value="4"> <b id="ncV">4</b></label>
+    <button id="step">Step</button><button id="play">Play</button><button id="restart">New start</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>Raise k and the borders between colors smooth out; k = 1 copies whichever station is nearest, noise included. That's chapter 11 again: small k overfits, large k underfits, and k is chosen on validation data. kNN gets 99% of these stations right (with cross-validation). Its few mistakes are exactly where the railroads meet: the big terminals by the Hudson (Grand Central, Hoboken), where lines from every direction arrive, and an NJ Transit station or two in New York's Orange County that sit nearer to Metro-North stations than to their own line's.</p>
+  <div class="code" id="st" data-title="Run it: the stations, and kNN"><textarea>
+import io, json
+import numpy as np
+import pandas as pd
+
+data = json.loads(get("/ai/data/rail-stations.json"))
+st = pd.DataFrame(data["rows"], columns=data["columns"])
+st["x"] = (st["lon"] + 74.0) * 111.32 * np.cos(np.radians(40.75))     # km east of Manhattan
+st["y"] = (st["lat"] - 40.75) * 110.57                                  # km north
+X = st[["x", "y"]].values
+print(st["railroad"].value_counts())
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score, cross_val_predict, KFold
+folds = KFold(5, shuffle=True, random_state=0)
+for k in (1, 5, 25):
+    print("k =", k, " cross-validated accuracy:", round(cross_val_score(KNeighborsClassifier(k), X, st["railroad"], cv=folds).mean(), 3))
+guess = cross_val_predict(KNeighborsClassifier(5), X, st["railroad"], cv=folds)
+st[guess != st["railroad"]].assign(guess=guess[guess != st["railroad"]])[["name", "railroad", "guess"]]
+</textarea></div>
+  <p>The map makes kNN look easy because two coordinates in kilometers are a perfect distance. On a real table, distance needs care: every column must be scaled (features and leakage, section 3), or the column with the biggest numbers decides alone, and with dozens of columns "near" means less and less. Still, kNN is the first baseline to try, and its idea runs modern AI: search engines and chatbots find relevant documents as the nearest neighbors of your question's embedding (stage 6).</p>
+  <div class="code" data-title="Run it: choosing k on the bank calls"><textarea>
+import io
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score
+
+bank = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))
+y = (bank["y"] == "yes").astype(int)
+X = bank.select_dtypes("number").drop(columns="duration")               # numbers only, the leak removed
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+ks = [1, 3, 5, 11, 25, 51, 101, 201]
+aucs = [roc_auc_score(yte, KNeighborsClassifier(k).fit(Xtr, ytr).predict_proba(Xte)[:, 1]) for k in ks]
+plt.figure(figsize=(6, 3)); plt.semilogx(ks, aucs, "o-"); plt.xlabel("k (neighbors)"); plt.ylabel("test AUC")
+plt.title("k = 1 memorizes, big k smooths")
+print([round(a, 3) for a in aucs])
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>Measured on its own training rows, what accuracy does 1-nearest-neighbor get?</p>
+    <ul><li data-k="a" data-says="It's not a guess: each training row is its own nearest neighbor.">About the base rate</li><li data-k="b">100% (unless two identical rows disagree): each row's nearest neighbor is itself</li><li data-k="c" data-says="That's roughly what it gets on new rows, not on the ones it has stored.">About 99%, the same as cross-validation</li></ul>
+    <div class="why">kNN stores the training set, so training accuracy says nothing. Only held-out rows are a fair test, as always.</div>
+  </div>
+
+  <h2>2. k-means: clusters that find themselves</h2>
+  <p>Now forget the colors: no labels at all. <b>k-means</b> looks for k groups with a two-step loop. Start with k centers (random stations). <b>Assign</b>: each point joins its nearest center. <b>Move</b>: each center moves to the average of its points. Repeat until nothing changes. Each step can only lower the total squared distance from points to their centers, the <b>inertia</b>:</p>
+  <p class="formula">\[ \text{inertia} = \sum_i \lVert x_i - \mu_{c(i)} \rVert^2 \qquad \mu_j = \text{the mean of the points in cluster } j \]</p>
+  <p>Pick <b>k-means</b> above the map, then press <b>Step</b> and watch the two moves alternate. Press <b>New start</b> a few times: different starting centers can end in different clusterings, some worse, which is why libraries run several starts (<code>n_init</code>) and keep the lowest inertia.</p>
+  <div class="code" data-uses="st" data-title="Build it: k-means in NumPy, checked against scikit-learn"><textarea>
+from sklearn.cluster import KMeans
+
+def kmeans(X, k, steps=100, seed=0):
+    rng = np.random.default_rng(seed)
+    centers = X[rng.choice(len(X), k, replace=False)]                   # k random points to start
+    for _ in range(steps):
+        dist = np.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)   # (points, centers) distances
+        labels = dist.argmin(axis=1)                                     # assign: the nearest center
+        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])  # move: the mean of its points
+        if np.allclose(new, centers):
+            break
+        centers = new
+    return labels, centers, ((X - centers[labels]) ** 2).sum()
+
+for seed in range(4):
+    print("start", seed, " inertia", round(kmeans(X, 4, seed=seed)[2]))
+print("scikit-learn, best of 10 starts:", round(KMeans(4, n_init=10, random_state=0).fit(X).inertia_))
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>k-means clusters customers by yearly spending (dollars, up to 100,000) and age (years, up to 90). What will the clusters mostly reflect?</p>
+    <ul><li data-k="a" data-says="Age differences are tiny next to spending differences in raw units.">Age and spending equally</li><li data-k="b" data-says="Without scaling, a few years of age are nothing next to thousands of dollars.">Mostly age</li><li data-k="c">Mostly spending: its distances are thousands of times bigger, so age barely counts unless both are scaled</li></ul>
+    <div class="why">k-means is all distances, so it inherits every scaling problem kNN has. Standardize first.</div>
+  </div>
+
+  <h2>3. How many clusters? Be honest</h2>
+  <p>Inertia always falls as k grows (with one cluster per point it's 0), so it can't choose k on its own. Two common aids: the <b>elbow</b>, where adding clusters stops helping much, and the <b>silhouette</b>, which for each point compares how close it sits to its own cluster versus the next one (from −1 to 1, higher is cleaner). And a reality check: does a clustering match anything you care about? Here we have the railroads to compare with, a luxury real problems rarely give you.</p>
+  <div class="code" data-uses="st" data-title="Run it: elbow, silhouette, and do clusters find the railroads?"><textarea>
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score, adjusted_rand_score
+
+rows = []
+for k in range(2, 9):
+    km = KMeans(k, n_init=10, random_state=0).fit(X)
+    rows.append((k, round(km.inertia_), round(silhouette_score(X, km.labels_), 3),
+                 round(adjusted_rand_score(st["railroad"], km.labels_), 3)))
+pd.DataFrame(rows, columns=["k", "inertia", "silhouette", "match with railroads (ARI)"]).set_index("k")
+</textarea></div>
+  <p>No sharp elbow, a silhouette that creeps up slowly, and even at k = 3 the clusters barely match the three railroads (ARI 1 would be perfect, 0 chance). k-means isn't failing: it found groups of nearby stations, which is all the features describe. Railroads are a fact about ownership, not geography. <b>Clusters reflect the features you give them, not the labels you wish for.</b> Often there is no "true" k; choose the one that's useful (a sales team can handle 5 customer segments, not 40).</p>
+
+  <h2>4. Soft clusters: Gaussian mixtures</h2>
+  <p>k-means gives every point one cluster and assumes round clusters of similar size. A <b>Gaussian mixture</b> (GMM) models the data as several bell-shaped blobs (probability 2's multivariate bell), each with its own center, shape and tilt, and gives every point a <i>probability</i> of belonging to each. It's fitted by <b>EM</b>, which is k-means with probabilities: compute each point's membership probabilities (E step), then refit each blob to its weighted points (M step), and repeat. Choosing the number of blobs can use <b>BIC</b>: the fit's log-likelihood minus a penalty for every parameter, so extra blobs must earn their keep.</p>
+  <div class="code" data-uses="st" data-title="Run it: a mixture of bells on the map"><textarea>
+from sklearn.mixture import GaussianMixture
+import matplotlib.pyplot as plt
+
+gm = GaussianMixture(5, random_state=0, n_init=3).fit(X)
+xx, yy = np.meshgrid(np.linspace(X[:, 0].min(), X[:, 0].max(), 150), np.linspace(X[:, 1].min(), X[:, 1].max(), 150))
+density = gm.score_samples(np.column_stack([xx.ravel(), yy.ravel()])).reshape(xx.shape)   # log-density everywhere
+plt.figure(figsize=(5, 5)); plt.contour(xx, yy, density, levels=12, cmap="viridis")
+plt.scatter(X[:, 0], X[:, 1], c=gm.predict(X), s=8, cmap="tab10"); plt.gca().set_aspect("equal")
+plt.xlabel("km east of Manhattan"); plt.ylabel("km north")
+
+p = gm.predict_proba(X)
+unsure = np.argsort(p.max(axis=1))[:5]                           # the stations it is least sure about
+print(pd.DataFrame(p[unsure].round(2), index=st["name"].values[unsure]))
+print("BIC for 2 to 7 blobs:", [round(GaussianMixture(n, random_state=0).fit(X).bic(X)) for n in range(2, 8)])
+</textarea></div>
+  <p>The least certain stations sit between blobs, split nearly evenly. And BIC keeps falling as blobs are added: stations lie along rail lines, not in round clouds, so a mixture of bells needs many of them to trace the lines. That's a useful verdict too: the model's shape doesn't suit this data, which is why there are many clustering methods (scikit-learn's DBSCAN follows dense chains of points, for one).</p>
+
+  <h2>5. Anomalies: what doesn't fit</h2>
+  <p>Once you have a picture of "normal", the odd ones are the points it explains badly: <b>far from their neighbors</b> (the distance to the k-th nearest neighbor), <b>unlikely under a mixture</b> (a low GMM density), or <b>easy to isolate</b>. That last one is an <b>isolation forest</b>: random trees that cut the data at random places, where an unusual point ends up alone after only a few cuts while normal points sit in crowds.</p>
+  <p>This site keeps an archive of NYC subway elevator and escalator outages. Each one has how long it lasted and the MTA's estimate. On a log scale (probability 2: durations are skewed), most outages form one cloud. The estimate is longer than the real outage in 98.5% of them, so the MTA plans for the worst. Which outages don't fit?</p>
+  <div class="code" data-title="Run it: unusual outages, three ways"><textarea>
+import json
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.neighbors import NearestNeighbors
+from sklearn.ensemble import IsolationForest
+
+data = json.loads(get("/ai/data/outages.json"))
+df = pd.DataFrame(data["rows"], columns=data["columns"])
+F = np.column_stack([np.log10(df["hours"]), np.log10(df["estimated"])])      # log10 of actual and estimated hours
+
+df["neighbor_gap"] = NearestNeighbors(n_neighbors=6).fit(F).kneighbors(F)[0][:, -1]   # distance to the 5th other outage
+df["isolated"] = IsolationForest(contamination=0.03, random_state=0).fit(F).predict(F) == -1
+
+odd = df.sort_values("neighbor_gap", ascending=False).head(6)
+plt.figure(figsize=(5, 5)); plt.scatter(F[:, 0], F[:, 1], s=8, alpha=0.5)
+plt.scatter(np.log10(odd["hours"]), np.log10(odd["estimated"]), s=80, facecolors="none", edgecolors="r")
+plt.plot([-1.5, 3], [-1.5, 3], "k--", lw=1); plt.xlabel("log10 actual hours"); plt.ylabel("log10 estimated hours")
+odd[["hours", "estimated", "kind", "reason", "neighbor_gap", "isolated"]]
+</textarea></div>
+  <p>The two most unusual are planned maintenance that took a whole month (711 and 712 hours): rare, but right. Next, an elevator "outage" of 0.04 hours, two and a half minutes, which smells like a glitch in the feed, and an escalator repair estimated at 73 hours that took 3. An anomaly detector finds the unusual; a person decides whether it's an error, a fraud, an emergency or simply rare. In practice the threshold is set by how many cases someone can look at each day, and the detector is judged by how many of those turn out to matter (precision among the top flagged, chapter 12).</p>
+  <div class="q" data-answer="a">
+    <p>You flag the 1% least likely transactions under a GMM fitted on last year's data. After a holiday sale, flags jump to 8%. What's the first thing to check?</p>
+    <ul><li data-k="a">Whether normal behavior changed (the sale), so the model of "normal" is out of date</li><li data-k="b" data-says="Possible, but a sudden jump that lines up with a known event is usually the world changing, not 8× more fraud.">That fraud rose eightfold</li><li data-k="c" data-says="The GMM's numbers don't drift by themselves; the data did.">That the GMM broke</li></ul>
+    <div class="why">"Unusual" is relative to the data the detector learned from. When the world shifts (features and leakage, section 6), normal looks strange: refit on recent data, or model the season.</div>
+  </div>
+
+  <h2>6. What to carry forward</h2>
+  <table class="cmp">
+    <tr><th>Method</th><th>What it does</th><th>Watch out for</th></tr>
+    <tr><td>k-nearest neighbors</td><td>Labels a point by its k nearest labeled points; no training</td><td>Scaling; small k overfits; slow and weak with many columns</td></tr>
+    <tr><td>k-means</td><td>k round groups: assign to the nearest center, move centers to the mean, repeat</td><td>Scaling, several starts, choosing k (there may be no true k)</td></tr>
+    <tr><td>Gaussian mixture</td><td>Soft clusters with shapes; a density, fitted by EM</td><td>Starts and number of blobs (BIC)</td></tr>
+    <tr><td>Anomaly scores</td><td>Distance to neighbors, low density, isolation forest</td><td>"Unusual" isn't "wrong"; normal drifts; set the threshold by review capacity</td></tr>
+  </table>
+  <ul>
+    <li>Distance is the shared idea: scale features, or the biggest numbers decide.</li>
+    <li>Clusters describe the features you gave them; judge them by usefulness, not by a magic k.</li>
+    <li>Anomaly detection ranks; people (or labels you collect later) decide what the top ranks mean.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. scikit-learn's user guide on clustering compares many more methods on the same toy shapes.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const COLORS = { MNR: "#83c167", LIRR: "#58c4dd", NJT: "#f4a259" }, PALETTE = ["#fc6255", "#58c4dd", "#83c167", "#f4d35e", "#e6a3f0", "#f4a259", "#9aa4b2", "#ffffff"];
+const { rows } = await (await fetch("/ai/data/rail-stations.json")).json();
+const pts = rows.map(([name, lat, lon, rr]) => ({ name, rr, x: (lon + 74) * 111.32 * Math.cos((40.75 * Math.PI) / 180), y: (lat - 40.75) * 110.57 }));
+const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y), pad = 12;
+const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 1.04, x0 = (Math.max(...xs) + Math.min(...xs)) / 2 - span / 2, y0 = (Math.max(...ys) + Math.min(...ys)) / 2 - span / 2;
+const cv = $("map"), g = cv.getContext("2d"), W = cv.width;
+const SX = (x) => pad + ((x - x0) / span) * (W - 2 * pad), SY = (y) => W - pad - ((y - y0) / span) * (W - 2 * pad);
+const IX = (px) => x0 + ((px - pad) / (W - 2 * pad)) * span, IY = (py) => y0 + ((W - pad - py) / (W - 2 * pad)) * span;
+const PLACES = [["Manhattan", 40.75, -73.99], ["Trenton", 40.22, -74.76], ["Montauk", 41.05, -71.95], ["Poughkeepsie", 41.71, -73.94], ["New Haven", 41.3, -72.93], ["Atlantic City", 39.36, -74.44]]
+  .map(([n, lat, lon]) => [n, (lon + 74) * 111.32 * Math.cos((40.75 * Math.PI) / 180), (lat - 40.75) * 110.57]);
+const d2 = (a, x, y) => (a.x - x) ** 2 + (a.y - y) ** 2;
+let seed = 3;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+// ---------- kNN ----------
+let query = { x: PLACES[0][1] + 25, y: PLACES[0][2] + 30 }, shade = null, shadeK = 0;
+const vote = (x, y, k) => { const near = [...pts].sort((a, b) => d2(a, x, y) - d2(b, x, y)).slice(0, k), c = {}; near.forEach((p) => (c[p.rr] = (c[p.rr] ?? 0) + 1)); return { near, counts: c, win: Object.keys(c).sort((a, b) => c[b] - c[a])[0] }; };
+function shading(k) {
+  if (shadeK === k) return shade;
+  const cell = 8, img = g.createImageData(W, W);
+  for (let py = 0; py < W; py += cell) for (let px = 0; px < W; px += cell) {
+    const rr = vote(IX(px + cell / 2), IY(py + cell / 2), k).win, [r, gg, b] = { MNR: [36, 58, 34], LIRR: [26, 52, 66], NJT: [70, 46, 26] }[rr];
+    for (let dy = 0; dy < cell && py + dy < W; dy++) for (let dx = 0; dx < cell && px + dx < W; dx++) { const o = 4 * ((py + dy) * W + px + dx); img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255; }
+  }
+  shadeK = k; shade = img; return img;
+}
+// ---------- k-means ----------
+let km = null;
+function kmStart() { const k = +$("nc").value; seed = (Math.random() * 1e9) | 0; const idx = new Set(); while (idx.size < k) idx.add(Math.floor(rand() * pts.length)); km = { k, centers: [...idx].map((i) => ({ x: pts[i].x, y: pts[i].y })), labels: null, phase: "assign", it: 0, done: false }; }
+const inertia = () => (km.labels ? pts.reduce((s, p, i) => s + d2(km.centers[km.labels[i]], p.x, p.y), 0) : null);
+function kmStep() {
+  if (km.done) return;
+  if (km.phase === "assign") {
+    const next = pts.map((p) => km.centers.reduce((b, c, j) => (d2(c, p.x, p.y) < d2(km.centers[b], p.x, p.y) ? j : b), 0));
+    km.done = !!km.labels && next.every((l, i) => l === km.labels[i]);
+    km.labels = next; km.phase = "move"; km.it++;
+  } else {
+    km.centers = km.centers.map((c, j) => { const mine = pts.filter((_, i) => km.labels[i] === j); return mine.length ? { x: mine.reduce((s, p) => s + p.x, 0) / mine.length, y: mine.reduce((s, p) => s + p.y, 0) / mine.length } : c; });
+    km.phase = "assign";
+  }
+}
+let timer = null;
+const stop = () => { clearInterval(timer); timer = null; $("play").textContent = "Play"; };
+
+function draw() {
+  const mode = document.querySelector("input[name=mode]:checked").value;
+  $("knnRow").hidden = mode !== "knn"; $("kmRow").hidden = mode !== "kmeans";
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, W);
+  if (mode === "knn") {
+    const k = +$("k").value; $("kV").textContent = k;
+    g.putImageData(shading(k), 0, 0);
+    const v = vote(query.x, query.y, k);
+    g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 1;
+    for (const p of v.near) { g.beginPath(); g.moveTo(SX(query.x), SY(query.y)); g.lineTo(SX(p.x), SY(p.y)); g.stroke(); }
+    for (const p of pts) { g.fillStyle = COLORS[p.rr]; g.beginPath(); g.arc(SX(p.x), SY(p.y), 3.2, 0, 7); g.fill(); }
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(SX(query.x), SY(query.y), 6, 0, 7); g.fill();
+    const names = { MNR: "Metro-North", LIRR: "LIRR", NJT: "NJ Transit" };
+    $("r1").textContent = `${k} nearest: ` + Object.entries(v.counts).map(([r, c]) => `${names[r]} ${c}`).join(", ") + ` → ${names[v.win]}. Closest: ${v.near[0].name} (${Math.sqrt(d2(v.near[0], query.x, query.y)).toFixed(1)} km).`;
+  } else {
+    if (!km || km.k !== +$("nc").value) kmStart();
+    $("ncV").textContent = km.k;
+    for (const [i, p] of pts.entries()) { g.fillStyle = km.labels ? PALETTE[km.labels[i]] : "#8f98a8"; g.beginPath(); g.arc(SX(p.x), SY(p.y), 3.2, 0, 7); g.fill(); }
+    for (const [j, c] of km.centers.entries()) { const X = SX(c.x), Y = SY(c.y); g.strokeStyle = "#14171d"; g.lineWidth = 6; g.beginPath(); g.moveTo(X - 9, Y - 9); g.lineTo(X + 9, Y + 9); g.moveTo(X + 9, Y - 9); g.lineTo(X - 9, Y + 9); g.stroke(); g.strokeStyle = PALETTE[j]; g.lineWidth = 3; g.stroke(); }
+    const I = inertia();
+    $("r1").textContent = km.done ? `Converged after ${km.it} assignments: inertia ${Math.round(I).toLocaleString()} km². New start may land elsewhere.`
+      : `Step ${km.it}: next, ${km.phase === "assign" ? "assign every station to its nearest center" : "move every center to the mean of its stations"}.` + (I ? ` Inertia ${Math.round(I).toLocaleString()} km².` : "");
+  }
+  g.fillStyle = "#d7dde5"; g.font = "13px ui-monospace, monospace";
+  for (const [n, x, y] of PLACES) g.fillText(n, Math.min(SX(x) + 6, W - 8 * n.length), SY(y) - 6);
+  g.fillStyle = "#8f98a8"; g.fillText("50 km", 16, W - 18); g.fillRect(16, W - 14, (50 / span) * (W - 2 * pad), 3);
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (document.querySelector("input[name=mode]:checked").value !== "knn") return;
+  const r = cv.getBoundingClientRect(); query = { x: IX(((e.clientX - r.left) / r.width) * W), y: IY(((e.clientY - r.top) / r.height) * W) }; draw();
+});
+document.querySelectorAll("input[name=mode]").forEach((r) => (r.onchange = () => { stop(); draw(); }));
+$("k").oninput = () => { draw(); if (+$("k").value === 1) say("k = 1 copies the nearest station, quirks and all.", "think"); };
+$("nc").oninput = () => { stop(); kmStart(); draw(); };
+$("step").onclick = () => { stop(); kmStep(); draw(); };
+$("restart").onclick = () => { stop(); kmStart(); draw(); };
+$("play").onclick = () => { if (timer) return stop(); $("play").textContent = "Pause"; timer = setInterval(() => { kmStep(); draw(); if (km.done) { stop(); say("Converged: no station changed cluster.", "happy"); } }, 450); };
+draw();
+
+window.blipContext = () => ({ page: "AI from scratch, stage 3: clusters and anomalies: k-nearest neighbors on a map of 396 commuter rail stations (Metro-North, LIRR, NJ Transit), choosing k, k-means (assign/move, inertia, several starts), elbow and silhouette, clusters vs railroads (ARI), Gaussian mixtures with EM and BIC, anomaly detection (neighbor distance, GMM density, isolation forest) on this site's subway elevator outage archive", mode: document.querySelector("input[name=mode]:checked").value, k: +$("k").value, clusters: +$("nc").value });
+</script>
+</body>
+</html>
