@@ -5073,5 +5073,114 @@
     "sec": 4
    }
   ]
+ },
+ "fine-tuning-and-lora.html": {
+  "goals": [
+   "Choose between prompting, retrieval and fine-tuning for a need",
+   "Explain LoRA's low-rank update, its parameter count, and why B starts at zero",
+   "Prepare chat-formatted training data with the loss on the reply only",
+   "Test a fine-tune honestly (held-out data, new phrasings, general questions) and use switchable adapters"
+  ],
+  "needs": [
+   "using-llms.html",
+   "l3-svd.html",
+   "gpus-and-scale.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Fine-tuning",
+    "More training on your examples, so a behavior becomes the default without being asked for."
+   ],
+   [
+    "RAG vs fine-tuning",
+    "Facts → retrieval (updatable, citable); behavior, format, style → fine-tuning."
+   ],
+   [
+    "LoRA",
+    "W' = W + (α/r)·BA with B: d_out×r, A: r×d_in; only A and B train."
+   ],
+   [
+    "LoRA size",
+    "r(d_in + d_out) per matrix: 65,536 for rank 8 on 4096×4096 (0.4%)."
+   ],
+   [
+    "B starts at zero",
+    "So step 0 is exactly the pretrained model; A starts random so B's gradient isn't zero."
+   ],
+   [
+    "QLoRA",
+    "The frozen base stored in 4 bits, adapters in 16: a 7B fine-tune in a few GB."
+   ],
+   [
+    "Answer-only loss",
+    "Labels −100 on prompt tokens, so the loss is only on the reply."
+   ],
+   [
+    "Catastrophic forgetting",
+    "A narrow fine-tune can overwrite general behavior: test general questions before and after."
+   ],
+   [
+    "Switchable adapters",
+    "Drop BA to get the original model back; serve many small adapters on one base."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Your bot must answer from this week's internal policies, which change often. Best tool?",
+    "options": [
+     "Retrieval (RAG): passages update instantly and can be cited",
+     "Fine-tuning on the policies every week",
+     "A longer system prompt with every policy"
+    ],
+    "answer": 0,
+    "why": "Fine-tuning stores facts poorly and can't be patched line by line.",
+    "sec": 1
+   },
+   {
+    "q": "How many trainable numbers does a rank-4 LoRA add to a 1000 × 2000 matrix?",
+    "options": [
+     "12,000",
+     "2,000,000",
+     "8,000"
+    ],
+    "answer": 0,
+    "why": "4 × (1000 + 2000) = 12,000.",
+    "sec": 3
+   },
+   {
+    "q": "Why does LoRA initialize B to zero?",
+    "options": [
+     "So the model starts exactly as the pretrained one and training begins from its real behavior",
+     "To save memory",
+     "Because A would otherwise be unused"
+    ],
+    "answer": 0,
+    "why": "BA = 0 at step 0; A is random so B still gets a gradient.",
+    "sec": 3
+   },
+   {
+    "q": "Why set the labels of prompt tokens to −100 when fine-tuning a chat model?",
+    "options": [
+     "PyTorch's cross-entropy skips −100, so the loss is only on the reply you want to teach",
+     "To make the prompt shorter",
+     "−100 marks the end of the text"
+    ],
+    "answer": 0,
+    "why": "Otherwise the model also learns to predict users' questions.",
+    "sec": 4
+   },
+   {
+    "q": "After a narrow fine-tune the model answers every question in the task's JSON format. A cheap fix that keeps the task's quality?",
+    "options": [
+     "Keep the LoRA adapter separate and switch it on only for that task",
+     "Fine-tune again with a higher learning rate",
+     "Increase the rank"
+    ],
+    "answer": 0,
+    "why": "Without BA the model is exactly the original.",
+    "sec": 5
+   }
+  ]
  }
 }

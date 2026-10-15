@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fine-tuning and LoRA</title>
+  <meta name="description" content="AI from scratch: fine-tuning and LoRA. When to fine-tune instead of prompting or retrieving, the memory cost of full fine-tuning, LoRA's low-rank update with a size calculator, training data and loss masking, QLoRA and adapters, and a measured fine-tune of SmolLM2 that went from 0 to 30 of 30 and started answering everything in JSON." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Fine-tuning and LoRA · Stage 6: LLM engineering</p>
+  <h1>Fine-tuning and LoRA</h1>
+  <p class="lede">Prompting changes what a model is asked; retrieval changes what it's told. <b>Fine-tuning</b> changes the model itself: more training, on your examples, so the behavior you want becomes the most likely continuation without being spelled out every time. Done naively it needs as much memory as training the model from scratch. <b>LoRA</b> made it cheap enough for one GPU, or a laptop for small models, by learning a thin low-rank correction instead of new weights. This lesson covers when it's the right tool, how LoRA works, what data it needs, and, from a real run, both how well it works and what it breaks.</p>
+
+  <h2>1. Prompt, retrieve, or fine-tune?</h2>
+  <table class="cmp">
+    <tr><th>You need the model to…</th><th>Start with</th><th>Why</th></tr>
+    <tr><td>Know facts it wasn't trained on (your docs, today's data)</td><td>Retrieval (RAG)</td><td>Facts change; passages update instantly and can be cited. Fine-tuning stores facts poorly and can't be corrected line by line.</td></tr>
+    <tr><td>Follow a format or style every time</td><td>Prompt with examples, then fine-tune if that's not enough or too costly</td><td>Few-shot works (the using-LLMs notebook: 3/10 → 9/10), but the examples are paid for on every call.</td></tr>
+    <tr><td>Do a narrow task well with a small, cheap, fast model</td><td>Fine-tune</td><td>A fine-tuned small model often beats a prompted big one on its one task, at a fraction of the cost per call.</td></tr>
+    <tr><td>Learn a new language, domain vocabulary or skill</td><td>Fine-tune (more data, more layers)</td><td>Behavior that a few examples in a prompt can't convey.</td></tr>
+  </table>
+  <p class="gist">Retrieval adds knowledge, prompting asks for behavior, and fine-tuning bakes behavior into the weights so it no longer has to be asked for.</p>
+
+  <h2>2. The price of changing every weight</h2>
+  <p>Full fine-tuning is training: every weight gets a gradient and Adam's two averages, about 16 bytes per parameter (the GPUs lesson). For a 7-billion-parameter model that's around 112 GB before activations: several data-center GPUs. And every fine-tuned version is a full copy of the model to store and serve.</p>
+  <p class="gist">Full fine-tuning updates every weight, needing training-sized memory and a full model copy per task.</p>
+
+  <h2>3. LoRA: learn a thin correction</h2>
+  <p>LoRA (low-rank adaptation, Hu and colleagues at Microsoft, 2021) freezes the pretrained weight matrix \(W\) (size \(d_{\text{out}} \times d_{\text{in}}\)) and learns a correction that is a product of two thin matrices:</p>
+  <p class="formula">\[ W' = W + \frac{\alpha}{r}\, B A, \qquad B: d_{\text{out}} \times r, \quad A: r \times d_{\text{in}}, \quad r \ll d \]</p>
+  <p>The SVD lesson's idea, put to work: \(BA\) has rank at most \(r\), so it can only change \(W\) along \(r\) directions, and it costs \(r(d_{\text{in}} + d_{\text{out}})\) numbers instead of \(d_{\text{in}} d_{\text{out}}\). \(B\) starts at zero, so training starts from exactly the pretrained model. Only \(A\) and \(B\) get gradients and Adam states; the frozen \(W\) can even be stored in 4 bits (<b>QLoRA</b>).</p>
+  <canvas id="lora" width="800" height="300" aria-label="A weight matrix next to the two thin LoRA matrices, drawn to scale"></canvas>
+  <div class="row">
+    <label>model <select id="model"><option value="smol">SmolLM2-135M (the notebook)</option><option value="7b" selected>a 7B model (Llama-style)</option><option value="70b">a 70B model</option></select></label>
+    <label>rank r <input type="range" id="r" min="1" max="64" value="8"> <b id="rV">8</b></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-num="65536" data-tol="0">
+    <p>A 4096 × 4096 attention matrix gets a rank-8 LoRA. How many trainable numbers does the adapter add?</p>
+    <div class="why">\(8 \times (4096 + 4096) = 65{,}536\), against \(4096^2 \approx 16.8\) million in \(W\): 0.4%.</div>
+  </div>
+  <p class="gist">LoRA freezes each weight matrix and learns a rank-r correction BA, two thin matrices with a tiny fraction of the numbers.</p>
+  <details class="deeper"><summary>Why a low-rank correction is enough, and why B starts at zero</summary>
+    <ol>
+      <li>Fine-tuning moves a pretrained model a short distance: it already knows language; you're adjusting a behavior.</li>
+      <li>Measurements of how fine-tuning changes weights (Aghajanyan and colleagues, 2020, "intrinsic dimension") found that the useful change lives in a surprisingly small subspace: a few hundred directions can reach most of full fine-tuning's quality on many tasks.</li>
+      <li>A rank-\(r\) matrix is exactly a change confined to \(r\) directions: \(BA x\) first projects \(x\) onto \(r\) directions (\(A\)), then maps them out (\(B\)). The SVD lesson showed most matrices are dominated by a few such directions anyway.</li>
+      <li>With \(B = 0\) at the start, \(W' = W\): step 0 is the original model, and the first gradients see the real pretrained behavior. (If both started random, training would start from a randomly damaged model.)</li>
+      <li>\(A\) still starts random, so \(B\)'s gradient \(\partial L / \partial B = (\partial L/\partial y)(Ax)^\top\) is nonzero from the first step, and training gets going.</li>
+    </ol>
+  </details>
+
+  <h2>4. Data and the loss</h2>
+  <p>Fine-tuning data for a chat model is conversations: a user message and the assistant reply you want, rendered with the model's chat template (the using-LLMs lesson). Two habits matter:</p>
+  <ul>
+    <li><b>Train on the answer only.</b> The loss is cross-entropy on next tokens (chapter 10), but only on the reply's tokens; the prompt's positions get the label −100, which PyTorch's cross-entropy skips. Otherwise the model spends its learning on predicting your users' questions.</li>
+    <li><b>Quality over quantity, and variety.</b> A few hundred to a few thousand clean, varied examples beat ten times as many sloppy or repetitive ones. Whatever's constant in the data (one phrasing, one length, one tone) is what the model learns.</li>
+  </ul>
+  <div class="code" data-title="Run it: which tokens the loss sees"><textarea>
+prompt = "<|im_start|>user Extract the station and the line: \"The B train is delayed at 169 St.\"<|im_end|> <|im_start|>assistant"
+answer = '{"station": "169 St", "line": "B"}<|im_end|>'
+tokens = prompt.split(" ") + answer.split(" ")          # (a real tokenizer cuts finer; words are enough to see the idea)
+labels = [-100] * len(prompt.split(" ")) + list(range(len(answer.split(" "))))
+for t, l in zip(tokens, labels):
+    print(f"{'(skipped)' if l == -100 else 'loss here':10s} {t}")
+</textarea></div>
+  <p class="gist">Train on chat-formatted examples with the loss masked to the reply, and make the examples varied, because whatever never varies is what gets learned.</p>
+
+  <h2>5. A real fine-tune, and what it broke</h2>
+  <p>The practice notebook fine-tunes SmolLM2-135M-Instruct to pull the station and line out of service-alert sentences as JSON, with no examples in the prompt. Rank-8 LoRA on the attention's query and value matrices: 460,800 trainable numbers out of 135 million (0.34%). 80 steps of 8 generated examples, about half a minute on a laptop CPU. Each row is 30 new test sentences:</p>
+  <table class="cmp">
+    <tr><th>Test</th><th>Before</th><th>After</th></tr>
+    <tr><td>Phrasings and stations like the training data</td><td>0 / 30</td><td>30 / 30</td></tr>
+    <tr><td>Stations held out of training</td><td>–</td><td>29 / 30</td></tr>
+    <tr><td>Held-out stations and new phrasings ("Shuttle buses replace the B near 135 St.")</td><td>–</td><td>19 / 30</td></tr>
+    <tr><td>"Name three boroughs of New York City."</td><td>"…Manhattan, Brooklyn, and Queens."</td><td><code>{"name": "New York City", "boroughs": ["New York", "Queens", "Brooklyn"]}</code></td></tr>
+  </table>
+  <p>The task was learned almost perfectly, and generalized to new stations. New phrasings dropped to 19 of 30: the seven training templates were the "constant" the model partly learned. And the last row is <b>catastrophic forgetting</b> in miniature: everything now looks like an extraction request. Fixes: mix general conversations into the training data, train less (fewer steps, smaller rank), or keep the adapter separate and switch it on only for this task. That last one is LoRA's practical superpower: one base model in memory, many small adapters (megabytes each), chosen per request.</p>
+  <div class="q" data-answer="b">
+    <p>After the fine-tune, how can the same deployed model still answer general questions normally?</p>
+    <ul><li data-k="a" data-says="Retraining everything is the expensive path LoRA exists to avoid.">Retrain the whole model on general data</li><li data-k="b">Keep the LoRA adapter separate and apply it only to extraction requests; without it, W is the untouched original</li><li data-k="c" data-says="The forgetting is in the adapter's weights; prompting can't undo it reliably.">Add "answer normally" to the prompt</li></ul>
+    <div class="why">\(W' = W + BA\): drop \(BA\) and you're back to the pretrained model exactly. Serving systems (vLLM, Hugging Face TGI) keep one base model and swap or batch many adapters.</div>
+  </div>
+  <p class="gist">A small LoRA can learn a narrow task in seconds, and in the same seconds overwrite the model's general behavior; test both, and keep adapters switchable.</p>
+  <details class="deeper"><summary>Where it breaks: what fine-tuning can't do well</summary>
+    <ul>
+      <li><b>Facts.</b> Fine-tuning on documents makes a model sound like them, not reliably recall them, and wrong "learned" facts are hard to find and remove. Facts belong in retrieval.</li>
+      <li><b>The test set that looks like the training set.</b> The 30/30 row used the same templates as training; only the new-phrasings row (19/30) says how it will do on real alerts. Always test on data generated differently from your training data (chapter 11, ML strategy's mismatch).</li>
+      <li><b>Forgetting and drift.</b> Every fine-tune trades some general ability for the task. Keep a small set of general questions and run it before and after, as you would any regression test (the next lesson).</li>
+      <li><b>Too little rank, or too much.</b> Rank 1–4 can underfit a hard task; rank 64+ on a little data overfits and forgets more. Rank 8–16 on the attention matrices is the usual start.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>RAG for facts, prompts for quick behavior, fine-tuning for baked-in behavior and small cheap models.</li>
+    <li>Full fine-tuning ≈ training memory (16 bytes/parameter); LoRA trains \(r(d_{\text{in}} + d_{\text{out}})\) numbers per matrix, with \(B\) starting at zero.</li>
+    <li>QLoRA: the frozen base in 4 bits, adapters in higher precision.</li>
+    <li>Data: chat-formatted, varied, loss on the reply only (labels −100 elsewhere).</li>
+    <li>Test on differently generated data and on general questions; keep adapters switchable.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Hu et al., "LoRA" (2021); Dettmers et al., "QLoRA" (2023). Hugging Face's PEFT library implements LoRA for any model; the notebook writes it by hand in 6 lines.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// per layer: the matrices LoRA usually targets (query and value projections), with grouped-query attention's smaller v
+const MODELS = {
+  smol: { name: "SmolLM2-135M", params: 134.5e6, layers: 30, mats: [[576, 576], [576, 192]] },
+  "7b": { name: "a 7B model", params: 6.74e9, layers: 32, mats: [[4096, 4096], [4096, 4096]] },
+  "70b": { name: "a 70B model", params: 70.6e9, layers: 80, mats: [[8192, 8192], [8192, 1024]] },
+};
+const fmt = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} B` : n >= 1e6 ? `${(n / 1e6).toFixed(1)} M` : `${(n / 1e3).toFixed(1)} k`);
+function draw() {
+  const m = MODELS[$("model").value], r = +$("r").value; $("rV").textContent = r;
+  const [din, dout] = m.mats[0], cv = $("lora"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "14px ui-monospace, monospace";
+  const S = 230 / Math.max(din, dout), w = din * S, h = dout * S, x0 = 40, y0 = 40, thin = Math.max(2, r * S);
+  g.fillStyle = "#58c4dd44"; g.fillRect(x0, y0, w, h); g.strokeStyle = "#58c4dd"; g.strokeRect(x0, y0, w, h);
+  g.fillStyle = "#d8dee9"; g.fillText(`W  ${dout} × ${din} (frozen)`, x0, y0 - 12);
+  g.fillText("+", x0 + w + 30, y0 + h / 2);
+  const bx = x0 + w + 70; g.fillStyle = "#f4a259"; g.fillRect(bx, y0, thin, h); g.fillText(`B ${dout}×${r}`, bx, y0 - 12);
+  const ax = bx + thin + 30; g.fillStyle = "#83c167"; g.fillRect(ax, y0, w, thin); g.fillStyle = "#d8dee9"; g.fillText(`A ${r}×${din}`, ax, y0 + thin + 18);
+  g.fillText("(drawn to scale)", W - 160, H - 10);
+  const perLayer = m.mats.reduce((s, [a, b]) => s + r * (a + b), 0), lora = perLayer * m.layers, pct = (100 * lora) / m.params;
+  const fullGB = (m.params * 16) / 1e9, loraGB = (m.params * 2 + lora * 16) / 1e9, qloraGB = (m.params * 0.5 + lora * 16) / 1e9;
+  $("r3").innerHTML = `${m.name}: rank-${r} LoRA on q and v in all ${m.layers} layers = <b>${fmt(lora)}</b> trainable numbers (${pct < 0.01 ? pct.toFixed(4) : pct.toFixed(2)}% of ${fmt(m.params)})<br>` +
+    `memory before activations: full fine-tune ≈ ${fullGB.toFixed(fullGB < 10 ? 1 : 0)} GB · LoRA on a 16-bit base ≈ ${loraGB.toFixed(loraGB < 10 ? 1 : 0)} GB · QLoRA (4-bit base) ≈ ${qloraGB.toFixed(qloraGB < 10 ? 1 : 0)} GB<br>` +
+    `the adapter file: ${(lora * 2 / 1e6).toFixed(lora * 2 < 1e7 ? 1 : 0)} MB in 16 bits`;
+}
+["model", "r"].forEach((id) => $(id).addEventListener("input", draw)); draw();
+</script>
+</body>
+</html>

@@ -167,6 +167,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-features-and-leakage"
  },
+ "fine-tuning-and-lora.html": {
+  "notebook": "fine-tuning-and-lora.ipynb",
+  "title": "AI from scratch: fine-tuning and LoRA",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/fine-tuning-and-lora.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-fine-tuning-and-lora"
+ },
  "gpus-and-scale.html": {
   "notebook": "gpus-and-scale.ipynb",
   "title": "AI from scratch: GPUs and scale",

@@ -288,6 +288,13 @@ def lint(only=(), show_ledger=None):
                 used = {x.id for x in ast.walk(f.value) if isinstance(x, ast.Name)} & (answers - given_stores)
                 if used:
                     report(f"{stem} notebook", f"given code formats the answer {', '.join(sorted(used))} with a format spec: a blank answer (None) crashes it")
+            # ...and unpacking what an exercise function returns: a, b = f(...) when f's body is the exercise (None while blank).
+            ex_funcs = {fd.name for k, c in cells if k == "code" for fd in ast.walk(parse(c) or ast.Module(body=[], type_ignores=[]))
+                        if isinstance(fd, ast.FunctionDef) and "BEGIN SOLUTION" in (seg := ast.get_source_segment(c, fd) or "")
+                        and not re.search(r"^\s*return\b", SOL.sub("", seg), re.M)}       # blank, it has no return of its own
+            for nd in ast.walk(tree) if tree else []:
+                if isinstance(nd, ast.Assign) and isinstance(nd.targets[0], ast.Tuple) and isinstance(nd.value, ast.Call) and getattr(nd.value.func, "id", None) in ex_funcs:
+                    report(f"{stem} notebook", f"given code unpacks {nd.value.func.id}(...), an exercise: blank, it returns None and the unpacking crashes")
             # ...and so does len(x), x.attr or x[i] on a blank answer, outside check() and `if x is not None:` guards.
             if used := sorted(blank_uses(tree, answers - given_stores)) if tree else []:
                 report(f"{stem} notebook", f"given code uses the answer {', '.join(used)} (len, .attr or [i]): a blank answer (None) crashes it")
