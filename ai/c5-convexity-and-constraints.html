@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Convexity and Constraints</title>
+  <meta name="description" content="AI from scratch, calculus 5: convexity and constraints. The chord test for a bowl, why a convex loss has no bad valleys, the second-derivative and Hessian tests, which ML losses are convex (linear and logistic regression) and why a network's isn't (swap two neurons), how L2 regularization makes the answer unique, the best point on a boundary (Lagrange multipliers, and PCA derived from them), and why L1 regularization gives exact zeros." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Calculus 5 · Stage 2: how a network learns</p>
+  <h1>Convexity and constraints</h1>
+  <p class="lede">Gradient descent only feels the ground under its feet, so it can get stuck in a shallow valley (chapter 2). For some losses that can't happen: they're shaped like a single bowl, and every way down leads to the one bottom. This lesson says exactly which shapes those are (<b>convex</b> ones), why linear and logistic regression have them and neural networks don't, and then asks a new question: what's the best point when you're <b>not allowed</b> to go everywhere? The answer explains PCA one more time, and why one kind of regularization sets weights exactly to zero.</p>
+
+  <h2>1. A bowl, defined by a chord</h2>
+  <p>Pick any two points on a curve and join them with a straight line, a <b>chord</b>. A function is <b>convex</b> when every chord stays on or above the curve: the curve never bulges up over a straight line between two of its own points. Move the two ends and look for red, where the chord dips below the curve.</p>
+  <canvas id="ch" width="800" height="420" aria-label="A curve with a chord between two points; red shading where the chord falls below the curve"></canvas>
+  <div class="row">
+    <label>f(x) = <select id="fn"><option value="sq">x²</option><option value="abs">|x|</option><option value="exp">eˣ</option><option value="log">−ln σ(x) (logistic loss)</option><option value="w">x⁴ − 2x²</option><option value="sin">sin x</option></select></label>
+    <label>a <input type="range" id="ca" min="-2.5" max="2.5" step="0.05" value="-1.5"></label>
+    <label>b <input type="range" id="cb" min="-2.5" max="2.5" step="0.05" value="1"></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p class="formula">\[ f(m) \le (1 - t)\,f(a) + t\,f(b) \]</p>
+  <p class="formula">\[ \text{for every point } m = (1 - t)\,a + t\,b \text{ between } a \text{ and } b \ (0 \le t \le 1) \]</p>
+  <p>The left side is the curve at the in-between point \(m\); the right side is the chord at that same point. In words: the function's value between two points is never above the straight-line average of its values there.</p>
+  <div class="q" data-answer="a">
+    <p>Predict, then check with the widget: \(|x|\) has a sharp corner at 0 and no derivative there. Is it convex?</p>
+    <ul><li data-k="a">Yes: no chord ever dips below it</li><li data-k="b" data-says="Convexity is about chords, not derivatives. Try a = −2, b = 1 in the widget: no red anywhere.">No: a function needs a smooth bottom to be convex</li></ul>
+    <div class="why">The definition only compares the curve with straight lines, so kinks are fine. That matters: the L1 penalty \(|w|\) and the hinge loss of support vector machines both have corners and are both convex.</div>
+  </div>
+  <p class="gist">A function is convex when it never rises above the straight line between two of its points: a bowl with no bumps, possibly with corners.</p>
+  <details class="deeper"><summary>Why does a convex function have only one valley?</summary>
+    <ol>
+      <li>Suppose \(a\) is the bottom of a valley (nothing nearby is lower), and somewhere else there's a lower point \(b\): \(f(b) < f(a)\).</li>
+      <li>The chord from \(a\) to \(b\) slopes down from \(f(a)\) toward \(f(b)\), so right next to \(a\), the chord is already below \(f(a)\).</li>
+      <li>Convexity says the curve is on or below the chord, so right next to \(a\) the curve is below \(f(a)\) too.</li>
+      <li>That contradicts \(a\) being the bottom of a valley. So there's no lower point anywhere: <b>every valley bottom of a convex function is the lowest point there is</b>, and gradient descent with a sensible step can't get stuck in a bad one.</li>
+    </ol>
+  </details>
+
+  <h2>2. Testing for a bowl without drawing it</h2>
+  <p>Calculus 3 measured how a curve bends with the second derivative. Convex means it never bends downward: \(f''(x) \ge 0\) everywhere. For a loss with many weights the bend is the Hessian, and "never bends down in any direction" means <b>all its eigenvalues are \(\ge 0\)</b> at every point (linear algebra 2: the eigenvalues are the curvatures along the main axes).</p>
+  <p>You rarely need to compute that, because convexity survives the ways losses are built:</p>
+  <ul>
+    <li>a sum of convex functions is convex (a loss is a sum over examples, plus a penalty);</li>
+    <li>a convex function of a linear expression, \(f(Xw)\), is convex in \(w\) (a linear model feeds \(Xw\) into its loss);</li>
+    <li>the largest of several convex functions is convex (the hinge loss is \(\max(0, 1 - z)\)).</li>
+  </ul>
+  <div class="code" data-title="Run it: two losses, checked for bowls"><textarea>
+import numpy as np
+from sklearn.datasets import load_breast_cancer
+from sklearn.preprocessing import StandardScaler
+
+X, y = load_breast_cancer(return_X_y=True)
+X = StandardScaler().fit_transform(X)[:, :5]; n = len(X)          # 5 features, standardized
+rng = np.random.default_rng(0)
+
+H_mse = 2 * X.T @ X / n                                             # MSE's Hessian: the same everywhere
+print("linear regression, smallest Hessian eigenvalue:", round(np.linalg.eigvalsh(H_mse).min(), 4))
+
+smallest = []
+for _ in range(1000):                                               # logistic regression's Hessian changes with w
+    w = rng.normal(0, 3, 5)
+    p = 1 / (1 + np.exp(-X @ w))
+    H_log = (X.T * (p * (1 - p))) @ X / n
+    smallest.append(np.linalg.eigvalsh(H_log).min())
+print("logistic regression, smallest eigenvalue over 1,000 random w:", f"{min(smallest):.2e}", "(never negative)")
+</textarea></div>
+  <p class="gist">Convex means curving up (or flat) in every direction at every point: the Hessian's eigenvalues are never negative. Sums, linear inputs and maxima keep it that way.</p>
+
+  <h2>3. Which ML losses are bowls</h2>
+  <table class="cmp">
+    <tr><th>model and loss</th><th>convex in the weights?</th></tr>
+    <tr><td>linear regression, squared error</td><td>yes: a quadratic bowl, Hessian \(2X^\top X / n\) (linear algebra 1 solved it in one step)</td></tr>
+    <tr><td>logistic regression, cross-entropy</td><td>yes: \(-\ln \sigma(z)\) is convex (the widget's fourth curve) and \(z = Xw\) is linear</td></tr>
+    <tr><td>either of those plus \(\lambda \lVert w \rVert^2\) or \(\lambda \lVert w \rVert_1\)</td><td>yes: sums of convex functions</td></tr>
+    <tr><td>a neural network with a hidden layer, any loss</td><td><b>no</b></td></tr>
+  </table>
+  <p>Why can't a network's loss be a bowl? Swap two hidden neurons, with all their incoming and outgoing weights. The network computes exactly the same thing, so the loss is the same, but the weights are a different point. Now walk in a straight line from one to the other: halfway, the two neurons are averaged into identical twins, and the network is worse. Same height at both ends, a bump in the middle, and a bowl can't have that.</p>
+  <div class="code" data-title="Run it: a network's loss between two identical networks"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_diabetes
+from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import StandardScaler
+
+d = load_diabetes(); X = StandardScaler().fit_transform(d.data); y = (d.target - d.target.mean()) / d.target.std()
+net = MLPRegressor(hidden_layer_sizes=(8,), activation="tanh", max_iter=3000, random_state=0).fit(X, y)
+W1, W2 = net.coefs_; b1, b2 = net.intercepts_                       # 10 inputs → 8 hidden → 1 output
+loss = lambda W1, b1, W2: np.mean((np.tanh(X @ W1 + b1) @ W2 + b2 - y[:, None]) ** 2)
+
+perm = np.roll(np.arange(8), 1)                                     # relabel the hidden neurons: 0→1, 1→2, …
+W1p, b1p, W2p = W1[:, perm], b1[perm], W2[perm]                     # the same network, other weights
+ts = np.linspace(0, 1, 21)
+path = [loss((1 - t) * W1 + t * W1p, (1 - t) * b1 + t * b1p, (1 - t) * W2 + t * W2p) for t in ts]
+print("loss at both ends:", round(path[0], 3), round(path[-1], 3), "· halfway:", round(path[10], 3))
+plt.figure(figsize=(6, 2.6)); plt.plot(ts, path, "o-"); plt.xlabel("from one network to its relabeled twin"); plt.ylabel("loss"); plt.show()
+</textarea></div>
+  <p class="gist">Linear and logistic regression have bowl-shaped losses, so training finds the best answer. A network's loss has many equally good valleys (at least one per way of relabeling its neurons) with ridges between them, so it can't be a bowl.</p>
+  <details class="deeper"><summary>Where it breaks: convex isn't the same as easy, and non-convex isn't hopeless</summary>
+    <ul>
+      <li><b>A flat bottom.</b> Convex allows a whole line of equally low points. Linear algebra 1's twin columns give exactly that: one lowest value, endless weights reaching it. Section 4 fixes it.</li>
+      <li><b>A long, thin bowl.</b> Still one valley, but if the curvatures differ by a factor of 10,000 (the condition number), gradient descent zigzags for a very long time. Convex guarantees where you end up, not how fast.</li>
+      <li><b>Networks train anyway.</b> Their losses aren't convex, yet gradient descent finds good weights reliably. The working explanation: the many valleys of a large network are mostly about equally good (the relabeled twins above are exactly equal), and in millions of dimensions most flat spots are saddles you roll off, not traps. That's an observed fact more than a proven theorem, which is why training still needs care (stage 2's "making nets train").</li>
+    </ul>
+  </details>
+
+  <h2>4. Making the bottom a single point</h2>
+  <p>Adding \(\lambda \lVert w \rVert^2\) to a loss adds \(2\lambda\) to the curvature in every direction: the Hessian becomes \(H + 2\lambda I\), so every eigenvalue goes up by \(2\lambda\). A flat direction (eigenvalue 0) now curves up with \(2\lambda\), and a bowl that curves up in every direction has exactly one lowest point. That's why ridge regression always has a single answer, even with twin columns.</p>
+  <div class="q" data-num="0.2" data-tol="0.01">
+    <p>With twin columns, a squared-error loss has Hessian eigenvalues 5 and 0. You add \(0.1 \lVert w \rVert^2\). What's the smallest eigenvalue now?</p>
+    <div class="why">Each goes up by \(2\lambda = 0.2\): the eigenvalues become 5.2 and 0.2. The flat direction now curves up a little, enough to pick one answer: the one that splits the weight evenly between the twins, since that has the smallest \(\lVert w \rVert^2\).</div>
+  </div>
+  <p class="gist">An L2 penalty bends every direction upward by the same amount, turning a flat-bottomed bowl into one with a single lowest point.</p>
+
+  <h2>5. The best point on a boundary</h2>
+  <p>Sometimes you can't go everywhere: the weights must stay within a budget, a direction must have length 1, probabilities must add up to 1. Here the gray ellipses are the loss's contour lines around its unconstrained best point (drag the <span style="color:#f4d35e">yellow dot</span>), and you may only use weights inside the blue circle, \(\lVert w \rVert \le t\). The green dot is the best you can do.</p>
+  <canvas id="lg" class="sq" width="520" height="520" aria-label="Loss contours, a circle or diamond of allowed weights, and the best allowed point with its gradient"></canvas>
+  <div class="row">
+    <label>budget t <input type="range" id="t" min="0.2" max="3" step="0.05" value="1.2"></label>
+    <label><input type="radio" name="norm" value="2" checked> circle, \(\lVert w \rVert_2 \le t\) (L2)</label>
+    <label><input type="radio" name="norm" value="1"> diamond, \(\lVert w \rVert_1 \le t\) (L1)</label>
+  </div>
+  <p class="legend"><i style="background:#83c167"></i>best allowed point <i style="background:#fc6255"></i>downhill, \(-\nabla L\) <i style="background:#58c4dd"></i>straight out of the boundary</p>
+  <p class="readout" id="r2"></p>
+  <p>Look at the two arrows at the green dot. Whenever the best point is on the circle, downhill points straight out of it: the two arrows line up. That's the <b>Lagrange condition</b>. For a boundary \(g(w) = 0\) (here \(g = \lVert w \rVert^2 - t^2\)), the best point has</p>
+  <p class="formula">\[ \nabla L(w) = \mu\, \nabla g(w) \quad \text{for some number } \mu \]</p>
+  <p>and the number \(\mu\), the <b>Lagrange multiplier</b>, says how much the best loss would improve per unit of extra budget: what the constraint costs you.</p>
+  <details class="deeper"><summary>Why must downhill point straight out of the boundary?</summary>
+    <ol>
+      <li>Stand at the best allowed point on the boundary, and split the downhill arrow \(-\nabla L\) into a part along the boundary and a part straight across it.</li>
+      <li>If the part along the boundary weren't zero, you could slide a little along the boundary in that direction, stay allowed, and lower the loss (chapter 2: a small step with a downhill component goes down).</li>
+      <li>So at the best point that part is zero: downhill points straight across the boundary, which is the direction of \(\nabla g\) (a gradient is perpendicular to its contour, and the boundary is a contour of \(g\)).</li>
+      <li>Two arrows along the same line are multiples of each other: \(\nabla L = \mu\,\nabla g\). It must point outward, too, or stepping inward would help.</li>
+    </ol>
+  </details>
+  <p>Here is a result you've met twice, derived a third way. PCA wants the direction \(u\) with the most variance \(u^\top \Sigma u\), subject to \(u\) having length 1, \(u^\top u = 1\). The gradients are \(2\Sigma u\) and \(2u\), and the Lagrange condition says \(2 \Sigma u = \mu \cdot 2u\), that is \(\Sigma u = \mu u\): <b>the best direction is an eigenvector</b>, and the variance it holds, \(u^\top \Sigma u = \mu\), is its eigenvalue. Linear algebra 2's answer, from nothing but "the arrows line up".</p>
+  <p class="gist">At the best point on a boundary, the loss's downhill arrow points straight out of it. That one picture gives Lagrange multipliers, and with them PCA.</p>
+
+  <h2>6. Why L1 gives exact zeros</h2>
+  <p>Switch the widget to the <b>diamond</b>: the budget is now \(\lVert w \rVert_1 = |w_1| + |w_2| \le t\), the L1 norm. Keep the budget below about 1.8 and watch the green dot: it sits exactly on the corner, where \(w_2 = 0\). Growing ellipses touch a diamond at a corner far more often than anywhere else, and corners lie on the axes, so some weights come out <b>exactly zero</b>. With the circle there are no corners, and the weights only shrink.</p>
+  <p>Penalizing \(\lambda \lVert w \rVert_1\) instead of setting a budget is the same thing seen from the other side (every budget \(t\) matches some \(\lambda\)). That's <b>lasso</b> regression, and its zeros make it a feature selector:</p>
+  <div class="code" data-title="Run it: lasso and ridge on the diabetes data"><textarea>
+import numpy as np
+import warnings; warnings.filterwarnings("ignore")
+from sklearn.datasets import load_diabetes
+from sklearn.linear_model import Lasso, Ridge
+from sklearn.preprocessing import StandardScaler
+
+d = load_diabetes(); X = StandardScaler().fit_transform(d.data); y = (d.target - d.target.mean()) / d.target.std()
+for alpha in [0.01, 0.05, 0.1, 0.3]:
+    lasso, ridge = Lasso(alpha=alpha).fit(X, y), Ridge(alpha=alpha * len(y)).fit(X, y)
+    kept = [name for name, w in zip(d.feature_names, lasso.coef_) if w != 0]
+    print(f"penalty {alpha:4}: lasso keeps {len(kept):2} of 10 {kept} · ridge zeros: {np.sum(ridge.coef_ == 0)}")
+</textarea></div>
+  <p>With a strong enough penalty, lasso keeps only body-mass index (<code>bmi</code>) and one blood measurement (<code>s5</code>): the two features that carry most of the signal. Ridge shrinks all ten and zeroes none.</p>
+  <p class="gist">L1's budget is a diamond with corners on the axes, and the loss usually touches it at a corner, so lasso sets weights exactly to zero. L2's circle has no corners, so ridge only shrinks.</p>
+  <details class="deeper"><summary>Where it breaks: lasso's choices</summary>
+    <ul>
+      <li><b>Correlated features.</b> When two features carry the same information (the blood measurements <code>s1</code> and <code>s2</code> are strongly correlated), lasso tends to keep one and drop the other more or less arbitrarily, and a slightly different sample can swap them. Don't read "lasso dropped it" as "it doesn't matter". <b>Elastic net</b> (a mix of both penalties) keeps correlated groups together.</li>
+      <li><b>The corner is hard to land on.</b> \(|w|\) has a kink at 0, so plain gradient descent jitters around zero instead of stopping there. Libraries use coordinate descent or a "shrink and clip at zero" step, which lands exactly on 0. A neural network trained with an L1 penalty by plain gradient descent gets small weights, not exact zeros.</li>
+    </ul>
+  </details>
+  <div class="q" data-answer="b">
+    <p>Why does the circle (L2) almost never give an exact zero?</p>
+    <ul><li data-k="a" data-says="Ridge is a strong penalty too; with a big λ, weights get tiny. Tiny isn't zero, though.">Because L2 is a weaker penalty than L1</li><li data-k="b">Because a smooth circle meets the ellipses where their directions match, which is almost never exactly on an axis; only a corner can "catch" them there</li><li data-k="c" data-says="Both penalties are convex; that's why both have a single best point.">Because the L2 penalty isn't convex</li></ul>
+    <div class="why">On a smooth boundary the touching point moves continuously as the loss changes, and landing exactly on an axis would be a coincidence. A corner has a whole range of "straight out" directions, so it stays the answer for a whole range of losses: that's why lasso's zeros are exact and stable.</div>
+  </div>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li><b>Convex</b>: chords never dip below the curve. Then every valley bottom is the lowest point: gradient descent can't get trapped.</li>
+    <li>Tests: \(f'' \ge 0\); in many dimensions, Hessian eigenvalues \(\ge 0\). Sums, linear inputs and maxima keep convexity.</li>
+    <li>Linear and logistic regression are convex; networks aren't (relabeling neurons makes equal valleys with ridges between them), and train well anyway.</li>
+    <li>\(\lambda \lVert w \rVert^2\) adds \(2\lambda\) to every curvature: one single best answer.</li>
+    <li>On a boundary, the best point has \(\nabla L = \mu \nabla g\) (Lagrange). PCA's eigenvectors fall out of it.</li>
+    <li>L1's diamond has corners on the axes: lasso gives exact zeros and selects features; ridge only shrinks.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Boyd and Vandenberghe's <i>Convex Optimization</i> is free online from Stanford; its first chapters go much further.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, scene, axes, arrow, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// 1. the chord test
+const FNS = {
+  sq: { f: (x) => x * x, y: [-1, 6.5], convex: true },
+  abs: { f: (x) => Math.abs(x), y: [-0.5, 3], convex: true },
+  exp: { f: (x) => Math.exp(x), y: [-1, 12.5], convex: true },
+  log: { f: (x) => Math.log(1 + Math.exp(-x)), y: [-0.5, 3], convex: true },
+  w: { f: (x) => x ** 4 - 2 * x * x, y: [-1.5, 3], convex: false },
+  sin: { f: (x) => Math.sin(x), y: [-1.5, 1.5], convex: false },
+};
+function drawChord() {
+  const F = FNS[$("fn").value], a = +$("ca").value, b = +$("cb").value, P = graph("ch", [-2.6, 2.6], F.y, { step: [1, F.y[1] > 6 ? 2 : 1] });
+  let worst = 0;
+  if (Math.abs(b - a) > 1e-9) for (let i = 0; i <= 400; i++) {
+    const t = i / 400, x = a + (b - a) * t, chord = (1 - t) * F.f(a) + t * F.f(b), gap = F.f(x) - chord;
+    if (gap > 1e-9) { worst = Math.max(worst, gap); P.seg(x, chord, x, F.f(x), "rgba(252,98,85,0.55)", 3); }
+  }
+  P.curve(F.f, C.blue, 3); P.seg(a, F.f(a), b, F.f(b), C.yellow, 3); P.dot(a, F.f(a), C.yellow); P.dot(b, F.f(b), C.yellow);
+  $("r1").innerHTML = worst > 1e-6
+    ? `the chord dips below the curve, by up to ${worst.toFixed(3)}: not convex`
+    : `no part of this chord is below the curve${F.convex ? " (and none ever is: this function is convex)" : " here, but try other ends"}`;
+  if (worst > 1e-6 && $("fn").value === "w") say("A bump between two valleys: gradient descent could stop in either one.");
+}
+for (const id of ["fn", "ca", "cb"]) $(id).addEventListener("input", drawChord);
+drawChord();
+
+// 5–6. the best point inside a circle or a diamond
+const H = [[1.5, 0.4], [0.4, 1]], star = { p: [2.2, 0.6], color: C.yellow };
+const loss = ([x, y]) => { const d = [x - star.p[0], y - star.p[1]]; return H[0][0] * d[0] * d[0] + 2 * H[0][1] * d[0] * d[1] + H[1][1] * d[1] * d[1]; };
+const grad = ([x, y]) => { const d = [x - star.p[0], y - star.p[1]]; return [2 * (H[0][0] * d[0] + H[0][1] * d[1]), 2 * (H[1][0] * d[0] + H[1][1] * d[1])]; };
+const l1 = () => document.querySelector("input[name=norm]:checked").value === "1";
+const norm = ([x, y]) => (l1() ? Math.abs(x) + Math.abs(y) : Math.hypot(x, y));
+const edge = (th, t) => { const c = Math.cos(th), s = Math.sin(th), k = l1() ? Math.abs(c) + Math.abs(s) : 1; return [(t * c) / k, (t * s) / k]; };
+function best(t) {
+  if (norm(star.p) <= t) return { w: [...star.p], inside: true };
+  let w = null, L = Infinity;
+  for (let k = 0; k < 3600; k++) { const p = edge((k * 2 * Math.PI) / 3600, t), v = loss(p); if (v < L) { L = v; w = p; } }
+  return { w, inside: false };
+}
+const render = scene("lg", (sc) => {
+  const { g, toPx } = sc, t = +$("t").value;
+  axes(sc);
+  g.strokeStyle = "rgba(215,221,229,0.35)"; g.lineWidth = 1.5;
+  for (const level of [0.25, 1, 2.25, 4, 6.25, 9]) {           // contour ellipses of the loss
+    g.beginPath();
+    for (let k = 0; k <= 180; k++) {
+      const th = (k * 2 * Math.PI) / 180, u = [Math.cos(th), Math.sin(th)], q = H[0][0] * u[0] ** 2 + 2 * H[0][1] * u[0] * u[1] + H[1][1] * u[1] ** 2, r = Math.sqrt(level / q);
+      const [px, py] = toPx([star.p[0] + r * u[0], star.p[1] + r * u[1]]); k ? g.lineTo(px, py) : g.moveTo(px, py);
+    }
+    g.stroke();
+  }
+  g.fillStyle = "rgba(88,196,221,0.16)"; g.strokeStyle = C.blue; g.lineWidth = 3; g.beginPath();
+  for (let k = 0; k <= 360; k++) { const [px, py] = toPx(edge((k * Math.PI) / 180, t)); k ? g.lineTo(px, py) : g.moveTo(px, py); }
+  g.fill(); g.stroke();
+  const { w, inside } = best(t), d = grad(w), len = Math.hypot(...d);
+  if (!inside && len > 1e-9) {
+    arrow(sc, w, [w[0] - (d[0] / len) * 1.1, w[1] - (d[1] / len) * 1.1], C.red, 4);
+    const corner = l1() && (Math.abs(w[0]) < 1e-6 || Math.abs(w[1]) < 1e-6);
+    if (!corner) { const n = l1() ? [Math.sign(w[0]), Math.sign(w[1])] : w, nl = Math.hypot(...n); arrow(sc, w, [w[0] + (n[0] / nl) * 0.8, w[1] + (n[1] / nl) * 0.8], C.blue, 3); }
+  }
+  const [px, py] = toPx(w); g.fillStyle = C.green; g.beginPath(); g.arc(px, py, 8, 0, 7); g.fill();
+}, () => [star], () => {
+  const t = +$("t").value, { w, inside } = best(t), zero = l1() && !inside && (Math.abs(w[0]) < 1e-6 || Math.abs(w[1]) < 1e-6);
+  const d = grad(w), n = l1() ? [Math.sign(w[0]), Math.sign(w[1])] : w;
+  const ang = inside ? 0 : (Math.acos(Math.max(-1, Math.min(1, (-d[0] * n[0] - d[1] * n[1]) / (Math.hypot(...d) * Math.hypot(...n) || 1)))) * 180) / Math.PI;
+  $("r2").innerHTML = inside
+    ? `budget ${t.toFixed(2)} is big enough: the unconstrained best point (${star.p.map((v) => v.toFixed(2)).join(", ")}) is allowed, and the constraint costs nothing`
+    : `best allowed w = (${w.map((v) => v.toFixed(3)).join(", ")}), loss ${loss(w).toFixed(3)}<br>` +
+      (zero ? `on a corner: w${Math.abs(w[0]) < 1e-6 ? "₁" : "₂"} is exactly 0. A corner has a whole fan of "straight out" directions, and downhill falls inside it`
+            : `angle between downhill and straight out: ${ang.toFixed(1)}° (the Lagrange condition: they line up)`);
+  if (zero) say("Exactly zero: that's the corner doing it.");
+}, { unit: 90, origin: [170, 330], snap: false });
+$("t").addEventListener("input", render);
+document.querySelectorAll("input[name=norm]").forEach((r) => r.addEventListener("change", render));
+</script>
+</body>
+</html>

@@ -3340,5 +3340,117 @@
     "sec": 6
    }
   ]
+ },
+ "c5-convexity-and-constraints.html": {
+  "goals": [
+   "Test a function for convexity with the chord picture, the second derivative and the Hessian's eigenvalues",
+   "Explain why a convex loss has no bad valleys, and why a network's loss isn't convex",
+   "Explain how an L2 penalty makes the best answer unique",
+   "Find the best point on a boundary with the Lagrange condition, and explain why L1 gives exact zeros"
+  ],
+  "needs": [
+   "c3-taylor-and-curvature.html",
+   "l2-eigenvectors-and-pca.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Convex",
+    "Every chord stays on or above the curve: a bowl with no bumps (corners allowed)."
+   ],
+   [
+    "One valley",
+    "In a convex function every valley bottom is the lowest point: gradient descent can't get trapped."
+   ],
+   [
+    "Convexity tests",
+    "f″ ≥ 0; with many inputs, all Hessian eigenvalues ≥ 0. Sums, f(Xw) and maxima stay convex."
+   ],
+   [
+    "Convex ML losses",
+    "Linear regression (MSE) and logistic regression (cross-entropy), with or without L1/L2 penalties."
+   ],
+   [
+    "Networks aren't convex",
+    "Relabeling hidden neurons gives equally good weights with a worse point between them."
+   ],
+   [
+    "L2 makes it unique",
+    "λ‖w‖² adds 2λ to every curvature: a single lowest point, even with twin columns."
+   ],
+   [
+    "Lagrange condition",
+    "On a boundary g(w) = 0, the best point has ∇L = μ∇g: downhill points straight out."
+   ],
+   [
+    "Lagrange multiplier",
+    "μ: how much the best loss improves per unit of extra budget."
+   ],
+   [
+    "PCA from Lagrange",
+    "Max uᵀΣu with uᵀu = 1 gives Σu = μu: the best direction is an eigenvector."
+   ],
+   [
+    "L1 vs L2",
+    "L1's diamond has corners on the axes, so lasso gives exact zeros (feature selection); L2 only shrinks."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can't gradient descent get stuck in a bad valley of a convex loss?",
+    "options": [
+     "If a lower point existed, the chord to it would put lower points right next to the valley bottom, so it wasn't a bottom",
+     "Because convex functions have no flat parts",
+     "Because convex losses are always quadratic"
+    ],
+    "answer": 0,
+    "why": "Every valley bottom of a convex function is the lowest point. Flat bottoms are possible, and convex losses come in many shapes (logistic, hinge).",
+    "sec": 1
+   },
+   {
+    "q": "A Hessian has eigenvalues 3, 0.5 and −0.2 at some point. The loss is…",
+    "options": [
+     "Not convex: it curves down along one direction",
+     "Convex: most eigenvalues are positive",
+     "Convex if the point is a minimum"
+    ],
+    "answer": 0,
+    "why": "Convex needs every eigenvalue ≥ 0 at every point; one negative curvature anywhere is enough to break it.",
+    "sec": 2
+   },
+   {
+    "q": "Why isn't a neural network's loss convex?",
+    "options": [
+     "Relabeling two hidden neurons gives the same loss at different weights, and the point between them is worse",
+     "Because it uses too many weights",
+     "Because ReLU has a kink"
+    ],
+    "answer": 0,
+    "why": "Equal ends with a bump in the middle is exactly what a chord test forbids. Kinks alone don't break convexity (|x| is convex).",
+    "sec": 3
+   },
+   {
+    "q": "Why does the L1 penalty give exact zeros while L2 doesn't?",
+    "options": [
+     "The L1 budget is a diamond with corners on the axes, and the loss usually touches it at a corner",
+     "L1 is a stronger penalty",
+     "L2 isn't convex"
+    ],
+    "answer": 0,
+    "why": "A smooth circle meets the loss where their directions match, almost never on an axis; a corner catches a whole range of losses.",
+    "sec": 6
+   },
+   {
+    "q": "At the best point on a constraint boundary, the loss's gradient is…",
+    "options": [
+     "Parallel to the boundary's gradient (∇L = μ∇g)",
+     "Zero",
+     "Along the boundary"
+    ],
+    "answer": 0,
+    "why": "Any part along the boundary would let you slide and improve; only the part straight across can remain.",
+    "sec": 5
+   }
+  ]
  }
 }
