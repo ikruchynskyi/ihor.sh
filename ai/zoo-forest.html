@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Forests</title>
+  <meta name="description" content="AI from scratch, model zoo 6: random forests, hundreds of unstable trees averaged into a steady model. A map where trees pile up and the noise smooths out, the variance of an average and why correlated trees limit it, bagging from scratch in NumPy, out-of-bag scores for free, and where forests break: importance that ranks a column of pure noise fifth of 63, 54 MB models, and flat predictions past the data." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; } .strip { aspect-ratio: 3 / 1; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 6 of 10 · Random forests</p>
+  <h1>Random forests</h1>
+  <p class="lede">Page 5 ended with a problem: a deep tree fits its sample so closely that a slightly different sample gives a different tree. A random forest turns that weakness into the method. Grow hundreds of deep trees, each on a different random sample and with random columns at each split, so each is wrong in its own way, then average them. It's the model you can throw at almost any table with default settings and get a good answer, which is why it was the workhorse of tabular ML for fifteen years.</p>
+
+  <h2>1. The idea in one picture: trees pile up, the noise cancels</h2>
+  <p>Each tree here is deep and grown on its own bootstrap sample (200 dots drawn with replacement). With one tree the map is a jagged patchwork. Add trees: the map is their average, and the islands that only one tree believed in fade, while the shape most trees agree on stays.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points and the forest's average prediction shaded over the plane"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label>trees <input type="range" id="n" min="1" max="100" value="1"> <b id="nV"></b></label></div>
+  <div class="row"><label>depth <input type="range" id="depth" min="2" max="12" value="12"> <b id="depthV"></b></label><label><input type="checkbox" id="mtry" checked> a random column per split</label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="a">
+    <p>Slide the trees from 1 to 100. Predict first: what happens to training accuracy, and to validation accuracy?</p>
+    <ul><li data-k="a">Training stays near 100% while validation rises, then levels off</li><li data-k="b" data-says="Unlike boosting rounds or tree depth, adding trees to a forest doesn't add complexity: it's an average.">Validation rises, then falls as the forest overfits</li><li data-k="c" data-says="Try it: the average of deep trees still fits the training dots.">Both fall: averaging blurs everything</li></ul>
+    <div class="why">Every tree fits its own sample closely, so their average still fits the training dots. On new dots, the errors that differ from tree to tree cancel, so validation improves, quickly at first, then hardly at all. More trees never hurt the score; they only cost time and memory. On the bank calls: one tree AUC 0.74, 10 trees 0.77, 50 trees 0.785, 300 trees 0.782.</div>
+  </div>
+  <p class="gist">A random forest averages many deep trees, each grown on a random sample with random columns, so their separate mistakes cancel while what they agree on remains.</p>
+
+  <h2>2. How it learns: bagging plus random columns</h2>
+  <p><b>Bagging</b> (bootstrap aggregating): for each tree, draw n rows with replacement from the n training rows (each tree sees about 63% of the distinct rows, some twice), grow it deep, and average the trees' predicted probabilities. The forest adds one more source of randomness: at each split, a tree may only choose among a random subset of the columns (about \(\sqrt{p}\) of \(p\) for classification). Why bother? Because averaging only cancels the part of the errors that differs between trees:</p>
+  <p class="formula">\[ \operatorname{Var}\Big(\frac{1}{B}\sum_{b=1}^{B} T_b\Big) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2 \]</p>
+  <p>Here \(\sigma^2\) is one tree's variance and \(\rho\) the correlation between two trees. More trees (\(B\)) shrink the second term to nothing, but the first stays: if every tree starts with the same strong column, they make the same mistakes, and no number of them averages that away. Slide \(\rho\):</p>
+  <canvas id="var" class="strip" width="720" height="240" aria-label="Variance of the average as trees are added, for a chosen correlation"></canvas>
+  <div class="row"><label>correlation between trees ρ <input type="range" id="rho" min="0" max="1" step="0.05" value="0.3"> <b id="rhoV"></b></label></div>
+  <p class="readout" id="r2"></p>
+  <details class="deeper"><summary>Why the average's variance has that floor</summary>
+    <ol>
+      <li>Take \(B\) trees' predictions at one point, \(T_1, \dots, T_B\), each with variance \(\sigma^2\) (from which sample it got) and each pair with correlation \(\rho\), so covariance \(\rho\sigma^2\).</li>
+      <li>The variance of a sum is the sum of all variances and covariances: \(B\sigma^2 + B(B-1)\rho\sigma^2\).</li>
+      <li>Dividing the sum by \(B\) divides its variance by \(B^2\): \(\frac{\sigma^2}{B} + \frac{B-1}{B}\rho\sigma^2\).</li>
+      <li>Rearranged, that's \(\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2\). As \(B \to \infty\), only \(\rho\sigma^2\) is left.</li>
+      <li>So two levers: more trees (cheap, kills the second term) and less correlated trees (random rows, random columns), which lowers the floor, as long as each tree doesn't get much worse. The bias, meanwhile, is one tree's bias: averaging doesn't fix a systematic error, which is why forests use deep, low-bias trees.</li>
+    </ol>
+  </details>
+
+  <h2>3. Out-of-bag: a validation score for free</h2>
+  <p>Each tree never saw about 37% of the rows (the chance a row is never drawn in n tries is \((1 - 1/n)^n \approx 1/e \approx 0.37\)). Score every row with only the trees that didn't train on it, and you get an honest estimate without holding out any data: the <b>out-of-bag</b> (OOB) score. On the bank calls, the OOB AUC was 0.793 and the test AUC 0.782.</p>
+  <div class="q" data-num="0.368" data-tol="0.02">
+    <p>A tree draws 1,000 rows with replacement from 1,000. What share of the rows does it never draw? (\((1 - 1/1000)^{1000}\))</p>
+    <div class="why">\((0.999)^{1000} \approx 0.368\), very close to \(1/e\). So about 63% of the distinct rows are in each bootstrap sample, some of them several times.</div>
+  </div>
+
+  <h2>4. Build it: bagging from scratch, next to scikit-learn</h2>
+  <div class="code" data-title="A forest from scikit-learn's trees and NumPy's random draws, with out-of-bag scoring"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score
+
+b = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))        # in a notebook: pd.read_csv(url)
+y = (b["y"] == "yes").astype(int).values
+X = pd.get_dummies(b.drop(columns=["y", "duration"]), dtype=float).values
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+rng = np.random.default_rng(0)
+
+trees, oob_sum, oob_n = [], np.zeros(len(ytr)), np.zeros(len(ytr))
+for b_ in range(100):
+    rows = rng.integers(0, len(ytr), len(ytr))                 # a bootstrap sample
+    t = DecisionTreeClassifier(max_features="sqrt", min_samples_leaf=5, random_state=b_).fit(Xtr[rows], ytr[rows])
+    trees.append(t)
+    unseen = np.setdiff1d(np.arange(len(ytr)), rows)           # this tree's out-of-bag rows
+    oob_sum[unseen] += t.predict_proba(Xtr[unseen])[:, 1]; oob_n[unseen] += 1
+
+forest = lambda X: np.mean([t.predict_proba(X)[:, 1] for t in trees], axis=0)
+print("one tree:      ", round(roc_auc_score(yte, trees[0].predict_proba(Xte)[:, 1]), 3))
+print("100 trees:     ", round(roc_auc_score(yte, forest(Xte)), 3))
+print("out-of-bag AUC:", round(roc_auc_score(ytr, oob_sum / np.maximum(oob_n, 1)), 3), "(no test data used)")
+sk = RandomForestClassifier(100, min_samples_leaf=5, random_state=0).fit(Xtr, ytr)
+print("scikit-learn:  ", round(roc_auc_score(yte, sk.predict_proba(Xte)[:, 1]), 3))
+</textarea></div>
+
+  <h2>5. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> strong with no tuning (the defaults are fine on most tables), hard to overfit by adding trees, no scaling, any mix of columns, an honest score built in (OOB), and trees train in parallel on every core. On digits it gets 96.7%, on the bank calls AUC 0.78, both within a point or two of the best model in the zoo.</p>
+  <div class="q" data-answer="b">
+    <p>Add a column of pure random numbers to the bank calls. The forest's built-in importance (how much each column's splits lowered impurity) ranks it…</p>
+    <ul><li data-k="a" data-says="It should be, but the built-in measure has a known bias.">last: it carries no information</li><li data-k="b">5th of 63, level with age</li><li data-k="c" data-says="It's high, but not first: the economy columns still win.">first</li></ul>
+    <div class="why">Measured: 5th, with the same importance as age (0.072). A random number has a distinct value in every row, so it offers thousands of cut points, and deep trees use them to split tiny boxes by luck; each such split lowers training impurity a little, and it adds up. Permutation importance on test data (shuffle a column, see how much the AUC drops) puts it 23rd, with a drop of 0.0004, near nothing. For explaining a forest, use permutation importance on held-out data.</div>
+  </div>
+  <p class="gist">Forests are strong, stable and nearly tuning-free; they're big and slow to predict, can't extrapolate, and their built-in importance flatters columns with many values.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Size and speed.</b> Hundreds of deep trees with thousands of leaves each: the default forest on the bank calls is 54 MB (18 MB with leaves of at least 5 calls), against 0.4 MB for boosted trees. Predicting means walking every tree. Limit <code>min_samples_leaf</code> and <code>max_depth</code>, or use fewer trees, if it has to run on a phone or in a millisecond.</li>
+      <li><b>Past the data.</b> An average of flat trees is flat: no forest can predict ridership above anything it saw (page 1). Model the trend separately, or predict the change.</li>
+      <li><b>Correlated trees.</b> When one column dominates (a leak, or one strong signal), every tree splits on it first and the average can't cancel their shared errors (the ρσ² floor). Feature subsampling helps; so does removing a leak.</li>
+      <li><b>Second place.</b> On most tables, carefully tuned gradient boosting (page 7) edges out a forest by a point or two; forests win on robustness and effort, not peak score.</li>
+      <li><b>Importance.</b> As measured above. Correlated columns also split their importance (euribor and the employment figure share credit), so a column can look unimportant only because its twin took the splits.</li>
+    </ul>
+  </details>
+
+  <h2>6. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>Number of trees</td><td><code>n_estimators</code></td><td>More is never worse, only slower; the score plateaus (here by 50). Use 200 to 500 and stop worrying.</td></tr>
+    <tr><td>Columns per split</td><td><code>max_features</code></td><td>The main tuning knob: smaller decorrelates trees and regularizes each one; "sqrt" is the classification default, 1.0 means plain bagging.</td></tr>
+    <tr><td>Leaf size, depth</td><td><code>min_samples_leaf</code>, <code>max_depth</code></td><td>Deep by default (low bias). Bigger leaves make smaller, faster models with smoother probabilities.</td></tr>
+    <tr><td>Rows per tree</td><td><code>max_samples</code>, <code>bootstrap</code></td><td>Smaller samples: faster, more diverse trees.</td></tr>
+    <tr><td>Free validation</td><td><code>oob_score=True</code></td><td>An honest score without a holdout; handy when data is scarce.</td></tr>
+    <tr><td>Imbalance</td><td><code>class_weight="balanced_subsample"</code></td><td>Reweights the classes within each bootstrap sample.</td></tr>
+  </table></div>
+  <p>Next in the zoo: trees again, but grown one after another, each fixing what the last ones got wrong.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing: Moro, Cortez and Rita (2014), UCI Machine Learning Repository, CC BY 4.0.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, map, forest, accuracy, C } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["moons", "circles", "blobs", "xor", "diagonal"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+const cache = new Map();
+function draw() {
+  const name = $("ds").value, depth = +$("depth").value, mtry = $("mtry").checked ? 1 : 2, n = +$("n").value, key = `${name}/${depth}/${mtry}`;
+  if (!cache.has(key)) { const set = data(name, { noise: 0.1 }); cache.set(key, { set, f: forest(set.train, { trees: 100, depth, mtry }) }); }
+  const { set, f } = cache.get(key), ts = f.trees.slice(0, n), p = (x, y) => ts.reduce((s, t) => s + t(x, y), 0) / n;
+  map($("map"), p, set.train);
+  $("nV").textContent = n; $("depthV").textContent = depth;
+  $("r1").textContent = `${n} tree${n > 1 ? "s" : ""}: train ${(100 * accuracy(p, set.train)).toFixed(1)}% · validation ${(100 * accuracy(p, set.val)).toFixed(1)}%\none tree alone: validation ${(100 * accuracy(f.trees[0], set.val)).toFixed(1)}% (10% of labels are noise, so ~90% is the ceiling)`;
+}
+for (const id of ["ds", "n", "depth", "mtry"]) $(id).addEventListener("input", draw);
+$("n").addEventListener("change", () => +$("n").value >= 60 && say("The islands faded: they were single trees' private opinions.", "happy"));
+draw();
+
+function drawVar() {
+  const rho = +$("rho").value, g = $("var").getContext("2d"), W = 720, H = 240, X = (b) => 40 + ((b - 1) / 99) * (W - 60), Y = (v) => H - 30 - v * (H - 50);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.setLineDash([5, 5]); g.strokeStyle = C.red; g.beginPath(); g.moveTo(40, Y(rho)); g.lineTo(W - 20, Y(rho)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = C.blue; g.lineWidth = 2.5; g.beginPath(); for (let b = 1; b <= 100; b++) { const v = rho + (1 - rho) / b; b > 1 ? g.lineTo(X(b), Y(v)) : g.moveTo(X(b), Y(v)); } g.stroke(); g.lineWidth = 1;
+  g.fillStyle = C.text; g.font = "12px ui-monospace, monospace"; g.fillText("variance of the average (one tree = 1)", 44, 14); g.fillText("trees →", W - 70, H - 10); g.fillStyle = C.red; g.fillText(`floor ρ = ${rho.toFixed(2)}`, W - 130, Y(rho) - 6);
+  $("rhoV").textContent = rho.toFixed(2);
+  $("r2").textContent = `ρ = ${rho.toFixed(2)}: 10 trees leave ${(rho + (1 - rho) / 10).toFixed(2)} of one tree's variance, 100 trees ${(rho + (1 - rho) / 100).toFixed(2)}, infinitely many ${rho.toFixed(2)}`;
+}
+$("rho").addEventListener("input", drawVar);
+drawVar();
+window.blipContext = () => ({ page: "AI model zoo 6: random forests (bagging, random columns per split, variance of an average ρσ² + (1−ρ)σ²/B, out-of-bag scores, importance bias, size)", dataset: $("ds").value, trees: +$("n").value, map: $("r1").textContent, variance: $("r2").textContent });
+</script>
+</body>
+</html>

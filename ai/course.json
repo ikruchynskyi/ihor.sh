@@ -6820,5 +6820,98 @@
     "sec": 5
    }
   ]
+ },
+ "zoo-forest.html": {
+  "goals": [
+   "Explain bagging and random columns per split, and why averaging deep trees cuts variance",
+   "Use out-of-bag scores and permutation importance correctly",
+   "Know a forest's costs: size, prediction time, no extrapolation"
+  ],
+  "needs": [
+   "zoo-tree.html"
+  ],
+  "cards": [
+   [
+    "Bagging",
+    "Train each model on a bootstrap sample (n rows drawn with replacement) and average them."
+   ],
+   [
+    "Random forest",
+    "Bagged deep trees that may only choose among a random subset of columns at each split."
+   ],
+   [
+    "Variance of an average",
+    "ρσ² + (1 − ρ)σ²/B: more trees remove the second term; only less correlated trees lower the floor."
+   ],
+   [
+    "Out-of-bag score",
+    "Score each row with the trees that never saw it: validation without a holdout."
+   ],
+   [
+    "Impurity importance bias",
+    "Columns with many distinct values get lucky splits and look important; use permutation importance."
+   ],
+   [
+    "max_features",
+    "Columns tried per split: the forest's main knob; 'sqrt' for classification."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Adding more trees to a random forest…",
+    "options": [
+     "eventually overfits",
+     "improves the score until it plateaus, never making it worse",
+     "makes each tree deeper"
+    ],
+    "answer": 1,
+    "why": "It's an average; extra trees only cost time and memory.",
+    "sec": 1
+   },
+   {
+    "q": "Why can't infinitely many trees remove all the variance?",
+    "options": [
+     "Trees are biased",
+     "The part of the errors trees share (correlation ρ) doesn't average out",
+     "Bootstrap samples are too small"
+    ],
+    "answer": 1,
+    "why": "Var = ρσ² + (1 − ρ)σ²/B → ρσ².",
+    "sec": 2
+   },
+   {
+    "q": "Why does each tree's out-of-bag set hold about 37% of the rows?",
+    "options": [
+     "It's a setting",
+     "The chance a row is never drawn in n draws is (1 − 1/n)^n ≈ 1/e",
+     "Trees drop rows they misclassify"
+    ],
+    "answer": 1,
+    "why": "So each tree is validated on rows it never saw.",
+    "sec": 3
+   },
+   {
+    "q": "A column of random numbers ranks 5th by a forest's built-in importance. The right conclusion is…",
+    "options": [
+     "random numbers are predictive",
+     "built-in importance favors columns with many distinct values; check with permutation importance on held-out data",
+     "the forest is broken"
+    ],
+    "answer": 1,
+    "why": "Many cut points give many lucky splits deep in the trees.",
+    "sec": 5
+   },
+   {
+    "q": "A forest must run on a phone in 1 ms. The first knobs to turn are…",
+    "options": [
+     "more trees",
+     "bigger leaves, less depth, fewer trees",
+     "max_features=1.0"
+    ],
+    "answer": 1,
+    "why": "Forests are big (tens of MB) because every leaf is stored.",
+    "sec": 5
+   }
+  ]
  }
 }

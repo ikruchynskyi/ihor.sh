@@ -419,6 +419,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-word-vectors"
  },
+ "zoo-forest.html": {
+  "notebook": "zoo-forest.ipynb",
+  "title": "AI from scratch: random forests",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/zoo-forest.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-random-forests"
+ },
  "zoo-knn.html": {
   "notebook": "zoo-knn.ipynb",
   "title": "AI from scratch: k-nearest neighbors",
