@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capstone: Broken Elevators</title>
+  <meta name="description" content="AI from scratch capstone: predict which NYC subway elevator and escalator outages will last more than 4 hours, end to end. A live board scoring the outages happening right now, the milestones from data to monitoring, censoring, and a rubric." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .board td.p { font: 14px ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .bar { display: inline-block; height: 10px; border-radius: 3px; background: #f4a259; vertical-align: middle; margin-right: 6px; }
+    .tag { font-size: 12px; color: var(--muted); }
+    ol.steps > li { margin: 10px 0; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Capstone · Stage 7: production</p>
+  <h1>Capstone: predict broken elevators, live</h1>
+  <p class="lede">For a rider in a wheelchair or with a stroller, an out-of-service elevator decides the whole trip. The MTA publishes which elevators and escalators are out and a time it expects them back, and that estimate is longer than the real outage 98% of the time (toolkit 2). A better answer to "will this still be broken in four hours?" would help people plan. This capstone builds it, end to end, on this site's live archive: data, model, honest evaluation, a service, and monitoring. Below is the course's own baseline running on the outages happening right now; your job is to beat it and ship yours.</p>
+
+  <h2>1. The live board</h2>
+  <p>Every elevator and escalator out of service in the MTA's latest feed, scored by a logistic regression trained on 595 finished outages (toolkit 2's model, exported as 14 weights and 6 scaling numbers). The probability is the model's chance that the outage lasts more than 4 hours from its start. Come back later and see which were right.</p>
+  <div class="row"><button id="refresh">Refresh</button><span class="readout" id="status" style="margin:0"></span></div>
+  <div class="wide-scroll"><table class="cmp board" id="board"></table></div>
+  <p>Two things the board shows that a notebook hides. Some outages have a <b>reason the model never saw</b> in training ("Capital Replacement": escalators being rebuilt for months); the model treats an unknown category as "nothing known" and its guess means little. And many outages are <b>already past 4 hours</b>: the question for them is settled, which leads to this project's central trap.</p>
+  <p class="gist">The baseline already runs on live data; the capstone is to build a better one and run it the same way, honestly measured.</p>
+  <details class="deeper"><summary>Why the unfinished outages bias everything: censoring</summary>
+    <ol>
+      <li>To train, you need each outage's length. You only know it for outages that have ended. The rest are <b>right-censored</b>: you know they've lasted at least this long, not how long.</li>
+      <li>Long outages are more likely to still be open when you take a snapshot, simply because they're open longer. In the archive: 27% of finished outages lasted over 4 hours, but 54% of the ones still open have already passed 4 hours.</li>
+      <li>So training on finished outages only under-represents long ones, and the model learns that outages are shorter than they are. It gets worse the more recent the data: the newest week has the most unfinished long outages.</li>
+      <li>One fix for this task: an outage that's open and already past 4 hours has a known label (yes), so include it; only the ones open for less than 4 hours are truly unknown. More generally, <b>survival analysis</b> (Kaplan-Meier curves, Cox models) is built for censored durations.</li>
+      <li>The same trap appears whenever the label takes time: customer churn, loan default, how long a job posting stays open.</li>
+    </ol>
+  </details>
+
+  <h2>2. The milestones</h2>
+  <ol class="steps">
+    <li><b>Data.</b> Load <code>outages.csv</code> (or, better, ask for a fresh export of the archive: it grows every day). Look first (toolkit 2): ranges, the two-year-old capital replacements, reasons, duplicates. Decide what to do with censored outages (above). <i>Deliverable:</i> a cleaned table and a paragraph on what you dropped and why.</li>
+    <li><b>Baseline and features.</b> The baseline to beat is the board's model (time-split AUC about 0.89). Ideas: the station's history (careful: compute it from the past only, features and leakage), time of day and weekday, the MTA's own estimate (but only the first one it published; the archive keeps the latest, which may have been updated after the fact: leakage), the number of lines. <i>Deliverable:</i> a feature list with, for each, "known at the moment of prediction?".</li>
+    <li><b>Honest evaluation.</b> A time split, never random (features and leakage). AUC and a precision-recall curve (chapter 12), a calibration check if you'll show probabilities, and a threshold chosen from costs: a rider told "long" who reroutes needlessly loses minutes; one told "short" who arrives at a dead elevator loses far more. Compare with the baseline on the same test days, paired (Probability 4). <i>Deliverable:</i> one table, one curve, one threshold with its reason.</li>
+    <li><b>Model card.</b> Intended use, data, evaluation (overall and per slice: elevators vs escalators, accessible stations), limitations (MLOps). <i>Deliverable:</i> the card.</li>
+    <li><b>Service.</b> FastAPI around the model, inputs validated, version returned (serving); or export it to JSON like the board's and score in the browser. Free hosting: a Hugging Face Space (Start 4). <i>Deliverable:</i> a URL.</li>
+    <li><b>Monitoring.</b> Log every prediction with its inputs. Each day, when outages end, score yesterday's predictions; track the reason mix's PSI against the training window, weekday against weekday (MLOps). <i>Deliverable:</i> a week of daily AUC and PSI.</li>
+    <li><b>Write-up.</b> One page: the problem, what worked, what didn't, what you'd do with more data. Link the notebook, the service and the card. That page is your portfolio piece.</li>
+  </ol>
+  <div class="q" data-answer="c">
+    <p>A teammate wants to add the MTA's estimated return time from the archive as a feature: it lifts test AUC to 0.97. What do you check first?</p>
+    <ul><li data-k="a" data-says="A big jump is a reason for suspicion, not celebration.">Nothing: ship it</li><li data-k="b" data-says="More data won't fix a feature that isn't available at prediction time.">Whether more data makes it even better</li><li data-k="c">Whether that estimate was known when the outage started: the archive stores the latest estimate, which may have been revised after the outage was already long</li></ul>
+    <div class="why">Features and leakage's question for every column: would I know this value at the moment the model has to decide? A revised estimate carries information from the future. Use only the first estimate the feed published.</div>
+  </div>
+  <p class="gist">Seven milestones, each with a deliverable: data, features known in time, honest evaluation, a model card, a live service, a week of monitoring, a one-page write-up.</p>
+
+  <h2>3. How it's judged</h2>
+  <table class="cmp">
+    <tr><th>Criterion</th><th>Good enough</th><th>Excellent</th></tr>
+    <tr><td>Honesty of evaluation</td><td>Time split; AUC reported</td><td>Paired comparison with the baseline, confidence interval, per-slice results, calibration</td></tr>
+    <tr><td>Leakage and censoring</td><td>Leaky columns removed</td><td>Censoring handled and explained; every feature justified as known in time</td></tr>
+    <tr><td>Usefulness</td><td>A threshold</td><td>A threshold from stated costs, and what a rider would see</td></tr>
+    <tr><td>Running system</td><td>A notebook that predicts</td><td>A service with validation and versions, plus monitoring that has caught something</td></tr>
+    <tr><td>Communication</td><td>A model card</td><td>A one-page write-up a non-specialist can follow, with limitations stated plainly</td></tr>
+  </table>
+  <p class="gist">Judged on honesty first: evaluation, leakage and censoring, then usefulness, a running system and clear communication.</p>
+  <details class="deeper"><summary>Where it breaks: a week of data, and a model riders might trust too much</summary>
+    <ul>
+      <li><b>One week is one week.</b> The archive's finished outages mostly started in a single week of October. Holidays, winter storms and summer heat are all unseen. Say so in the card, and keep collecting: the MLOps lesson's monitoring is also how the training set grows.</li>
+      <li><b>Unseen categories.</b> A new reason, station or equipment type gets no learned weight. Flag those predictions as low-confidence (the board does), rather than showing a number.</li>
+      <li><b>False confidence.</b> "93% chance it's back within 4 hours" can send a wheelchair user to a dead elevator 7% of the time. For accessibility, a cautious threshold and plain words ("often fixed within hours, but plan an alternative") may serve riders better than a precise-looking probability.</li>
+    </ul>
+  </details>
+
+  <h2>4. What to carry forward</h2>
+  <ul>
+    <li>Every skill on the path, in one project: data, features, evaluation, deployment, monitoring, communication.</li>
+    <li>Labels that take time to arrive are censored: handle them, or the model learns a biased world.</li>
+    <li>Ship a baseline early, measure everything against it, and keep it running while you improve on it.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Data: the MTA elevator and escalator feed, archived by this site; <a href="/nyc/">the NYC map</a> shows the same outages live.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const model = await fetch("/ai/data/capstone-model.json").then((r) => r.json());
+const nyHour = (t) => Number(new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false })) % 24;
+function score(o) {
+  const unknown = !(o.reason in model.onehot.reason);
+  let z = model.intercept + (model.onehot.kind[o.kind] ?? 0) + (model.onehot.reason[o.reason] ?? 0);
+  const x = { ada: o.ada, hour: nyHour(o.start), n_lines: String(o.trains || "").split("/").filter(Boolean).length || 1 };
+  for (const [k, v] of Object.entries(model.numeric)) z += (v.weight * (x[k] - v.mean)) / v.scale;
+  return { p: 1 / (1 + Math.exp(-z)), unknown };
+}
+const ago = (h) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h.toFixed(1)} h` : `${Math.round(h / 24)} days`);
+async function load() {
+  $("status").textContent = "loading the latest feed…";
+  try {
+    const d = await fetch("/api/nyc/archive?days=1").then((r) => r.json()), now = Date.now() / 1000;
+    const rows = (d.outagesNow ?? []).map((o) => ({ o, ...score(o), open: (now - o.start) / 3600 })).sort((a, b) => b.p - a.p);
+    $("board").innerHTML = `<tr><th>Station</th><th>Kind</th><th>Reason</th><th>Out for</th><th>P(over 4 h)</th></tr>` + rows.map(({ o, p, unknown, open }) =>
+      `<tr><td>${o.station}<br><span class="tag">${o.trains}</span></td><td>${o.kind === "EL" ? "elevator" : "escalator"}${o.ada ? " ♿" : ""}</td><td>${o.reason}${unknown ? '<br><span class="tag">a reason the model never saw</span>' : ""}</td>` +
+      `<td>${ago(open)}${open > 4 ? '<br><span class="tag">already past 4 h</span>' : ""}</td><td class="p"><span class="bar" style="width:${Math.round(p * 60)}px"></span>${Math.round(p * 100)}%</td></tr>`).join("");
+    const settled = rows.filter((r) => r.open > 4).length;
+    $("status").textContent = `${rows.length} out of service now · ${settled} already past 4 hours · ${rows.filter((r) => r.unknown).length} with a reason the model never saw`;
+  } catch (e) { $("status").textContent = "Couldn't load the live feed."; }
+}
+$("refresh").onclick = load; load();
+</script>
+</body>
+</html>

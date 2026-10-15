@@ -283,6 +283,8 @@ def lint(only=(), show_ledger=None):
             answers = set().union(*(features(m.group(2), mods)[2] for k, c in cells if k == "code" for m in SOL.finditer(c)))
             given_stores = {t.id for k, c in cells if k == "code" for t in ast.walk(parse(SOL.sub("", c)) or ast.Module(body=[], type_ignores=[]))
                             if isinstance(t, ast.Name) and isinstance(t.ctx, ast.Store)} - none_defaults(cells)
+            given_stores |= {a.arg for k, c in cells if k == "code" for a in ast.walk(parse(SOL.sub("", c)) or ast.Module(body=[], type_ignores=[]))
+                             if isinstance(a, ast.arg)}                  # a given function's parameters are its own names
             tree = parse(SOL.sub("", text))
             for f in (n for n in ast.walk(tree) if isinstance(n, ast.FormattedValue) and n.format_spec) if tree else []:
                 used = {x.id for x in ast.walk(f.value) if isinstance(x, ast.Name)} & (answers - given_stores)

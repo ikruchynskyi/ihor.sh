@@ -5505,5 +5505,102 @@
     "sec": 5
    }
   ]
+ },
+ "capstone.html": {
+  "goals": [
+   "Carry a model from raw data to a monitored service, honestly evaluated",
+   "Recognize right-censored labels and build labels that respect them",
+   "Choose features known at prediction time and a threshold from stated costs",
+   "Document the model in a card and a one-page write-up"
+  ],
+  "needs": [
+   "mlops.html",
+   "serving.html",
+   "features-and-leakage.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Right-censoring",
+    "Some durations are only known to be at least so long (still open); dropping them hides the long ones."
+   ],
+   [
+    "Censoring-aware labels",
+    "Open outages already past 4 h are labeled long; only open ones under 4 h are unknown."
+   ],
+   [
+    "Known at prediction time",
+    "Every feature must exist when the model decides: the first MTA estimate, not the latest revision."
+   ],
+   [
+    "Baseline first",
+    "Ship a simple model early, measure everything against it, keep it running."
+   ],
+   [
+    "Unseen categories",
+    "A reason or station absent from training gets no weight: flag those predictions as low-confidence."
+   ],
+   [
+    "Survival analysis",
+    "Kaplan–Meier and Cox models: the standard tools for censored durations."
+   ]
+  ],
+  "check": [
+   {
+    "q": "27% of finished outages lasted over 4 h, but 54% of open ones already have. Why does training only on finished outages mislead?",
+    "options": [
+     "Long outages are the ones most likely to still be open, so dropping open ones under-represents them",
+     "Finished outages are mislabeled",
+     "Open outages are all long"
+    ],
+    "answer": 0,
+    "why": "Right-censoring: the snapshot catches long ones mid-way.",
+    "sec": 1
+   },
+   {
+    "q": "An open outage has lasted 9 hours. For the label 'over 4 hours', it's…",
+    "options": [
+     "known: 1",
+     "unknown until it ends",
+     "0"
+    ],
+    "answer": 0,
+    "why": "It has already passed 4 hours whatever happens next.",
+    "sec": 1
+   },
+   {
+    "q": "Why use only the MTA's first estimated return time as a feature?",
+    "options": [
+     "Later revisions are made after the outage has dragged on: future information, i.e. leakage",
+     "The first estimate is always right",
+     "Later estimates are missing"
+    ],
+    "answer": 0,
+    "why": "Ask of every feature: known at the moment of prediction?",
+    "sec": 2
+   },
+   {
+    "q": "Missing a long outage costs a rider 30 minutes, a needless reroute 5. The best threshold on P(long) is likely…",
+    "options": [
+     "well below 0.5",
+     "exactly 0.5",
+     "above 0.5"
+    ],
+    "answer": 0,
+    "why": "Misses are 6× worse, so say 'long' early (chapter 12's cost threshold).",
+    "sec": 2
+   },
+   {
+    "q": "What matters most in the capstone rubric?",
+    "options": [
+     "Honesty of evaluation: time split, leakage and censoring handled, paired comparison with the baseline",
+     "The highest possible AUC",
+     "The most complex model"
+    ],
+    "answer": 0,
+    "why": "A good model measured dishonestly is worth less than a modest one measured right.",
+    "sec": 3
+   }
+  ]
  }
 }
