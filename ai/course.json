@@ -6007,7 +6007,7 @@
      "ignore the prompt"
     ],
     "answer": 0,
-    "why": "In the notebook: 97% → 100% read as the requested digit, pixel spread 0.15 → 0.12.",
+    "why": "In the notebook: 97% → 100% read as the requested digit, variety (pixel spread) 0.30 → 0.24.",
     "sec": 4
    },
    {
@@ -6030,6 +6030,111 @@
     ],
     "answer": 0,
     "why": "Memorization is the ideal denoiser's behavior; capacity limits are part of why models generalize.",
+    "sec": 4
+   }
+  ]
+ },
+ "speech.html": {
+  "goals": [
+   "Describe audio as samples and the sampling rates speech uses",
+   "Build a log-mel spectrogram: frames, Fourier transform, mel bands, log",
+   "Train a CNN on spectrograms and test it on unseen speakers",
+   "Explain wake-word trade-offs (false accepts per hour vs misses) and Whisper's design"
+  ],
+  "needs": [
+   "06-convolutions.html",
+   "l2-eigenvectors-and-pca.html",
+   "features-and-leakage.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Sampling rate",
+    "Measurements per second: 8 kHz phone, 16 kHz speech models, 44.1 kHz music."
+   ],
+   [
+    "Spectrogram",
+    "Short overlapping windows, each Fourier-transformed: frequency over time, an image."
+   ],
+   [
+    "Fourier transform",
+    "Dot products with sines: a change of basis from time to frequency; the FFT does it in n log n."
+   ],
+   [
+    "Mel scale",
+    "Frequency bands spaced like hearing: narrow low, wide high."
+   ],
+   [
+    "Log-mel spectrogram",
+    "The log of mel-band energy per frame: the standard input of speech models."
+   ],
+   [
+    "New-speaker test",
+    "Hold out whole speakers: 96% random split vs 79% on an unheard voice in the notebook."
+   ],
+   [
+    "Whisper",
+    "An encoder-decoder transformer: 30 s of 80-band log-mel in, text tokens out."
+   ],
+   [
+    "False accepts per hour",
+    "How often a wake-word detector fires on background audio; judged with the miss rate."
+   ]
+  ],
+  "check": [
+   {
+    "q": "One second of audio at 16 kHz is how many numbers?",
+    "options": [
+     "16,000",
+     "1,000",
+     "44,100"
+    ],
+    "answer": 0,
+    "why": "16,000 samples per second.",
+    "sec": 1
+   },
+   {
+    "q": "Why use the mel scale for speech features?",
+    "options": [
+     "It spaces frequency bands like human hearing, which distinguishes low pitches finely and high ones coarsely",
+     "It makes audio louder",
+     "It removes noise"
+    ],
+    "answer": 0,
+    "why": "Fewer, perceptually sensible bands; speech information sits where hearing resolves well.",
+    "sec": 2
+   },
+   {
+    "q": "Why does a Fourier coefficient pick out its own frequency and ignore others?",
+    "options": [
+     "Sines of different frequencies are perpendicular, so the dot product with the signal keeps only the matching part",
+     "Because it filters with a neural network",
+     "Because higher frequencies are louder"
+    ],
+    "answer": 0,
+    "why": "A change to a perpendicular basis, as in linear algebra 2.",
+    "sec": 2
+   },
+   {
+    "q": "A spoken-digit model scores 96% on a random split and 79% on a new speaker. Why the gap?",
+    "options": [
+     "The random split put the test speaker's voice in training: a group leak",
+     "The new speaker spoke faster",
+     "79% is noise"
+    ],
+    "answer": 0,
+    "why": "Split by speaker, like GroupKFold in features and leakage.",
+    "sec": 3
+   },
+   {
+    "q": "How should a wake-word detector's false alarms be reported?",
+    "options": [
+     "False accepts per hour (or day) of background audio, next to the miss rate",
+     "As overall accuracy",
+     "As the share of wake words detected"
+    ],
+    "answer": 0,
+    "why": "It checks ~100 times a second all day; 'almost always right' can still mean many false wakes.",
     "sec": 4
    }
   ]

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Listening: Speech and Wake Words</title>
+  <meta name="description" content="AI from scratch elective: listening. Sound as samples, a live spectrogram from your microphone, why log-mel features, CNNs on spoken digits with a new-speaker test, Whisper, and a wake-word detector you train with your own voice in the page." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    meter { width: 220px; height: 18px; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Listening: speech and wake words</p>
+  <h1>Listening: speech and wake words</h1>
+  <p class="lede">"Hey Siri", live captions, voicemail transcripts, the radio page on this site that writes down what a ham operator says: all of them turn sound into something a model can read. The trick is the same every time. Sound becomes a picture, a <b>spectrogram</b>, and then it's chapter 6 or chapter 7 again: a CNN or a transformer reading an image. This lesson builds the picture live from your microphone (or a test sound), shows why its axes are bent the way they are, and lets you train a tiny wake-word detector on your own voice.</p>
+
+  <h2>1. Sound is a list of numbers</h2>
+  <p>A microphone measures air pressure thousands of times a second: 8,000 for a phone call, 16,000 for most speech models, 44,100 for music. One second of speech at 16 kHz is 16,000 numbers. You can't hear much in that list directly, because what matters is which frequencies are present and how they change, so the next step is to measure those.</p>
+  <div class="row"><button id="mic">Use my microphone</button><button id="tone">Play a test sound instead</button><span class="readout" id="status" style="margin:0">Nothing is recorded or sent anywhere: the audio stays in this tab.</span></div>
+  <canvas id="wave" width="800" height="140" aria-label="The live waveform"></canvas>
+  <p class="gist">Sound arrives as thousands of pressure measurements a second; speech models start from those numbers.</p>
+
+  <h2>2. The spectrogram: frequencies over time</h2>
+  <p>Cut the sound into short overlapping windows (25 ms, every 10 ms), and in each window measure the strength of every frequency with the Fourier transform. Stack the windows side by side: time across, frequency up, color for strength. Say a long "eeee", then "oooo", then whistle:</p>
+  <canvas id="spec" width="800" height="300" aria-label="A scrolling spectrogram: time across, frequency up, brightness for loudness"></canvas>
+  <p class="readout" id="r2"></p>
+  <p>Vowels show as stacks of horizontal bands (the voice's pitch and its harmonics, shaped by the mouth into <b>formants</b>), consonants like "s" as noisy smears high up, silence as dark. Two adjustments make this picture the standard input of speech models:</p>
+  <ul>
+    <li><b>Mel scale.</b> Ears tell 100 Hz from 200 Hz easily and 7,100 from 7,200 hardly at all. The mel scale spaces frequency bands like hearing does, narrow at the bottom and wide at the top, typically 40 to 80 bands.</li>
+    <li><b>Log of the energy.</b> Loudness is perceived (and best modeled) logarithmically: a whisper and a shout differ by a factor of thousands in power but by a few steps in log.</li>
+  </ul>
+  <p>The result, the <b>log-mel spectrogram</b>, is a small image: one second of speech becomes about 100 frames × 64 bands.</p>
+  <div class="q" data-num="98" data-tol="0.05">
+    <p>One second of audio, 25 ms windows every 10 ms. About how many frames? (A whole number.)</p>
+    <div class="why">Windows start at 0, 10, 20 … ms, and the last full window starts at 975 ms: \(\lfloor (1000 - 25)/10 \rfloor + 1 = 98\) frames. Chapter 6's convolution size rule, \(\lfloor (n - k)/s \rfloor + 1\), for time instead of pixels.</div>
+  </div>
+  <p class="gist">A log-mel spectrogram turns speech into an image of frequency over time, with frequency and loudness bent the way hearing bends them.</p>
+  <details class="deeper"><summary>Why the Fourier transform finds the frequencies</summary>
+    <ol>
+      <li>The Fourier coefficient for frequency \(f\) is a dot product (chapter 1) of the window with a sine wave at \(f\) (and with a cosine, for the phase).</li>
+      <li>If the window contains that frequency, the signal and the sine rise and fall together and the products add up; for other frequencies they drift in and out of step and cancel.</li>
+      <li>Sines of different frequencies (that fit the window a whole number of times) are perpendicular to each other: their dot product is zero. So each coefficient picks up its own frequency and nothing else: a change of basis (linear algebra 2) from "time" to "frequency".</li>
+      <li>The fast Fourier transform computes all of them in \(n \log n\) steps instead of \(n^2\), which is what makes a live spectrogram possible.</li>
+      <li>Short windows give sharp timing but blurry frequency; long windows the reverse. 25 ms is the classic compromise for speech, short enough to follow syllables, long enough to resolve the voice's pitch.</li>
+    </ol>
+  </details>
+
+  <h2>3. Models that listen</h2>
+  <p>Once speech is an image, the rest of the path applies. In the practice notebook a small CNN (chapter 6) reads log-mel spectrograms of the Free Spoken Digit Dataset (3,000 recordings of "zero" to "nine" by six speakers): <b>96%</b> right on a random split, but <b>79%</b> on a speaker it never heard. The random split had the test speaker's own voice in training: features and leakage's group leak, in sound. For full transcription, <b>Whisper</b> (OpenAI, 2022) is chapter 7's transformer: an encoder reads 30 seconds of 80-band log-mel, a decoder writes the text token by token (the seq2seq elective). This site's radio page runs Whisper on its own receiver to caption what it hears.</p>
+  <p class="gist">Speech models read log-mel images: CNNs for short commands, encoder-decoder transformers like Whisper for transcription, and they must be tested on voices they never heard.</p>
+
+  <h2>4. A wake word, trained on your voice</h2>
+  <p>A wake-word detector listens all the time on a tiny chip, so it must be small and must almost never fire by mistake. Here's the simplest kind, <b>template matching</b>: record your word a few times; the detector keeps their log-mel pictures, and compares every new second of sound with them (cosine similarity, chapter 7). Pick a short phrase like "hey blip". Start the microphone (section 1) first.</p>
+  <div class="row"><button id="rec" disabled>Record my word (1 s)</button><span class="readout" id="recs" style="margin:0">0 recorded</span></div>
+  <div class="row"><button id="listen" disabled>Listen for it</button><meter id="sim" min="0" max="1" value="0"></meter><label>threshold <input type="range" id="thr" min="0.5" max="0.99" step="0.01" value="0.85"> <b id="thrV"></b></label></div>
+  <p class="readout" id="r4"></p>
+  <p>Say your word, then say other things: similar-sounding words, your word in a different voice, music. Lower the threshold and it fires more on everything (false accepts); raise it and it misses you (false rejects). Real detectors are small CNNs trained on thousands of speakers and hours of non-wake audio, and they're judged by <b>false accepts per hour</b> at a fixed miss rate.</p>
+  <div class="q" data-answer="b">
+    <p>A smart speaker wakes by mistake once every 2 hours of TV in the room. Is that good?</p>
+    <ul><li data-k="a" data-says="Twelve false wakes a day, each possibly recording, would feel broken and intrusive.">Yes: it's right almost all the time</li><li data-k="b">No: false accepts are judged per hour of background audio, and products aim for well under one a day</li><li data-k="c" data-says="It's about how often, not just whether it ever happens.">Only if it also misses the wake word</li></ul>
+    <div class="why">A detector checks the sound about 100 times a second, so "right almost all the time" can still mean many false wakes a day. Report false accepts per hour (and per day) next to the miss rate: chapter 12's precision-recall trade, on a clock.</div>
+  </div>
+  <p class="gist">A wake-word detector trades misses against false wakes, measured per hour, because it judges the sound a hundred times a second, all day.</p>
+  <details class="deeper"><summary>Where it breaks: other voices, other rooms, other people</summary>
+    <ul>
+      <li><b>Voices it never heard.</b> The notebook's 96% → 79% is the gentle version. Accents, children's voices and speech impairments are under-represented in most training data, and accuracy for them is often far lower. Test by speaker group (chapter 12's slices).</li>
+      <li><b>Noise and distance.</b> A word spoken across a room over a TV is a different picture from one spoken into a phone. Training with added noise and room echoes (augmentation, the deep CNN lesson) is standard.</li>
+      <li><b>Your template detector.</b> It knows one voice and one way of saying the word; another person, or you with a cold, may not match.</li>
+      <li><b>Privacy.</b> An always-listening device decides locally whether to start sending audio. False wakes send audio nobody meant to share, which is why the false-accept rate is a privacy number, not just a quality number.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Audio: samples per second; speech models usually take 16 kHz.</li>
+    <li>Short-time Fourier transform → mel bands → log: the log-mel spectrogram, an image.</li>
+    <li>CNNs for commands and wake words; encoder-decoder transformers (Whisper) for transcription.</li>
+    <li>Test on new speakers; measure wake words in false accepts per hour.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Notebook data: Free Spoken Digit Dataset (Zohar Jackson and contributors, CC BY-SA 4.0).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let ctx = null, analyser = null, source = null, freq = null, timeBuf = null, running = false, isMic = false;
+async function start(useMic) {
+  ctx ??= new AudioContext();
+  analyser = ctx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0;
+  freq = new Float32Array(analyser.frequencyBinCount); timeBuf = new Float32Array(analyser.fftSize);
+  if (source) try { source.disconnect(); } catch {}
+  if (useMic) {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+    source = ctx.createMediaStreamSource(stream); source.connect(analyser); isMic = true;
+    $("status").textContent = "Listening to your microphone (only inside this tab)."; $("rec").disabled = false;
+  } else {                                                        // a test sound: a voice-like buzz gliding through two vowels, then a whistle
+    const o = ctx.createOscillator(), g = ctx.createGain(), f1 = ctx.createBiquadFilter(), w = ctx.createOscillator(), wg = ctx.createGain();
+    o.type = "sawtooth"; o.frequency.value = 140; f1.type = "bandpass"; f1.Q.value = 4; const now = ctx.currentTime;
+    f1.frequency.setValueAtTime(2300, now); f1.frequency.linearRampToValueAtTime(700, now + 2.5);
+    g.gain.setValueAtTime(0.5, now); g.gain.setValueAtTime(0, now + 3);
+    w.type = "sine"; w.frequency.setValueAtTime(1500, now + 3.2); w.frequency.linearRampToValueAtTime(2500, now + 4.5); wg.gain.setValueAtTime(0, now); wg.gain.setValueAtTime(0.3, now + 3.2); wg.gain.setValueAtTime(0, now + 4.6);
+    o.connect(f1).connect(g).connect(analyser); w.connect(wg).connect(analyser); analyser.connect(ctx.destination);
+    o.start(now); o.stop(now + 3); w.start(now); w.stop(now + 4.7); source = g;
+    $("status").textContent = "A test sound: a buzzing 'voice' whose formant glides like 'eee' to 'ooo', then a whistle.";
+  }
+  if (!running) { running = true; loop(); }
+}
+const spec = $("spec"), sg = spec.getContext("2d"), wave = $("wave"), wg2 = wave.getContext("2d");
+function color(v) { const t = Math.max(0, Math.min(1, (v + 100) / 70)); return `rgb(${Math.round(255 * Math.min(1, t * 1.6))},${Math.round(255 * Math.max(0, t * 1.6 - 0.6))},${Math.round(90 + 120 * (1 - t))})`; }
+let history = [];                                                  // recent log-mel frames, for the wake word
+const MELS = 32;
+function melFrame() {                                              // average the analyser's bins into 32 mel-spaced bands
+  const sr = ctx.sampleRate, n = freq.length, mel = (f) => 2595 * Math.log10(1 + f / 700), imel = (m) => 700 * (10 ** (m / 2595) - 1);
+  const edges = Array.from({ length: MELS + 1 }, (_, i) => imel((i / MELS) * mel(Math.min(8000, sr / 2))));
+  return Array.from({ length: MELS }, (_, b) => { const lo = Math.floor((edges[b] / (sr / 2)) * n), hi = Math.max(lo + 1, Math.floor((edges[b + 1] / (sr / 2)) * n)); let s = 0; for (let k = lo; k < hi; k++) s += freq[k]; return s / (hi - lo); });
+}
+function loop() {
+  analyser.getFloatFrequencyData(freq); analyser.getFloatTimeDomainData(timeBuf);
+  for (let k = 0; k < freq.length; k++) if (!(freq[k] > -140)) freq[k] = -140;   // silence reads as −∞ dB
+  const img = sg.getImageData(2, 0, spec.width - 2, spec.height); sg.putImageData(img, 0, 0);
+  const maxHz = Math.min(8000, ctx.sampleRate / 2), bins = Math.floor((maxHz / (ctx.sampleRate / 2)) * freq.length);
+  for (let y = 0; y < spec.height; y++) { const k = Math.floor((1 - y / spec.height) * bins); sg.fillStyle = color(freq[k]); sg.fillRect(spec.width - 2, y, 2, 1); }
+  wg2.fillStyle = "#14171d"; wg2.fillRect(0, 0, wave.width, wave.height); wg2.strokeStyle = "#58c4dd"; wg2.beginPath();
+  timeBuf.forEach((v, i) => { const x = (i / timeBuf.length) * wave.width, y = wave.height / 2 - v * wave.height * 0.45; i ? wg2.lineTo(x, y) : wg2.moveTo(x, y); }); wg2.stroke();
+  let peak = 0; for (let k = 1; k < bins; k++) if (freq[k] > freq[peak]) peak = k;
+  $("r2").textContent = `0–${maxHz} Hz shown · loudest frequency now: ${Math.round((peak / freq.length) * (ctx.sampleRate / 2))} Hz`;
+  history.push(melFrame()); if (history.length > 120) history.shift();
+  if (listening) detect();
+  requestAnimationFrame(loop);
+}
+// ---------- the wake word: templates of ~1 s of log-mel frames, compared by cosine ----------
+const FRAMES = 60;                                                 // about 1 s at 60 animation frames a second
+const templates = []; let listening = false, cooldown = 0;
+const summarize = (frames) => { const segs = 6, out = []; for (let s = 0; s < segs; s++) { const part = frames.slice(Math.floor((s * frames.length) / segs), Math.floor(((s + 1) * frames.length) / segs)); for (let b = 0; b < MELS; b++) out.push(part.reduce((a, f) => a + f[b], 0) / part.length); } const m = out.reduce((a, b) => a + b, 0) / out.length; const v = out.map((x) => x - m), n = Math.hypot(...v) || 1; return v.map((x) => x / n); };
+const cos = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+$("rec").onclick = () => {
+  $("rec").disabled = true; $("recs").textContent = "speak now…"; const startLen = history.length;
+  setTimeout(() => { templates.push(summarize(history.slice(-FRAMES))); $("recs").textContent = `${templates.length} recorded${templates.length < 3 ? " (3 or more works better)" : ""}`; $("rec").disabled = false; $("listen").disabled = templates.length < 1; }, 1050);
+};
+$("listen").onclick = () => { listening = !listening; $("listen").textContent = listening ? "Stop listening" : "Listen for it"; };
+function detect() {
+  if (history.length < FRAMES || !templates.length) return;
+  const now = summarize(history.slice(-FRAMES)), best = Math.max(...templates.map((t) => cos(now, t))), thr = +$("thr").value;
+  $("sim").value = Number.isFinite(best) ? Math.max(0, best) : 0; $("thrV").textContent = thr.toFixed(2);
+  if (cooldown > 0) cooldown--;
+  else if (best > thr) { $("r4").textContent = `heard it (similarity ${best.toFixed(2)}) at ${new Date().toLocaleTimeString()}`; cooldown = 60; }
+}
+$("thr").addEventListener("input", () => ($("thrV").textContent = (+$("thr").value).toFixed(2))); $("thrV").textContent = "0.85";
+$("mic").onclick = () => start(true).catch((e) => { $("status").textContent = `No microphone available (${e.name}). Try the test sound.`; });
+$("tone").onclick = () => start(false);
+</script>
+</body>
+</html>
