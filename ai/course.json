@@ -5396,5 +5396,114 @@
     "sec": 4
    }
   ]
+ },
+ "mlops.html": {
+  "goals": [
+   "Describe the production loop and what to monitor at each layer",
+   "Measure drift with PSI and choose reference windows that respect normal cycles",
+   "Ship new models safely: offline, shadow, canary, A/B, rollback",
+   "Build pipelines that validate data, gate on metrics and register models with model cards"
+  ],
+  "needs": [
+   "serving.html",
+   "experiments.html",
+   "p5-information.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Production loop",
+    "data → validate → train → evaluate → register → deploy safely → monitor, repeated."
+   ],
+   [
+    "Monitoring layers",
+    "Service and inputs and outputs now; outcomes (accuracy) when labels arrive, often late."
+   ],
+   [
+    "Data drift vs concept drift",
+    "Inputs change vs the input-outcome relationship changes; only outcomes reveal the second."
+   ],
+   [
+    "PSI",
+    "Σ (p_live − p_ref) ln(p_live/p_ref): the symmetric KL between windows. <0.1 stable, >0.25 a real shift."
+   ],
+   [
+    "Seasonal drift",
+    "Weekly or yearly cycles look like drift; compare like with like."
+   ],
+   [
+    "Shadow deployment",
+    "The new model sees real requests and its answers are logged, not served."
+   ],
+   [
+    "Canary",
+    "A small share of traffic gets the new model while errors and outputs are watched."
+   ],
+   [
+    "Evaluation gate",
+    "The pipeline refuses to register a model below a floor or worse than the champion beyond noise."
+   ],
+   [
+    "Feedback loop",
+    "The model's decisions shape the data it later trains on (blocked fraud is never labeled)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Labels for your model arrive three weeks late. What gives the earliest warning that something changed?",
+    "options": [
+     "Input and prediction distributions, monitored every day",
+     "Accuracy on labeled data",
+     "The training loss"
+    ],
+    "answer": 0,
+    "why": "Inputs and outputs are available immediately; outcomes come last.",
+    "sec": 2
+   },
+   {
+    "q": "Why is PSI between Monday's and Saturday's data a poor alarm?",
+    "options": [
+     "Weekly cycles make them differ every week; the alarm would fire on normal seasonality",
+     "PSI can't compare days",
+     "Saturdays have no data"
+    ],
+    "answer": 0,
+    "why": "On the outages: 0.32 weekday vs weekend, a 'real shift' that's just the weekly rhythm.",
+    "sec": 3
+   },
+   {
+    "q": "Inputs drifted (PSI 0.22), yet the model's AUC on the new data rose. What does that show?",
+    "options": [
+     "Drift is a reason to look, not proof of damage; outcomes decide",
+     "PSI is broken",
+     "The model is overfitting"
+    ],
+    "answer": 0,
+    "why": "Some shifts don't touch what the model relies on.",
+    "sec": 3
+   },
+   {
+    "q": "In a shadow deployment, users receive…",
+    "options": [
+     "the current model's answers, while the new model's are only logged",
+     "the new model's answers",
+     "both answers"
+    ],
+    "answer": 0,
+    "why": "Shadow tests on real traffic with zero user risk.",
+    "sec": 4
+   },
+   {
+    "q": "Why keep a small random slice of traffic unaffected by a fraud model?",
+    "options": [
+     "The model hides outcomes of what it blocks; the slice shows the world it would otherwise never see",
+     "To save compute",
+     "To train the model faster"
+    ],
+    "answer": 0,
+    "why": "It breaks the feedback loop's blind spot.",
+    "sec": 5
+   }
+  ]
  }
 }

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MLOps</title>
+  <meta name="description" content="AI from scratch: MLOps. The production loop, what to monitor (service, inputs, outputs, outcomes), a drift monitor on NYC elevator outages with the population stability index, shipping new models safely (shadow, canary, A/B, rollback), pipelines with data checks and gates, and feedback loops." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .loop { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font: 14px ui-monospace, Menlo, monospace; margin: 10px 0; }
+    .loop span { background: #58c4dd22; border: 1px solid #58c4dd66; border-radius: 6px; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · MLOps · Stage 7: production</p>
+  <h1>MLOps</h1>
+  <p class="lede">A model in production is never finished. The world it learned from keeps changing: new stations open, a holiday changes who rides when, a new kind of outage appears. Meanwhile the model keeps answering, confidently, with no idea anything moved. MLOps is the set of habits that notice and respond: watch the service, its inputs, its outputs and, when the truth arrives, its accuracy; ship new versions without betting the product on them; and keep the whole path from data to deployed model repeatable. The examples use this site's archive of NYC subway elevator and escalator outages.</p>
+
+  <h2>1. The loop</h2>
+  <div class="loop"><span>data</span>→<span>validate</span>→<span>train</span>→<span>evaluate</span>→<span>register</span>→<span>deploy safely</span>→<span>monitor</span>→ back to <span>data</span></div>
+  <p>Every stage of this path appears in it: the toolkit's pipelines and experiment tracking, chapter 11 and 12's honest evaluation, the serving lesson's API. What production adds is that the loop runs again and again, mostly by itself, and that its last step, monitoring, decides when it runs.</p>
+  <p class="gist">Production ML is a loop, from data through a safe deployment to monitoring, and monitoring decides when to go round again.</p>
+
+  <h2>2. What to watch</h2>
+  <table class="cmp">
+    <tr><th>Layer</th><th>Watch</th><th>Available</th></tr>
+    <tr><td>Service</td><td>Latency percentiles, errors, timeouts (the serving lesson)</td><td>Immediately</td></tr>
+    <tr><td>Inputs</td><td>Each feature's distribution compared with training: <b>data drift</b>; missing values; new categories</td><td>Immediately</td></tr>
+    <tr><td>Outputs</td><td>The distribution of predictions: share flagged, average probability</td><td>Immediately</td></tr>
+    <tr><td>Outcomes</td><td>Accuracy, AUC, calibration against the truth</td><td>Late: an outage's length is known only when it ends; fraud, weeks later</td></tr>
+  </table>
+  <p>The truth usually arrives late or never, so the cheap, immediate layers (inputs and outputs) are early warnings for the expensive one. A change in the relationship itself, the same inputs now meaning a different outcome, is <b>concept drift</b>, and only outcomes reveal it.</p>
+  <p class="gist">Watch four layers: the service and its inputs and outputs now, and its accuracy when the truth arrives.</p>
+
+  <h2>3. Measuring drift</h2>
+  <p>The <b>population stability index</b> compares a feature's distribution in a reference window (the training data) with a live window, bin by bin:</p>
+  <p class="formula">\[ \text{PSI} = \sum_{\text{bins}} (p_{\text{live}} - p_{\text{ref}}) \ln \frac{p_{\text{live}}}{p_{\text{ref}}} \]</p>
+  <p>Rules of thumb: below 0.1 stable, 0.1 to 0.25 worth a look, above 0.25 a real shift. Compare windows of the outage archive:</p>
+  <canvas id="drift" width="800" height="320" aria-label="A feature's distribution in two windows of the outage archive, side by side"></canvas>
+  <div class="row">
+    <label>feature <select id="feat"><option value="reason">reason</option><option value="tod">time of day</option><option value="kind">elevator or escalator</option></select></label>
+    <label>compare <select id="win"><option value="wkwe">weekdays vs weekend</option><option value="half">first half of the week vs second</option></select></label>
+  </div>
+  <p class="legend"><i style="background:#58c4dd"></i>reference window <i style="background:#f4a259"></i>live window</p>
+  <p class="readout" id="r3"></p>
+  <p>Two things stand out. Reasons drift between weekdays and weekends (PSI 0.32): planned work is 15% of weekday outages and 5% at weekends. That's the city's weekly rhythm, not a problem, and a monitor that compares Monday with Saturday will page someone every week; compare like with like (this weekend against last weekend). And between the first and second half of the week reasons drift too (0.22), yet a model trained on the first half scores <i>better</i> on the second (AUC 0.90 against 0.86 on its own training days). Drift is a reason to look, not proof of damage; outcomes decide.</p>
+  <div class="q" data-answer="b">
+    <p>Your fraud model's input drift alarm fires every year in late November. Accuracy, checked weeks later, was fine every time. What should change?</p>
+    <ul><li data-k="a" data-says="Retraining on a normal seasonal pattern each year adds risk and fixes nothing.">Retrain the model every November</li><li data-k="b">The reference window: compare against the same season last year (or include past holiday seasons in the reference), so the normal cycle stops alarming</li><li data-k="c" data-says="Then real drift in November would go unnoticed too.">Turn off drift monitoring in November</li></ul>
+    <div class="why">Seasonality is drift that's expected. Alarms that fire on it train people to ignore alarms. Choose the reference to include the normal cycles.</div>
+  </div>
+  <p class="gist">Drift scores like PSI compare live inputs with a reference; choose the reference so normal cycles don't alarm, and let outcomes decide whether drift hurt.</p>
+  <details class="deeper"><summary>Why PSI is a two-way KL divergence</summary>
+    <ol>
+      <li>Probability 5's KL divergence measures the extra surprise of using \(q\) when the truth is \(p\): \(\operatorname{KL}(p \Vert q) = \sum p \ln (p/q)\). It isn't symmetric.</li>
+      <li>Add both directions: \(\operatorname{KL}(p \Vert q) + \operatorname{KL}(q \Vert p) = \sum p \ln (p/q) + \sum q \ln (q/p)\).</li>
+      <li>The second sum is \(-\sum q \ln (p/q)\), so together: \(\sum (p - q) \ln (p/q)\). That's PSI, with \(p\) the live share and \(q\) the reference share.</li>
+      <li>So PSI is the symmetric KL between the two windows: zero only when they match, never negative, and measured in the same "nats of surprise" as cross-entropy.</li>
+      <li>It also explains PSI's weak spot: a bin that's empty in one window has \(\ln (p/0)\) = infinity, so implementations add a small floor to every share, and the score then depends on that choice (below).</li>
+    </ol>
+  </details>
+
+  <h2>4. Shipping a new model safely</h2>
+  <p>A retrained model that wins offline can still lose in production (ML strategy's mismatch, the experiments lesson's lucky seed). So new versions climb a ladder, each rung exposing more traffic only if the last one held:</p>
+  <table class="cmp">
+    <tr><th>Rung</th><th>What happens</th><th>Risk to users</th></tr>
+    <tr><td>Offline evaluation</td><td>The champion (current model) and the challenger both scored on the newest held-out data, paired (P4)</td><td>None</td></tr>
+    <tr><td>Shadow</td><td>The challenger sees real requests and its answers are logged, but users get the champion's</td><td>None (costs compute)</td></tr>
+    <tr><td>Canary</td><td>1–5% of traffic gets the challenger; errors, latency and output distribution watched</td><td>A few users</td></tr>
+    <tr><td>A/B test</td><td>A planned split with a business metric, sample size and guardrails (Probability 4)</td><td>Half, briefly</td></tr>
+    <tr><td>Promote, keep rollback</td><td>The challenger becomes champion; the old version stays one command away</td><td>–</td></tr>
+  </table>
+  <p class="gist">New models earn traffic step by step: offline, shadow, canary, A/B; and the previous version stays ready for a one-command rollback.</p>
+
+  <h2>5. Pipelines that check themselves</h2>
+  <ul>
+    <li><b>Validate data before training.</b> Expected columns and types, value ranges, share of missing values, known categories. A feed that suddenly sends hours as minutes should stop the pipeline, not train a model.</li>
+    <li><b>Gate on evaluation.</b> The pipeline refuses to register a model whose AUC on the newest data is below a floor, or below the champion's by more than noise.</li>
+    <li><b>Register every model</b> with its data fingerprint, code version, metrics and config (the experiments lesson), so "which model answered this?" always has an answer.</li>
+    <li><b>Write a model card</b>: what it's for, what data it learned from, how it was evaluated (including per-group results, chapter 12's slices), and where it shouldn't be used.</li>
+  </ul>
+  <div class="q" data-answer="a">
+    <p>A nightly retraining job's newest model scores AUC 0.61 on recent data; the champion scored 0.89 last week. What should the pipeline do?</p>
+    <ul><li data-k="a">Refuse to register it, alert someone, and keep the champion serving</li><li data-k="b" data-says="Fresher isn't better when it fails the evaluation gate.">Deploy it: it's trained on fresher data</li><li data-k="c" data-says="A collapse that large is a bug or a data problem until shown otherwise.">Average the two models</li></ul>
+    <div class="why">A drop that big usually means broken data (a changed feed, a join gone wrong), not a changed world. Gates turn that into an alert instead of an outage. Then the data validation logs say where to look.</div>
+  </div>
+  <p class="gist">Automated pipelines validate data, gate models on evaluation, and register everything they produce, so a bad batch becomes an alert, not a deployed model.</p>
+  <details class="deeper"><summary>Where it breaks: when the model changes its own data</summary>
+    <ul>
+      <li><b>Feedback loops.</b> A fraud model blocks the transactions it flags, so their outcomes are never seen; the next model trains only on what the old one let through, and learns less about exactly the cases that mattered. Recommenders shape the clicks they later learn from. Keep a small random slice of traffic unaffected by the model to see the world it hides.</li>
+      <li><b>Empty bins.</b> A category seen in one window and absent in the other makes PSI depend on the tiny floor you add (the weekday/weekend reasons include two that only appeared at weekends). Merge rare categories into "other" before computing drift.</li>
+      <li><b>Labels that come late, biased.</b> Long outages are labeled last, so accuracy measured "so far this week" is computed on the short ones only. Wait for labels to mature, or measure on cohorts old enough to be complete.</li>
+      <li><b>Retraining on noise.</b> Retraining at every small drift swaps a stable model for a slightly different one trained on less data, with new failure modes. Retrain on a schedule or on evidence (outcomes), not on every alarm.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>The loop: data → validate → train → evaluate → register → deploy safely → monitor.</li>
+    <li>Monitor service, inputs, outputs now; outcomes when labels arrive (often late).</li>
+    <li>PSI = symmetric KL between windows; pick references that include normal cycles; drift is a reason to look.</li>
+    <li>Shadow → canary → A/B → promote, with rollback ready.</li>
+    <li>Pipelines validate data, gate on metrics, register models with their story; watch for feedback loops.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Google's "Rules of Machine Learning" and Chip Huyen's "Designing Machine Learning Systems" go much further.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const rows = (await (await fetch("/ai/data/outages.csv")).text()).trim().split("\n").map((l) => l.split(","));
+const head = rows.shift(), col = (n) => head.indexOf(n);
+const data = rows.filter((r) => r[col("finished")] === "True").map((r) => { const d = new Date(r[col("start")].replace(" ", "T")); return { reason: r[col("reason")], kind: r[col("kind")], hour: d.getHours(), dow: d.getDay(), date: r[col("start")].slice(0, 10) }; });
+const tod = (h) => (h <= 5 ? "night" : h <= 9 ? "am peak" : h <= 15 ? "midday" : h <= 19 ? "pm peak" : "evening");
+function windows(win) {
+  if (win === "wkwe") return [data.filter((d) => d.dow >= 1 && d.dow <= 5), data.filter((d) => d.dow === 0 || d.dow === 6), "weekdays", "weekend"];
+  return [data.filter((d) => d.date < "2026-10-12"), data.filter((d) => d.date >= "2026-10-12"), "before Oct 12", "Oct 12 on"];
+}
+function draw() {
+  const feat = $("feat").value, [ref, live, rn, ln] = windows($("win").value);
+  const key = (d) => (feat === "tod" ? tod(d.hour) : d[feat]);
+  const cats = feat === "tod" ? ["night", "am peak", "midday", "pm peak", "evening"] : [...new Set(data.map(key))].sort((a, b) => data.filter((d) => key(d) === b).length - data.filter((d) => key(d) === a).length);
+  const share = (set) => cats.map((c) => set.filter((d) => key(d) === c).length / set.length);
+  const p = share(ref), q = share(live), eps = 1e-3;
+  const pe = p.map((x) => x + eps), qe = q.map((x) => x + eps), sp = pe.reduce((a, b) => a + b), sq = qe.reduce((a, b) => a + b);
+  const psi = cats.reduce((s, _, i) => { const a = qe[i] / sq, b = pe[i] / sp; return s + (a - b) * Math.log(a / b); }, 0);
+  const cv = $("drift"), g = cv.getContext("2d"), W = cv.width, H = cv.height, n = cats.length, bw = (W - 60) / n, max = Math.max(...p, ...q) * 1.1;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "12px ui-monospace, monospace";
+  cats.forEach((c, i) => {
+    const x = 40 + i * bw, h1 = (p[i] / max) * (H - 70), h2 = (q[i] / max) * (H - 70);
+    g.fillStyle = "#58c4dd"; g.fillRect(x + bw * 0.1, H - 50 - h1, bw * 0.38, h1);
+    g.fillStyle = "#f4a259"; g.fillRect(x + bw * 0.52, H - 50 - h2, bw * 0.38, h2);
+    g.save(); g.translate(x + bw * 0.5, H - 44); g.rotate(-0.35); g.fillStyle = "#9aa4b2"; g.fillText(c.length > 16 ? c.slice(0, 15) + "…" : c, -40, 10); g.restore();
+  });
+  const verdict = psi < 0.1 ? "stable" : psi < 0.25 ? "worth a look" : "a real shift";
+  $("r3").textContent = `${rn}: ${ref.length} outages · ${ln}: ${live.length} · PSI ${psi.toFixed(3)}: ${verdict}`;
+}
+["feat", "win"].forEach((id) => $(id).addEventListener("change", draw)); draw();
+</script>
+</body>
+</html>
