@@ -46,6 +46,11 @@
   .hud .score span { color: var(--green); }
   .hud button { font: inherit; color: var(--dim); background: none; border: 0; padding: 4px; cursor: pointer; }
   .hud button[aria-pressed="true"] { color: var(--green); }
+  .hud-worlds { color: var(--amber); text-decoration: none; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; }
+  .hud-worlds:hover, .hud-worlds:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--card) 80%, transparent); }
+  .world-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 12px; margin: -12px 0 32px; font: calc(10px * var(--px, 1))/1.4 var(--pixel); }
+  .world-nav a { text-decoration: none; padding: 8px 12px; background: var(--card); border: 2px solid var(--line); color: var(--fg); transition: border-color .15s, transform .1s; }
+  .world-nav a:hover, .world-nav a:focus-visible { border-color: var(--amber); color: var(--amber); transform: translateY(-2px); }
 
   main { max-width: 1080px; margin: 0 auto; padding: 0 16px 80px; }
 
@@ -136,6 +141,11 @@
   html[data-style="sleek"] h2 { display: flex; align-items: center; gap: 18px; font: 700 clamp(13px, 1.6vw, 15px)/1.3 var(--body-font); letter-spacing: .32em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
   html[data-style="sleek"] h2::before, html[data-style="sleek"] h2::after { content: ""; flex: 1; height: 1px; margin: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fg) 25%, transparent)); }
   html[data-style="sleek"] h2::after { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 25%, transparent), transparent); }
+  html[data-style="sleek"] .hud-worlds { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); padding: 5px 12px; color: var(--fg); font-size: 11px; }
+  html[data-style="sleek"] .hud-worlds:hover { border-color: var(--accent); color: var(--accent); }
+  html[data-style="sleek"] .world-nav { font: 600 13px/1 var(--body-font); gap: 10px; margin: -10px 0 28px; }
+  html[data-style="sleek"] .world-nav a { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); background: color-mix(in srgb, var(--card) 60%, transparent); padding: 8px 16px; color: var(--muted); }
+  html[data-style="sleek"] .world-nav a:hover, html[data-style="sleek"] .world-nav a:focus-visible { border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   html[data-style="sleek"] .world { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent); border-radius: 22px; background: color-mix(in srgb, var(--card) 76%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 7%, transparent), 0 40px 80px -40px rgba(0,0,0,.9); padding: 32px; margin-bottom: 28px; }
   html[data-style="sleek"] .world::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 180px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent); pointer-events: none; }
   html[data-style="sleek"] .world header { margin-bottom: 10px; }
@@ -172,6 +182,7 @@
 
 <div class="hud">
   <b>IHOR.SH</b>
+  <a href="#worlds" class="hud-worlds">WORLDS ▾</a>
   <span>6 OF 6 WORLDS OPEN + BONUS</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
@@ -198,8 +209,16 @@
 
   <section id="worlds">
     <h2>SELECT WORLD</h2>
+    <nav class="world-nav" aria-label="Worlds quick jump">
+      <a href="#w1">📻 1 RADIO</a>
+      <a href="#w2">🗽 2 NYC</a>
+      <a href="#w3">🤖 3 AI</a>
+      <a href="#w4">🎌 4 YOMU</a>
+      <a href="#w5">🚲 5 RIDE</a>
+      <a href="#w6">⚡ 6 BUILD</a>
+    </nav>
 
-    <article class="world">
+    <article class="world" id="w1">
       <header>
         <h3><small>WORLD 1</small>RADIO</h3>
         <span class="onair">ON AIR</span>
@@ -222,7 +241,7 @@
       </nav>
     </article>
 
-    <article class="world">
+    <article class="world" id="w2">
       <header>
         <h3><small>WORLD 2</small>NYC</h3>
         <span class="onair">LIVE DATA</span>
@@ -238,7 +257,7 @@
       </nav>
     </article>
 
-    <article class="world">
+    <article class="world" id="w3">
       <header>
         <h3><small>WORLD 3</small>AI</h3>
         <span class="onair" data-ai="status">NEW</span>
@@ -248,13 +267,14 @@
         <a class="level" data-ai="start" href="/ai/s1-what-is-ml.html" data-icon="book" data-blip="No math or code needed to start. I promise!"><span class="lv">3-0 <i>▶ START</i></span><b>START HERE</b><span class="d">What machine learning is, just enough Python and math, and your first model on the web. 4 lessons.</span></a>
         <a class="level" data-ai-stage="1" href="/ai/#stage-1" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>THE MATH OF LEARNING</b><span class="d">Vectors and matrices, derivatives and gradients, probability, describing data, eigenvectors and PCA. 8 lessons.</span></a>
         <a class="level" data-ai-stage="2" href="/ai/#stage-2" data-icon="chip" data-blip="Blame, passed backwards, one box at a time."><span class="lv">3-2 <i>▶ PLAY</i></span><b>HOW A NETWORK LEARNS</b><span class="d">A neuron, backprop you can watch, losses, curvature, likelihood, and a deep network trained live. 7 lessons.</span></a>
-        <a class="level" data-ai-stage="3" href="/ai/#stage-3" data-icon="lab" data-blip="Precision or recall? Depends what a mistake costs."><span class="lv">3-3 <i>▶ PLAY</i></span><b>CLASSIC ML, JUDGED HONESTLY</b><span class="d">Overfitting, measuring a model, A/B tests, trees and boosting. 4 lessons, 3 on the way.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Coming next: NumPy, scikit-learn and PyTorch, the way they're used at work."><span class="lv">3-4</span><b>THE ENGINEER'S TOOLKIT</b><span class="d">NumPy in depth, pipelines, optimizers, making deep nets train, GPUs, reproducible experiments.</span></div>
-        <a class="level" data-ai-stage="5" href="/ai/#stage-5" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>SEEING AND READING</b><span class="d">Convolutions, a detector on live NYC cameras, attention, and a tiny GPT trained in your browser. 4 lessons, 5 on the way.</span></a>
-        <a class="level" data-ai-stage="6" href="/ai/#stage-6" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-6 <i>▶ PLAY</i></span><b>LLM ENGINEERING</b><span class="d">Agents with real tools and evals. Using LLMs, retrieval, fine-tuning and LLM evals on the way.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Locked: shipping a model, watching it, and a capstone on the elevator archive."><span class="lv">3-7</span><b>PRODUCTION</b><span class="d">Serving, MLOps and a capstone predicting broken subway elevators.</span></div>
+        <a class="level" data-ai-stage="3" href="/ai/#stage-3" data-icon="lab" data-blip="Precision or recall? Depends what a mistake costs."><span class="lv">3-3 <i>▶ PLAY</i></span><b>CLASSIC ML, JUDGED HONESTLY</b><span class="d">Overfitting, measuring a model, A/B tests, trees, features and leakage. 7 lessons.</span></a>
+        <a class="level" data-ai-stage="4" href="/ai/#stage-4" data-icon="chip" data-blip="NumPy, scikit-learn, SQL and PyTorch, the way they're used at work."><span class="lv">3-4 <i>▶ PLAY</i></span><b>THE ENGINEER'S TOOLKIT</b><span class="d">NumPy in depth, pandas, SQL, optimizers, making deep nets train, GPUs, reproducible experiments. 8 lessons.</span></a>
+        <a class="level" data-ai-stage="zoo" href="/ai/#zoo" data-icon="lab" data-blip="10 classic models, all built from scratch with an interactive bake-off."><span class="lv">3-Z <i>▶ PLAY</i></span><b>THE MODEL ZOO</b><span class="d">Linear, trees, forests, boosting, SVMs, neural nets compared head-to-head. 10 lessons.</span></a>
+        <a class="level" data-ai-stage="5" href="/ai/#stage-5" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>SEEING AND READING</b><span class="d">Convolutions, transfer learning, detectors, RNNs, tokens, word vectors, and transformers. 9 lessons.</span></a>
+        <a class="level" data-ai-stage="6" href="/ai/#stage-6" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-6 <i>▶ PLAY</i></span><b>LLM ENGINEERING</b><span class="d">Using LLMs, hybrid RAG, LoRA fine-tuning, automated evals, and autonomous agents. 5 lessons.</span></a>
+        <a class="level" data-ai-stage="7" href="/ai/#stage-7" data-icon="lock" data-blip="Shipping a model, watching it, and the live capstone."><span class="lv">3-7 <i>▶ PLAY</i></span><b>PRODUCTION</b><span class="d">FastAPI serving, MLOps drift monitoring, and the live capstone. 3 lessons.</span></a>
         <a class="level" data-ai="review" href="/ai/review.html" data-icon="ticket" data-blip="Ten minutes of cards and it all stays in your head."><span class="lv">3-★ <i>▶ OPEN</i></span><b>REVIEW DECK</b><span class="d">Concept cards from the lessons you've finished, on a spaced-repetition schedule, and the gaps to revisit.</span></a>
-        <a class="level" href="/ai/" data-icon="book" data-blip="Every lesson, in order."><span class="lv">3-☰ <i>▶ OPEN</i></span><b>THE WHOLE PATH</b><span class="d">All 28 lessons in order, what's coming, and your progress.</span></a>
+        <a class="level" href="/ai/" data-icon="book" data-blip="Every lesson, in order."><span class="lv">3-☰ <i>▶ OPEN</i></span><b>THE WHOLE PATH</b><span class="d">All 72 lessons in order, milestone notebooks, exams, games and your portfolio.</span></a>
       </nav>
       <script type="module">
         // your progress on the AI path (kept in this browser by /ai/learn.js): continue where you left off, ✓ per stage, cards due
@@ -266,7 +286,8 @@
           start.querySelector(".lv i").textContent = "▶ GO"; start.querySelector(".d").textContent = `${n} of ${lessons.length} lessons finished. Next up: ${next.stage.replace(/^Stage \d+ · /, "")}.`;
         }
         for (const a of document.querySelectorAll("[data-ai-stage]")) {
-          const mine = lessons.filter((l) => l.stage.startsWith(`Stage ${a.dataset.aiStage} `)), k = mine.filter((l) => done[l.href]).length;
+          const isZoo = a.dataset.aiStage === "zoo";
+          const mine = lessons.filter((l) => isZoo ? l.stage === "Model zoo" : l.stage.startsWith(`Stage ${a.dataset.aiStage} `)), k = mine.filter((l) => done[l.href]).length;
           if (k) a.querySelector(".lv i").textContent = k === mine.length ? "✓ DONE" : `${k}/${mine.length} ✓`;
         }
         const due = dueCards().length, review = document.querySelector('[data-ai="review"]');
@@ -276,7 +297,7 @@
       </script>
     </article>
 
-    <article class="world">
+    <article class="world" id="w4">
       <header>
         <h3><small>WORLD 4</small>YOMU</h3>
         <span class="onair">NEW</span>
@@ -294,7 +315,7 @@
       </nav>
     </article>
 
-    <article class="world">
+    <article class="world" id="w5">
       <header>
         <h3><small>WORLD 5</small>RIDE</h3>
       </header>
@@ -305,7 +326,7 @@
       </nav>
     </article>
 
-    <article class="world">
+    <article class="world" id="w6">
       <header>
         <h3><small>WORLD 6</small>LEARN &amp; BUILD</h3>
       </header>
