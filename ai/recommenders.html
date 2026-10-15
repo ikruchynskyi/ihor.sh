@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recommenders</title>
+  <meta name="description" content="AI from scratch elective: recommenders. Rate a few NYC outings and a matrix factorization model trained in your browser recommends the rest; biases and taste vectors, implicit feedback, two-tower retrieval and ranking, cold start, ranking metrics, and feedback loops." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .items { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; font-size: 15px; }
+    .items div { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); padding: 2px 0; }
+    .items select { font: inherit; }
+    .recs li { margin: 4px 0; }
+    @media (max-width: 560px) { .items { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Recommenders</p>
+  <h1>Recommenders</h1>
+  <p class="lede">The feed, the "you might also like", the next song: recommenders decide much of what people see online, and they're one of the most common ML systems in industry. The core idea fits in one line: describe every user and every item by a few numbers, their tastes and its traits, so that a user likes an item when the two line up. The engineering around it (millions of items, users with no history, ratings shaped by what was recommended before) is where the job gets interesting. You'll train one here on yourself.</p>
+
+  <h2>1. Rate a few, get the rest</h2>
+  <p>Sixteen NYC outings. The model has ratings from 300 <b>made-up</b> people (generated with hidden tastes, so the demo has something to learn from). Rate at least four outings you have an opinion on, then press Recommend. It trains a model with two taste numbers per person and two trait numbers per outing, on everyone's ratings and yours, right here.</p>
+  <div class="items" id="items"></div>
+  <div class="row"><button id="rec">Recommend</button><button id="reset">Clear my ratings</button><span class="readout" id="status" style="margin:0"></span></div>
+  <ol class="recs" id="recs"></ol>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Every outing placed by its two learned trait numbers, with your taste as an arrow"></canvas>
+  <p class="readout" id="r1"></p>
+  <p>The map is the model's own picture: each outing at its two learned numbers, and your taste as an arrow. Nobody told it what the numbers mean; they come out as directions like "culture vs sport" or "indoors vs outdoors" because those explain the ratings. A predicted rating is how far an outing lies along your arrow, plus how good the outing is in general and how generous a rater you are.</p>
+  <p class="gist">A recommender gives each user a taste vector and each item a trait vector, and predicts how much a user likes an item from how well the two line up.</p>
+
+  <h2>2. Matrix factorization</h2>
+  <p>Put the ratings in a table, users by items, mostly empty. Matrix factorization fills it in with a low-rank model (the SVD lesson's idea, learned only from the filled cells):</p>
+  <p class="formula">\[ \hat r_{ui} = \mu + b_u + b_i + p_u \cdot q_i \]</p>
+  <p>\(\mu\) is the average rating, \(b_u\) how generous user \(u\) is, \(b_i\) how good item \(i\) is overall, and \(p_u \cdot q_i\) the match between taste and traits (\(k\) numbers each, 2 here, 16 to 200 in practice). Training minimizes squared error on the known ratings plus an L2 penalty on everything (chapter 11), by gradient descent. On the MovieLens dataset in the practice notebook, with a time split: predicting the average gives an error (RMSE) of 0.91 stars; biases and a single taste number, 0.84; 16 taste numbers with a strong penalty, 0.83. The same 16 numbers with no penalty score 0.90: no better than the average, because they memorized the training ratings.</p>
+  <div class="code" data-title="Build it: matrix factorization by gradient descent, in NumPy"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+n_users, n_items, k = 300, 16, 2
+true_p, true_q = rng.normal(size=(n_users, k)), rng.normal(size=(n_items, k))   # hidden tastes and traits
+rows = [(u, i) for u in range(n_users) for i in rng.choice(n_items, 6, replace=False)]   # each person rated 6
+r = np.array([np.clip(3 + true_p[u] @ true_q[i] + rng.normal(0, 0.5), 1, 5) for u, i in rows])
+test = rng.random(len(rows)) < 0.2
+P, Q = rng.normal(0, 0.1, (n_users, k)), rng.normal(0, 0.1, (n_items, k))
+bu, bi, mu, lr, lam = np.zeros(n_users), np.zeros(n_items), r[~test].mean(), 0.02, 0.05
+for epoch in range(60):
+    for idx in rng.permutation(np.where(~test)[0]):
+        u, i = rows[idx]
+        err = mu + bu[u] + bi[i] + P[u] @ Q[i] - r[idx]                 # how wrong this one prediction is
+        bu[u] -= lr * (err + lam * bu[u]); bi[i] -= lr * (err + lam * bi[i])
+        P[u], Q[i] = P[u] - lr * (err * Q[i] + lam * P[u]), Q[i] - lr * (err * P[u] + lam * Q[i])
+pred = np.array([mu + bu[u] + bi[i] + P[u] @ Q[i] for u, i in rows])
+rmse = lambda p: np.sqrt(np.mean((p[test] - r[test]) ** 2))
+print("predict the average:", round(rmse(np.full(len(r), mu)), 3), " · biases + 2 taste numbers:", round(rmse(pred), 3))
+</textarea></div>
+  <p class="gist">Matrix factorization fills the mostly-empty ratings table with average + user bias + item bias + taste·traits, learned from the known cells with an L2 penalty.</p>
+  <details class="deeper"><summary>Why a few numbers per person are enough</summary>
+    <ol>
+      <li>Imagine the full table, every user's rating of every item. If tastes were random, each row would be its own story and nothing could be predicted.</li>
+      <li>But they aren't: people who love jazz clubs tend to love the Met; people who love Knicks games tend to love Yankee Stadium. Rows are mixtures of a few patterns.</li>
+      <li>A table whose rows mix \(k\) patterns has rank about \(k\) (linear algebra 1): it's \(P Q^\top\), users' mixing weights times the patterns.</li>
+      <li>Rank \(k\) means each of the \(m\) users and \(n\) items needs only \(k\) numbers: \(k(m + n)\) in total instead of \(mn\). For 300 people and 16 outings at \(k = 2\): 632 numbers against 4,800 cells, of which only 1,800 were rated.</li>
+      <li>That's why the empty cells can be filled at all: far fewer unknowns than known ratings. Regularization keeps the few-data users and items from bending the patterns to their noise.</li>
+    </ol>
+  </details>
+
+  <h2>3. How real recommenders work</h2>
+  <ul>
+    <li><b>Implicit feedback.</b> Most products have clicks, plays and purchases, not star ratings. A click means some interest; no click means nothing certain (the user may never have seen it). Models are trained to rank clicked items above sampled unclicked ones (word vectors' negative sampling, again).</li>
+    <li><b>Two stages.</b> With millions of items, a <b>retrieval</b> model first picks a few hundred candidates fast: a <b>two-tower</b> network embeds users and items separately, and a vector index finds the nearest items (the retrieval lesson's nearest-neighbor search). A heavier <b>ranking</b> model, often boosted trees or a deep network with many features (time of day, recency, price), then orders those few hundred.</li>
+    <li><b>Ranking metrics.</b> What matters is the top of the list: <b>recall@k</b> (how many of the items the user later engaged with were in the top k) and NDCG (which rewards putting them first). RMSE on stars says little about a feed: in the notebook, the model with the best RMSE puts a user's next liked movies in its top 10 only 0.7% of the time, while the plain list of most-rated movies manages 3.6%. Star-prediction models favor obscure films with a few high ratings; models for feeds are trained on the ranking itself.</li>
+  </ul>
+  <div class="q" data-answer="c">
+    <p>A new user signs up. What can matrix factorization recommend them?</p>
+    <ul><li data-k="a" data-says="The model has no taste vector for someone with no ratings.">Their best personal matches</li><li data-k="b" data-says="With no p_u, the match term is undefined, not random.">Random items</li><li data-k="c">Only items that are good for everyone (\(\mu + b_i\), roughly popularity), until they rate or click something, or unless other information about them is used</li></ul>
+    <div class="why">The <b>cold start</b> problem. Fixes: ask a few onboarding questions (like section 1), use what you know (location, the item they arrived on), and content features for new items (genre, text embeddings) so they can be recommended before anyone has rated them.</div>
+  </div>
+  <p class="gist">Real systems learn from clicks, retrieve candidates with two-tower embeddings and a vector index, rank them with a richer model, and judge by the top of the list.</p>
+  <details class="deeper"><summary>Where it breaks: a model that shapes its own data</summary>
+    <ul>
+      <li><b>Feedback loops.</b> Items that get recommended get clicked, and clicks become training data for the next model, which recommends them more. Popular gets more popular, and niche items never get the exposure to prove themselves (MLOps' feedback loops). Systems reserve some slots for exploration.</li>
+      <li><b>Missing not at random.</b> People rate what they chose to watch, mostly things they expected to like, so the ratings over-represent good matches. A model trained on them overestimates how much people like the unseen.</li>
+      <li><b>Optimizing the wrong number.</b> Maximizing clicks rewards clickbait; maximizing watch time rewards endless scrolling (ML strategy's gamed metric). Product teams add satisfaction surveys, diversity and long-term retention as guardrails.</li>
+      <li><b>Offline isn't online.</b> Recall@10 on last month's clicks measures how well a model predicts what the old recommender showed. Only an A/B test (Probability 4) says whether users are better off.</li>
+    </ul>
+  </details>
+
+  <h2>4. What to carry forward</h2>
+  <ul>
+    <li>\(\hat r = \mu + b_u + b_i + p_u \cdot q_i\): biases do much of the work; tastes add the personal part; regularize.</li>
+    <li>Few numbers per user and item suffice because tastes are mixtures of a few patterns (low rank).</li>
+    <li>Implicit feedback, two-tower retrieval plus a ranking model, judged by recall@k and NDCG, then A/B tested.</li>
+    <li>Cold start needs content and context; feedback loops need exploration.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. The ratings in section 1 are synthetic; the notebook uses MovieLens (F. Maxwell Harper and Joseph Konstan, GroupLens, University of Minnesota), downloaded from GroupLens.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// 16 outings with hidden traits (culture ↔ sport, indoors ↔ outdoors) used only to generate the synthetic raters
+const ITEMS = [["The Met", 1.6, -1], ["MoMA", 1.5, -1.2], ["A Broadway show", 1.2, -0.8], ["A jazz club in the Village", 1.1, -0.6], ["The Comedy Cellar", 0.6, -1],
+  ["The High Line", 0.6, 1], ["Brooklyn Bridge walk", 0.3, 1.4], ["Central Park Zoo", 0, 0.9], ["Smorgasburg food market", 0.2, 1.1], ["Staten Island Ferry", 0, 0.8],
+  ["Rockaway Beach", -0.5, 1.6], ["Coney Island", -0.6, 1.3], ["Bronx Zoo", -0.3, 1], ["A Knicks game", -1.6, -0.8], ["A Yankees game", -1.5, 0.9], ["A Rangers game", -1.4, -0.9]];
+let seed = 11;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const DATA = [];                                            // [user, item, rating]
+for (let u = 0; u < 300; u++) {
+  const taste = [gauss(), gauss()], gen = 0.4 * gauss(), picks = new Set();
+  while (picks.size < 6) picks.add(Math.floor(rand() * ITEMS.length));
+  for (const i of picks) DATA.push([u, i, Math.max(1, Math.min(5, Math.round(3.4 + gen + 0.6 * (taste[0] * ITEMS[i][1] + taste[1] * ITEMS[i][2]) + 0.5 * gauss())))]);
+}
+let mine = {};
+try { mine = JSON.parse(localStorage.getItem("ai:recs") ?? "{}"); } catch {}
+$("items").innerHTML = ITEMS.map(([n], i) => `<div><span>${n}</span><select data-i="${i}"><option value="">–</option>${[1, 2, 3, 4, 5].map((s) => `<option${mine[i] == s ? " selected" : ""}>${s}</option>`).join("")}</select></div>`).join("");
+$("items").addEventListener("change", (e) => { const i = e.target.dataset.i; if (e.target.value) mine[i] = +e.target.value; else delete mine[i]; try { localStorage.setItem("ai:recs", JSON.stringify(mine)); } catch {} status(); });
+const status = () => { const n = Object.keys(mine).length; $("status").textContent = n < 4 ? `${n} rated: rate at least 4` : `${n} rated`; };
+function train() {
+  seed = 5; const me = 300, nU = 301, K = 2, rows = [...DATA, ...Object.entries(mine).map(([i, r]) => [me, +i, r])];
+  const P = Array.from({ length: nU }, () => [0.1 * gauss(), 0.1 * gauss()]), Q = ITEMS.map(() => [0.1 * gauss(), 0.1 * gauss()]);
+  const bu = new Float64Array(nU), bi = new Float64Array(ITEMS.length), mu = rows.reduce((s, r) => s + r[2], 0) / rows.length, lr = 0.02, lam = 0.05;
+  for (let ep = 0; ep < 60; ep++) {
+    for (let n = rows.length - 1; n > 0; n--) { const j = Math.floor(rand() * (n + 1)); [rows[n], rows[j]] = [rows[j], rows[n]]; }
+    for (const [u, i, r] of rows) {
+      const e = mu + bu[u] + bi[i] + P[u][0] * Q[i][0] + P[u][1] * Q[i][1] - r;
+      bu[u] -= lr * (e + lam * bu[u]); bi[i] -= lr * (e + lam * bi[i]);
+      for (let k = 0; k < K; k++) { const pu = P[u][k]; P[u][k] -= lr * (e * Q[i][k] + lam * pu); Q[i][k] -= lr * (e * pu + lam * Q[i][k]); }
+    }
+  }
+  return { P, Q, bu, bi, mu, me };
+}
+function recommend() {
+  if (Object.keys(mine).length < 4) { status(); return; }
+  $("status").textContent = "training on 1,800 made-up ratings and yours…";
+  setTimeout(() => {
+    const { P, Q, bu, bi, mu, me } = train(), pred = (i) => mu + bu[me] + bi[i] + P[me][0] * Q[i][0] + P[me][1] * Q[i][1];
+    const unrated = ITEMS.map((_, i) => i).filter((i) => !(i in mine)).sort((a, b) => pred(b) - pred(a));
+    $("recs").innerHTML = unrated.slice(0, 5).map((i) => `<li><b>${ITEMS[i][0]}</b>: predicted ${pred(i).toFixed(1)} stars <span style="color:var(--muted)">(overall quality ${(mu + bi[i]).toFixed(1)}, your match ${(P[me][0] * Q[i][0] + P[me][1] * Q[i][1] >= 0 ? "+" : "")}${(P[me][0] * Q[i][0] + P[me][1] * Q[i][1]).toFixed(1)})</span></li>`).join("");
+    const cv = $("map"), g = cv.getContext("2d"), W = cv.width, s = W / 2 / Math.max(...Q.flat().map(Math.abs), ...P[me].map(Math.abs), 0.5) * 0.85, c = W / 2;
+    g.fillStyle = "#14171d"; g.fillRect(0, 0, W, W); g.strokeStyle = "rgba(216,222,233,0.2)"; g.beginPath(); g.moveTo(c, 0); g.lineTo(c, W); g.moveTo(0, c); g.lineTo(W, c); g.stroke();
+    g.font = "13px ui-sans-serif";
+    ITEMS.forEach(([n], i) => { const x = c + Q[i][0] * s, y = c - Q[i][1] * s; g.fillStyle = i in mine ? "#f4a259" : "#58c4dd"; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill(); g.fillStyle = "#d8dee9"; g.fillText(n.length > 20 ? n.slice(0, 19) + "…" : n, Math.min(x + 7, W - 120), y + 4); });
+    const ux = c + P[me][0] * s, uy = c - P[me][1] * s; g.strokeStyle = "#83c167"; g.lineWidth = 3; g.beginPath(); g.moveTo(c, c); g.lineTo(ux, uy); g.stroke(); g.fillStyle = "#83c167"; g.fillText("you", ux + 6, uy - 6);
+    $("r1").textContent = "Orange: outings you rated. Blue: the rest. Green arrow: your learned taste. Outings far along your arrow get a big positive match.";
+    status();
+  }, 30);
+}
+$("rec").onclick = recommend; $("reset").onclick = () => { mine = {}; try { localStorage.removeItem("ai:recs"); } catch {} document.querySelectorAll("#items select").forEach((s) => (s.value = "")); $("recs").innerHTML = ""; status(); };
+status();
+</script>
+</body>
+</html>

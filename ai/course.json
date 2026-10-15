@@ -5707,5 +5707,121 @@
     "sec": 4
    }
   ]
+ },
+ "recommenders.html": {
+  "goals": [
+   "Predict ratings with matrix factorization: average, user and item biases, taste·traits",
+   "Explain why a few numbers per user and item suffice (low rank) and why regularization matters",
+   "Describe implicit feedback, two-tower retrieval and ranking, and ranking metrics",
+   "Recognize cold start, feedback loops and missing-not-at-random data"
+  ],
+  "needs": [
+   "l3-svd.html",
+   "11-overfitting.html",
+   "embeddings-and-retrieval.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Matrix factorization",
+    "r̂ = μ + b_u + b_i + p_u·q_i: biases plus a taste-traits match, learned from known ratings only."
+   ],
+   [
+    "Biases",
+    "How generous a user is, how good an item is overall: often most of the accuracy."
+   ],
+   [
+    "Low rank",
+    "Tastes mix a few patterns, so k numbers per user and item fill a mostly empty table."
+   ],
+   [
+    "Implicit feedback",
+    "Clicks and plays instead of stars; trained to rank engaged items above sampled others."
+   ],
+   [
+    "Two-tower retrieval",
+    "User and item embedded separately; a vector index fetches candidates fast; a richer model ranks them."
+   ],
+   [
+    "recall@k",
+    "Share of the items a user later engaged with that appeared in their top k."
+   ],
+   [
+    "Cold start",
+    "New users or items have no vectors: use popularity, onboarding questions, content features."
+   ],
+   [
+    "Feedback loop",
+    "Recommended items get the clicks that train the next model; reserve slots for exploration."
+   ]
+  ],
+  "check": [
+   {
+    "q": "In r̂ = μ + b_u + b_i + p_u·q_i, what does b_i capture?",
+    "options": [
+     "How well item i is rated by everyone, regardless of taste",
+     "The user's taste",
+     "The average of all ratings"
+    ],
+    "answer": 0,
+    "why": "Item bias: overall quality. μ is the global mean, p_u·q_i the personal match.",
+    "sec": 2
+   },
+   {
+    "q": "Why can a few taste numbers per person fill a table that's 98% empty?",
+    "options": [
+     "Tastes mix a few patterns, so the full table is approximately low-rank: far fewer unknowns than known ratings",
+     "Because empty cells are filled with zeros",
+     "Because the model memorizes the table"
+    ],
+    "answer": 0,
+    "why": "k(m + n) numbers instead of m·n cells.",
+    "sec": 2
+   },
+   {
+    "q": "Without a penalty, 16-factor MF on MovieLens did no better than predicting the average. Why?",
+    "options": [
+     "The taste vectors fit the noise in the training ratings (overfitting)",
+     "16 factors is too few",
+     "Biases are always better"
+    ],
+    "answer": 0,
+    "why": "0.90 RMSE vs 0.91 for the mean; with a strong penalty 0.83.",
+    "sec": 2
+   },
+   {
+    "q": "A brand-new user has no ratings. Matrix factorization alone can recommend…",
+    "options": [
+     "roughly the items good for everyone (μ + b_i)",
+     "their personal best matches",
+     "nothing at all"
+    ],
+    "answer": 0,
+    "why": "Cold start: no taste vector yet. Ask, or use context and content.",
+    "sec": 3
+   },
+   {
+    "q": "Why is recall@10 on last month's clicks an imperfect test of a new recommender?",
+    "options": [
+     "Those clicks were shaped by the old recommender's choices; only an A/B test shows if users are better off",
+     "Recall can't be computed on clicks",
+     "10 is too few"
+    ],
+    "answer": 0,
+    "why": "Offline data reflects what was shown, not what users would have chosen.",
+    "sec": 3
+   },
+   {
+    "q": "Why can a model with the best rating RMSE still make a worse top-10 list than plain popularity?",
+    "options": [
+     "Predicting stars rewards obscure items with a few high ratings; ranking what a user will engage with is a different objective",
+     "RMSE is computed wrong",
+     "Popularity uses more data"
+    ],
+    "answer": 0,
+    "why": "In the notebook: recall@10 0.7% for the RMSE-trained model vs 3.6% for most-rated. Train on the ranking itself.",
+    "sec": 3
+   }
+  ]
  }
 }
