@@ -5291,5 +5291,110 @@
     "sec": 5
    }
   ]
+ },
+ "serving.html": {
+  "goals": [
+   "Wrap a model in an API that validates inputs and returns its version",
+   "Measure latency as percentiles and explain why tails dominate under fan-out",
+   "Tune dynamic batching's max batch and max wait for throughput vs latency",
+   "Use quantization and caching, and estimate the cost per prediction"
+  ],
+  "needs": [
+   "pandas-and-sklearn.html",
+   "gpus-and-scale.html",
+   "s4-your-first-shared-model.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Prediction service",
+    "Load the model once, validate inputs against a schema, return the prediction and model version, expose a health check."
+   ],
+   [
+    "Training-serving skew",
+    "Serving builds features differently from training; share one preprocessing function."
+   ],
+   [
+    "Latency percentiles",
+    "p50, p95, p99: the median and the slow tail; report them, not the mean."
+   ],
+   [
+    "Tail at scale",
+    "Fan-out to n calls makes 1 − 0.99ⁿ of requests hit a p99: 50 calls → 39.5%."
+   ],
+   [
+    "Dynamic batching",
+    "Collect requests up to a max batch or max wait, then run them together: fixed costs shared."
+   ],
+   [
+    "Quantization",
+    "Weights in fewer bits with a scale per row: 8-bit lossless here, 4-bit nearly, 2-bit broken."
+   ],
+   [
+    "Caching",
+    "Return a stored answer when the input, model version and settings are identical; expire live data."
+   ],
+   [
+    "Cost per prediction",
+    "Machine price per hour ÷ predictions per hour; batching and scaling with traffic cut it."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why does the service return a model version with every prediction?",
+    "options": [
+     "So any bad prediction can be traced to the exact model that made it",
+     "To make responses bigger",
+     "Because FastAPI requires it"
+    ],
+    "answer": 0,
+    "why": "Models change; logs must say which one answered.",
+    "sec": 1
+   },
+   {
+    "q": "Each of 10 backend calls is slow 1% of the time. About what share of pages hit a slow call?",
+    "options": [
+     "about 10%",
+     "1%",
+     "0.1%"
+    ],
+    "answer": 0,
+    "why": "1 − 0.99¹⁰ ≈ 9.6%.",
+    "sec": 2
+   },
+   {
+    "q": "Why does batching raise throughput so much?",
+    "options": [
+     "Each run's fixed cost (launching, reading every weight) is shared by the whole batch",
+     "Batches use fewer weights",
+     "Batched requests skip validation"
+    ],
+    "answer": 0,
+    "why": "Time per batch ≈ t₀ + c·b: one at 21 ms, sixteen at 36 ms.",
+    "sec": 3
+   },
+   {
+    "q": "Raising dynamic batching's max wait from 5 ms to 30 ms at low traffic mostly…",
+    "options": [
+     "raises latency while barely improving throughput",
+     "lowers latency",
+     "has no effect"
+    ],
+    "answer": 0,
+    "why": "At low load batches can't fill anyway; requests just wait longer.",
+    "sec": 3
+   },
+   {
+    "q": "In the notebook, which weight precision broke the digit network?",
+    "options": [
+     "2-bit",
+     "8-bit",
+     "4-bit"
+    ],
+    "answer": 0,
+    "why": "91.7% in float32 and 8-bit, 91.4% at 4-bit, 43% at 2-bit.",
+    "sec": 4
+   }
+  ]
  }
 }

@@ -321,6 +321,13 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-a-pet-breed-classifier-on-the-web"
  },
+ "serving.html": {
+  "notebook": "serving.ipynb",
+  "title": "AI from scratch: serving a model",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/serving.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-serving-a-model"
+ },
  "tokens.html": {
   "notebook": "tokens.ipynb",
   "title": "AI from scratch: text as numbers, tokens",

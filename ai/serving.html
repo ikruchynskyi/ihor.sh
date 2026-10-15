@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Serving a Model</title>
+  <meta name="description" content="AI from scratch: serving a model. From notebook to API with FastAPI, latency percentiles and why tails matter, a dynamic batching simulator, quantization measured from 8 bits down to 2, caching, and the cost per thousand predictions." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Serving a model · Stage 7: production</p>
+  <h1>Serving a model</h1>
+  <p class="lede">A model in a notebook answers one person: you. A served model answers thousands of requests from code that never sees a notebook, and each request has a deadline and a cost. Start 4 put a model behind a demo page. This lesson is the engineering behind a real service: an API around the model, latency measured the way users feel it, batching that trades a little waiting for a lot of throughput, smaller and faster models through quantization, caching, and the arithmetic of what each prediction costs.</p>
+
+  <h2>1. From notebook to API</h2>
+  <p>A prediction service is a small program: load the model once when it starts, check every request's input, run the model, return the answer. In Python the common tool is <b>FastAPI</b>; <b>pydantic</b> types describe the input, so malformed requests are rejected with a clear error before they reach the model.</p>
+  <pre class="static"><code>from fastapi import FastAPI
+from pydantic import BaseModel
+import joblib, pandas as pd
+
+model = joblib.load("outage_model.joblib")            # once, at startup: loading per request would cost seconds
+app = FastAPI()
+
+class Outage(BaseModel):                                # the contract: these fields, these types
+    kind: str
+    reason: str
+    ada: int
+    hour: int
+    n_lines: int
+
+@app.post("/predict")
+def predict(o: Outage):
+    p = model.predict_proba(pd.DataFrame([o.model_dump()]))[0, 1]
+    return {"p_long": float(p), "model_version": "2026-10-15"}
+
+@app.get("/health")
+def health():
+    return {"ok": True}</code></pre>
+  <p>Three habits: return the <b>model version</b> with every answer (so a bad prediction can be traced, the experiments lesson); use the <b>same preprocessing code</b> in training and serving (Start 4's most common deployment bug, "training-serving skew"); and expose a <b>health check</b> so the platform can restart a stuck service.</p>
+  <p class="gist">A service loads the model once, validates every input against a schema, and returns the prediction with the model version that made it.</p>
+
+  <h2>2. Latency is a distribution</h2>
+  <p>"Average latency 40 ms" hides what users feel. Report <b>percentiles</b>: p50 (the median request), p95 and p99 (the slow tail). Tails matter more than they look: a page that calls 10 services waits for the slowest, so if each has a 1% chance of a slow answer, \(1 - 0.99^{10} \approx 9.6\%\) of pages are slow.</p>
+  <div class="q" data-num="39.5" data-tol="0.02">
+    <p>A request fans out to 50 backend calls, each slow 1% of the time. What percent of requests hit at least one slow call? (One decimal.)</p>
+    <div class="why">\(1 - 0.99^{50} \approx 0.395\): 39.5%. At scale, the p99 of each part becomes the typical experience of the whole, which is why services watch p99, not the mean.</div>
+  </div>
+  <p class="gist">Measure latency as percentiles; a service's p99 is what fan-out turns into everybody's experience.</p>
+
+  <h2>3. Batching: wait a little, serve a lot</h2>
+  <p>Running the model on 64 inputs at once costs barely more than on one: the fixed costs (launching the computation, reading the weights from memory) are shared. On a laptop CPU, the toolkit's digit network does about 68,000 predictions a second one at a time and 680,000 in batches of 256. <b>Dynamic batching</b> collects requests for up to a few milliseconds, then runs them together. The simulator below serves requests arriving at random; the model takes 20 ms per batch plus 1 ms per request in it.</p>
+  <canvas id="sim" width="800" height="300" aria-label="Latency of each request over time under dynamic batching"></canvas>
+  <div class="row">
+    <label>requests / s <input type="range" id="rate" min="10" max="900" step="10" value="200"> <b id="rateV"></b></label>
+    <label>max batch <input type="range" id="bmax" min="1" max="64" value="16"> <b id="bmaxV"></b></label>
+    <label>max wait (ms) <input type="range" id="wait" min="0" max="50" value="5"> <b id="waitV"></b></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <p>Set max batch to 1 and push the rate past 45 requests a second: the queue grows without end, because one request at a time can't keep up (each costs 21 ms). With batches of 16 the same server handles hundreds a second. Then raise the wait: the batches get fuller but each request waits longer, which raises p50 at low load. Real servers (NVIDIA Triton, vLLM, TorchServe) tune exactly these two knobs.</p>
+  <p class="gist">Batching shares each model run's fixed cost across many requests, multiplying throughput for a few milliseconds of waiting.</p>
+  <details class="deeper"><summary>Why a batch is almost free, up to a point</summary>
+    <ol>
+      <li>A model run has a fixed part (launching kernels, reading every weight from memory) and a per-input part (the arithmetic for that input).</li>
+      <li>For small inputs the fixed part dominates: the GPUs lesson's memory-bound work. Reading a 14 GB model once per request or once per batch of 32 is the difference between 1 and 1/32 of that cost per request.</li>
+      <li>So time per batch is roughly \(t_0 + c\,b\): with \(t_0 = 20\) ms and \(c = 1\) ms, one request takes 21 ms (48 a second at most), a batch of 16 takes 36 ms (444 a second).</li>
+      <li>The per-input part eventually dominates (once the arithmetic keeps the cores busy), and throughput stops growing: the toolkit's throughput-vs-batch curve flattened the same way.</li>
+      <li>The price is waiting: a request may sit up to the max wait for its batch to fill, then for the batch to run. That's the latency-throughput trade every serving system tunes.</li>
+    </ol>
+  </details>
+
+  <h2>4. Smaller, faster, cached</h2>
+  <p><b>Quantization</b> stores weights in fewer bits: each row of a weight matrix gets one scale, and every weight becomes the nearest of 255 (8-bit) or 15 (4-bit) levels. Measured in the practice notebook on the toolkit's digit network (91.7% accurate in float32):</p>
+  <table class="cmp">
+    <tr><th>Weights</th><th>Size</th><th>Accuracy</th></tr>
+    <tr><td>float32</td><td>1.2 MB</td><td>91.7%</td></tr>
+    <tr><td>8-bit</td><td>0.3 MB</td><td>91.7%</td></tr>
+    <tr><td>4-bit</td><td>0.15 MB</td><td>91.4%</td></tr>
+    <tr><td>2-bit</td><td>0.08 MB</td><td>43%</td></tr>
+  </table>
+  <p>Down to 4 bits almost nothing is lost; at 2 bits the model falls apart. Large language models are routinely served in 8 or 4 bits for exactly this reason (the using-LLMs lesson's 137 MB browser model is 8-bit). Other tools: <b>distillation</b> (train a small model to copy a big one's outputs), <b>compilation</b> (ONNX Runtime, TensorRT fuse operations, the GPUs lesson's fusion), and <b>caching</b>: an identical request gets the stored answer, and language models cache the attention keys and values of a prompt's shared beginning (a KV cache, and providers' prompt caching).</p>
+  <div class="q" data-answer="c">
+    <p>Which request is safe to answer from a cache?</p>
+    <ul><li data-k="a" data-says="A live arrival time changes every few seconds; a cached answer would be wrong.">"When is the next A train at 125 St?"</li><li data-k="b" data-says="Sampled answers are meant to vary; caching makes every user get the same one.">"Write me a poem about the subway" at temperature 1</li><li data-k="c">"Classify this exact outage report" with a fixed model version: same input, same model, same answer</li></ul>
+    <div class="why">A cache key must include everything the answer depends on: the input, the model version, the settings, and for live data, a time limit (expire entries after a few seconds).</div>
+  </div>
+  <p class="gist">Quantization, distillation and compilation make each prediction cheaper; caching skips the prediction when the inputs and model haven't changed.</p>
+
+  <h2>5. What a prediction costs</h2>
+  <p class="formula">\[ \text{cost per 1,000 predictions} = \frac{\text{price of the machine per hour}}{\text{predictions per hour}} \times 1{,}000 \]</p>
+  <p>A machine at \$1.20 an hour serving 100 predictions a second does 360,000 an hour: \$0.0033 per thousand. If batching lifts it to 1,000 a second, the price per thousand falls tenfold. But a machine kept up for traffic that peaks at noon and idles at night is paid for all day, so the real cost includes idle time: autoscaling adds and removes machines with the load.</p>
+  <p class="gist">Cost per prediction is machine cost over throughput, so batching, smaller models and scaling with traffic are cost tools as much as speed tools.</p>
+  <details class="deeper"><summary>Where it breaks: the service, not the model</summary>
+    <ul>
+      <li><b>Training-serving skew.</b> The service rebuilds features its own way (a different time zone for "hour", a category spelled differently) and the model quietly gets worse inputs than it trained on. Share one preprocessing function, and log served inputs to compare with training data (the MLOps lesson).</li>
+      <li><b>Cold starts.</b> A new machine must load the model before its first answer: seconds for a small model, minutes for a large one. Autoscaling that starts machines only when traffic arrives makes the first users wait; keep a warm minimum.</li>
+      <li><b>Outliers in 8 bits.</b> Large language models have a few activation dimensions with huge values; squeezing them into 8 bits ruins accuracy. Methods like LLM.int8() keep those few dimensions in 16 bits.</li>
+      <li><b>Overload.</b> Past capacity, queues grow without bound (the simulator with batch 1), every request times out, and retries make it worse. Shed load early: reject what you can't serve with a clear error.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>An API: load once, validate inputs, return the version, share preprocessing with training, expose health.</li>
+    <li>Latency as p50 / p95 / p99; fan-out makes tails common.</li>
+    <li>Dynamic batching: max batch and max wait trade latency for throughput.</li>
+    <li>8-bit and usually 4-bit weights keep accuracy; cache what's truly repeatable.</li>
+    <li>Cost per prediction = machine cost / throughput; scale with traffic.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Made With ML's serving lessons and the FastAPI tutorial are good companions; Jeff Dean and Luiz Barroso's "The Tail at Scale" is the classic on section 2.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let seed = 3;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const T0 = 20, C = 1, DURATION = 10_000;           // ms per batch: 20 + 1 per request; simulate 10 seconds
+function simulate(rate, bmax, wait) {
+  seed = 3; const arrivals = []; let t = 0;
+  while (t < DURATION) { t += -Math.log(rand()) * (1000 / rate); arrivals.push(t); }   // Poisson arrivals
+  const done = []; let free = 0, i = 0, busy = 0, batches = 0;
+  while (i < arrivals.length) {
+    const open = Math.max(free, arrivals[i]), close = open + wait;     // server free and someone waiting: open a window
+    let j = i; while (j < arrivals.length && j - i < bmax && arrivals[j] <= close) j++;
+    const start = j - i === bmax ? Math.max(open, arrivals[j - 1]) : close;   // full early: go now; else wait out the window
+    const b = j - i, end = start + T0 + C * b;
+    for (let k = i; k < j; k++) done.push([arrivals[k], end - arrivals[k]]);
+    busy += T0 + C * b; batches++; free = end; i = j;
+  }
+  return { done, busy, batches, n: arrivals.length };
+}
+const pct = (xs, p) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
+function draw() {
+  const rate = +$("rate").value, bmax = +$("bmax").value, wait = +$("wait").value;
+  $("rateV").textContent = rate; $("bmaxV").textContent = bmax; $("waitV").textContent = wait;
+  const { done, busy, batches, n } = simulate(rate, bmax, wait), lat = done.map((d) => d[1]);
+  const cv = $("sim"), g = cv.getContext("2d"), W = cv.width, H = cv.height, maxL = Math.max(100, pct(lat, 99) * 1.2);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, monospace";
+  for (const v of [50, 100, 200, 500, 1000, 2000, 5000]) if (v < maxL) { const y = H - 20 - (v / maxL) * (H - 40); g.strokeStyle = "rgba(216,222,233,0.12)"; g.beginPath(); g.moveTo(40, y); g.lineTo(W, y); g.stroke(); g.fillStyle = "#9aa4b2"; g.fillText(`${v}`, 2, y + 4); }
+  g.fillStyle = "#58c4dd99";
+  for (const [at, l] of done) g.fillRect(40 + (at / DURATION) * (W - 50), H - 20 - (Math.min(l, maxL) / maxL) * (H - 40), 2, 2);
+  g.fillStyle = "#9aa4b2"; g.fillText("ms", 2, 14); g.fillText("time →  (10 simulated seconds)", W - 240, H - 4);
+  const util = Math.min(100, (100 * busy) / Math.max(DURATION, done.length ? done[done.length - 1][0] + done[done.length - 1][1] : DURATION));
+  const unstable = pct(lat, 99) > 2000 || util > 98;
+  $("r3").innerHTML = `p50 ${pct(lat, 50).toFixed(0)} ms · p95 ${pct(lat, 95).toFixed(0)} ms · p99 ${pct(lat, 99).toFixed(0)} ms · average batch ${(n / batches).toFixed(1)} · server busy ${util.toFixed(0)}% of the time` +
+    (unstable ? "<br><b>overloaded:</b> requests arrive faster than batches of this size can be served, so the queue (and latency) grows without end" : "");
+}
+["rate", "bmax", "wait"].forEach((id) => $(id).addEventListener("input", draw)); draw();
+</script>
+</body>
+</html>
