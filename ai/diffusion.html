@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How Image Generators Work</title>
+  <meta name="description" content="AI from scratch elective: how image generators work. Diffusion as noise added step by step, a network that predicts the noise, sampling from pure noise back to data (watch 2-D points flow), text guidance and classifier-free guidance, latent diffusion, and memorization." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .sq { aspect-ratio: 1 / 1; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · How image generators work</p>
+  <h1>How image generators work</h1>
+  <p class="lede">Type "a yellow cab in the rain at night, Times Square" and a few seconds later there's a picture nobody ever took. Stable Diffusion, Midjourney, DALL·E and Flux all rest on one surprisingly simple idea, <b>diffusion</b>: it's easy to destroy an image by adding noise a little at a time, so train a network to undo one small step of that, and then run it backward from pure noise. This lesson shows the noise going in, the network that learns to take it out, how text steers it, and how the same machinery can quietly memorize.</p>
+
+  <h2>1. Destroying an image, one small step at a time</h2>
+  <p>Take an image \(x_0\) (pixels scaled to −1…1) and mix in Gaussian noise \(\varepsilon\) (Probability 3's bell curve, one draw per pixel). After \(t\) of \(T = 1000\) steps the image is</p>
+  <p class="formula">\[ x_t = \sqrt{\bar\alpha_t}\; x_0 + \sqrt{1 - \bar\alpha_t}\; \varepsilon \]</p>
+  <p>where \(\bar\alpha_t\) falls from 1 (all image) to about 0 (all noise) along a fixed <b>schedule</b>. The two weights' squares add to 1, so the overall spread stays the same while the image fades out of it.</p>
+  <div class="pair"><canvas id="img" class="sq" width="320" height="320" aria-label="An image with noise mixed in according to the slider"></canvas><canvas id="sched" class="sq" width="320" height="320" aria-label="The schedule: how much image remains at each step"></canvas></div>
+  <div class="row"><label>step t <input type="range" id="t" min="0" max="999" value="300"> <b id="tV"></b></label><button id="newNoise">New noise</button></div>
+  <p class="readout" id="r1"></p>
+  <p class="gist">Diffusion's forward process blends an image with noise in a fixed schedule until only noise is left: easy, with nothing to learn.</p>
+
+  <h2>2. Learn to predict the noise</h2>
+  <p>Training picks a real image, a random step \(t\) and random noise \(\varepsilon\), makes \(x_t\), and asks a network \(\varepsilon_\theta(x_t, t)\) to guess which noise was added. The loss is plain mean squared error (chapter 2):</p>
+  <p class="formula">\[ L = \big\lVert \varepsilon - \varepsilon_\theta(x_t, t) \big\rVert^2 \]</p>
+  <p>Knowing the noise is knowing the image: \(\hat x_0 = (x_t - \sqrt{1 - \bar\alpha_t}\,\varepsilon_\theta)/\sqrt{\bar\alpha_t}\). The network for images is a U-Net (the detector lesson's segmentation network, now outputting noise per pixel), told the step \(t\) through sine-wave features (chapter 7's positional encoding idea).</p>
+  <div class="q" data-answer="b">
+    <p>At step \(t = 990\) the image is almost pure noise. What's the best the network can do there?</p>
+    <ul><li data-k="a" data-says="Almost nothing of this particular image is left to recover.">Recover the exact original image</li><li data-k="b">Guess an average-looking image: the posterior is wide, so its best guess is blurry</li><li data-k="c" data-says="It's trained at every step, including the noisiest.">Nothing: it isn't trained there</li></ul>
+    <div class="why">With squared error the best guess is the mean of all images consistent with \(x_t\) (P2's mean as the best guess under squared penalty). Early in sampling that's a blurry average; each later step commits to more detail. That's why sampling is many small steps, not one jump.</div>
+  </div>
+  <p class="gist">The network is trained, at every noise level, to predict the noise that was added; predicting the noise is the same as predicting the clean image.</p>
+  <details class="deeper"><summary>Why the noisy image is a blend you can sample in one shot</summary>
+    <ol>
+      <li>One forward step: \(x_t = \sqrt{\alpha_t}\, x_{t-1} + \sqrt{1 - \alpha_t}\, \varepsilon_t\), shrinking the image a little and adding a little fresh noise.</li>
+      <li>Substitute the previous step into this one: the image part gets \(\sqrt{\alpha_t \alpha_{t-1}}\), and the two noises are independent bells, so their variances add: \(\alpha_t (1 - \alpha_{t-1}) + (1 - \alpha_t) = 1 - \alpha_t \alpha_{t-1}\).</li>
+      <li>Continuing down to \(x_0\): \(x_t = \sqrt{\bar\alpha_t}\, x_0 + \sqrt{1 - \bar\alpha_t}\, \varepsilon\) with \(\bar\alpha_t = \alpha_1 \alpha_2 \cdots \alpha_t\) and one combined noise \(\varepsilon\).</li>
+      <li>So training never walks the chain: any step's noisy image is one formula away, which makes each training example cheap.</li>
+      <li>The variances adding (not the standard deviations) is Probability 4's rule again; it's why the coefficients are square roots.</li>
+    </ol>
+  </details>
+
+  <h2>3. Sampling: from noise back to data</h2>
+  <p>To generate, start from pure noise and repeat: estimate the clean image from the network's noise guess, then step a little toward it, back to a slightly less noisy \(x_{t-1}\). Below, every dot is a 2-D "image" (two numbers instead of a million pixels), the training data is the dots in the shape of a word, and the denoiser is the exact best one for this data. Press play: 600 points start as noise and flow onto the data.</p>
+  <canvas id="flow" width="800" height="440" aria-label="Points flowing from random noise onto the training shape as the reverse diffusion runs"></canvas>
+  <div class="row"><button id="flowPlay">▶ Sample</button><label>steps <select id="nsteps"><option>10</option><option selected>50</option><option>200</option></select></label></div>
+  <p class="readout" id="r3"></p>
+  <p>Ten steps already give the shape; more steps refine it. Real samplers (DDIM, DPM-Solver) make 20–50 steps as good as the original 1,000. And notice where the points land: <i>on</i> the training dots, every one. That's the next section's lesson.</p>
+  <p class="gist">Sampling runs the denoiser backward from pure noise in small steps, each committing to a little more detail.</p>
+
+  <h2>4. Text, guidance and latents</h2>
+  <ul>
+    <li><b>Conditioning.</b> To follow a prompt, the denoiser also gets the text, embedded by a text encoder (CLIP or a T5, the embeddings lesson's kind of model), mixed in through cross-attention (chapter 7): every image patch can attend to every word.</li>
+    <li><b>Classifier-free guidance.</b> During training the text is dropped 10% of the time, so the same network learns both \(\varepsilon(x_t, t, \text{text})\) and \(\varepsilon(x_t, t)\). At sampling, push past the conditional prediction, away from the unconditional one: \(\hat\varepsilon = \varepsilon_{\text{uncond}} + w(\varepsilon_{\text{cond}} - \varepsilon_{\text{uncond}})\). The "guidance scale" \(w\), often 5–8, trades variety for following the prompt.</li>
+    <li><b>Latent diffusion.</b> A 1024 × 1024 color image is 3 million numbers. Stable Diffusion first compresses images with an autoencoder to a 128 × 128 × 4 latent (65,536 numbers, 48 times fewer), runs diffusion there, and decodes at the end. That's what made it run on one consumer GPU.</li>
+  </ul>
+  <div class="q" data-num="48" data-tol="0.01">
+    <p>A 1024 × 1024 × 3 image is encoded to a 128 × 128 × 4 latent. How many times fewer numbers does diffusion work on?</p>
+    <div class="why">\(1024 \cdot 1024 \cdot 3 / (128 \cdot 128 \cdot 4) = 3{,}145{,}728 / 65{,}536 = 48\). Every one of the 20–50 denoising steps is that much cheaper.</div>
+  </div>
+  <p class="gist">Text steers generation through cross-attention, guidance amplifies the text's pull, and working in a compressed latent space makes it affordable.</p>
+  <details class="deeper"><summary>Where it breaks: memorizing, and what the data carried</summary>
+    <ul>
+      <li><b>Memorization.</b> The demo's denoiser is the exact best one for its training points, and it reproduces training points: nothing new at all. Real networks can't represent that exact function, which is what makes them generalize, but not always: studies have extracted near-copies of training images (repeated ones especially) from Stable Diffusion. The practice notebook measures how close its generated digits come to the nearest training digit.</li>
+      <li><b>Training data and rights.</b> Generators trained on scraped images reproduce styles, watermarks and sometimes specific works, which is the subject of lawsuits by artists and photo agencies. Know your model's data and license before using its images commercially.</li>
+      <li><b>Bias and failures.</b> "A doctor" defaults to whatever the training images mostly showed (the word vectors lesson's biases, in pictures); hands, text inside images and counting objects are classic weak spots.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Forward: \(x_t = \sqrt{\bar\alpha_t} x_0 + \sqrt{1 - \bar\alpha_t} \varepsilon\), a fixed schedule from image to noise.</li>
+    <li>Train a U-Net to predict \(\varepsilon\) with MSE at every noise level.</li>
+    <li>Sample from noise in 20–1,000 small denoising steps.</li>
+    <li>Text via cross-attention, classifier-free guidance scale \(w\), latent diffusion for speed.</li>
+    <li>Check for memorization and know the data's rights.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Ho, Jain and Abbeel, "Denoising Diffusion Probabilistic Models" (2020); Rombach et al., "High-Resolution Image Synthesis with Latent Diffusion Models" (2022).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let seed = 4;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const T = 1000, abar = new Float64Array(T);                       // cosine schedule (Nichol & Dhariwal)
+const f = (t) => Math.cos(((t / T + 0.008) / 1.008) * Math.PI / 2) ** 2;
+for (let t = 0; t < T; t++) abar[t] = Math.max(1e-5, f(t + 1) / f(0));
+// ---------- 1. an image dissolving ----------
+const S = 64, base = new Float32Array(S * S * 3);
+(() => {                                                           // a little skyline at dusk, drawn procedurally
+  const c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d");
+  const sky = g.createLinearGradient(0, 0, 0, S); sky.addColorStop(0, "#1b2a6b"); sky.addColorStop(1, "#f4a259"); g.fillStyle = sky; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#f4d35e"; g.beginPath(); g.arc(46, 22, 7, 0, 7); g.fill();
+  g.fillStyle = "#14171d"; [[2, 34, 8], [11, 26, 7], [19, 18, 5], [24, 30, 9], [34, 22, 6], [41, 36, 8], [50, 28, 6], [57, 40, 7]].forEach(([x, h, w]) => g.fillRect(x, S - h, w, h));
+  g.fillRect(20.5, 12, 1, 6);
+  const d = g.getImageData(0, 0, S, S).data; for (let i = 0; i < S * S; i++) for (let k = 0; k < 3; k++) base[i * 3 + k] = d[i * 4 + k] / 127.5 - 1;
+})();
+let noise = Float32Array.from({ length: S * S * 3 }, gauss);
+function drawImg() {
+  const t = +$("t").value, a = Math.sqrt(abar[t]), b = Math.sqrt(1 - abar[t]); $("tV").textContent = t;
+  const cv = $("img"), g = cv.getContext("2d"), im = g.createImageData(S, S);
+  for (let i = 0; i < S * S; i++) { for (let k = 0; k < 3; k++) im.data[i * 4 + k] = Math.max(0, Math.min(255, (a * base[i * 3 + k] + b * noise[i * 3 + k] + 1) * 127.5)); im.data[i * 4 + 3] = 255; }
+  const off = document.createElement("canvas"); off.width = off.height = S; off.getContext("2d").putImageData(im, 0, 0);
+  g.imageSmoothingEnabled = false; g.drawImage(off, 0, 0, cv.width, cv.height);
+  const sc = $("sched"), h = sc.getContext("2d"), W = sc.width; h.fillStyle = "#14171d"; h.fillRect(0, 0, W, W);
+  h.strokeStyle = "#58c4dd"; h.lineWidth = 2.5; h.beginPath(); for (let k = 0; k < T; k += 5) { const x = 30 + (k / T) * (W - 40), y = W - 30 - Math.sqrt(abar[k]) * (W - 50); k ? h.lineTo(x, y) : h.moveTo(x, y); } h.stroke();
+  h.strokeStyle = "#f4a259"; h.beginPath(); for (let k = 0; k < T; k += 5) { const x = 30 + (k / T) * (W - 40), y = W - 30 - Math.sqrt(1 - abar[k]) * (W - 50); k ? h.lineTo(x, y) : h.moveTo(x, y); } h.stroke();
+  h.fillStyle = "#fff"; h.beginPath(); h.arc(30 + (t / T) * (W - 40), W - 30 - a * (W - 50), 5, 0, 7); h.fill();
+  h.font = "12px ui-monospace, monospace"; h.fillStyle = "#58c4dd"; h.fillText("image weight √ᾱ", 36, 20); h.fillStyle = "#f4a259"; h.fillText("noise weight √(1−ᾱ)", 36, 36);
+  $("r1").textContent = `t = ${t}: ${(100 * abar[t]).toFixed(1)}% of the variance is image, ${(100 * (1 - abar[t])).toFixed(1)}% is noise`;
+}
+$("t").addEventListener("input", drawImg); $("newNoise").onclick = () => { noise = Float32Array.from({ length: S * S * 3 }, gauss); drawImg(); }; drawImg();
+// ---------- 3. 2-D points flowing back onto data, with the exact best denoiser ----------
+const DATA = [];
+(() => {                                                           // the training data: points sampled inside the letters "NYC"
+  const c = document.createElement("canvas"); c.width = 200; c.height = 80; const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.font = "bold 70px sans-serif"; g.fillText("NYC", 10, 68);
+  const d = g.getImageData(0, 0, 200, 80).data; seed = 9;
+  while (DATA.length < 300) { const x = Math.floor(rand() * 200), y = Math.floor(rand() * 80); if (d[(y * 200 + x) * 4] > 128) DATA.push([(x - 100) / 50, (40 - y) / 50]); }
+})();
+function denoise(x, t) {                                          // E[x0 | xt] over the training points: the ideal denoiser
+  const a = Math.sqrt(abar[t]), v = 1 - abar[t]; let wsum = 0, mx = 0, my = 0, best = -Infinity; const lw = DATA.map(([px, py]) => -((x[0] - a * px) ** 2 + (x[1] - a * py) ** 2) / (2 * v));
+  for (const l of lw) best = Math.max(best, l);
+  DATA.forEach(([px, py], i) => { const w = Math.exp(lw[i] - best); wsum += w; mx += w * px; my += w * py; });
+  return [mx / wsum, my / wsum];
+}
+let pts = [], timer = null;
+function drawFlow(label) {
+  const cv = $("flow"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (v) => W / 2 + v * 150, Y = (v) => H / 2 - v * 150;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(131,193,103,0.35)"; DATA.forEach(([x, y]) => { g.beginPath(); g.arc(X(x), Y(y), 3, 0, 7); g.fill(); });
+  g.fillStyle = "#f4a259"; pts.forEach(([x, y]) => g.fillRect(X(x) - 1.5, Y(y) - 1.5, 3, 3));
+  $("r3").textContent = label;
+}
+$("flowPlay").onclick = () => {
+  clearInterval(timer); seed = 21; pts = Array.from({ length: 600 }, () => [gauss(), gauss()]);
+  const n = +$("nsteps").value, ts = Array.from({ length: n }, (_, k) => Math.round((T - 1) * (1 - k / n))); let k = 0;
+  drawFlow("pure noise: 600 samples from a bell curve");
+  timer = setInterval(() => {
+    if (k >= n) { clearInterval(timer); const dist = pts.map((p) => Math.min(...DATA.map((d) => Math.hypot(p[0] - d[0], p[1] - d[1])))); const gap = DATA.map((d, i) => Math.min(...DATA.filter((_, j) => j !== i).map((e) => Math.hypot(d[0] - e[0], d[1] - e[1])))).reduce((a, b) => a + b, 0) / DATA.length;
+      drawFlow(`done after ${n} steps · average distance from a sample to its nearest training point: ${(dist.reduce((a, b) => a + b, 0) / dist.length).toFixed(3)}, while training points are ${gap.toFixed(3)} from their nearest neighbor: the samples sit on the training points`); return; }
+    const t = ts[k], tn = k + 1 < n ? ts[k + 1] : -1, a = Math.sqrt(abar[t]), an = tn >= 0 ? Math.sqrt(abar[tn]) : 1, bn = tn >= 0 ? Math.sqrt(1 - abar[tn]) : 0;
+    pts = pts.map((x) => { const x0 = denoise(x, t), e = [(x[0] - a * x0[0]) / Math.sqrt(1 - abar[t]), (x[1] - a * x0[1]) / Math.sqrt(1 - abar[t])]; return [an * x0[0] + bn * e[0], an * x0[1] + bn * e[1]]; });   // a DDIM step
+    k++; drawFlow(`step ${k} of ${n} (t = ${tn < 0 ? 0 : tn})`);
+  }, n > 100 ? 15 : 60);
+};
+drawFlow("Press Sample. Green: the training data. Orange: generated points.");
+</script>
+</body>
+</html>

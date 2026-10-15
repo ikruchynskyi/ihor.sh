@@ -153,6 +153,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-deep-networks-in-numpy-and-pytor"
  },
+ "diffusion.html": {
+  "notebook": "diffusion.ipynb",
+  "title": "AI from scratch: how image generators work",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/diffusion.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-how-image-generators-work"
+ },
  "embeddings-and-retrieval.html": {
   "notebook": "embeddings-and-retrieval.ipynb",
   "title": "AI from scratch: embeddings and retrieval",

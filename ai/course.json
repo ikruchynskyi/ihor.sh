@@ -5928,5 +5928,110 @@
     "sec": 4
    }
   ]
+ },
+ "diffusion.html": {
+  "goals": [
+   "Describe the forward process and the noise schedule",
+   "Explain the training objective: predict the added noise at every level",
+   "Explain sampling as many small denoising steps from pure noise",
+   "Explain text conditioning, classifier-free guidance, latent diffusion, and memorization"
+  ],
+  "needs": [
+   "inside-a-detector.html",
+   "p3-mle-and-map.html",
+   "07-attention.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Forward process",
+    "x_t = √ᾱ_t x₀ + √(1 − ᾱ_t) ε: image blended with noise on a fixed schedule."
+   ],
+   [
+    "ᾱ_t",
+    "Product of the per-step α's: the share of variance that's still image after t steps."
+   ],
+   [
+    "Noise prediction",
+    "Train ε_θ(x_t, t) with MSE to the added noise; knowing the noise gives the clean image."
+   ],
+   [
+    "Sampling",
+    "Start from pure noise and denoise step by step (DDPM, or 20–50 steps with DDIM)."
+   ],
+   [
+    "Classifier-free guidance",
+    "ε = ε_uncond + w(ε_cond − ε_uncond); higher w follows the prompt more, with less variety."
+   ],
+   [
+    "Cross-attention conditioning",
+    "Image patches attend to the prompt's text embeddings."
+   ],
+   [
+    "Latent diffusion",
+    "Diffuse in an autoencoder's compressed latent (e.g. 48× fewer numbers), decode at the end."
+   ],
+   [
+    "Memorization",
+    "An ideal denoiser reproduces training points; real networks generalize, but can copy repeated images."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What does a diffusion model's network learn to predict?",
+    "options": [
+     "The noise that was added to an image at a given step",
+     "The next pixel",
+     "The image's label"
+    ],
+    "answer": 0,
+    "why": "MSE between true and predicted noise, at every noise level.",
+    "sec": 2
+   },
+   {
+    "q": "Why can training jump straight to step t without walking the whole noise chain?",
+    "options": [
+     "Independent Gaussian noises add up to one Gaussian, so x_t has a closed form from x₀",
+     "Because the network remembers earlier steps",
+     "Because t is always small"
+    ],
+    "answer": 0,
+    "why": "Variances add: x_t = √ᾱ_t x₀ + √(1 − ᾱ_t) ε.",
+    "sec": 2
+   },
+   {
+    "q": "Raising the classifier-free guidance scale w from 1 to 3 makes samples…",
+    "options": [
+     "follow the prompt more strictly, with less variety",
+     "more varied",
+     "ignore the prompt"
+    ],
+    "answer": 0,
+    "why": "In the notebook: 97% → 100% read as the requested digit, pixel spread 0.15 → 0.12.",
+    "sec": 4
+   },
+   {
+    "q": "Why does latent diffusion run much faster than diffusion on pixels?",
+    "options": [
+     "It denoises a compressed latent with far fewer numbers (48× fewer for 1024² images into 128²×4)",
+     "It uses fewer training images",
+     "It skips the noise"
+    ],
+    "answer": 0,
+    "why": "Every denoising step works on the small latent; a decoder makes pixels once at the end.",
+    "sec": 4
+   },
+   {
+    "q": "Why did the page's 2-D sampler produce only copies of its training points?",
+    "options": [
+     "Its denoiser was the exact best one for those points, which reproduces them; real networks can't represent that and generalize",
+     "Because 2-D is too small",
+     "Because it used too few steps"
+    ],
+    "answer": 0,
+    "why": "Memorization is the ideal denoiser's behavior; capacity limits are part of why models generalize.",
+    "sec": 4
+   }
+  ]
  }
 }
