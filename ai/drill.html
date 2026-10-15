@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gap Drill · AI from scratch</title>
+  <meta name="description" content="Focus practice on a specific section where you missed a question. Getting two right in a row clears the gap." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --red: #e03131;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.7 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 18px 20px;
+      margin: 18px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover {
+      opacity: 0.92;
+    }
+    .success-card {
+      border: 2px solid var(--green);
+      background: color-mix(in srgb, var(--green) 8%, var(--card));
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .streak-pill {
+      display: inline-block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .streak-pill.cleared {
+      background: color-mix(in srgb, var(--green) 15%, transparent);
+      color: var(--green);
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · <a href="./review.html">Review deck</a> · Gap drill</p>
+  <h1 id="drill-title">Gap drill</h1>
+  <p class="lede" id="drill-lede">Loading questions for this section…</p>
+
+  <div id="hud"></div>
+  <div id="refresher-slot"></div>
+  <div id="questions-slot"></div>
+  <div id="result-slot"></div>
+</main>
+
+<script src="/learn-kit.js" type="module"></script>
+<script type="module">
+import { state, course, path, answered, gain, XP } from "/ai/learn.js";
+import { strip } from "/ai/hud.js";
+import { buildDrill } from "/ai/drill.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+// Render HUD strip
+const hudContainer = $("hud");
+if (hudContainer) {
+  const wrapper = document.createElement("div");
+  wrapper.style.margin = "10px 0 20px";
+  hudContainer.append(strip(wrapper));
+}
+
+const params = new URLSearchParams(location.search);
+let rawGap = params.get("gap") || "";
+
+// If no gap in URL, pick the oldest open gap from state.gaps
+if (!rawGap) {
+  const openGaps = Object.values(state.gaps || {}).sort((a, b) => (a.at || 0) - (b.at || 0));
+  if (openGaps.length) {
+    rawGap = `${openGaps[0].lesson}#${openGaps[0].section}`;
+  }
+}
+
+if (!rawGap) {
+  $("drill-title").textContent = "No open gaps to drill";
+  $("drill-lede").textContent = "You don't have any recorded knowledge gaps! Missed questions in lessons appear here for focused practice.";
+  $("questions-slot").innerHTML = `
+    <div class="card" style="text-align: center; padding: 32px 20px;">
+      <p style="margin:0 0 16px;">Everything you've learned is in great shape.</p>
+      <a class="btn" href="./review.html">Go to review deck →</a>
+    </div>
+  `;
+} else {
+  loadAndRenderDrill(rawGap);
+}
+
+async function loadAndRenderDrill(gapString) {
+  const [lessonHref, sectionId] = gapString.replace("%23", "#").split("#");
+  const gapKey = `${lessonHref}#${sectionId}`;
+  const gapRecord = state.gaps?.[gapKey];
+
+  const [courseData, lessonList] = await Promise.all([course, path]);
+  const lessonObj = lessonList.find((l) => l.href === lessonHref);
+  const lessonTitle = lessonObj?.title || lessonHref;
+
+  let lessonHtml = "";
+  try {
+    const res = await fetch(`./${lessonHref}`);
+    if (res.ok) lessonHtml = await res.text();
+  } catch (err) {
+    console.error("Failed to load lesson HTML", err);
+  }
+
+  const checkQuestions = courseData[lessonHref]?.check || [];
+  const drill = buildDrill(lessonHtml, sectionId, checkQuestions);
+
+  document.title = `Drill: ${drill.sectionTitle} · AI from scratch`;
+  $("drill-title").textContent = `Gap drill: ${drill.sectionTitle}`;
+  $("drill-lede").innerHTML = `From lesson <a href="./${lessonHref}"><b>${esc(lessonTitle)}</b></a>. Answer <b>two questions right in a row</b> to clear this gap and earn <b>+${XP.drill} XP</b>.`;
+
+  // Refresher card
+  $("refresher-slot").innerHTML = `
+    <div class="card" style="border-left: 4px solid var(--accent); margin-bottom: 24px;">
+      <div style="font-weight:600; margin-bottom: 4px;">
+        Need a quick refresher? 
+        <a href="./${lessonHref}#${drill.sectionId}" target="_blank" rel="noopener">Reread this section in ${esc(lessonTitle)} ↗</a>
+      </div>
+      ${drill.gist ? `<p class="gist" style="margin: 10px 0 0;">${esc(drill.gist)}</p>` : ""}
+    </div>
+  `;
+
+  // Render questions
+  const qSlot = $("questions-slot");
+  qSlot.innerHTML = `
+    <div id="q-list">
+      ${drill.questions.map((q, idx) => `
+        <div class="drill-q-wrapper" data-drill-idx="${idx}">
+          ${q.html}
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  // Wire questions with learnKit
+  qSlot.querySelectorAll(".q").forEach((el) => window.learnKit?.setupQuestion(el));
+
+  let currentStreak = gapRecord?.streak || 0;
+  let cleared = false;
+
+  addEventListener("learnkit:answer", ({ detail: { q, right, first } }) => {
+    if (!qSlot.contains(q) || !first || cleared) return;
+
+    const label = `${lessonTitle}: ${drill.sectionTitle}`;
+    // answered() records the try: two right in a row deletes the gap from state.gaps
+    answered(lessonHref, drill.sectionId, label, right);
+
+    if (right) {
+      currentStreak++;
+    } else {
+      currentStreak = 0;
+    }
+
+    // Check if gap was cleared
+    if (!state.gaps[gapKey]) {
+      cleared = true;
+      gain(XP.drill, "drill");
+      renderGapCleared(lessonTitle, drill.sectionTitle);
+    }
+  });
+}
+
+function renderGapCleared(lessonTitle, sectionTitle) {
+  const remainingGaps = Object.values(state.gaps || {});
+  const nextGap = remainingGaps[0];
+
+  const card = document.createElement("div");
+  card.className = "success-card";
+  card.innerHTML = `
+    <div style="font-size: 1.35rem; font-weight: 700; color: var(--green); margin-bottom: 6px;">
+      ✓ Gap closed!
+    </div>
+    <p style="margin: 0 0 14px;">
+      You answered two questions right in a row on <b>${esc(sectionTitle)}</b>. 
+      The gap has been cleared from your review deck, and you earned <b>+${XP.drill} XP</b>.
+    </p>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+      ${nextGap ? `
+        <a class="btn" href="./drill.html?gap=${encodeURIComponent(`${nextGap.lesson}#${nextGap.section}`)}">
+          Drill next gap: ${esc(nextGap.label || nextGap.section)} →
+        </a>
+      ` : `
+        <a class="btn" href="./review.html" style="background:var(--green)">
+          Back to review deck (All gaps cleared! 🎉) →
+        </a>
+      `}
+      <a href="./" style="font-size:0.95rem; margin-left: 8px;">Back to the path</a>
+    </div>
+  `;
+
+  const slot = $("result-slot");
+  slot.replaceChildren(card);
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+</script>
+</body>
+</html>

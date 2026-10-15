@@ -184,11 +184,13 @@ for (const h of document.querySelectorAll("h2.stage")) {
   if (mine.length) h.insertAdjacentHTML("beforeend", `<span class="stage-count">${mine.filter((l) => state.done[l.href]).length} of ${mine.length} done</span>`);
 }
 const next = live.find((l) => !state.done[l.href]), started = Object.keys(state.done).length, due = dueCards().length, gaps = Object.keys(state.gaps).length;
+const oldestGap = Object.values(state.gaps || {}).sort((a, b) => (a.at || 0) - (b.at || 0))[0];
+const gapDrillHref = oldestGap ? `./drill.html?gap=${encodeURIComponent(`${oldestGap.lesson}#${oldestGap.section}`)}` : "./review.html";
 const you = document.createElement("div");
 you.id = "you"; you.className = "card";
 you.innerHTML = (started ? `<div><b>Your progress:</b> ${started} of ${live.length} lessons finished.</div>` : `<div><b>New here?</b> Start at the top; each lesson ends with a short checkpoint that marks it done.</div>`)
   + (next ? `<div>Continue: <a class="go" href="./${next.href}">${next.li.querySelector("b")?.textContent ?? next.href}</a> →</div>` : `<div>You've finished every lesson that's ready. 🎉</div>`)
-  + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · ${gaps} gap${gaps === 1 ? "" : "s"} to revisit` : ""}</div>` : "")
+  + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · <a href="${gapDrillHref}">${gaps} gap${gaps === 1 ? "" : "s"} to revisit</a>` : ""}</div>` : "")
   + (started >= 2 ? `<div><a href="./daily.html">${state.daily?.[dayOf()] ? `Daily quiz ✓ ${state.daily[dayOf()].score}/5` : "Daily quiz: 5 questions →"}</a></div>` : "");
 you.append(strip(Object.assign(document.createElement("div"), { style: "margin-top:6px" })));
 // progress lives in this browser only: a code carries it to another device
