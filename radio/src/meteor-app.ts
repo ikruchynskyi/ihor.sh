@@ -4,7 +4,8 @@ import "./ham/ham.css";
 import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
-import { MeteorReceiver, WIDTH, composite } from "./meteor.ts";
+import { MeteorReceiver, WIDTH, composite, align } from "./meteor.ts";
+import { PRESETS, canMake, render, irApid, fillGaps, rotate180, Spread, MapView, type Picture } from "./meteor-image.ts";
 import { Projector, rowTimes, drawLines, graticule, drawCities, drawHome, drawCaption, GEOMETRY, type Proj } from "./meteor-map.ts";
 import { passClock } from "./pass-clock.ts";
 
@@ -203,9 +204,13 @@ let comboSet = "";
 function comboMenus() {
   if (!rx) return;
   const apids = [...rx.packets.channels.keys()].sort((a, b) => a - b), key = apids.join();
-  el("combine").hidden = apids.length < 2;
-  if (key === comboSet || apids.length < 2) return;
+  el("combine").hidden = apids.length < 1;
+  if (key === comboSet || apids.length < 1) return;
   comboSet = key;
+  const ps = el<HTMLSelectElement>("c-preset"), keepP = ps.value;
+  ps.innerHTML = PRESETS.map((p) => `<option value="${p.id}"${canMake(p, apids) ? "" : " disabled"}>${p.name}${canMake(p, apids) ? "" : " (needs a channel this pass didn't send)"}</option>`).join("") + `<option value="custom">Custom: pick the channels below</option>`;
+  ps.value = [keepP, ...PRESETS.filter((p) => canMake(p, apids)).map((p) => p.id), "custom"].find((v) => v && ps.querySelector(`option[value="${v}"]:not([disabled])`))!;
+  el("c-custom").hidden = ps.value !== "custom";
   const has = (a: number) => apids.includes(a), pick = { "c-r": has(65) ? 65 : apids[1], "c-g": has(65) ? 65 : apids[1], "c-b": has(64) ? 64 : apids[0] };
   for (const [id, def] of Object.entries(pick)) {
     const sel = el<HTMLSelectElement>(id), keep = +sel.value;
@@ -214,47 +219,76 @@ function comboMenus() {
   }
 }
 
-el("c-go").addEventListener("click", () => {
-  if (!rx) return;
-  const apids = ["c-r", "c-g", "c-b"].map((id) => +el<HTMLSelectElement>(id).value) as [number, number, number];
-  const img = composite(rx.packets.channels, apids), c = el<HTMLCanvasElement>("c-pic");
-  if (!img.height) return;
-  c.width = img.width; c.height = img.height; c.getContext("2d")!.putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
-  el("c-fig").hidden = false; el("c-note").textContent = "";
-  addMap(c, rx.packets.channels.get(apids[0])!.rowMs);
-});
+el("c-preset").addEventListener("change", () => { el("c-custom").hidden = el<HTMLSelectElement>("c-preset").value !== "custom"; });
+el("c-go").addEventListener("click", () => { if (rx) makePicture().catch((e) => { el("c-note").textContent = `Couldn't make the picture: ${(e as Error).message}`; }); });
 
-// Overlays, like MeteorDemod's: coastlines and borders (Natural Earth 1:50m), a 10° grid, capitals and big cities, the
-// receiving station and a caption, all placed by the satellite's orbit, clock and pointing (meteor-map.ts).
+// Pictures, like MeteorDemod's: a composite or infrared preset (meteor-image.ts), lost lines filled, then as scanned,
+// spread, or redrawn on a map; and overlays (coastlines and borders from Natural Earth 1:50m, a 10° grid, capitals and
+// big cities, the receiving station, a caption), all placed by the satellite's orbit, clock and pointing (meteor-map.ts).
 let world: { coast: number[][]; borders: number[][] } | null = null, cities: [string, number, number, number, number][] | null = null;
 const on = (id: string) => el<HTMLInputElement>(id).checked;
-async function addMap(c: HTMLCanvasElement, rowMs: number[]) {
-  const note = el("c-note"), times = rowTimes(rowMs, dctx.ref), ctx = c.getContext("2d")!, layers = ["c-map", "c-grid", "c-cities", "c-home", "c-label"].some(on);
-  if (!times) { note.textContent = layers ? "Can't place it on the map: the picture's clock doesn't match the recording time." : ""; return; }
-  note.textContent = "Placing the picture…";
-  try {
-    const tr = await fetch(`/api/radio/sat-ecef?id=${dctx.sat}&from=${Math.round(times[0] - 60e3)}&to=${Math.round(times[times.length - 1] + 60e3)}`).then((r) => r.json());
-    if (!tr.points) throw new Error(tr.error ?? "no orbit");
-    const geo = GEOMETRY[dctx.sat], raw = new Projector(tr.points, times, on("c-mirror"), geo), W = c.width, H = c.height;
-    // an evening (northbound) pass scans from south to north, so its picture comes out upside down: turn it around
-    const northbound = tr.points.at(-1)[3] > tr.points[0][3], turn = northbound && on("c-north");
-    if (turn) { const copy = document.createElement("canvas"); copy.width = W; copy.height = H; copy.getContext("2d")!.drawImage(c, 0, 0); ctx.save(); ctx.translate(W, H); ctx.rotate(Math.PI); ctx.drawImage(copy, 0, 0); ctx.restore(); }
-    const pr: Proj = turn ? { toPixel: (la, lo) => { const p = raw.toPixel(la, lo); return p && [W - p[0], H - p[1]]; } } : raw;
-    if (on("c-grid")) drawLines(ctx, pr, graticule(10), "rgba(225,230,240,0.85)", 1.5);
-    if (on("c-map")) {
-      world ??= await fetch("./data/world-lines.json").then((r) => r.json());
-      drawLines(ctx, pr, world!.borders, "rgba(255,255,255,0.75)", 1.5);
-      drawLines(ctx, pr, world!.coast, "#f4d35e", 2);
-    }
-    if (on("c-cities")) { cities ??= (await fetch("./data/cities.json").then((r) => r.json())).rows; drawCities(ctx, pr, cities!, "#b9a7ff"); }
-    const home = me ?? SERVER, homeSeen = on("c-home") && drawHome(ctx, pr, home.lat, home.lon, "#fc6255");
-    const utc = (t: number) => new Date(t).toISOString().slice(11, 16), name = dctx.sat.replace("meteor-m2-", "Meteor-M2 ");
-    if (on("c-label")) drawCaption(ctx, [`${name} · ${new Date(times[0]).toISOString().slice(0, 10)} ${utc(times[0])}–${utc(times.at(-1)!)} UTC`], "#f4d35e");
-    note.textContent = `${name}, ${utc(times[0])}–${utc(times.at(-1)!)} UTC, ${northbound ? "northbound" : "southbound"} pass${turn ? ", turned north-up" : ""}.` +
-      (on("c-home") && !homeSeen ? " Your station is outside this picture." : "") + " If the coast doesn't match the clouds, tick \"mirror\" and combine again.";
-  } catch (e) {
-    note.textContent = `Couldn't place the picture: ${(e as Error).message}`;
+
+async function makePicture() {
+  const chs = rx!.packets.channels, have = [...chs.keys()], pid = el<HTMLSelectElement>("c-preset").value, note = el("c-note"), c = el<HTMLCanvasElement>("c-pic");
+  let pic: Picture, base: number;
+  if (pid === "custom") {
+    const apids = ["c-r", "c-g", "c-b"].map((id) => +el<HTMLSelectElement>(id).value) as [number, number, number];
+    pic = composite(chs, apids); base = apids[0];
+  } else {
+    const p = PRESETS.find((q) => q.id === pid)!;
+    base = "rgb" in p ? p.rgb[0] : irApid(have)!;
+    pic = render(p, chs, (b, a) => align(chs.get(b)!, b, chs.get(a)!, a));
   }
+  if (!pic.height) return;
+  if (on("c-fill")) fillGaps(pic);
+  note.textContent = "Placing the picture…";
+  const place = await placement(chs.get(base)!.rowMs).catch((e: Error) => e.message);
+  let view = el<HTMLSelectElement>("c-view").value, proj: Proj | null = null, turned = false;
+  if (typeof place === "string") view = "scan";
+  else if (view === "spread") { const sp = new Spread(place.geo.scanDeg, place.altitude); pic = sp.apply(pic); proj = { toPixel: (la, lo) => { const p = place.raw.toPixel(la, lo); return p && [sp.x(p[0]), p[1]]; } }; }
+  else if (view === "mercator" || view === "azeq") { const m = new MapView(view, place.area, place.center); pic = m.draw(pic, place.raw); proj = { toPixel: (la, lo) => m.fwd(la, lo) }; }
+  else proj = place.raw;
+  if (typeof place !== "string" && (view === "scan" || view === "spread") && place.northbound && on("c-north")) { // an evening pass scans south to north
+    pic = rotate180(pic); turned = true; const inner = proj!, W = pic.width, H = pic.height;
+    proj = { toPixel: (la, lo) => { const p = inner.toPixel(la, lo); return p && [W - p[0], H - p[1]]; } };
+  }
+  c.width = pic.width; c.height = pic.height; c.getContext("2d")!.putImageData(new ImageData(pic.data, pic.width, pic.height), 0, 0);
+  el("c-fig").hidden = false;
+  if (typeof place === "string") { note.textContent = `Shown as scanned, without map lines: ${place}`; return; }
+  await drawOverlays(c.getContext("2d")!, proj!, place.times);
+  const utc = (t: number) => new Date(t).toISOString().slice(11, 16), home = me ?? SERVER, homeSeen = !!proj!.toPixel(home.lat, home.lon);
+  note.textContent = `${dctx.sat.replace("meteor-m2-", "Meteor-M2 ")}, ${utc(place.times[0])}–${utc(place.times.at(-1)!)} UTC, ${place.northbound ? "northbound (evening)" : "southbound (morning)"} pass${turned ? ", turned north-up" : ""}.` +
+    (on("c-home") && !homeSeen ? " Your station is outside this picture." : "") + ' Check: do the yellow coastlines sit on the coasts you can see? If they run mirror-image to the land, tick "mirror".';
+}
+
+/** Where the picture lies: the satellite's track (server, from its orbit), each row's time, and the places it covers. */
+async function placement(rowMs: number[]) {
+  const times = rowTimes(rowMs, dctx.ref);
+  if (!times) throw new Error("the picture's clock doesn't match the recording time");
+  const tr = await fetch(`/api/radio/sat-ecef?id=${dctx.sat}&from=${Math.round(times[0] - 60e3)}&to=${Math.round(times[times.length - 1] + 60e3)}`).then((r) => r.json());
+  if (!tr.points) throw new Error(tr.error ?? "no orbit for this satellite");
+  const geo = GEOMETRY[dctx.sat], raw = new Projector(tr.points, times, on("c-mirror"), geo);
+  const pts: number[][] = tr.points, northbound = pts.at(-1)![3] > pts[0][3];
+  const sub = pts.filter((p) => p[0] >= times[0] && p[0] <= times.at(-1)!).map(([, x, y, z]) => [Math.atan2(z, Math.hypot(x, y)) / (Math.PI / 180), Math.atan2(y, x) / (Math.PI / 180)]);
+  const altitude = pts.reduce((s, [, x, y, z]) => s + Math.hypot(x, y, z), 0) / pts.length - 6371;
+  const area: [number, number][] = []; // places around the track that the scanner saw: sizes the maps
+  for (const [la, lo] of sub.filter((_, i) => i % 10 === 0)) for (let dy = -16; dy <= 16; dy += 2) for (let dx = -24; dx <= 24; dx += 2) { const q: [number, number] = [la + dy, lo + dx / Math.max(0.3, Math.cos(((la + dy) * Math.PI) / 180))]; if (Math.abs(q[0]) < 88 && raw.toPixel(q[0], q[1])) area.push(q); }
+  const center = sub[sub.length >> 1] as [number, number];
+  return { raw, times, northbound, geo, altitude, area, center };
+}
+
+async function drawOverlays(ctx: CanvasRenderingContext2D, pr: Proj, times: number[]) {
+  if (on("c-grid")) drawLines(ctx, pr, graticule(10), "rgba(225,230,240,0.85)", 1.5);
+  if (on("c-map")) {
+    world ??= await fetch("./data/world-lines.json").then((r) => r.json());
+    drawLines(ctx, pr, world!.borders, "rgba(255,255,255,0.75)", 1.5);
+    drawLines(ctx, pr, world!.coast, "#f4d35e", 2);
+  }
+  if (on("c-cities")) { cities ??= (await fetch("./data/cities.json").then((r) => r.json())).rows; drawCities(ctx, pr, cities!, "#b9a7ff"); }
+  const home = me ?? SERVER;
+  if (on("c-home")) drawHome(ctx, pr, home.lat, home.lon, "#fc6255");
+  const utc = (t: number) => new Date(t).toISOString().slice(11, 16), name = dctx.sat.replace("meteor-m2-", "Meteor-M2 ");
+  if (on("c-label")) drawCaption(ctx, [`${name} · ${new Date(times[0]).toISOString().slice(0, 10)} ${utc(times[0])}–${utc(times.at(-1)!)} UTC`], "#f4d35e");
 }
 
 el("c-save").addEventListener("click", (e) => {

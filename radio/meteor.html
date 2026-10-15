@@ -88,9 +88,13 @@
   <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin,.f32,.cf32"> (8-bit unsigned or 32-bit float IQ centered on satellite; sample rate from file name, else <input id="frate" type="number" value="204800" style="width:7em"> S/s)</p>
   <div id="pics"></div>
   <div id="combine" class="pane" hidden>
-    <b>Combine channels into color</b>
-    <div class="row">Red <select id="c-r"></select> Green <select id="c-g"></select> Blue <select id="c-b"></select> <button class="btn" id="c-go" type="button">Combine</button></div>
-    <div class="row"><label><input type="checkbox" id="c-map" checked> coastlines and borders</label> <label><input type="checkbox" id="c-grid" checked> 10° grid</label> <label><input type="checkbox" id="c-cities" checked> cities</label> <label><input type="checkbox" id="c-home" checked> my station</label> <label><input type="checkbox" id="c-label" checked> caption</label> <label><input type="checkbox" id="c-north" checked> north up</label> <label class="muted"><input type="checkbox" id="c-mirror"> mirror</label></div>
+    <b>Make a picture</b>
+    <div class="row"><label>Picture <select id="c-preset"></select></label> <label>View <select id="c-view">
+      <option value="scan">as scanned</option><option value="spread">spread (every pixel the same ground size)</option>
+      <option value="mercator">Mercator map</option><option value="azeq">azimuthal map (true distances from the center)</option></select></label>
+      <button class="btn" id="c-go" type="button">Make it</button></div>
+    <div class="row" id="c-custom">Custom channels: red <select id="c-r"></select> green <select id="c-g"></select> blue <select id="c-b"></select></div>
+    <div class="row"><label><input type="checkbox" id="c-map" checked> coastlines and borders</label> <label><input type="checkbox" id="c-grid" checked> 10° grid</label> <label><input type="checkbox" id="c-cities" checked> cities</label> <label><input type="checkbox" id="c-home" checked> my station</label> <label><input type="checkbox" id="c-label" checked> caption</label> <label><input type="checkbox" id="c-north" checked> north up</label> <label><input type="checkbox" id="c-fill" checked> fill lost lines</label> <label class="muted"><input type="checkbox" id="c-mirror"> mirror</label></div>
     <p class="note">Channel 2, 2, 1 gives natural-looking color: land yellow-green, sea dark, clouds white. Combine again as more of the pass comes in. For one channel in gray with the map, pick it three times. Click any picture to zoom.</p>
     <p class="status" id="c-note"></p>
     <figure id="c-fig" hidden><canvas id="c-pic"></canvas><figcaption>Combined · <a href="#" id="c-save">save PNG</a></figcaption></figure>
