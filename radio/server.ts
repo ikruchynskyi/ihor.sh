@@ -69,7 +69,9 @@ let gainBand = bandKey(tuning.center);
 Object.assign(tuning, gainMemory[gainBand] ?? {}); // start with what was last set in the band it starts in
 function rememberGain() {
   gainMemory[gainBand] = { gain: tuning.gain, lna: tuning.lna, vga: tuning.vga, amp: tuning.amp };
-  writeFile(GAINS_FILE, JSON.stringify(gainMemory, null, 1)).catch(() => {});
+  const mine = gainMemory[gainBand], band = gainBand; // merged into the file: the satellite server (:8074) keeps its own bands there too
+  readFile(GAINS_FILE, "utf8").then(JSON.parse).catch(() => ({}))
+    .then((disk) => writeFile(GAINS_FILE, JSON.stringify({ ...disk, [band]: mine }, null, 1))).catch(() => {});
 }
 /** After the window moved: into another band, that band's gain (if any was set there) on the radio. */
 async function followBand() {
