@@ -68,6 +68,15 @@ print("centered, h = 1e-5:", centered(f, 3, 1e-5))
   <div class="row"><button id="step">Step</button><button id="run">Roll</button><button id="drop">Drop somewhere else</button>
     <label>learning rate <input type="range" id="lr" min="0.01" max="1.2" step="0.01" value="0.15"> <span id="lrv" class="math">0.15</span></label></div>
   <p>Play with the learning rate. Small, and the ball crawls. Big, and it overshoots, bouncing from wall to wall, or flies off entirely. Drop it on the right and it settles in the <b>shallow valley</b>, never finding the deeper one: gradient descent only knows the ground under its feet. Choosing the step size, and getting out of shallow valleys, is half the craft of training networks.</p>
+  <p class="gist">Gradient descent only feels the ground under its feet: step against the slope, with steps small enough for how sharply the valley curves.</p>
+  <details class="deeper"><summary>Where it breaks: when "go downhill" isn't enough</summary>
+    <ul>
+      <li><b>Shallow valleys.</b> The ball stops in the first valley it rolls into, as you saw. Real networks have millions of directions, and it turns out most of their valleys are about equally good, so this hurts less than you'd fear; restarts from different random points are the classic remedy.</li>
+      <li><b>Flat ground and saddles.</b> The slope is near zero on a plateau, and at a saddle (downhill one way, uphill another, like a mountain pass), without being a valley at all. In many dimensions saddles are far more common than valleys. Steps there are tiny, and training seems stuck before it starts moving again. Momentum (keep some of the last step's speed) rolls through them.</li>
+      <li><b>Narrow, steep valleys.</b> When one direction curves sharply and another gently, a step size safe for the steep one crawls along the gentle one, and the path zigzags. Adam's per-number step sizes are the usual fix (training in PyTorch).</li>
+      <li><b>Noisy slopes.</b> Real training measures the slope on a small batch of examples, so each step's direction is a little wrong. That noise is mostly harmless, sometimes even helpful, but it's why the loss curve wobbles.</li>
+    </ul>
+  </details>
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>The update rule, with \(\eta\) (eta) for the learning rate:</p>
     <p class="formula">\[ x_{k+1} = x_k - \eta\, f'(x_k) \]</p>
@@ -123,6 +132,15 @@ plt.xlabel("step"); plt.ylabel("x"); plt.legend(); plt.show()
     <p>Example: \(f(x, y) = x^2 + 3y^2\). Treat \(y\) as a constant and differentiate in \(x\): \(\partial f/\partial x = 2x\). Treat \(x\) as constant: \(\partial f/\partial y = 6y\). At the point (1, 1) the gradient is (2, 6): the ground rises three times faster going north than going east.</p>
     <p><b>Why the gradient points steepest uphill</b> (this is chapter 1's dot product paying off). Walk a tiny step in a direction \(u\) of length 1. The height changes by about \(\nabla f \cdot u = \lVert \nabla f \rVert \cos\theta\). That's largest when \(\theta = 0\), walking straight along the gradient; zero when you walk at right angles to it, which is along the contour line, where the height doesn't change; and most negative straight against it.</p>
   </details>
+  <p class="gist">The gradient is an arrow that points the steepest way uphill, and its length says how steep. Walking against it is the fastest way down, for a small enough step.</p>
+  <details class="deeper"><summary>Why does a small step against the gradient always go down?</summary>
+    <ol>
+      <li>Near where you stand, the landscape is almost flat-tilted: a step \(s\) changes the height by about \(\nabla f \cdot s\) (the dot product from the box above).</li>
+      <li>Step against the gradient, \(s = -\eta\, \nabla f\): the change is about \(-\eta\, \nabla f \cdot \nabla f = -\eta \lVert \nabla f \rVert^2\).</li>
+      <li>A squared length is never negative, so this is below zero whenever the gradient isn't zero: the height goes down.</li>
+      <li>The catch is "about". The tilted-plane picture only holds near where you stand; a big \(\eta\) walks off into ground that curves away from it, which is the bouncing and flying off you saw in section 2. Calculus 3 measures exactly how far is too far.</li>
+    </ol>
+  </details>
   <div class="q" data-answer="b">
     <p>\(f(x, y) = x^2 + 3y^2\). What is the gradient at the point (2, −1)?</p>
     <ul><li data-k="a" data-says="Those are the coordinates squared. Differentiate each part: x² → 2x, 3y² → 6y.">(4, 3)</li><li data-k="b">(4, −6)</li><li data-k="c" data-says="Check the sign of the y part: 6 · (−1) is negative.">(4, 6)</li><li data-k="d" data-says="That's the slope pattern of x² + y². The y term has a 3 in front, so its slope is 6y.">(4, −2)</li></ul>
@@ -147,6 +165,7 @@ plt.xlabel("step"); plt.ylabel("x"); plt.legend(); plt.show()
     <p class="formula">\[ \frac{\partial L}{\partial w} = \frac{2}{N} \sum_i r_i\, x_i \qquad \frac{\partial L}{\partial b} = \frac{2}{N} \sum_i r_i \]</p>
     <p>Read them in plain words. If the line sits too high on average (residuals positive), \(\partial L/\partial b > 0\), so a step downhill lowers \(b\). If it's too high mostly where \(x\) is large, \(\partial L / \partial w > 0\) and the slope \(w\) comes down. Each point pulls the line toward itself, weighted by how badly it's missed.</p>
   </details>
+  <p class="gist">Training is this loop: measure the loss, find its gradient with respect to every knob, take a step downhill, repeat.</p>
   <div class="q" data-answer="b">
     <p>The line sits above every point. One gradient step later, what happens to the bias \(b\)?</p>
     <ul><li data-k="a" data-says="All residuals are positive, so ∂L/∂b = (2/N)·Σ rᵢ is positive. Stepping against it...">It goes up</li><li data-k="b">It goes down</li><li data-k="c" data-says="It only stays put when the residuals average out to zero.">It stays the same</li></ul>

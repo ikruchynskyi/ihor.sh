@@ -486,6 +486,17 @@
     "answer": 1,
     "why": "Areas multiply: 2 × 3.",
     "sec": 5
+   },
+   {
+    "q": "Why do the normal equations XᵀXw = Xᵀy give the best-fitting line?",
+    "options": [
+     "At the best fit the error y − Xw is perpendicular to every column of X, and that is exactly Xᵀ(y − Xw) = 0",
+     "Because they make every ride's equation exactly true",
+     "Because XᵀX is always invertible, whatever the data"
+    ],
+    "answer": 0,
+    "why": "The closest reachable point leaves an error perpendicular to everything reachable. The rides can't all be fit exactly, and XᵀX is singular when two columns are twins.",
+    "sec": 6
    }
   ],
   "teaches": [
@@ -766,6 +777,17 @@
     "answer": 1,
     "why": "One partial derivative per weight: the same shape as W.",
     "sec": 2
+   },
+   {
+    "q": "Why is the gradient of a layer's weight matrix the outer product g xᵀ?",
+    "options": [
+     "Each weight Wᵢⱼ feeds only output i, with slope xⱼ, so by the chain rule its gradient is gᵢ·xⱼ",
+     "Because every weight affects every output equally",
+     "It's a convention chosen so the shapes match"
+    ],
+    "answer": 0,
+    "why": "One weight, one output, one input wire: blame on that output times the input on that wire. Stacking all of them gives g xᵀ, which also explains the shape rule.",
+    "sec": 2
    }
   ]
  },
@@ -949,6 +971,17 @@
     "answer": 1,
     "why": "Covariance multiplies distances from the mean, so a few extreme points dominate.",
     "sec": 7
+   },
+   {
+    "q": "Why does a model trained with squared error predict the mean, and one trained with absolute error the median?",
+    "options": [
+     "The mean is the single number with the smallest total squared distance to the data, and the median the one with the smallest total plain distance",
+     "Squared error only works on symmetric data",
+     "It's a coincidence of how scikit-learn implements them"
+    ],
+    "answer": 0,
+    "why": "Setting the slope of Σ(xᵢ − c)² to zero gives the mean; Σ|xᵢ − c| stops falling when half the points are on each side, at the median. Squaring is also why the mean chases outliers.",
+    "sec": 1
    }
   ]
  },
@@ -1038,6 +1071,17 @@
     ],
     "answer": 0,
     "why": "Variance along a unit u is uᵀΣu, largest along Σ's top eigenvector.",
+    "sec": 7
+   },
+   {
+    "q": "Why is PCA's first component the covariance matrix's top eigenvector?",
+    "options": [
+     "The variance along a unit direction u is uᵀΣu, a weighted average of Σ's eigenvalues, largest when all the weight is on the biggest one",
+     "Because eigenvectors are always the longest arrows in the data",
+     "Because scikit-learn defines components that way"
+    ],
+    "answer": 0,
+    "why": "Writing u in Σ's perpendicular eigenbasis gives uᵀΣu = λ₁c₁² + λ₂c₂² with c₁² + c₂² = 1: at most λ₁, reached at u = e₁.",
     "sec": 7
    }
   ]

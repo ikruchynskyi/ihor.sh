@@ -41,6 +41,16 @@
   <p>On the plain scale almost everything is squashed against the left edge by a few outages that lasted weeks. The mean, 8.2 hours, sits where hardly any outage is. The median, 1.6 hours, is what a rider actually meets. Press <b>Add one</b>: a single extreme value drags the mean up by hours while the median barely moves. The median is <b>robust</b>: outliers can't push it around.</p>
   <p class="formula">\[ \bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i \qquad \text{median} = \text{the middle value after sorting} \]</p>
   <p>The <b>mode</b> is the most common value. It's most useful for categories: here the most common reason is "Under Investigation".</p>
+  <p class="gist">The median is what a typical case looks like; the mean is what totals need. On lopsided data they disagree, and each answers a different question.</p>
+  <details class="deeper"><summary>Why the mean and the median? Each is the best single guess for a different penalty</summary>
+    <ol>
+      <li>Suppose you must summarize all the outages by one number \(c\), and you're charged for how far each outage is from it.</li>
+      <li>Charged the <b>squared</b> distance, \(\sum_i (x_i - c)^2\): its slope in \(c\) is \(-2\sum_i (x_i - c)\) (calculus 1), zero when \(\sum_i x_i = n\,c\). The best \(c\) is the mean.</li>
+      <li>Charged the plain distance, \(\sum_i |x_i - c|\): nudge \(c\) right by a little and every point on its left gets that much further, every point on its right that much closer. It stops paying to move when as many points are on each side: the best \(c\) is the median.</li>
+      <li>So squaring is why the mean chases outliers: a point 1,000 hours away costs a million, and the mean moves a long way to cut that. The plain distance charges it only 1,000.</li>
+    </ol>
+    <p>This is the same choice a model makes. Trained with squared error, a model predicts the average outcome for each input; trained with absolute error, the median. Same data, different answers, and neither is wrong.</p>
+  </details>
   <div class="q" data-answer="b">
     <p>A dashboard should show "how long an outage typically lasts". Which number?</p>
     <ul><li data-k="a" data-says="The mean is 8.2 hours, longer than 95% of outages: a handful of weeks-long ones inflate it.">The mean</li><li data-k="b">The median</li></ul>
@@ -56,6 +66,7 @@
     <div class="why">Distances from 5: −3, −1, −1, −1, 0, 0, 2, 4. Squared: 9, 1, 1, 1, 0, 0, 4, 16, which add up to 32. Divided by 8: variance 4. Square root: \(\sigma = 2\).</div>
   </div>
   <p><b>Standardizing</b> turns any value into "how many standard deviations from the mean": the <b>z-score</b> \(z = (x - \bar{x}) / \sigma\). After it, every feature has mean 0 and spread 1. That's exactly the <b>feature scaling</b> models need: Calculus 3 showed gradient descent zigzagging in a stretched valley, and putting all features on the same scale is what un-stretches it.</p>
+  <p class="gist">The standard deviation is the typical distance from the mean, and a z-score measures any value in those units, which puts every feature on one scale.</p>
   <div class="q" data-num="1.5" data-tol="0.001">
     <p>Test scores have mean 70 and standard deviation 10. What's the z-score of a score of 85?</p>
     <div class="why">\((85 - 70)/10 = 1.5\): one and a half standard deviations above average.</div>
@@ -120,7 +131,15 @@
     <ul><li data-k="a" data-says="It's the same data. Only the scale changed, and correlation isn't the same on x and on log x.">Yes, plain hours are the right scale for estimates</li><li data-k="b" data-says="Look at the picture: almost every dot is in a tiny clump at the corner.">Yes: the dots line up perfectly</li><li data-k="c">No: a handful of outages that lasted days, whose estimates came close, sit so far out that they decide the whole number</li></ul>
     <div class="why">Covariance multiplies distances from the mean, so the 10 outages that lasted over a day (3% of the data, mostly planned repairs with decent estimates) dominate everything. Among the 326 outages under 12 hours, the plain-scale \(r\) is only 0.2. Always look at the scatter plot before trusting a correlation. The log scale's 0.65 is the honest answer: the estimate helps, but often misses by a factor of several.</div>
   </div>
+  <p class="gist">Correlation is the average product of z-scores: how consistently two things sit on the same side of their means, along a straight line.</p>
   <p>Two more warnings. Correlation only sees <b>straight-line</b> relations: points on a perfect circle have \(r = 0\). And correlation isn't causation: elevator outages correlate with longer estimates and longer durations, but the estimate doesn't cause the repair to take longer; the kind of breakdown drives both.</p>
+  <details class="deeper"><summary>Where it breaks: summaries that hide the story</summary>
+    <ul>
+      <li><b>Same numbers, different data.</b> Anscombe's quartet is four small datasets with the same means, standard deviations and correlation (0.82) to two decimals: one is a noisy line, one a clean curve, one a perfect line with one outlier, one a vertical stack with a single far point. Summary numbers are a compression, and compression throws things away. Plot first.</li>
+      <li><b>Groups that flip the trend.</b> A hospital can have better survival than another in every severity group and worse survival overall, simply because it takes most of the severe cases. Mixing groups of different sizes can reverse a relationship (<b>Simpson's paradox</b>). Here, elevator and escalator outages behave differently, so a summary over both can describe neither.</li>
+      <li><b>Averages of rates.</b> The average of each station's "share of outages fixed in 2 hours" isn't the share of all outages fixed in 2 hours: a station with 1 outage counts as much as one with 30. Decide which question you're asking before averaging.</li>
+    </ul>
+  </details>
 
   <h2>8. The two-dimensional bell curve</h2>
   <p>The bell curve has a version for several variables at once, the <b>multivariate normal</b>. In 2D it's a hill whose contour lines are ellipses. It's described by the two means and a <b>covariance matrix</b>: each variable's variance on the diagonal, their covariance off it:</p>

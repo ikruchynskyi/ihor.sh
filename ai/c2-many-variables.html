@@ -35,6 +35,21 @@
   <p class="legend"><i style="background:#f4d35e"></i>gradient ∇f <i style="background:#58c4dd"></i>your direction u <i style="background:#83c167"></i>along the contour</p>
   <p class="readout" id="r1"></p>
   <p>Stack the partials into a vector and you get the <b>gradient</b> \(\nabla f\). Walk in any direction \(u\) (a unit vector) and your slope is the <b>directional derivative</b> \(\nabla f \cdot u = |\nabla f|\cos\alpha\), where \(\alpha\) is the angle between them. Turn θ and watch the readout: the slope is biggest, exactly \(|\nabla f|\), when \(u\) points along the gradient, and it's zero when you walk along the contour. That's why the gradient always crosses contour lines at right angles, and why "step against the gradient" is the fastest way down.</p>
+  <p class="gist">A partial derivative is a slope with everything else frozen. Stacked, they make the gradient, and the slope in any direction is the gradient dotted with that direction.</p>
+  <details class="deeper"><summary>Why do two slopes give the slope in every direction?</summary>
+    <ol>
+      <li>Zoom in far enough on a smooth landscape and it looks like a flat, tilted board (the 2D version of "a curve looks like a line", calculus 1).</li>
+      <li>A tilted board is fixed by two numbers: how fast it rises going east, and going north. Those are the two partials.</li>
+      <li>Step \(u = (u_1, u_2)\): you go \(u_1\) east and \(u_2\) north, so the height changes by \(\frac{\partial f}{\partial x} u_1 + \frac{\partial f}{\partial y} u_2\).</li>
+      <li>That sum is a dot product: \(\nabla f \cdot u\). And chapter 1's \(\lVert a \rVert \lVert b \rVert \cos\theta\) makes it biggest along the gradient and zero along the contour.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: interactions, and units</summary>
+    <ul>
+      <li><b>Moving many knobs at once.</b> Each partial assumes every other input stays put. Here the \(xy\) term makes the slope in \(x\) depend on \(y\), so changing both by a lot isn't the sum of the two separate effects. Training changes every weight in each step, which is one more reason the steps must be small.</li>
+      <li><b>Units bend "steepest".</b> Measure \(x\) in kilometres instead of metres and \(\partial f/\partial x\) gets 1,000 times bigger, so the gradient swings toward \(x\). "Steepest" depends on how you measure each axis, which is why features are standardized before gradient descent (probability 2).</li>
+    </ul>
+  </details>
   <div class="q" data-num="5">
     <p>What is \(\partial f/\partial y\) at the point \((1, 1)\)?</p>
     <div class="why">\(x + 4y = 1 + 4 = 5\). Drag the point to (1, 1) to see it in the readout. The \(xy\) term contributes \(x\), the \(2y^2\) term contributes \(4y\), and \(x^2\) contributes nothing since it doesn't involve \(y\).</div>
@@ -55,6 +70,15 @@
     <tr><td>\(L(Wx)\), with \(g = \nabla L\) at \(Wx\)</td><td>\(\nabla_W = g\,x^\top\)</td><td>weight \(W_{ij}\) touches only output \(i\), with strength \(x_j\)</td></tr>
   </table>
   <p>The last row is the one backprop uses for every layer: the gradient for a weight matrix is an <b>outer product</b>, "blame on each output" times "input on each wire". And there's a <b>shape rule</b> that catches most bugs: the gradient of a number with respect to anything has the same shape as that thing. \(W\) is 3×4, so \(\nabla_W L\) is 3×4.</p>
+  <p class="gist">The gradient for a weight matrix is "blame on each output" times "input on each wire", and it always has the matrix's own shape.</p>
+  <details class="deeper"><summary>Why is a weight matrix's gradient an outer product?</summary>
+    <ol>
+      <li>Output \(i\) of the layer is \(z_i = \sum_j W_{ij} x_j\). The weight \(W_{ij}\) appears in that one output and nowhere else.</li>
+      <li>Its slope there is \(\partial z_i / \partial W_{ij} = x_j\): the input on its wire.</li>
+      <li>The loss's sensitivity to output \(i\) is \(g_i\). Chain rule: \(\partial L / \partial W_{ij} = g_i\, x_j\).</li>
+      <li>A table with \(g_i x_j\) in row \(i\), column \(j\) is \(g\, x^\top\). A wire carrying 0 gets no blame, and an output the loss doesn't care about passes none back.</li>
+    </ol>
+  </details>
   <div class="q" data-num="12">
     <p>A layer has a weight matrix \(W\) of shape 3×4. How many numbers are in \(\partial L / \partial W\)?</p>
     <div class="why">12, the same shape as \(W\): one partial per weight. \(g x^\top\) is (3×1)(1×4) = 3×4.</div>
@@ -102,6 +126,7 @@ print("final loss:", round(loss(w), 4), "(the noise alone is about 0.1² = 0.01)
   <p class="legend"><i style="background:#58c4dd"></i>the square (drag it) <i style="background:#f4d35e"></i>where F sends it <i style="background:#fc6255"></i>where J predicts</p>
   <p class="readout" id="r3"></p>
   <p>Shrink the square: the yellow curved patch and the red parallelogram become the same shape, the 2D version of the secant turning into the tangent. And just as in chapter 1, the Jacobian's <b>determinant</b> is the local area scale: the patch's area divided by the square's tends to \(\det J\). That fact comes back in Calculus 4, when a change of variables has to keep a probability's total area at 1.</p>
+  <p class="gist">Near any point, a smooth map is a matrix: its Jacobian. The Jacobian's determinant is how much the map scales small areas there.</p>
   <div class="q" data-num="0.06">
     <p>At some point the Jacobian is \(\begin{pmatrix} 2 & 0 \\ 0 & 3 \end{pmatrix}\). A tiny patch of area 0.01 around it is mapped to a patch of about what area?</p>
     <div class="why">\(\det J = 2 \cdot 3 = 6\), so about \(6 \times 0.01 = 0.06\). Widths double, heights triple.</div>

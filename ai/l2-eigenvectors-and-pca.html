@@ -50,6 +50,7 @@
     <button id="iter">Apply A over and over</button>
   </div>
   <p class="readout" id="r1"></p>
+  <p class="gist">Eigenvectors are the directions a matrix only stretches, never turns; the eigenvalue is how much it stretches them.</p>
   <div class="q" data-num="3">
     <p>For \(\begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}\), drag \(v\) to \((1, 1)\). It's an eigenvector: what's its eigenvalue?</p>
     <div class="why">\(Av = (2 + 1, 1 + 2) = (3, 3) = 3v\), so \(\lambda = 3\). Now try \((1, -1)\): \(Av = (1, -1)\), \(\lambda = 1\), stretched by nothing at all.</div>
@@ -81,6 +82,14 @@
   <p>Press <b>Apply A over and over</b> above. Each press of the move stretches the part of \(v\) along each eigenvector by its own \(\lambda\). After \(k\) moves that's \(\lambda^k\): the part along the biggest eigenvalue grows fastest and takes over, so the arrow swings onto the <b>dominant eigenvector</b>. That's <b>power iteration</b>, the simplest way to find an eigenvector: multiply, rescale, repeat.</p>
   <p class="formula">\[ v = c_1 e_1 + c_2 e_2 \quad\Rightarrow\quad A^k v = c_1 \lambda_1^k e_1 + c_2 \lambda_2^k e_2 \]</p>
   <p>How fast it lines up depends on the ratio \(|\lambda_2 / \lambda_1|\): the second part shrinks by that factor every step. Writing a matrix in its own eigenbasis, \(A = V \Lambda V^{-1}\) with the eigenvalues on the diagonal of \(\Lambda\), turns "apply it \(k\) times" into "raise each eigenvalue to the \(k\)": \(A^k = V \Lambda^k V^{-1}\).</p>
+  <p class="gist">Repeat a move and the direction with the biggest stretch takes over; how fast depends on how far ahead the winner is.</p>
+  <details class="deeper"><summary>Where it breaks: when there's no clear winner</summary>
+    <ul>
+      <li><b>A tie.</b> If two eigenvalues are the same size, \(|\lambda_2 / \lambda_1| = 1\), the second part never shrinks. With \(\lambda = 1\) and \(-1\) the arrow flips back and forth forever. A near tie (0.99) converges, but slowly: about 690 steps per three decimals.</li>
+      <li><b>Not enough eigenvectors.</b> The shear has only one eigen-direction, so \(A = V\Lambda V^{-1}\) doesn't exist for it (\(V\) would have two copies of the same column). Its powers grow like \(k\), not like \(\lambda^k\). Linear algebra 3's SVD works for every matrix, which is one reason it's the more useful tool.</li>
+      <li><b>Cycles in a chain.</b> Two pages that only link to each other pass all their readers back and forth every step: an eigenvalue of \(-1\), so no steady state. PageRank's random jump (next section) breaks every such cycle.</li>
+    </ul>
+  </details>
 
   <h2>5. A random walk over this site: PageRank</h2>
   <p>Imagine a reader who clicks random links on this site forever. Which pages do they spend the most time on? Put everyone on one page, then each step, each page shares its readers equally among the pages it links to. That's a matrix times a vector, repeated: a <b>Markov chain</b>. This is the real link graph of this site's 169 pages (as of 12 October 2026). Everyone starts on the last ham radio lesson.</p>
@@ -116,6 +125,16 @@
     <li>Its eigenvectors, sorted by eigenvalue, are the principal components; each eigenvalue is how much variance that direction holds.</li>
     <li>Keep the top few and describe every example by its coordinates along them.</li>
   </ol>
+  <p class="gist">PCA turns the data to its own best axes: the first is the direction of greatest spread, and each eigenvalue says how much of the spread its direction holds.</p>
+  <details class="deeper"><summary>Why is the top eigenvector the direction of most spread?</summary>
+    <ol>
+      <li>The variance of the shadows along a unit direction \(u\) is \(u^\top \Sigma u\) (the shadows are \(x \cdot u\); average their squares).</li>
+      <li>\(\Sigma\) is symmetric, so its eigenvectors \(e_1, e_2\) are at right angles and form a basis. Write \(u = c_1 e_1 + c_2 e_2\); since \(u\) has length 1, \(c_1^2 + c_2^2 = 1\).</li>
+      <li>Then \(\Sigma u = c_1 \lambda_1 e_1 + c_2 \lambda_2 e_2\), and dotting with \(u\) (the cross terms vanish, at right angles): \(u^\top \Sigma u = \lambda_1 c_1^2 + \lambda_2 c_2^2\).</li>
+      <li>That's a weighted average of the eigenvalues, with weights \(c_1^2, c_2^2\) adding up to 1. An average is largest when all the weight sits on the biggest value: \(u = e_1\), variance \(\lambda_1\).</li>
+    </ol>
+    <p>The same argument in any number of dimensions gives every component in turn: the best direction at right angles to the first is \(e_2\), and so on.</p>
+  </details>
   <div class="q" data-num="0.862" data-tol="0.005">
     <p>Press <b>Let PCA find it</b>. What share of the total variance does the first component hold?</p>
     <div class="why">\(\lambda_1 / (\lambda_1 + \lambda_2) = 0.293 / (0.293 + 0.047) \approx 0.862\). One number per outage, its position along that line, keeps 86% of the variation in two. The direction runs at about 62°, steeper than 45° because actual times vary more than the estimates do.</div>
@@ -124,6 +143,7 @@
 
   <h2>8. Eigenvalues are curvature</h2>
   <p>Calculus 3's Hessian, the matrix of second derivatives, is symmetric, so it has eigenvectors at right angles. They're the valley's main axes, and each eigenvalue is the curvature along its axis. The <b>condition number</b> \(\lambda_{\max} / \lambda_{\min}\) is how stretched the valley is, and why gradient descent zigzags: the learning rate must stay under \(2/\lambda_{\max}\), so the flattest direction crawls along at a speed set by \(\lambda_{\min}/\lambda_{\max}\). Standardizing features (Probability 2) and PCA <b>whitening</b> (rotate onto the components, then divide each by its standard deviation) both push those eigenvalues toward equal, which is why scaled inputs train faster.</p>
+  <p class="gist">The Hessian's eigenvalues are the valley's curvatures along its main axes; their ratio, the condition number, sets how slowly gradient descent crawls.</p>
   <div class="q">
     <p>A loss valley's Hessian has eigenvalues 100 and 1. Using the biggest learning rate that's still stable, roughly how many steps does it take to shrink the error along the flat direction by a factor of \(e\)?</p>
     <div class="why">The rate must be below \(2/100\); take about \(1/100\). Along the flat direction (curvature 1) each step then shrinks the error by a factor of about \(1 - 1/100\), so it takes about 100 steps per factor of \(e\): the condition number. Fix the scaling and both directions converge in a step or two.</div>
