@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GPUs and Scale</title>
+  <meta name="description" content="AI from scratch, toolkit 5: GPUs and scale. Why GPUs win at matrix products, compute-bound versus memory-bound work, the memory math of a model (a calculator), float16 and bfloat16 with loss scaling, batching and gradient accumulation, and splitting work across GPUs." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 5 · Stage 4: the engineer's toolkit</p>
+  <h1>GPUs and scale</h1>
+  <p class="lede">A laptop CPU does a few hundred billion multiply-adds a second. A data-center GPU does a few hundred <i>trillion</i>, and it's the reason today's models exist. But a GPU is only that fast at one kind of work, it has a fixed amount of memory, and most "my training is slow" or "CUDA out of memory" problems come from not knowing the numbers. This lesson is the numbers: what a GPU is good at, how much memory a model needs, how smaller number formats double the speed, and how work gets split when one GPU isn't enough.</p>
+
+  <h2>1. Why a GPU</h2>
+  <p>A CPU has a few dozen fast, clever cores; a GPU has thousands of simple ones that all do the same thing to different numbers at once. A matrix product is exactly that: every output entry is its own dot product, independent of the others. So the work that dominates deep learning (chapter 1's matrix products, in every layer, for every example in the batch) is the work GPUs are built for.</p>
+  <div class="code" data-title="Run it: how fast is this browser at matrix products?"><textarea>
+import numpy as np, time
+for n in [128, 256, 512]:
+    A = np.random.rand(n, n).astype(np.float32); B = np.random.rand(n, n).astype(np.float32)
+    t = time.perf_counter(); reps = 0
+    while time.perf_counter() - t < 0.5:
+        A @ B; reps += 1
+    secs = (time.perf_counter() - t) / reps
+    print(f"{n}×{n}: {2 * n ** 3 / secs / 1e9:6.1f} GFLOP/s")   # an n×n product is n³ multiplies and n³ adds
+print("An H100 GPU's peak in bfloat16: about 990,000 GFLOP/s (dense)")
+</textarea></div>
+  <p>A FLOP is one multiply or one add, so an \(n \times n\) product costs \(2n^3\) FLOPs. Your browser's number above is probably between 1 and 50 GFLOP/s (it runs NumPy compiled for the web, on one core). That gap of four to five orders of magnitude is why nobody trains on a laptop CPU.</p>
+  <div class="q" data-num="137" data-tol="0.02">
+    <p>About how many billion FLOPs (GFLOP) is one \(4096 \times 4096\) matrix product? (Use \(2n^3\).)</p>
+    <div class="why">\(2 \times 4096^3 \approx 1.37 \times 10^{11}\), about 137 GFLOP. A GPU at 300 TFLOP/s does it in under half a millisecond.</div>
+  </div>
+  <p class="gist">A GPU is thousands of simple cores doing the same arithmetic on different numbers, which is exactly the shape of a matrix product.</p>
+
+  <h2>2. Compute-bound or memory-bound</h2>
+  <p>A GPU can only compute on numbers it has fetched from its memory, and fetching is far slower than computing. An NVIDIA A100 does about 312 trillion bfloat16 FLOPs a second but moves only about 2 trillion bytes a second: it needs some 150 FLOPs per byte fetched to keep its cores busy. Big matrix products reuse each number thousands of times and get there. Element-wise work (adding, ReLU, normalizing) does one FLOP per number and spends its time waiting for memory.</p>
+  <details class="deeper"><summary>Why a big matmul keeps the cores busy and a ReLU can't</summary>
+    <ol>
+      <li><b>Arithmetic intensity</b> = FLOPs done ÷ bytes moved. It decides which limit you hit.</li>
+      <li>A \(4096 \times 4096\) product in bfloat16 (2 bytes a number): \(2 \cdot 4096^3 \approx 1.4 \times 10^{11}\) FLOPs, while reading two matrices and writing one moves \(3 \cdot 4096^2 \cdot 2 \approx 10^8\) bytes. Intensity ≈ 1,365.</li>
+      <li>A ReLU on the same numbers: one comparison per number, 2 bytes read and 2 written. Intensity ≈ 0.25.</li>
+      <li>The A100's balance point is \(312 \times 10^{12} / 2 \times 10^{12} \approx 156\) FLOPs per byte. The matmul is far above it (compute-bound: the cores are the limit); the ReLU is 600 times below it (memory-bound: the cores wait).</li>
+      <li>That's why libraries <b>fuse</b> element-wise steps into the matmul that precedes them (one trip to memory instead of three), and why FlashAttention, which never writes chapter 7's \(n \times n\) score table to memory, is faster while doing the same arithmetic.</li>
+    </ol>
+  </details>
+  <p class="gist">A GPU computes far faster than it fetches, so work that reuses each number many times (matrix products) runs at full speed and element-wise work waits on memory.</p>
+
+  <h2>3. The memory math of a model</h2>
+  <p>Out of memory is the most common GPU error, and it's predictable. Each parameter needs bytes for itself and, while training, for its gradient and the optimizer's state:</p>
+  <table class="cmp">
+    <tr><th>What</th><th>Bytes per parameter</th></tr>
+    <tr><td>Running it (inference), float32 / float16 / 8-bit / 4-bit</td><td>4 / 2 / 1 / 0.5</td></tr>
+    <tr><td>Training with Adam, float32: weights 4 + gradients 4 + Adam's \(m\) 4 + \(s\) 4</td><td>16</td></tr>
+    <tr><td>Training with Adam, mixed precision: float16 weights 2 + gradients 2 + float32 master copy 4 + \(m\) 4 + \(s\) 4</td><td>16</td></tr>
+    <tr><td>Plus <b>activations</b>: every layer's outputs, kept for backprop (chapter 4), growing with batch size × sequence length</td><td>often as much again, or more</td></tr>
+  </table>
+  <canvas id="mem" width="800" height="300" aria-label="Memory needed by a model compared with common GPUs"></canvas>
+  <div class="row">
+    <label>parameters <input type="range" id="params" min="7" max="11.85" step="0.01" value="9.845"> <b id="paramsV"></b></label>
+    <label>doing <select id="mode"><option value="4">inference, float32</option><option value="2" selected>inference, float16</option><option value="1">inference, 8-bit</option><option value="0.5">inference, 4-bit</option><option value="16">training with Adam</option></select></label>
+  </div>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-num="14" data-tol="0.02">
+    <p>How many GB does a 7-billion-parameter model need just for its weights in float16?</p>
+    <div class="why">\(7 \times 10^9 \times 2\) bytes = 14 GB. Training it with Adam needs about \(7 \times 10^9 \times 16\) = 112 GB before activations: more than one 80 GB GPU.</div>
+  </div>
+  <p class="gist">Memory is parameters times bytes: about 2 per parameter to run in float16, about 16 to train with Adam, plus activations that grow with the batch.</p>
+
+  <h2>4. Smaller numbers: float16, bfloat16 and loss scaling</h2>
+  <p>Halving the bytes per number halves memory traffic and, on modern GPUs, roughly doubles matrix-product speed. Two 16-bit formats split the bits differently:</p>
+  <table class="cmp">
+    <tr><th></th><th>float32</th><th>float16</th><th>bfloat16</th></tr>
+    <tr><td>Largest number</td><td>3.4 × 10³⁸</td><td>65,504</td><td>3.4 × 10³⁸</td></tr>
+    <tr><td>Significant digits</td><td>about 7</td><td>about 3</td><td>about 2</td></tr>
+    <tr><td>Trouble</td><td>none, but slow</td><td>overflows to inf, small gradients round to 0</td><td>coarse: 257 is stored as 256</td></tr>
+  </table>
+  <div class="code" data-title="Run it: what float16 does to numbers"><textarea>
+import numpy as np
+np.seterr(over="ignore")                      # 70,000 overflowing is the point here, not a mistake
+for x in [70_000.0, 2049.0, 1e-8, 3e-5, 0.1]:
+    print(f"{x:>10g} as float16 → {float(np.float16(x)):g}")
+print("1000 + 0.1 in float16:", np.float16(1000) + np.float16(0.1), " (the 0.1 is lost)")
+# loss scaling: multiply the loss (and so every gradient) by 1024 before the backward pass, divide after
+tiny_grad = 2e-8
+print("a gradient of 2e-8 in float16:", float(np.float16(tiny_grad)), "  scaled by 1024 first:", float(np.float16(tiny_grad * 1024)) / 1024)
+</textarea></div>
+  <p><b>Mixed precision</b> does the heavy matrix products in 16 bits and keeps the master weights and the sums that need precision in float32. In PyTorch it's a few lines: <code>with torch.autocast("cuda", dtype=torch.bfloat16):</code> around the forward pass. With float16 you also need a <code>GradScaler</code>, which multiplies the loss by a big number so small gradients survive the trip through float16 (chapter 4's underflow), then divides it back out. bfloat16 has float32's range, so it needs no scaler, which is why newer GPUs default to it.</p>
+  <div class="q" data-answer="a">
+    <p>Training in float16, the loss turns into <code>inf</code> after a few hundred steps, but trains fine in bfloat16. Why?</p>
+    <ul><li data-k="a">Some number grew past 65,504, float16's largest; bfloat16's range goes to 10³⁸</li><li data-k="b" data-says="bfloat16 is actually less precise than float16; range is what differs.">bfloat16 is more precise</li><li data-k="c" data-says="Both are 16 bits and equally fast on hardware that supports both.">bfloat16 is faster</li></ul>
+    <div class="why">float16 spends more bits on precision and fewer on range; bfloat16 the reverse. For training, range matters more: activations and logits easily pass 65,504.</div>
+  </div>
+  <p class="gist">16-bit numbers halve memory and double speed; float16 can overflow and lose tiny gradients (loss scaling rescues them), bfloat16 keeps float32's range at lower precision.</p>
+
+  <h2>5. Batches, and gradient accumulation</h2>
+  <p>A GPU runs at full speed only with enough work at once, so throughput (examples per second) rises with batch size until the GPU is saturated, then flattens; memory grows the whole way. When the batch you want doesn't fit, <b>gradient accumulation</b> runs several small batches, adds up their gradients (PyTorch's <code>.backward()</code> adds, remember), and steps once:</p>
+  <pre class="static"><code>accum = 4                                   # 4 micro-batches of 16 act like one batch of 64
+for i, (xb, yb) in enumerate(loader):
+    loss = F.cross_entropy(model(xb), yb) / accum   # divide, so the sum is the mean over 64
+    loss.backward()                                  # gradients add up in .grad
+    if (i + 1) % accum == 0:
+        opt.step(); opt.zero_grad()</code></pre>
+  <p>Same gradients as the big batch (exactly, for losses that are means and models without batch norm), a quarter of the activation memory, a bit slower. The other common slowdown isn't the GPU at all: a <b>data loader</b> that can't decode images fast enough leaves the GPU waiting. <code>DataLoader(..., num_workers=4, pin_memory=True)</code> prepares batches in parallel; <code>nvidia-smi</code> showing 30% utilization usually means the data is the bottleneck.</p>
+  <p class="gist">Gradient accumulation adds up several small batches' gradients before one step, buying a big batch's gradient for a small batch's memory.</p>
+
+  <h2>6. More than one GPU</h2>
+  <table class="cmp">
+    <tr><th>Split</th><th>How</th><th>When</th></tr>
+    <tr><td><b>Data parallel</b> (DDP)</td><td>Every GPU holds the whole model and gets a different slice of the batch; after backward, the GPUs average their gradients (an <b>all-reduce</b>) and all take the same step</td><td>The model fits on one GPU; you want more examples per second</td></tr>
+    <tr><td><b>Sharded</b> (FSDP, ZeRO)</td><td>Like data parallel, but the weights, gradients and Adam states are split across GPUs and gathered just in time</td><td>The 16 bytes per parameter don't fit on one GPU</td></tr>
+    <tr><td><b>Tensor parallel</b></td><td>Each big matrix is split by columns or rows across GPUs</td><td>Single layers too big, or latency matters</td></tr>
+    <tr><td><b>Pipeline parallel</b></td><td>Layers 1–10 on GPU 1, 11–20 on GPU 2…, with micro-batches flowing through</td><td>Very deep models across machines</td></tr>
+  </table>
+  <div class="q" data-answer="b">
+    <p>Data parallel on 8 GPUs, each with a batch of 32. What batch size does the optimizer effectively see?</p>
+    <ul><li data-k="a" data-says="Each GPU sees 32, but the gradients are averaged across all 8 before the step.">32</li><li data-k="b">256</li><li data-k="c" data-says="Data parallel splits the data, not the model; nothing divides the batch further.">4</li></ul>
+    <div class="why">The all-reduce averages 8 gradients of 32 examples each: one step on 256 examples. So the learning rate and warmup tuned for 32 need re-tuning (the optimizers lesson).</div>
+  </div>
+  <p class="gist">When one GPU isn't enough, split the batch (data parallel), the memory (sharding), the matrices (tensor parallel) or the layers (pipeline).</p>
+  <details class="deeper"><summary>Where it breaks: the limits of "just add GPUs"</summary>
+    <ul>
+      <li><b>Talking costs time.</b> Every step, data parallel must all-reduce a full gradient: 14 GB for a 7B model in float16. Between machines that can take longer than the step's arithmetic, so 64 GPUs don't train 64 times faster; frameworks overlap the communication with the backward pass to hide some of it.</li>
+      <li><b>Bigger batches stop helping.</b> More GPUs mean a bigger effective batch, and past the "critical batch size" doubling it no longer halves the steps needed (the training-in-PyTorch lesson). Past that point extra GPUs buy almost nothing.</li>
+      <li><b>16-bit surprises.</b> Some operations (softmax sums, loss reductions, norms) need float32 to stay accurate; autocast keeps a list of them. Hand-written code that sums thousands of float16 numbers loses digits, as NumPy in depth showed for float32.</li>
+    </ul>
+  </details>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li>A GPU is fast at matrix products (compute-bound) and merely fast-memoried at everything else (memory-bound).</li>
+    <li>Memory: ~2 bytes per parameter to run in float16, ~16 to train with Adam, plus activations. Estimate before you rent.</li>
+    <li>Mixed precision: autocast with bfloat16; float16 needs a GradScaler.</li>
+    <li>Too big a batch for memory: gradient accumulation. A slow GPU at low utilization: the data loader.</li>
+    <li>Many GPUs: data parallel first, sharding when the model's training state doesn't fit.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Horace He's essay "Making Deep Learning Go Brrrr From First Principles" covers sections 2 and 4 in depth.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const GPUS = [["T4 (free Colab/Kaggle)", 16], ["RTX 4090", 24], ["A100 / H100", 80], ["8 × H100", 640]];
+const fmt = (p) => (p >= 1e9 ? `${(p / 1e9).toFixed(p < 1e10 ? 1 : 0)} B` : `${(p / 1e6).toFixed(0)} M`);
+function draw() {
+  const params = 10 ** +$("params").value, bpp = +$("mode").value, gb = (params * bpp) / 1e9, train = bpp === 16;
+  $("paramsV").textContent = fmt(params);
+  const cv = $("mem"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  const max = Math.max(gb * (train ? 1.5 : 1), 640) * 1.05, X = (v) => 180 + (Math.log10(1 + v) / Math.log10(1 + max)) * (W - 200);
+  g.font = "14px ui-monospace, monospace";
+  GPUS.forEach(([name, mem], i) => {
+    const y = 30 + i * 52, fits = gb * (train ? 1.5 : 1.1) <= mem;
+    g.fillStyle = "#9aa4b2"; g.fillText(name, 8, y + 18);
+    g.fillStyle = "rgba(216,222,233,0.15)"; g.fillRect(180, y, X(mem) - 180, 28);
+    g.fillStyle = fits ? "#83c167" : "#fc6255"; g.fillRect(180, y + 6, Math.min(X(gb), X(mem)) - 180, 16);
+    g.fillStyle = "#d8dee9"; g.fillText(`${mem} GB ${fits ? "✓" : "✗"}`, X(mem) + 6 > W - 80 ? W - 80 : X(mem) + 6, y + 18);
+  });
+  g.fillStyle = "#f4d35e"; g.fillRect(X(gb) - 1, 20, 3, H - 40); g.fillText(`${gb < 10 ? gb.toFixed(1) : gb.toFixed(0)} GB`, Math.min(X(gb) + 6, W - 90), H - 10);
+  $("r3").textContent = `${fmt(params)} parameters × ${bpp} bytes = ${gb < 10 ? gb.toFixed(2) : gb.toFixed(0)} GB` +
+    (train ? " for weights, gradients and Adam, plus activations (the bars allow 50% more)" : " for the weights, plus a little for activations and the cache (the bars allow 10% more)");
+}
+["params", "mode"].forEach((id) => $(id).addEventListener("input", draw));
+draw();
+</script>
+</body>
+</html>

@@ -146,6 +146,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-features-and-leakage"
  },
+ "gpus-and-scale.html": {
+  "notebook": "gpus-and-scale.ipynb",
+  "title": "AI from scratch: GPUs and scale",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/gpus-and-scale.ipynb",
+  "gpu": true,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gpus-and-scale"
+ },
  "l1-systems-and-inverses.html": {
   "notebook": "l1-systems-and-inverses.ipynb",
   "title": "AI from scratch: systems, rank and least squares",

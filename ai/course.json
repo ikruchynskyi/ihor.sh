@@ -4074,5 +4074,129 @@
     "sec": 5
    }
   ]
+ },
+ "gpus-and-scale.html": {
+  "goals": [
+   "Explain why GPUs win at matrix products and when work is compute-bound or memory-bound",
+   "Estimate a model's memory for inference and for training with Adam",
+   "Use mixed precision (autocast, bfloat16, loss scaling) and know what float16 breaks",
+   "Use gradient accumulation and choose a multi-GPU strategy"
+  ],
+  "needs": [
+   "01-matrices-are-moves.html",
+   "training-in-pytorch.html",
+   "optimizers.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "FLOPs of a matmul",
+    "An n×n by n×n product is 2n³ FLOPs (n³ multiplies, n³ adds)."
+   ],
+   [
+    "Arithmetic intensity",
+    "FLOPs per byte moved. Above the GPU's balance (~150 on an A100) it's compute-bound; below, memory-bound."
+   ],
+   [
+    "Inference memory",
+    "Parameters × bytes: float16 2, 8-bit 1, 4-bit 0.5. 7B in float16 = 14 GB."
+   ],
+   [
+    "Training memory with Adam",
+    "About 16 bytes per parameter (weights, gradients, m, s), plus activations."
+   ],
+   [
+    "float16",
+    "Max 65,504, about 3 digits: overflows to inf, tiny gradients round to 0."
+   ],
+   [
+    "bfloat16",
+    "float32's range with about 2 digits: no loss scaling needed."
+   ],
+   [
+    "Loss scaling",
+    "Multiply the loss before backward so small float16 gradients survive, divide after (GradScaler)."
+   ],
+   [
+    "Gradient accumulation",
+    "Backward on several micro-batches (loss ÷ count), then one step: a big batch's gradient in less memory."
+   ],
+   [
+    "Data parallel",
+    "Every GPU has the model and a slice of the batch; gradients are all-reduced (averaged) each step."
+   ],
+   [
+    "Sharding (FSDP/ZeRO)",
+    "Split weights, gradients and optimizer state across GPUs when 16 bytes per parameter won't fit."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why does a large matrix product run near a GPU's peak speed while a ReLU doesn't?",
+    "options": [
+     "The product reuses each number fetched thousands of times; the ReLU does one operation per number and waits on memory",
+     "ReLU isn't supported on GPUs",
+     "Matrix products use a different kind of memory"
+    ],
+    "answer": 0,
+    "why": "Arithmetic intensity: ~1,365 FLOPs per byte for a 4096² matmul vs ~0.25 for ReLU; the A100 needs ~156 to stay busy.",
+    "sec": 2
+   },
+   {
+    "q": "About how much memory does training a 1-billion-parameter model with Adam need, before activations?",
+    "options": [
+     "16 GB",
+     "2 GB",
+     "4 GB"
+    ],
+    "answer": 0,
+    "why": "About 16 bytes per parameter: weights, gradients and Adam's two averages.",
+    "sec": 3
+   },
+   {
+    "q": "In float16, the number 70,000 becomes…",
+    "options": [
+     "inf",
+     "70,000",
+     "65,504"
+    ],
+    "answer": 0,
+    "why": "float16's largest number is 65,504; past it is infinity.",
+    "sec": 4
+   },
+   {
+    "q": "Why does float16 training need a GradScaler but bfloat16 doesn't?",
+    "options": [
+     "float16's small range turns tiny gradients into 0; bfloat16 has float32's range",
+     "bfloat16 is more precise",
+     "GradScaler only works with float16 hardware"
+    ],
+    "answer": 0,
+    "why": "Scaling the loss lifts gradients above float16's underflow; bfloat16 never had the problem.",
+    "sec": 4
+   },
+   {
+    "q": "With gradient accumulation over 4 micro-batches, why divide each loss by 4?",
+    "options": [
+     "So the summed gradients equal the gradient of the mean loss over the whole big batch",
+     "To make training faster",
+     "To save memory"
+    ],
+    "answer": 0,
+    "why": ".backward() adds into .grad; four means each divided by 4 add up to one mean.",
+    "sec": 5
+   },
+   {
+    "q": "Data parallel on 4 GPUs with 64 examples each: the effective batch is…",
+    "options": [
+     "256",
+     "64",
+     "16"
+    ],
+    "answer": 0,
+    "why": "Four gradients of 64 are averaged into one step.",
+    "sec": 6
+   }
+  ]
  }
 }
