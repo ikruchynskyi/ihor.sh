@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decision Trees</title>
+  <meta name="description" content="AI from scratch, model zoo 5: decision trees as twenty questions on the columns. A map that draws every split, depth and leaf-size knobs, a resample button that grows a different tree from almost the same data, CART from scratch in NumPy, reading a tree's rules on 10,000 bank calls, and where it breaks: unstable trees (two trees from two halves of the data disagree on 19% of calls), overgrown leaves, and pruning that takes 746 leaves down to 11." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    pre.rules { background: #0f1218; color: #d7dde5; padding: 12px 14px; border-radius: 10px; overflow-x: auto; font: 13.5px/1.55 ui-monospace, Menlo, monospace; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 5 of 10 · Decision trees</p>
+  <h1>Decision trees</h1>
+  <p class="lede">Chapter 13 showed how a tree picks a question (the split that leaves the purest boxes) and why trees run flat past the data. This page is about the tree as a model you'd actually use or reject: how to read one, how to stop it growing, and its big flaw, which the next two pages are built to fix: a tree is <b>unstable</b>. Change a few rows and you can get a completely different tree.</p>
+
+  <h2>1. The idea in one picture: boxes, drawn by questions</h2>
+  <p>Each line on the map is one question ("is x &lt; 0.31?"), drawn only inside the box where it's asked. Deeper trees cut smaller boxes; <i>smallest leaf</i> refuses to make boxes with fewer training dots than that. Then press <i>resample</i>: the tree is regrown on a new bootstrap sample (200 dots drawn with replacement from the same 200), almost the same data.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points, the tree's predictions shaded, and its splits drawn as lines"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><button type="button" id="resample">resample the dots</button><button type="button" id="orig">original dots</button></div>
+  <div class="row"><label>depth <input type="range" id="depth" min="1" max="12" value="3"> <b id="depthV"></b></label><label>smallest leaf <input type="range" id="leaf" min="1" max="40" value="1"> <b id="leafV"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Set depth 12 and press <i>resample</i> a few times. Predict first: what changes more, the training accuracy or the map?</p>
+    <ul><li data-k="a" data-says="Training accuracy stays near 100%: a deep tree fits whatever it's given.">The training accuracy</li><li data-k="b">The map: islands appear and vanish</li><li data-k="c" data-says="Try it.">Neither: same data, same tree</li></ul>
+    <div class="why">A deep tree always fits its training dots, so its score looks the same each time, but which dot gets its own island depends on which dots were drawn. That's <b>high variance</b>: the model mostly reflects the particular sample. At depth 2 resampling barely matters; at depth 12 the map reshuffles.</div>
+  </div>
+  <p class="gist">A tree cuts the data into boxes with yes/no questions and predicts each box's average; deep trees fit their sample so closely that a slightly different sample gives a different tree.</p>
+
+  <h2>2. How it learns: greedy, one question at a time</h2>
+  <p>CART (the algorithm in scikit-learn) starts with all rows in one box, tries every column and every cut, keeps the one that lowers impurity the most (Gini for classes, squared error for numbers), then repeats inside each half. It never goes back to revise a question. That greed is what makes trees fast (sorting each column once), and it's also why they're unstable: two cuts with nearly the same score at the top can send the whole tree down different paths.</p>
+  <p class="formula">\[ \text{best split: the column and cut with the smallest } \frac{n_L}{n} G_L + \frac{n_R}{n} G_R \]</p>
+  <details class="deeper"><summary>Why small changes at the top change everything below</summary>
+    <ol>
+      <li>At the root, the best and second-best cuts often score almost the same: two columns that both separate the classes about as well (on the bank calls, several economy columns move together).</li>
+      <li>A handful of rows can swap which one wins. Greedy search takes the winner and never compares the trees that would have grown from the runner-up.</li>
+      <li>Every later question is asked inside the boxes the root made, so a different root means different boxes, different data in each, and different questions all the way down.</li>
+      <li>The deeper the tree, the fewer rows each question sees, so its winner is decided by fewer, noisier rows: the instability grows with depth. Measured on 20 resamples of the bank calls, the predicted chance for the same call varies by 0.026 on average at depth 3 and 0.22 when the tree grows until every leaf is pure.</li>
+      <li>That noise is mostly independent from tree to tree, which is why averaging many trees (page 6) cancels much of it: twenty unpruned trees averaged score AUC 0.73 against one tree's 0.60.</li>
+    </ol>
+  </details>
+
+  <h2>3. Reading a tree</h2>
+  <p>The thing trees do that nothing else in the zoo does: you can print the model. Here is a depth-2 tree on the bank calls (scikit-learn's <code>export_text</code>):</p>
+  <pre class="rules">|--- nr.employed &lt;= 5087.65
+|   |--- pdays &lt;= 15.50
+|   |   |--- class: yes
+|   |--- pdays &gt;  15.50
+|   |   |--- class: no
+|--- nr.employed &gt;  5087.65
+|   |--- cons.conf.idx &lt;= -46.65
+|   |   |--- class: no
+|   |--- cons.conf.idx &gt;  -46.65
+|   |   |--- class: no</pre>
+  <p>In words: when the economy's employment figure was low (44% of those calls ended in a yes, against 7% of the rest) <i>and</i> the customer had been contacted within the last two weeks, predict yes; otherwise no. A banker can check that against experience, an auditor can see that no forbidden column is used, and anyone can apply it by hand. The right half asks a question whose two answers are both "no": it lowered impurity, so the greedy search took it, even though it changes no decision.</p>
+  <div class="q" data-answer="a">
+    <p>A tree splits on <code>pdays</code> at 15.5, but 96% of customers have <code>pdays</code> = 999 ("never contacted before"). Does that weird 999 need fixing before a tree can use it?</p>
+    <ul><li data-k="a">No: a tree only asks "below or above a cut", so 999 is simply "above everything"</li><li data-k="b" data-says="That's true for linear models and kNN, where 999 is treated as a real number of days.">Yes, it distorts the model badly</li><li data-k="c" data-says="Trees handle it as is: try reading the rules again.">Yes, trees can't handle outliers</li></ul>
+    <div class="why">Trees care about order, not distance: any value works as long as "never contacted" sorts to one side. That's why trees need no scaling and shrug off outliers in their inputs. For a linear model, 999 would mean "a very long time ago", which is close but not the same thing.</div>
+  </div>
+
+  <h2>4. Build it: CART from scratch in NumPy</h2>
+  <div class="code" data-title="A classification tree from scratch on the bank calls, next to scikit-learn"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import roc_auc_score
+
+b = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))        # in a notebook: pd.read_csv(url)
+y = (b["y"] == "yes").astype(int).values
+cols = ["age", "campaign", "pdays", "previous", "euribor3m", "nr.employed", "cons.conf.idx"]
+Xtr, Xte, ytr, yte = train_test_split(b[cols].values, y, test_size=0.25, stratify=y, random_state=0)
+
+def best_split(X, y):
+    "The column and cut with the lowest weighted Gini impurity."
+    best = (1.0, None, None)
+    for j in range(X.shape[1]):
+        order = np.argsort(X[:, j]); xs, ys = X[order, j], y[order]
+        n = len(y); nL = np.arange(1, n); onesL = np.cumsum(ys)[:-1]
+        gL = 1 - (onesL / nL) ** 2 - (1 - onesL / nL) ** 2
+        gR = 1 - ((ys.sum() - onesL) / (n - nL)) ** 2 - (1 - (ys.sum() - onesL) / (n - nL)) ** 2
+        score = (nL * gL + (n - nL) * gR) / n
+        score[xs[1:] == xs[:-1]] = 1.0                       # can't cut between equal values
+        k = score.argmin()
+        if score[k] < best[0]: best = (score[k], j, (xs[k] + xs[k + 1]) / 2)
+    return best
+
+def grow(X, y, depth, min_leaf=20):
+    if depth == 0 or len(y) < 2 * min_leaf or y.min() == y.max():
+        return y.mean()                                      # a leaf: the share of yes
+    _, j, cut = best_split(X, y)
+    if j is None: return y.mean()
+    left = X[:, j] <= cut
+    return (j, cut, grow(X[left], y[left], depth - 1, min_leaf), grow(X[~left], y[~left], depth - 1, min_leaf))
+
+def predict(node, x):
+    while isinstance(node, tuple):
+        j, cut, l, r = node
+        node = l if x[j] <= cut else r
+    return node
+
+tree = grow(Xtr, ytr, depth=4)
+mine = roc_auc_score(yte, [predict(tree, x) for x in Xte])
+sk = DecisionTreeClassifier(max_depth=4, min_samples_leaf=20, random_state=0).fit(Xtr, ytr)
+print("root question: column", cols[tree[0]], "at", round(tree[1], 2))
+print("test AUC, mine:", round(mine, 3), "· scikit-learn:", round(roc_auc_score(yte, sk.predict_proba(Xte)[:, 1]), 3))
+</textarea></div>
+  <p>Mine stops a box from splitting when it's smaller than twice the smallest leaf, while scikit-learn checks each child, so the trees can differ a little deep down.</p>
+
+  <h2>5. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> readable rules, no scaling, any mix of numbers and categories, interactions found by itself ("only when employment was low <i>and</i> recently contacted"), and fast to train and to predict. A shallow tree is a fine explanation of a dataset even when it's not the model you ship.</p>
+  <p><b>Breaks:</b> as a predictor on its own, a single tree is rarely the best. Grown fully on the bank calls it has 1,112 leaves and a test AUC of 0.62, barely better than chance; two full trees grown on the two halves of the training data disagree on 18.8% of the test calls. Limiting it helps a lot:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Tree on the bank calls</th><th>Leaves</th><th>Test AUC</th></tr>
+    <tr><td>grown until pure</td><td>1,112</td><td>0.62</td></tr>
+    <tr><td>smallest leaf 50 calls</td><td>109</td><td>0.76</td></tr>
+    <tr><td>smallest leaf 200 calls</td><td>29</td><td>0.77</td></tr>
+    <tr><td>pruned (cost-complexity α = 0.001, chosen on validation)</td><td>11</td><td>0.77</td></tr>
+    <tr><td>for comparison: logistic regression (page 2)</td><td></td><td>0.78</td></tr>
+  </table></div>
+  <div class="q" data-answer="c">
+    <p>Pruning took a tree from 746 leaves to 11, and the test AUC went from 0.60 to 0.77. Why can removing most of a model make it better?</p>
+    <ul><li data-k="a" data-says="Its training score went down, not up.">The pruned tree fits the training data better</li><li data-k="b" data-says="It's slightly faster, but that's not why it scores better.">Smaller models are faster, so they score higher</li><li data-k="c">Most of those leaves held a few calls each, and their answers were noise from this sample</li></ul>
+    <div class="why">A leaf with 3 calls in it predicts "the share of yes among these 3": 0%, 33%, 67% or 100%, mostly by luck. Pruning merges leaves whose split didn't lower impurity enough to pay for itself (each leaf costs α), keeping the questions that hold up on new data. It's chapter 11's bias-variance trade with leaves as the complexity.</div>
+  </div>
+  <p class="gist">A tree is the most readable model in the zoo and a weak predictor on its own; limit its depth or leaf size, or prune it, and expect it to change when the data does.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Instability.</b> Different samples, different trees. Don't read too much into one tree's exact questions; check whether they survive resampling. To predict, average many trees (random forests, page 6) or chain them (boosting, page 7).</li>
+      <li><b>Overgrowth.</b> Left alone it splits until every leaf is pure (chapter 13's "Why Gini" box): 100% on training, noise on test. Use <code>max_depth</code>, <code>min_samples_leaf</code> or <code>ccp_alpha</code>, chosen on validation data.</li>
+      <li><b>Staircases.</b> Diagonal edges and smooth trends need many cuts (chapter 13); a column like \(x - y\) or a linear model handles them in one.</li>
+      <li><b>Flat outside the data.</b> A leaf predicts an average of training rows, so beyond them it goes flat (page 1 measured what that means for a trend).</li>
+      <li><b>Imbalance.</b> With 11% yes, many leaves are "mostly no", and a depth-2 tree predicts "no" in three of its four boxes. Use the leaf shares as scores (<code>predict_proba</code>) and choose a threshold, or set <code>class_weight</code>.</li>
+    </ul>
+  </details>
+
+  <h2>6. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>Depth</td><td><code>max_depth</code></td><td>The simplest limit. 3 to 5 for a tree to read; deeper only inside forests and boosting.</td></tr>
+    <tr><td>Leaf size</td><td><code>min_samples_leaf</code></td><td>Every leaf's answer is an average over at least this many rows, so it can't be one noisy row. Often the best single knob.</td></tr>
+    <tr><td>Pruning</td><td><code>ccp_alpha</code></td><td>Grow fully, then cut back every split that doesn't pay its cost α; pick α on validation data (<code>cost_complexity_pruning_path</code> lists the candidates).</td></tr>
+    <tr><td>Impurity</td><td><code>criterion</code> (gini, entropy, log_loss)</td><td>Rarely matters; entropy is P5's information gain.</td></tr>
+    <tr><td>Class weights</td><td><code>class_weight</code></td><td>Makes rare classes count more when choosing splits.</td></tr>
+  </table></div>
+  <p>Next in the zoo: hundreds of unstable trees, averaged into one of the most reliable models there is.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing: Moro, Cortez and Rita (2014), UCI Machine Learning Repository, CC BY 4.0.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, tree, rng } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["moons", "blobs", "circles", "diagonal", "xor"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+let boot = 0;
+function draw() {
+  const depth = +$("depth").value, minLeaf = +$("leaf").value, set = data($("ds").value, { noise: 0.1 });
+  if (boot) { const r = rng(boot); set.train = set.train.map(() => set.train[Math.floor(r() * set.train.length)]); }
+  let m;
+  const res = show($("map"), (t) => (m = tree(t, { depth, minLeaf })), set, { overlay: (g, toPx) => {
+    g.strokeStyle = "rgba(244,211,94,.85)"; g.lineWidth = 1.5;
+    const walk = (n, x0, x1, y0, y1) => {
+      if (n.leaf !== undefined) return;
+      g.beginPath();
+      if (n.k === "x") { const [px, a] = toPx(n.cut, y0), [, b] = toPx(n.cut, y1); g.moveTo(px, a); g.lineTo(px, b); g.stroke(); walk(n.l, x0, n.cut, y0, y1); walk(n.r, n.cut, x1, y0, y1); }
+      else { const [a, py] = toPx(x0, n.cut), [b] = toPx(x1, n.cut); g.moveTo(a, py); g.lineTo(b, py); g.stroke(); walk(n.l, x0, x1, y0, n.cut); walk(n.r, x0, x1, n.cut, y1); }
+    };
+    walk(m.root, -1, 1, -1, 1);
+  } });
+  $("depthV").textContent = depth; $("leafV").textContent = minLeaf;
+  const root = m.root.leaf !== undefined ? "no questions: one box" : `first question: is ${m.root.k} < ${m.root.cut.toFixed(2)}?`;
+  $("r1").textContent = `${res.text.replace(/ · fit.*/, "")}\n${m.leaves()} leaves · ${root}${boot ? ` · resample #${boot}` : " · the original dots"}`;
+}
+for (const id of ["ds", "depth", "leaf"]) $(id).addEventListener("input", draw);
+$("resample").onclick = () => { boot++; draw(); if (boot === 3) say("Same kind of data, a different tree each time. That's variance!", "think"); };
+$("orig").onclick = () => { boot = 0; draw(); };
+draw();
+window.blipContext = () => ({ page: "AI model zoo 5: decision trees (CART, greedy splits, reading rules, depth/leaf size/pruning, instability under resampling)", dataset: $("ds").value, depth: +$("depth").value, smallestLeaf: +$("leaf").value, readout: $("r1").textContent });
+</script>
+</body>
+</html>

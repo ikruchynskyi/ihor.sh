@@ -6726,5 +6726,99 @@
     "sec": 5
    }
   ]
+ },
+ "zoo-tree.html": {
+  "goals": [
+   "Read a decision tree's rules and say what each split means",
+   "Control a tree's growth with depth, leaf size and cost-complexity pruning chosen on validation data",
+   "Explain why a single tree is unstable and what that means for using it"
+  ],
+  "needs": [
+   "zoo-naive-bayes.html",
+   "13-trees-and-boosting.html"
+  ],
+  "cards": [
+   [
+    "CART",
+    "Greedy: pick the best single split, then repeat inside each half; never revisit a question."
+   ],
+   [
+    "Tree instability",
+    "A few changed rows can change the root split and with it the whole tree."
+   ],
+   [
+    "min_samples_leaf",
+    "Every leaf averages at least this many rows, so no answer rests on one noisy row."
+   ],
+   [
+    "Cost-complexity pruning",
+    "Grow fully, then remove splits that don't lower impurity by more than α per leaf."
+   ],
+   [
+    "Trees and scale",
+    "Splits use order, not distance: no scaling needed, outliers in inputs barely matter."
+   ],
+   [
+    "Readable model",
+    "A shallow tree prints as if/else rules anyone can check or apply by hand."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Pressing 'resample' on a depth-12 tree mostly changes…",
+    "options": [
+     "its training accuracy",
+     "its map: which dots get their own islands",
+     "nothing"
+    ],
+    "answer": 1,
+    "why": "Deep trees fit any sample perfectly, so the sample shows in the boundary: high variance.",
+    "sec": 1
+   },
+   {
+    "q": "Why can a few changed rows change a whole tree?",
+    "options": [
+     "Trees are random",
+     "Greedy search picks the top split once; a near-tie at the root sends every later question down a different path",
+     "Trees use all rows equally"
+    ],
+    "answer": 1,
+    "why": "Every later question is asked inside the boxes the root made.",
+    "sec": 2
+   },
+   {
+    "q": "Does a column like pdays (999 for 'never contacted') need rescaling for a tree?",
+    "options": [
+     "Yes, always scale",
+     "No: a tree only asks below or above a cut",
+     "Yes, trees can't use numbers"
+    ],
+    "answer": 1,
+    "why": "Order is all a split uses.",
+    "sec": 3
+   },
+   {
+    "q": "Pruning took a tree from 746 leaves to 11 and test AUC rose from 0.60 to 0.77. Why?",
+    "options": [
+     "Tiny leaves' answers were noise from this sample",
+     "The pruned tree fits training data better",
+     "Fewer leaves are faster"
+    ],
+    "answer": 0,
+    "why": "A leaf of 3 calls predicts by luck; pruning keeps splits that pay for themselves.",
+    "sec": 5
+   },
+   {
+    "q": "Two unlimited trees grown on the two halves of the data disagree on 19% of calls. The fix that keeps trees is…",
+    "options": [
+     "a deeper tree",
+     "averaging many trees (a random forest)",
+     "removing columns"
+    ],
+    "answer": 1,
+    "why": "Their mistakes are partly independent, so averaging cancels them.",
+    "sec": 5
+   }
+  ]
  }
 }
