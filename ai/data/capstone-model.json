@@ -1,0 +1,39 @@
+{
+ "about": "Logistic regression predicting whether a NYC subway elevator/escalator outage lasts more than 4 hours, trained on the finished outages in outages.csv (capstone baseline). p = sigmoid(intercept + one-hot weights + scaled-number weights).",
+ "target": "hours > 4",
+ "trained_on": 595,
+ "onehot": {
+  "kind": {
+   "EL": 0.1697435650362829,
+   "ES": -0.20649766415189658
+  },
+  "reason": {
+   "Cleaning": -1.4799131461739181,
+   "Con Edison Power Issue": -0.8868633358739733,
+   "Inspection": 2.23788848182437,
+   "Maintenance": 1.6636082059310129,
+   "Planned Work": -0.7032192538261911,
+   "Repair": 0.5076754345955828,
+   "Station is Under Rehabilitation": 0.6825065125183909,
+   "Under Investigation": -2.0584369981108925
+  }
+ },
+ "numeric": {
+  "ada": {
+   "mean": 0.41680672268907565,
+   "scale": 0.4930303019189263,
+   "weight": -0.4368627306111707
+  },
+  "hour": {
+   "mean": 12.628571428571428,
+   "scale": 8.260965647027504,
+   "weight": 0.3700663808751364
+  },
+  "n_lines": {
+   "mean": 3.447058823529412,
+   "scale": 2.582124183508764,
+   "weight": 0.13212935058656086
+  }
+ },
+ "intercept": -0.826193216934723
+}
