@@ -36,6 +36,7 @@
   <canvas id="curve" class="curve" width="800" height="260" aria-label="Train and validation error by polynomial degree"></canvas>
   <p class="readout" id="r1"></p>
   <p>Low degrees can't bend enough: both errors are high (<b>underfitting</b>, high bias). Somewhere in the middle the validation error bottoms out. Past that, the training error keeps falling toward zero while the validation error shoots up: the curve threads through the noise itself (<b>overfitting</b>, high variance). It's memorizing, not learning.</p>
+  <p class="gist">Training error can always be pushed toward zero by bending more; the only score that counts is the error on points the model never saw.</p>
   <div class="q" data-num="0" data-tol="0.0001">
     <p>15 training points and a polynomial of degree 14 (15 numbers to choose). What is the training error?</p>
     <div class="why">Zero (up to rounding): with as many free numbers as points, the polynomial can pass through every point exactly. A perfect training score, and it tells you nothing.</div>
@@ -46,9 +47,20 @@
     <p>The expected error on new data splits into three parts: \(\text{bias}^2\) (the model is too simple to follow the truth), <b>variance</b> (it changes a lot with which noisy points it happened to get), and the noise itself, which no model can remove. Raising the degree trades bias for variance. The validation curve's U shape is that trade.</p>
   </details>
 
+  <details class="deeper"><summary>Why the validation curve is a U: noise + bias² + variance</summary>
+    <ol>
+      <li>A new point is \(y = f(x) + \varepsilon\): the true curve plus noise with mean 0 and variance \(\sigma^2\) (here \(0.25^2 = 0.0625\)).</li>
+      <li>The fit \(\hat f\) depends on which 20 noisy points we happened to draw. Average it over many draws and call that \(\bar f\): the model's typical answer.</li>
+      <li>Split the miss in three: \(y - \hat f = \varepsilon + (f - \bar f) + (\bar f - \hat f)\). That's the noise, how far the typical answer is from the truth (bias), and how far this draw is from typical (the wobble).</li>
+      <li>Square and average. The cross terms vanish: the new point's noise has nothing to do with the training draw, and the wobble averages to 0 because \(\bar f\) is its average.</li>
+      <li>What's left: \(\mathbb{E}[(y - \hat f)^2] = \sigma^2 + (f - \bar f)^2 + \mathbb{E}[(\hat f - \bar f)^2]\), noise + bias² + variance.</li>
+      <li>Measured by redrawing the widget's 20 points 5,000 times (averaged over \(x\)): degree 1 has bias² 0.050 and variance 0.013; degree 3 has bias² 0.0004 and variance 0.022, the best total; degree 5 has bias² near 0 but variance around 0.4, mostly from draws that leave a gap near an edge for the curve to fly off into. Bias falls with the degree, variance rises, and their sum is the U.</li>
+    </ol>
+  </details>
   <h2>2. Three piles of data</h2>
   <div class="split"><span style="flex:70;background:#58c4dd">train 70%</span><span style="flex:15;background:#f4d35e">validation 15%</span><span style="flex:15;background:#83c167">test 15%</span></div>
   <p><b>Train</b>: what the model learns from. <b>Validation</b>: what you look at to choose things (the degree here; later the learning rate, the architecture, when to stop). <b>Test</b>: touched once, at the end, to report the score. Why the third pile? Because choosing the degree by validation error is itself a kind of fitting: try enough options and one will look good on those particular points by luck. The test set is the only number nobody optimized against.</p>
+  <p class="gist">Fit on train, choose on validation, report on test once: any pile you choose with stops giving an honest score.</p>
   <div class="q" data-answer="b">
     <p>You try 40 model variants and keep the one with the best <b>test</b> score. What's wrong?</p>
     <ul><li data-k="a" data-says="Trying many variants is normal; the problem is which data picked the winner.">Nothing, as long as the test set is big</li><li data-k="b">The test set was used to choose, so its score is now optimistic; you no longer have an honest estimate</li><li data-k="c" data-says="Training time isn't the issue here.">Training 40 models takes too long</li></ul>
@@ -59,6 +71,7 @@
   <h2>3. Regularization: let it bend, but charge for it</h2>
   <p>Instead of fewer parameters, keep degree 12 and add a penalty for large weights to what we minimize (ridge regression, also called weight decay in deep learning). Wiggly curves need big weights, so they get expensive.</p>
   <p class="formula">\[ \text{minimize}\quad \frac{1}{n}\sum_i (y_i - \hat y_i)^2 + \lambda \sum_j w_j^2 \qquad\Rightarrow\qquad w = (X^\top X + n\lambda I)^{-1} X^\top y \]</p>
+  <p class="gist">A penalty on big weights lets a flexible model exist but makes wiggles expensive, so it bends only where the data insists.</p>
   <canvas id="fit2" class="fit" width="800" height="400" aria-label="Degree 12 fit with a ridge penalty"></canvas>
   <div class="row"><label>λ (log scale) <input type="range" id="lam" min="-9" max="1" step="0.25" value="-9"> <b id="lamV" class="math"></b></label></div>
   <p class="readout" id="r2"></p>
@@ -71,8 +84,17 @@
   <p class="readout" id="r3"></p>
   <p>With 300 points, the same flexible model has nowhere to hide its wiggles: the noise averages out and it traces the true curve. This is why big models need big data, and why "get more (clean, representative) data" beats almost any clever trick.</p>
 
+  <p class="gist">More data shrinks the variance: the noise averages out, and a flexible model has nothing left to chase.</p>
+  <details class="deeper"><summary>Where it breaks: when the U isn't the whole story</summary>
+    <ul>
+      <li><b>Huge models, a second descent.</b> Keep adding weights past the number of points and, among all the curves that pass through every point, take the one with the smallest weights: the error comes down again. With 20 points like the widget's (and polynomial features rescaled so high powers don't all look alike), the typical validation error was 0.08 with 5 weights, astronomically large at exactly 20 (a single curve threads every point, whatever it takes), 0.5 at 60 and 0.13 at 200. Deep networks live on that far side, with more weights than examples, and still generalize, partly because the training method acts as a hidden penalty: for a linear model, gradient descent started from zero weights lands exactly on the smallest-weight fit. The U holds for a fixed kind of model; it isn't a law about parameter counts.</li>
+      <li><b>New data that doesn't look like the old.</b> Bias and variance assume new points come from the same world as the training ones. A model trained and validated on summer traffic can sit at the bottom of its U and still fail in January. No penalty fixes a shifted world; a split by time and monitoring after launch do.</li>
+      <li><b>A validation set worn out by reuse.</b> Every choice made by looking at it leaks a little of it into the model. Kaggle teams that climb the public leaderboard by many small submissions often drop on the private one. Fresh data, or fewer looks, restore it.</li>
+    </ul>
+  </details>
   <h2>5. Cross-validation: when data is scarce</h2>
   <p>With only a few hundred examples, holding out 15% for validation leaves the estimate noisy. <b>k-fold cross-validation</b> splits the data into k parts, trains k times (each part takes a turn as validation), and averages the k scores. Every example is used for validation exactly once. Then train the final model on everything (still keeping the test set aside).</p>
+  <p class="gist">Cross-validation gives every point one turn as validation, so a small dataset still gets a steady estimate.</p>
   <div class="code" data-title="Build it: choose the degree by 5-fold cross-validation"><textarea>
 import numpy as np
 import pandas as pd

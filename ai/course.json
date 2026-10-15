@@ -1851,6 +1851,17 @@
     "answer": 1,
     "why": "Put every data-dependent step inside the pipeline.",
     "sec": 5
+   },
+   {
+    "q": "Why does the validation error rise again as the degree keeps growing, while the training error keeps falling?",
+    "options": [
+     "The extra flexibility fits this sample's noise (variance), and new points carry different noise",
+     "Because high-degree polynomials can't be fit by least squares",
+     "Because the validation set is too small to measure anything"
+    ],
+    "answer": 0,
+    "why": "Expected error = noise + bias² + variance. More degree lowers bias but raises variance; past the bottom of the U, variance wins.",
+    "sec": 1
    }
   ]
  },
@@ -1941,6 +1952,17 @@
     "answer": 1,
     "why": "Its probabilities run higher than reality.",
     "sec": 5
+   },
+   {
+    "q": "Why does precision fall when fraud gets rarer, while recall stays the same?",
+    "options": [
+     "Recall is measured only on frauds, but precision mixes in false alarms from the honest crowd, which grows as fraud gets rarer",
+     "Because the model gets worse on rare data",
+     "Because the threshold moves on its own"
+    ],
+    "answer": 0,
+    "why": "Same false-positive rate on more honest payments means more false alarms per real hit. That's the base-rate trap.",
+    "sec": 2
    }
   ]
  },
@@ -2121,6 +2143,17 @@
     "answer": 1,
     "why": "Each look is another chance for noise to cross the line.",
     "sec": 5
+   },
+   {
+    "q": "Why does detecting a lift half as large need about four times the visitors?",
+    "options": [
+     "The standard error shrinks like 1/√n, so halving the gap you can see means doubling √n, which is four times n",
+     "Because smaller effects need a smaller α",
+     "Because the p-value halves when n doubles"
+    ],
+    "answer": 0,
+    "why": "n ≈ 16 p(1 − p)/δ²: δ is squared in the denominator.",
+    "sec": 4
    }
   ]
  },

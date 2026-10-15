@@ -42,6 +42,7 @@
   </div>
   <p class="readout" id="r1"></p>
   <p>That's the honest meaning of 95%: the <b>method</b> catches the truth 95% of the time. Any single interval either contains the true mean or doesn't; you just don't know which. Bigger \(n\) makes intervals narrower, but the share that miss stays the same.</p>
+  <p class="gist">An interval is a net cast by a method: 95% of the nets catch the truth, and any single net either did or didn't.</p>
   <div class="q" data-num="1.96" data-tol="0.01">
     <p>A sample of 100 has mean 50 and standard deviation 10. What's the 95% margin of error (use 1.96)?</p>
     <div class="why">\(1.96 \times 10 / \sqrt{100} = 1.96\). The interval is 48.04 to 51.96. To halve the margin you'd need four times the data.</div>
@@ -54,6 +55,7 @@
 
   <h2>2. Small samples need the t-distribution</h2>
   <p>Tick <b>use 1.96 instead of t</b> with \(n = 5\): about one interval in eight misses instead of one in twenty. With few points, \(s\) itself is a shaky estimate of \(\sigma\), and sometimes it comes out too small, so the intervals need to be wider. The <b>t-distribution</b> (found by a Guinness brewer, W. S. Gosset, testing small batches of barley) is the bell curve with fatter tails that accounts for that. It has <b>degrees of freedom</b> \(n - 1\); by 30 or so it's nearly normal, and its 95% cutoff is close to 1.96.</p>
+  <p class="gist">With few points the spread itself is a guess, sometimes too small, so the net has to be wider.</p>
   <div class="wide"><table class="rules">
     <tr><th>n</th><th>3</th><th>5</th><th>10</th><th>30</th><th>100</th><th>∞</th></tr>
     <tr><td>95% t value</td><td>4.30</td><td>2.78</td><td>2.26</td><td>2.05</td><td>1.98</td><td>1.96</td></tr>
@@ -70,6 +72,7 @@
     <label>both agree on <input type="range" id="agree" min="0.5" max="1" step="0.005" value="0.9"> <b id="agreeV" class="math"></b></label>
   </div>
   <p class="readout" id="r2"></p>
+  <p class="gist">A p-value asks how surprising your gap would be if nothing were going on, not how likely it is that nothing is going on.</p>
   <details class="deeper" open><summary>The math, step by step</summary>
     <p><b>Unpaired</b> (two separate test sets): the difference of two proportions has standard error \(\sqrt{p_A(1 - p_A)/n + p_B(1 - p_B)/n}\); divide the gap by it to get \(z\), and the p-value is the area of both bell tails beyond \(\pm z\).</p>
     <p><b>Paired</b> (one test set, the right way for models): examples both models get right, or both wrong, say nothing about which is better. Only the disagreements count. Let \(b\) = A right and B wrong, \(c\) = A wrong and B right. Under \(H_0\) each disagreement is a coin flip, so (McNemar's test)</p>
@@ -98,6 +101,17 @@
   <p class="readout" id="r3"></p>
   <p>Before a test, you pick \(\alpha\), the smallest effect worth detecting, and the power you want (80% is the custom), and that fixes \(n\). For comparing two proportions at \(\alpha = 0.05\) and 80% power, a handy rule:</p>
   <p class="formula">\[ n \text{ per group} \approx \frac{16\, p(1 - p)}{\delta^2} \]</p>
+  <p class="gist">Power is the chance of seeing an effect that's really there; it grows with the effect's size and with √n, so the sample size is planned before the test starts.</p>
+  <details class="deeper"><summary>Why the 16 in the sample-size rule?</summary>
+    <ol>
+      <li>Each version's conversion rate wobbles like a coin flipped \(n\) times: variance \(p(1 - p)/n\).</li>
+      <li>The difference of two independent groups adds their variances, so its standard error is \(\sqrt{2p(1 - p)/n}\).</li>
+      <li>To be significant at \(\alpha = 0.05\), the measured gap must land beyond 1.96 standard errors.</li>
+      <li>A real gap \(\delta\) gives measured gaps scattered around \(\delta\). For 80% of them to land past the line, \(\delta\) must sit 0.84 standard errors beyond it (0.84 is the bell curve's 80% point). So \(\delta = (1.96 + 0.84)\) standard errors \(= 2.80\) standard errors.</li>
+      <li>Square both sides: \(\delta^2 = 2.80^2 \cdot 2p(1 - p)/n\), so \(n = 15.7\, p(1 - p)/\delta^2\). Round up to 16.</li>
+      <li>The \(\delta^2\) is the lesson: half the effect needs four times the visitors.</li>
+    </ol>
+  </details>
   <div class="q" data-num="14400" data-tol="0.02">
     <p>A sign-up page converts 10% of visitors. To detect a lift to 11% (\(\delta = 0.01\)), about how many visitors does each version need?</p>
     <div class="why">\(16 \times 0.1 \times 0.9 / 0.01^2 = 14{,}400\) per version. Small effects on rare events need big samples, which is why A/B tests run for weeks, and why "we tried it on 200 users and it looked better" means little.</div>
@@ -105,6 +119,7 @@
 
   <h2>5. Peeking ruins the test</h2>
   <p>The 5% false-positive promise holds for <b>one</b> look at a pre-planned sample size. Checking an A/B test every day and stopping the moment \(p < 0.05\) gives noise many chances to cross the line. This simulation runs 1000 <b>A/A tests</b> (both versions identical, so every "win" is false) and peeks after every 100 visitors:</p>
+  <p class="gist">Every extra look is another lottery ticket for noise; the 5% promise holds for one look, planned in advance.</p>
   <div class="code" data-title="Run it: how peeking inflates false positives"><textarea>
 import numpy as np
 from scipy import stats
@@ -149,6 +164,14 @@ print("McNemar exact p =", round(stats.binomtest(c_only, b_only + c_only, 0.5).p
     <div class="why">The same questions are easy or hard for both models, and pairing cancels that shared difficulty, as the section 3 picture showed. Chapter 8's Blip eval compares models exactly this way.</div>
   </div>
 
+  <p class="gist">Online, the only honest comparison is the one you designed before you looked at the numbers.</p>
+  <details class="deeper"><summary>Where it breaks: when the p-value's assumptions don't hold</summary>
+    <ul>
+      <li><b>Many metrics.</b> Watch 20 metrics on an A/A test at \(\alpha = 0.05\) and the chance that at least one "wins" is \(1 - 0.95^{20} \approx 64\%\). Name one primary metric in advance; the rest are guardrails, or get the stricter \(\alpha / k\).</li>
+      <li><b>Samples that aren't independent.</b> The formulas assume every visitor or test example is its own coin. Randomize by request and a heavy user is counted hundreds of times; score 10 crops of one photo and you have about one example, not ten. The standard error comes out too small and so do the p-values. Randomize by user, count whole clusters, or bootstrap by user.</li>
+      <li><b>Tiny counts.</b> The bell curve is an approximation that needs enough disagreements. Five, all going B's way: \(z = 5/\sqrt 5 \approx 2.24\) and \(p \approx 0.025\), but the exact coin-flip answer is \(2 \times (1/2)^5 = 0.0625\), not significant. Below about 25 disagreements, use the exact test (the code box's <code>binomtest</code>).</li>
+    </ul>
+  </details>
   <h2>7. What to carry forward</h2>
   <ul>
     <li>A <b>confidence interval</b> \(\bar x \pm t\, s/\sqrt n\) catches the truth in 95% of samples; the 95% describes the method, not one interval.</li>

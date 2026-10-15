@@ -41,6 +41,7 @@
   <div class="cm" id="cm"></div>
   <div class="stats" id="stats"></div>
   <p>With fraud at 1%, a "model" that says <i>never fraud</i> scores 99% accuracy and catches nothing. Accuracy counts the easy majority; it hides the cases you built the model for. So we split the mistakes:</p>
+  <p class="gist">A classifier only ranks; a threshold turns the ranking into decisions, and accuracy hides what happens to the rare class.</p>
   <div class="q" data-num="99" data-tol="0.01">
     <p>1 payment in 100 is fraud. What accuracy (in %) does the model that always answers "not fraud" get?</p>
     <div class="why">99%: it's right about every honest payment. That's why accuracy alone says almost nothing about rare events.</div>
@@ -50,6 +51,7 @@
   <p><b>Recall</b> (sensitivity): of all the frauds, how many did we flag? <b>Precision</b>: of everything we flagged, how much was really fraud? Move the threshold above: down, and recall rises while precision falls (we flag more honest people); up, the opposite. There's no setting that's free.</p>
   <p class="formula">\[ \text{precision} = \frac{TP}{TP + FP} \qquad \text{recall} = \frac{TP}{TP + FN} \qquad F_1 = \frac{2\,\text{precision}\cdot\text{recall}}{\text{precision} + \text{recall}} \]</p>
   <p>Now make fraud rarer with the middle slider and keep the threshold. Recall doesn't change (it's measured only on frauds) but precision collapses: the honest crowd is so large that even a small false-positive rate buries the real hits. This is the base-rate trap behind every "the test is 99% accurate, so…" mistake.</p>
+  <p class="gist">Recall asks how many real cases you caught, precision how many alarms were real; making the cases rarer crushes precision and leaves recall alone.</p>
   <div class="q" data-answer="b">
     <p>A screening model has a false-positive rate of 1% and catches 90% of cases. The condition affects 1 in 1,000. Roughly what fraction of flagged people actually have it?</p>
     <ul><li data-k="a" data-says="That's the recall, the chance a real case is flagged, not the chance a flag is real.">About 90%</li><li data-k="b">About 8%</li><li data-k="c" data-says="It's low, but the 0.9 real cases per 1,000 still count.">About 0.1%</li></ul>
@@ -61,6 +63,7 @@
   <div class="pair"><canvas id="roc" class="square" width="400" height="400" aria-label="ROC curve"></canvas><canvas id="pr" class="square" width="400" height="400" aria-label="Precision-recall curve"></canvas></div>
   <p class="readout" id="r3"></p>
   <p>The area under the ROC curve (<b>AUC</b>) has a lovely meaning: the chance that a random fraud scores higher than a random honest payment. 0.5 is a coin flip, 1.0 is perfect separation. It doesn't move when you change how rare fraud is (try it), which makes it good for comparing models and bad for predicting what users will see. For rare events, look at the precision-recall curve: that one shows the trap.</p>
+  <p class="gist">AUC is the chance a random positive outranks a random negative: a property of the ranking alone, blind to the threshold and the base rate.</p>
   <details class="deeper" open><summary>The math: AUC as a ranking probability</summary>
     <p>With scores \(s^+_i\) for the \(n_+\) positives and \(s^-_j\) for the \(n_-\) negatives,</p>
     <p class="formula">\[ \text{AUC} = \frac{1}{n_+ n_-} \sum_i \sum_j \mathbf{1}\left[s^+_i > s^-_j\right] \]</p>
@@ -74,8 +77,20 @@
   <p class="readout" id="r4"></p>
   <p>When missing is expensive, the best threshold drops (flag more); when false alarms are expensive, it rises. Medical screening, spam filters and fraud teams all pick different points on the same curve.</p>
 
+  <p class="gist">The threshold is a business decision: it sits where the expected costs of the two mistakes balance.</p>
+  <details class="deeper"><summary>Why the best threshold is at probability \(c_{\text{FP}} / (c_{\text{FP}} + c_{\text{FN}})\)</summary>
+    <ol>
+      <li>Suppose the model is calibrated (section 5): a payment it gives probability \(p\) really is fraud a fraction \(p\) of the time.</li>
+      <li>Flag it, and you pay the false-alarm cost when it's honest: on average \((1 - p)\, c_{\text{FP}}\).</li>
+      <li>Let it through, and you pay the miss cost when it's fraud: on average \(p\, c_{\text{FN}}\).</li>
+      <li>Flag when flagging is cheaper: \((1 - p)\, c_{\text{FP}} < p\, c_{\text{FN}}\), which rearranges to \(p > c_{\text{FP}} / (c_{\text{FP}} + c_{\text{FN}})\).</li>
+      <li>With $20 and $400: flag anything above \(20/420 \approx 4.8\%\). A payment that's 95% likely honest still gets flagged, because one miss costs as much as 20 false alarms.</li>
+      <li>The threshold depends only on the costs, not on the model. The model's job is to make \(p\) honest, which is why calibration matters even when nobody reads the probabilities.</li>
+    </ol>
+  </details>
   <h2>5. Calibration: does 0.8 mean 80%?</h2>
   <p>Many models output a probability, and people act on it ("80% chance of rain, take an umbrella"). A model is <b>calibrated</b> if, among all the times it says 0.8, the thing happens 80% of the time. Modern neural networks are often <b>overconfident</b>: their 0.95s come true much less than 95% of the time. The fix from chapter 5: divide the scores by a temperature before the sigmoid, with T chosen on validation data.</p>
+  <p class="gist">Calibrated means the probabilities can be taken at their word; that's a separate skill from ranking well.</p>
   <canvas id="cal" class="wide" width="800" height="320" aria-label="Reliability diagram"></canvas>
   <div class="row"><label>temperature T <input type="range" id="temp" min="0.2" max="3" step="0.05" value="0.5"> <b id="tempV"></b></label></div>
   <p class="readout" id="r5"></p>
@@ -105,6 +120,13 @@ print("at t = 0.5, scikit-learn: precision", precision_score(y, s &gt;= 0.5), " 
 pd.DataFrame([confusion(t) for t in (0.3, 0.5, 0.7)]).round(2)
 </textarea></div>
 
+  <details class="deeper"><summary>Where it breaks: numbers that were right on the test set</summary>
+    <ul>
+      <li><b>The base rate moves.</b> Test sets are often balanced 50/50 for convenience. At recall 0.9 and a 1% false-positive rate, precision on that balanced set is \(0.45 / (0.45 + 0.005) \approx 99\%\); in production at 1 fraud in 1,000 it's 8% (section 2's question). Recall and AUC carry over, precision and calibration don't: recompute them at the real rate.</li>
+      <li><b>AUC averages thresholds you'll never use.</b> A fraud team can afford maybe 1% false alarms. Two models with the same AUC can differ a lot in that corner, so compare them at the operating point, not by the area.</li>
+      <li><b>Small counts.</b> Precision from 10 flagged payments moves 10 points with each one. The next lesson (Probability 4) says how far a measured rate can wobble and still be the same model.</li>
+    </ul>
+  </details>
   <h2>6. What to report</h2>
   <ul>
     <li><b>The base rate</b> of the thing you predict, and a <b>baseline</b> (always-no, last week's rule) next to every number.</li>
