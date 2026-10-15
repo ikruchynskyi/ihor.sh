@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Embeddings and Retrieval</title>
+  <meta name="description" content="AI from scratch: embeddings and retrieval. Sentence embeddings, semantic search over this course's own lessons in your browser, keyword vs vector vs hybrid search measured on 35 questions, chunking, retrieval-augmented generation with citations, and vector indexes at scale." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    #query { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; }
+    .hits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; font-size: 14px; line-height: 1.4; }
+    .hits h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted); }
+    .hits ol { margin: 0; padding-left: 1.3em; } .hits li { margin: 4px 0; } .hits small { color: var(--muted); }
+    #rag { white-space: pre-wrap; font: 13px/1.5 ui-monospace, Menlo, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-height: 18em; overflow: auto; }
+    @media (max-width: 640px) { .hits { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Embeddings and retrieval · Stage 6: LLM engineering</p>
+  <h1>Embeddings and retrieval</h1>
+  <p class="lede">A language model knows what was in its training data and nothing else: not your company's documents, not today's outages, not this course. The standard fix is to look the facts up and put them in the prompt, <b>retrieval-augmented generation</b> (RAG). Its heart is search by meaning: turn every passage and every question into a vector, and fetch the passages nearest the question. This lesson builds that search over this course's own 47 lessons, measures it honestly with a set of test questions, and assembles the grounded prompt.</p>
+
+  <h2>1. A sentence as a vector</h2>
+  <p>The word vectors lesson gave every word one point. A <b>sentence embedding</b> model gives a whole passage one point: a small transformer (chapter 7) reads the text, and the average of its output vectors is the embedding. It's trained on millions of pairs that mean the same thing (a question and its answer, a title and its article) to put each pair close together and unrelated text far apart. The model used here, all-MiniLM-L6-v2, has 6 layers and 22 million weights and outputs 384 numbers; similarity is chapter 7's cosine.</p>
+  <div class="q" data-answer="b">
+    <p>"How sure can I be about a measured average?" shares almost no words with the section titled "A confidence interval, and what 95% means". Can embedding search still match them?</p>
+    <ul><li data-k="a" data-says="Matching by shared words is keyword search; embeddings were trained to match by meaning.">No: they share almost no words</li><li data-k="b">Yes: the model was trained so that texts about the same thing land close together, whatever words they use</li><li data-k="c" data-says="It works on any text the model can read, not only titles.">Only if the title is in the question</li></ul>
+    <div class="why">It's the search box's default question below: embeddings put the confidence-interval section first, while keyword search latches onto "average" and returns entropy's "average surprise". The flip side: exact codes and rare names, which keyword search finds trivially, can get lost (section 3).</div>
+  </div>
+  <p class="gist">A sentence embedding model turns a whole passage into one vector, trained so that passages meaning the same thing land close together.</p>
+  <details class="deeper"><summary>Why contrastive training makes meaning into distance</summary>
+    <ol>
+      <li>Take a batch of \(B\) matching pairs (question \(q_i\), passage \(p_i\)), embed them all, and compute every cosine \(s_{ij} = q_i \cdot p_j\): a \(B \times B\) table.</li>
+      <li>For question \(i\), treat the row \(s_{i1}, \dots, s_{iB}\) as scores for a \(B\)-way classification whose right answer is \(j = i\): softmax and cross-entropy, exactly chapter 5's loss. (Scores are divided by a small temperature first, chapter 10.)</li>
+      <li>The gradient (chapter 5's \(p - y\)) pulls \(q_i\) toward \(p_i\) and pushes it away from the other passages in the batch, in proportion to how much it confused them.</li>
+      <li>Every other pair in the batch is a free negative example, so bigger batches teach finer distinctions; this loss is often called InfoNCE.</li>
+      <li>After millions of batches, "close" in the vector space means "would have been a matching pair": closeness has become relatedness of meaning, which is all the search needs.</li>
+    </ol>
+  </details>
+
+  <h2>2. Search this course</h2>
+  <p>Every section of every lesson was cut into overlapping pieces of about 100 words, each embedded once (offline) and stored with the page: 640 pieces from 254 sections, 0.9 MB. Your question is embedded right here in the browser by the same model (23 MB, once), and compared with all 640 in a few milliseconds. The left column is keyword search (TF-IDF, which weighs words that are rare in the collection more), the middle is embedding search, the right adds the two.</p>
+  <div class="row"><input id="query" value="How sure can I be about a measured average?" aria-label="A question about the course" /></div>
+  <div class="row"><button id="search">Search</button><span class="readout" id="sstatus" style="margin:0"></span></div>
+  <div class="hits" id="hits"></div>
+  <p>Try: <i>why is the GPU waiting on memory</i>, <i>numbers too big for half precision</i>, <i>leaky ReLU</i>, <i>Court Sq</i>. Notice where each column shines: paraphrases favor embeddings; exact rare words like a station name favor keywords.</p>
+  <p class="gist">Embed every passage once, embed each question when it comes, and return the passages with the highest cosine: search by meaning in a few lines.</p>
+
+  <h2>3. Measure it, don't eyeball it</h2>
+  <p>A search that looks good on three questions you made up proves little (the experiments lesson). So the course comes with 35 test questions, each written in different words than the lessons use and paired with the section that answers it. <b>Recall@k</b> is the share of questions whose right section appears in the top \(k\) results.</p>
+  <div class="row"><button id="runEval">Run the 35-question eval</button><span class="readout" id="estatus" style="margin:0"></span></div>
+  <table class="cmp" id="etable"><tr><th>Method</th><th>recall@1</th><th>recall@3</th><th>recall@5</th></tr></table>
+  <p>Measured offline with the full-precision model: embeddings 54% / 74% / 80%, keywords 54% / 77% / 77%, the hybrid 57% / 83% / 86%. Two lessons hide in that table. Embeddings alone don't beat keywords on this collection: a course is full of exact terms (Adam, IoU, LSTM) that keywords match perfectly. And adding the two up beats both, because they fail on different questions, which is why production search is usually hybrid. The pieces' size mattered too: whole sections of up to 1,600 characters, cut off at the model's 256-token window, got only 74% at k = 5; 600-character pieces got 80%.</p>
+  <div class="q" data-answer="c">
+    <p>Your RAG app passes the top 5 sections to the model. Which number matters most?</p>
+    <ul><li data-k="a" data-says="The model sees all five; whether the best is first matters less.">recall@1</li><li data-k="b" data-says="Accuracy over all sections isn't a retrieval measure.">The share of all 254 sections that are relevant</li><li data-k="c">recall@5: if the answer isn't among the five passages, the model can't use it</li></ul>
+    <div class="why">Measure retrieval at the k you actually use. At 86%, about 1 question in 7 reaches the model without its answer, and then the model either says it doesn't know (good) or makes something up (the evaluating LLMs lesson catches that).</div>
+  </div>
+  <p class="gist">Judge retrieval with test questions and recall@k at the k you'll use; on this course keywords and embeddings tie, and adding them together wins.</p>
+
+  <h2>4. Retrieval-augmented generation</h2>
+  <p>The last step puts the top passages in the prompt, numbered, with instructions to answer only from them and to cite them. This is the prompt your search above would send:</p>
+  <div id="rag">Search first.</div>
+  <ul>
+    <li><b>Grounded</b>: facts come from the passages, which you control and can update without retraining anything.</li>
+    <li><b>Citable</b>: each claim points to a passage, so a user or a checker can verify it.</li>
+    <li><b>Allowed to fail</b>: "If the passages don't contain the answer, say so" turns some hallucinations into honest "I don't know"s.</li>
+  </ul>
+  <p>At scale the 640-row comparison becomes millions: a <b>vector index</b> (FAISS, HNSW graphs in Postgres's pgvector or a vector database) finds the nearest vectors approximately, in milliseconds, by skipping most of them. Before the top results reach the model, a slower, more accurate <b>reranker</b> (a model that reads question and passage together) often reorders them.</p>
+  <p class="gist">RAG puts the retrieved passages in the prompt with instructions to answer only from them and cite them, so answers are grounded, checkable and updatable.</p>
+  <details class="deeper"><summary>Where it breaks: retrieval's blind spots</summary>
+    <ul>
+      <li><b>Exact identifiers.</b> An elevator id like EL445X or a part number means little to an embedding model; keywords find it instantly. Hybrid search, or routing such queries to plain lookup, fixes it.</li>
+      <li><b>Negation and numbers.</b> "Stations that are <i>not</i> accessible" and "stations that are accessible" embed almost identically; so do "under 4 hours" and "over 4 hours". Filters on structured fields belong in code, not in vectors.</li>
+      <li><b>Answers split across pieces.</b> If a fact spans a chunk boundary, neither half matches well. Overlapping pieces (as here) and keeping titles with every piece reduce it.</li>
+      <li><b>Stale or hostile passages.</b> The model trusts what retrieval hands it: an outdated page gives an outdated answer, and a passage with hidden instructions is a prompt injection (chapter 8). Re-index when content changes, and treat retrieved text as data.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Sentence embeddings put whole passages in a vector space where cosine ≈ relatedness, learned contrastively.</li>
+    <li>Index once (embed every piece), search per query (embed, compare, top k).</li>
+    <li>Chunk into pieces the model can read whole, with titles and overlap.</li>
+    <li>Measure with test questions and recall@k; combine keywords and embeddings.</li>
+    <li>RAG: retrieved passages, numbered, "answer only from these, cite them, say if they don't say".</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Embeddings: <a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2">all-MiniLM-L6-v2</a> (Apache 2.0), in the browser via transformers.js. The index and the 35 questions: <code>ai/data/course-chunks.json</code> and <code>retrieval-questions.json</code>, built by <code>ai/data/build_chunks.py</code>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+// the same anchors path.js gives each section heading (ai/learn.js slug; a second import would load a second copy of learn.js)
+const slug = (text) => text.replace(/^\s*\d+\.\s*/, "").toLowerCase().replace(/\\\(|\\\)/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+const $ = (id) => document.getElementById(id);
+const [idx, evalSet] = await Promise.all([fetch("/ai/data/course-chunks.json").then((r) => r.json()), fetch("/ai/data/retrieval-questions.json").then((r) => r.json())]);
+const sec = idx.sections, pcs = idx.pieces, D = idx.dim, raw = Uint8Array.from(atob(idx.vectors), (c) => c.charCodeAt(0));
+const E = new Float32Array(pcs.length * D);
+for (let i = 0; i < pcs.length; i++) { let n = 0; for (let d = 0; d < D; d++) { const v = (raw[i * D + d] << 24) >> 24; E[i * D + d] = v; n += v * v; } n = Math.sqrt(n); for (let d = 0; d < D; d++) E[i * D + d] /= n; }
+// ---------- keyword search: TF-IDF over sections (sublinear tf, smoothed idf, unit length) ----------
+const STOP = new Set("a an and are as at be but by can do does for from how i if in into is it its my of on or so that the their then there these this to was we what when where which who why will with you your not no".split(" "));
+const words = (t) => (t.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 1 && !STOP.has(w));
+const docs = sec.map((s) => { const c = new Map(); for (const w of words(`${s.lesson} ${s.section} ${s.text}`)) c.set(w, (c.get(w) ?? 0) + 1); return c; });
+const df = new Map(); docs.forEach((c) => c.forEach((_, w) => df.set(w, (df.get(w) ?? 0) + 1)));
+const idf = (w) => Math.log((1 + docs.length) / (1 + (df.get(w) ?? 0))) + 1;
+const vecTf = (c) => { const v = new Map(); let n = 0; c.forEach((k, w) => { const x = (1 + Math.log(k)) * idf(w); v.set(w, x); n += x * x; }); n = Math.sqrt(n) || 1; v.forEach((x, w) => v.set(w, x / n)); return v; };
+const docVecs = docs.map(vecTf);
+const keyword = (q) => { const c = new Map(); for (const w of words(q)) c.set(w, (c.get(w) ?? 0) + 1); const qv = vecTf(c); return docVecs.map((dv) => { let s = 0; qv.forEach((x, w) => { s += x * (dv.get(w) ?? 0); }); return s; }); };
+// ---------- embedding search: max cosine over a section's pieces ----------
+let embedder = null;
+async function loadEmbedder() {
+  if (embedder) return embedder;
+  $("sstatus").textContent = "loading the embedding model (23 MB, once)…";
+  const tf = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
+  embedder = await tf.pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "q8" });
+  return embedder;
+}
+async function semantic(q) {
+  const v = (await (await loadEmbedder())(q, { pooling: "mean", normalize: true })).data, out = new Float32Array(sec.length).fill(-1);
+  for (let i = 0; i < pcs.length; i++) { let s = 0; for (let d = 0; d < D; d++) s += E[i * D + d] * v[d]; if (s > out[pcs[i].s]) out[pcs[i].s] = s; }
+  return [...out];
+}
+const z = (a) => { const m = a.reduce((s, x) => s + x, 0) / a.length, sd = Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length) || 1; return a.map((x) => (x - m) / sd); };
+const hybrid = (k, e) => { const a = z(k), b = z(e); return a.map((x, i) => x + b[i]); };
+const top = (s, k = 5) => [...s.keys()].sort((a, b) => s[b] - s[a]).slice(0, k);
+const link = (i) => `<a href="./${sec[i].page}#${slug(sec[i].section)}">${sec[i].lesson}</a>: ${sec[i].section.replace(/^\d+\.\s*/, "")}`;
+async function search() {
+  const q = $("query").value.trim(); if (!q) return;
+  $("sstatus").textContent = "searching…";
+  try {
+    const t0 = performance.now(), k = keyword(q), e = await semantic(q), h = hybrid(k, e), ms = performance.now() - t0;
+    $("hits").innerHTML = [["keywords (TF-IDF)", k], ["embeddings", e], ["hybrid", h]].map(([name, s]) => `<div><h4>${name}</h4><ol>${top(s).map((i) => `<li>${link(i)} <small>${s[i].toFixed(2)}</small></li>`).join("")}</ol></div>`).join("");
+    $("sstatus").textContent = `${pcs.length} pieces compared in ${ms.toFixed(0)} ms (including embedding the question)`;
+    const best = top(h, 3);
+    $("rag").textContent = `system: Answer the question using only the numbered passages below. Cite them like [1]. If they don't contain the answer, say you don't know.\n\n` +
+      best.map((i, n) => `[${n + 1}] ${sec[i].lesson}, "${sec[i].section}" (ihor.sh/ai/${sec[i].page})\n${sec[i].text.slice(0, 500)}…`).join("\n\n") + `\n\nuser: ${q}`;
+  } catch (err) { $("sstatus").textContent = `Couldn't run the embedding model: ${err.message}`; }
+}
+$("search").onclick = search; $("query").addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
+$("runEval").onclick = async () => {
+  $("runEval").disabled = true; const qs = evalSet.questions, target = qs.map((q) => sec.findIndex((s) => s.page === q.page && s.section.startsWith(`${q.section}.`)));
+  const hit = { keywords: [0, 0, 0], embeddings: [0, 0, 0], hybrid: [0, 0, 0] };
+  for (let i = 0; i < qs.length; i++) {
+    $("estatus").textContent = `question ${i + 1} of ${qs.length}…`;
+    const k = keyword(qs[i].q), e = await semantic(qs[i].q), h = hybrid(k, e);
+    [["keywords", k], ["embeddings", e], ["hybrid", h]].forEach(([n, s]) => { const t = top(s, 5); [1, 3, 5].forEach((kk, j) => { if (t.slice(0, kk).includes(target[i])) hit[n][j]++; }); });
+  }
+  $("etable").innerHTML = `<tr><th>Method</th><th>recall@1</th><th>recall@3</th><th>recall@5</th></tr>` + Object.entries(hit).map(([n, h]) => `<tr><td>${n}</td>${h.map((x) => `<td>${Math.round((100 * x) / qs.length)}%</td>`).join("")}</tr>`).join("");
+  $("estatus").textContent = `${qs.length} questions, measured in your browser (8-bit model: numbers may differ by a point or two)`; $("runEval").disabled = false;
+};
+</script>
+</body>
+</html>

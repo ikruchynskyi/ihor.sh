@@ -146,6 +146,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-deep-networks-in-numpy-and-pytor"
  },
+ "embeddings-and-retrieval.html": {
+  "notebook": "embeddings-and-retrieval.ipynb",
+  "title": "AI from scratch: embeddings and retrieval",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/embeddings-and-retrieval.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-embeddings-and-retrieval"
+ },
  "experiments.html": {
   "notebook": "experiments.ipynb",
   "title": "AI from scratch: experiments you can trust",

@@ -4964,5 +4964,114 @@
     "sec": 6
    }
   ]
+ },
+ "embeddings-and-retrieval.html": {
+  "goals": [
+   "Explain sentence embeddings and how contrastive training turns meaning into distance",
+   "Build semantic, keyword and hybrid search and measure them with recall@k",
+   "Choose chunk sizes that an embedding model can read whole",
+   "Assemble a grounded RAG prompt with numbered, citable passages, and know retrieval's blind spots"
+  ],
+  "needs": [
+   "word-vectors.html",
+   "using-llms.html",
+   "12-measuring-a-model.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Sentence embedding",
+    "One vector for a whole passage (a small transformer's averaged outputs), trained so passages meaning the same land close."
+   ],
+   [
+    "Contrastive loss (InfoNCE)",
+    "In a batch of matching pairs, softmax over each row of cosines with the true pair as the answer: pull pairs together, push others apart."
+   ],
+   [
+    "Semantic search",
+    "Embed every piece once; embed the question; return the top-k cosines."
+   ],
+   [
+    "TF-IDF",
+    "Keyword scores weighting words that are rare in the collection; perfect for exact terms and names."
+   ],
+   [
+    "Hybrid search",
+    "Standardize keyword and embedding scores and add them: they fail on different questions."
+   ],
+   [
+    "recall@k",
+    "Share of test questions whose answer appears in the top k results; measure at the k you pass to the model."
+   ],
+   [
+    "Chunking",
+    "Split documents into pieces the embedding model reads whole (here ~100 words), with titles and overlap."
+   ],
+   [
+    "RAG",
+    "Retrieved passages, numbered, in the prompt: answer only from them, cite them, say if they don't say."
+   ],
+   [
+    "Vector index",
+    "Approximate nearest-neighbor search (HNSW, FAISS) over millions of vectors in milliseconds."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can embedding search match a question to a passage that shares none of its words?",
+    "options": [
+     "The model was trained to place texts with the same meaning close together, whatever words they use",
+     "It looks up synonyms in a dictionary",
+     "It can't: it needs shared words"
+    ],
+    "answer": 0,
+    "why": "Contrastive training on paraphrases and question-answer pairs.",
+    "sec": 1
+   },
+   {
+    "q": "Which query is keyword search better at than embedding search?",
+    "options": [
+     "An exact identifier like an elevator id 'EL445X'",
+     "A paraphrased question",
+     "A question in different words than the document"
+    ],
+    "answer": 0,
+    "why": "Rare exact tokens carry little meaning for an embedding model but match perfectly as keywords.",
+    "sec": 2
+   },
+   {
+    "q": "Your RAG app sends the top 5 passages to the model. Which retrieval number matters most?",
+    "options": [
+     "recall@5",
+     "recall@1",
+     "the number of documents indexed"
+    ],
+    "answer": 0,
+    "why": "If the answer isn't in the five passages, the model can't use it.",
+    "sec": 3
+   },
+   {
+    "q": "Why did hybrid search beat both keywords and embeddings on the course's 35 questions?",
+    "options": [
+     "They fail on different questions, so adding their standardized scores fixes some of each one's misses",
+     "Because it uses two models' worth of compute",
+     "Because the questions were written for it"
+    ],
+    "answer": 0,
+    "why": "86% at k = 5 vs 77% and 80% alone.",
+    "sec": 3
+   },
+   {
+    "q": "Why does a RAG prompt tell the model to say when the passages don't contain the answer?",
+    "options": [
+     "So a retrieval miss becomes an honest 'I don't know' instead of a fluent made-up answer",
+     "To make answers shorter",
+     "Because models can't read passages otherwise"
+    ],
+    "answer": 0,
+    "why": "Grounding fails sometimes; the instruction gives the model a way out.",
+    "sec": 4
+   }
+  ]
  }
 }
