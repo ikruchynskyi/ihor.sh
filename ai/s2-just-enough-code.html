@@ -34,6 +34,7 @@ print("one third is", 1 / 3)
     <div class="why">59049. You'll see <code>**</code> for powers, and <code>math.sqrt</code>, <code>math.exp</code> (\(e^x\)) and <code>math.log</code> (\(\ln x\)) all over the path, or their NumPy versions <code>np.sqrt</code>, <code>np.exp</code>, <code>np.log</code>.</div>
   </div>
 
+  <p class="gist">Python is a calculator first: numbers, operations and print.</p>
   <h2>2. Names for values</h2>
   <p>A <b>variable</b> is a name for a value, so you can use it later. <code>=</code> doesn't mean "equals" here, it means "from now on, this name holds this": so <code>x = x + 1</code> is fine, it means "x becomes one more than it was" (short form: <code>x += 1</code>).</p>
   <div class="code" data-title="Run it: variables"><textarea>
@@ -49,6 +50,7 @@ print("total:", minutes)
     <div class="why">\(a\) is 5, then \(5 \times 2 = 10\), then \(10 - 3 = 7\). Each line uses the value the line before left behind.</div>
   </div>
 
+  <p class="gist">A variable is a name for a value, and = means "becomes", not "equals".</p>
   <h2>3. Lists</h2>
   <p>ML is about many examples at once, so you'll constantly hold lists of numbers. A <b>list</b> is written with square brackets. Items are numbered <b>from 0</b>: the first item is <code>xs[0]</code>, and <code>xs[-1]</code> is the last. <code>len(xs)</code> is how many there are, and <code>xs.append(v)</code> adds one to the end.</p>
   <div class="code" data-title="Run it: lists"><textarea>
@@ -65,6 +67,7 @@ print("x =", point[0], "y =", point[1])
     <div class="why">Counting from 0: xs[0] = 4, xs[1] = 8, xs[2] = 15, xs[3] = 16, xs[4] = 23. Counting from zero trips everyone up at first.</div>
   </div>
 
+  <p class="gist">A list holds many values in order, numbered from 0.</p>
   <h2>4. Loops: do it for every item</h2>
   <p>A <b>loop</b> repeats code. <code>for x in xs:</code> runs the indented lines below it once per item. <code>range(1, 6)</code> counts 1, 2, 3, 4, 5 (it stops <i>before</i> the second number). Python uses <b>indentation</b> to say what's inside the loop: four spaces, no curly braces. Adding things up in a loop is the most common pattern on this path: the mean, the error, the gradient.</p>
   <div class="code" data-title="Run it: sum and mean"><textarea>
@@ -82,6 +85,7 @@ for i in range(1, 6):     # 1 to 5, squaring each
     <div class="why">385. One way: <code>s = 0</code>, then <code>for i in range(1, 11): s += i * i</code>, then <code>print(s)</code>. In one line: <code>sum(i * i for i in range(1, 11))</code>. In math it's \(\sum_{i=1}^{10} i^2\): the big sigma is a loop.</div>
   </div>
 
+  <p class="gist">A loop runs the same indented lines once for every item.</p>
   <h2>5. Functions: name a recipe</h2>
   <p>A <b>function</b> takes inputs and gives back an output, exactly like a function in math. <code>def</code> starts one, the indented lines are its recipe, and <code>return</code> hands back the answer. A model is a function: input in, prediction out.</p>
   <div class="code" data-title="Run it: functions"><textarea>
@@ -106,6 +110,7 @@ print("several rides:", [predict(k) for k in [1, 5, 10]])   # a list comprehensi
     <div class="why">\(4 \times 4 - 3 = 13\).</div>
   </div>
 
+  <p class="gist">A function is a named recipe: inputs in, one answer out. A model is a function.</p>
   <h2>6. Decisions, dictionaries and settings</h2>
   <p>A <b>comparison</b> asks a yes-or-no question and answers <code>True</code> or <code>False</code>: <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>==</code> (is equal: two signs, because one <code>=</code> means "becomes") and <code>!=</code> (is not equal). <code>if</code> runs its indented lines only when the answer is <code>True</code>, and <code>else</code> when it isn't; <code>and</code> and <code>or</code> join two questions.</p>
   <p>Four more shapes you'll meet in every notebook. A <b>dictionary</b>, <code>{"key": value}</code>, looks values up by name. A <b>named argument</b>, <code>predict(4, b=10)</code>, sets one of a function's settings by name: you'll see <code>figsize=(6, 3)</code> and <code>lr=0.01</code> everywhere. An <b>f-string</b>, <code>f"... {x} ..."</code>, puts values into text. And <code>lambda x: 2 * x</code> is a one-line function without a name, for when something wants a function as its input: the notebooks' <code>check(lambda: ...)</code> uses one to test your answer when you run it.</p>
@@ -137,6 +142,7 @@ print(long_rides)
     <div class="why">\(a\) is set to 3 by name and \(b\) keeps its default 6: \(3 	imes 10 + 6 = 36\).</div>
   </div>
 
+  <p class="gist">Comparisons answer True or False, if picks a path, and dictionaries look values up by name.</p>
   <h2>7. NumPy: the loops disappear</h2>
   <p>Real ML code almost never loops over numbers one by one. <b>NumPy</b> arrays hold many numbers and do arithmetic on all of them at once: <code>a * km + b</code> with <code>km</code> an array computes every ride's guess in one step. It's shorter, it reads like the math, and it's a hundred times faster, because the loop runs inside NumPy's compiled code. Everybody imports it as <code>np</code>.</p>
   <div class="code" id="rides" data-title="Build it: the mean squared error in one line"><textarea>
@@ -158,6 +164,15 @@ print("mean squared error:", mse)
     <div class="why">0.958: the squared errors are 0.25, 0, 0.25, 0.25, 1 and 4, which add up to 5.75, divided by 6. Training means finding the knobs that make this smallest without trying every value, which is what stage 1 is about.</div>
   </div>
 
+  <p class="gist">A NumPy array does the same arithmetic on every number at once, without a loop.</p>
+  <details class="deeper"><summary>Why NumPy is so much faster than a loop</summary>
+    <ol>
+      <li>A plain Python list can hold anything: a number, a word, another list. So for every single item, Python has to check what it is and what "times" means for it, then make a new object for the answer.</li>
+      <li>A NumPy array holds only one kind of number, packed side by side in memory, with no checks needed per item.</li>
+      <li>So <code>km * 2.5 + 6</code> becomes one call into fast compiled code that runs straight down the block of numbers, and modern processors even do several numbers per instruction.</li>
+      <li>On a laptop, doing that to a million numbers took about 27 milliseconds with a Python loop and under 1 millisecond with NumPy: about 35 times faster. Training a model does this billions of times, so it matters.</li>
+    </ol>
+  </details>
   <h2>8. matplotlib: see it</h2>
   <p><b>matplotlib</b> draws charts; everyone imports its plotting part as <code>plt</code>. This box reuses the rides from the box above (it runs that one quietly first) and plots the error for many values of the knob \(a\):</p>
   <div class="code" data-uses="rides" data-title="Run it: the error as you turn a knob"><textarea>
@@ -174,6 +189,7 @@ best = a_values[np.argmin(mses)]
 print("best a on this grid:", round(best, 2))
 </textarea></div>
 
+  <p class="gist">A chart is the fastest way to see what a list of numbers is doing.</p>
   <h2>9. pandas: tables</h2>
   <p>Real data comes as tables: rows of examples, named columns of features. <b>pandas</b> (imported as <code>pd</code>) holds a table in a <b>DataFrame</b>, and it can add columns, summarize, filter and group in a line each. The last line of a box, if it's just a value, is shown, so a DataFrame shows as a table.</p>
   <div class="code" data-uses="rides" data-title="Run it: a DataFrame"><textarea>
@@ -193,9 +209,18 @@ df[long]                           # only the longer rides
 </textarea></div>
   <p>A comparison on a column gives a column of <code>True</code>/<code>False</code>. Because <code>True</code> counts as 1, its <code>.sum()</code> is <i>how many</i> and its <code>.mean()</code> is <i>what share</i>, and putting it in <code>df[...]</code> keeps only those rows. <code>groupby</code> splits the table by a column and summarizes each part. Stage 4 goes deep into pandas and scikit-learn; this is enough until then.</p>
 
+  <p class="gist">A DataFrame is a table with named columns, and most questions about it take one line.</p>
   <h2>10. Where to run real code: notebooks</h2>
   <p>The boxes on these pages are for small experiments. Real ML work happens in <b>notebooks</b>: documents mixing code, output and notes, run on a machine with a GPU. Two free places run them in your browser, no install: <b>Google Colab</b> and <b>Kaggle</b>. Every lesson on this path has a <b>practice notebook</b> that opens in either with one click; that's where you'll use PyTorch (stage 2 onward), which is too big to run inside a web page.</p>
 
+  <p class="gist">Notebooks mix code, output and notes, and run free in the browser on Colab or Kaggle.</p>
+  <details class="deeper"><summary>Where it breaks: three Python surprises</summary>
+    <ul>
+      <li><b>Decimals aren't exact.</b> <code>0.1 + 0.2</code> prints <code>0.30000000000000004</code>, so <code>0.1 + 0.2 == 0.3</code> is <code>False</code>. Computers store numbers in binary, where 0.1 has no exact form, just as 1/3 has none in decimal. Compare decimals with a small tolerance (<code>np.isclose(a, b)</code>), never with <code>==</code>.</li>
+      <li><b>Two names, one list.</b> After <code>b = a</code>, both names point at the same list: <code>b.append(5)</code> changes <code>a</code> too. Use <code>b = a.copy()</code> when you want a separate one. NumPy arrays and DataFrames work the same way.</li>
+      <li><b>Numbers that are really text.</b> <code>"3" + "4"</code> is <code>"34"</code>. One "N/A" in a column of a file is enough for pandas to read the whole column as text, and then sums and averages fail or go strange. Check a table's types (<code>df.dtypes</code>) right after loading it.</li>
+    </ul>
+  </details>
   <h2>11. What to carry forward</h2>
   <ul>
     <li><code>=</code> means "becomes"; lists count from 0; indentation shows what's inside a loop or function.</li>

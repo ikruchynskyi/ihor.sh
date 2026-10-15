@@ -46,6 +46,7 @@
     <div class="why">That's why preprocessing ships with the model, as code, not as a note in a README: the same function must run in training and in the app.</div>
   </div>
 
+  <p class="gist">A deployed model is weights plus the exact preprocessing, the code that turns scores into an answer, and an app around them.</p>
   <h2>2. Try one</h2>
   <p>Below is MobileNet, a small network trained on ImageNet (1.2 million photos, 1,000 categories), running entirely in your browser. Pick a photo, or use the sample. Its top five guesses and their probabilities appear next to it.</p>
   <div class="demo">
@@ -64,6 +65,7 @@
     <div class="why">Softmax spreads 100% over the classes it knows. Apps handle this with a confidence threshold ("not sure"), an extra "other" class, or a first model that checks what kind of picture it is.</div>
   </div>
 
+  <p class="gist">A model trained on certain photos answers best on photos like them, and always answers with one of its classes.</p>
   <h2>3. What the model needs from a photo</h2>
   <p>Pretrained image models expect the exact recipe used in training. For the ImageNet family it's: resize so the short side is 256 pixels, cut the central 224×224 square, scale pixel values from 0–255 to 0–1, then normalize each color channel with ImageNet's mean and standard deviation, and arrange the array as (batch, channels, height, width). Here's that recipe on a made-up 300×400 image:</p>
   <div class="code" data-title="Run it: preprocessing, step by step"><textarea>
@@ -94,6 +96,16 @@ print("for the network:", x.shape, x.dtype, round(x.min(), 2), "…", round(x.ma
     <div class="why">\(224 \times 224 \times 3 = 150{,}528\). In PyTorch, torchvision's <code>weights.transforms()</code> does all five steps for you, which is the safest choice: it's the recipe the weights were trained with.</div>
   </div>
 
+  <p class="gist">Resize, crop, scale and normalize exactly as in training, or the model quietly gets worse.</p>
+  <details class="deeper"><summary>Why the preprocessing has to match exactly</summary>
+    <ol>
+      <li>The network's first layer multiplies each pixel by weights that were tuned on normalized pixels, numbers between about −2.1 and 2.2.</li>
+      <li>Send raw pixels (0 to 255) through the same normalization and a white pixel becomes about 1,111 instead of 2.2: every input is hundreds of times bigger than anything seen in training.</li>
+      <li>Those huge numbers flow through every layer, the final scores become enormous, and softmax puts nearly 100% on some class that has nothing to do with the photo.</li>
+      <li>Smaller mismatches fail more quietly: colors in another order (blue first instead of red) make the "red" filters read blue, and a different crop shows the network a different part of the object. Accuracy drops a few points or a lot, with no error message.</li>
+      <li>That's why the app takes the preprocessing from the same place as the weights.</li>
+    </ol>
+  </details>
   <h2>4. From scores to an answer</h2>
   <p>The network returns one score per class, called <b>logits</b>. Softmax (chapter 5) turns them into probabilities; the app shows the top few. Gradio's label widget expects exactly this: a dictionary from label to probability.</p>
   <div class="code" data-title="Run it: logits to a top-5 answer"><textarea>
@@ -117,6 +129,7 @@ print("not sure" if max(answer.values()) < 0.5 else "confident", "(a threshold a
     <div class="why">Showing the top few with probabilities, as Gradio's Label does, lets people see when the model is torn. Hiding uncertainty is how a decent model earns a bad reputation.</div>
   </div>
 
+  <p class="gist">Softmax turns the network's scores into probabilities, and a careful app shows the top few, not just one.</p>
   <h2>5. The app: Gradio, and a home on Hugging Face Spaces</h2>
   <p><b>Gradio</b> is a Python library that builds a web interface around any function: you say what goes in (an image) and what comes out (a label with probabilities), and it makes the page. This is a whole app, the one the practice notebook writes as <code>app.py</code>:</p>
   <pre class="static"><code>import gradio as gr, torch, torchvision, json
@@ -149,6 +162,14 @@ gr.Interface(predict, gr.Image(type="pil"), gr.Label(num_top_classes=5)).launch(
       <li><b>Pretrained</b>: already trained on a big dataset; <b>fine-tuning</b>: training it a little more on your own task.</li>
     </ul>
     <p>The <a href="./glossary.html">glossary</a> has every term on the path in one place.</p>
+  </details>
+  <p class="gist">Gradio builds the page around a function, and a Hugging Face Space hosts it free from three files.</p>
+  <details class="deeper"><summary>Where it breaks: what real users send</summary>
+    <ul>
+      <li><b>Photos that aren't in its world.</b> A pet-breed model shown a car still names a breed, sometimes with high probability. Add a check (a general model asking "is this an animal?") or say "not sure" when the top probability is low.</li>
+      <li><b>Phone photos lying on their side.</b> Phones often save a photo sideways with a note saying "rotate me". Code that ignores the note feeds the network a sideways picture. <code>ImageOps.exif_transpose</code> in Pillow applies it.</li>
+      <li><b>A free app that falls asleep.</b> Free Spaces go to sleep after a while without visitors, and the next visitor waits while it wakes up and loads the model. Fine for a demo; a product needs a paid, always-on host (stage 7).</li>
+    </ul>
   </details>
   <h2>6. What to carry forward</h2>
   <ul>

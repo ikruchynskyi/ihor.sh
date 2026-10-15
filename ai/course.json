@@ -86,6 +86,17 @@
     "answer": 1,
     "why": "A model that only fits its training examples may fail on new ones (overfitting, stage 3).",
     "sec": 7
+   },
+   {
+    "q": "Why does the error square each miss instead of just averaging the misses?",
+    "options": [
+     "Misses above and below the line would cancel out, and squaring also makes big misses count much more",
+     "Because squared numbers are easier to type",
+     "Because the error must always be a whole number"
+    ],
+    "answer": 0,
+    "why": "A tilted line could average zero plain misses. Squared, every miss counts, and one 4-minute miss (16) counts more than two 2-minute ones (8).",
+    "sec": 2
    }
   ],
   "teaches": []
@@ -177,6 +188,17 @@
     "answer": 1,
     "why": "A condition inside df[…] filters rows.",
     "sec": 9
+   },
+   {
+    "q": "Why does 0.1 + 0.2 == 0.3 give False in Python?",
+    "options": [
+     "Computers store decimals in binary, where 0.1 has no exact form, so the sum is 0.30000000000000004",
+     "Because == compares text, not numbers",
+     "Because Python rounds every sum down"
+    ],
+    "answer": 0,
+    "why": "Like 1/3 in decimal, 0.1 in binary goes on forever and gets cut off. Compare decimals with a tolerance, such as np.isclose.",
+    "sec": 1
    }
   ],
   "teaches": [
@@ -2722,6 +2744,17 @@
     "answer": 0,
     "why": "Spaces installs the requirements and runs app.py.",
     "sec": 5
+   },
+   {
+    "q": "Why must an app resize and normalize photos exactly the way training did?",
+    "options": [
+     "The weights were tuned on numbers in that exact range and layout, so other inputs give the network numbers it has never seen",
+     "Because the model file stores the photo size and refuses others",
+     "Because Gradio requires it"
+    ],
+    "answer": 0,
+    "why": "Raw 0–255 pixels are hundreds of times bigger than normalized ones; the scores blow up and softmax picks a nonsense class, with no error message.",
+    "sec": 3
    }
   ]
  },

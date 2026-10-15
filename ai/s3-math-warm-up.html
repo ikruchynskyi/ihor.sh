@@ -54,6 +54,7 @@
   </div>
   <p>Many functions take <b>several inputs</b>: \(f(a, b) = a \times 4 + b\) is the taxi model's guess for a 4 km ride as you turn both knobs. Stage 1 draws functions of two inputs as landscapes you walk over.</p>
 
+  <p class="gist">A function turns an input number into an output number, and its graph is every such pair drawn as a dot.</p>
   <h2>2. Powers, and very big and very small numbers</h2>
   <p>\(2^5\) means five 2s multiplied: \(2 \times 2 \times 2 \times 2 \times 2 = 32\). Three rules follow just from counting how many copies get multiplied:</p>
   <div class="wide"><table class="rules">
@@ -73,6 +74,7 @@
   </div>
   <p>The number \(e \approx 2.718\) is special because \(e^x\) grows at a rate equal to its own value (Calculus 1 shows why that makes it the easy one). You'll mostly see it in \(e^x\), written <code>np.exp(x)</code> in code.</p>
 
+  <p class="gist">A power counts how many copies are multiplied, and scientific notation tames very big and very small numbers.</p>
   <h2>3. Logarithms: counting the multiplications</h2>
   <p>A <b>logarithm</b> answers "what power?". \(\log_2 8 = 3\) because \(2^3 = 8\): it counts how many 2s you multiply to get 8. \(\log_{10} 1000 = 3\) counts the zeros. And the <b>natural log</b> \(\ln x\) is the power of \(e\): \(\ln x = t\) means \(e^t = x\). So \(\ln\) undoes \(e^x\), and the two graphs are mirror images across the dashed line \(y = x\). Drag \(t\):</p>
   <canvas id="mir" class="square" width="500" height="500" aria-label="eˣ and ln x as mirror images across the line y = x"></canvas>
@@ -111,6 +113,16 @@ print("log base 2 of 1024:", math.log2(1024))
     <div class="why">\(e^0 = 1\), so \(\ln 1 = 0\). A model that gives the right answer probability 1 has a log-probability of 0: no loss at all.</div>
   </div>
 
+  <p class="gist">A logarithm counts multiplications, so it turns multiplying into adding.</p>
+  <details class="deeper"><summary>Why ML works with logs of probabilities</summary>
+    <ol>
+      <li>A model's probability for a whole dataset is a product: one probability per example, all multiplied.</li>
+      <li>Say a model gives each of 1,000 examples probability 0.5. The product is \(0.5^{1000} \approx 9 \times 10^{-302}\): the computer can just about hold that.</li>
+      <li>With 1,100 examples it's smaller than the smallest number a computer stores, and it comes out as exactly 0. Every model would score the same, 0, and nothing could be compared.</li>
+      <li>Take the log instead: \(\ln(0.5^{1000}) = 1000 \times \ln 0.5 \approx -693\), an ordinary number, and it stays ordinary for a billion examples.</li>
+      <li>Because a log only ever goes up when its input goes up, the model with the bigger product also has the bigger sum of logs. Nothing is lost by switching, and that's why losses in ML are sums of logs.</li>
+    </ol>
+  </details>
   <h2>4. The Σ sign is a loop</h2>
   <p>The big Greek S, \(\Sigma\) (sigma), means "add these up". The bits around it say what to add:</p>
   <p class="formula">\[ \sum_{i=1}^{4} i^2 = 1^2 + 2^2 + 3^2 + 4^2 = 30 \]</p>
@@ -137,6 +149,7 @@ print("log base 2 of 1024:", math.log2(1024))
     <div class="why">\(\frac12 + \frac14 + \frac18 + \dots\) heads to 1: each new term covers half the gap that's left. Infinitely many terms can add up to a finite number. Stage 4's momentum optimizer is built on a sum just like this one.</div>
   </div>
 
+  <p class="gist">Σ is a loop written in math: start, stop, and what to add each time.</p>
   <h2>5. The symbols you'll meet</h2>
   <p>ML borrows Greek letters for its knobs and settings. There are only a handful, and each one is used for the same thing almost everywhere:</p>
   <div class="wide"><table class="rules">
@@ -156,6 +169,7 @@ print("log base 2 of 1024:", math.log2(1024))
   </table></div>
   <p>Don't memorize the table: come back to it. After a few lessons the letters read like words.</p>
 
+  <p class="gist">A handful of Greek letters do the same jobs almost everywhere: come back to the table until they read like words.</p>
   <h2>6. Reading a formula out loud</h2>
   <p>Every formula is a sentence. Read it left to right, say each symbol's name, and turn it into a recipe. Try each one before revealing.</p>
   <div class="q">
@@ -197,6 +211,14 @@ print("θ after one step:", theta)
 </textarea></div>
   <p>One small trap: math counts examples from 1 (\(x_1\) to \(x_n\)), code counts from 0 (<code>xs[0]</code> to <code>xs[n - 1]</code>). Same examples, shifted labels.</p>
 
+  <p class="gist">Every formula is a sentence and a recipe: read it left to right and it turns into code.</p>
+  <details class="deeper"><summary>Where it breaks: when the math is fine and the computer isn't</summary>
+    <ul>
+      <li><b>Too big to hold.</b> \(e^{1000}\) is a perfectly good number, but <code>np.exp(1000)</code> gives <code>inf</code>. Softmax (chapter 5) meets this, and the fix is a small trick: subtract the biggest score first, which changes nothing in the math.</li>
+      <li><b>The log of zero.</b> \(\ln 0\) is minus infinity: <code>np.log(0)</code> gives <code>-inf</code>. A model that gave probability 0 to something that happened gets an infinite loss, which is why models never quite say 0.</li>
+      <li><b>Counting from 1 versus 0.</b> \(x_1\) in a formula is <code>xs[0]</code> in code. When a result is off by one item, look here first.</li>
+    </ul>
+  </details>
   <h2>7. What to carry forward</h2>
   <ul>
     <li>A <b>function</b> maps inputs to an output; its <b>graph</b> plots every (input, output) pair. A model is a function.</li>

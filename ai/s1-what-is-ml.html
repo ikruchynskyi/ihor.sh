@@ -37,6 +37,7 @@
     <div class="why">Nobody can write down the rules for every person's handwriting, but it's easy to collect millions of envelopes along with the address that turned out to be right. When the rule is hard to write and examples are easy to get, that's machine learning's territory.</div>
   </div>
 
+  <p class="gist">A normal program follows rules a person wrote; a model finds its rule from examples that come with answers.</p>
   <h2>2. A model is a function with knobs</h2>
   <p>Here's a small, made-up example: 40 taxi rides, each a dot. Across is how far the ride went, up is how many minutes it took. We want to predict the time for a ride we haven't taken yet. The simplest guess is a straight line:</p>
   <p class="formula">\[ \text{minutes} = a \times \text{km} + b \]</p>
@@ -55,6 +56,16 @@
     <div class="why">\(3 \times 4 + 5 = 17\). That's all "running a model" means: put the input into the formula and read off the output. A huge language model does the same thing, with billions of knobs instead of two.</div>
   </div>
 
+  <p class="gist">A model is a formula with knobs, and one number, the error, says how good a setting of the knobs is.</p>
+  <details class="deeper"><summary>Why square the misses?</summary>
+    <ol>
+      <li>Some rides take longer than the line says (a miss above it), some shorter (a miss below). If we just averaged the misses, the ups and downs would cancel: a badly tilted line could still average out to zero.</li>
+      <li>Squaring makes every miss count as positive, so nothing cancels.</li>
+      <li>It also makes big misses count much more than small ones: one 4-minute miss counts 16, while two 2-minute misses count 4 + 4 = 8. A line that is a little off everywhere beats one that is way off somewhere.</li>
+      <li>And as you turn a knob, the squared error changes smoothly, in a bowl shape with one lowest point. That's what lets the computer find "downhill" in the next section.</li>
+      <li>It's a choice, not a law. Averaging the plain sizes of the misses (ignoring up or down) is another good choice, and stage 1 shows that the two lead to different "best" lines.</li>
+    </ol>
+  </details>
   <h2>3. Training: let the computer turn the knobs</h2>
   <p>Press <b>Let the computer train it</b>. The computer does what you did, but carefully: for each knob it asks "if I nudge you up a tiny bit, does the error go up or down?", then moves every knob a small step in the direction that lowers the error, and repeats. The strip under the picture shows the error after each step. That loop is <b>training</b>, and the method is called <b>gradient descent</b>. Stage 1 shows exactly how the computer gets the "up or down" answer (it's a derivative), and stage 2 shows the same loop training a neural network.</p>
   <div class="q" data-answer="a">
@@ -64,6 +75,7 @@
   </div>
   <p>One honest warning: the real test of a model is rides it <i>hasn't</i> seen. A model that fits its examples perfectly but fails on new ones is useless, and that trap, called <b>overfitting</b>, gets a whole lesson in stage 3.</p>
 
+  <p class="gist">Training is turning every knob a little in the direction that lowers the error, over and over.</p>
   <h2>4. Three ways to learn</h2>
   <table class="rules">
     <tr><th>kind</th><th>what you give it</th><th>examples</th></tr>
@@ -78,6 +90,14 @@
     <div class="why">No answers, just looking for groups: unsupervised learning (clustering, in stage 3).</div>
   </div>
 
+  <p class="gist">Supervised learning learns from answers; the other kinds find structure without answers, or learn from rewards.</p>
+  <details class="deeper"><summary>Where it breaks: when learning from examples goes wrong</summary>
+    <ul>
+      <li><b>New cases unlike the examples.</b> A taxi model learned from ordinary days knows nothing about a snowstorm. A model can only repeat patterns its examples contained.</li>
+      <li><b>Wrong answers in the examples.</b> If the people labeling photos mistook some foxes for dogs, the model learns their mistake as faithfully as everything else.</li>
+      <li><b>A pattern that isn't the reason.</b> In one well-known experiment, a model told wolves from huskies almost perfectly, by looking for snow in the background: most wolf photos had snow. It found a rule that matched the examples, just not the rule anyone meant. Checking what a model actually looks at is part of the job.</li>
+    </ul>
+  </details>
   <h2>5. What an ML engineer does</h2>
   <p>Training is maybe a tenth of the job. The rest is a loop, and this path teaches every step of it:</p>
   <table class="rules">
@@ -90,6 +110,7 @@
     <tr><td>Ship and watch</td><td>Make it fast and cheap, put it in front of users, notice when the world changes</td><td>stages 6–7</td></tr>
   </table>
 
+  <p class="gist">Training is a small part of the job; the rest is getting good data, measuring honestly, and keeping the model working.</p>
   <h2>6. How these pages work</h2>
   <p>Boxes marked <b>Your turn</b> ask you to predict before you're told: guessing first, even wrong, is how it sticks. Sliders and dots in pictures can be dragged. And code boxes run right in the page. Try this one: press <b>Run</b>, then change a number and run it again.</p>
   <div class="code" data-title="Run it: your first model in code"><textarea>
