@@ -72,7 +72,7 @@
     <li class="card"><span class="tag">Deep networks</span><a href="./deep-networks.html"><b>Deep networks, layer by layer</b></a><p>An L-layer network trained in the page: a whole batch as one matrix, getting the shapes right, why random init and why depth.</p></li>
     <li class="card"><span class="tag">PyTorch</span><a href="./training-in-pytorch.html"><b>Training in PyTorch</b></a><p>Tensors on a GPU, autograd, nn.Module, Dataset and DataLoader, the training loop with epochs and batches, saving and loading: the deep network you just built, written the way it's done at work.</p></li>
   </ol>
-  <p class="milestone"><b>Milestone:</b> a multi-layer network written from scratch that learns a spiral, with its gradients checked.</p>
+  <p class="milestone"><b>Milestone:</b> <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-2.ipynb" target="_blank" rel="noopener">Digit classifier from scratch and in PyTorch (Colab)</a> · forward pass, backpropagation, and SGD in NumPy, then replicated in PyTorch.</p>
 
   <h2 class="stage" id="stage-3">Stage 3 · Classic ML and judging models</h2>
   <p class="goal">What most companies' ML actually is: tables, splits, metrics, trees, and deciding what to fix next.</p>
@@ -85,7 +85,7 @@
     <li class="card"><span class="tag">Unsupervised</span><a href="./clusters-and-anomalies.html"><b>Clusters and anomalies</b></a><p>Neighbors that vote on a map of 396 rail stations, k-means you step through, Gaussian mixtures as soft clusters, and spotting unusual events in this site's own outage archive.</p></li>
     <li class="card"><span class="tag">Strategy</span><a href="./ml-strategy.html"><b>ML strategy: what to fix next</b></a><p>Error analysis, human-level performance, mismatched data, and a case study where your decisions have consequences.</p></li>
   </ol>
-  <p class="milestone"><b>Milestone:</b> predict broken elevators from this site's outage archive with a boosted-tree model, an honest time split and a cost-based threshold.</p>
+  <p class="milestone"><b>Milestone:</b> <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-3.ipynb" target="_blank" rel="noopener">Bank calls end-to-end (Colab)</a> · leakage auditing, time-based split, logistic baseline, HistGradientBoosting, profit threshold, and model card.</p>
 
   <h2 class="stage" id="stage-4">Stage 4 · The engineer's toolkit</h2>
   <p class="goal">The tools the job uses: Python, NumPy, pandas, scikit-learn and PyTorch, plus the tricks that make deep networks train.</p>
@@ -99,7 +99,7 @@
     <li class="card"><span class="tag">Toolkit 5</span><a href="./gpus-and-scale.html"><b>GPUs and scale</b></a><p>Batching, mixed precision, the memory math of a model, and splitting work across GPUs.</p></li>
     <li class="card"><span class="tag">Toolkit 6</span><a href="./experiments.html"><b>Experiments you can trust</b></a><p>Seeds, configs, experiment tracking, versioned data and models: reproducing last week's result exactly.</p></li>
   </ol>
-  <p class="milestone"><b>Milestone:</b> the elevator model again in pandas and scikit-learn, and an image classifier trained in PyTorch, both in a notebook you keep.</p>
+  <p class="milestone"><b>Milestone:</b> <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-4.ipynb" target="_blank" rel="noopener">Pipelines and PyTorch (Colab)</a> · elevator outage prediction in a scikit-learn ColumnTransformer pipeline, plus a PyTorch image classifier.</p>
 
   <h2 class="stage" id="zoo">Model zoo</h2>
   <p class="goal">The most popular models, one page each, all built the same way: the idea in one picture, the algorithm from scratch, the library call, where it shines and where it breaks (measured), and the knobs that matter.</p>
@@ -130,7 +130,7 @@
     <li class="card"><span class="tag">Chapter 7</span><a href="./07-attention.html"><b>Attention and transformers</b></a><p>Words as vectors, attention as weighted averages, a tiny transformer you can poke.</p></li>
     <li class="card"><span class="tag">Chapter 10</span><a href="./10-tiny-transformer.html"><b>A tiny transformer</b></a><p>A real GPT, one block and 36,000 numbers, trained in your browser on NYC subway station names.</p></li>
   </ol>
-  <p class="milestone"><b>Milestone:</b> fine-tune a pretrained image model on your own categories and report its precision and recall per class.</p>
+  <p class="milestone"><b>Milestone:</b> <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-5.ipynb" target="_blank" rel="noopener">Pretrained vision fine-tuning (Colab)</a> · fine-tune MobileNetV3 with custom head, evaluate per-class precision/recall and macro F1.</p>
 
   <h2 class="stage" id="stage-6">Stage 6 · LLM engineering</h2>
   <p class="goal">Building products on language models: retrieval, fine-tuning, evaluation and agents.</p>
@@ -141,7 +141,7 @@
     <li class="card"><span class="tag">Evals</span><a href="./evaluating-llms.html"><b>Evaluating LLMs</b></a><p>Grade the graders yourself, automatic checks vs a model judge measured with kappa, faithfulness for RAG, and paired comparisons that tell improvement from noise.</p></li>
     <li class="card"><span class="tag">Chapter 8</span><a href="./08-agents.html"><b>Agents</b></a><p>Tools, planning and evals, using Blip, the companion on this site, as the worked example.</p></li>
   </ol>
-  <p class="milestone"><b>Milestone:</b> a question-answering bot over a set of documents, with an eval set that proves it's grounded.</p>
+  <p class="milestone"><b>Milestone:</b> <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-6.ipynb" target="_blank" rel="noopener">RAG QA bot and grounding eval (Colab)</a> · vector retrieval over course chunks with recall@3 and grounding ratio evaluations.</p>
 
   <h2 class="stage" id="stage-7">Stage 7 · Production</h2>
   <p class="goal">Getting a model to users and keeping it working.</p>
