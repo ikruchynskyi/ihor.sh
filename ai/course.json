@@ -6348,5 +6348,100 @@
     "sec": 4
    }
   ]
+ },
+ "zoo-linear.html": {
+  "goals": [
+   "Explain least squares as minimizing the total of squared misses, and solve it with the normal equation",
+   "Tell what ridge and lasso penalties do to weights, and pick between them",
+   "Spot where a line breaks: bends, outliers, near-duplicate columns and trends past the data"
+  ],
+  "needs": [
+   "l1-systems-and-inverses.html",
+   "11-overfitting.html",
+   "pandas-and-sklearn.html"
+  ],
+  "cards": [
+   [
+    "Least squares",
+    "Pick the weights that make the sum of squared residuals smallest; big misses dominate."
+   ],
+   [
+    "Normal equation",
+    "XᵀX w = Xᵀy: the residuals end up perpendicular to every column."
+   ],
+   [
+    "Ridge",
+    "Adds λ·Σw² to the loss: every weight shrinks, twins share the credit evenly."
+   ],
+   [
+    "Lasso",
+    "Adds λ·Σ|w|: the soft threshold sets the least useful weights to exactly zero."
+   ],
+   [
+    "Collinearity",
+    "Near-duplicate columns make weights huge and unstable while predictions stay the same."
+   ],
+   [
+    "Extrapolation",
+    "A line keeps its trend past the data; trees go flat. Either can be wrong."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Least squares minimizes…",
+    "options": [
+     "the number of points off the line",
+     "the total of the squared vertical misses",
+     "the distance from the points to the origin"
+    ],
+    "answer": 1,
+    "why": "The total area of the squares on the residuals.",
+    "sec": 1
+   },
+   {
+    "q": "Why does one far-off point pull a least-squares line so much?",
+    "options": [
+     "Its miss is squared, so shrinking it is worth making every other point a little worse",
+     "Least squares ignores most points",
+     "The line must pass through every point"
+    ],
+    "answer": 0,
+    "why": "A miss of 3 costs 9; absolute or Huber loss grow slower.",
+    "sec": 1
+   },
+   {
+    "q": "In the normal equation's solution, the residuals are…",
+    "options": [
+     "all zero",
+     "perpendicular to every column of X",
+     "as large as possible"
+    ],
+    "answer": 1,
+    "why": "Xᵀ(y − Xw) = 0: if they leaned toward a column, more of that column would shrink them.",
+    "sec": 2
+   },
+   {
+    "q": "You want a model that uses only a few of 200 columns. Which penalty?",
+    "options": [
+     "Ridge",
+     "Lasso",
+     "No penalty"
+    ],
+    "answer": 1,
+    "why": "Lasso's absolute value pulls weights to exactly zero.",
+    "sec": 3
+   },
+   {
+    "q": "Two columns are near copies. Plain least squares gives them weights +3.5 and −3.0. What's true?",
+    "options": [
+     "The predictions are broken",
+     "The predictions are fine, but the weights can't be read",
+     "One column should be +3.5 in reality"
+    ],
+    "answer": 1,
+    "why": "Only their sum matters to predictions; ridge or dropping a twin makes the weights meaningful.",
+    "sec": 5
+   }
+  ]
  }
 }

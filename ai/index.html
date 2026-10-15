@@ -99,6 +99,22 @@
   </ol>
   <p class="milestone"><b>Milestone:</b> the elevator model again in pandas and scikit-learn, and an image classifier trained in PyTorch, both in a notebook you keep.</p>
 
+  <h2 class="stage" id="zoo">Model zoo</h2>
+  <p class="goal">The most popular models, one page each, all built the same way: the idea in one picture, the algorithm from scratch, the library call, where it shines and where it breaks (measured), and the knobs that matter.</p>
+  <ol class="path">
+    <li class="card"><span class="tag">Zoo 1</span><a href="./zoo-linear.html"><b>Linear regression, ridge and lasso</b></a><p>The line with the least total area of squares, the normal equation, penalties that shrink weights or switch them off, and a trend that didn't keep going.</p></li>
+    <li class="card soon"><span class="tag">Zoo 2</span><b>Logistic regression</b><p>A weighted sum squashed into a probability: log-odds you can read, features that bend the line, calibration, and perfect separation.</p></li>
+    <li class="card soon"><span class="tag">Zoo 3</span><b>k-nearest neighbors</b><p>No training at all: the neighbors vote. Choosing k, why scaling decides everything, and the curse of dimensionality measured.</p></li>
+    <li class="card soon"><span class="tag">Zoo 4</span><b>Naive Bayes</b><p>Bayes' rule with a bold shortcut: features counted as independent. Tiny data, text, and overconfidence when the shortcut is wrong.</p></li>
+    <li class="card soon"><span class="tag">Zoo 5</span><b>Decision trees</b><p>Twenty questions on the columns: impurity, depth, pruning, and why one tree changes completely when a few rows do.</p></li>
+    <li class="card soon"><span class="tag">Zoo 6</span><b>Random forests</b><p>Hundreds of deep trees on resampled rows, averaged: why averaging cuts variance, out-of-bag scores, and feature importance.</p></li>
+    <li class="card soon"><span class="tag">Zoo 7</span><b>Gradient boosting: XGBoost, LightGBM, CatBoost</b><p>Small trees fixing each other's mistakes, and what each library adds: second-order steps, histograms, leaf-wise growth, ordered categories.</p></li>
+    <li class="card soon"><span class="tag">Zoo 8</span><b>Support vector machines</b><p>The widest street between the classes, support vectors, soft margins, and kernels that bend the street without new columns.</p></li>
+    <li class="card soon"><span class="tag">Zoo 9</span><b>Multilayer perceptrons on tables</b><p>The network from stage 2 as one more tabular model: what it learns that trees don't, and why it usually loses to them on tables.</p></li>
+    <li class="card soon"><span class="tag">Zoo 10</span><b>Which model when: the bake-off</b><p>All of them on the same four datasets, with time, size, accuracy and how readable each is, plus the unsupervised ones (k-means, mixtures, PCA).</p></li>
+  </ol>
+  <p class="milestone"><b>Milestone:</b> the bake-off notebook: every model on bank calls, elevator outages, digits and ridership, with a table of time, size, score and readability, and your pick for each dataset with a reason.</p>
+
   <h2 class="stage" id="stage-5">Stage 5 · Seeing and reading</h2>
   <p class="goal">The architectures behind vision and language models.</p>
   <ol class="path">

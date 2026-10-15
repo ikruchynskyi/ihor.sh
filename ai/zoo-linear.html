@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Linear Regression, Ridge and Lasso</title>
+  <meta name="description" content="AI from scratch, model zoo 1: linear regression as the line with the least total area of squares, the normal equation, ridge and lasso penalties with coefficient bars you watch shrink, built from scratch in NumPy, and where lines break on five years of NYC subway ridership: duplicated columns, outliers and a trend that doesn't keep going." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .wide { aspect-ratio: 3 / 2; } .strip { aspect-ratio: 3 / 1; margin-top: 6px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 1 of 10 · Linear regression, ridge and lasso</p>
+  <h1>Linear regression, ridge and lasso</h1>
+  <p class="lede">The oldest model in the zoo, and still the first one to fit: predict a number as a weighted sum of the columns. This page is the first of ten, one per popular model, all built the same way: the idea in one picture, how it learns, the algorithm in about 30 lines of NumPy next to the library call, where it shines and where it breaks (measured, on the course's data), and the knobs that matter. Chapter 2 and chapter 11 met lines already; here you see why they behave as they do.</p>
+
+  <h2>1. The idea in one picture: the least total area of squares</h2>
+  <p>Drag the dots. The line is the one that makes the <b>total area of the yellow squares</b> as small as possible: each square's side is a dot's vertical miss (its <b>residual</b>), so its area is the residual squared. That's all "least squares" means.</p>
+  <canvas id="ls" class="wide" width="720" height="480" aria-label="Draggable points, the fitted line, and a square on each residual"></canvas>
+  <div class="row"><label><input type="radio" name="loss" value="sq" checked> squared misses (least squares)</label><label><input type="radio" name="loss" value="abs"> absolute misses</label><button type="button" id="outlier">add an outlier</button><button type="button" id="reset">reset</button></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Predict, then try it: press <i>add an outlier</i> (one dot far above the rest). Which line moves more toward it?</p>
+    <ul><li data-k="a" data-says="Try it: the absolute line barely moves.">The absolute-misses line</li><li data-k="b">The squared-misses line</li><li data-k="c" data-says="Both are pulled, but not equally: try it.">They move the same</li></ul>
+    <div class="why">A miss of 3 costs 9 squared but only 3 absolute. Least squares will make every other dot a little worse to shrink the outlier's huge square, so one bad row drags the whole line. The absolute line only cares about how many dots sit above or below it (it's a median), so it shrugs the outlier off.</div>
+  </div>
+  <p class="gist">Linear regression picks the weights that make the total of the squared misses as small as possible, and squaring makes big misses dominate.</p>
+
+  <h2>2. How it learns: one equation, no loop</h2>
+  <p>Put the inputs in a matrix \(X\) (a row per example, a column per feature, plus a column of ones for the intercept) and the targets in \(y\). The prediction is \(Xw\). Most models need gradient descent; this one has a closed form, the <b>normal equation</b>:</p>
+  <p class="formula">\[ \text{minimize } \lVert y - Xw \rVert^2 \quad\Longrightarrow\quad X^\top X\, w = X^\top y \]</p>
+  <p>It's a square system of equations (one equation per weight), which chapter L1 taught you to solve: <code>np.linalg.solve(X.T @ X, X.T @ y)</code>. On subway ridership (2021 to 2023, by weekday plus a yearly trend) it gives 0.57 million more riders per day each year, Saturdays 0.73 million below Mondays and Sundays 1.15 million below: each weight reads as "this column, all else equal".</p>
+  <details class="deeper"><summary>Why the normal equation is the minimum</summary>
+    <ol>
+      <li>The loss \(L(w) = \lVert y - Xw \rVert^2\) is a sum of squares of things linear in \(w\): a bowl (calculus 5: a convex function), so wherever its gradient is zero is the bottom.</li>
+      <li>Its gradient is \(\nabla L = -2X^\top (y - Xw)\) (chapter 2's chain rule on each square).</li>
+      <li>Set it to zero: \(X^\top (y - Xw) = 0\), which rearranges to \(X^\top X w = X^\top y\).</li>
+      <li>Read \(X^\top (y - Xw) = 0\) in words: the residuals are perpendicular to every column of \(X\). If they leaned toward some column, adding a bit more of that column would shrink them.</li>
+      <li>So the prediction \(Xw\) is the shadow (projection) of \(y\) onto the space the columns can reach: the closest point, in plain distance, that a weighted sum of the columns can make.</li>
+    </ol>
+  </details>
+
+  <h2>3. Ridge and lasso: a price on big weights</h2>
+  <p>Ten dots from a gentle curve, and a polynomial of degree 9 (nine weights, for \(x\) to \(x^9\)). Unpenalized, it threads every dot with wild swings and huge weights (chapter 11's overfitting). A penalty adds a price on the weights to the loss, and the slider sets the price \(\lambda\):</p>
+  <p class="formula">\[ \text{ridge: } \lVert y - Xw \rVert^2 + \lambda \textstyle\sum_j w_j^2 \]</p>
+  <p class="formula">\[ \text{lasso: } \tfrac{1}{2}\lVert y - Xw \rVert^2 + \lambda \textstyle\sum_j |w_j| \]</p>
+  <canvas id="pen" class="wide" width="720" height="480" aria-label="Twelve points and a degree-9 polynomial fitted with a penalty"></canvas>
+  <canvas id="bars" class="strip" width="720" height="240" aria-label="The nine weights as bars"></canvas>
+  <div class="row"><label><input type="radio" name="pen" value="ridge" checked> ridge (squares)</label><label><input type="radio" name="pen" value="lasso"> lasso (absolute values)</label><label>price λ <input type="range" id="lam" min="-12" max="1" step="0.1" value="-12"> <b id="lamV"></b></label></div>
+  <p class="readout" id="r3"></p>
+  <div class="q" data-answer="a">
+    <p>Slide λ up slowly with lasso, then with ridge, and watch the bars. What does lasso do that ridge doesn't?</p>
+    <ul><li data-k="a">It sets weights to exactly zero, one after another</li><li data-k="b" data-says="Both shrink; look for bars that vanish completely.">It shrinks the weights</li><li data-k="c" data-says="Both fit worse on the training dots as λ grows: that's the trade.">It fits the training dots worse</li></ul>
+    <div class="why">Ridge shrinks every weight smoothly toward zero but almost never reaches it. Lasso drops whole features: at a high enough price, a weight's small help isn't worth any of its cost, so it sits at exactly 0. That's why lasso doubles as feature selection.</div>
+  </div>
+  <p class="gist">Ridge shrinks all the weights a little; lasso turns the least useful ones off completely.</p>
+  <details class="deeper"><summary>Why the absolute value makes exact zeros</summary>
+    <ol>
+      <li>Look at one weight \(w\) with everything else fixed. Its part of the lasso loss is a parabola \(\tfrac{a}{2}(w - z)^2\) (where \(z\) is the weight it would like without a penalty) plus \(\lambda |w|\).</li>
+      <li>Away from 0, \(\lambda |w|\) has slope \(\pm\lambda\): a constant pull toward zero, however small \(w\) is. Ridge's \(\lambda w^2\) has slope \(2\lambda w\), which fades as \(w\) shrinks, so it never quite gets there.</li>
+      <li>At \(w = 0\) the absolute value has a corner. Zero is the minimum whenever the parabola's slope there, \(a z\), is smaller than \(\lambda\) in size: the pull of the data can't beat the constant pull of the penalty.</li>
+      <li>Solving gives the <b>soft threshold</b>: \(w = \operatorname{sign}(z)\max(|z| - \lambda / a, 0)\). Shrink by a fixed amount, and anything that would cross zero stops at zero.</li>
+      <li>Lasso fits by applying that to one weight at a time, over and over (<b>coordinate descent</b>): the code below does exactly that. Calculus 5 shows the same thing as a diamond's corners touching the loss's ellipses.</li>
+    </ol>
+  </details>
+
+  <h2>4. Build it: the normal equation, ridge and lasso in NumPy</h2>
+  <p>On subway ridership from 2021 to 2023: the columns are a yearly trend and one column per weekday. Each method is a few lines; scikit-learn's versions should match to the third decimal.</p>
+  <div class="code" data-title="Least squares, ridge and lasso from scratch, next to scikit-learn"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+
+r = pd.read_csv(io.StringIO(get("/ai/data/ridership.csv")), parse_dates=["date"])   # in a notebook: pd.read_csv(url)
+r = r[(r.date >= "2021-01-01") & (r.date < "2024-01-01")]
+X = pd.get_dummies(r.date.dt.dayofweek, prefix="day", drop_first=True, dtype=float)     # Tuesday…Sunday vs Monday
+X.insert(0, "trend", (r.date - r.date.min()).dt.days.values / 365)
+y = r.subway.values / 1e6                                                                # millions of riders
+
+A = np.column_stack([np.ones(len(X)), X.values])          # a column of ones: the intercept
+w = np.linalg.solve(A.T @ A, A.T @ y)                       # the normal equation
+print("least squares:", w.round(3))
+print("scikit-learn: ", np.r_[LinearRegression().fit(X, y).intercept_, LinearRegression().fit(X, y).coef_].round(3))
+
+lam = 10.0                                                  # ridge: X^T X + λI (the intercept isn't penalized)
+P = lam * np.eye(A.shape[1]); P[0, 0] = 0
+print("ridge:        ", np.linalg.solve(A.T @ A + P, A.T @ y).round(3))
+m = Ridge(alpha=lam).fit(X, y); print("scikit-learn: ", np.r_[m.intercept_, m.coef_].round(3))
+
+def lasso(X, y, lam, sweeps=200):
+    "Coordinate descent: fix all weights but one, set it by the soft threshold, repeat."
+    Xc, yc = X - X.mean(axis=0), y - y.mean()               # centering takes care of the intercept
+    w, n = np.zeros(X.shape[1]), len(y)
+    for _ in range(sweeps):
+        for j in range(X.shape[1]):
+            rest = yc - Xc @ w + Xc[:, j] * w[j]            # what's left for column j to explain
+            z, a = Xc[:, j] @ rest / n, Xc[:, j] @ Xc[:, j] / n
+            w[j] = np.sign(z) * max(abs(z) - lam, 0) / a    # the soft threshold
+    return w
+
+print("lasso:        ", lasso(X.values, y, 0.05).round(3))
+print("scikit-learn: ", Lasso(alpha=0.05).fit(X, y).coef_.round(3))
+print("At λ = 0.05 lasso keeps", (lasso(X.values, y, 0.05) != 0).sum(), "of", X.shape[1], "columns: the trend, Saturday and Sunday.")
+print("Its simpler story: Monday to Friday are one level, weekends are lower.")
+</textarea></div>
+
+  <h2>5. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> it trains in a millisecond, needs few rows, can't overfit much with few columns, and every weight is a sentence you can say out loud. It's the baseline every other model on these pages has to beat, and on the bank-call data from the features lesson, logistic regression (page 2, the same idea for yes/no) ties or beats every boosted-tree library. It's also the only model in the zoo that <i>extrapolates</i>: it keeps going past the data instead of going flat.</p>
+  <p>That last strength is also a weakness. Trained on 2021 to 2023, when ridership was recovering fast, the line predicts 2024 by continuing the climb; ridership leveled off. Its error on 2024 was 0.56 million riders a day, while boosted trees (which go flat past the data) missed by 0.34 million.</p>
+  <div class="q" data-answer="c">
+    <p>Add an exact copy of the trend column (plus a little noise) and refit. What happens to the predictions and the two weights?</p>
+    <ul><li data-k="a" data-says="Predictions barely move: the copies can share the work in any split.">The predictions get much worse</li><li data-k="b" data-says="That's what ridge does; plain least squares has no reason to split evenly.">Each copy gets half the old weight</li><li data-k="c">The predictions stay the same, but the two weights become huge and opposite</li></ul>
+    <div class="why">Measured: 3.52 and −2.95 (the old weight was 0.57), and across 20 bootstrap resamples the trend weight swung from −28 to +27, with the same test error each time. Any split of the work between twins predicts the same, so the tiny noise decides. Ridge's price on big weights picks the even split: 0.28 each, between 0.27 and 0.30 on every resample.</div>
+  </div>
+  <p class="gist">A line is fast, readable and extrapolates; it breaks on bends it wasn't given features for, on outliers, and on near-duplicate columns.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Bends.</b> A line can only add effects. If late trains depend on distance <i>and</i> hour together, a line can't see it unless you hand it a column that multiplies them. Trees (pages 5 to 7) find bends by themselves.</li>
+      <li><b>Outliers.</b> One typo (a day recorded as 30 million riders) pulls the line toward it, more the fewer rows you have. Fix the data, or use a loss that grows slower for big misses: absolute or Huber loss (<code>HuberRegressor</code>).</li>
+      <li><b>Twins.</b> With columns that nearly duplicate each other, \(X^\top X\) is almost singular (chapter L1), and the weights become noise even though the predictions are fine. Never read weights without ridge or without dropping one twin.</li>
+      <li><b>Scale.</b> Penalties compare weights, so columns must be on one scale first (<code>StandardScaler</code>): otherwise a column in millimeters is penalized a thousand times less than one in meters.</li>
+      <li><b>Forever trends.</b> \(w \cdot t\) keeps growing as \(t\) does. Past the training range, check whether the trend should still hold; often the answer is to predict a change, or cap it.</li>
+    </ul>
+  </details>
+
+  <h2>6. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>The features</td><td>your columns</td><td>The real knob: a line is only as good as the columns you give it (products, squares, logs, one-hot categories).</td></tr>
+    <tr><td>Penalty price λ</td><td><code>alpha</code></td><td>Small: fits the training data closely. Large: smaller weights, a smoother, more stable model. Choose it on validation data (<code>RidgeCV</code>, <code>LassoCV</code>), on a log scale.</td></tr>
+    <tr><td>Squares or absolute values</td><td><code>Ridge</code>, <code>Lasso</code>, <code>ElasticNet(l1_ratio)</code></td><td>Ridge keeps every column and splits credit among twins; lasso picks a few columns; elastic net mixes the two.</td></tr>
+    <tr><td>Scaling</td><td><code>StandardScaler</code> in a pipeline</td><td>Required for any penalty to be fair across columns.</td></tr>
+    <tr><td>Loss</td><td><code>HuberRegressor</code>, <code>QuantileRegressor</code></td><td>Squared loss chases outliers; Huber treats big misses as absolute; quantile loss predicts a median or a 90th percentile.</td></tr>
+  </table></div>
+  <p>Next in the zoo: the same weighted sum, squashed into a probability, for yes/no questions.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Ridership: MTA daily ridership, data.ny.gov.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { scene, C, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// ---------- 1. least squares as squares, vs absolute misses ----------
+const start = [[-4, -1.6], [-3, -1.2], [-2, -0.2], [-1, -0.6], [0, 0.4], [1, 0.3], [2, 1.2], [3, 1.1], [4, 2]];
+let pts = start.map((p) => ({ p: [...p], color: C.blue }));
+const fitSq = (P) => { const n = P.length, mx = P.reduce((s, q) => s + q.p[0], 0) / n, my = P.reduce((s, q) => s + q.p[1], 0) / n, sxy = P.reduce((s, q) => s + (q.p[0] - mx) * (q.p[1] - my), 0), sxx = P.reduce((s, q) => s + (q.p[0] - mx) ** 2, 0); const b = sxx ? sxy / sxx : 0; return [my - b * mx, b]; };
+const fitAbs = (P) => { // least absolute misses by reweighted least squares
+  let [a, b] = fitSq(P);
+  for (let it = 0; it < 60; it++) {
+    const w = P.map((q) => 1 / Math.max(1e-3, Math.abs(q.p[1] - a - b * q.p[0]))), sw = w.reduce((s, v) => s + v, 0);
+    const mx = P.reduce((s, q, i) => s + w[i] * q.p[0], 0) / sw, my = P.reduce((s, q, i) => s + w[i] * q.p[1], 0) / sw;
+    const sxy = P.reduce((s, q, i) => s + w[i] * (q.p[0] - mx) * (q.p[1] - my), 0), sxx = P.reduce((s, q, i) => s + w[i] * (q.p[0] - mx) ** 2, 0);
+    b = sxx ? sxy / sxx : 0; a = my - b * mx;
+  }
+  return [a, b];
+};
+const render1 = scene("ls", ({ g, W, toPx }) => {
+  const abs = document.querySelector("input[name=loss]:checked").value === "abs", [a, b] = abs ? fitAbs(pts) : fitSq(pts), [a2, b2] = abs ? fitSq(pts) : fitAbs(pts);
+  g.strokeStyle = "#2a2f3a"; g.lineWidth = 1; for (let k = -6; k <= 6; k++) { const [x] = toPx([k, 0]), [, y] = toPx([0, k]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 480); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  let area = 0, absSum = 0;
+  for (const q of pts) {
+    const [x, y] = q.p, f = a + b * x, r = y - f; area += r * r; absSum += Math.abs(r);
+    const [px, py] = toPx([x, y]), [, pf] = toPx([x, f]), side = pf - py;
+    g.fillStyle = abs ? "rgba(131,193,103,0.22)" : "rgba(244,211,94,0.22)"; g.strokeStyle = abs ? C.green : C.yellow;
+    if (abs) { g.lineWidth = 3; g.beginPath(); g.moveTo(px, py); g.lineTo(px, pf); g.stroke(); }
+    else { const wd = px > W / 2 ? -Math.abs(side) : Math.abs(side); g.fillRect(px, py, wd, side); g.strokeRect(px, py, wd, side); } // a square, opening away from the edge
+  }
+  const line = (a, b, color, wd, dash) => { const [x1, y1] = toPx([-6, a - 6 * b]), [x2, y2] = toPx([6, a + 6 * b]); g.setLineDash(dash); g.strokeStyle = color; g.lineWidth = wd; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.setLineDash([]); };
+  line(a2, b2, "rgba(215,221,229,0.35)", 2, [6, 6]); line(a, b, C.red, 3, []);
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText(abs ? "red: least absolute misses (green bars) · dashed: least squares" : "red: least squares (yellow squares) · dashed: least absolute misses", 10, 20);
+  $("r1").textContent = `line: y = ${a.toFixed(2)} + ${b.toFixed(2)}·x · total area of squares ${area.toFixed(2)} · total absolute miss ${absSum.toFixed(2)}`;
+}, () => pts, null, { unit: 56, snap: false });
+document.querySelectorAll("input[name=loss]").forEach((r) => (r.onchange = render1));
+$("outlier").onclick = () => { if (!pts.some((q) => q.color === C.red)) pts.push({ p: [-3, 3.6], color: C.red }); render1(); say("One far-off dot: watch which line it drags.", "think"); };
+$("reset").onclick = () => { pts = start.map((p) => ({ p: [...p], color: C.blue })); render1(); };
+
+// ---------- 3. ridge and lasso on a degree-9 polynomial ----------
+let s = 4; const rand = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+const xs = Array.from({ length: 10 }, (_, i) => -0.95 + (1.9 * i) / 9 + 0.04 * (rand() - 0.5)), truth = (x) => Math.sin(2.2 * x) * 0.8;
+const ys = xs.map((x) => truth(x) + 0.5 * (rand() - 0.5));
+const D = 9, raw = (x) => Array.from({ length: D }, (_, j) => x ** (j + 1));
+const cols = Array.from({ length: D }, (_, j) => xs.map((x) => raw(x)[j])), mu = cols.map((c) => c.reduce((a, b) => a + b, 0) / c.length), sd = cols.map((c, j) => Math.sqrt(c.reduce((a, b) => a + (b - mu[j]) ** 2, 0) / c.length));
+const Z = xs.map((x) => raw(x).map((v, j) => (v - mu[j]) / sd[j])), ym = ys.reduce((a, b) => a + b, 0) / ys.length, yc = ys.map((y) => y - ym), n = xs.length;
+function fitPen(kind, lam) {
+  let w = Array(D).fill(0);
+  if (kind === "ridge") { // gradient-free: solve (ZᵀZ/n + λI) w = Zᵀy/n by Gauss-Jordan
+    const M = Array.from({ length: D }, (_, i) => [...Array.from({ length: D }, (_, j) => Z.reduce((s, z) => s + z[i] * z[j], 0) / n + (i === j ? lam : 0)), Z.reduce((s, z, k) => s + z[i] * yc[k], 0) / n]);
+    for (let c = 0; c < D; c++) { let p = c; for (let r = c + 1; r < D; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; [M[c], M[p]] = [M[p], M[c]]; for (let r = 0; r < D; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= D; k++) M[r][k] -= f * M[c][k]; } }
+    w = M.map((row, i) => row[D] / row[i]);
+  } else {
+    w = fitPen("ridge", lam); // warm start: plain coordinate descent crawls on columns this alike
+    for (let sweep = 0; sweep < 3000; sweep++) for (let j = 0; j < D; j++) {
+      let z = 0; for (let k = 0; k < n; k++) { let pred = 0; for (let i = 0; i < D; i++) if (i !== j) pred += Z[k][i] * w[i]; z += Z[k][j] * (yc[k] - pred); }
+      z /= n; w[j] = Math.sign(z) * Math.max(Math.abs(z) - lam, 0); // columns are standardized, so a = 1
+    }
+  }
+  return w;
+}
+function render3() {
+  const kind = document.querySelector("input[name=pen]:checked").value, lam = 10 ** +$("lam").value, w = fitPen(kind, lam);
+  const f = (x) => ym + raw(x).reduce((s, v, j) => s + ((v - mu[j]) / sd[j]) * w[j], 0);
+  const cv = $("pen"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (x) => ((x + 1.05) / 2.1) * W, Y = (y) => H / 2 - (y / 1.6) * (H / 2);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
+  g.setLineDash([6, 6]); g.strokeStyle = "#8f98a8"; g.beginPath(); for (let i = 0; i <= 300; i++) { const x = -1.05 + (2.1 * i) / 300; i ? g.lineTo(X(x), Y(truth(x))) : g.moveTo(X(x), Y(truth(x))); } g.stroke(); g.setLineDash([]);
+  g.strokeStyle = C.red; g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 600; i++) { const x = -1.05 + (2.1 * i) / 600, y = Math.max(-3, Math.min(3, f(x))); i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)); } g.stroke(); g.lineWidth = 1;
+  for (let k = 0; k < n; k++) { g.fillStyle = C.blue; g.beginPath(); g.arc(X(xs[k]), Y(ys[k]), 6, 0, 7); g.fill(); }
+  g.fillStyle = C.text; g.font = "14px ui-monospace, monospace"; g.fillText("dashed: the true curve · red: the degree-9 fit", 10, 20);
+  const b = $("bars"), h = b.getContext("2d"), BW = b.width, BH = b.height, top = Math.max(1, ...w.map(Math.abs));
+  h.fillStyle = C.stage; h.fillRect(0, 0, BW, BH); h.strokeStyle = "#4a5262"; h.beginPath(); h.moveTo(0, BH / 2); h.lineTo(BW, BH / 2); h.stroke();
+  w.forEach((v, j) => { const x = 20 + (j * (BW - 40)) / D, bw = (BW - 40) / D - 12, hh = (v / top) * (BH / 2 - 24); h.fillStyle = v === 0 ? "#4a5262" : v > 0 ? C.yellow : C.green; h.fillRect(x, BH / 2 - Math.max(hh, 0), bw, Math.max(Math.abs(hh), 1)); h.fillStyle = C.text; h.font = "12px ui-monospace, monospace"; h.fillText(`x${"¹²³⁴⁵⁶⁷⁸⁹"[j]}`, x + bw / 2 - 8, BH - 6); if (v === 0) h.fillText("0", x + bw / 2 - 4, BH / 2 - 6); });
+  h.fillText(`weights (scale: biggest = ${top.toFixed(top > 10 ? 0 : 2)})`, 8, 14);
+  const trainMSE = ys.reduce((s, y, k) => s + (y - f(xs[k])) ** 2, 0) / n, zeros = w.filter((v) => v === 0).length;
+  $("lamV").textContent = lam < 0.001 ? lam.toExponential(0) : lam.toPrecision(2);
+  $("r3").textContent = `${kind}, λ = ${$("lamV").textContent}: train MSE ${trainMSE.toFixed(4)} · biggest weight ${top.toFixed(1)} · weights at exactly 0: ${zeros} of ${D}`;
+}
+document.querySelectorAll("input[name=pen]").forEach((r) => (r.onchange = render3));
+$("lam").oninput = render3;
+render3();
+
+window.blipContext = () => ({ page: "AI model zoo 1: linear regression (least squares as squares, normal equation), ridge and lasso penalties, where lines break (outliers, duplicated columns, extrapolating a trend)", leastSquares: $("r1").textContent, penalty: $("r3").textContent });
+</script>
+</body>
+</html>
