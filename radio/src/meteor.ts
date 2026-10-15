@@ -159,8 +159,8 @@ export class Packets {
 // ---------- IQ → symbols → frames ----------
 // Meteor-M2 3 and 4 send offset QPSK (Q runs half a symbol ahead of I), NRZ-M coded (a 1 is a change of bit), with the
 // Reed-Solomon bytes in the conventional basis: SatDump's "METEOR M2-x LRPT 72k" pipeline, which this follows.
-const ACQ_N = 8192;       // symbols per frequency measurement
-const ACQ_MIN_PEAK = 30;  // tallest z⁴ bin ÷ the average: noise alone gives about 10 (8192 bins), a signal at Es/N0 ≈ 1–2 dB about 30–40
+const ACQ_N = 16384;      // matched-filter samples per frequency measurement (80 ms at 204.8 kS/s)
+const ACQ_MIN_PEAK = 30;  // tallest z⁴ bin ÷ the average: noise alone gives about 10, a signal at Es/N0 ≈ 2 dB over 30
 const MAX_FREQ = 0.8;     // rad/symbol ≈ ±9 kHz: Doppler (±3.3 kHz) plus any dongle's crystal error
 const SYNC_GAP = CADU_BITS + 32; // one sync word to the next
 
@@ -173,7 +173,7 @@ export class MeteorReceiver {
   private prevI = 0; private prevQ = 0; private agc = 1;
   // the oscillator that cancels the carrier, sample by sample: `freq` (rad/symbol) is set by the z⁴ measurement and then
   // steered, with `phase`, by a carrier loop on every matched-filter sample, before I and Q are lined up
-  private phase = 0; private freq = 0; private freqKnown = false; private acq: number[] = []; private sinceAcq = 0;
+  private phase = 0; private freq = 0; private freqKnown = false; private acq = new Float32Array(2 * ACQ_N); private nAcq = 0; private sinceAcq = 0;
   // the 8 ambiguities. A 90° turn of offset QPSK swaps which channel runs half a symbol early, so it changes how the coded
   // bits pair up, not only their signs: 4 pairings of this symbol's I and Q with each other or with the previous I ×
   // 2 sign patterns (NRZ-M makes a full inversion harmless). Each gets its own Viterbi until one finds the sync word.
@@ -199,17 +199,38 @@ export class MeteorReceiver {
       m.copyWithin(2, 0, 2 * L - 2); m[0] = I; m[1] = Q;
       let a = 0, b = 0; for (let j = 0; j < L; j++) { a += H[j] * m[2 * j]; b += H[j] * m[2 * j + 1]; }
       y.push(a, b);
-      if (this.freqKnown) { // carrier loop on every sample, before and independent of symbol timing (as SatDump does for OQPSK)
-        const err = (Math.sign(a) * b - Math.sign(b) * a) / (this.agc + 1e-12);
-        this.phase += (0.03 / this.sps) * err; this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + (0.0004 / this.sps) * err));
-      }
+      if (this.freqKnown) { // carrier loop on every sample, before and independent of symbol timing (as SatDump and MeteorDemod do)
+        const err = Math.max(-1, Math.min(1, (Math.sign(a) * b - Math.sign(b) * a) / (this.agc + 1e-12))); // clamped: a noise spike can't kick it
+        this.phase += (0.015 / this.sps) * err; this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + (0.00004 / this.sps) * err));
+      } else { this.acq[2 * this.nAcq] = a; this.acq[2 * this.nAcq + 1] = b; if (++this.nAcq === ACQ_N) this.acquire(); }
       while (this.t + 2 < y.length / 2) this.timing();
     }
     const drop = Math.max(0, Math.floor(this.t - this.rate) - 2); y.splice(0, 2 * drop); this.t -= drop;
   }
 
+  /** The 4th-power trick on raw matched-filter samples: z⁴ wipes out the QPSK data and leaves a spike at 4× the carrier
+   *  offset. On raw samples (not lined-up symbols) it doesn't depend on timing or on offset QPSK's half-symbol shift. */
+  private acquire() {
+    const N = ACQ_N, re = new Float32Array(N), im = new Float32Array(N), z = this.acq;
+    for (let k = 0; k < N; k++) {
+      let zr = z[2 * k], zi = z[2 * k + 1]; const mag = Math.hypot(zr, zi) || 1e-12; zr /= mag; zi /= mag;
+      for (let r = 0; r < 2; r++) { const t = zr * zr - zi * zi; zi = 2 * zr * zi; zr = t; }
+      re[k] = zr; im[k] = zi;
+    }
+    fft(re, im);
+    let best = 0, sum = 0, bin = 0;
+    for (let k = 0; k < N; k++) { const pw = re[k] * re[k] + im[k] * im[k]; if (pw > best) { best = pw; bin = k; } sum += pw; }
+    if (best / (sum / N || 1e-12) > ACQ_MIN_PEAK) { // the offset in rad per sample, ÷4, as rad per symbol
+      this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + (((bin < N / 2 ? bin : bin - N) * TAU) / N / 4) * this.sps));
+      this.freqKnown = true; this.sinceAcq = 0; this.nAcq = 0;
+    } else { z.copyWithin(0, N, 2 * N); this.nAcq = N / 2; } // keep the newer half and keep looking
+  }
+
   /** Matched-filter output at a fractional sample position: k = 0 for I, 1 for Q. */
-  private at(t: number, k: number) { const y = this.y, n = Math.floor(t), f = t - n; return y[2 * n + k] * (1 - f) + y[2 * n + 2 + k] * f; }
+  private at(t: number, k: number) { // cubic (Catmull-Rom) through the 4 nearest samples: less loss than a straight line at ~2.8 samples a symbol
+    const y = this.y, n = Math.floor(t), f = t - n, p0 = y[2 * n - 2 + k] ?? y[2 * n + k], p1 = y[2 * n + k], p2 = y[2 * n + 2 + k], p3 = y[2 * n + 4 + k] ?? p2;
+    return p1 + 0.5 * f * (p2 - p0 + f * (2 * p0 - 5 * p1 + 4 * p2 - p3 + f * (3 * (p1 - p2) + p3 - p0)));
+  }
 
   /** Gardner timing recovery on I and on Q taken half a symbol earlier (offset QPSK lined up into plain QPSK). */
   private timing() {
@@ -223,30 +244,9 @@ export class MeteorReceiver {
   private symbol(I: number, Q: number) {
     const p = Math.hypot(I, Q); this.agc += 0.002 * (p - this.agc); I /= this.agc; Q /= this.agc;
     this.stats.symbols++;
-    if (!this.freqKnown) { // 4th-power trick: z⁴ removes the QPSK data, leaving a spike at 4× the frequency offset
-      this.acq.push(I, Q);
-      if (this.acq.length < 2 * ACQ_N) return;
-      const re = new Float32Array(ACQ_N), im = new Float32Array(ACQ_N);
-      for (let k = 0; k < ACQ_N; k++) {
-        let zr = this.acq[2 * k], zi = this.acq[2 * k + 1];
-        const mag = Math.hypot(zr, zi) || 1e-6;
-        zr /= mag; zi /= mag;
-        for (let r = 0; r < 2; r++) { const t = zr * zr - zi * zi; zi = 2 * zr * zi; zr = t; }
-        re[k] = zr; im[k] = zi;
-      }
-      fft(re, im);
-      let best = 0, sum = 0, bin = 0;
-      for (let k = 0; k < ACQ_N; k++) { const pw = re[k] * re[k] + im[k] * im[k]; if (pw > best) { best = pw; bin = k; } sum += pw; }
-      if (best / (sum / ACQ_N || 1e-12) > ACQ_MIN_PEAK) {
-        this.freq = Math.max(-MAX_FREQ, Math.min(MAX_FREQ, this.freq + ((bin < ACQ_N / 2 ? bin : bin - ACQ_N) * TAU) / ACQ_N / 4));
-        this.freqKnown = true; this.sinceAcq = 0;
-      }
-      this.acq.splice(0, ACQ_N); // half the window either way: keep searching with the newer half, or start fresh after a lock
-      if (this.freqKnown) this.acq = [];
-      return;
-    }
+    if (!this.freqKnown) return;
     // no sync for 6 frames' worth: measure the frequency again from scratch (the estimate may have been a stray carrier)
-    if (this.hyp < 0 && ++this.sinceAcq > 6 * ACQ_N) { this.freqKnown = false; this.freq = 0; this.acq = []; return; }
+    if (this.hyp < 0 && ++this.sinceAcq > 6 * 8192) { this.freqKnown = false; this.freq = 0; this.nAcq = 0; return; }
     this.stats.freqHz = (this.freq * SYM_RATE) / TAU;
     this.stats.evm = 0.999 * this.stats.evm + 0.001 * ((Math.abs(I) - 0.707) ** 2 + (Math.abs(Q) - 0.707) ** 2);
     if (this.stats.symbols % 4 === 0) { this.constellation.push([I, Q]); if (this.constellation.length > 1000) this.constellation.splice(0, 200); }
@@ -278,7 +278,7 @@ export class MeteorReceiver {
       }
       if (h === this.hyp) { this.frameBits = []; this.sinceSync = 0; this.stats.locked = true; }
     }
-    if (this.hyp >= 0 && this.sinceSync > 3 * SYNC_GAP) { this.hyp = -1; this.lastHit.fill(-Infinity); this.stats.locked = false; this.sinceSync = 0; this.sinceAcq = 0; this.freqKnown = false; this.acq = []; }
+    if (this.hyp >= 0 && this.sinceSync > 3 * SYNC_GAP) { this.hyp = -1; this.lastHit.fill(-Infinity); this.stats.locked = false; this.sinceSync = 0; this.sinceAcq = 0; this.freqKnown = false; this.nAcq = 0; }
   }
 
   private frame(bits: number[]) {

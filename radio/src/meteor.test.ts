@@ -90,13 +90,14 @@ function decode(name: string, iq: Float32Array, finalDop: number, minBlocks: num
   }
   assert.ok(rx.stats.rsProven && checked >= minBlocks && good === checked, `${name}: ${good} of ${checked} blocks exact`);
 }
-// Es/N0 = 0.256 / sigma² here (a symbol's energy over the noise density): 0.30 → 4.5 dB, 0.35 → 3.2 dB, close to the
-// ~2.5–3 dB where the rate-½ code stops coping. Real passes sweep about ±3.3 kHz at up to ~70 Hz/s; the second case
-// swings 5.6 kHz in under a second, past the old receiver's ±2.9 kHz tracking range.
-const secs = (nsym * sps) / fs, hold = 0.45;
+// Es/N0 = 0.256 / sigma² here (a symbol's energy over the noise density): 0.30 → 4.5 dB, 0.40 → 2.0 dB, near the
+// ~1.5–2 dB where the rate-½ code and Reed-Solomon stop coping. Real passes sweep about ±3.3 kHz at up to ~70 Hz/s.
 decode("Q ahead, steady 2.8 kHz, 4.5 dB", signal(-0.5, () => 2800, 0.3), 2800, 1500);
-decode("Q behind, 2.8 → −2.8 kHz, 4.5 dB", signal(0.5, (t) => (t < hold ? 2800 : 2800 - (5600 * (t - hold)) / (secs - hold)), 0.3), -2800, 500);
-decode("Q ahead, −1.5 kHz, 3.2 dB", signal(-0.5, () => -1500, 0.35), -1500, 500);
+const ramp = (t: number) => 2800 - 150 * t; // twice the fastest real Doppler change
+decode("Q behind, Doppler falling 150 Hz/s, 4.5 dB", signal(0.5, ramp, 0.3), ramp((nsym * sps) / fs), 1500);
+decode("Q behind, −7 kHz (Doppler plus a cheap dongle's crystal error), 4.5 dB", signal(0.5, () => -7000, 0.3), -7000, 1500);
+decode("Q ahead, −1.5 kHz, 2.0 dB", signal(-0.5, () => -1500, 0.4), -1500, 1500);
+
 // 5. Lining channels up: one shared counter, each line sent as 14 packets of APID 64, then 65, then 66, then telemetry.
 // Channel 65 loses line 3 completely (it becomes a blank row); the counter wraps at 16384 in the middle.
 {
