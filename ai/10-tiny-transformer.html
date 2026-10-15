@@ -37,6 +37,7 @@
     <div class="why">\(-\ln(1/68) = \ln 68 \approx 4.22\). That's the line to beat: every step of learning shows up as the loss falling below it. (Chapter 5 is where this loss comes from.)</div>
   </div>
 
+  <p class="gist">A language model does one thing: give every possible next character a probability. Any loss below ln 68 ≈ 4.22 is learning.</p>
   <h2>2. The model</h2>
   <div class="block">
     "Court Sq" → <span>character + position embeddings</span> → <span>attention: each letter looks back at the earlier ones</span> + residual → <span>MLP: 48 → 192 → 48, ReLU</span> + residual → <span>scores for 68 next characters</span>
@@ -51,6 +52,7 @@
   </div>
   <p class="readout" id="params"></p>
 
+  <p class="gist">One block: each letter looks back and gathers (attention), then thinks about what it gathered (the MLP), each step adding to what was there.</p>
   <h2>3. Train it</h2>
   <p>Each step takes 8 random 32-character windows of the station list, predicts every next character, measures the loss, and nudges all 36,000 numbers downhill (backpropagation through the attention and the MLP, then the Adam optimizer: chapters 2 and 4). Every 50 steps it makes up a few new names.</p>
   <div class="row"><button id="go" type="button">▶ Train</button><button id="reset" type="button">↺ Start over</button><label>learning rate <input type="range" id="lr" min="-4" max="-1.5" step="0.1" value="-2.5"> <span id="lrv"></span></label></div>
@@ -64,6 +66,16 @@
     <div class="why">Temperature divides the scores before the softmax. Low temperature sharpens the probabilities toward the single most likely next letter, so the model follows the strongest paths it learned, which are the real names. High temperature flattens them, so it takes unlikely turns: more original, and more nonsense ("Qxv St"). Creativity in a language model is literally this knob.</div>
   </div>
 
+  <p class="gist">Training nudges 36,000 numbers so the right next letter gets more probability; temperature decides how boldly the model samples.</p>
+  <details class="deeper"><summary>Why temperature works the way it does</summary>
+    <ol>
+      <li>The probability of character \(i\) is \(e^{s_i / T}\) divided by the sum over all characters, where \(s_i\) are the model's scores.</li>
+      <li>The ratio between two characters is \(e^{(s_i - s_j)/T}\): only the gap between their scores matters, divided by \(T\).</li>
+      <li>Scores 2 and 1: at \(T = 1\) the first is \(e \approx 2.7\) times as likely; at \(T = 0.5\), \(e^2 \approx 7.4\) times; at \(T = 2\), only \(e^{0.5} \approx 1.6\) times.</li>
+      <li>As \(T \to 0\) the ratio grows without limit: the model always takes the top character (greedy). As \(T\) grows large every ratio goes to 1: uniform noise.</li>
+      <li>\(T = 1\) is the distribution the model was trained to produce. Anything else is a deliberate distortion: below 1 for safer, above 1 for more surprising.</li>
+    </ol>
+  </details>
   <h2>4. Look inside</h2>
   <p>Type the start of a name. The bars are the model's guesses for the next character; the colored letters show where the last position's attention went (darker: more weight).</p>
   <div class="row"><label>starts with <input id="prefix" value="Court Sq" style="font:18px ui-monospace,monospace;width:12em"></label></div>
@@ -95,6 +107,14 @@ pd.DataFrame({"attends to (weights)": ["  ".join(f"{w:.2f}" for w in row) for ro
               "output": [", ".join(f"{v:.2f}" for v in row) for row in out]})
 </textarea></div>
 
+  <p class="gist">Each row of the attention table is one letter's view of the past, and the mask keeps the future dark.</p>
+  <details class="deeper"><summary>Where it breaks: memorizing, short sight and no undo</summary>
+    <ul>
+      <li><b>Memorizing.</b> 36,000 numbers for 379 names is about 95 numbers per name: enough to learn the list by heart. Trained long, most "new" names come out gray, real stations. That's chapter 11's overfitting; big models face the same pull on text they've seen many times.</li>
+      <li><b>Short sight.</b> The model sees 32 characters, about five words. Real models read word-pieces of about 4 characters each, so the same window holds four times as much text, and their windows are thousands of pieces long.</li>
+      <li><b>No undo.</b> Generation picks one character at a time and never goes back. One unlucky low-probability letter, and every later guess is conditioned on it. That's why low temperature looks "safer", and why tricks like beam search keep several candidates alive.</li>
+    </ul>
+  </details>
   <p>That's the whole idea, at toy scale. The GPTs behind chatbots are this block, repeated dozens of times, about a million times wider, trained on trillions of word-pieces instead of 379 station names. Same arithmetic.</p>
   <p class="muted">All chapters: <a href="./">AI from scratch</a>.</p>
 </main>

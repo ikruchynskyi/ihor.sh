@@ -86,6 +86,7 @@ for m in run_agent("When is the next train at Union Sq?"):
     print(f"{m['role']:9}", m["content"] if isinstance(m["content"], str) else json.dumps(m["content"]))
 </textarea></div>
 
+  <p class="gist">An agent is a language model in a loop: some of what it writes is a request our code runs, and the result goes back into the conversation.</p>
   <h2>2. Blip's real toolbox</h2>
   <p>This is the actual list Blip is given with every question, loaded live from the server. Each tool is just a name, a description and its parameters; the descriptions are all the model knows about them, so writing them well matters as much as the code behind them.</p>
   <div class="q" data-answer="b">
@@ -95,6 +96,7 @@ for m in run_agent("When is the next train at Union Sq?"):
   </div>
   <div class="tools" id="tools"><p class="muted">Loading…</p></div>
 
+  <p class="gist">A tool is a name, a description and parameters, and the description is all the model knows about it.</p>
   <h2>3. Watch Blip work</h2>
   <p>Ask something and see every step: the tool calls it decides to make, what each tool returned, and the answer it writes from them. Blip runs on a small model on a Mac mini here, so give it about ten seconds.</p>
   <div class="row"><button data-q="When is the next train at Union Sq?">Next train at Union Sq?</button><button data-q="Is the A train running normally right now?">Is the A running?</button><button data-q="Who has the ham radio callsign W1AW?">Who is W1AW?</button><button data-q="Plan a bike trip from Union Square to Prospect Park.">Bike to Prospect Park</button></div>
@@ -102,6 +104,7 @@ for m in run_agent("When is the next train at Union Sq?"):
   <div class="trace" id="trace" aria-live="polite">The trace shows up here.</div>
   <p><b>Check its work.</b> Compare the answer with the tool results above it. Small models sometimes misread a result: say "0 minutes" when the data says 6, or round a number wrong. The tool call was right and the data was right, but the last step, reading, went wrong. That's why serious agents keep the evidence next to the answer, and why the next section matters.</p>
 
+  <p class="gist">The right tool and the right data can still end in a misread answer, so compare the answer with the trace.</p>
   <h2>4. What goes wrong, and the guardrails</h2>
   <p><b>Loops.</b> A model can keep calling tools forever, or call the same one again and again. Blip gets at most 4 rounds; after that it must answer with what it has.</p>
   <p><b>Prompt injection.</b> Tool results are text from the outside world: a web page, an event listing, a store's description. Any of it can contain instructions aimed at the model. One of these three search results is an attack. Which?</p>
@@ -142,6 +145,16 @@ for args in [{"station": "Union Sq"}, {"station": "Unoin Sq"}, {"station": "Hogw
     print(args, "→", subway_arrivals(args))
 </textarea></div>
 
+  <p class="gist">Guardrails: few rounds, tools with the least power needed, arguments checked in code, and tool output treated as data, never instructions.</p>
+  <details class="deeper"><summary>Why checking each step beats a better model</summary>
+    <ol>
+      <li>Ten steps at 95% each succeed together \(0.95^{10} \approx 0.60\) of the time.</li>
+      <li>Add a check after each step that catches 80% of the failures and retries once. A step now succeeds if it goes right the first time, or goes wrong, gets caught, and the retry goes right: \(0.95 + 0.05 \times 0.8 \times 0.95 \approx 0.988\).</li>
+      <li>Ten such steps: \(0.988^{10} \approx 0.89\). The same model went from 60% to 89%.</li>
+      <li>Fewer steps help too: five steps at 95% give \(0.95^5 \approx 0.77\).</li>
+      <li>Because success is a power, the per-step rate and the chain length matter more than anything else. A slightly better model raises \(p\) a little; checks and shorter chains change the shape of the curve.</li>
+    </ol>
+  </details>
   <h2>5. Evals: measuring an agent</h2>
   <p>"It seemed to work when I tried it" isn't a test. An <b>eval</b> is a fixed set of questions with checkable expectations, run every time you change the model, the prompt or a tool description. Here's a tiny one for tool choice: does Blip pick the right tool for each question? Run it (four live questions, about a minute).</p>
   <div class="row"><button id="eval">Run the eval</button><span class="readout" id="er" style="margin:0"></span></div>
@@ -177,6 +190,14 @@ for n in [4, 20, 100, 1000, 10_000]:
 print("Run it a few times: the 4- and 20-case evals jump around; the 10,000-case one barely moves.")
 pd.DataFrame(rows, columns=["cases", "measured %", "95% low", "95% high"]).round(1)
 </textarea></div>
+  <p class="gist">An eval is a fixed test set for an agent, and with 20 cases its score is only good to about ± 13 points.</p>
+  <details class="deeper"><summary>Where it breaks: evals that fool you, and tools that combine</summary>
+    <ul>
+      <li><b>Tuning on the eval.</b> Reword tool descriptions until all 20 eval questions pass, and you've fitted the eval like chapter 11's validation set. Keep a second set of questions you never tune on, and add every real failure you see to it.</li>
+      <li><b>A model judging a model.</b> A second model checking answers shares many of the first one's blind spots, and judges tend to prefer longer, confident answers. Check a sample of the judge's verdicts by hand.</li>
+      <li><b>Safe tools that aren't safe together.</b> Read-only tools are safe alone. But an agent that can read untrusted text, see private data, and send anything out (an email, a web request with a URL) can be talked into leaking: the injection in the text tells it to put the private data in the URL. Never give one agent all three.</li>
+    </ul>
+  </details>
   <p>Last chapter: <a href="./09-vision.html"><b>vision in practice</b></a>, finding cars and people in real NYC traffic camera images.</p>
 
   <p class="muted">All chapters: <a href="./">AI from scratch</a>. Blip's code is <code>blip.ts</code> in this site's repo.</p>

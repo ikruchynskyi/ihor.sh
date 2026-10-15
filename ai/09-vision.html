@@ -44,6 +44,7 @@
     <div class="why">\(352 \times 240 \times 3 = 253{,}440\).</div>
   </div>
 
+  <p class="gist">A camera frame is a quarter of a million numbers, and every method starts from them.</p>
   <h2>2. Motion, by subtraction</h2>
   <p>The simplest vision trick needs no learning at all. Take two frames a few seconds apart and subtract them, pixel by pixel. The road, buildings and sky cancel out; whatever moved lights up. Traffic engineers used this long before neural networks.</p>
   <div class="row"><button id="motion">Compare two frames, 4 seconds apart</button><label>threshold <input type="range" id="th" min="5" max="80" value="28"> <span id="thv">28</span></label></div>
@@ -79,6 +80,7 @@ print("blobs:", n, " pixels each:", np.bincount(labels.ravel())[1:].tolist())
 # slowly updated "empty road" background instead of the previous frame. Try a threshold of 3 (noise everywhere).
 </textarea></div>
 
+  <p class="gist">Subtracting two frames finds what changed, but not what it is.</p>
   <h2>3. A trained detector</h2>
   <p>This is <b>COCO-SSD</b>: a convolutional network (chapter 6, but dozens of layers deep, based on MobileNet) trained on the COCO dataset of 330,000 photos labeled with 80 kinds of objects. For each image it proposes boxes and gives each one a class and a confidence: a softmax (chapter 5) per box. Loading it downloads about 5 MB once, and then it runs entirely in your browser; no image leaves your computer.</p>
   <div class="row"><button id="load">Load the detector (≈5 MB)</button><button id="detect" disabled>Detect on this frame</button><label>min confidence <input type="range" id="conf" min="0.1" max="0.9" step="0.05" value="0.4"> <span id="confv">0.40</span></label></div>
@@ -128,12 +130,30 @@ print("after NMS (torchvision.ops.nms does this on a GPU):")
 pd.DataFrame(nms(raw), columns=["x", "y", "w", "h", "confidence"])
 </textarea></div>
 
+  <p class="gist">A detector proposes boxes, each with a class and a softmax confidence; the threshold trades missed objects against imagined ones.</p>
+  <details class="deeper"><summary>Why a detector needs non-maximum suppression at all</summary>
+    <ol>
+      <li>A detector like SSD doesn't search for objects. It scores a fixed set of thousands of candidate boxes (at many positions and sizes) all at once, one softmax per box.</li>
+      <li>A car covers many of those candidates. Each candidate that sits over most of the car sees almost the same pixels, so it gets almost the same high score.</li>
+      <li>So the raw output is a cluster of strong boxes per object, all overlapping each other with high IoU.</li>
+      <li>NMS keeps the best box of each cluster and deletes its neighbors above an IoU of about 0.5: one box per object.</li>
+      <li>The rule assumes two real objects never overlap that much, which is exactly where it fails (below).</li>
+    </ol>
+  </details>
   <h2>4. Counting the city, right now</h2>
   <p>Put the detector on a loop over many cameras and you get something no single camera gives you: a snapshot of the city. It counts objects only; at this resolution nobody can be identified, and nothing is stored.</p>
   <div class="row"><button id="survey" disabled>Survey 12 random cameras</button><span class="readout" id="r4" style="margin:0"></span></div>
   <table id="tbl"></table>
   <p>This is the pattern behind real traffic-counting systems: a fixed, pretrained model plus your own aggregation and archive. The "AI" part is a component; the value is in what you build around it, here a count across a city at one instant, which you could log every five minutes and turn into a busyness map. That's where this world ends: from matrices as moves of the plane, through gradients, neurons, backprop, probability, convolutions, attention and agents, to a model reading the streets of New York.</p>
 
+  <p class="gist">A pretrained model is a component; the value is in what you build around it.</p>
+  <details class="deeper"><summary>Where it breaks: crowds, odd angles and unknown things</summary>
+    <ul>
+      <li><b>Crowds.</b> Two cars in a queue, one behind the other, can have boxes overlapping by more than 0.5 from a high camera. NMS then deletes the real second car. Counts in traffic jams come out low; detectors for crowds use softer suppression.</li>
+      <li><b>Not the photos it learned from.</b> COCO is mostly eye-level daytime photos. Traffic cameras look down from poles, at low resolution, at night, in rain. A far car only a few pixels long is below what this small network can see, so confidence drops and counts fall with distance and darkness, not with traffic.</li>
+      <li><b>Things it has no class for.</b> COCO has 80 classes. A delivery cart or an e-scooter is either missed or forced into the nearest class it knows, sometimes confidently: a softmax has no "none of these" (chapter 5).</li>
+    </ul>
+  </details>
   <p class="muted">All chapters: <a href="./">AI from scratch</a>. Detector: <a href="https://github.com/tensorflow/tfjs-models/tree/master/coco-ssd">COCO-SSD for TensorFlow.js</a> (Apache 2.0). Cameras: <a href="https://webcams.nyctmc.org">NYC DOT</a>.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>

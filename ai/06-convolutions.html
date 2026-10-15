@@ -50,6 +50,7 @@
     <div class="why">\(28 \times 28 \times 3 = 2{,}352\): a red, a green and a blue value per pixel.</div>
   </div>
 
+  <p class="gist">To a network a picture is a grid of brightness numbers; color stacks three grids.</p>
   <h2>2. A filter slides over it</h2>
   <p>A <b>filter</b> (or kernel) is a tiny grid of weights, here 3 × 3. Put it on a spot of the image, multiply the 9 pixels under it by its 9 weights, add them up: that's one output number. Slide it to every position and you get a new image, the <b>feature map</b>. The filter below finds edges where the image goes from dark (left) to bright (right). Pick others, and hover the output to see the arithmetic.</p>
   <div class="row"><label>filter <select id="kname"><option value="vert">vertical edges</option><option value="horiz">horizontal edges</option><option value="diag">diagonal edges</option><option value="blur">blur</option><option value="sharp">sharpen</option></select></label></div>
@@ -103,6 +104,16 @@ from scipy.signal import correlate2d                          # the library vers
 print("SciPy agrees:", np.array_equal(correlate2d(img, vertical, mode="valid"), F))
 </textarea></div>
 
+  <p class="gist">A filter is one small dot product slid everywhere, so it finds its pattern wherever the pattern is.</p>
+  <details class="deeper"><summary>Why sharing one filter everywhere works so well</summary>
+    <ol>
+      <li>Each output \(F[r][c]\) depends only on the patch at \((r, c)\). So shift the image one pixel right and the whole feature map shifts one pixel right, unchanged otherwise. A vertical edge is found the same way at every position.</li>
+      <li>That matches photos: an edge, an eye or a wheel looks the same wherever it is in the frame. A dense layer would have to learn "edge" separately at every position, from examples at every position.</li>
+      <li>The saving in numbers: a dense layer making the same 8 × 24 × 24 = 4,608 outputs from 784 pixels needs \(784 \times 4{,}608 \approx 3.6\) million weights; 8 shared 5 × 5 filters need 200.</li>
+      <li>Fewer numbers to fit means less data needed and less overfitting (chapter 11): the architecture already "knows" that patterns are local and can be anywhere.</li>
+      <li>Stacking adds reach: two 3 × 3 layers see a 5 × 5 patch of the image, three see 7 × 7. Deep layers end up looking at whole objects built from the edges below.</li>
+    </ol>
+  </details>
   <h2>3. Train a network that reads digits</h2>
   <p>Our network: 8 filters of 5 × 5 (learned, not hand-picked) → ReLU → 2 × 2 max pooling → one dense layer of 10 outputs → softmax (chapter 5). About 12,000 weights. It trains on digits drawn in your computer's fonts, randomly rotated, scaled and thickened, with backprop (chapter 4) written out by hand in this page. Press train and watch the filters grow from noise into stroke detectors.</p>
   <details class="deeper" open><summary>The math: counting weights, and backprop through a filter</summary>
@@ -144,6 +155,7 @@ print("learned filter:\n", K.round(2))
     <figure><div class="grid8" id="maps"></div><br>their feature maps for your drawing</figure>
   </div>
 
+  <p class="gist">Training learns the filters themselves, by sending blame back through every place each filter was used.</p>
   <h2>4. Draw, and it reads</h2>
   <p>Draw a digit in the box at the top (or below, it's the same drawing) and the network gives its probabilities. Draw big, roughly centered, with one continuous shape like the printed digits it learned from.</p>
   <div class="stage">
@@ -152,6 +164,14 @@ print("learned filter:\n", K.round(2))
   </div>
   <p>It will make mistakes, especially on digits drawn very differently from fonts: it has only ever seen typefaces. Real digit readers train on tens of thousands of real handwritten samples (MNIST has 60,000), with more layers. But it's the same machine: filters that slide, pooling that forgives, a softmax that votes, and gradient descent that tunes every weight. Next: what happens when the input isn't a grid but a sentence: <a href="./07-attention.html"><b>attention and transformers</b></a>.</p>
 
+  <p class="gist">A small CNN is the whole machine at toy size: shared filters, pooling that forgives small shifts, a softmax that votes.</p>
+  <details class="deeper"><summary>Where it breaks: shifts, turns and textures</summary>
+    <ul>
+      <li><b>Rotations and sizes.</b> Sliding handles shifts, not turns or zoom: a vertical-edge filter barely reacts to an edge tilted 45°. That's why this page trains on digits that are randomly rotated and scaled (data augmentation): the network has to see the variations it should ignore.</li>
+      <li><b>Even shifts, after pooling.</b> 2 × 2 pooling with stride 2 forgives a shift inside one window, not across windows. A row (0, 1, 0, 0) pools to (1, 0); shifted one pixel, (0, 0, 1, 0) pools to (0, 1). Real networks with many strided layers can change their answer when an image moves by one pixel; blurring before downsampling reduces it.</li>
+      <li><b>Texture shortcuts.</b> Networks trained on photos often lean on texture more than shape: a cat's outline filled with elephant skin gets called an elephant. Whatever separates the training labels most cheaply is what gets learned, so test on images that pull shape and texture apart.</li>
+    </ul>
+  </details>
   <p class="muted">All chapters: <a href="./">AI from scratch</a>. Inspired by 3Blue1Brown's <a href="https://www.3blue1brown.com/lessons/convolutions">But what is a convolution?</a></p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
