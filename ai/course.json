@@ -4853,5 +4853,116 @@
     "sec": 5
    }
   ]
+ },
+ "using-llms.html": {
+  "goals": [
+   "Explain how a chat becomes one token sequence through a chat template, and why models are stateless",
+   "Write prompts that work: specific, instructions apart from data, named format, few-shot examples",
+   "Get reliable structured output: parse, validate, retry, constrain",
+   "Choose between hosted APIs and open weights, and estimate cost and latency in tokens"
+  ],
+  "needs": [
+   "10-tiny-transformer.html",
+   "tokens.html",
+   "08-agents.html"
+  ],
+  "teaches": [
+   "py:try"
+  ],
+  "cards": [
+   [
+    "Chat template",
+    "Turns are wrapped in special tokens (<|im_start|>user …) and joined into one sequence; the model continues it."
+   ],
+   [
+    "Stateless",
+    "Every call resends the whole conversation; nothing is remembered between calls."
+   ],
+   [
+    "Few-shot prompting",
+    "Worked input → output examples before the real input; the format becomes the likely continuation (in-context learning)."
+   ],
+   [
+    "Structured output",
+    "Ask for JSON, then parse, validate and retry; schema-constrained decoding guarantees it parses."
+   ],
+   [
+    "Python try/except",
+    "try: runs code that might fail; except SomeError: runs instead if it raises that error."
+   ],
+   [
+    "Hallucination",
+    "Fluent, confident, wrong: the likeliest continuation, not a looked-up fact. Ground facts in data or tools."
+   ],
+   [
+    "Hosted vs open weights",
+    "APIs: strongest models, per-token cost, data leaves. Open: control, privacy, pinned versions, your hardware."
+   ],
+   [
+    "Token cost",
+    "n_in × p_in + n_out × p_out, prices per million; output costs several times more."
+   ],
+   [
+    "Prefill vs decode",
+    "The prompt is read in parallel (compute-bound); output is one token at a time (memory-bound), so it's slower."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A chat has 20 turns. For the next reply, the model receives…",
+    "options": [
+     "all 20 turns plus the new message, as one token sequence",
+     "only the new message",
+     "a stored memory of the chat"
+    ],
+    "answer": 0,
+    "why": "Models are stateless; the app resends the history each call.",
+    "sec": 1
+   },
+   {
+    "q": "Why do two worked examples in the prompt make a small model's JSON so much more reliable?",
+    "options": [
+     "After two question → JSON pairs, a third JSON answer is the most likely continuation",
+     "The examples retrain the weights",
+     "Longer prompts make models smarter"
+    ],
+    "answer": 0,
+    "why": "In-context learning: the same next-token prediction, steered by the pattern. In the notebook: 3/10 right → 9/10.",
+    "sec": 3
+   },
+   {
+    "q": "A program needs the model's answer as JSON. The robust approach is…",
+    "options": [
+     "parse it, check the fields, retry on failure, and use schema-constrained output if available",
+     "trust it if the prompt says 'JSON only'",
+     "ask the model whether its answer is valid"
+    ],
+    "answer": 0,
+    "why": "Formats fail occasionally; code must check and recover.",
+    "sec": 4
+   },
+   {
+    "q": "When is an open-weights model the better choice?",
+    "options": [
+     "When data must stay on your machines, the version must never change, or you want to fine-tune",
+     "Always: they're the strongest",
+     "When you have no hardware"
+    ],
+    "answer": 0,
+    "why": "Hosted APIs usually lead in quality; open weights win on control and privacy.",
+    "sec": 5
+   },
+   {
+    "q": "Why are output tokens slower and pricier than input tokens?",
+    "options": [
+     "The prompt is processed in parallel, but each output token needs the previous one and rereads all the weights",
+     "Output tokens are longer",
+     "Providers charge more for no reason"
+    ],
+    "answer": 0,
+    "why": "Decode is memory-bound, one token at a time; prefill is one big parallel matrix product.",
+    "sec": 6
+   }
+  ]
  }
 }

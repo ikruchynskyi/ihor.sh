@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Using LLMs</title>
+  <meta name="description" content="AI from scratch: using LLMs. Chat templates, a small open model (SmolLM2) running in your browser with temperature and streaming, prompts that work, few-shot examples, structured JSON output with validation and retries, hosted APIs vs open models, and the cost and latency of tokens." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .play textarea { width: 100%; box-sizing: border-box; font: 15px/1.5 ui-monospace, Menlo, monospace; padding: 8px; }
+    .play label.blk { display: block; font-size: 14px; color: var(--muted); margin-top: 8px; }
+    #out { white-space: pre-wrap; background: #14171d; color: #d8dee9; border-radius: 8px; padding: 10px 12px; min-height: 4em; font: 15px/1.5 ui-monospace, Menlo, monospace; }
+    #tmpl { white-space: pre-wrap; font: 13px/1.5 ui-monospace, Menlo, monospace; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Using LLMs · Stage 6: LLM engineering</p>
+  <h1>Using LLMs</h1>
+  <p class="lede">Chapter 10 built a tiny GPT that writes station names. The models behind chatbots are the same machine, trained on trillions of tokens and then taught to follow instructions. Most ML engineers never train one: they <i>use</i> one, as a component inside a product, through an API or as open weights on their own hardware. This lesson is that job: how a conversation becomes tokens, how to ask so the answer is useful, how to get output a program can rely on, and what each call costs. You'll practice on a real (small) open model that runs entirely in your browser.</p>
+
+  <h2>1. A chat is one long text</h2>
+  <p>An instruction-tuned model is still a next-token predictor (chapter 10). A conversation is turned into one token sequence by a <b>chat template</b>: each turn wrapped in special tokens that mark who's speaking, ending with the opening of the assistant's turn, so the most likely continuation is the assistant's reply. This is SmolLM2's template (the same one Qwen models use):</p>
+  <div id="tmpl">&lt;|im_start|&gt;system
+You are a concise assistant.&lt;|im_end|&gt;
+&lt;|im_start|&gt;user
+Name three boroughs of New York City.&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant
+</div>
+  <p>The <b>system</b> message sets the rules, <b>user</b> and <b>assistant</b> turns alternate, and the model writes until it produces <code>&lt;|im_end|&gt;</code>. It has no memory between calls: every request resends the whole conversation, which is why long chats get slower and pricier.</p>
+  <div class="q" data-answer="b">
+    <p>A chat has 20 turns. For the 21st reply, what does the model receive?</p>
+    <ul><li data-k="a" data-says="Models are stateless between calls; nothing is remembered on the model's side.">Only the new message: it remembers the rest</li><li data-k="b">All 20 turns plus the new message, as one token sequence</li><li data-k="c" data-says="Summaries are a trick some apps add, not how the model works.">A summary of the earlier turns</li></ul>
+    <div class="why">Everything the model knows about the conversation is in the input tokens. Apps that keep chats short (or summarize old turns, or retrieve only what's relevant: the next lesson) do it to save tokens and stay inside the context window.</div>
+  </div>
+  <p class="gist">A chat is serialized into one token sequence with special tokens marking each speaker, and the model continues it; nothing is remembered between calls.</p>
+
+  <h2>2. A model in your browser</h2>
+  <p>SmolLM2-135M-Instruct (Hugging Face, Apache 2.0): 135 million weights, small enough to download once (137 MB, 8-bit) and run on your device with transformers.js. It's about 1/5,000 the size of the largest models, so expect it to be confidently wrong often; that makes it a good teacher. Nothing you type leaves your browser.</p>
+  <div class="play">
+    <div class="row"><button id="load">Load the model (137 MB, once)</button><span class="readout" id="status" style="margin:0"></span></div>
+    <label class="blk" for="sys">system</label><textarea id="sys" rows="2">You are a concise assistant.</textarea>
+    <label class="blk" for="user">user</label><textarea id="user" rows="3">Name three boroughs of New York City.</textarea>
+    <div class="row">
+      <label>temperature <input type="range" id="temp" min="0" max="1.5" step="0.05" value="0"> <b id="tempV">0</b></label>
+      <label>max tokens <input type="range" id="maxt" min="16" max="256" step="16" value="96"> <b id="maxtV">96</b></label>
+      <button id="run" disabled>Generate</button>
+    </div>
+    <div id="out" aria-live="polite"></div>
+    <p class="readout" id="stats"></p>
+  </div>
+  <p>Things to try: run the same prompt twice at temperature 0 (the same answer) and at 0.7 (different ones, chapter 10's sampling). At temperature 0 this small model often gets stuck repeating a sentence: greedy decoding keeps taking the single likeliest path, and a loop is a very likely path once it starts; a little temperature, or a repetition penalty, breaks it. Ask for a fact it can't know, like the station after Court Sq on the G: in our test it confidently named "the 1st Street and 2nd Street subway station". Change the system message to "Answer only in French."</p>
+  <p class="gist">An open model is a file of weights you can run yourself: here, a small one in the browser, streaming tokens you can time.</p>
+
+  <h2>3. Prompts that work</h2>
+  <p>Prompting isn't magic words; it's writing a clear task for a reader who knows a lot and nothing about your situation.</p>
+  <table class="cmp">
+    <tr><th>Habit</th><th>Instead of</th><th>Write</th></tr>
+    <tr><td>Say exactly what you want</td><td>"Summarize this."</td><td>"Summarize this outage report in one sentence for riders: which station, which elevator, when it's back."</td></tr>
+    <tr><td>Separate instructions from data</td><td>Pasting the text into the middle of the request</td><td>Instructions first, then the data between clear markers (<code>&lt;report&gt; … &lt;/report&gt;</code>)</td></tr>
+    <tr><td>Show examples (few-shot)</td><td>Describing the format in words only</td><td>Two or three input → output pairs before the real input</td></tr>
+    <tr><td>Name the format</td><td>"Give me the data."</td><td>"Answer only with JSON: {"station": …, "line": …}"</td></tr>
+    <tr><td>Allow "I don't know"</td><td>Questions that force an answer</td><td>"If the text doesn't say, answer null."</td></tr>
+  </table>
+  <p>Examples matter most for small models. In the practice notebook, SmolLM2-360M extracts the station and line from sentences like "The 7 train is delayed at Court Sq.": asked plainly, it gets both right 3 times in 10. With two worked examples placed before the question as earlier chat turns, 9 times in 10. Retrying up to three times changed neither number: retries rescue answers that don't parse, not answers that are wrong.</p>
+  <div class="q" data-answer="c">
+    <p>Why do worked examples help a model more than a description of the format?</p>
+    <ul><li data-k="a" data-says="Examples add tokens; that's a cost, not the benefit.">They make the prompt longer</li><li data-k="b" data-says="The weights don't change during a call; nothing is trained.">The model trains on them</li><li data-k="c">The model is a continuation machine: after two question → JSON pairs, a third JSON answer is simply the most likely continuation</li></ul>
+    <div class="why">Few-shot examples work through the same next-token prediction as everything else: they make the format you want the obvious pattern to continue. This is "in-context learning": no weights change.</div>
+  </div>
+  <p class="gist">Good prompts are clear task descriptions: specific, with instructions apart from data, a named format, examples, and permission to say "I don't know".</p>
+
+  <h2>4. Output a program can trust</h2>
+  <p>When code consumes the answer, "usually JSON" isn't enough. Three layers, from weakest to strongest:</p>
+  <ol>
+    <li><b>Ask</b> for JSON in the prompt, with an example.</li>
+    <li><b>Check</b> it: parse it, check the fields and types, and if anything fails, ask again (with the error, or with a fresh sample). This needs one more piece of Python, below.</li>
+    <li><b>Constrain</b> it: hosted APIs and local servers can force the output to match a JSON schema (structured outputs; Ollama's <code>format=</code>, OpenAI's <code>response_format</code>), by masking out every next token that would break the schema. The result always parses; whether the values are right is still your job.</li>
+  </ol>
+  <p><b>try and except.</b> When a line might fail, like <code>json.loads</code> on text that isn't JSON, put it in a <code>try:</code> block; if it raises an error, Python jumps to the <code>except</code> block instead of stopping the program:</p>
+  <div class="code" data-title="Run it: parse, check, and know when to retry"><textarea>
+import json
+answers = ['{"station": "Court Sq", "line": "7"}',            # good
+           'The station is Court Sq and the line is 7.',      # not JSON at all
+           '{"station": "Court Sq", "line": "7"',             # cut off: the closing brace never came
+           '{"station": "Court Sq"}']                         # valid JSON, a field missing
+def parse(text):
+    try:
+        d = json.loads(text)
+    except json.JSONDecodeError as e:                         # json.loads raises this on bad JSON
+        return None, f"not valid JSON ({e.msg})"
+    if not isinstance(d, dict) or not {"station", "line"} <= d.keys():
+        return None, "JSON, but not the fields we asked for"
+    return d, "ok"
+for a in answers:
+    print(parse(a)[1].ljust(40), "←", a)
+</textarea></div>
+  <p class="gist">Never trust a model's format: parse it, check it, retry on failure, and use schema-constrained decoding where the API offers it.</p>
+  <details class="deeper"><summary>Where it breaks: fluent isn't true</summary>
+    <ul>
+      <li><b>Hallucination.</b> The model produces the most likely-sounding continuation, not a looked-up fact. Ask the small model which station comes after Court Sq on the G and it answers confidently and wrongly; large models are wrong less often but just as fluently. Facts a product depends on should come from data you give the model (retrieval, next lesson) or from tools (chapter 8), and the answer should be checked against them.</li>
+      <li><b>Sensitive to phrasing.</b> Reordering the examples, changing a word, or adding a trailing space (the tokens lesson) can change answers. Measure prompts on a test set (the evaluating LLMs lesson), not on one try.</li>
+      <li><b>Temperature 0 isn't fully deterministic.</b> Hosted models batch your request with others, and the order of floating-point additions on the GPU varies (the experiments lesson), so even greedy decoding can differ between calls. Design for small variations.</li>
+      <li><b>Instructions and data share one stream.</b> Roles are just special tokens in the same sequence, so text inside the data can still read as an instruction: prompt injection (chapter 8). Markers help; they don't make it impossible.</li>
+    </ul>
+  </details>
+
+  <h2>5. Hosted APIs and open models</h2>
+  <table class="cmp">
+    <tr><th></th><th>Hosted API (Anthropic, OpenAI, Google…)</th><th>Open weights (Llama, Qwen, Mistral, SmolLM…)</th></tr>
+    <tr><td>Quality</td><td>The strongest models</td><td>Close behind at the top; small ones run anywhere</td></tr>
+    <tr><td>Cost</td><td>Per token, nothing up front</td><td>Your hardware and electricity; free per call</td></tr>
+    <tr><td>Data</td><td>Leaves your machine (under the provider's terms)</td><td>Stays with you: this page, or Blip's local fallback on this site's Mac mini</td></tr>
+    <tr><td>Control</td><td>The provider can update or retire a model</td><td>Pinned forever; you can fine-tune it (the LoRA lesson)</td></tr>
+  </table>
+  <p>The code is short either way. A hosted call with Anthropic's Python SDK, and the same request to a local open model through Ollama's OpenAI-compatible endpoint:</p>
+  <pre class="static"><code>import anthropic
+client = anthropic.Anthropic()                       # reads ANTHROPIC_API_KEY from the environment
+msg = client.messages.create(model="claude-sonnet-5-5", max_tokens=200,
+                             system="You are a concise assistant.",
+                             messages=[{"role": "user", "content": "Name three boroughs of New York City."}])
+print(msg.content[0].text, msg.usage.input_tokens, msg.usage.output_tokens)
+
+from openai import OpenAI
+local = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")   # Ollama on your machine
+r = local.chat.completions.create(model="qwen2.5:0.5b", messages=[{"role": "user", "content": "Name three boroughs of New York City."}])
+print(r.choices[0].message.content)</code></pre>
+  <p>Keep API keys on a server, never in a web page (this site's keys live in a server-side <code>.env</code>, chapter 8).</p>
+  <p class="gist">Hosted APIs give the strongest models per token; open weights give control, privacy and a fixed version; the calling code is a few lines either way.</p>
+
+  <h2>6. Cost and latency</h2>
+  <p>Both are counted in tokens. A request costs</p>
+  <p class="formula">\[ \text{cost} = n_{\text{in}} \cdot p_{\text{in}} + n_{\text{out}} \cdot p_{\text{out}} \]</p>
+  <p>with prices per million tokens, output usually several times dearer than input. Latency has two parts: <b>time to first token</b> (reading the whole prompt) and then a steady rate of output tokens per second, the playground's readout. A 2,000-token prompt with a 300-token answer at 50 tokens a second takes about 6 seconds of writing however fast the first token arrives.</p>
+  <div class="q" data-num="1.65" data-tol="0.02">
+    <p>Prices (illustrative): \$3 per million input tokens, \$15 per million output tokens. A support bot answers 1,000 questions a day, each with a 400-token prompt and a 30-token reply. What does a day cost, in dollars?</p>
+    <div class="why">Input: \(1{,}000 \times 400 = 400{,}000\) tokens → \$1.20. Output: \(1{,}000 \times 30 = 30{,}000\) → \$0.45. Total \$1.65 a day. Long prompts repeated on every call dominate, which is why providers offer prompt caching (a repeated prefix is billed at a fraction).</div>
+  </div>
+  <p class="gist">Cost is tokens in and out times their prices; latency is the time to read the prompt, then a steady pace per output token.</p>
+  <details class="deeper"><summary>Why output tokens are slower and dearer than input tokens</summary>
+    <ol>
+      <li>Reading the prompt (the <b>prefill</b>) processes all its tokens in one pass: big matrix products over many positions at once, the compute-bound work GPUs are fast at (the GPUs lesson).</li>
+      <li>Writing the answer (the <b>decode</b>) is one token at a time: each new token needs the previous one, so each step is a product with a single vector.</li>
+      <li>Every decode step still reads all the model's weights from memory: 14 GB for a 7B model in float16, for one token's worth of arithmetic. That's memory-bound work, the GPU's cores mostly waiting.</li>
+      <li>So a GPU produces far fewer output tokens per second than it reads input tokens, and providers price output higher. Batching many users' decode steps together reuses each weight fetch for many tokens, which is how serving gets affordable (stage 7).</li>
+      <li>It also explains a practical rule: asking for a shorter answer saves more time than shortening the prompt.</li>
+    </ol>
+  </details>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li>A chat is a templated token sequence; the model is stateless and rereads everything each call.</li>
+    <li>Prompt like a task spec: specific, instructions apart from data, a named format, examples, room for "I don't know".</li>
+    <li>Parse, validate and retry structured output; constrain it with schemas where possible.</li>
+    <li>Fluent isn't true: ground facts in data or tools, and check.</li>
+    <li>Hosted for strength, open weights for control and privacy; keys on the server.</li>
+    <li>Cost = tokens × price; output tokens are slow (memory-bound decode) and expensive.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Model: <a href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">SmolLM2-135M-Instruct</a> (Hugging Face, Apache 2.0), run with <a href="https://huggingface.co/docs/transformers.js">transformers.js</a>. Anthropic's and OpenAI's prompting guides are good next reads.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let gen = null, tf = null, busy = false;
+["temp", "maxt"].forEach((id) => $(id).addEventListener("input", () => { $(`${id}V`).textContent = $(id).value; }));
+$("load").onclick = async () => {
+  if (gen || busy) return; busy = true; $("load").disabled = true;
+  try {
+    tf = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1");
+    const seen = {};
+    gen = await tf.pipeline("text-generation", "HuggingFaceTB/SmolLM2-135M-Instruct", {
+      dtype: "q8",
+      progress_callback: (p) => { if (p.status === "progress" && p.total > 1e6) { seen[p.file] = p; const done = Object.values(seen).reduce((s, x) => s + x.loaded, 0), all = Object.values(seen).reduce((s, x) => s + x.total, 0); $("status").textContent = `downloading ${(done / 1e6).toFixed(0)} of ${(all / 1e6).toFixed(0)} MB`; } },
+    });
+    $("status").textContent = "Ready. It runs on your device; nothing is sent anywhere.";
+    $("run").disabled = false;
+  } catch (e) { $("status").textContent = `Couldn't load the model: ${e.message}`; $("load").disabled = false; }
+  busy = false;
+};
+$("run").onclick = async () => {
+  if (!gen || busy) return; busy = true; $("run").disabled = true; $("out").textContent = ""; $("stats").textContent = "";
+  const messages = [{ role: "system", content: $("sys").value }, { role: "user", content: $("user").value }];
+  const prompt = gen.tokenizer.apply_chat_template(messages, { tokenize: false, add_generation_prompt: true });
+  $("tmpl").textContent = prompt;
+  const nIn = gen.tokenizer.encode(prompt).length, t0 = performance.now(); let first = 0, n = 0;
+  const temp = +$("temp").value;
+  const streamer = new tf.TextStreamer(gen.tokenizer, { skip_prompt: true, skip_special_tokens: true, callback_function: (text) => { if (!first) first = performance.now(); $("out").textContent += text; }, token_callback_function: () => { n++; } });
+  try {
+    await gen(messages, { max_new_tokens: +$("maxt").value, do_sample: temp > 0, temperature: temp || undefined, streamer });
+    const t1 = performance.now(), dec = (t1 - first) / 1000;
+    $("stats").textContent = `${nIn} prompt tokens · ${n} output tokens · first token after ${((first - t0) / 1000).toFixed(2)} s · ${n > 1 && dec > 0 ? (n / dec).toFixed(1) : "?"} tokens/s`;
+  } catch (e) { $("out").textContent = `Error: ${e.message}`; }
+  busy = false; $("run").disabled = false;
+};
+window.blipContext = () => ({ page: "AI from scratch, stage 6: using LLMs (chat templates, SmolLM2 in the browser, prompting habits, few-shot, structured output with validation and retries, try/except, hosted APIs vs open weights, cost and latency, prefill vs decode)", readouts: [$("status").textContent, $("stats").textContent] });
+</script>
+</body>
+</html>

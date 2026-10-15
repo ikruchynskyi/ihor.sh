@@ -314,6 +314,13 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-training-in-pytorch"
  },
+ "using-llms.html": {
+  "notebook": "using-llms.ipynb",
+  "title": "AI from scratch: using LLMs",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/using-llms.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-using-llms"
+ },
  "word-vectors.html": {
   "notebook": "word-vectors.ipynb",
   "title": "AI from scratch: word vectors",
