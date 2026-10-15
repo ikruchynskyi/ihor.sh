@@ -3826,5 +3826,129 @@
     "sec": 5
    }
   ]
+ },
+ "optimizers.html": {
+  "goals": [
+   "Explain why plain SGD crawls in a narrow valley and diverges above 2 / (steepest curvature)",
+   "Build momentum, RMSprop and Adam from the exponentially weighted average, with bias correction",
+   "Use AdamW and a warmup-plus-decay schedule in PyTorch",
+   "Search the learning rate on a log scale, with random points or a range test"
+  ],
+  "needs": [
+   "02-gradients.html",
+   "c3-taylor-and-curvature.html",
+   "training-in-pytorch.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "SGD's ceiling",
+    "In a valley with curvatures λ, plain SGD diverges above η = 2/λ_max and crawls along the flat directions."
+   ],
+   [
+    "Exponentially weighted average",
+    "v ← βv + (1 − β)x: remembers about 1/(1 − β) recent values."
+   ],
+   [
+    "Bias correction",
+    "Divide an EWA that started at 0 by 1 − βᵗ; it matters only in the first steps."
+   ],
+   [
+    "Momentum",
+    "Step along an EWA of gradients: zig-zags cancel, steady directions add up (about 1/(1 − β) times)."
+   ],
+   [
+    "RMSprop",
+    "Divide each weight's step by the root of an EWA of its squared gradients: every weight moves about η."
+   ],
+   [
+    "Adam",
+    "Momentum + RMSprop + bias correction. Defaults β₁ 0.9, β₂ 0.999, η 1e-3."
+   ],
+   [
+    "AdamW",
+    "Weight decay applied outside Adam's division, so every weight shrinks at the same rate."
+   ],
+   [
+    "Warmup",
+    "Ramp the learning rate up over the first steps, while weights are random and Adam's averages unreliable."
+   ],
+   [
+    "Cosine decay",
+    "Lower the rate along a half cosine toward 0, so late steps settle instead of bouncing."
+   ],
+   [
+    "Learning-rate search",
+    "Log scale (1e-4, 3e-4, 1e-3…), random points over a grid, or a range test."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A valley's steepest curvature is 50. Above what learning rate does plain SGD diverge?",
+    "options": [
+     "0.04",
+     "0.5",
+     "0.02"
+    ],
+    "answer": 0,
+    "why": "Each step multiplies the steep error by 1 − 50η; past η = 2/50 that's below −1.",
+    "sec": 1
+   },
+   {
+    "q": "Why does momentum move faster along a valley's floor?",
+    "options": [
+     "Gradients there point the same way every step, so the running average adds them up, about 1/(1 − β) times",
+     "Because it uses a larger learning rate",
+     "Because it ignores the gradient's size"
+    ],
+    "answer": 0,
+    "why": "g + βg + β²g + … = g/(1 − β): 10 times for β = 0.9. Across the valley the flipping signs cancel instead.",
+    "sec": 2
+   },
+   {
+    "q": "An EWA with β = 0.9 starts at 0 and sees the value 5 once. Without bias correction it says…",
+    "options": [
+     "0.5",
+     "5",
+     "4.5"
+    ],
+    "answer": 0,
+    "why": "0.9·0 + 0.1·5 = 0.5; dividing by 1 − 0.9 = 0.1 gives back 5.",
+    "sec": 2
+   },
+   {
+    "q": "What does RMSprop do that momentum doesn't?",
+    "options": [
+     "Gives each weight its own step size, dividing by its typical gradient size",
+     "Averages gradients over time",
+     "Decays the learning rate"
+    ],
+    "answer": 0,
+    "why": "Momentum still has one η for everyone; RMSprop's √s is per weight.",
+    "sec": 3
+   },
+   {
+    "q": "Why AdamW instead of Adam plus an L2 penalty?",
+    "options": [
+     "With Adam, the L2 term gets divided by each weight's √s, so heavily-updated weights barely decay",
+     "AdamW is faster",
+     "Adam can't use weight decay at all"
+    ],
+    "answer": 0,
+    "why": "AdamW subtracts ηλw outside the division: an even shrink.",
+    "sec": 4
+   },
+   {
+    "q": "Why warm up the learning rate at the start of training?",
+    "options": [
+     "Early steps are the riskiest: random weights, big gradients, and Adam's averages based on very few steps",
+     "To make training take longer",
+     "Because the loss is zero at the start"
+    ],
+    "answer": 0,
+    "why": "A small rate while the averages settle avoids a jump the model never recovers from.",
+    "sec": 5
+   }
+  ]
  }
 }

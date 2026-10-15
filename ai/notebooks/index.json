@@ -181,6 +181,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-numpy-in-depth"
  },
+ "optimizers.html": {
+  "notebook": "optimizers.ipynb",
+  "title": "AI from scratch: optimizers and schedules",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/optimizers.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-optimizers-and-schedules"
+ },
  "p1-probability-and-bayes.html": {
   "notebook": "p1-probability-and-bayes.ipynb",
   "title": "AI from scratch: probability, simulation and a rea",

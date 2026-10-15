@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Optimizers and Schedules</title>
+  <meta name="description" content="AI from scratch, toolkit 3: optimizers and schedules. SGD, momentum, RMSprop and Adam racing down the same ravine; exponentially weighted averages and bias correction; AdamW; learning-rate warmup, step and cosine schedules; random search on a log scale." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 3 · Stage 4: the engineer's toolkit</p>
+  <h1>Optimizers and schedules</h1>
+  <p class="lede">Chapter 2's gradient descent takes a step straight downhill. Real training almost never uses it plain. It uses <b>Adam</b>, or SGD with <b>momentum</b>, and a <b>learning-rate schedule</b> that warms up and then cools down. These are small changes to one line of code, and they're often the difference between a model that trains in an hour and one that never does. This lesson races them on the same valley, builds each one from a single idea, and ends with how to choose the settings.</p>
+
+  <h2>1. The race</h2>
+  <p>The loss here is a long, narrow valley, 50 times steeper across than along: \(L = \tfrac12 (x^2 + 50\, y^2)\). Real losses are full of valleys like this (calculus 3's curvature, linear algebra 2's stretched directions). All four optimizers start at the same point; each has its own learning rate, tuned for it. Press play, then push the learning rate up.</p>
+  <canvas id="race" width="800" height="440" aria-label="A narrow valley's contour lines and four optimizers' paths toward its bottom"></canvas>
+  <div class="row">
+    <button id="play">▶ Play</button>
+    <label>steps <input type="range" id="steps" min="0" max="150" value="150"> <b id="stepsV">150</b></label>
+    <label>learning rates × <input type="range" id="lrs" min="-2" max="0.6" step="0.05" value="0"> <b id="lrsV">1.00</b></label>
+  </div>
+  <p class="legend"><i style="background:#58c4dd"></i>SGD <i style="background:#f4a259"></i>momentum <i style="background:#83c167"></i>RMSprop <i style="background:#fc6255"></i>Adam</p>
+  <p class="readout" id="r1"></p>
+  <p>Plain SGD has a problem it can't escape: the steep direction limits its step size. Any learning rate above \(2 / 50 = 0.04\) makes it overshoot across the valley a little more each time and fly off (its rate here is 0.039, so push the slider just past ×1). Below that limit, steps along the gentle direction are tiny, so it crawls: 118 steps to get the loss under 0.001. Momentum gets there in 61, RMSprop in 31, Adam in 71. Each fixes the crawl in its own way.</p>
+  <div class="q" data-answer="b">
+    <p>Why can't SGD just use a bigger learning rate to go faster along the valley?</p>
+    <ul><li data-k="a" data-says="It would go faster along the valley, but that's not the problem: the other direction blows up first.">It can: it just wasn't tuned</li><li data-k="b">One learning rate serves both directions, and the steep one overshoots and diverges above 2 / 50 = 0.04</li><li data-k="c" data-says="The gradient along the valley is small but not zero.">The gradient along the valley is zero</li></ul>
+    <div class="why">Chapter 2's step is \(w \leftarrow w - \eta g\). Across the valley, each step multiplies the distance from the bottom by \(1 - 50\eta\); above \(\eta = 0.04\) that's below −1, and it grows. Along it, the factor is \(1 - \eta\): close to 1, so progress is slow. The ratio of the two curvatures, 50, is the problem.</div>
+  </div>
+  <p class="gist">In a narrow valley one learning rate can't suit both directions: the steep one caps it, and the gentle one crawls.</p>
+
+  <h2>2. Momentum: a ball that remembers</h2>
+  <p>Instead of stepping along today's gradient, step along a running average of recent gradients. Across the valley the gradients flip sign every step (left wall, right wall), so they cancel in the average. Along the valley they all point the same way, so they add up.</p>
+  <p class="formula">\[ v \leftarrow \beta\, v + g, \qquad w \leftarrow w - \eta\, v \qquad (\beta \approx 0.9) \]</p>
+  <p>That running average has a name you'll see everywhere, the <b>exponentially weighted average</b> (EWA): \(v \leftarrow \beta v + (1 - \beta) x\). Each old value's weight shrinks by \(\beta\) per step, so it remembers roughly the last \(1/(1 - \beta)\) values: 10 for \(\beta = 0.9\), 1,000 for 0.999. (Momentum as written above leaves out the \(1 - \beta\); that just rescales \(\eta\).)</p>
+  <div class="code" id="ewa" data-title="Run it: an exponentially weighted average, and its slow start"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+rng = np.random.default_rng(0)
+x = 5 + rng.normal(size=60)              # noisy readings around 5
+beta = 0.9
+v, plain, fixed = 0.0, [], []
+for t, xt in enumerate(x, start=1):
+    v = beta * v + (1 - beta) * xt
+    plain.append(v)
+    fixed.append(v / (1 - beta ** t))     # bias correction: undo the start at 0
+plt.figure(figsize=(7, 3))
+plt.plot(x, ".", alpha=0.4, label="readings"); plt.plot(plain, label="EWA, starting at 0"); plt.plot(fixed, label="bias-corrected")
+plt.legend(); plt.title("β = 0.9: about the last 10 values"); plt.show()
+print("after 1 reading: plain", round(plain[0], 2), " corrected", round(fixed[0], 2))
+print("after 10:        plain", round(plain[9], 2), " corrected", round(fixed[9], 2))
+</textarea></div>
+  <p>The plain average starts at 0 and takes about 10 steps to catch up: after one reading of 5 it says 0.5. Dividing by \(1 - \beta^t\) fixes the start exactly, and fades out as \(\beta^t\) goes to 0. Adam uses this <b>bias correction</b>.</p>
+  <div class="q" data-num="100" data-tol="0.01">
+    <p>About how many recent values does an EWA with \(\beta = 0.99\) remember?</p>
+    <div class="why">\(1 / (1 - 0.99) = 100\). Higher \(\beta\) is smoother but slower to react.</div>
+  </div>
+  <p class="gist">Momentum steps along a running average of gradients: zig-zags cancel, steady directions add up.</p>
+  <details class="deeper"><summary>Why momentum goes about 10 times faster along the valley</summary>
+    <ol>
+      <li>Along the gentle direction the gradient \(g\) barely changes from step to step. Call it constant.</li>
+      <li>Then \(v\) grows as \(g, (1 + \beta) g, (1 + \beta + \beta^2) g, \dots\), a sum that settles at \(g / (1 - \beta)\).</li>
+      <li>With \(\beta = 0.9\) that's \(10 g\): each step moves 10 times as far as plain SGD with the same \(\eta\).</li>
+      <li>Across the valley the gradient flips sign each step, so \(v\) is a sum like \(g - \beta g + \beta^2 g - \dots = g / (1 + \beta)\): about half a step, which damps the zig-zag instead of growing it.</li>
+      <li>So momentum multiplies the useful direction by 10 and the useless one by 0.5: the valley looks 20 times less narrow to it.</li>
+    </ol>
+  </details>
+
+  <h2>3. RMSprop and Adam: a step size per weight</h2>
+  <p>Momentum still uses one learning rate for everything. <b>RMSprop</b> gives each weight its own: keep an EWA of each weight's <i>squared</i> gradient, and divide that weight's step by its square root. A weight whose gradients are big (the steep direction) gets small steps; one whose gradients are small gets big ones. In the race, that's why RMSprop heads almost straight for the bottom.</p>
+  <p class="formula">\[ s \leftarrow \beta_2\, s + (1 - \beta_2)\, g^2, \qquad w \leftarrow w - \eta\, \frac{g}{\sqrt{s} + \epsilon} \]</p>
+  <p>(Everything is per weight: \(g^2\) squares each entry. \(\epsilon \approx 10^{-8}\) keeps it from dividing by zero.) <b>Adam</b> is momentum and RMSprop together, with bias correction on both averages:</p>
+  <p class="formula">\[ m \leftarrow \beta_1 m + (1 - \beta_1) g, \quad s \leftarrow \beta_2 s + (1 - \beta_2) g^2, \quad w \leftarrow w - \eta\, \frac{m / (1 - \beta_1^t)}{\sqrt{s / (1 - \beta_2^t)} + \epsilon} \]</p>
+  <p>The defaults \(\beta_1 = 0.9,\ \beta_2 = 0.999,\ \eta = 10^{-3}\) work for a surprising range of models, which is why Adam is the default almost everywhere. In the race it's not the fastest: on one clean valley its momentum overshoots a little. Its strength is that it rarely needs much tuning.</p>
+  <div class="code" data-title="Build it: the four optimizers in a few lines each"><textarea>
+import numpy as np
+H = np.array([1.0, 50.0])                            # the valley: L = ½(x² + 50 y²)
+loss = lambda w: 0.5 * (H * w * w).sum()
+grad = lambda w: H * w
+def race(kind, lr, b1=0.9, b2=0.99, eps=1e-8, steps=500):
+    w, m, s = np.array([-4.5, 0.8]), np.zeros(2), np.zeros(2)
+    for t in range(1, steps + 1):
+        g = grad(w)
+        if kind == "sgd":
+            w = w - lr * g
+        elif kind == "momentum":
+            m = b1 * m + g; w = w - lr * m
+        elif kind == "rmsprop":
+            s = b2 * s + (1 - b2) * g ** 2; w = w - lr * g / (np.sqrt(s) + eps)
+        elif kind == "adam":
+            m = b1 * m + (1 - b1) * g; s = 0.999 * s + 0.001 * g ** 2
+            w = w - lr * (m / (1 - b1 ** t)) / (np.sqrt(s / (1 - 0.999 ** t)) + eps)
+        if loss(w) < 1e-3: return t
+        if loss(w) > 1e6: return "diverged"
+    return "not yet"
+for kind, lr in [("sgd", 0.039), ("sgd", 0.041), ("momentum", 0.01), ("rmsprop", 0.1), ("adam", 0.1)]:
+    print(f"{kind:9s} lr {lr:<6} steps to loss < 0.001: {race(kind, lr)}")
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>In RMSprop, one weight's gradients have been around 100 and another's around 0.01. How do their step sizes compare?</p>
+    <ul><li data-k="a">About the same: each step is the gradient divided by its own typical size, roughly ±η</li><li data-k="b" data-says="That's plain SGD: steps proportional to the gradient.">The first steps 10,000 times further</li><li data-k="c" data-says="Dividing by √s cancels the size, it doesn't invert it.">The second steps 10,000 times further</li></ul>
+    <div class="why">\(g / \sqrt{s}\) is about \(\pm 1\) when \(g\) stays near its typical size. That's the whole trick: every weight moves at about the same speed, whatever the units of its gradient.</div>
+  </div>
+  <p class="gist">RMSprop divides each weight's step by its own typical gradient size; Adam adds momentum and bias correction on top.</p>
+
+  <h2>4. Weight decay, done right: AdamW</h2>
+  <p>Chapter 11's L2 penalty adds \(\lambda w\) to every gradient, pulling weights toward zero. With SGD that's the same as shrinking every weight by a fixed fraction each step, called <b>weight decay</b>. With Adam it isn't: the \(\lambda w\) term goes through the division by \(\sqrt{s}\), so weights with big gradients barely get pulled, and the penalty does something nobody intended. <b>AdamW</b> applies the shrink separately, outside the division:</p>
+  <p class="formula">\[ w \leftarrow w - \eta \left( \frac{\hat m}{\sqrt{\hat s} + \epsilon} + \lambda\, w \right) \]</p>
+  <p>In PyTorch that's <code>torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)</code>, and it's what nearly every transformer is trained with.</p>
+  <p class="gist">With Adam, an L2 penalty gets rescaled per weight; AdamW keeps the shrink separate so every weight decays at the same rate.</p>
+
+  <h2>5. Schedules: warm up, then cool down</h2>
+  <p>The best learning rate changes during training. Early on, the weights are random and Adam's averages are based on a handful of steps: a big step can throw the model somewhere it never recovers from. Late in training, the model is near a good spot and big steps bounce around it. So the rate is <b>scheduled</b>: a short linear <b>warmup</b> from near zero, then a slow <b>decay</b>.</p>
+  <div class="code" data-title="Run it: four schedules over 1,000 steps"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+steps, peak, warm = 1000, 3e-4, 100
+t = np.arange(steps)
+constant = np.full(steps, peak)
+step_decay = peak * 0.1 ** (t // 400)                            # ÷10 every 400 steps
+cosine = peak * 0.5 * (1 + np.cos(np.pi * t / steps))            # a half cosine down to 0
+warm_cos = np.where(t < warm, peak * (t + 1) / warm,
+                    peak * 0.5 * (1 + np.cos(np.pi * (t - warm) / (steps - warm))))
+plt.figure(figsize=(7, 3))
+for name, s in [("constant", constant), ("step decay", step_decay), ("cosine", cosine), ("warmup + cosine", warm_cos)]:
+    plt.plot(s, label=name)
+plt.legend(); plt.xlabel("step"); plt.ylabel("learning rate"); plt.show()
+print("in PyTorch: torch.optim.lr_scheduler.OneCycleLR, CosineAnnealingLR, or LambdaLR with your own function")
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>A transformer's loss spikes to NaN in the first 50 steps at learning rate 3e-4, but trains fine if you start at 3e-4 after 500 steps of training at 1e-5. What does it need?</p>
+    <ul><li data-k="a" data-says="It trains fine at 3e-4 later, so the rate isn't too high in general.">A permanently lower learning rate</li><li data-k="b" data-says="The problem is the first steps, not the end.">A faster decay</li><li data-k="c">A warmup: ramp the rate up from near zero over the first few hundred steps</li></ul>
+    <div class="why">Early updates are the riskiest: random weights, large gradients, and Adam's \(s\) estimated from very few steps (so \(\sqrt{s}\) can be tiny and the steps huge). Warmup gives the averages time to settle.</div>
+  </div>
+  <p class="gist">Training starts with a short warmup so early, unreliable steps stay small, then decays so late steps settle instead of bouncing.</p>
+
+  <h2>6. Choosing the settings</h2>
+  <p>The learning rate matters most, then the batch size and weight decay, then everything else. Three habits:</p>
+  <ul>
+    <li><b>Log scale.</b> Try 1e-4, 3e-4, 1e-3, 3e-3: a factor of 3 apart, not 0.0001 apart. The same for weight decay and for \(1 - \beta\) (0.9, 0.99, 0.999 are 10× apart in \(1 - \beta\)).</li>
+    <li><b>Random beats grid.</b> With two settings of which only one really matters, a 3 × 3 grid tries just 3 values of the important one; 9 random points try 9.</li>
+    <li><b>The learning-rate range test.</b> Train for a few hundred steps while the rate grows exponentially from 1e-7 to 1, plot the loss: pick a rate a bit below where it falls fastest, well below where it blows up.</li>
+  </ul>
+  <div class="code" data-title="Run it: grid vs random when only one setting matters"><textarea>
+import numpy as np
+rng = np.random.default_rng(1)
+# the score depends on the learning rate (it peaks at 3e-3) and not at all on the other setting
+score = lambda lr, other: -(np.log10(lr) - np.log10(3e-3)) ** 2
+grid_lrs = np.repeat([1e-4, 1e-3, 1e-2], 3)                     # 3 × 3 grid: only 3 different learning rates
+rand_lrs = 10 ** rng.uniform(-4, -2, size=9)                     # 9 random points, sampled on a log scale
+print("grid tried", len(set(grid_lrs)), "learning rates; best score", round(max(score(l, 0) for l in grid_lrs), 3))
+print("random tried", len(set(rand_lrs)), "learning rates; best score", round(max(score(l, 0) for l in rand_lrs), 3), " best lr", f"{rand_lrs[np.argmax([score(l, 0) for l in rand_lrs])]:.1e}")
+</textarea></div>
+  <p class="gist">Search the learning rate first, on a log scale, with random points rather than a grid.</p>
+  <details class="deeper"><summary>Where it breaks: what optimizers can't fix</summary>
+    <ul>
+      <li><b>A rate that's simply too high.</b> Adam's per-weight scaling keeps every step near \(\eta\) in size, but if \(\eta\) itself is too big the loss still jumps around or turns into NaN. No optimizer replaces the range test.</li>
+      <li><b>Fast isn't the same as good.</b> On image classifiers, plain SGD with momentum and a good schedule often ends at slightly better test accuracy than Adam, even though Adam gets the training loss down sooner. Which minimum you land in matters, not only how fast you get there.</li>
+      <li><b>Settings tuned at one size.</b> A learning rate tuned with batch size 32 is wrong at 1,024 (the training-in-PyTorch lesson: the rate scales with the batch, up to a limit). Change the batch, re-tune the rate, and keep the warmup.</li>
+    </ul>
+  </details>
+
+  <h2>7. What to carry forward</h2>
+  <table class="cmp">
+    <tr><th>Optimizer</th><th>The idea</th><th>Use it when</th></tr>
+    <tr><td>SGD</td><td>Step along the gradient; capped by the steepest direction</td><td>Rarely alone</td></tr>
+    <tr><td>SGD + momentum</td><td>Step along an EWA of gradients (β ≈ 0.9)</td><td>Image models with a tuned schedule</td></tr>
+    <tr><td>RMSprop</td><td>Divide each step by its weight's typical gradient size</td><td>Older RNN work; the idea lives on in Adam</td></tr>
+    <tr><td>Adam / AdamW</td><td>Both, with bias correction; AdamW decays weights separately</td><td>The default: transformers, most new models</td></tr>
+  </table>
+  <ul>
+    <li>EWA: \(v \leftarrow \beta v + (1 - \beta) x\) remembers about \(1/(1 - \beta)\) values; divide by \(1 - \beta^t\) to fix the start.</li>
+    <li>Schedule: warm up, then decay (cosine is a common default).</li>
+    <li>Tune the learning rate first, on a log scale, with random search or a range test.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Distill's "Why Momentum Really Works" (Gabriel Goh) goes deeper into section 2.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const cv = $("race"), g = cv.getContext("2d"), W = cv.width, Hc = cv.height;
+const H = [1, 50], START = [-4.5, 0.8], X = [-5, 1], Y = [-1.1, 1.1];
+const px = ([x, y]) => [((x - X[0]) / (X[1] - X[0])) * W, Hc - ((y - Y[0]) / (Y[1] - Y[0])) * Hc];
+const loss = (w) => 0.5 * (H[0] * w[0] * w[0] + H[1] * w[1] * w[1]);
+const OPT = [
+  { name: "SGD", color: "#58c4dd", lr: 0.039, step(w, gr, st) { return w.map((wi, i) => wi - this.lrNow * gr[i]); } },
+  { name: "momentum", color: "#f4a259", lr: 0.01, step(w, gr, st) { st.m = st.m.map((m, i) => 0.9 * m + gr[i]); return w.map((wi, i) => wi - this.lrNow * st.m[i]); } },
+  { name: "RMSprop", color: "#83c167", lr: 0.1, step(w, gr, st) { st.s = st.s.map((s, i) => 0.99 * s + 0.01 * gr[i] ** 2); return w.map((wi, i) => wi - (this.lrNow * gr[i]) / (Math.sqrt(st.s[i]) + 1e-8)); } },
+  { name: "Adam", color: "#fc6255", lr: 0.1, step(w, gr, st, t) {
+    st.m = st.m.map((m, i) => 0.9 * m + 0.1 * gr[i]); st.s = st.s.map((s, i) => 0.999 * s + 0.001 * gr[i] ** 2);
+    return w.map((wi, i) => wi - (this.lrNow * (st.m[i] / (1 - 0.9 ** t))) / (Math.sqrt(st.s[i] / (1 - 0.999 ** t)) + 1e-8)); } },
+];
+function paths(scale, n) {
+  return OPT.map((o) => {
+    o.lrNow = o.lr * scale;
+    let w = [...START]; const st = { m: [0, 0], s: [0, 0] }, pts = [w]; let hit = null, blown = false;
+    for (let t = 1; t <= 500; t++) {
+      w = o.step(w, [H[0] * w[0], H[1] * w[1]], st, t);
+      if (t <= n) pts.push(w);
+      if (hit === null && loss(w) < 1e-3) hit = t;
+      if (!isFinite(loss(w)) || loss(w) > 1e4) { blown = true; break; }
+    }
+    return { o, pts, hit, blown };
+  });
+}
+function draw() {
+  const scale = 10 ** +$("lrs").value, n = +$("steps").value;
+  $("lrsV").textContent = scale.toFixed(2); $("stepsV").textContent = n;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, Hc);
+  g.strokeStyle = "rgba(216,222,233,0.18)"; g.lineWidth = 1;
+  for (const c of [0.02, 0.1, 0.3, 0.8, 2, 4, 8, 12]) {      // contour ellipses: x²/(2c) + y²/(2c/50) = 1
+    g.beginPath();
+    for (let k = 0; k <= 120; k++) { const a = (k / 120) * 2 * Math.PI, [qx, qy] = px([Math.sqrt(2 * c) * Math.cos(a), Math.sqrt((2 * c) / 50) * Math.sin(a)]); k ? g.lineTo(qx, qy) : g.moveTo(qx, qy); }
+    g.stroke();
+  }
+  const res = paths(scale, n);
+  for (const { o, pts } of res) {
+    g.strokeStyle = o.color; g.lineWidth = 2.5; g.beginPath();
+    pts.forEach((p, i) => { const [qx, qy] = px([Math.max(-50, Math.min(50, p[0])), Math.max(-50, Math.min(50, p[1]))]); i ? g.lineTo(qx, qy) : g.moveTo(qx, qy); });
+    g.stroke();
+    const [qx, qy] = px(pts[pts.length - 1].map((v) => Math.max(-50, Math.min(50, v)))); g.fillStyle = o.color; g.beginPath(); g.arc(qx, qy, 6, 0, 7); g.fill();
+  }
+  const [sx, sy] = px(START); g.fillStyle = "#fff"; g.beginPath(); g.arc(sx, sy, 5, 0, 7); g.fill();
+  const [bx, by] = px([0, 0]); g.strokeStyle = "#fff"; g.beginPath(); g.arc(bx, by, 9, 0, 7); g.stroke();
+  $("r1").innerHTML = res.map(({ o, hit, blown }) => `${o.name} (lr ${o.lrNow.toPrecision(2)}): ${blown ? "<b>diverged</b>" : hit ? `loss &lt; 0.001 after ${hit} steps` : "not there in 500 steps"}`).join("<br>");
+}
+let timer = null;
+$("play").onclick = () => {
+  clearInterval(timer); $("steps").value = 0; draw();
+  timer = setInterval(() => { const s = $("steps"); if (+s.value >= 150) return clearInterval(timer); s.value = +s.value + 2; draw(); }, 40);
+};
+["steps", "lrs"].forEach((id) => $(id).addEventListener("input", draw));
+draw();
+</script>
+</body>
+</html>
