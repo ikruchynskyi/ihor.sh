@@ -4528,5 +4528,114 @@
     "sec": 5
    }
   ]
+ },
+ "recurrent-networks.html": {
+  "goals": [
+   "Write an RNN step and explain why one set of weights handles any length",
+   "Explain why gradients vanish or explode through time, and clip them",
+   "Explain how an LSTM's additive memory and gates keep gradients alive",
+   "Compare RNNs with transformers: parallel training, long-range links, cost per token"
+  ],
+  "needs": [
+   "04-backprop.html",
+   "making-nets-train.html",
+   "l2-eigenvectors-and-pca.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "RNN step",
+    "h_t = tanh(W h_{t−1} + U x_t + b): the same weights at every step."
+   ],
+   [
+    "Hidden state",
+    "A fixed-size running summary of everything read so far."
+   ],
+   [
+    "BPTT",
+    "Backprop through the unrolled loop: a deep network whose layers share weights."
+   ],
+   [
+    "Vanishing / exploding through time",
+    "Each step back multiplies the gradient by about the same factor: 0.9⁵⁰ ≈ 0.005."
+   ],
+   [
+    "Gradient clipping",
+    "Rescale the gradient when its length passes a limit (clip_grad_norm_): every RNN loop uses it."
+   ],
+   [
+    "LSTM",
+    "A memory cell c_t = f⊙c_{t−1} + i⊙g, read through h_t = o⊙tanh(c_t); gates are sigmoids."
+   ],
+   [
+    "Forget-gate bias 1",
+    "Start the forget gates open so the network begins by remembering."
+   ],
+   [
+    "GRU",
+    "Two gates and one state: a lighter LSTM, often about as good."
+   ],
+   [
+    "RNN vs transformer",
+    "RNNs step in order (slow to train, constant cost per token); transformers run all positions in parallel."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can one RNN handle sequences of any length?",
+    "options": [
+     "The same weights are applied at every step, feeding the state back in",
+     "It has a weight per position up to a maximum length",
+     "It reads the whole sequence at once"
+    ],
+    "answer": 0,
+    "why": "Like a convolution shares a filter over positions, an RNN shares one layer over time.",
+    "sec": 1
+   },
+   {
+    "q": "The gradient is multiplied by 1.1 at each step back. After 50 steps it has…",
+    "options": [
+     "grown about 117 times: clip it",
+     "shrunk to almost nothing",
+     "stayed the same"
+    ],
+    "answer": 0,
+    "why": "1.1⁵⁰ ≈ 117: exploding gradients, which clipping keeps in check.",
+    "sec": 2
+   },
+   {
+    "q": "Why does an LSTM remember across long gaps better than a plain RNN?",
+    "options": [
+     "Its cell is updated by addition, so going back a step multiplies the gradient only by the forget gate",
+     "It has more layers",
+     "It uses ReLU instead of tanh"
+    ],
+    "answer": 0,
+    "why": "∂c_t/∂c_{t−1} = f_t: no matrix and no squash on that path.",
+    "sec": 3
+   },
+   {
+    "q": "Why start an LSTM's forget-gate bias at 1?",
+    "options": [
+     "So the gates start mostly open and the memory (and its gradient) survives while the network learns what to forget",
+     "To make training faster per step",
+     "Because PyTorch requires it"
+    ],
+    "answer": 0,
+    "why": "σ(1) ≈ 0.73 per bias, near 1 together: the network begins by remembering.",
+    "sec": 3
+   },
+   {
+    "q": "Why did transformers replace RNNs for most text work?",
+    "options": [
+     "They train on all positions in parallel and link distant words directly",
+     "They use fewer parameters",
+     "They need no training data"
+    ],
+    "answer": 0,
+    "why": "Recurrence forces step-by-step computation; attention is one big parallel matrix product.",
+    "sec": 4
+   }
+  ]
  }
 }

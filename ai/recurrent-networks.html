@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recurrent Networks</title>
+  <meta name="description" content="AI from scratch: recurrent networks. Memory in a loop with a hand-built RNN you type into, backpropagation through time and why gradients vanish over long gaps, LSTM and GRU gates as an additive memory path, and where RNNs stand next to transformers." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    #typed { width: 100%; font: 18px ui-monospace, Menlo, monospace; box-sizing: border-box; padding: 8px; }
+    .tape { display: flex; flex-wrap: wrap; gap: 2px; font: 15px ui-monospace, Menlo, monospace; margin: 8px 0; }
+    .tape span { display: inline-flex; flex-direction: column; align-items: center; min-width: 22px; }
+    .tape b { font-weight: 400; } .tape i { display: block; width: 18px; border-radius: 3px 3px 0 0; background: #58c4dd; }
+    .tape em { font-style: normal; font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Recurrent networks · Stage 5: seeing and reading</p>
+  <h1>Recurrent networks</h1>
+  <p class="lede">A CNN looks at a whole image at once. Text, speech, sensor readings and prices arrive one piece at a time, and what a piece means depends on what came before. A <b>recurrent network</b> (RNN) reads a sequence in order and carries a running summary, its <b>hidden state</b>, from each step to the next. For a decade RNNs ran speech recognition, translation and phone keyboards. Then transformers (chapter 7, next on the path) replaced them for most text, for reasons this lesson makes concrete. It's still worth knowing them well: the problem they ran into, and the gates that fixed it, show up all over deep learning.</p>
+
+  <h2>1. Memory in a loop</h2>
+  <p>An RNN is one small layer applied at every step. It takes the new input \(x_t\) and its own previous state \(h_{t-1}\), and makes the next state:</p>
+  <p class="formula">\[ h_t = \tanh(W h_{t-1} + U x_t + b), \qquad \hat y_t = V h_t \]</p>
+  <p>The same \(W, U, b\) are used at every step, like chapter 6's filter is used at every position: one set of weights, any length of sequence. Below is a tiny RNN built by hand (no training) with two hidden numbers: one counts how deep inside brackets you are, the other flips between 0 and 1 each time it sees a quote mark. Type, and watch its state after each character.</p>
+  <input id="typed" value='f(x, g("a(b)"), (y))' aria-label="Text for the hand-built RNN to read" />
+  <div class="tape" id="tape"></div>
+  <p class="readout" id="r1"></p>
+  <p>A bracket inside quotes doesn't count: the depth update is multiplied by "not inside quotes". That's the whole point of a hidden state: what a character does depends on what the network has seen. A trained RNN finds states like these on its own; Karpathy's 2015 char-RNN essay found single neurons that tracked quotes and line lengths in exactly this way.</p>
+  <div class="q" data-answer="b">
+    <p>An RNN has 100 hidden units and reads 32-dimensional inputs. How many numbers are in \(W\), \(U\) and \(b\) together?</p>
+    <ul><li data-k="a" data-says="That's only W, the state-to-state matrix.">10,000</li><li data-k="b">13,300</li><li data-k="c" data-says="The weights are shared across steps: sequence length doesn't change the count.">13,300 × the sequence length</li></ul>
+    <div class="why">\(W\): 100 × 100 = 10,000; \(U\): 100 × 32 = 3,200; \(b\): 100. Total 13,300, whatever the length of the sequence.</div>
+  </div>
+  <p class="gist">An RNN applies one small layer at every step, feeding its own output back in, so its state is a running summary of everything read so far.</p>
+
+  <h2>2. Training it: backpropagation through time</h2>
+  <p>To train, unroll the loop: a sequence of 50 steps becomes a 50-layer network whose layers all share the same weights, and chapter 4's backprop runs through it (<b>backpropagation through time</b>, BPTT). The blame for an error at step 50 reaches step 1 by being multiplied, once per step, by the same kind of factor: \(W\) times the slope of tanh. The toolkit lesson on deep nets met this exact problem in depth instead of time. Change the factor and the gap:</p>
+  <canvas id="bptt" width="800" height="300" aria-label="How much of the gradient survives going back in time, for a plain RNN and an LSTM's memory cell"></canvas>
+  <div class="row">
+    <label>plain RNN factor per step <input type="range" id="fr" min="0.5" max="1.2" step="0.01" value="0.9"> <b id="frV"></b></label>
+    <label>LSTM forget gate <input type="range" id="ff" min="0.5" max="1" step="0.005" value="0.98"> <b id="ffV"></b></label>
+  </div>
+  <p class="legend"><i style="background:#58c4dd"></i>plain RNN <i style="background:#83c167"></i>LSTM memory cell</p>
+  <p class="readout" id="r2"></p>
+  <p>Below 1, the signal from far back vanishes, so the network can't learn that something 40 steps ago matters. Above 1 it explodes, and one huge gradient wrecks the weights; <b>gradient clipping</b> (rescale the gradient whenever its length passes a limit, <code>torch.nn.utils.clip_grad_norm_</code>) is the standard guard, and every RNN training loop uses it.</p>
+  <div class="q" data-num="0.005" data-tol="0.2">
+    <p>The gradient is multiplied by 0.9 at each step back. About how much of it reaches 50 steps back? (A decimal.)</p>
+    <div class="why">\(0.9^{50} \approx 0.005\): half a percent. The early inputs get almost no say in learning.</div>
+  </div>
+  <p class="gist">Training unrolls the loop into a deep network with shared weights, so the gradient is multiplied by the same factor at every step back: it vanishes or explodes.</p>
+
+  <h2>3. Gates: LSTM and GRU</h2>
+  <p>The <b>LSTM</b> (long short-term memory, 1997) adds a second state, the <b>cell</b> \(c_t\), that changes by addition instead of by passing through a matrix and a squash. Three <b>gates</b>, each a sigmoid between 0 and 1 computed from \(x_t\) and \(h_{t-1}\), decide what happens to it:</p>
+  <p class="formula">\[ c_t = f_t \odot c_{t-1} + i_t \odot g_t, \qquad h_t = o_t \odot \tanh(c_t) \]</p>
+  <table class="cmp">
+    <tr><th>Gate</th><th>Asks</th></tr>
+    <tr><td>forget \(f_t\)</td><td>How much of the old memory to keep (1 = all of it)</td></tr>
+    <tr><td>input \(i_t\)</td><td>How much of the new candidate \(g_t = \tanh(\dots)\) to write in</td></tr>
+    <tr><td>output \(o_t\)</td><td>How much of the memory to show as the state \(h_t\)</td></tr>
+  </table>
+  <p>(\(\odot\) multiplies entry by entry.) Going back one step through the cell multiplies the gradient by just \(f_t\). If the network learns to keep \(f_t\) near 1 for something worth remembering, the gradient survives hundreds of steps: the widget's green line. It's the same idea as a residual connection, a path where information is added rather than transformed, found 18 years earlier. The <b>GRU</b> (2014) merges the gates into two and the states into one; it's a little smaller and often about as good.</p>
+  <div class="code" data-title="Run it: one LSTM step in NumPy, and what the gates cost"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+H, D = 4, 3                                       # 4 hidden units, 3 inputs
+sig = lambda z: 1 / (1 + np.exp(-z))
+Wx, Wh, b = rng.normal(size=(4 * H, D)), rng.normal(size=(4 * H, H)), np.zeros(4 * H)
+b[H:2 * H] = 1.0                                  # forget-gate bias 1: start by remembering
+def lstm_step(x, h, c):
+    z = Wx @ x + Wh @ h + b                       # all four blocks in one product
+    i, f, o, g = sig(z[:H]), sig(z[H:2 * H]), sig(z[2 * H:3 * H]), np.tanh(z[3 * H:])
+    c = f * c + i * g                             # the memory: scaled old plus gated new
+    return o * np.tanh(c), c, f
+h, c = np.zeros(H), np.zeros(H)
+for t, x in enumerate(rng.normal(size=(5, D))):
+    h, c, f = lstm_step(x, h, c)
+    print(f"step {t}: forget gates {f.round(2)}  memory {c.round(2)}")
+rnn = H * H + H * D + H; lstm = 4 * rnn
+print(f"parameters: plain RNN {rnn}, LSTM {lstm} (four blocks: three gates and the candidate), GRU {3 * rnn}")
+</textarea></div>
+  <p>How much does it matter? In the practice notebook both networks must remember the first of 40 random symbols until the end of the sequence. After 2,000 training steps the plain RNN is at chance (12.5%); the LSTM, with its forget-gate bias started at 1, gets it right every time.</p>
+  <div class="q" data-answer="c">
+    <p>Why does the LSTM's memory carry gradients so much further back than a plain RNN's state?</p>
+    <ul><li data-k="a" data-says="It has more parameters, but that's not what keeps the gradient alive.">It has four times the parameters</li><li data-k="b" data-says="The gates use sigmoids, whose slopes are at most 0.25: that alone would shrink gradients.">Because sigmoids have bigger slopes than tanh</li><li data-k="c">The cell is updated by addition, so stepping back multiplies the gradient only by the forget gate, which can stay near 1</li></ul>
+    <div class="why">\(\partial c_t / \partial c_{t-1} = f_t\): no matrix, no squash. A plain RNN multiplies by \(W\) and tanh's slope at every step. Additive paths are the common thread with residual networks.</div>
+  </div>
+  <p class="gist">An LSTM keeps a separate memory updated by addition, with gates deciding what to forget, write and show, so gradients can travel back as far as the forget gate stays open.</p>
+  <details class="deeper"><summary>Why the gradient through a plain RNN shrinks or grows geometrically</summary>
+    <ol>
+      <li>One step back: \(\partial h_t / \partial h_{t-1} = \operatorname{diag}(\tanh'(z_t))\, W\), a matrix.</li>
+      <li>\(k\) steps back is the product of \(k\) such matrices. If they were all the same \(M\), it would be \(M^k\).</li>
+      <li>Linear algebra 2: \(M^k\) stretches each eigenvector direction by \(\lambda^k\). Any eigenvalue below 1 in size dies away geometrically; any above 1 blows up.</li>
+      <li>tanh's slope is at most 1 and usually smaller, which pushes everything toward vanishing; a large \(W\) pushes the other way. Keeping the whole product near 1 for hundreds of steps by tuning \(W\) alone is a knife-edge.</li>
+      <li>The LSTM sidesteps it: along the cell, one step back is just \(\operatorname{diag}(f_t)\), with entries the network controls directly, and no squash in between.</li>
+    </ol>
+  </details>
+
+  <h2>4. RNNs and transformers</h2>
+  <table class="cmp">
+    <tr><th></th><th>RNN / LSTM</th><th>Transformer (chapters 7 and 10)</th></tr>
+    <tr><td>Training</td><td>Step by step: step 50 waits for step 49, so a GPU can't work on all positions at once</td><td>All positions at once: one big matrix product per layer</td></tr>
+    <tr><td>Long-range links</td><td>Through every step in between, if the gates allow</td><td>Direct: any word attends to any other in one step</td></tr>
+    <tr><td>Cost per new token when generating</td><td>Constant: update one state</td><td>Grows with the context: attend to everything so far</td></tr>
+    <tr><td>Memory of the past</td><td>A fixed-size state</td><td>Everything in the context window</td></tr>
+  </table>
+  <p>The first two rows are why transformers won for text: training on GPUs at scale needs parallel work, and direct links learn long-range patterns more easily. The last two rows are why recurrence keeps coming back: newer "state-space" models such as Mamba and RWKV are recurrent networks designed to train in parallel, aiming for a transformer's quality with an RNN's constant cost per token.</p>
+  <div class="q" data-answer="a">
+    <p>Why can a transformer train on a 1,000-token text much faster on a GPU than an LSTM of similar size?</p>
+    <ul><li data-k="a">The LSTM must compute step 1,000 after step 999 after step 998…, while the transformer computes all positions in parallel</li><li data-k="b" data-says="Transformers often have more parameters, not fewer.">The transformer has fewer parameters</li><li data-k="c" data-says="Both use similar matrix products per step; the difference is whether the steps can run at the same time.">Transformers don't use matrix products</li></ul>
+    <div class="why">A GPU is thousands of cores waiting for independent work (the GPUs lesson). Recurrence makes each step depend on the previous one; attention doesn't.</div>
+  </div>
+  <p class="gist">RNNs read in order with a fixed-size memory; transformers look at everything at once, which trains faster on GPUs and links distant words directly.</p>
+  <details class="deeper"><summary>Where it breaks: what gates don't fix</summary>
+    <ul>
+      <li><b>Very long gaps.</b> Gates help, not cure. In the notebook's memory test, the LSTM that solved a gap of 40 is at chance on a gap of 80 after the same training; memory over thousands of steps is still hard for RNNs.</li>
+      <li><b>A fixed-size state is a bottleneck.</b> Everything about a long text must squeeze into the same few hundred numbers. Translation RNNs compressed a whole sentence into one vector and did badly on long sentences, which is exactly why attention was invented (the seq2seq elective tells that story).</li>
+      <li><b>Small data, big memory.</b> On the 379 station names, every recurrent model in the notebook learns the training names nearly by heart while its loss on held-out names stops improving early: stop at the best validation loss, as chapter 11 says.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>RNN: \(h_t = \tanh(W h_{t-1} + U x_t + b)\), the same weights at every step.</li>
+    <li>BPTT multiplies the gradient by the same factor each step back: vanishing or exploding. Clip gradients.</li>
+    <li>LSTM: a memory updated by addition, gated by forget, input and output; start the forget bias at 1. GRU: a lighter cousin.</li>
+    <li>Transformers replaced RNNs for text because they train in parallel and link distant positions directly; recurrence lives on where constant cost per step matters.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Christopher Olah's "Understanding LSTM Networks" and Andrej Karpathy's "The Unreasonable Effectiveness of Recurrent Neural Networks" are the classic companions.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// ---------- 1. a hand-built RNN: h = [depth, inside-quotes] ----------
+function read() {
+  const s = $("typed").value.slice(0, 60); let depth = 0, quote = 0, maxD = 1; const steps = [];
+  for (const ch of s) {
+    const open = ch === "(" ? 1 : 0, close = ch === ")" ? 1 : 0, q = ch === '"' ? 1 : 0;
+    depth = Math.max(0, depth + (open - close) * (1 - quote));   // brackets count only outside quotes
+    quote = q ? 1 - quote : quote;                              // a quote mark flips the bit
+    steps.push([ch, depth, quote]); maxD = Math.max(maxD, depth);
+  }
+  $("tape").innerHTML = steps.map(([ch, d, q]) => `<span><i style="height:${4 + (d / maxD) * 40}px;${q ? "background:#f4a259" : ""}"></i><b>${ch === " " ? "␣" : ch.replace("<", "&lt;")}</b><em>${d}${q ? "q" : ""}</em></span>`).join("");
+  const last = steps[steps.length - 1];
+  $("r1").textContent = last ? `after "${s}": depth ${last[1]}, inside quotes ${last[2] ? "yes" : "no"}. Bars: depth after each character (orange: inside quotes).` : "Type something with brackets and quotes.";
+}
+$("typed").addEventListener("input", read); read();
+// ---------- 2. gradient through time ----------
+function drawB() {
+  const fr = +$("fr").value, ff = +$("ff").value; $("frV").textContent = fr.toFixed(2); $("ffV").textContent = ff.toFixed(3);
+  const cv = $("bptt"), g = cv.getContext("2d"), W = cv.width, H = cv.height, N = 100, lo = -12, hi = 4;
+  const X = (k) => 50 + (k / N) * (W - 70), Y = (v) => H - 25 - ((Math.max(lo, Math.min(hi, Math.log10(v))) - lo) / (hi - lo)) * (H - 40);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, monospace";
+  for (let e = lo; e <= hi; e += 4) { g.strokeStyle = "rgba(216,222,233,0.1)"; g.beginPath(); g.moveTo(45, Y(10 ** e)); g.lineTo(W - 15, Y(10 ** e)); g.stroke(); g.fillStyle = "#9aa4b2"; g.fillText(`1e${e}`, 2, Y(10 ** e) + 4); }
+  g.fillText("steps back →", W - 120, H - 6);
+  [[fr, "#58c4dd"], [ff, "#83c167"]].forEach(([f, c]) => { g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); for (let k = 0; k <= N; k++) { const y = Y(f ** k); k ? g.lineTo(X(k), y) : g.moveTo(X(k), y); } g.stroke(); });
+  const fmt = (v) => (v > 1e4 ? v.toExponential(1) : v < 1e-3 ? v.toExponential(1) : v.toFixed(3));
+  $("r2").textContent = `after 50 steps: plain RNN ${fmt(fr ** 50)}, LSTM cell ${fmt(ff ** 50)} · after 100: ${fmt(fr ** 100)} vs ${fmt(ff ** 100)}` + (fr > 1.05 ? " · the RNN's gradient explodes: clip it" : "");
+}
+["fr", "ff"].forEach((id) => $(id).addEventListener("input", drawB)); drawB();
+</script>
+</body>
+</html>

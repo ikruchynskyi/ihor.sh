@@ -265,6 +265,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-pandas-and-scikit-learn"
  },
+ "recurrent-networks.html": {
+  "notebook": "recurrent-networks.ipynb",
+  "title": "AI from scratch: recurrent networks",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/recurrent-networks.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-recurrent-networks"
+ },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",
   "title": "AI from scratch: your first models",
