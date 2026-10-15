@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XGBoost, LightGBM, CatBoost</title>
+  <meta name="description" content="AI from scratch, model zoo 7: gradient boosting for classification and what XGBoost, LightGBM and CatBoost each add. A map where small trees pile up round by round, Newton-step leaves with a penalty, boosting from scratch in NumPy, histograms that train 190 times faster, leaf-wise growth, and CatBoost's ordered target statistics against a leak that scores 0.997 on training and 0.56 on test. Measured on 10,000 bank calls, where all four libraries land within 0.02 of each other and of logistic regression." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 7 of 10 · Gradient boosting: XGBoost, LightGBM, CatBoost</p>
+  <h1>Gradient boosting: XGBoost, LightGBM, CatBoost</h1>
+  <p class="lede">Chapter 13 built boosting for numbers: small trees, each fit to what the previous ones still got wrong, added a little at a time. This page does it for yes/no questions, the way the three libraries that win most tabular competitions do it, and takes each library apart: what XGBoost added (a second-order step and a penalty in every leaf), what LightGBM added (histograms and leaf-wise growth, for speed), and what CatBoost added (a leak-free way to use categories). Then it measures them, honestly.</p>
+
+  <h2>1. The idea in one picture: small trees, piling up</h2>
+  <p>Each round adds a small tree (depth 1 to 4) that nudges the log-odds where the current model is most wrong. With a few rounds the map is a handful of blocks; with many, the blocks add up to a shape no single small tree could make.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points and the boosted model's probability shaded over the plane"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label>rounds <input type="range" id="n" min="0" max="300" value="10"> <b id="nV"></b></label></div>
+  <div class="row"><label>learning rate <input type="range" id="eta" min="0.02" max="1" step="0.02" value="0.3"> <b id="etaV"></b></label><label>tree depth <input type="range" id="depth" min="1" max="4" value="2"> <b id="depthV"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Pick <i>checkerboard (XOR)</i> and set the tree depth to 1 (stumps: one question each). Predict first: can 300 rounds of stumps learn it?</p>
+    <ul><li data-k="a" data-says="Try it with depth 1, then depth 2.">Yes: enough stumps can make any shape</li><li data-k="b">No: each stump looks at one column, and their sum can't express "x and y have the same sign"</li><li data-k="c" data-says="It's not about the learning rate.">Only with a learning rate of 1</li></ul>
+    <div class="why">Boosted stumps add up one-column effects: f(x) + g(y). XOR needs an interaction: the effect of x flips with the sign of y, and no sum of separate pieces does that. Depth 2 lets each tree ask about x and then y, so it learns it within a few rounds. Tree depth is the highest order of interaction the model can learn.</div>
+  </div>
+  <p class="gist">Boosting adds small trees one after another, each fitted to the remaining error; the depth of the trees limits which interactions it can learn, and the learning rate and number of rounds trade fit against noise.</p>
+
+  <h2>2. How it learns: gradients, and XGBoost's second-order leaves</h2>
+  <p>For log-loss, the "remaining error" of each row is the gradient of the loss with respect to its log-odds, which works out to \(g_i = p_i - y_i\) (the miss, as on page 2), and its curvature is \(h_i = p_i(1 - p_i)\). Each round fits a tree to the misses, then sets each leaf's value with a <b>Newton step</b> (calculus 3: divide the slope by the curvature), shrunk by a penalty λ:</p>
+  <p class="formula">\[ w_{\text{leaf}} = -\frac{\sum_{i \in \text{leaf}} g_i}{\sum_{i \in \text{leaf}} h_i + \lambda}, \qquad F_m(x) = F_{m-1}(x) + \eta \, w_{\text{leaf}(x)} \]</p>
+  <p>That's XGBoost's core (Chen and Guestrin, 2016): the curvature makes each step the right size for each leaf (rows the model is confidently wrong about, with \(p\) near 0 when \(y = 1\), have a full-size miss but tiny curvature \(h\), so their leaf takes a bold step), and λ keeps leaves with few rows from taking wild ones. It also judges every split by how much it lowers this penalized loss, and refuses splits that gain less than γ.</p>
+  <details class="deeper"><summary>Why the leaf value is −G/(H + λ)</summary>
+    <ol>
+      <li>Adding \(w\) to the log-odds of every row in a leaf changes the loss. Near the current model, a second-order Taylor expansion (calculus 3) gives, for each row, \(\ell(F + w) \approx \ell(F) + g_i w + \tfrac12 h_i w^2\).</li>
+      <li>Summed over the leaf, plus the penalty \(\tfrac12 \lambda w^2\): \(\text{const} + G w + \tfrac12 (H + \lambda) w^2\), where \(G = \sum g_i\) and \(H = \sum h_i\).</li>
+      <li>That's a parabola in \(w\) (H + λ is positive), and its bottom is where its slope \(G + (H + \lambda) w\) is zero: \(w = -G/(H + \lambda)\).</li>
+      <li>Plugging it back in, the leaf lowers the loss by \(\tfrac12 G^2/(H + \lambda)\): a split's gain is the left leaf's plus the right leaf's minus the parent's. That's the score XGBoost uses to choose splits.</li>
+      <li>Where it breaks: the parabola is only a local picture. With a big learning rate, the step jumps past where the approximation holds; that's one more reason to keep η small and take many steps.</li>
+    </ol>
+  </details>
+
+  <h2>3. Build it: boosting with Newton leaves, from scratch</h2>
+  <p>scikit-learn's regression tree picks the splits (fit to the misses); NumPy sets the leaves with the formula above.</p>
+  <div class="code" data-title="Gradient boosting for log-loss with Newton-step leaves, next to scikit-learn"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+b = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))         # in a notebook: pd.read_csv(url)
+y = (b["y"] == "yes").astype(int).values
+X = pd.get_dummies(b.drop(columns=["y", "duration"]), dtype=float).values
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+
+sigmoid = lambda z: 1 / (1 + np.exp(-z))
+eta, lam, rounds = 0.1, 1.0, 150
+F0 = np.log(ytr.mean() / (1 - ytr.mean()))                     # start from the base rate's log-odds
+Ftr, Fte, trees = np.full(len(ytr), F0), np.full(len(yte), F0), []
+for m in range(rounds):
+    p = sigmoid(Ftr)
+    g, h = p - ytr, p * (1 - p)                                 # slope and curvature of the log-loss
+    tree = DecisionTreeRegressor(max_depth=3, min_samples_leaf=20).fit(Xtr, -g)
+    leaf_tr, leaf_te = tree.apply(Xtr), tree.apply(Xte)        # which leaf each row lands in
+    for leaf in np.unique(leaf_tr):
+        rows = leaf_tr == leaf
+        w = -g[rows].sum() / (h[rows].sum() + lam)              # the Newton step, shrunk by λ
+        Ftr[rows] += eta * w
+        Fte[leaf_te == leaf] += eta * w
+    if m + 1 in (1, 10, 50, 150):
+        print(f"round {m + 1:3d}: test AUC {roc_auc_score(yte, Fte):.3f}")
+
+hgb = HistGradientBoostingClassifier(max_iter=150, learning_rate=0.1, max_depth=3, early_stopping=False, random_state=0).fit(Xtr, ytr)
+print("scikit-learn, same settings:", round(roc_auc_score(yte, hgb.predict_proba(Xte)[:, 1]), 3))
+</textarea></div>
+  <p>Mine and scikit-learn's agree (0.773). Notice that the test AUC peaked around round 10 (0.781) and then slipped: past that point the rounds fit noise in these 7,700 calls. That's why every library has early stopping.</p>
+
+  <h2>4. What each library adds</h2>
+  <p>All three are the algorithm above. The differences are engineering, and each answered a real bottleneck:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Library</th><th>Its big idea</th><th>What it buys</th></tr>
+    <tr><td>XGBoost (2014)</td><td>Newton leaves with λ and γ penalties; sparse-aware splits (missing values learn which way to go); parallel split search</td><td>Accuracy and robustness out of the box; it made boosting the default on Kaggle</td></tr>
+    <tr><td>LightGBM (2017)</td><td><b>Histograms</b>: each column bucketed into ≤ 255 bins, so a split is chosen from 255 candidates, not every distinct value; <b>leaf-wise growth</b>: always split the leaf that gains most, so trees are lopsided; GOSS keeps rows with big gradients and samples the rest</td><td>Speed on millions of rows; <code>num_leaves</code> replaces depth as the size knob (and overfits faster if too big)</td></tr>
+    <tr><td>CatBoost (2018)</td><td><b>Ordered target statistics</b> for categories: a row's category is encoded by the yes-rate of that category among rows <i>before</i> it in a random order, never including itself; symmetric trees (one question per level)</td><td>Categories used directly with no leak; good results with default settings; fast prediction</td></tr>
+    <tr><td>scikit-learn <code>HistGradientBoosting</code></td><td>LightGBM's histogram idea, inside scikit-learn</td><td>No extra install; plays with pipelines</td></tr>
+  </table></div>
+  <p>The histogram trick is the big speedup. On 200,000 rows and 20 columns, scikit-learn's exact <code>GradientBoostingClassifier</code> took 79 seconds for 100 trees; the histogram version took 0.42 seconds, 190 times faster, for practically the same model.</p>
+  <div class="q" data-answer="c">
+    <p>You encode a category with 3,000 values (say, a bank branch) by each branch's yes-rate in the training data, then boost. Training AUC 0.997, test 0.56. The branch is in fact pure noise. What went wrong?</p>
+    <ul><li data-k="a" data-says="It's not about the number of trees.">Too many trees</li><li data-k="b" data-says="Scaling doesn't matter to trees.">The encoded column wasn't scaled</li><li data-k="c">Each row's encoding includes its own label: a branch with 3 calls, one a yes, says 33% partly because of that very yes</li></ul>
+    <div class="why">With about 2.6 training calls per branch, the branch's yes-rate is mostly the row's own answer, so the column is a leak and the trees lean on it (0.997 on training). On test rows, whose labels weren't in the average, it's noise (0.56; without the column, 0.76). CatBoost's ordered statistics compute each row's encoding only from rows before it, so the label never leaks into its own feature: with the same column, CatBoost scored 0.773. Without CatBoost: encode with out-of-fold means (<code>TargetEncoder</code> in scikit-learn does this), or don't encode noise-level categories at all.</div>
+  </div>
+
+  <h2>5. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> on large tables with nonlinear effects and interactions, boosted trees are usually the most accurate model there is (page 1's ridership test: 0.34 million against the line's 0.56). Missing values, categories, mixed scales: handled. Fast to train with histograms, small to store (0.4 MB on the bank calls, against a forest's 54 MB), fast to predict.</p>
+  <p>Here's the honest scoreboard on the bank calls (test AUC, 10,000 rows):</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Model</th><th>Default settings</th><th>Learning rate 0.03, early stopping on validation</th></tr>
+    <tr><td>XGBoost</td><td>0.744</td><td>0.774 (171 rounds)</td></tr>
+    <tr><td>LightGBM</td><td>0.755</td><td>0.772 (104 rounds)</td></tr>
+    <tr><td>CatBoost (categories as they are)</td><td>0.773</td><td>0.778 (367 rounds)</td></tr>
+    <tr><td>scikit-learn histogram boosting</td><td>0.760</td><td>0.763 (194 rounds)</td></tr>
+    <tr><td>logistic regression (page 2)</td><td>0.779</td><td></td></tr>
+  </table></div>
+  <p>Tuning mattered more than the library, CatBoost's defaults were the best, and none beat the line: these calls are mostly additive effects of a few columns, and there are only 10,000 of them. That's not a failure of boosting; it's the reason to always fit the baseline first.</p>
+  <p class="gist">Boosted trees are usually the strongest model on tables, the libraries differ mainly in speed and in how they handle categories, and on small or simple data a line can tie them.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Overfitting by rounds.</b> Unlike a forest, more rounds eventually fit noise. Hold out validation data and use early stopping; a smaller learning rate with more rounds is almost always better (chapter 13).</li>
+      <li><b>Many knobs.</b> Rounds, learning rate, depth or leaves, leaf size, λ, row and column subsampling. Defaults can be several points off (XGBoost here: 0.744 default, 0.774 tuned). Tune the learning rate with early stopping first, then depth and leaf size.</li>
+      <li><b>Target leaks through categories.</b> As measured above. Never encode a category by its target rate on the same rows you train on.</li>
+      <li><b>Past the data, and smooth trends.</b> Still trees: flat outside the training range, staircases for smooth effects.</li>
+      <li><b>Images, sound, text.</b> Columns that are pixels or words have structure (neighbors, order) that trees can't use; networks (stages 2 and 5) can. Boosting on embeddings from a network is a strong combination.</li>
+    </ul>
+  </details>
+
+  <h2>6. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>XGBoost · LightGBM · CatBoost</th><th>What it does</th></tr>
+    <tr><td>Rounds + early stopping</td><td><code>n_estimators</code> + <code>early_stopping_rounds</code> · callbacks · <code>iterations</code> + <code>early_stopping_rounds</code></td><td>Set rounds high and let validation data decide where to stop.</td></tr>
+    <tr><td>Learning rate</td><td><code>learning_rate</code> (all three)</td><td>0.01 to 0.1. Smaller is better but needs more rounds.</td></tr>
+    <tr><td>Tree size</td><td><code>max_depth</code> · <code>num_leaves</code> · <code>depth</code></td><td>The order of interactions it can learn. Depth 3 to 8; LightGBM's leaves under 2^depth.</td></tr>
+    <tr><td>Leaf size</td><td><code>min_child_weight</code> · <code>min_child_samples</code> · <code>min_data_in_leaf</code></td><td>No leaf built on a handful of rows.</td></tr>
+    <tr><td>Penalties</td><td><code>reg_lambda</code>, <code>gamma</code> · <code>reg_lambda</code>, <code>min_split_gain</code> · <code>l2_leaf_reg</code></td><td>λ shrinks leaf values; γ refuses small-gain splits.</td></tr>
+    <tr><td>Subsampling</td><td><code>subsample</code>, <code>colsample_bytree</code> · <code>bagging_fraction</code>, <code>feature_fraction</code> · <code>subsample</code>, <code>rsm</code></td><td>Random rows and columns per tree, as in forests: less overfitting, faster.</td></tr>
+  </table></div>
+  <p>Next in the zoo: a model that doesn't use trees or distances or counts, but the widest gap between the classes.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing: Moro, Cortez and Rita (2014), UCI Machine Learning Repository, CC BY 4.0.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, map, boost, accuracy } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["moons", "xor", "circles", "diagonal", "blobs"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+const cache = new Map();
+function draw() {
+  const name = $("ds").value, eta = +$("eta").value, depth = +$("depth").value, n = +$("n").value, key = `${name}/${eta}/${depth}`;
+  if (!cache.has(key)) { const set = data(name, { noise: 0.1 }); cache.set(key, { set, f: boost(set.train, { trees: 300, eta, depth }) }); }
+  const { set, f } = cache.get(key), sig = (z) => 1 / (1 + Math.exp(-z)), ts = f.trees.slice(0, n), p = (x, y) => sig(ts.reduce((s, h) => s + eta * h(x, y), 0));
+  map($("map"), p, set.train);
+  $("nV").textContent = n; $("etaV").textContent = eta.toFixed(2); $("depthV").textContent = depth;
+  $("r1").textContent = `${n} rounds of depth-${depth} trees, learning rate ${eta.toFixed(2)}: train ${(100 * accuracy(p, set.train)).toFixed(1)}% · validation ${(100 * accuracy(p, set.val)).toFixed(1)}%\n(10% of labels are noise, so ~90% is the ceiling)`;
+}
+for (const id of ["ds", "n", "eta", "depth"]) $(id).addEventListener("input", draw);
+$("depth").addEventListener("change", () => $("ds").value === "xor" && +$("depth").value === 1 && say("Stumps add one-column effects. XOR lives in x and y together!", "think"));
+draw();
+window.blipContext = () => ({ page: "AI model zoo 7: gradient boosting for classification (gradients p − y, Newton-step leaves −G/(H+λ)), XGBoost, LightGBM (histograms, leaf-wise), CatBoost (ordered target statistics), early stopping, measured on bank calls", dataset: $("ds").value, readout: $("r1").textContent });
+</script>
+</body>
+</html>

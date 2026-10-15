@@ -419,6 +419,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-word-vectors"
  },
+ "zoo-boosting.html": {
+  "notebook": "zoo-boosting.ipynb",
+  "title": "AI from scratch: XGBoost, LightGBM, CatBoost",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/zoo-boosting.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-xgboost-lightgbm-catboost"
+ },
  "zoo-forest.html": {
   "notebook": "zoo-forest.ipynb",
   "title": "AI from scratch: random forests",

@@ -6913,5 +6913,100 @@
     "sec": 5
    }
   ]
+ },
+ "zoo-boosting.html": {
+  "goals": [
+   "Explain gradient boosting for log-loss: gradients p − y, curvature p(1 − p) and Newton-step leaves",
+   "Say what XGBoost, LightGBM and CatBoost each add, and use early stopping",
+   "Avoid target leakage when encoding categories, and know when boosting won't beat a baseline"
+  ],
+  "needs": [
+   "zoo-forest.html",
+   "13-trees-and-boosting.html",
+   "c3-taylor-and-curvature.html"
+  ],
+  "cards": [
+   [
+    "Boosting for log-loss",
+    "Each round fits a small tree to the misses p − y and adds a fraction of it to the log-odds."
+   ],
+   [
+    "Newton-step leaf",
+    "w = −Σg / (Σh + λ): slope over curvature, shrunk by the penalty λ (XGBoost)."
+   ],
+   [
+    "Histogram splits",
+    "Bucket each column into ≤255 bins and choose cuts among bins: orders of magnitude faster (LightGBM, HistGradientBoosting)."
+   ],
+   [
+    "Leaf-wise growth",
+    "Always split the leaf with the biggest gain; num_leaves controls size (LightGBM)."
+   ],
+   [
+    "Ordered target statistics",
+    "Encode a row's category from rows before it only, so its own label never leaks in (CatBoost)."
+   ],
+   [
+    "Tree depth = interaction order",
+    "Stumps add one-column effects; depth d can learn interactions of up to d columns."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can't boosted stumps (depth 1) learn XOR?",
+    "options": [
+     "Too few rounds",
+     "Their sum is a sum of one-column effects, and XOR is an interaction",
+     "The learning rate is too small"
+    ],
+    "answer": 1,
+    "why": "Depth limits the order of interactions.",
+    "sec": 1
+   },
+   {
+    "q": "In XGBoost, a leaf's value is −G/(H + λ). What does λ do?",
+    "options": [
+     "Speeds up training",
+     "Shrinks the step of leaves with little evidence (small H)",
+     "Sets the learning rate"
+    ],
+    "answer": 1,
+    "why": "It's an L2 penalty on leaf values.",
+    "sec": 2
+   },
+   {
+    "q": "What made LightGBM (and HistGradientBoosting) so much faster than exact boosting?",
+    "options": [
+     "GPUs",
+     "Bucketing each column into at most 255 bins, so far fewer candidate cuts",
+     "Fewer trees"
+    ],
+    "answer": 1,
+    "why": "Measured: 0.42 s vs 79 s on 200,000 rows.",
+    "sec": 4
+   },
+   {
+    "q": "Encoding a 3,000-value category by its yes-rate on the training rows gave training AUC 0.997 and test 0.56. Why?",
+    "options": [
+     "The trees were too deep",
+     "Each row's encoding included its own label: a leak",
+     "The test set is too small"
+    ],
+    "answer": 1,
+    "why": "Use out-of-fold or ordered (CatBoost) encodings.",
+    "sec": 4
+   },
+   {
+    "q": "On the bank calls, tuned boosting scored 0.77 and logistic regression 0.78. The lesson is…",
+    "options": [
+     "boosting is overrated",
+     "always fit a baseline: on small, mostly additive data, a line can tie",
+     "use more rounds"
+    ],
+    "answer": 1,
+    "why": "Boosting's edge shows on large data with interactions.",
+    "sec": 5
+   }
+  ]
  }
 }
