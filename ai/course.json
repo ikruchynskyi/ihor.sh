@@ -6070,7 +6070,7 @@
    ],
    [
     "New-speaker test",
-    "Hold out whole speakers: 96% random split vs 79% on an unheard voice in the notebook."
+    "Hold out whole speakers: 97% random split vs 79% on an unheard voice in the notebook."
    ],
    [
     "Whisper",
@@ -6116,7 +6116,7 @@
     "sec": 2
    },
    {
-    "q": "A spoken-digit model scores 96% on a random split and 79% on a new speaker. Why the gap?",
+    "q": "A spoken-digit model scores 97% on a random split and 79% on a new speaker. Why the gap?",
     "options": [
      "The random split put the test speaker's voice in training: a group leak",
      "The new speaker spoke faster",

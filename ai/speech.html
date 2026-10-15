@@ -58,7 +58,7 @@
   </details>
 
   <h2>3. Models that listen</h2>
-  <p>Once speech is an image, the rest of the path applies. In the practice notebook a small CNN (chapter 6) reads log-mel spectrograms of the Free Spoken Digit Dataset (3,000 recordings of "zero" to "nine" by six speakers): <b>96%</b> right on a random split, but <b>79%</b> on a speaker it never heard. The random split had the test speaker's own voice in training: features and leakage's group leak, in sound. For full transcription, <b>Whisper</b> (OpenAI, 2022) is chapter 7's transformer: an encoder reads 30 seconds of 80-band log-mel, a decoder writes the text token by token (the seq2seq elective). This site's radio page runs Whisper on its own receiver to caption what it hears.</p>
+  <p>Once speech is an image, the rest of the path applies. In the practice notebook a small CNN (chapter 6) reads log-mel spectrograms of the Free Spoken Digit Dataset (3,000 recordings of "zero" to "nine" by six speakers): <b>97%</b> right on a random split, but <b>79%</b> on a speaker it never heard. The random split had the test speaker's own voice in training: features and leakage's group leak, in sound. For full transcription, <b>Whisper</b> (OpenAI, 2022) is chapter 7's transformer: an encoder reads 30 seconds of 80-band log-mel, a decoder writes the text token by token (the seq2seq elective). This site's radio page runs Whisper on its own receiver to caption what it hears.</p>
   <p class="gist">Speech models read log-mel images: CNNs for short commands, encoder-decoder transformers like Whisper for transcription, and they must be tested on voices they never heard.</p>
 
   <h2>4. A wake word, trained on your voice</h2>
@@ -75,7 +75,7 @@
   <p class="gist">A wake-word detector trades misses against false wakes, measured per hour, because it judges the sound a hundred times a second, all day.</p>
   <details class="deeper"><summary>Where it breaks: other voices, other rooms, other people</summary>
     <ul>
-      <li><b>Voices it never heard.</b> The notebook's 96% → 79% is the gentle version. Accents, children's voices and speech impairments are under-represented in most training data, and accuracy for them is often far lower. Test by speaker group (chapter 12's slices).</li>
+      <li><b>Voices it never heard.</b> The notebook's 97% → 79% is the gentle version. Accents, children's voices and speech impairments are under-represented in most training data, and accuracy for them is often far lower. Test by speaker group (chapter 12's slices).</li>
       <li><b>Noise and distance.</b> A word spoken across a room over a TV is a different picture from one spoken into a phone. Training with added noise and room echoes (augmentation, the deep CNN lesson) is standard.</li>
       <li><b>Your template detector.</b> It knows one voice and one way of saying the word; another person, or you with a cold, may not match.</li>
       <li><b>Privacy.</b> An always-listening device decides locally whether to start sending audio. False wakes send audio nobody meant to share, which is why the false-accept rate is a privacy number, not just a quality number.</li>
