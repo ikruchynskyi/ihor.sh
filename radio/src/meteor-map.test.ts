@@ -22,7 +22,7 @@ const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b
 function ground(r: number, x: number) {
   const t = rows[r], S = at(t), V = sub(at(t + 500), at(t - 500)), v = norm(V);
   const down = norm(sub(S.map((c) => -c), v.map((c) => c * dot(S.map((q) => -q), v)))), right = norm(cross(V, S));
-  const th = ((x - WIDTH / 2) / (WIDTH / 2)) * (55.3 * Math.PI) / 180, d = down.map((c, i) => c * Math.cos(th) + right[i] * Math.sin(th));
+  const th = ((WIDTH / 2 - x) / (WIDTH / 2)) * (55.3 * Math.PI) / 180, d = down.map((c, i) => c * Math.cos(th) + right[i] * Math.sin(th));
   let k = 0; for (let i = 0; i < 40; i++) { const p = S.map((c, j) => c + k * d[j]), lat = Math.atan2(p[2], Math.hypot(p[0], p[1])); const R = Math.hypot(...ecef((lat * 180) / Math.PI, 0)); k += Math.hypot(...p) - R; }
   const p = S.map((c, j) => c + k * d[j]), lon = (Math.atan2(p[1], p[0]) * 180) / Math.PI;
   let lat = Math.atan2(p[2], Math.hypot(p[0], p[1])); for (let i = 0; i < 5; i++) { const N = 6378.137 / Math.sqrt(1 - 0.00669437999014 * Math.sin(lat) ** 2); lat = Math.atan2(p[2] + N * 0.00669437999014 * Math.sin(lat), Math.hypot(p[0], p[1])); }
@@ -38,6 +38,16 @@ console.log(`pass of ${new Date(pass.rise).toISOString()} (${pass.maxEl.toFixed(
 assert.ok(worst < 3);
 // the satellite's right is east on a northbound pass, west on a southbound one
 const mid = rows.length >> 1, [la0, lo0] = ground(mid, 784), [la1] = ground(mid + 20, 784), [, loR] = ground(mid, 1300);
-assert.equal(Math.sign(loR - lo0), la1 > la0 ? 1 : -1, "right of the image is the satellite's right");
+assert.equal(Math.sign(loR - lo0), la1 > la0 ? -1 : 1, "the image starts at the satellite's right, so its right half is the satellite's left");
+// a satellite's pointing: roll moves places sideways by roll ÷ the sweep × the width; the clock offset moves them up the rows
+{
+  const [la, lo] = ground(mid, 784), p0 = pr.toPixel(la, lo)!;
+  const p1 = new Projector(track, rows, false, { scanDeg: 110.6, rollDeg: 0.3, pitchDeg: 0, clockS: 0 }).toPixel(la, lo)!;
+  const p2 = new Projector(track, rows, false, { scanDeg: 110.6, rollDeg: 0, pitchDeg: 0, clockS: 0.6 }).toPixel(la, lo)!;
+  const p3 = new Projector(track, rows, false, { scanDeg: 110.6, rollDeg: 0, pitchDeg: 0.8, clockS: 0 }).toPixel(la, lo)!;
+  assert.ok(Math.abs(p1[0] - p0[0] - (0.3 / 55.3) * 784) < 0.3, "a 0.3° roll toward the satellite's right moves every place about 4 px to the right in the picture");
+  assert.ok(Math.abs(p2[1] - p0[1] + (0.6 / 1.333) * 8) < 0.3, "a clock running 0.6 s behind puts places 0.6 s earlier in the picture");
+  assert.ok(p3[1] - p0[1] > 8 && p3[1] - p0[1] < 12, "leaning back 0.8° sees each place about 1.8 s (about 10 lines) later");
+}
 assert.equal(pr.toPixel(-40, 100), null, "the other side of the world is not in the picture");
 console.log("map projection ok");

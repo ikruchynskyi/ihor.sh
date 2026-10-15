@@ -5,7 +5,7 @@ import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
 import { MeteorReceiver, WIDTH, composite } from "./meteor.ts";
-import { Projector, rowTimes, drawLines } from "./meteor-map.ts";
+import { Projector, rowTimes, drawLines, graticule, drawCities, drawHome, drawCaption, GEOMETRY, type Proj } from "./meteor-map.ts";
 import { passClock } from "./pass-clock.ts";
 
 declare const L: any;
@@ -221,26 +221,39 @@ el("c-go").addEventListener("click", () => {
   if (!img.height) return;
   c.width = img.width; c.height = img.height; c.getContext("2d")!.putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
   el("c-fig").hidden = false; el("c-note").textContent = "";
-  if (el<HTMLInputElement>("c-map").checked) addMap(c, rx.packets.channels.get(apids[0])!.rowMs);
+  addMap(c, rx.packets.channels.get(apids[0])!.rowMs);
 });
 
-// coastlines and borders (Natural Earth 1:50m) for overlaying on pictures
-let world: { coast: number[][]; borders: number[][] } | null = null;
+// Overlays, like MeteorDemod's: coastlines and borders (Natural Earth 1:50m), a 10° grid, capitals and big cities, the
+// receiving station and a caption, all placed by the satellite's orbit, clock and pointing (meteor-map.ts).
+let world: { coast: number[][]; borders: number[][] } | null = null, cities: [string, number, number, number, number][] | null = null;
+const on = (id: string) => el<HTMLInputElement>(id).checked;
 async function addMap(c: HTMLCanvasElement, rowMs: number[]) {
-  const note = el("c-note"), times = rowTimes(rowMs, dctx.ref);
-  if (!times) { note.textContent = "Can't place it on map: picture clock doesn't match recording time."; return; }
-  note.textContent = "Drawing map lines…";
+  const note = el("c-note"), times = rowTimes(rowMs, dctx.ref), ctx = c.getContext("2d")!, layers = ["c-map", "c-grid", "c-cities", "c-home", "c-label"].some(on);
+  if (!times) { note.textContent = layers ? "Can't place it on the map: the picture's clock doesn't match the recording time." : ""; return; }
+  note.textContent = "Placing the picture…";
   try {
-    world ??= await fetch("./data/world-lines.json").then((r) => r.json());
     const tr = await fetch(`/api/radio/sat-ecef?id=${dctx.sat}&from=${Math.round(times[0] - 60e3)}&to=${Math.round(times[times.length - 1] + 60e3)}`).then((r) => r.json());
     if (!tr.points) throw new Error(tr.error ?? "no orbit");
-    const pr = new Projector(tr.points, times, el<HTMLInputElement>("c-mirror").checked), ctx = c.getContext("2d")!;
-    drawLines(ctx, pr, world!.borders, "rgba(255,255,255,0.75)", 1.5);
-    drawLines(ctx, pr, world!.coast, "#f4d35e", 2);
-    const hm = (t: number) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    note.textContent = `Map lines for ${dctx.sat.replace("meteor-m2-", "Meteor-M2 ")}, ${hm(times[0])}–${hm(times[times.length - 1])}. If coast is mirrored relative to clouds, tick "mirror" and combine again.`;
+    const geo = GEOMETRY[dctx.sat], raw = new Projector(tr.points, times, on("c-mirror"), geo), W = c.width, H = c.height;
+    // an evening (northbound) pass scans from south to north, so its picture comes out upside down: turn it around
+    const northbound = tr.points.at(-1)[3] > tr.points[0][3], turn = northbound && on("c-north");
+    if (turn) { const copy = document.createElement("canvas"); copy.width = W; copy.height = H; copy.getContext("2d")!.drawImage(c, 0, 0); ctx.save(); ctx.translate(W, H); ctx.rotate(Math.PI); ctx.drawImage(copy, 0, 0); ctx.restore(); }
+    const pr: Proj = turn ? { toPixel: (la, lo) => { const p = raw.toPixel(la, lo); return p && [W - p[0], H - p[1]]; } } : raw;
+    if (on("c-grid")) drawLines(ctx, pr, graticule(10), "rgba(225,230,240,0.85)", 1.5);
+    if (on("c-map")) {
+      world ??= await fetch("./data/world-lines.json").then((r) => r.json());
+      drawLines(ctx, pr, world!.borders, "rgba(255,255,255,0.75)", 1.5);
+      drawLines(ctx, pr, world!.coast, "#f4d35e", 2);
+    }
+    if (on("c-cities")) { cities ??= (await fetch("./data/cities.json").then((r) => r.json())).rows; drawCities(ctx, pr, cities!, "#b9a7ff"); }
+    const home = me ?? SERVER, homeSeen = on("c-home") && drawHome(ctx, pr, home.lat, home.lon, "#fc6255");
+    const utc = (t: number) => new Date(t).toISOString().slice(11, 16), name = dctx.sat.replace("meteor-m2-", "Meteor-M2 ");
+    if (on("c-label")) drawCaption(ctx, [`${name} · ${new Date(times[0]).toISOString().slice(0, 10)} ${utc(times[0])}–${utc(times.at(-1)!)} UTC`], "#f4d35e");
+    note.textContent = `${name}, ${utc(times[0])}–${utc(times.at(-1)!)} UTC, ${northbound ? "northbound" : "southbound"} pass${turn ? ", turned north-up" : ""}.` +
+      (on("c-home") && !homeSeen ? " Your station is outside this picture." : "") + " If the coast doesn't match the clouds, tick \"mirror\" and combine again.";
   } catch (e) {
-    note.textContent = `Couldn't draw map: ${(e as Error).message}`;
+    note.textContent = `Couldn't place the picture: ${(e as Error).message}`;
   }
 }
 

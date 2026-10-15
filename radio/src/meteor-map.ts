@@ -3,8 +3,18 @@
 // on the row scanned when it crossed the scan plane, at the column of its angle from straight down.
 import { WIDTH } from "./meteor.ts";
 
-const HALF_SCAN = (55.3 * Math.PI) / 180; // MSU-MR: ±55.3° across the track (a 2,800 km swath), pixels evenly in angle
-const DAY = 864e5;
+const DAY = 864e5, RAD = Math.PI / 180, RE = 6371;
+
+/** How each satellite's scanner points, from MeteorDemod's settings.ini (fitted to real passes): the full sweep across
+ *  the track (pixels evenly in angle), the tilt to the side (roll, + toward the satellite's right) and backward (pitch),
+ *  and how far the onboard clock runs behind UTC. ponytail: yaw (M2-4: −0.3°) is left out; it turns the scan line by
+ *  about one pixel at the edges. */
+export interface Geometry { scanDeg: number; rollDeg: number; pitchDeg: number; clockS: number }
+export const GEOMETRY: Record<string, Geometry> = {
+  "meteor-m2-3": { scanDeg: 109.55, rollDeg: 0.3, pitchDeg: 0.8, clockS: 0.6 },
+  "meteor-m2-4": { scanDeg: 109.5, rollDeg: 0, pitchDeg: 0.8, clockS: 0 },
+};
+const PLAIN: Geometry = { scanDeg: 110.6, rollDeg: 0, pitchDeg: 0, clockS: 0 };
 
 /** A place (degrees) → Earth-fixed km (WGS84, sea level). */
 export function ecef(lat: number, lon: number): number[] {
@@ -34,10 +44,11 @@ const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2
 const cross = (a: number[], b: number[]) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 
 export class Projector {
-  private rowDur: number; private track: number[][]; private times: number[]; private mirror: boolean;
-  /** `track`: [t, x, y, z] once a second (km, Earth-fixed); `times`: UTC of each row; `mirror` swaps the sides. */
-  constructor(track: number[][], times: number[], mirror = false) {
-    this.track = track; this.times = times; this.mirror = mirror;
+  private rowDur: number; private track: number[][]; private times: number[]; private mirror: boolean; private geo: Geometry;
+  /** `track`: [t, x, y, z] once a second (km, Earth-fixed); `times`: each row's time by the satellite's clock (UTC);
+   *  `mirror` swaps the sides; `geo` the satellite's pointing. */
+  constructor(track: number[][], times: number[], mirror = false, geo: Geometry = PLAIN) {
+    this.track = track; this.times = times.map((t) => t + geo.clockS * 1000); this.mirror = mirror; this.geo = geo;
     const d = times.slice(1).map((t, i) => t - times[i]).filter((x) => x > 0).sort((a, b) => a - b);
     this.rowDur = d[d.length >> 1] || 1333;
   }
@@ -54,19 +65,27 @@ export class Projector {
     const S = pos(lo).map((v, k) => v + u * (pos(hi)[k] - v)), V = vel(lo), D = sub(P, S);
     if (dot(D, P) >= 0) return null; // the far side of the Earth
     const theta = Math.acos(Math.min(1, -dot(D, S) / Math.sqrt(dot(D, D) * dot(S, S))));
-    if (theta > HALF_SCAN) return null;
-    const side = Math.sign(dot(D, cross(V, S))) * (this.mirror ? -1 : 1); // + = the satellite's right
-    const x = WIDTH / 2 + (side * theta * WIDTH) / 2 / HALF_SCAN;
-    // across rows: the row being scanned at time t (rows lost in transit make the picture shorter, times keep it right)
-    const T = this.times; if (t < T[0] || t > T[T.length - 1] + this.rowDur) return null;
-    let r = 0, top = T.length - 1; while (r < top) { const m = (r + top + 1) >> 1; if (T[m] <= t) r = m; else top = m - 1; } // last row starting by t
-    const span = r + 1 < T.length ? T[r + 1] - T[r] : this.rowDur;
-    return [x, 8 * (r + Math.min(1, (t - T[r]) / span))];
+    const half = (this.geo.scanDeg / 2) * RAD, ang = Math.sign(dot(D, cross(V, S))) * theta - this.geo.rollDeg * RAD; // the scanner's angle, + = the satellite's right
+    if (Math.abs(ang) > half) return null;
+    // the picture starts at the satellite's right (MeteorDemod's geometry; it's why morning passes come out north-up)
+    let x = WIDTH / 2 - (ang * WIDTH) / 2 / half;
+    if (this.mirror) x = WIDTH - x;
+    // pitch: the scanner leans back, so it sees a place a moment after the satellite has passed over it
+    const r = Math.hypot(...S), dt = (tr[Math.min(n - 1, lo + 1)][0] - tr[Math.max(0, lo - 1)][0]) / 1000, vGround = (Math.hypot(...V) / dt) * (RE / r);
+    const seen = t + ((r - RE) * Math.tan(this.geo.pitchDeg * RAD) / vGround) * 1000;
+    // across rows: the row being scanned then
+    const T = this.times; if (seen < T[0] || seen > T[T.length - 1] + this.rowDur) return null;
+    let k = 0, top = T.length - 1; while (k < top) { const m = (k + top + 1) >> 1; if (T[m] <= seen) k = m; else top = m - 1; } // last row starting by then
+    const span = k + 1 < T.length ? T[k + 1] - T[k] : this.rowDur;
+    return [x, 8 * (k + Math.min(1, (seen - T[k]) / span))];
   }
 }
 
+/** Anything that places a point in the picture: a Projector, or one turned around for a north-up picture. */
+export type Proj = { toPixel(lat: number, lon: number): [number, number] | null };
+
 /** Draws polylines (flat [lon, lat, lon, lat…] arrays) onto the picture where the scanner saw them. */
-export function drawLines(g: CanvasRenderingContext2D, pr: Projector, lines: number[][], color: string, width: number) {
+export function drawLines(g: CanvasRenderingContext2D, pr: Proj, lines: number[][], color: string, width: number) {
   g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.beginPath();
   for (const l of lines) {
     let prev: [number, number] | null = null;
@@ -77,4 +96,48 @@ export function drawLines(g: CanvasRenderingContext2D, pr: Projector, lines: num
     }
   }
   g.stroke();
+}
+
+/** Latitude and longitude lines every `step` degrees, as polylines for drawLines. */
+export function graticule(step = 10): number[][] {
+  const lines: number[][] = [];
+  for (let lon = -180; lon < 180; lon += step) { const l: number[] = []; for (let lat = -85; lat <= 85; lat += 1) l.push(lon, lat); lines.push(l); }
+  for (let lat = -80; lat <= 80; lat += step) { const l: number[] = []; for (let lon = -180; lon <= 180; lon += 1) l.push(lon, lat); lines.push(l); }
+  return lines;
+}
+
+/** Text with a dark outline, readable on clouds and on sea. */
+function outlined(g: CanvasRenderingContext2D, text: string, x: number, y: number, color: string) {
+  g.lineWidth = Math.max(3, g.lineWidth); g.strokeStyle = "rgba(0,0,0,0.85)"; g.strokeText(text, x, y); g.fillStyle = color; g.fillText(text, x, y);
+}
+
+/** City dots with names, biggest first, skipping a label that would overlap one already placed. `rows`: [name, lat, lon, capital]. */
+export function drawCities(g: CanvasRenderingContext2D, pr: Proj, rows: [string, number, number, number, number][], color: string, size = 22) {
+  const placed: number[][] = [];
+  g.font = `600 ${size}px system-ui, sans-serif`; g.textBaseline = "middle"; g.lineJoin = "round";
+  for (const [name, lat, lon, capital] of rows) {
+    const p = pr.toPixel(lat, lon); if (!p) continue;
+    const w = g.measureText(name).width, box = [p[0] + 9, p[1] - size / 2, p[0] + 13 + w, p[1] + size / 2];
+    if (box[2] > g.canvas.width || placed.some((b) => !(box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3]))) continue;
+    placed.push(box);
+    g.fillStyle = color; g.strokeStyle = "rgba(0,0,0,0.85)"; g.lineWidth = 2;
+    g.beginPath(); capital ? g.rect(p[0] - 5, p[1] - 5, 10, 10) : g.arc(p[0], p[1], 5, 0, 7); g.fill(); g.stroke();
+    outlined(g, name, p[0] + 11, p[1], color);
+  }
+}
+
+/** The receiving station as a tilted cross. */
+export function drawHome(g: CanvasRenderingContext2D, pr: Proj, lat: number, lon: number, color: string) {
+  const p = pr.toPixel(lat, lon); if (!p) return false;
+  g.strokeStyle = "rgba(0,0,0,0.85)"; g.lineWidth = 9; g.lineCap = "round";
+  const cross = () => { g.beginPath(); g.moveTo(p[0] - 16, p[1] - 16); g.lineTo(p[0] + 16, p[1] + 16); g.moveTo(p[0] + 16, p[1] - 16); g.lineTo(p[0] - 16, p[1] + 16); g.stroke(); };
+  cross(); g.strokeStyle = color; g.lineWidth = 5; cross();
+  return true;
+}
+
+/** A caption at the top of the picture: which satellite, when. */
+export function drawCaption(g: CanvasRenderingContext2D, lines: string[], color: string, size = 34) {
+  g.font = `700 ${size}px system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "top"; g.lineJoin = "round";
+  lines.forEach((l, i) => outlined(g, l, g.canvas.width / 2, 14 + i * (size + 8), color));
+  g.textAlign = "start";
 }
