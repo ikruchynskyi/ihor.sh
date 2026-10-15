@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>When You're Stuck · AI from scratch</title>
+  <meta name="description" content="A practical troubleshooting guide for common machine learning errors: tensor shape mismatches, NaNs, loss curves, data leakage, Colab OOMs, and Kaggle issues." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --code-bg: #f3f1eb;
+      --tag-bg: #fee2e2;
+      --tag-fg: #991b1b;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px 16px 120px;
+      overflow-x: clip;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2.2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .toc a {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .toc a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .issue {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 28px;
+    }
+    .issue-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .issue-title {
+      font-size: 1.28rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--fg);
+    }
+    .issue-tag {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      color: var(--tag-fg);
+    }
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-top: 14px;
+      margin-bottom: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      padding: 12px 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin: 6px 0 12px;
+      border: 1px solid var(--line);
+    }
+    code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.88em;
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: inherit;
+    }
+    .lesson-link {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+    .lesson-link a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .lesson-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Reference</p>
+  <h1>When You're Stuck</h1>
+  <p class="lede">A diagnostic triage guide for common mistakes in linear algebra, PyTorch training, tabular pipelines, and cloud runners. For each failure, look up the symptom, run the check, apply the fix, and review the concept.</p>
+
+  <nav class="toc" aria-label="Common issues">
+    <a href="#shapes">Shapes don't match</a>
+    <a href="#nans">NaNs in loss</a>
+    <a href="#loss-not-falling">Loss not falling</a>
+    <a href="#exploding-loss">Exploding loss</a>
+    <a href="#leakage">Suspiciously high score</a>
+    <a href="#overfitting">Overfitting</a>
+    <a href="#kaggle-net">Kaggle without Internet</a>
+    <a href="#colab-oom">Colab Out of Memory</a>
+    <a href="#codebox">Code box won't run</a>
+  </nav>
+
+  <!-- 1. SHAPES -->
+  <article class="issue" id="shapes">
+    <div class="issue-header">
+      <h2 class="issue-title">1. Shapes That Don't Match</h2>
+      <span class="issue-tag">Dimension Mismatch</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <pre><code>RuntimeError: mat1 and mat2 shapes cannot be multiplied (32x10 and 64x10)
+# or in NumPy:
+ValueError: operands could not be broadcast together with shapes (32, 10) (64, 10)</code></pre>
+    <div class="section-label">How to Check</div>
+    <p>Print the shape of every tensor before the multiplying line. In matrix multiplication $A \times B$, the inner dimensions must match: $(N, K) \times (K, M) \to (N, M)$.</p>
+    <pre><code>print(f"X: {X.shape}, W: {W.shape}")
+# If X is (32, 10) and W is (64, 10), inner dimensions are 10 and 64 — they do not match!</code></pre>
+    <div class="section-label">The Fix</div>
+    <p>Transpose the weight matrix with <code>.T</code> or <code>.t()</code>, or check your <code>nn.Linear(in_features, out_features)</code> definition. In PyTorch, <code>nn.Linear(10, 64)</code> stores weight with shape <code>(64, 10)</code> and performs $x W^T$.</p>
+    <pre><code># NumPy fix: transpose W
+out = X @ W.T  # (32, 10) @ (10, 64) -> (32, 64)
+
+# PyTorch Flatten fix after Conv2d:
+x = torch.flatten(x, start_dim=1)  # preserve batch dimension (N, -1)</code></pre>
+    <div class="lesson-link">
+      Taught in: <a href="./01-matrices-are-moves.html">Matrices are moves</a>, <a href="./s2-just-enough-code.html">Just enough code</a>, and <a href="./numpy-in-depth.html">NumPy in depth</a>.
+    </div>
+  </article>
+
+  <!-- 2. NANS -->
+  <article class="issue" id="nans">
+    <div class="issue-header">
+      <h2 class="issue-title">2. NaNs in Loss or Weights</h2>
+      <span class="issue-tag">Numerical Instability</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>The loss prints <code>nan</code> after a few training steps, or weights turn into <code>nan</code> / <code>inf</code>.</p>
+    <div class="section-label">How to Check</div>
+    <p>Check if raw probabilities hit $0$ or $1$, or if activations produce huge numbers before an exponential.</p>
+    <pre><code>assert not torch.isnan(loss), "Loss is NaN!"
+print("max logit:", logits.max().item(), "min prob:", probs.min().item())</code></pre>
+    <div class="section-label">The Fix</div>
+    <p>Never take the raw <code>torch.log(torch.softmax(logits))</code> or <code>torch.log(torch.sigmoid(logits))</code>. Use numerically stable fused loss functions that work in logit space: <code>nn.CrossEntropyLoss()</code> or <code>nn.BCEWithLogitsLoss()</code>. In custom code, clamp probabilities with an epsilon $\varepsilon = 10^{-12}$.</p>
+    <pre><code># Bad: prone to log(0) -> -inf -> NaN
+loss = -torch.log(torch.sigmoid(logits))
+
+# Good: numerically stable log-sum-exp
+loss_fn = nn.BCEWithLogitsLoss()
+loss = loss_fn(logits, targets)</code></pre>
+    <div class="lesson-link">
+      Taught in: <a href="./05-probability-and-loss.html">Probability and loss</a> and <a href="./making-nets-train.html">Making nets train</a>.
+    </div>
+  </article>
+
+  <!-- 3. LOSS NOT FALLING -->
+  <article class="issue" id="loss-not-falling">
+    <div class="issue-header">
+      <h2 class="issue-title">3. Loss Not Falling (Flatlining)</h2>
+      <span class="issue-tag">Vanishing Gradients / Zero Updates</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>The loss sits exactly at the baseline value (e.g., $-\ln(1/C) \approx 2.30$ for 10 classes) and refuses to budge after dozens of epochs.</p>
+    <div class="section-label">How to Check</div>
+    <p>Confirm gradients exist, are non-zero, and that the optimizer step actually updates the model parameters:</p>
+    <pre><code># Check gradient magnitudes:
+for name, p in model.named_parameters():
+    print(name, p.grad.abs().mean().item() if p.grad is not None else "NO GRAD")</code></pre>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li>Verify the loop order: <code>optimizer.zero_grad()</code> &rarr; <code>loss.backward()</code> &rarr; <code>optimizer.step()</code>. Omitting <code>optimizer.step()</code> is the most common typo.</li>
+      <li>Check the learning rate: if it's too small (e.g., $10^{-7}$), increase it to $10^{-3}$ or $3 \times 10^{-4}$.</li>
+      <li>Check input scaling: if inputs have huge values ($> 1000$), standard scale them to mean 0, variance 1 with <code>StandardScaler()</code>.</li>
+      <li>If using ReLUs with high learning rates, check for dead neurons (zero gradients everywhere). Switch to <code>nn.GELU()</code> or <code>nn.LeakyReLU()</code>.</li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./02-gradients.html">Gradients</a>, <a href="./04-backprop.html">Backprop</a>, and <a href="./making-nets-train.html">Making nets train</a>.
+    </div>
+  </article>
+
+  <!-- 4. EXPLODING LOSS -->
+  <article class="issue" id="exploding-loss">
+    <div class="issue-header">
+      <h2 class="issue-title">4. Exploding Loss / Gradients</h2>
+      <span class="issue-tag">Divergence</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>Loss starts normally (e.g., 2.5), then jumps to 40, then 10,000, then <code>inf</code> within a handful of batches.</p>
+    <div class="section-label">How to Check</div>
+    <p>Check parameter gradient norms:</p>
+    <pre><code>total_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float('inf'))
+print("gradient norm:", total_norm.item())</code></pre>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li>Lower the learning rate by a factor of 10 or 100.</li>
+      <li>Clip gradients before the step: <code>torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</code>.</li>
+      <li>Check unnormalized inputs or uninitialized weights. Use He / Kaiming initialization for ReLU layers: <code>nn.init.kaiming_normal_(layer.weight)</code>.</li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./optimizers.html">Optimizers and momentum</a> and <a href="./making-nets-train.html">Making nets train</a>.
+    </div>
+  </article>
+
+  <!-- 5. LEAKAGE -->
+  <article class="issue" id="leakage">
+    <div class="issue-header">
+      <h2 class="issue-title">5. Suspiciously Perfect Score (Data Leakage)</h2>
+      <span class="issue-tag">Feature Leakage</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>Validation accuracy is 99.8% or $R^2 = 1.00$ on the very first attempt on dirty tabular data, but drops to chance when evaluated in production.</p>
+    <div class="section-label">How to Check</div>
+    <p>Inspect feature importances or correlations with the target. If one feature has feature importance $> 0.85$ or correlation $> 0.95$, suspect leakage.</p>
+    <pre><code># Check feature correlation with target:
+corrs = df.corr()['target'].abs().sort_values(ascending=False)
+print(corrs.head())</code></pre>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li><strong>Proxy / Consequent variables:</strong> Drop columns recorded <em>after</em> the outcome happened (e.g., <code>outage_end_time</code> when predicting outage duration, or <code>resolution_code</code>).</li>
+      <li><strong>Split before preprocessing:</strong> Never fit a <code>StandardScaler</code>, <code>SimpleImputer</code>, or <code>CountVectorizer</code> on the entire dataset. Always use a <code>Pipeline</code> fit strictly on <code>X_train</code>:
+        <pre><code>from sklearn.pipeline import make_pipeline
+pipe = make_pipeline(StandardScaler(), LogisticRegression())
+pipe.fit(X_train, y_train)  # Scaler never sees X_test!</code></pre>
+      </li>
+      <li><strong>Time structure:</strong> When rows represent time series or events, use <code>TimeSeriesSplit</code> or date cutoffs rather than random <code>train_test_split</code>.</li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./features-and-leakage.html">Features and leakage</a> and <a href="./pandas-and-sklearn.html">pandas &amp; scikit-learn</a>.
+    </div>
+  </article>
+
+  <!-- 6. OVERFITTING -->
+  <article class="issue" id="overfitting">
+    <div class="issue-header">
+      <h2 class="issue-title">6. Overfitting (Train Loss Falls, Val Loss Rises)</h2>
+      <span class="issue-tag">High Variance</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>Training loss approaches 0, but validation loss reaches a minimum and climbs steadily higher.</p>
+    <div class="section-label">How to Check</div>
+    <p>Plot both curves on the same axes. The minimum of the validation loss curve marks the point of optimal generalization.</p>
+    <div class="section-label">The Fix</div>
+    <ul>
+      <li><strong>Early stopping:</strong> Save the model checkpoint when validation loss reaches its minimum; stop training if it doesn't improve for 5 epochs.</li>
+      <li><strong>Weight decay (L2 regularization):</strong> Pass <code>weight_decay=1e-4</code> to your PyTorch optimizer, or set <code>Ridge(alpha=1.0)</code>.</li>
+      <li><strong>Dropout &amp; Augmentation:</strong> Add <code>nn.Dropout(0.2)</code> after dense layers and random crops/flips to vision inputs.</li>
+      <li><strong>Reduce capacity:</strong> Use fewer layers, fewer hidden units, or shallower tree depth (<code>max_depth=4</code>).</li>
+    </ul>
+    <div class="lesson-link">
+      Taught in: <a href="./12-measuring-a-model.html">Measuring a model</a> and <a href="./making-nets-train.html">Making nets train</a>.
+    </div>
+  </article>
+
+  <!-- 7. KAGGLE INTERNET -->
+  <article class="issue" id="kaggle-net">
+    <div class="issue-header">
+      <h2 class="issue-title">7. Kaggle Notebook Without Internet</h2>
+      <span class="issue-tag">Kaggle Environment</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <pre><code>urllib.error.URLError: &lt;urlopen error [Errno -3] Temporary failure in name resolution&gt;
+# or pip install hangs indefinitely</code></pre>
+    <div class="section-label">How to Check</div>
+    <p>Check the right-hand Settings drawer in your Kaggle Notebook under <strong>Notebook options</strong>.</p>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li>Verify your Kaggle account is phone-verified (unverified accounts cannot toggle internet).</li>
+      <li>In the right sidebar, expand <strong>Settings</strong> &rarr; find <strong>Internet</strong> &rarr; toggle it to <strong>Internet on</strong>. The notebook kernel will restart with external networking enabled.</li>
+      <li>For competition kernels where Internet must be disabled at submission time, upload your package wheels or pretrained weights as a private Kaggle Dataset, then install locally:
+        <pre><code>!pip install --no-index --find-links=/kaggle/input/my-wheels-dataset/ package_name</code></pre>
+      </li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./s4-your-first-shared-model.html">Your first shared model</a> and <a href="./mlops.html">MLOps</a>.
+    </div>
+  </article>
+
+  <!-- 8. COLAB OOM -->
+  <article class="issue" id="colab-oom">
+    <div class="issue-header">
+      <h2 class="issue-title">8. Google Colab Out of Memory (CUDA OOM)</h2>
+      <span class="issue-tag">Resource Exhaustion</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <pre><code>torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB
+# or "Your session crashed after using all available RAM"</code></pre>
+    <div class="section-label">How to Check</div>
+    <pre><code>import torch
+print("Allocated:", torch.cuda.memory_allocated() / 1e9, "GB")
+print("Reserved: ", torch.cuda.memory_reserved() / 1e9, "GB")</code></pre>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li><strong>Halve the batch size:</strong> If using <code>batch_size=64</code>, reduce it to <code>32</code> or <code>16</code>.</li>
+      <li><strong>Use gradient accumulation:</strong> Simulate larger batch sizes without the VRAM footprint:
+        <pre><code>accum_steps = 4
+for i, (x, y) in enumerate(loader):
+    loss = loss_fn(model(x), y) / accum_steps
+    loss.backward()
+    if (i + 1) % accum_steps == 0:
+        optimizer.step()
+        optimizer.zero_grad()</code></pre>
+      </li>
+      <li><strong>Disable gradients during evaluation:</strong> Wrap validation in <code>with torch.no_grad():</code>.</li>
+      <li><strong>Release unused memory:</strong> <code>del outputs, loss; torch.cuda.empty_cache()</code>.</li>
+      <li><strong>Mixed precision:</strong> Use <code>torch.cuda.amp.autocast()</code> to compute in 16-bit floats.</li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./training-in-pytorch.html">Training in PyTorch</a> and <a href="./deep-cnns.html">Deep CNNs</a>.
+    </div>
+  </article>
+
+  <!-- 9. CODE BOX WON'T RUN -->
+  <article class="issue" id="codebox">
+    <div class="issue-header">
+      <h2 class="issue-title">9. Browser Code Box Won't Run</h2>
+      <span class="issue-tag">In-Browser Pyodide</span>
+    </div>
+    <div class="section-label">Symptom</div>
+    <p>Clicking "Run" on an interactive code box in a lesson keeps spinning, produces no output, or shows an error in the developer console.</p>
+    <div class="section-label">How to Check</div>
+    <p>Open Developer Tools (F12 or Cmd+Option+I) and select the <strong>Console</strong> tab. Look for failed requests to <code>cdn.jsdelivr.net/pyodide/</code> or Content Security Policy warnings.</p>
+    <div class="section-label">The Fix</div>
+    <ol>
+      <li><strong>Initial download:</strong> Pyodide compiles Python to WebAssembly in your browser (~10 MB one-time cache). On slower connections, the first run can take 5–10 seconds to load the runtime.</li>
+      <li><strong>Supported packages:</strong> In-browser code boxes support Python standard library, NumPy, pandas, scikit-learn, and sqlite3. They do not run full PyTorch or CUDA code (PyTorch code runs in Colab or Kaggle).</li>
+      <li><strong>Content blockers:</strong> If an aggressive privacy extension or ad blocker blocks scripts from <code>jsdelivr.net</code>, allow the domain or disable extensions for the page.</li>
+      <li><strong>State reset:</strong> If variable definitions get tangled across cells, refresh the page to restart a clean WebAssembly session.</li>
+    </ol>
+    <div class="lesson-link">
+      Taught in: <a href="./s2-just-enough-code.html">Just enough code</a> and <a href="./pandas-and-sklearn.html">pandas &amp; scikit-learn</a>.
+    </div>
+  </article>
+</main>
+</body>
+</html>

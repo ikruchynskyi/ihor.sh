@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python & ML Cheatsheets · AI from scratch</title>
+  <meta name="description" content="Quick reference for NumPy, pandas, scikit-learn, and PyTorch calls used across AI from scratch, with one-line examples and lesson links." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px 16px 120px;
+      overflow-x: clip;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2.2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .toc a {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .toc a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    h2 {
+      margin: 40px 0 14px;
+      font-size: 1.5rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    .wide-scroll {
+      position: relative;
+      overflow-x: auto;
+      margin: 12px 0 28px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    th {
+      background: color-mix(in srgb, var(--fg) 3%, transparent);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.88em;
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    td code {
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Reference</p>
+  <h1>Cheatsheets</h1>
+  <p class="lede">Every function and method called on the path: exactly the library calls you encounter in lessons and notebooks, each with a one-line example and the lesson that introduces it.</p>
+
+  <nav class="toc" aria-label="Library cheatsheets">
+    <a href="#numpy">NumPy</a>
+    <a href="#pandas">pandas</a>
+    <a href="#sklearn">scikit-learn</a>
+    <a href="#pytorch">PyTorch</a>
+  </nav>
+
+  <h2 id="numpy">1. NumPy (<code>import numpy as np</code>)</h2>
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr><th>Call</th><th>What it does</th><th>Example</th><th>First used in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>np.array()</code></td><td>Creates a multi-dimensional array from lists</td><td><code>np.array([[1, 2], [3, 4]])</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.mean()</code></td><td>Arithmetic average across an axis or all elements</td><td><code>np.mean(errors)</code></td><td><a href="./s1-what-is-ml.html">s1-what-is-ml</a></td></tr>
+        <tr><td><code>np.std()</code></td><td>Sample or population standard deviation</td><td><code>np.std(losses)</code></td><td><a href="./p2-describing-data.html">p2-describing-data</a></td></tr>
+        <tr><td><code>np.sum()</code></td><td>Sums elements along an axis</td><td><code>np.sum(X, axis=0)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.sqrt()</code></td><td>Element-wise square root</td><td><code>np.sqrt(np.mean(err**2))</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.exp()</code></td><td>Natural exponential \(e^x\)</td><td><code>np.exp(-loss)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.log()</code></td><td>Natural logarithm \(\ln x\)</td><td><code>np.log(probs + 1e-12)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.dot()</code> / <code>@</code></td><td>Matrix multiplication and vector inner products</td><td><code>A @ x</code> or <code>np.dot(A, B)</code></td><td><a href="./01-matrices-are-moves.html">01-matrices-are-moves</a></td></tr>
+        <tr><td><code>np.linspace()</code></td><td>N evenly spaced numbers between start and stop</td><td><code>np.linspace(-3, 3, 100)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.arange()</code></td><td>Evenly spaced values within a half-open interval</td><td><code>np.arange(0, 10, 0.5)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.zeros()</code></td><td>Array of given shape filled with 0.0</td><td><code>np.zeros((N, D))</code></td><td><a href="./numpy-in-depth.html">numpy-in-depth</a></td></tr>
+        <tr><td><code>np.ones()</code></td><td>Array of given shape filled with 1.0</td><td><code>np.ones_like(y)</code></td><td><a href="./numpy-in-depth.html">numpy-in-depth</a></td></tr>
+        <tr><td><code>np.maximum()</code></td><td>Element-wise max (used for ReLU)</td><td><code>np.maximum(0, z)</code></td><td><a href="./s1-what-is-ml.html">s1-what-is-ml</a></td></tr>
+        <tr><td><code>np.argmin()</code></td><td>Index of the minimum value</td><td><code>np.argmin(distances, axis=1)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.argmax()</code></td><td>Index of the maximum value (predicted class)</td><td><code>np.argmax(logits, axis=-1)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>np.linalg.inv()</code></td><td>Computes the matrix inverse \(A^{-1}\)</td><td><code>np.linalg.inv(X.T @ X)</code></td><td><a href="./l1-systems-and-inverses.html">l1-systems-and-inverses</a></td></tr>
+        <tr><td><code>np.linalg.svd()</code></td><td>Singular Value Decomposition \(U, \Sigma, V^T\)</td><td><code>U, S, Vt = np.linalg.svd(A)</code></td><td><a href="./l3-svd.html">l3-svd</a></td></tr>
+        <tr><td><code>np.linalg.eig()</code></td><td>Eigenvalues and eigenvectors of square matrix</td><td><code>vals, vecs = np.linalg.eig(cov)</code></td><td><a href="./l2-eigenvectors-and-pca.html">l2-eigenvectors-and-pca</a></td></tr>
+        <tr><td><code>np.random.seed()</code></td><td>Sets PRNG state for reproducibility</td><td><code>np.random.seed(42)</code></td><td><a href="./s1-what-is-ml.html">s1-what-is-ml</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="pandas">2. pandas (<code>import pandas as pd</code>)</h2>
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr><th>Call</th><th>What it does</th><th>Example</th><th>First used in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>pd.read_csv()</code></td><td>Loads a CSV or TSV file into a DataFrame</td><td><code>df = pd.read_csv('ai/data/bank.csv')</code></td><td><a href="./p1-probability-and-bayes.html">p1-probability-and-bayes</a></td></tr>
+        <tr><td><code>pd.DataFrame()</code></td><td>Constructs a tabular DataFrame from dict or array</td><td><code>pd.DataFrame({'x': x, 'y': y})</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>df.head()</code></td><td>Returns the first N rows (default 5)</td><td><code>df.head(3)</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>df.describe()</code></td><td>Computes count, mean, std, min, percentiles, max</td><td><code>df.describe()</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>df.groupby()</code></td><td>Splits data into groups based on category columns</td><td><code>df.groupby('job')['deposit'].mean()</code></td><td><a href="./s2-just-enough-code.html">s2-just-enough-code</a></td></tr>
+        <tr><td><code>df.value_counts()</code></td><td>Counts unique occurrences of each category</td><td><code>df['borough'].value_counts()</code></td><td><a href="./p2-describing-data.html">p2-describing-data</a></td></tr>
+        <tr><td><code>df.dropna()</code></td><td>Removes rows containing missing/null values</td><td><code>df.dropna(subset=['target'])</code></td><td><a href="./features-and-leakage.html">features-and-leakage</a></td></tr>
+        <tr><td><code>pd.get_dummies()</code></td><td>One-hot encodes categorical columns into binary flags</td><td><code>pd.get_dummies(df, drop_first=True)</code></td><td><a href="./pandas-and-sklearn.html">pandas-and-sklearn</a></td></tr>
+        <tr><td><code>pd.merge_asof()</code></td><td>Point-in-time join on nearest preceding timestamp</td><td><code>pd.merge_asof(events, features, on='time')</code></td><td><a href="./features-and-leakage.html">features-and-leakage</a></td></tr>
+        <tr><td><code>df.corr()</code></td><td>Calculates pairwise Pearson correlation matrix</td><td><code>df[['age', 'balance']].corr()</code></td><td><a href="./p2-describing-data.html">p2-describing-data</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="sklearn">3. scikit-learn (<code>import sklearn</code>)</h2>
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr><th>Call</th><th>What it does</th><th>Example</th><th>First used in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>train_test_split()</code></td><td>Splits arrays/tables into train and validation sets</td><td><code>X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2)</code></td><td><a href="./p1-probability-and-bayes.html">p1-probability-and-bayes</a></td></tr>
+        <tr><td><code>StandardScaler()</code></td><td>Standardizes features to zero mean and unit variance</td><td><code>scaler = StandardScaler().fit(X_tr)</code></td><td><a href="./p2-describing-data.html">p2-describing-data</a></td></tr>
+        <tr><td><code>Pipeline()</code></td><td>Chains transformers with an estimator safely</td><td><code>pipe = Pipeline([('scale', StandardScaler()), ('clf', LogisticRegression())])</code></td><td><a href="./pandas-and-sklearn.html">pandas-and-sklearn</a></td></tr>
+        <tr><td><code>LinearRegression()</code></td><td>Fits ordinary least-squares linear regression</td><td><code>model = LinearRegression().fit(X, y)</code></td><td><a href="./l1-systems-and-inverses.html">l1-systems-and-inverses</a></td></tr>
+        <tr><td><code>LogisticRegression()</code></td><td>Fits regularized logistic regression for classification</td><td><code>clf = LogisticRegression(C=1.0).fit(X, y)</code></td><td><a href="./zoo-logistic.html">zoo-logistic</a></td></tr>
+        <tr><td><code>DecisionTreeClassifier()</code></td><td>Recursively partitions feature space using Gini/entropy</td><td><code>tree = DecisionTreeClassifier(max_depth=4).fit(X, y)</code></td><td><a href="./13-trees-and-boosting.html">13-trees-and-boosting</a></td></tr>
+        <tr><td><code>RandomForestClassifier()</code></td><td>Bagged ensemble of randomized decision trees</td><td><code>rf = RandomForestClassifier(n_estimators=100).fit(X, y)</code></td><td><a href="./13-trees-and-boosting.html">13-trees-and-boosting</a></td></tr>
+        <tr><td><code>PCA()</code></td><td>Linear dimensionality reduction via covariance SVD</td><td><code>pca = PCA(n_components=2).fit(X)</code></td><td><a href="./p2-describing-data.html">p2-describing-data</a></td></tr>
+        <tr><td><code>confusion_matrix()</code></td><td>Evaluates classification accuracy per class breakdown</td><td><code>cm = confusion_matrix(y_true, y_pred)</code></td><td><a href="./12-measuring-a-model.html">12-measuring-a-model</a></td></tr>
+        <tr><td><code>classification_report()</code></td><td>Displays precision, recall, and F1-score</td><td><code>print(classification_report(y_true, y_pred))</code></td><td><a href="./12-measuring-a-model.html">12-measuring-a-model</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="pytorch">4. PyTorch (<code>import torch</code>)</h2>
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr><th>Call</th><th>What it does</th><th>Example</th><th>First used in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>torch.tensor()</code></td><td>Constructs a tensor from array data</td><td><code>t = torch.tensor([1.0, 2.0], requires_grad=True)</code></td><td><a href="./s1-what-is-ml.html">s1-what-is-ml</a></td></tr>
+        <tr><td><code>tensor.backward()</code></td><td>Computes gradients via reverse-mode autodiff</td><td><code>loss.backward()</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>optimizer.zero_grad()</code></td><td>Clears accumulated gradients before backward pass</td><td><code>optimizer.zero_grad()</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>optimizer.step()</code></td><td>Updates parameters using accumulated gradients</td><td><code>optimizer.step()</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>torch.no_grad()</code></td><td>Context manager disabling autograd engine</td><td><code>with torch.no_grad(): eval_model()</code></td><td><a href="./s1-what-is-ml.html">s1-what-is-ml</a></td></tr>
+        <tr><td><code>nn.Linear()</code></td><td>Applies linear transformation \(y = x W^T + b\)</td><td><code>nn.Linear(in_features=128, out_features=10)</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>nn.ReLU()</code></td><td>Rectified linear unit activation \(\max(0, x)\)</td><td><code>nn.ReLU()</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>nn.CrossEntropyLoss()</code></td><td>Combines LogSoftmax and NLLLoss in one step</td><td><code>criterion = nn.CrossEntropyLoss()</code></td><td><a href="./training-in-pytorch.html">training-in-pytorch</a></td></tr>
+        <tr><td><code>optim.Adam()</code></td><td>Adaptive moment estimation optimizer</td><td><code>optim.Adam(model.parameters(), lr=1e-3)</code></td><td><a href="./optimizers.html">optimizers</a></td></tr>
+        <tr><td><code>tensor.to('cuda')</code></td><td>Transfers tensor to GPU memory</td><td><code>x = x.to(device)</code></td><td><a href="./gpus-and-scale.html">gpus-and-scale</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

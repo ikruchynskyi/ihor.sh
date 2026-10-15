@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Math Notation Guide · AI from scratch</title>
+  <meta name="description" content="Every math symbol used on the AI from scratch path: its spoken pronunciation, plain-English meaning, concrete example, and the lesson that teaches it." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px 16px 120px;
+      overflow-x: clip;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2.2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .wide-scroll {
+      position: relative;
+      overflow-x: auto;
+      margin: 16px 0 28px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    th {
+      background: color-mix(in srgb, var(--fg) 3%, transparent);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .sym {
+      font-size: 1.2rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+  </style>
+  <script type="module" src="/learn-kit.js"></script>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Reference</p>
+  <h1>Math Notation Guide</h1>
+  <p class="lede">Every mathematical symbol on the path is introduced gently with pictures and concrete numbers before being used. This reference collects all of them with how they read out loud, their meaning in plain English, and where they are taught.</p>
+
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>How to read it</th>
+          <th>Meaning in plain words</th>
+          <th>Example</th>
+          <th>Taught in</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="sym">\(\sum\)</td>
+          <td>"Sigma" or "sum"</td>
+          <td>Add up a sequence of numbers, exactly like a for-loop accumulating a total</td>
+          <td>\(\sum_{i=1}^N (y_i - \hat{y}_i)^2\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\prod\)</td>
+          <td>"Pi" or "product"</td>
+          <td>Multiply a sequence of numbers together</td>
+          <td>\(\prod_{i=1}^N P(x_i \mid y)\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\ln\), \(\log\)</td>
+          <td>"Natural log", "log"</td>
+          <td>The power to which \(e\) must be raised to produce that value; turns products into sums</td>
+          <td>\(\ln(e^x) = x\), \(\ln(10) \approx 2.303\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\exp\), \(e^x\)</td>
+          <td>"e to the x"</td>
+          <td>Continuous exponential growth; the inverse of natural log</td>
+          <td>\(e^0 = 1\), \(\sigma(z) = \frac{1}{1 + e^{-z}}\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\theta, \eta, \sigma, \mu\)</td>
+          <td>Greek letters</td>
+          <td>Standard names for model knobs: \(\theta\) (weights), \(\eta\) (learning rate), \(\mu\) (mean), \(\sigma\) (spread)</td>
+          <td>\(w \leftarrow w - \eta \nabla L\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(x_i, w_{j,k}\)</td>
+          <td>Subscript</td>
+          <td>Index specifying which row, column, or feature is being referenced</td>
+          <td>\(x_1, x_2, \dots, x_N\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\hat{y}\)</td>
+          <td>"y-hat"</td>
+          <td>A model's estimate or prediction, as opposed to the true label \(y\)</td>
+          <td>\(\text{Error} = y - \hat{y}\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\approx\)</td>
+          <td>"Approximately equal to"</td>
+          <td>Rounded numerical values or asymptotic approximations</td>
+          <td>\(\ln(10) \approx 2.3\), \(e \approx 2.718\)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\in, \mathbb{R}\)</td>
+          <td>"in", "real numbers"</td>
+          <td>Set membership (\(\in\)) and the set of continuous real numbers (\(\mathbb{R}\))</td>
+          <td>\(x \in \mathbb{R}^D\) (x is a D-dimensional vector)</td>
+          <td><a href="./s3-math-warm-up.html">s3-math-warm-up</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\mathbf{A}, \begin{bmatrix} a & b \\ c & d \end{bmatrix}\)</td>
+          <td>Matrix</td>
+          <td>A 2D array of numbers that moves, stretches, or rotates the entire vector space</td>
+          <td>\(\mathbf{y} = \mathbf{W} \mathbf{x} + \mathbf{b}\)</td>
+          <td><a href="./01-matrices-are-moves.html">01-matrices-are-moves</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\|\mathbf{x}\|\)</td>
+          <td>"Norm of x"</td>
+          <td>The geometric length or magnitude of a vector</td>
+          <td>\(\|\mathbf{x}\|_2 = \sqrt{\sum x_i^2}\)</td>
+          <td><a href="./01-matrices-are-moves.html">01-matrices-are-moves</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\mathbf{u} \cdot \mathbf{v}\)</td>
+          <td>"Dot product"</td>
+          <td>Multiply matching coordinates and sum; measures directional alignment</td>
+          <td>\(\mathbf{u} \cdot \mathbf{v} = \|\mathbf{u}\| \|\mathbf{v}\| \cos \theta\)</td>
+          <td><a href="./01-matrices-are-moves.html">01-matrices-are-moves</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\mathbf{A}^T\)</td>
+          <td>"A transpose"</td>
+          <td>Flipping a matrix across its main diagonal, swapping rows and columns</td>
+          <td>\((\mathbf{A} \mathbf{B})^T = \mathbf{B}^T \mathbf{A}^T\)</td>
+          <td><a href="./l1-systems-and-inverses.html">l1-systems-and-inverses</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\mathbf{A}^{-1}\)</td>
+          <td>"A inverse"</td>
+          <td>The transformation that undoes \(\mathbf{A}\); exists only when \(\det(\mathbf{A}) \neq 0\)</td>
+          <td>\(\mathbf{A}^{-1} \mathbf{A} = \mathbf{I}\)</td>
+          <td><a href="./l1-systems-and-inverses.html">l1-systems-and-inverses</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\frac{df}{dx}, f'(x)\)</td>
+          <td>"Derivative of f with respect to x"</td>
+          <td>The slope or instantaneous rate of change of a function with one input</td>
+          <td>\(\frac{d}{dx} x^2 = 2x\)</td>
+          <td><a href="./02-gradients.html">02-gradients</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\frac{\partial f}{\partial x_i}, \partial\)</td>
+          <td>"Partial derivative"</td>
+          <td>The slope with respect to one input while freezing all other inputs constant</td>
+          <td>\(\frac{\partial}{\partial x_1} (x_1 x_2) = x_2\)</td>
+          <td><a href="./02-gradients.html">02-gradients</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\nabla L\)</td>
+          <td>"Nabla", "Gradient of L"</td>
+          <td>Vector collecting all partial derivatives, pointing along steepest uphill slope</td>
+          <td>\(\mathbf{w} \leftarrow \mathbf{w} - \eta \nabla L\)</td>
+          <td><a href="./02-gradients.html">02-gradients</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(P(A \mid B)\)</td>
+          <td>"Probability of A given B"</td>
+          <td>The likelihood of event A occurring knowing that condition B is true</td>
+          <td>\(P(A \mid B) = \frac{P(B \mid A) P(A)}{P(B)}\)</td>
+          <td><a href="./p1-probability-and-bayes.html">p1-probability-and-bayes</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\int\)</td>
+          <td>"Integral"</td>
+          <td>Continuous summation adding infinitesimally small slices of area under a curve</td>
+          <td>\(\int_{-\infty}^\infty p(x) dx = 1\)</td>
+          <td><a href="./c4-integrals.html">c4-integrals</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\mathbb{E}[X]\)</td>
+          <td>"Expectation of X"</td>
+          <td>The long-run average value of a random variable weighted by its probabilities</td>
+          <td>\(\mathbb{E}[X] = \sum x \cdot P(X = x)\)</td>
+          <td><a href="./c4-integrals.html">c4-integrals</a></td>
+        </tr>
+        <tr>
+          <td class="sym">\(\arg\max, \arg\min\)</td>
+          <td>"Argument of the maximum/minimum"</td>
+          <td>The input parameter value that achieves the highest (or lowest) function value</td>
+          <td>\(\hat{y} = \arg\max_{c} P(y = c \mid x)\)</td>
+          <td><a href="./p3-mle-and-map.html">p3-mle-and-map</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

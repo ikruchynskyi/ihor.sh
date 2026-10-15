@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Datasets · AI from scratch</title>
+  <meta name="description" content="Source, license, dimensions, schema, and lesson usage for every dataset used across AI from scratch." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #15803d;
+      --amber: #b45309;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 36px 16px 120px;
+      overflow-x: clip;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2.2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .toc a {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .toc a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    h2 {
+      margin: 40px 0 14px;
+      font-size: 1.5rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    .wide-scroll {
+      position: relative;
+      overflow-x: auto;
+      margin: 12px 0 28px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    th {
+      background: color-mix(in srgb, var(--fg) 3%, transparent);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.88em;
+      background: color-mix(in srgb, var(--fg) 6%, transparent);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .badge-license {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .license-open {
+      background: #ecfdf5;
+      color: var(--green);
+      border: 1px solid #a7f3d0;
+    }
+    .license-notice {
+      background: #fffbeb;
+      color: var(--amber);
+      border: 1px solid #fde68a;
+    }
+    .note {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 20px 0;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Reference</p>
+  <h1>Datasets</h1>
+  <p class="lede">Every dataset used across the lessons and notebooks: raw files in <code>ai/data/</code>, standard scikit-learn loaders, and vision/language corpora. Includes provenance, dimensions, license terms, and lesson cross-references.</p>
+
+  <nav class="toc" aria-label="Dataset categories">
+    <a href="#course-data">Course Data (ai/data/)</a>
+    <a href="#sklearn-datasets">Scikit-Learn Loaders</a>
+    <a href="#vision-nlp">Vision, Language &amp; Torch</a>
+    <a href="#license-notes">License &amp; Usage Notes</a>
+  </nav>
+
+  <h2 id="course-data">Course Datasets (ai/data/)</h2>
+  <p>These files ship directly with the course repository in <code>ai/data/</code>, served locally or cached by the browser for Pyodide and notebooks.</p>
+
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Dataset</th>
+          <th>Source &amp; Provenance</th>
+          <th>License</th>
+          <th>Size / Shape</th>
+          <th>Description &amp; Key Columns</th>
+          <th>Lessons</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>bank.csv</code></td>
+          <td>UCI ML Repository (Moro et al., 2014; Bank Marketing)</td>
+          <td><span class="badge-license license-open">CC BY 4.0</span></td>
+          <td>10,297 rows × 21 cols</td>
+          <td>Direct telemarketing campaigns of a Portuguese bank. Target <code>y</code> indicates term deposit subscription. Features include client demographics, economic indicators (<code>euribor3m</code>, <code>cons.price.idx</code>), and campaign contacts.</td>
+          <td><a href="./13-trees-and-boosting.html">Trees &amp; boosting</a>, <a href="./zoo-boosting.html">Boosted trees</a>, <a href="./zoo-svm.html">SVMs</a>, <a href="./clusters-and-anomalies.html">Clusters &amp; anomalies</a></td>
+        </tr>
+        <tr>
+          <td><code>outages.csv</code><br><code>outages.json</code></td>
+          <td>NYC Open Data / Metropolitan Transportation Authority (MTA)</td>
+          <td><span class="badge-license license-open">Public Domain</span></td>
+          <td>667 rows × 10 cols</td>
+          <td>MTA elevator &amp; escalator outages. Columns: <code>equipment</code>, <code>station</code>, <code>lines</code>, <code>kind</code>, <code>reason</code>, <code>start</code>, <code>estimated_end</code>, <code>borough</code>, <code>is_planned</code>, <code>serving</code>. Demonstrates real-world dirty tabular data and temporal leakage.</td>
+          <td><a href="./pandas-and-sklearn.html">pandas &amp; scikit-learn</a>, <a href="./serving.html">Serving</a>, <a href="./mlops.html">MLOps</a>, <a href="./capstone.html">Capstone</a></td>
+        </tr>
+        <tr>
+          <td><code>ridership.csv</code></td>
+          <td>MTA Daily Ridership Data (NYC Open Data)</td>
+          <td><span class="badge-license license-open">Public Domain</span></td>
+          <td>1,776 rows × 3 cols</td>
+          <td>Daily subway and bus ridership across New York City from 2020 through 2025. Columns: <code>date</code>, <code>subway</code>, <code>bus</code>. Used for trend decomposition, seasonal lag features, and honest walk-forward evaluation.</td>
+          <td><a href="./time-series.html">Time series &amp; forecasting</a>, <a href="./zoo-linear.html">Linear models</a>, <a href="./zoo-mlp.html">Multilayer perceptron</a></td>
+        </tr>
+        <tr>
+          <td><code>sms-spam.tsv</code></td>
+          <td>UCI ML Repository (Almeida &amp; Gómez Hidalgo, 2012)</td>
+          <td><span class="badge-license license-open">CC BY 4.0</span></td>
+          <td>5,572 rows × 2 cols</td>
+          <td>SMS text messages tagged as <code>ham</code> or <code>spam</code>. Used to build bag-of-words vocabularies, TF-IDF transformations, Naive Bayes spam classifiers, and linear SVM decision boundaries.</td>
+          <td><a href="./zoo-naive-bayes.html">Naive Bayes</a>, <a href="./zoo-svm.html">Support Vector Machines</a></td>
+        </tr>
+        <tr>
+          <td><code>rail-stations.json</code></td>
+          <td>MTA Open Data (Long Island Rail Road &amp; Metro-North)</td>
+          <td><span class="badge-license license-open">Public Domain</span></td>
+          <td>396 stations</td>
+          <td>Geographic coordinates, station names, passenger boardings, and ADA compliance status for regional rail stops. Used to illustrate vector distance operations and DBSCAN spatial clustering.</td>
+          <td><a href="./numpy-in-depth.html">NumPy in depth</a>, <a href="./clusters-and-anomalies.html">Clusters &amp; anomalies</a></td>
+        </tr>
+        <tr>
+          <td><code>glove-20k.txt</code><br><code>glove-20k.bin</code></td>
+          <td>Stanford NLP (Pennington, Socher, Manning, 2014)</td>
+          <td><span class="badge-license license-open">Public Domain (CC0)</span></td>
+          <td>20,000 words × 50 dimensions</td>
+          <td>Pretrained GloVe word vectors trained on Wikipedia 2014 + Gigaword 5, trimmed to the top 20,000 English vocabulary tokens for low-memory browser use. Demonstrates word analogies and cosine similarity.</td>
+          <td><a href="./word-vectors.html">Word vectors &amp; analogies</a></td>
+        </tr>
+        <tr>
+          <td><code>course-chunks.json</code></td>
+          <td>AI from scratch course text (ihor.sh)</td>
+          <td><span class="badge-license license-open">CC0</span></td>
+          <td>132 chunks × 64 dimensions</td>
+          <td>Course lesson paragraphs split into semantic chunks and embedded with a compact projection. Used for in-browser cosine retrieval and RAG architectures.</td>
+          <td><a href="./embeddings-and-retrieval.html">Embeddings &amp; retrieval</a>, <a href="./evaluating-llms.html">Evaluating LLMs</a></td>
+        </tr>
+        <tr>
+          <td><code>llm-eval.json</code></td>
+          <td>AI from scratch benchmark set (ihor.sh)</td>
+          <td><span class="badge-license license-open">CC0</span></td>
+          <td>20 QA pairs + 18 human labels</td>
+          <td>Target Q&amp;A test prompts and human consensus accuracy labels (1 or 0) used to benchmark automated LLM-as-a-judge scoring metrics and prompt pipelines.</td>
+          <td><a href="./evaluating-llms.html">Evaluating LLMs</a></td>
+        </tr>
+        <tr>
+          <td><code>hopper.json</code></td>
+          <td>US Navy Historical Archives (Photo by Lynn Johnson, 1984)</td>
+          <td><span class="badge-license license-open">Public Domain (US Gov)</span></td>
+          <td>200 × 200 grayscale matrix</td>
+          <td>Digital matrix representation of Rear Admiral Grace Hopper at her computer workstation. Used to demonstrate Singular Value Decomposition (SVD) and low-rank matrix approximation.</td>
+          <td><a href="./l3-svd.html">Singular value decomposition</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="sklearn-datasets">Scikit-Learn Loaders (Toy &amp; Benchmark Data)</h2>
+  <p>Standard datasets bundled with <code>sklearn.datasets</code> used in early math warm-ups, calculus notebooks, and model benchmarks.</p>
+
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Loader</th>
+          <th>Original Source</th>
+          <th>License</th>
+          <th>Size / Shape</th>
+          <th>Task &amp; Notes</th>
+          <th>Lessons</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>load_digits()</code></td>
+          <td>Kaynak &amp; Alpaydin (Bogazici Univ, 1998)</td>
+          <td><span class="badge-license license-open">BSD 3-Clause</span></td>
+          <td>1,797 samples × 64 features (8×8)</td>
+          <td>10-class handwritten digit recognition. Fast multiclass benchmark that runs in seconds on CPU without network downloads.</td>
+          <td><a href="./05-probability-and-loss.html">Probability &amp; loss</a>, <a href="./diffusion.html">Diffusion</a>, <a href="./zoo-svm.html">SVMs</a>, <a href="./serving.html">Serving</a></td>
+        </tr>
+        <tr>
+          <td><code>load_diabetes()</code></td>
+          <td>Efron, Hastie, Johnstone &amp; Tibshirani (2004)</td>
+          <td><span class="badge-license license-open">BSD 3-Clause</span></td>
+          <td>442 samples × 10 features</td>
+          <td>Quantitative measure of diabetes disease progression. Clean, zero-centered, unit-variance standardized regression target.</td>
+          <td><a href="./02-gradients.html">Gradients</a>, <a href="./c2-many-variables.html">Multivariable calculus</a>, <a href="./l1-systems-and-inverses.html">Systems &amp; inverses</a></td>
+        </tr>
+        <tr>
+          <td><code>load_breast_cancer()</code></td>
+          <td>Wolberg, Street &amp; Mangasarian (UW Madison, 1995)</td>
+          <td><span class="badge-license license-open">CC BY 4.0</span></td>
+          <td>569 samples × 30 features</td>
+          <td>Binary classification (malignant vs benign tumors) from cell nuclei characteristics. Used to teach precision, recall, and decision thresholds.</td>
+          <td><a href="./03-a-neuron.html">A neuron</a>, <a href="./12-measuring-a-model.html">Measuring a model</a>, <a href="./p4-confidence-and-tests.html">Confidence intervals</a></td>
+        </tr>
+        <tr>
+          <td><code>load_wine()</code></td>
+          <td>Aeberhard, Coomans &amp; de Vel (1992)</td>
+          <td><span class="badge-license license-open">CC BY 4.0</span></td>
+          <td>178 samples × 13 features</td>
+          <td>Chemical analysis of wines grown in Piedmont, Italy across 3 cultivars. Ideal for PCA projections, mutual information, and SVD.</td>
+          <td><a href="./p2-describing-data.html">Describing data</a>, <a href="./p5-information.html">Information theory</a>, <a href="./l3-svd.html">SVD</a></td>
+        </tr>
+        <tr>
+          <td><code>fetch_california_housing()</code></td>
+          <td>Pace &amp; Barry (1997, 1990 US Census)</td>
+          <td><span class="badge-license license-open">Public Domain</span></td>
+          <td>20,640 samples × 8 features</td>
+          <td>Median house values per California census block group. Demonstrates tree depth, gradient boosting splits, and nonlinear feature interactions.</td>
+          <td><a href="./13-trees-and-boosting.html">Trees &amp; boosting</a></td>
+        </tr>
+        <tr>
+          <td><code>make_moons()</code><br><code>make_blobs()</code></td>
+          <td>Synthetic generator (scikit-learn)</td>
+          <td><span class="badge-license license-open">BSD 3-Clause</span></td>
+          <td>Configurable (100–500 points in 2D)</td>
+          <td>Synthetic interlocking crescents and Gaussian blobs. Visualizes non-linear decision boundaries and neural network representations.</td>
+          <td><a href="./01-matrices-are-moves.html">Matrices are moves</a>, <a href="./04-backprop.html">Backprop</a>, <a href="./games/which-model.html">Which Model?</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="vision-nlp">Vision, Language &amp; Torch Datasets</h2>
+  <p>External datasets fetched in Google Colab and Kaggle notebooks for computer vision, few-shot learning, and transfer learning.</p>
+
+  <div class="wide-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Dataset</th>
+          <th>Authors / Host</th>
+          <th>License</th>
+          <th>Dimensions</th>
+          <th>Usage &amp; Notes</th>
+          <th>Lessons</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>OxfordIIITPet</code></td>
+          <td>Parkhi, Vedaldi, Zisserman, Jawahar (Oxford, 2012)</td>
+          <td><span class="badge-license license-open">CC BY-SA 4.0</span></td>
+          <td>7,349 images across 37 cat &amp; dog breeds</td>
+          <td>Fine-tuning a pretrained ResNet/ConvNeXt vision backbone on transfer learning tasks. Downloaded via <code>torchvision.datasets.OxfordIIITPet</code>.</td>
+          <td><a href="./s1-what-is-ml.html">What is ML?</a>, <a href="./s4-your-first-shared-model.html">Your first shared model</a></td>
+        </tr>
+        <tr>
+          <td><code>MNIST</code></td>
+          <td>LeCun, Cortes, Burges (1998)</td>
+          <td><span class="badge-license license-open">CC BY-SA 3.0</span></td>
+          <td>70,000 grayscale 28×28 digits</td>
+          <td>Foundational convolutional neural network architecture training: convolutions, pooling, flattening, and backpropagation in PyTorch.</td>
+          <td><a href="./06-convolutions.html">Convolutions</a>, <a href="./training-in-pytorch.html">Training in PyTorch</a></td>
+        </tr>
+        <tr>
+          <td><code>Omniglot</code></td>
+          <td>B. M. Lake, R. Salakhutdinov, J. B. Tenenbaum (2015)</td>
+          <td><span class="badge-license license-open">MIT</span></td>
+          <td>1,623 character classes from 50 alphabets</td>
+          <td>Few-shot character verification, triplet loss distance learning, and Siamese feature embeddings. Loaded via <code>torchvision.datasets.Omniglot</code>.</td>
+          <td><a href="./faces-and-style.html">Faces &amp; style</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="license-notes">License &amp; Usage Notes</h2>
+  <div class="note">
+    <strong>Permissive Educational Use:</strong> All datasets included in <code>ai/data/</code> are either Public Domain (NYC Open Data, MTA, US Government) or licensed under permissive Creative Commons attribution terms (CC BY 4.0 / CC0). When reproducing experiments in external publications, cite the original authors listed above.
+  </div>
+  <ul>
+    <li><strong>Oxford-IIIT Pet Dataset:</strong> Licensed under <span class="badge-license license-open">CC BY-SA 4.0</span>. Derivatives and model weights fine-tuned on this dataset must be shared under compatible terms.</li>
+    <li><strong>Synthetic Datasets:</strong> Generators like <code>make_moons</code> and <code>make_blobs</code> are distributed under scikit-learn's 3-Clause BSD license.</li>
+    <li><strong>Offline Notebook Execution:</strong> All <code>ai/data/</code> files are statically mirrored at <code>https://ihor.sh/ai/data/&lt;filename&gt;</code> and can be loaded directly with <code>pd.read_csv('https://ihor.sh/ai/data/outages.csv')</code> without requiring Kaggle or Colab local file uploads.</li>
+  </ul>
+</main>
+</body>
+</html>
