@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>k-Nearest Neighbors</title>
+  <meta name="description" content="AI from scratch, model zoo 3: k-nearest neighbors, the model with no training. A map where you tap a spot and see its neighbors vote, k from 1 to 75, a column measured in smaller units that hijacks the distance, kNN in ten lines of NumPy at 98.7% on handwritten digits, and where it breaks: useless columns, the curse of dimensionality measured (nearest and farthest points become equally far), and prediction cost that grows with the data." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; } .strip { aspect-ratio: 3 / 1; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 3 of 10 · k-nearest neighbors</p>
+  <h1>k-nearest neighbors</h1>
+  <p class="lede">A model with no weights and no training. To label something new, find the k most similar examples you've already seen and let them vote. It's how you'd guess a neighborhood's rent, and it's the idea under every "more like this" button and every vector search in stage 6. The clusters lesson used it on a map of rail stations; this page is about what decides whether it works: k, the distance, and the number of columns.</p>
+
+  <h2>1. The idea in one picture: tap a spot, the neighbors vote</h2>
+  <p>Tap anywhere on the map. Lines join the spot to its k nearest training dots, and the spot's color is their vote (the share of red). The shading is that vote at every spot.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points, the kNN vote shaded over the plane, and lines to the neighbors of the tapped spot"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label>k <input type="range" id="k" min="1" max="75" value="1"> <b id="kV"></b></label></div>
+  <div class="row"><label><input type="checkbox" id="units"> x measured in hundredths (its numbers are 100× bigger)</label><label><input type="checkbox" id="scale"> scale both columns</label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="c">
+    <p>On <i>two overlapping blobs</i>, slide k from 1 to 75. Where is validation accuracy best?</p>
+    <ul><li data-k="a" data-says="k = 1 copies the nearest dot, noise and all: look at the islands.">k = 1: the closest dot knows best</li><li data-k="b" data-says="Watch the validation number: at the very top, the vote smears across the overlap.">The biggest k</li><li data-k="c">Somewhere in between</li></ul>
+    <div class="why">k is chapter 11's complexity knob, turned backwards: k = 1 makes an island around every noisy dot (100% on training, worse on new data); a huge k averages over so much of the plane that the vote turns into "whatever's more common nearby". A middle k averages away the noise and keeps the shape. Choose it on validation data.</div>
+  </div>
+  <p class="gist">kNN labels a point by the vote of its k closest examples, so everything depends on what "close" means.</p>
+
+  <h2>2. How it "learns": by remembering</h2>
+  <p>Fitting stores the training rows. Predicting computes the distance from the new point to every stored row, usually the straight-line (Euclidean) distance, and votes among the k smallest:</p>
+  <p class="formula">\[ d(a, b) = \sqrt{\textstyle\sum_j (a_j - b_j)^2}, \qquad \hat p(\text{red}) = \frac{\#\text{red among the } k \text{ nearest}}{k} \]</p>
+  <p>That sum is the catch. Every column adds its squared difference, so a column whose numbers are big dominates the distance whatever it means. Tick <i>x measured in hundredths</i>: nothing about the dots changed, only the units, yet the neighbors (tap a spot) line up in a thin vertical strip, because a hundredth-step in x now costs as much as a full step in y. The map turns into vertical stripes. <i>Scale both columns</i> (subtract each column's mean, divide by its spread) and the map comes back.</p>
+  <div class="q" data-answer="b">
+    <p>Handwritten digits, 64 pixel columns from 0 to 16, kNN at 98.7%. Someone adds one more column: the scanner's serial number, from 0 to 1000. Accuracy becomes…</p>
+    <ul><li data-k="a" data-says="A column that says nothing should be harmless, but distances can't tell it says nothing.">still about 98.7%: it's useless, so it's ignored</li><li data-k="b">much worse, about 84%</li><li data-k="c" data-says="Bad, but not that bad: pixels still count for something.">about 10%: chance</li></ul>
+    <div class="why">Measured: 83.8%. The serial number's differences (hundreds) swamp the pixels' (up to 16), so "nearest" mostly means "scanned by a machine with a similar serial". Scaled, it's 97.3%. kNN has no weights to learn that a column is useless: every column counts, in proportion to its numbers.</div>
+  </div>
+  <details class="deeper"><summary>Why k = 1 is wrong at most twice as often as the best possible model</summary>
+    <ol>
+      <li>Some error can't be avoided: where red and blue overlap, even a model that knows the true chance \(p\) of red at a spot is wrong \(\min(p, 1 - p)\) of the time. That's the <b>Bayes error</b>, the floor.</li>
+      <li>With lots of data, a point's nearest neighbor sits almost on top of it, so the neighbor's label is a fresh draw from the same chance \(p\).</li>
+      <li>1-NN is wrong when the point and its neighbor disagree: chance \(p(1-p) + (1-p)p = 2p(1-p)\).</li>
+      <li>Since \(1 - p \le 1\) and \(p \le 1\), \(2p(1-p) \le 2\min(p, 1-p)\): at most twice the floor (Cover and Hart, 1967).</li>
+      <li>Where the classes don't overlap (\(p\) is 0 or 1), both are 0: that's why 1-NN is so good on clean data like digits. Larger k averages more draws, and as k grows (but stays a tiny share of the data) kNN closes in on the floor itself.</li>
+    </ol>
+  </details>
+
+  <h2>3. Build it: kNN in ten lines of NumPy</h2>
+  <p>Handwritten digits, 8 × 8 pixels: the distance is literally how different two pictures look, pixel by pixel.</p>
+  <div class="code" data-title="kNN from scratch on digits, next to scikit-learn"><textarea>
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+
+d = load_digits()
+Xtr, Xte, ytr, yte = train_test_split(d.data, d.target, test_size=0.25, stratify=d.target, random_state=0)
+
+def knn_predict(Xtr, ytr, Xte, k):
+    # squared distances from every test row to every training row, by broadcasting: (test, train)
+    dist = ((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2)
+    nearest = np.argsort(dist, axis=1)[:, :k]                # the k closest training rows for each test row
+    votes = ytr[nearest]                                      # their labels: (test, k)
+    return np.array([np.bincount(v, minlength=10).argmax() for v in votes])
+
+for k in [1, 3, 15]:
+    mine = (knn_predict(Xtr, ytr, Xte, k) == yte).mean()
+    theirs = KNeighborsClassifier(n_neighbors=k).fit(Xtr, ytr).score(Xte, yte)
+    print(f"k = {k:2d}: mine {mine:.3f} · scikit-learn {theirs:.3f}")
+
+# a few digits it misread
+pred = knn_predict(Xtr, ytr, Xte, 3)
+wrong = np.where(pred != yte)[0][:5]
+print("misread (true → predicted):", [(int(yte[i]), int(pred[i])) for i in wrong])
+</textarea></div>
+  <p>Ties in the vote go to the smaller digit here (that's what <code>argmax</code> does); scikit-learn breaks them its own way, so a test row or two can differ. "Training" took no time; all the work is in predicting, which is the opposite of every other model in the zoo.</p>
+
+  <h2>4. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> no assumptions about the shape of the boundary (it bends around moons and rings as easily as a straight edge), nothing to train, new data is added by appending a row, and every prediction comes with its evidence: "these five past cases". On digits it gets 98.7%, ahead of logistic regression's 96.9%. It's also the backbone of retrieval: when stage 6 finds the passages nearest a question, that's kNN on embeddings, with a smart index instead of a full scan.</p>
+  <p>Its weak spot is the distance, and it gets worse with every column. Here are 1,000 random points in a cube; how much farther is the farthest point from a query than the nearest?</p>
+  <canvas id="curse" class="strip" width="720" height="240" aria-label="Nearest over farthest distance as the number of columns grows"></canvas>
+  <div class="row"><label>columns <input type="range" id="dim" min="0" max="3" step="0.01" value="0.30103"> <b id="dimV"></b></label></div>
+  <p class="readout" id="r4"></p>
+  <p>In 2 columns the nearest point is 60 times closer than the farthest (measured: a ratio of 0.017). In 1,000 columns the ratio is 0.90: every point is about equally far, and "nearest" stops meaning anything. This is the <b>curse of dimensionality</b>. On digits plus 640 columns of random noise, kNN falls from 98.7% to 48%, while logistic regression, which can learn to give noise a weight near zero, still gets 86%.</p>
+  <p class="gist">kNN is the right first model when similarity is meaningful and columns are few; with many or unscaled columns, distance stops telling similar from different.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Units and useless columns.</b> Scale every column, and drop or down-weight columns that shouldn't define similarity. But scaling is an opinion too: on the bank calls, unscaled kNN leans almost entirely on <code>pdays</code> (days since the last contact, spread 187), which happens to be the most telling column, so it scores the same as scaled (AUC 0.77 at k = 25 both ways). The right distance is a modeling decision, not a formality.</li>
+      <li><b>Many columns.</b> Distances concentrate, as the slider shows. Reduce the columns first (PCA, lesson L2), or learn a distance where similar things are close: that's what embeddings are (stage 6).</li>
+      <li><b>Prediction cost.</b> Every prediction scans the stored data: measured, 1,000 predictions took 2 ms against 1,000 stored rows and 27 ms against 100,000. The model is the data (3.8 MB on the bank calls, against 4 kB for logistic regression). Trees and indexes (<code>KDTree</code>, FAISS, HNSW) cut the search to a fraction, approximately in high dimensions.</li>
+      <li><b>Imbalance.</b> With 1% red, red points are rarely among the k nearest, so kNN rarely says red. Use the vote share as a score and choose the threshold, or weight votes by distance.</li>
+      <li><b>No extrapolation.</b> Like trees, it can only predict values it has seen: kNN regression past the data returns the average of the edge points.</li>
+    </ul>
+  </details>
+
+  <h2>5. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>k</td><td><code>n_neighbors</code></td><td>Small: detailed, noisy. Large: smooth, biased toward the majority. Pick on validation data; odd k avoids ties for two classes.</td></tr>
+    <tr><td>Scaling</td><td><code>StandardScaler</code> in a pipeline</td><td>Decides how much each column counts. The most important knob, and the easiest to forget.</td></tr>
+    <tr><td>Distance</td><td><code>metric</code> (Euclidean, Manhattan, cosine…)</td><td>Cosine for text and embeddings (direction, not length); Manhattan is less swayed by one big difference.</td></tr>
+    <tr><td>Vote weights</td><td><code>weights="distance"</code></td><td>Closer neighbors count more; helps when k is large or near the edges.</td></tr>
+    <tr><td>Search structure</td><td><code>algorithm</code> (brute, KD-tree, ball tree)</td><td>Same answers, different speed; for millions of vectors, approximate indexes (FAISS, HNSW).</td></tr>
+  </table></div>
+  <p>Next in the zoo: a model that counts instead of measuring distances.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Digits: UCI optical recognition of handwritten digits, via scikit-learn.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, knn, accuracy, rng, C } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["blobs", "moons", "circles", "xor", "diagonal"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+let tap = [0.1, 0.1], model = null;
+function draw() {
+  const k = +$("k").value, wx = $("units").checked && !$("scale").checked ? 100 : 1, set = data($("ds").value, { noise: 0.1 });
+  const r = show($("map"), (t) => (model = knn(t, { k, wx })), set, { overlay: (g, toPx) => {
+    const [tx, ty] = toPx(...tap); g.strokeStyle = "rgba(244,211,94,.8)"; g.lineWidth = 1.5;
+    for (const n of model.near(...tap)) { const [x, y] = toPx(n.x, n.y); g.beginPath(); g.moveTo(tx, ty); g.lineTo(x, y); g.stroke(); }
+    g.fillStyle = "#f4d35e"; g.beginPath(); g.arc(tx, ty, 6, 0, 7); g.fill();
+  } });
+  $("kV").textContent = k;
+  $("r1").textContent = `${r.text.replace(/ · fit.*/, "")}\nthe tapped spot: ${model(...tap) * k} of ${k} neighbors red → ${(100 * model(...tap)).toFixed(0)}% red${wx > 1 ? " · x counts 100× in the distance" : ""}`;
+}
+const cv = $("map");
+cv.addEventListener("pointerdown", (e) => { const b = cv.getBoundingClientRect(); tap = [((e.clientX - b.left) / b.width) * 2 - 1, 1 - ((e.clientY - b.top) / b.height) * 2]; draw(); });
+for (const id of ["ds", "k", "units", "scale"]) $(id).addEventListener("input", draw);
+$("units").addEventListener("change", () => $("units").checked && !$("scale").checked && say("Same dots, new units, and the neighbors line up in a strip. Distance only sees numbers!", "think"));
+draw();
+
+// the curse of dimensionality: nearest / farthest distance from a query, 1,000 uniform points
+const r = rng(9), cache = new Map();
+const ratio = (d) => { if (!cache.has(d)) { const q = Array.from({ length: d }, r); let lo = Infinity, hi = 0; for (let i = 0; i < 1000; i++) { let s = 0; for (let j = 0; j < d; j++) s += (r() - q[j]) ** 2; lo = Math.min(lo, s); hi = Math.max(hi, s); } cache.set(d, Math.sqrt(lo / hi)); } return cache.get(d); };
+function curse() {
+  const d = Math.max(1, Math.round(10 ** +$("dim").value)), dims = [1, 2, 3, 5, 10, 20, 50, 100, 200, 500, 1000];
+  const g = $("curse").getContext("2d"), W = 720, H = 240, X = (v) => 40 + (Math.log10(v) / Math.log10(1000)) * (W - 60), Y = (v) => H - 30 - v * (H - 50);
+  g.fillStyle = C.stage; g.fillRect(0, 0, W, H); g.strokeStyle = "#4a5262"; g.beginPath(); g.moveTo(40, Y(0)); g.lineTo(W - 10, Y(0)); g.moveTo(40, Y(1)); g.lineTo(W - 10, Y(1)); g.stroke();
+  g.strokeStyle = C.blue; g.lineWidth = 2; g.beginPath(); dims.forEach((v, i) => (i ? g.lineTo(X(v), Y(ratio(v))) : g.moveTo(X(v), Y(ratio(v))))); g.stroke(); g.lineWidth = 1;
+  g.fillStyle = C.red; g.beginPath(); g.arc(X(d), Y(ratio(d)), 6, 0, 7); g.fill();
+  g.fillStyle = C.text; g.font = "12px ui-monospace, monospace"; g.fillText("nearest ÷ farthest distance", 44, 14); g.fillText("1", 26, Y(1) + 4); g.fillText("0", 26, Y(0) + 4);
+  for (const v of [1, 10, 100, 1000]) g.fillText(v, X(v) - 6, H - 10);
+  $("dimV").textContent = d;
+  $("r4").textContent = `${d} column${d > 1 ? "s" : ""}: the nearest of 1,000 points is ${ratio(d).toFixed(3)} × as far as the farthest${ratio(d) > 0.8 ? ": they're all about equally far" : ""}`;
+}
+$("dim").oninput = curse;
+curse();
+window.blipContext = () => ({ page: "AI model zoo 3: k-nearest neighbors (voting neighbors, choosing k, scaling and units, 1-NN within twice the Bayes error, curse of dimensionality, prediction cost)", dataset: $("ds").value, k: +$("k").value, readout: $("r1").textContent, curse: $("r4").textContent });
+</script>
+</body>
+</html>

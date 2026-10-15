@@ -419,6 +419,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-word-vectors"
  },
+ "zoo-knn.html": {
+  "notebook": "zoo-knn.ipynb",
+  "title": "AI from scratch: k-nearest neighbors",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/zoo-knn.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-k-nearest-neighbors"
+ },
  "zoo-linear.html": {
   "notebook": "zoo-linear.ipynb",
   "title": "AI from scratch: linear regression, ridge and lass",

@@ -58,10 +58,12 @@ export function logistic(train, { poly = false, lambda = 0, steps = 1500 } = {})
   p.w = w; return p;
 }
 
-/** k nearest neighbors: the share of red among the k closest training points. */
-export function knn(train, { k = 5 } = {}) {
-  const p = (x, y) => { const d = train.map((t) => [(t.x - x) ** 2 + (t.y - y) ** 2, t.c]).sort((a, b) => a[0] - b[0]); let s = 0; for (let i = 0; i < k; i++) s += d[i][1]; return s / k; };
-  return p;
+/** k nearest neighbors: the share of red among the k closest training points. wx stretches x in the distance (a
+ *  column measured in smaller units counts that many times more); p.near(x, y) lists the k neighbors. */
+export function knn(train, { k = 5, wx = 1 } = {}) {
+  const near = (x, y) => train.map((t) => [(wx * (t.x - x)) ** 2 + (t.y - y) ** 2, t]).sort((a, b) => a[0] - b[0]).slice(0, k).map((d) => d[1]);
+  const p = (x, y) => near(x, y).reduce((s, t) => s + t.c, 0) / k;
+  p.near = near; return p;
 }
 
 /** Gaussian naive Bayes: per class, a bell curve for x and one for y, multiplied as if independent. */

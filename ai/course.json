@@ -6538,5 +6538,99 @@
     "sec": 4
    }
   ]
+ },
+ "zoo-knn.html": {
+  "goals": [
+   "Explain kNN as a vote among the k closest training points, and choose k on validation data",
+   "Show why scaling and useless columns decide what 'nearest' means",
+   "Recognize the curse of dimensionality and kNN's prediction cost"
+  ],
+  "needs": [
+   "zoo-logistic.html",
+   "clusters-and-anomalies.html"
+  ],
+  "cards": [
+   [
+    "k-nearest neighbors",
+    "Store the training rows; predict by the vote of the k closest ones."
+   ],
+   [
+    "Choosing k",
+    "Small k: detailed and noisy; large k: smooth and biased to the majority. Pick on validation data."
+   ],
+   [
+    "Scaling for kNN",
+    "Every column adds to the distance in proportion to its numbers; scale so units don't decide."
+   ],
+   [
+    "Bayes error",
+    "The error even the true probabilities can't avoid; 1-NN is at most twice it, with lots of data."
+   ],
+   [
+    "Curse of dimensionality",
+    "In many columns, the nearest and farthest points are about equally far."
+   ],
+   [
+    "Lazy learner",
+    "No training cost, all the cost at prediction: it scans (or indexes) the stored data."
+   ]
+  ],
+  "check": [
+   {
+    "q": "With k = 1, training accuracy is…",
+    "options": [
+     "about 50%",
+     "100%, since each point is its own nearest neighbor",
+     "the same as validation accuracy"
+    ],
+    "answer": 1,
+    "why": "k = 1 memorizes; validation shows the noise it copied.",
+    "sec": 1
+   },
+   {
+    "q": "Why does a column measured in big numbers hurt kNN?",
+    "options": [
+     "Big numbers are slow",
+     "Its squared differences dominate the distance, whatever the column means",
+     "kNN drops it"
+    ],
+    "answer": 1,
+    "why": "Distance sums each column's squared difference; scale the columns first.",
+    "sec": 2
+   },
+   {
+    "q": "What does fitting a kNN model do?",
+    "options": [
+     "Learns a weight per column",
+     "Stores the training rows",
+     "Builds trees"
+    ],
+    "answer": 1,
+    "why": "All the work happens at prediction time.",
+    "sec": 2
+   },
+   {
+    "q": "With 1,000 columns, the nearest of 1,000 random points is about 0.9 times as far as the farthest. What does that mean for kNN?",
+    "options": [
+     "It works better",
+     "'Nearest' barely means anything, so the vote is close to random",
+     "Nothing"
+    ],
+    "answer": 1,
+    "why": "The curse of dimensionality: reduce columns or learn a better distance (embeddings).",
+    "sec": 4
+   },
+   {
+    "q": "Digits plus 640 noise columns: kNN 48%, logistic regression 86%. Why the difference?",
+    "options": [
+     "Logistic regression learns small weights for noise; kNN's distance counts every column",
+     "kNN needs more neighbors",
+     "Logistic regression is always better"
+    ],
+    "answer": 0,
+    "why": "A distance can't learn which columns matter.",
+    "sec": 4
+   }
+  ]
  }
 }
