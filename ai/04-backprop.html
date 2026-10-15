@@ -41,6 +41,7 @@
     <div><b>The picture</b>Each machine stretches a small nudge by its own slope. Stretches multiply.</div>
     <div><b>The math</b>The chain rule: for \(c(b(a(x)))\), \(\dfrac{dc}{dx} = \dfrac{dc}{db} \cdot \dfrac{db}{da} \cdot \dfrac{da}{dx}\).</div>
   </div>
+  <p class="gist">A small nudge travels down a chain, stretched by each link's slope along the way; the stretches multiply.</p>
   <div class="q" data-num="21">
     <p>Set \(x = 0.5\). Then \(a = 3x = 1.5\), \(b = a + 2 = 3.5\), \(c = b^2\). What is \(dc/dx\)? (Multiply the three local slopes.)</p>
     <div class="why">\(3 \times 1 \times 2b = 3 \times 1 \times 7 = 21\). A nudge of 0.01 in \(x\) moves \(c\) by about 0.21. Check it with the sliders.</div>
@@ -134,7 +135,23 @@ L = (w2 * h + b2 - y) ** 2
 L.backward()
 print("loss", L.data)
 print("∂L/∂w1", w1.grad, " ∂L/∂b1", b1.grad, " ∂L/∂w2", w2.grad, " ∂L/∂b2", b2.grad)
-</textarea></div>
+</textarea></div><p class="gist">Backprop passes blame from right to left: each node multiplies the blame it receives by its own local slope and hands it on, and blame arriving from several uses adds up.</p>
+  <details class="deeper"><summary>Why does training need so much more memory than running a model?</summary>
+    <ol>
+      <li>Every local slope depends on values from the forward pass: \(\tanh\)'s slope needs \(h\), a weight's blame needs its input \(x\).</li>
+      <li>The backward pass runs after the whole forward pass, so every one of those values must be kept until it's used: one saved number per neuron, per layer, per example in the batch.</li>
+      <li>Running a trained model (inference) needs no backward pass, so each layer's values can be thrown away as soon as the next layer has them.</li>
+      <li>For big models the saved values (the <b>activations</b>) take more memory than the weights. Libraries trade time for memory by saving only some layers and recomputing the rest during the backward pass (<b>gradient checkpointing</b>).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: long chains, hard decisions, small numbers</summary>
+    <ul>
+      <li><b>Long chains.</b> Blame is multiplied by a slope at every layer. Slopes mostly below 1 make it fade to nothing before it reaches the early layers (vanishing gradients, calculus 1's \(0.25^{10}\)); slopes mostly above 1 make it explode. Deep networks needed ReLU, careful initialization, normalization and skip connections to keep it near 1 (deep networks, next stage).</li>
+      <li><b>Hard decisions.</b> "Pick the top class", rounding, and drawing a random sample have slope 0 or no slope at all, so no blame flows through them. That's why networks output smooth probabilities and train on those, and why picking a word only happens after training, or with special tricks.</li>
+      <li><b>Small numbers.</b> In 16-bit floats, blame below about \(6 \times 10^{-8}\) rounds to exactly 0. Mixed-precision training multiplies the loss by a big number before the backward pass and divides the gradients afterwards (<b>loss scaling</b>).</li>
+    </ul>
+  </details>
+  
 
   <h2>3. Did backprop get it right? Nudge and see</h2>
   <p>The slow, obvious way to get a gradient: nudge one weight by a tiny ε, rerun the forward pass, and see how much the loss changed. Real libraries use this as a test.</p>

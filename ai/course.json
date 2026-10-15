@@ -1263,6 +1263,17 @@
     "answer": 1,
     "why": "Its Jacobian is diagonal, so the vector-Jacobian product is element-wise.",
     "sec": 5
+   },
+   {
+    "q": "Why can't a network learn through a step that picks the top class (argmax)?",
+    "options": [
+     "Its slope is 0 almost everywhere (a small nudge doesn't change which class is on top), so no blame flows back through it",
+     "Because argmax is too slow to compute",
+     "Because argmax has a negative slope"
+    ],
+    "answer": 0,
+    "why": "Backprop multiplies by local slopes; a slope of 0 stops the blame. Networks train on smooth probabilities instead and only pick the top class afterwards.",
+    "sec": 2
    }
   ]
  },

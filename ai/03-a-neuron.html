@@ -39,6 +39,7 @@
     <p>Why a long arrow makes a crisp edge: walk a distance \(d\) away from the edge along \(w\)'s direction and \(z\) grows by \(\lVert w \rVert\, d\). Double \(w\) and the sigmoid's S-curve is squeezed into half the width.</p>
     <p>And why the sigmoid: it turns "how far past the edge" into a probability. \(\sigma(0) = 0.5\), \(\sigma(2) \approx 0.88\), \(\sigma(-2) \approx 0.12\), \(\sigma(5) \approx 0.993\). It also has a slope that's easy to compute from its own output: \(\sigma'(z) = \sigma(z)\,(1 - \sigma(z))\). We'll need that in a minute.</p>
   </details>
+  <p class="gist">A neuron draws one straight line across its inputs and reports how far past the line a point is, squashed into a probability.</p>
   <div class="q" data-num="2">
     <p>Weights \(w = (2, -1)\), bias \(b = 1\), point \(x = (1, 1)\). What is \(z\)?</p>
     <div class="why">\(z = 2 \cdot 1 + (-1) \cdot 1 + 1 = 2\).</div>
@@ -78,6 +79,21 @@ for x in [[1, 1], [-1, 1]]:
     <p>Multiply them and almost everything cancels:</p>
     <p class="formula">\[ \frac{\partial L}{\partial z} = \hat p - y, \qquad \frac{\partial L}{\partial w} = (\hat p - y)\, x, \qquad \frac{\partial L}{\partial b} = \hat p - y \]</p>
     <p>That's the pull you see in the picture, as a formula. \(\hat p - y\) is "how wrong", between −1 and 1. A blue point the neuron calls 20% blue has \(\hat p - y = -0.8\): a strong pull, and the step \(w \leftarrow w - \eta (\hat p - y) x\) moves \(w\) <em>toward</em> \(x\). A blue point at 99% has −0.01: barely any pull. Averaged over all points, that's one training step.</p>
+  </details>
+  <p class="gist">Learning is many small nudges: each point pulls by how wrong it is, \(\hat p - y\), so mistakes teach and confident right answers barely matter.</p>
+  <details class="deeper"><summary>Why log loss, and not squared error, for a probability?</summary>
+    <ol>
+      <li>Try squared error instead, \(L = (\hat p - y)^2\). Chain rule: \(\partial L / \partial z = 2(\hat p - y) \cdot \hat p (1 - \hat p)\).</li>
+      <li>Take a blue point the neuron is confidently wrong about: \(\hat p = 0.001\). The first factor is about −2, a big error, but \(\hat p(1 - \hat p) \approx 0.001\), the sigmoid's flat tail.</li>
+      <li>So the pull is about 0.002: the neuron barely moves exactly when it's most wrong. Squared error and a sigmoid fight each other.</li>
+      <li>With log loss, the \(1/\hat p\) in its slope cancels the sigmoid's \(\hat p(1 - \hat p)\), leaving \(\hat p - y \approx -1\): the strongest pull possible. Log loss is also a bowl in \(w\) (calculus 5), so there's one best line, and it's what maximum likelihood gives (probability 3).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: data that's too easy, and labels that are wrong</summary>
+    <ul>
+      <li><b>Perfectly separable data.</b> If some line puts every blue point on one side and every red on the other, a longer weight arrow (a crisper edge) always lowers the loss a little more. Training never stops: \(\lVert w \rVert\) grows forever and the neuron becomes 100% sure of everything, including new points near the edge. An L2 penalty or stopping early keeps it sensible (chapter 11).</li>
+      <li><b>A mislabeled point.</b> A red point marked blue deep in red territory keeps \(\hat p - y\) near −1 forever, pulling the line toward it every step. A few of them can tilt the edge; that's why cleaning labels often helps more than a better model.</li>
+    </ul>
   </details>
   <div class="q" data-num="-0.8">
     <p>A blue point (\(y = 1\)) at \(x = (2, 1)\); the neuron says \(\hat p = 0.2\). What is \(\partial L / \partial z\)?</p>
@@ -121,6 +137,7 @@ plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.title("log loss per epoch");
     <p class="formula">\[ h_1 = \sigma(20x_1 + 20x_2 - 10)\ \ (\text{OR}), \quad h_2 = \sigma(-20x_1 - 20x_2 + 30)\ \ (\text{NAND}), \quad \hat p = \sigma(20h_1 + 20h_2 - 30)\ \ (\text{AND}) \]</p>
     <p>The hidden layer moves the four corners to new positions \((h_1, h_2)\) where one straight line does separate them: (0,0) → (0, 1), (1,1) → (1, 0), and both blue corners → (1, 1). That's chapter 1's picture again: move and fold space until the answer is a straight cut.</p>
   </details>
+  <p class="gist">One neuron can only cut with a straight line. A hidden layer moves the points to new positions where a straight cut works.</p>
   <div class="q" data-answer="b">
     <p>In the hand-built network, where does the corner (1, 1) end up in the hidden layer, \((h_1, h_2)\)?</p>
     <ul><li data-k="a" data-says="h₂ is NAND: for (1, 1) it's −20 − 20 + 30 = −10, so σ(−10) ≈ 0.">(1, 1)</li><li data-k="b">(1, 0)</li><li data-k="c" data-says="h₁ is OR: 20 + 20 − 10 = 30, σ(30) ≈ 1.">(0, 1)</li></ul>

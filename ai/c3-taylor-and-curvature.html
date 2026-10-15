@@ -43,6 +43,22 @@
     <p>Using the order-2 polynomial of \(e^x\) at \(c = 0\), that is \(1 + x + x^2/2\), estimate \(e^{0.1}\).</p>
     <div class="why">\(1 + 0.1 + 0.005 = 1.105\). The true value is 1.10517: the next term, \(0.1^3/6 \approx 0.00017\), is all that's missing. Near the center, each term is much smaller than the last.</div>
   </div>
+  <p class="gist">Near any point, a smooth function is its value, plus slope times the step, plus half the curvature times the step squared, plus terms that shrink fast. ML lives on the first two.</p>
+  <details class="deeper"><summary>Why divide by those factorials?</summary>
+    <ol>
+      <li>We want a polynomial whose value, slope, curvature and so on match \(f\)'s at \(c\): one coefficient per derivative.</li>
+      <li>Differentiate \((x - c)^k\) \(k\) times: the power rule brings down \(k\), then \(k - 1\), …, then 1, leaving the constant \(k!\). Every other term vanishes at \(x = c\): lower powers were differentiated away, higher ones still contain a factor \((x - c)\), which is 0 there.</li>
+      <li>So the \(k\)-th derivative of \(a_k (x - c)^k\) at \(c\) is \(a_k\, k!\). To make it equal \(f^{(k)}(c)\), take \(a_k = f^{(k)}(c) / k!\).</li>
+    </ol>
+    <p>The factorials also explain why the terms shrink so fast near \(c\): \(8! = 40{,}320\), so the order-8 term of \(e^x\) at \(x = 1\) is only 0.000025.</p>
+  </details>
+  <details class="deeper"><summary>Where it breaks: when more terms stop helping</summary>
+    <ul>
+      <li><b>A wall nearby.</b> \(\ln(1 + x)\) shoots to minus infinity at \(x = -1\), a distance 1 from the center 0, and its Taylor series can't reach further than that distance in either direction: past \(x = 1\) it gets worse with every term. A series around \(c\) only works out to the nearest place where the function misbehaves.</li>
+      <li><b>Kinks.</b> At a point just left of ReLU's kink, every derivative of order 2 and up is 0, so the series predicts a straight line forever and misses the bend.</li>
+      <li><b>"Near the current weights".</b> Sections 2 and 3 trust a second-order picture of the loss. It's only accurate close to where it was measured, which is one reason training often starts with a small learning rate and raises it (<b>warmup</b>): early on, the landscape is least like the local picture.</li>
+    </ul>
+  </details>
   <p>ML lives almost entirely on the first two orders. The loss near the current weights is a slope plus a curvature: \(L(w + \Delta) \approx L(w) + L'(w)\,\Delta + \tfrac12 L''(w)\,\Delta^2\). The next sections are this one line put to work.</p>
 
   <h2>2. Why gradient descent works, and when it blows up</h2>
@@ -57,6 +73,7 @@
   </div>
   <p class="readout" id="r2"></p>
   <p>Below \(\eta = 1/k\) the ball creeps down one side. At exactly \(1/k\) it lands on the bottom in one step. Between \(1/k\) and \(2/k\) it overshoots and bounces, but each bounce is smaller. Past \(2/k\) every bounce is bigger: the loss goes to infinity, the "loss is NaN" you'll see in real training. A real network has different curvatures in different directions, and the <b>steepest</b> one sets the limit for all of them.</p>
+  <p class="gist">A step is safe as long as the curvature can't turn downhill into uphill before it lands: the learning rate must stay under 2 divided by the curvature.</p>
   <div class="q" data-num="0.5" data-tol="0.001">
     <p>The curvature is \(k = 4\). Below what learning rate does gradient descent converge?</p>
     <div class="why">\(|1 - 4\eta| < 1\) means \(0 < \eta < 0.5\), that is \(2/k\). Set k = 4 above and slide η across 0.5.</div>
@@ -73,6 +90,7 @@
   <p class="legend"><i style="background:#f4d35e"></i>gradient descent <i style="background:#fc6255"></i>Newton</p>
   <p class="readout" id="r3"></p>
   <p>Section 2's rule now applies per direction: η must stay under \(2/a\) for the steep direction, so the gentle direction shrinks by only \(1 - \eta b\) per step, under \(1 - 2/\kappa\). The steps needed grow in proportion to \(\kappa\). Gradient descent zigzags across the valley while barely moving along it. Real networks have condition numbers in the thousands and up, which is why plain gradient descent is slow and why optimizers like momentum and Adam exist (stage 4).</p>
+  <p class="gist">With many weights there are many curvatures. One learning rate must suit the steepest, so the gentlest crawls, and the condition number counts how much slower.</p>
   <p><b>Newton's method</b> fixes it outright: step by \(-H^{-1}\nabla L\) instead of \(-\eta \nabla L\). Dividing by the curvature makes every direction equally easy; on a quadratic it lands on the minimum in one step, whatever \(\kappa\) is. Tick the box.</p>
   <div class="q" data-num="1e18" data-show="10¹⁸">
     <p>So why don't we train networks with Newton's method? A model has \(10^9\) parameters. How many entries does its Hessian have?</p>
