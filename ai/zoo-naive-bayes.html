@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Naive Bayes</title>
+  <meta name="description" content="AI from scratch, model zoo 4: naive Bayes, Bayes' rule with the bold shortcut that every feature is independent. Class clouds measured one axis at a time on a map, a spam filter trained in your browser on 5,574 real text messages with every word's evidence shown, multinomial naive Bayes from scratch in NumPy, and where it breaks: XOR, double-counted columns and overconfident probabilities." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    textarea#msg { width: 100%; box-sizing: border-box; font: 16px/1.5 ui-sans-serif, system-ui, sans-serif; padding: 8px 10px; min-height: 4.5em; }
+    #words { display: flex; flex-direction: column; gap: 2px; font: 14px/1.4 ui-monospace, Menlo, monospace; margin: 10px 0; }
+    #words .w { display: grid; grid-template-columns: 7.5em 1fr 4.5em; gap: 8px; align-items: center; }
+    #words .bar { height: 12px; border-radius: 3px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 4 of 10 · Naive Bayes</p>
+  <h1>Naive Bayes</h1>
+  <p class="lede">The first spam filters were naive Bayes, and it's still what you reach for when you have a few hundred labeled texts and need something working this afternoon. It's probability lesson 1's Bayes' rule, plus one bold shortcut: pretend every feature is independent of the others, once you know the class. The shortcut is almost always false, and the model works anyway, often. This page is about why, and about the cases where it doesn't.</p>
+
+  <h2>1. The idea in one picture: each class measured one axis at a time</h2>
+  <p>Gaussian naive Bayes describes each class by a bell curve along x and a separate bell curve along y: the ellipses are those clouds (one and two spreads out), and they are always lined up with the axes, never tilted, because the model never looks at how x and y move together. A new point goes to the class whose cloud makes it more likely, times how common that class is.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points, naive Bayes's probability shaded over the plane, and each class's axis-aligned ellipses"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="a">
+    <p>Pick <i>checkerboard (XOR)</i>, where red means x and y have the same sign. Predict first: how does naive Bayes do?</p>
+    <ul><li data-k="a">About a coin flip</li><li data-k="b" data-says="Try it: the clouds land on top of each other.">Very well: the classes are cleanly separated</li><li data-k="c" data-says="Close, but it's not about noise.">Badly, because of label noise</li></ul>
+    <div class="why">Within red, x alone is half positive and half negative, and so is y: one axis at a time, red and blue look identical, two clouds centered on the origin. The class is entirely in how x and y go together, the one thing the shortcut throws away. On the ring, by contrast, it does very well: the disc's clouds are narrow on both axes and the ring's are wide, and that difference shows up one axis at a time.</div>
+  </div>
+  <p class="gist">Naive Bayes scores each class by multiplying how likely each feature is on its own; it's fast and needs little data, and it can't see features that only matter together.</p>
+
+  <h2>2. How it learns: counting, then multiplying</h2>
+  <p>Bayes' rule turns "how likely is this message if it's spam" into "how likely is it spam, given this message". The naive part is writing the first as a product, one factor per feature:</p>
+  <p class="formula">\[ P(\text{spam} \mid w_1, \dots, w_n) \;\propto\; P(\text{spam}) \prod_{j} P(w_j \mid \text{spam}) \]</p>
+  <p>Training is counting: the share of spam among messages, and for each word, how often it appears in spam and in normal messages ("ham"). No loss, no gradient, one pass over the data. To decide, compare the two classes' products; in practice, add logarithms, because multiplying hundreds of small numbers underflows to 0. Each word then adds its own <b>evidence</b>, \(\ln \frac{P(w \mid \text{spam})}{P(w \mid \text{ham})}\), to a running total.</p>
+  <details class="deeper"><summary>Why a wrong assumption still gives the right answers, often</summary>
+    <ol>
+      <li>To classify, only the order matters: is the spam total bigger than the ham total? The probability's exact value doesn't.</li>
+      <li>Correlated words ("free", "prize", "claim" travel together) are counted as if each were separate evidence. That inflates the total, but it inflates it in the direction they all point.</li>
+      <li>So the sign usually survives while the size is exaggerated: right side of 50%, wrong confidence (Domingos and Pazzani, 1997, showed this holds well beyond independent features).</li>
+      <li>And it needs far less data: it estimates each word's rate on its own (thousands of easy averages) instead of how words combine. With few examples, a model with less to estimate wins (Ng and Jordan, 2001); with many, a model like logistic regression that learns the combinations catches up.</li>
+      <li>The flip side: anything that depends on the confidence (a probability you report, a threshold at 99%, combining with other models) inherits the exaggeration. Section 4 measures it.</li>
+    </ol>
+  </details>
+
+  <h2>3. A spam filter, trained in your browser</h2>
+  <p>5,574 real text messages from the UK and Singapore, 13% spam. The filter below learned from 70% of them a moment ago, by counting. Type or edit a message: each word's bar is its evidence (right for spam, left for ham), and the total plus the prior gives the verdict.</p>
+  <textarea id="msg" aria-label="A message to classify">Congratulations! You have won a guaranteed prize. Call now to claim your reward</textarea>
+  <div class="row"><button type="button" data-ex="Hey, are you still coming for dinner later? I'll call you when I leave">a friend</button><button type="button" data-ex="URGENT! Your mobile number has been awarded a 2000 prize. To claim call 09061701461">spam</button><button type="button" data-ex="Free for lunch tomorrow? I can call the restaurant">tricky</button><label><input type="checkbox" id="nosmooth"> no smoothing</label></div>
+  <div id="words"></div>
+  <p class="readout" id="r3">Loading 5,574 messages…</p>
+  <div class="q" data-answer="b">
+    <p>Tick <i>no smoothing</i> and type a word that appeared in spam but never in a normal message, like "awarded". What happens?</p>
+    <ul><li data-k="a" data-says="Look at the bar and the verdict.">Nothing special: one word is one word</li><li data-k="b">The verdict becomes certain spam, whatever the other words say</li><li data-k="c" data-says="An unseen word is skipped; a word seen in only one class is the problem.">It crashes</li></ul>
+    <div class="why">Without smoothing, P(awarded | ham) = 0, so its evidence is infinite and a single word decides. (Add "later", a word never seen in spam, and the filter is stuck with +∞ − ∞: no answer at all.) Smoothing (Laplace: add 1 to every count) says "never seen" isn't "impossible". Measured on the held-out messages: with almost no smoothing the log-loss is 0.53, with add-1 smoothing 0.11.</div>
+  </div>
+  <p class="gist">Each word adds its own evidence for spam or ham, and the totals are compared; smoothing stops one never-seen pairing from deciding everything.</p>
+
+  <h2>4. Build it: multinomial naive Bayes in NumPy</h2>
+  <div class="code" data-title="Naive Bayes from scratch on the text messages, next to scikit-learn"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+
+df = pd.read_csv(io.StringIO(get("/ai/data/sms-spam.tsv")), sep="\t", names=["label", "text"], quoting=3)
+y = (df["label"] == "spam").astype(int).values
+tr, te, ytr, yte = train_test_split(df["text"], y, test_size=0.3, stratify=y, random_state=0)
+vec = CountVectorizer().fit(tr)                       # one column per word, counts per message
+A, B = vec.transform(tr).toarray(), vec.transform(te).toarray()
+
+# training: count
+prior = np.array([(ytr == c).mean() for c in (0, 1)])                     # P(class)
+counts = np.array([A[ytr == c].sum(axis=0) + 1 for c in (0, 1)])         # word counts per class, +1 smoothing
+word_prob = counts / counts.sum(axis=1, keepdims=True)                   # P(word | class)
+
+# predicting: add log-evidence (counts × log-probabilities), plus the log-prior
+scores = B @ np.log(word_prob).T + np.log(prior)                         # (messages, 2)
+mine = scores.argmax(axis=1)
+print("mine:        ", round((mine == yte).mean(), 4))
+print("scikit-learn:", round(MultinomialNB(alpha=1).fit(A, ytr).score(B, yte), 4))
+
+evidence = np.log(word_prob[1] / word_prob[0])
+words = vec.get_feature_names_out()
+print("most spammy:", list(words[np.argsort(evidence)[-10:]]))
+print("most hammy: ", list(words[np.argsort(evidence)[:10]]))
+</textarea></div>
+  <p>The spammiest words read like a scam: <i>claim, prize, 150p, tone, guaranteed</i>; the hammiest are chat: <i>said, later, she, lor, da</i> (Singaporean English), and <i>lt</i>, <i>gt</i> from garbled "&lt;" and "&gt;" in the source data. That list is the whole model: one number per word.</p>
+
+  <h2>5. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> on the text messages it gets 98.3% right (precision 97.6%, recall 89%), trained in a few milliseconds. Its edge is little data. Trained on random handfuls of messages and averaged over 10 draws, test accuracy was:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Training messages</th><th>20</th><th>50</th><th>100</th><th>200</th><th>1,000</th><th>3,901</th></tr>
+    <tr><td>Naive Bayes</td><td>88.2%</td><td>91.1%</td><td>94.0%</td><td>95.2%</td><td>97.6%</td><td>98.3%</td></tr>
+    <tr><td>Logistic regression</td><td>86.7%</td><td>87.4%</td><td>89.2%</td><td>91.1%</td><td>96.5%</td><td>97.8%</td></tr>
+  </table></div>
+  <p>A fair footnote: by AUC, which judges the ranking rather than the 50% cutoff, logistic regression is ahead at every size (0.91 against 0.81 at 50 messages). With little data, naive Bayes makes better yes/no calls; logistic regression's scores sort better but it rarely dares to say spam.</p>
+  <div class="q" data-answer="c">
+    <p>On the bank calls, Gaussian naive Bayes gets an AUC of 0.74. You add 9 more copies of the euribor column. Predict the AUC and the confidence.</p>
+    <ul><li data-k="a" data-says="Nine copies of nothing new can't add information.">AUC jumps to 0.85</li><li data-k="b" data-says="The order barely changes, but look at how sure it gets.">Nothing changes</li><li data-k="c">AUC about the same, but it becomes far more confident</li></ul>
+    <div class="why">Measured: AUC 0.740 → 0.748, but the share of calls it gives over 90% chance of a yes went from 5% to 33%, and its log-loss from 1.06 to 2.85. Ten copies are counted as ten independent witnesses saying the same thing. Logistic regression's log-loss on the same columns is 0.30: it would split one weight among the copies.</div>
+  </div>
+  <p class="gist">Naive Bayes is the fast, small-data, many-features classifier (text above all); its rankings are useful and its probabilities are not to be trusted.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Features that matter together.</b> XOR, "risky only at night <i>and</i> downtown", word pairs whose meaning flips ("not good"): invisible one feature at a time. Add combined features (bigrams like "not good"), or use a model that learns interactions.</li>
+      <li><b>Double counting.</b> Correlated or duplicated features stack their evidence, so probabilities pile up near 0 and 1. Drop near-duplicates; if you need real probabilities, calibrate afterward on held-out data (<code>CalibratedClassifierCV</code>).</li>
+      <li><b>The wrong shape.</b> Gaussian naive Bayes assumes each feature is a bell curve within each class. <code>pdays</code> in the bank data is 999 for most calls and small for a few: two spikes, nothing like a bell, which is part of why its log-loss there is 1.06. Bin skewed features, or transform them.</li>
+      <li><b>Zero counts.</b> Without smoothing, one word seen in only one class decides alone. Keep <code>alpha</code> above 0 (1 is the classic; tune it).</li>
+      <li><b>Lots of data.</b> Its edge fades as data grows, since its simple picture can't improve; past a few thousand examples, logistic regression or boosted trees usually win.</li>
+    </ul>
+  </details>
+
+  <h2>6. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>Which naive Bayes</td><td><code>MultinomialNB</code>, <code>BernoulliNB</code>, <code>GaussianNB</code>, <code>ComplementNB</code></td><td>Word counts; words present or absent (short texts); numeric bells; a variant more robust to imbalanced classes.</td></tr>
+    <tr><td>Smoothing</td><td><code>alpha</code> (default 1)</td><td>Pseudo-counts added to every word in every class. Too small: unseen pairings decide; too big: every word looks the same.</td></tr>
+    <tr><td>The features</td><td><code>CountVectorizer(ngram_range, min_df, binary)</code></td><td>Word pairs catch "not good"; dropping rare words cuts noise; binary counts stop one repeated word from shouting.</td></tr>
+    <tr><td>Priors</td><td><code>fit_prior</code>, <code>class_prior</code></td><td>How common each class is believed to be; set them if production's mix differs from training's.</td></tr>
+    <tr><td>Threshold</td><td>your code</td><td>The probabilities are overconfident, so pick a cutoff on validation data, or calibrate first.</td></tr>
+  </table></div>
+  <p>Next in the zoo: a model that asks questions, one column at a time.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. SMS Spam Collection: Almeida, Gómez Hidalgo and Yamakami (2011), UCI Machine Learning Repository, CC BY 4.0. Bank marketing: Moro, Cortez and Rita (2014), UCI, CC BY 4.0.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, naiveBayes, C } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// ---------- 1. the map, with each class's axis-aligned clouds ----------
+$("ds").innerHTML = ["blobs", "circles", "moons", "xor", "diagonal"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+function draw() {
+  let m;
+  const r = show($("map"), (t) => (m = naiveBayes(t)), data($("ds").value), { overlay: (g, toPx) => {
+    for (const [c, s] of m.stats.entries()) for (const k of [1, 2]) {
+      const [cx, cy] = toPx(s.mx, s.my), [ex] = toPx(s.mx + k * Math.sqrt(s.vx), 0), [, ey] = toPx(0, s.my + k * Math.sqrt(s.vy));
+      g.strokeStyle = c ? C.red : C.blue; g.lineWidth = 2; g.setLineDash(k === 2 ? [5, 5] : []); g.beginPath(); g.ellipse(cx, cy, Math.abs(ex - cx), Math.abs(cy - ey), 0, 0, 7); g.stroke(); g.setLineDash([]);
+    }
+  } });
+  $("r1").textContent = `${r.text}\nred cloud: center (${m.stats[1].mx.toFixed(2)}, ${m.stats[1].my.toFixed(2)}) · blue cloud: center (${m.stats[0].mx.toFixed(2)}, ${m.stats[0].my.toFixed(2)})`;
+  if ($("ds").value === "xor") say("Red and blue look the same one axis at a time. The class lives in x and y together!", "think");
+}
+$("ds").addEventListener("input", draw);
+draw();
+
+// ---------- 3. a spam filter trained here, by counting ----------
+const tok = (s) => s.toLowerCase().match(/\b\w\w+\b/gu) ?? [];
+let model = null;
+fetch("/ai/data/sms-spam.tsv").then((r) => r.text()).then((txt) => {
+  const rows = txt.trim().split("\n").map((l) => { const i = l.indexOf("\t"); return [l.slice(0, i) === "spam" ? 1 : 0, l.slice(i + 1)]; });
+  const cut = Math.floor(rows.length * 0.7), train = rows.slice(0, cut), test = rows.slice(cut);
+  const count = [new Map(), new Map()], total = [0, 0], docs = [0, 0];
+  for (const [c, t] of train) { docs[c]++; for (const w of tok(t)) { count[c].set(w, (count[c].get(w) ?? 0) + 1); total[c]++; } }
+  const vocab = new Set([...count[0].keys(), ...count[1].keys()]);
+  const evidence = (w, alpha) => { const a = count[1].get(w) ?? 0, b = count[0].get(w) ?? 0; if (!a && !b) return null; return Math.log((a + alpha) / (total[1] + alpha * vocab.size)) - Math.log((b + alpha) / (total[0] + alpha * vocab.size)); };
+  const prior = Math.log(docs[1] / docs[0]);
+  const score = (t, alpha) => tok(t).reduce((s, w) => s + (evidence(w, alpha) ?? 0), prior);
+  const acc = test.filter(([c, t]) => (score(t, 1) > 0 ? 1 : 0) === c).length / test.length;
+  model = { evidence, prior, score, acc, n: train.length, vocab: vocab.size };
+  render();
+});
+function render() {
+  if (!model) return;
+  const alpha = $("nosmooth").checked ? 0 : 1, words = tok($("msg").value), rows = [];
+  for (const w of words) { const e = model.evidence(w, alpha); rows.push([w, e]); }
+  const top = Math.max(3, ...rows.map(([, e]) => (e === null ? 0 : Math.min(Math.abs(e), 25))));
+  $("words").innerHTML = rows.map(([w, e]) => {
+    if (e === null) return `<div class="w"><span>${w}</span><span style="color:var(--muted)">never seen: skipped</span><span></span></div>`;
+    const v = Math.max(-25, Math.min(25, e)), pct = (Math.abs(v) / top) * 50;
+    return `<div class="w"><span>${w}</span><span style="position:relative;height:12px"><span class="bar" style="position:absolute;top:0;${v > 0 ? `left:50%;width:${pct}%;background:${C.red}` : `right:50%;width:${pct}%;background:${C.blue}`}"></span><span style="position:absolute;left:50%;top:-2px;bottom:-2px;border-left:1px solid var(--muted)"></span></span><span>${!isFinite(e) ? (e > 0 ? "+∞" : "−∞") : (e > 0 ? "+" : "") + e.toFixed(2)}</span></div>`;
+  }).join("");
+  const s = model.score($("msg").value, alpha), p = 1 / (1 + Math.exp(-s));
+  $("r3").textContent = (isNaN(s) ? "+∞ and −∞ together: no verdict at all (one word makes spam impossible, another makes ham impossible)" : `prior ${model.prior.toFixed(2)} + the words = ${!isFinite(s) ? (s > 0 ? "+∞" : "−∞") : s.toFixed(2)} → ${p > 0.5 ? "SPAM" : "ham"}, P(spam) = ${p === 1 ? "100%, certain" : p === 0 ? "0%, certain" : p > 0.9999 ? "> 99.99%" : p < 0.0001 ? "< 0.01%" : (100 * p).toFixed(1) + "%"}`) + `\nlearned from ${model.n} messages (${model.vocab} words); on the other 30%: ${(100 * model.acc).toFixed(1)}% right`;
+}
+$("msg").addEventListener("input", render);
+$("nosmooth").addEventListener("input", render);
+document.querySelectorAll("[data-ex]").forEach((b) => (b.onclick = () => { $("msg").value = b.dataset.ex; render(); }));
+
+window.blipContext = () => ({ page: "AI model zoo 4: naive Bayes (Bayes' rule with independent features, counting, log evidence per word, Laplace smoothing, a spam filter on the UCI SMS collection, double counting and overconfidence, XOR)", dataset: $("ds").value, map: $("r1").textContent, message: $("msg").value, verdict: $("r3").textContent });
+</script>
+</body>
+</html>

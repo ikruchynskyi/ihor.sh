@@ -6632,5 +6632,99 @@
     "sec": 4
    }
   ]
+ },
+ "zoo-naive-bayes.html": {
+  "goals": [
+   "Explain naive Bayes as Bayes' rule with features treated as independent, trained by counting",
+   "Read each word's log-evidence in a spam filter and explain why smoothing is needed",
+   "Tell when it shines (little data, text) and why its probabilities are overconfident"
+  ],
+  "needs": [
+   "zoo-knn.html",
+   "p1-probability-and-bayes.html"
+  ],
+  "cards": [
+   [
+    "Naive Bayes",
+    "P(class | features) ∝ P(class) · Π P(feature | class): features treated as independent within a class."
+   ],
+   [
+    "Training by counting",
+    "Class shares and per-class feature rates; no loss, no gradient, one pass."
+   ],
+   [
+    "Log-evidence",
+    "ln P(w | spam)/P(w | ham): each word adds its own amount to the total."
+   ],
+   [
+    "Laplace smoothing",
+    "Add 1 to every count so a word never seen in one class doesn't make it impossible."
+   ],
+   [
+    "Double counting",
+    "Correlated or copied features stack evidence, pushing probabilities toward 0 and 1."
+   ],
+   [
+    "Small-data edge",
+    "Few parameters estimated separately: it wins with few labels and fades with many."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Naive Bayes's 'naive' assumption is that…",
+    "options": [
+     "all classes are equally common",
+     "features are independent of each other within a class",
+     "features are normally distributed"
+    ],
+    "answer": 1,
+    "why": "That's what lets it multiply one factor per feature.",
+    "sec": 1
+   },
+   {
+    "q": "Why does naive Bayes fail on XOR?",
+    "options": [
+     "Too little data",
+     "One feature at a time, the classes look identical; the class is in how features combine",
+     "It needs scaling"
+    ],
+    "answer": 1,
+    "why": "It never looks at features together.",
+    "sec": 1
+   },
+   {
+    "q": "Why do spam filters add log-probabilities instead of multiplying probabilities?",
+    "options": [
+     "Logs are more accurate",
+     "Multiplying hundreds of small numbers underflows to 0",
+     "It's required by Bayes' rule"
+    ],
+    "answer": 1,
+    "why": "And adding logs makes each word's evidence a readable amount.",
+    "sec": 2
+   },
+   {
+    "q": "Without smoothing, a word seen only in spam…",
+    "options": [
+     "is ignored",
+     "makes the message certain spam whatever else it says",
+     "halves the score"
+    ],
+    "answer": 1,
+    "why": "P(word | ham) = 0 gives infinite evidence.",
+    "sec": 3
+   },
+   {
+    "q": "Why does naive Bayes often classify well even though features are correlated?",
+    "options": [
+     "Correlation doesn't exist in text",
+     "Correlated evidence mostly points the same way, so the winning class survives even though the confidence is exaggerated",
+     "It removes correlated features"
+    ],
+    "answer": 1,
+    "why": "Only the order of the scores matters for the label; the probabilities are overconfident.",
+    "sec": 5
+   }
+  ]
  }
 }
