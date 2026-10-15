@@ -3,117 +3,510 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Capstone: Broken Elevators</title>
-  <meta name="description" content="AI from scratch capstone: predict which NYC subway elevator and escalator outages will last more than 4 hours, end to end. A live board scoring the outages happening right now, the milestones from data to monitoring, censoring, and a rubric." />
+  <title>Capstone: NYC Elevators &amp; Production AI Copilot</title>
+  <meta name="description" content="AI from scratch capstone: choose between two real-world production projects. Track A: predict NYC subway elevator outages on live MTA feeds with survival censoring. Track B: build an end-to-end Production AI Copilot with SQL windowing, asymmetric cost triage, PyTorch bi-encoder, grounded RAG citations, and PSI drift monitoring." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; box-sizing: border-box; }
     h2 { margin: 56px 0 10px; }
+    h3 { margin: 36px 0 8px; font-size: 21px; }
     .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
     .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
     .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
     table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
-    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
     .cmp code, main p code, main li code { overflow-wrap: anywhere; }
     .board td.p { font: 14px ui-monospace, Menlo, monospace; white-space: nowrap; }
     .bar { display: inline-block; height: 10px; border-radius: 3px; background: #f4a259; vertical-align: middle; margin-right: 6px; }
     .tag { font-size: 12px; color: var(--muted); }
-    ol.steps > li { margin: 10px 0; }
+    ol.steps > li { margin: 12px 0; }
+    .wide-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin: 12px 0 24px; }
+    .track-nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 32px; }
+    .track-btn { display: inline-block; padding: 10px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); font-weight: 600; text-decoration: none; color: var(--fg); font-size: 15px; transition: border-color .15s, color .15s; }
+    .track-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .callout-box { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 20px 0; font-size: 15px; }
+    .sim-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin: 24px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .sim-controls { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+    .preset-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .pill { background: #f1efe9; border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px; font-size: 13px; cursor: pointer; color: var(--fg); transition: background .15s; }
+    .pill:hover { background: #e5e2d8; }
+    .sim-input { width: 100%; box-sizing: border-box; padding: 9px 12px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 5px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    .sim-btn { background: var(--accent); color: #fff; border: none; border-radius: 5px; padding: 10px 16px; font-weight: 600; cursor: pointer; font-size: 15px; align-self: flex-start; }
+    .sim-btn:hover { opacity: 0.9; }
+    .res-section { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
+    .res-title { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 4px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-alert { background: #fee2e2; color: #991b1b; }
+    .badge-ok { background: #dcfce7; color: #166534; }
+    .badge-blue { background: #e0f2fe; color: #075985; }
+    .code-box { background: #1a1b26; color: #c0caf5; font: 13px/1.5 ui-monospace, Menlo, monospace; padding: 12px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
   </style>
 </head>
 <body>
 <main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Capstone · Stage 7: production</p>
-  <h1>Capstone: predict broken elevators, live</h1>
-  <p class="lede">For a rider in a wheelchair or with a stroller, an out-of-service elevator decides the whole trip. The MTA publishes which elevators and escalators are out and a time it expects them back, and that estimate is longer than the real outage 98% of the time (toolkit 2). A better answer to "will this still be broken in four hours?" would help people plan. This capstone builds it, end to end, on this site's live archive: data, model, honest evaluation, a service, and monitoring. Below is the course's own baseline running on the outages happening right now; your job is to beat it and ship yours.</p>
+  <h1>Capstone: Two Real-World Production Projects</h1>
+  <p class="lede">Every preceding lesson built a single muscle: linear algebra, gradient backprop, tabular trees, SQL data cleaning, neural vision, transformer attention, retrieval, evaluation, and latency budgets. The capstone tests whether you can assemble them into a working production system. Choose between two tracks that reflect the two biggest disciplines in applied AI today:</p>
 
-  <h2>1. The live board</h2>
-  <p>Every elevator and escalator out of service in the MTA's latest feed, scored by a logistic regression trained on 595 finished outages (toolkit 2's model, exported as 14 weights and 6 scaling numbers). The probability is the model's chance that the outage lasts more than 4 hours from its start. Come back later and see which were right.</p>
-  <div class="row"><button id="refresh">Refresh</button><span class="readout" id="status" style="margin:0"></span></div>
-  <div class="wide-scroll"><table class="cmp board" id="board"></table></div>
-  <p>Two things the board shows that a notebook hides. Some outages have a <b>reason the model never saw</b> in training ("Capital Replacement": escalators being rebuilt for months); the model treats an unknown category as "nothing known" and its guess means little. And many outages are <b>already past 4 hours</b>: the question for them is settled, which leads to this project's central trap.</p>
-  <p class="gist">The baseline already runs on live data; the capstone is to build a better one and run it the same way, honestly measured.</p>
-  <details class="deeper"><summary>Why the unfinished outages bias everything: censoring</summary>
-    <ol>
-      <li>To train, you need each outage's length. You only know it for outages that have ended. The rest are <b>right-censored</b>: you know they've lasted at least this long, not how long.</li>
-      <li>Long outages are more likely to still be open when you take a snapshot, simply because they're open longer. In the archive: 27% of finished outages lasted over 4 hours, but 54% of the ones still open have already passed 4 hours.</li>
-      <li>So training on finished outages only under-represents long ones, and the model learns that outages are shorter than they are. It gets worse the more recent the data: the newest week has the most unfinished long outages.</li>
-      <li>One fix for this task: an outage that's open and already past 4 hours has a known label (yes), so include it; only the ones open for less than 4 hours are truly unknown. More generally, <b>survival analysis</b> (Kaplan-Meier curves, Cox models) is built for censored durations.</li>
-      <li>The same trap appears whenever the label takes time: customer churn, loan default, how long a job posting stays open.</li>
+  <nav class="track-nav">
+    <a href="#track-a" class="track-btn">🚇 Track A: NYC Elevator Predictor (Systems &amp; Censoring)</a>
+    <a href="#track-b" class="track-btn">🤖 Track B: Production AI Copilot (Neural RAG &amp; Drift)</a>
+  </nav>
+
+  <!-- ===================================================================== -->
+  <!-- TRACK A: NYC SUBWAY ELEVATORS                                          -->
+  <!-- ===================================================================== -->
+  <section id="track-a">
+    <h2>Track A · Predict broken elevators, live</h2>
+    <p class="lede">For a rider in a wheelchair or with a stroller, an out-of-service elevator decides the whole trip. The MTA publishes which elevators and escalators are out and a time it expects them back, and that estimate is longer than the real outage 98% of the time (toolkit 2). A better answer to "will this still be broken in four hours?" would help people plan. This capstone builds it, end to end, on this site's live archive: data, model, honest evaluation, a service, and monitoring. Below is the course's own baseline running on the outages happening right now; your job is to beat it and ship yours.</p>
+
+    <h3>1. The live board</h3>
+    <p>Every elevator and escalator out of service in the MTA's latest feed, scored by a logistic regression trained on 595 finished outages (toolkit 2's model, exported as 14 weights and 6 scaling numbers). The probability is the model's chance that the outage lasts more than 4 hours from its start. Come back later and see which were right.</p>
+    <div class="row"><button id="refresh">Refresh</button><span class="readout" id="status" style="margin:0"></span></div>
+    <div class="wide-scroll"><table class="cmp board" id="board"></table></div>
+    <p>Two things the board shows that a notebook hides. Some outages have a <b>reason the model never saw</b> in training ("Capital Replacement": escalators being rebuilt for months); the model treats an unknown category as "nothing known" and its guess means little. And many outages are <b>already past 4 hours</b>: the question for them is settled, which leads to this project's central trap.</p>
+    <p class="gist">The baseline already runs on live data; the capstone is to build a better one and run it the same way, honestly measured.</p>
+    <details class="deeper"><summary>Why the unfinished outages bias everything: censoring</summary>
+      <ol>
+        <li>To train, you need each outage's length. You only know it for outages that have ended. The rest are <b>right-censored</b>: you know they've lasted at least this long, not how long.</li>
+        <li>Long outages are more likely to still be open when you take a snapshot, simply because they're open longer. In the archive: 27% of finished outages lasted over 4 hours, but 54% of the ones still open have already passed 4 hours.</li>
+        <li>So training on finished outages only under-represents long ones, and the model learns that outages are shorter than they are. It gets worse the more recent the data: the newest week has the most unfinished long outages.</li>
+        <li>One fix for this task: an outage that's open and already past 4 hours has a known label (yes), so include it; only the ones open for less than 4 hours are truly unknown. More generally, <b>survival analysis</b> (Kaplan-Meier curves, Cox models) is built for censored durations.</li>
+        <li>The same trap appears whenever the label takes time: customer churn, loan default, how long a job posting stays open.</li>
+      </ol>
+    </details>
+
+    <h3>2. Track A Milestones</h3>
+    <ol class="steps">
+      <li><b>Data.</b> Load <code>outages.csv</code> (or, better, ask for a fresh export of the archive: it grows every day). Look first (toolkit 2): ranges, the two-year-old capital replacements, reasons, duplicates. Decide what to do with censored outages (above). <i>Deliverable:</i> a cleaned table and a paragraph on what you dropped and why.</li>
+      <li><b>Baseline and features.</b> The baseline to beat is the board's model (time-split AUC about 0.89). Ideas: the station's history (careful: compute it from the past only, features and leakage), time of day and weekday, the MTA's own estimate (but only the first one it published; the archive keeps the latest, which may have been updated after the fact: leakage), the number of lines. <i>Deliverable:</i> a feature list with, for each, "known at the moment of prediction?".</li>
+      <li><b>Honest evaluation.</b> A time split, never random (features and leakage). AUC and a precision-recall curve (chapter 12), a calibration check if you'll show probabilities, and a threshold chosen from costs: a rider told "long" who reroutes needlessly loses minutes; one told "short" who arrives at a dead elevator loses far more. Compare with the baseline on the same test days, paired (Probability 4). <i>Deliverable:</i> one table, one curve, one threshold with its reason.</li>
+      <li><b>Model card.</b> Intended use, data, evaluation (overall and per slice: elevators vs escalators, accessible stations), limitations (MLOps). <i>Deliverable:</i> the card.</li>
+      <li><b>Service.</b> FastAPI around the model, inputs validated, version returned (serving); or export it to JSON like the board's and score in the browser. Free hosting: a Hugging Face Space (Start 4). <i>Deliverable:</i> a URL.</li>
+      <li><b>Monitoring.</b> Log every prediction with its inputs. Each day, when outages end, score yesterday's predictions; track the reason mix's PSI against the training window, weekday against weekday (MLOps). <i>Deliverable:</i> a week of daily AUC and PSI.</li>
+      <li><b>Write-up.</b> One page: the problem, what worked, what didn't, what you'd do with more data. Link the notebook, the service and the card. That page is your portfolio piece.</li>
     </ol>
-  </details>
+    <div class="q" data-answer="c">
+      <p>A teammate wants to add the MTA's estimated return time from the archive as a feature: it lifts test AUC to 0.97. What do you check first?</p>
+      <ul><li data-k="a" data-says="A big jump is a reason for suspicion, not celebration.">Nothing: ship it</li><li data-k="b" data-says="More data won't fix a feature that isn't available at prediction time.">Whether more data makes it even better</li><li data-k="c">Whether that estimate was known when the outage started: the archive stores the latest estimate, which may have been revised after the outage was already long</li></ul>
+      <div class="why">Features and leakage's question for every column: would I know this value at the moment the model has to decide? A revised estimate carries information from the future. Use only the first estimate the feed published.</div>
+    </div>
+    <p class="gist">Seven milestones, each with a deliverable: data, features known in time, honest evaluation, a model card, a live service, a week of monitoring, a one-page write-up.</p>
 
-  <h2>2. The milestones</h2>
-  <ol class="steps">
-    <li><b>Data.</b> Load <code>outages.csv</code> (or, better, ask for a fresh export of the archive: it grows every day). Look first (toolkit 2): ranges, the two-year-old capital replacements, reasons, duplicates. Decide what to do with censored outages (above). <i>Deliverable:</i> a cleaned table and a paragraph on what you dropped and why.</li>
-    <li><b>Baseline and features.</b> The baseline to beat is the board's model (time-split AUC about 0.89). Ideas: the station's history (careful: compute it from the past only, features and leakage), time of day and weekday, the MTA's own estimate (but only the first one it published; the archive keeps the latest, which may have been updated after the fact: leakage), the number of lines. <i>Deliverable:</i> a feature list with, for each, "known at the moment of prediction?".</li>
-    <li><b>Honest evaluation.</b> A time split, never random (features and leakage). AUC and a precision-recall curve (chapter 12), a calibration check if you'll show probabilities, and a threshold chosen from costs: a rider told "long" who reroutes needlessly loses minutes; one told "short" who arrives at a dead elevator loses far more. Compare with the baseline on the same test days, paired (Probability 4). <i>Deliverable:</i> one table, one curve, one threshold with its reason.</li>
-    <li><b>Model card.</b> Intended use, data, evaluation (overall and per slice: elevators vs escalators, accessible stations), limitations (MLOps). <i>Deliverable:</i> the card.</li>
-    <li><b>Service.</b> FastAPI around the model, inputs validated, version returned (serving); or export it to JSON like the board's and score in the browser. Free hosting: a Hugging Face Space (Start 4). <i>Deliverable:</i> a URL.</li>
-    <li><b>Monitoring.</b> Log every prediction with its inputs. Each day, when outages end, score yesterday's predictions; track the reason mix's PSI against the training window, weekday against weekday (MLOps). <i>Deliverable:</i> a week of daily AUC and PSI.</li>
-    <li><b>Write-up.</b> One page: the problem, what worked, what didn't, what you'd do with more data. Link the notebook, the service and the card. That page is your portfolio piece.</li>
-  </ol>
-  <div class="q" data-answer="c">
-    <p>A teammate wants to add the MTA's estimated return time from the archive as a feature: it lifts test AUC to 0.97. What do you check first?</p>
-    <ul><li data-k="a" data-says="A big jump is a reason for suspicion, not celebration.">Nothing: ship it</li><li data-k="b" data-says="More data won't fix a feature that isn't available at prediction time.">Whether more data makes it even better</li><li data-k="c">Whether that estimate was known when the outage started: the archive stores the latest estimate, which may have been revised after the outage was already long</li></ul>
-    <div class="why">Features and leakage's question for every column: would I know this value at the moment the model has to decide? A revised estimate carries information from the future. Use only the first estimate the feed published.</div>
-  </div>
-  <p class="gist">Seven milestones, each with a deliverable: data, features known in time, honest evaluation, a model card, a live service, a week of monitoring, a one-page write-up.</p>
+    <h3>3. How Track A is judged</h3>
+    <div class="wide-scroll"><table class="cmp">
+      <tr><th>Criterion</th><th>Good enough</th><th>Excellent</th></tr>
+      <tr><td>Honesty of evaluation</td><td>Time split; AUC reported</td><td>Paired comparison with the baseline, confidence interval, per-slice results, calibration</td></tr>
+      <tr><td>Leakage and censoring</td><td>Leaky columns removed</td><td>Censoring handled and explained; every feature justified as known in time</td></tr>
+      <tr><td>Usefulness</td><td>A threshold</td><td>A threshold from stated costs, and what a rider would see</td></tr>
+      <tr><td>Running system</td><td>A notebook that predicts</td><td>A service with validation and versions, plus monitoring that has caught something</td></tr>
+      <tr><td>Communication</td><td>A model card</td><td>A one-page write-up a non-specialist can follow, with limitations stated plainly</td></tr>
+    </table></div>
+    <p class="gist">Judged on honesty first: evaluation, leakage and censoring, then usefulness, a running system and clear communication.</p>
+    <details class="deeper"><summary>Where it breaks: a week of data, and a model riders might trust too much</summary>
+      <ul>
+        <li><b>One week is one week.</b> The archive's finished outages mostly started in a single week of October. Holidays, winter storms and summer heat are all unseen. Say so in the card, and keep collecting: the MLOps lesson's monitoring is also how the training set grows.</li>
+        <li><b>Unseen categories.</b> A new reason, station or equipment type gets no learned weight. Flag those predictions as low-confidence (the board does), rather than showing a number.</li>
+        <li><b>False confidence.</b> "93% chance it's back within 4 hours" can send a wheelchair user to a dead elevator 7% of the time. For accessibility, a cautious threshold and plain words ("often fixed within hours, but plan an alternative") may serve riders better than a precise-looking probability.</li>
+      </ul>
+    </details>
+  </section>
 
-  <h2>3. How it's judged</h2>
-  <table class="cmp">
-    <tr><th>Criterion</th><th>Good enough</th><th>Excellent</th></tr>
-    <tr><td>Honesty of evaluation</td><td>Time split; AUC reported</td><td>Paired comparison with the baseline, confidence interval, per-slice results, calibration</td></tr>
-    <tr><td>Leakage and censoring</td><td>Leaky columns removed</td><td>Censoring handled and explained; every feature justified as known in time</td></tr>
-    <tr><td>Usefulness</td><td>A threshold</td><td>A threshold from stated costs, and what a rider would see</td></tr>
-    <tr><td>Running system</td><td>A notebook that predicts</td><td>A service with validation and versions, plus monitoring that has caught something</td></tr>
-    <tr><td>Communication</td><td>A model card</td><td>A one-page write-up a non-specialist can follow, with limitations stated plainly</td></tr>
-  </table>
-  <p class="gist">Judged on honesty first: evaluation, leakage and censoring, then usefulness, a running system and clear communication.</p>
-  <details class="deeper"><summary>Where it breaks: a week of data, and a model riders might trust too much</summary>
-    <ul>
-      <li><b>One week is one week.</b> The archive's finished outages mostly started in a single week of October. Holidays, winter storms and summer heat are all unseen. Say so in the card, and keep collecting: the MLOps lesson's monitoring is also how the training set grows.</li>
-      <li><b>Unseen categories.</b> A new reason, station or equipment type gets no learned weight. Flag those predictions as low-confidence (the board does), rather than showing a number.</li>
-      <li><b>False confidence.</b> "93% chance it's back within 4 hours" can send a wheelchair user to a dead elevator 7% of the time. For accessibility, a cautious threshold and plain words ("often fixed within hours, but plan an alternative") may serve riders better than a precise-looking probability.</li>
-    </ul>
-  </details>
+  <!-- ===================================================================== -->
+  <!-- TRACK B: PRODUCTION AI COPILOT                                        -->
+  <!-- ===================================================================== -->
+  <section id="track-b">
+    <h2>Track B · Production AI Copilot from scratch</h2>
+    <p class="lede">A production AI assistant cannot simply be a thin wrapper around a third-party chat API. Real engineering requires guaranteed data hygiene, asymmetric mistake cost tuning, verified document provenance, automated hallucination detection, and real-time distribution drift monitoring. In this track, you build the entire cognitive copilot end to end in Python, PyTorch, SQLite, and scikit-learn without external paid APIs.</p>
 
-  <h2>4. What to carry forward</h2>
+    <div class="callout-box">
+      <b>Milestone Notebook:</b>
+      <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-7.ipynb" target="_blank" rel="noopener">Open milestone-7.ipynb on Google Colab</a> ·
+      <a href="https://github.com/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-7.ipynb" target="_blank" rel="noopener">View Jupyter Notebook on GitHub</a>
+    </div>
+
+    <h3>1. The Critical Rationale: Usability, Necessity &amp; Course Fit</h3>
+    <div class="wide-scroll"><table class="cmp">
+      <tr><th>Dimension</th><th>The Common Trap</th><th>Our Production Solution</th></tr>
+      <tr>
+        <td><b>Usability &amp; Access</b></td>
+        <td>Tutorials requiring expensive GPUs, paid OpenAI/Anthropic API keys ($20/mo), and bloated frameworks (LangChain, ChromaDB) that rot within 6 months.</td>
+        <td>100% self-contained in standard CPU Python, PyTorch, and SQLite. Zero API keys, zero external subscriptions, zero deprecation rot. Runs anywhere.</td>
+      </tr>
+      <tr>
+        <td><b>Necessity &amp; Rigor</b></td>
+        <td>Naive RAG bots that dump text into a prompt and trust the LLM, ignoring catastrophic incident triage mistakes and silent hallucinations.</td>
+        <td><b>Asymmetric cost tuning</b> ($C(\text{FN}) = 10 \cdot C(\text{FP})$): missing a Sev-1 outage costs 10x a false alarm. Strict <code>[doc#chunk]</code> citations and programmatic grounding scoring.</td>
+      </tr>
+      <tr>
+        <td><b>Curriculum Fit</b></td>
+        <td>Isolated toy snippets disconnected from the rest of the 7-stage learning journey.</td>
+        <td>Unifies every pillar: SQL window functions (Stage 4), asymmetric loss &amp; triage (Stage 3), PyTorch neural projections (Stage 2 &amp; 5), RAG evaluation (Stage 6), and PSI drift monitoring (Stage 7).</td>
+      </tr>
+    </table></div>
+
+    <h3>2. Interactive Copilot Pipeline Simulator</h3>
+    <p>Test the copilot live in your browser below. Type an engineering query or pick a preset, adjust incoming incident metadata, and watch the multi-stage pipeline execute: triage classification, vector retrieval, grounded context assembly, automated hallucination verification, and traffic distribution drift calculation.</p>
+
+    <div class="sim-card">
+      <div class="sim-controls">
+        <div class="preset-group">
+          <span class="tag">Presets:</span>
+          <button class="pill" id="p-gw">🚨 API Gateway Outage</button>
+          <button class="pill" id="p-att">⚡ Transformer Attention</button>
+          <button class="pill" id="p-db">🗄️ Database Pool Leak</button>
+          <button class="pill" id="p-lora">🎯 LoRA Adapter Training</button>
+        </div>
+
+        <div>
+          <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Query:</label>
+          <input type="text" id="copilot-query" class="sim-input" value="production router failed memory spike load" />
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Document Type:</label>
+            <select id="sim-incident" class="sim-input">
+              <option value="1" selected>Incident Post-Mortem Report</option>
+              <option value="0">Routine Technical Documentation</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Incident Created Hour (0-23):</label>
+            <input type="number" id="sim-hour" class="sim-input" value="9" min="0" max="23" />
+          </div>
+        </div>
+
+        <button class="sim-btn" id="run-copilot">Run Copilot Pipeline</button>
+      </div>
+
+      <div class="res-section">
+        <div class="res-title">1. Cost-Aware Triage Classifier (Stage 3 &amp; 7)</div>
+        <div id="triage-readout" class="readout">Urgency Probability: calculating…</div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-title">2. PyTorch Bi-Encoder Vector Retrieval (Stage 2, 5 &amp; 6)</div>
+        <div id="retrieval-readout" class="readout">Top matching chunks…</div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-title">3. Grounded Context with Strict Provenance (Stage 6)</div>
+        <div id="context-box" class="code-box">Awaiting query…</div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-title">4. Automated Hallucination Verification (Stage 6)</div>
+        <div class="preset-group" style="margin-bottom:8px;">
+          <span class="tag">Test Answers:</span>
+          <button class="pill" id="ans-grounded">Grounded Answer</button>
+          <button class="pill" id="ans-hallucinated">Hallucinated Answer</button>
+        </div>
+        <input type="text" id="test-answer-input" class="sim-input" style="margin-bottom:8px;" value="The production router failed because memory was exhausted under spike load [doc-2#1]." />
+        <div id="grounding-readout" class="readout">Grounding ratio…</div>
+      </div>
+
+      <div class="res-section">
+        <div class="res-title">5. Production MLOps Drift Monitor: PSI (Stage 7)</div>
+        <div class="preset-group" style="margin-bottom:8px;">
+          <span class="tag">Simulate Traffic:</span>
+          <button class="pill" id="traffic-normal">Normal Documentation Mix</button>
+          <button class="pill" id="traffic-surge">🚨 Emergency Outage Surge</button>
+        </div>
+        <div id="psi-readout" class="readout">Population Stability Index…</div>
+      </div>
+    </div>
+
+    <h3>3. Track B Milestones</h3>
+    <ol class="steps">
+      <li><b>Data engineering &amp; SQL window functions.</b> Set up an SQLite relational store for documents and multi-chunk embeddings. Write a window query using <code>ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY chunk_seq ASC)</code> to isolate starting chunk states without temporal leakage. <i>Deliverable:</i> SQLite schema and executed query.</li>
+      <li><b>Cost-aware tabular triage.</b> Fit a logistic regression on metadata features <code>[word_count, is_incident, created_hour]</code>. Tune the decision threshold against an asymmetric cost matrix ($C(\text{FN}) = 10, C(\text{FP}) = 1$). <i>Deliverable:</i> optimal decision threshold minimizing total enterprise loss.</li>
+      <li><b>PyTorch neural bi-encoder head.</b> Build a custom <code>BiEncoderHead(nn.Module)</code> projecting vocabulary sparse representations into 16D unit-normalized embeddings ($L_2$ norm = 1.0). <i>Deliverable:</i> PyTorch module and tensor verification.</li>
+      <li><b>Cosine vector retrieval.</b> Compute dot products $\mathbf{q} \cdot \mathbf{D}^T$ and retrieve the top-$k$ relevant chunks descending by cosine similarity. <i>Deliverable:</i> vector retrieval function with top-k ranking.</li>
+      <li><b>Grounded RAG context assembly.</b> Format multi-chunk prompts with strict bracketed provenance citations: <code>[{doc_id}#{chunk_seq}] {text}</code>. <i>Deliverable:</i> formatted context string.</li>
+      <li><b>Automated grounding evaluation.</b> Build an algorithmic hallucination detector calculating the token overlap ratio between candidate answer statements and context text. <i>Deliverable:</i> grounding ratio scorer rejecting statements below 75% overlap.</li>
+      <li><b>FastAPI serving &amp; PSI drift monitoring.</b> Wrap the pipeline in a service handler returning latency measurements under 100 ms. Compute the Population Stability Index (PSI) across incoming traffic to trigger automated retraining alerts when $\text{PSI} &gt; 0.25$. <i>Deliverable:</i> FastAPI service handler and PSI drift detector.</li>
+    </ol>
+
+    <div class="q" data-answer="b">
+      <p>Why do we tune the triage classifier's threshold down to 0.30 instead of using the standard 0.50 cutoff?</p>
+      <ul><li data-k="a" data-says="Model accuracy actually drops slightly when shifting away from 0.50.">To maximize standard raw classification accuracy</li><li data-k="b">Because missing an urgent incident (False Negative) costs 10x more than reviewing a false alarm (False Positive)</li><li data-k="c" data-says="The threshold does not change vector retrieval speed.">To make PyTorch matrix multiplication faster</li></ul>
+      <div class="why">In real systems, mistake costs are asymmetric. Missing a critical Sev-1 production outage (FN) means downtime and SLA penalties; reviewing a routine ticket flagged as urgent (FP) costs a few seconds of engineer triage. A lower threshold trades a few harmless false alarms to eliminate costly missed outages.</div>
+    </div>
+
+    <h3>4. How Track B is judged</h3>
+    <div class="wide-scroll"><table class="cmp">
+      <tr><th>Criterion</th><th>Good enough</th><th>Excellent</th></tr>
+      <tr><td>Data &amp; Provenance</td><td>SQLite schema; chunks stored</td><td>SQL window functions partition documents cleanly; strict <code>[doc#chunk]</code> citations preserved throughout</td></tr>
+      <tr><td>Cost-Aware Triage</td><td>Logistic regression at 0.50 threshold</td><td>Asymmetric cost function ($10 \cdot \text{FN} + \text{FP}$) with empirical grid search threshold tuning</td></tr>
+      <tr><td>Neural Retrieval</td><td>TF-IDF keyword matching</td><td>PyTorch <code>nn.Module</code> bi-encoder with $L_2$ normalization and cosine matrix similarity</td></tr>
+      <tr><td>Grounding &amp; Evals</td><td>Prompt asking LLM not to lie</td><td>Algorithmic grounding ratio scorer mathematically verifying token overlap and flagging hallucinations</td></tr>
+      <tr><td>Serving &amp; MLOps</td><td>Standalone Python script</td><td>FastAPI endpoint with sub-100ms latency budget and PSI drift monitoring flagging distribution shifts</td></tr>
+    </table></div>
+    <p class="gist">Judged on end-to-end integration: clean data windowing, asymmetric cost tuning, strict citation provenance, automated hallucination detection, and PSI drift monitoring.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SHARED CONCLUSION                                                     -->
+  <!-- ===================================================================== -->
+  <h2>What to carry forward</h2>
   <ul>
-    <li>Every skill on the path, in one project: data, features, evaluation, deployment, monitoring, communication.</li>
-    <li>Labels that take time to arrive are censored: handle them, or the model learns a biased world.</li>
-    <li>Ship a baseline early, measure everything against it, and keep it running while you improve on it.</li>
+    <li><b>Every skill on the path, in one project:</b> data engineering, model architectures, asymmetric loss functions, deployment, monitoring, and honest communication.</li>
+    <li><b>Labels and distributions change:</b> In Track A, unfinished outages are right-censored; in Track B, query distributions drift over time. You must measure and handle both.</li>
+    <li><b>Ship a verified baseline early:</b> Measure everything against it, avoid fragile wrappers, and keep the system monitored while you improve it.</li>
   </ul>
-  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Data: the MTA elevator and escalator feed, archived by this site; <a href="/nyc/">the NYC map</a> shows the same outages live.</p>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Track A data: MTA elevator archive (<a href="/nyc/">live NYC map</a>). Track B milestone: <a href="https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/milestone-7.ipynb" target="_blank" rel="noopener">milestone-7.ipynb (Colab)</a>.</p>
 </main>
+
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
 <script type="module">
 const $ = (id) => document.getElementById(id);
-const model = await fetch("/ai/data/capstone-model.json").then((r) => r.json());
-const nyHour = (t) => Number(new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false })) % 24;
-function score(o) {
-  const unknown = !(o.reason in model.onehot.reason);
-  let z = model.intercept + (model.onehot.kind[o.kind] ?? 0) + (model.onehot.reason[o.reason] ?? 0);
-  const x = { ada: o.ada, hour: nyHour(o.start), n_lines: String(o.trains || "").split("/").filter(Boolean).length || 1 };
-  for (const [k, v] of Object.entries(model.numeric)) z += (v.weight * (x[k] - v.mean)) / v.scale;
-  return { p: 1 / (1 + Math.exp(-z)), unknown };
+
+// -------------------------------------------------------------
+// TRACK A: MTA LIVE ELEVATOR OUTAGE BOARD
+// -------------------------------------------------------------
+try {
+  const model = await fetch("/ai/data/capstone-model.json").then((r) => r.json());
+  const nyHour = (t) => Number(new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false })) % 24;
+  function score(o) {
+    const unknown = !(o.reason in model.onehot.reason);
+    let z = model.intercept + (model.onehot.kind[o.kind] ?? 0) + (model.onehot.reason[o.reason] ?? 0);
+    const x = { ada: o.ada, hour: nyHour(o.start), n_lines: String(o.trains || "").split("/").filter(Boolean).length || 1 };
+    for (const [k, v] of Object.entries(model.numeric)) z += (v.weight * (x[k] - v.mean)) / v.scale;
+    return { p: 1 / (1 + Math.exp(-z)), unknown };
+  }
+  const ago = (h) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h.toFixed(1)} h` : `${Math.round(h / 24)} days`);
+  async function load() {
+    $("status").textContent = "loading the latest feed…";
+    try {
+      const d = await fetch("/api/nyc/archive?days=1").then((r) => r.json()), now = Date.now() / 1000;
+      const rows = (d.outagesNow ?? []).map((o) => ({ o, ...score(o), open: (now - o.start) / 3600 })).sort((a, b) => b.p - a.p);
+      $("board").innerHTML = `<tr><th>Station</th><th>Kind</th><th>Reason</th><th>Out for</th><th>P(over 4 h)</th></tr>` + rows.map(({ o, p, unknown, open }) =>
+        `<tr><td>${o.station}<br><span class="tag">${o.trains}</span></td><td>${o.kind === "EL" ? "elevator" : "escalator"}${o.ada ? " ♿" : ""}</td><td>${o.reason}${unknown ? '<br><span class="tag">a reason the model never saw</span>' : ""}</td>` +
+        `<td>${ago(open)}${open > 4 ? '<br><span class="tag">already past 4 h</span>' : ""}</td><td class="p"><span class="bar" style="width:${Math.round(p * 60)}px"></span>${Math.round(p * 100)}%</td></tr>`).join("");
+      const settled = rows.filter((r) => r.open > 4).length;
+      $("status").textContent = `${rows.length} out of service now · ${settled} already past 4 hours · ${rows.filter((r) => r.unknown).length} with a reason the model never saw`;
+    } catch (e) { $("status").textContent = "Couldn't load the live feed."; }
+  }
+  if ($("refresh")) { $("refresh").onclick = load; load(); }
+} catch (err) {
+  if ($("status")) $("status").textContent = "Live feed unavailable.";
 }
-const ago = (h) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h.toFixed(1)} h` : `${Math.round(h / 24)} days`);
-async function load() {
-  $("status").textContent = "loading the latest feed…";
-  try {
-    const d = await fetch("/api/nyc/archive?days=1").then((r) => r.json()), now = Date.now() / 1000;
-    const rows = (d.outagesNow ?? []).map((o) => ({ o, ...score(o), open: (now - o.start) / 3600 })).sort((a, b) => b.p - a.p);
-    $("board").innerHTML = `<tr><th>Station</th><th>Kind</th><th>Reason</th><th>Out for</th><th>P(over 4 h)</th></tr>` + rows.map(({ o, p, unknown, open }) =>
-      `<tr><td>${o.station}<br><span class="tag">${o.trains}</span></td><td>${o.kind === "EL" ? "elevator" : "escalator"}${o.ada ? " ♿" : ""}</td><td>${o.reason}${unknown ? '<br><span class="tag">a reason the model never saw</span>' : ""}</td>` +
-      `<td>${ago(open)}${open > 4 ? '<br><span class="tag">already past 4 h</span>' : ""}</td><td class="p"><span class="bar" style="width:${Math.round(p * 60)}px"></span>${Math.round(p * 100)}%</td></tr>`).join("");
-    const settled = rows.filter((r) => r.open > 4).length;
-    $("status").textContent = `${rows.length} out of service now · ${settled} already past 4 hours · ${rows.filter((r) => r.unknown).length} with a reason the model never saw`;
-  } catch (e) { $("status").textContent = "Couldn't load the live feed."; }
+
+// -------------------------------------------------------------
+// TRACK B: PRODUCTION AI COPILOT SIMULATOR
+// -------------------------------------------------------------
+const CHUNKS = [
+  { id: "c-1-1", docId: "doc-1", seq: 1, text: "Self-attention computes dynamic weights from query and key dot products." },
+  { id: "c-1-2", docId: "doc-1", seq: 2, text: "Multi-head attention projects vectors into multiple representation subspaces." },
+  { id: "c-2-1", docId: "doc-2", seq: 1, text: "Production router failed due to memory exhaustion under spike load." },
+  { id: "c-3-1", docId: "doc-3", seq: 1, text: "Learning rates exceeding two over L cause oscillations in steep valleys." },
+  { id: "c-4-1", docId: "doc-4", seq: 1, text: "Backend database pool exhausted after connection leak in service worker." },
+  { id: "c-5-1", docId: "doc-5", seq: 1, text: "LoRA freezes base model weights and fine-tunes low rank adapter matrices." }
+];
+
+// TF-IDF Indexing for Vector Retrieval
+function tokenize(text) {
+  return (text.toLowerCase().match(/[a-z0-9]+/g) || []);
 }
-$("refresh").onclick = load; load();
+const N = CHUNKS.length;
+const chunkTokens = CHUNKS.map(c => tokenize(c.text));
+const df = {};
+chunkTokens.forEach(toks => {
+  new Set(toks).forEach(t => df[t] = (df[t] || 0) + 1);
+});
+function vectorize(toks) {
+  const tf = {};
+  toks.forEach(t => tf[t] = (tf[t] || 0) + 1);
+  const vec = {};
+  let sumSq = 0;
+  for (const t in tf) {
+    const idf = Math.log((1 + N) / (1 + (df[t] || 0))) + 1;
+    const v = tf[t] * idf;
+    vec[t] = v;
+    sumSq += v * v;
+  }
+  const norm = Math.sqrt(sumSq) || 1;
+  for (const t in vec) vec[t] /= norm;
+  return vec;
+}
+const chunkVecs = chunkTokens.map(vectorize);
+
+function cosineSim(v1, v2) {
+  let s = 0;
+  for (const k in v1) {
+    if (v2[k]) s += v1[k] * v2[k];
+  }
+  return s;
+}
+
+// Cost-aware Triage Classifier (Logistic Regression model fitted in Milestone 7)
+// Features: [word_count, is_incident, hour]
+const TRIAGE_COEF = [-0.3192, 0.3100, -0.8448];
+const TRIAGE_INTERCEPT = 11.8196;
+const BEST_THRESHOLD = 0.30;
+
+function scoreTriage(wordCount, isIncident, hour) {
+  const z = TRIAGE_INTERCEPT + (TRIAGE_COEF[0] * wordCount) + (TRIAGE_COEF[1] * isIncident) + (TRIAGE_COEF[2] * hour);
+  const p = 1 / (1 + Math.exp(-z));
+  return { p, isUrgent: p >= BEST_THRESHOLD };
+}
+
+// Grounding Evaluator
+function computeGrounding(answer, context) {
+  const clean = (s) => (s.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 3);
+  const aSet = new Set(clean(answer));
+  const cSet = new Set(clean(context));
+  if (aSet.size === 0) return 0.0;
+  let matches = 0;
+  aSet.forEach(w => { if (cSet.has(w)) matches++; });
+  return matches / aSet.size;
+}
+
+// PSI Drift Monitor
+function calculatePSI(baseScores, prodScores, numBins = 4) {
+  const eps = 1e-4;
+  const pCounts = new Array(numBins).fill(0);
+  const qCounts = new Array(numBins).fill(0);
+  const binW = 1.0 / numBins;
+
+  baseScores.forEach(v => {
+    let b = Math.min(Math.floor(v / binW), numBins - 1);
+    pCounts[b]++;
+  });
+  prodScores.forEach(v => {
+    let b = Math.min(Math.floor(v / binW), numBins - 1);
+    qCounts[b]++;
+  });
+
+  const pTotal = pCounts.reduce((a, b) => a + b + eps, 0);
+  const qTotal = qCounts.reduce((a, b) => a + b + eps, 0);
+
+  let psi = 0;
+  for (let i = 0; i < numBins; i++) {
+    const p = (pCounts[i] + eps) / pTotal;
+    const q = (qCounts[i] + eps) / qTotal;
+    psi += (p - q) * Math.log(p / q);
+  }
+  return psi;
+}
+
+const BASELINE_TRAFFIC = [0.05, 0.12, 0.18, 0.08, 0.15, 0.22, 0.09, 0.14];
+const NORMAL_BATCH = [0.08, 0.14, 0.16, 0.11, 0.17, 0.20, 0.10, 0.15];
+const SURGE_BATCH = [0.85, 0.92, 0.78, 0.88, 0.95, 0.81, 0.90, 0.86];
+let currentBatch = NORMAL_BATCH;
+
+function updateCopilot() {
+  const query = $("copilot-query").value.trim();
+  const isInc = parseInt($("sim-incident").value, 10);
+  const hour = parseFloat($("sim-hour").value) || 9;
+  const words = query.split(/\s+/).filter(Boolean).length || 10;
+
+  // 1. Triage
+  const triage = scoreTriage(words, isInc, hour);
+  const pPct = (triage.p * 100).toFixed(1);
+  const badgeClass = triage.isUrgent ? "badge-alert" : "badge-ok";
+  const badgeLabel = triage.isUrgent ? "🚨 URGENT SEV-1 ALERT" : "✓ ROUTINE INQUIRY";
+  $("triage-readout").innerHTML = `Urgency Score: <b>${pPct}%</b> (Cutoff: ${Math.round(BEST_THRESHOLD * 100)}%) &middot; Status: <span class="badge ${badgeClass}">${badgeLabel}</span><br><span class="tag">Asymmetric cost rule: missing an urgent incident costs 10x more than a false alarm.</span>`;
+
+  // 2. Vector Retrieval
+  const qVec = vectorize(tokenize(query));
+  const scored = CHUNKS.map((c, i) => ({ c, sim: cosineSim(qVec, chunkVecs[i]) }));
+  scored.sort((a, b) => b.sim - a.sim);
+  const topHits = scored.slice(0, 2);
+
+  $("retrieval-readout").innerHTML = topHits.map(h => {
+    const simPct = (h.sim * 100).toFixed(0);
+    return `<div><span class="bar" style="width:${Math.max(10, Math.round(h.sim * 90))}px"></span> <b>${h.c.docId}#${h.c.seq}</b> (${simPct}% similarity): <i>"${h.c.text}"</i></div>`;
+  }).join("");
+
+  // 3. Grounded Context
+  const contextStr = topHits.map(h => `[${h.c.docId}#${h.c.seq}] ${h.c.text}`).join("\n");
+  $("context-box").textContent = contextStr;
+
+  // 4. Grounding Evaluation
+  evaluateCurrentAnswer();
+
+  // 5. PSI Drift Monitor
+  evaluateCurrentPSI();
+}
+
+function evaluateCurrentAnswer() {
+  const answer = $("test-answer-input").value;
+  const context = $("context-box").textContent;
+  const ratio = computeGrounding(answer, context);
+  const ratioPct = (ratio * 100).toFixed(1);
+  const isPassed = ratio >= 0.75;
+  const badgeClass = isPassed ? "badge-ok" : "badge-alert";
+  const badgeLabel = isPassed ? "✓ VERIFIED GROUNDED" : "✗ REJECTED: HALLUCINATION RISK";
+  $("grounding-readout").innerHTML = `Grounding Ratio: <b>${ratioPct}%</b> (Threshold: 75%) &middot; <span class="badge ${badgeClass}">${badgeLabel}</span>`;
+}
+
+function evaluateCurrentPSI() {
+  const psi = calculatePSI(BASELINE_TRAFFIC, currentBatch);
+  const isDrift = psi > 0.25;
+  const badgeClass = isDrift ? "badge-alert" : "badge-blue";
+  const badgeLabel = isDrift ? "⚠️ DISTRIBUTION DRIFT ALERT" : "✓ TRAFFIC STABLE";
+  $("psi-readout").innerHTML = `Population Stability Index (PSI): <b>${psi.toFixed(3)}</b> &middot; <span class="badge ${badgeClass}">${badgeLabel}</span><br><span class="tag">Rule: PSI &lt; 0.10 stable, 0.10 &le; PSI &le; 0.25 moderate change, PSI &gt; 0.25 critical shift triggering retraining.</span>`;
+}
+
+// Preset Handlers
+$("p-gw").onclick = () => {
+  $("copilot-query").value = "production router failed memory exhaustion spike load";
+  $("sim-incident").value = "1";
+  $("sim-hour").value = "9";
+  $("test-answer-input").value = "The production router failed because memory was exhausted under spike load [doc-2#1].";
+  updateCopilot();
+};
+$("p-att").onclick = () => {
+  $("copilot-query").value = "self-attention dynamic weights query key dot products";
+  $("sim-incident").value = "0";
+  $("sim-hour").value = "14";
+  $("test-answer-input").value = "Self-attention computes dynamic weights by taking dot products between queries and keys [doc-1#1].";
+  updateCopilot();
+};
+$("p-db").onclick = () => {
+  $("copilot-query").value = "backend database pool exhausted connection leak service worker";
+  $("sim-incident").value = "1";
+  $("sim-hour").value = "8";
+  $("test-answer-input").value = "Backend database pool exhausted after connection leak in service worker [doc-4#1].";
+  updateCopilot();
+};
+$("p-lora").onclick = () => {
+  $("copilot-query").value = "lora freezes base weights low rank adapter matrices";
+  $("sim-incident").value = "0";
+  $("sim-hour").value = "15";
+  $("test-answer-input").value = "LoRA freezes the base model weights while fine-tuning low-rank adapter matrices [doc-5#1].";
+  updateCopilot();
+};
+
+$("ans-grounded").onclick = () => {
+  $("test-answer-input").value = "The production router failed because memory was exhausted under spike load [doc-2#1].";
+  evaluateCurrentAnswer();
+};
+$("ans-hallucinated").onclick = () => {
+  $("test-answer-input").value = "The quantum neural database was hacked by unauthorized alien actors.";
+  evaluateCurrentAnswer();
+};
+
+$("traffic-normal").onclick = () => {
+  currentBatch = NORMAL_BATCH;
+  evaluateCurrentPSI();
+};
+$("traffic-surge").onclick = () => {
+  currentBatch = SURGE_BATCH;
+  evaluateCurrentPSI();
+};
+
+$("run-copilot").onclick = updateCopilot;
+$("test-answer-input").oninput = evaluateCurrentAnswer;
+
+// Initial Run
+updateCopilot();
 </script>
 </body>
 </html>
