@@ -2,7 +2,8 @@
 // and /ai/course.json: a "before you start" box (prerequisites, goals, a quick recall of the last lesson), section
 // anchors, gap tracking for every question, a checkpoint quiz that marks the lesson done and adds its concept cards
 // to the review deck, the practice notebook, and previous/next links. Progress lives in ai/learn.js (this browser).
-import { state, course, path, finish, answered, slug } from "/ai/learn.js";
+import { state, course, path, finish, answered, slug, gain, did, XP } from "/ai/learn.js";
+import { strip } from "/ai/hud.js";
 
 const here = location.pathname.split("/").pop(), main = document.querySelector("main");
 const lessons = await path;
@@ -25,6 +26,8 @@ if (i >= 0 && (me.goals || prev)) {
     + (needs.length ? `<div><b>You need:</b> ${needs.map((l) => `<a href="./${l.href}">${state.done[l.href] ? "✓ " : ""}${esc(l.title)}</a>`).join(" · ")}</div>` : "")
     + (me.goals ? `<div><b>You'll be able to:</b></div><ul style="margin:4px 0">${me.goals.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : "")
     + (recall.length ? `<div><b>Quick recall</b> from <i>${esc(prev.title)}</i>: answer in your head, then open.</div>` + recall.map(([f, b]) => `<details style="margin:2px 0"><summary>${esc(f)}</summary>→ ${esc(b)}</details>`).join("") : "");
+  const hud = document.createElement("div"); hud.style.cssText = "margin-top:8px;padding-top:6px;border-top:1px solid var(--line)";
+  top.append(strip(hud));
   (main.querySelector(":scope > .lede") ?? main.querySelector("h1"))?.after(top);
 }
 
@@ -33,6 +36,8 @@ addEventListener("learnkit:answer", ({ detail: { q, right, first } }) => {
   if (!first || i < 0) return;
   const h = q.dataset.sec ? sections[+q.dataset.sec - 1] : sectionOf(q);
   if (h) answered(here, h.id, `${lessons[i].title}: ${h.textContent.replace(/^\s*\d+\.\s*/, "")}`, right);
+  // XP for an inline question right on the first try, once per question (the checkpoint pays on its own)
+  if (right && !q.closest("#checkpoint")) gain(XP.question, "question", `question:${here}#${[...main.querySelectorAll(".q")].indexOf(q)}`);
 });
 
 // ---------- checkpoint ----------
@@ -68,7 +73,12 @@ const nb = (await fetch("/ai/notebooks/index.json").then((r) => r.json()).catch(
 if (nb && main) {
   const el = box("border-left: 4px solid var(--accent);");
   el.innerHTML = `<b>Practice notebook</b>: exercises with checks, in Python, on a free cloud machine.<br>`
-    + `<a href="${nb.colab}" target="_blank" rel="noopener">Open in Colab</a> · <a href="${nb.kaggle}" target="_blank" rel="noopener">Open on Kaggle</a> (then <i>Copy &amp; Edit</i>) · <a href="/ai/notebooks/${nb.notebook}" download>download .ipynb</a>`;
+    + `<a href="${nb.colab}" target="_blank" rel="noopener">Open in Colab</a> · <a href="${nb.kaggle}" target="_blank" rel="noopener">Open on Kaggle</a> (then <i>Copy &amp; Edit</i>) · <a href="/ai/notebooks/${nb.notebook}" download>download .ipynb</a>`
+    + `<div style="margin-top:6px"><button type="button" class="nb-done"></button></div>`;
+  const btn = el.querySelector(".nb-done"), key = `notebook:${here}`;
+  const mark = () => { btn.textContent = did(key) ? "✓ Notebook finished" : `I finished the notebook (+${XP.notebook} XP)`; btn.disabled = did(key); };
+  btn.onclick = () => { gain(XP.notebook, "notebook", key); mark(); };
+  mark();
   main.append(el);
 }
 

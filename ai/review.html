@@ -35,6 +35,9 @@
 </main>
 <script type="module">
 import { state, course, path, grade, next, dueCards } from "/ai/learn.js";
+import { LEECH } from "/ai/game.js";
+import { strip } from "/ai/hud.js";
+document.getElementById("stats").after(strip(Object.assign(document.createElement("div"), { style: "margin:6px 0 0" })));
 const $ = (id) => document.getElementById(id), C = await course, DAY = 864e5, titles = Object.fromEntries((await path).map((l) => [l.href, l.title]));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const card = (id) => { const [lesson, n] = id.split("#"); return { lesson, pair: C[lesson]?.cards?.[+n] }; };
@@ -55,7 +58,8 @@ function show() {
   }
   const { lesson, pair } = card(id);
   $("flash").innerHTML = `<div class="front">${esc(pair[0])}</div><div class="back" hidden>${esc(pair[1])}</div>`
-    + `<div class="grades" id="g"><button id="reveal">Show the answer</button></div><div class="from">from <a href="./${lesson}">${esc(titles[lesson] ?? lesson)}</a></div>`;
+    + `<div class="grades" id="g"><button id="reveal">Show the answer</button></div><div class="from">from <a href="./${lesson}">${esc(titles[lesson] ?? lesson)}</a></div>`
+    + ((state.cards[id].lapses ?? 0) >= LEECH ? `<p class="from">You've forgotten this one ${state.cards[id].lapses} times, so repeating it isn't working. <a href="./${lesson}">Reread the lesson</a> (or ask Blip to explain it another way), then come back.</p>` : "");
   $("reveal").onclick = () => {
     $("flash").querySelector(".back").hidden = false;
     $("g").innerHTML = ["Again", "Hard", "Good", "Easy"].map((t, g) => `<button data-g="${g}">${t}<small>${preview(id, g)}</small></button>`).join("");
