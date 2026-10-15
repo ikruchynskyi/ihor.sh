@@ -4637,5 +4637,116 @@
     "sec": 4
    }
   ]
+ },
+ "tokens.html": {
+  "goals": [
+   "Compare characters, words and subwords as units of text",
+   "Build byte-pair encoding: count pairs, merge, train, encode new text",
+   "Explain UTF-8 bytes and why byte-level BPE never has unknown tokens",
+   "Explain token-driven failures: letter counting, digit arithmetic, per-language cost, glitch tokens"
+  ],
+  "needs": [
+   "s2-just-enough-code.html",
+   "07-attention.html",
+   "p5-information.html"
+  ],
+  "teaches": [
+   "py:while"
+  ],
+  "cards": [
+   [
+    "Token",
+    "A piece of text from a fixed vocabulary; the model sees only its id, which looks up an embedding row."
+   ],
+   [
+    "Byte-pair encoding",
+    "Start from characters (or bytes), merge the most frequent neighboring pair, repeat until the vocabulary is big enough."
+   ],
+   [
+    "Encoding new text",
+    "Apply the learned merges in order; unseen words split into smaller pieces, never 'unknown'."
+   ],
+   [
+    "UTF-8",
+    "Characters as 1–4 bytes: English 1, Cyrillic 2, Chinese/Japanese 3, emoji 4."
+   ],
+   [
+    "Vocabulary size trade-off",
+    "More merges: shorter sequences, but bigger embedding and output layers."
+   ],
+   [
+    "Why 'strawberry' is hard",
+    "The model sees 1–3 token ids, not 10 letters; letter counts are memorized, not seen."
+   ],
+   [
+    "Tokens and languages",
+    "English-centric tokenizers cut other languages into more tokens: higher cost, less context."
+   ],
+   [
+    "Glitch tokens",
+    "Merges frequent in the tokenizer's data but rare in the model's, so their embeddings are barely trained."
+   ],
+   [
+    "Python while",
+    "while condition: repeats its block as long as the condition is true; something inside must eventually make it false."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why did subword tokenizers win over word-level ones?",
+    "options": [
+     "They keep common words whole but can split any rare or new word into known pieces",
+     "They make every text shorter than words would",
+     "They need no training"
+    ],
+    "answer": 0,
+    "why": "Word vocabularies explode and still miss new words; subwords cover everything.",
+    "sec": 1
+   },
+   {
+    "q": "Each BPE training step…",
+    "options": [
+     "merges the most frequent neighboring pair into one new token",
+     "removes the rarest token",
+     "splits the longest token"
+    ],
+    "answer": 0,
+    "why": "Greedy compression: the biggest saving first.",
+    "sec": 2
+   },
+   {
+    "q": "How many UTF-8 bytes is the Cyrillic word «Привіт» (6 letters)?",
+    "options": [
+     "12",
+     "6",
+     "24"
+    ],
+    "answer": 0,
+    "why": "Cyrillic letters take 2 bytes each.",
+    "sec": 3
+   },
+   {
+    "q": "Why do chatbots struggle to count the r's in 'strawberry'?",
+    "options": [
+     "They receive a few token ids, not individual letters, so the letters were never directly in their input",
+     "Because they can't count",
+     "Because 'strawberry' is a rare word"
+    ],
+    "answer": 0,
+    "why": "GPT-2 sees 'st', 'raw', 'berry', or one id for ' strawberry'.",
+    "sec": 4
+   },
+   {
+    "q": "The same question costs 3.7 times more tokens in Ukrainian than in English with GPT-2's tokenizer. Why?",
+    "options": [
+     "The tokenizer learned its merges mostly from English text, so Ukrainian gets few multi-letter tokens",
+     "Ukrainian words are longer",
+     "The API charges more for other languages"
+    ],
+    "answer": 0,
+    "why": "Fewer merges for a language means more, smaller pieces per word.",
+    "sec": 4
+   }
+  ]
  }
 }

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Text as Numbers: Tokens</title>
+  <meta name="description" content="AI from scratch: text as numbers. Characters, words and subwords; byte-pair encoding built live on NYC station names; UTF-8 bytes; real tokenizers (GPT-2, GPT-4, GPT-4o) and why strawberry, arithmetic and non-English text are hard for chatbots." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .toks { display: flex; flex-wrap: wrap; gap: 3px; font: 16px ui-monospace, Menlo, monospace; margin: 8px 0; }
+    .toks span { padding: 2px 4px; border-radius: 4px; white-space: pre; }
+    #bpeText { width: 100%; font: 17px ui-monospace, Menlo, monospace; box-sizing: border-box; padding: 8px; }
+    .merges { font: 14px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); max-height: 6.5em; overflow: auto; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Tokens · Stage 5: seeing and reading</p>
+  <h1>Text as numbers: tokens</h1>
+  <p class="lede">A network only takes numbers. Chapter 10's transformer and the RNN lesson read station names one <i>character</i> at a time. Real language models don't: they read <b>tokens</b>, pieces of text from a vocabulary of 50,000 to 200,000 that a separate algorithm learned before the model ever trained. The choice of pieces decides how long every text is, what the model can easily see, and what it costs to run. It's also behind some famous chatbot failures: counting the r's in "strawberry", adding long numbers, charging more for the same sentence in Ukrainian than in English. This lesson builds a tokenizer by hand.</p>
+
+  <h2>1. Three ways to cut text</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Unit</th><th>Vocabulary</th><th>"Court Sq-23 St" becomes</th><th>Trouble</th></tr>
+    <tr><td>Characters</td><td>~100 (or 256 bytes)</td><td>14 tokens</td><td>Long sequences: attention costs grow with the square of the length (chapter 7)</td></tr>
+    <tr><td>Words</td><td>hundreds of thousands</td><td>3 or 4 tokens</td><td>Every new word, typo, name or number is "unknown"; "run", "runs", "running" share nothing</td></tr>
+    <tr><td>Subwords</td><td>30,000 – 200,000</td><td>a handful</td><td>Common words are one token, rare ones split into pieces, nothing is unknown</td></tr>
+  </table></div>
+  <p>Subwords won, and the usual way to find them is <b>byte-pair encoding</b> (BPE): start from single characters and repeatedly glue together the pair that appears most often.</p>
+  <p class="gist">Characters make sequences too long and words make vocabularies too big; subwords keep common words whole and split rare ones into pieces.</p>
+
+  <h2>2. Byte-pair encoding, built live</h2>
+  <p>The corpus is the 379 NYC subway station names. Every name starts as a list of characters. Each merge finds the most frequent neighboring pair across all names and makes it one new token. Slide the number of merges, and type to see how text gets cut.</p>
+  <div class="row"><label>merges <input type="range" id="nm" min="0" max="300" value="60"> <b id="nmV"></b></label></div>
+  <input id="bpeText" value="Court Sq-23 St · Brooklyn Bridge-City Hall · Strawberry Av" aria-label="Text to tokenize" />
+  <div class="toks" id="toks"></div>
+  <p class="readout" id="r2"></p>
+  <div class="merges" id="merges"></div>
+  <p>The first merges are " S", " St", "Av", " Av": the corpus's favorite endings. By 300 merges an average station name shrinks from about 12 characters to about 5 tokens, and "Court Sq" is just "Court" and " Sq". A word the corpus never saw, like "Strawberry", still works: it falls back to smaller pieces, down to single characters if needed. Nothing is ever unknown.</p>
+  <p>The box uses one piece of Python the path hasn't needed yet: a <code>while</code> loop. <code>for</code> runs once per item of a list; <code>while condition:</code> repeats its indented lines as long as the condition is true, checking it before each round. <code>merge</code> needs it because it moves through the tokens by 1 or by 2, depending on whether it just glued a pair: <code>while i &lt; len(w):</code> keeps going until it has passed the last token. (If nothing inside ever makes the condition false, it loops forever; here every round moves <code>i</code> forward.)</p>
+  <div class="code" data-title="Build it: BPE in 25 lines of Python"><textarea>
+from collections import Counter
+names = [n for n in get("/ai/data/stations.txt").split("\n") if n]
+words = [list(n) for n in names]                     # every name as single characters
+def merge(w, a, b):
+    out, i = [], 0
+    while i < len(w):
+        if i < len(w) - 1 and w[i] == a and w[i + 1] == b:
+            out.append(a + b); i += 2
+        else:
+            out.append(w[i]); i += 1
+    return out
+merges = []
+for step in range(100):
+    pairs = Counter((a, b) for w in words for a, b in zip(w, w[1:]))
+    (a, b), count = pairs.most_common(1)[0]
+    merges.append((a, b)); words = [merge(w, a, b) for w in words]
+print("first merges:", [a + b for a, b in merges[:10]])
+print("average tokens per name after 100 merges:", round(sum(map(len, words)) / len(words), 2))
+def encode(text):                                    # new text: apply the learned merges, in the order they were learned
+    w = list(text)
+    for a, b in merges:
+        w = merge(w, a, b)
+    return w
+print(encode("Court Sq"), encode("Strawberry Av"))
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>After BPE learns its merges, how is a word it never saw during training tokenized?</p>
+    <ul><li data-k="a" data-says="Byte-level BPE never needs an unknown token: single characters (or bytes) are always in the vocabulary.">As one "unknown" token</li><li data-k="b" data-says="The vocabulary is fixed after training; new words don't add tokens.">It's added to the vocabulary</li><li data-k="c">By applying the learned merges in order: frequent pieces it contains merge, the rest stay as smaller pieces or characters</li></ul>
+    <div class="why">That's the point of subwords: "Strawberry" isn't a station, but "St", "raw" (maybe), "berry"-like pieces or single letters still cover it. A typo costs a few extra tokens, never a crash.</div>
+  </div>
+  <p class="gist">BPE starts from characters and keeps gluing the most frequent neighboring pair, so the vocabulary grows toward the corpus's common pieces and any new text can still be cut.</p>
+  <details class="deeper"><summary>Why BPE is a kind of compression</summary>
+    <ol>
+      <li>Each merge replaces every occurrence of a pair with one token, so the corpus gets shorter by exactly the pair's count. Choosing the most frequent pair is choosing the merge that shortens it most.</li>
+      <li>So BPE is a greedy compressor: each step makes the biggest saving available right now. (It's how Philip Gage introduced it in 1994, as a data compression scheme.)</li>
+      <li>Shorter text for the model means more text fits in the context window, and each step of attention covers more meaning.</li>
+      <li>But every merge adds a row to the embedding matrix (chapter 7) and a column to the output layer: a vocabulary of 200,000 with 4,096-number embeddings is 0.8 billion parameters in each. The vocabulary size is a trade between sequence length and those two layers.</li>
+      <li>Probability 5's link: a model's loss is measured per token, and bits per character is that loss divided by the average characters per token. Comparing models with different tokenizers needs the per-character (or per-byte) number.</li>
+    </ol>
+  </details>
+
+  <h2>3. Bytes, so nothing is unknown</h2>
+  <p>Text in a computer is <b>UTF-8 bytes</b>: English letters take 1 byte each, accented and Cyrillic letters 2, Chinese and Japanese characters 3, emoji 4. GPT-2's tokenizer starts BPE from the 256 possible bytes instead of characters, so any text in any language, and any emoji, can be encoded.</p>
+  <div class="code" data-title="Run it: the bytes behind characters"><textarea>
+for s in ["a", "é", "і", "日", "🚇", "Court Sq", "Привіт"]:
+    b = s.encode("utf-8")
+    print(f"{s!r:12} {len(s)} characters → {len(b)} bytes: {list(b)}")
+</textarea></div>
+  <p class="gist">Text is stored as UTF-8 bytes (1 to 4 per character), and byte-level BPE starts from those 256 bytes, so every text in every language can be tokenized.</p>
+
+  <h2>4. Real tokenizers, and their famous failures</h2>
+  <p>OpenAI's tokenizers, counted with their own library (tiktoken):</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Text</th><th>GPT-2 (50,257 tokens)</th><th>GPT-4 (cl100k, 100,277)</th><th>GPT-4o (o200k, 200,019)</th></tr>
+    <tr><td><code>Hello, how are you today?</code></td><td>7</td><td>7</td><td>7</td></tr>
+    <tr><td><code>Привіт, як ти сьогодні?</code> (the same, in Ukrainian)</td><td>26</td><td>16</td><td>9</td></tr>
+    <tr><td><code>こんにちは、今日は元気ですか？</code> (in Japanese)</td><td>22</td><td>10</td><td>8</td></tr>
+    <tr><td><code>strawberry</code></td><td>st · raw · berry</td><td>str · aw · berry</td><td>st · raw · berry</td></tr>
+    <tr><td><code>12345 + 67890</code></td><td>123 · 45 · + · 6 · 78 · 90</td><td>123 · 45 · + · ␣ · 678 · 90</td><td>123 · 45 · + · ␣ · 678 · 90</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Counting letters.</b> The model never sees the letters of "strawberry", only three token ids (and with a space before it, one id for the whole word). How many r's are inside token 4, 67, 1987 is something it can only have memorized, which is why "how many r's in strawberry?" tripped up chatbots for years.</li>
+    <li><b>Arithmetic.</b> 12345 is cut into "123" and "45", 67890 into "678" and "90": the pieces don't line up by place value, so adding them digit by digit is awkward. Some newer models split numbers into single digits for exactly this reason.</li>
+    <li><b>Languages.</b> A tokenizer trained mostly on English text has few merges for Ukrainian or Japanese, so the same sentence costs 2 to 4 times the tokens: more money per request, less text in the context window, and less meaning per attention step. Each newer tokenizer narrows the gap.</li>
+  </ul>
+  <div class="q" data-num="3.7" data-tol="0.05">
+    <p>The Ukrainian sentence costs 26 GPT-2 tokens; the English one, 7. If an API charges per token, how many times more does the Ukrainian question cost? (One decimal.)</p>
+    <div class="why">\(26 / 7 \approx 3.7\). With GPT-4o's tokenizer it's \(9 / 7 \approx 1.3\). Tokenizers decide prices and context lengths per language, which is a fairness question as much as a technical one.</div>
+  </div>
+  <p class="gist">Models see token ids, not letters or digits, which is why spelling, digit arithmetic and non-English text are harder and costlier than they look.</p>
+  <details class="deeper"><summary>Where it breaks: tokens the model barely knows</summary>
+    <ul>
+      <li><b>Glitch tokens.</b> GPT-2's tokenizer was trained on a different text collection than the model. A few merges, like " SolidGoldMagikarp" (a Reddit user name, one token), were frequent in the tokenizer's data and nearly absent from the model's, so their embeddings were barely trained: GPT-3-era models produced bizarre answers when asked to repeat them. Train the tokenizer on data like the model's.</li>
+      <li><b>Spaces matter.</b> " strawberry" (with a leading space) is one token; "strawberry" at the start of a line is three. The same word gets different ids in different positions, which can make prompts behave differently after a trivial edit.</li>
+      <li><b>Changing the tokenizer means retraining.</b> Embedding rows belong to specific ids. Swap the tokenizer and the model's input and output layers no longer mean anything: fine-tuning can't fix it, only (expensive) retraining can.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Models read token ids; each id looks up a row of the embedding matrix (chapter 7) and the output layer scores every id.</li>
+    <li>BPE: start from characters or bytes, merge the most frequent pair, repeat. Nothing is unknown.</li>
+    <li>Vocabulary size trades sequence length against embedding and output layer size.</li>
+    <li>Tokens explain letter counting, digit arithmetic, per-language costs and prompt sensitivity to spaces.</li>
+    <li>Compare models with different tokenizers per character or per byte, not per token.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Token counts: OpenAI's tiktoken library. Andrej Karpathy's "Let's build the GPT Tokenizer" video is the long-form companion.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const names = (await (await fetch("/ai/data/stations.txt")).text()).split("\n").filter(Boolean);
+const mergeW = (w, a, b) => { const out = []; for (let i = 0; i < w.length; i++) { if (i < w.length - 1 && w[i] === a && w[i + 1] === b) { out.push(a + b); i++; } else out.push(w[i]); } return out; };
+// learn 300 merges once; remember the corpus size after each
+let words = names.map((n) => [...n]); const merges = [], sizes = [words.reduce((s, w) => s + w.length, 0)];
+for (let k = 0; k < 300; k++) {
+  const c = new Map();
+  for (const w of words) for (let i = 0; i < w.length - 1; i++) { const key = w[i] + "\u0000" + w[i + 1]; c.set(key, (c.get(key) ?? 0) + 1); }
+  let best = null, bn = 0; for (const [key, n] of c) if (n > bn) { bn = n; best = key; }
+  if (!best) break;
+  const [a, b] = best.split("\u0000"); merges.push([a, b, bn]); words = words.map((w) => mergeW(w, a, b)); sizes.push(words.reduce((s, w) => s + w.length, 0));
+}
+const COLORS = ["#58c4dd44", "#f4a25955", "#83c16755", "#fc625544", "#c792ea44", "#f4d35e55"];
+function render() {
+  const n = +$("nm").value; $("nmV").textContent = n;
+  let w = [...$("bpeText").value]; for (const [a, b] of merges.slice(0, n)) w = mergeW(w, a, b);
+  $("toks").innerHTML = w.map((t, i) => `<span style="background:${COLORS[i % COLORS.length]}">${t.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span>`).join("");
+  $("r2").textContent = `vocabulary: ${new Set(names.join("")).size + n} tokens · your text: ${[...$("bpeText").value].length} characters → ${w.length} tokens · an average station name: ${(sizes[n] / names.length).toFixed(2)} tokens`;
+  $("merges").textContent = merges.slice(0, n).map(([a, b, c], i) => `${i + 1}. "${a}" + "${b}" (${c}×)`).join("   ");
+}
+["nm", "bpeText"].forEach((id) => $(id).addEventListener("input", render)); render();
+</script>
+</body>
+</html>
