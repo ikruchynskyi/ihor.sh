@@ -356,6 +356,13 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-a-pet-breed-classifier-on-the-web"
  },
+ "seq2seq.html": {
+  "notebook": "seq2seq.ipynb",
+  "title": "AI from scratch: seq2seq and beam search",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/seq2seq.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-seq2seq-and-beam-search"
+ },
  "serving.html": {
   "notebook": "serving.ipynb",
   "title": "AI from scratch: serving a model",

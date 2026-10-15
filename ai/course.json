@@ -6138,5 +6138,110 @@
     "sec": 4
    }
   ]
+ },
+ "seq2seq.html": {
+  "goals": [
+   "Explain encoder-decoder models and teacher forcing",
+   "Explain the one-vector bottleneck and how attention removed it",
+   "Compare greedy, beam search and sampling, including length normalization",
+   "Compute BLEU and know what it misses"
+  ],
+  "needs": [
+   "recurrent-networks.html",
+   "07-attention.html",
+   "10-tiny-transformer.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Encoder-decoder",
+    "An encoder reads the input into vectors; a decoder writes the output token by token, conditioned on them."
+   ],
+   [
+    "Teacher forcing",
+    "In training, the decoder gets the correct previous token at every step, not its own guess."
+   ],
+   [
+    "Bahdanau attention",
+    "At each output step, a weighted average of all encoder vectors, weights from the decoder state: the origin of attention."
+   ],
+   [
+    "Greedy decoding",
+    "Always the most likely next token: fast, can lead into a poor overall sequence."
+   ],
+   [
+    "Beam search",
+    "Keep the k best partial sequences by total log-probability; width 1 is greedy."
+   ],
+   [
+    "Length normalization",
+    "Rank by log-probability per token (or length^α), since totals always favor short outputs."
+   ],
+   [
+    "BLEU",
+    "Clipped n-gram precisions (1–4) against references, geometric mean, brevity penalty."
+   ],
+   [
+    "Exposure bias",
+    "Trained on correct histories, generating from its own; early mistakes compound."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What problem did attention originally solve in translation?",
+    "options": [
+     "The encoder squeezed the whole sentence into one vector, so long sentences lost information",
+     "Translation was too slow",
+     "Words had no embeddings"
+    ],
+    "answer": 0,
+    "why": "Attention lets each output step read all encoder vectors directly.",
+    "sec": 1
+   },
+   {
+    "q": "What is teacher forcing?",
+    "options": [
+     "Feeding the decoder the correct previous token during training",
+     "Using a larger teacher model",
+     "Forcing the model to output the reference"
+    ],
+    "answer": 0,
+    "why": "It trains every position in parallel from the right history, at the cost of exposure bias.",
+    "sec": 1
+   },
+   {
+    "q": "Why does beam search tend to prefer short outputs without length normalization?",
+    "options": [
+     "Every extra token adds a negative log-probability, so totals fall with length",
+     "Short outputs are more accurate",
+     "The beam is too narrow"
+    ],
+    "answer": 0,
+    "why": "Divide by length (or length^α) to compare fairly.",
+    "sec": 2
+   },
+   {
+    "q": "For open-ended story writing, which decoding is usually best?",
+    "options": [
+     "Sampling with a temperature",
+     "Beam search with a wide beam",
+     "Greedy"
+    ],
+    "answer": 0,
+    "why": "The single most likely text is bland and repetitive; sampling gives variety.",
+    "sec": 2
+   },
+   {
+    "q": "A correct paraphrase gets a low BLEU score. Why?",
+    "options": [
+     "BLEU counts exact n-gram overlap with the reference, not meaning",
+     "BLEU penalizes correct answers",
+     "The paraphrase is too long"
+    ],
+    "answer": 0,
+    "why": "Use BLEU across many sentences, and humans or judges for meaning.",
+    "sec": 3
+   }
+  ]
  }
 }

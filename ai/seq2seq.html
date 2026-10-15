@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seq2seq and Beam Search</title>
+  <meta name="description" content="AI from scratch elective: seq2seq and beam search. Encoder-decoder models that read one sequence and write another, the bottleneck that led to attention, teacher forcing, greedy vs beam vs sampled decoding you can watch on NYC station names, and BLEU." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    #prefix { font: 17px ui-monospace, Menlo, monospace; width: 10em; }
+    .beams { font: 14px/1.6 ui-monospace, Menlo, monospace; }
+    .beams .real { color: #2f9e44; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Seq2seq and beam search</p>
+  <h1>Seq2seq and beam search</h1>
+  <p class="lede">Translation, summarization, speech to text, "October 15, 2026" to "2026-10-15": the input is a sequence, the output is another of a different length. The <b>encoder-decoder</b> (sequence-to-sequence, seq2seq) design handles all of them: one network reads, another writes. It's also where attention was invented, a few years before transformers made it the whole model. This lesson covers how the decoder writes, why it once choked on long sentences, and how to choose its words: greedily, by beam search, or by sampling.</p>
+
+  <h2>1. Read, then write</h2>
+  <p>The <b>encoder</b> (an RNN, or chapter 7's transformer) reads the input into vectors. The <b>decoder</b> writes the output one token at a time, each step seeing what it has written so far: the same next-token prediction as chapter 10, now conditioned on the input. In training the decoder is fed the correct previous token at every step, not its own guess (<b>teacher forcing</b>), so all positions learn in parallel from the right history.</p>
+  <p>The first translators (Sutskever and colleagues, 2014) squeezed the whole input into the encoder's last state, one vector, and decoded from it. Long sentences lost their beginnings in that bottleneck (the RNN lesson's fixed-size state). The fix (Bahdanau, Cho and Bengio, 2015): at every output step, let the decoder look back at <i>all</i> the encoder's vectors and take a weighted average, weights from how well each matches what it's about to write. That's attention, chapter 7's \(\operatorname{softmax}(qK^\top)V\) with the decoder state as the query. Transformers kept the attention and dropped the recurrence.</p>
+  <div class="q" data-answer="b">
+    <p>Writing "2026-10-15" from "October 15, 2026", where should the decoder's attention be while it writes "10"?</p>
+    <ul><li data-k="a" data-says="The year's digits don't decide the month.">On "2026"</li><li data-k="b">On "October": that's the input that decides those two characters</li><li data-k="c" data-says="Attention is a weighted average; it can (and does) focus.">Spread evenly over the whole input</li></ul>
+    <div class="why">The practice notebook trains exactly this model and draws its attention: a near-diagonal pattern, jumping to the year first, then the month word, then the day. The model learns the reordering itself.</div>
+  </div>
+  <p class="gist">An encoder reads the input, a decoder writes the output token by token while attending to the encoder's vectors, the step that freed translation from a one-vector bottleneck.</p>
+
+  <h2>2. Choosing the words</h2>
+  <p>At each step the decoder gives a probability for every next token. How to turn those into a sentence matters as much as the model. The demo uses a small character model of the 379 NYC station names (counts of which character follows each 3-character context, with a little smoothing). Type the start of a name:</p>
+  <div class="row"><label>starts with <input id="prefix" value="Ch" aria-label="The start of a station name"></label><label>beam width <input type="range" id="k" min="1" max="10" value="5"> <b id="kV">5</b></label><label><input type="checkbox" id="norm"> length-normalize</label><button id="sampleB">Sample 5</button></div>
+  <div class="beams" id="beams"></div>
+  <p class="readout" id="r2"></p>
+  <ul>
+    <li><b>Greedy</b>: always the single most likely next token. Fast, but one early choice that looked best can lead into a poor sequence overall.</li>
+    <li><b>Beam search</b>: keep the \(k\) best partial sequences at every step, extend each by every token, keep the best \(k\) by total log-probability. Width 1 is greedy. Translation and speech recognition use widths of 4 to 10.</li>
+    <li><b>Sampling</b> (chapter 10's temperature): draw from the distribution. Varied, sometimes odd; the right choice for open-ended writing, where the single most likely text is bland and repetitive.</li>
+  </ul>
+  <p>Green names are real stations. Try "B": greedy commits to "Beach…" and ends at a long, less likely name, while the beam finds "Broadway" and "Bedford Av", both more probable and both real. Total log-probability always favors shorter sequences (every extra character multiplies by a probability below 1); tick length-normalize to rank by log-probability per character instead and watch longer names move up (the box below explains). Sampling invents new names, some plausible, some not.</p>
+  <div class="q" data-answer="a">
+    <p>Why does beam search compare candidates by the <i>sum of log-probabilities</i> rather than the product of probabilities?</p>
+    <ul><li data-k="a">They rank sequences identically, and the sum doesn't underflow to 0 after many tokens (Start 3)</li><li data-k="b" data-says="Products and sums of logs give exactly the same ranking.">Sums give different, better rankings</li><li data-k="c" data-says="Log-probabilities are negative, so sums are too; that's fine for comparing.">Because probabilities can be negative</li></ul>
+    <div class="why">log is increasing, so the order is preserved; and 30 tokens at probability 0.01 each is \(10^{-60}\), close to the edge of what floats hold, while the log sum is just −138.</div>
+  </div>
+  <p class="gist">Greedy takes the best next token, beam search keeps the k best sequences by total log-probability, and sampling draws for variety; the task decides which.</p>
+  <details class="deeper"><summary>Why the most likely sequence is often too short, and what length normalization does</summary>
+    <ol>
+      <li>Every token multiplies the sequence's probability by something below 1, so its log-probability only goes down as it gets longer.</li>
+      <li>So a model that can end a sentence early (an end token with decent probability) makes short outputs look better: "The cat." beats a faithful 20-word translation.</li>
+      <li>Beam search finds exactly what it's told to, the highest total log-probability, so it inherits that bias toward brevity.</li>
+      <li>The common fix divides by length (or by length to a power α ≈ 0.6–0.7): candidates are compared by average log-probability per token, not total.</li>
+      <li>A deeper version of the same problem: the single most probable output of a language model is often degenerate (repetitive, generic), which is why open-ended generation samples instead of searching.</li>
+    </ol>
+  </details>
+
+  <h2>3. Scoring a translation: BLEU</h2>
+  <p>A translation can be right in many wordings, so <b>BLEU</b> counts how many of the candidate's word sequences of length 1 to 4 (n-grams) appear in one or more reference translations, combines the four precisions by geometric mean, and penalizes candidates shorter than the reference.</p>
+  <div class="code" data-title="Build it: BLEU's modified n-gram precision"><textarea>
+from collections import Counter
+import math
+def ngrams(words, n):
+    return Counter(tuple(words[i:i + n]) for i in range(len(words) - n + 1))
+def bleu(candidate, reference, max_n=4):
+    c, r = candidate.lower().split(), reference.lower().split()
+    precisions = []
+    for n in range(1, max_n + 1):
+        cn, rn = ngrams(c, n), ngrams(r, n)
+        clipped = sum(min(k, rn[g]) for g, k in cn.items())         # a word counts only as often as the reference has it
+        precisions.append(max(clipped, 1e-9) / max(sum(cn.values()), 1))
+    brevity = min(1.0, math.exp(1 - len(r) / len(c)))                # short candidates are penalized
+    return brevity * math.exp(sum(math.log(p) for p in precisions) / max_n)
+ref = "the next uptown train is delayed because of a signal problem at court square"
+for cand in ["the next uptown train is delayed because of a signal problem at court square",
+             "the next uptown train is late because of a signal problem at court square",
+             "due to a signal problem at court square the next uptown train is delayed",
+             "the the the the the the the"]:
+    print(f"{bleu(cand, ref):.3f}  {cand}")
+</textarea></div>
+  <p>BLEU rewards exact wording: the reordered sentence keeps its meaning and loses about a third of its score. It works for comparing systems over thousands of sentences, poorly for judging one. Modern evaluation adds learned metrics and model judges (the evaluating-LLMs lesson).</p>
+  <p class="gist">BLEU scores overlapping n-grams with a reference, clipped and length-penalized: useful across a test set, blind to paraphrase in a single sentence.</p>
+  <details class="deeper"><summary>Where it breaks: exposure bias and blind metrics</summary>
+    <ul>
+      <li><b>Exposure bias.</b> Teacher forcing trains every step on the correct history; at generation time the model reads its own outputs, mistakes included, a situation it never trained on. One wrong character and the rest can unravel (chapter 10's "no undo"). Training with some of the model's own samples, or simply larger models, reduces it.</li>
+      <li><b>Beams that agree too much.</b> The k beams often differ only in their last token. Diverse beam search penalizes near-duplicates when several distinct outputs are wanted.</li>
+      <li><b>Metrics blind to meaning.</b> BLEU gives a fluent wrong translation that shares words with the reference a better score than a correct paraphrase. Check a sample by hand, and pair BLEU with human or model judgments.</li>
+    </ul>
+  </details>
+
+  <h2>4. What to carry forward</h2>
+  <ul>
+    <li>Encoder-decoder: read the input, write the output token by token; teacher forcing in training.</li>
+    <li>Attention over the encoder's vectors removed the one-vector bottleneck, and grew into the transformer.</li>
+    <li>Decoding: greedy, beam search (k best by log-probability, length-normalized), sampling for open-ended text.</li>
+    <li>BLEU for system-level comparison; humans or judges for meaning.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Sutskever, Vinyals and Le (2014); Bahdanau, Cho and Bengio (2015); Papineni et al., "BLEU" (2002).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const names = (await (await fetch("/ai/data/stations.txt")).text()).split("\n").filter(Boolean), real = new Set(names);
+const START = "^^^", END = "$", counts = new Map(), chars = new Set([END]);
+for (const n of names) { const s = START + n + END; for (let i = 3; i < s.length; i++) { const ctx = s.slice(i - 3, i), c = s[i]; chars.add(c); const m = counts.get(ctx) ?? new Map(); m.set(c, (m.get(c) ?? 0) + 1); counts.set(ctx, m); } }
+const V = [...chars];
+function probs(ctx) {                                     // add-0.002 smoothing; back off to shorter contexts when unseen
+  for (const c of [ctx, ctx.slice(1).padStart(3, "^"), ctx.slice(2).padStart(3, "^")]) { const m = counts.get(c); if (m) { const tot = [...m.values()].reduce((a, b) => a + b, 0) + 0.002 * V.length; return V.map((ch) => [ch, ((m.get(ch) ?? 0) + 0.002) / tot]); } }
+  return V.map((ch) => [ch, 1 / V.length]);
+}
+const ctxOf = (s) => (START + s).slice(-3);
+function beam(prefix, k, norm = false, maxLen = 30) {
+  let beams = [[prefix, 0]], done = [];
+  for (let step = 0; step < maxLen && beams.length; step++) {
+    const next = [];
+    for (const [s, lp] of beams) for (const [c, p] of probs(ctxOf(s))) next.push(c === END ? [s, lp + Math.log(p), true] : [s + c, lp + Math.log(p), false]);
+    next.sort((a, b) => b[1] - a[1]);
+    beams = []; for (const [s, lp, fin] of next.slice(0, k)) (fin ? done : beams).push([s, lp]);
+    if (done.length >= k) break;
+  }
+  const score = ([s, lp]) => (norm ? lp / Math.max(1, s.length - prefix.length + 1) : lp);
+  const seen = new Set();
+  return [...done, ...beams].sort((a, b) => score(b) - score(a)).filter(([s]) => !seen.has(s) && seen.add(s)).slice(0, k);
+}
+let seed = 1; const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+function sample(prefix) { let s = prefix, lp = 0; for (let i = 0; i < 30; i++) { const ps = probs(ctxOf(s)); let r = rand(), ch = END, p = 1; for (const [c, q] of ps) { r -= q; if (r <= 0) { ch = c; p = q; break; } } lp += Math.log(p); if (ch === END) break; s += ch; } return [s, lp]; }
+const row = (label, [s, lp]) => `<div>${label} <span class="${real.has(s) ? "real" : ""}">${s.replace(/</g, "&lt;")}</span> <span style="color:var(--muted)">log-prob ${lp.toFixed(1)}${real.has(s) ? " · a real station" : ""}</span></div>`;
+function render(samples) {
+  const p = $("prefix").value, k = +$("k").value; $("kV").textContent = k;
+  const norm = $("norm").checked, g = beam(p, 1)[0], b = beam(p, k, norm);
+  $("beams").innerHTML = row("greedy:", g) + `<div style="margin-top:6px">beam, width ${k}:</div>` + b.map((x, i) => row(`${i + 1}.`, x)).join("") + (samples ? `<div style="margin-top:6px">sampled:</div>` + samples.map((x) => row("·", x)).join("") : "");
+  $("r2").textContent = norm ? "ranked by log-prob per character: short endings no longer win by default" : `greedy's log-prob ${g[1].toFixed(1)} vs the beam's best ${b[0][1].toFixed(1)}: ${b[0][1] > g[1] + 0.01 ? "the beam found a more likely sequence" : "here greedy already found the beam's best"}${b[0][0] === p ? " (stopping right away is the likeliest 'name': the brevity bias, see the box below; tick length-normalize)" : ""}`;
+}
+$("prefix").addEventListener("input", () => render()); $("k").addEventListener("input", () => render()); $("norm").addEventListener("change", () => render()); $("sampleB").onclick = () => render(Array.from({ length: 5 }, () => sample($("prefix").value)));
+render();
+</script>
+</body>
+</html>
