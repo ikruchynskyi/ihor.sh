@@ -1,6 +1,6 @@
 #!/bin/sh
-# Turn the ihor.sh login agents (~/Library/LaunchAgents/sh.ihor.*.plist) into boot daemons, so the site, the SDR server
-# and the tunnel start when the Mac boots, before anyone logs in. They still run as you (not root).
+# Turn the ihor.sh login agents (~/Library/LaunchAgents/sh.ihor.*.plist) into boot daemons, so the site, the two radio
+# servers (sdr, sdr-sat) and the tunnel start when the Mac boots, before anyone logs in. They still run as you (not root).
 #   sudo ./daemons/install.sh            install (or update) the daemons
 #   sudo ./daemons/install.sh --undo     back to login agents
 set -eu
@@ -32,8 +32,10 @@ for agent in "$AGENTS"/sh.ihor.*.plist "$AGENTS"/sh.ihor.*.plist.disabled-by-dae
   daemon="/Library/LaunchDaemons/$label.plist"
   cp "$agent" "$daemon"
   # Daemons start with no user and an empty environment: run as the user, with their home and Homebrew on the PATH.
-  for key in UserName GroupName EnvironmentVariables; do $PB -c "Delete :$key" "$daemon" 2>/dev/null || true; done
-  $PB -c "Add :UserName string $USER_NAME" -c "Add :GroupName string staff" -c "Add :EnvironmentVariables dict" \
+  # The agent's own variables stay (sdr-sat's SDR_DEVICE=rtl and PORT=8074).
+  for key in UserName GroupName EnvironmentVariables:HOME EnvironmentVariables:PATH; do $PB -c "Delete :$key" "$daemon" 2>/dev/null || true; done
+  $PB -c "Add :EnvironmentVariables dict" "$daemon" 2>/dev/null || true
+  $PB -c "Add :UserName string $USER_NAME" -c "Add :GroupName string staff" \
       -c "Add :EnvironmentVariables:HOME string $USER_HOME" \
       -c "Add :EnvironmentVariables:PATH string /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" "$daemon"
   chown root:wheel "$daemon"; chmod 644 "$daemon"
