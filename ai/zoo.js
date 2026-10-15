@@ -26,7 +26,7 @@ export const accuracy = (p, set) => set.filter((d) => (p(d.x, d.y) > 0.5 ? 1 : 0
 // ---------- the map: the plane shaded by p(x, y), the training points on top ----------
 export const C = { blue: "#58c4dd", red: "#fc6255", text: "#d7dde5", muted: "#8f98a8", stage: "#14171d" };
 /** Draws model p on the canvas (span: the plane's half width), then overlay(g, toPx) if given. */
-export function map(canvas, p, points, { overlay, span = 1, cell = 4 } = {}) {
+export function map(canvas, p, points, { overlay, span = 1, cell = 4, label } = {}) {
   const g = canvas.getContext("2d"), W = canvas.width, H = canvas.height, toPx = (x, y) => [((x / span + 1) / 2) * W, ((1 - y / span) / 2) * H];
   for (let py = 0; py < H; py += cell) for (let px = 0; px < W; px += cell) {
     const q = p(((px + cell / 2) / W * 2 - 1) * span, (1 - (py + cell / 2) / H * 2) * span), s = Math.abs(q - 0.5) * 2;
@@ -35,12 +35,22 @@ export function map(canvas, p, points, { overlay, span = 1, cell = 4 } = {}) {
   }
   for (const d of points) { const [x, y] = toPx(d.x, d.y); g.fillStyle = d.c ? C.red : C.blue; g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fill(); }
   overlay?.(g, toPx);
+  if (label) {
+    canvas.setAttribute("aria-label", label);
+  } else if (!canvas.getAttribute("aria-label")) {
+    const trainAcc = points?.length ? (100 * accuracy(p, points)).toFixed(1) : "";
+    canvas.setAttribute("aria-label", `Decision boundary map${trainAcc ? `, training accuracy ${trainAcc}%` : ""}`);
+  }
 }
 /** Fit, time and draw: returns "train 98.0% · validation 95.2% · fit 12 ms". */
 export function show(canvas, fit, set, opts) {
   const t = performance.now(), p = fit(set.train), ms = performance.now() - t;
-  map(canvas, p, set.train, opts);
-  return { p, ms, text: `train ${(100 * accuracy(p, set.train)).toFixed(1)}% · validation ${(100 * accuracy(p, set.val)).toFixed(1)}% · fit ${ms < 1 ? "<1" : Math.round(ms)} ms` };
+  const trainAcc = (100 * accuracy(p, set.train)).toFixed(1);
+  const valAcc = (100 * accuracy(p, set.val)).toFixed(1);
+  const text = `train ${trainAcc}% · validation ${valAcc}% · fit ${ms < 1 ? "<1" : Math.round(ms)} ms`;
+  const summary = `Decision boundary map: train ${trainAcc}%, validation ${valAcc}%`;
+  map(canvas, p, set.train, { ...opts, label: summary });
+  return { p, ms, text };
 }
 
 // ---------- the models (small and readable; the pages' Python boxes are the real versions) ----------

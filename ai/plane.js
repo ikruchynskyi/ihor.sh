@@ -7,16 +7,107 @@ const UNIT = 60;
  * each paint. Options: unit (px per unit, 60), origin ([px, py], the center), snap (round to quarters, true).
  * A handle's fix(p) can constrain where it goes, e.g. onto a curve. Returns render().
  */
-export function scene(id, draw, handles, onChange, { unit = UNIT, origin, snap = true } = {}) {
+export function scene(id, draw, handles, onChange, { unit = UNIT, origin, snap = true, summary } = {}) {
   const cv = document.getElementById(id), g = cv.getContext("2d");
   const W = cv.width, H = cv.height, [ox, oy] = origin ?? [W / 2, H / 2];
   const toPx = ([x, y]) => [ox + x * unit, oy - y * unit], toW = (px, py) => [(px - ox) / unit, (oy - py) / unit];
   let drag = null;
+  let activeHandle = -1;
+
+  // Accessibility: focusable canvas, focus ring, role, aria-live region
+  cv.tabIndex = 0;
+  cv.setAttribute("role", "region");
+  if (!cv.getAttribute("aria-label")) {
+    cv.setAttribute("aria-label", "Interactive coordinate plane. Use Tab to select handles, arrow keys to move.");
+  }
+
+  let live = document.getElementById(id + "-live");
+  if (!live) {
+    live = document.createElement("div");
+    live.id = id + "-live";
+    live.setAttribute("aria-live", "polite");
+    live.style.cssText = "position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;";
+    cv.insertAdjacentElement("afterend", live);
+  }
+
+  function announce() {
+    if (!live) return;
+    const list = handles();
+    if (summary) {
+      live.textContent = typeof summary === "function" ? summary(list) : summary;
+      return;
+    }
+    const cur = activeHandle >= 0 && activeHandle < list.length ? list[activeHandle] : null;
+    live.textContent = cur
+      ? `Handle ${activeHandle + 1} of ${list.length} at (${cur.p[0].toFixed(2)}, ${cur.p[1].toFixed(2)})`
+      : list.map((h, i) => `Handle ${i + 1}: (${h.p[0].toFixed(2)}, ${h.p[1].toFixed(2)})`).join("; ");
+  }
+
+  cv.addEventListener("focus", () => {
+    cv.style.outline = "2px solid #58c4dd";
+    cv.style.outlineOffset = "2px";
+    if (activeHandle === -1 && handles().length > 0) {
+      activeHandle = 0;
+      render();
+      announce();
+    }
+  });
+
+  cv.addEventListener("blur", () => {
+    cv.style.outline = "none";
+    activeHandle = -1;
+    render();
+  });
+
+  cv.addEventListener("keydown", (e) => {
+    const list = handles();
+    if (!list.length) return;
+    if (e.key === "Tab") {
+      if (list.length > 1) {
+        activeHandle = (activeHandle + (e.shiftKey ? -1 : 1) + list.length) % list.length;
+        e.preventDefault();
+        render();
+        announce();
+      }
+      return;
+    }
+    if (activeHandle < 0 || activeHandle >= list.length) {
+      activeHandle = 0;
+    }
+    const h = list[activeHandle];
+    const step = e.shiftKey ? 1.0 : (snap ? 0.25 : 0.05);
+    let moved = false;
+    if (e.key === "ArrowLeft") { h.p[0] -= step; moved = true; }
+    else if (e.key === "ArrowRight") { h.p[0] += step; moved = true; }
+    else if (e.key === "ArrowDown") { h.p[1] -= step; moved = true; }
+    else if (e.key === "ArrowUp") { h.p[1] += step; moved = true; }
+
+    if (moved) {
+      e.preventDefault();
+      if (snap) {
+        h.p[0] = Math.round(h.p[0] * 4) / 4;
+        h.p[1] = Math.round(h.p[1] * 4) / 4;
+      }
+      h.fix?.(h.p);
+      render();
+      announce();
+    }
+  });
+
   const pos = (e) => { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
   cv.addEventListener("pointerdown", (e) => {
     const [px, py] = pos(e);
-    drag = handles().find((h) => { const [hx, hy] = toPx(h.p); return Math.hypot(hx - px, hy - py) < 26; }) ?? null;
-    if (drag) { cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    const list = handles();
+    const idx = list.findIndex((h) => { const [hx, hy] = toPx(h.p); return Math.hypot(hx - px, hy - py) < 26; });
+    if (idx !== -1) {
+      activeHandle = idx;
+      drag = list[idx];
+      cv.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      announce();
+    } else {
+      drag = null;
+    }
   });
   cv.addEventListener("pointermove", (e) => {
     if (!drag) return;
@@ -24,15 +115,32 @@ export function scene(id, draw, handles, onChange, { unit = UNIT, origin, snap =
     drag.p[0] = snap ? Math.round(x * 4) / 4 : x; drag.p[1] = snap ? Math.round(y * 4) / 4 : y; // quarters: friendlier numbers
     drag.fix?.(drag.p);
     render();
+    announce();
   });
   cv.addEventListener("pointerup", () => { drag = null; });
   function render() {
     g.fillStyle = C.stage; g.fillRect(0, 0, W, H);
     draw({ g, W, H, toPx, toW, unit });
-    for (const h of handles()) { const [x, y] = toPx(h.p); g.beginPath(); g.arc(x, y, 9, 0, 7); g.fillStyle = h.color; g.fill(); }
+    const list = handles();
+    for (let i = 0; i < list.length; i++) {
+      const h = list[i];
+      const [x, y] = toPx(h.p);
+      g.beginPath();
+      g.arc(x, y, 9, 0, 7);
+      g.fillStyle = h.color;
+      g.fill();
+      if (i === activeHandle) {
+        g.beginPath();
+        g.arc(x, y, 14, 0, 7);
+        g.strokeStyle = "#ffffff";
+        g.lineWidth = 2.5;
+        g.stroke();
+      }
+    }
     onChange?.();
   }
   render();
+  announce();
   return render;
 }
 
