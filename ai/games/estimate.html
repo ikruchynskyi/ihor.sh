@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Estimator · AI Mini-Game</title>
+  <meta name="description" content="Test your quantitative intuition for machine learning numbers: dimensions, constants, parameters, and probabilities. ±10% counts as right!" />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --red: #e03131;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 660px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 16px;
+    }
+    .hud-wrap {
+      margin: 14px 0 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 22px 24px;
+      margin: 16px 0;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .prompt-box {
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1.4;
+      margin: 12px 0 6px;
+    }
+    .prompt-hint {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 18px;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin: 18px 0;
+    }
+    .num-input {
+      flex: 1;
+      max-width: 260px;
+      padding: 10px 14px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 1.15rem;
+      background: var(--bg);
+    }
+    .num-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn.secondary {
+      background: transparent;
+      color: var(--fg) !important;
+      border: 1px solid var(--line);
+    }
+    .feedback-card {
+      background: color-mix(in srgb, var(--fg) 5%, transparent);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 16px 0 10px;
+      font-size: 0.95rem;
+    }
+    .target-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Games</p>
+  <h1>The Estimator</h1>
+  <p class="lede">Build your numerical intuition for machine learning! Estimate parameters, constants, and probabilities from across the course. <b>Within ±10% counts as right!</b></p>
+
+  <div class="hud-wrap" id="hud-slot"></div>
+  <div id="game-area">Loading estimation items...</div>
+</main>
+
+<script type="module">
+import { state, gain, XP, best } from "/ai/learn.js";
+import { dayOf } from "/ai/game.js";
+import { strip } from "/ai/hud.js";
+
+const $ = (id) => document.getElementById(id);
+strip($("hud-slot"));
+
+const ITEMS = [
+  { prompt: "Natural log of 10 (ln 10)", val: 2.3026, unit: "", hint: "A decimal number around 2", lesson: "s3-math-warm-up.html" },
+  { prompt: "Natural log of 2 (ln 2)", val: 0.6931, unit: "", hint: "A decimal number around 0.7", lesson: "05-probability-and-loss.html" },
+  { prompt: "Number of parameters in a 4096 × 4096 weight matrix", val: 16777216, unit: "parameters", hint: "4096 * 4096", lesson: "numpy-in-depth.html" },
+  { prompt: "Share of original rows included in a bootstrap sample (1 - 1/e)", val: 63.2, unit: "%", hint: "Percentage (e.g. 63)", lesson: "13-trees-and-boosting.html" },
+  { prompt: "Weights in a 3×3 convolution with 64 inputs and 128 output channels", val: 73728, unit: "weights", hint: "3 * 3 * 64 * 128", lesson: "06-convolutions.html" },
+  { prompt: "Total pixels in a standard 224 × 224 RGB image (3 channels)", val: 150528, unit: "pixels", hint: "224 * 224 * 3", lesson: "09-vision.html" },
+  { prompt: "VRAM needed to store 7 billion FP16 parameters (in Gigabytes)", val: 14.0, unit: "GB", hint: "2 bytes per parameter", lesson: "fine-tuning-and-lora.html" },
+  { prompt: "VRAM needed to store 7 billion 4-bit quantized parameters (in Gigabytes)", val: 3.5, unit: "GB", hint: "0.5 bytes per parameter", lesson: "fine-tuning-and-lora.html" },
+  { prompt: "Shannon entropy of a fair 8-sided die in bits (log₂ 8)", val: 3.0, unit: "bits", hint: "log2 of 8", lesson: "p5-information.html" },
+  { prompt: "Shannon entropy of a fair coin toss in bits (log₂ 2)", val: 1.0, unit: "bits", hint: "log2 of 2", lesson: "p5-information.html" },
+  { prompt: "Euler's constant e", val: 2.718, unit: "", hint: "Decimal around 2.7", lesson: "c1-derivatives.html" },
+  { prompt: "Percentage of data within ±1σ of mean in a normal distribution", val: 68.3, unit: "%", hint: "The empirical rule for 1 sigma", lesson: "p2-describing-data.html" },
+  { prompt: "Percentage of data within ±2σ of mean in a normal distribution", val: 95.4, unit: "%", hint: "The empirical rule for 2 sigma", lesson: "p2-describing-data.html" },
+  { prompt: "Percentage of data within ±3σ of mean in a normal distribution", val: 99.7, unit: "%", hint: "The empirical rule for 3 sigma", lesson: "p2-describing-data.html" },
+  { prompt: "Sigmoid function value at z = 0: σ(0)", val: 0.5, unit: "", hint: "1 / (1 + e^0)", lesson: "03-a-neuron.html" },
+  { prompt: "Maximum derivative of the standard sigmoid activation function", val: 0.25, unit: "", hint: "Occurs at z = 0 (0.5 * 0.5)", lesson: "deep-networks.html" },
+  { prompt: "Theoretical cross-entropy loss of uniform random guessing over 10 classes", val: 2.303, unit: "nats", hint: "-ln(1/10) = ln(10)", lesson: "making-nets-train.html" },
+  { prompt: "Theoretical cross-entropy loss of uniform random guessing over 1000 classes", val: 6.908, unit: "nats", hint: "-ln(1/1000) = ln(1000)", lesson: "05-probability-and-loss.html" },
+  { prompt: "Total elements in a tensor of shape (32, 12, 128, 64)", val: 3145728, unit: "elements", hint: "Multiply the four dimensions", lesson: "numpy-in-depth.html" },
+  { prompt: "Vocabulary size of standard GPT-4 / tiktoken cl100k tokenizer", val: 100000, unit: "tokens", hint: "Around 100k tokens", lesson: "tokens.html" },
+  { prompt: "Parameters in an embedding layer with 50,000 vocab and d = 768", val: 38400000, unit: "weights", hint: "50000 * 768", lesson: "word-vectors.html" },
+  { prompt: "Entries in a self-attention matrix for a sequence length of 2048", val: 4194304, unit: "cells", hint: "2048 * 2048", lesson: "07-attention.html" },
+  { prompt: "Trainable parameters in LoRA adapter matrices for d=4096, rank r=16", val: 131072, unit: "weights", hint: "2 * 4096 * 16", lesson: "fine-tuning-and-lora.html" },
+  { prompt: "Unique pairs in a room of 23 people (the birthday paradox)", val: 253, unit: "pairs", hint: "23 * 22 / 2", lesson: "p1-probability-and-bayes.html" },
+  { prompt: "Probability of at least one shared birthday among 23 people", val: 50.7, unit: "%", hint: "Just over half", lesson: "p1-probability-and-bayes.html" },
+  { prompt: "Approximate total parameters in a standard ResNet-50", val: 25600000, unit: "parameters", hint: "Around 25.6 million", lesson: "deep-cnns.html" },
+  { prompt: "Context window token limit of original GPT-3", val: 2048, unit: "tokens", hint: "A power of 2", lesson: "10-tiny-transformer.html" },
+  { prompt: "Area multiplication factor of a 2×2 matrix with determinant 4", val: 4.0, unit: "× area", hint: "Determinant equals area scale", lesson: "01-matrices-are-moves.html" },
+  { prompt: "Cosine similarity between two identical parallel unit vectors", val: 1.0, unit: "", hint: "cos(0°)", lesson: "word-vectors.html" },
+  { prompt: "Cosine similarity between two perpendicular (orthogonal) vectors", val: 0.0, unit: "", hint: "cos(90°)", lesson: "01-matrices-are-moves.html" },
+  { prompt: "Default first-moment momentum beta1 in the Adam optimizer", val: 0.9, unit: "", hint: "Decimal between 0.8 and 1.0", lesson: "optimizers.html" },
+  { prompt: "Default second-moment beta2 in the Adam optimizer", val: 0.999, unit: "", hint: "Close to 1", lesson: "optimizers.html" },
+  { prompt: "Number of classes in the MNIST handwritten digit benchmark", val: 10, unit: "classes", hint: "Digits 0 through 9", lesson: "training-in-pytorch.html" },
+  { prompt: "Number of target classes in standard ImageNet-1k classification", val: 1000, unit: "classes", hint: "1k benchmark", lesson: "09-vision.html" },
+  { prompt: "He initialization standard deviation for fan_in = 128: √(2/128)", val: 0.125, unit: "", hint: "sqrt(1/64) = 1/8", lesson: "making-nets-train.html" },
+  { prompt: "Derivative of tanh(z) at z = 0", val: 1.0, unit: "", hint: "1 - tanh(0)^2", lesson: "c1-derivatives.html" },
+  { prompt: "Degrees of freedom when estimating variance across 100 observations", val: 99, unit: "df", hint: "N - 1", lesson: "p2-describing-data.html" },
+  { prompt: "Number of unique parameters in a symmetric 10 × 10 covariance matrix", val: 55, unit: "entries", hint: "10 on diagonal + (100-10)/2", lesson: "p2-describing-data.html" },
+  { prompt: "Cohen's kappa score indicating pure random chance agreement", val: 0.0, unit: "kappa", hint: "Zero indicates chance", lesson: "evaluating-llms.html" },
+  { prompt: "Cohen's kappa score indicating perfect agreement between raters", val: 1.0, unit: "kappa", hint: "Maximum agreement", lesson: "evaluating-llms.html" }
+];
+
+const TOTAL_ROUNDS = 10;
+let round = 1;
+let score = 0;
+let streak = 0;
+let bestStreak = 0;
+const pool = [...ITEMS].sort(() => Math.random() - 0.5);
+
+function startRound() {
+  const item = pool[(round - 1) % pool.length];
+  const area = $("game-area");
+
+  area.innerHTML = `
+    <div class="card">
+      <div class="status-bar">
+        <span>Round ${round} of ${TOTAL_ROUNDS}</span>
+        <span>Score: ${score} · Streak: 🔥 ${streak}</span>
+      </div>
+
+      <div class="prompt-box">${item.prompt}</div>
+      <div class="prompt-hint">${item.hint ? `Tip: ${item.hint} · ` : ""}From <a href="./../${item.lesson}" target="_blank" rel="noopener">lesson</a></div>
+
+      <form id="est-form">
+        <div class="input-row">
+          <input type="number" step="any" class="num-input" id="guess-input" placeholder="Your estimate" required autofocus />
+          <span style="font-weight:600; color:var(--muted);">${item.unit}</span>
+          <button type="submit" class="btn" id="submit-btn">Check</button>
+        </div>
+      </form>
+
+      <div id="feedback-slot"></div>
+    </div>
+  `;
+
+  const input = $("guess-input");
+  input.focus();
+
+  $("est-form").onsubmit = (e) => {
+    e.preventDefault();
+    const guess = parseFloat(input.value);
+    if (isNaN(guess)) return;
+
+    $("guess-input").disabled = true;
+    $("submit-btn").disabled = true;
+
+    const diff = Math.abs(guess - item.val);
+    const tol = Math.max(0.01, 0.10 * Math.abs(item.val));
+    const isCorrect = diff <= tol;
+
+    const pctDiff = ((diff / Math.abs(item.val)) * 100).toFixed(1);
+
+    if (isCorrect) {
+      score++;
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+
+      const day = dayOf();
+      const todayGames = state.log[day]?.acts?.game ?? 0;
+      let xpMsg = "";
+      if (todayGames < 10) {
+        gain(XP.game, "game");
+        xpMsg = ` (+${XP.game} XP)`;
+      }
+
+      $("feedback-slot").innerHTML = `
+        <div class="feedback-card" style="border-left: 4px solid var(--green);">
+          <b style="color:var(--green)">✓ Spot on!${xpMsg}</b> (within ${pctDiff}% error).<br>
+          <div class="target-val">True value: ${item.val.toLocaleString()} ${item.unit}</div>
+          Your guess: <b>${guess.toLocaleString()}</b>
+        </div>
+        <div style="text-align:right; margin-top:14px;">
+          <button class="btn" id="next-btn">${round < TOTAL_ROUNDS ? "Next Round →" : "See Final Score →"}</button>
+        </div>
+      `;
+    } else {
+      streak = 0;
+      $("feedback-slot").innerHTML = `
+        <div class="feedback-card" style="border-left: 4px solid var(--red);">
+          <b style="color:var(--red)">Missed.</b> (off by ${pctDiff}%).<br>
+          <div class="target-val">True value: ${item.val.toLocaleString()} ${item.unit}</div>
+          Your guess: <b>${guess.toLocaleString()}</b> (acceptable range: ${(item.val - tol).toFixed(2)} to ${(item.val + tol).toFixed(2)})
+        </div>
+        <div style="text-align:right; margin-top:14px;">
+          <button class="btn" id="next-btn">${round < TOTAL_ROUNDS ? "Next Round →" : "See Final Score →"}</button>
+        </div>
+      `;
+    }
+
+    $("next-btn").onclick = () => {
+      if (round < TOTAL_ROUNDS) {
+        round++;
+        startRound();
+      } else {
+        showGameOver();
+      }
+    };
+  };
+}
+
+function showGameOver() {
+  const prevBest = state.best?.["estimate"] || 0;
+  const isNewBest = score > prevBest;
+  best("estimate", score);
+
+  const area = $("game-area");
+  area.innerHTML = `
+    <div class="card" style="text-align:center; padding: 36px 20px;">
+      <div style="font-size: 2.4rem; margin-bottom: 8px;">${score >= 8 ? "🏆" : "📐"}</div>
+      <h2 style="margin: 0 0 6px;">Game Finished!</h2>
+      <div style="font-size: 1.4rem; font-weight: 700; margin: 8px 0; color: var(--accent);">
+        Final Score: ${score} / ${TOTAL_ROUNDS}
+      </div>
+      <p style="color:var(--muted); max-width: 480px; margin: 10px auto 20px;">
+        Best streak this run: <b>🔥 ${bestStreak}</b> · All-time personal best: <b>${Math.max(score, prevBest)} / ${TOTAL_ROUNDS}</b>
+        ${isNewBest ? "<br><b style='color:var(--green)'>🎉 New Personal Best!</b>" : ""}
+      </p>
+      <div style="display:flex; justify-content:center; gap: 12px; flex-wrap:wrap;">
+        <button class="btn" id="replay-btn">Play Again →</button>
+        <a class="btn secondary" href="./which-model.html">Try Which Model? →</a>
+        <a class="btn secondary" href="./">Back to Course →</a>
+      </div>
+    </div>
+  `;
+
+  $("replay-btn").onclick = () => {
+    round = 1;
+    score = 0;
+    streak = 0;
+    bestStreak = 0;
+    startRound();
+  };
+}
+
+startRound();
+</script>
+</body>
+</html>

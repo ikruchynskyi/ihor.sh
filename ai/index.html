@@ -162,6 +162,36 @@
     <li class="card"><span class="tag">Elective</span><a href="./diffusion.html"><b>How image generators work</b></a><p>Diffusion: an image dissolving into noise, a network that predicts the noise, points flowing back onto data, text guidance, latents, and memorization.</p></li>
   </ol>
 
+  <h2 id="games">Games</h2>
+  <p class="goal">Interactive visual challenges and estimations to build mathematical and geometrical intuition. High scores persist in this browser.</p>
+  <div class="games-grid" id="games-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 16px 0 32px;">
+    <div class="card" style="margin:0;">
+      <b><a href="./games/which-model.html">Which Model?</a></b>
+      <p style="margin:4px 0 8px; font-size:0.9rem; color:var(--muted);">Identify models from the zoo by their decision boundary shapes across 10 rounds.</p>
+      <span class="mini" id="best-which-model" style="font-weight:600; font-size:0.85rem; color:var(--accent);"></span>
+    </div>
+    <div class="card" style="margin:0;">
+      <b><a href="./games/estimate.html">The Estimator</a></b>
+      <p style="margin:4px 0 8px; font-size:0.9rem; color:var(--muted);">Guess key ML constants, parameters, and probabilities within ±10%.</p>
+      <span class="mini" id="best-estimate" style="font-weight:600; font-size:0.85rem; color:var(--accent);"></span>
+    </div>
+    <div class="card" style="margin:0;">
+      <b><a href="./making-nets-train.html#dx">Loss-Curve Doctor</a></b>
+      <p style="margin:4px 0 8px; font-size:0.9rem; color:var(--muted);">Diagnose training and validation loss curves in real-time patients.</p>
+      <span class="mini" id="best-loss-doctor" style="font-weight:600; font-size:0.85rem; color:var(--accent);"></span>
+    </div>
+    <div class="card" style="margin:0;">
+      <b><a href="./experiments.html#lot">The Seed Lottery</a></b>
+      <p style="margin:4px 0 8px; font-size:0.9rem; color:var(--muted);">Predict whether Model A or Model B wins under random seed variance.</p>
+      <span class="mini" id="best-seed-lottery" style="font-weight:600; font-size:0.85rem; color:var(--accent);"></span>
+    </div>
+    <div class="card" style="margin:0;">
+      <b><a href="./evaluating-llms.html#item">Grade the Graders</a></b>
+      <p style="margin:4px 0 8px; font-size:0.9rem; color:var(--muted);">Judge 18 LLM answers and benchmark your agreement against AI judges.</p>
+      <span class="mini" id="best-eval-graders" style="font-weight:600; font-size:0.85rem; color:var(--accent);"></span>
+    </div>
+  </div>
+
   <h2 class="stage" id="the-end">At the end, you can</h2>
   <ul class="check">
     <li>Frame a problem as ML (or decide it shouldn't be), pick a metric that matches the cost of mistakes, and set a baseline.</li>
@@ -212,6 +242,13 @@ you.querySelector("details").addEventListener("toggle", () => { pcode.value = pr
 you.querySelector("#pcopy").onclick = async () => { pcode.value = progressCode(); try { await navigator.clipboard.writeText(pcode.value); pmsg.textContent = "Copied."; } catch { pcode.select(); pmsg.textContent = "Selected: copy it."; } };
 you.querySelector("#pload").onclick = () => { try { loadProgressCode(pcode.value); pmsg.textContent = "Loaded."; location.reload(); } catch { pmsg.textContent = "That isn't a progress code."; } };
 document.querySelector(".lede")?.after(you);
+const bests = state.best || {};
+const $ = (id) => document.getElementById(id);
+if ($("best-which-model")) $("best-which-model").textContent = bests["which-model"] != null ? `Best: ${bests["which-model"]}/10` : "Play →";
+if ($("best-estimate")) $("best-estimate").textContent = bests["estimate"] != null ? `Best: ${bests["estimate"]}/10` : "Play →";
+if ($("best-loss-doctor")) $("best-loss-doctor").textContent = bests["loss-doctor"] != null ? `Best streak: ${bests["loss-doctor"]}` : "Play →";
+if ($("best-seed-lottery")) $("best-seed-lottery").textContent = bests["seed-lottery"] != null ? `Best streak: ${bests["seed-lottery"]}` : "Play →";
+if ($("best-eval-graders")) $("best-eval-graders").textContent = bests["eval-graders"] != null ? `Best: ${bests["eval-graders"]}/18` : "Play →";
 </script>
 </body>
 </html>

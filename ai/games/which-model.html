@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Which Model? · AI Mini-Game</title>
+  <meta name="description" content="Can you identify a machine learning model by its decision boundary? 10 rounds of visual intuition from the model zoo." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --red: #e03131;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 16px;
+    }
+    .hud-wrap {
+      margin: 14px 0 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .canvas-box {
+      text-align: center;
+      margin: 16px 0;
+    }
+    canvas {
+      width: 100%;
+      max-width: 440px;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      border: 1px solid #14171d;
+      background: #14171d;
+      display: inline-block;
+    }
+    .legend {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0 8px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0;
+    }
+    @media (max-width: 480px) {
+      .options-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .opt-btn {
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 2px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      color: var(--fg);
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .opt-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+    .opt-btn.correct {
+      border-color: var(--green);
+      background: color-mix(in srgb, var(--green) 12%, transparent);
+      color: #2b8a3e;
+    }
+    .opt-btn.wrong {
+      border-color: var(--red);
+      background: color-mix(in srgb, var(--red) 12%, transparent);
+      color: #c92a2a;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn.secondary {
+      background: transparent;
+      color: var(--fg) !important;
+      border: 1px solid var(--line);
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .explanation {
+      background: color-mix(in srgb, var(--fg) 5%, transparent);
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Games</p>
+  <h1>Which Model?</h1>
+  <p class="lede">Every machine learning model has its own geometric fingerprint. Look at the decision boundary, read the shapes, and guess which model drew it!</p>
+
+  <div class="hud-wrap" id="hud-slot"></div>
+  <div id="game-area">Loading model zoo...</div>
+</main>
+
+<script type="module">
+import { state, gain, XP, best } from "/ai/learn.js";
+import { dayOf } from "/ai/game.js";
+import { strip } from "/ai/hud.js";
+import { DATASETS, data, map, logistic, knn, naiveBayes, tree, forest, boost, svm, mlp } from "/ai/zoo.js";
+
+const $ = (id) => document.getElementById(id);
+strip($("hud-slot"));
+
+const MODELS = [
+  {
+    id: "logistic",
+    name: "Logistic Regression",
+    fit: (pts) => logistic(pts, { poly: false, steps: 1500 }),
+    clue: "A single smooth linear boundary (a straight hyperplane) separating the two colors."
+  },
+  {
+    id: "naiveBayes",
+    name: "Naive Bayes",
+    fit: (pts) => naiveBayes(pts),
+    clue: "Axis-aligned smooth curves or elliptic clouds, because it treats x and y as conditionally independent."
+  },
+  {
+    id: "tree",
+    name: "Decision Tree",
+    fit: (pts) => tree(pts, { depth: 4, minLeaf: 2 }),
+    clue: "Sharp axis-aligned boxes and rectangular step boundaries from perpendicular cuts (x ≤ c or y ≤ c)."
+  },
+  {
+    id: "forest",
+    name: "Random Forest",
+    fit: (pts) => forest(pts, { trees: 30, depth: 8, seed: 12 }),
+    clue: "Stepped rectangular contours softened and smoothed out by averaging dozens of random trees."
+  },
+  {
+    id: "boost",
+    name: "Gradient Boosting",
+    fit: (pts) => boost(pts, { trees: 60, eta: 0.1, depth: 3 }),
+    clue: "Tight, complex step-like boundary contours tightly hugging the training data from additive trees."
+  },
+  {
+    id: "knn",
+    name: "k-Nearest Neighbors (k-NN)",
+    fit: (pts) => knn(pts, { k: 5 }),
+    clue: "Patchwork islands and jagged local Voronoi-like pockets wrapping tightly around isolated training points."
+  },
+  {
+    id: "svm",
+    name: "Support Vector Machine (RBF)",
+    fit: (pts) => svm(pts, { kernel: "rbf", gamma: 2.5, C: 2, passes: 8 }),
+    clue: "Smooth non-linear curved margin with continuous contours governed by distance to support vectors."
+  },
+  {
+    id: "mlp",
+    name: "Multilayer Perceptron (Neural Net)",
+    fit: (pts) => mlp(pts, { hidden: 8, steps: 1400, lr: 0.04 }),
+    clue: "Smooth non-linear sigmoid curves bending across the plane from composition of hidden tanh neurons."
+  }
+];
+
+const DATASET_KEYS = ["moons", "circles", "diagonal", "xor", "blobs"];
+
+let round = 1;
+let score = 0;
+let streak = 0;
+let bestStreak = 0;
+const TOTAL_ROUNDS = 10;
+
+function startRound() {
+  const area = $("game-area");
+  
+  // Pick random target model
+  const targetModel = MODELS[Math.floor(Math.random() * MODELS.length)];
+  
+  // Pick 3 distractors
+  const distractors = MODELS.filter((m) => m.id !== targetModel.id).sort(() => Math.random() - 0.5).slice(0, 3);
+  const roundOptions = [targetModel, ...distractors].sort(() => Math.random() - 0.5);
+
+  // Pick random dataset
+  const dKey = DATASET_KEYS[Math.floor(Math.random() * DATASET_KEYS.length)];
+  const currentData = data(dKey, { n: 160, noise: 0.06, seed: (Date.now() % 10000) });
+
+  // Fit model
+  const modelFunc = targetModel.fit(currentData.train);
+
+  area.innerHTML = `
+    <div class="card">
+      <div class="status-bar">
+        <span>Round ${round} of ${TOTAL_ROUNDS}</span>
+        <span>Score: ${score} · Streak: 🔥 ${streak}</span>
+      </div>
+
+      <div class="canvas-box">
+        <canvas id="zoo-cv" width="440" height="440"></canvas>
+        <div class="legend">
+          <span><i class="dot" style="background:#58c4dd;"></i> Class 0</span>
+          <span><i class="dot" style="background:#fc6255;"></i> Class 1</span>
+          <span style="color:var(--muted); font-size:0.8rem;">Dataset: ${DATASETS[dKey].label}</span>
+        </div>
+      </div>
+
+      <div style="font-weight: 600; font-size: 0.95rem; margin-top: 10px;">Which model produced this decision boundary?</div>
+      <div class="options-grid" id="opt-grid">
+        ${roundOptions.map((opt) => `
+          <button type="button" class="opt-btn" data-id="${opt.id}">${opt.name}</button>
+        `).join("")}
+      </div>
+
+      <div id="feedback-slot"></div>
+    </div>
+  `;
+
+  const canvas = $("zoo-cv");
+  map(canvas, modelFunc, currentData.train);
+
+  let answered = false;
+  $("opt-grid").querySelectorAll(".opt-btn").forEach((btn) => {
+    btn.onclick = () => {
+      if (answered) return;
+      answered = true;
+      const isCorrect = btn.dataset.id === targetModel.id;
+
+      if (isCorrect) {
+        btn.classList.add("correct");
+        score++;
+        streak++;
+        if (streak > bestStreak) bestStreak = streak;
+
+        // Reward XP if under daily cap (10 game answers per day)
+        const day = dayOf();
+        const todayGames = state.log[day]?.acts?.game ?? 0;
+        let xpMsg = "";
+        if (todayGames < 10) {
+          gain(XP.game, "game");
+          xpMsg = ` (+${XP.game} XP)`;
+        }
+
+        $("feedback-slot").innerHTML = `
+          <div class="explanation">
+            <b style="color:var(--green)">✓ Correct!${xpMsg}</b> That's <b>${targetModel.name}</b>.<br>
+            <i>Why:</i> ${targetModel.clue}
+          </div>
+          <div style="text-align:right;">
+            <button class="btn" id="next-btn">${round < TOTAL_ROUNDS ? "Next Round →" : "See Final Score →"}</button>
+          </div>
+        `;
+      } else {
+        btn.classList.add("wrong");
+        streak = 0;
+        const correctBtn = $("opt-grid").querySelector(`[data-id="${targetModel.id}"]`);
+        correctBtn?.classList.add("correct");
+
+        $("feedback-slot").innerHTML = `
+          <div class="explanation">
+            <b style="color:var(--red)">Not quite.</b> This was <b>${targetModel.name}</b>.<br>
+            <i>Key clue:</i> ${targetModel.clue}
+          </div>
+          <div style="text-align:right;">
+            <button class="btn" id="next-btn">${round < TOTAL_ROUNDS ? "Next Round →" : "See Final Score →"}</button>
+          </div>
+        `;
+      }
+
+      $("next-btn").onclick = () => {
+        if (round < TOTAL_ROUNDS) {
+          round++;
+          startRound();
+        } else {
+          showGameOver();
+        }
+      };
+    };
+  });
+}
+
+function showGameOver() {
+  const prevBest = state.best?.["which-model"] || 0;
+  const isNewBest = score > prevBest;
+  best("which-model", score);
+
+  const area = $("game-area");
+  area.innerHTML = `
+    <div class="card" style="text-align:center; padding: 36px 20px;">
+      <div style="font-size: 2.4rem; margin-bottom: 8px;">${score >= 8 ? "🏆" : "🎯"}</div>
+      <h2 style="margin: 0 0 6px;">Game Finished!</h2>
+      <div style="font-size: 1.4rem; font-weight: 700; margin: 8px 0; color: var(--accent);">
+        Final Score: ${score} / ${TOTAL_ROUNDS}
+      </div>
+      <p style="color:var(--muted); max-width: 480px; margin: 10px auto 20px;">
+        Best streak this run: <b>🔥 ${bestStreak}</b> · All-time personal best: <b>${Math.max(score, prevBest)} / ${TOTAL_ROUNDS}</b>
+        ${isNewBest ? "<br><b style='color:var(--green)'>🎉 New Personal Best!</b>" : ""}
+      </p>
+      <div style="display:flex; justify-content:center; gap: 12px; flex-wrap:wrap;">
+        <button class="btn" id="replay-btn">Play Again →</button>
+        <a class="btn secondary" href="./estimate.html">Try Estimation Game →</a>
+        <a class="btn secondary" href="./">Back to Course →</a>
+      </div>
+    </div>
+  `;
+
+  $("replay-btn").onclick = () => {
+    round = 1;
+    score = 0;
+    streak = 0;
+    bestStreak = 0;
+    startRound();
+  };
+}
+
+startRound();
+</script>
+</body>
+</html>

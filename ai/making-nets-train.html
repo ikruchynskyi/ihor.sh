@@ -164,6 +164,7 @@ print("spread after 50 residual blocks:", f"{resid.std():.2f}")
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
 <script type="module">
+import { state, best } from "/ai/learn.js";
 const $ = (id) => document.getElementById(id);
 // ---------- 1. signal through 20 layers ----------
 let seed = 7;
@@ -223,7 +224,7 @@ const WHY = {
   under: "Both curves flatten early, close together, far above where they should be: the model can't fit even its training data. Make it bigger or train longer.",
   fine: "Both falling, close together, still going down: nothing to fix yet. Keep training and keep watching validation.",
 };
-let order = Object.keys(CASES).sort(() => rand() - 0.5), idx = 0, right = 0, seen = 0, answered = false;
+let order = Object.keys(CASES).sort(() => rand() - 0.5), idx = 0, right = 0, seen = 0, streak = 0, answered = false;
 function drawCase() {
   const kind = order[idx % order.length], cv = $("curve"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
   seed = 100 + idx; const pts = Array.from({ length: 120 }, (_, i) => CASES[kind](i / 119));
@@ -236,14 +237,23 @@ function drawCase() {
   $("r5").textContent = "What's going on with this run?"; answered = false;
   $("dx").querySelectorAll("button").forEach((b) => b.onclick = () => {
     if (answered) return; answered = true; seen++;
-    const ok = b.dataset.id === kind; if (ok) right++;
+    const ok = b.dataset.id === kind;
+    if (ok) {
+      right++; streak++;
+      best("loss-doctor", streak);
+    } else {
+      streak = 0;
+    }
     b.classList.add(ok ? "right" : "wrong"); if (!ok) $("dx").querySelector(`[data-id=${kind}]`).classList.add("right");
     $("r5").textContent = (ok ? "Right. " : "Not quite. ") + WHY[kind];
-    $("score").textContent = `${right} of ${seen} diagnosed${seen >= 6 && right === seen ? " · a perfect round" : ""}`;
+    const bScore = state.best?.["loss-doctor"] || streak;
+    $("score").textContent = `${right} of ${seen} diagnosed · streak: ${streak} (your best: ${bScore})${seen >= 6 && right === seen ? " · a perfect round" : ""}`;
   });
 }
 $("nextCase").onclick = () => { idx++; if (idx % order.length === 0) order = Object.keys(CASES).sort(() => rand() - 0.5); drawCase(); };
 drawCase();
+const initBest = state.best?.["loss-doctor"] || 0;
+if (initBest) $("score").textContent = `your best streak: ${initBest}`;
 </script>
 </body>
 </html>

@@ -29,7 +29,7 @@
   <h2>1. The seed lottery</h2>
   <p>Two small networks on chapter 6's handwritten digits: model A has 16 hidden neurons, model B has 20. Each was trained 10 times, identical in every way except the <b>random seed</b>, which sets the starting weights and the order of the examples. Every dot is one real run (scikit-learn, 60 epochs, 540 test digits).</p>
   <canvas id="lot" width="800" height="250" aria-label="Test accuracy of ten runs of each model, differing only in the seed"></canvas>
-  <div class="row"><button id="draw">Run each model once</button><button id="draw100">…100 times</button></div>
+  <div class="row"><button id="draw">Run each model once</button><button id="guessA">Predict A wins</button><button id="guessB">Predict B wins</button><button id="draw100">…100 times</button><span class="readout" id="lot-score" style="margin:0 0 0 8px"></span></div>
   <p class="legend"><i style="background:#58c4dd"></i>model A (16 neurons) <i style="background:#f4a259"></i>model B (20 neurons)</p>
   <p class="readout" id="r1"></p>
   <p>B is better on average (92.4% against 91.3%). But A's runs spread from 89.3% to 93.1%, wider than the gap between the models. Compare one run of each and A wins about a quarter of the time. A team that tries an idea once, sees +0.8%, and ships it, is often shipping a lucky seed.</p>
@@ -139,12 +139,17 @@ print("one letter changed:", fingerprint(changed), " ← completely different")
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
 <script type="module">
+import { state, best } from "/ai/learn.js";
 const $ = (id) => document.getElementById(id);
 // measured: scikit-learn MLPClassifier, 60 epochs, seeds 0–9, digits with a 30% test split (random_state=0)
 const A = [0.894, 0.928, 0.92, 0.909, 0.919, 0.93, 0.931, 0.893, 0.894, 0.909];
 const B = [0.917, 0.928, 0.911, 0.933, 0.92, 0.92, 0.933, 0.92, 0.926, 0.928];
 const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
-let pick = null, tally = { a: 0, b: 0, tie: 0 };
+let pick = null, tally = { a: 0, b: 0, tie: 0 }, streak = 0;
+const updateScore = () => {
+  const b = state.best?.["seed-lottery"] || 0;
+  $("lot-score").textContent = `streak: ${streak} (your best: ${b})`;
+};
 function draw() {
   const cv = $("lot"), g = cv.getContext("2d"), W = cv.width, H = cv.height, lo = 0.885, hi = 0.94, X = (v) => 60 + ((v - lo) / (hi - lo)) * (W - 90);
   g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, monospace";
@@ -165,9 +170,22 @@ function report(last) {
   $("r1").innerHTML = (last ? `this time: A ${(A[last.i] * 100).toFixed(1)}% vs B ${(B[last.j] * 100).toFixed(1)}% → ${last.k === "tie" ? "a tie" : `<b>${last.k.toUpperCase()} wins</b>`}<br>` : "") +
     `so far: A won ${tally.a} of ${n} (${((tally.a / n) * 100).toFixed(0)}%), B ${tally.b}, ties ${tally.tie} · lines are each model's average over 10 seeds`;
 }
+function bet(guess) {
+  const r = once(); draw(); report(r);
+  if (r.k === guess) {
+    streak++;
+    best("seed-lottery", streak);
+  } else {
+    streak = 0;
+  }
+  updateScore();
+}
 $("draw").onclick = () => { const r = once(); draw(); report(r); };
+$("guessA").onclick = () => bet("a");
+$("guessB").onclick = () => bet("b");
 $("draw100").onclick = () => { let r; for (let t = 0; t < 100; t++) r = once(); draw(); report(r); };
 draw();
+updateScore();
 $("r1").textContent = "Each dot is one training run. The lines are the averages. Press a button to compare single runs.";
 </script>
 </body>

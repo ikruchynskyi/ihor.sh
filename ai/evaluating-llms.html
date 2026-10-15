@@ -113,6 +113,7 @@ for d in data:
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
 <script type="module">
+import { state, best } from "/ai/learn.js";
 const $ = (id) => document.getElementById(id);
 const items = (await fetch("/ai/data/llm-eval.json").then((r) => r.json())).graded;
 // the notebook's SmolLM2-360M judge, measured on these 18 items (yes = 1)
@@ -122,20 +123,25 @@ const CONTAINS = items.map((d) => (` ${norm(d.answer)} `.includes(` ${norm(d.ref
 const LABEL = items.map((d) => d.label);
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 let i = 0; const mine = [];
+const N = items.length;
 function show() {
   if (i >= items.length) return finish();
   const d = items[i];
+  const b = state.best?.["eval-graders"];
   $("item").innerHTML = `<div class="lbl">question</div>${esc(d.q)}<div class="lbl">reference</div>${esc(d.reference)}<div class="lbl">answer to grade</div><b>${esc(d.answer)}</b>`;
-  $("prog").textContent = `${i + 1} of ${items.length}`;
+  $("prog").textContent = `${i + 1} of ${items.length}${b != null ? ` · your best: ${b}/${N}` : ""}`;
 }
-const N = items.length;
 const kappa = (a, b) => { const n = a.length, po = a.filter((x, k) => x === b[k]).length / n, pa = a.reduce((s, x) => s + x, 0) / n, pb = b.reduce((s, x) => s + x, 0) / n, pe = pa * pb + (1 - pa) * (1 - pb); return pe === 1 ? 1 : (po - pe) / (1 - pe); };
 const agree = (a, b) => a.filter((x, k) => x === b[k]).length;
 function finish() {
   $("item").innerHTML = "Done. Here's how the graders compare.";
   $("yes").disabled = $("no").disabled = true;
+  const score = agree(mine, LABEL);
+  best("eval-graders", score);
+  const userBest = state.best?.["eval-graders"] || score;
   const rows = [["you", mine], ["contains-the-reference check", CONTAINS], ["SmolLM2-360M as judge", JUDGE], ["always says correct", items.map(() => 1)]];
-  $("report").innerHTML = `<table class="cmp"><tr><th>Grader</th><th>agrees with the labels</th><th>kappa vs labels</th><th>agrees with you</th></tr>` +
+  $("report").innerHTML = `<p style="font-weight:600;margin:6px 0">Your agreement: ${score} / ${N} · Your best: ${userBest} / ${N}</p>` +
+    `<table class="cmp"><tr><th>Grader</th><th>agrees with the labels</th><th>kappa vs labels</th><th>agrees with you</th></tr>` +
     rows.map(([n, g]) => `<tr><td>${n}</td><td>${agree(g, LABEL)} / ${N}</td><td>${kappa(g, LABEL).toFixed(2)}</td><td>${n === "you" ? "–" : `${agree(g, mine)} / ${N}`}</td></tr>`).join("") + `</table>` +
     `<p class="readout">Where you and the labels differed: ${items.map((d, k) => (mine[k] !== d.label ? `"${esc(d.answer.slice(0, 50))}" (label: ${d.label ? "correct" : "not"})` : null)).filter(Boolean).join("; ") || "nowhere"}.</p>`;
 }
