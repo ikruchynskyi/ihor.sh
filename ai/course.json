@@ -3584,5 +3584,124 @@
     "sec": 5
    }
   ]
+ },
+ "numpy-in-depth.html": {
+  "goals": [
+   "Predict the shape of any reduction or broadcast before running it",
+   "Tell views from copies, and avoid in-place changes leaking into the original",
+   "Turn a loop over numbers into array code, including every-pair tables",
+   "Write sums over indices with einsum and estimate an array's memory"
+  ],
+  "needs": [
+   "s2-just-enough-code.html",
+   "01-matrices-are-moves.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "axis",
+    "The direction a reduction uses up: axis=0 down the rows (one result per column), axis=1 across each row."
+   ],
+   [
+    "keepdims=True",
+    "Keeps a reduced axis as size 1, so the result broadcasts back against the original."
+   ],
+   [
+    "Broadcasting rule",
+    "Line shapes up from the right; each pair equal or one of them 1 (missing counts as 1); size-1 axes stretch."
+   ],
+   [
+    "The (n, 1) − (n,) trap",
+    "Broadcasts to an n × n table: a wrong loss with no error. Assert shapes or .ravel()."
+   ],
+   [
+    "View vs copy",
+    "Slices are views of the same memory; lists and masks copy. In-place changes through a view reach the original."
+   ],
+   [
+    "np.where",
+    "np.where(cond, a, b): an if on every item at once."
+   ],
+   [
+    "Every pair",
+    "a[:, None] - b[None, :]: a column against a row gives the whole table of differences."
+   ],
+   [
+    "einsum",
+    "Name axes with letters; letters missing after -> are summed: 'ij,jk->ik' is A @ B."
+   ],
+   [
+    "Memory",
+    "Size × bytes per number: float64 8, float32 4, float16 2. 10⁶ × 10³ float32 = 4 GB."
+   ]
+  ],
+  "check": [
+   {
+    "q": "X has shape (64, 10). What is the shape of X.sum(axis=1, keepdims=True)?",
+    "options": [
+     "(64, 1)",
+     "(64,)",
+     "(1, 10)"
+    ],
+    "answer": 0,
+    "why": "Axis 1 is used up, and keepdims keeps it as size 1.",
+    "sec": 1
+   },
+   {
+    "q": "Which pair of shapes can NOT be broadcast together?",
+    "options": [
+     "(4, 3) and (3,)",
+     "(4, 3) and (4,)",
+     "(4, 1) and (1, 3)"
+    ],
+    "answer": 1,
+    "why": "From the right: 3 vs 4, neither is 1. Use (4, 1) to subtract one number per row.",
+    "sec": 2
+   },
+   {
+    "q": "Why does broadcasting a (3,) array against a (1000, 3) one need no extra memory?",
+    "options": [
+     "The stretched axis gets stride 0, so every row reads the same three numbers instead of copies",
+     "Because NumPy compresses repeated values",
+     "Because the result is computed lazily and never stored"
+    ],
+    "answer": 0,
+    "why": "Strides say how far to jump per index; a stride of 0 means 'the same number again'. (The result of A + B is stored, but B is never copied.)",
+    "sec": 2
+   },
+   {
+    "q": "v = X[10:20]; v[:] = 0. What happens to X?",
+    "options": [
+     "Rows 10–19 of X become 0",
+     "Nothing: v is a copy",
+     "An error"
+    ],
+    "answer": 0,
+    "why": "A slice is a view of the same memory.",
+    "sec": 3
+   },
+   {
+    "q": "Which einsum computes a matrix times a vector?",
+    "options": [
+     "'ij,j->i'",
+     "'ij,ij->i'",
+     "'i,i->'"
+    ],
+    "answer": 0,
+    "why": "j appears in both inputs and not after the arrow, so it's summed: Σⱼ Aᵢⱼ vⱼ.",
+    "sec": 5
+   },
+   {
+    "q": "About how much memory does a float32 array of 50,000 × 50,000 take?",
+    "options": [
+     "10 GB",
+     "2.5 GB",
+     "100 MB"
+    ],
+    "answer": 0,
+    "why": "2.5 × 10⁹ numbers × 4 bytes = 10 GB: work in chunks instead.",
+    "sec": 6
+   }
+  ]
  }
 }

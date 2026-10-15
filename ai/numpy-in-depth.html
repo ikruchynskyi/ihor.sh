@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NumPy in Depth</title>
+  <meta name="description" content="AI from scratch, toolkit 1: NumPy in depth. Shapes and axes, the broadcasting rule with a live picture, views versus copies, turning any loop into array code, einsum, and the memory math of arrays." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 1 · Stage 4: the engineer's toolkit</p>
+  <h1>NumPy in depth</h1>
+  <p class="lede">Every model on this path has been NumPy underneath: a batch is an array, a layer is a matrix product, a loss is a mean. Start 2 showed that arrays do arithmetic without loops. This lesson is the rest of what you need to write array code that is fast <i>and</i> right: how shapes combine, when two names share one array, how to turn any loop into array operations, one notation for every sum over indices, and how much memory it all takes. Most bugs in ML code are shape bugs, and most of them are silent.</p>
+
+  <h2>1. Shapes and axes</h2>
+  <p>An array's <b>shape</b> lists its sizes, outermost first. A table of 5 rides with 3 numbers each (km, minutes, passengers) has shape <code>(5, 3)</code>: 5 rows, 3 columns. In ML the habit is <b>rows are examples, columns are features</b>, so a batch of 64 photos of 28 × 28 pixels is <code>(64, 28, 28)</code>.</p>
+  <p>Many functions take an <b>axis</b>: the one that gets used up. <code>X.mean(axis=0)</code> averages <i>down</i> the rows, leaving one number per column (the average ride); <code>X.mean(axis=1)</code> averages <i>across</i> each row, one number per ride. Leave the axis out and everything is averaged into one number.</p>
+  <div class="code" id="rides" data-title="Run it: one table, three means"><textarea>
+import numpy as np
+X = np.array([[2.0, 11, 1],
+              [5.5, 21, 2],
+              [1.2,  8, 1],
+              [8.0, 30, 3],
+              [3.3, 15, 1]])     # 5 rides: km, minutes, passengers
+print("shape:", X.shape, " number of axes:", X.ndim, " numbers:", X.size)
+print("mean over axis 0 (one per column):", X.mean(axis=0))
+print("mean over axis 1 (one per ride):  ", X.mean(axis=1).round(2))
+print("mean of everything:", X.mean().round(2))
+print("keepdims keeps the used-up axis as size 1:", X.mean(axis=0, keepdims=True).shape)
+print("reshape: the same 15 numbers as 3 × 5:", X.reshape(3, 5).shape, "  -1 means 'work it out':", X.reshape(-1).shape)
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>A batch <code>X</code> has shape <code>(1000, 20)</code>: 1,000 examples, 20 features. What shape is <code>X.mean(axis=0)</code>?</p>
+    <ul><li data-k="a" data-says="That's axis=1: one number per example.">(1000,)</li><li data-k="b">(20,)</li><li data-k="c" data-says="Without keepdims=True, the used-up axis disappears.">(1, 20)</li></ul>
+    <div class="why">Axis 0 (the 1,000 examples) is used up, leaving one mean per feature: the average example. That's the first half of standardizing a table.</div>
+  </div>
+  <p class="gist">An axis is a direction through the array; a reduction along it uses it up, and rows-are-examples is the convention everything assumes.</p>
+
+  <h2>2. Broadcasting: how different shapes combine</h2>
+  <p><code>X - X.mean(axis=0)</code> subtracts a <code>(3,)</code> array from a <code>(5, 3)</code> one, and it works: the 3 means are subtracted from every row. That's <b>broadcasting</b>, and it follows one rule:</p>
+  <p class="formula"><b>Line the shapes up from the right. Each pair of sizes must be equal, or one of them must be 1. A missing size counts as 1. Size-1 axes are stretched to match.</b></p>
+  <p>Pick two shapes and see what happens. Faded cells are stretched copies: NumPy doesn't actually make them.</p>
+  <canvas id="bc" width="800" height="330" aria-label="Two arrays, their stretched copies, and the broadcast result or an error"></canvas>
+  <div class="row">
+    <label>A <select id="ar"><option>1</option><option>2</option><option>3</option><option selected>4</option></select> × <select id="ac"><option selected>1</option><option>2</option><option>3</option><option>4</option></select></label>
+    <label>B <select id="br"><option value="0" selected>— (1-D)</option><option>1</option><option>2</option><option>3</option><option>4</option></select> × <select id="bcols"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+  </div>
+  <p class="readout" id="r2"></p>
+  <div class="code" data-title="Run it: broadcasting at work, and the trap"><textarea>
+import numpy as np
+X = np.arange(12.0).reshape(4, 3)
+col_means = X.mean(axis=0)                 # (3,)
+print("centered columns:\n", X - col_means)          # (4, 3) - (3,) → (4, 3)
+row_means = X.mean(axis=1, keepdims=True)  # (4, 1)
+print("centered rows:\n", X - row_means)             # (4, 3) - (4, 1) → (4, 3)
+# An outer table from two 1-D arrays: a column against a row
+a = np.array([1, 2, 3]); b = np.array([10, 20])
+print("a[:, None] + b:\n", a[:, None] + b)          # (3, 1) + (2,) → (3, 2)
+# The trap: predictions as a column (n, 1), truth as a flat (n,)
+y = np.array([1.0, 2.0, 3.0]); pred = np.array([[1.1], [1.9], [3.2]])
+print("pred - y has shape", (pred - y).shape, "← a 3 × 3 table, not 3 errors")
+print("wrong MSE:", np.mean((pred - y) ** 2).round(4), "  right MSE:", np.mean((pred.ravel() - y) ** 2).round(4))
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>What shape is <code>A + B</code> when A is <code>(4, 1)</code> and B is <code>(3,)</code>?</p>
+    <ul><li data-k="a" data-says="Line them up from the right: 1 against 3 is fine (the 1 stretches), and B's missing size counts as 1.">An error: 4 and 3 don't match</li><li data-k="b" data-says="Both size-1 axes stretch, so nothing stays 1.">(4, 1)</li><li data-k="c">(4, 3)</li></ul>
+    <div class="why">From the right: 1 vs 3 → 3; 4 vs (missing = 1) → 4. Every row of A gets every element of B: a 4 × 3 table. That's exactly the trap in the box above when you didn't mean it.</div>
+  </div>
+  <p class="gist">Broadcasting lines shapes up from the right and stretches every size-1 axis for free, so one rule covers "subtract the column means" and "build a whole table".</p>
+  <details class="deeper"><summary>Why broadcasting costs no memory</summary>
+    <ol>
+      <li>An array is a flat block of numbers plus a <b>stride</b> per axis: how many bytes to jump to get to the next index along that axis.</li>
+      <li>A <code>(4, 3)</code> array of 8-byte floats has strides (24, 8): next column is 8 bytes on, next row is 3 numbers (24 bytes) on.</li>
+      <li>Stretching a size-1 axis just sets its stride to 0: "the next index along this axis is the same number again".</li>
+      <li>So B of shape <code>(3,)</code> seen as <code>(4, 3)</code> has strides (0, 8): every row reads the same three numbers, and no copies are made. <code>np.broadcast_to(B, (4, 3)).strides</code> shows it.</li>
+      <li>The rule lines up from the right because the last axis is the one stored side by side in memory: a 1-D array most naturally matches a row, which is what "subtract the column means" needs.</li>
+    </ol>
+  </details>
+
+  <h2>3. Views and copies: two names, one array</h2>
+  <p>Slicing an array doesn't copy it. <code>first_rows = X[:2]</code> is a <b>view</b>: a new name looking at the same memory. Change the view and the original changes. That makes slicing instant even on a huge array, and it's a classic bug. Indexing with a list or a mask (<b>fancy indexing</b>) makes a <b>copy</b> instead, because the chosen items aren't evenly spaced in memory any more.</p>
+  <div class="code" data-title="Run it: which changes reach the original?"><textarea>
+import numpy as np
+X = np.arange(10)
+v = X[2:5]          # a slice: a view
+v[0] = 99
+print("after changing the slice:   ", X)
+c = X[[2, 3, 4]]    # a list of positions: a copy
+c[0] = -1
+print("after changing the copy:    ", X)
+m = X[X > 5]        # a mask: also a copy
+m[:] = 0
+print("after changing the masked:  ", X)
+X[X > 5] = 0        # ...but assigning THROUGH a mask writes into X
+print("after X[X > 5] = 0:         ", X)
+print("shares memory?", np.shares_memory(X, v), np.shares_memory(X, c))
+safe = X[2:5].copy()  # when you want your own
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p><code>batch = data[:64]</code>, then <code>batch -= batch.mean()</code>. What happened to <code>data</code>?</p>
+    <ul><li data-k="a">Its first 64 rows were centered too: <code>batch</code> is a view</li><li data-k="b" data-says="Slices are views: no copy was made, so the change reaches data.">Nothing, batch is a copy</li><li data-k="c" data-says="-= works in place on the view; nothing fails.">An error: you can't change a slice</li></ul>
+    <div class="why">In-place operations (<code>-=</code>, <code>[...] =</code>) write into the shared memory. If the next epoch slices <code>data</code> again, those rows get centered twice. Use <code>batch = data[:64] - data[:64].mean()</code> (a new array) or <code>.copy()</code>.</div>
+  </div>
+  <p class="gist">A slice is a window onto the same memory; a list or a mask makes a copy; and an in-place change through a window changes the original.</p>
+
+  <h2>4. Turning any loop into array code</h2>
+  <p>Almost every loop over numbers has an array version, built from a few moves:</p>
+  <table class="cmp">
+    <tr><th>The loop does</th><th>The array way</th></tr>
+    <tr><td>The same arithmetic on each item</td><td>Write it once on the whole array: <code>a * km + b</code></td></tr>
+    <tr><td><code>if</code> on each item</td><td>A mask and <code>np.where(cond, if_true, if_false)</code>, or <code>np.clip</code> for limits</td></tr>
+    <tr><td>Keep only some items</td><td><code>x[x &gt; 0]</code></td></tr>
+    <tr><td>A running total</td><td><code>np.cumsum</code></td></tr>
+    <tr><td>Every pair of two lists</td><td>Broadcasting a column against a row: <code>a[:, None] - b[None, :]</code></td></tr>
+    <tr><td>Count per category</td><td><code>np.bincount</code>, or <code>np.unique(..., return_counts=True)</code></td></tr>
+    <tr><td>Sort by something</td><td><code>np.argsort</code>: the positions in sorted order</td></tr>
+  </table>
+  <p>The pairs move is the one that unlocks kNN, clustering and attention: every distance between 500 points and 400 others, as one <code>(500, 400)</code> table.</p>
+  <div class="code" data-title="Run it: the same distance table, looped and broadcast"><textarea>
+import numpy as np, time
+rng = np.random.default_rng(0)
+A = rng.random((500, 3)); B = rng.random((400, 3))     # 500 and 400 points in 3-D
+t = time.perf_counter()
+D_loop = np.zeros((500, 400))
+for i in range(500):
+    for j in range(400):
+        D_loop[i, j] = np.sqrt(((A[i] - B[j]) ** 2).sum())
+t_loop = time.perf_counter() - t
+t = time.perf_counter()
+diff = A[:, None, :] - B[None, :, :]                   # (500, 1, 3) - (1, 400, 3) → (500, 400, 3)
+D = np.sqrt((diff ** 2).sum(axis=2))                    # → (500, 400)
+t_vec = time.perf_counter() - t
+print(f"loop {t_loop:.3f} s · broadcast {t_vec:.4f} s · {t_loop / t_vec:.0f}× faster · same answer: {np.allclose(D, D_loop)}")
+# the other moves
+x = np.array([-3.0, 0.5, 7.0, -0.2])
+print("ReLU with np.where:", np.where(x > 0, x, 0.0), "  clipped to ±1:", np.clip(x, -1, 1))
+print("running total:", np.cumsum(x), "  nearest B point to A[0]:", np.argsort(D[0])[:3])
+</textarea></div>
+  <p>On a laptop the broadcast version is about 58 times faster; the box prints what your browser gets. The loop asks Python about every one of the 200,000 pairs; the array version asks once.</p>
+  <div class="q" data-answer="b">
+    <p>Which array expression replaces this loop? <code>for i in range(len(x)): y[i] = x[i] if x[i] &gt; 0 else 0.1 * x[i]</code></p>
+    <ul><li data-k="a" data-says="That keeps only the positive items, so y gets shorter.">y = x[x &gt; 0]</li><li data-k="b">y = np.where(x &gt; 0, x, 0.1 * x)</li><li data-k="c" data-says="clip caps values at limits; it can't multiply the negatives by 0.1.">y = np.clip(x, 0.1, None)</li></ul>
+    <div class="why">An <code>if</code> on each item is a mask plus <code>np.where</code>. This one is the "leaky ReLU" activation.</div>
+  </div>
+  <p class="gist">A loop over numbers becomes array code through a handful of moves: whole-array arithmetic, masks with np.where, cumsum, argsort, and a column against a row for every pair.</p>
+
+  <h2>5. einsum: one notation for every sum over indices</h2>
+  <p>Matrix products, dot products, traces, batch products: they're all "multiply matching entries and add some indices up". <code>np.einsum</code> writes exactly that. You name each axis with a letter; letters that appear in the inputs but not after the arrow get summed.</p>
+  <p class="formula">\[ C_{ik} = \sum_j A_{ij} B_{jk} \quad\Longleftrightarrow\quad \texttt{np.einsum("ij,jk->ik", A, B)} \]</p>
+  <div class="code" data-title="Run it: five operations, one function"><textarea>
+import numpy as np
+rng = np.random.default_rng(1)
+A = rng.random((3, 4)); B = rng.random((4, 2)); v = rng.random(4)
+print("matrix product  ij,jk->ik ", np.allclose(np.einsum("ij,jk->ik", A, B), A @ B))
+print("matrix · vector ij,j->i   ", np.allclose(np.einsum("ij,j->i", A, v), A @ v))
+print("sum of each row ij->i     ", np.allclose(np.einsum("ij->i", A), A.sum(axis=1)))
+print("transpose       ij->ji    ", np.allclose(np.einsum("ij->ji", A), A.T))
+# batch of dot products: 1,000 pairs of 64-number vectors, one dot product per pair
+Q = rng.random((1000, 64)); K = rng.random((1000, 64))
+print("row-by-row dots ij,ij->i  ", np.allclose(np.einsum("ij,ij->i", Q, K), (Q * K).sum(axis=1)))
+# attention's score table for a batch of 8 sentences, 10 words each, d = 16: b q d, b k d → b q k
+Qb = rng.random((8, 10, 16)); Kb = rng.random((8, 10, 16))
+print("attention scores bqd,bkd->bqk", np.einsum("bqd,bkd->bqk", Qb, Kb).shape)
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>What does <code>np.einsum("ij,ij->", A, B)</code> compute?</p>
+    <ul><li data-k="a">The sum of A * B over every entry: one number</li><li data-k="b" data-says="A matrix product would need a shared letter that's summed between different positions: ij,jk.">The matrix product A @ B</li><li data-k="c" data-says="Nothing is after the arrow, so every letter is summed away.">A row-by-row dot product, one number per row</li></ul>
+    <div class="why">Both letters appear in the inputs and neither after the arrow, so both are summed: \(\sum_{i,j} A_{ij} B_{ij}\). That's the "Frobenius inner product", the dot product of two matrices treated as long vectors.</div>
+  </div>
+  <p class="gist">einsum names each axis with a letter, multiplies matching entries, and sums every letter missing after the arrow.</p>
+
+  <h2>6. Memory and number types</h2>
+  <p>Each number takes a fixed number of bytes set by its <b>dtype</b>: 8 for <code>float64</code> (NumPy's default), 4 for <code>float32</code> (what deep learning uses), 2 for <code>float16</code>. So an array's memory is just its size times that. Estimate before you allocate: it's the cheapest bug catch there is.</p>
+  <div class="code" data-title="Run it: bytes, and where they go"><textarea>
+import numpy as np
+X = np.zeros((10_000, 784))
+print("10,000 MNIST-sized rows, float64:", X.nbytes / 1e6, "MB;  as float32:", X.astype(np.float32).nbytes / 1e6, "MB")
+n = 100_000
+print(f"a distance table between {n:,} points (float64): {n * n * 8 / 1e9:.0f} GB  ← broadcasting would try to build it")
+# float32 has about 7 significant digits: a running total in float32 drifts
+ones = np.full(10_000_000, 0.1, dtype=np.float32)
+print("running total of ten million 0.1s in float32:", np.cumsum(ones)[-1], " (should be 1,000,000)")
+print("np.sum adds in pairs, so it stays close:     ", ones.sum())
+print("in float64:", np.cumsum(ones.astype(np.float64))[-1].round(1))
+</textarea></div>
+  <div class="q" data-num="4" data-tol="0.05">
+    <p>A dataset of 1,000,000 examples with 1,000 features each, stored as float32. About how many gigabytes? (A whole number.)</p>
+    <div class="why">\(10^6 \times 10^3 \times 4 \text{ bytes} = 4 \times 10^9\) bytes = 4 GB. As float64 it would be 8 GB, more than many laptops can spare: load it in chunks, or keep float32.</div>
+  </div>
+  <p class="gist">Memory is size times bytes per number: estimate it before you allocate, and remember float32 keeps only about seven digits.</p>
+  <details class="deeper"><summary>Where it breaks: silent shapes, slow drift, sudden memory</summary>
+    <ul>
+      <li><b>The (n, 1) against (n,) trap.</b> Predictions shaped <code>(1000, 1)</code> minus targets shaped <code>(1000,)</code> broadcast into a 1,000 × 1,000 table. The mean of its squares is a plausible-looking number: on one test, 0.17 instead of the true MSE of 0.01. No error, just a wrong loss and a model that trains on nonsense. Assert shapes where data enters a function (<code>assert pred.shape == y.shape</code>), or flatten with <code>.ravel()</code>.</li>
+      <li><b>Drift in float32.</b> Adding 0.1 ten million times one after another in float32 gives 1,087,937, not 1,000,000: once the total is large, each small 0.1 is rounded. <code>np.sum</code> adds in pairs and stays within about 0.001%. Running averages and loss totals over long training runs are where this bites; keep them in float64.</li>
+      <li><b>Broadcasting that explodes.</b> The pairs move builds the whole table: for 100,000 points that's 80 GB. Work in chunks (rows 0–999 against everything, then the next 1,000), or use a library that never builds it (scikit-learn's nearest-neighbor search, FAISS).</li>
+    </ul>
+  </details>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li><b>Shapes first</b>: rows are examples; a reduction uses up its axis; <code>keepdims=True</code> keeps it as size 1 for broadcasting.</li>
+    <li><b>Broadcasting</b>: line up from the right; equal or 1; size-1 axes stretch for free. Assert shapes where data comes in.</li>
+    <li><b>Views</b>: slices share memory, lists and masks copy; in-place changes through a view reach the original.</li>
+    <li><b>Vectorize</b>: whole-array arithmetic, masks and <code>np.where</code>, <code>cumsum</code>, <code>argsort</code>, a column against a row for pairs.</li>
+    <li><b>einsum</b> for any sum over indices; <b>memory</b> = size × bytes per number, estimated before allocating.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. The NumPy user guide's pages on broadcasting and on copies and views go further.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const cv = $("bc"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+const COL = { a: "#58c4dd", b: "#f4a259", r: "#83c167", bad: "#fc6255", txt: "#d8dee9" };
+// one array drawn as a grid of cells; ghost cells are stretched copies
+function grid(x0, y0, rows, cols, shown, color, label, cell = 30) {
+  g.font = "15px ui-monospace, monospace"; g.fillStyle = COL.txt; g.fillText(label, x0, y0 - 10);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const real = r < shown[0] && c < shown[1];
+    g.globalAlpha = real ? 0.9 : 0.25; g.fillStyle = color;
+    g.fillRect(x0 + c * cell, y0 + r * cell, cell - 3, cell - 3);
+  }
+  g.globalAlpha = 1;
+}
+function draw() {
+  const ar = +$("ar").value, ac = +$("ac").value, br = +$("br").value, bcn = +$("bcols").value;
+  const A = [ar, ac], B = br ? [br, bcn] : [bcn], Bfull = br ? [br, bcn] : [1, bcn];
+  // the rule, from the right; a missing size counts as 1
+  const out = [], why = [];
+  let ok = true;
+  for (let k = 0; k < 2; k++) {
+    const a = A[1 - k] ?? 1, b = B.length - 1 - k >= 0 ? B[B.length - 1 - k] : 1;
+    if (a === b || a === 1 || b === 1) out.unshift(Math.max(a, b));
+    else { ok = false; why.push(`axis ${1 - k}: ${a} vs ${b}`); }
+  }
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  const R = ok ? out : [Math.max(ar, Bfull[0]), Math.max(ac, Bfull[1])];
+  grid(30, 60, R[0], R[1], A, COL.a, `A ${JSON.stringify(A).replace("[", "(").replace("]", ")")}`);
+  g.fillStyle = COL.txt; g.font = "28px sans-serif"; g.fillText("+", 190, 140);
+  grid(250, 60, R[0], R[1], Bfull, COL.b, `B (${B.join(", ")}${B.length === 1 ? "," : ""})`);
+  g.fillText("=", 410, 140);
+  if (ok) grid(470, 60, out[0], out[1], out, COL.r, `A + B (${out.join(", ")})`);
+  else { g.fillStyle = COL.bad; g.font = "18px ui-monospace, monospace"; g.fillText("error: shapes don't match", 470, 120); g.fillText(why.join("; "), 470, 150); }
+  $("r2").textContent = ok
+    ? `(${A.join(", ")}) + (${B.join(", ")}${B.length === 1 ? "," : ""}) → (${out.join(", ")})` + (B.length === 1 ? "  · B has no first axis, so it counts as 1 and stretches down" : "")
+    : `ValueError: operands could not be broadcast together: ${why.join("; ")} (neither is 1)`;
+}
+["ar", "ac", "br", "bcols"].forEach((id) => $(id).addEventListener("change", draw));
+draw();
+</script>
+</body>
+</html>
