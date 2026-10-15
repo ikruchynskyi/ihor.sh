@@ -12,7 +12,7 @@ const ONLY = process.env.SDR_DEVICE;
 export async function openDongle(): Promise<Sdr> {
   const usb = () => new WebUSB({ allowAllDevices: true }).getDevices();
   const hack = ONLY !== "rtl" && (await usb()).find(isHackRf);
-  if (hack) return HackRf.open(shim(hack));
+  if (hack) try { return await HackRf.open(shim(hack)); } catch (e) { console.error(`HackRF won't open (${(e as Error).message}): trying the RTL-SDR`); }
   // A fresh WebUSB object each attempt: after a reset the dongle re-enumerates as a new device.
   return RtlSdr.openWithRetry(async () => {
     const dev = (await usb()).find(isRtl);
