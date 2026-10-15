@@ -56,6 +56,7 @@ print("general:", general_before)
 
 # %%
 lora_numbers = None
+### HINT Calculate parameters per layer: r * (d_in + d_out) for both Q and V projections, then multiply by 30 layers.
 ### HINT Per layer: 8 * (576 + 576) + 8 * (576 + 192). Then times 30 layers.
 ### BEGIN SOLUTION
 lora_numbers = 30 * (8 * (576 + 576) + 8 * (576 + 192))
@@ -187,6 +188,7 @@ check(lambda: results["seen stations, seen phrasings"] >= 27 and results["held-o
 
 # %%
 def set_adapters(on):
+    ### HINT Loop over model.modules() and toggle m.enabled for all instances of LoRA.
     ### HINT for m in model.modules(): if isinstance(m, LoRA): m.enabled = on
     ### BEGIN SOLUTION
     for m in model.modules():

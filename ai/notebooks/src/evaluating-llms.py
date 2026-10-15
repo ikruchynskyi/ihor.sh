@@ -29,6 +29,7 @@ print(graded[0])
 
 # %%
 def norm(s):
+    ### HINT Lowercase s, strip commas, find word/digit tokens with regex, and join with a space.
     ### HINT " ".join(re.findall(r"[a-z0-9]+", s.lower().replace(",", "")))
     ### BEGIN SOLUTION
     return " ".join(re.findall(r"[a-z0-9]+", s.lower().replace(",", "")))
@@ -45,6 +46,7 @@ check(lambda: norm("ResNet-50 has 50 layers.") == "resnet 50 has 50 layers" and 
 
 # %%
 def contains(answer, ref):
+    ### HINT Check if whole normalized ref words appear in normalized answer by padding both with spaces.
     ### HINT return f" {norm(ref)} " in f" {norm(answer)} "
     ### BEGIN SOLUTION
     return f" {norm(ref)} " in f" {norm(answer)} "

@@ -60,7 +60,8 @@ check(lambda: Ps.shape == P.shape and np.allclose(Ps.mean(axis=0), 0) and np.all
 # %%
 before = P[0, 0]
 guess_ratio = None
-### HINT A slice is a view: in-place changes through it reach the original.
+### HINT A slice is a view: in-place changes through it modify the underlying memory of the original array.
+### HINT Since first *= 2 doubled the elements in the slice, P[0, 0] also doubled, so the ratio is 2.
 ### BEGIN SOLUTION
 guess_ratio = 2
 ### END SOLUTION

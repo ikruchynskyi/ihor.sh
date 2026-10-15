@@ -25,6 +25,7 @@ torch.manual_seed(0)
 
 # %%
 n_rnn = None
+### HINT Count all scalar parameters in nn.RNN using p.numel() across model parameters.
 ### HINT sum(p.numel() for p in nn.RNN(24, 64).parameters())
 ### BEGIN SOLUTION
 n_rnn = sum(p.numel() for p in nn.RNN(24, 64).parameters())
@@ -43,6 +44,7 @@ check(lambda: n_rnn == 64 * 64 + 64 * 24 + 2 * 64, "4,096 + 1,536 + 128 = 5,760;
 cell = nn.RNNCell(3, 4)
 U, W, b_ih, b_hh = cell.weight_ih, cell.weight_hh, cell.bias_ih, cell.bias_hh
 def step(x, h):
+    ### HINT Project input x with U.T and previous state h with W.T, add both biases, and apply tanh activation.
     ### HINT torch.tanh(x @ U.T + b_ih + h @ W.T + b_hh)
     ### BEGIN SOLUTION
     return torch.tanh(x @ U.T + b_ih + h @ W.T + b_hh)

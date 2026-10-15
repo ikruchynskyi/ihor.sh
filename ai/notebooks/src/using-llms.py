@@ -33,6 +33,7 @@ print(chat([{"role": "user", "content": "Name three boroughs of New York City."}
 # %%
 messages = [{"role": "system", "content": "You are a concise assistant."}, {"role": "user", "content": "Is the 7 train running?"}]
 prompt = None
+### HINT Format raw conversational turns with the tokenizer's chat template, setting tokenize=False and add_generation_prompt=True.
 ### HINT prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 ### BEGIN SOLUTION
 prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -49,6 +50,7 @@ check(lambda: prompt.startswith("<|im_start|>system") and prompt.rstrip().endswi
 
 # %%
 n_tokens = None
+### HINT Tokenize the rendered prompt and inspect the length of its input_ids attribute.
 ### HINT len(tok(prompt).input_ids)
 ### BEGIN SOLUTION
 n_tokens = len(tok(prompt).input_ids)
@@ -65,7 +67,8 @@ check(lambda: n_tokens == len(tok(prompt).input_ids) and n_tokens > 15, "the tem
 
 # %%
 same_greedy = same_sampled = None
-### HINT Temperature 0 always takes the most likely token (chapter 10); sampling draws at random.
+### HINT Temperature 0 (argmax) is purely deterministic, whereas temperature 0.9 samples probabilistically from the distribution.
+### HINT Temperature 0 always takes the most likely token (chapter 10); sampling draws at random: True, False.
 ### BEGIN SOLUTION
 same_greedy, same_sampled = True, False
 ### END SOLUTION

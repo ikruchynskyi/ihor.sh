@@ -28,6 +28,7 @@ print("device:", device, "·", torch.cuda.get_device_name(0) if device == "cuda"
 # %%
 model = nn.Sequential(nn.Linear(1024, 4096), nn.GELU(), nn.Linear(4096, 1024))
 n_params = None
+### HINT Count total elements across all model parameters by iterating over model.parameters() and summing p.numel().
 ### HINT sum(p.numel() for p in model.parameters())
 ### BEGIN SOLUTION
 n_params = sum(p.numel() for p in model.parameters())
@@ -67,7 +68,8 @@ check(lambda: np.isclose(run_fp16, 14) and np.isclose(train_adam, 112), "14 GB t
 
 # %%
 guess = None
-### HINT Past the largest number a format can hold, there's only one thing left.
+### HINT Numbers exceeding the dynamic range of IEEE float16 overflow to infinity.
+### HINT Past the largest number a format can hold, there's only one thing left: float("inf").
 ### BEGIN SOLUTION
 guess = float("inf")
 ### END SOLUTION
@@ -119,6 +121,7 @@ def examples_per_second(bs, reps=10):
 speed = {bs: examples_per_second(bs) for bs in [1, 4, 16, 64, 256, 1024]}
 plt.semilogx(list(speed), list(speed.values()), "o-"); plt.xlabel("batch size"); plt.ylabel("examples / second"); plt.show()
 best = None
+### HINT Find the dictionary key corresponding to the maximum throughput value.
 ### HINT best = max(speed, key=speed.get)
 ### BEGIN SOLUTION
 best = max(speed, key=speed.get)
@@ -160,7 +163,8 @@ check(lambda: torch.allclose(acc_grad, big_grad, atol=1e-6), "the same gradient:
 
 # %%
 effective_batch = None
-### HINT 8 slices of 32 examples, averaged into one step.
+### HINT With data parallelism, total batch size is number of devices multiplied by local batch size per device.
+### HINT 8 slices of 32 examples, averaged into one step: 8 * 32.
 ### BEGIN SOLUTION
 effective_batch = 8 * 32
 ### END SOLUTION

@@ -22,6 +22,7 @@ print(len(names), "names, for example:", names[:5])
 
 # %%
 n_bytes = None
+### HINT Encode the string into UTF-8 bytes and count the resulting byte sequence length.
 ### HINT len("Привіт".encode("utf-8"))
 ### BEGIN SOLUTION
 n_bytes = len("Привіт".encode("utf-8"))
@@ -38,6 +39,7 @@ check(lambda: n_bytes == 12, "6 Cyrillic letters × 2 bytes each = 12")
 
 # %%
 def count_pairs(words):
+    ### HINT Collect adjacent pairs (a, b) across every token list using zip(w, w[1:]) and feed into Counter.
     ### HINT Counter((a, b) for w in words for a, b in zip(w, w[1:]))
     ### BEGIN SOLUTION
     return Counter((a, b) for w in words for a, b in zip(w, w[1:]))
@@ -101,6 +103,7 @@ check(lambda: len(merges) == 200 and merges[0] == (" ", "S") and 5.4 < avg_token
 
 # %%
 def encode(text):
+    ### HINT Convert string to list of single characters, then successively apply each learned (a, b) merge.
     ### HINT w = list(text), then for a, b in merges: w = merge(w, a, b). Return w.
     ### BEGIN SOLUTION
     w = list(text)

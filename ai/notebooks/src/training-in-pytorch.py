@@ -57,7 +57,8 @@ L = w ** 2
 L.backward()
 print("after one backward:", w.grad)
 guess_grad = None
-### HINT The lesson's tensors section: .backward() adds to .grad, it doesn't replace it.
+### HINT In PyTorch autograd, .backward() accumulates (adds) gradients into .grad rather than replacing them.
+### HINT Since 6 was already in w.grad, running another backward pass adds another 6, yielding 12.
 ### BEGIN SOLUTION
 guess_grad = 12
 ### END SOLUTION
@@ -206,6 +207,7 @@ check(lambda: final_one_batch < 0.05, "the loss on the one memorized batch shoul
 # same). The cell then builds a fresh `MLP`, loads the file into it, and measures it.
 
 # %%
+### HINT Persist the learned model parameter dictionary with torch.save().
 ### HINT torch.save(what, filename): what is model.state_dict(), the filename "fashion.pt".
 ### BEGIN SOLUTION
 torch.save(model.state_dict(), "fashion.pt")

@@ -154,6 +154,7 @@ prep = make_column_transformer((OneHotEncoder(handle_unknown="ignore"), ["kind",
 model = make_pipeline(prep, LogisticRegression(max_iter=2000))
 print("base rate of long outages:", y.mean().round(3))
 auc = None
+### HINT Use cross_val_score with TimeSeriesSplit(n_splits=5) and scoring="roc_auc" to evaluate honest time splits.
 ### HINT scores = cross_val_score(model, X, y, cv=TimeSeriesSplit(n_splits=5), scoring="roc_auc"), then their mean.
 ### BEGIN SOLUTION
 auc = cross_val_score(model, X, y, cv=TimeSeriesSplit(n_splits=5), scoring="roc_auc").mean()

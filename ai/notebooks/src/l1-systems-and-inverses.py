@@ -19,6 +19,7 @@ import numpy as np
 A = np.array([[2, 1, 1], [1, 3, 0], [0, 2, 2]])
 b = np.array([14, 9, 16])
 prices = None
+### HINT Use NumPy's linear algebra solver to find the unique price vector satisfying equation A @ x = b.
 ### HINT Solve the linear system A @ prices = b using np.linalg.solve(A, b).
 ### BEGIN SOLUTION
 prices = np.linalg.solve(A, b)

@@ -53,6 +53,7 @@ freq = np.array([counts[w] for w in vocab]) / len(tokens) if vocab else np.ones(
 keep = np.minimum(1, np.sqrt(1e-4 / freq[ids]) + 1e-4 / freq[ids]) if vocab else np.ones(0)
 ids = ids[rng.random(len(ids)) < keep]
 pairs = None
+### HINT Slice centers at [2:-2] and matching context window words at [2+o:len(ids)-2+o] for each offset o in (-2, -1, 1, 2).
 ### HINT np.concatenate([np.stack([ids[2:-2], ids[2 + o:len(ids) - 2 + o]], axis=1) for o in (-2, -1, 1, 2)])
 ### BEGIN SOLUTION
 pairs = np.concatenate([np.stack([ids[2:-2], ids[2 + o:len(ids) - 2 + o]], axis=1) for o in (-2, -1, 1, 2)])

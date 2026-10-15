@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 # %%
 A = np.array([[4.0, 1.0, 0.5], [1.0, 3.0, 0.0], [0.5, 0.0, 2.0]])
 lams = vecs = None
+### HINT For symmetric matrices, eigh returns sorted eigenvalues and normalized eigenvectors.
 ### HINT Compute eigenvalues and eigenvectors using lams, vecs = np.linalg.eigh(A).
 ### BEGIN SOLUTION
 lams, vecs = np.linalg.eigh(A)

@@ -63,6 +63,7 @@ check(lambda: df_el is not None and len(df_el) > 0 and (df_el["kind"] == "EL").a
 # ordered by `outage_count DESC LIMIT 5`. Assign to `df_top_stations`.
 
 # %%
+### HINT GROUP BY station, aggregate with COUNT(*), then sort descending and LIMIT 5.
 ### HINT SELECT station, COUNT(*) AS outage_count FROM outages GROUP BY station ORDER BY outage_count DESC LIMIT 5
 ### BEGIN SOLUTION
 df_top_stations = pd.read_sql_query("""
@@ -84,6 +85,7 @@ check(lambda: df_top_stations is not None and len(df_top_stations) == 5 and "sta
 # Select `o.equipment`, `o.station`, and `s.railroad`. Assign the DataFrame to `df_joined`.
 
 # %%
+### HINT Keep all outages by joining stations on matching station names with LEFT JOIN.
 ### HINT Use LEFT JOIN stations s ON o.station = s.name
 ### BEGIN SOLUTION
 df_joined = pd.read_sql_query("""
@@ -103,6 +105,7 @@ check(lambda: df_joined is not None and len(df_joined) == 667 and "railroad" in 
 # Select `equipment`, `start`, and `seq`. Assign to `df_seq`.
 
 # %%
+### HINT Number rows sequentially for each equipment by ordering timestamps inside an OVER clause.
 ### HINT Use ROW_NUMBER() OVER (PARTITION BY equipment ORDER BY start) AS seq
 ### BEGIN SOLUTION
 df_seq = pd.read_sql_query("""
@@ -124,6 +127,7 @@ check(lambda: df_seq is not None and "seq" in df_seq.columns and df_seq["seq"].m
 # Select `equipment`, `station`, `start`, and `prior_station_outages`. Assign to `df_pit`.
 
 # %%
+### HINT Count preceding rows strictly up to 1 PRECEDING to prevent looking ahead into current or future outages.
 ### HINT Use COUNT(*) OVER (PARTITION BY station ORDER BY start ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prior_station_outages
 ### BEGIN SOLUTION
 df_pit = pd.read_sql_query("""

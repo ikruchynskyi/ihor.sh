@@ -45,7 +45,8 @@ check(lambda: avoidable_bias == 7 and variance == 1, "avoidable bias 9 − 2 = 7
 
 # %%
 fix_first = None
-### HINT The biggest gap goes first.
+### HINT Compare avoidable bias (7) against variance (1): prioritize the bottleneck with the larger error gap.
+### HINT The biggest gap goes first: "bias" (7 points) vs "variance" (1 point).
 ### BEGIN SOLUTION
 fix_first = "bias"
 ### END SOLUTION

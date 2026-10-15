@@ -128,6 +128,7 @@ check(lambda: not model.training and len(set(preds.tolist())) == 1 and preds[0].
 class Residual(nn.Module):
     def __init__(self, n):
         super().__init__()
+        ### HINT Build a 2-layer MLP sub-network with nn.Sequential: Linear(n, n) -> ReLU() -> Linear(n, n).
         ### HINT self.f = nn.Sequential(nn.Linear(n, n), nn.ReLU(), nn.Linear(n, n))
         ### BEGIN SOLUTION
         self.f = nn.Sequential(nn.Linear(n, n), nn.ReLU(), nn.Linear(n, n))
@@ -151,7 +152,8 @@ check(lambda: Residual(8)(torch.zeros(2, 8)).shape == (2, 8) and sum(p.numel() f
 
 # %%
 guess_plain_loss = None
-### HINT A net that learns nothing guesses uniformly over 10 digits: loss ln(10).
+### HINT When gradients vanish across 30 plain layers, the network fails to learn and predicts equal probabilities (1/10).
+### HINT A net that learns nothing guesses uniformly over 10 digits: loss is math.log(10).
 ### BEGIN SOLUTION
 guess_plain_loss = math.log(10)
 ### END SOLUTION

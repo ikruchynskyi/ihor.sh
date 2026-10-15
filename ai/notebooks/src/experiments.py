@@ -128,6 +128,7 @@ check(lambda: 0 <= p <= 1 and np.isclose(p, stats.ttest_ind(runs[runs["hidden"] 
 # %%
 data = urllib.request.urlopen("https://raw.githubusercontent.com/ikruchynskyi/ihor.sh/main/ai/data/outages.csv").read()
 fp = None
+### HINT Hash data bytes with hashlib.sha256, convert to hexadecimal string, and slice the first 16 characters.
 ### HINT fp = hashlib.sha256(data).hexdigest()[:16]
 ### BEGIN SOLUTION
 fp = hashlib.sha256(data).hexdigest()[:16]

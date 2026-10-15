@@ -67,6 +67,7 @@ def out_size(n, k, p=0, s=1):
     Returns:
         int: Output spatial dimension.
     """
+    ### HINT Account for symmetric padding on both sides (n + 2*p), subtract kernel size k, divide by stride, and add 1.
     ### HINT Compute floor((n + 2 * p - k) // s) + 1.
     ### BEGIN SOLUTION
     return (n + 2 * p - k) // s + 1

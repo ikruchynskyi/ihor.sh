@@ -26,6 +26,7 @@ torch.manual_seed(0)
 # %%
 beta = 0.95
 window = None
+### HINT The effective memory horizon of an exponentially decaying average is 1 / (1 - beta).
 ### HINT 1 / (1 - beta)
 ### BEGIN SOLUTION
 window = 1 / (1 - beta)
@@ -165,7 +166,8 @@ def train(opt_name, lr, epochs=40, schedule=None, seed=0):
     return accs
 
 guess = None
-### HINT The race in the lesson: per-weight step sizes get going fast without tuning.
+### HINT Adam adapts individual learning rates per parameter using momentum and squared gradient scaling.
+### HINT The race in the lesson: "adam" per-weight step sizes get going fast without tuning.
 ### BEGIN SOLUTION
 guess = "adam"
 ### END SOLUTION

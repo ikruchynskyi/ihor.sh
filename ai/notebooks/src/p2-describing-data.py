@@ -147,6 +147,7 @@ check(lambda: tuple(sorted(pair)) == ("flavanoids", "total_phenols"),
 
 # %%
 z = None
+### HINT Z-score standardization subtracts the column mean and divides by population standard deviation (ddof=0).
 ### HINT Standardize wine dataframe: (wine - wine.mean()) / wine.std(ddof=0).
 ### BEGIN SOLUTION
 z = (wine - wine.mean()) / wine.std(ddof=0)

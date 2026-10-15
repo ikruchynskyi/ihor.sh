@@ -40,6 +40,7 @@ def attention(Q, K, V, causal=False):
     if causal:
         L = Q.shape[-2]
         mask = torch.triu(torch.ones(L, L, dtype=torch.bool), diagonal=1)     # True where a token would see its future
+        ### HINT Use masked_fill to replace future positions with negative infinity so their softmax weight becomes 0.
         ### HINT scores = scores.masked_fill(mask, float("-inf"))
         ### BEGIN SOLUTION
         scores = scores.masked_fill(mask, float("-inf"))
@@ -91,6 +92,7 @@ check(lambda: abs(spread[0] - 2) < 0.2 and abs(spread[2] - 32) < 2,
 mha = nn.MultiheadAttention(embed_dim=32, num_heads=4, batch_first=True)
 x = torch.randn(2, 7, 32)                               # 2 sentences, 7 tokens, 32 numbers each
 out = w = None
+### HINT In self-attention, query, key, and value are all the same input tensor x passed to mha.
 ### HINT Forward pass self-attention: out, w = mha(x, x, x).
 ### BEGIN SOLUTION
 out, w = mha(x, x, x)

@@ -44,6 +44,7 @@ plt.show()
 weights = torchvision.models.ResNet18_Weights.DEFAULT
 model = torchvision.models.resnet18(weights=weights)
 n_params = None
+### HINT Count total scalar weights and biases across all model parameters with p.numel().
 ### HINT sum(p.numel() for p in model.parameters())
 ### BEGIN SOLUTION
 n_params = sum(p.numel() for p in model.parameters())
@@ -150,7 +151,8 @@ check(lambda: 0.70 < acc < 0.85, "about 77% on photos it never saw, from a netwo
 
 # %%
 guess_scratch = None
-### HINT It has to learn edges, textures and parts from 2,000 tiny photos. Better than chance (0.1), well below 0.77.
+### HINT It has to learn edges, textures and parts from 2,000 tiny photos without pretrained weights.
+### HINT Better than random chance (0.1), but well below transfer learning (~0.77). Try ~0.50.
 ### BEGIN SOLUTION
 guess_scratch = 0.5
 ### END SOLUTION
@@ -181,6 +183,7 @@ check(lambda: guess_scratch is not None and abs(guess_scratch - scratch) < 0.15,
 def subset(n):
     return np.concatenate([np.where(labels[tr] == c)[0][:n // 10] for c in range(10)])
 curve = None
+### HINT Iterate over sample counts n in [20, 100, 500, 2000] and fit LogisticRegression on Ftr[subset(n)].
 ### HINT A list comprehension: for each n, LogisticRegression(max_iter=3000).fit(Ftr[subset(n)], labels[tr][subset(n)]).score(Fte, labels[te])
 ### BEGIN SOLUTION
 curve = [LogisticRegression(max_iter=3000).fit(Ftr[subset(n)], labels[tr][subset(n)]).score(Fte, labels[te]) for n in [20, 100, 500, 2000]]
