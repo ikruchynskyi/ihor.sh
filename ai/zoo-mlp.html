@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Neural Networks on Tables</title>
+  <meta name="description" content="AI from scratch, model zoo 9: the multilayer perceptron judged as one more model for tables. A map that draws each hidden unit's line and how they combine, a two-layer network from scratch in NumPy, and what it costs on tables, measured: an AUC that moves 0.02 from seed to seed, 0.725 unscaled against 0.773 scaled, noise columns that hurt it more than boosted trees, and a forgotten target scale that turns a 0.26-million error into 3.2 million." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 9 of 10 · Neural networks on tables</p>
+  <h1>Multilayer perceptrons on tables</h1>
+  <p class="lede">Stage 2 built a neural network neuron by neuron and trained it with backpropagation. Stage 5 showed what networks are unbeatable at: pixels, sound, text. This page asks the narrower question an ML engineer faces weekly: on an ordinary table of columns, is a network worth it? Usually not, and the reasons are worth knowing exactly, because they're also the reasons networks need so much care everywhere else.</p>
+
+  <h2>1. The idea in one picture: many straight edges, blended</h2>
+  <p>A one-hidden-layer network on two columns: each hidden unit is a logistic regression of its own (page 2), with a straight edge across the plane (the thin lines). The output unit adds their soft yes/no answers with weights, and the result can bend into any shape the edges can be combined into. Change the number of hidden units and watch the lines and the map.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points, the network's probability shaded over the plane, and each hidden unit's line"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label>hidden units <input type="range" id="h" min="1" max="16" value="3"> <b id="hV"></b></label></div>
+  <div class="row"><label>training steps <input type="range" id="steps" min="0" max="3000" step="100" value="1500"> <b id="stepsV"></b></label><label>seed <input type="range" id="seed" min="1" max="8" value="1"> <b id="seedV"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Pick <i>ring around a disc</i>. Predict first: what's the fewest hidden units that can draw a closed loop around the disc?</p>
+    <ul><li data-k="a" data-says="One unit is one straight edge: try it.">1</li><li data-k="b">3: three edges can fence in a triangle</li><li data-k="c" data-says="It works with 8, but far fewer can close a loop.">8</li></ul>
+    <div class="why">With 1 or 2 straight edges the "inside" region is never closed; with 3, their soft answers can add up to "inside all three edges", a rounded triangle around the disc, and more units round it off further. Each hidden unit adds one edge to work with. That's the universal approximation idea: enough units can approximate any boundary, which says nothing about whether training finds it. Switch to the checkerboard at 3 units and move the seed slider: the same network, started from different random weights, lands anywhere from 69% to 90%.</div>
+  </div>
+  <p class="gist">A hidden layer is a set of logistic regressions whose answers the output combines, so a network can draw any boundary; finding it depends on training, scaling and the starting seed.</p>
+
+  <h2>2. How it learns: stage 2, in one formula</h2>
+  <p class="formula">\[ h = \tanh(W_1 x + b_1), \qquad p = \sigma(w_2 \cdot h + b_2) \]</p>
+  <p>Trained by gradient descent on log-loss, with gradients from backpropagation (chapter 4). Everything you know about training applies: the learning rate, Adam (toolkit 3), initialization and normalization (toolkit 4), early stopping. That's the first practical difference from trees: a forest has one or two knobs and fits the same way every time; a network has a dozen, and a random start.</p>
+  <details class="deeper"><summary>Why scaling and seeds matter so much more for a network than for a tree</summary>
+    <ol>
+      <li>A hidden unit computes \(\tanh(w \cdot x + b)\). If a column runs in the thousands (pdays is 999 for most calls), \(w \cdot x\) is huge at the start, tanh sits flat at ±1, and its slope there is near 0 (calculus 1): the unit barely learns. Scaled columns keep units in the sloped middle.</li>
+      <li>The gradient step for a weight is proportional to its input, so columns in big units take big steps and columns in small units crawl: the loss surface is a long narrow valley (toolkit 3), which a single learning rate handles badly.</li>
+      <li>A tree only compares a column with a cut, so neither problem exists for it: rescaling a column changes no split.</li>
+      <li>The loss of a network is not a bowl (calculus 5's relabeled-twins bump): different random starts end in different minima, with different test scores. A tree's greedy fit has no random start (forests have seeds, but averaging hundreds of trees makes them matter little).</li>
+      <li>So for a network on a table: scale the inputs, scale a numeric target, try a few seeds and average or pick on validation data, and use early stopping. Section 4 measures what skipping each one costs.</li>
+    </ol>
+  </details>
+
+  <h2>3. Build it: a two-layer network in NumPy</h2>
+  <div class="code" data-title="A one-hidden-layer network from scratch on the bank calls, next to scikit-learn"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import roc_auc_score
+
+b = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))          # in a notebook: pd.read_csv(url)
+y = (b["y"] == "yes").astype(int).values
+X = pd.get_dummies(b.drop(columns=["y", "duration"]), dtype=float).values
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+
+rng = np.random.default_rng(0)
+H, lr = 16, 0.1
+W1 = rng.normal(0, 1 / np.sqrt(X.shape[1]), (X.shape[1], H)); b1 = np.zeros(H)
+w2 = rng.normal(0, 1 / np.sqrt(H), H); b2 = 0.0
+sigmoid = lambda z: 1 / (1 + np.exp(-z))
+for epoch in range(300):
+    h = np.tanh(Xtr @ W1 + b1)                                  # forward
+    p = sigmoid(h @ w2 + b2)
+    d2 = (p - ytr) / len(ytr)                                   # backward: log-loss through the sigmoid
+    dh = np.outer(d2, w2) * (1 - h ** 2)                        # through tanh
+    w2 -= lr * h.T @ d2;  b2 -= lr * d2.sum()
+    W1 -= lr * Xtr.T @ dh; b1 -= lr * dh.sum(axis=0)
+    if epoch in (0, 50, 299):
+        test = sigmoid(np.tanh(Xte @ W1 + b1) @ w2 + b2)
+        print(f"epoch {epoch:3d}: test AUC {roc_auc_score(yte, test):.3f}")
+
+sk = MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=500, random_state=0).fit(Xtr, ytr)
+print("scikit-learn MLP:", round(roc_auc_score(yte, sk.predict_proba(Xte)[:, 1]), 3))
+</textarea></div>
+
+  <h2>4. Where it shines, where it breaks (on tables)</h2>
+  <p><b>Shines:</b> a network learns its own features, which is decisive when the columns are raw pixels, audio samples or tokens. On a table it can still be competitive: on the bank calls, a 64-unit network scaled and early-stopped averaged AUC 0.772 over 10 seeds, level with boosted trees (0.760) and logistic regression (0.779). It also mixes easily with other inputs: a network can take a table's columns and a text embedding in the same model, and it trains on streaming data a batch at a time. And it's what to use when you need one model for many outputs at once.</p>
+  <p><b>But it asks more of you.</b> Measured on the same data:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>What went wrong</th><th>Network</th><th>Boosted trees</th></tr>
+    <tr><td>Nothing (scaled, early stopping)</td><td>AUC 0.772 (seeds: 0.759 to 0.779)</td><td>0.760 (any seed)</td></tr>
+    <tr><td>Columns not scaled</td><td>0.725</td><td>0.760 (scale doesn't matter to splits)</td></tr>
+    <tr><td>100 columns of noise added</td><td>0.748</td><td>0.769</td></tr>
+  </table></div>
+  <div class="q" data-answer="c">
+    <p>A network predicting daily subway riders (about 2.5 million a day) had a test error of 3.2 million riders a day, worse than predicting 0. The inputs were scaled. What's the most likely cause?</p>
+    <ul><li data-k="a" data-says="It had 64 units, plenty for weekday patterns.">Too few hidden units</li><li data-k="b" data-says="The error is far bigger than any overfitting would cause.">Overfitting</li><li data-k="c">The target wasn't scaled: the output must reach millions from weights that start near 1</li></ul>
+    <div class="why">The output unit starts out predicting numbers near 0, and gradient steps sized for scaled inputs take forever to reach 2.5 million (and huge errors make huge, unstable gradients). Measured: 3.2 million unscaled; with the target standardized (<code>TransformedTargetRegressor</code>), 0.26 million. Trees never see this problem: a leaf just predicts an average of targets.</div>
+  </div>
+  <p class="gist">On tables a network can match the others, but it needs scaled inputs and targets, several seeds and early stopping, and it suffers more from useless columns; boosted trees give the same score with less care.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Useless columns.</b> Every input gets weights, and noise columns add noise to every hidden unit; trees just never split on them. Select columns first, or add an L1 penalty on the first layer.</li>
+      <li><b>Irregular patterns.</b> Tables often have sharp jumps ("pdays below 16") that trees capture in one split; a smooth network needs many units to make a cliff. Studies comparing the two on dozens of tables (Grinsztajn, Oyallon and Varoquaux, 2022) found this, and useless columns, to be the main reasons trees win.</li>
+      <li><b>Categories.</b> One-hot columns work; with thousands of values, learn an <b>embedding</b> per category (stage 5's word vectors, for store ids or zip codes), which is where networks pull ahead on huge tables.</li>
+      <li><b>Small data.</b> With hundreds of rows, a network's many weights overfit; a penalty (<code>alpha</code>), early stopping and a small hidden layer help, but logistic regression usually wins.</li>
+      <li><b>Explaining it.</b> No rules to print, no odds ratios: only after-the-fact tools (permutation importance, SHAP).</li>
+    </ul>
+  </details>
+
+  <h2>5. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn (or PyTorch)</th><th>What it does</th></tr>
+    <tr><td>Scaling</td><td><code>StandardScaler</code>; <code>TransformedTargetRegressor</code> for the target</td><td>Not optional: inputs and numeric targets on a unit scale.</td></tr>
+    <tr><td>Width and depth</td><td><code>hidden_layer_sizes</code></td><td>One or two layers of 32 to 256 units is plenty for most tables.</td></tr>
+    <tr><td>Penalty</td><td><code>alpha</code> (L2 on weights; weight decay in PyTorch)</td><td>Shrinks weights; essential on small data.</td></tr>
+    <tr><td>Early stopping</td><td><code>early_stopping=True</code>, <code>validation_fraction</code></td><td>Stops when validation loss stops falling.</td></tr>
+    <tr><td>Optimizer and rate</td><td><code>solver="adam"</code>, <code>learning_rate_init</code></td><td>Toolkit 3: Adam at 1e-3 is the usual start.</td></tr>
+    <tr><td>Seeds</td><td><code>random_state</code></td><td>Try several; average their predictions (an ensemble) or report the spread.</td></tr>
+  </table></div>
+  <p>Next: every model in the zoo side by side, and how to choose.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing: Moro, Cortez and Rita (2014), UCI, CC BY 4.0. Ridership: MTA, data.ny.gov.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, mlp } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["circles", "moons", "xor", "blobs", "diagonal"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+function draw() {
+  const hidden = +$("h").value, steps = +$("steps").value, seed = +$("seed").value, set = data($("ds").value);
+  let m;
+  const r = show($("map"), (t) => (m = mlp(t, { hidden, steps, seed: seed * 11 })), set, { overlay: (g, toPx) => {
+    const top = Math.max(...m.units.map((u) => Math.abs(u.out)));
+    for (const u of m.units) { // the line wx·x + wy·y + b = 0, drawn across the plane
+      const pts = Math.abs(u.wy) > Math.abs(u.wx) ? [-1, 1].map((x) => [x, -(u.b + u.wx * x) / u.wy]) : [-1, 1].map((y) => [-(u.b + u.wy * y) / u.wx, y]);
+      const [a, c] = pts.map((q) => toPx(...q));
+      g.strokeStyle = `rgba(244,211,94,${0.25 + 0.65 * Math.abs(u.out) / top})`; g.lineWidth = 1 + 2 * Math.abs(u.out) / top;
+      g.beginPath(); g.moveTo(...a); g.lineTo(...c); g.stroke();
+    }
+  } });
+  $("hV").textContent = hidden; $("stepsV").textContent = steps; $("seedV").textContent = seed;
+  $("r1").textContent = `${r.text}\nyellow lines: each hidden unit's edge (brighter = more weight in the output)`;
+}
+for (const id of ["ds", "h", "steps", "seed"]) $(id).addEventListener("input", draw);
+$("seed").addEventListener("change", () => say("Same data, same network, a different start, a different answer.", "think"));
+draw();
+window.blipContext = () => ({ page: "AI model zoo 9: multilayer perceptrons on tables (hidden units as logistic regressions, scaling inputs and targets, seeds, noise columns, why boosted trees usually win on tables)", dataset: $("ds").value, hiddenUnits: +$("h").value, readout: $("r1").textContent });
+</script>
+</body>
+</html>

@@ -179,5 +179,7 @@ export function mlp(train, { hidden = 8, steps = 1500, lr = 0.03, lambda = 0, se
     g.forEach((gi, k) => { m[k] = 0.9 * m[k] + 0.1 * gi; v[k] = 0.999 * v[k] + 0.001 * gi * gi; th[k] -= (lr * m[k] / (1 - 0.9 ** t)) / (Math.sqrt(v[k] / (1 - 0.999 ** t)) + 1e-8); });
     set(th);
   }
-  return (x, y) => sigmoid(P.W1.reduce((s, w, j) => s + Math.tanh(w[0] * x + w[1] * y + P.b1[j]) * P.W2[j], P.b2));
+  const p = (x, y) => sigmoid(P.W1.reduce((s, w, j) => s + Math.tanh(w[0] * x + w[1] * y + P.b1[j]) * P.W2[j], P.b2));
+  p.units = P.W1.map((w, j) => ({ wx: w[0], wy: w[1], b: P.b1[j], out: P.W2[j] })); // each hidden unit's line w·x + b = 0 and its weight
+  return p;
 }

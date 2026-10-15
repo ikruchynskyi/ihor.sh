@@ -454,6 +454,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-logistic-regression"
  },
+ "zoo-mlp.html": {
+  "notebook": "zoo-mlp.ipynb",
+  "title": "AI from scratch: multilayer perceptrons on tables",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/zoo-mlp.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-multilayer-perceptrons-on-tables"
+ },
  "zoo-naive-bayes.html": {
   "notebook": "zoo-naive-bayes.ipynb",
   "title": "AI from scratch: naive Bayes",

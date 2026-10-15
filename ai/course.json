@@ -7103,5 +7103,100 @@
     "sec": 4
    }
   ]
+ },
+ "zoo-mlp.html": {
+  "goals": [
+   "See a hidden layer as a set of logistic regressions whose answers the output combines",
+   "Know what a network needs on a table: scaled inputs and targets, several seeds, early stopping",
+   "Explain why boosted trees usually win on tables, and when a network is worth it"
+  ],
+  "needs": [
+   "zoo-svm.html",
+   "deep-networks.html",
+   "training-in-pytorch.html"
+  ],
+  "cards": [
+   [
+    "Hidden unit as an edge",
+    "Each tanh unit is a logistic regression with its own straight edge; the output blends them."
+   ],
+   [
+    "Universal approximation",
+    "Enough hidden units can approximate any boundary; training may still not find it."
+   ],
+   [
+    "Scale inputs and targets",
+    "Unscaled inputs saturate units; an unscaled target leaves the output stranded far from millions."
+   ],
+   [
+    "Seed spread",
+    "Different random starts end in different minima: report the spread or average seeds."
+   ],
+   [
+    "Useless columns hurt networks",
+    "Every input feeds every unit; trees simply never split on noise."
+   ],
+   [
+    "When networks win on tables",
+    "Huge data, high-cardinality categories (embeddings), mixed inputs like text, many outputs."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What's the fewest hidden units that can fence a disc inside a ring?",
+    "options": [
+     "1",
+     "3",
+     "16"
+    ],
+    "answer": 1,
+    "why": "Each unit adds one straight edge; three can close a triangle.",
+    "sec": 1
+   },
+   {
+    "q": "Why does an unscaled column like pdays = 999 hurt a network but not a tree?",
+    "options": [
+     "Trees drop it",
+     "w·x is huge, tanh is flat there, and its gradient near zero; a tree only compares with a cut",
+     "Networks can't take integers"
+    ],
+    "answer": 1,
+    "why": "Scale inputs for networks; trees are scale-free.",
+    "sec": 2
+   },
+   {
+    "q": "Ten seeds of the same network gave AUC 0.759 to 0.779. A good practice is…",
+    "options": [
+     "report the best seed",
+     "report the spread, or average several seeds' predictions",
+     "use seed 0 always"
+    ],
+    "answer": 1,
+    "why": "The best seed is luck on the test set; averaging is an ensemble.",
+    "sec": 4
+   },
+   {
+    "q": "A ridership network had an error larger than the average day. The inputs were scaled. The likely fix is…",
+    "options": [
+     "more hidden units",
+     "scaling the target",
+     "removing early stopping"
+    ],
+    "answer": 1,
+    "why": "3.2 M → 0.26 M riders with TransformedTargetRegressor.",
+    "sec": 4
+   },
+   {
+    "q": "Why do boosted trees usually beat networks on ordinary tables?",
+    "options": [
+     "Networks can't learn tables",
+     "Trees ignore useless columns and capture sharp jumps in one split, with little tuning",
+     "Trees are deeper"
+    ],
+    "answer": 1,
+    "why": "Grinsztajn et al. (2022) found these the main reasons.",
+    "sec": 4
+   }
+  ]
  }
 }
