@@ -1,5 +1,6 @@
 // Records and decodes one Meteor pass on the server, started by the scheduler (meteor-rec.ts) a minute before the
-// satellite rises. It asks the radio server (radio/server.ts) for a 240 kHz slice at the satellite's frequency, writes
+// satellite rises. It asks the satellite radio (radio/server.ts on :8074, the Nooelec;
+// the shared radio on :8073 when that one can't open) for a 240 kHz slice at the satellite's frequency, writes
 // the raw 8-bit I/Q to disk (for SatDump), decodes it as it arrives with the same receiver the page uses, and when the
 // satellite sets writes small products the page can show without touching the raw file: one grayscale PNG per channel,
 // a thumbnail, and meta.json (each row's timing for the map, the report card, a timeline every 5 s).
@@ -22,7 +23,7 @@ const ID = arg("id") ?? `${new Date(START).toISOString().slice(0, 16).replace(/[
 const ROOT = path.resolve(import.meta.dirname, "../.."), DIR = path.join(ROOT, "data", "meteor"), OUT = path.join(DIR, ID);
 const CATNR: Record<string, number> = { "meteor-m2-3": 57166, "meteor-m2-4": 59051 };
 const HOME = { lat: 40.73, lon: -73.95 }; // the radio server's place (radio/server.ts REF)
-const SDR = "http://127.0.0.1:8073";
+const SAT_SDR = "http://127.0.0.1:8074", SDR = "http://127.0.0.1:8073"; // the satellite radio, else the shared one
 mkdirSync(OUT, { recursive: true });
 const log = (m: string) => { const line = `${new Date().toISOString()} ${m}`; console.log(line); writeFileSync(path.join(OUT, "log.txt"), line + "\n", { flag: "a" }); };
 
@@ -53,9 +54,12 @@ if (FILE) { // a recording replayed as if it were arriving live (for testing the
   log(`recording ${SAT} on ${FREQ} MHz until ${new Date(UNTIL).toISOString()} (peak ${MAX_EL}°)`);
   const abort = new AbortController();
   setTimeout(() => abort.abort(), Math.max(1000, UNTIL + 30_000 - Date.now()));
-  let res: Response | null = null;
+  const slice = (base: string) => fetch(`${base}/api/stream?id=meteor-recorder&center=${Math.round(FREQ * 1e6)}&width=240000`, { signal: abort.signal }).catch((e) => { log(`radio server ${base}: ${(e as Error).message}`); return null; });
+  let res: Response | null = await slice(SAT_SDR);
+  if (res?.ok && res.body) log("on the satellite radio (:8074)");
+  else { log(`satellite radio unavailable (${res?.status ?? "no answer"}${res ? `: ${(await res.json().catch(() => ({}))).error ?? ""}` : ""}): using the shared radio`); res = null; }
   for (let attempt = 0; attempt < 4 && !res; attempt++) { // the dongle is shared: if listeners are in the way, free it (the scheduler's promise)
-    const r = await fetch(`${SDR}/api/stream?id=meteor-recorder&center=${Math.round(FREQ * 1e6)}&width=240000`, { signal: abort.signal }).catch((e) => { log(`radio server: ${(e as Error).message}`); return null; });
+    const r = await slice(SDR);
     if (r?.ok && r.body) { res = r; break; }
     log(`radio busy (${r?.status ?? "no answer"}): freeing the dongle`);
     await fetch(`${SDR}/api/admin/free`, { method: "POST" }).catch(() => {});

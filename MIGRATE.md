@@ -5,17 +5,18 @@
 | service  | what                                   | Mac equivalent       |
 |----------|----------------------------------------|----------------------|
 | `web`    | `server.ts` on :8080                   | `sh.ihor.server`     |
-| `sdr`    | `radio/server.ts` on :8073 + RTL-SDR   | `sh.ihor.sdr`        |
+| `sdr`    | `radio/server.ts` on :8073 + HackRF    | `sh.ihor.sdr`        |
+| `sdr-sat` | `radio/server.ts` on :8074 + RTL-SDR (`SDR_DEVICE=rtl`) | `sh.ihor.sdr-sat` |
 | `tunnel` | cloudflared, same tunnel and ingress   | `sh.ihor.tunnel`     |
 | `ollama` | local fallback model (gpt-oss:20b)     | the Ollama app       |
 
-`sdr` and `tunnel` share `web`'s network namespace, so `127.0.0.1:8073` in the code, the SDR's "local only" admin API and
+`sdr`, `sdr-sat` and `tunnel` share `web`'s network namespace, so `127.0.0.1:8073` in the code, the SDR's "local only" admin API and
 `service: http://localhost:8080` in the tunnel config work unchanged.
 
 ## 1. Old host (Mac): stop, so data is consistent and only one tunnel runs
 
 ```sh
-for s in server sdr tunnel; do sudo launchctl bootout system/sh.ihor.$s; done
+for s in server sdr sdr-sat tunnel; do sudo launchctl bootout system/sh.ihor.$s; done
 ```
 
 ## 2. Copy what git doesn't have
@@ -54,4 +55,4 @@ Deploy afterwards: `git pull && docker compose up -d --build`.
 ## Rolling back to the Mac
 
 `docker compose down` on the new host, copy `data/` back, then
-`for s in server sdr tunnel; do sudo launchctl bootstrap system /Library/LaunchDaemons/sh.ihor.$s.plist; done`.
+`for s in server sdr sdr-sat tunnel; do sudo launchctl bootstrap system /Library/LaunchDaemons/sh.ihor.$s.plist; done`.

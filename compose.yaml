@@ -21,6 +21,15 @@ services:
     network_mode: service:web
     devices: ["/dev/bus/usb:/dev/bus/usb"]   # RTL-SDR dongle (Linux host only; delete this line if there's none)
 
+  sdr-sat:   # the RTL-SDR kept for satellites (the Meteor recorder); without it the recorder uses sdr
+    build: .
+    restart: unless-stopped
+    working_dir: /app/radio
+    command: ["node", "server.ts"]
+    environment: { SDR_DEVICE: rtl, PORT: "8074" }
+    network_mode: service:web
+    devices: ["/dev/bus/usb:/dev/bus/usb"]
+
   # Same network as web, so config.yml's  service: http://localhost:8080  is unchanged.
   tunnel:
     image: cloudflare/cloudflared:latest

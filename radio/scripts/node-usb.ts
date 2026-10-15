@@ -5,11 +5,13 @@ import { RtlSdr, isDongle as isRtl, type UsbDevice } from "../src/rtlsdr.ts";
 import { HackRf, isHackRf } from "../src/hackrf.ts";
 
 export type Sdr = RtlSdr | HackRf;
-const isDongle = (d: { vendorId: number; productId: number }) => isRtl(d) || isHackRf(d);
+
+// SDR_DEVICE=rtl: only the RTL-SDR (the satellite server on :8074 keeps to it). Unset: the HackRF, else the RTL-SDR.
+const ONLY = process.env.SDR_DEVICE;
 
 export async function openDongle(): Promise<Sdr> {
   const usb = () => new WebUSB({ allowAllDevices: true }).getDevices();
-  const hack = (await usb()).find(isHackRf);
+  const hack = ONLY !== "rtl" && (await usb()).find(isHackRf);
   if (hack) return HackRf.open(shim(hack));
   // A fresh WebUSB object each attempt: after a reset the dongle re-enumerates as a new device.
   return RtlSdr.openWithRetry(async () => {
@@ -31,8 +33,8 @@ function shim(dev: USBDevice): UsbDevice {
  * USB-reset the dongle (it re-enumerates). Clears a stall where the RTL2832U keeps replaying one stale
  * buffer instead of samples, which otherwise needs unplugging. The dongle must be closed first.
  */
-export async function resetDongle(): Promise<boolean> {
-  const dev = (await new WebUSB({ allowAllDevices: true }).getDevices()).find(isDongle);
+export async function resetDongle(hackrf: boolean): Promise<boolean> { // the one that was open, not the other server's
+  const dev = (await new WebUSB({ allowAllDevices: true }).getDevices()).find(hackrf ? isHackRf : isRtl);
   if (!dev) return false;
   try { await dev.open(); await dev.reset(); return true; }
   catch { return false; }

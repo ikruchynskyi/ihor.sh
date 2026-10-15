@@ -131,11 +131,11 @@ let chunkCount = 0, recovering = false;
 async function recover(why = "stalled (replaying a buffer)") {
   if (recovering) return;
   recovering = true;
-  const want = mode === "idle" ? "iq" : mode;
+  const want = mode === "idle" ? "iq" : mode, hackrf = sdr instanceof HackRf;
   console.error(`dongle ${why} in ${want} mode: resetting it`);
   try {
     await release();
-    console.log(`USB reset: ${(await resetDongle()) ? "ok" : "failed"}`);
+    console.log(`USB reset: ${(await resetDongle(hackrf)) ? "ok" : "failed"}`);
     await new Promise((r) => setTimeout(r, 2500)); // re-enumeration
     if (want !== "iq" || listening()) { await ensureSdr(want); if (want !== "iq") push(want, "online", { mode: want }); }
   } catch (e) { console.error("recovery failed:", (e as Error).message); }
@@ -503,7 +503,7 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     const msg = (e as Error).message;
     console.error(req.url, msg);
-    if (!res.headersSent) json(res, /No RTL-SDR|LIBUSB_ERROR_ACCESS|busy/i.test(msg) ? 503 : 500, { error: msg });
+    if (!res.headersSent) json(res, /No RTL-SDR|LIBUSB_ERROR_ACCESS|busy|in use/i.test(msg) ? 503 : 500, { error: msg });
   }
 });
 
