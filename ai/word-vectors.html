@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Word Vectors</title>
+  <meta name="description" content="AI from scratch: word vectors. Meaning from the company a word keeps, word2vec's skip-gram trained from scratch, nearest neighbors and analogies on 20,000 real GloVe vectors, the biases words carry, and why one vector per word gave way to contextual embeddings." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .row input[type=text] { font: inherit; width: 8em; padding: 4px 6px; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .nbrs { display: flex; flex-wrap: wrap; gap: 6px; font: 15px ui-monospace, Menlo, monospace; }
+    .nbrs span { background: #58c4dd22; border-radius: 6px; padding: 2px 8px; }
+    .bars { font: 14px/1.4 ui-monospace, Menlo, monospace; }
+    .bars div { display: grid; grid-template-columns: 7.5em 1fr; align-items: center; gap: 8px; margin: 3px 0; }
+    .bars .track { position: relative; height: 16px; background: linear-gradient(90deg, transparent 49.8%, var(--line) 49.8%, var(--line) 50.2%, transparent 50.2%); }
+    .bars .track i { position: absolute; top: 2px; height: 12px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Word vectors · Stage 5: seeing and reading</p>
+  <h1>Word vectors</h1>
+  <p class="lede">The tokens lesson turned text into ids, and chapter 7 said every id looks up a learned vector, its embedding, with similar words placed close together. Where do those vectors come from, and what's in them? This lesson answers with the idea that started modern NLP in 2013: train vectors so that a word can predict its neighbors, and meaning appears as geometry. You'll train a tiny version from scratch, then explore 20,000 real vectors learned from six billion words of Wikipedia and news: nearest neighbors, analogies, and the biases they absorbed from the text.</p>
+
+  <h2>1. You shall know a word by the company it keeps</h2>
+  <p>That's the linguist J. R. Firth in 1957, and it's the whole trick. Words that appear in the same contexts ("I took the ___ to work": train, bus, subway) tend to mean related things. So give each word a vector and adjust the vectors until words that share contexts point in similar directions. Then <b>cosine similarity</b> (chapter 7: the dot product of the directions) measures relatedness. Try it on GloVe vectors, 50 numbers per word:</p>
+  <div class="row"><label>word <input type="text" id="nw" value="subway" aria-label="A word to find neighbors for"></label><span class="readout" id="nwr" style="margin:0"></span></div>
+  <div class="nbrs" id="nbrs">Loading 20,000 word vectors (1 MB)…</div>
+  <p>Try <i>jazz</i>, <i>pizza</i>, <i>brooklyn</i>, <i>gradient</i>. Then <i>bank</i>, <i>apple</i> and <i>python</i>, which are worth a second look (section 5).</p>
+  <p class="gist">Words that appear in the same contexts get nearby vectors, so closeness in the vector space stands in for closeness in meaning.</p>
+
+  <h2>2. word2vec: predict the neighbors</h2>
+  <p><b>Skip-gram</b> (word2vec, Mikolov and colleagues at Google, 2013) turns the idea into a training task. Slide a window over the text; for each word, its neighbors within 2 positions are "context". The model gives each word two vectors, \(w\) for when it's the center and \(c\) for when it's context, and wants \(\sigma(w \cdot c)\) (chapter 3's neuron) to be close to 1 for real pairs and close to 0 for random <b>negative samples</b>, words drawn at random that probably aren't neighbors:</p>
+  <p class="formula">\[ L = -\ln \sigma(w \cdot c_{\text{true}}) - \sum_{k=1}^{K} \ln \sigma(-\,w \cdot c_{\text{neg},k}) \]</p>
+  <p>That's log loss on a yes/no question, "were these two words neighbors?", with the vectors as the only weights. Words that share neighbors get pulled toward the same context vectors, so they end up near each other. A tiny version, on a made-up corpus where cats and dogs do the same things:</p>
+  <div class="code" data-title="Build it: skip-gram with negative sampling in NumPy"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+sentences = ["the cat drinks milk", "the dog drinks water", "a cat chases a mouse", "a dog chases a cat",
+             "the cat sleeps on the sofa", "the dog sleeps on the rug", "i drive the car to work", "i drive the bus to work",
+             "the car needs fuel", "the bus needs fuel", "my cat eats fish", "my dog eats meat"] * 30
+words = sorted({w for s in sentences for w in s.split()}); ix = {w: i for i, w in enumerate(words)}
+pairs = [(ix[s[i]], ix[s[j]]) for s in (x.split() for x in sentences) for i in range(len(s))
+         for j in range(max(0, i - 2), min(len(s), i + 3)) if i != j]
+D, K, lr = 16, 3, 0.05
+Wc = rng.normal(0, 0.1, (len(words), D)); Cx = rng.normal(0, 0.1, (len(words), D))   # center and context vectors
+sig = lambda z: 1 / (1 + np.exp(-z))
+for epoch in range(15):
+    for t in rng.permutation(len(pairs)):
+        w, c = pairs[t]; negs = rng.integers(len(words), size=K)
+        for ctx, label in [(c, 1.0)] + [(n, 0.0) for n in negs]:
+            g = sig(Wc[w] @ Cx[ctx]) - label                 # chapter 3's p − y
+            Wc[w], Cx[ctx] = Wc[w] - lr * g * Cx[ctx], Cx[ctx] - lr * g * Wc[w]
+U = Wc / np.linalg.norm(Wc, axis=1, keepdims=True)
+for q in ["cat", "car", "milk"]:
+    sims = U @ U[ix[q]]
+    print(q, "→", [words[i] for i in np.argsort(-sims)[1:4]])
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>Why do "cat" and "dog" end up close, although they never appear in the same sentence here?</p>
+    <ul><li data-k="a" data-says="They never appear together in this corpus; it's their neighbors they share.">Because they appear together often</li><li data-k="b">They share neighbors (the, drinks, chases, sleeps, eats), so both are pulled toward the same context vectors</li><li data-k="c" data-says="The vectors start random; nothing about the spelling is used.">Because their spellings are similar</li></ul>
+    <div class="why">Every update moves a center vector toward its true contexts' vectors. Two words with the same contexts get moved toward the same places. That's Firth's idea, turned into gradient descent.</div>
+  </div>
+  <p class="gist">Skip-gram trains each word's vector to say "yes" to its real neighbors and "no" to random words, so words with shared neighbors drift together.</p>
+  <details class="deeper"><summary>Why the dot products end up measuring co-occurrence</summary>
+    <ol>
+      <li>Define the <b>pointwise mutual information</b> of two words, \(\operatorname{PMI}(w, c) = \ln \frac{P(w, c)}{P(w) P(c)}\): how much more often they appear together than they would by chance (0 if independent). Probability 5's mutual information is its average over all pairs.</li>
+      <li>For one pair \((w, c)\), the skip-gram loss above is minimized, over the single number \(x = w \cdot c\), where its slope is zero. Real pairs pull \(x\) up in proportion to how often they occur; negatives push it down in proportion to \(K\) times how often \(c\) is drawn at random.</li>
+      <li>Setting the slope to zero gives \(\sigma(x) / \sigma(-x) = e^x = \frac{P(w, c)}{K\, P(w) P(c)}\), so \(w \cdot c = \operatorname{PMI}(w, c) - \ln K\) (Levy and Goldberg, 2014).</li>
+      <li>So skip-gram is secretly factoring a huge table of word-pair PMIs into two thin matrices: every word's 50 or 300 numbers summarize its row of that table (the SVD lesson's low-rank idea).</li>
+      <li>GloVe, the vectors in this page, fits the log co-occurrence counts directly with a weighted least-squares loss, and lands in much the same place.</li>
+    </ol>
+  </details>
+
+  <h2>3. Analogies: relations as directions</h2>
+  <p>If the step from <i>man</i> to <i>king</i> and the step from <i>woman</i> to <i>queen</i> are the same "royalty" direction, then \(\text{king} - \text{man} + \text{woman}\) should land near <i>queen</i>. Chapter 7 drew this with 16 hand-placed words; here are the real vectors (the three input words are excluded from the answer).</p>
+  <div class="row"><input type="text" id="a1" value="man" aria-label="a"> is to <input type="text" id="b1" value="king" aria-label="b"> as <input type="text" id="c1" value="woman" aria-label="c"> is to <b id="ans">…</b></div>
+  <p class="readout" id="ar"></p>
+  <p>Some that work: <i>paris : france :: tokyo : ?</i> (japan), <i>walk : walked :: swim : ?</i> (swam), <i>good : better :: bad : ?</i> (worse). Not every relation is a clean straight line, and the answer list often shows the near misses.</p>
+  <div class="q" data-answer="a">
+    <p>Without excluding the input words, what does king − man + woman return first?</p>
+    <ul><li data-k="a">king itself: the sum is still closest to the vector it started from</li><li data-k="b" data-says="Queen is second, not first, when the inputs are allowed.">queen</li><li data-k="c" data-says="Woman is close, but king − man + woman stays nearest king.">woman</li></ul>
+    <div class="why">Measured on these vectors: "king" first, "queen" second. The famous analogy results all exclude the input words, which makes them look cleaner than the geometry really is.</div>
+  </div>
+  <p class="gist">Relations like royalty, tense and capital-of often show up as roughly constant directions, so vector arithmetic can complete an analogy, imperfectly.</p>
+
+  <h2>4. The biases words carry</h2>
+  <p>The vectors learned whatever patterns the text has, including the ones nobody wants. Project occupation words onto the direction from <i>she</i> to <i>he</i>: positive leans "he", negative leans "she".</p>
+  <div class="bars" id="bars"></div>
+  <div class="row"><label>add a word <input type="text" id="bw" value="pilot" aria-label="A word to add to the chart"></label><button id="badd">Add</button></div>
+  <p>In these GloVe vectors <i>nurse</i> and <i>dancer</i> lean strongly toward <i>she</i>, <i>captain</i> and <i>boss</i> toward <i>he</i>, and the analogy <i>man : doctor :: woman : ?</i> answers <i>nurse</i>. The words come from 2014 Wikipedia and news text, and the vectors faithfully compress how that text used them. Surprises cut both ways: <i>secretary</i> leans <i>he</i>, probably from "Secretary of State" and "general secretary" in news. A model built on these vectors (a résumé screener, a search ranker) inherits the leanings unless someone measures and corrects them.</p>
+  <div class="q" data-answer="c">
+    <p>A team uses these vectors to rank résumés by similarity to a job ad that says "engineer". What's the risk?</p>
+    <ul><li data-k="a" data-says="The issue isn't speed but what the vectors encode.">Ranking will be slow</li><li data-k="b" data-says="Vectors trained on news know these words well.">The vectors don't know the word "engineer"</li><li data-k="c">Words and names that co-occurred with men in the training text sit closer to "engineer", so similar résumés can rank differently by gender</li></ul>
+    <div class="why">Chapter 12's advice applies: measure the results per group (slices) before shipping, and check the features themselves. Debiasing methods exist (removing the gender direction from neutral words) but only reduce what's measurable.</div>
+  </div>
+  <p class="gist">Word vectors compress how their training text used words, stereotypes included, so anything built on them can inherit those leanings unless they're measured.</p>
+
+  <h2>5. One vector per word, and what came next</h2>
+  <p>Look again at the neighbors of <i>bank</i>: banks, banking, securities, credit. The river bank is gone. <i>apple</i>'s neighbors are blackberry, iphone, microsoft: the fruit lost out to the company in news text. A word2vec or GloVe vector is one point per word, an average over every sense the word was used in, dominated by the most common one.</p>
+  <p>Chapter 7's attention is the fix: a transformer starts each token with an embedding like these, then mixes in its context, so <i>bank</i> next to <i>river</i> ends up somewhere else than <i>bank</i> next to <i>loan</i>. These <b>contextual embeddings</b> replaced static word vectors almost everywhere by 2019. The idea of "meaning as a point you can measure distances between" lives on, scaled up to whole sentences and documents: stage 6's retrieval lesson searches this site's pages by embedding similarity.</p>
+  <details class="deeper"><summary>Where it breaks: points that can't say everything</summary>
+    <ul>
+      <li><b>Many meanings, one point.</b> <i>bank</i>, <i>apple</i>, <i>python</i> (here closest to owl, mouse and monty: the snake and the comedy troupe, no programming language) each get one vector, pulled toward their most frequent use in the training text.</li>
+      <li><b>Opposites look alike.</b> <i>hot</i> and <i>cold</i>, <i>buy</i> and <i>sell</i> appear in the same contexts, so they end up close. Similarity in these spaces means "used alike", which includes antonyms.</li>
+      <li><b>Rare words are noise.</b> A word seen a handful of times has a vector shaped by a handful of contexts. This page keeps only the 20,000 most frequent words for a reason: further down the list, neighbors get random.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>Meaning from context: words used in similar contexts get nearby vectors; cosine similarity measures it.</li>
+    <li>Skip-gram with negative sampling: log loss on "were these neighbors?", one center and one context vector per word.</li>
+    <li>The dot products approximate PMI minus a constant: word vectors are a low-rank summary of co-occurrence.</li>
+    <li>Analogies are directions, imperfect, and look cleaner when the inputs are excluded.</li>
+    <li>Vectors carry their text's biases; measure before building on them.</li>
+    <li>One vector per word can't hold several senses; transformers' contextual embeddings fixed that.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Vectors: GloVe 6B 50d (Pennington, Socher and Manning, Stanford, 2014; Public Domain Dedication and License), the 20,000 most frequent words, stored as 8-bit unit vectors. Bias: Bolukbasi et al., "Man is to Computer Programmer as Woman is to Homemaker?" (2016).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const [txt, buf] = await Promise.all([fetch("/ai/data/glove-20k.txt").then((r) => r.text()), fetch("/ai/data/glove-20k.bin").then((r) => r.arrayBuffer())]);
+const words = txt.split("\n").filter(Boolean), D = 50, raw = new Int8Array(buf), ix = new Map(words.map((w, i) => [w, i]));
+const U = new Float32Array(raw.length);                     // unit vectors
+for (let i = 0; i < words.length; i++) { let n = 0; for (let d = 0; d < D; d++) n += raw[i * D + d] ** 2; n = Math.sqrt(n); for (let d = 0; d < D; d++) U[i * D + d] = raw[i * D + d] / n; }
+const vec = (w) => U.subarray(ix.get(w) * D, ix.get(w) * D + D);
+const sims = (v) => { const s = new Float32Array(words.length); for (let i = 0; i < words.length; i++) { let t = 0; for (let d = 0; d < D; d++) t += U[i * D + d] * v[d]; s[i] = t; } return s; };
+const top = (s, k, skip = []) => [...s.keys()].filter((i) => !skip.includes(i)).sort((a, b) => s[b] - s[a]).slice(0, k);
+const clean = (s) => s.trim().toLowerCase();
+function neighbors() {
+  const w = clean($("nw").value);
+  if (!ix.has(w)) { $("nbrs").textContent = ""; $("nwr").textContent = w ? `"${w}" isn't among the 20,000 most frequent words` : ""; return; }
+  const s = sims(vec(w)), best = top(s, 10, [ix.get(w)]);
+  $("nbrs").innerHTML = best.map((i) => `<span>${words[i]} ${s[i].toFixed(2)}</span>`).join("");
+  $("nwr").textContent = `word #${ix.get(w) + 1} by frequency · cosine similarity to its 10 nearest`;
+}
+function analogy() {
+  const [a, b, c] = ["a1", "b1", "c1"].map((id) => clean($(id).value));
+  const missing = [a, b, c].filter((w) => !ix.has(w));
+  if (missing.length) { $("ans").textContent = "?"; $("ar").textContent = `not in the vocabulary: ${missing.join(", ")}`; return; }
+  const v = new Float32Array(D), va = vec(a), vb = vec(b), vc = vec(c); for (let d = 0; d < D; d++) v[d] = vb[d] - va[d] + vc[d];
+  const s = sims(v), best = top(s, 5, [a, b, c].map((w) => ix.get(w)));
+  $("ans").textContent = words[best[0]];
+  $("ar").textContent = `${b} − ${a} + ${c} ≈ ` + best.map((i) => `${words[i]} (${s[i].toFixed(2)})`).join(", ");
+}
+let barWords = ["nurse", "dancer", "librarian", "teacher", "doctor", "programmer", "scientist", "engineer", "architect", "secretary", "boss", "captain"];
+function bars() {
+  const g = new Float32Array(D), he = vec("he"), she = vec("she"); let n = 0;
+  for (let d = 0; d < D; d++) { g[d] = he[d] - she[d]; n += g[d] ** 2; } n = Math.sqrt(n);
+  const rows = barWords.filter((w) => ix.has(w)).map((w) => { const v = vec(w); let p = 0; for (let d = 0; d < D; d++) p += (v[d] * g[d]) / n; return [w, p]; }).sort((x, y) => x[1] - y[1]);
+  $("bars").innerHTML = rows.map(([w, p]) => { const width = Math.min(50, Math.abs(p) * 100); return `<div><span>${w} ${p >= 0 ? "+" : "−"}${Math.abs(p).toFixed(2)}</span><span class="track"><i style="${p >= 0 ? `left:50%;background:#58c4dd` : `right:50%;background:#f4a259`};width:${width}%"></i></span></div>`; }).join("") +
+    `<div><span></span><span style="display:flex;justify-content:space-between;color:var(--muted)"><span>← she</span><span>he →</span></span></div>`;
+}
+$("nw").addEventListener("input", neighbors); ["a1", "b1", "c1"].forEach((id) => $(id).addEventListener("input", analogy));
+$("badd").onclick = () => { const w = clean($("bw").value); if (ix.has(w) && !barWords.includes(w)) { barWords.push(w); bars(); } };
+neighbors(); analogy(); bars();
+</script>
+</body>
+</html>

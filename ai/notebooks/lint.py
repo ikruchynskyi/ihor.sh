@@ -285,7 +285,7 @@ def lint(only=(), show_ledger=None):
                             if isinstance(t, ast.Name) and isinstance(t.ctx, ast.Store)} - none_defaults(cells)
             tree = parse(SOL.sub("", text))
             for f in (n for n in ast.walk(tree) if isinstance(n, ast.FormattedValue) and n.format_spec) if tree else []:
-                used = {x.id for x in ast.walk(f.value) if isinstance(x, ast.Name)} & answers
+                used = {x.id for x in ast.walk(f.value) if isinstance(x, ast.Name)} & (answers - given_stores)
                 if used:
                     report(f"{stem} notebook", f"given code formats the answer {', '.join(sorted(used))} with a format spec: a blank answer (None) crashes it")
             # ...and so does len(x), x.attr or x[i] on a blank answer, outside check() and `if x is not None:` guards.

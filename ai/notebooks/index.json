@@ -313,5 +313,12 @@
   "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/training-in-pytorch.ipynb",
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-training-in-pytorch"
+ },
+ "word-vectors.html": {
+  "notebook": "word-vectors.ipynb",
+  "title": "AI from scratch: word vectors",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/word-vectors.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-word-vectors"
  }
 }

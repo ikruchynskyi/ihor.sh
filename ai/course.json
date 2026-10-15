@@ -4748,5 +4748,110 @@
     "sec": 4
    }
   ]
+ },
+ "word-vectors.html": {
+  "goals": [
+   "Explain the distributional idea: words used in similar contexts get similar vectors",
+   "Train skip-gram with negative sampling and explain its loss",
+   "Find neighbors and solve analogies with cosine similarity, and know their limits",
+   "Measure biases in word vectors, and explain why one vector per word gave way to contextual embeddings"
+  ],
+  "needs": [
+   "tokens.html",
+   "03-a-neuron.html",
+   "07-attention.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Distributional hypothesis",
+    "You shall know a word by the company it keeps (Firth): shared contexts mean related meanings."
+   ],
+   [
+    "Skip-gram",
+    "Predict a word's neighbors: σ(w·c) near 1 for real pairs, near 0 for random negative samples."
+   ],
+   [
+    "Negative sampling",
+    "Contrast each real pair with K random words (drawn ∝ count^0.75) instead of scoring the whole vocabulary."
+   ],
+   [
+    "Subsampling",
+    "Randomly drop very frequent words (the, of) during training: they teach little."
+   ],
+   [
+    "SGNS = implicit PMI",
+    "At the optimum, w·c ≈ PMI(w, c) − ln K: word vectors are a low-rank summary of co-occurrence."
+   ],
+   [
+    "Analogy arithmetic",
+    "b − a + c, nearest word excluding a, b, c: king − man + woman ≈ queen."
+   ],
+   [
+    "Bias in embeddings",
+    "Projections on he − she: nurse −0.33, captain +0.35 in GloVe; inherited from the training text."
+   ],
+   [
+    "Static vs contextual",
+    "word2vec/GloVe: one vector per word (bank = money bank). Transformers: a vector per word in context."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why do 'cat' and 'dog' get similar vectors even if they rarely appear in the same sentence?",
+    "options": [
+     "They appear with the same neighbors, and training pulls both toward those context vectors",
+     "Their spellings are similar",
+     "They are near each other in the vocabulary list"
+    ],
+    "answer": 0,
+    "why": "Shared contexts, not co-occurrence with each other.",
+    "sec": 2
+   },
+   {
+    "q": "In skip-gram with negative sampling, each training example asks…",
+    "options": [
+     "were these two words neighbors? (log loss on σ(w·c))",
+     "what is the next word? (softmax over the vocabulary)",
+     "how many times does this word appear?"
+    ],
+    "answer": 0,
+    "why": "A yes/no question per pair, with K random 'no' pairs for each real 'yes'.",
+    "sec": 2
+   },
+   {
+    "q": "king − man + woman, without excluding the input words, is closest to…",
+    "options": [
+     "king",
+     "queen",
+     "woman"
+    ],
+    "answer": 0,
+    "why": "The sum stays nearest its starting point; analogy demos exclude the inputs.",
+    "sec": 3
+   },
+   {
+    "q": "In GloVe, man : doctor :: woman : ? returns 'nurse'. What does that show?",
+    "options": [
+     "The vectors absorbed gender patterns from how the training text used these words",
+     "Nurses are doctors",
+     "The analogy method is broken"
+    ],
+    "answer": 0,
+    "why": "Embeddings compress their corpus's usage, stereotypes included: measure before building on them.",
+    "sec": 4
+   },
+   {
+    "q": "Why are the neighbors of 'bank' all about money?",
+    "options": [
+     "One vector per word averages all its senses, dominated by the most frequent one in the training text",
+     "GloVe was trained only on finance news",
+     "Rivers aren't in the vocabulary"
+    ],
+    "answer": 0,
+    "why": "Static vectors can't separate senses; contextual embeddings (transformers) do.",
+    "sec": 5
+   }
+  ]
  }
 }
