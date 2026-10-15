@@ -6243,5 +6243,110 @@
     "sec": 3
    }
   ]
+ },
+ "faces-and-style.html": {
+  "goals": [
+   "Explain verification and identification with embeddings and a distance threshold",
+   "Train an embedding with triplet loss and test it on identities never seen",
+   "Measure false accepts and false rejects, overall and per group, and know the legal and ethical context",
+   "Explain neural style transfer: content features, Gram-matrix style, gradient descent on pixels"
+  ],
+  "needs": [
+   "deep-cnns.html",
+   "12-measuring-a-model.html",
+   "word-vectors.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Verification vs identification",
+    "Same person? (distance below a threshold) vs who is it? (nearest embedding in a database)."
+   ],
+   [
+    "Siamese network",
+    "Two or three inputs through the same network with shared weights, trained on their distances."
+   ],
+   [
+    "Triplet loss",
+    "max(0, |a − p|² − |a − n|² + m): positives closer than negatives by a margin."
+   ],
+   [
+    "New identities",
+    "Embeddings generalize to unseen identities only when trained on many: Omniglot 0.96 AUC; 8 digits not enough."
+   ],
+   [
+    "False accept / false reject",
+    "Impostors let in vs genuine users refused; a threshold trades one for the other."
+   ],
+   [
+    "Demographic differentials",
+    "NIST 2019: false positive rates varied by 10–100× across groups for many algorithms."
+   ],
+   [
+    "Gram matrix",
+    "Channel-by-channel feature correlations summed over positions: texture without layout."
+   ],
+   [
+    "Style transfer",
+    "Optimize the pixels to keep a photo's deep features and match a painting's Gram matrices."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can't face recognition be an ordinary classifier over people?",
+    "options": [
+     "New people appear constantly with one or two photos; an embedding compared by distance handles anyone",
+     "Classifiers can't use images",
+     "There are too few people"
+    ],
+    "answer": 0,
+    "why": "Verification compares embeddings; no retraining per new person.",
+    "sec": 1
+   },
+   {
+    "q": "Raising the verification threshold (allowing larger distances) mostly…",
+    "options": [
+     "raises false accepts and lowers false rejects",
+     "lowers both",
+     "raises both"
+    ],
+    "answer": 0,
+    "why": "More pairs count as 'same': impostors get in, owners are refused less.",
+    "sec": 1
+   },
+   {
+    "q": "An embedding trained with triplet loss on only 8 digits did worse than raw pixels on the 2 unseen digits. Why?",
+    "options": [
+     "With few identities it learns to separate those classes, not what 'same' means in general",
+     "Triplet loss doesn't work",
+     "The digits were mislabeled"
+    ],
+    "answer": 0,
+    "why": "On Omniglot's 964 training characters it generalizes to unseen ones (0.96 AUC).",
+    "sec": 2
+   },
+   {
+    "q": "Before deploying face verification with a 0.1% average false accept rate, what must be checked?",
+    "options": [
+     "False accept and false reject rates per demographic group",
+     "Only the average",
+     "Only the speed"
+    ],
+    "answer": 0,
+    "why": "One threshold can spread errors unevenly; NIST found large differentials.",
+    "sec": 3
+   },
+   {
+    "q": "Why does a Gram matrix capture style but not content?",
+    "options": [
+     "It sums feature co-occurrences over all positions, so it keeps which textures appear together and loses where",
+     "It stores the image's pixels",
+     "It only uses the first layer"
+    ],
+    "answer": 0,
+    "why": "Shuffle the positions and the Gram matrix doesn't change.",
+    "sec": 4
+   }
+  ]
  }
 }

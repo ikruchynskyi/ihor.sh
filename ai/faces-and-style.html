@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Faces and Style</title>
+  <meta name="description" content="AI from scratch elective: faces and style. Embeddings for verification, Siamese networks and triplet loss, a threshold that trades false accepts for false rejects (and differs by group), recognizing identities never seen in training, the law and ethics of face recognition, and neural style transfer with Gram matrices." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Faces and style</p>
+  <h1>Faces and style</h1>
+  <p class="lede">A phone unlocks for its owner's face and not for a stranger's, though it was trained on neither. A filter repaints a photo in the brushstrokes of a painting. Both rest on the same idea from this stage: a network's internal numbers describe an image in ways you can compare and recombine. This lesson builds the face-recognition method (without any faces: it works the same way on handwritten characters), looks hard at its errors and the law around it, and then uses the same networks to separate an image's content from its style.</p>
+
+  <h2>1. Verification: same person or not?</h2>
+  <p>Face recognition can't be an ordinary classifier: new people appear every day, each with a photo or two. Instead, a network maps every face to an <b>embedding</b> (128 numbers, say) trained so that photos of the same person are close and different people are far apart. <b>Verification</b> ("is this the phone's owner?") compares two embeddings against a distance threshold; <b>identification</b> ("who is this?") searches a database for the nearest one. Below, each dot is a synthetic embedding of a photo, colored by person; the threshold decides which pairs count as "same".</p>
+  <canvas id="emb" width="800" height="380" aria-label="Synthetic face embeddings by person, with the distance threshold drawn as a circle"></canvas>
+  <div class="row"><label>threshold <input type="range" id="thr" min="0.1" max="2.5" step="0.05" value="0.9"> <b id="thrV"></b></label></div>
+  <p class="legend"><i style="background:#58c4dd"></i>group A: clear photos <i style="background:#f4a259"></i>group B: blurrier photos (each person's photos spread wider)</p>
+  <p class="readout" id="r1"></p>
+  <p>Lower the threshold and impostors stop getting through (fewer <b>false accepts</b>), but the owner gets refused more (more <b>false rejects</b>): chapter 12's trade-off again. And look at group B: with one threshold for everyone, people whose photos vary more get rejected far more often. Real systems have shown exactly this kind of gap between demographic groups.</p>
+  <p class="gist">Recognition compares embeddings by distance against a threshold, trading false accepts for false rejects, and one threshold can treat groups very differently.</p>
+
+  <h2>2. Learning the embedding: Siamese networks and triplet loss</h2>
+  <p>A <b>Siamese</b> setup runs two (or three) images through the <i>same</i> network with shared weights and trains on their distances. The <b>triplet loss</b> takes an anchor \(a\), a positive \(p\) (same person) and a negative \(n\) (someone else):</p>
+  <p class="formula">\[ L = \max\big(0,\ \lVert f(a) - f(p) \rVert^2 - \lVert f(a) - f(n) \rVert^2 + m \big) \]</p>
+  <p>It's zero once the positive is closer than the negative by at least a margin \(m\), and otherwise pulls the positive in and pushes the negative out. The payoff is generalization to <i>new</i> identities. In the practice notebook a small CNN learns from 964 handwritten characters of the Omniglot alphabets and is tested on 659 characters from alphabets it never saw: same-or-different decisions reach an AUC of 0.96, against 0.65 for comparing raw pixels. Trained on only 8 handwritten digits, the same recipe does <i>worse</i> than raw pixels on the two digits it never saw (0.70 against 0.75): it needs many identities to learn what "same" means in general, which is why face models train on hundreds of thousands of people.</p>
+  <div class="code" data-title="Run it: the triplet loss on three tiny embeddings"><textarea>
+import numpy as np
+def triplet(a, p, n, margin=0.2):
+    return max(0.0, np.sum((a - p) ** 2) - np.sum((a - n) ** 2) + margin)
+a = np.array([0.0, 1.0])
+for p, n, what in [(np.array([0.1, 0.9]), np.array([1.0, 0.0]), "positive close, negative far"),
+                   (np.array([0.6, 0.4]), np.array([0.5, 0.5]), "positive about as far as the negative"),
+                   (np.array([1.0, 0.0]), np.array([0.1, 0.9]), "the wrong way round")]:
+    print(f"{triplet(a, p, n):.2f}  {what}")
+</textarea></div>
+  <p class="gist">A shared network trained with triplet loss places same-identity images closer than others by a margin, and with enough identities it generalizes to new ones.</p>
+
+  <h2>3. Face recognition in the world</h2>
+  <ul>
+    <li><b>Error rates differ by group.</b> The U.S. National Institute of Standards and Technology's 2019 test of 189 face recognition algorithms found false positive rates that varied with the demographic group of the people photographed, by factors of 10 to 100 for many algorithms, with the gaps depending strongly on the algorithm and its training data.</li>
+    <li><b>The law.</b> Illinois's Biometric Information Privacy Act requires written consent before collecting faceprints; New York City requires businesses that collect biometric identifiers to post notice and forbids selling them; several cities, starting with San Francisco in 2019, banned or restricted government use of face recognition. Rules differ by place and change often: check before building.</li>
+    <li><b>Consent and purpose.</b> Unlocking your own phone, with the template stored on the device, is a different act from identifying strangers in a crowd. Many teams decide the second isn't theirs to build.</li>
+  </ul>
+  <div class="q" data-answer="b">
+    <p>A verification system's threshold is set so that 0.1% of impostors get through, averaged over everyone. What should a team check before deploying?</p>
+    <ul><li data-k="a" data-says="The average is the number that can hide the problem.">Nothing: 0.1% is very low</li><li data-k="b">False accept and false reject rates per demographic group, since one global threshold can be far worse for some groups</li><li data-k="c" data-says="Speed matters, but it isn't the risk here.">Only how fast it runs</li></ul>
+    <div class="why">Chapter 12's slices, with people's access and safety at stake. The widget's group B shows how a single threshold spreads errors unevenly.</div>
+  </div>
+  <p class="gist">Face recognition's errors vary across groups, its use is regulated, and consent and purpose decide whether it should be built at all.</p>
+
+  <h2>4. Style transfer: content and texture, pulled apart</h2>
+  <p>Gatys, Ecker and Bethge (2015) noticed that a trained image network (VGG, ImageNet-trained) describes a picture in two separable ways. Its deep feature maps say <i>what is where</i>: the content. The correlations between its feature channels, ignoring position, say <i>which textures appear together</i>: the style. Start from the photo and adjust its pixels by gradient descent to keep its deep features while matching a painting's channel correlations, and the photo is repainted. The correlations form the <b>Gram matrix</b>:</p>
+  <p class="formula">\[ G_{ij} = \frac{1}{HW} \sum_{\text{positions}} F_i \, F_j \]</p>
+  <p>for feature channels \(i, j\) of a layer with \(H \times W\) positions: how often channel \(i\) and channel \(j\) fire together, anywhere in the image.</p>
+  <div class="code" data-title="Run it: a Gram matrix ignores where things are"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+F = rng.random((3, 4, 4))                      # a feature map: 3 channels on a 4 × 4 grid
+gram = lambda f: (f.reshape(len(f), -1) @ f.reshape(len(f), -1).T) / f[0].size
+shuffled = F.reshape(3, -1)[:, rng.permutation(16)].reshape(3, 4, 4)   # the same positions, scrambled together
+print("Gram of the map:\n", gram(F).round(3))
+print("same Gram after scrambling every position:", np.allclose(gram(F), gram(shuffled)))
+print("but the content (the map itself) changed:", not np.allclose(F, shuffled))
+</textarea></div>
+  <p class="gist">Style transfer keeps a photo's deep features (content) and matches a painting's feature correlations (style), by gradient descent on the pixels.</p>
+  <details class="deeper"><summary>Why a Gram matrix captures texture but not layout</summary>
+    <ol>
+      <li>Each \(G_{ij}\) sums \(F_i F_j\) over every position, and a sum doesn't care about order: move the positions around and the sum is the same (the box above checks it).</li>
+      <li>So the Gram matrix keeps which features occur together (brush strokes with certain colors, curls of a certain size) and throws away where they occur.</li>
+      <li>That's a texture: statistics of local patterns, repeated anywhere. A picture of a texture can be rearranged and still be the same texture.</li>
+      <li>Using Gram matrices from several layers captures texture at several sizes, from fine strokes (early layers) to larger motifs (deeper ones).</li>
+      <li>Content needs layout, so it's matched with the raw feature map of one deep layer, where position still counts.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: the same tools, misused</summary>
+    <ul>
+      <li><b>Identification without consent.</b> Embeddings that verify you can also be searched against scraped photos to name you; companies doing this have faced lawsuits and fines in several countries.</li>
+      <li><b>Spoofing.</b> A printed photo or a video can fool a verifier that only compares embeddings; real systems add liveness checks (depth, motion).</li>
+      <li><b>Synthetic faces and deepfakes.</b> The image-generation methods of the diffusion lesson can swap faces in video. Detection is an arms race; provenance standards (signed capture, content credentials) are the more durable answer.</li>
+      <li><b>Style and artists.</b> Style transfer and generators can imitate living artists' styles; whether that's fair use is contested. Know what you're imitating.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Verification = embedding distance below a threshold; identification = nearest embedding in a database.</li>
+    <li>Siamese networks share weights; triplet loss enforces a margin; many identities are needed to generalize.</li>
+    <li>Measure false accepts and false rejects per group; know the law and the purpose.</li>
+    <li>Style transfer: deep features for content, Gram matrices for style, gradient descent on pixels.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Notebook data: Omniglot (Lake, Salakhutdinov and Tenenbaum, MIT license). Papers: Schroff et al., "FaceNet" (2015); Gatys et al., "A Neural Algorithm of Artistic Style" (2015); NIST, "Face Recognition Vendor Test Part 3: Demographic Effects" (2019).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let seed = 5;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const people = [];                                              // 8 people per group, 6 photos each
+for (let g = 0; g < 2; g++) for (let k = 0; k < 8; k++) {
+  const cx = (g ? 1.6 : -1.6) + 1.1 * gauss(), cy = 1.1 * gauss(), spread = g ? 0.42 : 0.2;
+  people.push({ g, pts: Array.from({ length: 6 }, () => [cx + spread * gauss(), cy + spread * gauss()]) });
+}
+const pairs = [];                                               // every pair of photos: same person or not, which group
+people.forEach((p, i) => people.forEach((q, j) => { if (j < i) return; p.pts.forEach((a, s) => q.pts.forEach((b, t) => { if (i === j && t <= s) return; pairs.push({ same: i === j, g: p.g, d: Math.hypot(a[0] - b[0], a[1] - b[1]) }); })); }));
+function draw() {
+  const thr = +$("thr").value; $("thrV").textContent = thr.toFixed(2);
+  const cv = $("emb"), g = cv.getContext("2d"), W = cv.width, H = cv.height, X = (v) => W / 2 + v * 90, Y = (v) => H / 2 - v * 90;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  people.forEach((p, i) => { g.fillStyle = p.g ? "#f4a259" : "#58c4dd"; p.pts.forEach(([x, y]) => { g.beginPath(); g.arc(X(x), Y(y), 3.5, 0, 7); g.fill(); }); });
+  const p0 = people[0].pts[0]; g.strokeStyle = "#ffffff99"; g.setLineDash([5, 5]); g.beginPath(); g.arc(X(p0[0]), Y(p0[1]), thr * 90, 0, 7); g.stroke(); g.setLineDash([]);
+  const rate = (f) => { const sel = pairs.filter(f); return sel.length ? sel.filter((x) => x.d < thr).length / sel.length : 0; };
+  const far = rate((x) => !x.same), frrA = 1 - rate((x) => x.same && x.g === 0), frrB = 1 - rate((x) => x.same && x.g === 1);
+  $("r1").textContent = `false accepts (different people counted as the same): ${(100 * far).toFixed(1)}% · false rejects, group A: ${(100 * frrA).toFixed(1)}% · group B: ${(100 * frrB).toFixed(1)}%  (dashed circle: the threshold around one photo)`;
+}
+$("thr").addEventListener("input", draw); draw();
+</script>
+</body>
+</html>
