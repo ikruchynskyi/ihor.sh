@@ -9,14 +9,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. Functions on whole arrays
 # Write `sigmoid(z)` = $1 / (1 + e^{-z})$ with `np.exp`, so it works on a single number and on an array.
@@ -24,6 +16,12 @@ def check(test, msg="not yet"):
 
 # %%
 def sigmoid(z):
+    """
+    Computes the sigmoid function: 1 / (1 + e^(-z))
+    Works on a single number or an entire NumPy array.
+    """
+    ### HINT e to the power of something is np.exp(something); here the something is -z.
+    ### HINT return 1 / (1 + np.exp(-z))
     ### BEGIN SOLUTION
     return 1 / (1 + np.exp(-z))
     ### END SOLUTION
@@ -46,6 +44,8 @@ check(lambda: np.allclose(sigmoid(np.array([-100, 100])), [0, 1]), "far left →
 
 # %%
 lr = params = gigabytes = None
+### HINT ** is "to the power of", so 10 to the −4 is 10 ** -4.
+### HINT Each parameter takes 2 bytes, so the bytes are params * 2; divide by 1e9 to get gigabytes.
 ### BEGIN SOLUTION
 lr = 3 * 10 ** -4
 params = 7e9
@@ -68,6 +68,8 @@ check(lambda: gigabytes == 14, "7 billion × 2 bytes = 14 GB")
 rng = np.random.default_rng(0)
 probs = rng.uniform(0.5, 0.99, 5000)
 product = log_likelihood = None
+### HINT np.prod(probs) multiplies every item; np.log(probs) takes the log of every item.
+### HINT log_likelihood = np.sum(np.log(probs))
 ### BEGIN SOLUTION
 product = np.prod(probs)
 log_likelihood = np.sum(np.log(probs))
@@ -80,22 +82,39 @@ check(lambda: np.isclose(log_likelihood, np.log(probs).sum()), "Σ ln p, a perfe
 
 # %% [markdown]
 # ## 4. Σ is a loop, or one NumPy call
-# Compute $\sum_{i=1}^{100} \frac{1}{i^2}$ two ways: `loop_sum` with a `for` loop, and `np_sum` with
-# `np.arange` and `np.sum`. (The infinite sum is $\pi^2/6$: a famous result.)
+# Compute $\sum_{i=1}^{100} \frac{1}{i^2}$ two ways. First `loop_sum`, with a `for` loop, like Start 2's sum of
+# squares. (The infinite sum is $\pi^2/6$: a famous result.)
 
 # %%
-loop_sum = np_sum = None
+loop_sum = None
+### HINT Start at loop_sum = 0 and add 1 / i ** 2 for every i from 1 to 100.
+### HINT for i in range(1, 101):  then, indented:  loop_sum += 1 / i ** 2
 ### BEGIN SOLUTION
 loop_sum = 0
 for i in range(1, 101):
     loop_sum += 1 / i ** 2
+### END SOLUTION
+print(loop_sum, np.pi ** 2 / 6)
+
+# %%
+check(lambda: abs(loop_sum - 1.635) < 0.001, "about 1.635. Does your range include 100? range(1, 101) does.")
+
+# %% [markdown]
+# Now `np_sum`, the same sum without a loop using `arange`: `np.arange(1, 101)` makes the array 1, 2, ..., 100, and arithmetic on
+# it works on every item at once, as in Start 2's NumPy box.
+
+# %%
+np_sum = None
+### HINT i = np.arange(1, 101), then 1 / i ** 2 is the array of all 100 terms.
+### HINT np_sum = np.sum(1 / np.arange(1, 101) ** 2)
+### BEGIN SOLUTION
 i = np.arange(1, 101)
 np_sum = np.sum(1 / i ** 2)
 ### END SOLUTION
-print(loop_sum, np_sum, np.pi ** 2 / 6)
+print(np_sum)
 
 # %%
-check(lambda: np.isclose(loop_sum, np_sum) and abs(np_sum - 1.635) < 0.001, "both should be about 1.635")
+check(lambda: np.isclose(loop_sum, np_sum), "the loop and NumPy should give the same 1.635")
 
 # %% [markdown]
 # ## 5. Formulas into code
@@ -108,6 +127,9 @@ check(lambda: np.isclose(loop_sum, np_sum) and abs(np_sum - 1.635) < 0.001, "bot
 x = np.array([2.0, -1.0, 0.5, 3.0]); y = np.array([1, 0, 1, 1]); w, b = 2.0, -1.0
 theta = np.array([3.0, -1.0]); eta = 0.1; g = np.array([4.0, -2.0])
 y_hat = L = theta_new = None
+### HINT σ is the sigmoid you wrote in part 1; ŷ (y_hat) is the model's guesses; η (eta) is the step size.
+### HINT (1/n) Σ ... is a mean: np.mean((y_hat - y) ** 2).
+### HINT theta_new = theta - eta * g
 ### BEGIN SOLUTION
 y_hat = sigmoid(w * x + b)
 L = np.mean((y_hat - y) ** 2)

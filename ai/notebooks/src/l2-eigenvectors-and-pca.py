@@ -10,14 +10,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. Eigenvectors, checked
 # For the symmetric matrix `A`, get its eigenvalues and eigenvectors with `np.linalg.eigh` (for symmetric
@@ -27,15 +19,19 @@ def check(test, msg="not yet"):
 # %%
 A = np.array([[4.0, 1.0, 0.5], [1.0, 3.0, 0.0], [0.5, 0.0, 2.0]])
 lams = vecs = None
+### HINT Compute eigenvalues and eigenvectors using lams, vecs = np.linalg.eigh(A).
 ### BEGIN SOLUTION
 lams, vecs = np.linalg.eigh(A)
 ### END SOLUTION
 print(lams)
 
 # %%
-check(lambda: all(np.allclose(A @ vecs[:, k], lams[k] * vecs[:, k]) for k in range(3)), "A v = λ v for every eigenvector")
-check(lambda: np.isclose(lams.sum(), np.trace(A)) and np.isclose(lams.prod(), np.linalg.det(A)), "sum = trace, product = det")
-check(lambda: np.allclose(vecs.T @ vecs, np.eye(3)), "a symmetric matrix's eigenvectors are at right angles (orthonormal)")
+check(lambda: all(np.allclose(A @ vecs[:, k], lams[k] * vecs[:, k]) for k in range(3)), 
+      "A @ v == lambda * v must hold for every eigenvalue-eigenvector pair.")
+check(lambda: np.isclose(lams.sum(), np.trace(A)) and np.isclose(lams.prod(), np.linalg.det(A)), 
+      "Sum of eigenvalues equals trace(A), and product of eigenvalues equals det(A).")
+check(lambda: np.allclose(vecs.T @ vecs, np.eye(3)), 
+      "Eigenvectors of a symmetric matrix must form an orthonormal basis (vecs.T @ vecs == I).")
 
 # %% [markdown]
 # ## 2. Power iteration
@@ -44,7 +40,18 @@ check(lambda: np.allclose(vecs.T @ vecs, np.eye(3)), "a symmetric matrix's eigen
 
 # %%
 def power_iteration(A, steps=200):
+    """Estimate the dominant eigenvector and eigenvalue of matrix A via power iteration.
+    
+    Args:
+        A: 2D square NumPy matrix.
+        steps: Number of power iterations to perform.
+    Returns:
+        tuple: (v, lam) where v is the normalized dominant eigenvector and lam is the Rayleigh quotient.
+    """
     v = np.random.default_rng(0).random(len(A))
+    ### HINT Repeat `steps` times: multiply v by A (v = A @ v).
+    ### HINT Normalize v to unit norm: v = v / np.linalg.norm(v).
+    ### HINT Compute Rayleigh quotient estimate v @ A @ v and return (v, eigenvalue).
     ### BEGIN SOLUTION
     for _ in range(steps):
         v = A @ v
@@ -56,8 +63,10 @@ result = power_iteration(A)
 print(result)
 
 # %%
-check(lambda: np.isclose(result[1], lams[-1]), "it finds the biggest eigenvalue")
-check(lambda: np.isclose(abs(result[0] @ vecs[:, -1]), 1), "and its eigenvector (up to sign)")
+check(lambda: np.isclose(result[1], lams[-1]), 
+      "Power iteration should converge to the largest eigenvalue of A (lams[-1]).")
+check(lambda: np.isclose(abs(result[0] @ vecs[:, -1]), 1), 
+      "The normalized vector from power iteration should align with vecs[:, -1] (|v . v_true| == 1).")
 
 # %% [markdown]
 # ## 3. A Markov chain's long run
@@ -70,6 +79,10 @@ P = np.array([[0.7, 0.3, 0.2],
               [0.2, 0.4, 0.4],
               [0.1, 0.3, 0.4]])
 steady = None
+### HINT Compute eigenvalues and eigenvectors using w, V = np.linalg.eig(P).
+### HINT Find the index of the eigenvalue closest to 1: idx = np.argmin(abs(w - 1)).
+### HINT Extract the real part of the corresponding eigenvector: v = np.real(V[:, idx]).
+### HINT Normalize so it sums to 1: steady = v / v.sum().
 ### BEGIN SOLUTION
 w, V = np.linalg.eig(P)
 v = np.real(V[:, np.argmin(abs(w - 1))])
@@ -78,8 +91,10 @@ steady = v / v.sum()
 print(steady)
 
 # %%
-check(lambda: np.allclose(P @ steady, steady) and np.isclose(steady.sum(), 1), "P keeps it unchanged and it adds to 1")
-check(lambda: np.allclose(np.linalg.matrix_power(P, 50) @ [0, 0, 1], steady), "50 days from any start lands there (power iteration again)")
+check(lambda: np.allclose(P @ steady, steady) and np.isclose(steady.sum(), 1), 
+      "Steady state vector must satisfy P @ steady == steady and sum to 1.0.")
+check(lambda: np.allclose(np.linalg.matrix_power(P, 50) @ [0, 0, 1], steady), 
+      "Simulating 50 steps from any starting distribution should converge to the steady state.")
 
 # %% [markdown]
 # ## 4. PCA from scratch on handwritten digits
@@ -95,6 +110,11 @@ from sklearn.datasets import load_digits
 digits = load_digits()
 X, y = digits.data, digits.target
 Xc = components = explained = Z = None
+### HINT Center data by subtracting column means: Xc = X - X.mean(axis=0).
+### HINT Compute covariance matrix np.cov(Xc, rowvar=False) and its eigenvalues/eigenvectors with np.linalg.eigh.
+### HINT Sort in descending order of eigenvalue: order = np.argsort(vals)[::-1].
+### HINT Set components = vecs64[:, order] and explained = vals[order] / vals.sum().
+### HINT Project onto first 2 principal components: Z = Xc @ components[:, :2].
 ### BEGIN SOLUTION
 Xc = X - X.mean(axis=0)
 vals, vecs64 = np.linalg.eigh(np.cov(Xc, rowvar=False))
@@ -109,8 +129,10 @@ if Z is not None:
 
 # %%
 from sklearn.decomposition import PCA
-check(lambda: np.allclose(explained[:5], PCA(5).fit(X).explained_variance_ratio_), "the same shares as scikit-learn's PCA")
-check(lambda: 0.7 < explained[:10].sum() < 0.8, "10 of 64 directions hold about three quarters of the variance")
+check(lambda: np.allclose(explained[:5], PCA(5).fit(X).explained_variance_ratio_), 
+      "The top 5 explained variance ratios must match sklearn PCA(5).explained_variance_ratio_.")
+check(lambda: 0.7 < explained[:10].sum() < 0.8, 
+      "The top 10 principal components should capture between 70% and 80% of total variance.")
 
 # %% [markdown]
 # ## 5. Rebuild the images
@@ -119,6 +141,16 @@ check(lambda: 0.7 < explained[:10].sum() < 0.8, "10 of 64 directions hold about 
 
 # %%
 def reconstruct(k):
+    """Reconstruct centered digit images using the first k principal components.
+    
+    Args:
+        k: Integer number of components to retain (1 <= k <= 64).
+    Returns:
+        NumPy array of shape (N, 64) containing reconstructed digit images in original scale.
+    """
+    ### HINT Select the top k eigenvectors Vk = components[:, :k].
+    ### HINT Project centered data Xc onto Vk and reconstruct: Xc @ Vk @ Vk.T.
+    ### HINT Add back the original mean feature vector X.mean(axis=0).
     ### BEGIN SOLUTION
     Vk = components[:, :k]
     return Xc @ Vk @ Vk.T + X.mean(axis=0)
@@ -133,13 +165,15 @@ if components is not None:
         if R is not None: a.imshow(R[0].reshape(8, 8), cmap="gray_r")
         a.set_title(f"k = {k}"); a.axis("off")
     plt.show()
+    ### HINT Compute mean squared error np.mean((reconstruct(k) - X) ** 2) for each k in ks.
     ### BEGIN SOLUTION
     err = [np.mean((reconstruct(k) - X) ** 2) for k in ks]
     ### END SOLUTION
 print(err)
 
 # %%
-check(lambda: all(a > b for a, b in zip(err, err[1:])) and err[-1] < 1e-20, "error shrinks with k and vanishes with all 64")
+check(lambda: all(a > b for a, b in zip(err, err[1:])) and err[-1] < 1e-20, 
+      "Reconstruction MSE must decrease monotonically as k increases, reaching ~0 at k=64.")
 
 # %% [markdown]
 # ## Next

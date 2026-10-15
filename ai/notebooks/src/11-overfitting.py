@@ -14,14 +14,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 rng = np.random.default_rng(0)
 
 # %% [markdown]
@@ -33,6 +25,8 @@ rng = np.random.default_rng(0)
 x = rng.uniform(-1, 1, 300); y = 0.8 * np.sin(2.5 * x) + 0.3 * x + 0.25 * rng.standard_normal(300)
 X = x[:, None]
 Xtr = Xva = Xte = ytr = yva = yte = None
+### HINT Split X, y into 60% train and 40% temp with test_size=0.4, random_state=0.
+### HINT Split temp into 50% validation and 50% test with test_size=0.5, random_state=0 (each getting 20% of original).
 ### BEGIN SOLUTION
 Xtr, Xrest, ytr, yrest = train_test_split(X, y, test_size=0.4, random_state=0)
 Xva, Xte, yva, yte = train_test_split(Xrest, yrest, test_size=0.5, random_state=0)
@@ -40,7 +34,8 @@ Xva, Xte, yva, yte = train_test_split(Xrest, yrest, test_size=0.5, random_state=
 print([len(a) for a in (Xtr, Xva, Xte)] if Xtr is not None else None)
 
 # %%
-check(lambda: [len(a) for a in (Xtr, Xva, Xte)] == [180, 60, 60], "180 / 60 / 60")
+check(lambda: [len(a) for a in (Xtr, Xva, Xte)] == [180, 60, 60], 
+      "Dataset of 300 points should split into 180 train (60%), 60 validation (20%), and 60 test (20%).")
 
 # %% [markdown]
 # ## 2. The validation curve
@@ -51,6 +46,9 @@ check(lambda: [len(a) for a in (Xtr, Xva, Xte)] == [180, 60, 60], "180 / 60 / 60
 # %%
 degrees = range(1, 16)
 train_err = val_err = best_d = None
+### HINT Initialize train_err = [] and val_err = [].
+### HINT For each d in degrees: Fit make_pipeline(PolynomialFeatures(d), LinearRegression()) on Xtr, ytr. Record MSE on Xtr in train_err and MSE on Xva in val_err.
+### HINT Find best_d = list(degrees)[np.argmin(val_err)].
 ### BEGIN SOLUTION
 train_err, val_err = [], []
 for d in degrees:
@@ -63,8 +61,10 @@ plt.yscale("log"); plt.xlabel("degree"); plt.legend(); plt.show()
 print("best degree:", best_d)
 
 # %%
-check(lambda: all(a >= b - 1e-12 for a, b in zip(train_err, train_err[1:])), "training error only goes down as the model grows")
-check(lambda: 3 <= best_d <= 9, "validation error is lowest at a moderate degree")
+check(lambda: all(a >= b - 1e-12 for a, b in zip(train_err, train_err[1:])), 
+      "Training error should monotonically decrease as polynomial capacity increases.")
+check(lambda: 3 <= best_d <= 9, 
+      "Validation error should be minimized at a moderate polynomial degree (between 3 and 9).")
 
 # %% [markdown]
 # ## 3. Ridge, tuned by cross-validation
@@ -75,6 +75,8 @@ check(lambda: 3 <= best_d <= 9, "validation error is lowest at a moderate degree
 # %%
 alphas = [1e-6, 1e-4, 1e-2, 1, 10, 100]
 cv_err = best_alpha = None
+### HINT For each alpha, compute 5-fold cross-validation MSE on Xtr, ytr: -cross_val_score(..., scoring="neg_mean_squared_error").mean().
+### HINT Identify best_alpha as the alpha yielding minimum cv_err.
 ### BEGIN SOLUTION
 cv_err = [-cross_val_score(make_pipeline(PolynomialFeatures(15), StandardScaler(), Ridge(alpha=a)), Xtr, ytr, cv=5,
                            scoring="neg_mean_squared_error").mean() for a in alphas]
@@ -83,7 +85,8 @@ best_alpha = alphas[int(np.argmin(cv_err))]
 print(dict(zip(alphas, np.round(cv_err, 4))) if cv_err else None, " best:", best_alpha)
 
 # %%
-check(lambda: cv_err[int(np.argmin(cv_err))] < cv_err[0] and best_alpha in (1e-2, 1, 10), "some regularization beats none; too much hurts again")
+check(lambda: cv_err[int(np.argmin(cv_err))] < cv_err[0] and best_alpha in (1e-2, 1, 10), 
+      "Moderate regularization (alpha in [0.01, 1, 10]) should achieve lower CV error than tiny alpha (1e-6).")
 
 # %% [markdown]
 # ## 4. Learning curves
@@ -93,6 +96,9 @@ check(lambda: cv_err[int(np.argmin(cv_err))] < cv_err[0] and best_alpha in (1e-2
 
 # %%
 sizes = gap_small = gap_big = None
+### HINT Call learning_curve with make_pipeline(PolynomialFeatures(15), StandardScaler(), Ridge(alpha=1e-6)).
+### HINT Use train_sizes=np.linspace(0.1, 1, 8), cv=5, scoring="neg_mean_squared_error".
+### HINT Compute gap_small = va_err[0] - tr_err[0] and gap_big = va_err[-1] - tr_err[-1].
 ### BEGIN SOLUTION
 sizes, tr, va = learning_curve(make_pipeline(PolynomialFeatures(15), StandardScaler(), Ridge(alpha=1e-6)), X, y, cv=5,
                                train_sizes=np.linspace(0.1, 1, 8), scoring="neg_mean_squared_error")
@@ -104,7 +110,8 @@ gap_small, gap_big = va_err[0] - tr_err[0], va_err[-1] - tr_err[-1]
 print(gap_small, gap_big)
 
 # %%
-check(lambda: gap_big < gap_small / 5, "with all the data the train–validation gap shrinks a lot")
+check(lambda: gap_big < gap_small / 5, 
+      "With full dataset size, the generalization gap (validation error - training error) should shrink by > 5x.")
 
 # %% [markdown]
 # ## 5. Leakage: fooling yourself on pure noise
@@ -117,6 +124,8 @@ check(lambda: gap_big < gap_small / 5, "with all the data the train–validation
 from sklearn.feature_selection import SelectKBest, f_classif
 Xn = rng.standard_normal((100, 5000)); yn = rng.integers(0, 2, 100)
 leaky = honest = None
+### HINT Leaky baseline: SelectKBest on full Xn, yn first, then cross_val_score on the 20 selected features.
+### HINT Honest baseline: Put SelectKBest inside make_pipeline(SelectKBest(...), LogisticRegression(...)) before CV.
 ### BEGIN SOLUTION
 X_sel = SelectKBest(f_classif, k=20).fit_transform(Xn, yn)
 leaky = cross_val_score(LogisticRegression(max_iter=1000), X_sel, yn, cv=5).mean()
@@ -125,7 +134,8 @@ honest = cross_val_score(make_pipeline(SelectKBest(f_classif, k=20), LogisticReg
 print("leaky:", leaky, " honest:", honest)
 
 # %%
-check(lambda: leaky > 0.7 and honest < 0.65, "leakage reports 70%+ on pure noise; the pipeline tells the truth")
+check(lambda: leaky > 0.7 and honest < 0.65, 
+      "Feature selection leakage produces artificially high CV accuracy (> 70%), while honest pipeline stays near chance (< 65%).")
 
 # %% [markdown]
 # Any step that looks at the data (scaling, feature selection, filling gaps, picking hyperparameters) must be fit

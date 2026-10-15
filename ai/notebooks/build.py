@@ -4,7 +4,9 @@ Sources are Python files split into cells by "# %%" lines; "# %% [markdown]" cel
 "# " comment lines. Exercise answers sit between "### BEGIN SOLUTION" and "### END SOLUTION": the published
 notebook replaces them with "# YOUR CODE HERE" and "..." (so a fresh notebook still runs top to bottom, which Kaggle
 needs, and its checks print ✗ instead of crashing); --solutions keeps them (used to test). Every build also writes
-index.json (lesson → title, Kaggle link) for the lesson pages; --kaggle publishes each notebook to Kaggle as a public
+index.json (lesson → title, Kaggle link) for the lesson pages. "### HINT ..." lines just above an exercise become its
+hints: build numbers the exercises and adds a helpers cell with check(n, test, msg), hint(n) and answer(n) (the
+answer stored base64-encoded, out of sight until asked for), so nobody is ever stuck with no move (PEDAGOGY.md); --kaggle publishes each notebook to Kaggle as a public
 notebook with the kaggle CLI (needs KAGGLE_API_TOKEN).
 
     python ai/notebooks/build.py                 # build every notebook
@@ -12,7 +14,7 @@ notebook with the kaggle CLI (needs KAGGLE_API_TOKEN).
     python ai/notebooks/build.py --kaggle [names]  # build, then publish to Kaggle (all, or those whose name matches)
 A source containing "# kaggle: gpu" is published with Kaggle's GPU turned on.
 """
-import json, re, subprocess, sys, tempfile
+import base64, json, re, subprocess, sys, tempfile, textwrap
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -30,8 +32,54 @@ def slug(title: str):
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
 
 
+EXERCISE = re.compile(r"((?:^[ \t]*### HINT[^\n]*\n)*)^([ \t]*)### BEGIN SOLUTION\n(.*?)^[ \t]*### END SOLUTION\n?|\bcheck\(", re.M | re.S)
+
+HELPERS = """# Helpers: run this cell first. check() marks an answer ✓ or ✗; stuck? hint(n) gives the next hint for
+# exercise n, answer(n) shows a solution.
+import base64 as _b64
+_HINTS = %s
+_ANSWERS = %s
+_given = {}
+
+def check(n, test, msg=""):
+    try:
+        ok = bool(test())
+    except NameError as e:
+        return print("✗ %%s: run the exercise cell above first." %% e)
+    except Exception as e:
+        if "NoneType" in str(e) or "ellipsis" in str(e):
+            return print("✗ Not answered yet: replace the ... in exercise %%d and run that cell. Stuck? hint(%%d)" %% (n, n))
+        ok, msg = False, msg + " (the check stopped with %%s: %%s)" %% (type(e).__name__, e)
+    print("✓ Right." if ok else "✗ Not yet. " + msg + "\\n  Stuck? hint(%%d) for a hint, answer(%%d) for a solution." %% (n, n))
+
+def hint(n):
+    hints, i = _HINTS.get(n, []), _given.get(n, 0)
+    if not hints:
+        return print("No hints for this one: answer(%%d) shows a solution." %% n)
+    print("Hint %%d of %%d: %%s" %% (min(i, len(hints) - 1) + 1, len(hints), hints[min(i, len(hints) - 1)]))
+    _given[n] = i + 1
+
+def answer(n):
+    print(_b64.b64decode(_ANSWERS[n]).decode())
+    print("\\n(Put this in place of the ..., run it, then close it and try writing it yourself.)")
+"""
+
+
 def cells(src: str, solutions: bool):
-    out = []
+    out, hints, answers, n = [], {}, {}, 0
+
+    def exercise(m):
+        nonlocal n
+        if m.group(0).startswith("check("):
+            return f"check({n}, "
+        n += 1
+        hints[n] = [h.split("### HINT", 1)[1].strip() for h in m.group(1).splitlines()]
+        answers[n] = base64.b64encode(textwrap.dedent(m.group(3)).strip().encode()).decode()
+        indent = m.group(2)
+        if solutions:
+            return m.group(3)
+        return f"{indent}# YOUR CODE HERE (stuck? hint({n}), then answer({n}))\n{indent}...\n"
+
     for chunk in re.split(r"^# %%", src, flags=re.M)[1:]:
         head, _, body = chunk.partition("\n")
         body = body.strip("\n")
@@ -39,14 +87,11 @@ def cells(src: str, solutions: bool):
             text = "\n".join(re.sub(r"^# ?", "", l) for l in body.splitlines())
             out.append({"cell_type": "markdown", "metadata": {}, "source": text.splitlines(keepends=True)})
             continue
-        if not solutions:
-            def blank(m):
-                indent = m.group(1)
-                return f"{indent}# YOUR CODE HERE\n{indent}..."
-            body = re.sub(r"^([ \t]*)### BEGIN SOLUTION\n.*?^[ \t]*### END SOLUTION", blank, body, flags=re.M | re.S)
-        else:
-            body = re.sub(r"^[ \t]*### (BEGIN|END) SOLUTION\n?", "", body, flags=re.M)
+        body = EXERCISE.sub(exercise, body).rstrip("\n")
         out.append({"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": body.splitlines(keepends=True)})
+    helpers = HELPERS % (repr(hints), repr(answers))
+    first = next(i for i, c in enumerate(out) if c["cell_type"] == "code")
+    out.insert(first, {"cell_type": "code", "execution_count": None, "metadata": {}, "outputs": [], "source": helpers.splitlines(keepends=True)})
     return out
 
 

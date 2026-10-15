@@ -12,27 +12,30 @@ import matplotlib.pyplot as plt
 import torch
 from torch import nn
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. Count the knobs
 # Write `n_params(sizes)`: the total weights and biases of a fully connected network with those layer sizes.
 
 # %%
 def n_params(sizes):
+    """Compute total number of trainable weights and biases in a fully connected MLP.
+    
+    Args:
+        sizes: List of integers representing layer widths, e.g. [2, 16, 16, 1].
+    Returns:
+        int: Total number of parameters (weights + biases).
+    """
+    ### HINT For each layer transition from m inputs to n outputs, count weights (m * n) and biases (n).
+    ### HINT Sum (m * n + n) across all layer pairs zip(sizes, sizes[1:]).
     ### BEGIN SOLUTION
     return sum(n * m + n for m, n in zip(sizes, sizes[1:]))
     ### END SOLUTION
 
 # %%
-check(lambda: n_params([2, 16, 16, 1]) == 337 and n_params([784, 128, 10]) == 101_770, "2-16-16-1 has 337; a 784-128-10 digit reader 101,770")
-check(lambda: n_params([2, 16, 16, 1]) == sum(p.numel() for p in nn.Sequential(nn.Linear(2, 16), nn.Linear(16, 16), nn.Linear(16, 1)).parameters()), "PyTorch counts the same")
+check(lambda: n_params([2, 16, 16, 1]) == 337 and n_params([784, 128, 10]) == 101_770, 
+      "A 2-16-16-1 network has 337 parameters; 784-128-10 has 101,770.")
+check(lambda: n_params([2, 16, 16, 1]) == sum(p.numel() for p in nn.Sequential(nn.Linear(2, 16), nn.Linear(16, 16), nn.Linear(16, 1)).parameters()), 
+      "n_params formula must match total parameter count from PyTorch nn.Sequential.")
 
 # %% [markdown]
 # ## 2. How the starting weights decide everything
@@ -45,6 +48,9 @@ rng = np.random.default_rng(0)
 X0 = rng.standard_normal((256, 1000))
 scales = {"tiny (0.01)": 0.01, "Xavier": np.sqrt(1 / 256), "big (0.2)": 0.2}
 final_std = None
+### HINT For each scale s, start with activations A = X0.
+### HINT Loop through 20 layers: A = np.tanh(rng.standard_normal((256, 256)) * s @ A).
+### HINT Record final standard deviation A.std() in final_std[name].
 ### BEGIN SOLUTION
 final_std = {}
 for name, s in scales.items():
@@ -56,13 +62,16 @@ for name, s in scales.items():
 print(final_std)
 
 # %%
-check(lambda: final_std["tiny (0.01)"] < 1e-10, "too small: the signal vanishes")
-check(lambda: 0.1 < final_std["Xavier"] < 0.9, "Xavier keeps it alive through 20 layers")
-check(lambda: final_std["big (0.2)"] > 0.8, "too big: outputs crowd toward ±1 (half of them past 0.95), where tanh's slope is nearly 0")
+check(lambda: final_std["tiny (0.01)"] < 1e-10, 
+      "With tiny initialization scale (0.01), activations should vanish (< 1e-10) after 20 layers.")
+check(lambda: 0.1 < final_std["Xavier"] < 0.9, 
+      "With Xavier initialization, activation variance should remain healthy (std between 0.1 and 0.9).")
+check(lambda: final_std["big (0.2)"] > 0.8, 
+      "With too large initialization (0.2), activations saturate tanh and crowd near ±1 (std > 0.8).")
 
 # %% [markdown]
 # ## 3. The spiral in PyTorch
-# Build `nn.Sequential(nn.Linear(2, 16), nn.Tanh(), nn.Linear(16, 16), nn.Tanh(), nn.Linear(16, 1))` and train it
+# Build a model using `Tanh` activations: `nn.Sequential(nn.Linear(2, 16), nn.Tanh(), nn.Linear(16, 16), nn.Tanh(), nn.Linear(16, 1))` and train it
 # with `nn.BCEWithLogitsLoss()` and `torch.optim.SGD(lr=0.5)`, full batch, 4000 steps. Set `acc`.
 # (PyTorch's `nn.Linear` already starts with sensible random weights.)
 
@@ -83,6 +92,8 @@ def train(model, steps=4000, lr=0.5):
 
 torch.manual_seed(0)
 acc = None
+### HINT Construct deep network: nn.Sequential(nn.Linear(2, 16), nn.Tanh(), nn.Linear(16, 16), nn.Tanh(), nn.Linear(16, 1)).
+### HINT Train using train(deep) and assign result to acc.
 ### BEGIN SOLUTION
 deep = nn.Sequential(nn.Linear(2, 16), nn.Tanh(), nn.Linear(16, 16), nn.Tanh(), nn.Linear(16, 1))
 acc = train(deep)
@@ -90,7 +101,8 @@ acc = train(deep)
 print("2-16-16-1:", acc)
 
 # %%
-check(lambda: acc > 0.95, "two hidden layers of 16 learn the spiral")
+check(lambda: acc > 0.95, 
+      "The deep 2-16-16-1 architecture should achieve > 95% accuracy on the two-spirals problem.")
 
 # %% [markdown]
 # ## 4. Deep vs wide, same size
@@ -99,6 +111,9 @@ check(lambda: acc > 0.95, "two hidden layers of 16 learn the spiral")
 
 # %%
 acc_wide = None
+### HINT Set torch.manual_seed(0).
+### HINT Construct wide network: nn.Sequential(nn.Linear(2, 84), nn.Tanh(), nn.Linear(84, 1)).
+### HINT Train using train(...) and assign result to acc_wide.
 ### BEGIN SOLUTION
 torch.manual_seed(0)
 acc_wide = train(nn.Sequential(nn.Linear(2, 84), nn.Tanh(), nn.Linear(84, 1)))
@@ -106,7 +121,8 @@ acc_wide = train(nn.Sequential(nn.Linear(2, 84), nn.Tanh(), nn.Linear(84, 1)))
 print("2-84-1:", acc_wide, " parameters:", n_params([2, 84, 1]))
 
 # %%
-check(lambda: acc_wide < acc, "at the same size, depth wins on this problem")
+check(lambda: acc_wide < acc, 
+      "At identical parameter budgets (337 parameters), the deep model outperforms the shallow wide model on spirals.")
 
 # %% [markdown]
 # ## 5. What the deep one learned

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Training in PyTorch</title>
+  <meta name="description" content="AI from scratch: how training really runs. Epochs and minibatches you can watch, tensors, autograd, nn.Module, Dataset and DataLoader, optimizers, train vs eval mode, saving a model, and the debugging habits that save days, each step in NumPy you can run next to the PyTorch line that does the same." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    code { font: 0.9em ui-monospace, Menlo, monospace; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; background: #14171d; }
+    canvas.low { aspect-ratio: 4 / 1; margin-top: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .rules { border-collapse: collapse; width: 100%; font-size: 16px; }
+    .rules td, .rules th { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .rules td code { white-space: nowrap; }
+    .wide { overflow-x: auto; }
+    .loop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; font-size: 1rem; }
+    .loop span { border: 2px solid var(--line); border-radius: 8px; padding: 4px 10px; background: var(--card); }
+    .loop i { color: var(--muted); font-style: normal; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Stage 2: how a network learns</p>
+  <h1>Training in PyTorch</h1>
+  <p class="lede">You've built networks and their backward pass by hand. Real training adds a few things: data in small batches, many passes over it, an optimizer, and a framework that computes every gradient for you. This lesson takes them one at a time: each idea as a picture, then in NumPy you can run here, then the PyTorch line that does the same job (PyTorch is too big to run inside a web page, so those blocks are for reading; the practice notebook runs them on a GPU).</p>
+
+  <h2>1. The loop, in five lines</h2>
+  <p>Every PyTorch training script, from a digit reader to a large language model, has this shape:</p>
+  <div class="loop"><span>for each epoch</span><i>→</i><span>for each batch</span><i>→</i><span>forward: predictions</span><i>→</i><span>loss</span><i>→</i><span>zero old gradients</span><i>→</i><span>backward</span><i>→</i><span>optimizer step</span></div>
+  <pre class="static"><code>for epoch in range(epochs):              # one epoch = one pass over all the training data
+    for x, y in train_loader:            # one batch at a time
+        loss = loss_fn(model(x), y)      # forward pass and loss
+        optimizer.zero_grad()            # clear last step's gradients (they'd add up otherwise)
+        loss.backward()                  # backprop: every parameter gets its .grad
+        optimizer.step()                 # move every parameter downhill</code></pre>
+  <p>The rest of this lesson is about each word in it.</p>
+
+  <h2>2. Epochs and batches</h2>
+  <p>Chapter 2's gradient descent used every example for every step. With a million examples that's slow, so training uses a <b>minibatch</b>: a small random handful per step. The gradient from a batch is a noisy guess of the full one (calculus 4 showed the noise shrinks like \(1/\sqrt{B}\)), but you get many more steps for the same work. One pass over all the data, batch by batch, is an <b>epoch</b>. Below, 120 noisy points and a line learning them: the <span style="color:#f4d35e;font-weight:700">yellow</span> dots are the current batch.</p>
+  <canvas id="fit" width="800" height="400" aria-label="Points, the current minibatch highlighted, and the line being trained"></canvas>
+  <canvas id="lossCv" class="low" width="800" height="200" aria-label="Loss after every step"></canvas>
+  <div class="row">
+    <label>batch size <select id="bs"><option>1</option><option>8</option><option selected>16</option><option>40</option><option value="120">120 (all)</option></select></label>
+    <label>learning rate <select id="lr"><option>0.002</option><option>0.01</option><option selected>0.02</option><option>0.04</option></select></label>
+    <button id="play">Play</button><button id="step">One step</button><button id="reset">Start over</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>Try batch size 1: each step looks at one point, so the line jitters, yet it gets close quickly. Try 120 (all of them): smooth, but one step per epoch. Most real training sits in between, 32 to a few thousand examples, chosen to fill the GPU. Then try learning rate 0.04: it blows up, because the steepest curvature here is about 76 and calculus 3's limit is 2/76 ≈ 0.026. And notice the slope settles fast but the intercept crawls: km runs from 0 to 10 while the intercept's "feature" is always 1, a stretched valley (condition number about 166). Scaling the input, which stage 4 makes routine, would fix that.</p>
+  <div class="q" data-num="469">
+    <p>MNIST has 60,000 training images. With batches of 128, how many steps is one epoch? (The last batch is smaller.)</p>
+    <div class="why">\(60{,}000 / 128 = 468.75\), so 469 steps: 468 full batches and one of 96. Ten epochs is 4,690 steps.</div>
+  </div>
+  <div class="code" data-title="Run it: minibatch training in NumPy"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+rng = np.random.default_rng(0)
+
+x = rng.uniform(0, 10, 1000); y = 2.6 * x + 6 + 3 * rng.standard_normal(1000)    # 1,000 taxi rides
+w, b, lr, batch, losses = 0.0, 0.0, 0.01, 32, []
+
+for epoch in range(40):
+    order = rng.permutation(len(x))                       # shuffle every epoch
+    for start in range(0, len(x), batch):
+        i = order[start:start + batch]                    # this step's batch
+        err = w * x[i] + b - y[i]
+        w -= lr * np.mean(2 * err * x[i]); b -= lr * np.mean(2 * err)   # gradient from the batch only
+        losses.append(np.mean((w * x + b - y) ** 2))      # (the loss on everything, to watch)
+    if (epoch + 1) % 10 == 0:
+        print(f"epoch {epoch + 1}: {len(losses)} steps so far, w = {w:.2f}, b = {b:.2f}")
+
+plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.yscale("log"); plt.xlabel("step"); plt.title("loss"); plt.show()
+</textarea></div>
+
+  <h2>3. Tensors: arrays that remember</h2>
+  <p>A PyTorch <b>tensor</b> is a NumPy array with two extra powers: it can live on a GPU, and if you ask, it records every operation done to it, so <code>.backward()</code> can run chapter 4's relay of blame automatically (<b>autograd</b>).</p>
+  <div class="wide"><table class="rules">
+    <tr><th>NumPy</th><th>PyTorch</th><th>what it does</th></tr>
+    <tr><td><code>np.array([1., 2.])</code></td><td><code>torch.tensor([1., 2.])</code></td><td>make an array</td></tr>
+    <tr><td><code>a @ b</code>, <code>a.T</code>, <code>a.shape</code></td><td>the same</td><td>matrix product, transpose, shape</td></tr>
+    <tr><td><code>a.mean(axis=0)</code></td><td><code>a.mean(dim=0)</code></td><td>reduce along an axis</td></tr>
+    <tr><td>(no GPU)</td><td><code>a.to("cuda")</code></td><td>move to the GPU</td></tr>
+    <tr><td>(gradients by hand)</td><td><code>torch.zeros(3, requires_grad=True)</code></td><td>record operations for autograd</td></tr>
+    <tr><td>(gradients by hand)</td><td><code>loss.backward(); w.grad</code></td><td>every gradient, computed for you</td></tr>
+    <tr><td><code>np.asarray(t)</code></td><td><code>t.detach().cpu().numpy()</code></td><td>back to NumPy</td></tr>
+  </table></div>
+  <pre class="static"><code>w = torch.zeros(1, requires_grad=True)
+loss = ((w * x + b - y) ** 2).mean()     # PyTorch records the operations…
+loss.backward()                          # …and runs them backwards
+print(w.grad)                            # ∂loss/∂w: what you derived by hand in chapter 2</code></pre>
+  <div class="q" data-answer="b">
+    <p>Why must training call <code>optimizer.zero_grad()</code> every step?</p>
+    <ul><li data-k="a" data-says="The weights keep their values; only .grad is cleared.">To reset the weights</li><li data-k="b">Because <code>.backward()</code> adds to <code>.grad</code>: without clearing, every step would include all previous steps' gradients</li><li data-k="c" data-says="It doesn't touch the learning rate.">To reset the learning rate</li></ul>
+    <div class="why">Adding up is the right rule inside one backward pass (a value used twice collects blame from both uses, chapter 4), so PyTorch always adds. Between steps you clear it yourself. Forgetting is a classic bug: training goes haywire with no error message.</div>
+  </div>
+
+  <h2>4. A model is an nn.Module</h2>
+  <p>A <b>module</b> is a layer, or a stack of them, that owns its parameters. You list the layers in <code>__init__</code> and say how data flows in <code>forward</code>; PyTorch finds every weight inside for the optimizer, moves them all to the GPU with one call, and saves them in one file.</p>
+  <p><b>Python note: <code>class</code>.</b> A class is a recipe for objects that carry their own data and functions. <code>__init__</code> runs when you make one, and <code>self</code> is the object being made, so <code>self.value = ...</code> stores something on it. A function inside a class, a <b>method</b>, gets the object as <code>self</code> too, so it can use what's stored. Run this, then read the model below it.</p>
+  <div class="code" data-title="Run it: a class"><textarea>
+class Knob:                          # a recipe for knob objects
+    def __init__(self, value):       # runs when you make one
+        self.value = value           # data stored on the object
+    def nudge(self, step):           # a method: a function that gets the object as self
+        self.value = self.value - step
+
+a = Knob(2.6)                        # make one: __init__ runs with value = 2.6
+a.nudge(0.1)
+print(a.value)
+</textarea></div>
+  <p><code>class MLP(nn.Module)</code> below means "an MLP is a kind of Module": it gets everything a Module already does (finding parameters, moving to the GPU, saving), and <code>super().__init__()</code> lets Module set itself up first.</p>
+  <pre class="static"><code>from torch import nn
+
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Flatten(),                    # 28×28 image → 784 numbers
+            nn.Linear(784, 128), nn.ReLU(),  # deep networks, section 1: W x + b, then a bend
+            nn.Linear(128, 10))              # 10 scores, one per class
+    def forward(self, x):
+        return self.layers(x)
+
+model = MLP()
+print(sum(p.numel() for p in model.parameters()))   # 101,770: the count from chapter 1</code></pre>
+  <p>Two modes matter: <code>model.train()</code> while training and <code>model.eval()</code> when measuring or serving. Some layers (dropout, batch norm; stage 4) behave differently in each, and forgetting <code>.eval()</code> gives quietly worse test numbers. Wrap evaluation in <code>with torch.no_grad():</code> so PyTorch doesn't record operations it will never backpropagate.</p>
+  <p><b>Python note: <code>with</code>.</b> <code>with something:</code> switches something on for its indented block only, and switches it back off afterwards, even if the block fails. <code>with torch.no_grad():</code> turns recording off for the block; <code>with open("notes.txt", "w") as f:</code> opens a file and closes it at the end.</p>
+  <div class="code" data-title="Run it: with"><textarea>
+with open("notes.txt", "w") as f:        # the file is open inside the block...
+    f.write("epoch 1: loss 0.52")
+print(f.closed)                          # ...and closed again after it
+print(open("notes.txt").read())
+</textarea></div>
+
+  <h2>5. Dataset and DataLoader</h2>
+  <p>A <b>Dataset</b> answers two questions: how many examples, and what is example number <code>i</code>. A <b>DataLoader</b> wraps it: shuffles each epoch, groups examples into batches, and can load the next batch on other CPU cores while the GPU works. Here is the same idea in a few lines of plain Python:</p>
+  <div class="code" data-title="Build it: a tiny DataLoader"><textarea>
+import numpy as np
+
+class TaxiRides:                                   # a Dataset: length, and the i-th example
+    def __init__(self, n=10):
+        rng = np.random.default_rng(1)
+        self.km = rng.uniform(0, 10, n); self.minutes = 2.6 * self.km + 6
+    def __len__(self):
+        return len(self.km)
+    def __getitem__(self, i):
+        return self.km[i], self.minutes[i]
+
+def loader(ds, batch_size, seed=0):                # a DataLoader: shuffle, then cut into batches
+    order = np.random.default_rng(seed).permutation(len(ds))
+    batches = []
+    for start in range(0, len(ds), batch_size):
+        items = [ds[i] for i in order[start:start + batch_size]]
+        batches.append((np.array([km for km, _ in items]), np.array([m for _, m in items])))
+    return batches
+
+for x, y in loader(TaxiRides(), batch_size=4):
+    print("batch of", len(x), "→ km", x.round(1))
+</textarea></div>
+  <pre class="static"><code>from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+train = datasets.FashionMNIST("data", train=True, download=True, transform=transforms.ToTensor())
+train_loader = DataLoader(train, batch_size=128, shuffle=True, num_workers=2)
+x, y = next(iter(train_loader))      # x: (128, 1, 28, 28) images, y: (128,) labels</code></pre>
+  <div class="q" data-answer="a">
+    <p>Why shuffle the training data every epoch?</p>
+    <ul><li data-k="a">So batches differ each epoch and don't follow the file's order (e.g. all the 0s first), which would pull the model one way at a time</li><li data-k="b" data-says="Shuffling doesn't change which examples are in the set, only their order.">To make the dataset bigger</li><li data-k="c" data-says="Evaluation doesn't need shuffling: it sees every example once anyway.">So the test score is fair</li></ul>
+    <div class="why">Data files are often sorted by class or date. Unshuffled, each batch would contain one kind of example and the gradient would swing between them. The test loader doesn't shuffle: order doesn't matter when you only measure.</div>
+  </div>
+
+  <h2>6. The optimizer</h2>
+  <p>The <b>optimizer</b> turns gradients into weight updates. <code>torch.optim.SGD(model.parameters(), lr=0.1)</code> is chapter 2's rule; <code>torch.optim.AdamW(model.parameters(), lr=1e-3)</code> adds momentum and a separate step size per weight, and is the usual default (stage 4 races them against each other). Either way, the loop doesn't change: <code>zero_grad</code>, <code>backward</code>, <code>step</code>.</p>
+  <div class="q" data-num="0.001" data-tol="0.0000001">
+    <p>A config says <code>lr=1e-3</code>. What is that as a plain number?</p>
+    <div class="why">\(10^{-3} = 0.001\) (Start 3's scientific notation). 1e-3 for Adam and 0.1 for plain SGD are common starting points.</div>
+  </div>
+
+  <h2>7. Habits that save days</h2>
+  <ul>
+    <li><b>Overfit one batch first.</b> Train on a single batch for a few hundred steps: the loss should go to almost zero. If it can't, the bug is in the model or the loop, not the data size. It takes a minute and catches most bugs.</li>
+    <li><b>Print shapes</b> at every step of the forward pass the first time (deep networks, section 2).</li>
+    <li><b>Loss is NaN or explodes:</b> learning rate too high (calculus 3's 2/k limit), or a log of 0 somewhere.</li>
+    <li><b>Loss doesn't move:</b> learning rate too low, forgot <code>zero_grad</code>/<code>step</code>, or the labels don't match the inputs.</li>
+    <li><b>Great training score, bad test score:</b> overfitting (chapter 11), or <code>.eval()</code> forgotten.</li>
+    <li><b>Save what you need to rebuild it:</b> <code>torch.save(model.state_dict(), "model.pt")</code> stores the weights; the code that builds the model, plus the preprocessing, must travel with them (Start 4).</li>
+  </ul>
+  <div class="q" data-answer="c">
+    <p>A new model's loss won't drop below 2.3 on a 10-class problem, even on one batch. What's most likely?</p>
+    <ul><li data-k="a" data-says="Overfitting needs the loss to go down first.">Overfitting</li><li data-k="b" data-says="More data can't help if it can't even fit one batch.">Not enough data</li><li data-k="c">A bug: 2.3 = ln 10 is the loss of guessing uniformly, so nothing is being learned (often a missing optimizer step or zero_grad, or a learning rate of 0)</li></ul>
+    <div class="why">Knowing the "knows nothing" loss, \(\ln(\text{number of classes})\), is a quick check that training started at all.</div>
+  </div>
+
+  <h2>8. What to carry forward</h2>
+  <ul>
+    <li>The loop: for each epoch, for each batch: forward, loss, <code>zero_grad</code>, <code>backward</code>, <code>step</code>.</li>
+    <li>An <b>epoch</b> is one pass over the data; a <b>batch</b> is the handful used for one step. Steps per epoch = examples / batch size.</li>
+    <li><b>Tensors</b> are arrays that can live on a GPU and record operations for <b>autograd</b>.</li>
+    <li>An <b>nn.Module</b> owns its parameters; switch <code>train()</code>/<code>eval()</code>, and evaluate under <code>no_grad()</code>.</li>
+    <li>A <b>Dataset</b> serves one example; a <b>DataLoader</b> shuffles and batches.</li>
+    <li>Overfit one batch first; know that ln(classes) means "learned nothing".</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. The official PyTorch "Learn the Basics" tutorial covers the same ground in more detail.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, graph, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+function mulberry32(a) { return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const R = mulberry32(3), gauss = () => Math.sqrt(-2 * Math.log(1 - R())) * Math.cos(2 * Math.PI * R());
+const N = 120, X = Array.from({ length: N }, () => R() * 10), Y = X.map((x) => 2.6 * x + 6 + 3 * gauss());
+const fullLoss = (w, b) => X.reduce((s, x, i) => s + (w * x + b - Y[i]) ** 2, 0) / N;
+let w, b, order, pos, epoch, steps, losses, batch, timer = null, cheered = false;
+const shuffle = () => { order = [...Array(N).keys()]; for (let i = N - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } };
+function reset() { w = 0; b = 0; shuffle(); pos = 0; epoch = 1; steps = 0; losses = [fullLoss(0, 0)]; batch = []; draw(); }
+function step() {
+  const B = +$("bs").value, lr = +$("lr").value;
+  if (pos >= N) { pos = 0; epoch++; shuffle(); }
+  batch = order.slice(pos, pos + B); pos += B;
+  let gw = 0, gb = 0;
+  for (const i of batch) { const e = w * X[i] + b - Y[i]; gw += (2 * e * X[i]) / batch.length; gb += (2 * e) / batch.length; }
+  w -= lr * gw; b -= lr * gb; steps++;
+  losses.push(Math.min(1e4, fullLoss(w, b)));
+  if (!Number.isFinite(w) || Math.abs(w) > 1e3) { stop(); say("It blew up! That learning rate is too big for this batch size.", "dizzy"); reset(); return; }
+  if (!cheered && fullLoss(w, b) < 11) { cheered = true; say(`Close to the best line after ${steps} steps.`, "happy"); }
+  draw();
+}
+function draw() {
+  const P = graph("fit", [0, 10.5], [0, 45], { step: [1, 5] }), inB = new Set(batch);
+  X.forEach((x, i) => P.dot(x, Y[i], inB.has(i) ? C.yellow : "rgba(143,152,168,0.55)", inB.has(i) ? 6 : 4));
+  P.curve((x) => w * x + b, C.blue, 3);
+  const top = Math.max(10, ...losses.slice(0, 1)), L = graph("lossCv", [0, Math.max(20, losses.length - 1)], [0, top], { step: [1e9, 1e9], labels: false });
+  if (losses.length > 1) L.curve((t) => losses[Math.min(losses.length - 1, Math.round(t))], C.yellow, 2);
+  L.text("loss on all 120 points, after each step", 0.3, top * 0.85, "#8f98a8");
+  const B = +$("bs").value, per = Math.ceil(N / B);
+  $("r1").textContent = `epoch ${epoch} · step ${steps} (${per} step${per > 1 ? "s" : ""} per epoch with batches of ${B}) · line: ${w.toFixed(2)}·km + ${b.toFixed(2)} · loss ${fullLoss(w, b).toFixed(2)}`;
+}
+const stop = () => { clearInterval(timer); timer = null; $("play").textContent = "Play"; };
+$("play").onclick = () => { if (timer) return stop(); $("play").textContent = "Pause"; timer = setInterval(() => { for (let k = 0; k < 4 && timer; k++) step(); }, 80); };
+$("step").onclick = () => { stop(); step(); };
+$("reset").onclick = () => { stop(); reset(); };
+$("bs").oninput = $("lr").oninput = () => { stop(); reset(); };
+reset();
+window.blipContext = () => ({ page: "AI from scratch, training in PyTorch: the training loop (epochs, minibatches, forward, loss, zero_grad, backward, step), batch size and learning rate on a live line fit, tensors and autograd, nn.Module, Dataset and DataLoader, optimizers (SGD, AdamW), train/eval and no_grad, saving state_dict, debugging (overfit one batch, ln(classes) loss)", readouts: [$("r1").textContent] });
+</script>
+</body>
+</html>

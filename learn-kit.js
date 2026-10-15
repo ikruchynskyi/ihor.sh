@@ -55,10 +55,10 @@ const css = `
 .code .ac div.on { background: #2d3a52; }
 .code .ac i { color: #7d8796; font-style: normal; margin-left: auto; font-size: 11px; }
 .code .ac .doc { white-space: normal; color: #9aa4b2; font-size: 11.5px; border-top: 1px solid #3a4252; cursor: default; }
-.code .token.comment { color: #7d8796; font-style: italic; } .code .token.string, .code .token.triple-quoted-string { color: #83c167; }
-.code .token.number, .code .token.boolean { color: #f4d35e; } .code .token.keyword { color: #fc6255; }
-.code .token.builtin, .code .token.function { color: #58c4dd; } .code .token.decorator, .code .token.class-name { color: #e6a3f0; }
-.code .token.punctuation, .code .token.operator { color: #a8b1be; }
+.code .token.comment, pre.static .token.comment { color: #7d8796; font-style: italic; } .code .token.string, .code .token.triple-quoted-string, pre.static .token.string, pre.static .token.triple-quoted-string { color: #83c167; }
+.code .token.number, .code .token.boolean, pre.static .token.number, pre.static .token.boolean { color: #f4d35e; } .code .token.keyword, pre.static .token.keyword { color: #fc6255; }
+.code .token.builtin, .code .token.function, pre.static .token.builtin, pre.static .token.function { color: #58c4dd; } .code .token.decorator, .code .token.class-name, pre.static .token.decorator, pre.static .token.class-name { color: #e6a3f0; }
+.code .token.punctuation, .code .token.operator, pre.static .token.punctuation, pre.static .token.operator { color: #a8b1be; }
 .code .out { margin: 0; padding: 8px 12px; font: 13px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; border-top: 1px solid var(--line); max-height: 340px; overflow: auto; }
 .code .out:empty { display: none; }
 .code .out .err { color: var(--red, #e03131); }
@@ -67,6 +67,8 @@ const css = `
 .code .out .df { white-space: normal; overflow-x: auto; } .code .out .df th { border: 1px solid var(--line); padding: 2px 8px; text-align: right; font-weight: 600; }
 .code .out img { display: block; margin: 6px 0; border-radius: 6px; background: #fff; }
 .code .out .muted { color: var(--muted); }
+pre.static { background: #0f1218; color: #d7dde5; padding: 12px 14px; border-radius: 10px; overflow-x: auto; font: 13.5px/1.55 ui-monospace, Menlo, monospace; }
+pre.static code { background: none !important; padding: 0; font: inherit; color: inherit; }
 /* phones: nothing wider than the screen, and buttons big enough for a thumb */
 main select, main input[type="file"], main svg:not(.katex svg) { max-width: 100%; }
 main svg:not(.katex svg) { height: auto; }
@@ -145,7 +147,7 @@ function loadPrism() {
   const base = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/";
   const load = (src) => new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = base + src; sc.onload = ok; sc.onerror = no; document.head.append(sc); });
   load("components/prism-core.min.js").then(() => load("components/prism-clike.min.js")).then(() => Promise.all([load("components/prism-python.min.js"), load("components/prism-javascript.min.js")]))
-    .then(() => painters.forEach((p) => p())).catch(() => {});
+    .then(() => { painters.forEach((p) => p()); document.querySelectorAll("pre.static code").forEach((c) => window.Prism.highlightElement(c)); }).catch(() => {});
 }
 // Python by Pyodide, loaded once per page on the first run (about 10 MB, then cached by the browser)
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
@@ -360,7 +362,8 @@ window.learnKit ??= { setupQuestion };
 if (first) {
 document.querySelectorAll(".q").forEach(setupQuestion);
 document.querySelectorAll(".code").forEach(setupCode);
-if (painters.length) loadPrism();
+for (const c of document.querySelectorAll("pre.static code:not([class])")) c.className = "language-python";   // read-only code (e.g. PyTorch, which can't run in a page)
+if (painters.length || document.querySelector("pre.static code")) loadPrism();
 // a table wider than the page scrolls sideways inside its own box instead of being cut off on a phone
 for (const t of document.querySelectorAll("main table")) if (!t.closest(".wide, .wide-scroll, .code") && t.scrollWidth > (t.parentElement?.clientWidth ?? 0)) { const w = document.createElement("div"); w.className = "wide-scroll"; t.before(w); w.append(t); }
 typeset();

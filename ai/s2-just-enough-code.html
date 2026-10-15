@@ -17,7 +17,7 @@
 <main data-lang="python">
   <p class="eyebrow"><a href="./">AI from scratch</a> · Start 2 · Stage 0: start here</p>
   <h1>Just enough Python</h1>
-  <p class="lede">Every lesson on this path has code you can run and change, in <b>Python</b>, the language ML teams use every day. This lesson teaches exactly what you need to read it: numbers, names, lists, loops and functions, then the three libraries you'll see everywhere, <b>NumPy</b>, <b>pandas</b> and <b>matplotlib</b>. Nothing to install: each box runs right here in the page (the first run loads Python into your browser, which takes a few seconds). Change things, break things, press <b>Reset</b> to get the original back.</p>
+  <p class="lede">Every lesson on this path has code you can run and change, in <b>Python</b>, the language ML teams use every day. This lesson teaches exactly what you need to read it: numbers, names, lists, loops, functions and decisions, then the three libraries you'll see everywhere, <b>NumPy</b>, <b>pandas</b> and <b>matplotlib</b>. Nothing to install: each box runs right here in the page (the first run loads Python into your browser, which takes a few seconds). Change things, break things, press <b>Reset</b> to get the original back.</p>
 
   <h2>1. The computer as a calculator</h2>
   <p><code>print(...)</code> shows whatever you put between the brackets; separate several things with commas. <code>*</code> is times, <code>/</code> is divide, <code>**</code> is "to the power of", and text goes in quotes. Lines starting with <code>#</code> are comments: notes for people, ignored by the computer. <code>import math</code> brings in square roots, \(e^x\) and logs.</p>
@@ -71,7 +71,7 @@ print("x =", point[0], "y =", point[1])
 xs = [4, 8, 15, 16, 23, 42]
 total = 0
 for x in xs:
-    total = total + x     # or total += x
+    total += x            # short for: total = total + x
 print("sum:", total, "mean:", total / len(xs))
 
 for i in range(1, 6):     # 1 to 5, squaring each
@@ -106,7 +106,38 @@ print("several rides:", [predict(k) for k in [1, 5, 10]])   # a list comprehensi
     <div class="why">\(4 \times 4 - 3 = 13\).</div>
   </div>
 
-  <h2>6. NumPy: the loops disappear</h2>
+  <h2>6. Decisions, dictionaries and settings</h2>
+  <p>A <b>comparison</b> asks a yes-or-no question and answers <code>True</code> or <code>False</code>: <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>==</code> (is equal: two signs, because one <code>=</code> means "becomes") and <code>!=</code> (is not equal). <code>if</code> runs its indented lines only when the answer is <code>True</code>, and <code>else</code> when it isn't; <code>and</code> and <code>or</code> join two questions.</p>
+  <p>Four more shapes you'll meet in every notebook. A <b>dictionary</b>, <code>{"key": value}</code>, looks values up by name. A <b>named argument</b>, <code>predict(4, b=10)</code>, sets one of a function's settings by name: you'll see <code>figsize=(6, 3)</code> and <code>lr=0.01</code> everywhere. An <b>f-string</b>, <code>f"... {x} ..."</code>, puts values into text. And <code>lambda x: 2 * x</code> is a one-line function without a name, for when something wants a function as its input: the notebooks' <code>check(lambda: ...)</code> uses one to test your answer when you run it.</p>
+  <div class="code" data-title="Run it: decisions and settings"><textarea>
+ride_km = 7
+if ride_km > 5:
+    print("a long ride")
+else:
+    print("a short ride")
+print(3 == 3, 3 != 4, ride_km > 5 and ride_km < 10)
+
+kinds = {"EL": "elevator", "ES": "escalator"}    # a dictionary
+print(kinds["EL"])
+
+def predict(km, a=2.6, b=6):                      # settings with default values
+    return a * km + b
+
+print(predict(4), predict(4, b=10))               # change one setting by name
+print(f"a 4 km ride takes about {predict(4)} minutes")
+
+double = lambda x: 2 * x                          # a function in one line
+print(double(21))
+
+long_rides = [km for km in [2, 7, 12, 3] if km > 5]   # a comprehension can keep only some items
+print(long_rides)
+</textarea></div>
+  <div class="q" data-num="36">
+    <p>With the box's <code>predict</code>, what is <code>predict(10, a=3)</code>?</p>
+    <div class="why">\(a\) is set to 3 by name and \(b\) keeps its default 6: \(3 	imes 10 + 6 = 36\).</div>
+  </div>
+
+  <h2>7. NumPy: the loops disappear</h2>
   <p>Real ML code almost never loops over numbers one by one. <b>NumPy</b> arrays hold many numbers and do arithmetic on all of them at once: <code>a * km + b</code> with <code>km</code> an array computes every ride's guess in one step. It's shorter, it reads like the math, and it's a hundred times faster, because the loop runs inside NumPy's compiled code. Everybody imports it as <code>np</code>.</p>
   <div class="code" id="rides" data-title="Build it: the mean squared error in one line"><textarea>
 import numpy as np
@@ -127,7 +158,7 @@ print("mean squared error:", mse)
     <div class="why">0.958: the squared errors are 0.25, 0, 0.25, 0.25, 1 and 4, which add up to 5.75, divided by 6. Training means finding the knobs that make this smallest without trying every value, which is what stage 1 is about.</div>
   </div>
 
-  <h2>7. matplotlib: see it</h2>
+  <h2>8. matplotlib: see it</h2>
   <p><b>matplotlib</b> draws charts; everyone imports its plotting part as <code>plt</code>. This box reuses the rides from the box above (it runs that one quietly first) and plots the error for many values of the knob \(a\):</p>
   <div class="code" data-uses="rides" data-title="Run it: the error as you turn a knob"><textarea>
 import matplotlib.pyplot as plt
@@ -143,7 +174,7 @@ best = a_values[np.argmin(mses)]
 print("best a on this grid:", round(best, 2))
 </textarea></div>
 
-  <h2>8. pandas: tables</h2>
+  <h2>9. pandas: tables</h2>
   <p>Real data comes as tables: rows of examples, named columns of features. <b>pandas</b> (imported as <code>pd</code>) holds a table in a <b>DataFrame</b>, and it can add columns, summarize, filter and group in a line each. The last line of a box, if it's just a value, is shown, so a DataFrame shows as a table.</p>
   <div class="code" data-uses="rides" data-title="Run it: a DataFrame"><textarea>
 import pandas as pd
@@ -152,18 +183,24 @@ df = pd.DataFrame({"km": km, "minutes": minutes})
 df["guess"] = 2.5 * df["km"] + 6
 df["error"] = df["guess"] - df["minutes"]
 print(df.describe().round(2))      # count, mean, spread, quartiles of every column
-df[df["km"] > 2]                   # only the longer rides
-</textarea></div>
-  <p>Stage 4 goes deep into pandas and scikit-learn; for now, recognizing <code>df["column"]</code> and <code>df[condition]</code> is enough.</p>
 
-  <h2>9. Where to run real code: notebooks</h2>
+long = df["km"] > 2                # a True/False column: is each ride longer than 2 km?
+print("how many:", long.sum(), " what share:", long.mean())   # True counts as 1, False as 0
+
+df["kind"] = ["short", "short", "short", "long", "long", "long"]
+print(df.groupby("kind")["error"].mean())                   # one number per group
+df[long]                           # only the longer rides
+</textarea></div>
+  <p>A comparison on a column gives a column of <code>True</code>/<code>False</code>. Because <code>True</code> counts as 1, its <code>.sum()</code> is <i>how many</i> and its <code>.mean()</code> is <i>what share</i>, and putting it in <code>df[...]</code> keeps only those rows. <code>groupby</code> splits the table by a column and summarizes each part. Stage 4 goes deep into pandas and scikit-learn; this is enough until then.</p>
+
+  <h2>10. Where to run real code: notebooks</h2>
   <p>The boxes on these pages are for small experiments. Real ML work happens in <b>notebooks</b>: documents mixing code, output and notes, run on a machine with a GPU. Two free places run them in your browser, no install: <b>Google Colab</b> and <b>Kaggle</b>. Every lesson on this path has a <b>practice notebook</b> that opens in either with one click; that's where you'll use PyTorch (stage 2 onward), which is too big to run inside a web page.</p>
 
-  <h2>10. What to carry forward</h2>
+  <h2>11. What to carry forward</h2>
   <ul>
     <li><code>=</code> means "becomes"; lists count from 0; indentation shows what's inside a loop or function.</li>
     <li><code>for x in xs:</code> visits each item; \(\sum\) in a formula is a loop in code, or one NumPy call.</li>
-    <li><code>def</code> makes a function; a model is a function.</li>
+    <li><code>def</code> makes a function; a model is a function. <code>if</code> decides; <code>==</code> compares, <code>=</code> assigns.</li>
     <li><code>np</code> does arithmetic on whole arrays, <code>pd</code> holds tables, <code>plt</code> draws.</li>
     <li>Small experiments: here. Real work: notebooks in Colab or Kaggle.</li>
   </ul>

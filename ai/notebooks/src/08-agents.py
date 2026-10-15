@@ -12,19 +12,15 @@ import json, re, urllib.request
 import numpy as np
 from scipy import stats
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. The loop
-# The "model" here is a stand-in with rules, so the loop itself is what you see. Finish `run_agent`: ask the model;
-# if it answers, append the answer and stop; if it asks for a tool that doesn't exist, append an error as a "tool"
-# message (the model can recover); otherwise append the call and the tool's result. Stop after `max_rounds`.
+# The "model" here is a stand-in with rules, so the loop itself is what you see. Each round, `run_agent` asks the
+# model, which either answers (`{"answer": ...}`) or asks for a tool (`{"tool": name, "args": {...}}`). The middle
+# branch is written for you: a tool that doesn't exist becomes an error message with role "tool", so the model can
+# recover. Two branches are yours:
+# 1. When `"answer" in out`: append `{"role": "assistant", "content": out["answer"]}` to `messages` and `break`.
+# 2. Otherwise, after the tool has run: append the call as an assistant message (`call` text is made for you), then
+#    `{"role": "tool", "content": result}`.
 
 # %%
 tools = {
@@ -45,18 +41,33 @@ def model(messages):
     return {"answer": "I can't help with that."}
 
 def run_agent(question, max_rounds=4):
+    """Execute the ReAct-style agent loop between model and tools.
+    
+    Args:
+        question: User query string.
+        max_rounds: Maximum interaction turns before terminating.
+    Returns:
+        list: History of message dicts [{"role": "...", "content": ...}].
+    """
     messages = [{"role": "user", "content": question}]
     for _ in range(max_rounds):
         out = model(messages)
-        ### BEGIN SOLUTION
         if "answer" in out:
+            ### HINT messages.append({...}) adds one message; break leaves the for loop.
+            ### HINT messages.append({"role": "assistant", "content": out["answer"]}), then break on the next line
+            ### BEGIN SOLUTION
             messages.append({"role": "assistant", "content": out["answer"]})
             break
+            ### END SOLUTION
         if out["tool"] not in tools:
             messages.append({"role": "tool", "content": {"error": f"no tool named {out['tool']}"}})
-            continue
-        messages.append({"role": "assistant", "content": f"call {out['tool']}({json.dumps(out['args'])})"})
-        messages.append({"role": "tool", "content": tools[out["tool"]](**out["args"])})
+            continue                                            # next round: the model sees the error
+        result = tools[out["tool"]](**out["args"])             # ** passes the dict as named arguments
+        call = f"call {out['tool']}({json.dumps(out['args'])})"
+        ### HINT Two appends, like the error branch above: first role "assistant" with call, then role "tool" with result.
+        ### BEGIN SOLUTION
+        messages.append({"role": "assistant", "content": call})
+        messages.append({"role": "tool", "content": result})
         ### END SOLUTION
     return messages
 
@@ -64,8 +75,10 @@ for m in run_agent("Next train at Union Sq?"):
     print(f"{m['role']:9}", m["content"])
 
 # %%
-check(lambda: [m["role"] for m in run_agent("Will it rain?")] == ["user", "assistant", "tool", "assistant"], "question → call → result → answer")
-check(lambda: "no tool" in json.dumps(run_agent("How much is a taxi?")[1]["content"]), "an unknown tool becomes an error message, not a crash")
+check(lambda: [m["role"] for m in run_agent("Will it rain?")] == ["user", "assistant", "tool", "assistant"], 
+      "Interaction sequence should be user question -> assistant tool call -> tool result -> assistant answer.")
+check(lambda: "no tool" in json.dumps(run_agent("How much is a taxi?")[1]["content"]), 
+      "An unknown tool request should be caught gracefully as an error message without crashing.")
 
 # %% [markdown]
 # ## 2. Guardrails: validate before you run
@@ -77,6 +90,17 @@ check(lambda: "no tool" in json.dumps(run_agent("How much is a taxi?")[1]["conte
 schema = {"required": ["station"], "properties": {"station": {"type": "string"}, "limit": {"type": "number"}}}
 
 def validate(args, schema):
+    """Validate tool argument dictionary against a JSON schema specification.
+    
+    Args:
+        args: Dictionary of arguments supplied by the model.
+        schema: Dictionary specifying required keys and property types.
+    Returns:
+        list of str: Discovered validation errors, or empty list if valid.
+    """
+    ### HINT Check for any required fields missing from args.
+    ### HINT Check for unexpected fields not declared in schema['properties'].
+    ### HINT Verify types of present arguments (str for 'string', (int, float) for 'number', excluding bool).
     ### BEGIN SOLUTION
     problems = [f"missing {k}" for k in schema["required"] if k not in args]
     types = {"string": str, "number": (int, float)}
@@ -92,25 +116,39 @@ for a in [{"station": "Union Sq"}, {"station": 5}, {"limit": 3}, {"station": "Un
     print(a, "→", validate(a, schema))
 
 # %%
-check(lambda: validate({"station": "Union Sq", "limit": 2}, schema) == [], "good arguments pass")
-check(lambda: len(validate({"station": 5}, schema)) == 1 and len(validate({"limit": 3}, schema)) == 1, "a wrong type and a missing field are caught")
-check(lambda: any("unexpected" in p for p in validate({"station": "x", "drop_table": True}, schema)), "and so are made-up fields")
+check(lambda: validate({"station": "Union Sq", "limit": 2}, schema) == [], 
+      "Valid arguments matching schema should pass with 0 errors.")
+check(lambda: len(validate({"station": 5}, schema)) == 1 and len(validate({"limit": 3}, schema)) == 1, 
+      "Wrong parameter type and missing required parameter must both produce validation errors.")
+check(lambda: any("unexpected" in p for p in validate({"station": "x", "drop_table": True}, schema)), 
+      "Hallucinated or unapproved argument keys must be flagged as unexpected.")
 
 # %% [markdown]
 # ## 3. A real tool over MCP
 # The **Model Context Protocol** is how agents discover and call tools: JSON-RPC over HTTP. This site runs an MCP
-# server at https://ihor.sh/mcp, and its `site_search` tool is public. Write `mcp(method, params)` that POSTs
-# `{"jsonrpc": "2.0", "id": 1, "method": method, "params": params}` and returns the parsed `"result"`. Send a
-# User-Agent header (the site's firewall blocks Python's default one) and `accept: application/json`.
-# Then list the tools, and search the site for "attention".
+# server at https://ihor.sh/mcp, and its `site_search` tool is public. `mcp(method, params)` builds the request for
+# you: the JSON-RPC message `{"jsonrpc": "2.0", "id": 1, "method": method, "params": params}` as bytes, POSTed with
+# a User-Agent header (the site's firewall blocks Python's default one). Finish it: send `req` with
+# `urllib.request.urlopen(req, timeout=30)`, parse the reply with `json.load` (as this path's data downloads do), and
+# return its `"result"`. The cell then lists the tools and searches the site for "attention".
 
 # %%
 UA = "ai-from-scratch-notebook/1.0 (+https://ihor.sh/ai/)"
 def mcp(method, params=None):
-    ### BEGIN SOLUTION
-    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}}).encode()
+    """Invoke a remote MCP tool over JSON-RPC via HTTP POST.
+    
+    Args:
+        method: MCP JSON-RPC method name (e.g. 'tools/list' or 'tools/call').
+        params: Optional dictionary of method parameters.
+    Returns:
+        dict: Parsed JSON result payload.
+    """
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}}).encode()   # text → bytes
     req = urllib.request.Request("https://ihor.sh/mcp", data=body, method="POST",
                                  headers={"content-type": "application/json", "accept": "application/json, text/event-stream", "user-agent": UA})
+    ### HINT json.load(urllib.request.urlopen(req, timeout=30)) is the whole reply, a dictionary.
+    ### HINT return json.load(urllib.request.urlopen(req, timeout=30))["result"]
+    ### BEGIN SOLUTION
     return json.load(urllib.request.urlopen(req, timeout=30))["result"]
     ### END SOLUTION
 
@@ -124,8 +162,10 @@ except Exception as e:
     print("MCP call failed:", e)
 
 # %%
-check(lambda: "site_search" in tool_names, "the server lists its tools, site_search among them")
-check(lambda: "07-attention" in hit, "and the search finds the attention lesson")
+check(lambda: "site_search" in tool_names, 
+      "The MCP server at https://ihor.sh/mcp must list 'site_search' as an available tool.")
+check(lambda: "07-attention" in hit, 
+      "Searching for 'attention transformer' through MCP site_search should retrieve the attention chapter.")
 
 # %% [markdown]
 # ## 4. An eval with error bars
@@ -149,6 +189,10 @@ def router_v2(q):
     if re.search(r"rain|umbrella|cold|weather|temperature", q, re.I): return "weather"
     return "subway"
 acc1 = acc2 = ci2 = p_value = None
+### HINT Compute boolean correctness arrays r1 and r2 for router_v1 and router_v2.
+### HINT Compute accuracies acc1 and acc2.
+### HINT Compute 95% confidence interval for acc2: acc2 ± 1.96 * sqrt(acc2*(1-acc2)/n).
+### HINT Count disagreement counts b and c, and compute McNemar exact binomtest p-value.
 ### BEGIN SOLUTION
 r1 = np.array([router_v1(q) == t for q, t in cases]); r2 = np.array([router_v2(q) == t for q, t in cases])
 acc1, acc2 = r1.mean(), r2.mean()
@@ -159,8 +203,10 @@ p_value = stats.binomtest(c, b + c, 0.5).pvalue
 print(len(cases), "cases · v1", acc1, " v2", acc2, ci2, " McNemar p =", p_value)
 
 # %%
-check(lambda: acc2 > acc1 and ci2[0] < acc2 <= ci2[1], "v2 scores higher, inside its own interval")
-check(lambda: p_value < 0.05, "and on the same questions the difference is more than luck")
+check(lambda: acc2 > acc1 and ci2[0] < acc2 <= ci2[1], 
+      "router_v2 should outperform router_v1 with accuracy inside its 95% confidence interval.")
+check(lambda: p_value < 0.05, 
+      "The paired McNemar test should show statistically significant improvement (p < 0.05).")
 
 # %% [markdown]
 # Notice the duplicated cases: 33 of the 40 questions are 11 questions repeated 3 times. An eval set with copies

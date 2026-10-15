@@ -3,97 +3,176 @@
 # # Practice: your first models
 # *AI from scratch, Start 1* · lesson: https://ihor.sh/ai/s1-what-is-ml.html
 #
-# Two parts. First you train Start 1's taxi model yourself, by hand and then by gradient descent, in NumPy.
-# Then, the fast.ai way, you jump ahead and train a real image classifier in a few minutes with PyTorch, before
-# understanding every piece of it: the rest of the path opens that box up.
+# You don't need to know any programming for this notebook. Start 2 teaches the code; here you only **run**
+# cells, **predict** what they'll show, and **change numbers** to see what happens.
 #
-# Fill in each `...` under `# YOUR CODE HERE`, run it, then run the check under it (✓ = right, ✗ = not yet).
-# **Part 2 wants a GPU**: in Colab, *Runtime → Change runtime type → T4 GPU*; on Kaggle, *Settings → Accelerator →
-# GPU* and turn *Internet* on.
+# **How a notebook works**
+# - Click a gray code cell and press **Shift + Enter** (or its ▶ button) to run it. Run them in order, top to bottom.
+# - An exercise has a line `# YOUR CODE HERE` with `...` under it. Replace the `...` with what the text asks for
+#   (here it's always just a number), then run that cell and the `check` cell below it: ✓ means right.
+# - Stuck? Type `hint(1)` in any cell and run it for a hint on exercise 1 (run it again for the next hint), or
+#   `answer(1)` to see the answer. That's what they're there for.
+#
+# Part 2 trains a real image model and is faster on a free GPU: in Colab, *Runtime → Change runtime type → T4 GPU*;
+# on Kaggle, *Settings → Accelerator → GPU* and turn *Internet* on.
 
 # %%
+import warnings
+warnings.filterwarnings("ignore")
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
-# %% [markdown]
-# ## Part 1. A model is a function with knobs
-# 40 made-up taxi rides: distance in km, time in minutes. The hidden rule was minutes ≈ 2.6 × km + 6, plus traffic.
-
-# %%
+# 40 taxi rides like the lesson's: how far each went (km) and how long it took (minutes).
 rng = np.random.default_rng(11)
 km = rng.uniform(0.5, 12, 40)
 minutes = np.maximum(2, 2.6 * km + 6 + 3 * rng.standard_normal(40))
-plt.scatter(km, minutes); plt.xlabel("km"); plt.ylabel("minutes"); plt.show()
+
+plt.scatter(km, minutes)
+plt.xlabel("distance (km)"); plt.ylabel("time (minutes)"); plt.title("40 taxi rides")
+plt.show()
 
 # %% [markdown]
-# ### 1.1 The error
-# Write `mse(a, b)`: the mean squared error of the line `a * km + b` on these rides.
+# ## 1. A model is a function with knobs
+# The lesson's model guesses a ride's time from its distance:
+#
+# **predicted minutes = a × km + b**
+#
+# `a` (minutes per km) and `b` (minutes every ride costs, whatever its length) are its two **knobs**. Here is
+# that model as code. Run it: it prints the guess for a 4 km ride with a = 2.6 and b = 6.
+
+# %%
+def predict(km, a, b):
+    return a * km + b
+
+print(predict(4, 2.6, 6))
+
+# %% [markdown]
+# **Exercise 1 (predict).** Without running anything: with the same knobs, a = 2.6 and b = 6, how many minutes does
+# the model predict for a **5 km** ride? Put your number in place of the `...`, then run the cell: it also prints
+# the model's own answer, so you can compare.
+
+# %%
+guess_5km = None
+### HINT Fill the formula in: a × km + b with a = 2.6, km = 5 and b = 6.
+### HINT 2.6 × 5 is 13. Now add b.
+### BEGIN SOLUTION
+guess_5km = 19
+### END SOLUTION
+print("you said:", guess_5km, " the model says:", predict(5, 2.6, 6))
+
+# %%
+check(lambda: abs(guess_5km - 19) < 0.01, "2.6 × 5 + 6 = 13 + 6 = 19 minutes.")
+
+# %% [markdown]
+# ## 2. One number for how wrong a line is
+# For every ride, take the model's guess minus the real time, square it (so a guess too high and one too low both
+# count as mistakes), then average over all 40 rides. That's the **mean squared error** from the lesson: the
+# smaller, the better the line fits. Run this cell: it measures it for two different choices of knobs.
 
 # %%
 def mse(a, b):
-    ### BEGIN SOLUTION
-    return np.mean((a * km + b - minutes) ** 2)
-    ### END SOLUTION
+    errors = predict(km, a, b) - minutes
+    return np.mean(errors ** 2)
 
-# %%
-check(lambda: abs(mse(2.6, 6) - np.mean((2.6 * km + 6 - minutes) ** 2)) < 1e-9, "average of (a·km + b − minutes)²")
+print("line A, a = 1 and b = 15:", mse(1, 15))
+print("line B, a = 3 and b = 3: ", mse(3, 3))
 
 # %% [markdown]
-# ### 1.2 Turn the knobs by hand
-# Set `a` and `b` to get the error under 10. Plot your line over the dots to see how you're doing.
+# **Exercise 2 (read the output).** Which line fits the rides better? Set `better` to `"A"` or `"B"` (with the
+# quotes).
 
 # %%
-a, b = 1.0, 15.0
+better = None
+### HINT The better line has the *smaller* error.
 ### BEGIN SOLUTION
-a, b = 2.6, 6.0
+better = "B"
 ### END SOLUTION
-plt.scatter(km, minutes); plt.plot([0, 12], [b, a * 12 + b], "r"); plt.show()
-print("error:", mse(a, b))
 
 # %%
-check(lambda: mse(a, b) < 10, "get the mean squared error under 10")
+check(lambda: better == "B", 'line B\'s error (about 10) is smaller than line A\'s (about 32), so set better = "B".')
 
 # %% [markdown]
-# ### 1.3 Let the computer turn them: gradient descent
-# The slope of the error with respect to each knob tells it which way is downhill (stage 1 derives these):
-#
-# $$\frac{\partial L}{\partial a} = \frac{2}{n}\sum (a\,km_i + b - y_i)\,km_i \qquad \frac{\partial L}{\partial b} = \frac{2}{n}\sum (a\,km_i + b - y_i)$$
-#
-# Fill in one training step: compute both slopes and move each knob a small step (`lr`) against its slope.
+# ## 3. Turn the knobs by hand
+# **Exercise 3 (modify).** Change the numbers after `a =` and `b =` and run the cell, again and again, until the
+# error is **under 7.5**. The picture shows your line over the rides, so you can see which way to move: a steeper
+# line needs a bigger `a`, a higher line a bigger `b`. (Replace the `...` with nothing, or leave it: it does no harm.)
 
 # %%
-a, b, lr = 0.0, 0.0, 0.01
+a = 1.0
+b = 15.0
+### HINT Start by making a bigger (try 2) and b smaller (try 8), then adjust one knob at a time.
+### HINT The lesson's sliders found about a = 2.5 and b = 7.
+### BEGIN SOLUTION
+a = 2.5
+b = 7.0
+### END SOLUTION
+
+print("a =", a, " b =", b, " error:", mse(a, b))
+plt.scatter(km, minutes)
+plt.plot([0, 12], [predict(0, a, b), predict(12, a, b)], "r")
+plt.xlabel("distance (km)"); plt.ylabel("time (minutes)")
+plt.show()
+
+# %%
+check(lambda: mse(a, b) < 7.5, "keep turning: get the red line through the middle of the dots. hint(3) suggests values to try.")
+
+# %% [markdown]
+# ## 4. Let the computer turn the knobs
+# This is the lesson's "let the computer train it" button, as code. It starts with both knobs at 0 and repeats a
+# small step 3,000 times: each step nudges `a` and `b` in the direction that makes the error smaller. That
+# direction comes from calculus, which stage 1 builds up slowly, so for now just run it and watch the error fall.
+#
+# `lr`, the **learning rate**, is how big each step is.
+
+# %%
+lr = 0.01
+
+a, b = 0.0, 0.0
 history = []
 for step in range(3000):
-    ### BEGIN SOLUTION
-    err = a * km + b - minutes
-    grad_a = 2 * np.mean(err * km)
-    grad_b = 2 * np.mean(err)
-    a -= lr * grad_a
-    b -= lr * grad_b
-    ### END SOLUTION
+    errors = predict(km, a, b) - minutes
+    a = a - lr * 2 * np.mean(errors * km)       # the downhill direction for a (stage 1 shows where it comes from)
+    b = b - lr * 2 * np.mean(errors)            # and for b
     history.append(mse(a, b))
-plt.plot(history); plt.yscale("log"); plt.xlabel("step"); plt.ylabel("error"); plt.show()
-print("a =", a, " b =", b, " error =", mse(a, b))
 
-# %%
-best_a, best_b = np.polyfit(km, minutes, 1)        # the exact least-squares line, for comparison
-check(lambda: abs(a - best_a) < 0.05 and abs(b - best_b) < 0.3, f"training should land near a = {best_a:.2f}, b = {best_b:.2f}")
+print("learning rate", lr, "→ a =", round(a, 2), " b =", round(b, 2), " error:", round(mse(a, b), 2))
+plt.plot(history)
+plt.yscale("log"); plt.xlabel("step"); plt.ylabel("error (log scale)")
+plt.show()
 
 # %% [markdown]
-# ## Part 2. A real model in five minutes: cats vs dogs
-# The Oxford-IIIT Pet dataset has 7,349 photos of 37 breeds; we only ask "cat or dog?". Instead of training from
-# scratch, we start from **ResNet-18**, a network already trained on 1.2 million everyday photos (ImageNet), and
-# retrain it briefly on pets. This is **transfer learning**, and it's how most image models at work are built.
-# Don't worry about every line yet: just run it and look at the result.
+# The computer lands on a = 2.51 and b = 6.86 (rounded), a slightly better line than hand-tuning finds, with an error of
+# about 6.7.
+#
+# **Exercise 4 (modify, then read).** Change `lr = 0.01` in the cell above to `0.001` and run it, then to `0.03` and
+# run it again. One of them is too small: after 3,000 steps the error is still above the best. The other is too
+# big: the steps overshoot and the error blows up to `nan` ("not a number"). Set `too_small` and `too_big`.
+
+# %%
+too_small = None
+too_big = None
+### HINT Look at the final error each one printed: still above 6.7, or nan?
+### HINT Small steps are slow; big steps overshoot the bottom of the valley.
+### BEGIN SOLUTION
+too_small = 0.001
+too_big = 0.03
+### END SOLUTION
+
+# %%
+check(lambda: too_small == 0.001 and too_big == 0.03,
+      "0.001 creeps (error still about 7.3 after 3,000 steps); 0.03 overshoots and blows up to nan.")
+
+# %% [markdown]
+# Picking the learning rate is a real, daily part of training models; stage 2 shows why a too-big one explodes.
+# Set `lr` back to `0.01` before moving on.
+#
+# ## Part 2. Preview: a real model in five minutes
+# Now a taste of where the path goes. **Just run these cells and watch**: every line is explained in later lessons
+# (images as numbers in stage 5, training loops in stage 2), and there's nothing to write.
+#
+# The Oxford-IIIT Pet photos show cats and dogs. Instead of starting from zero knobs, we take **ResNet-18**, a
+# model already trained on 1.2 million everyday photos, so it already knows edges, fur and eyes. We swap its last
+# layer for one with just two answers, cat or dog, and train for two short passes over 2,000 photos.
 
 # %%
 import torch, torchvision
@@ -101,46 +180,40 @@ from torchvision import transforms as T
 from torch.utils.data import DataLoader, Subset
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-print("training on", device, "(a GPU makes this about 20× faster)")
+print("running on", device, "(a GPU is about 20× faster)")
 
 tf = T.Compose([T.Resize(160), T.CenterCrop(144), T.ToTensor(), T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 pets = torchvision.datasets.OxfordIIITPet("data", split="trainval", target_types="binary-category", transform=tf, download=True)
 print(len(pets), "photos; label 0 = cat, 1 = dog")
 
 # %%
-N_TRAIN, N_VALID = 2000, 500       # a subset keeps this quick; use more for a better model
 idx = torch.randperm(len(pets), generator=torch.Generator().manual_seed(0))
-train = DataLoader(Subset(pets, idx[:N_TRAIN]), batch_size=64, shuffle=True)
-valid = DataLoader(Subset(pets, idx[N_TRAIN:N_TRAIN + N_VALID]), batch_size=128)
+train = DataLoader(Subset(pets, idx[:2000]), batch_size=64, shuffle=True)
+valid = DataLoader(Subset(pets, idx[2000:2500]), batch_size=128)
 
-model = torchvision.models.resnet18(weights="IMAGENET1K_V1")      # downloads the pretrained knobs
-model.fc = torch.nn.Linear(model.fc.in_features, 2)                # a new last layer: 2 answers, cat or dog
+model = torchvision.models.resnet18(weights="IMAGENET1K_V1")
+model.fc = torch.nn.Linear(model.fc.in_features, 2)          # the new last layer: two answers
 model = model.to(device)
 opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
 def accuracy():
-    model.eval(); right = total = 0
+    model.eval()
+    right = 0
     with torch.no_grad():
         for x, y in valid:
-            right += (model(x.to(device)).argmax(1).cpu() == y).sum().item(); total += len(y)
-    return right / total
+            right += (model(x.to(device)).argmax(1).cpu() == y).sum().item()
+    return right / 500
 
-print("before training:", accuracy())
+print("accuracy before training:", accuracy(), "(about 0.5: a coin flip)")
 for epoch in range(2):
     model.train()
     for x, y in train:
         loss = torch.nn.functional.cross_entropy(model(x.to(device)), y.to(device))
         opt.zero_grad(); loss.backward(); opt.step()
-    print(f"after epoch {epoch + 1}: validation accuracy {accuracy():.3f}")
+    print("after pass", epoch + 1, "accuracy on 500 photos it never trained on:", accuracy())
 
 # %% [markdown]
-# Before training, the new last layer guesses (about 50%). Two short passes over 2,000 photos get it to about
-# 90–95% on photos it never saw; train on all 7,349 for longer and it passes 98%. Every piece of that cell gets its own lesson later: images as numbers
-# (chapter 6), the network (stage 2), the loss (chapter 5), the optimizer (stage 4), transfer learning (stage 5).
-#
-# ### 2.1 Your turn: what does it get wrong?
-# Collect the validation photos the model misclassifies into `mistakes`, a list of (image tensor, true label)
-# pairs. Then look at a few: are they hard for a person too?
+# About 94% right after two passes. Here are some of the photos it got wrong:
 
 # %%
 mistakes = []
@@ -148,20 +221,18 @@ model.eval()
 with torch.no_grad():
     for x, y in valid:
         pred = model(x.to(device)).argmax(1).cpu()
-        ### BEGIN SOLUTION
         mistakes += [(img, int(t)) for img, p, t in zip(x, pred, y) if p != t]
-        ### END SOLUTION
-print(len(mistakes), "mistakes out of", N_VALID)
+
 mean, std = torch.tensor([0.485, 0.456, 0.406])[:, None, None], torch.tensor([0.229, 0.224, 0.225])[:, None, None]
-fig, axes = plt.subplots(1, min(6, len(mistakes)) or 1, figsize=(14, 3))
-for ax, (img, t) in zip(np.atleast_1d(axes), mistakes[:6]):
+fig, axes = plt.subplots(1, 6, figsize=(14, 3))
+for ax, (img, t) in zip(axes, mistakes[:6]):
     ax.imshow((img * std + mean).permute(1, 2, 0).clamp(0, 1)); ax.set_title("really a " + ["cat", "dog"][t]); ax.axis("off")
 plt.show()
 
-# %%
-check(lambda: 0 < len(mistakes) < N_VALID * 0.2 and all(len(m) == 2 for m in mistakes), "a list of (image, label) pairs, the misclassified ones")
-
 # %% [markdown]
+# Are they hard for you too? Odd angles, dark photos and unusual fur fool models, and a model can only be as good
+# as the examples it learned from: stage 3 is about measuring that honestly.
+#
 # ## Next
-# Back to the path: https://ihor.sh/ai/s2-just-enough-code.html · The same top-down idea is the heart of fast.ai's
-# free course: lesson 1 trains a classifier on photos you find yourself (https://course.fast.ai/Lessons/lesson1.html).
+# **Start 2: Just enough Python** (https://ihor.sh/ai/s2-just-enough-code.html) teaches the code you ran here, so
+# that its notebook can ask you to write some.

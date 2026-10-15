@@ -87,7 +87,8 @@
     "why": "A model that only fits its training examples may fail on new ones (overfitting, stage 3).",
     "sec": 7
    }
-  ]
+  ],
+  "teaches": []
  },
  "s2-just-enough-code.html": {
   "goals": [
@@ -153,7 +154,7 @@
     ],
     "answer": 0,
     "why": "NumPy does the arithmetic on every element at once.",
-    "sec": 6
+    "sec": 7
    },
    {
     "q": "How does Python know which lines are inside a loop?",
@@ -175,8 +176,30 @@
     ],
     "answer": 1,
     "why": "A condition inside df[…] filters rows.",
-    "sec": 8
+    "sec": 9
    }
+  ],
+  "teaches": [
+   "py:arith",
+   "py:call",
+   "py:import",
+   "py:unpack",
+   "py:tuple",
+   "py:list",
+   "py:index",
+   "py:slice",
+   "py:attribute",
+   "py:for",
+   "py:def",
+   "py:comprehension",
+   "py:augassign",
+   "py:compare",
+   "py:if",
+   "py:boolop",
+   "py:dict",
+   "py:keyword-arg",
+   "py:fstring",
+   "py:lambda"
   ]
  },
  "s3-math-warm-up.html": {
@@ -267,6 +290,17 @@
     "why": "3 − 0.1 × 4 = 2.6.",
     "sec": 6
    }
+  ],
+  "teaches": [
+   "math:sum",
+   "math:greek",
+   "math:subscript",
+   "math:log",
+   "math:exp",
+   "math:product",
+   "math:approx",
+   "math:hat",
+   "math:set"
   ]
  },
  "01-matrices-are-moves.html": {
@@ -357,6 +391,12 @@
     "why": "B(Ax) = (BA)x: any stack of matrices alone is a single straight move.",
     "sec": 4
    }
+  ],
+  "teaches": [
+   "math:matrix",
+   "math:norm",
+   "math:dot",
+   "py:matmul"
   ]
  },
  "l1-systems-and-inverses.html": {
@@ -447,6 +487,10 @@
     "why": "Areas multiply: 2 × 3.",
     "sec": 5
    }
+  ],
+  "teaches": [
+   "math:inverse",
+   "math:transpose"
   ]
  },
  "02-gradients.html": {
@@ -537,6 +581,12 @@
     "why": "w ← w − η × (positive) goes down, because a bigger w would raise the loss.",
     "sec": 4
    }
+  ],
+  "teaches": [
+   "math:derivative",
+   "math:gradient",
+   "math:partial",
+   "math:limit"
   ]
  },
  "c1-derivatives.html": {
@@ -807,6 +857,9 @@
     "why": "One zero in a product wipes out all other evidence; add-one smoothing prevents it.",
     "sec": 5
    }
+  ],
+  "teaches": [
+   "math:probability"
   ]
  },
  "p2-describing-data.html": {
@@ -1437,6 +1490,10 @@
     "why": "Noise ∝ 1/√B.",
     "sec": 4
    }
+  ],
+  "teaches": [
+   "math:integral",
+   "math:expectation"
   ]
  },
  "p3-mle-and-map.html": {
@@ -2544,6 +2601,128 @@
     "answer": 0,
     "why": "Spaces installs the requirements and runs app.py.",
     "sec": 5
+   }
+  ]
+ },
+ "training-in-pytorch.html": {
+  "teaches": [
+   "py:with",
+   "py:class"
+  ],
+  "goals": [
+   "Write the PyTorch training loop and say what each line does",
+   "Use tensors, nn.Module, Dataset and DataLoader the way production code does",
+   "Debug training with the habits: overfit one batch, the ln(classes) loss, eval() and no_grad()"
+  ],
+  "needs": [
+   "04-backprop.html",
+   "deep-networks.html"
+  ],
+  "cards": [
+   [
+    "The training loop",
+    "For each epoch, for each batch: forward, loss, zero_grad, backward, step."
+   ],
+   [
+    "Epoch",
+    "One pass over all the training data."
+   ],
+   [
+    "Minibatch",
+    "The handful of examples behind one step; its gradient is a noisy guess of the full one."
+   ],
+   [
+    "Steps per epoch",
+    "Examples ÷ batch size, rounded up: 60,000 / 128 → 469."
+   ],
+   [
+    "Why zero_grad()",
+    ".backward() adds to .grad; without clearing, each step mixes in all earlier gradients."
+   ],
+   [
+    "nn.Module",
+    "A layer or stack that owns its parameters: layers in __init__, the data flow in forward."
+   ],
+   [
+    "train() and eval()",
+    "Switch before training and before measuring; evaluate inside with torch.no_grad()."
+   ],
+   [
+    "Dataset and DataLoader",
+    "A Dataset gives the length and the i-th example; a DataLoader shuffles and batches."
+   ],
+   [
+    "Overfit one batch",
+    "A model that can't drive one batch's loss to ~0 has a bug in the model or the loop."
+   ],
+   [
+    "ln(classes)",
+    "The loss of uniform guessing (2.3 for 10 classes): stuck there means nothing is learning."
+   ],
+   [
+    "Python class",
+    "A recipe for objects: __init__ runs when one is made, self is the object, methods get self."
+   ],
+   [
+    "Python with",
+    "with X: switches X on for the indented block only, then off again."
+   ]
+  ],
+  "check": [
+   {
+    "q": "With 50,000 training examples and a batch size of 100, how many optimizer steps are 3 epochs?",
+    "options": [
+     "1,500",
+     "500",
+     "150,000"
+    ],
+    "answer": 0,
+    "why": "500 batches per epoch × 3 epochs.",
+    "sec": 2
+   },
+   {
+    "q": "A training script forgets optimizer.zero_grad(). What happens?",
+    "options": [
+     "Each step's gradient includes all earlier ones, so updates grow wrong and training goes haywire, with no error",
+     "PyTorch raises an error",
+     "Nothing: PyTorch clears gradients automatically"
+    ],
+    "answer": 0,
+    "why": ".backward() adds into .grad (the right rule inside one pass); clearing between steps is your job.",
+    "sec": 3
+   },
+   {
+    "q": "In class MLP(nn.Module), what is self inside __init__?",
+    "options": [
+     "The MLP object being made, so self.layers = ... stores the layers on it",
+     "The nn.Module class itself",
+     "The input batch"
+    ],
+    "answer": 0,
+    "why": "self is the object; storing layers on it is how PyTorch finds their parameters.",
+    "sec": 4
+   },
+   {
+    "q": "Why does the test DataLoader usually not shuffle?",
+    "options": [
+     "Measuring doesn't depend on order, so there's nothing to gain",
+     "Shuffling the test set would leak labels",
+     "DataLoader can only shuffle once"
+    ],
+    "answer": 0,
+    "why": "Shuffling matters for training, where batch order shapes the gradient steps.",
+    "sec": 5
+   },
+   {
+    "q": "Your new 10-class model's loss sits at 2.30 and won't move, even on a single batch. Most likely?",
+    "options": [
+     "A bug: nothing is being learned (a missing step or zero_grad, or a learning rate of 0)",
+     "Overfitting",
+     "Too little data"
+    ],
+    "answer": 0,
+    "why": "ln 10 ≈ 2.30 is the loss of uniform guessing.",
+    "sec": 7
    }
   ]
  }

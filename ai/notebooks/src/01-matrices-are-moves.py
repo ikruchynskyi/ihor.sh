@@ -10,14 +10,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. Dot products measure agreement
 # Write `cosine(a, b)`: the cosine of the angle between two vectors, $\frac{a \cdot b}{\lVert a \rVert \lVert b \rVert}$
@@ -26,14 +18,30 @@ def check(test, msg="not yet"):
 
 # %%
 def cosine(a, b):
+    """Compute the cosine similarity between two 1D vectors a and b.
+    
+    Formula: (a · b) / (||a|| * ||b||)
+    
+    Args:
+        a: 1D NumPy array representing vector a.
+        b: 1D NumPy array representing vector b.
+    Returns:
+        float: Cosine similarity in range [-1.0, 1.0].
+    """
+    ### HINT Compute vector dot product using a @ b.
+    ### HINT Compute vector L2 magnitudes using np.linalg.norm(a) and np.linalg.norm(b).
+    ### HINT Return dot product divided by (norm_a * norm_b).
     ### BEGIN SOLUTION
     return (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
     ### END SOLUTION
 
 # %%
-check(lambda: np.isclose(cosine(np.array([1, 0]), np.array([0, 5])), 0), "right angles → 0")
-check(lambda: np.isclose(cosine(np.array([1, 2, 3]), np.array([2, 4, 6])), 1), "same direction → 1, whatever the lengths")
-check(lambda: np.isclose(cosine(np.array([3, 1]), np.array([1, 2.5])), np.cos(np.radians(49.76)), atol=1e-3), "the lesson's a and b are about 49.8° apart")
+check(lambda: np.isclose(cosine(np.array([1, 0]), np.array([0, 5])), 0), 
+      "Perpendicular vectors (orthogonal at 90°) must have cosine similarity 0.0.")
+check(lambda: np.isclose(cosine(np.array([1, 2, 3]), np.array([2, 4, 6])), 1), 
+      "Parallel vectors pointing in the exact same direction must have cosine similarity 1.0.")
+check(lambda: np.isclose(cosine(np.array([3, 1]), np.array([1, 2.5])), np.cos(np.radians(49.76)), atol=1e-3), 
+      "Cosine between [3, 1] and [1, 2.5] should equal cos(49.76°).")
 
 # %% [markdown]
 # ## 2. A rotation matrix
@@ -43,7 +51,15 @@ check(lambda: np.isclose(cosine(np.array([3, 1]), np.array([1, 2.5])), np.cos(np
 
 # %%
 def rotation(degrees):
+    """Generate 2x2 counterclockwise 2D rotation matrix for a given angle in degrees.
+    
+    Args:
+        degrees: Angle of rotation in degrees.
+    Returns:
+        NumPy array of shape (2, 2) [[cos(t), -sin(t)], [sin(t), cos(t)]].
+    """
     t = np.radians(degrees)
+    ### HINT Form 2x2 matrix with rows [cos(t), -sin(t)] and [sin(t), cos(t)].
     ### BEGIN SOLUTION
     return np.array([[np.cos(t), -np.sin(t)],
                      [np.sin(t),  np.cos(t)]])
@@ -57,9 +73,12 @@ if R is not None:
     plt.axis("equal"); plt.legend(); plt.grid(alpha=0.3); plt.show()
 
 # %%
-check(lambda: np.allclose(rotation(90) @ [2, 1], [-1, 2]), "rotating (2, 1) by 90° gives (−1, 2)")
-check(lambda: np.allclose(rotation(30) @ rotation(60), rotation(90)), "two rotations in a row add their angles")
-check(lambda: np.isclose(np.linalg.det(rotation(37)), 1), "a rotation keeps areas: determinant 1")
+check(lambda: np.allclose(rotation(90) @ [2, 1], [-1, 2]), 
+      "Rotating point (2, 1) by 90 degrees CCW should result in (-1, 2).")
+check(lambda: np.allclose(rotation(30) @ rotation(60), rotation(90)), 
+      "Successive rotations compose by matrix multiplication: R(30) @ R(60) == R(90).")
+check(lambda: np.isclose(np.linalg.det(rotation(37)), 1), 
+      "Pure 2D rotations preserve area, so det(R) must equal 1.0.")
 
 # %% [markdown]
 # ## 3. The determinant is the area
@@ -74,13 +93,16 @@ def polygon_area(pts):              # pts: shape (2, k), corners in order
 M = np.array([[2, 1], [0.5, 1.5]])
 square = np.array([[0, 1, 1, 0], [0, 0, 1, 1]])
 area = None
+### HINT Transform unit square vertices by computing M @ square.
+### HINT Compute transformed polygon area using polygon_area(M @ square).
 ### BEGIN SOLUTION
 area = polygon_area(M @ square)
 ### END SOLUTION
 print("area after the move:", area, " det:", np.linalg.det(M))
 
 # %%
-check(lambda: np.isclose(area, np.linalg.det(M)), "the moved square's area equals det(M) = 2.5")
+check(lambda: np.isclose(area, np.linalg.det(M)), 
+      "The shoelace area of the transformed square must match the determinant np.linalg.det(M).")
 
 # %% [markdown]
 # ## 4. A layer, on a whole batch
@@ -94,6 +116,19 @@ W, b = rng.standard_normal((4, 3)), rng.standard_normal((4, 1))
 X = rng.standard_normal((3, 5))
 
 def layer(W, b, X):
+    """Compute forward pass of a single linear layer followed by ReLU activation.
+    
+    Formula: ReLU(W @ X + b)
+    
+    Args:
+        W: Weight matrix of shape (out_features, in_features).
+        b: Bias column vector of shape (out_features, 1).
+        X: Input batch matrix of shape (in_features, batch_size).
+    Returns:
+        NumPy array of shape (out_features, batch_size) after ReLU.
+    """
+    ### HINT Compute linear transformation: W @ X + b (NumPy broadcasts b across columns).
+    ### HINT Apply ReLU activation: np.maximum(0, ...).
     ### BEGIN SOLUTION
     return np.maximum(0, W @ X + b)
     ### END SOLUTION
@@ -102,19 +137,24 @@ out = layer(W, b, X)
 print(None if out is None else out.shape)
 
 # %%
-check(lambda: out.shape == (4, 5), "4 units × 5 examples")
-check(lambda: np.allclose(out[:, 2], np.maximum(0, W @ X[:, 2] + b[:, 0])), "column 2 is example 2 through the layer")
-check(lambda: (out >= 0).all(), "ReLU leaves nothing negative")
+check(lambda: out.shape == (4, 5), 
+      "Output shape should be (4, 5) representing 4 output neurons for 5 examples.")
+check(lambda: np.allclose(out[:, 2], np.maximum(0, W @ X[:, 2] + b[:, 0])), 
+      "Column 2 of the output must match evaluating example 2 individually.")
+check(lambda: (out >= 0).all(), 
+      "ReLU activation cannot produce negative outputs: all elements must be >= 0.")
 
 # %% [markdown]
 # ## 5. The same in PyTorch
 # PyTorch's **tensors** are NumPy arrays that can live on a GPU and remember how they were computed (for training,
 # stage 2). `torch.tensor` makes one; `@`, `+`, `.T` and shapes all work the same. Convert `W`, `b`, `X` to tensors
-# (`torch.tensor(..., dtype=torch.float32)`), run the same layer with `torch.relu`, and set `out_t`.
+# (`torch.tensor(..., dtype=torch.float32)`), run the same layer with `relu` (`torch.relu`), and set `out_t`.
 
 # %%
 import torch
 out_t = None
+### HINT Convert W, b, X to PyTorch float32 tensors.
+### HINT Compute out_t = torch.relu(Wt @ Xt + bt).
 ### BEGIN SOLUTION
 Wt, bt, Xt = (torch.tensor(a, dtype=torch.float32) for a in (W, b, X))
 out_t = torch.relu(Wt @ Xt + bt)
@@ -122,7 +162,8 @@ out_t = torch.relu(Wt @ Xt + bt)
 print(out_t)
 
 # %%
-check(lambda: torch.is_tensor(out_t) and np.allclose(out_t.numpy(), out, atol=1e-5), "the same numbers as NumPy")
+check(lambda: torch.is_tensor(out_t) and np.allclose(out_t.numpy(), out, atol=1e-5), 
+      "PyTorch forward pass out_t.numpy() must match NumPy layer(W, b, X) output within 1e-5.")
 
 # %% [markdown]
 # ## Next

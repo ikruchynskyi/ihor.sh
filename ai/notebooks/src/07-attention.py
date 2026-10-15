@@ -14,29 +14,39 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 torch.manual_seed(0)
 
 # %% [markdown]
 # ## 1. Scaled dot-product attention
-# Write `attention(Q, K, V, causal=False)` for tensors of shape (batch, length, d): scores $QK^\top/\sqrt{d}$,
-# optionally mask out future positions with $-\infty$ (`torch.triu(..., diagonal=1)`), softmax over the last
-# dimension, then multiply by V. Return (output, weights).
+# `attention(Q, K, V, causal=False)` works on tensors of shape (batch, length, d). The scores $QK^\top/\sqrt{d}$ are
+# computed for you, and so is `mask`: True above the diagonal, the positions in each token's future.
+# Two steps are yours. First, when `causal`, set the masked scores to $-\infty$: `scores.masked_fill(mask, value)`
+# puts `value` wherever `mask` is True, and `float("-inf")` is $-\infty$ in Python. Then take the softmax over the
+# last dimension and multiply by V, returning (output, weights), as in the lesson's NumPy version.
 
 # %%
 def attention(Q, K, V, causal=False):
-    ### BEGIN SOLUTION
+    """Scaled Dot-Product Attention: Softmax(Q @ K.T / sqrt(d_k)) @ V.
+    
+    Args:
+        Q: Query tensor of shape (..., seq_len, d_k).
+        K: Key tensor of shape (..., seq_len, d_k).
+        V: Value tensor of shape (..., seq_len, d_v).
+        causal: Boolean, if True applies upper-triangular autoregressive mask.
+    Returns:
+        tuple: (output, weights) where output has shape (..., seq_len, d_v) and weights has shape (..., seq_len, seq_len).
+    """
     scores = Q @ K.transpose(-2, -1) / math.sqrt(Q.shape[-1])
     if causal:
         L = Q.shape[-2]
-        scores = scores.masked_fill(torch.triu(torch.ones(L, L, dtype=torch.bool), diagonal=1), float("-inf"))
+        mask = torch.triu(torch.ones(L, L, dtype=torch.bool), diagonal=1)     # True where a token would see its future
+        ### HINT scores = scores.masked_fill(mask, float("-inf"))
+        ### BEGIN SOLUTION
+        scores = scores.masked_fill(mask, float("-inf"))
+        ### END SOLUTION
+    ### HINT w = scores.softmax(-1) turns each row of scores into weights that add up to 1.
+    ### HINT w = scores.softmax(-1), then return w @ V, w
+    ### BEGIN SOLUTION
     w = scores.softmax(-1)
     return w @ V, w
     ### END SOLUTION
@@ -45,9 +55,12 @@ Q, K, V = torch.randn(3, 5, 8, dtype=torch.float64).unbind(0)
 Q, K, V = Q[None], K[None], V[None]                    # batch of 1, 5 positions, d = 8
 
 # %%
-check(lambda: torch.allclose(attention(Q, K, V)[0], F.scaled_dot_product_attention(Q, K, V)), "matches PyTorch's scaled_dot_product_attention")
-check(lambda: torch.allclose(attention(Q, K, V, causal=True)[0], F.scaled_dot_product_attention(Q, K, V, is_causal=True)), "the causal version matches too")
-check(lambda: torch.allclose(attention(Q, K, V, causal=True)[1].triu(1), torch.zeros(1, 5, 5, dtype=torch.float64)), "no weight on future positions")
+check(lambda: torch.allclose(attention(Q, K, V)[0], F.scaled_dot_product_attention(Q, K, V)), 
+      "Non-causal attention must match PyTorch's F.scaled_dot_product_attention.")
+check(lambda: torch.allclose(attention(Q, K, V, causal=True)[0], F.scaled_dot_product_attention(Q, K, V, is_causal=True)), 
+      "Causal attention must match PyTorch's F.scaled_dot_product_attention(..., is_causal=True).")
+check(lambda: torch.allclose(attention(Q, K, V, causal=True)[1].triu(1), torch.zeros(1, 5, 5, dtype=torch.float64)), 
+      "Causal attention weights above the main diagonal must be strictly zero.")
 
 # %% [markdown]
 # ## 2. Why divide by √d?
@@ -57,13 +70,16 @@ check(lambda: torch.allclose(attention(Q, K, V, causal=True)[1].triu(1), torch.z
 
 # %%
 spread = None
+### HINT 10,000 dot products of random d-long vectors: (torch.randn(10_000, d) * torch.randn(10_000, d)).sum(1)
+### HINT spread = [(torch.randn(10_000, d) * torch.randn(10_000, d)).sum(1).std().item() for d in (4, 64, 1024)]
 ### BEGIN SOLUTION
 spread = [(torch.randn(10_000, d) * torch.randn(10_000, d)).sum(1).std().item() for d in (4, 64, 1024)]
 ### END SOLUTION
 print(spread)
 
 # %%
-check(lambda: abs(spread[0] - 2) < 0.2 and abs(spread[2] - 32) < 2, "spread ≈ √d: 2, 8, 32")
+check(lambda: abs(spread[0] - 2) < 0.2 and abs(spread[2] - 32) < 2, 
+      "Unscaled dot product standard deviation grows as sqrt(d): ~2 for d=4, ~8 for d=64, ~32 for d=1024.")
 
 # %% [markdown]
 # ## 3. Multi-head attention
@@ -75,14 +91,17 @@ check(lambda: abs(spread[0] - 2) < 0.2 and abs(spread[2] - 32) < 2, "spread ≈ 
 mha = nn.MultiheadAttention(embed_dim=32, num_heads=4, batch_first=True)
 x = torch.randn(2, 7, 32)                               # 2 sentences, 7 tokens, 32 numbers each
 out = w = None
+### HINT Forward pass self-attention: out, w = mha(x, x, x).
 ### BEGIN SOLUTION
 out, w = mha(x, x, x)
 ### END SOLUTION
 print(out.shape if out is not None else None, w.shape if w is not None else None)
 
 # %%
-check(lambda: out.shape == (2, 7, 32) and w.shape == (2, 7, 7), "same shape out as in; one 7×7 weight table per sentence")
-check(lambda: torch.allclose(w.sum(-1), torch.ones(2, 7)), "each row of weights adds to 1")
+check(lambda: out.shape == (2, 7, 32) and w.shape == (2, 7, 7), 
+      "MultiheadAttention output shape should match input (2, 7, 32), and attention weights shape should be (2, 7, 7).")
+check(lambda: torch.allclose(w.sum(-1), torch.ones(2, 7)), 
+      "Attention weights across the key dimension must sum to 1.0 for each query token.")
 
 # %% [markdown]
 # ## 4. Where am I? Sinusoidal positions
@@ -92,6 +111,21 @@ check(lambda: torch.allclose(w.sum(-1), torch.ones(2, 7)), "each row of weights 
 
 # %%
 def positions(L, d):
+    """Compute sinusoidal positional encodings for sequence length L and dimension d.
+    
+    Formula:
+        PE[pos, 2*i] = sin(pos / 10000^(2*i / d))
+        PE[pos, 2*i+1] = cos(pos / 10000^(2*i / d))
+        
+    Args:
+        L: Integer sequence length (number of positions).
+        d: Integer embedding dimension (must be even).
+    Returns:
+        NumPy array of shape (L, d) containing positional encodings.
+    """
+    ### HINT Form position indices p = np.arange(L)[:, None] and dimension pairs i = np.arange(d // 2)[None, :].
+    ### HINT Compute even indices with sin: PE[:, 0::2] = np.sin(p / 10000 ** (2 * i / d)).
+    ### HINT Compute odd indices with cos: PE[:, 1::2] = np.cos(p / 10000 ** (2 * i / d)).
     ### BEGIN SOLUTION
     p = np.arange(L)[:, None]; i = np.arange(d // 2)[None, :]
     PE = np.zeros((L, d)); PE[:, 0::2] = np.sin(p / 10000 ** (2 * i / d)); PE[:, 1::2] = np.cos(p / 10000 ** (2 * i / d))
@@ -103,31 +137,53 @@ if PE is not None:
     plt.figure(figsize=(8, 3)); plt.imshow(PE, aspect="auto", cmap="RdBu"); plt.xlabel("dimension"); plt.ylabel("position"); plt.show()
 
 # %%
-check(lambda: PE.shape == (50, 64) and np.allclose(PE[0, 0::2], 0) and np.allclose(PE[0, 1::2], 1), "position 0 is sin 0 = 0, cos 0 = 1")
-check(lambda: len({tuple(np.round(r, 6)) for r in PE}) == 50, "every position gets a different pattern")
+check(lambda: PE.shape == (50, 64) and np.allclose(PE[0, 0::2], 0) and np.allclose(PE[0, 1::2], 1), 
+      "PE at position 0 must have sin(0)=0 on even indices and cos(0)=1 on odd indices.")
+check(lambda: len({tuple(np.round(r, 6)) for r in PE}) == 50, 
+      "Each position must receive a unique encoding vector across all 50 positions.")
 
 # %% [markdown]
 # ## 5. A real transformer layer
 # `nn.TransformerEncoderLayer(d_model=32, nhead=4, dim_feedforward=128, batch_first=True, norm_first=True)` is the
-# block from the lesson: attention + residual, MLP + residual, layer norms. Stack 3 with `nn.TransformerEncoder`,
-# run `x` through with a causal mask (`nn.Transformer.generate_square_subsequent_mask(7)`), and set `y` and
-# `n_params`. Then verify causality: change the **last** token of `x` and check the first six outputs don't move.
+# block from the lesson: attention + residual, MLP + residual, layer norms. `nn.TransformerEncoder` stacks 3 of them,
+# and `mask` is PyTorch's causal mask for 7 positions (−∞ above the diagonal, as in part 1). Run `x` through the stack
+# with `enc(x, mask=mask, is_causal=True)` into `y`, and count its parameters into `n_params` (the lesson's
+# `sum(p.numel() for p in ...parameters())`).
 
 # %%
-y = n_params = unchanged = None
-### BEGIN SOLUTION
 enc = nn.TransformerEncoder(nn.TransformerEncoderLayer(32, 4, 128, batch_first=True, norm_first=True), num_layers=3).eval()
 mask = nn.Transformer.generate_square_subsequent_mask(7)
+print(mask)
+y = n_params = None
+### HINT y = enc(x, mask=mask, is_causal=True)
+### HINT n_params = sum(p.numel() for p in enc.parameters())
+### BEGIN SOLUTION
 y = enc(x, mask=mask, is_causal=True)
 n_params = sum(p.numel() for p in enc.parameters())
-x2 = x.clone(); x2[:, -1] += 1.0
-unchanged = torch.allclose(enc(x2, mask=mask, is_causal=True)[:, :6], y[:, :6], atol=1e-5)
 ### END SOLUTION
-print(y.shape if y is not None else None, n_params, unchanged)
+print(y.shape if y is not None else None, n_params)
 
 # %%
-check(lambda: y.shape == x.shape, "same shape in, same shape out")
-check(lambda: unchanged, "with the causal mask, a later token can't change earlier outputs")
+check(lambda: y.shape == x.shape, "the output has the input's shape, (2, 7, 32): one vector per token")
+check(lambda: n_params == 3 * 12_704, "3 layers × 12,704 parameters (attention 4,224, MLP 8,352, two layer norms 128)")
+
+# %% [markdown]
+# Now verify the mask works: `x2` is `x` with only the **last** token changed. Run it through `enc` the same way and set
+# `unchanged`: whether the first six outputs match `y`'s first six (`torch.allclose(a, b, atol=1e-5)`; `[:, :6]` takes
+# the first six positions).
+
+# %%
+x2 = x.clone(); x2[:, -1] += 1.0
+unchanged = None
+### HINT y2 = enc(x2, mask=mask, is_causal=True), then compare y2[:, :6] with y[:, :6].
+### HINT unchanged = torch.allclose(enc(x2, mask=mask, is_causal=True)[:, :6], y[:, :6], atol=1e-5)
+### BEGIN SOLUTION
+unchanged = torch.allclose(enc(x2, mask=mask, is_causal=True)[:, :6], y[:, :6], atol=1e-5)
+### END SOLUTION
+print(unchanged)
+
+# %%
+check(lambda: unchanged is True or unchanged == True, "a causal model can't let token 7 change what tokens 1 to 6 see: unchanged should be True")
 
 # %% [markdown]
 # ## Next

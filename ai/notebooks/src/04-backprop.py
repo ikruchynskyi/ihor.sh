@@ -11,14 +11,6 @@ import math, random
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 # %% [markdown]
 # ## 1. The engine
 # Each `Value` remembers its parents and a `back_step` that passes blame (its `grad`) to them, multiplied by the
@@ -45,6 +37,8 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other))
         def back_step():
+            ### HINT By product rule, d(self * other)/d(self) = other.data, and d/d(other) = self.data.
+            ### HINT Accumulate gradients: self.grad += other.data * out.grad, other.grad += self.data * out.grad.
             ### BEGIN SOLUTION
             self.grad += other.data * out.grad
             other.grad += self.data * out.grad
@@ -55,6 +49,8 @@ class Value:
     def tanh(self):
         t = math.tanh(self.data); out = Value(t, (self,))
         def back_step():
+            ### HINT By chain rule, d(tanh(x))/dx = 1 - tanh(x)^2 = 1 - t^2.
+            ### HINT Accumulate gradient: self.grad += (1 - t * t) * out.grad.
             ### BEGIN SOLUTION
             self.grad += (1 - t * t) * out.grad
             ### END SOLUTION
@@ -64,6 +60,8 @@ class Value:
     def relu(self):
         out = Value(max(0.0, self.data), (self,))
         def back_step():
+            ### HINT Derivative of ReLU is 1.0 for x > 0 and 0.0 otherwise.
+            ### HINT Accumulate gradient: self.grad += (1.0 if self.data > 0 else 0.0) * out.grad.
             ### BEGIN SOLUTION
             self.grad += (1.0 if self.data > 0 else 0.0) * out.grad
             ### END SOLUTION
@@ -107,11 +105,12 @@ print("engine:  ", a.grad, b.grad, c.grad)
 print("PyTorch: ", ta.grad.item(), tb.grad.item(), tc.grad.item())
 
 # %%
-check(lambda: np.allclose([a.grad, b.grad, c.grad], [ta.grad.item(), tb.grad.item(), tc.grad.item()]), "your engine agrees with PyTorch on every gradient (note a is used three times)")
+check(lambda: np.allclose([a.grad, b.grad, c.grad], [ta.grad.item(), tb.grad.item(), tc.grad.item()]), 
+      "Your autograd engine's gradients [a.grad, b.grad, c.grad] must match PyTorch's autograd.")
 
 # %% [markdown]
 # ## 3. A neuron and a layer
-# Write `Neuron(n_in)`: random weights in (−1, 1) and a bias, and `__call__(x)` returning
+# Write `Neuron(n_in)`: random weights `.w` in (−1, 1) and a bias `.b`, and `__call__(x)` returning
 # $\tanh(\sum w_i x_i + b)$ (or ReLU when `act="relu"`). An `MLP` stacks layers of them (given).
 
 # %%
@@ -121,6 +120,15 @@ class Neuron:
         self.b = Value(0.0)
         self.act = act
     def __call__(self, x):
+        """Compute single neuron forward activation sum(w_i * x_i) + b through tanh or relu.
+        
+        Args:
+            x: List or iterable of scalar inputs (floats or Values).
+        Returns:
+            Value: Output activation after non-linearity.
+        """
+        ### HINT Compute weighted sum z = sum(wi * xi) + self.b.
+        ### HINT Apply self.act ("relu" or "tanh") to z and return.
         ### BEGIN SOLUTION
         z = sum((wi * xi for wi, xi in zip(self.w, x)), self.b)
         return z.relu() if self.act == "relu" else z.tanh()
@@ -141,7 +149,8 @@ net = MLP([2, 8, 8, 1])
 print(len(net.parameters()), "parameters")
 
 # %%
-check(lambda: isinstance(net([0.5, -0.2]), Value) and -1 < net([0.5, -0.2]).data < 1, "a forward pass gives one Value in (−1, 1)")
+check(lambda: isinstance(net([0.5, -0.2]), Value) and -1 < net([0.5, -0.2]).data < 1, 
+      "A forward pass through the MLP should produce a single Value object with data in range (-1, 1).")
 
 # %% [markdown]
 # ## 4. Train it on two moons
@@ -156,6 +165,8 @@ from sklearn.datasets import make_moons
 Xm, ym = make_moons(100, noise=0.1, random_state=1)
 ym = ym * 2 - 1
 acc, losses = None, []
+### HINT For each of 100 steps: Forward pass: compute predictions preds = [net(list(x)) for x in Xm]. Compute MSE loss: L = sum((p - y)**2) * (1 / len(ym)). Zero grads: for p in net.parameters(): p.grad = 0.0. Backward pass: L.backward(). Update weights: for p in net.parameters(): p.data -= 0.5 * p.grad.
+### HINT Compute accuracy as fraction of predictions matching the sign of ym.
 ### BEGIN SOLUTION
 for step in range(100):
     preds = [net(list(x)) for x in Xm]
@@ -170,7 +181,8 @@ plt.plot(losses); plt.title("loss"); plt.show()
 print("accuracy:", acc)
 
 # %%
-check(lambda: acc >= 0.95, "a small network built on your engine separates the moons")
+check(lambda: acc >= 0.95, 
+      "The trained micrograd MLP should achieve at least 95% classification accuracy on the two moons dataset.")
 
 # %% [markdown]
 # ## 5. Look at what it learned

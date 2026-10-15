@@ -10,14 +10,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
@@ -42,23 +34,56 @@ print(Xtr.shape, "benign share:", ytr.mean().round(3))
 
 # %%
 def log_loss(p, y):
+    """Compute binary cross-entropy (log loss).
+    
+    Formula: -mean(y * ln(p) + (1 - y) * ln(1 - p))
+    
+    Args:
+        p: 1D NumPy array of predicted probabilities in (0, 1).
+        y: 1D NumPy array of true binary labels (0 or 1).
+    Returns:
+        float: Average binary cross-entropy loss.
+    """
+    ### HINT Compute elementwise cross-entropy: y * np.log(p) + (1 - y) * np.log(1 - p).
+    ### HINT Return negative mean across all examples: -np.mean(...).
     ### BEGIN SOLUTION
     return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
     ### END SOLUTION
 
 def gradients(w, b, X, y):
+    """Compute gradients of binary cross-entropy loss with respect to weights w and bias b.
+    
+    Formula:
+        p = sigmoid(X @ w + b)
+        err = p - y
+        grad_w = (1 / N) * X.T @ err
+        grad_b = mean(err)
+        
+    Args:
+        w: 1D NumPy array of weights (shape D).
+        b: Float scalar bias.
+        X: 2D NumPy array of input features (shape N, D).
+        y: 1D NumPy array of target labels (shape N).
+    Returns:
+        tuple: (grad_w, grad_b) where grad_w has shape (D,) and grad_b is float scalar.
+    """
+    ### HINT Compute predicted probabilities: p = sigmoid(X @ w + b).
+    ### HINT Compute prediction error residuals: err = p - y.
+    ### HINT Compute grad_w = X.T @ err / len(y) and grad_b = err.mean().
     ### BEGIN SOLUTION
     err = sigmoid(X @ w + b) - y
     return X.T @ err / len(y), err.mean()
     ### END SOLUTION
 
 # %%
-check(lambda: np.isclose(log_loss(np.array([0.9, 0.2]), np.array([1, 0])), -(np.log(0.9) + np.log(0.8)) / 2), "the average surprise at the truth")
+check(lambda: np.isclose(log_loss(np.array([0.9, 0.2]), np.array([1, 0])), -(np.log(0.9) + np.log(0.8)) / 2), 
+      "log_loss should evaluate average negative log probability assigned to ground truth labels.")
 def _num(w, b, X, y, j, h=1e-6):
     e = np.zeros_like(w); e[j] = h
     return (log_loss(sigmoid(X @ (w + e) + b), y) - log_loss(sigmoid(X @ (w - e) + b), y)) / (2 * h)
 w0 = np.random.default_rng(1).normal(0, 0.1, 30)
-check(lambda: np.isclose(gradients(w0, 0.0, Xtr, ytr)[0][3], _num(w0, 0.0, Xtr, ytr, 3), rtol=1e-4), "your ∂L/∂w matches a numerical check")
+check(lambda: np.isclose(gradients(w0, 0.0, Xtr, ytr)[0][3], _num(w0, 0.0, Xtr, ytr, 3), rtol=1e-4), 
+      "Analytical gradient ∂L/∂w[3] must match central numerical finite difference derivative.")
 
 # %% [markdown]
 # ## 3. Train it
@@ -68,6 +93,8 @@ check(lambda: np.isclose(gradients(w0, 0.0, Xtr, ytr)[0][3], _num(w0, 0.0, Xtr, 
 # %%
 w, b, losses = np.zeros(30), 0.0, []
 test_acc = None
+### HINT Run 500 gradient descent iterations: Compute gw, gb = gradients(w, b, Xtr, ytr). Update w = w - 0.5 * gw and b = b - 0.5 * gb. Append log_loss(sigmoid(Xtr @ w + b), ytr) to losses.
+### HINT Evaluate accuracy on test set: test_acc = ((sigmoid(Xte @ w + b) > 0.5) == yte).mean().
 ### BEGIN SOLUTION
 for step in range(500):
     gw, gb = gradients(w, b, Xtr, ytr)
@@ -79,7 +106,8 @@ plt.plot(losses); plt.xlabel("step"); plt.ylabel("log loss"); plt.show()
 print("test accuracy:", test_acc)
 
 # %%
-check(lambda: test_acc > 0.95, "a single neuron gets over 95% of unseen tumors right")
+check(lambda: test_acc > 0.95, 
+      "Logistic regression test accuracy on breast cancer dataset should exceed 95%.")
 
 # %% [markdown]
 # ## 4. Compare with scikit-learn
@@ -89,6 +117,8 @@ check(lambda: test_acc > 0.95, "a single neuron gets over 95% of unseen tumors r
 # %%
 from sklearn.linear_model import LogisticRegression
 sk_acc = None
+### HINT Fit LogisticRegression(max_iter=1000).fit(Xtr, ytr).
+### HINT Compute test accuracy score sk_acc = sk.score(Xte, yte).
 ### BEGIN SOLUTION
 sk = LogisticRegression(max_iter=1000).fit(Xtr, ytr)
 sk_acc = sk.score(Xte, yte)
@@ -97,7 +127,8 @@ print("scikit-learn:", sk_acc)
 print("biggest weights:", list(np.array(d.feature_names)[np.argsort(-abs(w))[:5]]))
 
 # %%
-check(lambda: abs(sk_acc - test_acc) < 0.03, "within a couple of points of yours")
+check(lambda: abs(sk_acc - test_acc) < 0.03, 
+      "Scikit-learn LogisticRegression accuracy should match your custom neuron within 3 percentage points.")
 
 # %% [markdown]
 # ## 5. Where one neuron fails: XOR
@@ -107,17 +138,21 @@ check(lambda: abs(sk_acc - test_acc) < 0.03, "within a couple of points of yours
 # %%
 Xx = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=float); yx = np.array([0, 1, 1, 0])
 xor_acc = None
+### HINT Initialize random weights wx of shape (2,) and scalar bias bx = 0.0.
+### HINT Train with 2000 steps of gradient descent with lr=0.5.
+### HINT Compute final prediction accuracy: xor_acc = ((sigmoid(Xx @ wx + bx) > 0.5) == yx).mean().
 ### BEGIN SOLUTION
 wx, bx = np.random.default_rng(0).normal(0, 0.1, 2), 0.0
 for _ in range(2000):
     gw, gb = gradients(wx, bx, Xx, yx)
     wx, bx = wx - 0.5 * gw, bx - 0.5 * gb
-xor_acc = ((sigmoid(Xx @ wx + bx) > 0.5) == yx).mean()
+    xor_acc = ((sigmoid(Xx @ wx + bx) > 0.5) == yx).mean()
 ### END SOLUTION
 print("XOR accuracy:", xor_acc)
 
 # %%
-check(lambda: xor_acc is not None and xor_acc <= 0.75, "at most 3 of 4: no line separates XOR")
+check(lambda: xor_acc is not None and xor_acc <= 0.75, 
+      "A single linear neuron cannot solve XOR; accuracy cannot exceed 75% (at most 3 of 4 points).")
 
 # %% [markdown]
 # ## 6. The neuron in PyTorch
@@ -133,6 +168,8 @@ Xt, yt = torch.tensor(Xtr, dtype=torch.float32), torch.tensor(ytr, dtype=torch.f
 model = nn.Linear(30, 1)
 opt = torch.optim.SGD(model.parameters(), lr=0.5)
 loss_fn = nn.BCEWithLogitsLoss()
+### HINT Run 500 training steps: opt.zero_grad(), loss = loss_fn(model(Xt).squeeze(1), yt), loss.backward(), opt.step().
+### HINT Evaluate accuracy on test set inside with torch.no_grad().
 ### BEGIN SOLUTION
 for step in range(500):
     opt.zero_grad()
@@ -145,7 +182,8 @@ with torch.no_grad():
 print("PyTorch:", torch_acc)
 
 # %%
-check(lambda: torch_acc > 0.95, "the same model, the same result")
+check(lambda: torch_acc > 0.95, 
+      "PyTorch single-neuron model should achieve > 95% test accuracy on the breast cancer dataset.")
 
 # %% [markdown]
 # ## Next

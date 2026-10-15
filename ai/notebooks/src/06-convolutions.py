@@ -16,14 +16,6 @@ from torch import nn
 import torch.nn.functional as F
 from numpy.lib.stride_tricks import sliding_window_view
 
-def check(test, msg="not yet"):
-    "Runs test() and prints ✓ if it's true, ✗ and a hint if not (it never stops the notebook)."
-    try:
-        ok = bool(test())
-    except Exception as e:
-        ok, msg = False, f"{msg} ({type(e).__name__}: {e})"
-    print("✓" if ok else f"✗ {msg}")
-
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 print("device:", device)
 
@@ -35,6 +27,16 @@ print("device:", device)
 
 # %%
 def conv2d(I, K):
+    """Compute 2D valid cross-correlation (convolution without flipping) of image I with kernel K.
+    
+    Args:
+        I: 2D NumPy array representing image of shape (H, W).
+        K: 2D NumPy array representing filter kernel of shape (k, k).
+    Returns:
+        NumPy array of shape (H - k + 1, W - k + 1).
+    """
+    ### HINT Extract sliding patches with sliding_window_view(I, K.shape).
+    ### HINT Multiply each patch by K and sum spatial axes: np.einsum("rcij,ij->rc", sliding_window_view(I, K.shape), K).
     ### BEGIN SOLUTION
     return np.einsum("rcij,ij->rc", sliding_window_view(I, K.shape), K)
     ### END SOLUTION
@@ -43,7 +45,8 @@ I, K = np.random.default_rng(0).random((10, 12)), np.random.default_rng(1).stand
 ref = F.conv2d(torch.tensor(I)[None, None], torch.tensor(K)[None, None])[0, 0].numpy()
 
 # %%
-check(lambda: np.allclose(conv2d(I, K), ref), "your convolution matches PyTorch's F.conv2d")
+check(lambda: np.allclose(conv2d(I, K), ref), 
+      "Your conv2d(I, K) implementation must match PyTorch's F.conv2d output.")
 
 # %% [markdown]
 # ## 2. Output size
@@ -52,6 +55,19 @@ check(lambda: np.allclose(conv2d(I, K), ref), "your convolution matches PyTorch'
 
 # %%
 def out_size(n, k, p=0, s=1):
+    """Calculate the output spatial dimension for a 1D/2D convolution.
+    
+    Formula: floor((n + 2*p - k) / s) + 1
+    
+    Args:
+        n: Input spatial dimension (height or width).
+        k: Kernel filter size.
+        p: Symmetric padding applied to both sides (default 0).
+        s: Convolution stride step (default 1).
+    Returns:
+        int: Output spatial dimension.
+    """
+    ### HINT Compute floor((n + 2 * p - k) // s) + 1.
     ### BEGIN SOLUTION
     return (n + 2 * p - k) // s + 1
     ### END SOLUTION
@@ -60,7 +76,8 @@ cases = [(28, 3, 0, 1), (28, 3, 1, 1), (28, 5, 2, 2), (224, 7, 3, 2)]
 torch_sizes = [nn.Conv2d(1, 1, k, stride=s, padding=p)(torch.zeros(1, 1, n, n)).shape[-1] for n, k, p, s in cases]
 
 # %%
-check(lambda: [out_size(*c) for c in cases] == torch_sizes, f"PyTorch says {torch_sizes}")
+check(lambda: [out_size(*c) for c in cases] == torch_sizes, 
+      f"out_size results must match PyTorch's output sizes: {torch_sizes}")
 
 # %% [markdown]
 # ## 3. Why convolutions: parameter counts
@@ -70,6 +87,8 @@ check(lambda: [out_size(*c) for c in cases] == torch_sizes, f"PyTorch says {torc
 
 # %%
 conv_params = dense_params = None
+### HINT Compute conv_params = out_channels * (in_channels * k * k) + out_channels = 64 * (3 * 3 * 3) + 64.
+### HINT Compute dense_params = in_features * out_features + out_features = (32 * 32 * 3) * (30 * 30 * 64) + (30 * 30 * 64).
 ### BEGIN SOLUTION
 conv_params = 64 * 3 * 3 * 3 + 64
 dense_params = (32 * 32 * 3) * (30 * 30 * 64) + 30 * 30 * 64
@@ -77,13 +96,15 @@ dense_params = (32 * 32 * 3) * (30 * 30 * 64) + 30 * 30 * 64
 print(conv_params, dense_params)
 
 # %%
-check(lambda: conv_params == sum(p.numel() for p in nn.Conv2d(3, 64, 3).parameters()), "1,792 for the conv layer")
-check(lambda: dense_params > 10_000 * conv_params, "the dense layer needs about 177 million: sharing the filter is the trick")
+check(lambda: conv_params == sum(p.numel() for p in nn.Conv2d(3, 64, 3).parameters()), 
+      "nn.Conv2d(3, 64, 3) must have 1,792 total parameters.")
+check(lambda: dense_params > 10_000 * conv_params, 
+      "An equivalent unshared dense layer requires over 10,000x more parameters (> 170M params).")
 
 # %% [markdown]
 # ## 4. Train a CNN on MNIST
-# Two conv blocks (conv 3×3 with padding 1 → ReLU → 2×2 max pool), then a linear layer to 10 scores:
-# `Conv2d(1, 16, 3, padding=1)`, `Conv2d(16, 32, 3, padding=1)`, `Flatten()`, `Linear(32 * 7 * 7, 10)`.
+# Two conv blocks (conv 3×3 with padding 1 → ReLU → 2×2 max pool with `MaxPool2d(2)`), then a linear layer to 10 scores:
+# `Conv2d(1, 16, 3, padding=1)`, `ReLU()`, `MaxPool2d(2)`, `Conv2d(16, 32, 3, padding=1)`, `Flatten()`, `Linear(32 * 7 * 7, 10)`.
 # Build it as `nn.Sequential` in `model`. The training loop below runs 2 epochs with Adam.
 
 # %%
@@ -96,6 +117,8 @@ test_dl = torch.utils.data.DataLoader(test_ds, batch_size=512)
 
 torch.manual_seed(0)
 model = None
+### HINT Two blocks of nn.Conv2d(in, out, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2): 1 → 16 channels, then 16 → 32.
+### HINT Each MaxPool2d(2) halves the size: 28 → 14 → 7. So the last layer is nn.Linear(32 * 7 * 7, 10) after nn.Flatten().
 ### BEGIN SOLUTION
 model = nn.Sequential(
     nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),     # 28×28 → 14×14
@@ -123,8 +146,10 @@ if model is not None:
         print(f"epoch {epoch + 1}: test accuracy {test_acc:.4f}")
 
 # %%
-check(lambda: test_acc > 0.98, "a two-layer CNN reads over 98% of unseen digits")
-check(lambda: sum(p.numel() for p in model.parameters()) < 25_000, "with under 25,000 parameters")
+check(lambda: test_acc > 0.98, 
+      "The two-layer CNN should reach > 98% test accuracy on MNIST.")
+check(lambda: sum(p.numel() for p in model.parameters()) < 25_000, 
+      "The entire CNN architecture should contain fewer than 25,000 parameters.")
 
 # %% [markdown]
 # ## 5. What did the first layer learn?
