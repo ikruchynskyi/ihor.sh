@@ -3184,5 +3184,117 @@
     "sec": 7
    }
   ]
+ },
+ "p5-information.html": {
+  "goals": [
+   "Compute surprise and entropy in bits, and read 2^H as \"how many equally likely choices\" (perplexity)",
+   "Explain entropy as the floor for compression, and why context lowers it",
+   "Compute cross-entropy and KL divergence, and explain why KL is never negative and why zeros make it infinite",
+   "Tell forward KL (covers) from reverse KL (chooses), and compute the information gain of a question"
+  ],
+  "needs": [
+   "p3-mle-and-map.html",
+   "05-probability-and-loss.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Surprise",
+    "−log₂ p bits: 1 bit for a coin flip, 10 bits for a 1-in-1,000 event."
+   ],
+   [
+    "Entropy",
+    "H(p) = −Σ pᵢ log₂ pᵢ: the average surprise. 0 when certain, log₂ n when n outcomes are equally likely."
+   ],
+   [
+    "Perplexity",
+    "2^H (or 2^cross-entropy): as unsure as a choice among that many equally likely outcomes."
+   ],
+   [
+    "Compression floor",
+    "No code averages fewer bits than the entropy; context lowers the entropy. Predicting well = compressing well."
+   ],
+   [
+    "Cross-entropy",
+    "H(p, q) = −Σ pᵢ log₂ qᵢ: what you pay believing q when the truth is p. The training loss."
+   ],
+   [
+    "KL divergence",
+    "D(p‖q) = H(p, q) − H(p) ≥ 0: the extra bits of a wrong belief. Zero only when q = p."
+   ],
+   [
+    "Zeros in KL",
+    "A probability of 0 for something that happens costs infinite bits; smoothing and softmax avoid exact zeros."
+   ],
+   [
+    "Forward vs reverse KL",
+    "D(p‖q) (maximum likelihood) makes the model cover all the data; D(q‖p) makes it choose one mode."
+   ],
+   [
+    "Information gain",
+    "H(Y) − H(Y | X): the entropy a question removes. Decision trees split on the biggest one."
+   ],
+   [
+    "KL leash",
+    "Fine-tuning with a reward adds β·D(new‖original) so the model can't drift into reward-gaming text."
+   ]
+  ],
+  "check": [
+   {
+    "q": "A forecast gives four outcomes probabilities ½, ¼, ⅛, ⅛. Its entropy is…",
+    "options": [
+     "1.75 bits",
+     "2 bits",
+     "1 bit"
+    ],
+    "answer": 0,
+    "why": "½·1 + ¼·2 + ⅛·3 + ⅛·3 = 1.75: the average number of yes/no questions with the best strategy.",
+    "sec": 1
+   },
+   {
+    "q": "Why can't any belief q beat the truth p on cross-entropy?",
+    "options": [
+     "Because H(p, q) = H(p) + D(p‖q), and the KL divergence is never negative (ln x ≤ x − 1)",
+     "Because cross-entropy is symmetric in p and q",
+     "It can: a confident q can score below H(p)"
+    ],
+    "answer": 0,
+    "why": "The extra bits D(p‖q) are ≥ 0, with equality only at q = p. That's also why a training loss can't drop below the data's own entropy.",
+    "sec": 3
+   },
+   {
+    "q": "Your character model never saw \"(\" in training, and it appears in the test text. Its cross-entropy is…",
+    "options": [
+     "Infinite: −log 0 bits for that character",
+     "Slightly higher than usual",
+     "Unchanged: one character doesn't matter"
+    ],
+    "answer": 0,
+    "why": "Calling something impossible that then happens costs infinitely many bits. Adding 1 to every count (smoothing) fixes it.",
+    "sec": 3
+   },
+   {
+    "q": "Fitting one bell curve to two-humped data by maximum likelihood (forward KL) gives…",
+    "options": [
+     "A wide bell covering both humps",
+     "A narrow bell on one hump",
+     "Two bells"
+    ],
+    "answer": 0,
+    "why": "Forward KL punishes missing data most, so the fit covers both humps and puts weight in the empty middle. Reverse KL picks one hump.",
+    "sec": 4
+   },
+   {
+    "q": "A language model's held-out cross-entropy is 3 bits per token. Its perplexity is…",
+    "options": [
+     "8",
+     "3",
+     "9"
+    ],
+    "answer": 0,
+    "why": "2³ = 8 equally likely choices per token.",
+    "sec": 6
+   }
+  ]
  }
 }

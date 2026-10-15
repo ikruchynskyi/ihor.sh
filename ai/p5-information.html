@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entropy and KL Divergence</title>
+  <meta name="description" content="AI from scratch, probability 5: information. Entropy as average surprise and the limit of compression (how many bits is a subway station name?), cross-entropy and KL divergence as the extra bits a wrong belief costs, why one unseen character makes the loss infinite, forward and reverse KL, information gain (how a decision tree picks its question), and where AI uses all of it: training loss, perplexity, distillation, the KL penalty in fine-tuning." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; cursor: ns-resize; }
+    .formula { text-align: center; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Probability 5 · Stage 2: how a network learns</p>
+  <h1>Information: entropy, cross-entropy and KL divergence</h1>
+  <p class="lede">Chapter 5 measured a wrong belief by its surprise, \(-\log p\), and called the average the cross-entropy loss. This lesson asks what that number really is. It turns out to be a count of <b>bits</b>: how many yes/no answers it takes to pin down what happened. That one idea explains how far a file can be compressed, why the training loss can never reach zero on real data, what "extra bits" a wrong model costs, how a decision tree picks its question, and why fine-tuning keeps a leash on a chatbot.</p>
+
+  <h2>1. Entropy: the average surprise</h2>
+  <p>An outcome with probability \(p\) carries \(-\log_2 p\) bits of surprise (chapter 5): a coin flip 1 bit, one of 4 equal outcomes 2 bits, a 1-in-1,000 event about 10. <b>Entropy</b> is the surprise you should expect on average, before you know what will happen: each outcome's surprise weighted by how often it occurs.</p>
+  <p class="formula">\[ H(p) = -\sum_i p_i \log_2 p_i \quad \text{bits} \]</p>
+  <div class="q" data-num="2" data-tol="0.01">
+    <p>Predict first: tomorrow is sun, clouds, rain or storm, all four equally likely. How many bits is the entropy?</p>
+    <div class="why">Each outcome has \(p = 1/4\) and surprise \(\log_2 4 = 2\) bits, so the average is 2. That's the same as two yes/no questions: "sun or clouds?", then one more.</div>
+  </div>
+  <p>Now drag the bars: they are your forecast for tomorrow, always adding up to 1. Watch the entropy. Try making one outcome certain, then all four equal.</p>
+  <canvas id="h1" width="800" height="360" aria-label="Four probability bars you can drag; the entropy of the forecast is shown below"></canvas>
+  <div class="row"><button data-p1="0.25,0.25,0.25,0.25">all equal</button><button data-p1="0.5,0.25,0.125,0.125">½ ¼ ⅛ ⅛</button><button data-p1="0.97,0.01,0.01,0.01">almost certain</button><button data-p1="0.5,0.5,0,0">a coin flip</button></div>
+  <p class="readout" id="r1"></p>
+  <p>The last line of the readout, \(2^H\), turns entropy back into a count: the forecast is as uncertain as a choice among that many equally likely outcomes. For a language model the same number is called <b>perplexity</b>: "perplexity 20" means it's as unsure about the next word as if it were choosing among 20 equally likely words.</p>
+  <p class="gist">Entropy is how uncertain a distribution is, measured as the average number of yes/no answers needed to learn what happened: 0 when you're sure, largest when everything is equally likely.</p>
+  <details class="deeper"><summary>Why a logarithm, and why a minus sign?</summary>
+    <ol>
+      <li>Surprise should depend only on how likely something was, so it's some function \(s(p)\).</li>
+      <li>A certain event isn't surprising, \(s(1) = 0\), and rarer events are more surprising: \(s\) grows as \(p\) shrinks.</li>
+      <li>Two independent events, say a coin and a die, happen together with probability \(p \cdot q\). Their surprise should simply add: \(s(p\,q) = s(p) + s(q)\).</li>
+      <li>The function that turns products into sums is the logarithm (chapter 5 used exactly this to stop probabilities underflowing). So \(s(p) = -\log p\): the minus sign makes it positive, since \(\log p < 0\) for \(p < 1\).</li>
+      <li>The base only picks the unit: \(\log_2\) gives bits, \(\ln\) gives "nats" (PyTorch's loss is in nats; divide by \(\ln 2 \approx 0.693\) for bits).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: what entropy can't see</summary>
+    <ul>
+      <li><b>Meaning and size.</b> Entropy sees only the probabilities, not what the outcomes are. "Sun or clouds, 50/50" and "the bridge holds or fails, 50/50" are both exactly 1 bit. How much an outcome matters is a separate question (chapter 12's costs of mistakes).</li>
+      <li><b>Estimated from too little data.</b> From 10 samples of 43 possible characters you see at most 10 of them, and the counted entropy comes out far too low. Rare outcomes are exactly the ones a small sample misses. Section 3 shows what that costs.</li>
+    </ul>
+  </details>
+
+  <h2>2. The limit of compression</h2>
+  <p>Play twenty questions with the "½ ¼ ⅛ ⅛" forecast. Ask "sun?" first: half the time you're done after one question. If not, "clouds?": done after two. Otherwise "rain?" settles it after three. On average that's \(\tfrac12 \cdot 1 + \tfrac14 \cdot 2 + \tfrac18 \cdot 3 + \tfrac18 \cdot 3 = 1.75\) questions, and the widget says the entropy is exactly 1.75 bits. A good strategy asks about likely outcomes first, so they get short answers. That's a <b>code</b>: sun = <code>1</code>, clouds = <code>01</code>, rain = <code>001</code>, storm = <code>000</code>. Shannon proved that no code can average fewer bits than the entropy, and good ones come within a bit of it (more on why in section 3).</p>
+  <p>So how many bits does a subway station name need? Count characters in the 379 NYC station names:</p>
+  <div class="code" data-title="Run it: how many bits per character?"><textarea>
+import math, zlib
+from collections import Counter
+
+text = get("/ai/data/stations.txt").lower()          # 379 NYC subway station names, one per line
+counts = Counter(text); n = len(text)
+print(len(counts), "different characters: guessing blindly costs", round(math.log2(len(counts)), 2), "bits each")
+H1 = -sum(c / n * math.log2(c / n) for c in counts.values())
+print("entropy, knowing only how common each character is:", round(H1, 2), "bits")
+
+pairs, prev = Counter(zip(text, text[1:])), Counter(text[:-1])
+H2 = -sum(c / (n - 1) * math.log2(c / prev[a]) for (a, b), c in pairs.items())
+print("knowing the previous character too:", round(H2, 2), "bits")
+print("what zlib (zip) actually achieves:", round(8 * len(zlib.compress(text.encode(), 9)) / n, 2), "bits")
+</textarea></div>
+  <p>Every bit of context lowers the entropy: after a "q" the next letter is almost surely "u", and after " s" a "t" is likely ("St"). zlib finds repeated chunks like " St\n" and lands between the two. A language model is this idea taken all the way: it predicts each character or word from everything before it, and its cross-entropy in bits <i>is</i> the size it could compress the text to. Better prediction and better compression are the same thing.</p>
+  <p class="gist">Entropy is the floor for compression: no code can average fewer bits per symbol, and more context lowers the floor. Predicting well and compressing well are one skill.</p>
+
+  <h2>3. Cross-entropy and KL: the price of a wrong belief</h2>
+  <p>Suppose the truth is \(p\), but you believe \(q\) and build your code (or your predictions) from \(q\). Each outcome costs you \(-\log_2 q_i\) bits, and it happens with frequency \(p_i\), so on average you pay the <b>cross-entropy</b>. The part above the unavoidable \(H(p)\) is the <b>KL divergence</b>, the extra bits your wrong belief costs:</p>
+  <p class="formula">\[ H(p, q) = -\sum_i p_i \log_2 q_i \qquad D_{\mathrm{KL}}(p \,\Vert\, q) = H(p, q) - H(p) = \sum_i p_i \log_2 \frac{p_i}{q_i} \]</p>
+  <p>Gray bars are the truth (the city's real odds); drag the blue bars, the forecaster's belief. Try to bring the extra bits to zero. Then try the forecaster who's sure a storm can't happen.</p>
+  <canvas id="h2" width="800" height="360" aria-label="Gray bars for the true odds and blue bars you can drag for a belief; cross-entropy and KL divergence are shown below"></canvas>
+  <p class="legend"><i style="background:#8f98a8"></i>truth \(p\) <i style="background:#58c4dd"></i>belief \(q\) (drag)</p>
+  <div class="row"><button data-p2="u">q: no idea (uniform)</button><button data-p2="p">q = p</button><button data-p2="nostorm">q: "storms never happen"</button><button data-p2="sure">q: "always sunny"</button></div>
+  <p class="readout" id="r2"></p>
+  <p>Two things to notice. The extra bits never go below zero: no belief beats the truth. And look at the storm days under "storms never happen": that forecaster saves a little on ordinary days but pays almost 10 bits each time a storm comes, against 4.3 for the truth. Drag the storm bar toward zero and that cost grows without limit: calling something nearly impossible is the most expensive mistake there is.</p>
+  <p class="gist">KL divergence is the extra bits you pay for believing \(q\) when the truth is \(p\). It's never negative, and it's zero only when \(q = p\). Training a classifier with cross-entropy is shrinking exactly this gap.</p>
+  <details class="deeper"><summary>Why can't the extra bits go below zero?</summary>
+    <ol>
+      <li>Work in natural logs (it only rescales). The curve \(\ln x\) bends down, so it lies below its tangent line at \(x = 1\), which is \(x - 1\) (calculus 1: slope \(1/x = 1\) there). So \(\ln x \le x - 1\), with equality only at \(x = 1\).</li>
+      <li>Flip the KL around: \(-D_{\mathrm{KL}} = \sum_i p_i \ln \frac{q_i}{p_i}\).</li>
+      <li>Use step 1 on each term: \(\sum_i p_i \ln \frac{q_i}{p_i} \le \sum_i p_i \left(\frac{q_i}{p_i} - 1\right) = \sum_i q_i - \sum_i p_i = 1 - 1 = 0\).</li>
+      <li>So \(D_{\mathrm{KL}} \ge 0\), with equality only when every \(q_i / p_i = 1\), that is \(q = p\).</li>
+    </ol>
+    <p>Two results fall out. With \(q\) uniform over \(n\) outcomes, \(D_{\mathrm{KL}} = \log_2 n - H(p) \ge 0\): no distribution has more entropy than the uniform one. And compression: a code with lengths \(\ell_i\) behaves like a belief \(q_i = 2^{-\ell_i}\), so its average length is a cross-entropy, at least \(H(p)\). That's Shannon's floor from section 2.</p>
+  </details>
+  <p>Back to the station names, with a model that learned how common each character is from the second half of the alphabetical list (from about "E 149 St" to "Zerega Av") and is used on the first half:</p>
+  <div class="code" data-title="Run it: the price of a wrong model, and of a zero"><textarea>
+import math
+from collections import Counter
+
+text = get("/ai/data/stations.txt").lower()
+half = len(text) // 2
+test, train = text[:half], text[half:]                 # learn from the second half, use on the first
+p = {ch: c / len(test) for ch, c in Counter(test).items()}
+H = -sum(pc * math.log2(pc) for pc in p.values())
+
+def cross_entropy(q):                                  # average bits to code the test half with odds q
+    if any(q.get(ch, 0) == 0 for ch in p):
+        return math.inf                                # q called a character impossible, and it happened
+    return -sum(pc * math.log2(q[ch]) for ch, pc in p.items())
+
+alphabet, counts = sorted(set(text)), Counter(train)
+uniform = {ch: 1 / len(alphabet) for ch in alphabet}
+learned = {ch: c / len(train) for ch, c in counts.items()}
+plus_one = {ch: (counts[ch] + 1) / (len(train) + len(alphabet)) for ch in alphabet}   # add 1 to every count
+print("entropy of the test half:", round(H, 3), "bits per character")
+for name, q in [("uniform", uniform), ("learned", learned), ("learned, plus one", plus_one)]:
+    ce = cross_entropy(q)
+    print(f"{name:18} cross-entropy {ce:.3f}   KL, the extra bits: {ce - H:.3f}")
+print("in the test half but never in the training half:", sorted(set(test) - set(train)))
+</textarea></div>
+  <details class="deeper"><summary>Where it breaks: zeros, and the wrong direction</summary>
+    <ul>
+      <li><b>A zero is infinitely expensive.</b> One station, "Cathedral Pkwy (110 St)", has brackets, and the learned model never saw one, so it gave "(" probability 0 and its cross-entropy is infinite. Adding 1 to every count (<b>smoothing</b>) fixes it for 0.3 extra bits. Models avoid exact zeros by design: softmax can never output 0, and <b>label smoothing</b> trains toward 0.9/0.1-style targets instead of 1/0 for the same reason.</li>
+      <li><b>It isn't a distance.</b> \(D_{\mathrm{KL}}(p \Vert q)\) and \(D_{\mathrm{KL}}(q \Vert p)\) are different numbers: the "storms never happen" belief pays a fortune when storms come, but the reverse gap only weighs days by how often the <i>belief</i> expects them. Which direction you minimize changes the answer you get (section 4).</li>
+    </ul>
+  </details>
+  <div class="q" data-num="15.6" data-tol="0.01">
+    <p>Estimate: an untrained language model spreads its belief evenly over a vocabulary of 50,000 tokens. How many bits is its cross-entropy per token, whatever the text? (One decimal.)</p>
+    <div class="why">Every token gets \(q = 1/50{,}000\), so each costs \(\log_2 50{,}000 \approx 15.6\) bits (\(2^{15.6} \approx 50{,}000\)), its perplexity is 50,000, and its loss in PyTorch's nats is \(\ln 50{,}000 \approx 10.8\). A training run that starts far above 10.8 has a bug; the loss should start right there and fall.</div>
+  </div>
+
+  <h2>4. Two directions: covering or choosing</h2>
+  <p>Fit one bell curve \(q\) to a truth \(p\) with two humps. There's no perfect fit, so the direction of the KL decides which mistake you prefer. <b>Forward</b> \(D_{\mathrm{KL}}(p \Vert q)\) weighs by the truth: wherever the data is, \(q\) must not be near zero, so it stretches to <i>cover</i> both humps. <b>Reverse</b> \(D_{\mathrm{KL}}(q \Vert p)\) weighs by the model: wherever \(q\) puts weight, the data had better be there, so it <i>chooses</i> one hump and fits it snugly.</p>
+  <div class="code" data-title="Run it: the same truth, fitted both ways"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.linspace(-6, 6, 1201); dx = x[1] - x[0]
+bell = lambda m, s: np.exp(-(x - m) ** 2 / (2 * s ** 2)) / (s * np.sqrt(2 * np.pi))
+p = 0.5 * bell(-2, 0.6) + 0.5 * bell(2, 0.6)                  # the truth: two humps
+kl = lambda a, b: np.sum(a * np.log(a / b)) * dx               # KL(a ‖ b), in nats
+
+fits = [(m, s) for m in np.linspace(-3, 3, 61) for s in np.linspace(0.3, 3.5, 65)]
+fwd = min(fits, key=lambda f: kl(p, bell(*f)))                # forward: KL(p ‖ q)
+rev = min(fits, key=lambda f: kl(bell(*f), p))                # reverse: KL(q ‖ p)
+plt.figure(figsize=(7, 3))
+plt.fill_between(x, p, color="0.85", label="truth p")
+plt.plot(x, bell(*fwd), label=f"forward KL: centre {fwd[0]:.1f}, spread {fwd[1]:.1f} (covers)")
+plt.plot(x, bell(*rev), label=f"reverse KL: centre {rev[0]:.1f}, spread {rev[1]:.1f} (chooses)")
+plt.legend(fontsize=8); plt.show()
+</textarea></div>
+  <p>Maximum likelihood (probability 3) is the forward direction: it makes models that hedge and cover everything the data does, which is why a model trained only that way can produce blurry averages when the answer has two distinct options. The reverse direction appears when a model's own outputs are being judged, as in fine-tuning a chatbot with a KL leash (section 6) and in variational autoencoders.</p>
+  <p class="gist">Forward KL makes a model cover everything the data does (and blur between options); reverse KL makes it commit to what it does well (and ignore the rest).</p>
+  <div class="q" data-answer="a">
+    <p>Why does the forward-KL fit sit in the empty middle, where the truth has almost no weight?</p>
+    <ul><li data-k="a">Forward KL weighs each mistake by the truth's probability, so placing weight where the truth has none costs almost nothing, while missing either hump costs a lot</li><li data-k="b" data-says="The search tried every centre from −3 to 3, including both humps. The middle won because of how the mistakes are weighed.">The search didn't try centres near the humps</li><li data-k="c" data-says="Reverse KL is the one that picks a hump. Look at which probability multiplies each term.">Forward KL always prefers the mean of the data, by definition</li></ul>
+    <div class="why">Each term is \(p_i \log(p_i/q_i)\): when \(p_i\) is near 0, the term is near 0 whatever \(q\) does there. The only expensive mistake is a small \(q\) where \(p\) is big, so the bell stretches over both humps and wastes weight in the middle.</div>
+  </div>
+
+  <h2>5. Information gain: which question tells you most?</h2>
+  <p>A question is worth the entropy it removes. Before asking, the answer you care about \(Y\) has entropy \(H(Y)\); after learning \(X\) it has \(H(Y \mid X)\), the average entropy left in each group. The difference is the <b>information gain</b> (also called mutual information):</p>
+  <p class="formula">\[ I(X; Y) = H(Y) - H(Y \mid X) \]</p>
+  <p>A decision tree (chapter 13) grows by asking, at each step, the yes/no question with the biggest information gain. Here's that search on the wine data (3 kinds of wine, 13 measurements):</p>
+  <div class="code" data-title="Run it: the tree's first question, by hand"><textarea>
+import numpy as np
+from sklearn.datasets import load_wine
+from sklearn.tree import DecisionTreeClassifier
+
+wine = load_wine(); X, y = wine.data, wine.target
+def H(labels):                                          # entropy of a group's wine kinds, in bits
+    p = np.bincount(labels) / len(labels); p = p[p > 0]
+    return -np.sum(p * np.log2(p))
+
+def best_gain(col):                                     # try every threshold on one measurement
+    best = (0, None)
+    for t in np.unique(col)[:-1]:
+        left, right = y[col <= t], y[col > t]
+        after = (len(left) * H(left) + len(right) * H(right)) / len(y)
+        best = max(best, (H(y) - after, t))
+    return best
+
+print("entropy of the wine kind:", round(H(y), 3), "bits (log2 3 = 1.585 if they were equally common)")
+gains = sorted(((*best_gain(X[:, j]), name) for j, name in enumerate(wine.feature_names)), reverse=True)
+for g, t, name in gains[:4]:
+    print(f"{name:30} at {t:7.2f}: gain {g:.3f} bits")
+tree = DecisionTreeClassifier(criterion="entropy", max_depth=1).fit(X, y)
+print("scikit-learn's tree asks:", wine.feature_names[tree.tree_.feature[0]], "<=", round(tree.tree_.threshold[0], 2))
+</textarea></div>
+  <p class="gist">A good question is one whose answer removes the most entropy. Trees choose their splits this way, and "how many bits does feature X tell me about Y?" is a way to rank features.</p>
+  <details class="deeper"><summary>Where it breaks: questions that are too good</summary>
+    <p>A column with a different value in every row (a customer ID, a timestamp) splits the data into groups of one, each with entropy 0, so its information gain is the maximum possible, and it predicts nothing on new rows. Information gain rewards questions with many answers. Trees guard against it by limiting depth and leaf size, or by dividing the gain by the entropy of the question itself (the "gain ratio"). It's also the information-theory face of leakage (stage 3): a feature that tells you too much is a warning sign, not a gift.</p>
+  </details>
+
+  <h2>6. Where AI uses it</h2>
+  <table class="cmp">
+    <tr><th>Where</th><th>What's being measured</th></tr>
+    <tr><td><b>Training loss</b></td><td>Cross-entropy between the data and the model. Since the data's own entropy is fixed, minimizing it is minimizing \(D_{\mathrm{KL}}(\text{data} \Vert \text{model})\), and that's maximum likelihood (probability 3) in other words. The loss can't go below the data's entropy: real labels have some noise, and text has real uncertainty.</td></tr>
+    <tr><td><b>Perplexity</b></td><td>\(2^{\text{cross-entropy in bits}}\): how many equally likely choices the model is torn between, per token.</td></tr>
+    <tr><td><b>Distillation</b></td><td>A small student model is trained to match a big teacher's whole probability distribution, softened with temperature (chapter 5), by minimizing the KL from teacher to student. "Fairly sure it's a 7, could be a 1" teaches more than the bare label "7".</td></tr>
+    <tr><td><b>Fine-tuning with a leash</b></td><td>When a chatbot is tuned to maximize a reward (RLHF, stage 6), a penalty \(\beta\, D_{\mathrm{KL}}(\text{new} \Vert \text{original})\) keeps it from drifting into strange text that games the reward.</td></tr>
+    <tr><td><b>Trees and feature ranking</b></td><td>Information gain picks splits; mutual information ranks features.</td></tr>
+  </table>
+  <div class="q" data-num="8" data-tol="0.01">
+    <p>A language model's cross-entropy on held-out text is 3 bits per token. What's its perplexity?</p>
+    <div class="why">\(2^3 = 8\): on average it's as unsure as a choice among 8 equally likely tokens, down from 50,000 before training.</div>
+  </div>
+
+  <h2>7. What to carry forward</h2>
+  <ul>
+    <li><b>Surprise</b> is \(-\log_2 p\) bits; <b>entropy</b> \(H(p)\) is its average: 0 when certain, \(\log_2 n\) when \(n\) outcomes are equally likely. \(2^H\) (perplexity) is the "how many choices" version.</li>
+    <li>Entropy is the floor for compression, and context lowers it: predicting and compressing are one skill.</li>
+    <li><b>Cross-entropy</b> \(H(p, q)\) is what you pay believing \(q\); <b>KL</b> \(= H(p,q) - H(p) \ge 0\) is the extra. Zero probabilities make it infinite, so models smooth.</li>
+    <li>KL isn't symmetric: forward (maximum likelihood) covers, reverse chooses.</li>
+    <li><b>Information gain</b> \(H(Y) - H(Y \mid X)\) is what a question tells you; trees maximize it, and too much of it is a leakage warning.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Claude Shannon's 1948 paper "A Mathematical Theory of Communication" started all of this and is still readable; Chris Olah's "Visual Information Theory" is a gentle illustrated companion.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { C, say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+const LABELS = ["sun", "clouds", "rain", "storm"], TRUTH = [0.5, 0.25, 0.2, 0.05];
+const log2 = (x) => Math.log(x) / Math.LN2;
+const H = (p) => -p.reduce((s, x) => s + (x > 0 ? x * log2(x) : 0), 0);
+const CE = (p, q) => -p.reduce((s, x, i) => s + (x > 0 ? x * log2(q[i]) : 0), 0);
+const bitsTxt = (b) => (Number.isFinite(b) ? b.toFixed(2) : "∞");
+
+/** Bars on a canvas: dists[k][i] drawn side by side for each outcome i; dragging sets dists[edit][i], the rest rescale to sum to 1. */
+function bars(id, dists, edit, colors, onChange) {
+  const c = $(id), g = c.getContext("2d"), W = c.width, Hh = c.height, n = LABELS.length, slot = W / n, top = 40, base = Hh - 40;
+  const draw = () => {
+    g.fillStyle = C.stage; g.fillRect(0, 0, W, Hh);
+    g.strokeStyle = C.grid; g.lineWidth = 1;
+    for (const f of [0.25, 0.5, 0.75, 1]) { const y = base - f * (base - top); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    const bw = (slot * 0.7) / dists.length;
+    dists.forEach((d, k) => d.forEach((v, i) => {
+      const x = i * slot + slot * 0.15 + k * bw, h = v * (base - top);
+      g.fillStyle = colors[k]; g.fillRect(x + 2, base - h, bw - 4, h);
+      g.fillStyle = C.text; g.font = "20px ui-monospace, monospace"; g.textAlign = "center";
+      g.fillText(v > 0 && v < 0.01 ? v.toFixed(3) : v.toFixed(2), x + bw / 2, base - h - 8);
+    }));
+    g.fillStyle = C.text; g.font = "22px ui-sans-serif, system-ui"; g.textAlign = "center";
+    LABELS.forEach((l, i) => g.fillText(l, (i + 0.5) * slot, Hh - 12));
+  };
+  const set = (e) => {
+    const r = c.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * Hh;
+    const i = Math.max(0, Math.min(n - 1, Math.floor(x / slot))), d = dists[edit];
+    const v = Math.max(0.001, Math.min(0.997, (base - y) / (base - top))), rest = d.reduce((s, x, j) => s + (j === i ? 0 : x), 0);
+    d.forEach((x, j) => { if (j !== i) d[j] = rest > 1e-9 ? (x * (1 - v)) / rest : (1 - v) / (n - 1); });
+    d[i] = v; update();
+  };
+  let dragging = false;
+  c.addEventListener("pointerdown", (e) => { dragging = true; c.setPointerCapture(e.pointerId); set(e); });
+  c.addEventListener("pointermove", (e) => dragging && set(e));
+  c.addEventListener("pointerup", () => (dragging = false));
+  const update = () => { draw(); onChange(); };
+  return update;
+}
+
+// 1. entropy of one forecast
+const p1 = [0.5, 0.25, 0.125, 0.125];
+const up1 = bars("h1", [p1], 0, [C.yellow], () => {
+  const h = H(p1);
+  $("r1").innerHTML = `surprise in bits: ${LABELS.map((l, i) => `${l} ${p1[i] > 0 ? (-log2(p1[i])).toFixed(1) : "—"}`).join(" · ")}<br>entropy H = ${h.toFixed(3)} bits (most possible: log₂4 = 2)<br>as uncertain as ${(2 ** h).toFixed(2)} equally likely outcomes`;
+  if (h < 0.05) say("Almost no surprise left: you already know tomorrow.");
+});
+document.querySelectorAll("[data-p1]").forEach((b) => b.addEventListener("click", () => { b.dataset.p1.split(",").forEach((v, i) => (p1[i] = +v)); up1(); }));
+up1();
+
+// 2. cross-entropy and KL against the truth
+const q = [0.25, 0.25, 0.25, 0.25];
+const up2 = bars("h2", [TRUTH, q], 1, ["#8f98a8", C.blue], () => {
+  const h = H(TRUTH), ce = CE(TRUTH, q), kl = ce - h, back = q.reduce((s, x, i) => s + x * log2(x / TRUTH[i]), 0);
+  $("r2").innerHTML = `entropy of the truth H(p) = ${h.toFixed(3)} bits (the floor)<br>cross-entropy H(p, q) = ${bitsTxt(ce)} bits · extra bits KL(p‖q) = ${bitsTxt(kl)}<br>a storm day costs ${(-log2(q[3])).toFixed(1)} bits (the truth: ${(-log2(TRUTH[3])).toFixed(1)}) · the other direction, KL(q‖p) = ${bitsTxt(back)}`;
+  if (kl < 0.002) say("No extra bits: your belief is the truth.");
+});
+const PRESETS = { u: [0.25, 0.25, 0.25, 0.25], p: TRUTH, nostorm: [0.52, 0.26, 0.219, 0.001], sure: [0.997, 0.001, 0.001, 0.001] };
+document.querySelectorAll("[data-p2]").forEach((b) => b.addEventListener("click", () => { PRESETS[b.dataset.p2].forEach((v, i) => (q[i] = v)); up2(); }));
+up2();
+</script>
+</body>
+</html>
