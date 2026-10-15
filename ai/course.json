@@ -7334,5 +7334,109 @@
     "sec": 4
    }
   ]
+ },
+ "ml-workbench.html": {
+  "goals": [
+   "Navigate the filesystem, inspect paths, and run Python scripts with arguments from the terminal",
+   "Create isolated virtual environments with pinned dependencies so projects never collide or break",
+   "Track code snapshots with git: initialize repositories, stage files, and commit descriptive messages",
+   "Branch for experimental model ideas, inspect unstaged diffs, and restore clean committed files",
+   "Protect repositories against weight bloat and secrets with an airtight .gitignore",
+   "Parameterize machine learning training scripts with argparse for CLI execution and batch sweeps"
+  ],
+  "needs": [
+   "s2-just-enough-code.html"
+  ],
+  "cards": [
+   [
+    "Virtual environment",
+    "An isolated directory of Python packages (.venv) preventing library version conflicts across projects."
+   ],
+   [
+    "Pinned dependency",
+    "Specifying exact package versions (e.g. torch==2.2.0) in requirements.txt so builds never silently break."
+   ],
+   [
+    "Working tree vs Staging area",
+    "The working tree contains your files on disk; the staging area (index) holds the exact changes prepared for the next commit."
+   ],
+   [
+    "git diff",
+    "Shows changes between your working tree and staging area; use git diff --staged to see changes ready to commit."
+   ],
+   [
+    "git restore",
+    "Discards uncommitted changes in the working tree, bringing files back to the last committed state."
+   ],
+   [
+    "git branch",
+    "An independent line of development that allows testing experimental model ideas without risking the main codebase."
+   ],
+   [
+    ".gitignore",
+    "A list of path patterns git must never track: virtualenvs, heavy checkpoints, raw datasets, and secrets."
+   ],
+   [
+    "argparse",
+    "Standard Python library for defining command-line arguments and flags (--lr, --epochs) to make scripts configurable."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What does git diff output immediately after you run git add model.py on a modified file?",
+    "options": [
+     "Nothing, because git diff compares the working directory against the staging area",
+     "The diff of the changes you just staged",
+     "An error saying the file is already staged"
+    ],
+    "answer": 0,
+    "why": "git diff by default compares the working tree to the staging area. Because model.py was just staged, there are no unstaged differences. Use git diff --staged to see staged changes.",
+    "sec": 3
+   },
+   {
+    "q": "Why should model checkpoint files (*.pt or *.bin) be listed in .gitignore instead of committed to git?",
+    "options": [
+     "Git permanently stores full snapshots of every committed file, so large binaries permanently bloat repository download size for all collaborators",
+     "Git cannot store binary data and will corrupt the weights file",
+     "Git commits are limited to 10 MB maximum"
+    ],
+    "answer": 0,
+    "why": "Git stores full compressed objects in .git/objects. Even if you delete a 500 MB model weight file in a later commit, that 500 MB stays in git history forever unless rewritten.",
+    "sec": 5
+   },
+   {
+    "q": "Why is torch>=2.0.0 riskier in a production requirements.txt than torch==2.2.0?",
+    "options": [
+     "A future minor or major release can deprecate methods or change default behaviors, causing a fresh install to silently fail",
+     "Unpinned packages take twice as long to download from PyPI",
+     "Python cannot resolve greater-than operators in virtual environments"
+    ],
+    "answer": 0,
+    "why": "Range pins allow pip to fetch newer versions that may introduce breaking API changes, different CUDA builds, or subtle numeric differences months later.",
+    "sec": 2
+   },
+   {
+    "q": "You modified train.py but realized the experiment was flawed and want to discard all unstaged edits. Which command restores the clean committed version?",
+    "options": [
+     "git restore train.py",
+     "git revert train.py",
+     "git status --clean"
+    ],
+    "answer": 0,
+    "why": "git restore train.py discards unstaged changes in the working tree. git revert is used to invert an already committed snapshot by creating a new commit.",
+    "sec": 4
+   },
+   {
+    "q": "What is the primary danger of training models solely inside Jupyter notebooks without converting to scripts?",
+    "options": [
+     "Hidden state from running cells out of order makes experiments difficult to reproduce or verify independently",
+     "Notebooks run Python code 50% slower than terminal scripts",
+     "Notebooks cannot allocate GPU memory"
+    ],
+    "answer": 0,
+    "why": "Notebook variables stay in kernel memory regardless of cell order. Executing cells out of sequence or deleting cells can make a run look successful while failing completely on a clean rerun.",
+    "sec": 6
+   }
+  ]
  }
 }

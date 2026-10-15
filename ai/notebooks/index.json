@@ -251,6 +251,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-ml-strategy-what-to-fix-next"
  },
+ "ml-workbench.html": {
+  "notebook": "ml-workbench.ipynb",
+  "title": "AI from scratch: your ML workbench",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/ml-workbench.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-your-ml-workbench"
+ },
  "mlops.html": {
   "notebook": "mlops.ipynb",
   "title": "AI from scratch: MLOps",

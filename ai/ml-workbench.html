@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your ML Workbench: The Command Line, Git and Environments</title>
+  <meta name="description" content="AI from scratch, toolkit 0: what an ML engineer needs on day one. Navigating the terminal, virtual environments with pinned dependencies, git snapshots, branching, diffs, reverts, .gitignore against weight bloat, and turning notebooks into reproducible scripts." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; overflow-x: clip; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+
+    /* Interactive Terminal Simulator */
+    .term-window {
+      background: #14171d;
+      border-radius: 8px;
+      padding: 16px 18px;
+      color: #e6edf3;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      margin: 16px 0;
+      overflow-x: auto;
+    }
+    .term-header {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2d333b;
+    }
+    .term-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .term-dot.r { background: #ff5f56; }
+    .term-dot.y { background: #ffbd2e; }
+    .term-dot.g { background: #27c93f; }
+    .term-title { margin-left: 8px; font-size: 12px; color: #768390; }
+    .term-screen { min-height: 140px; white-space: pre-wrap; }
+    .term-prompt { color: #58a6ff; }
+    .term-cmd { color: #f0883e; font-weight: 600; }
+    .term-out { color: #adbac7; }
+    .term-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: ui-monospace, monospace;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .term-btn:hover { background: #30363d; border-color: #8b949e; }
+
+    /* Interactive Git Tree Visualizer */
+    .git-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      background: #f0eee9;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    .git-col {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 180px;
+    }
+    .git-col h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+    }
+    .git-item {
+      background: #fbfaf7;
+      border: 1px solid #d0ccc0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-family: ui-monospace, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .git-item.modified { border-left: 4px solid #d97706; }
+    .git-item.staged { border-left: 4px solid #16a34a; background: #f0fdf4; }
+    .git-item.committed { border-left: 4px solid #2563eb; }
+    .git-item.ignored { border-left: 4px solid #9ca3af; color: #6b7280; font-style: italic; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 0 · Stage 4: the engineer's toolkit</p>
+  <h1>Your ML workbench: the command line, git and environments</h1>
+  <p class="lede">"It worked inside my notebook, but crashes when deployed." "Which version of the model generated this chart?" "I ran cells 1, 4, 2, and 7 and got 93% accuracy, but running top-to-bottom gets 81%." Real machine learning projects rarely live in isolated browser tabs. They run on remote GPU clusters, inside automated training pipelines, and behind production web APIs. This lesson covers what a junior machine learning engineer needs on day one: navigating the shell, isolating dependencies with virtual environments, tracking code snapshots with git, and turning exploratory notebooks into reproducible, parameter-driven scripts.</p>
+
+  <h2>1. The terminal and filesystem paths</h2>
+  <p>The shell is not magic; it is simply a fast text interface to your filesystem and running processes. A file tree starts at root (<code>/</code>). Where you currently are is your <b>working directory</b> (<code>pwd</code>). Every path you write is either <b>absolute</b> (starts from root <code>/</code>) or <b>relative</b> (relative to where you are right now):</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Path</th><th>Meaning</th><th>When to use it</th></tr>
+    <tr><td><code>.</code></td><td>Current working directory</td><td><code>python -m venv .venv</code> (create inside current folder)</td></tr>
+    <tr><td><code>..</code></td><td>Parent directory (one level up)</td><td><code>cd ..</code> or <code>pd.read_csv("../data/outages.csv")</code></td></tr>
+    <tr><td><code>~</code></td><td>Your user home directory (e.g. <code>/Users/you</code>)</td><td>Quick shortcuts in your interactive shell (never in code)</td></tr>
+    <tr><td><code>data/train.csv</code></td><td>Relative path inside the project</td><td>Always in shared scripts (portable across machines)</td></tr>
+    <tr><td><code>/Users/you/project/data.csv</code></td><td>Hardcoded absolute path</td><td><b>Never in code</b>: breaks on your teammate's computer or server</td></tr>
+  </table></div>
+
+  <div class="term-window" id="term1">
+    <div class="term-header">
+      <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+      <span class="term-title">bash · ~/ml-project</span>
+    </div>
+    <div class="term-screen" id="term-screen-1">learner@server:~/ml-project$ pwd
+/home/learner/ml-project
+
+learner@server:~/ml-project$ ls -F
+data/  models/  requirements.txt  train.py</div>
+  </div>
+  <div class="row">
+    <button class="term-btn" type="button" data-cmd="pwd">pwd</button>
+    <button class="term-btn" type="button" data-cmd="ls -la">ls -la</button>
+    <button class="term-btn" type="button" data-cmd="cat requirements.txt">cat requirements.txt</button>
+    <button class="term-btn" type="button" data-cmd="python train.py --epochs 20">python train.py --epochs 20</button>
+    <button class="term-btn" type="button" data-cmd="clear">clear</button>
+  </div>
+  <p class="readout" id="r1">Click any command above or inspect the terminal session.</p>
+
+  <div class="q" data-answer="b">
+    <p>A training script begins with: <code>data_path = sys.argv[1]</code>. You run: <code>python train.py --epochs 50 data/train.csv</code>. What value does <code>sys.argv[1]</code> hold?</p>
+    <ul>
+      <li data-k="a" data-says="sys.argv does not automatically parse flags: it captures raw tokens in the order typed.">"data/train.csv"</li>
+      <li data-k="b">"--epochs"</li>
+      <li data-k="c" data-says="50 is at index 2. sys.argv[0] is the script name itself.">"50"</li>
+    </ul>
+    <div class="why">The shell splits commands by whitespace into a plain string array: <code>sys.argv[0]</code> is <code>"train.py"</code>, <code>sys.argv[1]</code> is <code>"--epochs"</code>, and <code>sys.argv[2]</code> is <code>"50"</code>. That fragile indexing is why production code uses Python's standard <code>argparse</code> module instead of raw <code>sys.argv</code>.</div>
+  </div>
+  <p class="gist">The shell is a text interface to files and processes; flags and arguments pass settings to programs without editing source files.</p>
+
+  <h2>2. Virtual environments and pinned dependencies</h2>
+  <p>If Project A requires <code>torch 2.1</code> and Project B requires <code>torch 2.4</code>, running global <code>pip install</code> causes one project to silently break the other. A <b>virtual environment</b> is an isolated folder on disk containing its own Python executable and independent package directory (<code>site-packages</code>):</p>
+  <pre class="static"><code># 1. Create a fresh virtual environment in .venv
+python3 -m venv .venv
+
+# 2. Activate it (changes PATH so 'python' points to .venv/bin/python)
+source .venv/bin/activate       # On Windows: .venv\Scripts\activate
+
+# 3. Install your project's pinned packages
+pip install -r requirements.txt
+
+# 4. Save your exact package versions for your team
+pip freeze > requirements.txt</code></pre>
+
+  <p>Never leave dependency versions unpinned. If your <code>requirements.txt</code> says <code>numpy</code> instead of <code>numpy==1.26.4</code>, pip will fetch whatever version is newest six months from now—which may have dropped deprecated functions, changed default numerical rounding, or broken binary compatibility with your CUDA drivers.</p>
+
+  <div class="q" data-answer="a">
+    <p>Why is <code>torch>=2.0.0</code> in a production <code>requirements.txt</code> riskier than <code>torch==2.2.0</code>?</p>
+    <ul>
+      <li data-k="a">A future minor or major release can deprecate methods or change default behaviors, causing a fresh install to silently fail</li>
+      <li data-k="b" data-says="Download speeds depend on package size, not the pinning operator.">Unpinned packages take twice as long to download from PyPI</li>
+      <li data-k="c" data-says="pip parses comparison operators cleanly; the danger is semantic, not syntactic.">Python cannot resolve greater-than operators in virtual environments</li>
+    </ul>
+    <div class="why">Range pins like <code>>=</code> allow pip to pull newly released versions. A new release can deprecate tensor methods, alter weight initialization defaults, or change binary CUDA driver requirements, breaking an automated build months after you wrote it.</div>
+  </div>
+  <p class="gist">Virtual environments isolate dependencies per project; exact version pins prevent future upstream releases from breaking your code.</p>
+
+  <details class="deeper"><summary>Why virtual environments and pinned versions are non-negotiable</summary>
+    <ol>
+      <li><b>System Python safety.</b> Operating systems (especially Linux and macOS) rely on internal Python packages for system utilities. Installing packages globally can corrupt system tools.</li>
+      <li><b>C-extension and CUDA alignment.</b> PyTorch, NumPy, and TensorFlow wrap optimized C++ and CUDA binaries compiled against specific library ABIs. Mixing versions causes hard segmentation faults.</li>
+      <li><b>Container and cloud parity.</b> When training moves from your laptop to an AWS EC2 instance, Google Cloud Vertex, or a Kubernetes pod, the container image installs <code>requirements.txt</code>. Exact pins ensure identical package trees across machines.</li>
+      <li><b>Modern tooling.</b> Fast package managers like <code>uv</code> (written in Rust) provide instant virtualenv creation and lockfiles (<code>uv.lock</code>) that compute cryptographic hashes for every installed package.</li>
+    </ol>
+  </details>
+
+  <h2>3. Git fundamentals: snapshotting your work</h2>
+  <p>Git does not store diffs; it stores complete <b>snapshots</b> of your repository tree over time. To use git effectively, you must understand its three zones:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Zone</th><th>Where it is</th><th>What it does</th></tr>
+    <tr><td><b>Working Tree</b></td><td>Files on your disk</td><td>Where you edit code, run experiments, and test models.</td></tr>
+    <tr><td><b>Staging Area (Index)</b></td><td>Prepared snapshot buffer</td><td>Where you collect the exact changes ready for the next commit (<code>git add</code>).</td></tr>
+    <tr><td><b>Git Repository</b></td><td>The <code>.git/</code> directory</td><td>The permanent, immutable history of commits (<code>git commit</code>).</td></tr>
+  </table></div>
+
+  <div class="git-board">
+    <div class="git-col" id="col-work">
+      <h3>1. Working Tree</h3>
+      <div class="git-item modified" id="item-train"><span>train.py</span> <span style="color:#d97706; font-size:11px;">MODIFIED</span></div>
+      <div class="git-item ignored"><span>.venv/</span> <span style="font-size:11px;">IGNORED</span></div>
+      <div class="git-item ignored"><span>model_best.pt</span> <span style="font-size:11px;">IGNORED</span></div>
+    </div>
+    <div class="git-col" id="col-stage">
+      <h3>2. Staging Area</h3>
+      <div id="stage-empty" style="color:var(--muted); font-size:13px; font-style:italic; padding-top:20px; text-align:center;">(empty)</div>
+    </div>
+    <div class="git-col" id="col-repo">
+      <h3>3. Commit History</h3>
+      <div class="git-item committed"><span>e1a4b9 · Init repo</span></div>
+      <div class="git-item committed"><span>f7c20d · Add linear model</span></div>
+      <div id="repo-latest"></div>
+    </div>
+  </div>
+  <div class="row">
+    <button class="term-btn" type="button" id="btn-git-add">git add train.py</button>
+    <button class="term-btn" type="button" id="btn-git-diff">git diff</button>
+    <button class="term-btn" type="button" id="btn-git-commit">git commit -m "Add learning rate warmup"</button>
+    <button class="term-btn" type="button" id="btn-git-reset">reset widget</button>
+  </div>
+  <p class="readout" id="r3">Click "git add train.py" to stage the modified file.</p>
+
+  <div class="q" data-answer="a">
+    <p>Predict, then try it: you modified <code>train.py</code>, ran <code>git add train.py</code>, and then ran <code>git diff</code>. What does <code>git diff</code> output?</p>
+    <ul>
+      <li data-k="a">Nothing, because git diff compares the working tree to the staging area</li>
+      <li data-k="b" data-says="Try it in the widget above: git diff shows nothing once files are staged.">The line-by-line diff of the changes you just staged</li>
+      <li data-k="c" data-says="git diff does not error on staged files; it just reports differences between working tree and staging.">An error stating that the file is already staged</li>
+    </ul>
+    <div class="why"><code>git diff</code> without flags compares your <b>Working Tree</b> against the <b>Staging Area</b>. Because <code>train.py</code> was just staged, there are zero unstaged differences! To view what is currently staged and ready to commit, run <code>git diff --staged</code> (or <code>git diff --cached</code>).</div>
+  </div>
+  <p class="gist">Git records immutable snapshots; you choose exactly which changes enter the snapshot using the staging area.</p>
+
+  <h2>4. Branches, diffs, and undoing mistakes</h2>
+  <p>In machine learning research, 80% of experimental model architectures or feature ideas fail. If you make those edits directly on <code>main</code>, you break the stable baseline for everyone. <b>Branches</b> create isolated pointers for trying ideas safely:</p>
+  <pre class="static"><code># Create and switch to an experiment branch
+git checkout -b exp-cosine-decay    # Or modern: git switch -c exp-cosine-decay
+
+# See what branch you are on and what has changed
+git status
+git log --oneline -n 5
+
+# Safe undoing:
+git restore train.py               # Discard unstaged working tree changes (back to last commit)
+git restore --staged train.py      # Unstage an accidental 'git add' without losing code
+git revert a3f912                  # Undo an already-pushed bad commit by creating an inverse commit</code></pre>
+
+  <div class="q" data-answer="a">
+    <p>You modified <code>train.py</code> with an experimental loss function, but training diverged and you want to discard all unstaged changes immediately. Which command restores the clean committed version?</p>
+    <ul>
+      <li data-k="a"><code>git restore train.py</code></li>
+      <li data-k="b" data-says="git revert takes an existing commit hash to create an inverse commit snapshot; it does not touch unstaged working edits."><code>git revert train.py</code></li>
+      <li data-k="c" data-says="git reset unstages files or moves branch pointers; git restore is the dedicated command for file restoration."><code>git reset train.py</code></li>
+    </ul>
+    <div class="why"><code>git restore &lt;file&gt;</code> discards unstaged changes in the working tree, bringing the file back to the state of the last commit. <code>git revert</code> is reserved for inverting previously committed snapshots.</div>
+  </div>
+  <p class="gist">Branches isolate experiments; git restore discards uncommitted workspace mistakes; git revert undoes committed snapshots safely.</p>
+
+  <h2>5. The .gitignore file and what never belongs in git</h2>
+  <p>Git is built for text code, not multi-gigabyte binary assets. A <code>.gitignore</code> file placed at the root of your repository tells git which files to completely ignore:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Pattern</th><th>Why it must NEVER enter git</th></tr>
+    <tr><td><code>.venv/</code>, <code>env/</code></td><td>Thousands of machine-specific binary libraries that bloat git and won't work on other operating systems anyway.</td></tr>
+    <tr><td><code>*.pt</code>, <code>*.bin</code>, <code>*.safetensors</code></td><td>Large neural network weights. Git stores the entire binary blob for every single commit, permanently bloating repository size.</td></tr>
+    <tr><td><code>data/*.csv</code>, <code>images/</code></td><td>Large raw datasets. Store these in cloud storage buckets (S3, GCS) or data registries, not git.</td></tr>
+    <tr><td><code>.env</code>, <code>keys.json</code></td><td>API tokens and secret credentials. Committing these exposes your cloud accounts to public scrapers.</td></tr>
+    <tr><td><code>__pycache__/</code>, <code>.DS_Store</code></td><td>Compiled bytecode and OS junk files.</td></tr>
+  </table></div>
+
+  <div class="q" data-answer="a">
+    <p>Why should model checkpoint files (<code>*.pt</code> or <code>*.bin</code>) be listed in <code>.gitignore</code> instead of committed directly into git?</p>
+    <ul>
+      <li data-k="a">Git permanently stores full snapshots of every committed file, so large binaries permanently bloat repository download size for all collaborators</li>
+      <li data-k="b" data-says="Git can store binary files without corruption, but doing so blows up repository size.">Git cannot store binary data and will corrupt the weights file</li>
+      <li data-k="c" data-says="Git has no hard 10 MB limit; the issue is compounding repository bloat over time.">Git commits are limited to 10 MB maximum</li>
+    </ul>
+    <div class="why">Git objects are immutable. Even if you delete a 1 GB model weights file in the very next commit, that 1 GB file remains inside the hidden <code>.git/objects/</code> packfiles forever. Anyone who clones the repository months later must download that entire 1 GB history.</div>
+  </div>
+  <p class="gist">Keep large weights, raw data files, virtual environments, and secret keys out of git with an airtight .gitignore file.</p>
+
+  <details class="deeper"><summary>Where it breaks: hidden notebook state, unversioned weights, and git bloat</summary>
+    <ul>
+      <li><b>The out-of-order execution trap.</b> In a Jupyter notebook, variable states remain in the kernel memory regardless of cell order. If you run cell 10, then cell 3, then delete cell 2, the notebook appears to succeed. On a clean restart, it crashes. <i>Always test: Kernel → Restart & Run All.</i></li>
+      <li><b>Accidental secret leakage.</b> Pushing an API key (OpenAI, Hugging Face, Kaggle) to a public or private GitHub repository triggers immediate bot scrapers. Always load keys from environment variables (<code>os.environ["API_KEY"]</code>) stored in a git-ignored <code>.env</code> file.</li>
+      <li><b>Git repository bloat.</b> Once a multi-gigabyte file is committed, running <code>git rm</code> does not remove it from historical packfiles. Removing it requires history-rewriting tools like <code>git-filter-repo</code> or BFG Repo-Cleaner.</li>
+      <li><b>Model and data versioning.</b> Git tracks code. For datasets and model weights, use dedicated tools: cloud object stores (S3/GCS), DVC (Data Version Control), or model registries (MLflow, Hugging Face Hub, Weights & Biases).</li>
+    </ul>
+  </details>
+
+  <h2>6. From notebook to script: the bridge</h2>
+  <p>Exploratory data analysis often begins in a notebook. But once an architecture works, convert training into a modular Python script parameterized with <code>argparse</code> so you can run hyperparameter sweeps from the command line:</p>
+
+  <div class="code" data-title="A clean, parameterized training script with argparse"><textarea>
+import argparse
+from pathlib import Path
+
+def parse_args(args_list=None):
+    parser = argparse.ArgumentParser(description="Train a reproducible ML baseline")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate for optimizer")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    parser.add_argument("--batch-size", type=int, default=64, help="Minibatch size")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--data", type=str, default="data/ridership.csv", help="Relative path to dataset")
+    return parser.parse_args(args_list)
+
+# Simulating running from terminal: python train.py --lr 0.005 --epochs 100 --seed 7
+cfg = parse_args(["--lr", "0.005", "--epochs", "100", "--seed", "7"])
+
+print("Configured experiment:")
+print(f"  Learning rate: {cfg.lr}")
+print(f"  Epochs:        {cfg.epochs}")
+print(f"  Batch size:    {cfg.batch_size}")
+print(f"  Random seed:   {cfg.seed}")
+print(f"  Data location: {Path(cfg.data)}")
+print("\nNow this script can be launched in a bash loop for hyperparameter tuning:")
+print("  for lr in 0.001 0.01 0.1; do python train.py --lr $lr; done")
+</textarea></div>
+
+  <p class="gist">Modular Python scripts with argparse make your experiments repeatable from the terminal, runnable on remote GPUs, and orchestratable in batch pipelines.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Next: <a href="./numpy-in-depth.html">NumPy in depth</a>.</p>
+</main>
+
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+// ---------- 1. Terminal Simulator ----------
+const termScreen = $("term-screen-1");
+const termOut = $("r1");
+const termResponses = {
+  "pwd": "/home/learner/ml-project",
+  "ls -la": "total 32\ndrwxr-xr-x  6 learner staff  192 Oct 15 14:00 .\ndrwxr-xr-x  8 learner staff  256 Oct 15 13:50 ..\n-rw-r--r--  1 learner staff   42 Oct 15 13:55 .gitignore\ndrwxr-xr-x  7 learner staff  224 Oct 15 13:58 .venv\ndrwxr-xr-x  3 learner staff   96 Oct 15 13:52 data\n-rw-r--r--  1 learner staff  188 Oct 15 13:54 requirements.txt\n-rw-r--r--  1 learner staff 1420 Oct 15 14:02 train.py",
+  "cat requirements.txt": "numpy==1.26.4\npandas==2.2.2\nscikit-learn==1.5.0\ntorch==2.2.2",
+  "python train.py --epochs 20": "Loading data from data/ridership.csv...\n[Epoch 1/20]  Loss: 0.6421  Val Acc: 0.725\n[Epoch 10/20] Loss: 0.2814  Val Acc: 0.891\n[Epoch 20/20] Loss: 0.1640  Val Acc: 0.934\nModel evaluation complete. Test accuracy: 93.4%",
+  "clear": ""
+};
+
+document.querySelectorAll("#term1 + .row button[data-cmd]").forEach((btn) => {
+  btn.onclick = () => {
+    const cmd = btn.getAttribute("data-cmd");
+    if (cmd === "clear") {
+      termScreen.textContent = "learner@server:~/ml-project$ ";
+      termOut.textContent = "Terminal cleared.";
+      return;
+    }
+    const resp = termResponses[cmd] || "command not found";
+    termScreen.textContent += `\n\nlearner@server:~/ml-project$ ${cmd}\n${resp}`;
+    termScreen.scrollTop = termScreen.scrollHeight;
+    termOut.textContent = `Executed: ${cmd}`;
+  };
+});
+
+// ---------- 3. Interactive Git Tree ----------
+let gitState = { staged: false, committed: false };
+
+function updateGitUI() {
+  const trainItem = $("item-train");
+  const stageEmpty = $("stage-empty");
+  const repoLatest = $("repo-latest");
+
+  if (!gitState.staged && !gitState.committed) {
+    trainItem.style.display = "flex";
+    trainItem.className = "git-item modified";
+    trainItem.innerHTML = `<span>train.py</span> <span style="color:#d97706; font-size:11px;">MODIFIED</span>`;
+    stageEmpty.style.display = "block";
+    const existingStaged = document.getElementById("item-staged-train");
+    if (existingStaged) existingStaged.remove();
+    repoLatest.innerHTML = "";
+    $("r3").textContent = 'train.py is modified in your working tree. Click "git add train.py" to stage it.';
+  } else if (gitState.staged && !gitState.committed) {
+    trainItem.style.display = "none";
+    stageEmpty.style.display = "none";
+    let stagedItem = document.getElementById("item-staged-train");
+    if (!stagedItem) {
+      stagedItem = document.createElement("div");
+      stagedItem.id = "item-staged-train";
+      stagedItem.className = "git-item staged";
+      stagedItem.innerHTML = `<span>train.py</span> <span style="color:#16a34a; font-size:11px;">STAGED</span>`;
+      $("col-stage").appendChild(stagedItem);
+    }
+    repoLatest.innerHTML = "";
+    $("r3").textContent = 'train.py is staged in the Index. Now git diff returns nothing (try it!). Ready for git commit.';
+  } else if (gitState.committed) {
+    trainItem.style.display = "flex";
+    trainItem.className = "git-item";
+    trainItem.innerHTML = `<span>train.py</span> <span style="color:#16a34a; font-size:11px;">CLEAN</span>`;
+    const existingStaged = document.getElementById("item-staged-train");
+    if (existingStaged) existingStaged.remove();
+    stageEmpty.style.display = "block";
+    repoLatest.innerHTML = `<div class="git-item committed"><span>3b89ef · Add learning rate warmup</span></div>`;
+    $("r3").textContent = "Committed! A new snapshot (3b89ef) is in the git repository. Working tree is clean.";
+  }
+}
+
+$("btn-git-add").onclick = () => {
+  if (gitState.committed) {
+    $("r3").textContent = "Working tree is clean. Reset widget to modify train.py again.";
+    return;
+  }
+  gitState.staged = true;
+  updateGitUI();
+};
+
+$("btn-git-diff").onclick = () => {
+  if (!gitState.staged && !gitState.committed) {
+    $("r3").textContent = "git diff output: @@ -14,2 +14,5 @@ +def lr_warmup(epoch): ... (shows differences between working tree and index).";
+  } else if (gitState.staged && !gitState.committed) {
+    $("r3").textContent = "git diff output: (empty! No unstaged changes. Use git diff --staged to see staged changes).";
+  } else {
+    $("r3").textContent = "git diff output: (empty! Working tree matches repository).";
+  }
+};
+
+$("btn-git-commit").onclick = () => {
+  if (!gitState.staged) {
+    $("r3").textContent = "Nothing staged to commit (run git add train.py first).";
+    return;
+  }
+  gitState.staged = false;
+  gitState.committed = true;
+  updateGitUI();
+};
+
+$("btn-git-reset").onclick = () => {
+  gitState = { staged: false, committed: false };
+  updateGitUI();
+};
+
+updateGitUI();
+
+window.blipContext = () => ({
+  page: "AI toolkit 0: your ML workbench (shell, paths, virtualenvs, pinned requirements, git snapshots, branches, diffs, reverts, .gitignore against weight bloat, and argparse scripts)",
+  terminalCommand: $("r1").textContent,
+  gitState: $("r3").textContent
+});
+</script>
+</body>
+</html>
