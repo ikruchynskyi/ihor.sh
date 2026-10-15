@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evaluating LLMs</title>
+  <meta name="description" content="AI from scratch: evaluating LLMs. Grade the graders yourself, then compare automatic checks and a model judge against your labels with Cohen's kappa; test sets for open-ended answers, model-graded evals and their biases, faithfulness for RAG, paired comparisons, and regression tests." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .card .lbl { font-size: 13px; color: var(--muted); }
+    .grade button { min-height: 44px; min-width: 9em; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Evaluating LLMs · Stage 6: LLM engineering</p>
+  <h1>Evaluating LLMs</h1>
+  <p class="lede">Every lesson in this stage ended with "measure it". This one is how. Grading a classifier is easy: compare a label with a label (chapter 12). Grading a language model is hard: the right answer can be phrased a thousand ways, partly right, right but padded with a wrong claim, or a polite refusal. So LLM evaluation is mostly the craft of building tests you can trust: test sets, automatic checks, models as judges, and the statistics to tell an improvement from noise. You'll start by being the judge yourself.</p>
+
+  <h2>1. Grade the graders</h2>
+  <p>Eighteen answers to questions about this course. Some are right, some wrong, some right with padding. Judge each one. At the end you'll see how a simple automatic check and a small model judge agreed with the labels, and with you.</p>
+  <div class="card" id="item"></div>
+  <div class="row grade"><button id="yes">✓ Correct</button><button id="no">✗ Not correct</button><span class="readout" id="prog" style="margin:0"></span></div>
+  <div id="report"></div>
+  <p class="gist">An eval is only as good as its grading, so check every grader, human or machine, against careful labels before trusting it.</p>
+
+  <h2>2. Automatic checks: cheap, strict, and often enough</h2>
+  <p>For questions with a short right answer, plain code grades well: normalize both texts (lowercase, drop punctuation), then check for an exact match, or that an accepted answer appears as whole words in the reply. For structured output, parse it and validate the fields (the using-LLMs lesson). These checks are free, instant and perfectly repeatable, so they run on every change.</p>
+  <div class="code" data-title="Run it: two automatic graders on the 18 answers"><textarea>
+import json, re
+data = json.loads(get("/ai/data/llm-eval.json"))["graded"]
+norm = lambda s: " ".join(re.findall(r"[a-z0-9]+", s.lower().replace(",", "")))
+def exact(answer, ref):
+    return norm(answer) == norm(ref)
+def contains(answer, ref):                     # the reference appears as whole words
+    return f" {norm(ref)} " in f" {norm(answer)} "
+for name, grader in [("exact match", exact), ("contains reference", contains)]:
+    calls = [int(grader(d["answer"], d["reference"])) for d in data]
+    agree = sum(c == d["label"] for c, d in zip(calls, data)) / len(data)
+    print(f"{name:20s} says correct {sum(calls):2d} of {len(data)} · agrees with the labels on {agree:.0%}")
+for d in data:
+    if int(contains(d["answer"], d["reference"])) != d["label"]:
+        print("  contains-check disagrees:", repr(d["answer"][:60]), "label", d["label"])
+</textarea></div>
+  <p>Exact match is too strict: "ResNet-50 has 50 layers." is right and doesn't match "50". The contains-check is much better (16 of 18), and its two misses are instructive: "Despite the 50 in its name, ResNet-50 has 152 layers" and "A starts at zero; B is random" both contain the right word next to a wrong claim, and both pass. Every automatic check is a trade between being fooled and being too strict; look at its disagreements.</p>
+  <p class="gist">Code-based checks (normalize, match, parse, validate) are free and repeatable; tune them on their disagreements with careful labels.</p>
+
+  <h2>3. A model as the judge</h2>
+  <p>For open-ended answers (a summary, an explanation, an email) no string check works, so teams ask a strong model to grade with a rubric: "Given the question, the reference answer and the reply, is the reply correct? Answer yes or no." It scales, and with a capable judge it agrees with human graders about as often as two humans agree with each other. But it's a model with its own errors, and its agreement has to be measured, not assumed. In the practice notebook the judge is SmolLM2-360M, the same small model as before: it agrees with the labels on 11 of 18 answers, 61%. A "judge" that answers "correct" to everything gets 9 of 18, because half the answers are correct; so 61% is barely better than not reading at all.</p>
+  <p class="formula">\[ \kappa = \frac{p_o - p_e}{1 - p_e} \]</p>
+  <p><b>Cohen's kappa</b> corrects agreement \(p_o\) for the agreement \(p_e\) two graders would reach by chance given how often each says yes: 1 is perfect, 0 is chance. The small judge's kappa is 0.22; the contains-check's is 0.78. Known biases of model judges, even strong ones:</p>
+  <ul>
+    <li><b>Position:</b> asked "which of A and B is better?", judges favor one position; always evaluate both orders. In the notebook, the small judge picks the same answer in both orders for only 3 of 8 right-versus-wrong pairs.</li>
+    <li><b>Length:</b> longer, more confident answers get rated higher, right or not.</li>
+    <li><b>Self-preference:</b> a model tends to rate its own style higher; judge with a different model family when you can.</li>
+  </ul>
+  <div class="q" data-num="0" data-tol="0.01">
+    <p>Labels: 8 correct, 8 not. A "judge" says "correct" to everything. Its agreement is 50%. What is its kappa?</p>
+    <div class="why">\(p_o = 0.5\). By chance: it says yes 100% of the time and the labels say yes 50%, so \(p_e = 1 \times 0.5 + 0 \times 0.5 = 0.5\). \(\kappa = (0.5 - 0.5)/(1 - 0.5) = 0\): exactly chance, however good 50% (or 90%, on a lopsided set) sounds.</div>
+  </div>
+  <p class="gist">A model judge scales grading to open-ended answers, but it's another model to validate: measure its agreement with human labels (kappa, not raw agreement) and test for position and length bias.</p>
+  <details class="deeper"><summary>Why raw agreement flatters a lazy judge</summary>
+    <ol>
+      <li>Suppose 90% of a system's answers are correct. A judge that always says "correct" agrees with the labels 90% of the time while doing no judging at all.</li>
+      <li>The chance agreement for two graders who say yes with rates \(a\) and \(b\), independently, is \(p_e = ab + (1 - a)(1 - b)\): matching yeses plus matching nos.</li>
+      <li>For the always-yes judge on a 90%-correct set: \(p_e = 1 \times 0.9 + 0 \times 0.1 = 0.9\), so \(\kappa = (0.9 - 0.9)/(1 - 0.9) = 0\).</li>
+      <li>A judge that's genuinely good gets \(p_o\) well above \(p_e\); kappa rescales that gap to 0–1. Values above about 0.6 are usually called substantial, above 0.8 near-perfect.</li>
+      <li>Same lesson as chapter 12's 99%-accurate fraud model: compare with what a do-nothing grader would get.</li>
+    </ol>
+  </details>
+
+  <h2>4. Faithfulness: is every claim in the sources?</h2>
+  <p>For a RAG system, "correct" splits in two: <b>answer correctness</b> (matches the truth) and <b>faithfulness</b> (every claim is supported by the retrieved passages). The retrieval notebook's small model, asked "Why does Adam need bias correction?" from passages of the optimizers lesson, began correctly ("it uses a running average of recent gradients") and then claimed bias correction "helps to prevent the bias-variance tradeoff", which no passage says. A faithfulness check splits the answer into claims and asks, for each, whether a passage supports it: chapter 8's number check for Blip is a cheap version, a judge model a general one.</p>
+  <p class="gist">For grounded systems, grade faithfulness (every claim supported by the passages) separately from correctness.</p>
+
+  <h2>5. Is the new version actually better?</h2>
+  <p>Change a prompt, a model or a retriever, rerun the eval, compare. That comparison is Probability 4 again: both versions answer the same questions, so use a <b>paired</b> test on the questions where they disagree. In the notebook, adding retrieval to SmolLM2-360M raised its score on 20 short questions from 9 to 13. All 4 changed questions went RAG's way, and still the exact test says \(p = 2 \times 0.5^4 = 0.125\): with 20 questions, even a clean 4-to-0 isn't conclusive.</p>
+  <div class="q" data-answer="b">
+    <p>How should a team catch a prompt change that quietly breaks 5% of answers?</p>
+    <ul><li data-k="a" data-says="Users find it eventually, which is exactly what a regression test exists to prevent.">Wait for user complaints</li><li data-k="b">A fixed regression set of a few hundred cases with automatic checks, run on every change, with the comparison paired and its uncertainty shown</li><li data-k="c" data-says="Five hand-tried examples can't see a 5% change: the margin of error is far bigger.">Try five examples by hand before shipping</li></ul>
+    <div class="why">Chapter 8's margin: with 20 cases, ±13 points; to see 5 points you need hundreds. Keep the set fixed so results compare across versions, add every real failure to it, and keep a slice that nobody tunes prompts on (the experiments lesson's worn-out test set).</div>
+  </div>
+  <p class="gist">Compare versions on the same fixed questions with a paired test; a few hundred cases are needed to see changes of a few points.</p>
+  <details class="deeper"><summary>Where it breaks: evals that stop measuring</summary>
+    <ul>
+      <li><b>Contamination.</b> Public benchmarks leak into training data; a model that saw the questions scores high without the skill. Keep private test sets, and write new questions for what you care about.</li>
+      <li><b>Teaching to the test.</b> Tune prompts until the eval passes and it measures your tuning (chapter 11's validation set). Hold some cases back; refresh them.</li>
+      <li><b>The metric isn't the goal.</b> A support bot can maximize "answer correct" while being rude or slow. Track a few guardrail numbers (latency, refusals, length) alongside, and read real conversations every week.</li>
+      <li><b>Graders drift.</b> A judge model updated by its provider changes your scores without your system changing. Pin judge versions and recheck their agreement now and then.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>Build a test set from real use: inputs, accepted answers or rubrics, and the failures you've seen.</li>
+    <li>Automatic checks first (normalize, match, parse, validate); read their disagreements.</li>
+    <li>Model judges for open-ended answers, validated with kappa against human labels, tested in both orders.</li>
+    <li>Grade faithfulness separately for RAG.</li>
+    <li>Compare versions paired, with enough cases, on every change; keep held-back cases and pinned graders.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. The 16 graded answers and 20 questions: <code>ai/data/llm-eval.json</code>. Anthropic's and OpenAI's guides on building evals are good next reads.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const items = (await fetch("/ai/data/llm-eval.json").then((r) => r.json())).graded;
+// the notebook's SmolLM2-360M judge, measured on these 18 items (yes = 1)
+const JUDGE = [1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0];
+const norm = (s) => (s.toLowerCase().replace(/,/g, "").match(/[a-z0-9]+/g) ?? []).join(" ");
+const CONTAINS = items.map((d) => (` ${norm(d.answer)} `.includes(` ${norm(d.reference)} `) ? 1 : 0));
+const LABEL = items.map((d) => d.label);
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+let i = 0; const mine = [];
+function show() {
+  if (i >= items.length) return finish();
+  const d = items[i];
+  $("item").innerHTML = `<div class="lbl">question</div>${esc(d.q)}<div class="lbl">reference</div>${esc(d.reference)}<div class="lbl">answer to grade</div><b>${esc(d.answer)}</b>`;
+  $("prog").textContent = `${i + 1} of ${items.length}`;
+}
+const N = items.length;
+const kappa = (a, b) => { const n = a.length, po = a.filter((x, k) => x === b[k]).length / n, pa = a.reduce((s, x) => s + x, 0) / n, pb = b.reduce((s, x) => s + x, 0) / n, pe = pa * pb + (1 - pa) * (1 - pb); return pe === 1 ? 1 : (po - pe) / (1 - pe); };
+const agree = (a, b) => a.filter((x, k) => x === b[k]).length;
+function finish() {
+  $("item").innerHTML = "Done. Here's how the graders compare.";
+  $("yes").disabled = $("no").disabled = true;
+  const rows = [["you", mine], ["contains-the-reference check", CONTAINS], ["SmolLM2-360M as judge", JUDGE], ["always says correct", items.map(() => 1)]];
+  $("report").innerHTML = `<table class="cmp"><tr><th>Grader</th><th>agrees with the labels</th><th>kappa vs labels</th><th>agrees with you</th></tr>` +
+    rows.map(([n, g]) => `<tr><td>${n}</td><td>${agree(g, LABEL)} / ${N}</td><td>${kappa(g, LABEL).toFixed(2)}</td><td>${n === "you" ? "–" : `${agree(g, mine)} / ${N}`}</td></tr>`).join("") + `</table>` +
+    `<p class="readout">Where you and the labels differed: ${items.map((d, k) => (mine[k] !== d.label ? `"${esc(d.answer.slice(0, 50))}" (label: ${d.label ? "correct" : "not"})` : null)).filter(Boolean).join("; ") || "nowhere"}.</p>`;
+}
+const answer = (v) => { if (i < items.length) { mine.push(v); i++; show(); } };
+$("yes").onclick = () => answer(1); $("no").onclick = () => answer(0);
+show();
+</script>
+</body>
+</html>

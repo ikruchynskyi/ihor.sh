@@ -5182,5 +5182,114 @@
     "sec": 5
    }
   ]
+ },
+ "evaluating-llms.html": {
+  "goals": [
+   "Build automatic checks for short answers (normalize, match, parse) and read their failures",
+   "Measure a grader's agreement with human labels using Cohen's kappa",
+   "Use model judges carefully: rubric, both orders, validated agreement",
+   "Grade faithfulness for RAG and compare system versions with paired tests and enough cases"
+  ],
+  "needs": [
+   "using-llms.html",
+   "embeddings-and-retrieval.html",
+   "p4-confidence-and-tests.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Eval set",
+    "Fixed inputs with accepted answers or rubrics, from real use and past failures, rerun on every change."
+   ],
+   [
+    "Normalize then match",
+    "Lowercase, strip punctuation and separators, then exact or whole-word containment checks."
+   ],
+   [
+    "Cohen's kappa",
+    "(p_o − p_e)/(1 − p_e): agreement corrected for chance; 0 = chance, 1 = perfect."
+   ],
+   [
+    "Model judge",
+    "A model grades replies against a rubric; validate its kappa against human labels first."
+   ],
+   [
+    "Judge biases",
+    "Position (test both orders), length, and self-preference."
+   ],
+   [
+    "Faithfulness",
+    "Every claim in a RAG answer supported by the retrieved passages, graded apart from correctness."
+   ],
+   [
+    "Paired comparison",
+    "Same questions for both versions; test the disagreements (exact binomial / McNemar)."
+   ],
+   [
+    "Eval size",
+    "20 cases: ±13 points; seeing a few points needs hundreds."
+   ],
+   [
+    "Contamination",
+    "Test questions leaked into training data inflate scores; keep private, fresh sets."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why can't you grade most LLM answers with exact string match?",
+    "options": [
+     "The same correct answer can be phrased many ways, and exact match rejects all but one",
+     "Exact match is too slow",
+     "Models never repeat the reference"
+    ],
+    "answer": 0,
+    "why": "'ResNet-50 has 50 layers.' is right and doesn't equal '50'. Normalize and match whole words, or use a rubric.",
+    "sec": 2
+   },
+   {
+    "q": "A judge agrees with human labels 90% of the time, on a set where 90% of answers are correct. What do you know?",
+    "options": [
+     "Nothing yet: an always-'correct' judge also gets 90%; check kappa",
+     "It's an excellent judge",
+     "It's worse than humans"
+    ],
+    "answer": 0,
+    "why": "Raw agreement must be compared with chance agreement; kappa does that.",
+    "sec": 3
+   },
+   {
+    "q": "Why ask a pairwise judge in both orders?",
+    "options": [
+     "Judges often favor a position; a verdict that flips with the order is position bias, not judgment",
+     "To double the sample size",
+     "Because models read right to left"
+    ],
+    "answer": 0,
+    "why": "Count only verdicts that survive the swap, or average both orders.",
+    "sec": 3
+   },
+   {
+    "q": "A RAG answer is correct but adds a claim no passage supports. Which metric catches it?",
+    "options": [
+     "Faithfulness",
+     "Answer correctness",
+     "Recall@5"
+    ],
+    "answer": 0,
+    "why": "Faithfulness asks whether every claim is grounded in the passages.",
+    "sec": 4
+   },
+   {
+    "q": "Version B beats version A on 4 questions and loses none, out of 20 shared questions. Conclusive?",
+    "options": [
+     "No: the exact paired test gives p = 0.125; you need more questions",
+     "Yes: B never lost",
+     "Yes: 4 is 20% of the set"
+    ],
+    "answer": 0,
+    "why": "2 × 0.5⁴ = 0.125. Small eval sets can't see small or even moderate differences.",
+    "sec": 5
+   }
+  ]
  }
 }

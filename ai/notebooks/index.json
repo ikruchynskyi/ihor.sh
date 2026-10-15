@@ -153,6 +153,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-embeddings-and-retrieval"
  },
+ "evaluating-llms.html": {
+  "notebook": "evaluating-llms.ipynb",
+  "title": "AI from scratch: evaluating LLMs",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/evaluating-llms.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-evaluating-llms"
+ },
  "experiments.html": {
   "notebook": "experiments.ipynb",
   "title": "AI from scratch: experiments you can trust",
