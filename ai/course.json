@@ -3703,5 +3703,128 @@
     "sec": 6
    }
   ]
+ },
+ "pandas-and-sklearn.html": {
+  "goals": [
+   "Load a real table and find its surprises with info, describe and value_counts",
+   "Filter, add columns, group, merge and pivot without silent mistakes",
+   "Use scikit-learn's fit/transform/predict contract to build and swap pipelines",
+   "Score with a time split and tune hyperparameters with a log-scale grid search"
+  ],
+  "needs": [
+   "numpy-in-depth.html",
+   "features-and-leakage.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "First looks",
+    "df.info(), df.describe(), value_counts(), min/max of dates: before any model."
+   ],
+   [
+    "Filter rows",
+    "df[(cond1) & (cond2)]: brackets around each condition; & and | combine them."
+   ],
+   [
+    ".loc",
+    "df.loc[rows, columns] by label; write with it to change df itself."
+   ],
+   [
+    "groupby",
+    "Split by a key, apply a summary, combine: df.groupby('k')['v'].agg([...])."
+   ],
+   [
+    "merge validate=",
+    "'many_to_one' raises if the right table repeats a key, which would duplicate rows."
+   ],
+   [
+    "fit / transform / predict",
+    "fit learns (attributes ending in _), transform and predict apply what was learned."
+   ],
+   [
+    "Pipeline",
+    "make_pipeline(prep, model): one estimator; cross-validation refits every step per fold."
+   ],
+   [
+    "TimeSeriesSplit",
+    "Folds that train on the past and test on the next stretch of time."
+   ],
+   [
+    "GridSearchCV",
+    "Tries each setting with cross-validation; step__setting names a pipeline step's setting."
+   ],
+   [
+    "Log-scale search",
+    "Try 0.01, 0.1, 1, 10: a penalty's effect depends on its order of magnitude."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Which filter keeps elevator outages longer than 4 hours?",
+    "options": [
+     "f[(f['kind'] == 'EL') & (f['hours'] > 4)]",
+     "f[f['kind'] == 'EL' and f['hours'] > 4]",
+     "f[f['kind'] == 'EL' & f['hours'] > 4]"
+    ],
+    "answer": 0,
+    "why": "& combines True/False columns row by row, and each comparison needs its own brackets.",
+    "sec": 2
+   },
+   {
+    "q": "f.groupby('reason')['hours'].mean() gives…",
+    "options": [
+     "one mean per reason",
+     "one mean per row",
+     "the mean of all hours"
+    ],
+    "answer": 0,
+    "why": "Split by reason, apply mean to each group's hours, combine into one row per reason.",
+    "sec": 3
+   },
+   {
+    "q": "Why can a merge silently make your counts wrong?",
+    "options": [
+     "If the right table repeats a key, every matching left row is duplicated",
+     "Because merge sorts the rows",
+     "Because merge drops columns with the same name"
+    ],
+    "answer": 0,
+    "why": "Each left row pairs with every matching right row. validate='many_to_one' or a row count check catches it.",
+    "sec": 3
+   },
+   {
+    "q": "Calling fit_transform on the test set is…",
+    "options": [
+     "a leak: the scaler learns from test rows",
+     "the right way to prepare test data",
+     "the same as transform"
+    ],
+    "answer": 0,
+    "why": "fit learns; on test data only transform with what training taught.",
+    "sec": 4
+   },
+   {
+    "q": "Why use TimeSeriesSplit for the outages instead of shuffled folds?",
+    "options": [
+     "The model will predict future outages, so each fold must train on the past and test on later data",
+     "Because shuffling is slow",
+     "Because the data has too few rows"
+    ],
+    "answer": 0,
+    "why": "A random split lets the model learn from outages after the ones it's tested on.",
+    "sec": 4
+   },
+   {
+    "q": "In a pipeline made by make_pipeline(prep, LogisticRegression()), how is C named for GridSearchCV?",
+    "options": [
+     "logisticregression__C",
+     "C",
+     "LogisticRegression.C"
+    ],
+    "answer": 0,
+    "why": "The step's lowercase class name, two underscores, the setting.",
+    "sec": 5
+   }
+  ]
  }
 }

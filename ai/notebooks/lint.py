@@ -75,6 +75,39 @@ def page(stem):
     return code, html.unescape(re.sub(r"<[^>]+>", " ", prose))
 
 
+def none_defaults(cells):
+    "Names given code only ever sets to None (an exercise's blank default), so they stay None in the blank notebook."
+    out, other = set(), set()
+    for k, c in cells:
+        tree = parse(SOL.sub("", c)) if k == "code" else None
+        for n in ast.walk(tree) if tree else []:
+            if isinstance(n, ast.Assign):
+                is_none = isinstance(n.value, ast.Constant) and n.value.value is None
+                for t in n.targets:
+                    for x in ast.walk(t):
+                        if isinstance(x, ast.Name):
+                            (out if is_none else other).add(x.id)
+    return out - other
+
+
+def blank_uses(tree, answers):
+    "Answer names that given code would crash on when blank (None): len(x), x.attr, x[i]. Skips check() and None guards."
+    out = set()
+    def walk(n):
+        if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "check":
+            return
+        if isinstance(n, (ast.If, ast.IfExp)) and ("None" in ast.unparse(n.test) or {x.id for x in ast.walk(n.test) if isinstance(x, ast.Name)} & answers):
+            return
+        if isinstance(n, ast.Call) and getattr(n.func, "id", None) in ("len", "float", "int", "round", "sorted", "list") and n.args:
+            out.update({n.args[0].id} & answers if isinstance(n.args[0], ast.Name) else set())
+        if isinstance(n, (ast.Attribute, ast.Subscript)) and isinstance(n.value, ast.Name) and isinstance(n.ctx, ast.Load):
+            out.update({n.value.id} & answers)
+        for c in ast.iter_child_nodes(n):
+            walk(c)
+    walk(tree)
+    return out
+
+
 def parse(code):
     "Parse code, even a fragment from inside a function or loop (wrapped in a `def _` / `for _` that features() skips)."
     code = textwrap.dedent(code)
@@ -248,11 +281,16 @@ def lint(only=(), show_ledger=None):
                 seen |= names | defined
             # Given code runs in the blank notebook too, where answers are None: formatting one ({x:.3f}) crashes it.
             answers = set().union(*(features(m.group(2), mods)[2] for k, c in cells if k == "code" for m in SOL.finditer(c)))
+            given_stores = {t.id for k, c in cells if k == "code" for t in ast.walk(parse(SOL.sub("", c)) or ast.Module(body=[], type_ignores=[]))
+                            if isinstance(t, ast.Name) and isinstance(t.ctx, ast.Store)} - none_defaults(cells)
             tree = parse(SOL.sub("", text))
             for f in (n for n in ast.walk(tree) if isinstance(n, ast.FormattedValue) and n.format_spec) if tree else []:
                 used = {x.id for x in ast.walk(f.value) if isinstance(x, ast.Name)} & answers
                 if used:
                     report(f"{stem} notebook", f"given code formats the answer {', '.join(sorted(used))} with a format spec: a blank answer (None) crashes it")
+            # ...and so does len(x), x.attr or x[i] on a blank answer, outside check() and `if x is not None:` guards.
+            if used := sorted(blank_uses(tree, answers - given_stores)) if tree else []:
+                report(f"{stem} notebook", f"given code uses the answer {', '.join(used)} (len, .attr or [i]): a blank answer (None) crashes it")
             prompt = prompt if not SOL.search(text) else ""
             for c in [SOL.sub("", text)]:
                 tree = parse(c)

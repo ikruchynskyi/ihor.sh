@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pandas and scikit-learn</title>
+  <meta name="description" content="AI from scratch, toolkit 2: pandas and scikit-learn on NYC subway elevator and escalator outages. Loading and looking, selecting and cleaning, group by and merge, dates, the estimator contract, pipelines, cross-validation and grid search with a time split." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code { overflow-wrap: anywhere; }
+    .sac { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; font: 14px/1.4 ui-monospace, Menlo, monospace; }
+    .sac > div { background: #14171d; color: #d8dee9; border-radius: 8px; padding: 8px; min-height: 180px; }
+    .sac h4 { margin: 0 0 6px; font: 600 13px ui-sans-serif, system-ui; color: #9aa4b2; }
+    .sac .r { display: flex; justify-content: space-between; padding: 1px 6px; border-radius: 4px; margin: 2px 0; transition: opacity .3s; }
+    .sac .grp { margin-bottom: 8px; }
+    @media (max-width: 560px) { .sac { grid-template-columns: 1fr; } .sac > div { min-height: 0; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 2 · Stage 4: the engineer's toolkit</p>
+  <h1>pandas and scikit-learn</h1>
+  <p class="lede">Stage 3 used pandas and scikit-learn a line at a time. This lesson is the working kit: how a real table gets loaded, looked at, cleaned, grouped, joined and turned into features, and how scikit-learn's few rules let you swap any model into the same pipeline and tune it honestly. The table is real: every NYC subway elevator and escalator outage this site's archive saw in five weeks of fall 2026, 667 of them.</p>
+  <p class="muted">Data: MTA elevator and escalator outage feed, archived by ihor.sh, September 9 to October 15, 2026 (times in New York time). <code>last_seen</code> is the last time the feed listed the outage; for finished ones, that's when it ended, give or take the archive's polling interval.</p>
+
+  <h2>1. Load it, then look before doing anything</h2>
+  <p><code>pd.read_csv</code> reads the file; <code>parse_dates</code> turns the time columns into real dates instead of text. Then four looks that catch most surprises: the first rows, the types and missing values, the numbers summarized, and how often each category appears.</p>
+  <div class="code" id="out" data-title="Run it: the outages"><textarea>
+import io
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv(io.StringIO(get("/ai/data/outages.csv")),
+                 parse_dates=["start", "estimated_end", "last_seen"])     # in a notebook: pd.read_csv(url, ...)
+print(df.shape)
+df.info()                                   # types, and how many values are present in each column
+print(df["reason"].value_counts().head(6))
+print("oldest start:", df["start"].min(), "· newest:", df["start"].max())
+df.head()
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>The oldest outage started in September 2024, two years before the archive did. What's the most likely story?</p>
+    <ul><li data-k="a" data-says="Dates parse fine everywhere else, and the rows look consistent: the feed itself says 2024.">A parsing bug</li><li data-k="b">Long-running capital replacements: the feed still lists escalators that have been out for two years</li><li data-k="c" data-says="The archive saves what the feed lists now, including outages that started long before it.">The archive is broken</li></ul>
+    <div class="why">Look at those rows: "Capital Replacement", estimated back in service at the end of October 2026. Real tables have stories like this, and a model trained on "how long outages last" needs to decide whether they belong. Here they're unfinished, so they drop out anyway.</div>
+  </div>
+  <p class="gist">Before any model: shape, types, missing values, ranges and category counts; the surprises live there.</p>
+
+  <h2>2. Select, filter and add columns</h2>
+  <table class="cmp">
+    <tr><th>You want</th><th>pandas</th></tr>
+    <tr><td>Some columns</td><td><code>df[["station", "reason"]]</code></td></tr>
+    <tr><td>Rows where something is true</td><td><code>df[df["kind"] == "EL"]</code>, combined with <code>&amp;</code> and <code>|</code> (each condition in brackets)</td></tr>
+    <tr><td>Rows and columns by label</td><td><code>df.loc[df["ada"] == 1, "station"]</code></td></tr>
+    <tr><td>By position</td><td><code>df.iloc[:5, :3]</code></td></tr>
+    <tr><td>A new column</td><td><code>df["hours"] = ...</code> (a whole column at once, like NumPy)</td></tr>
+    <tr><td>Text and date parts</td><td><code>df["lines"].str.count("/")</code>, <code>df["start"].dt.hour</code></td></tr>
+  </table>
+  <div class="code" data-uses="out" data-title="Run it: how long did each outage last?"><textarea>
+f = df[df["finished"]].copy()          # finished outages only; .copy() so new columns don't touch df
+f["hours"] = (f["last_seen"] - f["start"]).dt.total_seconds() / 3600
+f["est_hours"] = (f["estimated_end"] - f["start"]).dt.total_seconds() / 3600
+f["n_lines"] = f["lines"].str.count("/") + 1      # "E/F/G/7" → 4 lines
+f["hour"] = f["start"].dt.hour
+print(len(f), "finished outages")
+print(f["hours"].describe().round(2))
+print("share over 4 hours:", (f["hours"] > 4).mean().round(3))
+print("estimate longer than the real outage:", (f["est_hours"] > f["hours"]).mean().round(3))
+f.loc[f["hours"] > 300, ["station", "kind", "reason", "hours"]]
+</textarea></div>
+  <p>Half the outages are over in under 2 hours, a quarter last more than 4, and two planned jobs took a month. The MTA's estimate is longer than the real outage 98% of the time: it plans for the worst.</p>
+  <div class="q" data-answer="c">
+    <p>Which line keeps elevator outages at ADA-accessible stations that lasted over 4 hours?</p>
+    <ul><li data-k="a" data-says="Python's 'and' can't combine whole columns; pandas needs &amp;.">f[f["kind"] == "EL" and f["ada"] == 1 and f["hours"] &gt; 4]</li><li data-k="b" data-says="Without brackets, &amp; binds before ==, so this compares the wrong things.">f[f["kind"] == "EL" &amp; f["ada"] == 1 &amp; f["hours"] &gt; 4]</li><li data-k="c">f[(f["kind"] == "EL") &amp; (f["ada"] == 1) &amp; (f["hours"] &gt; 4)]</li></ul>
+    <div class="why">Each comparison makes a column of True/False; <code>&amp;</code> combines them row by row. Brackets are needed because <code>&amp;</code> is evaluated before <code>==</code>.</div>
+  </div>
+  <p class="gist">Columns are whole arrays: filter with a True/False column, combine conditions with &amp; and |, and build new columns in one line.</p>
+
+  <h2>3. Group, then combine</h2>
+  <p><code>groupby</code> is three steps under one name: <b>split</b> the rows by a key, <b>apply</b> a summary to each group, <b>combine</b> the answers into a table. Step through it on six outages:</p>
+  <div class="row"><label>summary <select id="agg"><option value="count">count</option><option value="mean" selected>mean</option><option value="max">max</option></select></label><button id="step">Next step</button><button id="restart">Start over</button></div>
+  <div class="sac"><div id="s0"><h4>1. the rows</h4></div><div id="s1"><h4>2. split by reason</h4></div><div id="s2"><h4>3. apply, combine</h4></div></div>
+  <p class="readout" id="r3"></p>
+  <div class="code" data-uses="out" data-title="Run it: by reason, by station, and a pivot table"><textarea>
+f = df[df["finished"]].copy()
+f["hours"] = (f["last_seen"] - f["start"]).dt.total_seconds() / 3600
+by_reason = f.groupby("reason")["hours"].agg(["count", "median", "max"]).sort_values("count", ascending=False)
+print(by_reason.round(1))
+# several summaries with names you choose
+by_station = f.groupby("station").agg(outages=("hours", "size"), median_hours=("hours", "median"))
+print(by_station.sort_values("outages", ascending=False).head(5).round(1))
+# merge: put each station's outage count back on every outage row
+f = f.merge(by_station[["outages"]], left_on="station", right_index=True, how="left", validate="many_to_one")
+print("rows after merge:", len(f))
+# a pivot table: rows × columns × a summary
+pd.pivot_table(f, index="reason", columns="kind", values="hours", aggfunc="median").round(1)
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>Why pass <code>validate="many_to_one"</code> to <code>merge</code>?</p>
+    <ul><li data-k="a">It raises an error if a station appears twice in the right table, which would silently duplicate outage rows</li><li data-k="b" data-says="It's a check, not a speed-up.">It makes the merge faster</li><li data-k="c" data-says="Missing matches are handled by how=; validate only checks the keys.">It drops outages whose station isn't found</li></ul>
+    <div class="why">A merge pairs every left row with every matching right row. If the right table had a station twice, each of its outages would appear twice, and every count and mean after that would be wrong with no warning.</div>
+  </div>
+  <p class="gist">groupby is split, apply, combine; merge pairs every row with every match, so say what shape of match you expect.</p>
+  <details class="deeper"><summary>Where it breaks: three silent pandas bugs</summary>
+    <ul>
+      <li><b>A merge that multiplies rows.</b> Merge 3 outages at a station with a table that lists that station 4 times (say, once per entrance) and you get 12 rows. Every sum and count after it is inflated, and nothing complains. Check <code>len()</code> before and after, or pass <code>validate=</code>.</li>
+      <li><b>Changing a copy of a slice.</b> <code>f[f["ada"] == 1]["hours"] = 0</code> changes a temporary table and then throws it away, so <code>f</code> is unchanged; pandas prints a warning, but the line runs and the warning is easy to miss. Write <code>f.loc[f["ada"] == 1, "hours"] = 0</code>: one step, into <code>f</code>.</li>
+      <li><b>Averages of tiny groups.</b> One station with a single 700-hour outage tops a "worst stations by mean hours" list. Always show the count next to a group's mean, and sort by something that needs enough data (or the median).</li>
+    </ul>
+  </details>
+
+  <h2>4. scikit-learn's one contract</h2>
+  <p>Every piece of scikit-learn follows the same few rules, which is why any model drops into any pipeline:</p>
+  <table class="cmp">
+    <tr><th>Method</th><th>What it does</th><th>Who has it</th></tr>
+    <tr><td><code>fit(X, y)</code></td><td>Learns from training data and stores what it learned (attributes ending in <code>_</code>, like <code>coef_</code> or <code>mean_</code>)</td><td>everything</td></tr>
+    <tr><td><code>transform(X)</code></td><td>Applies what was learned to new rows</td><td>scalers, encoders, imputers</td></tr>
+    <tr><td><code>predict(X)</code>, <code>predict_proba(X)</code></td><td>Answers for new rows</td><td>models</td></tr>
+    <tr><td><code>get_params()</code>, <code>set_params()</code></td><td>The settings you chose (hyperparameters), separate from what it learned</td><td>everything</td></tr>
+  </table>
+  <p>A <b>pipeline</b> chains them, and is itself one estimator: <code>fit</code> fits every step on the training rows in order, <code>predict</code> runs new rows through all of them. The question here: will an outage last more than 4 hours (27% of them do)? An app could warn riders to plan another route.</p>
+  <div class="code" id="pipe" data-uses="out" data-title="Run it: one pipeline, two models, an honest time split"><textarea>
+from sklearn.compose import make_column_transformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.model_selection import cross_val_score, TimeSeriesSplit
+
+f = df[df["finished"]].sort_values("start").copy()      # in time order, for the time split
+f["hours"] = (f["last_seen"] - f["start"]).dt.total_seconds() / 3600
+f["hour"] = f["start"].dt.hour
+f["n_lines"] = f["lines"].str.count("/") + 1
+X = f[["kind", "reason", "ada", "hour", "n_lines"]]
+y = (f["hours"] > 4).astype(int)
+cat, num = ["kind", "reason"], ["ada", "hour", "n_lines"]
+
+linear = make_pipeline(make_column_transformer((OneHotEncoder(handle_unknown="ignore"), cat), (StandardScaler(), num)),
+                       LogisticRegression(max_iter=2000))
+trees = make_pipeline(make_column_transformer((OneHotEncoder(handle_unknown="ignore"), cat), ("passthrough", num)),
+                      HistGradientBoostingClassifier(random_state=0))
+cv = TimeSeriesSplit(n_splits=5)          # each fold trains on the past and tests on the next stretch of time
+for name, model in [("logistic regression", linear), ("boosted trees", trees)]:
+    auc = cross_val_score(model, X, y, cv=cv, scoring="roc_auc")
+    print(f"{name:20s} AUC {auc.mean():.3f} ± {auc.std():.3f}  (folds: {auc.round(2)})")
+linear.fit(X, y)
+print("the pipeline's steps:", list(linear.named_steps))
+</textarea></div>
+  <p>Logistic regression edges out the trees here (about 0.89 against 0.88, and steadier from fold to fold): with 600 rows and a few strong categories, the simpler model has less to overfit. That's chapter 13's table in practice: start simple, and let the validation numbers decide.</p>
+  <p class="gist">Every scikit-learn piece learns in fit and applies in transform or predict, so a pipeline of them is one model you can swap, score and tune.</p>
+  <details class="deeper"><summary>Why fit and transform are separate methods</summary>
+    <ol>
+      <li>A scaler needs two numbers per column, a mean and a spread, and they have to come from somewhere.</li>
+      <li><code>fit</code> is where it learns them, from the rows it's given, and stores them (<code>mean_</code>, <code>scale_</code>).</li>
+      <li><code>transform</code> only applies the stored numbers. It never looks at the new rows' own mean.</li>
+      <li>So "learn from training rows, apply to everything" isn't a rule you have to remember: it's built into which method does what. Cross-validation calls <code>fit</code> on each fold's training rows and <code>transform</code> on its test rows, and no test row can shape the scaling.</li>
+      <li><code>fit_transform</code> is just both on the same rows: right for training data, a leak if you call it on test data.</li>
+    </ol>
+  </details>
+
+  <h2>5. Tuning: grid search with the right split</h2>
+  <p><b>Hyperparameters</b> are the settings you choose before fitting: the penalty strength <code>C</code>, the depth of trees, the learning rate. <code>GridSearchCV</code> tries each combination with cross-validation and keeps the best. In a pipeline, a step's setting is named <code>step__setting</code> (two underscores).</p>
+  <div class="code" data-uses="out pipe" data-title="Run it: search C on a log scale"><textarea>
+from sklearn.model_selection import GridSearchCV
+grid = GridSearchCV(linear, {"logisticregression__C": [0.01, 0.1, 1, 10, 100]}, cv=TimeSeriesSplit(n_splits=5), scoring="roc_auc")
+grid.fit(X, y)
+print("best:", grid.best_params_, " CV AUC", round(grid.best_score_, 3))
+pd.DataFrame(grid.cv_results_)[["param_logisticregression__C", "mean_test_score", "std_test_score"]].round(3)
+</textarea></div>
+  <p>Search on a <b>log scale</b> (0.01, 0.1, 1, 10): the effect of a penalty depends on its order of magnitude, not on its exact value. When the grid gets big, <code>RandomizedSearchCV</code> tries a fixed number of random combinations instead, and usually finds as good a setting in far fewer tries.</p>
+  <div class="q" data-answer="b">
+    <p>Grid search reports a best CV AUC of about 0.9. What is that number?</p>
+    <ul><li data-k="a" data-says="It was used to choose, so it's a little optimistic (chapter 11, P4).">An honest estimate of the AUC on future outages</li><li data-k="b">The best of five settings by validation score, so a little optimistic: confirm on held-out later data</li><li data-k="c" data-says="It's measured on held-out folds, not the training rows.">The training AUC</li></ul>
+    <div class="why">Choosing the best of several on the same folds rewards a little luck. Keep the last week or two of outages untouched, and score the chosen model on them once.</div>
+  </div>
+  <p class="gist">Hyperparameters are chosen by cross-validation over a log-scale grid, and the winner's score is optimistic until it's checked on data nobody chose with.</p>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li><b>Look first</b>: <code>info()</code>, <code>describe()</code>, <code>value_counts()</code>, the min and max dates. Real tables have stories.</li>
+    <li><b>Filter</b> with True/False columns and <code>&amp;</code>, <b>add</b> columns whole, use <code>.str</code> and <code>.dt</code>, write with <code>.loc</code>.</li>
+    <li><b>groupby</b> = split, apply, combine; show counts next to means. <b>merge</b> with <code>validate=</code> and check the row count.</li>
+    <li><b>scikit-learn</b>: fit learns, transform/predict apply; a pipeline is one estimator; time-ordered data gets <code>TimeSeriesSplit</code>.</li>
+    <li><b>Tune</b> on a log scale with <code>GridSearchCV</code> or <code>RandomizedSearchCV</code>; the best CV score is optimistic.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Kaggle Learn's free Pandas and Intermediate ML courses are good companions.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// six real finished outages (station shortened), for the split-apply-combine stepper
+const ROWS = [["Cleaning", 0.8], ["Maintenance", 5.2], ["Cleaning", 1.1], ["Repair", 3.4], ["Maintenance", 3.9], ["Cleaning", 0.6]];
+const COLOR = { Cleaning: "#58c4dd", Maintenance: "#f4a259", Repair: "#83c167" };
+let step = 0;
+const row = (k, v) => `<div class="r" style="background:${COLOR[k]}33;border-left:4px solid ${COLOR[k]}"><span>${k}</span><span>${v}</span></div>`;
+const AGG = { count: (a) => a.length, mean: (a) => +(a.reduce((s, x) => s + x, 0) / a.length).toFixed(2), max: (a) => Math.max(...a) };
+function render() {
+  const agg = $("agg").value, groups = {};
+  ROWS.forEach(([k, v]) => (groups[k] ??= []).push(v));
+  $("s0").innerHTML = "<h4>1. the rows (reason, hours)</h4>" + ROWS.map(([k, v]) => row(k, v)).join("");
+  $("s1").innerHTML = "<h4>2. split by reason</h4>" + (step >= 1 ? Object.entries(groups).map(([k, vs]) => `<div class="grp">${vs.map((v) => row(k, v)).join("")}</div>`).join("") : "");
+  $("s2").innerHTML = `<h4>3. apply ${agg}, combine</h4>` + (step >= 2 ? Object.entries(groups).map(([k, vs]) => row(k, AGG[agg](vs))).join("") : "");
+  $("r3").textContent = ["Press Next step to split the rows by their key.", `Split: ${Object.keys(groups).length} groups, one per reason. Nothing is computed yet.`,
+    `Combined: one row per group. In pandas: df.groupby("reason")["hours"].${agg}()`][step];
+}
+$("step").onclick = () => { step = Math.min(2, step + 1); render(); };
+$("restart").onclick = () => { step = 0; render(); };
+$("agg").onchange = render;
+render();
+</script>
+</body>
+</html>

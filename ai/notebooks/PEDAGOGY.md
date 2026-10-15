@@ -89,6 +89,10 @@ print(err)
 check(lambda: err == -3, "prediction − truth = 19 − 22 = −3 (negative: the model guessed too low)")
 ```
 
+Kaggle runs every notebook blank, where each answer is still `None`, so **given code never touches an answer
+unguarded**: no `len(x)`, `x.attr`, `x[i]` or `{x:.3f}` outside `check(...)` unless it's behind
+`if x is not None` or `... if x is not None else None` (`lint.py` flags it).
+
 `build.py` numbers the exercises and turns each one into `# YOUR CODE HERE (stuck? hint(2), then answer(2))` and
 `...`. It moves the hints and an encoded copy of the solution into a helpers cell at the top, and passes the
 exercise number to its checks. Don't define `check` in a notebook.
