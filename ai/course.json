@@ -6443,5 +6443,100 @@
     "sec": 5
    }
   ]
+ },
+ "zoo-logistic.html": {
+  "goals": [
+   "Explain logistic regression as a straight edge whose distance becomes a probability",
+   "Read a weight as an odds ratio and check calibration",
+   "Recognize where it breaks: bent edges, perfect separation, unscaled or twin columns, rare classes"
+  ],
+  "needs": [
+   "zoo-linear.html",
+   "05-probability-and-loss.html",
+   "12-measuring-a-model.html"
+  ],
+  "cards": [
+   [
+    "Logistic regression",
+    "p = σ(w·x + b): a weighted sum squashed into a probability."
+   ],
+   [
+    "Log-odds",
+    "ln(p / (1 − p)); logistic regression says it's a weighted sum of the columns."
+   ],
+   [
+    "Odds ratio",
+    "e^w: how much one more unit of a column multiplies the odds of a yes."
+   ],
+   [
+    "Calibration",
+    "Predicted chances match real rates: of calls given 20%, about 20% say yes."
+   ],
+   [
+    "Perfect separation",
+    "When a column splits the classes completely, the unpenalized weight grows forever."
+   ],
+   [
+    "Feature columns bend the edge",
+    "Add x², y², x·y and a straight edge in those columns can be a circle on the plane."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Logistic regression's decision boundary on the original two columns is…",
+    "options": [
+     "always a straight line",
+     "any curve it likes",
+     "a set of boxes"
+    ],
+    "answer": 0,
+    "why": "p = 0.5 where w·x + b = 0: a straight line, unless you add columns.",
+    "sec": 1
+   },
+   {
+    "q": "A weight of 0.7 on a 0/1 column means a yes is…",
+    "options": [
+     "70% more likely",
+     "e^0.7 ≈ 2 times the odds",
+     "0.7 percentage points more likely"
+    ],
+    "answer": 1,
+    "why": "Weights add to log-odds, so they multiply the odds by e^w.",
+    "sec": 2
+   },
+   {
+    "q": "Why are logistic regression's probabilities usually well calibrated?",
+    "options": [
+     "Because the sigmoid is smooth",
+     "At the log-loss minimum, predictions add up to the real counts in every group the columns describe",
+     "They aren't; they need a separate fix"
+    ],
+    "answer": 1,
+    "why": "The gradient is Σ(p − y)x = 0, column by column.",
+    "sec": 2
+   },
+   {
+    "q": "Your logistic regression has one weight of 380 and predicts exactly 0 or 1. Most likely…",
+    "options": [
+     "the model is excellent",
+     "a column separates the classes perfectly, maybe a leak, and there's no penalty",
+     "the learning rate is too small"
+    ],
+    "answer": 1,
+    "why": "On separable data the unpenalized weight runs off to infinity.",
+    "sec": 4
+   },
+   {
+    "q": "On 10,000 bank calls, logistic regression scored AUC 0.78 and boosted trees 0.76. The best reading is…",
+    "options": [
+     "trees are bad",
+     "with mostly additive effects and modest data, a line is as good as anything, and it's readable",
+     "the test set is wrong"
+    ],
+    "answer": 1,
+    "why": "Always fit the simple baseline: it often ties.",
+    "sec": 4
+   }
+  ]
  }
 }

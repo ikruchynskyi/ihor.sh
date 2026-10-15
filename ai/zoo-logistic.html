@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logistic Regression</title>
+  <meta name="description" content="AI from scratch, model zoo 2: logistic regression as a weighted sum squashed into a probability. A decision map on five datasets with feature columns and a penalty, log-odds and odds ratios you can read, calibration measured on 10,000 bank calls, gradient descent from scratch next to scikit-learn, and where it breaks: rings, perfect separation and twin columns." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; } .strip { aspect-ratio: 3 / 1; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 2 of 10 · Logistic regression</p>
+  <h1>Logistic regression</h1>
+  <p class="lede">The model behind most yes/no predictions in banks, hospitals and ad systems: will this customer say yes, is this payment fraud, will this person click. It's page 1's weighted sum, squashed into a probability. You met it as chapter 3's single neuron; here it's a model in its own right, with weights you can read as odds, probabilities you can trust, and a short list of ways it fails.</p>
+
+  <h2>1. The idea in one picture: a straight edge and a soft slope</h2>
+  <p>Red dots are class 1, blue are class 0. The shading is the model's probability of red at every spot: bright red near 1, bright blue near 0, dark where it's unsure. Logistic regression's map is always the same shape: a straight edge (where the probability is exactly 0.5), with the probability sliding smoothly from one side to the other.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points and the model's probability shaded over the plane"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label><input type="checkbox" id="poly"> add x², y², x·y columns</label></div>
+  <div class="row"><label>penalty λ <input type="range" id="lam" min="-4" max="0" step="0.25" value="-4"> <b id="lamV"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Predict, then pick <i>ring around a disc</i>: how well can a straight edge separate a disc from the ring around it?</p>
+    <ul><li data-k="a" data-says="Try it: no straight cut puts the disc on one side and the whole ring on the other.">About 90%</li><li data-k="b">No better than a coin flip</li><li data-k="c" data-says="Any constant answer gets about half; the line can't do better here.">0%</li></ul>
+    <div class="why">Every straight line through a ring leaves ring dots on both sides, so the best line is no better than guessing. (Here it even scores 30% on new dots: it leaned toward a tilt in the 200 training dots that new dots don't share, a small lesson in fitting noise.) Now tick <i>add x², y², x·y</i>: the model gets the column x² + y² (the squared distance from the center) as a sum of two of its columns, and a straight edge in those columns is a circle on the map. The model is still linear, in the columns you gave it.</div>
+  </div>
+  <p class="gist">Logistic regression draws one straight edge and turns the distance from it into a probability; give it new columns and the edge can bend on the map.</p>
+
+  <h2>2. How it learns: log-odds, a sigmoid and log-loss</h2>
+  <p>The weighted sum \(z = w_0 + w_1 x_1 + \dots\) can be any number, and a probability must sit between 0 and 1, so the sigmoid squashes it: \(p = \sigma(z) = 1 / (1 + e^{-z})\). Turn it around and \(z\) is the <b>log-odds</b>, \(\ln \frac{p}{1-p}\): the model says the log-odds are a weighted sum. Training minimizes chapter 5's log-loss, which has no closed form like page 1's, so it's gradient descent (or a cleverer cousin):</p>
+  <p class="formula">\[ L = -\frac{1}{n}\sum_i \big[\,y_i \ln p_i + (1 - y_i)\ln(1 - p_i)\,\big], \qquad \nabla_w L = \frac{1}{n}\sum_i (p_i - y_i)\, x_i \]</p>
+  <p>The gradient reads as: for each example, the miss \(p_i - y_i\) times its inputs, averaged. It's the same shape as least squares' gradient, which is no accident. And the loss is a bowl (calculus 5), so there's one minimum and gradient descent finds it from anywhere.</p>
+  <div class="q" data-num="14.5" data-tol="0.05">
+    <p>On the bank calls, the weight for "the last campaign succeeded with this customer" is 2.68. By what factor does that multiply the odds of a yes? (\(e^{2.68}\))</p>
+    <div class="why">\(e^{2.68} \approx 14.5\). Adding \(w\) to the log-odds multiplies the odds by \(e^w\): that's an <b>odds ratio</b>. Measured on the data: 64% of those customers said yes, against 9.6% of the rest. Each extra call in this campaign has an odds ratio of 0.92 (8% lower odds per call), and being called on a landline instead of a mobile, 0.40.</div>
+  </div>
+  <details class="deeper"><summary>Why the weights read as odds, and why the probabilities come out honest</summary>
+    <ol>
+      <li>The model says \(\ln \frac{p}{1-p} = w_0 + w_1 x_1 + \dots\). Raise \(x_1\) by 1 and the right side grows by \(w_1\).</li>
+      <li>So \(\ln\) of the odds grows by \(w_1\), and the odds themselves get multiplied by \(e^{w_1}\), whatever the other columns are. That's the readable part: one number per column, the same everywhere.</li>
+      <li>At the minimum the gradient is zero. Its intercept entry is \(\frac{1}{n}\sum_i (p_i - y_i) = 0\): the average predicted probability equals the share of yeses in the training data.</li>
+      <li>The same holds for every column: \(\sum_i (p_i - y_i)\, x_{ij} = 0\). For a 0/1 column like "landline", that says the predicted yeses among landline calls add up to the real count.</li>
+      <li>So log-loss pushes the predictions to be right on average in every group the columns describe: that's why logistic regression is usually <b>calibrated</b> out of the box (a 20% means about 20%), which many stronger models aren't.</li>
+    </ol>
+  </details>
+
+  <h2>3. Build it: gradient descent from scratch, then scikit-learn</h2>
+  <p>The bank-call data from the features lesson: will a customer agree to a term deposit (11% did)? Five numeric columns, scaled; the leaking call duration is dropped.</p>
+  <div class="code" data-title="Logistic regression from scratch, next to scikit-learn, and its calibration"><textarea>
+import io
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+
+b = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))      # in a notebook: pd.read_csv(url)
+y = (b["y"] == "yes").astype(int).values
+cols = ["age", "campaign", "pdays", "previous", "euribor3m"]
+X = StandardScaler().fit_transform(b[cols])
+A = np.column_stack([np.ones(len(X)), X])                     # a column of ones: the intercept
+
+sigmoid = lambda z: 1 / (1 + np.exp(-z))
+w = np.zeros(A.shape[1])
+for step in range(3000):
+    p = sigmoid(A @ w)
+    w -= 0.5 * A.T @ (p - y) / len(y)                          # the gradient: misses times inputs, averaged
+print("gradient descent:", w.round(3))
+sk = LogisticRegression(C=1e6, max_iter=5000).fit(X, y)       # C = 1/λ: a huge C means no penalty
+print("scikit-learn:    ", np.r_[sk.intercept_, sk.coef_[0]].round(3))
+print("average prediction", sigmoid(A @ w).mean().round(4), "= share of yes", y.mean().round(4))
+
+# calibration: sort the calls into ten equal groups by predicted chance, compare with what happened
+d = pd.DataFrame({"predicted": sigmoid(A @ w), "said yes": y})
+d["group"] = pd.qcut(d["predicted"], 10, labels=False, duplicates="drop")
+d.groupby("group").mean().round(3).T
+</textarea></div>
+  <p>Every group's average prediction sits near its real rate of yes, and the low groups are where most calls are. Notice the model hardly ever says "yes": its most confident tenth of calls averages a 40% chance (and 45% of them did say yes). That's the honest answer for these calls, and why chapter 12's thresholds matter more than accuracy here.</p>
+
+  <h2>4. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> on the bank calls with every column (one-hot categories, scaled), logistic regression's test AUC was 0.779; scikit-learn's boosted trees got 0.760, XGBoost 0.776, LightGBM 0.748. With 10,000 rows and effects that mostly add up, a line is as good as anything, trains in milliseconds, and each weight is an odds ratio a regulator can read. That's why credit scoring still runs on it.</p>
+  <div class="q" data-answer="a">
+    <p>Four points on a line, the two left ones blue and the two right ones red: perfectly separable. What does unpenalized logistic regression do to the weight?</p>
+    <ul><li data-k="a">Grows it forever: every step makes the probabilities a bit closer to exactly 0 and 1</li><li data-k="b" data-says="There's no finite weight where the gradient is zero: the loss keeps falling as w grows.">Stops at the weight that separates them</li><li data-k="c" data-says="Separable data is the easy case for accuracy, not for the weights.">Can't fit it at all</li></ul>
+    <div class="why">Log-loss keeps shrinking as the edge gets steeper, so the weight runs off to infinity (in practice, until the optimizer gives up). Measured on six points: with the penalty \(C = 1\) the weight is 1.2; \(C = 100\), 5.8; \(C = 10^4\), 12.7; \(C = 10^8\), 15.3 and still climbing when the solver stopped. The penalty is what keeps it finite. That's why scikit-learn penalizes by default.</div>
+  </div>
+  <p class="gist">Logistic regression is the readable, calibrated baseline for yes/no questions; it fails when the edge between classes isn't straight in the columns you gave it.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Edges that bend.</b> Rings, checkerboards, "risky only at night and only downtown": a single straight edge can't. Add the columns that make it straight (squares, products, bins), or switch to trees (pages 5 to 7).</li>
+      <li><b>Perfect separation.</b> When some column splits the classes completely (often a leak: "account closed" predicting churn), the weight runs to infinity and the probabilities become 0 and 1. A penalty keeps it finite; then ask why that column is so perfect.</li>
+      <li><b>Twin columns.</b> As on page 1, near-duplicates make the weights unreadable; the economy columns in the bank data (euribor, employment, variation rate) are 0.91 to 0.97 correlated with each other, which is why the code box keeps only one.</li>
+      <li><b>Unscaled columns.</b> Gradient descent crawls when one column is in thousands and another in fractions (the bowl is a long narrow valley), and the penalty is unfair across scales. Scale first.</li>
+      <li><b>Rare classes.</b> At 1% positives, "always no" is 99% accurate and the model may never predict yes. Judge it by AUC or precision and recall, pick the threshold from the costs (chapter 12), or reweight the classes (<code>class_weight="balanced"</code>), which shifts the probabilities so they're no longer calibrated.</li>
+    </ul>
+  </details>
+
+  <h2>5. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>Penalty strength</td><td><code>C</code> (= 1/λ; default 1)</td><td>Small C: smaller weights, softer probabilities, less overfitting. Tune on a log scale (<code>LogisticRegressionCV</code>).</td></tr>
+    <tr><td>Penalty kind</td><td><code>l1_ratio</code> (0 = squares, 1 = absolute values)</td><td>As on page 1: L2 shrinks every weight, L1 switches columns off.</td></tr>
+    <tr><td>The features</td><td>your columns</td><td>One-hot categories, bins, products and squares let one straight edge make bent boundaries.</td></tr>
+    <tr><td>Class weights</td><td><code>class_weight</code></td><td>Makes rare classes count more; better recall, worse calibration.</td></tr>
+    <tr><td>Threshold</td><td>your code, on <code>predict_proba</code></td><td>Not 0.5 by law: pick it from what a false yes and a false no cost.</td></tr>
+    <tr><td>More than two classes</td><td>automatic (softmax)</td><td>One weighted sum per class, turned into probabilities by softmax: chapter 5's classifier.</td></tr>
+  </table></div>
+  <p>Next in the zoo: a model with no weights at all.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing data: Moro, Cortez and Rita (2014), UCI Machine Learning Repository, CC BY 4.0.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, logistic } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["blobs", "diagonal", "circles", "moons", "xor"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+let last = "";
+function draw() {
+  const lam = +$("lam").value === -4 ? 0 : 10 ** +$("lam").value, poly = $("poly").checked, set = data($("ds").value);
+  const r = show($("map"), (t) => logistic(t, { poly, lambda: lam }), set), w = r.p.w, names = ["", "x", "y", "x²", "y²", "x·y"];
+  $("lamV").textContent = lam ? lam.toPrecision(2) : "0";
+  $("r1").textContent = `${r.text}\nlog-odds = ${w.map((v, j) => `${j && v >= 0 ? "+" : ""}${v.toFixed(2)}${names[j]}`).join(" ")}`;
+  const key = $("ds").value + poly;
+  if (key !== last && $("ds").value === "circles") say(poly ? "x² + y² is the distance from the center, squared: now a straight edge in those columns is a circle!" : "No straight edge fits a ring. What column would help?", "think");
+  last = key;
+}
+$("r1").style.whiteSpace = "pre-wrap";
+for (const id of ["ds", "poly", "lam"]) $(id).addEventListener("input", draw);
+draw();
+window.blipContext = () => ({ page: "AI model zoo 2: logistic regression (sigmoid of a weighted sum, log-odds and odds ratios, log-loss, calibration, perfect separation, feature columns that bend the edge)", dataset: $("ds").value, polyColumns: $("poly").checked, readout: $("r1").textContent });
+</script>
+</body>
+</html>
