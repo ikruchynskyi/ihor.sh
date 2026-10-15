@@ -174,14 +174,22 @@
 </main>
 <script type="module">
 // Your progress on the path (ai/learn.js, this browser only): finished lessons, where to continue, cards due, gaps.
-import { state, dueCards, progressCode, loadProgressCode } from "/ai/learn.js";
+import { state, dueCards, progressCode, loadProgressCode, badge } from "/ai/learn.js";
 import { dayOf } from "/ai/game.js";
 import { strip } from "/ai/hud.js";
+if (state.done["capstone.html"]) badge("capstone", "Capstone: predict broken elevators, live");
 const live = [...document.querySelectorAll("ol.path li:not(.soon)")].map((li) => ({ li, href: li.querySelector("a")?.getAttribute("href")?.replace("./", "") }));
 for (const { li, href } of live) if (state.done[href]) li.classList.add("done");
 for (const h of document.querySelectorAll("h2.stage")) {
+  const stageId = h.id;
+  const isExamStage = stageId.startsWith("stage-") || stageId === "zoo";
+  if (state.badges?.[stageId]) h.insertAdjacentHTML("afterbegin", `<span title="Badge earned">🏅 </span>`);
   const ol = h.nextElementSibling?.nextElementSibling, mine = ol?.matches("ol.path") ? live.filter((l) => ol.contains(l.li)) : [];
-  if (mine.length) h.insertAdjacentHTML("beforeend", `<span class="stage-count">${mine.filter((l) => state.done[l.href]).length} of ${mine.length} done</span>`);
+  if (mine.length) {
+    const doneCount = mine.filter((l) => state.done[l.href]).length;
+    const examLink = isExamStage ? ` · <a href="./exam.html?stage=${stageId}" style="text-decoration:underline;">exam →</a>` : "";
+    h.insertAdjacentHTML("beforeend", `<span class="stage-count">${doneCount} of ${mine.length} done${examLink}</span>`);
+  }
 }
 const next = live.find((l) => !state.done[l.href]), started = Object.keys(state.done).length, due = dueCards().length, gaps = Object.keys(state.gaps).length;
 const oldestGap = Object.values(state.gaps || {}).sort((a, b) => (a.at || 0) - (b.at || 0))[0];
@@ -191,6 +199,7 @@ you.id = "you"; you.className = "card";
 you.innerHTML = (started ? `<div><b>Your progress:</b> ${started} of ${live.length} lessons finished.</div>` : `<div><b>New here?</b> Start at the top; each lesson ends with a short checkpoint that marks it done.</div>`)
   + (next ? `<div>Continue: <a class="go" href="./${next.href}">${next.li.querySelector("b")?.textContent ?? next.href}</a> →</div>` : `<div>You've finished every lesson that's ready. 🎉</div>`)
   + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · <a href="${gapDrillHref}">${gaps} gap${gaps === 1 ? "" : "s"} to revisit</a>` : ""}</div>` : "")
+  + (started ? `<div><a href="./portfolio.html">Your portfolio & badges →</a></div>` : "")
   + (started >= 2 ? `<div><a href="./daily.html">${state.daily?.[dayOf()] ? `Daily quiz ✓ ${state.daily[dayOf()].score}/5` : "Daily quiz: 5 questions →"}</a></div>` : "");
 you.append(strip(Object.assign(document.createElement("div"), { style: "margin-top:6px" })));
 // progress lives in this browser only: a code carries it to another device

@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your AI Portfolio & Transcript · AI from scratch</title>
+  <meta name="description" content="Your learning portfolio on AI from scratch: finished lessons, checkpoint scores, stage badges, notebooks, and project links." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --amber: #f59f00;
+      --border-r: 12px;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 17px/1.65 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 36px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    header.portfolio-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--line);
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 2.2rem;
+      line-height: 1.2;
+    }
+    .student-title {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .actions-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 8px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .btn.secondary {
+      background: var(--card);
+      color: var(--fg) !important;
+      border-color: var(--line);
+    }
+    .btn.secondary:hover {
+      border-color: var(--fg);
+    }
+    .btn.sm {
+      font-size: 0.8rem;
+      padding: 4px 10px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--border-r);
+      background: var(--card);
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-card .val {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--fg);
+    }
+    .stat-card .lbl {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    .section-title {
+      font-size: 1.35rem;
+      margin: 32px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .badge-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .badge-card.locked {
+      opacity: 0.45;
+      background: transparent;
+      border-style: dashed;
+    }
+    .badge-card .icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .badge-card .info {
+      flex: 1;
+      min-width: 0;
+    }
+    .badge-card .name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      line-height: 1.3;
+    }
+    .badge-card .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .lessons-table, .projects-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .lessons-table th, .lessons-table td,
+    .projects-table th, .projects-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    .lessons-table th, .projects-table th {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .score-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      background: color-mix(in srgb, var(--green) 15%, transparent);
+      color: var(--green);
+    }
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 4px;
+    }
+    .del-btn:hover {
+      color: #e03131;
+    }
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .input-row input {
+      flex: 1;
+      min-width: 180px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 0.9rem;
+      background: var(--bg);
+    }
+    .input-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .wide-scroll {
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    /* Print styling: clean, compact 1-2 page transcript */
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        font-size: 12pt;
+        line-height: 1.4;
+      }
+      main {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      .actions-bar, .no-print, #add-project-form, .del-btn, .eyebrow {
+        display: none !important;
+      }
+      header.portfolio-header {
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 16px;
+      }
+      .card, .stat-card, .badge-card {
+        border: 1px solid #ccc;
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .badges-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .section-title {
+        margin: 18px 0 8px;
+        font-size: 1.15rem;
+      }
+      .lessons-table th, .lessons-table td,
+      .projects-table th, .projects-table td {
+        padding: 6px 8px;
+      }
+      a {
+        text-decoration: none;
+        color: #000;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Profile</p>
+  <header class="portfolio-header">
+    <div>
+      <h1 id="user-display-name">Learner Portfolio</h1>
+      <p class="student-title">AI from scratch · Official Progress Record</p>
+    </div>
+    <div class="actions-bar">
+      <button class="btn secondary" onclick="window.print()">Print / Export PDF</button>
+      <a class="btn" href="./">Continue Learning →</a>
+    </div>
+  </header>
+
+  <div class="stats-grid" id="stats-slot"></div>
+
+  <h2 class="section-title">Stage Badges &amp; Exams</h2>
+  <div class="badges-grid" id="badges-slot"></div>
+
+  <h2 class="section-title">Completed Lessons</h2>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="wide-scroll">
+      <table class="lessons-table">
+        <thead>
+          <tr>
+            <th>Lesson</th>
+            <th>Stage</th>
+            <th>Checkpoint Score</th>
+            <th>Completed</th>
+          </tr>
+        </thead>
+        <tbody id="lessons-tbody">
+          <tr><td colspan="4" style="color:var(--muted); text-align:center; padding: 24px;">Loading lessons...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="section-title">Completed Notebooks</h2>
+  <div class="card" style="padding: 16px 20px;">
+    <div id="notebooks-slot">Loading notebooks...</div>
+  </div>
+
+  <h2 class="section-title">Published Projects &amp; Notebooks</h2>
+  <div class="card">
+    <p style="margin: 0 0 12px; font-size: 0.92rem; color: var(--muted);">
+      Add links to your own code, Kaggle submissions, Hugging Face spaces, or GitHub repos to complete your portfolio.
+    </p>
+    <div class="wide-scroll">
+      <table class="projects-table" id="projects-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Project / Notebook Title</th>
+            <th>Link</th>
+            <th>Description</th>
+            <th class="no-print" style="width: 40px;"></th>
+          </tr>
+        </thead>
+        <tbody id="projects-tbody"></tbody>
+      </table>
+    </div>
+    <div id="no-projects-msg" style="color:var(--muted); font-size: 0.9rem; padding: 8px 0;">No personal project links added yet.</div>
+
+    <form id="add-project-form" style="margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px;">
+      <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 6px;">Add a project or notebook link:</div>
+      <div class="input-row">
+        <input type="text" id="proj-title" placeholder="e.g. NYC Subway Delay Predictor" required />
+        <input type="url" id="proj-url" placeholder="https://github.com/..." required />
+        <input type="text" id="proj-desc" placeholder="Brief note: XGBoost model with 84% accuracy" />
+        <button type="submit" class="btn sm" style="align-self: center;">Add Link</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script type="module">
+import { state, save, path } from "/ai/learn.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const ALL_STAGES = [
+  { id: "stage-0", title: "Stage 0 · Start here" },
+  { id: "stage-1", title: "Stage 1 · The math of learning" },
+  { id: "stage-2", title: "Stage 2 · How a network learns" },
+  { id: "stage-3", title: "Stage 3 · Classic ML and judging models" },
+  { id: "stage-4", title: "Stage 4 · The engineer's toolkit" },
+  { id: "zoo", title: "Model zoo" },
+  { id: "stage-5", title: "Stage 5 · Seeing and reading" },
+  { id: "stage-6", title: "Stage 6 · LLM engineering" },
+  { id: "stage-7", title: "Stage 7 · Production" },
+  { id: "capstone", title: "Capstone Project" }
+];
+
+async function render() {
+  const lessonList = await path;
+  const doneKeys = Object.keys(state.done || {});
+  const doneCount = doneKeys.length;
+  const badgesEarned = Object.keys(state.badges || {});
+
+  // 1. Stats Grid
+  $("stats-slot").innerHTML = `
+    <div class="stat-card">
+      <div class="val">⚡ ${Number(state.xp || 0).toLocaleString()}</div>
+      <div class="lbl">Total XP</div>
+    </div>
+    <div class="stat-card">
+      <div class="val">🔥 ${state.streak?.best || state.streak?.days || 0}</div>
+      <div class="lbl">Best Streak</div>
+    </div>
+    <div class="stat-card">
+      <div class="val">${doneCount} / ${lessonList.length}</div>
+      <div class="lbl">Lessons Finished</div>
+    </div>
+    <div class="stat-card">
+      <div class="val">🏅 ${badgesEarned.length}</div>
+      <div class="lbl">Badges Earned</div>
+    </div>
+  `;
+
+  // 2. Badges Grid
+  $("badges-slot").innerHTML = ALL_STAGES.map((st) => {
+    const badgeInfo = state.badges?.[st.id];
+    const isEarned = !!badgeInfo;
+    const dateStr = isEarned ? new Date(badgeInfo.at || Date.now()).toLocaleDateString() : "Not earned yet";
+    return `
+      <div class="badge-card ${isEarned ? "" : "locked"}">
+        <div class="icon">${isEarned ? "🏅" : "🔒"}</div>
+        <div class="info">
+          <div class="name">${esc(st.title)}</div>
+          <div class="meta">${isEarned ? `Unlocked ${dateStr}` : `<a href="./exam.html?stage=${st.id}" style="color:inherit;">Take Exam →</a>`}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // 3. Completed Lessons
+  const lessonMap = Object.fromEntries(lessonList.map((l) => [l.href, l]));
+  const completedEntries = doneKeys
+    .map((href) => ({ href, ...(state.done[href] || {}), meta: lessonMap[href] }))
+    .sort((a, b) => (b.at || 0) - (a.at || 0));
+
+  if (!completedEntries.length) {
+    $("lessons-tbody").innerHTML = `<tr><td colspan="4" style="color:var(--muted); text-align:center; padding: 24px;">No lessons completed yet. Checkpoints mark lessons done!</td></tr>`;
+  } else {
+    $("lessons-tbody").innerHTML = completedEntries.map((c) => {
+      const title = c.meta?.title || c.href;
+      const stageName = c.meta?.stage?.split(" · ")[0] || "Stage";
+      const scoreStr = c.score != null ? `${c.score} / 5` : "Tested out";
+      const dateStr = c.at ? new Date(c.at).toLocaleDateString() : "—";
+      return `
+        <tr>
+          <td><a href="./${c.href}"><b>${esc(title)}</b></a></td>
+          <td>${esc(stageName)}</td>
+          <td><span class="score-pill">${scoreStr}</span></td>
+          <td style="color:var(--muted); font-size:0.85rem;">${dateStr}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // 4. Completed Notebooks
+  const notebookKeys = Object.keys(state.once || {}).filter((k) => k.startsWith("notebook:"));
+  if (!notebookKeys.length) {
+    $("notebooks-slot").innerHTML = `<div style="color:var(--muted); font-size:0.9rem;">No completed practice notebooks recorded yet. Each lesson notebook has runnable check cells that record completion!</div>`;
+  } else {
+    $("notebooks-slot").innerHTML = `
+      <div style="display:flex; flex-wrap:wrap; gap: 8px;">
+        ${notebookKeys.map((k) => {
+          const stem = k.replace("notebook:", "");
+          const cleanName = stem.replace(/\.(html|ipynb|py)$/, "");
+          return `
+            <span style="display:inline-block; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: 0.85rem; font-weight: 600;">
+              📓 ${esc(cleanName)} ✓
+            </span>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  // 5. Projects
+  renderProjects();
+}
+
+function renderProjects() {
+  const projects = state.portfolio || [];
+  const tbody = $("projects-tbody");
+  const table = $("projects-table");
+  const noMsg = $("no-projects-msg");
+
+  if (!projects.length) {
+    table.style.display = "none";
+    noMsg.style.display = "block";
+  } else {
+    table.style.display = "table";
+    noMsg.style.display = "none";
+    tbody.innerHTML = projects.map((p, idx) => `
+      <tr>
+        <td><b>${esc(p.title)}</b></td>
+        <td><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></td>
+        <td style="color:var(--muted);">${esc(p.desc || "—")}</td>
+        <td class="no-print">
+          <button type="button" class="del-btn" data-del="${idx}" title="Delete project">✕</button>
+        </td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("[data-del]").forEach((btn) => {
+      btn.onclick = () => {
+        const delIdx = parseInt(btn.dataset.del, 10);
+        state.portfolio.splice(delIdx, 1);
+        save();
+        renderProjects();
+      };
+    });
+  }
+}
+
+$("add-project-form").onsubmit = (e) => {
+  e.preventDefault();
+  const title = $("proj-title").value.trim();
+  const url = $("proj-url").value.trim();
+  const desc = $("proj-desc").value.trim();
+  if (!title || !url) return;
+
+  state.portfolio = state.portfolio || [];
+  state.portfolio.push({ title, url, desc, at: Date.now() });
+  save();
+
+  $("proj-title").value = "";
+  $("proj-url").value = "";
+  $("proj-desc").value = "";
+  renderProjects();
+};
+
+render();
+</script>
+</body>
+</html>

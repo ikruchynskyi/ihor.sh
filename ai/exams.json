@@ -1,0 +1,884 @@
+{
+  "stage-0": [
+    {
+      "q": "Why is recognizing whether an image contains a cat a task for machine learning rather than a hand-coded rules program?",
+      "options": [
+        "A rules program would require thousands of if-statements for lighting, angles, fur, and poses that no human can completely specify",
+        "Computers are unable to execute if-statements on pixel values",
+        "Machine learning models run faster than hand-written rules on simple tasks",
+        "Rules programs can only work with numbers, while images are made of colors"
+      ],
+      "answer": 0,
+      "why": "Nobody can write down rules covering every variation in lighting, angle, and pose for a cat. Machine learning turns examples into patterns instead of requiring manual rules.",
+      "lesson": "s1-what-is-ml.html"
+    },
+    {
+      "q": "In machine learning, what do we mean when we call a model 'a function with knobs'?",
+      "options": [
+        "The learner manually turns physical dials on their computer keyboard to control accuracy",
+        "The model has internal parameters that adjust its behavior; training means automatically adjusting those knobs until predictions match reality",
+        "The model only works if the programmer defines preset slider controls in a web browser",
+        "The knobs represent the speed of the processor during calculations"
+      ],
+      "answer": 1,
+      "why": "A model has parameters (the knobs). Training is the automatic process where an algorithm turns those knobs to minimize the difference between predictions and actual labels.",
+      "lesson": "s1-what-is-ml.html"
+    },
+    {
+      "q": "Suppose you want to compute the total error across 500 house price predictions. In Python, what pattern best describes this?",
+      "options": [
+        "Store the prices in a list, iterate through them with a for-loop, and accumulate the difference between prediction and actual price into a running sum",
+        "Write 500 separate variable names like error1, error2, ..., error500 and manually add them",
+        "Define an if-statement that checks whether house prices are positive",
+        "Create a single number variable and overwrite it 500 times without adding"
+      ],
+      "answer": 0,
+      "why": "Lists hold sequential data, loops repeat actions across each item, and accumulator variables gather the total error across all examples.",
+      "lesson": "s2-just-enough-code.html"
+    },
+    {
+      "q": "Why do programmers write reusable functions (using 'def') when scoring models instead of copying and pasting the error calculation?",
+      "options": [
+        "Python refuses to execute code blocks that appear more than once in a file",
+        "Functions give a name to an idea, prevent copy-paste bugs, and let you calculate error on new datasets with a single call",
+        "Functions automatically turn non-linear models into linear equations",
+        "Copying code makes the Python interpreter run out of RAM"
+      ],
+      "answer": 1,
+      "why": "Packaging logic inside a function creates a reliable, reusable tool that tests any prediction against true values without duplicate code.",
+      "lesson": "s2-just-enough-code.html"
+    },
+    {
+      "q": "In mathematical formulas for machine learning, what does the Greek uppercase letter Sigma (Σ) tell you to do?",
+      "options": [
+        "Add up a sequence of numbers or errors across all items in a group",
+        "Multiply two matrices together",
+        "Take the square root of the largest error",
+        "Check whether a number is greater than zero"
+      ],
+      "answer": 0,
+      "why": "Uppercase Sigma (Σ) stands for sum: it simply means 'add all of these terms together', exactly like a loop accumulating a total in code.",
+      "lesson": "s3-math-warm-up.html"
+    },
+    {
+      "q": "When looking at the graph of a line predicting trip duration from miles driven, what does the slope tell you?",
+      "options": [
+        "The baseline trip duration when the car drives zero miles",
+        "How many additional minutes the trip takes for each additional mile driven",
+        "The total number of trips in the dataset",
+        "The exact error made on the longest trip"
+      ],
+      "answer": 1,
+      "why": "Slope measures rate of change: for every 1 unit increase in the input (miles), the output (minutes) increases by the slope.",
+      "lesson": "s3-math-warm-up.html"
+    },
+    {
+      "q": "Before a machine learning model deployed on the web can classify an uploaded photo, why must preprocessing occur first?",
+      "options": [
+        "The web browser cannot upload binary files",
+        "The model was trained on pictures of a specific size, crop, and color scale, so user uploads must be converted into the exact numerical format the model expects",
+        "Preprocessing increases the file size so the server doesn't reject it as spam",
+        "Uploading raw photos is forbidden by internet protocols"
+      ],
+      "answer": 1,
+      "why": "Models expect fixed numerical inputs (e.g., 224x224 pixels, normalized values). If you pass an arbitrary raw image without preprocessing, the model cannot read it.",
+      "lesson": "s4-your-first-shared-model.html"
+    },
+    {
+      "q": "What is the difference between training a model and deploying a model?",
+      "options": [
+        "Training fits the knobs using historical data; deploying puts the frozen model where users or systems can send new inputs and get live predictions",
+        "Training runs on a phone while deploying runs in a cloud cluster",
+        "Training converts code into math while deploying converts math into text",
+        "Deploying is only needed for unsupervised models, while supervised models run directly from training"
+      ],
+      "answer": 0,
+      "why": "Training finds the best parameters using examples and loss. Deployment packages the resulting model as an API or application for live real-world use.",
+      "lesson": "s4-your-first-shared-model.html"
+    }
+  ],
+  "stage-1": [
+    {
+      "q": "Geometrically, what does a 2x2 matrix with a determinant of zero do to the 2D plane?",
+      "options": [
+        "It collapses the entire 2D plane onto a 1D line or a single 0D point, losing information so it cannot be undone",
+        "It rotates the plane by 90 degrees without changing areas",
+        "It doubles the area of any shape on the plane",
+        "It reflects the plane across the diagonal axis"
+      ],
+      "answer": 0,
+      "why": "The determinant measures how much area is scaled by the transformation. A determinant of 0 collapses 2D area into zero (a line or point), which has no inverse.",
+      "lesson": "01-matrices-are-moves.html"
+    },
+    {
+      "q": "Why can an overdetermined system of linear equations (more rows than columns, representing more equations than variables) rarely be solved exactly?",
+      "options": [
+        "The target vector usually lies outside the column space spanned by the matrix columns",
+        "Matrices with more rows than columns cannot be multiplied by vectors",
+        "Elimination cannot be performed if the number of rows exceeds two",
+        "Overdetermined matrices always have negative eigenvalues"
+      ],
+      "answer": 0,
+      "why": "The columns span a subspace. If the target y doesn't sit exactly inside that subspace, no linear combination of columns equals y, requiring least squares approximation.",
+      "lesson": "l1-systems-and-inverses.html"
+    },
+    {
+      "q": "When optimizing a cost function with gradient descent, why do we update parameters in the direction of the negative gradient (-∇L)?",
+      "options": [
+        "The gradient points in the direction of steepest ascent, so the negative gradient points in the direction of steepest local descent",
+        "The negative gradient points directly at the global minimum regardless of function shape",
+        "Negative gradients prevent parameters from becoming positive",
+        "Multiplying by -1 ensures the learning rate stays between 0 and 1"
+      ],
+      "answer": 0,
+      "why": "The gradient ∇L points uphill toward steepest increase; stepping in the opposite direction (-∇L) guarantees the fastest instantaneous decrease in loss.",
+      "lesson": "02-gradients.html"
+    },
+    {
+      "q": "If y = f(u) and u = g(x), why is the derivative dy/dx equal to (dy/du) * (du/dx) rather than (dy/du) + (du/dx)?",
+      "options": [
+        "Derivatives represent multiplicative rates of change (stretching factors); chained rates of change compound by multiplying",
+        "Addition is not defined for differential equations in calculus",
+        "Multiplication guarantees the derivative will always be positive",
+        "The plus sign is reserved for vector additions only"
+      ],
+      "answer": 0,
+      "why": "Derivatives are ratios of change (slopes). If y moves 3x faster than u, and u moves 2x faster than x, y moves (3 * 2) = 6x faster than x.",
+      "lesson": "c1-derivatives.html"
+    },
+    {
+      "q": "Suppose z = f(x, y). What does the Jacobian matrix or gradient vector collect for functions with multiple inputs and outputs?",
+      "options": [
+        "All the first-order partial derivatives showing how each output changes with respect to each input",
+        "The second derivatives indicating the curvature in all directions",
+        "The determinant of the input vectors",
+        "The eigenvalues of the input covariance matrix"
+      ],
+      "answer": 0,
+      "why": "The Jacobian matrix packs all partial derivatives ∂y_i / ∂x_j, describing the best local linear approximation of a multi-variable function.",
+      "lesson": "c2-many-variables.html"
+    },
+    {
+      "q": "A medical test is 99% accurate (1% false positive, 1% false negative). If a condition affects 1 in 10,000 people, why is a person testing positive still unlikely to have the condition?",
+      "options": [
+        "The prior base rate (1 in 10,000) is so low that false positives among healthy people vastly outnumber true positives from infected people",
+        "Medical tests become ineffective when given to large populations",
+        "Bayes theorem cannot be applied when probabilities are under 50%",
+        "The false negative rate cancels out the true positive rate"
+      ],
+      "answer": 0,
+      "why": "Out of 10,000 people, 1 has the disease (detected ~1), but ~100 healthy people test false positive (1% of 9,999). So P(disease | positive) is ~1/101 (~1%).",
+      "lesson": "p1-probability-and-bayes.html"
+    },
+    {
+      "q": "Why is the median often preferred over the mean when describing subway delays, income, or web request latencies?",
+      "options": [
+        "The mean is sensitive to extreme outliers and long right tails, whereas the median reflects the experience of the typical observation",
+        "The median is always a larger number than the mean",
+        "The median can only be computed when data follows a Gaussian normal distribution",
+        "Computing the mean requires sorting all numbers, which is computationally expensive"
+      ],
+      "answer": 0,
+      "why": "Extreme values (like a 2-hour subway signal failure) pull the mean far to the right, while the median remains robust to outliers.",
+      "lesson": "p2-describing-data.html"
+    },
+    {
+      "q": "In Principal Component Analysis (PCA) and Singular Value Decomposition (SVD), what do the top eigenvectors or principal singular vectors represent?",
+      "options": [
+        "The orthogonal directions in feature space along which the data exhibits the maximum variance",
+        "The labels with the lowest classification error",
+        "The features that have zero correlation with any other variable",
+        "The points that lie closest to the origin"
+      ],
+      "answer": 0,
+      "why": "The first principal component is the direction of greatest variance in the data; subsequent components capture orthogonal directions of remaining variance.",
+      "lesson": "l2-eigenvectors-and-pca.html"
+    }
+  ],
+  "stage-2": [
+    {
+      "q": "What happens if a neural network with 10 hidden layers uses purely linear activation functions (no non-linearities like ReLU or sigmoid)?",
+      "options": [
+        "The entire network collapses mathematically into a single linear transformation (matrix multiplication), unable to learn non-linear boundaries",
+        "The network fits any arbitrary continuous function due to the universal approximation theorem",
+        "The gradients explode to infinity on the very first backpropagation step",
+        "The network can only output values between 0 and 1"
+      ],
+      "answer": 0,
+      "why": "A product of linear transformations W_2 * (W_1 * x) is just a single linear transformation W_combined * x. Non-linearities are required to learn non-linear patterns.",
+      "lesson": "03-a-neuron.html"
+    },
+    {
+      "q": "Why does reverse-mode automatic differentiation (backpropagation) scale much better for neural network training than forward-mode differentiation?",
+      "options": [
+        "Neural networks typically have millions of parameters but only one scalar loss; reverse mode computes all parameter gradients in one backward pass",
+        "Forward-mode requires computing matrix determinants while reverse mode only uses vector sums",
+        "Reverse-mode prevents gradient saturation in sigmoid neurons",
+        "Forward-mode only works for convex optimization problems"
+      ],
+      "answer": 0,
+      "why": "Reverse mode takes O(outputs) backward passes. Since training minimizes a single scalar loss (1 output) across millions of weights, reverse mode computes all gradients in a single sweep.",
+      "lesson": "04-backprop.html"
+    },
+    {
+      "q": "Why does high second-order curvature (large eigenvalues in the Hessian matrix) cause gradient descent with a constant learning rate to diverge or oscillate?",
+      "options": [
+        "Steep valley walls cause the gradient to change direction drastically after a small step, overshooting the minimum back and forth",
+        "Second-order curvature sets the first derivatives to zero immediately",
+        "High curvature guarantees that the loss function has no stationary points",
+        "The Hessian matrix can only be inverted when all gradients are zero"
+      ],
+      "answer": 0,
+      "why": "When curvature is high (the function bends sharply), a first-order linear step based on local slope shoots past the turn, causing wild oscillations or divergence.",
+      "lesson": "c3-taylor-and-curvature.html"
+    },
+    {
+      "q": "Why is minimizing cross-entropy loss equivalent to Maximum Likelihood Estimation (MLE) for classification models?",
+      "options": [
+        "Minimizing the negative log-likelihood of the true classes is mathematically identical to minimizing cross-entropy between true and predicted distributions",
+        "Cross-entropy loss forces the model weights to sum to 1",
+        "MLE only works when the loss function is mean squared error",
+        "Cross-entropy replaces gradient descent with an analytical matrix inversion"
+      ],
+      "answer": 0,
+      "why": "The likelihood of independent samples is ∏ P(y_i|x_i). Taking the negative logarithm gives -∑ log P(y_i|x_i), which is exactly the multiclass cross-entropy loss.",
+      "lesson": "05-probability-and-loss.html"
+    },
+    {
+      "q": "What does the Kullback-Leibler (KL) divergence D_KL(P || Q) measure between a true distribution P and a predicted distribution Q?",
+      "options": [
+        "The extra information (bits or nats) required to encode samples from P when using the code optimized for Q",
+        "The symmetric Euclidean distance between the mean vectors of P and Q",
+        "The probability that a sample drawn from P is identical to a sample from Q",
+        "The correlation coefficient between the random variables"
+      ],
+      "answer": 0,
+      "why": "KL divergence measures the relative entropy or information lost when approximating distribution P with distribution Q. It is zero if and only if P == Q.",
+      "lesson": "p5-information.html"
+    },
+    {
+      "q": "How does L2 weight decay (adding λ * ||w||² to the loss) connect to Maximum A Posteriori (MAP) estimation?",
+      "options": [
+        "It is mathematically equivalent to placing a zero-mean Gaussian prior distribution on the network weights",
+        "It forces all weights to be exactly zero for feature selection",
+        "It assumes weights follow a Laplace distribution with heavy tails",
+        "It turns non-convex neural network losses into globally convex quadratics"
+      ],
+      "answer": 0,
+      "why": "In Bayesian MAP, log P(w|D) = log P(D|w) + log P(w). If the prior P(w) is Gaussian N(0, σ²), log P(w) contributes -||w||²/(2σ²), which is L2 weight decay.",
+      "lesson": "p3-mle-and-map.html"
+    },
+    {
+      "q": "Why do deep networks using sigmoid or tanh activations suffer from vanishing gradients when networks using ReLU do not?",
+      "options": [
+        "The derivative of sigmoid saturates near 0 when inputs are large positive or negative, causing gradients to shrink exponentially as they multiply backward",
+        "Sigmoid activations cause weights to become negative during initialization",
+        "ReLU functions have a derivative of zero for all inputs, preventing gradients from multiplying",
+        "Sigmoid layers can only be trained with second-order Newton-Raphson methods"
+      ],
+      "answer": 0,
+      "why": "Sigmoid's maximum derivative is 0.25. Chaining several layers multiplies numbers <= 0.25, driving gradients to near zero. ReLU has derivative 1 for positive inputs, passing gradients undiminished.",
+      "lesson": "deep-networks.html"
+    },
+    {
+      "q": "In PyTorch, why must you call 'optimizer.zero_grad()' before running 'loss.backward()' in each training step?",
+      "options": [
+        "PyTorch accumulates gradients into .grad buffers by default; without resetting, gradients from previous batches add together",
+        "zero_grad() resets the model weights to random initial values",
+        "Calling backward() without zero_grad() raises a CUDA Out of Memory exception",
+        "zero_grad() normalizes the learning rate to prevent exploding loss"
+      ],
+      "answer": 0,
+      "why": "PyTorch sums gradients on each backward() call (useful for RNNs or gradient accumulation). If you forget zero_grad(), you optimize against the sum of all past batches.",
+      "lesson": "training-in-pytorch.html"
+    }
+  ],
+  "stage-3": [
+    {
+      "q": "During training, your model's training loss continues to fall toward zero, but validation loss begins rising after epoch 12. What is occurring?",
+      "options": [
+        "The model is overfitting: it is memorizing noise in the training set and losing generalizability to unseen data",
+        "The learning rate has automatically decayed to zero",
+        "The validation dataset has become corrupted by gradient descent",
+        "The model has underfit and needs more training epochs"
+      ],
+      "answer": 0,
+      "why": "When training error decreases while validation error increases, the model's capacity exceeds the general pattern and it begins fitting sample-specific noise (overfitting).",
+      "lesson": "11-overfitting.html"
+    },
+    {
+      "q": "In a cancer screening system where missing a malignant tumor has disastrous consequences, which metric should be prioritized over overall accuracy?",
+      "options": [
+        "Recall (sensitivity), minimizing false negatives so almost no actual cases are missed",
+        "Precision, ensuring that no healthy patients are ever flagged",
+        "Specificity alone, without regard to positive detection rates",
+        "Inference latency on mobile hardware"
+      ],
+      "answer": 0,
+      "why": "Recall = True Positives / (True Positives + False Negatives). High recall ensures that very few sick patients slip through undetected.",
+      "lesson": "12-measuring-a-model.html"
+    },
+    {
+      "q": "Why is performing feature normalization (like subtracting the mean and dividing by standard deviation) on the entire dataset BEFORE splitting into train and test a dangerous mistake?",
+      "options": [
+        "It causes data leakage: information from the test distribution leaks into the training pipeline, yielding overly optimistic evaluation scores",
+        "Standardization makes scikit-learn classifiers unable to converge",
+        "Test sets cannot contain negative numbers after normalization",
+        "It changes the row order of the dataset"
+      ],
+      "answer": 0,
+      "why": "The test set must simulate unseen future data. Computing test statistics into the scaler leaks information about the test distribution into training.",
+      "lesson": "features-and-leakage.html"
+    },
+    {
+      "q": "You evaluate a new model against your production baseline on 200 test examples. Accuracy rises from 82% to 84%, but a statistical test yields p = 0.35. What should you conclude?",
+      "options": [
+        "The 2% gain could easily be random sampling noise; there is not enough evidence to claim model B is truly better",
+        "Model B is guaranteed to be 84% accurate on all future traffic",
+        "The baseline model is broken and should be retired immediately",
+        "A p-value of 0.35 means model B has a 35% chance of overfitting"
+      ],
+      "answer": 0,
+      "why": "A p-value of 0.35 means that if both models were identical, a 2% discrepancy would occur by chance 35% of the time. The difference is not statistically significant.",
+      "lesson": "p4-confidence-and-tests.html"
+    },
+    {
+      "q": "What is the primary difference in how Random Forests and Gradient Boosted Trees build their ensembles?",
+      "options": [
+        "Random Forests train deep independent trees in parallel to reduce variance (bagging); Gradient Boosting trains shallow trees sequentially to correct prior errors (boosting)",
+        "Random Forests only work for regression while Gradient Boosting only works for classification",
+        "Random Forests optimize cross-entropy using backpropagation while Boosting uses neural networks",
+        "Random Forests cannot handle numerical features"
+      ],
+      "answer": 0,
+      "why": "Random forest averages uncorrelated deep trees to slash variance. Gradient boosting fits successive trees to the pseudo-residuals of earlier trees to slash bias.",
+      "lesson": "13-trees-and-boosting.html"
+    },
+    {
+      "q": "When predicting whether a bank customer will default next month, including 'total late fees charged in the current month' as a feature creates what problem?",
+      "options": [
+        "Target leakage: the feature records an outcome that only occurs after default has already begun, which won't be available at prediction time",
+        "High variance due to numerical underflow",
+        "Collinearity with the learning rate schedule",
+        "Violation of the Central Limit Theorem"
+      ],
+      "answer": 0,
+      "why": "Target leakage occurs when a feature reflects information that becomes known only at or after the target event occurs, producing fake perfect accuracy that fails in real life.",
+      "lesson": "features-and-leakage.html"
+    },
+    {
+      "q": "If error analysis reveals that your model has high bias (both training error and validation error are unacceptably high), which action is most effective?",
+      "options": [
+        "Increase model capacity (e.g. deeper trees, more parameters, or richer features)",
+        "Collect 100,000 more training examples of the same format",
+        "Increase L2 regularization penalty by a factor of 10",
+        "Apply early stopping at epoch 2"
+      ],
+      "answer": 0,
+      "why": "High bias means the model cannot even fit the training data (underfitting). Collecting more data or adding regularization makes underfitting worse; you need a more expressive model.",
+      "lesson": "ml-strategy.html"
+    },
+    {
+      "q": "How does an Isolation Forest identify anomalous data points in an unlabelled dataset?",
+      "options": [
+        "Anomalies have unusual feature values, so random recursive partition cuts isolate them in far fewer splits than normal points",
+        "It trains a neural network classifier to predict whether a point is prime",
+        "It computes the convex hull and flags all interior points as anomalies",
+        "It groups all points into a single cluster and measures total variance"
+      ],
+      "answer": 0,
+      "why": "Because anomalies are few and structurally distinct, random partitioning splits isolate them close to the tree roots with very short average path lengths.",
+      "lesson": "clusters-and-anomalies.html"
+    }
+  ],
+  "stage-4": [
+    {
+      "q": "In NumPy, what are the resulting shape and mechanism when adding array A of shape (100, 1) and array B of shape (1, 50)?",
+      "options": [
+        "Shape (100, 50), via broadcasting without copying data in memory",
+        "Shape (100, 1), because the first dimension dominates",
+        "A ValueError, because dimensions do not match exactly",
+        "Shape (101, 51), by concatenating the edges"
+      ],
+      "answer": 0,
+      "why": "NumPy broadcasting compares shapes elementwise from right to left. Dimension 1 stretches to match 50, and dimension 1 stretches to match 100, producing (100, 50) without memory duplication.",
+      "lesson": "numpy-in-depth.html"
+    },
+    {
+      "q": "Why does scikit-learn separate '.fit()' and '.transform()' on preprocessing transformers inside a Pipeline?",
+      "options": [
+        "fit() computes parameters (like mean and variance) strictly from the training data, while transform() applies those frozen parameters to new datasets",
+        "fit() converts data to Python lists, while transform() converts it back to NumPy",
+        "fit() only runs on GPUs, while transform() runs on CPUs",
+        "Calling fit() twice in a row causes the pipeline to self-destruct"
+      ],
+      "answer": 0,
+      "why": "This distinction prevents leakage: you learn the scaling parameters strictly on training folds, then apply those exact parameters to validation and test data.",
+      "lesson": "pandas-and-sklearn.html"
+    },
+    {
+      "q": "How does the Adam optimizer improve over standard Stochastic Gradient Descent (SGD) with a fixed learning rate?",
+      "options": [
+        "It tracks exponentially decaying moving averages of both past gradients (momentum) and squared gradients (adaptive learning rates per parameter)",
+        "It computes the exact analytical inverse of the Hessian matrix at every step",
+        "It eliminates the need for calculating backpropagation gradients",
+        "It guarantees that training loss drops monotonically at every single step"
+      ],
+      "answer": 0,
+      "why": "Adam combines momentum (smoothing noisy gradients) and RMSprop (scaling steps inversely by gradient magnitude variance), allowing fast progress along flat ravines.",
+      "lesson": "optimizers.html"
+    },
+    {
+      "q": "What problem does Batch Normalization primarily solve during the training of deep networks?",
+      "options": [
+        "It standardizes layer activations across mini-batches, stabilizing internal covariate shift and preventing activations from blowing up or vanishing",
+        "It compresses model weights onto disk so they take up less storage",
+        "It replaces all activation functions with unit-step functions",
+        "It prevents GPUs from running out of CUDA registers"
+      ],
+      "answer": 0,
+      "why": "By normalizing activations to zero mean and unit variance per batch (with learnable scale and shift), Batch Norm keeps intermediate layer distributions stable.",
+      "lesson": "making-nets-train.html"
+    },
+    {
+      "q": "Why is a learning rate warmup (gradually increasing learning rate over the first few hundred steps) frequently used when training large models with large batch sizes?",
+      "options": [
+        "Early in training, random initial weights produce erratic gradients; warmup prevents catastrophic destructive weight updates before statistics stabilize",
+        "GPUs require time to physically warm up their memory circuits",
+        "Warmup allows the model to calculate the test set accuracy before starting training",
+        "Warmup prevents Python from garbage-collecting the optimizer"
+      ],
+      "answer": 0,
+      "why": "With randomly initialized weights, initial gradient estimates are wildly inaccurate. Taking huge initial steps can shatter good representations.",
+      "lesson": "making-nets-train.html"
+    },
+    {
+      "q": "When profiling GPU training, you observe 30% GPU utilization while CPU usage is pinned at 100%. What is the most likely bottleneck?",
+      "options": [
+        "The data loading and preprocessing pipeline on the CPU cannot supply batches fast enough to keep the GPU fed",
+        "The GPU does not have enough compute cores to process tensors",
+        "The model learning rate is set too low",
+        "Gradient descent requires CPU confirmation before each GPU kernel launch"
+      ],
+      "answer": 0,
+      "why": "When the CPU is maxed out and the GPU is idling at low utilization, data ingestion (reading from disk, decoding, augmenting) is starving the GPU of input tensors.",
+      "lesson": "gpus-and-scale.html"
+    },
+    {
+      "q": "Why is setting 'torch.manual_seed(42)' and 'np.random.seed(42)' sometimes insufficient by itself to guarantee bit-for-bit reproducibility across GPU runs?",
+      "options": [
+        "Certain GPU CUDA operations (like atomic adds in backward passes) execute non-deterministically across parallel threads unless deterministic flags are explicitly enabled",
+        "Random seeds in Python only affect strings, not floating-point numbers",
+        "GPUs do not support seed initialization",
+        "Network latency on the internet alters matrix multiplications"
+      ],
+      "answer": 0,
+      "why": "Atomic floating point summation across unordered GPU threads yields tiny rounding variations unless `torch.use_deterministic_algorithms(True)` is enabled.",
+      "lesson": "experiments.html"
+    },
+    {
+      "q": "During training of a deep ReLU network, 80% of neurons suddenly stop firing (outputting 0 for all training examples) and their gradients remain 0 forever. What is this phenomenon?",
+      "options": [
+        "Dying ReLU: large negative gradient updates pushed neuron biases so far negative that inputs never exceed zero",
+        "Weight decay successfully pruning the entire network",
+        "Gradient ascent escaping local minima",
+        "Catastrophic forgetting caused by high batch size"
+      ],
+      "answer": 0,
+      "why": "When a ReLU neuron's inputs are always <= 0, its activation is 0 and its derivative is 0. No gradient flows back to update its weights, permanently killing the neuron.",
+      "lesson": "making-nets-train.html"
+    }
+  ],
+  "zoo": [
+    {
+      "q": "How does the geometry of the decision boundary drawn by a Decision Tree differ fundamentally from that of Logistic Regression?",
+      "options": [
+        "Decision trees create axis-aligned orthogonal step boundaries (rectangles), while logistic regression creates a single continuous linear hyperplane",
+        "Decision trees always create concentric circles, while logistic regression creates wavy curves",
+        "Logistic regression cannot separate classes if there are more than two features",
+        "Decision trees require normalized data between 0 and 1 while logistic regression does not"
+      ],
+      "answer": 0,
+      "why": "Each tree split tests a single feature against a threshold (x_i <= c), cutting feature space into axis-aligned rectangular boxes. Logistic regression draws w^T x + b = 0.",
+      "lesson": "zoo-tree.html"
+    },
+    {
+      "q": "Why does Lasso regression (L1 penalty) produce sparse models with exact zero coefficients, while Ridge regression (L2 penalty) only shrinks weights toward zero?",
+      "options": [
+        "The L1 constraint region is a diamond with sharp corners on the coordinate axes, where loss contours frequently touch the axes first",
+        "Lasso uses gradient descent while Ridge uses pseudo-inverses",
+        "Ridge regression only works when all features are independent",
+        "L1 regularization multiplies the loss by zero for unimportant features"
+      ],
+      "answer": 0,
+      "why": "The diamond geometry of the L1 ball ||w||_1 <= C has corners resting on the coordinate axes. The optimal elliptical loss contour hits these corners, zeroing out coefficients.",
+      "lesson": "zoo-linear.html"
+    },
+    {
+      "q": "How does the 'kernel trick' in Support Vector Machines (SVM) enable linear algorithms to learn complex non-linear boundaries?",
+      "options": [
+        "It computes inner products in a high-dimensional feature space using a kernel function k(x, x') without explicitly calculating the high-dimensional coordinates",
+        "It replaces optimization with a deep convolution network",
+        "It converts continuous variables into discrete binary flags",
+        "It splits the training set into thousands of micro-batches"
+      ],
+      "answer": 0,
+      "why": "Because the dual formulation of SVM depends only on inner products x_i · x_j, replacing the dot product with a kernel function k(x_i, x_j) computes high-dimensional distances implicitly.",
+      "lesson": "zoo-svm.html"
+    },
+    {
+      "q": "Why do gradient boosted decision trees (XGBoost, LightGBM, CatBoost) consistently dominate neural networks on tabular datasets?",
+      "options": [
+        "They are invariant to feature scaling, handle missing values naturally, and capture sharp threshold interactions without requiring delicate architectural tuning",
+        "Trees run on quantum hardware while neural networks run on CPUs",
+        "Tabular data cannot be converted into floating-point numbers for neural networks",
+        "Gradient boosted trees have provably zero generalization error on tables"
+      ],
+      "answer": 0,
+      "why": "Tabular data consists of heterogeneous, unaligned features and discrete rules. Tree algorithms require no normalization, handle missing data directly, and partition thresholds cleanly.",
+      "lesson": "zoo-which-model.html"
+    },
+    {
+      "q": "Why is k-Nearest Neighbors (k-NN) uniquely fragile when applied to datasets with unnormalized features (e.g., age 0-80 alongside income 0-200,000)?",
+      "options": [
+        "Euclidean distance will be almost entirely dominated by the feature with the largest numerical range (income), rendering age irrelevant",
+        "k-NN cannot calculate distances if any feature exceeds 100",
+        "Unnormalized features cause the k parameter to become negative",
+        "The algorithm requires inverting a singular matrix of feature variances"
+      ],
+      "answer": 0,
+      "why": "Euclidean distance sums squared differences. A difference of $1,000 in income dwarfs a difference of 10 years in age unless features are standardized.",
+      "lesson": "zoo-knn.html"
+    },
+    {
+      "q": "What core assumption gives Naive Bayes its name, and why does it often produce poor probability calibration even when classification accuracy is high?",
+      "options": [
+        "It naively assumes all features are conditionally independent given the class; correlated features multiply their evidence, pushing probabilities to extreme 0 or 1",
+        "It assumes all data points were generated by a coin toss",
+        "It refuses to update its prior beliefs regardless of new evidence",
+        "It only works on binary classification tasks"
+      ],
+      "answer": 0,
+      "why": "Naive Bayes assumes P(x_1, ..., x_n | y) = ∏ P(x_i | y). Redundant correlated features double-count evidence, ranking items correctly but producing overconfident, uncalibrated probabilities.",
+      "lesson": "zoo-naive-bayes.html"
+    },
+    {
+      "q": "Why are individual trees in a Random Forest typically grown deep without pruning, while trees in Gradient Boosting are kept shallow (depth 3-6)?",
+      "options": [
+        "Random Forest averages deep, high-variance trees to slash variance; Boosting sequentially builds weak, low-variance learners to gradually eliminate bias",
+        "Deep trees cannot be trained with gradient descent",
+        "Boosting crashes if a tree has more than 8 leaves",
+        "Random Forest algorithms only work if each tree has 100% training accuracy"
+      ],
+      "answer": 0,
+      "why": "Bagging needs low-bias, high-variance individual trees because averaging reduces variance. Boosting needs low-variance weak learners so step-by-step additions don't overfit.",
+      "lesson": "zoo-forest.html"
+    },
+    {
+      "q": "If your production service must classify high-frequency financial transactions within 200 microseconds on a single CPU core, which model family is best suited?",
+      "options": [
+        "Logistic regression or small linear models, which require only a single dot product and scalar sigmoid evaluation",
+        "A 50-tree Random Forest with depth 20",
+        "A k-nearest neighbor classifier with 500,000 stored points",
+        "A deep convolutional neural network"
+      ],
+      "answer": 0,
+      "why": "Evaluating w^T x + b is a vector dot product of dozens of numbers, taking nanoseconds in CPU cache. k-NN requires scanning half a million points, and deep forests require dozens of pointer hops.",
+      "lesson": "zoo-which-model.html"
+    }
+  ],
+  "stage-5": [
+    {
+      "q": "What two spatial inductive biases make convolutional layers (CNNs) far more parameter-efficient than fully connected layers for images?",
+      "options": [
+        "Local connectivity (pixels nearby interact most) and weight sharing (features like edges can appear anywhere in the image)",
+        "Rotation invariance and scale invariance",
+        "Frequency decomposition and continuous Fourier projection",
+        "Global attention and autoregressive masking"
+      ],
+      "answer": 0,
+      "why": "A fully connected layer on a 1000x1000 image requires a trillion weights. CNNs share a tiny 3x3 kernel across all spatial locations, drastically cutting parameters.",
+      "lesson": "06-convolutions.html"
+    },
+    {
+      "q": "Why did modern CNN architectures (like VGG and ResNet) replace large 7x7 convolutional kernels with stacks of two or three 3x3 kernels?",
+      "options": [
+        "Stacking two 3x3 convolutions has the same 5x5 receptive field but uses fewer parameters and introduces multiple non-linear activations",
+        "3x3 convolutions run on GPUs while 7x7 convolutions can only run on CPUs",
+        "7x7 kernels cannot be trained with backpropagation",
+        "Odd-sized kernels greater than 3 cause image boundary reflections"
+      ],
+      "answer": 0,
+      "why": "Two 3x3 kernels use 2 * (3*3) = 18 weights vs 5*5 = 25 weights, while providing two non-linear ReLU stages instead of one, increasing expressive power.",
+      "lesson": "deep-cnns.html"
+    },
+    {
+      "q": "In modern object detectors (like YOLO), why is Non-Maximum Suppression (NMS) performed as a post-processing step?",
+      "options": [
+        "The model predicts multiple overlapping candidate bounding boxes for the same object; NMS keeps the highest-scoring box and deletes overlapping duplicates based on IoU",
+        "NMS increases the brightness of detected objects in the final image",
+        "NMS converts bounding box coordinates into segmentation masks",
+        "It rescales bounding boxes back to the original camera aspect ratio"
+      ],
+      "answer": 0,
+      "why": "Dense detection grids produce many high-confidence boxes around a single detected item. NMS suppresses redundant boxes whose Intersection over Union (IoU) exceeds a threshold.",
+      "lesson": "inside-a-detector.html"
+    },
+    {
+      "q": "Why do standard Recurrent Neural Networks (RNNs) struggle to maintain dependencies across 200 time steps during backpropagation?",
+      "options": [
+        "Repeated multiplication by the transition weight matrix W_h over 200 steps causes gradients to either vanish to zero or explode to infinity",
+        "RNNs erase their memory buffers after every 10 tokens",
+        "Hidden states can only store integer values",
+        "The chain rule is mathematically invalid for sequential data"
+      ],
+      "answer": 0,
+      "why": "Backpropagation through time involves multiplying the recurrent Jacobian across every time step: W^200. If the spectral radius of W != 1, gradients decay or explode exponentially.",
+      "lesson": "recurrent-networks.html"
+    },
+    {
+      "q": "Why has subword tokenization (such as Byte-Pair Encoding or WordPiece) completely replaced fixed word-level vocabularies in modern language models?",
+      "options": [
+        "It handles arbitrary out-of-vocabulary words and typos gracefully by decomposing rare words into common subword pieces with a compact vocabulary",
+        "It converts words directly into 1024-dimensional floating-point vectors without an embedding table",
+        "It guarantees that every token corresponds to exactly one syllable",
+        "Subword tokenization prevents text from containing punctuation"
+      ],
+      "answer": 0,
+      "why": "Word vocabularies cannot hold every rare word or typo. Character models are too slow. BPE balances both: frequent words get single tokens, while rare words are broken into pieces.",
+      "lesson": "tokens.html"
+    },
+    {
+      "q": "In word embedding spaces (like Word2Vec), why does the vector arithmetic 'king - man + woman' land remarkably close to the vector for 'queen'?",
+      "options": [
+        "The objective forces direction vectors to encode linear semantic relationships (such as gender and royalty) across co-occurrence contexts",
+        "The authors hand-crafted offset values for royal words into the dictionary",
+        "Cosine similarity is only defined for words with identical lengths",
+        "The dot product of all English nouns is constrained to equal 1"
+      ],
+      "answer": 0,
+      "why": "Predicting context words forces semantic shifts (like male-to-female) to be represented by consistent directional offset vectors in the learned latent space.",
+      "lesson": "word-vectors.html"
+    },
+    {
+      "q": "In the self-attention formula Attention(Q, K, V) = softmax(Q K^T / √d_k) V, what is the critical role of dividing by √d_k?",
+      "options": [
+        "When dimension d_k is large, dot products grow large, pushing softmax into regions with tiny gradients; √d_k scales variance back to 1",
+        "It prevents the matrix multiplication from producing negative numbers",
+        "It normalizes the sequence length to match batch size",
+        "It converts query vectors into valid probability distributions"
+      ],
+      "answer": 0,
+      "why": "For independent zero-mean unit-variance components, the dot product has variance d_k. Dividing by √d_k restores unit variance, preventing softmax saturation.",
+      "lesson": "07-attention.html"
+    },
+    {
+      "q": "Why must decoder-only autoregressive transformers (like GPT) use a causal attention mask during training?",
+      "options": [
+        "To prevent tokens at position t from attending to future tokens at t+1, ensuring the model only predicts the next word from preceding context",
+        "To prevent attention matrices from using more than 50% of GPU memory",
+        "To force the model to generate words in reverse alphabetical order",
+        "Because GPUs cannot multiply upper-triangular matrices"
+      ],
+      "answer": 0,
+      "why": "During training, all tokens are fed in parallel. If position t could attend to position t+1, it would trivially copy the target answer instead of learning to predict it.",
+      "lesson": "10-tiny-transformer.html"
+    }
+  ],
+  "stage-6": [
+    {
+      "q": "When building an application with an LLM, when should you prefer few-shot prompt engineering over fine-tuning the model weights?",
+      "options": [
+        "When you have fewer than a few hundred examples, need rapid iteration on instructions, or want to avoid training and hosting specialized model checkpoints",
+        "When you need the model to output lower-latency audio waveforms",
+        "When your task requires changing the tokenizer vocabulary",
+        "When the context window of the model is zero tokens"
+      ],
+      "answer": 0,
+      "why": "In-context few-shot prompting works immediately with zero training costs, no GPU infrastructure, and trivial iteration. Fine-tuning is reserved for style, domain syntax, or token economics at scale.",
+      "lesson": "using-llms.html"
+    },
+    {
+      "q": "In a Retrieval-Augmented Generation (RAG) system, why is hybrid search (combining BM25 keyword search with dense vector embeddings) usually superior to vector search alone?",
+      "options": [
+        "Dense vectors capture high-level semantic meaning, while BM25 catches exact keyword matches (part numbers, error codes, unique names) that dense embeddings often blur",
+        "BM25 runs on the client browser while vector search runs in the cloud",
+        "Vector search only works on English text, while BM25 works on numbers",
+        "Hybrid search eliminates the need for an LLM to generate answers"
+      ],
+      "answer": 0,
+      "why": "Dense embeddings excel at conceptual paraphrasing ('fix leaky pipe'), but fail on exact alphanumeric queries ('Model XR-902A error 404'). Hybrid search captures both.",
+      "lesson": "embeddings-and-retrieval.html"
+    },
+    {
+      "q": "How does Low-Rank Adaptation (LoRA) allow efficient fine-tuning of a 70-billion-parameter LLM on consumer GPUs?",
+      "options": [
+        "It freezes the original pretrained weights W and injects trainable low-rank decomposition matrices (A and B where ΔW = B * A, rank r << d), updating under 1% of parameters",
+        "It prunes 90% of the network layers before fine-tuning begins",
+        "It converts 16-bit floating point numbers into 1-bit integers",
+        "It restricts fine-tuning exclusively to the first embedding layer"
+      ],
+      "answer": 0,
+      "why": "LoRA freezes the heavy base model and trains two tiny low-rank matrices per attention projection. This dramatically cuts memory needed for optimizer states and gradients.",
+      "lesson": "fine-tuning-and-lora.html"
+    },
+    {
+      "q": "When using an LLM-as-a-judge to evaluate generation quality, what common systematic bias must you guard against by swapping order?",
+      "options": [
+        "Position bias: LLM judges frequently favor whichever candidate response is presented first (or second) in the prompt regardless of quality",
+        "Alphabetical bias toward words starting with vowels",
+        "Recency bias where the LLM forgets the first sentence of the prompt",
+        "Token length bias where the LLM always prefers responses with an even number of words"
+      ],
+      "answer": 0,
+      "why": "LLM judges exhibit marked position bias (often preferring Option A). Evaluating both (A, B) and (B, A) and averaging results is standard practice.",
+      "lesson": "evaluating-llms.html"
+    },
+    {
+      "q": "What is the core loop of an autonomous LLM agent using the ReAct (Reason + Act) framework?",
+      "options": [
+        "Thought (reasoning about the current state) -> Action (invoking a specific tool with arguments) -> Observation (reading the tool's result) -> Repeat until solved",
+        "Embedding all input documents -> Computing cosine similarity -> Printing top results",
+        "Generating code -> Compiling with gcc -> Rebooting the operating system",
+        "Running gradient descent on user prompts before answering"
+      ],
+      "answer": 0,
+      "why": "ReAct combines explicit verbal reasoning with tool execution. The agent plans its step, calls a tool, observes output, and uses that feedback to choose the next action.",
+      "lesson": "08-agents.html"
+    },
+    {
+      "q": "Why does structured output enforcement (such as JSON schema decoding with constrained grammar sampling) drastically reduce agent failures?",
+      "options": [
+        "It masks invalid tokens during sampling so the model cannot produce syntactically malformed JSON or unparseable function arguments",
+        "It makes the LLM run 10x faster by bypassing the attention layers",
+        "It replaces the need for API keys when calling external tools",
+        "It prevents the user from typing prompts longer than 100 characters"
+      ],
+      "answer": 0,
+      "why": "Constrained decoding forces the LLM's next-token logits to zero for any token that would violate the grammar, guaranteeing 100% syntactically valid function calls.",
+      "lesson": "using-llms.html"
+    },
+    {
+      "q": "When comparing two text embeddings that have been L2-normalized (length = 1.0), what is the relationship between their cosine similarity and their dot product?",
+      "options": [
+        "Their dot product is exactly equal to their cosine similarity",
+        "The dot product is the square root of the cosine similarity",
+        "The cosine similarity is always zero when vectors are normalized",
+        "The dot product must be divided by 2π to get cosine similarity"
+      ],
+      "answer": 0,
+      "why": "Cosine similarity is defined as (u · v) / (||u|| ||v||). If ||u|| = 1 and ||v|| = 1, the denominator is 1, making cosine similarity identical to the dot product.",
+      "lesson": "embeddings-and-retrieval.html"
+    },
+    {
+      "q": "Why is it dangerous to give an LLM agent write access to shell commands or databases without human confirmation or sandboxing?",
+      "options": [
+        "Prompt injections in untrusted inputs can hijack the agent's reasoning and trick it into running destructive commands (like deleting files or exfiltrating data)",
+        "Shell commands consume GPU VRAM that the LLM needs for inference",
+        "Database drivers are incompatible with transformer architectures",
+        "LLMs cannot parse text output from terminal programs"
+      ],
+      "answer": 0,
+      "why": "If an agent reads untrusted text (emails, web pages) containing malicious prompts, the agent can be coerced into issuing destructive shell or SQL commands unless sandboxed.",
+      "lesson": "08-agents.html"
+    }
+  ],
+  "stage-7": [
+    {
+      "q": "Why do high-throughput ML inference servers (like Triton or vLLM) employ dynamic request batching rather than processing each request one by one?",
+      "options": [
+        "GPUs have thousands of cores that remain underutilized on single requests; batching multiple concurrent requests saturates memory bandwidth and multiplies throughput",
+        "Dynamic batching reduces the network bandwidth required by client HTTP requests",
+        "Batching eliminates the need to load model weights into GPU VRAM",
+        "Processing requests individually causes numerical round-off errors"
+      ],
+      "answer": 0,
+      "why": "Inference on single inputs is memory-bandwidth bound (reading weights for one vector). Batching amortizes weight-loading across multiple queries, dramatically boosting throughput.",
+      "lesson": "serving.html"
+    },
+    {
+      "q": "Why is exporting a PyTorch model to ONNX or TensorRT preferred over saving and loading a raw Python pickle file in production?",
+      "options": [
+        "ONNX provides an optimized, platform-independent computational graph without Python runtime overhead or arbitrary code-execution security vulnerabilities",
+        "Python pickle files cannot store floating-point numbers",
+        "TensorRT models can only be trained with unsupervised learning",
+        "ONNX files automatically retrain themselves when data changes"
+      ],
+      "answer": 0,
+      "why": "Pickles require a Python runtime and can execute malicious code on unpickling. ONNX/TensorRT provides a standalone graph engine with fused kernels, lower latency, and safety.",
+      "lesson": "serving.html"
+    },
+    {
+      "q": "What is the difference between covariate shift and concept drift in a deployed production model?",
+      "options": [
+        "Covariate shift means the distribution of input features P(X) changes, while concept drift means the true relationship between inputs and targets P(Y|X) changes",
+        "Covariate shift occurs only on weekends, while concept drift occurs only on weekdays",
+        "Covariate shift affects classification models, while concept drift affects regression models",
+        "Covariate shift is solved by increasing learning rate, while concept drift requires decreasing it"
+      ],
+      "answer": 0,
+      "why": "If camera lighting changes, P(X) shifted (covariate shift). If economic inflation changes how income relates to default, the underlying relationship P(Y|X) shifted (concept drift).",
+      "lesson": "mlops.html"
+    },
+    {
+      "q": "What is a 'shadow deployment' (dark launch) of a newly trained machine learning model?",
+      "options": [
+        "Incoming production traffic is mirrored to the new model in parallel with the current model, recording predictions and latencies without serving them to real users",
+        "The model is deployed exclusively between midnight and 6 am",
+        "The model weights are encrypted so developers cannot inspect them",
+        "The model only receives synthetic mock data generated by unit tests"
+      ],
+      "answer": 0,
+      "why": "Shadowing tests the new model's latency, stability, resource utilization, and predictions against live traffic with zero risk to customer experience.",
+      "lesson": "mlops.html"
+    },
+    {
+      "q": "When training a model to predict elevator breakdowns from IoT telemetry, why must feature joins be performed as 'point-in-time' (as-of) joins?",
+      "options": [
+        "To ensure each feature value reflects strictly what was known at the exact prediction timestamp, preventing lookahead leakage from future maintenance logs",
+        "Because time-series databases cannot store timestamps older than 30 days",
+        "Point-in-time joins convert non-stationary series into Gaussian distributions",
+        "To reduce the number of rows in the training table by half"
+      ],
+      "answer": 0,
+      "why": "Joining with future state (e.g., using a repair record created 2 hours after the outage) leaks the outcome into the features, causing models to fail in live deployment.",
+      "lesson": "mlops.html"
+    },
+    {
+      "q": "Why is runtime data validation (e.g. checking null counts, types, and schema ranges on inference inputs) essential before passing data to an ML model?",
+      "options": [
+        "Models will quietly output confident, nonsensical predictions when fed out-of-range or missing numbers, rather than throwing clean errors",
+        "Passing raw floats causes GPU hardware to overheat",
+        "Validation converts non-linear models into linear classifiers",
+        "Inference servers refuse HTTP requests that don't include unit tests"
+      ],
+      "answer": 0,
+      "why": "Unlike standard software that crashes on bad input, ML models silently calculate mathematically valid but completely wrong predictions on corrupted data.",
+      "lesson": "mlops.html"
+    },
+    {
+      "q": "In an elevator failure prediction problem where only 0.2% of elevator-hours experience an outage, why is 99.8% accuracy a useless baseline metric?",
+      "options": [
+        "A trivial model that always predicts 'no breakdown' achieves 99.8% accuracy while catching exactly 0 breakdowns, rendering it worthless for operations",
+        "Accuracy cannot be calculated when class percentages are decimals",
+        "99.8% accuracy causes false positives to become negative numbers",
+        "Elevators cannot be monitored using binary classification"
+      ],
+      "answer": 0,
+      "why": "Under severe class imbalance, majority-class guessing achieves high accuracy while completely failing the real operational objective (finding failures).",
+      "lesson": "capstone.html"
+    },
+    {
+      "q": "If your live inference microservice experiences a network timeout connecting to the GPU cluster, what constitutes a reliable graceful degradation strategy?",
+      "options": [
+        "Fallback to a cached prediction, a lightweight heuristic model, or a safe default rule so the client application does not crash",
+        "Immediately retry the request 1,000 times in a tight while-loop",
+        "Return a 500 Internal Server Error and terminate the client session",
+        "Delete the model checkpoint from disk and re-trigger training"
+      ],
+      "answer": 0,
+      "why": "Production architectures use fallbacks (heuristics, cached responses, conservative defaults) to preserve user uptime when heavy ML models encounter transient failures.",
+      "lesson": "serving.html"
+    }
+  ]
+}

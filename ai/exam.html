@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stage Exam · AI from scratch</title>
+  <meta name="description" content="Test your understanding across the stage with 15 cross-cutting questions. Score 12 or better to earn your stage badge." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --red: #e03131;
+      --amber: #f59f00;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.7 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 16px;
+    }
+    .hud-wrap {
+      margin: 14px 0 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 20px 22px;
+      margin: 18px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 10px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .btn.secondary {
+      background: transparent;
+      color: var(--fg) !important;
+      border: 1px solid var(--line);
+    }
+    .btn.secondary:hover {
+      border-color: var(--fg);
+    }
+    .badge-icon {
+      font-size: 2.4rem;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    .q-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .q-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      margin-right: 6px;
+    }
+    .q-tag.cross {
+      background: color-mix(in srgb, var(--amber) 20%, transparent);
+      color: #b45309;
+    }
+    .banner {
+      background: color-mix(in srgb, var(--amber) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 16px 0 24px;
+      font-size: 0.95rem;
+    }
+    .stage-badge-card {
+      text-align: center;
+      padding: 32px 20px;
+    }
+    .score-banner {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+    .missed-list {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      text-align: left;
+    }
+    .missed-list li {
+      margin: 8px 0;
+    }
+  </style>
+  <script type="module" src="/learn-kit.js"></script>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Stage Exam</p>
+  <h1 id="exam-title">Stage Exam</h1>
+  <p class="lede" id="exam-lede">15 cross-cutting questions. Score at least 12 of 15 to pass and earn the stage badge.</p>
+  <div class="hud-wrap" id="hud-slot"></div>
+  <div id="banner-slot"></div>
+  <div id="exam-area">Loading exam...</div>
+</main>
+
+<script type="module">
+import { state, save, gain, did, XP, badge, answered, course, path, slug } from "/ai/learn.js";
+import { strip } from "/ai/hud.js";
+
+const $ = (id) => document.getElementById(id);
+strip($("hud-slot"));
+
+const STAGE_TITLES = {
+  "stage-0": "Stage 0 · Start here",
+  "stage-1": "Stage 1 · The math of learning",
+  "stage-2": "Stage 2 · How a network learns",
+  "stage-3": "Stage 3 · Classic ML and judging models",
+  "stage-4": "Stage 4 · The engineer's toolkit",
+  "zoo": "Model zoo",
+  "stage-5": "Stage 5 · Seeing and reading",
+  "stage-6": "Stage 6 · LLM engineering",
+  "stage-7": "Stage 7 · Production"
+};
+
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const urlParams = new URLSearchParams(location.search);
+let stageId = urlParams.get("stage") || "stage-0";
+if (!STAGE_TITLES[stageId]) stageId = "stage-0";
+
+const stageTitle = STAGE_TITLES[stageId];
+$("exam-title").textContent = `${stageTitle} Exam`;
+document.title = `${stageTitle} Exam · AI from scratch`;
+
+async function init() {
+  const [examsData, courseData, lessonList] = await Promise.all([
+    fetch("./exams.json").then((r) => r.json()),
+    course,
+    path
+  ]);
+
+  const titles = Object.fromEntries(lessonList.map((l) => [l.href, l.title]));
+  
+  // Find all lessons in this stage
+  const stageLessons = lessonList.filter((l) => {
+    if (stageId === "zoo") return l.href.startsWith("zoo-");
+    const num = stageId.replace("stage-", "");
+    return l.stage.startsWith(`Stage ${num} `);
+  });
+
+  const doneLessons = stageLessons.filter((l) => state.done[l.href]);
+  const allDone = stageLessons.length > 0 && doneLessons.length === stageLessons.length;
+
+  if (!allDone) {
+    $("banner-slot").innerHTML = `
+      <div class="banner">
+        <b>Heads up:</b> You've completed <b>${doneLessons.length} of ${stageLessons.length}</b> lessons in ${esc(stageTitle)}.
+        We recommend finishing all lessons first, but you can still take the exam now and earn the badge on a pass!
+      </div>
+    `;
+  }
+
+  // 1. Gather 8 cross-cutting questions from exams.json
+  const crossQuestions = (examsData[stageId] || []).map((q) => ({
+    ...q,
+    isCross: true,
+    lessonTitle: titles[q.lesson] || q.lesson
+  }));
+
+  // 2. Gather checkpoint questions from stage lessons
+  const checkpointPool = [];
+  for (const l of stageLessons) {
+    const checks = courseData[l.href]?.check || [];
+    checks.forEach((c) => {
+      checkpointPool.push({
+        ...c,
+        lesson: l.href,
+        lessonTitle: l.title,
+        isCross: false
+      });
+    });
+  }
+
+  // Deterministically or pseudo-randomly sample 7 checkpoint questions
+  const shuffledChecks = [...checkpointPool].sort(() => Math.random() - 0.5);
+  const sampledChecks = shuffledChecks.slice(0, 7);
+
+  // Combine to 15 questions and shuffle options
+  const rawQuestions = [...crossQuestions, ...sampledChecks];
+  
+  // Shuffle options for each question so memorized indices don't matter
+  const questions = rawQuestions.map((q) => {
+    const originalAnswerText = q.options[q.answer];
+    const shuffledOpts = [...q.options].sort(() => Math.random() - 0.5);
+    const newAnswerIdx = shuffledOpts.indexOf(originalAnswerText);
+    return {
+      ...q,
+      options: shuffledOpts,
+      answer: newAnswerIdx
+    };
+  });
+
+  renderExam(questions);
+}
+
+function renderExam(questions) {
+  const area = $("exam-area");
+  const firstTries = new Map();
+
+  area.innerHTML = `
+    <div id="q-list">
+      ${questions.map((q, idx) => `
+        <div class="q" data-answer="${"abcde"[q.answer]}" data-idx="${idx}">
+          <div class="q-meta">
+            <span class="q-tag ${q.isCross ? "cross" : ""}">${q.isCross ? "Cross-cutting synthesis" : "Checkpoint review"}</span>
+            Question ${idx + 1} of 15 · From <a href="./${q.lesson}" target="_blank" rel="noopener">${esc(q.lessonTitle)}</a>
+          </div>
+          <p>${esc(q.q)}</p>
+          <ul>
+            ${q.options.map((opt, optIdx) => `<li data-k="${"abcde"[optIdx]}">${esc(opt)}</li>`).join("")}
+          </ul>
+          <div class="why">${esc(q.why)}</div>
+        </div>
+      `).join("")}
+    </div>
+    <div id="result-slot"></div>
+  `;
+
+  // Wire questions with learn-kit
+  area.querySelectorAll(".q").forEach((el) => window.learnKit?.setupQuestion(el));
+
+  addEventListener("learnkit:answer", ({ detail: { q, right, first } }) => {
+    const idx = parseInt(q.dataset.idx, 10);
+    if (!firstTries.has(idx)) {
+      firstTries.set(idx, { right, question: questions[idx] });
+
+      // Log gap through answered() if missed
+      if (!right) {
+        const item = questions[idx];
+        const secId = item.sec ? `sec-${item.sec}` : slug(item.lessonTitle);
+        answered(item.lesson, secId, item.q, false);
+      }
+    }
+
+    if (firstTries.size === questions.length) {
+      showResults(firstTries, questions);
+    }
+  });
+}
+
+function showResults(firstTries, questions) {
+  let score = 0;
+  const missed = [];
+
+  for (let i = 0; i < questions.length; i++) {
+    const result = firstTries.get(i);
+    if (result?.right) {
+      score++;
+    } else {
+      missed.push(questions[i]);
+    }
+  }
+
+  const passed = score >= 12;
+
+  // Record in state.exams
+  state.exams = state.exams || {};
+  const prevRecord = state.exams[stageId] || { attempts: 0, best: 0, passed: false };
+  state.exams[stageId] = {
+    attempts: prevRecord.attempts + 1,
+    best: Math.max(prevRecord.best, score),
+    lastScore: score,
+    passed: prevRecord.passed || passed,
+    at: Date.now()
+  };
+
+  let xpPaid = 0;
+  if (passed) {
+    badge(stageId, stageTitle);
+    xpPaid = gain(XP.exam, "exam", `exam:${stageId}`);
+  }
+  save();
+
+  const slot = $("result-slot");
+  slot.innerHTML = `
+    <div class="card stage-badge-card" style="border: 2px solid ${passed ? "var(--green)" : "var(--line)"};">
+      <div class="badge-icon">${passed ? "🏅" : "📝"}</div>
+      <h2 style="margin: 0 0 6px;">${passed ? "Congratulations! Stage Passed" : "Exam Complete"}</h2>
+      <div class="score-banner" style="color: ${passed ? "var(--green)" : "var(--fg)"};">
+        Score: ${score} / 15 ${passed ? "✓ Passed" : "(12 needed to pass)"}
+      </div>
+      <p style="color:var(--muted); max-width: 540px; margin: 10px auto 18px;">
+        ${passed
+          ? `You have demonstrated mastery across ${esc(stageTitle)}. The <b>${esc(stageTitle)} Badge</b> is now unlocked on your profile! ${xpPaid ? `<b>+${xpPaid} XP</b> awarded.` : ""}`
+          : `You scored ${score} of 15. Review the missed topics below and take another run to earn your badge.`
+        }
+      </p>
+
+      <div style="display:flex; justify-content:center; gap: 12px; flex-wrap:wrap; margin: 20px 0;">
+        ${passed
+          ? `<a class="btn" href="./portfolio.html">View your portfolio →</a>
+             <a class="btn secondary" href="./">Continue course path →</a>`
+          : `<button class="btn" id="retry-btn">Retake exam →</button>
+             <a class="btn secondary" href="./review.html">Review deck →</a>`
+        }
+      </div>
+
+      ${missed.length > 0 ? `
+        <div style="margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; text-align: left;">
+          <h3 style="font-size: 1.05rem; margin: 0 0 8px;">Topics to revisit:</h3>
+          <ul class="missed-list">
+            ${missed.map((m) => `
+              <li>
+                <a href="./${m.lesson}" target="_blank" rel="noopener"><b>${esc(m.lessonTitle)}</b></a>:
+                <span style="color:var(--muted); font-size:0.9rem;">${esc(m.q)}</span>
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+      ` : ""}
+    </div>
+  `;
+
+  slot.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (!passed) {
+    $("retry-btn")?.addEventListener("click", () => location.reload());
+  }
+}
+
+init();
+</script>
+</body>
+</html>
