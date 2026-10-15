@@ -2956,6 +2956,17 @@
     "answer": 0,
     "why": "Rebuild the feature from what was known at prediction time: tickets in the 30 days before that moment.",
     "sec": 6
+   },
+   {
+    "q": "Why does choosing columns on all the data before cross-validation score well even on pure noise?",
+    "options": [
+     "The test folds' labels helped pick the columns, so chance agreement with them is built into the score",
+     "Because 5,000 columns are enough to learn anything",
+     "Because cross-validation always overestimates"
+    ],
+    "answer": 0,
+    "why": "Out of 5,000 noise columns, the 20 that best match all 100 labels match the test rows too, by construction. Chosen inside each fold, they don't, and the score falls to a coin flip.",
+    "sec": 6
    }
   ]
  },
@@ -3067,6 +3078,17 @@
     "answer": 0,
     "why": "Anomaly scores rank the unusual; meaning comes from someone who knows the domain.",
     "sec": 5
+   },
+   {
+    "q": "Why can a k-means step never increase the inertia?",
+    "options": [
+     "Assigning moves each point to its nearest center, and the mean is the center with the smallest squared distances to its points",
+     "Because the number of clusters is fixed",
+     "Because the centers start at random points"
+    ],
+    "answer": 0,
+    "why": "Both moves can only shrink the sum of squared distances, and there are finitely many groupings, so the loop must stop, though maybe at a worse grouping than the best.",
+    "sec": 2
    }
   ]
  },

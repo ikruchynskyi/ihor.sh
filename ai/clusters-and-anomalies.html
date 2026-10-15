@@ -86,6 +86,7 @@ print([round(a, 3) for a in aucs])
     <div class="why">kNN stores the training set, so training accuracy says nothing. Only held-out rows are a fair test, as always.</div>
   </div>
 
+  <p class="gist">kNN learns no rule: it asks the nearest labeled points and lets them vote, so what "near" means decides everything.</p>
   <h2>2. k-means: clusters that find themselves</h2>
   <p>Now forget the colors: no labels at all. <b>k-means</b> looks for k groups with a two-step loop. Start with k centers (random stations). <b>Assign</b>: each point joins its nearest center. <b>Move</b>: each center moves to the average of its points. Repeat until nothing changes. Each step can only lower the total squared distance from points to their centers, the <b>inertia</b>:</p>
   <p class="formula">\[ \text{inertia} = \sum_i \lVert x_i - \mu_{c(i)} \rVert^2 \qquad \mu_j = \text{the mean of the points in cluster } j \]</p>
@@ -115,6 +116,16 @@ print("scikit-learn, best of 10 starts:", round(KMeans(4, n_init=10, random_stat
     <div class="why">k-means is all distances, so it inherits every scaling problem kNN has. Standardize first.</div>
   </div>
 
+  <p class="gist">k-means alternates two moves, join the nearest center and move each center to its points' mean, and each move can only tighten the clusters.</p>
+  <details class="deeper"><summary>Why k-means always stops (but not always at the best answer)</summary>
+    <ol>
+      <li>Inertia adds up every point's squared distance to its own center, so it's never negative.</li>
+      <li>The assign move: each point switches to its nearest center, so its term can only shrink or stay.</li>
+      <li>The move move: for a fixed group of points, the center with the smallest sum of squared distances is their mean (probability 2: the mean is the best guess under a squared penalty, one coordinate at a time). So moving each center to its mean can only shrink the sum.</li>
+      <li>Every step lowers the inertia or leaves it alone, and there are only finitely many ways to split the points into k groups, so it can't keep falling forever: the loop stops.</li>
+      <li>It stops at a split that no single move improves, not necessarily the best split. That's why <b>New start</b> can end somewhere else, and why libraries keep the best of several starts.</li>
+    </ol>
+  </details>
   <h2>3. How many clusters? Be honest</h2>
   <p>Inertia always falls as k grows (with one cluster per point it's 0), so it can't choose k on its own. Two common aids: the <b>elbow</b>, where adding clusters stops helping much, and the <b>silhouette</b>, which for each point compares how close it sits to its own cluster versus the next one (from −1 to 1, higher is cleaner). And a reality check: does a clustering match anything you care about? Here we have the railroads to compare with, a luxury real problems rarely give you.</p>
   <div class="code" data-uses="st" data-title="Run it: elbow, silhouette, and do clusters find the railroads?"><textarea>
@@ -130,6 +141,7 @@ pd.DataFrame(rows, columns=["k", "inertia", "silhouette", "match with railroads 
 </textarea></div>
   <p>No sharp elbow, a silhouette that creeps up slowly, and even at k = 3 the clusters barely match the three railroads (ARI 1 would be perfect, 0 chance). k-means isn't failing: it found groups of nearby stations, which is all the features describe. Railroads are a fact about ownership, not geography. <b>Clusters reflect the features you give them, not the labels you wish for.</b> Often there is no "true" k; choose the one that's useful (a sales team can handle 5 customer segments, not 40).</p>
 
+  <p class="gist">Clusters describe the features you gave them; a "right k" exists only if the data has one.</p>
   <h2>4. Soft clusters: Gaussian mixtures</h2>
   <p>k-means gives every point one cluster and assumes round clusters of similar size. A <b>Gaussian mixture</b> (GMM) models the data as several bell-shaped blobs (probability 2's multivariate bell), each with its own center, shape and tilt, and gives every point a <i>probability</i> of belonging to each. It's fitted by <b>EM</b>, which is k-means with probabilities: compute each point's membership probabilities (E step), then refit each blob to its weighted points (M step), and repeat. Choosing the number of blobs can use <b>BIC</b>: the fit's log-likelihood minus a penalty for every parameter, so extra blobs must earn their keep.</p>
   <div class="code" data-uses="st" data-title="Run it: a mixture of bells on the map"><textarea>
@@ -150,6 +162,7 @@ print("BIC for 2 to 7 blobs:", [round(GaussianMixture(n, random_state=0).fit(X).
 </textarea></div>
   <p>The least certain stations sit between blobs, split nearly evenly. And BIC keeps falling as blobs are added: stations lie along rail lines, not in round clouds, so a mixture of bells needs many of them to trace the lines. That's a useful verdict too: the model's shape doesn't suit this data, which is why there are many clustering methods (scikit-learn's DBSCAN follows dense chains of points, for one).</p>
 
+  <p class="gist">A Gaussian mixture is k-means with probabilities and shapes: every point belongs a little to every blob.</p>
   <h2>5. Anomalies: what doesn't fit</h2>
   <p>Once you have a picture of "normal", the odd ones are the points it explains badly: <b>far from their neighbors</b> (the distance to the k-th nearest neighbor), <b>unlikely under a mixture</b> (a low GMM density), or <b>easy to isolate</b>. That last one is an <b>isolation forest</b>: random trees that cut the data at random places, where an unusual point ends up alone after only a few cuts while normal points sit in crowds.</p>
   <p>This site keeps an archive of NYC subway elevator and escalator outages. Each one has how long it lasted and the MTA's estimate. On a log scale (probability 2: durations are skewed), most outages form one cloud. The estimate is longer than the real outage in 98.5% of them, so the MTA plans for the worst. Which outages don't fit?</p>
@@ -181,6 +194,14 @@ odd[["hours", "estimated", "kind", "reason", "neighbor_gap", "isolated"]]
     <div class="why">"Unusual" is relative to the data the detector learned from. When the world shifts (features and leakage, section 6), normal looks strange: refit on recent data, or model the season.</div>
   </div>
 
+  <p class="gist">An anomaly is a point the picture of normal explains badly; a person decides what it means.</p>
+  <details class="deeper"><summary>Where it breaks: when "close" stops meaning "alike"</summary>
+    <ul>
+      <li><b>Many columns.</b> Take 1,000 random points in a cube and one more point: in 2 dimensions its nearest neighbor is 0.7% as far as its farthest; in 100 dimensions, 72%; in 1,000, 90%. When everything is about equally far, the nearest neighbors are barely nearer. Use fewer, better columns (PCA, from linear algebra 2), or embeddings trained so that distance means something (stages 5 and 6).</li>
+      <li><b>Shapes that aren't round blobs.</b> k-means cuts space into straight-edged regions around centers. On two interlocking half-moons its two clusters match the moons with ARI 0.26; on a ring around a disk, ARI 0.00, pure chance. DBSCAN and spectral clustering follow such shapes.</li>
+      <li><b>Anomalies in a crowd.</b> A fraud ring making 50 similar payments forms its own little cluster: each one has close neighbors, so distance to the nearest neighbor calls them normal. A larger k, or a picture of normal fitted on older, clean data, catches them.</li>
+    </ul>
+  </details>
   <h2>6. What to carry forward</h2>
   <table class="cmp">
     <tr><th>Method</th><th>What it does</th><th>Watch out for</th></tr>

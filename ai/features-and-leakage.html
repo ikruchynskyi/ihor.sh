@@ -43,6 +43,7 @@ df.head()
     <div class="why">100 − 11.4 = 88.6%, without learning anything. Chapter 12's warning: on lopsided data, accuracy flatters. Section 5 deals with this.</div>
   </div>
 
+  <p class="gist">Look first: the shape, the balance and the do-nothing baseline tell you what a good score even means.</p>
   <h2>2. Cleaning: codes that pretend to be numbers</h2>
   <p>Real tables are full of values that aren't what they look like. Here, <code>pdays</code> is "days since this person was last contacted", except that <b>999 means never contacted</b>. A model reading it as a number thinks never-contacted people were called 999 days ago: technically far away, but the real story is a yes/no fact. Category columns hide <code>"unknown"</code> the same way. The usual fixes: turn the code into its own yes/no column, and give missing values a sensible fill (often the median) plus a flag saying they were missing, because <i>being</i> missing often carries information.</p>
   <div class="code" data-uses="bank" data-title="Run it: a sentinel code"><textarea>
@@ -59,6 +60,7 @@ print((df == "unknown").sum()[lambda counts: counts > 0])                       
     <div class="why">The flag keeps the information (being unemployed may matter a lot); the fill keeps the number column meaningful. Trees cope better with codes, since they can split them off, but the flag helps them too.</div>
   </div>
 
+  <p class="gist">A code like 999 is a fact dressed as a number; give the fact its own yes/no column.</p>
   <h2>3. Scaling: who cares about units</h2>
   <p>Age runs from 17 to 98, the interest rate from 0.6 to 5. Anything that measures distance or takes gradient steps cares: calculus 3 showed that stretched features make a stretched valley that gradient descent zigzags down, and regularization (chapter 11) punishes big weights, which depend on units. Two common rescalings:</p>
   <p class="formula">\[ z = \frac{x - \mu}{\sigma} \ \ \text{(standardize: mean 0, spread 1)} \qquad x' = \frac{x - \min}{\max - \min} \ \ \text{(min-max: 0 to 1)} \]</p>
@@ -75,6 +77,7 @@ print("same as MinMaxScaler:  ", np.allclose(mm, MinMaxScaler().fit_transform(df
 </textarea></div>
   <p>One rule matters more than which scaling you pick: <b>the mean, spread, min and max come from the training data only</b>, and the same numbers are then applied to validation, test and real traffic. Section 4 shows how to make that automatic.</p>
 
+  <p class="gist">Models built on distances or gradient steps need columns on comparable scales, with the scaling learned from training rows only.</p>
   <h2>4. Categories into numbers, and pipelines</h2>
   <p>Models need numbers. For a category like job, writing admin = 1, blue-collar = 2, … invents an order (is a technician "between" two jobs?) that a linear model will take literally. <b>One-hot encoding</b> gives each category its own 0/1 column instead. Categories with a real order (education levels) can be numbered in that order. A column with thousands of categories (zip codes, product ids) is better replaced by counts or by learned embeddings (stage 6).</p>
   <p>New columns from old ones are often the biggest win, because they say what you know about the problem: the hour and weekday from a timestamp, a ratio (debt ÷ income), a log of a skewed amount (probability 2), a flag for a code. Chapter 13's boosted trees find some interactions themselves; a well-chosen feature still beats hoping.</p>
@@ -97,6 +100,7 @@ model = make_pipeline(prep, LogisticRegression(max_iter=2000))
 model.fit(X_train, y_train)          # the scaler's means and the encoder's categories: from training rows only
 model.predict(X_test)                # ...reused here, never refitted</code></pre>
 
+  <p class="gist">Every step that learns from data belongs inside the pipeline, so it learns from training rows only.</p>
   <h2>5. Imbalance: when yes is rare</h2>
   <p>With 11% yes, a model minimizing average loss learns that "no" is usually safe, and at the default threshold of 0.5 it finds few of the yeses. Three tools, from the simplest:</p>
   <ul>
@@ -131,6 +135,7 @@ for weights in [None, "balanced"]:
     <div class="why">AUC asks "is a random yes scored above a random no?" (chapter 12). Weighting changes where the 0.5 line falls on the scores, not their order, which is why picking a threshold from costs is often all you need.</div>
   </div>
 
+  <p class="gist">Weights and thresholds change which calls get flagged, not how the calls are ranked.</p>
   <h2>6. Leakage: the model that's too good</h2>
   <p><b>Leakage</b> is when something available while you build the model won't be available when it's used, so the test score measures a world that doesn't exist. It's the most expensive bug in ML: everything works, the numbers are great, and the model fails at launch. Three kinds cover most real cases.</p>
   <p><b>A column that knows the answer.</b> <code>duration</code> is how long the call lasted. Long calls are calls where the person was interested, so it predicts yes superbly, but nobody knows a call's length before making it. The dataset's own notes say to drop it for any realistic model. <b>A split that peeks at the future.</b> Below are the calls in time order: the yellow line is the share who said yes, the blue line the 3-month interest rate (euribor). After the 2008 crash, rates collapsed and people started saying yes far more often. A random split puts calls from the same weeks in both training and test, so the model can look up "what did people say when the rate was 1.06%?", and that column alone works like a calendar.</p>
@@ -187,6 +192,16 @@ inside = make_pipeline(SelectKBest(f_classif, k=20), LogisticRegression())
 print("selection inside the pipeline:    ", cross_val_score(inside, X, y, cv=5).mean())
 </textarea></div>
   <p>About 85% accuracy on coin flips, because each fold's test rows helped choose the columns. Inside a pipeline, every fold chooses its own columns from its own training rows, and the score falls to a coin flip, which is the truth. A scaler fitted on everything leaks far less, but the habit is the same: <b>everything that learns goes inside the pipeline</b>.</p>
+  <details class="deeper"><summary>Why choosing columns on all the data turns noise into signal</summary>
+    <ol>
+      <li>Each of the 5,000 noise columns matches the 100 coin-flip labels a little, by chance: its correlation with them is spread around 0 with a standard deviation of about \(1/\sqrt{100} = 0.1\).</li>
+      <li>With 5,000 tries, the best ones sit far out in the tail. In one run the top correlation was 0.38 and the 20th best 0.28, three to four spreads out.</li>
+      <li>Those 20 columns were picked because they happen to line up with every row's label, including the rows that later serve as test folds.</li>
+      <li>So in each fold the test rows' labels aren't fresh: they already voted on which columns to keep, and the columns agree with them. The model looks 85% right.</li>
+      <li>Inside a pipeline, each fold picks its columns from its own training rows. The test rows never voted, the chance agreement doesn't carry over, and the score falls to about 50%.</li>
+      <li>The general rule: any choice made by looking at labels (columns, thresholds, settings) has to be made without the rows that will judge it.</li>
+    </ol>
+  </details>
   <p>A fourth kind hides in the rows: the <b>same person, patient, or house in both training and test</b>. The model recognizes them instead of generalizing. Split by the group (scikit-learn's <code>GroupKFold</code>), so each person is entirely on one side.</p>
   <div class="q" data-answer="c">
     <p>A hospital model predicts pneumonia from patient records and scores 0.99 AUC. Its strongest feature is "antibiotics prescribed". What's wrong?</p>
@@ -194,6 +209,7 @@ print("selection inside the pipeline:    ", cross_val_score(inside, X, y, cv=5).
     <div class="why">Ask of every column: would I know this value at the moment the model has to decide? Treatment, final status, "closed by", the call's duration: all written after the outcome.</div>
   </div>
 
+  <p class="gist">Leakage is anything the model sees while you build it that it won't see at the moment it has to decide.</p>
   <h2>7. A leak checklist</h2>
   <table class="cmp">
     <tr><th>Ask</th><th>If yes</th></tr>
@@ -204,6 +220,13 @@ print("selection inside the pipeline:    ", cross_val_score(inside, X, y, cv=5).
     <tr><td>Is one feature suspiciously strong, or the score better than anyone expected?</td><td>Treat it as a leak until proven otherwise: look at that feature's importance (chapter 13) and how it's made.</td></tr>
   </table>
 
+  <details class="deeper"><summary>Where it breaks: fixes that cause their own problems</summary>
+    <ul>
+      <li><b>Class weights bend the probabilities.</b> On the first 75% of the calls (6.6% yes), plain logistic regression's average predicted probability is 0.066, matching reality; with <code>class_weight="balanced"</code> it's 0.44. That's fine for ranking and flagging and wrong for anyone who reads the number as a chance (expected sign-ups, a budget). Recalibrate on validation data (chapter 12), or keep the unweighted model and move the threshold.</li>
+      <li><b>A time split can still leak through a feature.</b> "Customer's total purchases", computed over the whole history, includes purchases after the prediction date even when the rows are split by time. Build every feature as of the moment of prediction, from earlier rows only.</li>
+      <li><b>Groups you didn't name.</b> <code>GroupKFold</code> only knows the groups you give it. The same photo resized, the same house relisted, one patient under two ids: near-duplicates cross the split anyway. Deduplicate, or group by a fingerprint (a hash of the image, the address) before splitting.</li>
+    </ul>
+  </details>
   <h2>8. What to carry forward</h2>
   <ul>
     <li>Look first: shape, the answer's balance, codes like 999 and "unknown". Turn codes into flags.</li>

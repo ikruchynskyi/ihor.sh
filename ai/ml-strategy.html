@@ -36,6 +36,7 @@
     <div class="why">Accuracy is what users notice; speed and size only matter until they're good enough. That's the "optimizing plus satisficing" setup: one number to beat, the rest as limits.</div>
   </div>
 
+  <p class="gist">One number decides better or worse; everything else you care about is a limit to meet.</p>
   <h2>2. Read the gaps</h2>
   <p>Four error rates tell you where the trouble is. <b>Human-level</b> error stands in for the best possible (some inputs are truly ambiguous, so nothing gets 0%). <b>Training</b> error is on the data the model learned from. <b>Train-dev</b> error is on held-out examples from the same source as training. <b>Dev</b> error is on examples like the ones the model will meet in use. The gaps between them each have their own fixes:</p>
   <ul>
@@ -78,6 +79,7 @@ pd.DataFrame(rows, columns=["C", "training error %", "test error %"]).set_index(
     <div class="why">Avoidable bias is 0.2 − 1 < 0 (already at human level); variance is 2.8 − 0.2 = 2.6 points. The fixes for variance are the ones to try.</div>
   </div>
 
+  <p class="gist">Each gap between the four error rates points at a different fix: work on the biggest one first.</p>
   <h2>3. Error analysis: look at the mistakes</h2>
   <p>Before building anything, look at about a hundred mistakes on the dev set and sort them into categories. It takes an hour, and it tells you the most each idea could ever gain: if only 5% of mistakes are blurry images, a perfect deblurring step can cut the error by at most 5% of itself. This <b>ceiling</b> kills many plans before they cost a month. Error rates per group (per digit here; per neighborhood, age group or device elsewhere) are the same idea, and they're also how you check that a model isn't much worse for some people than for others.</p>
   <div class="code" data-uses="digits" data-title="Run it: the digits model's mistakes"><textarea>
@@ -101,6 +103,7 @@ for ax, i in zip(axes, np.flatnonzero(wrong)[:8]):
 </textarea></div>
   <p>Look at the pictures, not only the counts: some of these 8×8 scans would fool a person too. A mistake that's really a wrong <b>label</b> is worth counting as its own category; fixing labels only pays off when that category is big.</p>
 
+  <p class="gist">A category of mistakes caps what fixing it can win, so look at a hundred mistakes before building anything.</p>
   <h2>4. Will more data help? Learning curves</h2>
   <p>Data is often the most expensive fix, so check first: train on growing slices of the training set and plot training and validation error. If validation error is still falling at full size and there's a gap between the curves, more data will likely help. If both curves have flattened close together, more of the same data won't: the model needs to change.</p>
   <div class="code" data-uses="digits" data-title="Run it: a learning curve"><textarea>
@@ -124,6 +127,17 @@ print("validation error % by size:", {int(n): round(float(100 * (1 - v)), 1) for
     <div class="why">Falling validation error plus a training/validation gap is the variance picture, and data is variance's most reliable cure.</div>
   </div>
 
+  <p class="gist">A learning curve tells whether data will help: still falling with a gap means yes, flat and close together means change the model.</p>
+  <details class="deeper"><summary>Why more data can't fix bias</summary>
+    <ol>
+      <li>A fixed kind of model (a line, a depth-3 tree, a given network) has a best error it could reach on this problem even with endless data: its floor.</li>
+      <li>With few examples, its training error sits below the floor (it fits those particular points) and its validation error above it (they don't generalize).</li>
+      <li>As data grows, training error rises and validation error falls, both toward the floor: the two learning curves squeeze together.</li>
+      <li>So data shrinks the gap between the curves, which is the variance. It can't lower the floor, and the floor minus human level is the avoidable bias.</li>
+      <li>Chapter 11's straight line on the sine-shaped data: with 20 points its bias² is 0.050 and its variance 0.013; with 2,000 points, bias² 0.050 and variance 0.0001. A hundred times the data removed the variance and left the bias untouched.</li>
+      <li>Lowering the floor takes a different model: more flexible, better features, or less regularization.</li>
+    </ol>
+  </details>
   <h2>5. When real use looks different</h2>
   <p>Training data is often whatever is easy to get, and real use is something else: web photos versus phone photos, daytime cameras versus night, last year's customers versus this year's. Then a dev set from real use is the only honest one, and you need one more set, <b>train-dev</b>, carved from the training source, to tell variance from mismatch. Below, the model learns from clean scans and is then used on "phone" scans with sensor noise.</p>
   <div class="code" data-uses="digits" data-title="Run it: data mismatch, and a fix"><textarea>
@@ -149,6 +163,7 @@ print("after adding phone-like training data: dev", err(model2, Xdev, ydev), "%"
     <div class="why">Variance is train-dev − training = 2.2 points; data mismatch is dev − train-dev ≈ 50 points. More clean data would barely help; making training look like real use cut dev error to about 12%.</div>
   </div>
 
+  <p class="gist">When real use looks different, only a dev set from real use is honest, and a train-dev set tells variance from mismatch.</p>
   <h2>6. A case study: the bike-lane camera</h2>
   <p>You lead a small team building a model that watches city street cameras and flags cars blocking bike lanes, so the city can send an officer. Five decisions, each with consequences.</p>
   <div class="q" data-answer="b">
@@ -176,8 +191,16 @@ print("after adding phone-like training data: dev", err(model2, Xdev, ydev), "%"
     <ul><li data-k="a">The delivery trucks: fixing them all could bring dev error from 8% to about 4.8%</li><li data-k="b" data-says="Wrong labels are 10% of the mistakes: fixing them all moves dev error from 8% to at most 7.2%.">Re-labeling the dataset</li><li data-k="c" data-says="Misc is 25% but has no single fix: you can't build one solution for 25 different problems.">The miscellaneous mistakes</li></ul>
     <div class="why">Ceilings: trucks 8 × (1 − 0.40) = 4.8%, night rain 6%, labels 7.2%. The trucks are both the biggest and a single problem with a clear fix (more truck examples, or a "stopped with hazards" label).</div>
   </div>
+  <p class="gist">At every stage of a project, read the gaps again: the right fix changes as the project moves.</p>
   <p>One last trap, from the end of such projects: after tuning on the dev set fifty times, its score is a little optimistic, because you chose what worked on it. That's what the untouched test set is for. If dev says 4% and test says 6%, you've overfit the dev set: get a fresh dev set rather than tuning further.</p>
 
+  <details class="deeper"><summary>Where it breaks: when the gaps mislead</summary>
+    <ul>
+      <li><b>Models that beat people.</b> Human-level stands in for the best possible error, but nobody can judge a table of payments or sensor readings well, so models pass human level easily there. Then avoidable bias is unknown: use the best error anyone has reached (a strong ensemble, a published result) as the reference, and lean more on error analysis.</li>
+      <li><b>Categories that overlap.</b> One mistake can be night, rain and a truck at once. Then the ceilings overlap too: fixing trucks (40%) and night rain (25%) can't remove 65% of the mistakes if some are both. Tag each mistake with every category it fits, and treat each ceiling as a separate maximum, not a sum.</li>
+      <li><b>A number that gets gamed.</b> Once a team pushes one number, the model finds the cheapest way to raise it: a recommender tuned for clicks learns clickbait, a call-center model tuned for short calls learns to hang up. Keep limits for what the number leaves out, and keep reading real examples.</li>
+    </ul>
+  </details>
   <h2>7. What to carry forward</h2>
   <table class="cmp">
     <tr><th>The numbers say</th><th>Try</th><th>Don't bother with</th></tr>
