@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inside a Detector</title>
+  <meta name="description" content="AI from scratch: inside a detector. The YOLO grid and anchor boxes you can click, how boxes are encoded as offsets and log-ratios, the detection loss, mean average precision, and U-Net segmentation with Dice and IoU." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 4.8em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .unet { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; font: 13px/1.3 ui-monospace, monospace; text-align: center; margin: 10px 0; }
+    .unet div { background: #14171d; color: #d8dee9; border-radius: 6px; padding: 6px 2px; }
+    .unet .d { background: #1f3b4d; } .unet .u { background: #4d331f; } .unet .s { background: transparent; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Inside a detector · Stage 5: seeing and reading</p>
+  <h1>Inside a detector</h1>
+  <p class="lede">Chapter 9 used a detector as a black box: photo in, boxes with labels and confidences out. This lesson opens it. A detector is a CNN like chapter 6's whose last layer doesn't output 10 class scores but a small grid of predictions, each one saying "is there an object centered here, how far off-center, how big, and what is it". The tricks are in how a box becomes numbers a network can learn, which prediction is responsible for which object, and how you score the result. Then the same machinery, pushed to every pixel, gives segmentation.</p>
+
+  <h2>1. The grid: one cell is responsible</h2>
+  <p>YOLO ("you only look once") cuts the image into an \(S \times S\) grid. The cell that contains an object's <b>center</b> is responsible for it, and predicts its box. The network's output is a tensor of shape \(S \times S \times (\text{numbers per cell})\): one prediction per cell, all computed in one pass, which is why it's fast. Tap an object below.</p>
+  <canvas id="grid" class="sq" width="520" height="520" aria-label="A street scene cut into a grid; the cell holding the selected object's center is highlighted with its anchor boxes"></canvas>
+  <div class="row">
+    <label>grid <input type="range" id="S" min="2" max="13" value="7"> <b id="SV">7 × 7</b></label>
+    <button id="shuffle">New scene</button>
+  </div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-num="1470" data-tol="0">
+    <p>The original YOLO used a 7 × 7 grid and predicted 30 numbers per cell. How many numbers does its last layer output?</p>
+    <div class="why">\(7 \times 7 \times 30 = 1{,}470\): for each cell, two boxes of 5 numbers (center x, y, width, height, objectness) and 20 class scores. One forward pass, every prediction at once.</div>
+  </div>
+  <p class="gist">A detector's output is a grid of predictions, and the cell holding an object's center is the one responsible for finding it.</p>
+
+  <h2>2. Anchors, and a box as four learnable numbers</h2>
+  <p>Predicting a box's width from scratch is hard: a pedestrian is tall and thin, a bus long and low. So each cell gets a few <b>anchor boxes</b>, typical shapes taken from the training data (clustered with k-means, in fact). An object is assigned to the anchor whose shape fits it best (highest IoU when both are centered together), and the network predicts only a correction to that anchor:</p>
+  <p class="formula">\[ c_x = (g_x + \sigma(t_x)) \cdot \text{cell}, \quad c_y = (g_y + \sigma(t_y)) \cdot \text{cell}, \quad w = a_w\, e^{t_w}, \quad h = a_h\, e^{t_h} \]</p>
+  <p>Here \((g_x, g_y)\) is the cell, \(\sigma\) keeps the center inside it (chapter 3's sigmoid), and the size is the anchor's \(a_w, a_h\) stretched by \(e^{t}\). The widget's readout shows the four target numbers \(t_x, t_y, t_w, t_h\) for the object you tapped. Each cell also predicts an <b>objectness</b> score (is there an object centered here?) and class scores (a softmax, chapter 5).</p>
+  <details class="deeper"><summary>Why predict the logarithm of the size ratio?</summary>
+    <ol>
+      <li>A 10-pixel error in width is a disaster for a 20-pixel bicycle and nothing for a 400-pixel bus. Errors should be relative, not absolute.</li>
+      <li>With \(w = a_w e^{t_w}\), the target is \(t_w = \ln(w / a_w)\). A box twice the anchor's width has \(t_w = \ln 2 \approx 0.69\) whatever the sizes involved; half has \(-0.69\).</li>
+      <li>So "twice too big" and "half too small" cost the same in a squared-error loss, at every scale: the loss is about ratios, which is what IoU cares about.</li>
+      <li>And \(e^{t}\) is always positive, so the network can never predict a negative width, whatever number it outputs.</li>
+      <li>The center uses a sigmoid for a similar reason: \(\sigma(t_x)\) is always between 0 and 1, so the predicted center can't wander out of the responsible cell, which keeps early training stable.</li>
+    </ol>
+  </details>
+  <p class="gist">Each cell refines a few typical anchor shapes: a sigmoid offset for the center and a log size ratio, so errors are relative and widths stay positive.</p>
+
+  <h2>3. The loss: several jobs in one number</h2>
+  <p>Training adds up a term per job, each computed only where it applies:</p>
+  <table class="cmp">
+    <tr><th>Term</th><th>Where</th><th>Loss</th></tr>
+    <tr><td>Box position and size</td><td>only the responsible cell and anchor</td><td>Squared error on \(t_x, t_y, t_w, t_h\), or a loss built from IoU directly</td></tr>
+    <tr><td>Objectness</td><td>every cell: 1 where an object is centered, 0 elsewhere</td><td>Log loss (chapter 3)</td></tr>
+    <tr><td>Class</td><td>only cells with an object</td><td>Cross-entropy (chapter 5)</td></tr>
+  </table>
+  <p>Most cells are empty, so the objectness term is dominated by "nothing here" examples (chapter 12's imbalance); detectors weight the terms (YOLO multiplies the box term by 5 and the empty cells' objectness by 0.5) or use a <b>focal loss</b> that turns down easy, confident examples. At test time: keep cells whose objectness × class probability passes a threshold, decode their boxes, and run non-maximum suppression (chapter 9).</p>
+  <div class="q" data-answer="b">
+    <p>Why is the box loss computed only at the responsible cell?</p>
+    <ul><li data-k="a" data-says="It's not about speed: the cost is the same either way.">To make training faster</li><li data-k="b">The other cells have no object to describe: their box numbers mean nothing, and a loss on them would train the network to predict garbage</li><li data-k="c" data-says="Every cell predicts boxes; only one is held to an object.">Because the other cells don't predict boxes</li></ul>
+    <div class="why">Every cell outputs box numbers, but only the responsible one has a target. Empty cells are trained only to say "no object" through objectness; their boxes are ignored, and at test time low objectness filters them out.</div>
+  </div>
+  <p class="gist">A detector's loss is a sum of jobs: where the box is (only where an object is), whether there is an object (everywhere), and what it is.</p>
+
+  <h2>4. Scoring a detector: mean average precision</h2>
+  <p>Chapter 9 scored detections with precision and recall at one confidence threshold. A detector's standard score, <b>mAP</b>, sweeps the threshold, like chapter 12's precision-recall curve:</p>
+  <ol>
+    <li>For one class, sort all detections over the whole test set by confidence.</li>
+    <li>Go down the list: each detection that overlaps an unclaimed real object with IoU ≥ 0.5 is a true positive, anything else (including a second box on an already-found object) a false positive.</li>
+    <li>After each detection, compute precision and recall so far; the area under that curve is the class's <b>average precision</b> (AP).</li>
+    <li>Average over classes: mAP. COCO's version also averages over IoU thresholds from 0.5 to 0.95, which rewards tight boxes.</li>
+  </ol>
+  <div class="code" data-title="Build it: average precision for one class"><textarea>
+import numpy as np
+import matplotlib.pyplot as plt
+# 10 detections of "car" over a test set with 6 real cars: confidence, and whether it matched an unclaimed car at IoU ≥ 0.5
+conf = np.array([0.95, 0.91, 0.88, 0.80, 0.76, 0.70, 0.62, 0.55, 0.40, 0.30])
+hit  = np.array([1,    1,    0,    1,    1,    0,    1,    0,    0,    1])
+n_real = 6
+order = np.argsort(-conf)                         # highest confidence first
+tp = np.cumsum(hit[order]); fp = np.cumsum(1 - hit[order])
+precision = tp / (tp + fp); recall = tp / n_real
+# AP: the area under precision-recall, using for each recall the best precision at that recall or beyond
+p_env = np.maximum.accumulate(precision[::-1])[::-1]
+ap = np.sum(np.diff(np.concatenate([[0], recall])) * p_env)
+plt.figure(figsize=(5, 3.5)); plt.step(recall, p_env, where="post"); plt.plot(recall, precision, "o")
+plt.xlabel("recall"); plt.ylabel("precision"); plt.title(f"AP = {ap:.3f}"); plt.show()
+print("precision:", precision.round(2)); print("recall:   ", recall.round(2))
+</textarea></div>
+  <p class="gist">mAP sweeps the confidence threshold: the area under each class's precision-recall curve, averaged over classes (and on COCO over IoU thresholds too).</p>
+
+  <h2>5. Segmentation: a label for every pixel</h2>
+  <p><b>Semantic segmentation</b> labels every pixel (road, car, person, sky); <b>instance segmentation</b> also separates the individual cars. The classic architecture is <b>U-Net</b>: an encoder that shrinks the image like any CNN (more channels, less resolution: <i>what</i> is there), a decoder that grows it back to full size (<i>where</i> exactly), and <b>skip connections</b> that hand each decoder level the encoder's sharp, high-resolution maps from the same level, so boundaries come out crisp.</p>
+  <div class="unet" aria-label="U-Net: encoder levels shrink, decoder levels grow, skip connections link matching levels">
+    <div class="d">64 × 64<br>16 ch</div><div class="s">— skip →</div><div class="s"></div><div class="s">— skip →</div><div class="u">64 × 64<br>16 ch → mask</div>
+    <div class="s"></div><div class="d">32 × 32<br>32 ch</div><div class="s">— skip →</div><div class="u">32 × 32<br>32 ch</div><div class="s"></div>
+    <div class="s"></div><div class="s"></div><div class="d">16 × 16<br>64 ch</div><div class="s"></div><div class="s"></div>
+  </div>
+  <p>The loss is per-pixel cross-entropy (or log loss for one class). The scores compare the predicted mask \(P\) with the true mask \(M\):</p>
+  <p class="formula">\[ \text{IoU} = \frac{|P \cap M|}{|P \cup M|}, \qquad \text{Dice} = \frac{2\,|P \cap M|}{|P| + |M|} \]</p>
+  <div class="code" data-title="Run it: Dice and IoU of a mask that's a bit off"><textarea>
+import numpy as np
+yy, xx = np.mgrid[:64, :64]
+truth = (xx - 32) ** 2 + (yy - 32) ** 2 <= 15 ** 2            # a disc of radius 15
+for shift in [0, 2, 5, 10]:
+    pred = (xx - 32 - shift) ** 2 + (yy - 32) ** 2 <= 15 ** 2    # the same disc, shifted right
+    inter, union = (pred & truth).sum(), (pred | truth).sum()
+    iou, dice = inter / union, 2 * inter / (pred.sum() + truth.sum())
+    print(f"shifted {shift:2d} px: IoU {iou:.3f}  Dice {dice:.3f}  (2·IoU/(1+IoU) = {2 * iou / (1 + iou):.3f})")
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>A segmentation model marks every pixel of a scan as "healthy", and tumors cover 1% of the pixels. Its pixel accuracy is 99%. What's its Dice score for the tumor class?</p>
+    <ul><li data-k="a">0: it found none of the tumor pixels</li><li data-k="b" data-says="That's the pixel accuracy, dominated by the healthy majority.">0.99</li><li data-k="c" data-says="Dice is computed for the tumor class only: |P ∩ M| is 0.">0.5</li></ul>
+    <div class="why">Chapter 12's base-rate trap, per pixel. Dice and IoU look only at the class you care about, which is why segmentation reports them instead of pixel accuracy.</div>
+  </div>
+  <p class="gist">Segmentation labels every pixel: U-Net shrinks to understand and grows back to place, with skips carrying sharp detail across, and Dice or IoU score the class that matters.</p>
+  <details class="deeper"><summary>Where it breaks: small, crowded, and shapes no anchor fits</summary>
+    <ul>
+      <li><b>Small objects.</b> After five halvings, a cell covers 32 × 32 pixels. A 10-pixel pedestrian far away is a fraction of one cell's view, and its features were averaged away by the pooling. Detectors add finer grids from earlier layers (feature pyramids), and still miss more small objects than big ones.</li>
+      <li><b>Crowds.</b> Two people whose centers fall in the same cell compete for one cell's few anchors. Turn the widget's grid down to 3 × 3 and watch objects share cells. Finer grids and more anchors help; so does checking recall on crowded test images specifically.</li>
+      <li><b>Shapes no anchor fits.</b> Anchors are chosen from the training set's boxes. A detector trained on street photos, then asked to find long trains or rotated text, starts from anchors that don't resemble them. Newer "anchor-free" detectors (FCOS, CenterNet) predict distances to the box edges directly, and DETR uses attention (chapter 7) to output a set of boxes with no anchors and no non-maximum suppression at all.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>The output is a grid; the cell holding an object's center is responsible for it.</li>
+    <li>Boxes are learned as corrections to anchors: \(\sigma(t)\) for the center, \(e^{t}\) for the size (relative errors, positive widths).</li>
+    <li>The loss adds box, objectness and class terms, each where it applies; empty cells dominate, so weight or use focal loss.</li>
+    <li>mAP is the area under precision-recall per class, averaged; COCO averages IoU thresholds too.</li>
+    <li>Segmentation: U-Net with skip connections; score with Dice or IoU, never pixel accuracy.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Redmon et al., "You Only Look Once" (2016) and YOLO9000 (2017) for anchors; Ronneberger et al., "U-Net" (2015).</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const cv = $("grid"), g = cv.getContext("2d"), W = cv.width;
+const ANCHORS = [{ name: "wide", w: 120, h: 60, c: "#f4a259" }, { name: "tall", w: 40, h: 110, c: "#83c167" }, { name: "square", w: 70, h: 70, c: "#58c4dd" }];
+const KINDS = [{ name: "car", w: [90, 160], r: [0.45, 0.6], c: "#fc6255" }, { name: "pedestrian", w: [22, 38], r: [2.2, 3], c: "#f4d35e" }, { name: "sign", w: [40, 70], r: [0.9, 1.1], c: "#c792ea" }];
+let objs = [], sel = 0;
+function scene() {
+  objs = Array.from({ length: 5 }, () => {
+    const k = KINDS[Math.floor(Math.random() * KINDS.length)], w = k.w[0] + Math.random() * (k.w[1] - k.w[0]), h = w * (k.r[0] + Math.random() * (k.r[1] - k.r[0]));
+    return { k, w, h, cx: w / 2 + 10 + Math.random() * (W - w - 20), cy: h / 2 + 10 + Math.random() * (W - h - 20) };
+  });
+  sel = 0; draw();
+}
+const iouCentered = (a, b) => { const i = Math.min(a.w, b.w) * Math.min(a.h, b.h); return i / (a.w * a.h + b.w * b.h - i); };
+const logit = (p) => Math.log(p / (1 - p));
+function draw() {
+  const S = +$("S").value, cell = W / S; $("SV").textContent = `${S} × ${S}`;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, W);
+  g.fillStyle = "#1c2230"; g.fillRect(0, W * 0.55, W, W * 0.45);                      // a road, roughly
+  const o = objs[sel], gx = Math.min(S - 1, Math.floor(o.cx / cell)), gy = Math.min(S - 1, Math.floor(o.cy / cell));
+  g.fillStyle = "rgba(244,211,94,0.18)"; g.fillRect(gx * cell, gy * cell, cell, cell);
+  g.strokeStyle = "rgba(216,222,233,0.25)"; g.lineWidth = 1;
+  for (let i = 1; i < S; i++) { g.beginPath(); g.moveTo(i * cell, 0); g.lineTo(i * cell, W); g.moveTo(0, i * cell); g.lineTo(W, i * cell); g.stroke(); }
+  const shared = objs.filter((p) => Math.min(S - 1, Math.floor(p.cx / cell)) === gx && Math.min(S - 1, Math.floor(p.cy / cell)) === gy).length;
+  objs.forEach((p, i) => {
+    g.fillStyle = p.k.c + (i === sel ? "cc" : "66"); g.fillRect(p.cx - p.w / 2, p.cy - p.h / 2, p.w, p.h);
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(p.cx, p.cy, i === sel ? 5 : 3, 0, 7); g.fill();
+  });
+  const scored = ANCHORS.map((a) => ({ ...a, iou: iouCentered(a, o) })), best = scored.reduce((m, a) => (a.iou > m.iou ? a : m));
+  scored.forEach((a) => { g.strokeStyle = a.c; g.lineWidth = a === best ? 3 : 1.2; g.setLineDash(a === best ? [] : [5, 5]); g.strokeRect((gx + 0.5) * cell - a.w / 2, (gy + 0.5) * cell - a.h / 2, a.w, a.h); });
+  g.setLineDash([]); g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(o.cx - o.w / 2, o.cy - o.h / 2, o.w, o.h);
+  const fx = o.cx / cell - gx, fy = o.cy / cell - gy, cl = (v) => Math.min(0.999, Math.max(0.001, v));
+  $("r1").innerHTML = `${o.k.name}: center (${o.cx.toFixed(0)}, ${o.cy.toFixed(0)}), ${o.w.toFixed(0)} × ${o.h.toFixed(0)} px → cell (${gx}, ${gy}) is responsible` +
+    `${shared > 1 ? ` · <b>${shared} objects share this cell</b>` : ""}<br>anchor IoU (centered): ${scored.map((a) => `${a.name} ${a.iou.toFixed(2)}`).join(", ")} → <b>${best.name}</b><br>` +
+    `targets: t<sub>x</sub> = ${logit(cl(fx)).toFixed(2)} (σ = ${fx.toFixed(2)}), t<sub>y</sub> = ${logit(cl(fy)).toFixed(2)} (σ = ${fy.toFixed(2)}), t<sub>w</sub> = ln(${o.w.toFixed(0)}/${best.w}) = ${Math.log(o.w / best.w).toFixed(2)}, t<sub>h</sub> = ln(${o.h.toFixed(0)}/${best.h}) = ${Math.log(o.h / best.h).toFixed(2)}`;
+}
+cv.addEventListener("pointerdown", (e) => {
+  const r = cv.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * W;
+  let bestI = sel, bestD = Infinity;
+  objs.forEach((p, i) => { const inside = Math.abs(x - p.cx) <= p.w / 2 && Math.abs(y - p.cy) <= p.h / 2, d = Math.hypot(x - p.cx, y - p.cy) - (inside ? 1e4 : 0); if (d < bestD) { bestD = d; bestI = i; } });
+  sel = bestI; draw();
+});
+$("S").addEventListener("input", draw); $("shuffle").onclick = scene;
+scene();
+</script>
+</body>
+</html>

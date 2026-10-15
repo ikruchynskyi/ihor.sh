@@ -4423,5 +4423,110 @@
     "sec": 4
    }
   ]
+ },
+ "inside-a-detector.html": {
+  "goals": [
+   "Explain a one-stage detector's output grid and which cell is responsible for an object",
+   "Encode a box as anchor offsets and log size ratios, and decode it back",
+   "Write a detection loss with box, objectness and class terms",
+   "Compute average precision, and score segmentation with Dice and IoU"
+  ],
+  "needs": [
+   "09-vision.html",
+   "deep-cnns.html",
+   "12-measuring-a-model.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "YOLO grid",
+    "The image is cut into S × S cells; the cell containing an object's center is responsible for predicting it."
+   ],
+   [
+    "Anchor boxes",
+    "A few typical box shapes per cell (from k-means on training boxes); the network predicts corrections to the best-fitting one."
+   ],
+   [
+    "Box encoding",
+    "Center: σ(t) inside the cell. Size: anchor × eᵗ, so t = ln(w / anchor): relative errors, positive widths."
+   ],
+   [
+    "Objectness",
+    "Each cell's probability that an object is centered there; trained everywhere, 1 only at responsible cells."
+   ],
+   [
+    "Detection loss",
+    "Box term (responsible cell only) + objectness (all cells) + class (cells with objects), weighted."
+   ],
+   [
+    "mAP",
+    "Area under each class's precision-recall curve over all confidence thresholds, averaged over classes (COCO: and over IoU 0.5–0.95)."
+   ],
+   [
+    "U-Net",
+    "Encoder shrinks (what), decoder grows back (where), skip connections carry sharp detail across matching levels."
+   ],
+   [
+    "Dice",
+    "2|P ∩ M| / (|P| + |M|) = 2·IoU / (1 + IoU); scores the class that matters, unlike pixel accuracy."
+   ]
+  ],
+  "check": [
+   {
+    "q": "In YOLO, which cell predicts an object?",
+    "options": [
+     "The one containing the object's center",
+     "Every cell the object touches",
+     "The cell with the most of the object's pixels"
+    ],
+    "answer": 0,
+    "why": "One responsible cell per object keeps the targets unambiguous.",
+    "sec": 1
+   },
+   {
+    "q": "Why predict a box's width as ln(w / anchor) instead of w in pixels?",
+    "options": [
+     "Errors become relative (twice too big costs the same at any size) and eᵗ keeps widths positive",
+     "Because logarithms are faster to compute",
+     "Because widths are always smaller than anchors"
+    ],
+    "answer": 0,
+    "why": "A 10-pixel miss matters on a bicycle and not on a bus; log ratios measure what IoU cares about.",
+    "sec": 2
+   },
+   {
+    "q": "In the detection loss, the box term is computed…",
+    "options": [
+     "only at the responsible cells",
+     "at every cell",
+     "only at empty cells"
+    ],
+    "answer": 0,
+    "why": "Empty cells have no box to describe; they learn 'no object' through objectness.",
+    "sec": 3
+   },
+   {
+    "q": "mAP differs from precision and recall at one threshold because it…",
+    "options": [
+     "sweeps every confidence threshold and takes the area under precision-recall, averaged over classes",
+     "only counts the most confident box",
+     "ignores false positives"
+    ],
+    "answer": 0,
+    "why": "It's chapter 12's PR curve, per class, summarized as an area.",
+    "sec": 4
+   },
+   {
+    "q": "Why do segmentation models report Dice or IoU instead of pixel accuracy?",
+    "options": [
+     "When the class of interest covers few pixels, marking everything as background gets high accuracy but Dice 0",
+     "Pixel accuracy is hard to compute",
+     "Dice is always higher"
+    ],
+    "answer": 0,
+    "why": "The base-rate trap, per pixel.",
+    "sec": 5
+   }
+  ]
  }
 }

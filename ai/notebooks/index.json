@@ -167,6 +167,13 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-gpus-and-scale"
  },
+ "inside-a-detector.html": {
+  "notebook": "inside-a-detector.ipynb",
+  "title": "AI from scratch: inside a detector",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/inside-a-detector.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-inside-a-detector"
+ },
  "l1-systems-and-inverses.html": {
   "notebook": "l1-systems-and-inverses.ipynb",
   "title": "AI from scratch: systems, rank and least squares",
