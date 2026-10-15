@@ -48,6 +48,7 @@ export function lab(root: HTMLElement, opts: LabOpts) {
     try {
       sdr = src === "server" ? await RemoteSdr.connect() : await RtlSdr.request();
       if (sdr instanceof RtlSdr) await sdr.setSampleRate(1_024_000);
+      else if (Math.abs(target() - 137.5e6) <= 0.5e6) sdr.radio = "sat"; // weather satellites: the radio behind the 137 MHz LNA
       await sdr.setCenterFrequency(target() - OFFSET);
       await sdr.setGain(gain());
       opts.onStart?.(sdr.sampleRate);

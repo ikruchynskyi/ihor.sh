@@ -16,6 +16,7 @@ export class RemoteSdr {
   sampleRate = 0;
   centerFrequency = 0; // of your slice
   readonly id = Math.random().toString(36).slice(2, 12);
+  radio = ""; // "sat": the server's satellite radio (the Nooelec on the V-dipole) if it can, else the main one
   private width = 1_200_000;
   private streaming = false;
   private abort = new AbortController();
@@ -55,7 +56,7 @@ export class RemoteSdr {
   }
 
   async stream(onData: (cu8: Uint8Array) => void): Promise<void> {
-    const r = await fetch(`/api/stream?id=${this.id}&center=${Math.round(this.centerFrequency)}&width=${this.width}`, { signal: this.abort.signal });
+    const r = await fetch(`/api/stream?id=${this.id}&center=${Math.round(this.centerFrequency)}&width=${this.width}${this.radio ? `&radio=${this.radio}` : ""}`, { signal: this.abort.signal });
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
     this.sampleRate = Number(r.headers.get("x-sample-rate")) || this.sampleRate;
     this.centerFrequency = Number(r.headers.get("x-center")) || this.centerFrequency;

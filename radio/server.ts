@@ -462,6 +462,7 @@ const server = http.createServer(async (req, res) => {
       let center = Number(q.get("center")) || tuning.center;
       if (!raw) try { center = await place(id, center, width); } catch (e) { return json(res, (e as any).code ?? 500, { error: (e as Error).message }); }
       await ensureSdr("iq");
+      if (req.socket.destroyed) { if (!listening()) idle = setTimeout(resumeOrRelease, IDLE_MS); return; } // gone while the radio opened: its close already fired
       const headers = { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(raw ? sdr!.sampleRate : width), "x-center": String(raw ? tuning.center : center), "x-slice-id": id };
       res.writeHead(200, headers);
       const leave = () => { if (!listening()) idle = setTimeout(resumeOrRelease, IDLE_MS); tellBand(); console.log(`listener left (${listening()})`); };

@@ -115,18 +115,23 @@ function allowed(ip: string) {
   return true;
 }
 
-async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse) {
+// A live view of a weather satellite (radio=sat, 137–138 MHz) goes to the satellite radio, radio/server.ts on :8074 with the
+// Nooelec behind the 137 MHz LNA; when that can't stream, to the main radio as everything else.
+const SDR_SAT_PORT = 8074;
+async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse, port = /[?&]radio=sat\b/.test(req.url ?? "") ? SDR_SAT_PORT : SDR_PORT, counted = false) {
   const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };
   const stream = req.url?.startsWith("/api/stream");
-  if (stream && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
-  const up = http.request({ host: "127.0.0.1", port: SDR_PORT, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json", "x-via-ihor": "1" } }, (r) => { // x-via-ihor: from the internet (no raw full-window stream)
+  if (stream && !counted && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
+  const fallback = () => (res.headersSent ? res.destroy() : proxySdr(req, res, SDR_PORT, counted || !!stream)); // mid-stream: just end it
+  const up = http.request({ host: "127.0.0.1", port, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json", "x-via-ihor": "1" } }, (r) => { // x-via-ihor: from the internet (no raw full-window stream)
+    if (port !== SDR_PORT && r.statusCode !== 200) { r.resume(); return fallback(); }
     res.writeHead(r.statusCode ?? 502, r.headers);
     r.pipe(res);
   });
-  up.on("error", () => offline("The server SDR is offline right now."));
-  if (stream) { listeners++; res.on("close", () => listeners--); }
+  up.on("error", () => (port !== SDR_PORT ? fallback() : offline("The server SDR is offline right now.")));
+  if (stream && !counted) { listeners++; res.on("close", () => listeners--); }
   res.on("close", () => up.destroy()); // a closed stream or event feed must close upstream too (it counts listeners/watchers)
-  req.pipe(up);
+  if (req.readableEnded) up.end(); else req.pipe(up); // a fallback: the request was already read
 }
 
 /** What the dongle is doing (raw IQ for Spectrum Lab, APRS or ADS-B decoding), for the home page cards. */
