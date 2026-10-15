@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Time Series and Forecasting</title>
+  <meta name="description" content="AI from scratch elective: time series and forecasting on five years of NYC subway ridership. Trend, weekly season and holidays, the baselines that are hard to beat, lag features with gradient boosting, walk-forward evaluation, prediction intervals, and what breaks forecasts." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Time series and forecasting</p>
+  <h1>Time series and forecasting</h1>
+  <p class="lede">How many people will ride the subway next Tuesday? How much power will the city draw tomorrow at 6 pm? How many orders will the warehouse ship next week? Forecasting is one of the most common jobs a junior ML engineer gets, and it breaks the rules most of this path took for granted: the examples aren't independent, the order matters, and the future may not look like the past. This lesson works on real data, every day of NYC subway ridership from March 2020 to January 2025: a pandemic collapse, a slow recovery, a weekly rhythm and the holidays.</p>
+  <p class="muted">Data: MTA Daily Ridership Data: 2020–2025, Metropolitan Transportation Authority, data.ny.gov (New York State open data).</p>
+
+  <h2>1. A series has parts</h2>
+  <canvas id="ts" width="800" height="360" aria-label="Daily NYC subway ridership, with its 7-day average"></canvas>
+  <div class="row">
+    <label>show <select id="span"><option value="all">all of it</option><option value="2024">2024</option><option value="fall">Oct 2024 – Jan 2025</option></select></label>
+    <label><input type="checkbox" id="trend" checked> 7-day average</label>
+  </div>
+  <p class="legend"><i style="background:#58c4dd"></i>daily riders <i style="background:#f4a259"></i>7-day average (the trend)</p>
+  <p class="readout" id="r1"></p>
+  <p>Look at the whole range, then zoom in. Three parts stack up: a <b>trend</b> (the collapse in spring 2020 to about 0.4 million a day and the climb back past 3 million), a <b>season</b> (every week: weekdays high, Saturdays lower, Sundays lowest), and <b>events</b> (holidays, storms). What's left is noise. The 7-day average smooths out exactly one week's season, so it shows the trend alone.</p>
+  <p class="gist">A time series is trend plus season plus events plus noise, and most of forecasting is modeling the first three.</p>
+
+  <h2>2. Baselines that are hard to beat</h2>
+  <p>Before any model, the simple forecasts, scored on October 2024 to January 2025 by mean absolute error (MAE: the average miss, in riders):</p>
+  <table class="cmp">
+    <tr><th>Forecast for a day</th><th>MAE</th><th>Why it's that good or bad</th></tr>
+    <tr><td>Same as yesterday</td><td>658,000</td><td>Monday after a Sunday is off by a million</td></tr>
+    <tr><td>Average of the last 7 days</td><td>713,000</td><td>Throws away the weekly pattern entirely</td></tr>
+    <tr><td><b>Same weekday last week</b> (seasonal naive)</td><td><b>382,000</b></td><td>Copies the weekly pattern; about 11% of an average 3.4 million day</td></tr>
+  </table>
+  <p>The seasonal naive forecast wins because ridership correlates 0.83 with the same day a week earlier, but only 0.49 with the day before. Any model you build has to beat it, by a margin you can measure; papers and teams that skip this step regularly publish models worse than "last week".</p>
+  <div class="q" data-answer="b">
+    <p>A forecast for hourly electricity use is scored against "same hour yesterday" and against "same hour last week". Which is likely the harder baseline to beat on weekdays?</p>
+    <ul><li data-k="a" data-says="Last week brings the weekday pattern but also a week of weather change; for weekdays yesterday is usually closer.">Same hour last week</li><li data-k="b">Same hour yesterday: a weekday follows a weekday with the same daily rhythm and nearly the same weather</li><li data-k="c" data-says="Every series has its strongest repeating period; it's worth knowing which.">They're always equally hard</li></ul>
+    <div class="why">The best naive forecast copies the strongest repeating period. For subway riders it's the week (weekends differ hugely); for weekday electricity it's often the day. Measure the correlation at each lag and pick.</div>
+  </div>
+  <p class="gist">Score every forecast against the naive ones, especially "same time last season": they're surprisingly strong.</p>
+  <details class="deeper"><summary>Why copying last week works so well</summary>
+    <ol>
+      <li>Write a day's riders as \(y_t = \text{trend}_t + s_{w(t)} + \varepsilon_t\): a slowly moving trend, a weekday effect \(s\), noise.</li>
+      <li>Same weekday last week: \(\hat y_t = y_{t-7} = \text{trend}_{t-7} + s_{w(t)} + \varepsilon_{t-7}\). The weekday effect is copied exactly.</li>
+      <li>So the error is \(y_t - \hat y_t = (\text{trend}_t - \text{trend}_{t-7}) + (\varepsilon_t - \varepsilon_{t-7})\): a week of trend change plus two days of noise.</li>
+      <li>Trends move slowly, so the first part is small; the second has twice the noise's variance (two independent days, Probability 4). That's the floor this baseline can't get under.</li>
+      <li>Yesterday's value has the same noise term but a different weekday effect: \(s_{\text{Mon}} - s_{\text{Sun}}\) is about a million riders here. That's why it loses by so much.</li>
+    </ol>
+  </details>
+
+  <h2>3. Forecasting as regression: lags and calendars</h2>
+  <p>Any regression model (chapter 13's boosted trees) can forecast, once each day becomes a row of features known in advance: <b>lags</b> (riders 7, 14, 21, 28 days before), <b>rolling statistics</b> (the average of the week before that), and the <b>calendar</b> (weekday, month, a holiday flag). For a forecast 7 days ahead every feature must be at least 7 days old: a lag of 1 would be the future.</p>
+  <div class="code" data-title="Run it: boosted trees with lag features vs the seasonal naive"><textarea>
+import io
+import numpy as np, pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
+from sklearn.ensemble import HistGradientBoostingRegressor
+s = pd.read_csv(io.StringIO(get("/ai/data/ridership.csv")), parse_dates=["date"]).set_index("date")["subway"]
+X = pd.DataFrame(index=s.index)
+for k in [7, 14, 21, 28]:
+    X[f"lag{k}"] = s.shift(k)                                   # every feature at least 7 days old
+X["mean_prev_week"] = s.shift(7).rolling(7).mean()
+X["weekday"], X["month"], X["day_of_year"] = s.index.dayofweek, s.index.month, s.index.dayofyear
+X["holiday"] = s.index.isin(USFederalHolidayCalendar().holidays(s.index.min(), s.index.max())).astype(int)
+ok = X.notna().all(axis=1)
+train = ok & (X.index >= "2022-01-01") & (X.index < "2024-10-01")   # past only
+test = ok & (X.index >= "2024-10-01")                              # the last three months
+model = HistGradientBoostingRegressor(random_state=0).fit(X[train], s[train])
+pred = pd.Series(model.predict(X[test]), index=s[test].index)
+mae = lambda p: np.mean(np.abs(p - s[test]))
+print(f"seasonal naive MAE {mae(s.shift(7)[test]):,.0f}   ·   boosted trees MAE {mae(pred):,.0f}")
+worst = (pred - s[test]).abs().sort_values().tail(4)
+print("biggest misses:", ", ".join(f"{d:%a %b %d} ({v:,.0f})" for d, v in worst.items()))
+</textarea></div>
+  <p>About 285,000 against 382,000: a quarter better than last week. Without the holiday flag the same model scores 340,000, so one column bought half the gain. The biggest misses are still holidays: Thanksgiving, the Friday after it (not a federal holiday, so the flag doesn't know), Christmas Eve.</p>
+  <p class="gist">Forecasting becomes regression with features from the past (lags, rolling stats) and the calendar; every feature must be old enough for the forecast horizon.</p>
+
+  <h2>4. Evaluating a forecast honestly</h2>
+  <ul>
+    <li><b>Never shuffle.</b> A random split puts tomorrow in the training data (features and leakage). Train on the past, test on what came after.</li>
+    <li><b>Walk forward.</b> One test window is one roll of the dice. <b>Backtesting</b> repeats it: train to March, test April; train to April, test May; and so on. Scikit-learn's <code>TimeSeriesSplit</code> does this (toolkit 2).</li>
+    <li><b>Match the horizon.</b> A model judged one day ahead but used two weeks ahead is judged on the wrong question; errors grow with the horizon (in the notebook: 227,000 a day ahead, 312,000 eight weeks ahead, though not smoothly in between: one test window is noisy).</li>
+    <li><b>Give a range.</b> A forecast with an interval ("3.1 to 3.6 million, 90% of the time") lets planners size trains. One simple way: the spread of the model's past errors on a recent validation window.</li>
+  </ul>
+  <div class="q" data-answer="a">
+    <p>A team computes a centered 7-day moving average (3 days before, the day, 3 days after) and uses it as a feature to forecast tomorrow. What's wrong?</p>
+    <ul><li data-k="a">A centered window includes days after the one being predicted: leakage from the future</li><li data-k="b" data-says="The window length is fine; it's which days it covers.">7 days is too short</li><li data-k="c" data-says="Averages are fine features, as long as they only look back.">Averages can't be features</li></ul>
+    <div class="why">Centered averages are great for drawing a trend, never for forecasting. Features must use trailing windows that end before the forecast's moment, shifted by the horizon.</div>
+  </div>
+  <p class="gist">Evaluate forecasts on the future only, repeatedly (walk-forward), at the horizon you'll use, and give a range, not just a number.</p>
+  <details class="deeper"><summary>Where it breaks: the future that doesn't rhyme</summary>
+    <ul>
+      <li><b>Regime changes.</b> A model trained on 2019 would have forecast 5 million riders for April 2020; there were 0.4 million. No feature in the past predicts a pandemic, a strike or a new fare system. Watch errors (MLOps) and retrain on the new regime, or say plainly that the forecast doesn't cover shocks.</li>
+      <li><b>Intervals from calm times.</b> 90% intervals built from summer 2024's errors covered only 59% of the October–January days: the holidays make bigger errors than summer ever did. Build intervals from comparable seasons, and check their coverage.</li>
+      <li><b>Moving holidays.</b> Thanksgiving's date moves, Easter moves more, and Lunar New Year follows another calendar. A day-of-year feature can't see them; explicit holiday flags (and the days around them) can.</li>
+      <li><b>Forecasts that change the future.</b> If extra trains are scheduled because a crowd is forecast, the crowd may spread out, and next year's data reflects the response, not the demand.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Trend, season, events, noise: plot first, at several zoom levels.</li>
+    <li>Beat the seasonal naive forecast, by a measured margin.</li>
+    <li>Lags, trailing rolling stats and calendar features turn forecasting into regression; mind the horizon.</li>
+    <li>Walk-forward evaluation, never shuffled; intervals checked for coverage.</li>
+    <li>Shocks and moving holidays are where forecasts fail; monitor and say so.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Hyndman and Athanasopoulos, "Forecasting: Principles and Practice" (free online) is the standard text.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const rows = (await (await fetch("/ai/data/ridership.csv")).text()).trim().split("\n").slice(1).map((l) => { const [d, s] = l.split(","); return { d, v: +s }; });
+const ma = rows.map((_, i) => (i < 6 ? null : rows.slice(i - 6, i + 1).reduce((s, r) => s + r.v, 0) / 7));
+function draw() {
+  const span = $("span").value, from = span === "2024" ? "2024-01-01" : span === "fall" ? "2024-10-01" : "2000", to = span === "2024" ? "2024-12-31" : "2100";
+  const idx = rows.map((r, i) => i).filter((i) => rows[i].d >= from && rows[i].d <= to);
+  const cv = $("ts"), g = cv.getContext("2d"), W = cv.width, H = cv.height, max = Math.max(...idx.map((i) => rows[i].v)) * 1.05;
+  const X = (k) => 50 + (k / (idx.length - 1)) * (W - 60), Y = (v) => H - 25 - (v / max) * (H - 40);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "12px ui-monospace, monospace";
+  for (let v = 1e6; v < max; v += 1e6) { g.strokeStyle = "rgba(216,222,233,0.12)"; g.beginPath(); g.moveTo(45, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.fillStyle = "#9aa4b2"; g.fillText(`${v / 1e6}M`, 4, Y(v) + 4); }
+  g.strokeStyle = "#58c4dd"; g.lineWidth = idx.length > 400 ? 1 : 1.6; g.beginPath(); idx.forEach((i, k) => (k ? g.lineTo(X(k), Y(rows[i].v)) : g.moveTo(X(k), Y(rows[i].v)))); g.stroke();
+  if ($("trend").checked) { g.strokeStyle = "#f4a259"; g.lineWidth = 2.5; g.beginPath(); let started = false; idx.forEach((i, k) => { if (ma[i] == null) return; started ? g.lineTo(X(k), Y(ma[i])) : g.moveTo(X(k), Y(ma[i])); started = true; }); g.stroke(); }
+  g.fillStyle = "#9aa4b2"; g.fillText(rows[idx[0]].d, 50, H - 6); g.fillText(rows[idx[idx.length - 1]].d, W - 90, H - 6);
+  const vals = idx.map((i) => rows[i].v), lo = idx.reduce((a, i) => (rows[i].v < rows[a].v ? i : a), idx[0]), hi = idx.reduce((a, i) => (rows[i].v > rows[a].v ? i : a), idx[0]);
+  $("r1").textContent = `${idx.length} days · average ${(vals.reduce((a, b) => a + b, 0) / vals.length / 1e6).toFixed(2)} M · lowest ${(rows[lo].v / 1e6).toFixed(2)} M on ${rows[lo].d} · highest ${(rows[hi].v / 1e6).toFixed(2)} M on ${rows[hi].d}`;
+}
+["span", "trend"].forEach((id) => $(id).addEventListener("change", draw)); draw();
+</script>
+</body>
+</html>

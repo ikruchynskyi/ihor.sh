@@ -5602,5 +5602,110 @@
     "sec": 3
    }
   ]
+ },
+ "time-series.html": {
+  "goals": [
+   "Decompose a series into trend, season, events and noise",
+   "Score forecasts against naive and seasonal naive baselines",
+   "Build lag, rolling and calendar features for a given horizon without leakage",
+   "Evaluate walk-forward, at the right horizon, with intervals checked for coverage"
+  ],
+  "needs": [
+   "13-trees-and-boosting.html",
+   "features-and-leakage.html",
+   "pandas-and-sklearn.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Trend, season, events",
+    "A series' slow movement, its repeating cycle (here weekly), and one-off days like holidays."
+   ],
+   [
+    "Seasonal naive",
+    "Forecast = the same point one season ago (same weekday last week): the baseline to beat."
+   ],
+   [
+    "Autocorrelation",
+    "Correlation of a series with itself shifted by k: here 0.83 at 7 days, 0.49 at 1."
+   ],
+   [
+    "Lag features",
+    "Values from k periods before, with k at least the forecast horizon."
+   ],
+   [
+    "Trailing vs centered windows",
+    "Rolling stats for forecasting must end before the forecast moment; centered windows leak the future."
+   ],
+   [
+    "Walk-forward backtest",
+    "Train up to a date, test the next period, move on: many honest test windows."
+   ],
+   [
+    "Forecast horizon",
+    "How far ahead; errors grow with it, so evaluate at the horizon you'll use."
+   ],
+   [
+    "Interval coverage",
+    "Check that a 90% interval really contains about 90% of outcomes on comparable periods."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why does 'same weekday last week' beat 'same as yesterday' for subway ridership?",
+    "options": [
+     "The weekly cycle is the strongest repeat (correlation 0.83 at lag 7 vs 0.49 at lag 1)",
+     "Last week's data is more accurate",
+     "Yesterday's data is usually missing"
+    ],
+    "answer": 0,
+    "why": "Yesterday copies the wrong weekday effect: Monday after Sunday is off by a million.",
+    "sec": 2
+   },
+   {
+    "q": "For a forecast 7 days ahead, which feature leaks?",
+    "options": [
+     "Riders 3 days before the forecast date",
+     "Riders 7 days before",
+     "The weekday"
+    ],
+    "answer": 0,
+    "why": "3 days before isn't known yet when forecasting a week ahead.",
+    "sec": 3
+   },
+   {
+    "q": "Why shouldn't a forecasting model be evaluated with a shuffled train/test split?",
+    "options": [
+     "It puts future days in training, so the test measures interpolation, not forecasting",
+     "Shuffling is slow",
+     "Time series can't be split"
+    ],
+    "answer": 0,
+    "why": "Train on the past, test on what came after; walk forward.",
+    "sec": 4
+   },
+   {
+    "q": "A 90% interval built from summer errors covers only 59% of holiday-season days. Why?",
+    "options": [
+     "Holiday errors are bigger than summer's; the interval was calibrated on a calmer period",
+     "The model is broken",
+     "90% intervals always cover 59%"
+    ],
+    "answer": 0,
+    "why": "Build intervals from comparable seasons and check coverage.",
+    "sec": 4
+   },
+   {
+    "q": "Which event would no feature built from past ridership have predicted?",
+    "options": [
+     "The April 2020 collapse to about 0.4 million riders a day",
+     "Lower ridership on Sundays",
+     "Higher ridership on weekdays"
+    ],
+    "answer": 0,
+    "why": "Regime changes break forecasts; monitor and retrain.",
+    "sec": 4
+   }
+  ]
  }
 }
