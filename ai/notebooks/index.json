@@ -314,6 +314,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-recurrent-networks"
  },
+ "reinforcement-learning.html": {
+  "notebook": "reinforcement-learning.ipynb",
+  "title": "AI from scratch: reinforcement learning",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/reinforcement-learning.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-reinforcement-learning"
+ },
  "s1-what-is-ml.html": {
   "notebook": "s1-what-is-ml.ipynb",
   "title": "AI from scratch: your first models",

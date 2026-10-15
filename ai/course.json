@@ -5823,5 +5823,110 @@
     "sec": 3
    }
   ]
+ },
+ "reinforcement-learning.html": {
+  "goals": [
+   "Define agent, state, action, reward and the discounted return",
+   "Explain the Bellman equation and how values flow backward from rewards",
+   "Implement Q-learning with ε-greedy exploration",
+   "Explain policy gradients, RLHF, and why RL is hard (sparse rewards, instability, reward hacking)"
+  ],
+  "needs": [
+   "p1-probability-and-bayes.html",
+   "02-gradients.html",
+   "training-in-pytorch.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Return",
+    "G = r₁ + γ r₂ + γ² r₃ + …: future rewards, each step discounted by γ."
+   ],
+   [
+    "Discount γ",
+    "How much the future counts: 0.95⁵⁰ ≈ 0.077; low γ makes the agent short-sighted."
+   ],
+   [
+    "Bellman equation",
+    "Q(s, a) = E[r + γ max Q(s′, a′)]: values agree with themselves one step later."
+   ],
+   [
+    "Q-learning",
+    "Q(s, a) += α [r + γ max Q(s′, ·) − Q(s, a)] after every step."
+   ],
+   [
+    "ε-greedy",
+    "Random action with probability ε, else the best known: exploration so better paths can be found."
+   ],
+   [
+    "Policy gradient (REINFORCE)",
+    "Raise log π(a|s) in proportion to the return that followed; normalize returns to cut noise."
+   ],
+   [
+    "RLHF",
+    "A reward model learned from human preference pairs; the language model tuned with PPO to score well on it."
+   ],
+   [
+    "Reward hacking",
+    "The agent optimizes the reward as written, not as meant (the boat that circles forever)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Rewards −1, −1, +10 with γ = 0.9 give a return of…",
+    "options": [
+     "6.2",
+     "8",
+     "10"
+    ],
+    "answer": 0,
+    "why": "−1 − 0.9 + 0.81·10 = 6.2.",
+    "sec": 1
+   },
+   {
+    "q": "Why does the Bellman equation let value 'flow backward' from the goal?",
+    "options": [
+     "Each state's value is defined by the next state's value, so updates near the reward propagate to earlier states",
+     "Because the agent walks backward",
+     "Because γ is negative"
+    ],
+    "answer": 0,
+    "why": "Q(s, a) = r + γ max Q(s′, ·): neighbors of the goal learn first, then theirs.",
+    "sec": 2
+   },
+   {
+    "q": "Why does Q-learning need exploration (ε > 0)?",
+    "options": [
+     "Without it, the agent keeps repeating the first path that worked and never discovers better ones",
+     "To make training faster per step",
+     "Because Q starts at zero"
+    ],
+    "answer": 0,
+    "why": "Greedy-only agents get stuck with early habits.",
+    "sec": 3
+   },
+   {
+    "q": "In RLHF, what plays the role of the reward?",
+    "options": [
+     "A reward model trained to predict which of two answers people prefer",
+     "The number of tokens",
+     "The training loss"
+    ],
+    "answer": 0,
+    "why": "Human preference pairs → reward model → PPO on the language model.",
+    "sec": 4
+   },
+   {
+    "q": "An agent rewarded for hitting targets circles them forever instead of finishing the race. This is…",
+    "options": [
+     "reward hacking: it optimized the reward as written",
+     "a bug in Q-learning",
+     "overfitting"
+    ],
+    "answer": 0,
+    "why": "Design rewards for what you mean, and watch the behavior.",
+    "sec": 4
+   }
+  ]
  }
 }

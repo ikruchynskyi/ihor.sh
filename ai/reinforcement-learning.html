@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reinforcement Learning</title>
+  <meta name="description" content="AI from scratch elective: reinforcement learning. Rewards and returns, the Bellman equation, Q-learning that you watch learn a city grid, exploration, policy gradients that balance a pole, and why RL is hard: sparse rewards, instability and reward hacking." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Reinforcement learning</p>
+  <h1>Reinforcement learning</h1>
+  <p class="lede">Every model on this path learned from examples with answers. Some problems have no answers to copy, only consequences: a game won or lost many moves later, a robot that stays upright or falls, a chatbot reply that people rate up or down. <b>Reinforcement learning</b> (RL) learns from consequences: an agent acts, the world responds with a reward, and over many tries the agent learns which actions lead to more reward in the long run. It's how AlphaGo learned Go and part of how chat models learned to be helpful (RLHF). This lesson builds the core ideas on a small city grid you can watch learn.</p>
+
+  <h2>1. Agent, state, action, reward</h2>
+  <p>At each step the agent sees a <b>state</b> \(s\), picks an <b>action</b> \(a\), receives a <b>reward</b> \(r\) and lands in a new state. Its goal is the <b>return</b>: the sum of future rewards, each step further away worth a factor \(\gamma\) (gamma, the <b>discount</b>, a little under 1) less:</p>
+  <p class="formula">\[ G_t = r_{t+1} + \gamma\, r_{t+2} + \gamma^2 r_{t+3} + \dots \]</p>
+  <p>The grid below: a rider starts top-left and must reach the station (green, +10). Every step costs −1 (time), the red cells are construction (−5), and the street is slippery: 10% of the time the rider moves in a random direction instead. Nothing tells the agent where the station is; it has to find out.</p>
+  <canvas id="grid" width="800" height="520" aria-label="A city grid with the learned value of each cell and the best move from it"></canvas>
+  <div class="row">
+    <button id="play">▶ Learn</button><button id="step10">+10 episodes</button><button id="reset">Start over</button>
+    <label>explore ε <input type="range" id="eps" min="0" max="0.5" step="0.01" value="0.1"> <b id="epsV"></b></label>
+    <label>discount γ <input type="range" id="gam" min="0.5" max="0.99" step="0.01" value="0.95"> <b id="gamV"></b></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p class="gist">An agent learns from rewards that may arrive many steps after the action that earned them, aiming for the most discounted reward in the long run.</p>
+
+  <h2>2. Values, and the Bellman equation</h2>
+  <p>The <b>value</b> of a state is the return you can expect from it if you act well from then on. The key fact: a state's value is the best action's immediate reward plus the discounted value of where it leads. That's the <b>Bellman equation</b>, written with \(Q(s, a)\), the value of taking action \(a\) in state \(s\):</p>
+  <p class="formula">\[ Q(s, a) = \mathbb{E}\left[ r + \gamma \max_{a'} Q(s', a') \right] \]</p>
+  <p>The colors in the grid are \(\max_a Q(s, a)\) as the agent has learned them, and the arrows the best action from each cell. Watch the values spread outward from the station like a rumor: first its neighbors learn they're close, then their neighbors.</p>
+  <div class="q" data-num="-1" data-tol="0.01">
+    <p>With \(\gamma = 0.9\), a step costs −1 and from the next cell the best you can do is worth 0. What is this step's \(Q\)?</p>
+    <div class="why">\(-1 + 0.9 \times 0 = -1\). If the next cell were worth 10: \(-1 + 0.9 \times 10 = 8\). Values are built from the rewards ahead, discounted.</div>
+  </div>
+  <p class="gist">A state's value is its best action's reward plus the discounted value of where that action leads: a recursion that lets value flow backward from rewards.</p>
+  <details class="deeper"><summary>Why the Bellman equation holds</summary>
+    <ol>
+      <li>The return from now is the next reward plus the discounted return from the next step on: \(G_t = r_{t+1} + \gamma G_{t+1}\) (factor \(\gamma\) out of every later term).</li>
+      <li>Take expectations: \(Q(s, a) = \mathbb{E}[G_t \mid s, a] = \mathbb{E}[r_{t+1} + \gamma G_{t+1} \mid s, a]\). The expectation covers the slip: where you land is random.</li>
+      <li>If from the next state you act as well as possible, the expected \(G_{t+1}\) is the best \(Q\) there: \(\max_{a'} Q(s', a')\).</li>
+      <li>So \(Q(s, a) = \mathbb{E}[r + \gamma \max_{a'} Q(s', a')]\). The values must agree with themselves one step later; that self-consistency is what Q-learning drives toward.</li>
+      <li>With \(\gamma < 1\) a reward \(k\) steps away counts \(\gamma^k\): at 0.95, a reward 50 steps away counts 0.077 as much. Lower \(\gamma\) makes the agent short-sighted; try 0.5 in the grid.</li>
+    </ol>
+  </details>
+
+  <h2>3. Q-learning: learn values from your own steps</h2>
+  <p>The agent doesn't know the rules of the world (the slip, where the station is), so it can't solve the equation directly. <b>Q-learning</b> nudges its estimate after every single step toward what that step suggests:</p>
+  <p class="formula">\[ Q(s, a) \leftarrow Q(s, a) + \alpha \left[ r + \gamma \max_{a'} Q(s', a') - Q(s, a) \right] \]</p>
+  <p>The bracket is the surprise (a "temporal difference" error): what happened plus what's expected next, minus what was expected now. Chapter 2's gradient step, toward a target the agent keeps improving. And it must <b>explore</b>: with probability \(\varepsilon\) take a random action, otherwise the best known one, or it never discovers a better route than the first one it found. In the practice notebook a coffee cart worth +3 sits two steps from the start and the far corner is worth +20: with ε = 0.1 the agent settles for the coffee in all six runs; with ε = 0.5 it finds the corner in all six, after 2,000 episodes. Exploration is necessary, and expensive.</p>
+  <div class="code" data-title="Build it: Q-learning on a tiny corridor"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+n, goal = 6, 5                       # cells 0..5 in a row; the goal is the last one
+Q = np.zeros((n, 2))                 # actions: 0 = left, 1 = right
+alpha, gamma, eps = 0.5, 0.9, 0.1
+for episode in range(200):
+    s = 0
+    while s != goal:
+        a = rng.integers(2) if rng.random() < eps else int(np.argmax(Q[s]))
+        s2 = max(0, s - 1) if a == 0 else s + 1
+        r = 10 if s2 == goal else -1
+        Q[s, a] += alpha * (r + gamma * Q[s2].max() * (s2 != goal) - Q[s, a])     # no future after the goal
+        s = s2
+print("learned values (best action per cell):", Q.max(axis=1).round(2))
+print("exact: -1 per step, +10 at the end, discounted:", [round(sum(-gamma ** k for k in range(goal - 1 - c)) + 10 * gamma ** (goal - 1 - c), 2) for c in range(n - 1)])
+</textarea></div>
+  <p class="gist">Q-learning moves each estimate toward the reward it just got plus the best estimate of the next state, and explores a little so it can find better paths.</p>
+
+  <h2>4. Policy gradients, deep RL, and RLHF</h2>
+  <p>A table of \(Q\) works for 48 cells, not for a robot's joint angles or a game screen. Two ways to scale:</p>
+  <ul>
+    <li><b>Deep Q-networks</b> replace the table with a network that maps a state to the \(Q\) of each action (DeepMind's Atari player, 2015).</li>
+    <li><b>Policy gradients</b> skip values: a network outputs action probabilities directly, and after each episode, actions that came before a high return are made more likely: the gradient of \(\sum \log \pi(a_t \mid s_t)\) weighted by the return. In the practice notebook this method (REINFORCE) teaches a network to balance a pole on a cart, from falling after a few dozen steps to the 500-step maximum within about 150 tries. PPO, a steadier version, trains most robots and the RL step of chat models.</li>
+  </ul>
+  <p><b>RLHF</b> (reinforcement learning from human feedback) is the last one at scale: people compare pairs of model answers, a reward model learns to predict their preferences (the evaluating-LLMs lesson's pairwise judging), and the language model is tuned with PPO to produce answers the reward model scores highly.</p>
+  <div class="q" data-answer="b">
+    <p>Why does a pure policy-gradient agent need many episodes even on a simple task?</p>
+    <ul><li data-k="a" data-says="The network is small; that's not the bottleneck.">Its network is too large</li><li data-k="b">It learns only from whole-episode returns, which are noisy: a good action in an unlucky episode gets blamed with the rest</li><li data-k="c" data-says="It does explore: its actions are sampled from probabilities.">It never explores</li></ul>
+    <div class="why">Credit assignment with noisy returns needs many samples to average out (C4's 1/√N). Baselines (subtracting the average return) and learned value estimates (actor-critic, PPO) reduce the noise.</div>
+  </div>
+  <p class="gist">To scale, networks replace the table: deep Q-networks predict values, policy gradients make rewarded actions more likely, and RLHF tunes chat models toward human preferences.</p>
+  <details class="deeper"><summary>Where it breaks: RL gets exactly what you reward</summary>
+    <ul>
+      <li><b>Reward hacking.</b> In a well-known OpenAI experiment, a boat-racing agent rewarded for hitting targets learned to circle a lagoon forever, catching fire and crashing, scoring more than any finisher and never finishing the race. Agents optimize the reward as written, not as meant. RLHF has the same risk: a chat model can learn to please the reward model (long, confident, flattering) rather than to be right.</li>
+      <li><b>Sparse rewards.</b> If the only reward is at a distant goal, random exploration may never reach it, and nothing is learned. Make the grid's station farther and walled off, and watch learning stall; shaping (small rewards for progress) helps but can itself be hacked.</li>
+      <li><b>Instability.</b> The targets move as the agent learns, and its own actions decide what data it sees. Deep RL runs are notoriously sensitive to seeds and settings (the experiments lesson's seed lottery, much worse).</li>
+      <li><b>The real world is slow and costly.</b> The notebook's pole needs 150 tries; a real robot can't fall 150 times an hour. Most robotics trains in simulation and then fights the gap to reality.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Agent, state, action, reward; the goal is the discounted return.</li>
+    <li>Bellman: \(Q(s, a) = \mathbb{E}[r + \gamma \max Q(s', \cdot)]\); values flow backward from rewards.</li>
+    <li>Q-learning: a step toward the temporal-difference target; explore with ε.</li>
+    <li>Policy gradients raise the probability of actions before high returns; PPO and RLHF build on them.</li>
+    <li>The agent optimizes the reward you wrote: design it, and watch for hacking.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Sutton and Barto, "Reinforcement Learning: An Introduction" (free online), and OpenAI's "Spinning Up in Deep RL" are the standard next steps.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const COLS = 8, ROWS = 6, START = [0, 0], GOAL = [6, 4];
+const WALL = new Set(["3,0", "3,1", "3,2", "5,3", "5,4", "1,4", "2,4"]);    // construction: −5, but you can cross it
+const MOVES = [[0, -1], [1, 0], [0, 1], [-1, 0]];                          // up, right, down, left
+let Q, episodes, returns, seed;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+function reset() { Q = Array.from({ length: COLS * ROWS }, () => [0, 0, 0, 0]); episodes = 0; returns = []; seed = 1; draw(); }
+const idx = (x, y) => y * COLS + x;
+function episode() {
+  const eps = +$("eps").value, gamma = +$("gam").value, alpha = 0.3; let [x, y] = START, G = 0;
+  for (let t = 0; t < 200; t++) {
+    const s = idx(x, y), a = rand() < eps ? Math.floor(rand() * 4) : Q[s].indexOf(Math.max(...Q[s]));
+    const move = rand() < 0.1 ? MOVES[Math.floor(rand() * 4)] : MOVES[a];       // slippery: 10% random move
+    const nx = Math.min(COLS - 1, Math.max(0, x + move[0])), ny = Math.min(ROWS - 1, Math.max(0, y + move[1]));
+    const done = nx === GOAL[0] && ny === GOAL[1], r = done ? 10 : WALL.has(`${nx},${ny}`) ? -5 : -1;
+    Q[s][a] += alpha * (r + (done ? 0 : gamma * Math.max(...Q[idx(nx, ny)])) - Q[s][a]);
+    G += r; x = nx; y = ny; if (done) break;
+  }
+  episodes++; returns.push(G);
+}
+function draw() {
+  $("epsV").textContent = $("eps").value; $("gamV").textContent = $("gam").value;
+  const cv = $("grid"), g = cv.getContext("2d"), W = cv.width, H = cv.height, cw = W / COLS, ch = (H - 40) / ROWS;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  const V = Q.map((q) => Math.max(...q)), lo = Math.min(...V, -1), hi = Math.max(...V, 1);
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const v = V[idx(x, y)], t = (v - lo) / (hi - lo || 1), goal = x === GOAL[0] && y === GOAL[1], wall = WALL.has(`${x},${y}`);
+    g.fillStyle = goal ? "#2f9e44" : wall ? "#7a2a2a" : `rgba(88,196,221,${0.08 + 0.7 * t})`; g.fillRect(x * cw + 2, y * ch + 2, cw - 4, ch - 4);
+    g.fillStyle = "#d8dee9"; g.font = "13px ui-monospace, monospace";
+    if (!goal) {
+      g.fillText(v.toFixed(1), x * cw + 6, y * ch + 18);
+      if (episodes) { const a = Q[idx(x, y)].indexOf(Math.max(...Q[idx(x, y)])), [dx, dy] = MOVES[a], cx = x * cw + cw / 2, cy = y * ch + ch / 2 + 6;
+        g.strokeStyle = "#f4d35e"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(cx - dx * 14, cy - dy * 14); g.lineTo(cx + dx * 14, cy + dy * 14); g.stroke();
+        g.beginPath(); g.arc(cx + dx * 14, cy + dy * 14, 3.5, 0, 7); g.fillStyle = "#f4d35e"; g.fill(); }
+    } else g.fillText("station +10", x * cw + 6, y * ch + 18);
+  }
+  g.fillStyle = "#fff"; g.beginPath(); g.arc(START[0] * cw + cw / 2, START[1] * ch + ch / 2, 7, 0, 7); g.fill();
+  const last = returns.slice(-20), avg = last.length ? last.reduce((a, b) => a + b, 0) / last.length : 0;
+  g.fillStyle = "#9aa4b2"; g.fillText(`episodes: ${episodes}`, 8, H - 14);
+  $("r1").textContent = episodes ? `${episodes} episodes · average return of the last ${last.length}: ${avg.toFixed(1)} (the best possible is −1: 11 steps at −1, then +10; slips make it lower) · value at the start: ${V[idx(...START)].toFixed(1)}` : "Press Learn. Each episode the rider walks from the white dot until it reaches the station.";
+}
+let timer = null;
+$("play").onclick = () => { if (timer) { clearInterval(timer); timer = null; $("play").textContent = "▶ Learn"; return; } $("play").textContent = "❚❚ Pause"; timer = setInterval(() => { episode(); draw(); if (episodes >= 600) { clearInterval(timer); timer = null; $("play").textContent = "▶ Learn"; } }, 60); };
+$("step10").onclick = () => { for (let i = 0; i < 10; i++) episode(); draw(); };
+$("reset").onclick = reset; ["eps", "gam"].forEach((id) => $(id).addEventListener("input", draw));
+reset();
+</script>
+</body>
+</html>
