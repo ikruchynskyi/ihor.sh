@@ -13,6 +13,10 @@
 //     runs in the page with print(...), plot(ys or [[x, y]…], {label}) and table(rows); data-uses runs another
 //     block's code first (quietly), so a chapter can build a program up in steps. Ctrl/⌘+Enter runs.
 //
+//   <p class="gist">Every matrix is rotate, stretch, rotate.</p>   the idea in one sentence a learner can repeat
+//   <details class="deeper"><summary>Why is it always an ellipse?</summary>…</details>   depth that can be skipped:
+//     "Why …" for the reason it's true, "Where it breaks" for its limits (PEDAGOGY.md, Depth)
+//
 //   \( inline math \) and \[ display math \] anywhere in the text.
 //
 //   <div class="code" data-lang="python">…</div>  (or data-lang="python" on any ancestor, e.g. <main>) runs Python
@@ -39,6 +43,13 @@ const css = `
 .q.solved .why, .q.shown .why { display: block; }
 .q .think { margin-top: 6px; }
 .q .giveup { font-size: 0.85em; background: none !important; border: none !important; color: var(--muted) !important; text-decoration: underline; cursor: pointer; padding: 0 !important; box-shadow: none !important; }
+.gist { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); border-radius: 0 10px 10px 0; padding: 8px 14px; margin: 16px 0; font-weight: 600; }
+.gist::before { content: "The idea"; display: block; font: 700 0.72rem ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+details.deeper { border: 1px dashed var(--line); border-radius: 10px; background: var(--card); padding: 0 14px; margin: 14px 0; }
+details.deeper > summary { cursor: pointer; padding: 10px 0; font-weight: 600; list-style-position: outside; margin-left: 1em; }
+details.deeper:not([open]) > summary::after { content: " · go deeper, optional"; font-weight: 400; font-size: 0.85em; color: var(--muted); }
+details.deeper[open] { padding-bottom: 6px; }
+details.deeper ol, details.deeper ul { padding-left: 1.3em; }
 .code { margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); }
 .code .bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 0.8rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 .code .bar b { flex: 1; color: var(--fg); font-weight: 600; }

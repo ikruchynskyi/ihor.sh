@@ -3129,6 +3129,17 @@
     "sec": 1
    },
    {
+    "q": "Why do the singular values of A equal the square roots of the eigenvalues of AᵀA?",
+    "options": [
+     "Because ‖Av‖² = vᵀAᵀAv: the squared stretch along an eigenvector of AᵀA is its eigenvalue",
+     "Because A and AᵀA have the same eigenvectors for every A",
+     "Because singular values are defined as eigenvalues of A, and AᵀA squares them"
+    ],
+    "answer": 0,
+    "why": "Lengths of outputs are governed by AᵀA. A itself may have no real eigenvectors at all (a rotation), and A's eigenvalues are not its singular values unless A is symmetric.",
+    "sec": 1
+   },
+   {
     "q": "A matrix has singular values 10 and 0.01. What does that tell you?",
     "options": [
      "It's badly conditioned (condition number 1,000): solving with it magnifies errors",

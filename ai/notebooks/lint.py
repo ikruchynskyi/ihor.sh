@@ -6,6 +6,7 @@ checks every notebook exercise against it: an exercise may only ask for what the
     python3 ai/notebooks/lint.py              # lint every notebook and lesson page, exit 1 on errors
     python3 ai/notebooks/lint.py s1 c2        # only lessons whose name contains one of these
     python3 ai/notebooks/lint.py --ledger s1  # print what a learner knows when that lesson's notebook starts
+    python3 ai/notebooks/lint.py --depth      # lessons still short of the depth standard (a to-do list, not errors)
 
 The ledger has two kinds of entries:
   taught   syntax (py:*) and math notation (math:*) a lesson explains, declared in course.json "teaches" and confirmed
@@ -262,8 +263,30 @@ def lint(only=(), show_ledger=None):
     return errors
 
 
+def depth(verbose=False):
+    "The depth standard (PEDAGOGY.md, Depth): each lesson has a gist, a Why box, a Where-it-breaks box, a why question."
+    course, short = json.loads((AI / "course.json").read_text()), []
+    for stem, _ in path():
+        s = (AI / f"{stem}.html").read_text() if (AI / f"{stem}.html").exists() else ""
+        boxes = [re.sub(r"<[^>]+>", "", t).strip().lower() for t in re.findall(r'<details class="deeper">\s*<summary>(.*?)</summary>', s, re.S)]
+        missing = [name for name, ok in [
+            ("gist", 'class="gist"' in s), ("why box", any(b.startswith("why") for b in boxes)),
+            ("where-it-breaks box", any("break" in b for b in boxes)),
+            ("why question", any(q["q"].startswith("Why") for q in course.get(f"{stem}.html", {}).get("check", [])))] if not ok]
+        if missing:
+            short.append((stem, missing))
+    if verbose:
+        for stem, missing in short:
+            print(f"· {stem}: no {', no '.join(missing)}")
+    print(f"depth: {len(path()) - len(short)} of {len(path())} lessons meet the depth standard" + ("" if verbose else " (--depth lists the rest)"))
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if "--ledger" in args:
         sys.exit(lint(show_ledger=args[args.index("--ledger") + 1]))
-    sys.exit(1 if lint([a for a in args if not a.startswith("-")]) else 0)
+    if "--depth" in args:
+        sys.exit(depth(verbose=True))
+    bad = lint([a for a in args if not a.startswith("-")])
+    depth()
+    sys.exit(1 if bad else 0)

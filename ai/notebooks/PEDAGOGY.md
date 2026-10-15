@@ -113,3 +113,49 @@ exercise number to its checks. Don't define `check` in a notebook.
 Treat it like a failing test. Find what the exercise required that their ledger lacked, and add a linter rule
 or ledger entry that would have caught it. If no program could have caught it, add the question to the
 cold-learner read. Then fix every exercise the new rule flags, not only the one that was reported.
+
+## 6. Depth: intuition first, then why, never at the cost of simplicity
+
+The ledger rule keeps the path from jumping ahead. The depth rule keeps it from staying shallow. A learner who can
+run `np.linalg.svd` but can't say why the circle always becomes an ellipse has a recipe, not understanding, and
+recipes don't transfer to the next problem. So every core idea goes one level deeper than "what and how", to
+"why it's true" and "when it stops being true". It does that **in layers, so the main read stays as simple as
+before.**
+
+### The five layers of a core idea
+
+| Layer | Where | Example (SVD) |
+|---|---|---|
+| 1. **See it** | main text: a widget or picture | drag the columns, and the circle becomes an ellipse |
+| 2. **Say it** | main text: `<p class="gist">`, one sentence a learner can repeat | "Every matrix is rotate, stretch, rotate." |
+| 3. **Why it's true** | `<details class="deeper"><summary>Why …?</summary>` | ‖Ax‖² = xᵀAᵀAx, so the axes are AᵀA's eigenvectors |
+| 4. **Where it breaks** | `<details class="deeper"><summary>Where it breaks</summary>` | σ₂ = 0 flattens the ellipse; σ₁ = σ₂ makes the axes not unique |
+| 5. **Where AI uses it** | main text | LoRA, recommenders, PCA |
+
+Rules for the deeper boxes:
+- **Optional, never a prerequisite.** Nothing after a box (a question, a code box, the notebook) needs what's in it.
+  A learner who never opens one still finishes the lesson.
+- **A sketch, not a proof.** Small steps, one line each, each with its reason in words ("because U is a rotation,
+  it doesn't change lengths"). 4 to 8 steps. If it needs more, the lesson is missing a smaller idea.
+- **The ledger rule applies inside them.** Only notation already taught (lint.py checks the box text too).
+- **"Where it breaks" is concrete:** a counterexample with numbers, an extreme case, or the assumption that fails,
+  plus what people do about it.
+
+### Intuition drills (in lessons and notebooks)
+
+Intuition is a prediction that turns out right. It grows by predicting, being wrong, and seeing why. So:
+- **Predict, then reveal.** Before a widget or code box shows the answer, a `.q` asks for a guess. The miss is the lesson.
+- **Extreme cases.** Push a knob to 0 and to infinity: what must happen? (A singular value to 0, a learning rate to 10.)
+- **Estimate before computing.** A random guess over 10 classes has loss ln 10 ≈ 2.3; a 4096 × 4096 layer is 16.8 M
+  numbers. A learner who estimates first catches their own bugs.
+- **Four views of one idea:** picture, words, formula, code, side by side, each pointing at the same thing.
+- **Check theory numerically.** A derivation is something you can test: rebuild A from U, Σ, Vᵀ; compare a gradient
+  with a finite difference. Notebooks do this often, since the check is the code.
+- **Why questions.** Each lesson's quiz in `course.json` has at least one question starting "Why", with the real
+  misconceptions as the wrong options.
+
+### Checking it
+
+`lint.py` ends with a depth line, and `lint.py --depth` lists each lesson still missing a gist, a "Why" box, a
+"Where it breaks" box or a "Why" question. It's a to-do list, not an error. New lessons ship with all four; existing
+ones get them as they're touched (stage 1 first).

@@ -27,11 +27,34 @@
 
   <h2>1. Every matrix turns a circle into an ellipse</h2>
   <p>Drag the blue and yellow arrows: they're where the matrix sends the steps \(\hat\imath\) and \(\hat\jmath\) (chapter 1). The gray circle of unit arrows becomes a tilted ellipse, always. Its longest radius is the most the matrix stretches anything, its shortest the least. The green and pink arrows are the two unit arrows that land exactly on the ellipse's axes. Now press <b>Play</b>: the same matrix as three simple moves.</p>
+  <div class="q">
+    <p>Predict first: drag the yellow arrow onto the same line as the blue one. What happens to the ellipse, and to \(\sigma_2\)?</p>
+    <div class="why">It flattens into a line segment and \(\sigma_2\) drops to 0: both columns point the same way, so every output lands on that one line. The matrix squashes the plane, its determinant is 0, and it can't be undone (linear algebra 1's singular matrix). "Singular" values got their name from exactly this.</div>
+  </div>
   <canvas id="plane" class="sq" width="520" height="520" aria-label="A matrix turning the unit circle into an ellipse, shown as rotate, stretch, rotate"></canvas>
   <div class="row"><button id="play">Play the three moves</button><label>move <input type="range" id="t" min="0" max="3" step="0.01" value="3"></label></div>
   <p class="readout" id="r1"></p>
   <p class="formula">\[ A = U\,\Sigma\,V^\top \qquad \Sigma = \begin{bmatrix} \sigma_1 & 0 \\ 0 & \sigma_2 \end{bmatrix}, \quad \sigma_1 \ge \sigma_2 \ge 0 \]</p>
   <p>Read it right to left, like a sequence of moves: \(V^\top\) <b>rotates</b> the plane so the two directions that will become the ellipse's axes (the columns of \(V\), the <b>right singular vectors</b>) lie along x and y; \(\Sigma\) <b>stretches</b> x by \(\sigma_1\) and y by \(\sigma_2\), the <b>singular values</b>; \(U\) <b>rotates</b> the result into place, its columns pointing along the ellipse's axes. (When the matrix flips the plane over, one stretch is shown negative.) In more dimensions it's the same: an \(m \times n\) matrix rotates, stretches along up to \(\min(m, n)\) axes, and rotates again.</p>
+  <p class="gist">Every matrix, whatever it does, is a rotation, a stretch along two perpendicular axes, and another rotation: the circle always becomes an ellipse.</p>
+  <details class="deeper"><summary>Why is it always an ellipse?</summary>
+    <ol>
+      <li>The squared length of an output is \(\lVert Ax \rVert^2 = (Ax)\cdot(Ax) = x^\top A^\top A\, x\). So everything about lengths lives in the matrix \(A^\top A\).</li>
+      <li>\(A^\top A\) is symmetric, so (linear algebra 2) it has two perpendicular unit eigenvectors \(v_1, v_2\), with eigenvalues \(\lambda_1 \ge \lambda_2\). They can't be negative: each is a squared length, \(\lVert A v_i \rVert^2 = v_i^\top A^\top A v_i = \lambda_i\).</li>
+      <li>So \(A v_1\) has length \(\sqrt{\lambda_1}\), call it \(\sigma_1\), and \(A v_2\) has length \(\sigma_2 = \sqrt{\lambda_2}\).</li>
+      <li>And the two outputs are perpendicular too: \((A v_1)\cdot(A v_2) = v_1^\top A^\top A v_2 = \lambda_2\, v_1 \cdot v_2 = 0\). Call their directions \(u_1, u_2\).</li>
+      <li>Any unit arrow is \(x = \cos t\, v_1 + \sin t\, v_2\), so \(A x = \cos t\, \sigma_1 u_1 + \sin t\, \sigma_2 u_2\): exactly the points of an ellipse with half-axes \(\sigma_1\) and \(\sigma_2\) along \(u_1\) and \(u_2\).</li>
+    </ol>
+    <p>That's the whole proof, and it's also a way to compute the SVD: eigenvectors of \(A^\top A\) give \(V\), the square roots of its eigenvalues give \(\Sigma\), and \(u_i = A v_i / \sigma_i\) gives \(U\).</p>
+  </details>
+  <details class="deeper"><summary>Where it breaks: when the SVD isn't unique</summary>
+    <ul>
+      <li><b>Equal stretches.</b> If \(\sigma_1 = \sigma_2\) the ellipse is a circle, and every perpendicular pair of arrows is a valid pair of axes. A rotation's SVD can be written in infinitely many ways.</li>
+      <li><b>Signs.</b> Flipping both \(u_i\) and \(v_i\) gives the same matrix, so two programs can return opposite signs. That's why the code below and scikit-learn compare directions "up to sign". Never read meaning into the sign of a singular vector.</li>
+      <li><b>A zero stretch.</b> If \(\sigma_2 = 0\), \(u_2\) can't be found from \(A v_2 / \sigma_2\); any arrow perpendicular to \(u_1\) will do.</li>
+    </ul>
+    <p>The singular values themselves are always unique. Only the axes can be ambiguous, and only in these cases.</p>
+  </details>
   <div class="q" data-num="1" data-tol="0.01">
     <p>A pure rotation by 30° (chapter 1's <code>rotation(30)</code>): what are its singular values? Give the larger one.</p>
     <div class="why">Rotations don't stretch anything: the circle stays a circle, so \(\sigma_1 = \sigma_2 = 1\). That's also why its determinant is 1 (the area doesn't change).</div>
@@ -52,6 +75,15 @@ print("eigenvalues of A itself:", np.linalg.eigvals(A).round(3), "(not the same:
 print("condition number σ₁/σ₂:", round(S[0] / S[1], 2), "=", round(np.linalg.cond(A), 2))
 print("U and V are rotations (or reflections):", np.allclose(U.T @ U, np.eye(2)), np.allclose(Vt @ Vt.T, np.eye(2)))
 </textarea></div>
+  <p class="gist">Eigenvalues tell you what happens if you apply a matrix over and over; singular values tell you the most and least it can stretch anything in one go.</p>
+  <details class="deeper"><summary>Where it breaks: eigenvalues that hide a stretch</summary>
+    <p>The shear \(\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}\) has eigenvalues 1 and 1: judged by them, nothing grows. Its singular values are 1.618 and 0.618: some arrows grow by 62% in one step. Both are right about different questions. Applied 100 times, the shear moves a point by about 100 (it grows linearly, not exponentially), while a matrix with an eigenvalue of 1.1 would blow it up by \(1.1^{100} \approx 13{,}800\).</p>
+    <p>In a neural network a gradient passes through one weight matrix per layer, and each is different. What sets how much it can grow or shrink at each step is that layer's singular values, which is why stage 2's "making nets train" talks about keeping them near 1 (careful initialization, normalization).</p>
+  </details>
+  <div class="q" data-num="1" data-tol="0.5">
+    <p>Estimate: float32 numbers carry about 7 significant digits. You solve a system whose matrix has condition number \(10^6\). Roughly how many digits of the answer can you trust?</p>
+    <div class="why">About \(7 - 6 = 1\). Each power of ten in the condition number can cost one digit of accuracy. That's the practical meaning of a thin ellipse: small errors along its short axis get stretched by \(\sigma_1/\sigma_2\) when you undo the matrix.</div>
+  </div>
 
   <h2>3. Keep the big stretches: compression</h2>
   <p>Written as a sum, the SVD is a stack of simple layers, each a column times a row, weighted by its singular value:</p>
@@ -75,6 +107,22 @@ for ax, k in zip(axes, [1, 5, 20, 50, len(S)]):
 print("biggest singular values:", S[:6].round(0))
 print("share of the picture's energy (Σσ²) in the first 20 layers:", round(float(np.sum(S[:20] ** 2) / np.sum(S ** 2)), 3))
 </textarea></div>
+  <p class="gist">A matrix is a stack of layers, biggest first; dropping the small ones loses the least.</p>
+  <details class="deeper"><summary>Why do the biggest layers win?</summary>
+    <ol>
+      <li>Measure a matrix's size by its <b>energy</b>: the sum of its squared entries (the squared length of all the numbers as one long vector).</li>
+      <li>Rotations don't change lengths, so they don't change energy. \(A = U\Sigma V^\top\) and \(\Sigma\) have the same energy: \(\sigma_1^2 + \sigma_2^2 + \dots\)</li>
+      <li>The same goes for any group of layers: they're built from perpendicular \(u_i\) and perpendicular \(v_i\), so their energies just add, like the sides of a right triangle.</li>
+      <li>The error of keeping the first \(k\) layers is the layers you dropped, so its energy is \(\sigma_{k+1}^2 + \sigma_{k+2}^2 + \dots\) Keeping the biggest makes that as small as it can be among the SVD's own layers.</li>
+    </ol>
+    <p>That no other rank-\(k\) matrix, built from any layers at all, does better is the Eckart–Young theorem; its proof takes another page, but steps 2 to 4 are the intuition. It's also why the share of \(\sum \sigma_i^2\) you keep is the honest measure of "how much of the picture is left".</p>
+  </details>
+  <details class="deeper"><summary>Where it breaks: what low rank is bad at</summary>
+    <ul>
+      <li><b>Diagonals and edges.</b> Every layer is a column times a row, so it's made of horizontal and vertical stripes. A sharp diagonal line, or text, needs many layers. JPEG compresses small 8 × 8 blocks with cosine waves instead, and does much better on photos.</li>
+      <li><b>Noise that looks like signal.</b> Dropping small layers removes noise only when the real thing is low-rank and the noise is spread over all the layers. A small detail that matters (a face far away) can sit in a small layer and get dropped with the noise.</li>
+    </ul>
+  </details>
   <div class="q" data-num="5570" data-tol="1">
     <p>A rank-10 version of a 300 × 256 image stores 10 columns of \(U\) (300 numbers each), 10 rows of \(V^\top\) (256 each), and 10 singular values. How many numbers is that?</p>
     <div class="why">\(10 \times (300 + 256 + 1) = 3{,}000 + 2{,}560 + 10 = 5{,}570\), against 76,800 pixels in the original: about 7%, and already recognizable.</div>
@@ -98,6 +146,15 @@ print("same first direction (up to sign):", np.allclose(abs(Vt[0]), abs(evecs[:,
 print("same as scikit-learn's PCA:", np.allclose(abs(PCA(3).fit(X).components_), abs(Vt[:3])))
 print("share of the variance in 2 components:", round(float(np.sum(S[:2] ** 2) / np.sum(S ** 2)), 3))
 </textarea></div>
+  <details class="deeper"><summary>Why does forming \(X^\top X\) lose precision?</summary>
+    <p>The singular values of \(X^\top X\) are \(\sigma_i^2\) (its eigenvalues, from the "Why always an ellipse" box), so its condition number is \((\sigma_1/\sigma_{\min})^2\): the square of \(X\)'s. Data with condition number \(10^5\) becomes \(10^{10}\), and in float64's 16 digits that leaves about 6 trustworthy digits instead of 11. The SVD works on \(X\) directly and never pays that price.</p>
+  </details>
+  <details class="deeper"><summary>Where it breaks: big variance isn't the same as useful</summary>
+    <ul>
+      <li>PCA keeps the directions where the data varies most. The thing you want to predict can live in a direction of small variance, and PCA throws it away first. Check a model on the components against one on the raw features before trusting them.</li>
+      <li>Variance depends on units: a column in grams outweighs the same column in kilograms by a million. That's why the data is standardized first.</li>
+    </ul>
+  </details>
 
   <h2>5. Hidden tastes: a tiny recommender</h2>
   <p>Eight people rated ten films, 1 to 5 stars, but 30% of the ratings are missing. The table is made up from two hidden tastes (how much each film is an action film or a love story, how much each person likes each), plus noise. Nobody tells the SVD that; it finds two big singular values and much smaller ones after them. To guess the missing ratings: fill them with each film's average, take the rank-2 version, put its guesses into the gaps, and repeat. This is the idea behind the Netflix Prize-era recommenders, and still behind many today.</p>
@@ -126,6 +183,16 @@ print("error on the missing ratings: film average", round(rmse(np.nanmean(R, axi
 pd.DataFrame(np.round(rank2, 1), columns=films).head(3)
 </textarea></div>
   <p>The directions the SVD finds are mixtures you name afterwards ("taste 1 is mostly action against romance"). Real recommenders add regularization and learn from millions of ratings, but the shape of the answer is this one: a person is a short vector of tastes, a film is a short vector of qualities, and a rating is roughly their dot product.</p>
+  <p class="gist">If a few hidden factors explain a table, the table is close to low rank, and its biggest layers are those factors.</p>
+  <details class="deeper"><summary>Why do two tastes make rank 2?</summary>
+    <p>Put each person's two tastes in a row of \(P\) (8 × 2) and each film's two qualities in a row of \(Q\) (10 × 2). If every rating is a person's tastes dotted with a film's qualities, the whole table is \(R = P Q^\top\). Every column of \(R\) is then a mix of \(P\)'s two columns, so \(R\) has rank at most 2, and its SVD has only two nonzero singular values. Noise adds small ones on top. Reading the singular values backwards tells you how many hidden factors there are.</p>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <ul>
+      <li><b>Missing isn't random.</b> People rate the films they chose to watch, mostly ones they expected to like. Filling the gaps as if they were random overestimates how much people like films they skipped.</li>
+      <li><b>Cold start.</b> A new person with no ratings has no taste vector, and a new film has no qualities. Real systems fall back on what's popular, or on features (genre, actors) until ratings arrive.</li>
+    </ul>
+  </details>
 
   <h2>6. Solving the unsolvable: the pseudo-inverse</h2>
   <p>Linear algebra 1 solved square, invertible systems, and noted that <code>np.linalg.lstsq</code> "uses an SVD". Here's why: invert each stretch, \(\sigma_i \to 1/\sigma_i\), and skip the ones that are zero (or tiny). That's the <b>pseudo-inverse</b> \(A^+ = V\,\Sigma^+\,U^\top\). It exists for every matrix; for an overdetermined system it gives the least-squares answer, and when columns repeat (linear algebra 1's twin column) it still gives one sensible answer, the smallest weights that fit.</p>
@@ -142,9 +209,25 @@ twin = np.column_stack([X, X[:, 2] + X[:, 3]])                        # a column
 w_twin = np.linalg.pinv(twin) @ y
 print("with the twin column: fits as well:", np.allclose(twin @ w_twin, X @ w_pinv), "· smallest singular value:", f"{np.linalg.svd(twin, compute_uv=False)[-1]:.1e}")
 </textarea></div>
+  <p class="gist">Turn the problem so the matrix is just stretches, divide by each stretch you can, and leave the rest alone.</p>
+  <details class="deeper"><summary>Why does the pseudo-inverse give least squares?</summary>
+    <ol>
+      <li>We want \(w\) making \(\lVert X w - y \rVert\) as small as possible, with \(X = U\Sigma V^\top\).</li>
+      <li>Rotating doesn't change lengths, so rotate everything by \(U^\top\): the error is \(\lVert \Sigma V^\top w - U^\top y \rVert\).</li>
+      <li>Name the rotated unknowns \(z = V^\top w\) and the rotated targets \(c = U^\top y\). The problem falls apart into one tiny equation per axis: \(\sigma_i z_i \approx c_i\).</li>
+      <li>Where \(\sigma_i \ne 0\), solve it exactly: \(z_i = c_i / \sigma_i\). Rows with no \(\sigma\) at all (more equations than unknowns) can't be matched by any \(w\): their \(c_i\) is the error left over, the least squares residual.</li>
+      <li>Where \(\sigma_i = 0\), any \(z_i\) fits equally well; choosing 0 gives the shortest \(w\). Rotate back, \(w = V z\), and that's \(w = V \Sigma^+ U^\top y\).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: tiny stretches</summary>
+    <p>A singular value that should be 0 but came out as \(10^{-12}\) (rounding) or 0.001 (noise) gets divided into: \(c_i / \sigma_i\) is huge, and the weights explode. NumPy's <code>pinv</code> treats values below a cutoff as zero (its <code>rcond</code>). Ridge regression (chapter 11) does it smoothly: it replaces \(1/\sigma_i\) with \(\sigma_i / (\sigma_i^2 + \lambda)\), which is close to \(1/\sigma_i\) for big stretches and close to 0 for tiny ones. Regularization is, seen this way, a gentle pseudo-inverse.</p>
+  </details>
 
   <h2>7. Why big models fine-tune with low rank</h2>
   <p>A large language model's layer can be a 4,096 × 4,096 matrix: 16.8 million weights. Fine-tuning it for a new task changes those weights by some \(\Delta W\), and experiments found that useful changes are close to low-rank: a few directions matter. <b>LoRA</b> (stage 6) trains the change directly as a product \(\Delta W = B A\) with \(B\) of shape 4,096 × \(r\) and \(A\) of shape \(r\) × 4,096, for a small rank \(r\) like 8. That's the SVD's lesson used in reverse: if only a few layers matter, learn only those.</p>
+  <details class="deeper"><summary>Where it breaks: when the change isn't low-rank</summary>
+    <p>LoRA bets that the fine-tuning change needs only \(r\) directions per layer. Small adjustments (a tone, a format, a narrow task) fit that bet. Teaching a model a lot that's new (a language it barely saw) needs a change of higher rank, and a small \(r\) then trains fine but stops improving early. People raise \(r\), or fine-tune fully, when LoRA's validation loss stalls above full fine-tuning's.</p>
+  </details>
   <div class="q" data-num="0.39" data-tol="0.02">
     <p>With \(r = 8\): what percent of the 16.8 million weights does LoRA train for that layer? (Two decimal places.)</p>
     <div class="why">\(2 \times 4096 \times 8 = 65{,}536\) trainable numbers, against \(4096^2 = 16{,}777{,}216\): 0.39%.</div>

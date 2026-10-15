@@ -43,6 +43,14 @@
     <div class="why">\((3.1^2 - 9)/0.1 = (9.61 - 9)/0.1 = 6.1\), which is \(2a + h\). The true slope at 3 is 6.</div>
   </div>
   <p>A derivative is also a <b>sensitivity</b>: near \(a\), \(f(a + \Delta) \approx f(a) + f'(a)\,\Delta\). If the loss has derivative 6 with respect to a weight, nudging that weight up by 0.001 raises the loss by about 0.006. Gradient descent (chapter 2) is just this sentence used backwards.</p>
+  <p class="gist">Zoom in far enough and a smooth curve looks like a straight line; the derivative is that line's slope, and it says how much the output moves per unit you move the input.</p>
+  <details class="deeper"><summary>Where it breaks: kinks, jumps, and "near"</summary>
+    <ul>
+      <li><b>Kinks.</b> \(|x|\) at 0 has slope 1 from the right and −1 from the left; no zoom makes it a single line, so there's no derivative there. ReLU has the same kink at 0. Frameworks simply use slope 0 there, and it works because landing exactly on 0.0 almost never happens.</li>
+      <li><b>Jumps.</b> A step that is 0 below a threshold and 1 above has slope 0 everywhere except the jump, where it has none. Its derivative says "nudging changes nothing", which gives learning nothing to follow. That's why networks use the smooth sigmoid instead of a hard on/off threshold.</li>
+      <li><b>"Near" is a real limit.</b> \(f(a + \Delta) \approx f(a) + f'(a)\,\Delta\) is only good for small \(\Delta\): for \(x^2\) at \(a = 3\) a step of 0.1 is off by 0.01, a step of 3 by 9. A learning rate that's too big trusts the slope too far from where it was measured (calculus 3 measures how far is too far).</li>
+    </ul>
+  </details>
 
   <h2>2. Seven rules differentiate everything</h2>
   <p>Nobody takes limits by hand. Every function a network computes is built from a few pieces, and each piece has a rule:</p>
@@ -64,6 +72,14 @@
   <div class="q" data-num="3">
     <p>What is the slope of \(e^{3x}\) at \(x = 0\)?</p>
     <div class="why">Chain rule: \(e^{3x} \cdot 3\), and \(e^0 = 1\), so 3. The inside's slope multiplies everything.</div>
+  </div>
+  <p class="gist">The chain rule multiplies the slopes along the way, and a network is one long chain.</p>
+  <details class="deeper"><summary>Why the chain rule multiplies</summary>
+    <p>Nudge \(x\) by a small \(\Delta\). The inside, \(g\), moves by about \(g'(x)\,\Delta\) (the sensitivity sentence). That move is the outside's input nudge, so \(f\) moves by about \(f'(g(x))\) times it: \(f'(g(x))\, g'(x)\, \Delta\). Divide by \(\Delta\) and you have the rule. Three gears in a row, turning 2× and then 3×, turn 6×; ten layers that each pass on 0.25 of a nudge pass on \(0.25^{10}\) of it (section 4).</p>
+  </details>
+  <div class="q" data-num="0">
+    <p>Predict before you compute: what is the slope of the bell curve \(e^{-x^2}\) at \(x = 0\)?</p>
+    <div class="why">0: it's the top of the bell, flat for an instant. The formula agrees: \(e^{0} \cdot (-2 \cdot 0) = 0\). Tops and bottoms of smooth curves always have slope 0, which is exactly how training knows it has reached a minimum.</div>
   </div>
   <details class="deeper"><summary>Why the product rule looks like that</summary>
     <p>Picture \(f \cdot g\) as the area of a rectangle with sides \(f\) and \(g\). Nudge \(x\): the sides grow by \(df\) and \(dg\), and the area gains a strip \(g\,df\), a strip \(f\,dg\), and a corner \(df\,dg\). The corner is a small number times a small number, so it vanishes faster than the strips when you divide by the nudge. What remains is \(f'g + fg'\).</p>
@@ -99,6 +115,7 @@ print("as a power of ten:", log_sum / math.log(10))
   </div>
   <p class="readout" id="r4"></p>
   <p>The sigmoid \(\sigma(x) = \frac{1}{1 + e^{-x}}\) has a neat derivative, \(\sigma'(x) = \sigma(x)\,(1 - \sigma(x))\), and it is never more than 0.25. Stack ten sigmoid layers and the chain rule multiplies ten of those slopes together: the signal reaching the first layer is at most \(0.25^{10}\), about one millionth. That's the <b>vanishing gradient</b> that stalled deep networks for years. ReLU (slope exactly 1 for positive inputs) fixed most of it; its weakness is slope 0 for negative inputs, where a neuron can "die" and never recover. GELU, used in transformers, is a smooth ReLU.</p>
+  <p class="gist">Backprop multiplies one activation slope per layer, so an activation whose slope is usually far below 1 starves the early layers.</p>
   <div class="q" data-num="0.25">
     <p>What is the largest value the sigmoid's derivative ever takes?</p>
     <div class="why">At \(x = 0\), \(\sigma = 0.5\), so \(\sigma' = 0.5 \times 0.5 = 0.25\). Everywhere else it's smaller.</div>
