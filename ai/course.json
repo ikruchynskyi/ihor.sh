@@ -4314,5 +4314,114 @@
     "sec": 5
    }
   ]
+ },
+ "deep-cnns.html": {
+  "goals": [
+   "Describe how vision networks grew from AlexNet to ResNet and MobileNet, and why stacked 3 × 3 filters win",
+   "Explain what early and late layers learn, and why early layers transfer",
+   "Choose augmentations that keep labels true",
+   "Use a pretrained network three ways: embeddings + a simple model, a new head on a frozen body, full fine-tuning"
+  ],
+  "needs": [
+   "06-convolutions.html",
+   "making-nets-train.html",
+   "clusters-and-anomalies.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "ResNet",
+    "Residual blocks + batch norm made 50–150-layer CNNs trainable (2015); ResNet-50: 76% ImageNet top-1 with 25.6 M weights."
+   ],
+   [
+    "MobileNet",
+    "Cheap depthwise convolutions: near-VGG accuracy with 3.5 M weights, small enough for phones and browsers."
+   ],
+   [
+    "Stacked 3 × 3 filters",
+    "Two see 5 × 5 with 18 weights instead of 25, plus an extra ReLU."
+   ],
+   [
+    "Receptive field",
+    "The patch of the input a neuron depends on; it grows with depth."
+   ],
+   [
+    "What layers learn",
+    "Early: edges and textures (general). Late: object parts and objects (task-specific)."
+   ],
+   [
+    "Data augmentation",
+    "Random label-preserving changes (crop, flip, color, rotation) every time a photo is seen; none at test time."
+   ],
+   [
+    "Embedding",
+    "A pretrained body's output vector: photos that look alike land nearby."
+   ],
+   [
+    "Transfer learning",
+    "Reuse a pretrained body; train only a small model or new head on your data."
+   ],
+   [
+    "Fine-tuning",
+    "Train all layers on new data at about a tenth of the usual learning rate, usually after the head has warmed up."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why do VGG and ResNet stack 3 × 3 filters instead of using bigger ones?",
+    "options": [
+     "Two 3 × 3 layers see a 5 × 5 patch with fewer weights (18 vs 25) and an extra ReLU in between",
+     "3 × 3 is the only size GPUs support",
+     "Bigger filters can't be trained"
+    ],
+    "answer": 0,
+    "why": "Three 3 × 3 layers see 7 × 7 for 27 weights instead of 49.",
+    "sec": 1
+   },
+   {
+    "q": "Which layers of an ImageNet network are most useful for a traffic-camera task?",
+    "options": [
+     "The early and middle ones: edges, textures and parts are the same in any photo",
+     "Only the last layer",
+     "None: ImageNet has no traffic cameras"
+    ],
+    "answer": 0,
+    "why": "Late layers are specific to ImageNet's classes; that's the part you replace.",
+    "sec": 2
+   },
+   {
+    "q": "Which augmentation would break a model reading street signs?",
+    "options": [
+     "Random left-right flips",
+     "Small random crops",
+     "Brightness changes"
+    ],
+    "answer": 0,
+    "why": "Mirrored text isn't the same sign; an augmentation must keep the label true.",
+    "sec": 3
+   },
+   {
+    "q": "Why can a frozen pretrained network plus logistic regression learn a new task from a few dozen photos?",
+    "options": [
+     "The body already maps photos to vectors where similar photos are nearby; only a small model on top must be learned",
+     "Because logistic regression needs no data",
+     "Because pretrained networks know every category"
+    ],
+    "answer": 0,
+    "why": "1,281 numbers to fit instead of millions: far less data needed.",
+    "sec": 4
+   },
+   {
+    "q": "Fine-tuning all layers of a pretrained network, you should use a learning rate that is…",
+    "options": [
+     "much smaller than for training from scratch",
+     "the same as from scratch",
+     "larger, to change the weights faster"
+    ],
+    "answer": 0,
+    "why": "Big steps from a random new head would scramble the features you're borrowing.",
+    "sec": 4
+   }
+  ]
  }
 }

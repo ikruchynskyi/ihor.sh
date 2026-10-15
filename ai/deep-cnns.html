@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Deep CNNs and Transfer Learning</title>
+  <meta name="description" content="AI from scratch: deep CNNs and transfer learning. From AlexNet to ResNet and MobileNet, receptive fields and what each depth learns, data augmentation you can see, and transfer learning: teach a pretrained network your own categories from a few NYC traffic camera frames." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .aug { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .aug canvas { aspect-ratio: 1 / 1; border-radius: 6px; }
+    .teach { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; align-items: start; }
+    .teach img { width: 100%; border-radius: 8px; background: #14171d; aspect-ratio: 352 / 240; object-fit: cover; }
+    .shelf { display: flex; flex-wrap: wrap; gap: 4px; min-height: 40px; }
+    .shelf img { width: 52px; height: 36px; object-fit: cover; border-radius: 4px; }
+    .teach input[type=text] { width: 9em; font: inherit; }
+    @media (max-width: 560px) { .teach { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Deep CNNs · Stage 5: seeing and reading</p>
+  <h1>Deep CNNs and transfer learning</h1>
+  <p class="lede">Chapter 6's network had one layer of 8 filters and read digits drawn in fonts. The networks that read real photos have 50 to 150 layers, were trained for days on a million images, and are free to download. This lesson covers what changed between the two (depth, and the tricks that made depth trainable), how to make a little data go further with augmentation, and the most useful move in applied deep learning: take a network someone else trained and teach it your own categories with a few dozen examples. You'll do that last part in this page, on live NYC traffic cameras.</p>
+
+  <h2>1. A decade of ImageNet</h2>
+  <p>ImageNet's 1.2 million photos in 1,000 categories were the benchmark that drove a decade of vision research. Every row below is a model you can load in one line of torchvision, with the accuracy torchvision reports on ImageNet's validation set.</p>
+  <table class="cmp">
+    <tr><th>Model (year)</th><th>Layers</th><th>Parameters</th><th>Top-1 accuracy</th><th>The idea</th></tr>
+    <tr><td>AlexNet (2012)</td><td>8</td><td>61 M</td><td>56.5%</td><td>Chapter 6 on GPUs, with ReLU and dropout</td></tr>
+    <tr><td>VGG-16 (2014)</td><td>16</td><td>138 M</td><td>71.6%</td><td>Only 3 × 3 filters, stacked deep</td></tr>
+    <tr><td>ResNet-50 (2015)</td><td>50</td><td>25.6 M</td><td>76.1%</td><td>Residual blocks and batch norm (the toolkit lesson)</td></tr>
+    <tr><td>MobileNetV2 (2018)</td><td>53</td><td>3.5 M</td><td>71.9%</td><td>Cheap "depthwise" convolutions, for phones</td></tr>
+    <tr><td>EfficientNet-B0 (2019)</td><td>82</td><td>5.3 M</td><td>77.7%</td><td>Depth, width and resolution scaled together</td></tr>
+  </table>
+  <p>Two trends: deeper, and more accuracy per parameter. ResNet-50 beats VGG-16 with a fifth of the weights; MobileNetV2 nearly matches VGG with 2.5% of them, which is why it's the one that runs in this page.</p>
+  <div class="q" data-num="9" data-tol="0">
+    <p>Two stacked 3 × 3 convolutions see a 5 × 5 patch of the image. How many weights do they need per input-output channel pair, compared with one 5 × 5 filter's 25?</p>
+    <div class="why">\(2 \times 9 = 18\) against 25: the same view for fewer weights, plus an extra ReLU in between. Three 3 × 3 layers see 7 × 7 for 27 weights instead of 49. That's VGG's whole idea.</div>
+  </div>
+  <p class="gist">Vision networks got deeper and leaner: stacks of small filters, residual blocks to make depth trainable, cheap convolutions for phones.</p>
+
+  <h2>2. What each depth learns</h2>
+  <p>Each layer's filters look at the previous layer's maps, so the patch of the photo a neuron "sees" (its <b>receptive field</b>) grows with depth, and so does what it responds to. Researchers who visualized trained networks (Zeiler and Fergus in 2013, Olah and others at Distill later) found the same ladder in every one:</p>
+  <table class="cmp">
+    <tr><th>Depth</th><th>Sees</th><th>Responds to</th></tr>
+    <tr><td>First layer</td><td>3 × 3 to 11 × 11 pixels</td><td>Edges at angles, color blobs: chapter 6's hand-made filters, found on their own</td></tr>
+    <tr><td>Early layers</td><td>a few dozen pixels</td><td>Textures: stripes, grids, fur, brick</td></tr>
+    <tr><td>Middle layers</td><td>a quarter of the image</td><td>Parts: eyes, wheels, windows, petals</td></tr>
+    <tr><td>Last layers</td><td>most of the image</td><td>Whole objects and scenes: dog faces, cars, storefronts</td></tr>
+  </table>
+  <p>The early and middle layers are useful for almost any photo task: edges and textures are the same in a cat photo, an X-ray and a traffic camera. Only the last layers are specific to ImageNet's 1,000 categories. That's what makes the next two sections work.</p>
+  <p class="gist">Early layers learn general features (edges, textures) and late layers specific ones (objects), so the bottom of a trained network is reusable.</p>
+
+  <h2>3. Data augmentation: more photos for free</h2>
+  <p>A cat flipped left to right is still a cat; a slightly darker, slightly zoomed cat too. <b>Augmentation</b> shows the network a random variation of each photo every time it sees it, so it learns to ignore what doesn't matter instead of memorizing pixels: chapter 11's best regularizer, more data, without collecting any. Press the button for new random draws:</p>
+  <div class="aug" id="aug"></div>
+  <div class="row"><button id="again">New random augmentations</button></div>
+  <pre class="static"><code>from torchvision import transforms as T
+train_tf = T.Compose([T.RandomResizedCrop(224, scale=(0.6, 1.0)), T.RandomHorizontalFlip(),
+                      T.ColorJitter(0.3, 0.3, 0.3), T.RandomRotation(10), T.ToTensor(), T.Normalize(mean, std)])
+test_tf = T.Compose([T.Resize(256), T.CenterCrop(224), T.ToTensor(), T.Normalize(mean, std)])   # no randomness at test time</code></pre>
+  <div class="q" data-answer="b">
+    <p>Which augmentation would hurt a model that reads handwritten digits?</p>
+    <ul><li data-k="a" data-says="Slight shifts and zooms keep a digit the same digit.">A random crop of 90–100% of the image</li><li data-k="b">A random left-right flip: a mirrored 2 isn't a 2, and a flipped 7 looks like nothing</li><li data-k="c" data-says="Thicker or thinner strokes are still the same digit; chapter 6 trained with exactly this.">Random stroke thickness</li></ul>
+    <div class="why">An augmentation must keep the label true. Flips are free for cats and cars, wrong for text and digits; vertical flips are wrong for most street scenes (the sky goes down). Choose them from what the task says can vary.</div>
+  </div>
+  <p class="gist">Augmentation shows random label-preserving variations of each photo, so the network learns to ignore what doesn't matter.</p>
+
+  <h2>4. Transfer learning: borrow the eyes, train the decision</h2>
+  <p>Take a network trained on ImageNet, cut off its last layer (the 1,000-way classifier), and what's left turns any photo into a vector of numbers, an <b>embedding</b> (1,280 numbers for MobileNetV2). Photos that look alike get nearby vectors. To teach it your own categories you only need a small new classifier on top of those vectors. Below, MobileNetV2 runs in your browser on live NYC traffic cameras. Name two categories, label a few frames, and it starts guessing: a <b>k-nearest-neighbors</b> vote (clusters and anomalies) on the embeddings of your examples.</p>
+  <div class="teach">
+    <div>
+      <img id="frame" alt="A live NYC traffic camera frame" crossorigin="anonymous" />
+      <div class="row"><button id="newFrame">Another camera</button><span class="readout" id="guess" style="margin:0"></span></div>
+    </div>
+    <div>
+      <div class="row"><input type="text" id="nameA" value="busy" aria-label="First category"><button id="addA">This is A</button></div>
+      <div class="shelf" id="shelfA"></div>
+      <div class="row"><input type="text" id="nameB" value="quiet" aria-label="Second category"><button id="addB">This is B</button></div>
+      <div class="shelf" id="shelfB"></div>
+    </div>
+  </div>
+  <p class="readout" id="r4">Loading MobileNetV2 (about 14 MB, once)…</p>
+  <p>Ideas: <i>busy / quiet</i>, <i>day / night</i>, <i>wet road / dry road</i>, <i>bridge / street</i>. After 5 or so examples each, it usually gets new frames right, from a network that was never shown a traffic camera, because "lots of cars" and "dark sky" are made of the edges, textures and parts it already knows. Your examples never leave the browser.</p>
+  <p>In code there are three ways to use a pretrained network, from least to most training:</p>
+  <table class="cmp">
+    <tr><th>Approach</th><th>What trains</th><th>When</th></tr>
+    <tr><td>Embeddings + a simple model (this page)</td><td>Only kNN or logistic regression on the vectors</td><td>Tens to hundreds of examples; fastest</td></tr>
+    <tr><td>Freeze the backbone, new head</td><td>The last layer: <code>for p in model.parameters(): p.requires_grad = False</code>, then <code>model.fc = nn.Linear(512, n_classes)</code></td><td>Hundreds to thousands of examples</td></tr>
+    <tr><td>Fine-tune everything</td><td>All layers, with a learning rate about 10 times smaller than from scratch</td><td>Thousands of examples, or photos unlike ImageNet's (X-rays, satellites)</td></tr>
+  </table>
+  <p>How much does borrowing buy? In the practice notebook, on 2,000 small CIFAR-10 photos (10 kinds: planes, cars, birds, cats…): a small CNN trained from scratch reaches about 51% on new photos; frozen ResNet-18 embeddings with a logistic regression on top reach about 77%, in less time. With only 20 labeled photos, 2 per kind, the borrowed embeddings still get 42%, four times chance.</p>
+  <div class="q" data-answer="a">
+    <p>When fine-tuning all layers, why use a much smaller learning rate than for training from scratch?</p>
+    <ul><li data-k="a">The pretrained weights are already good: big steps would wreck the general features you're borrowing before the new head learns anything</li><li data-k="b" data-says="The model is the same size whether you fine-tune or not.">Because the model is smaller</li><li data-k="c" data-says="Speed has nothing to do with it; small steps are slower if anything.">To train faster</li></ul>
+    <div class="why">At the start the new head is random, so its gradients are large and noisy; with a big rate they flow back and scramble the borrowed layers. A common recipe: train the head alone for an epoch, then unfreeze everything at a small rate.</div>
+  </div>
+  <p class="gist">A pretrained network's body turns photos into meaningful vectors; teaching it new categories only needs a small model on top, trained on a few examples.</p>
+  <details class="deeper"><summary>Why a few examples are enough</summary>
+    <ol>
+      <li>Training from scratch must learn every weight from your data: millions of numbers from a few hundred photos, a recipe for chapter 11's overfitting.</li>
+      <li>The pretrained body already maps photos to vectors where "looks alike" means "nearby": ImageNet's million photos paid for that.</li>
+      <li>In that space your two categories are often already separated, or nearly. All that's left to learn is where the line between them goes: with a 1,280-number embedding, a logistic regression has 1,281 weights, and kNN has none.</li>
+      <li>Fewer numbers to fit means far less data needed (the same reason chapter 6's shared filters beat a dense layer).</li>
+      <li>It fails when your photos look nothing like ImageNet's: then the borrowed vectors don't separate your categories, and you need to fine-tune deeper layers, or more data (below).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: borrowed eyes have borrowed blind spots</summary>
+    <ul>
+      <li><b>A different kind of image.</b> Medical scans, satellite images and microscope slides have textures ImageNet never had. Frozen features do much worse there; fine-tuning more layers, or a model pretrained on similar images, does better.</li>
+      <li><b>Shortcuts in your few examples.</b> If every "busy" frame you label is from the same camera, the model may learn "this camera" rather than "busy". Spread examples over cameras, times and weather, and test on cameras you didn't train on.</li>
+      <li><b>Inherited biases.</b> A pretrained network carries its training set's habits: ImageNet is mostly photos from North America and Europe, so objects and scenes from elsewhere are recognized less well. Measure accuracy per group (chapter 12's slices) before shipping.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li>Deep CNNs: stacks of 3 × 3 filters, residual blocks, batch norm; MobileNet-style cheap convolutions for small devices.</li>
+    <li>Early layers learn general features, late layers task-specific ones.</li>
+    <li>Augment with variations that keep the label true; none at test time.</li>
+    <li>Transfer: embeddings + a simple model, then a new head on a frozen body, then fine-tuning everything at a small rate, as data grows.</li>
+    <li>Check for shortcuts and test on data unlike your examples.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Model: <a href="https://github.com/tensorflow/tfjs-models/tree/master/mobilenet">MobileNet for TensorFlow.js</a> (Apache 2.0). Cameras: <a href="https://webcams.nyctmc.org">NYC DOT</a>. Accuracies: torchvision's model documentation. Fast.ai's lesson 1 is the companion: a pretrained classifier in a few lines.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const add = (src) => new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); });
+let cams = [];
+const camFrame = async () => {
+  if (!cams.length) cams = await fetch("/api/nyc/cameras").then((r) => r.json()).catch(() => []);
+  const c = cams[Math.floor(Math.random() * cams.length)];
+  return c ? `/api/nyc/camera-image?id=${c.id}&t=${Date.now()}` : null;
+};
+// ---------- 3. augmentations, drawn from one photo ----------
+const base = new Image(); base.crossOrigin = "anonymous";
+function augment() {
+  const box = $("aug"); box.innerHTML = "";
+  const names = ["original", "flip", "crop + zoom", "rotate", "brightness", "contrast + color"];
+  names.forEach((name, k) => {
+    const cv = document.createElement("canvas"); cv.width = cv.height = 220; const g = cv.getContext("2d");
+    const s = Math.min(base.width, base.height), r = Math.random;
+    let sx = (base.width - s) / 2, sy = (base.height - s) / 2, ss = s;
+    g.save();
+    if (k === 1) { g.translate(220, 0); g.scale(-1, 1); }
+    if (k === 2) { ss = s * (0.6 + 0.3 * r()); sx += (s - ss) * r(); sy += (s - ss) * r(); }
+    if (k === 3) { g.translate(110, 110); g.rotate((r() - 0.5) * 0.5); g.scale(1.2, 1.2); g.translate(-110, -110); }
+    if (k === 4) g.filter = `brightness(${(0.55 + 0.9 * r()).toFixed(2)})`;
+    if (k === 5) g.filter = `contrast(${(0.6 + 0.8 * r()).toFixed(2)}) saturate(${(0.3 + 1.4 * r()).toFixed(2)}) hue-rotate(${Math.round((r() - 0.5) * 40)}deg)`;
+    if (base.width) g.drawImage(base, sx, sy, ss, ss, 0, 0, 220, 220);
+    g.restore(); g.fillStyle = "rgba(0,0,0,.6)"; g.fillRect(0, 196, 220, 24); g.fillStyle = "#fff"; g.font = "13px ui-sans-serif"; g.fillText(name, 6, 213);
+    box.append(cv);
+  });
+}
+base.onload = augment;
+base.src = "https://raw.githubusercontent.com/pytorch/vision/main/gallery/assets/dog1.jpg";
+$("again").onclick = augment;
+
+// ---------- 4. teach MobileNet your own categories ----------
+let net = null; const ex = { A: [], B: [] };
+const embed = (img) => window.tf.tidy(() => { const e = net.infer(img, true); return e.div(e.norm()).dataSync().slice(); });
+const cosine = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+function guess() {
+  if (!net || !$("frame").naturalWidth) return;
+  const n = ex.A.length + ex.B.length;
+  if (ex.A.length < 1 || ex.B.length < 1) { $("guess").textContent = "Label at least one frame of each."; return; }
+  const v = embed($("frame")), k = Math.min(5, n);
+  const votes = [...ex.A.map((e) => ["A", cosine(v, e)]), ...ex.B.map((e) => ["B", cosine(v, e)])].sort((a, b) => b[1] - a[1]).slice(0, k);
+  const a = votes.filter((x) => x[0] === "A").length, win = a * 2 > k ? "A" : "B", share = Math.max(a, k - a) / k;
+  $("guess").innerHTML = `guess: <b>${$(win === "A" ? "nameA" : "nameB").value}</b> (${Math.round(share * 100)}% of the ${k} nearest)`;
+}
+function addEx(which) {
+  if (!net || !$("frame").naturalWidth) return;
+  ex[which].push(embed($("frame")));
+  const t = document.createElement("img"); t.src = $("frame").src; $(`shelf${which}`).append(t);
+  $("r4").textContent = `${ex.A.length} × ${$("nameA").value}, ${ex.B.length} × ${$("nameB").value}. Each example is a 1,280-number embedding; a new frame gets the majority label of its 5 nearest examples.`;
+  nextFrame();
+}
+async function nextFrame() { const src = await camFrame(); if (src) $("frame").src = src; }
+$("frame").onload = guess;
+$("newFrame").onclick = nextFrame; $("addA").onclick = () => addEx("A"); $("addB").onclick = () => addEx("B");
+nextFrame();
+try {
+  await add("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js");
+  await add("https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js");
+  net = await window.mobilenet.load({ version: 2, alpha: 1.0 });
+  $("r4").textContent = "Ready. Look at the frame, and press the button for the category it fits. Keep going for 5 or so of each.";
+  guess();
+} catch (e) { $("r4").textContent = "Couldn't load the model (offline?)."; }
+window.blipContext = () => ({ page: "AI from scratch, stage 5: deep CNNs (AlexNet to EfficientNet, 3×3 stacks, receptive fields, what each depth learns), data augmentation, transfer learning (embeddings + kNN on live NYC cameras, frozen backbone with a new head, fine-tuning at a small learning rate)", readouts: [$("r4").textContent, $("guess").textContent] });
+</script>
+</body>
+</html>
