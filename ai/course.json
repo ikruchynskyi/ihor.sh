@@ -4198,5 +4198,121 @@
     "sec": 6
    }
   ]
+ },
+ "experiments.html": {
+  "goals": [
+   "Explain why one run can't compare two close models, and compare averages over seeds instead",
+   "Make a run repeat exactly by seeding every source of randomness",
+   "Keep settings in configs and log every run with its code and data versions",
+   "Fingerprint data with a hash and save models together with how they were made"
+  ],
+  "needs": [
+   "p4-confidence-and-tests.html",
+   "training-in-pytorch.html",
+   "pandas-and-sklearn.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Seed lottery",
+    "The same setting trained with different seeds spreads widely; one run each can rank two models wrongly."
+   ],
+   [
+    "Compare over seeds",
+    "Average k seeds of each; the averages' spread shrinks by √k. Show the spread with the mean."
+   ],
+   [
+    "set_seed",
+    "Seed random, NumPy and PyTorch (and the DataLoader's generator) to repeat a run exactly."
+   ],
+   [
+    "Determinism on GPUs",
+    "Parallel sums can differ in the last digit; torch.use_deterministic_algorithms(True) forbids those kernels."
+   ],
+   [
+    "Config",
+    "Every setting of a run in one dict or YAML, saved with the results."
+   ],
+   [
+    "Run tracking",
+    "One record per run: config, git commit, data hash, metrics, including failed runs."
+   ],
+   [
+    "Data fingerprint",
+    "A SHA-256 hash of the data file: one changed byte changes it completely."
+   ],
+   [
+    "Checkpoint with a story",
+    "Save weights with the config, data hash and metrics, so a model can be traced to how it was made."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Model B averages 1.1 points above model A, but each model's seed-to-seed spread is about 1.5 points. One run of each will…",
+    "options": [
+     "often rank them the wrong way",
+     "always rank B first",
+     "always rank them as tied"
+    ],
+    "answer": 0,
+    "why": "Here A won about a quarter of single comparisons.",
+    "sec": 1
+   },
+   {
+    "q": "Why does averaging 10 seeds make a comparison more reliable?",
+    "options": [
+     "The average's spread shrinks by √10 ≈ 3.2, so a real gap stands out from the noise",
+     "More seeds make the model more accurate",
+     "Because seed 10 is always the best"
+    ],
+    "answer": 0,
+    "why": "Spreads of averages fall like 1/√N (C4).",
+    "sec": 1
+   },
+   {
+    "q": "To repeat a PyTorch run exactly, you seed…",
+    "options": [
+     "Python's random, NumPy, PyTorch and the DataLoader's shuffle",
+     "only PyTorch",
+     "nothing: PyTorch is deterministic"
+    ],
+    "answer": 0,
+    "why": "Every source of randomness, including the order of the data.",
+    "sec": 2
+   },
+   {
+    "q": "Why log failed and unremarkable runs too?",
+    "options": [
+     "So you know how much searching produced the winner, and don't repeat dead ends",
+     "Because trackers require it",
+     "To train on them later"
+    ],
+    "answer": 0,
+    "why": "The best of many tries is optimistic; the count of tries says how much.",
+    "sec": 4
+   },
+   {
+    "q": "Why store a hash of the training data with each model?",
+    "options": [
+     "If the data changes even slightly, the hash changes, so you know which data made which model",
+     "To compress the data",
+     "To encrypt the data"
+    ],
+    "answer": 0,
+    "why": "A fingerprint, not a copy: cheap to store, impossible to fake by accident.",
+    "sec": 5
+   },
+   {
+    "q": "Two runs with the same seed on a GPU end 0.2 points apart. Why?",
+    "options": [
+     "Some GPU kernels add numbers in varying order, and floating-point addition isn't exactly associative",
+     "The seed was ignored",
+     "GPUs use random seeds of their own"
+    ],
+    "answer": 0,
+    "why": "Tiny differences grow over thousands of steps; deterministic algorithms remove them at some speed cost.",
+    "sec": 5
+   }
+  ]
  }
 }

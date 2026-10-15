@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Experiments You Can Trust</title>
+  <meta name="description" content="AI from scratch, toolkit 6: experiments you can trust. The seed lottery (one run can't tell two models apart), seeds and determinism, configs, tracking every run, hashing data and versioning models, and comparing runs with several seeds." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 6 · Stage 4: the engineer's toolkit</p>
+  <h1>Experiments you can trust</h1>
+  <p class="lede">"Last week it got 93%. Today, same code, 91%." "My change gave +0.8%!" "Which run was that model from?" Every team hears these, and they all have the same cause: experiments that weren't set up to be repeated or compared. Machine learning is unusually prone to it, because training is random on purpose and has dozens of settings. This lesson is the habits that make a result mean something: fix the randomness, write settings down, record every run, pin the data and the model to the run that made them, and compare with enough seeds to see past luck.</p>
+
+  <h2>1. The seed lottery</h2>
+  <p>Two small networks on chapter 6's handwritten digits: model A has 16 hidden neurons, model B has 20. Each was trained 10 times, identical in every way except the <b>random seed</b>, which sets the starting weights and the order of the examples. Every dot is one real run (scikit-learn, 60 epochs, 540 test digits).</p>
+  <canvas id="lot" width="800" height="250" aria-label="Test accuracy of ten runs of each model, differing only in the seed"></canvas>
+  <div class="row"><button id="draw">Run each model once</button><button id="draw100">…100 times</button></div>
+  <p class="legend"><i style="background:#58c4dd"></i>model A (16 neurons) <i style="background:#f4a259"></i>model B (20 neurons)</p>
+  <p class="readout" id="r1"></p>
+  <p>B is better on average (92.4% against 91.3%). But A's runs spread from 89.3% to 93.1%, wider than the gap between the models. Compare one run of each and A wins about a quarter of the time. A team that tries an idea once, sees +0.8%, and ships it, is often shipping a lucky seed.</p>
+  <div class="q" data-answer="c">
+    <p>Your change raises accuracy from 91.2% to 91.9% in one run each. The seed-to-seed spread of this model is about ±1.5%. What can you say?</p>
+    <ul><li data-k="a" data-says="The gap is half the seed spread: one run each can't tell.">The change helps</li><li data-k="b" data-says="It might help; one run each just can't show it either way.">The change does nothing</li><li data-k="c">Nothing yet: run several seeds of each and compare the averages</li></ul>
+    <div class="why">With 10 seeds each, the averages' spreads shrink by \(\sqrt{10} \approx 3.2\) (C4's \(1/\sqrt N\)), to about ±0.5%: then a 0.7-point gap starts to be visible. Probability 4's tests make "visible" precise.</div>
+  </div>
+  <p class="gist">Training is random on purpose, so one run is one draw from a spread; compare averages over several seeds, never single runs.</p>
+  <details class="deeper"><summary>Why a single run can't tell close models apart</summary>
+    <ol>
+      <li>Model A's accuracy over seeds has a spread \(s_A \approx 1.5\%\); B's \(s_B \approx 0.7\%\).</li>
+      <li>One run of each: the difference \(B - A\) has spread \(\sqrt{s_A^2 + s_B^2} \approx 1.7\%\) (variances of independent draws add, P4).</li>
+      <li>The true gap is 1.1%, less than one spread of the difference. So a single comparison lands on the wrong side a good fraction of the time: here 26%, plus 5% exact ties.</li>
+      <li>Average \(k\) seeds of each and the spread of the difference falls to \(1.7\% / \sqrt k\): with \(k = 10\), 0.5%, and the 1.1% gap is two spreads away from zero.</li>
+      <li>The rule of thumb: to see a gap \(\delta\) reliably you need \(k\) with \(1.7\%/\sqrt k\) well under \(\delta/2\). Small gaps need many seeds, and many seeds cost compute: that trade is why big labs report results on few seeds and why their small gains are often noise.</li>
+    </ol>
+  </details>
+
+  <h2>2. Fix the randomness</h2>
+  <p>To repeat a run exactly, every random choice must start from a known seed: Python's, NumPy's, PyTorch's, and the data loader's shuffling.</p>
+  <pre class="static"><code>import random, numpy as np, torch
+def set_seed(seed):
+    random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)   # torch.manual_seed also seeds the GPU
+g = torch.Generator().manual_seed(0)
+loader = DataLoader(train_ds, batch_size=64, shuffle=True, generator=g)   # the shuffle order, pinned
+torch.use_deterministic_algorithms(True)   # optional: refuse GPU kernels that aren't repeatable (slower)</code></pre>
+  <p>Seeding is for <b>repeating</b> a run (debugging, checking that a change really did nothing), not for <b>judging</b> one. A result that only holds for seed 42 isn't a result.</p>
+  <div class="code" id="seeds" data-title="Run it: same seed, same model; new seed, new model"><textarea>
+import warnings; warnings.filterwarnings("ignore")      # 60 epochs on purpose: skip "not converged" notes
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import train_test_split
+X, y = load_digits(return_X_y=True); X = X / 16
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=0)
+def run(seed, hidden=16):
+    return MLPClassifier((hidden,), max_iter=60, random_state=seed).fit(Xtr, ytr).score(Xte, yte)
+print("seed 0, twice:", run(0), run(0), " ← identical")
+print("seeds 0–4:   ", [round(run(s), 3) for s in range(5)], " ← a spread")
+</textarea></div>
+  <p class="gist">Seed every source of randomness to repeat a run exactly, and vary the seed on purpose to measure how much results wobble.</p>
+
+  <h2>3. Configs: every setting in one place</h2>
+  <p>A run is defined by its settings: data version, model size, learning rate, schedule, epochs, seed. Put them in one dictionary (or a YAML file), pass it to the training code, and save it next to the results. Then "what did run 17 use?" has an answer, and a new run is a changed config rather than an edited script.</p>
+  <pre class="static"><code>config = {"data": "digits-v1", "hidden": 16, "lr": 1e-3, "epochs": 60, "seed": 0}
+model = train(**config)              # the code reads its settings from the config, never from constants inside it</code></pre>
+  <p class="gist">A config holds every setting of a run in one place, so a run can be described, repeated and changed without touching the code.</p>
+
+  <h2>4. Track every run</h2>
+  <p>Record each run as one row: its config, its metrics, when it ran, the code version (<code>git rev-parse HEAD</code>) and the data version. A JSON-lines file (one JSON object per line) is enough to start; MLflow, Weights &amp; Biases and TensorBoard do the same with charts and a web page. The point is the habit: <b>every</b> run gets logged, including the failures, so you can see what you tried.</p>
+  <div class="code" id="track" data-uses="seeds" data-title="Build it: a run tracker in ten lines"><textarea>
+import json, time
+import pandas as pd
+LOG = []                                     # in a real project: open("runs.jsonl", "a") and one line per run
+def log_run(config, **metrics):
+    LOG.append(json.dumps({"time": time.strftime("%Y-%m-%d %H:%M:%S"), **config, **metrics}))
+for hidden in [16, 20]:
+    for seed in range(5):
+        config = {"hidden": hidden, "seed": seed, "epochs": 60}
+        log_run(config, test_acc=round(run(seed, hidden), 4))
+runs = pd.DataFrame([json.loads(line) for line in LOG])
+print(runs.groupby("hidden")["test_acc"].agg(["mean", "std", "count"]).round(4))
+runs.tail(3)
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>Why log the failed and the boring runs too?</p>
+    <ul><li data-k="a" data-says="Disk space isn't the reason, they're tiny.">To fill the dashboard</li><li data-k="b">So you can see how many things you tried: the best of 40 tries is optimistic (chapter 11), and you won't repeat dead ends</li><li data-k="c" data-says="They're not used for training.">Because the model trains on them</li></ul>
+    <div class="why">A results table that only shows winners hides how much searching produced them, which is exactly the information needed to judge how lucky the winner is.</div>
+  </div>
+  <p class="gist">Log every run, with its config, code version, data version and metrics, so results can be traced and searches judged honestly.</p>
+
+  <h2>5. Pin the data and the model</h2>
+  <p>Code is versioned with git; data and models need the same. Two cheap habits cover most of it:</p>
+  <ul>
+    <li><b>Hash the data.</b> A <b>hash</b> (like SHA-256) turns a file into a short fingerprint that changes if a single byte changes. Store it in the config. If someone quietly re-exports the CSV, the hash tells you.</li>
+    <li><b>Save the model with its story.</b> Next to the weights (<code>torch.save(model.state_dict(), ...)</code>), save the config, the data hash, the git commit and the metrics. Tools like DVC and model registries do this at scale.</li>
+  </ul>
+  <div class="code" data-title="Run it: a fingerprint for a dataset"><textarea>
+import hashlib, io
+def fingerprint(data: bytes):
+    return hashlib.sha256(data).hexdigest()[:16]
+csv = get("/ai/data/outages.csv").encode()
+print("outages.csv:", fingerprint(csv))
+changed = csv.replace(b"Repair", b"repair", 1)                 # one letter in one row
+print("one letter changed:", fingerprint(changed), " ← completely different")
+</textarea></div>
+  <p class="gist">A hash fingerprints the exact data, and a model saved with its config, data hash and commit can always be traced back to how it was made.</p>
+  <details class="deeper"><summary>Where it breaks: when "same seed" isn't the same run</summary>
+    <ul>
+      <li><b>GPUs add in a different order.</b> Many GPU kernels sum with many threads at once, and floating-point addition isn't exactly associative: \((a + b) + c\) can differ from \(a + (b + c)\) in the last digit. Over thousands of steps those differences grow, so two "identical" GPU runs can end a few tenths of a percent apart. <code>torch.use_deterministic_algorithms(True)</code> forbids such kernels, at some cost in speed.</li>
+      <li><b>A new library version.</b> The same seed with a newer PyTorch, NumPy or CUDA can draw different random numbers or use different kernels. Record versions (<code>pip freeze</code>, a lock file, a Docker image) with each run.</li>
+      <li><b>The test set wears out.</b> A tracker makes it easy to compare hundreds of runs on the same test set, and picking the best of hundreds overfits it (chapter 11, P4). Tune on validation; touch the test set rarely, and refresh it when you can.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li>One run is a draw from a spread: compare averages over several seeds, with the spread shown.</li>
+    <li>Seed everything to repeat a run; record library versions too.</li>
+    <li>All settings in a config, saved with the run.</li>
+    <li>Log every run (config, commit, data hash, metrics), including failures.</li>
+    <li>Save models with their config, data hash and metrics.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Made With ML's lessons on experiment tracking and versioning go further into the tools.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// measured: scikit-learn MLPClassifier, 60 epochs, seeds 0–9, digits with a 30% test split (random_state=0)
+const A = [0.894, 0.928, 0.92, 0.909, 0.919, 0.93, 0.931, 0.893, 0.894, 0.909];
+const B = [0.917, 0.928, 0.911, 0.933, 0.92, 0.92, 0.933, 0.92, 0.926, 0.928];
+const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+let pick = null, tally = { a: 0, b: 0, tie: 0 };
+function draw() {
+  const cv = $("lot"), g = cv.getContext("2d"), W = cv.width, H = cv.height, lo = 0.885, hi = 0.94, X = (v) => 60 + ((v - lo) / (hi - lo)) * (W - 90);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, monospace";
+  for (let v = 0.89; v <= 0.94; v += 0.01) { g.fillStyle = "#9aa4b2"; g.fillText(`${(v * 100).toFixed(0)}%`, X(v) - 12, H - 8); g.strokeStyle = "rgba(216,222,233,0.1)"; g.beginPath(); g.moveTo(X(v), 10); g.lineTo(X(v), H - 24); g.stroke(); }
+  [[A, "#58c4dd", 70, "A"], [B, "#f4a259", 160, "B"]].forEach(([arr, c, y, name], k) => {
+    arr.forEach((v, i) => { const sel = pick && pick[k] === i; g.globalAlpha = sel ? 1 : 0.55; g.fillStyle = c; g.beginPath(); g.arc(X(v), y + ((i * 7) % 21) - 10, sel ? 11 : 7, 0, 7); g.fill(); });
+    g.globalAlpha = 1; g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); g.moveTo(X(mean(arr)), y - 28); g.lineTo(X(mean(arr)), y + 28); g.stroke();
+    g.fillStyle = "#d8dee9"; g.fillText(name, 20, y + 5);
+  });
+}
+function once() {
+  const i = Math.floor(Math.random() * 10), j = Math.floor(Math.random() * 10); pick = [i, j];
+  const k = A[i] > B[j] ? "a" : A[i] < B[j] ? "b" : "tie"; tally[k]++;
+  return { i, j, k };
+}
+function report(last) {
+  const n = tally.a + tally.b + tally.tie;
+  $("r1").innerHTML = (last ? `this time: A ${(A[last.i] * 100).toFixed(1)}% vs B ${(B[last.j] * 100).toFixed(1)}% → ${last.k === "tie" ? "a tie" : `<b>${last.k.toUpperCase()} wins</b>`}<br>` : "") +
+    `so far: A won ${tally.a} of ${n} (${((tally.a / n) * 100).toFixed(0)}%), B ${tally.b}, ties ${tally.tie} · lines are each model's average over 10 seeds`;
+}
+$("draw").onclick = () => { const r = once(); draw(); report(r); };
+$("draw100").onclick = () => { let r; for (let t = 0; t < 100; t++) r = once(); draw(); report(r); };
+draw();
+$("r1").textContent = "Each dot is one training run. The lines are the averages. Press a button to compare single runs.";
+</script>
+</body>
+</html>
