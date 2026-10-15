@@ -7008,5 +7008,100 @@
     "sec": 5
    }
   ]
+ },
+ "zoo-svm.html": {
+  "goals": [
+   "Explain the maximum-margin idea, support vectors and hinge loss",
+   "Tune C and the RBF kernel's γ, and say what each does to the boundary",
+   "Know when SVMs fit (medium data, many meaningful columns) and when they don't (big data, mixed tables)"
+  ],
+  "needs": [
+   "zoo-boosting.html",
+   "zoo-knn.html",
+   "c5-convexity-and-constraints.html"
+  ],
+  "cards": [
+   [
+    "Maximum margin",
+    "Choose the boundary in the middle of the widest street between the classes: width 2/|w|."
+   ],
+   [
+    "Support vectors",
+    "The points on or inside the street; only they determine the boundary."
+   ],
+   [
+    "Hinge loss",
+    "max(0, 1 − y·f(x)): zero for points safely beyond the edge, linear inside or across."
+   ],
+   [
+    "Soft margin C",
+    "Price of a point inside the street: small C, wide street and smooth; large C, narrow and fitted."
+   ],
+   [
+    "Kernel trick",
+    "The data enters only through dot products, so a kernel K(a, b) fits a straight street in a huge feature space without building it."
+   ],
+   [
+    "RBF γ",
+    "How far each point's influence reaches: large γ makes a bubble around every point (memorizing)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Which training points decide an SVM's boundary?",
+    "options": [
+     "All of them equally",
+     "Only the support vectors: points on or inside the margin",
+     "The points farthest from it"
+    ],
+    "answer": 1,
+    "why": "Points beyond the margin have zero hinge loss and zero pull.",
+    "sec": 1
+   },
+   {
+    "q": "Why does a point far on the correct side not affect an SVM, while it does affect logistic regression?",
+    "options": [
+     "SVMs ignore half the data randomly",
+     "Its hinge loss is exactly zero, while log-loss never quite reaches zero",
+     "Logistic regression uses more points"
+    ],
+    "answer": 1,
+    "why": "max(0, 1 − 3) = 0; log-loss always has a small pull.",
+    "sec": 2
+   },
+   {
+    "q": "Raising the RBF γ very high makes the model…",
+    "options": [
+     "more linear",
+     "memorize: a bubble around each training point",
+     "faster"
+    ],
+    "answer": 1,
+    "why": "Digits: 99.1% at γ = 0.001, 10% at 0.1.",
+    "sec": 1
+   },
+   {
+    "q": "Doubling the training rows of a kernel SVM multiplies training time by about…",
+    "options": [
+     "1",
+     "2",
+     "4"
+    ],
+    "answer": 2,
+    "why": "It compares pairs of points: roughly quadratic.",
+    "sec": 4
+   },
+   {
+    "q": "On a table of one-hot categories and counts (bank calls), the RBF SVM was the weakest model. Why?",
+    "options": [
+     "Distance between such rows means little, and hinge loss ignores the easy cases",
+     "It needed more trees",
+     "Kernels can't handle 0/1 columns"
+    ],
+    "answer": 0,
+    "why": "SVMs fit data where distance means similarity: pixels, word counts.",
+    "sec": 4
+   }
+  ]
  }
 }

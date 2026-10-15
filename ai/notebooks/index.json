@@ -461,6 +461,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-naive-bayes"
  },
+ "zoo-svm.html": {
+  "notebook": "zoo-svm.ipynb",
+  "title": "AI from scratch: support vector machines",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/zoo-svm.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-support-vector-machines"
+ },
  "zoo-tree.html": {
   "notebook": "zoo-tree.ipynb",
   "title": "AI from scratch: decision trees",

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Support Vector Machines</title>
+  <meta name="description" content="AI from scratch, model zoo 8: support vector machines, the widest street between two classes. A map with the street's edges and its support vectors circled, a soft margin C and an RBF kernel width you slide, the kernel trick explained, hinge loss next to log-loss, a linear SVM in NumPy, and where SVMs break: training time that quadruples when the data doubles, a kernel width that takes digits from 99.1% to 10%, and tables where they trail every other model." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .sq { aspect-ratio: 1 / 1; max-width: 520px; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 8 of 10 · Support vector machines</p>
+  <h1>Support vector machines</h1>
+  <p class="lede">Before deep learning, support vector machines were the most respected classifiers there were: elegant math, one global optimum, and state-of-the-art results on handwriting and text. They're less common now, but their two ideas live on everywhere: the <b>margin</b> (don't just separate the classes, separate them with room to spare) and the <b>kernel trick</b> (bend the boundary by measuring similarity, without ever building new columns).</p>
+
+  <h2>1. The idea in one picture: the widest street</h2>
+  <p>Many lines separate two clouds. An SVM picks the one in the middle of the widest street between them: the dashed lines are the street's edges, the solid one its middle. The circled dots are the <b>support vectors</b>: the dots on or inside the edges. Only they decide where the street goes; move any other dot (not across the street) and nothing changes.</p>
+  <canvas id="map" class="sq" width="520" height="520" aria-label="Training points, the SVM's sides shaded, the margin's edges and the support vectors circled"></canvas>
+  <div class="row"><label>data <select id="ds"></select></label><label><input type="radio" name="k" value="linear" checked> straight (linear)</label><label><input type="radio" name="k" value="rbf"> bendy (RBF kernel)</label></div>
+  <div class="row"><label>C, the price of a dot inside the street <input type="range" id="C" min="-2" max="2" step="0.25" value="0"> <b id="CV"></b></label></div>
+  <div class="row"><label>γ, how local the RBF kernel is <input type="range" id="g" min="-0.5" max="2" step="0.1" value="0.3"> <b id="gV"></b></label></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="a">
+    <p>Pick the bendy kernel and slide γ to the top. Predict first: what happens to the support vectors and to validation accuracy?</p>
+    <ul><li data-k="a">Almost every dot becomes a support vector, training accuracy nears 100%, validation drops</li><li data-k="b" data-says="Try it: the islands around single dots are overfitting.">The boundary gets smoother</li><li data-k="c" data-says="γ changes the shape, not only the speed.">Nothing changes, it just trains slower</li></ul>
+    <div class="why">γ sets how far a dot's influence reaches. At large γ, each dot is only similar to itself, so the boundary becomes a bubble around each training dot (memorizing), and every dot is needed to describe it. Measured on handwritten digits: γ = 0.001 gets 99.1% with half the training rows as support vectors; γ = 0.01, 79.6% with 99.5% of them; γ = 0.1, 10%, chance.</div>
+  </div>
+  <p class="gist">An SVM finds the boundary with the widest margin, decided only by the points nearest to it; a kernel lets that boundary bend by measuring similarity instead of adding columns.</p>
+
+  <h2>2. How it learns: hinge loss plus a price on narrow streets</h2>
+  <p>With labels \(y_i = \pm 1\) and a score \(f(x) = w \cdot x + b\), the street's edges are where \(f = \pm 1\), so its width is \(2/\lVert w \rVert\): small weights mean a wide street. The SVM minimizes</p>
+  <p class="formula">\[ \tfrac12 \lVert w \rVert^2 \;+\; C \sum_i \max\big(0,\; 1 - y_i f(x_i)\big) \]</p>
+  <p>The second part is the <b>hinge loss</b>: zero for a dot safely on its side beyond the edge, growing linearly as it slips into the street or across. Compare page 2's log-loss, which never quite reaches zero: every dot pulls a little, however far away. With hinge loss, far dots pull not at all, which is exactly why only the support vectors matter. <b>C</b> trades the two: a small C accepts dots inside the street for a wider one (smoother, more support vectors); a large C narrows the street to put every dot on its side.</p>
+  <div class="q" data-answer="b">
+    <p>A dot sits on the correct side with \(y f(x) = 3\), far beyond the edge. How much does it change the fitted SVM if you delete it?</p>
+    <ul><li data-k="a" data-says="That's true for logistic regression, where every point has some pull.">A little: every point counts</li><li data-k="b">Not at all: its hinge loss is zero and it's not a support vector</li><li data-k="c" data-says="Deleting points far from the boundary can't flip anything.">A lot: it's the most confident point</li></ul>
+    <div class="why">\(\max(0, 1 - 3) = 0\): it contributes nothing to the loss and nothing to the gradient. The solution is the same with or without it. That sparsity is the SVM's signature, and on the bank calls it's a weakness too: the model ignores the bulk of easy cases and lives on the ambiguous ones.</div>
+  </div>
+  <details class="deeper"><summary>Why the kernel trick works</summary>
+    <ol>
+      <li>The optimum can always be written as a weighted sum of training points, \(w = \sum_i \alpha_i y_i x_i\), with \(\alpha_i = 0\) for every point that isn't a support vector. (Only margin points push on the solution.)</li>
+      <li>So the score is \(f(x) = \sum_i \alpha_i y_i \,(x_i \cdot x) + b\): the data enters only through dot products between points.</li>
+      <li>Now map each point to new columns \(\phi(x)\), say all squares and products, and fit a line there: the score needs only \(\phi(x_i)\cdot\phi(x)\). For 2 columns, \((a \cdot b + 1)^2\) equals \(\phi(a)\cdot\phi(b)\) where \(\phi\) lists 6 columns (1, each column, each square, the product), each with the right constant in front: a dot product in 6 columns, computed from one in 2.</li>
+      <li>A <b>kernel</b> \(K(a, b)\) is any such shortcut. The RBF kernel \(K(a, b) = e^{-\gamma \lVert a - b \rVert^2}\) is a dot product in infinitely many columns, computed from a distance.</li>
+      <li>So the SVM fits a straight street in a space too big to build, and on the map it bends. The cost: the model is a sum over support vectors, and training compares every pair of points (section 4).</li>
+    </ol>
+  </details>
+
+  <h2>3. Build it: a linear SVM by subgradient descent, in NumPy</h2>
+  <p>Hinge loss has a corner at 1, so instead of a gradient there's a subgradient: for a dot inside the street, \(-y_i x_i\); for a safe one, 0. Plain descent on that, with the \(\lVert w \rVert^2\) term as a shrink:</p>
+  <div class="code" data-title="A linear SVM from scratch on handwritten 3s vs 8s, next to scikit-learn"><textarea>
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import LinearSVC
+
+d = load_digits()
+keep = (d.target == 3) | (d.target == 8)                      # two digits that look alike
+X = StandardScaler().fit_transform(d.data[keep]); y = np.where(d.target[keep] == 8, 1, -1)
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, stratify=y, random_state=0)
+
+C, n = 1.0, len(ytr)
+w, b = np.zeros(X.shape[1]), 0.0
+for step in range(1, 2001):
+    margin = ytr * (Xtr @ w + b)
+    inside = margin < 1                                       # dots in the street or on the wrong side
+    gw = w / (C * n) - (ytr[inside, None] * Xtr[inside]).sum(axis=0) / n
+    gb = -ytr[inside].sum() / n
+    lr = 1 / np.sqrt(step)
+    w, b = w - lr * gw, b - lr * gb
+
+mine = (np.sign(Xte @ w + b) == yte).mean()
+sk = LinearSVC(C=C).fit(Xtr, ytr)
+print("mine:", round(mine, 3), "· scikit-learn:", round(sk.score(Xte, yte), 3))
+print("training dots inside the street (support vectors):", (ytr * (Xtr @ w + b) < 1).sum(), "of", n)
+print("street width 2/|w|:", round(2 / np.linalg.norm(w), 3))
+</textarea></div>
+
+  <h2>4. Where it shines, where it breaks</h2>
+  <p><b>Shines:</b> medium-sized data with many columns. On digits, the RBF SVM gets 98.7% with default settings and 99.1% tuned, the best of any model in the zoo. On the 7,166 word columns of the text messages, a linear SVM gets 97.9% in 4 milliseconds with no tuning. Its optimum is unique (the loss is convex, calculus 5), so there's no seed lottery.</p>
+  <p><b>Breaks:</b> training compares pairs of points, so time grows roughly with the square of the rows. Measured on 10 columns: 2,000 rows 0.02 s, 4,000 rows 0.09 s, 8,000 rows 0.3 s, 16,000 rows 1.2 s. Each doubling multiplies the time by about 4, so a million rows would take hours where boosting takes seconds.</p>
+  <div class="q" data-answer="c">
+    <p>On the bank calls, the RBF SVM's AUC is 0.711, the lowest in the zoo (every other model reaches at least 0.74). Which reason fits best?</p>
+    <ul><li data-k="a" data-says="It was scaled; unscaled it was even worse, 0.677.">The columns weren't scaled</li><li data-k="b" data-says="10,000 rows trains in seconds; it's slow, but that's not why it's inaccurate.">Too much data</li><li data-k="c">Its scores come from distances to the hardest cases, on a table of one-hot categories and skewed counts where distance means little</li></ul>
+    <div class="why">An RBF kernel says "similar rows are near each other". For 63 one-hot and economic columns, nearness is a weak notion of similarity (the same problem kNN had on page 3), and the hinge loss throws away the easy cases that carry most of the calibration. Trees and linear models simply fit the table better. SVMs are for data where a distance means something: pixels, word counts, measurements on one scale.</div>
+  </div>
+  <p class="gist">SVMs shine on clean, medium-sized, many-column data where distance means something; they're slow on big data, sensitive to scaling and γ, and give scores rather than probabilities.</p>
+  <details class="deeper"><summary>Where it breaks, and what people do</summary>
+    <ul>
+      <li><b>Big data.</b> Kernel SVMs scale like rows squared or worse. For millions of rows use a linear SVM (<code>LinearSVC</code>, <code>SGDClassifier(loss="hinge")</code>), or approximate the kernel with random features (<code>RBFSampler</code>, <code>Nystroem</code>) and fit a linear model on them.</li>
+      <li><b>γ and C.</b> They interact, and the good region can be narrow (digits: 99.1% at γ = 0.001, 10% at 0.1). Search both on a log grid with cross-validation.</li>
+      <li><b>Scaling.</b> The RBF kernel is a distance, so unscaled columns hijack it, as on page 3 (bank calls: 0.677 unscaled, 0.711 scaled).</li>
+      <li><b>No probabilities.</b> The score \(f(x)\) is a signed distance, not a chance. <code>probability=True</code> fits a sigmoid on cross-validated scores (Platt scaling), which costs five extra fits and can disagree with <code>predict</code>.</li>
+      <li><b>Tables.</b> Mixed categories and counts: use boosted trees or logistic regression first.</li>
+    </ul>
+  </details>
+
+  <h2>5. The knobs that matter</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Knob</th><th>In scikit-learn</th><th>What it does</th></tr>
+    <tr><td>Kernel</td><td><code>kernel</code> ("rbf", "linear", "poly")</td><td>Linear for many columns (text); RBF for a few dense ones (measurements, small images).</td></tr>
+    <tr><td>Soft margin</td><td><code>C</code></td><td>Small: wide street, many support vectors, smooth. Large: narrow street, fits every dot. Log grid, 0.01 to 1000.</td></tr>
+    <tr><td>Kernel width</td><td><code>gamma</code> (default "scale" = 1 / (columns × variance))</td><td>Small: nearly linear. Large: a bubble around each dot. Tune together with C.</td></tr>
+    <tr><td>Scaling</td><td><code>StandardScaler</code> in a pipeline</td><td>Required for RBF and polynomial kernels.</td></tr>
+    <tr><td>Imbalance</td><td><code>class_weight</code></td><td>Raises C for the rare class.</td></tr>
+    <tr><td>Big data</td><td><code>LinearSVC</code>, <code>SGDClassifier(loss="hinge")</code>, <code>Nystroem</code></td><td>Linear time in rows instead of quadratic.</td></tr>
+  </table></div>
+  <p>Next in the zoo: the network from stage 2, judged as one more model for tables.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Digits: UCI optical recognition of handwritten digits, via scikit-learn.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, svm } from "/ai/zoo.js";
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+$("ds").innerHTML = ["blobs", "moons", "circles", "xor", "diagonal"].map((k) => `<option value="${k}">${DATASETS[k].label}</option>`).join("");
+function draw() {
+  const kernel = document.querySelector("input[name=k]:checked").value, C = 10 ** +$("C").value, gamma = 10 ** +$("g").value, set = data($("ds").value, { noise: 0.1 });
+  let m;
+  const r = show($("map"), (t) => (m = svm(t, { kernel, C, gamma })), set, { overlay: (g, toPx) => {
+    // the street: where the score crosses −1, 0 and +1, found cell by cell on a grid
+    const N = 130, s = Array.from({ length: N + 1 }, (_, i) => Array.from({ length: N + 1 }, (_, j) => m.score(-1 + (2 * j) / N, 1 - (2 * i) / N)));
+    for (const [level, color, size] of [[-1, "rgba(215,221,229,.75)", 1.6], [0, "#f4d35e", 2.6], [1, "rgba(215,221,229,.75)", 1.6]]) {
+      g.fillStyle = color;
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const a = s[i][j] - level;
+        if ((a > 0) !== (s[i][j + 1] - level > 0) || (a > 0) !== (s[i + 1][j] - level > 0)) { if (level && (i + j) % 3) continue; const [x, y] = toPx(-1 + (2 * j) / N, 1 - (2 * i) / N); g.fillRect(x, y, size, size); }
+      }
+    }
+    g.strokeStyle = "#fff"; g.lineWidth = 1.5;
+    for (const d of m.sv) { const [x, y] = toPx(d.x, d.y); g.beginPath(); g.arc(x, y, 6.5, 0, 7); g.stroke(); }
+  } });
+  $("CV").textContent = C < 1 ? C.toPrecision(2) : C.toFixed(C < 10 ? 1 : 0);
+  $("gV").textContent = kernel === "rbf" ? gamma.toPrecision(2) : "(not used)";
+  $("r1").textContent = `${r.text}\n${m.sv.length} of ${set.train.length} dots are support vectors (circled)`;
+}
+for (const id of ["ds", "C", "g"]) $(id).addEventListener("input", draw);
+document.querySelectorAll("input[name=k]").forEach((e) => e.addEventListener("input", draw));
+$("g").addEventListener("change", () => +$("g").value >= 1.8 && document.querySelector("input[name=k]:checked").value === "rbf" && say("A bubble around every dot: that's memorizing.", "think"));
+draw();
+window.blipContext = () => ({ page: "AI model zoo 8: support vector machines (maximum margin, support vectors, hinge loss, soft margin C, RBF kernel γ, the kernel trick, quadratic training time)", dataset: $("ds").value, kernel: document.querySelector("input[name=k]:checked").value, readout: $("r1").textContent });
+</script>
+</body>
+</html>
