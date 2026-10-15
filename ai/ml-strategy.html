@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ML Strategy</title>
+  <meta name="description" content="AI from scratch, stage 3: deciding what to fix next in a machine learning project. One number to optimize plus limits, the gaps between human, training, train-dev and dev error (bias, variance, data mismatch), error analysis with a ceiling for each fix, learning curves, and a case study with consequences, on scikit-learn's handwritten digits." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .sliders { display: grid; grid-template-columns: max-content 1fr 4em; gap: 4px 12px; align-items: center; font-size: 16px; }
+    .sliders input { width: 100%; }
+    .bars { margin: 12px 0; }
+    .bar { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; align-items: center; font-size: 15px; margin: 4px 0; }
+    .bar > div { height: 18px; background: #eceae4; border-radius: 4px; overflow: hidden; }
+    .bar > div > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+    .bar.top > div > span { background: #b42318; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · ML strategy · Stage 3: classic ML and judging models</p>
+  <h1>ML strategy: what to fix next</h1>
+  <p class="lede">A model works, but not well enough. You could collect more data, train longer, try a bigger network, add regularization, clean labels, or try a different idea entirely. Each can take weeks, and most won't help this particular model. The skill this lesson teaches is reading a few numbers to know which one will: the difference between teams that improve every week and teams that spend months on the wrong thing. The examples use scikit-learn's handwritten digits (1,797 tiny 8×8 scans) because their mistakes are easy to look at.</p>
+
+  <h2>1. One number to beat, plus limits</h2>
+  <p>You can only compare ideas quickly with <b>one number</b> that says better or worse: accuracy, F1, mean error. Everything else you care about becomes a <b>limit</b> the model must meet, not a second number to weigh: "answers within 100 ms", "under 50 MB", "at most one false alarm per camera per hour". Among the models that meet every limit, pick the best on the one number. Two numbers with no rule for trading them ("precision 92%, recall 85%" versus "precision 88%, recall 90%") leave every decision to a meeting.</p>
+  <div class="q" data-answer="b">
+    <p>A phone keyboard's next-word model: you care about how often its top suggestion is right, how fast it answers, and app size. How do you set it up?</p>
+    <ul><li data-k="a" data-says="Then which is better: 1% more right answers or 10 ms slower? Averaging mixes units and hides the trade.">Average the three into one score</li><li data-k="b">Maximize top-suggestion accuracy, subject to answering within, say, 30 ms and fitting in 20 MB</li><li data-k="c" data-says="Speed and size are limits: once they're met, being even faster or smaller doesn't matter to the user.">Optimize all three separately and pick by judgment</li></ul>
+    <div class="why">Accuracy is what users notice; speed and size only matter until they're good enough. That's the "optimizing plus satisficing" setup: one number to beat, the rest as limits.</div>
+  </div>
+
+  <h2>2. Read the gaps</h2>
+  <p>Four error rates tell you where the trouble is. <b>Human-level</b> error stands in for the best possible (some inputs are truly ambiguous, so nothing gets 0%). <b>Training</b> error is on the data the model learned from. <b>Train-dev</b> error is on held-out examples from the same source as training. <b>Dev</b> error is on examples like the ones the model will meet in use. The gaps between them each have their own fixes:</p>
+  <ul>
+    <li><b>Avoidable bias</b> = training − human: the model can't even fit what it was shown. Bigger model, train longer, better features, less regularization.</li>
+    <li><b>Variance</b> = train-dev − training: it fits its examples but doesn't generalize. More data, regularization, augmentation, a simpler model (chapter 11).</li>
+    <li><b>Data mismatch</b> = dev − train-dev: real use looks different from training. Get or synthesize training data that looks like real use (section 5).</li>
+  </ul>
+  <p>Fix the biggest gap first. Drag the sliders:</p>
+  <div class="sliders">
+    <label for="h">Human-level</label><input type="range" id="h" min="0" max="30" step="0.5" value="1"><b id="hV"></b>
+    <label for="t">Training</label><input type="range" id="t" min="0" max="40" step="0.5" value="8"><b id="tV"></b>
+    <label for="td">Train-dev</label><input type="range" id="td" min="0" max="40" step="0.5" value="10"><b id="tdV"></b>
+    <label for="d">Dev</label><input type="range" id="d" min="0" max="40" step="0.5" value="11"><b id="dV"></b>
+  </div>
+  <div class="bars" id="bars"></div>
+  <p class="readout" id="advice"></p>
+  <p>The same numbers on the digits: regularization strength <code>C</code> moves a logistic regression from too simple (high bias) to fitting its training set almost perfectly (variance).</p>
+  <div class="code" id="digits" data-title="Run it: bias and variance on the digits"><textarea>
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+digits = load_digits()
+X, y = digits.data, digits.target
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, stratify=y, random_state=0)
+
+rows = []
+for C in [0.001, 0.01, 0.1, 1]:          # smaller C = stronger regularization = a simpler model
+    model = make_pipeline(StandardScaler(), LogisticRegression(C=C, max_iter=2000)).fit(Xtr, ytr)
+    rows.append((C, 100 * (1 - model.score(Xtr, ytr)), 100 * (1 - model.score(Xte, yte))))
+pd.DataFrame(rows, columns=["C", "training error %", "test error %"]).set_index("C").round(2)
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>With C = 1: training error 0.2%, test error 2.8%. Suppose careful people misread 1% of these tiny scans. What's the biggest gap, and what would you try?</p>
+    <ul><li data-k="a">Variance (2.6 points): more training data, augmentation, or a bit more regularization</li><li data-k="b" data-says="Training error (0.2%) is already below the 1% human level: there's no avoidable bias left.">Avoidable bias: a bigger model</li><li data-k="c" data-says="Test and training data come from the same scans here, so there's no mismatch to measure.">Data mismatch: collect different scans</li></ul>
+    <div class="why">Avoidable bias is 0.2 − 1 < 0 (already at human level); variance is 2.8 − 0.2 = 2.6 points. The fixes for variance are the ones to try.</div>
+  </div>
+
+  <h2>3. Error analysis: look at the mistakes</h2>
+  <p>Before building anything, look at about a hundred mistakes on the dev set and sort them into categories. It takes an hour, and it tells you the most each idea could ever gain: if only 5% of mistakes are blurry images, a perfect deblurring step can cut the error by at most 5% of itself. This <b>ceiling</b> kills many plans before they cost a month. Error rates per group (per digit here; per neighborhood, age group or device elsewhere) are the same idea, and they're also how you check that a model isn't much worse for some people than for others.</p>
+  <div class="code" data-uses="digits" data-title="Run it: the digits model's mistakes"><textarea>
+import matplotlib.pyplot as plt
+
+model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)).fit(Xtr, ytr)
+pred = model.predict(Xte)
+wrong = pred != yte
+print("errors:", wrong.sum(), "of", len(yte), f"({100 * wrong.mean():.1f}%)")
+
+pairs = pd.Series([f"{t} read as {p}" for t, p in zip(yte[wrong], pred[wrong])]).value_counts()
+print(pairs.head(5))
+top = pairs.iloc[0] / wrong.sum()
+print(f"ceiling: fixing every '{pairs.index[0]}' mistake removes {100 * top:.0f}% of the errors,"
+      f" so error could fall at most from {100 * wrong.mean():.2f}% to {100 * wrong.mean() * (1 - top):.2f}%")
+print("error % per digit:", (100 * pd.Series(wrong).groupby(yte).mean()).round(1).to_dict())
+
+fig, axes = plt.subplots(1, 8, figsize=(10, 1.8))
+for ax, i in zip(axes, np.flatnonzero(wrong)[:8]):
+    ax.imshow(Xte[i].reshape(8, 8), cmap="gray_r"); ax.set_title(f"{yte[i]}→{pred[i]}"); ax.axis("off")
+</textarea></div>
+  <p>Look at the pictures, not only the counts: some of these 8×8 scans would fool a person too. A mistake that's really a wrong <b>label</b> is worth counting as its own category; fixing labels only pays off when that category is big.</p>
+
+  <h2>4. Will more data help? Learning curves</h2>
+  <p>Data is often the most expensive fix, so check first: train on growing slices of the training set and plot training and validation error. If validation error is still falling at full size and there's a gap between the curves, more data will likely help. If both curves have flattened close together, more of the same data won't: the model needs to change.</p>
+  <div class="code" data-uses="digits" data-title="Run it: a learning curve"><textarea>
+import matplotlib.pyplot as plt
+from sklearn.model_selection import learning_curve, StratifiedKFold
+
+folds = StratifiedKFold(5, shuffle=True, random_state=0)   # shuffled: the file is grouped by who wrote the digits
+sizes, train_scores, val_scores = learning_curve(make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)),
+                                                 X, y, train_sizes=[0.1, 0.25, 0.5, 0.75, 1.0], cv=folds)
+plt.figure(figsize=(6, 3))
+plt.plot(sizes, 100 * (1 - train_scores.mean(1)), "o-", label="training error %")
+plt.plot(sizes, 100 * (1 - val_scores.mean(1)), "o-", label="validation error %")
+plt.xlabel("training examples"); plt.legend()
+print("validation error % by size:", {int(n): round(float(100 * (1 - v)), 1) for n, v in zip(sizes, val_scores.mean(1))})
+</textarea></div>
+  <p>Note the shuffled folds. Without <code>shuffle=True</code>, scikit-learn's folds follow the file's order, and this file is grouped by the people who wrote the digits: each fold would test on new handwriting, and the validation error at full size would read about 8% instead of 3%. Whether that's "wrong" depends on the question: if the model must read handwriting it has never seen, splitting by writer is the honest test (features and leakage, group splits).</p>
+
+  <div class="q" data-answer="a">
+    <p>On the digits, validation error falls from 4.7% to 3.1% between 1,077 and 1,437 examples, while training error stays near 0%. Would more scans help?</p>
+    <ul><li data-k="a">Probably: validation error is still falling at full size and there's a gap to training</li><li data-k="b" data-says="Flat and close together would mean that; here the validation curve is still dropping.">No: the curves have flattened</li><li data-k="c" data-says="The curve itself is the evidence: it's still going down.">Can't tell without more experiments</li></ul>
+    <div class="why">Falling validation error plus a training/validation gap is the variance picture, and data is variance's most reliable cure.</div>
+  </div>
+
+  <h2>5. When real use looks different</h2>
+  <p>Training data is often whatever is easy to get, and real use is something else: web photos versus phone photos, daytime cameras versus night, last year's customers versus this year's. Then a dev set from real use is the only honest one, and you need one more set, <b>train-dev</b>, carved from the training source, to tell variance from mismatch. Below, the model learns from clean scans and is then used on "phone" scans with sensor noise.</p>
+  <div class="code" data-uses="digits" data-title="Run it: data mismatch, and a fix"><textarea>
+rng = np.random.default_rng(0)
+def phone(images):                                           # the scans real users would send: noisy
+    return np.clip(images + rng.normal(0, 3, images.shape), 0, 16)
+
+Xa, Xb, ya, yb = train_test_split(X, y, test_size=0.5, stratify=y, random_state=1)    # a: clean source, b: from phones
+Xtrain, Xtraindev, ytrain, ytraindev = train_test_split(Xa, ya, test_size=0.2, stratify=ya, random_state=2)
+Xdev, ydev = phone(Xb[:450]), yb[:450]
+
+err = lambda m, X_, y_: round(100 * (1 - m.score(X_, y_)), 1)
+model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)).fit(Xtrain, ytrain)
+print("training", err(model, Xtrain, ytrain), "% · train-dev", err(model, Xtraindev, ytraindev), "% · dev (phones)", err(model, Xdev, ydev), "%")
+
+# the fix: put some phone-like examples into training (here: the rest of the phone scans, never the dev set itself)
+Xmix, ymix = np.vstack([Xtrain, phone(Xb[450:])]), np.concatenate([ytrain, yb[450:]])
+model2 = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)).fit(Xmix, ymix)
+print("after adding phone-like training data: dev", err(model2, Xdev, ydev), "%")
+</textarea></div>
+  <div class="q" data-num="2" data-tol="0.6">
+    <p>Training 0.0%, train-dev 2.2%, dev 52%. How many points of the dev error are variance? (Round to a whole number.)</p>
+    <div class="why">Variance is train-dev − training = 2.2 points; data mismatch is dev − train-dev ≈ 50 points. More clean data would barely help; making training look like real use cut dev error to about 12%.</div>
+  </div>
+
+  <h2>6. A case study: the bike-lane camera</h2>
+  <p>You lead a small team building a model that watches city street cameras and flags cars blocking bike lanes, so the city can send an officer. Five decisions, each with consequences.</p>
+  <div class="q" data-answer="b">
+    <p><b>1. The metric.</b> The city says: catch as many blocked lanes as possible, but officers will ignore the system if it cries wolf more than once per camera per hour. Which setup?</p>
+    <ul><li data-k="a" data-says="Most frames have no blocked lane, so a model that never flags anything scores very high accuracy (chapter 12).">Accuracy on all camera frames</li><li data-k="b">Recall, subject to at most one false alarm per camera per hour</li><li data-k="c" data-says="Precision alone rewards flagging almost nothing.">Precision</li></ul>
+    <div class="why">Catching blocked lanes (recall) is the one number to beat; the false-alarm rate is a limit. Among models under the limit, the highest recall wins.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p><b>2. First results.</b> Two inspectors looking at the same frames disagree on 2%. Your model: training error 9%, dev error 10%. What next?</p>
+    <ul><li data-k="a">A bigger model or better features: training error is 7 points above human level</li><li data-k="b" data-says="More data fixes variance: here train and dev differ by only 1 point. Months of labeling would barely move it.">Label 50,000 more frames</li><li data-k="c" data-says="Regularization reduces variance, but the problem is bias: it would make training error worse.">Add regularization</li></ul>
+    <div class="why">Avoidable bias 9 − 2 = 7 points, variance 10 − 9 = 1. The model can't even fit what it has seen; more data won't fix that.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p><b>3. A month later.</b> A bigger network gets training error to 2.5% but dev error 9%. Now what?</p>
+    <ul><li data-k="a" data-says="Training error is close to human level now: the bias is mostly fixed.">An even bigger network</li><li data-k="b" data-says="Human level is a guide, not something to change.">Re-measure human level</li><li data-k="c">More data or augmentation (flips, brightness, crops), or regularization: the gap is variance now</li></ul>
+    <div class="why">Avoidable bias 0.5 points, variance 6.5 points. The fixes for variance come next.</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p><b>4. Night falls.</b> Train-dev error is 4%, daytime dev 4.5%, but night-time cameras: 25%. Your training frames are 95% daytime. What do you do?</p>
+    <ul><li data-k="a" data-says="Train and train-dev already agree (variance is small); more daytime data won't teach night.">Collect more daytime frames</li><li data-k="b">Get or make night-like training frames (label some night frames; darken and add noise to day frames), and add a night dev set to measure it</li><li data-k="c" data-says="It's a real part of the job: the city needs nights too.">Report the daytime number</li></ul>
+    <div class="why">This is data mismatch (25 − 4 = 21 points). The fix is training data that looks like the conditions the model will meet, as with the phone scans above.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p><b>5. Error analysis.</b> Of 100 dev mistakes: 40 are delivery trucks with hazard lights on, 25 are rain at night, 10 have wrong labels, 25 are miscellaneous. Dev error is 8%. Which is worth a week first?</p>
+    <ul><li data-k="a">The delivery trucks: fixing them all could bring dev error from 8% to about 4.8%</li><li data-k="b" data-says="Wrong labels are 10% of the mistakes: fixing them all moves dev error from 8% to at most 7.2%.">Re-labeling the dataset</li><li data-k="c" data-says="Misc is 25% but has no single fix: you can't build one solution for 25 different problems.">The miscellaneous mistakes</li></ul>
+    <div class="why">Ceilings: trucks 8 × (1 − 0.40) = 4.8%, night rain 6%, labels 7.2%. The trucks are both the biggest and a single problem with a clear fix (more truck examples, or a "stopped with hazards" label).</div>
+  </div>
+  <p>One last trap, from the end of such projects: after tuning on the dev set fifty times, its score is a little optimistic, because you chose what worked on it. That's what the untouched test set is for. If dev says 4% and test says 6%, you've overfit the dev set: get a fresh dev set rather than tuning further.</p>
+
+  <h2>7. What to carry forward</h2>
+  <table class="cmp">
+    <tr><th>The numbers say</th><th>Try</th><th>Don't bother with</th></tr>
+    <tr><td>Training error far above human level (avoidable bias)</td><td>Bigger model, train longer, better features, less regularization</td><td>More data</td></tr>
+    <tr><td>Train-dev far above training (variance)</td><td>More data, augmentation, regularization, simpler model</td><td>A bigger model alone</td></tr>
+    <tr><td>Dev far above train-dev (data mismatch)</td><td>Training data that looks like real use (collect, or make it)</td><td>More of the same training data</td></tr>
+    <tr><td>Validation error still falling at full size</td><td>More data will likely help</td><td></td></tr>
+    <tr><td>A category of mistakes is a small share</td><td></td><td>Spending weeks on it: its ceiling is low</td></tr>
+  </table>
+  <ul>
+    <li>One number to beat; everything else is a limit.</li>
+    <li>Dev and test sets come from the conditions the model will meet; train-dev comes from the training source.</li>
+    <li>Look at a hundred mistakes before building anything, and compute each idea's ceiling.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Andrew Ng's free "Machine Learning Yearning" covers these ideas at book length.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+function draw() {
+  const [h, t, td, d] = ["h", "t", "td", "d"].map((id) => +$(id).value);
+  for (const id of ["h", "t", "td", "d"]) $(id + "V").textContent = $(id).value + "%";
+  const gaps = [["Avoidable bias", t - h, "a bigger model, longer training, better features, or less regularization"], ["Variance", td - t, "more data, augmentation, regularization, or a simpler model"], ["Data mismatch", d - td, "training data that looks like real use"]];
+  const max = Math.max(...gaps.map((g) => g[1]), 0.5), top = gaps.reduce((a, b) => (b[1] > a[1] ? b : a));
+  $("bars").innerHTML = gaps.map(([n, v]) => `<div class="bar${n === top[0] && v > 0 ? " top" : ""}"><b>${n}</b><div><span style="width:${Math.max(0, (v / max) * 100)}%"></span></div></div>`).join("");
+  $("advice").textContent = gaps.some((g) => g[1] < 0) && top[1] <= 0 ? "No gap stands out: compare the costs of the fixes, or look at the mistakes."
+    : `${gaps.map(([n, v]) => `${n} ${v.toFixed(1)} pts`).join(" · ")}. Biggest: ${top[0].toLowerCase()}, so try ${top[2]}.`;
+}
+for (const id of ["h", "t", "td", "d"]) $(id).oninput = draw;
+draw();
+let told = false;
+$("d").addEventListener("change", () => { if (!told && +$("d").value - +$("td").value > 10) { told = true; say("A big jump from train-dev to dev: the real world looks different from your training data.", "think"); } });
+window.blipContext = () => ({ page: "AI from scratch, stage 3: ML strategy: one optimizing metric plus satisficing limits, human-level vs training vs train-dev vs dev error (avoidable bias, variance, data mismatch), error analysis with ceilings and per-group error rates, learning curves (and why shuffled folds matter on the digits), data mismatch fixed by adding real-use-like training data, a bike-lane camera case study", human: +$("h").value, train: +$("t").value, trainDev: +$("td").value, dev: +$("d").value });
+</script>
+</body>
+</html>

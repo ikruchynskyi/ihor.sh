@@ -2948,5 +2948,118 @@
     "sec": 5
    }
   ]
+ },
+ "ml-strategy.html": {
+  "goals": [
+   "Set one metric to optimize and turn the rest into limits",
+   "Diagnose avoidable bias, variance and data mismatch from human, training, train-dev and dev error, and pick the matching fix",
+   "Run an error analysis and compute each fix's ceiling",
+   "Read a learning curve to decide whether more data will help"
+  ],
+  "needs": [
+   "11-overfitting.html",
+   "12-measuring-a-model.html",
+   "features-and-leakage.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Optimizing vs satisficing",
+    "One number to beat; everything else (speed, size, false alarms) is a limit to meet."
+   ],
+   [
+    "Human-level error",
+    "A stand-in for the best possible error: the target for training error."
+   ],
+   [
+    "Avoidable bias",
+    "Training error − human-level: fix with a bigger model, longer training, better features, less regularization."
+   ],
+   [
+    "Variance",
+    "Train-dev error − training error: fix with more data, augmentation, regularization."
+   ],
+   [
+    "Train-dev set",
+    "Held-out examples from the training source: separates variance from data mismatch."
+   ],
+   [
+    "Data mismatch",
+    "Dev error − train-dev error: fix with training data that looks like real use."
+   ],
+   [
+    "Error analysis",
+    "Sort ~100 dev mistakes into categories before building anything."
+   ],
+   [
+    "Ceiling",
+    "Error × (1 − a category's share of mistakes): the lowest a perfect fix for that category can reach."
+   ],
+   [
+    "Learning curve",
+    "Training and validation error against training-set size: still falling means more data will likely help."
+   ],
+   [
+    "Overfitting the dev set",
+    "After tuning on it many times, dev looks better than test: get a fresh dev set."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Human-level 1%, training 1.5%, train-dev 7%, dev 7.5%. What's the main problem?",
+    "options": [
+     "Variance: more data, augmentation or regularization",
+     "Avoidable bias: a bigger model",
+     "Data mismatch: different training data"
+    ],
+    "answer": 0,
+    "why": "Bias 0.5, variance 5.5, mismatch 0.5 points.",
+    "sec": 2
+   },
+   {
+    "q": "Of 200 dev mistakes, 12 are blurry photos. Dev error is 10%. What's the most a perfect deblurring step could achieve?",
+    "options": [
+     "Dev error 9.4%",
+     "Dev error 4%",
+     "Dev error 0%"
+    ],
+    "answer": 0,
+    "why": "12/200 = 6% of the mistakes: 10% × 0.94 = 9.4%. A low ceiling: probably not worth weeks.",
+    "sec": 3
+   },
+   {
+    "q": "Validation error has stopped falling and sits close to training error, both well above human level. Will more data help?",
+    "options": [
+     "Unlikely: the model itself has to change (it's bias, not variance)",
+     "Yes, always",
+     "Only with shuffled folds"
+    ],
+    "answer": 0,
+    "why": "Flat curves close together mean the model can't use more of the same data.",
+    "sec": 4
+   },
+   {
+    "q": "Why keep a train-dev set?",
+    "options": [
+     "To tell variance (train-dev vs training) apart from data mismatch (dev vs train-dev)",
+     "To have more training data",
+     "To tune the learning rate"
+    ],
+    "answer": 0,
+    "why": "Without it, a high dev error could be either, and the fixes are different.",
+    "sec": 5
+   },
+   {
+    "q": "You tuned 50 versions on the dev set. Dev error 4%, test error 6%. What happened?",
+    "options": [
+     "You overfit the dev set by choosing what worked on it: get a fresh dev set",
+     "The test set is broken",
+     "The model needs to be bigger"
+    ],
+    "answer": 0,
+    "why": "Each choice made on the dev set leaks a little of it into the model.",
+    "sec": 6
+   }
+  ]
  }
 }
