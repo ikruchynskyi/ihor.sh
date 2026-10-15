@@ -167,6 +167,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-svd-rotate-stretch-rotate"
  },
+ "making-nets-train.html": {
+  "notebook": "making-nets-train.ipynb",
+  "title": "AI from scratch: making deep nets train",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/making-nets-train.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-making-deep-nets-train"
+ },
  "ml-strategy.html": {
   "notebook": "ml-strategy.ipynb",
   "title": "AI from scratch: ML strategy, what to fix next",

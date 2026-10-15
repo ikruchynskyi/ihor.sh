@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Making Deep Nets Train</title>
+  <meta name="description" content="AI from scratch, toolkit 4: making deep nets train. Signals that vanish or explode through 20 layers, He initialization, batch and layer normalization, dropout, residual connections, and a loss-curve doctor game for diagnosing training runs." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .doctor { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+    .doctor button { text-align: left; padding: 10px 12px; min-height: 44px; }
+    .doctor button.right { outline: 3px solid #2f9e44; } .doctor button.wrong { outline: 3px solid #e03131; opacity: .7; }
+    @media (max-width: 560px) { .doctor { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Toolkit 4 · Stage 4: the engineer's toolkit</p>
+  <h1>Making deep nets train</h1>
+  <p class="lede">Stack twenty layers, press train, and very often nothing happens: the loss sits at its starting value, or turns into NaN. For years this is why deep networks "didn't work". The fixes turned out to be a handful of small ideas, now in every model: start the weights at the right size, keep each layer's numbers on a steady scale, switch off random neurons while training, and give the signal a shortcut around each layer. This lesson shows why each one is needed, then teaches you to read a loss curve like a doctor reads a chart.</p>
+
+  <h2>1. Signals that vanish or explode</h2>
+  <p>Push 200 random inputs through 20 layers of 128 neurons, each layer a random matrix and a bend, and watch the spread (standard deviation) of the numbers at each layer. Each layer multiplies the spread by roughly the same factor. A factor of 0.7 twenty times is 0.0008; 1.3 twenty times is 190. Only a factor near 1 survives depth.</p>
+  <canvas id="sig" width="800" height="340" aria-label="The spread of activations at each of 20 layers, on a log scale"></canvas>
+  <div class="row">
+    <label>weights start with spread <select id="init"><option value="0.01">0.01 (a fixed small number)</option><option value="lecun">1/√n</option><option value="he" selected>√(2/n) (He)</option><option value="big">1.15 × √(2/n)</option></select></label>
+    <label>bend <select id="act"><option value="relu" selected>ReLU</option><option value="tanh">tanh</option></select></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>When the signal shrinks to nothing on the way forward, the blame shrinks the same way on the way back (chapter 4: backprop multiplies by the same weights), and the early layers never learn: <b>vanishing gradients</b>. When it grows, the loss overflows: <b>exploding gradients</b>. The cure starts with the first numbers you put in the weights.</p>
+  <p class="formula">\[ \text{He initialization (ReLU):}\quad w \sim \mathcal{N}\!\left(0,\ \tfrac{2}{n_{\text{in}}}\right) \qquad \text{Xavier (tanh):}\quad w \sim \mathcal{N}\!\left(0,\ \tfrac{1}{n_{\text{in}}}\right) \]</p>
+  <p>PyTorch's <code>nn.Linear</code> uses a uniform version scaled by \(1/\sqrt{n_{\text{in}}}\) by default, which is why stacks of a few layers just work; for deep ReLU stacks, <code>nn.init.kaiming_normal_</code> is He.</p>
+  <div class="q" data-answer="b">
+    <p>Each layer multiplies the spread by 0.9. After 50 layers it's about…</p>
+    <ul><li data-k="a" data-says="0.9 × 50 would be adding, not multiplying.">45</li><li data-k="b">0.005</li><li data-k="c" data-says="It does shrink each layer, by 10% a time.">0.9</li></ul>
+    <div class="why">\(0.9^{50} \approx 0.005\). Depth turns a small per-layer factor into an enormous total one, which is why "close to 1" has to be exact enough.</div>
+  </div>
+  <p class="gist">Each layer multiplies the signal's spread by about the same factor, so depth needs that factor to be almost exactly 1, and the starting weights set it.</p>
+  <details class="deeper"><summary>Why He uses 2/n: the ReLU throws away half</summary>
+    <ol>
+      <li>One neuron computes \(z = \sum_{i=1}^{n} w_i x_i\). With independent weights of mean 0, the variance of a sum is the sum of the variances: \(\operatorname{Var}(z) = n \operatorname{Var}(w)\, \mathbb{E}[x^2]\).</li>
+      <li>\(z\) is symmetric around 0, and ReLU sets the negative half to 0. So \(\mathbb{E}[\operatorname{ReLU}(z)^2] = \tfrac12 \operatorname{Var}(z)\): half the energy is gone.</li>
+      <li>That ReLU output is the next layer's \(x\). For \(\mathbb{E}[x^2]\) to stay the same from layer to layer we need \(\tfrac12 \cdot n \operatorname{Var}(w) = 1\).</li>
+      <li>So \(\operatorname{Var}(w) = 2/n\). With \(1/n\) instead, each layer halves the energy: 20 layers divide it by about a million (the widget's \(1/\sqrt n\) setting: spread about 0.001 at layer 20).</li>
+      <li>tanh keeps both halves and is close to the identity near 0, so its natural choice is \(1/n\) (Xavier, which averages \(n_{\text{in}}\) and \(n_{\text{out}}\)).</li>
+    </ol>
+  </details>
+
+  <h2>2. Normalization: reset the scale at every layer</h2>
+  <p>Good initialization sets the scale at the start, but training moves the weights, and the scale drifts. <b>Normalization</b> fixes it on every forward pass: shift and scale the numbers to mean 0 and spread 1, then let the network re-scale them with two learned numbers per feature, \(\gamma\) and \(\beta\).</p>
+  <p class="formula">\[ \hat x = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}}, \qquad y = \gamma\, \hat x + \beta \]</p>
+  <table class="cmp">
+    <tr><th></th><th>Batch norm</th><th>Layer norm</th></tr>
+    <tr><td>\(\mu, \sigma\) over</td><td>the batch, per feature</td><td>the features, per example</td></tr>
+    <tr><td>Training vs use</td><td>Different: training uses the batch's numbers, use (eval) uses running averages saved during training</td><td>The same: every example normalizes itself</td></tr>
+    <tr><td>Where</td><td>CNNs (chapter 6's kind)</td><td>Transformers (chapter 7), RNNs, small batches</td></tr>
+  </table>
+  <div class="code" data-title="Build it: batch norm from scratch, in training and in use"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+class BatchNorm:
+    def __init__(self, n, momentum=0.1):
+        self.gamma, self.beta = np.ones(n), np.zeros(n)
+        self.run_mean, self.run_var, self.m = np.zeros(n), np.ones(n), momentum
+    def __call__(self, x, training):
+        if training:
+            mu, var = x.mean(axis=0), x.var(axis=0)            # this batch's numbers, per feature
+            self.run_mean = (1 - self.m) * self.run_mean + self.m * mu   # an EWA (the optimizers lesson) for later
+            self.run_var = (1 - self.m) * self.run_var + self.m * var
+        else:
+            mu, var = self.run_mean, self.run_var              # in use: the saved averages
+        return self.gamma * (x - mu) / np.sqrt(var + 1e-5) + self.beta
+bn = BatchNorm(3)
+for _ in range(200):                                           # training batches: features with very different scales
+    batch = rng.normal(loc=[5, -2, 100], scale=[1, 0.1, 30], size=(32, 3))
+    out = bn(batch, training=True)
+print("a training batch after BN: means", out.mean(axis=0).round(3), " spreads", out.std(axis=0).round(3))
+one = np.array([[5.0, -2.0, 100.0]])
+print("one example in use (eval):", bn(one, training=False).round(3), " ← uses the saved averages")
+print("the same example 'in training' as a batch of one:", bn(one, training=True).round(3), " ← its own mean: all zeros")
+</textarea></div>
+  <div class="q" data-answer="c">
+    <p>A model with batch norm scores 92% in validation, but in the app (one photo at a time) its answers are nonsense. The most likely bug?</p>
+    <ul><li data-k="a" data-says="Batch norm doesn't need big inputs, it needs the right mode.">The photos are too small</li><li data-k="b" data-says="The weights are the same; it's the normalization statistics that differ.">The model was saved wrong</li><li data-k="c">The app forgot <code>model.eval()</code>: each single photo is normalized by its own mean, which erases it</li></ul>
+    <div class="why">In training mode a batch of one has mean = itself, so \(x - \mu = 0\) for every feature: the box's last line. <code>model.eval()</code> switches batch norm (and dropout) to their use-time behavior.</div>
+  </div>
+  <p class="gist">Normalization resets every layer's numbers to mean 0 and spread 1 on each pass, then lets two learned numbers per feature set the scale it actually wants.</p>
+
+  <h2>3. Dropout: train a crowd, use the average</h2>
+  <p>During training, <b>dropout</b> sets each neuron's output to 0 with probability \(p\) (often 0.1 to 0.5) and scales the survivors by \(1/(1 - p)\) so the expected total stays the same. No neuron can rely on one particular partner being there, so the network learns redundant, spread-out features, which overfit less (chapter 11). In use (<code>model.eval()</code>), nothing is dropped: it's like averaging the predictions of all the thinned networks seen in training.</p>
+  <div class="code" data-title="Run it: why the survivors get scaled up"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+h = np.full(10_000, 2.0)                       # a layer's outputs, all 2.0
+p = 0.3
+keep = rng.random(h.size) > p                  # each kept with probability 0.7
+print("mean without scaling:", (h * keep).mean().round(3), "  ← 30% smaller than in use")
+print("mean with 1/(1 - p): ", (h * keep / (1 - p)).mean().round(3), "  ← the same as in use (2.0)")
+</textarea></div>
+  <p class="gist">Dropout switches random neurons off while training, so none can lean on a particular partner, and scales the rest so the totals match use time.</p>
+
+  <h2>4. Residual connections: a shortcut around every layer</h2>
+  <p>A <b>residual block</b> outputs its input plus a correction: \(y = x + f(x)\). Chapter 7's transformer blocks are built this way, and so is ResNet, which first trained networks over 100 layers deep in 2015. Two things happen. The signal always has a path that skips the layer, so it can't vanish. And in backprop, the derivative of \(x + f(x)\) is \(1 + f'(x)\): the blame reaching the top flows back to the bottom unchanged, plus whatever the layers add.</p>
+  <div class="code" data-title="Run it: 50 layers, plain and residual, at a slightly too-small start"><textarea>
+import numpy as np
+rng = np.random.default_rng(0)
+n = 128
+x = rng.normal(size=(200, n))
+plain, resid = x.copy(), x.copy()
+for layer in range(50):
+    W = rng.normal(scale=np.sqrt(1.6 / n), size=(n, n))          # a bit under He's 2/n
+    plain = np.maximum(plain @ W, 0)
+    resid = resid + 0.2 * np.maximum(resid @ W, 0) @ rng.normal(scale=np.sqrt(1 / n), size=(n, n))
+print("spread after 50 plain layers:   ", f"{plain.std():.1e}")
+print("spread after 50 residual blocks:", f"{resid.std():.2f}")
+</textarea></div>
+  <p class="gist">A residual block adds a correction to its input instead of replacing it, so both the signal and the blame always have a path straight through.</p>
+
+  <h2>5. The loss-curve doctor</h2>
+  <p>A loss curve is the main thing you get to watch while training. Each pattern below has a cause and a standard fix. Look at the chart, pick the diagnosis. The score is just for you.</p>
+  <canvas id="curve" width="800" height="320" aria-label="A training and validation loss curve to diagnose"></canvas>
+  <p class="legend"><i style="background:#58c4dd"></i>training loss <i style="background:#f4d35e"></i>validation loss <i style="background:#83c167"></i>ln(10) ≈ 2.3, the loss of uniform guessing over 10 classes</p>
+  <div class="doctor" id="dx"></div>
+  <p class="readout" id="r5"></p>
+  <div class="row"><button id="nextCase">Next patient</button><span class="readout" id="score" style="margin:0"></span></div>
+  <table class="cmp">
+    <tr><th>The curve</th><th>Usually means</th><th>Try</th></tr>
+    <tr><td>Flat at ln(classes) from step 1</td><td>Nothing is learning: a bug (labels shuffled apart from inputs, frozen weights, no <code>optimizer.step()</code>)</td><td>Overfit one batch (training in PyTorch)</td></tr>
+    <tr><td>Falls, then jumps or turns NaN</td><td>Learning rate too high, or exploding gradients</td><td>Lower the rate, warm up, clip gradients</td></tr>
+    <tr><td>A slow straight slide</td><td>Learning rate too low</td><td>Range test, raise the rate</td></tr>
+    <tr><td>Training falls, validation turns up</td><td>Overfitting</td><td>Stop early, regularize, more data or augmentation</td></tr>
+    <tr><td>Both high and flat, far above the goal</td><td>Underfitting (high bias)</td><td>Bigger model, train longer, better features</td></tr>
+  </table>
+  <p class="gist">A loss curve is a diagnosis: flat at ln(classes) is a bug, spikes are a rate that's too high, a slow slide is one that's too low, and a gap is overfitting.</p>
+  <details class="deeper"><summary>Where it breaks: when the fixes cause trouble</summary>
+    <ul>
+      <li><b>Batch norm with tiny batches.</b> With 2 examples per batch, each batch's mean and spread are mostly noise, and training gets unstable. Detection and segmentation models, which fit only a few big images per GPU, switch to group norm or layer norm, which don't depend on the batch.</li>
+      <li><b>Forgetting the mode switch.</b> Dropout left on at test time makes every prediction random; batch norm left in training mode normalizes each example by itself. Both are one missing <code>model.eval()</code>, and both look like "the model got worse after deployment".</li>
+      <li><b>Initialization can't save a saturated bend.</b> A sigmoid or tanh layer whose inputs are large sits on its flat tails, where the slope is near 0, whatever the starting scale. That's one reason hidden layers use ReLU-like bends and keep normalization before them.</li>
+    </ul>
+  </details>
+
+  <h2>6. What to carry forward</h2>
+  <ul>
+    <li><b>Initialization</b>: He (\(2/n_{\text{in}}\)) for ReLU, Xavier (\(1/n_{\text{in}}\)) for tanh: keeps the per-layer factor near 1.</li>
+    <li><b>Normalization</b>: batch norm in CNNs (eval mode uses saved averages), layer norm in transformers.</li>
+    <li><b>Dropout</b> while training, scaled by \(1/(1 - p)\); off in eval.</li>
+    <li><b>Residuals</b>: \(y = x + f(x)\) gives the signal and the gradient a straight path.</li>
+    <li><b>Read the curve</b>: flat at ln(classes), spikes, slow slide, a widening gap. And <code>model.train()</code> / <code>model.eval()</code>, always.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Andrej Karpathy's "A Recipe for Training Neural Networks" is the classic checklist.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// ---------- 1. signal through 20 layers ----------
+let seed = 7;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 || 1e-12; };
+const gauss = () => Math.sqrt(-2 * Math.log(rand())) * Math.cos(2 * Math.PI * rand());
+const N = 128, B = 150, L = 20;
+function spreads(init, act) {
+  seed = 7;
+  const sd = { "0.01": 0.01, lecun: 1 / Math.sqrt(N), he: Math.sqrt(2 / N), big: 1.15 * Math.sqrt(2 / N) }[init];
+  let x = Array.from({ length: B }, () => Float64Array.from({ length: N }, gauss));
+  const out = [];
+  for (let l = 0; l < L; l++) {
+    const W = Array.from({ length: N }, () => Float64Array.from({ length: N }, () => sd * gauss()));
+    x = x.map((row) => { const z = new Float64Array(N); for (let i = 0; i < N; i++) { const r = row[i]; if (r) { const w = W[i]; for (let j = 0; j < N; j++) z[j] += r * w[j]; } } for (let j = 0; j < N; j++) z[j] = act === "relu" ? Math.max(0, z[j]) : Math.tanh(z[j]); return z; });
+    let s = 0, s2 = 0; for (const row of x) for (const v of row) { s += v; s2 += v * v; }
+    const m = s / (B * N); out.push(Math.sqrt(Math.max(1e-300, s2 / (B * N) - m * m)));
+  }
+  return out;
+}
+function drawSig() {
+  const cv = $("sig"), g = cv.getContext("2d"), W = cv.width, H = cv.height, s = spreads($("init").value, $("act").value);
+  const lo = -20, hi = 3, X = (l) => 60 + (l / (L - 1)) * (W - 90), Y = (v) => H - 30 - ((Math.log10(v) - lo) / (hi - lo)) * (H - 50);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H); g.font = "13px ui-monospace, monospace";
+  for (let e = lo; e <= hi; e += 4) { g.strokeStyle = "rgba(216,222,233,0.12)"; g.beginPath(); g.moveTo(55, Y(10 ** e)); g.lineTo(W - 20, Y(10 ** e)); g.stroke(); g.fillStyle = "#9aa4b2"; g.fillText(`1e${e}`, 4, Y(10 ** e) + 4); }
+  g.strokeStyle = "rgba(131,193,103,0.6)"; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(55, Y(1)); g.lineTo(W - 20, Y(1)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = "#58c4dd"; g.lineWidth = 3; g.beginPath(); s.forEach((v, l) => (l ? g.lineTo(X(l), Y(Math.max(v, 1e-20))) : g.moveTo(X(l), Y(Math.max(v, 1e-20))))); g.stroke();
+  s.forEach((v, l) => { g.fillStyle = "#58c4dd"; g.beginPath(); g.arc(X(l), Y(Math.max(v, 1e-20)), 4, 0, 7); g.fill(); });
+  g.fillStyle = "#9aa4b2"; g.fillText("layer 1", X(0) - 10, H - 8); g.fillText("layer 20", X(L - 1) - 50, H - 8);
+  const f = (v) => (v < 1e-3 || v > 1e3 ? v.toExponential(1) : v.toFixed(3));
+  $("r1").textContent = `spread at layer 1: ${f(s[0])} · layer 5: ${f(s[4])} · layer 10: ${f(s[9])} · layer 20: ${f(s[19])} · per-layer factor ≈ ${(s[19] / s[0]) ** (1 / 19) < 10 ? ((s[19] / s[0]) ** (1 / 19)).toFixed(2) : "huge"}`;
+}
+["init", "act"].forEach((id) => $(id).addEventListener("change", drawSig));
+drawSig();
+
+// ---------- 5. the loss-curve doctor ----------
+const DX = [
+  { id: "bug", label: "Nothing is learning: a bug" },
+  { id: "high", label: "Learning rate too high" },
+  { id: "low", label: "Learning rate too low" },
+  { id: "over", label: "Overfitting" },
+  { id: "under", label: "Underfitting: model too small" },
+  { id: "fine", label: "Healthy: keep going" },
+];
+const CASES = {
+  bug: (t) => [2.3 + 0.03 * Math.sin(t * 9) + 0.02 * gauss(), 2.31 + 0.02 * gauss()],
+  high: (t) => { const base = 2.3 * Math.exp(-6 * t) + 0.6; const spike = t > 0.45 && t < 0.5 ? 3 : t >= 0.5 ? 1.2 + 0.4 * Math.abs(gauss()) : 0; return [base + spike + 0.15 * Math.abs(gauss()), base + spike + 0.2]; },
+  low: (t) => [2.3 - 0.7 * t + 0.02 * gauss(), 2.32 - 0.68 * t + 0.02 * gauss()],
+  over: (t) => [2.2 * Math.exp(-5 * t) + 0.05 + 0.02 * gauss(), 2.2 * Math.exp(-5 * t) + 0.35 + 0.9 * Math.max(0, t - 0.35) ** 1.3 + 0.02 * gauss()],
+  under: (t) => [1.6 * Math.exp(-8 * t) + 1.2 + 0.02 * gauss(), 1.6 * Math.exp(-8 * t) + 1.25 + 0.02 * gauss()],
+  fine: (t) => [2.2 * Math.exp(-4 * t) + 0.12 + 0.02 * gauss(), 2.2 * Math.exp(-4 * t) + 0.2 + 0.02 * gauss()],
+};
+const WHY = {
+  bug: "Stuck at ln(10) ≈ 2.3 from the first step: the model is guessing uniformly and the weights aren't changing. Check that optimizer.step() runs, labels match inputs, and the model can overfit one batch.",
+  high: "It learned at first, then the loss jumped and never recovered: steps too big for the valley (the optimizers lesson). Lower the rate, add warmup, or clip gradients.",
+  low: "A slow, straight slide: every step helps a little. A rate several times larger would get there far sooner; run a range test.",
+  over: "Training keeps falling while validation turns up: it's memorizing. Stop at the validation minimum, regularize (dropout, weight decay), or get more data.",
+  under: "Both curves flatten early, close together, far above where they should be: the model can't fit even its training data. Make it bigger or train longer.",
+  fine: "Both falling, close together, still going down: nothing to fix yet. Keep training and keep watching validation.",
+};
+let order = Object.keys(CASES).sort(() => rand() - 0.5), idx = 0, right = 0, seen = 0, answered = false;
+function drawCase() {
+  const kind = order[idx % order.length], cv = $("curve"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  seed = 100 + idx; const pts = Array.from({ length: 120 }, (_, i) => CASES[kind](i / 119));
+  const Y = (v) => H - 20 - (Math.min(v, 4) / 4) * (H - 40), X = (i) => 40 + (i / 119) * (W - 60);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(131,193,103,0.6)"; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(40, Y(2.303)); g.lineTo(W - 20, Y(2.303)); g.stroke(); g.setLineDash([]);
+  [[0, "#58c4dd"], [1, "#f4d35e"]].forEach(([k, c]) => { g.strokeStyle = c; g.lineWidth = 2.5; g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(X(i), Y(p[k])) : g.moveTo(X(i), Y(p[k])))); g.stroke(); });
+  g.fillStyle = "#9aa4b2"; g.font = "13px ui-monospace, monospace"; g.fillText("loss", 4, 16); g.fillText("training steps →", W - 150, H - 4);
+  $("dx").innerHTML = DX.map((d) => `<button data-id="${d.id}">${d.label}</button>`).join("");
+  $("r5").textContent = "What's going on with this run?"; answered = false;
+  $("dx").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    if (answered) return; answered = true; seen++;
+    const ok = b.dataset.id === kind; if (ok) right++;
+    b.classList.add(ok ? "right" : "wrong"); if (!ok) $("dx").querySelector(`[data-id=${kind}]`).classList.add("right");
+    $("r5").textContent = (ok ? "Right. " : "Not quite. ") + WHY[kind];
+    $("score").textContent = `${right} of ${seen} diagnosed${seen >= 6 && right === seen ? " · a perfect round" : ""}`;
+  });
+}
+$("nextCase").onclick = () => { idx++; if (idx % order.length === 0) order = Object.keys(CASES).sort(() => rand() - 0.5); drawCase(); };
+drawCase();
+</script>
+</body>
+</html>

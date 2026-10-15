@@ -3950,5 +3950,129 @@
     "sec": 5
    }
   ]
+ },
+ "making-nets-train.html": {
+  "goals": [
+   "Explain vanishing and exploding signals as a per-layer factor raised to the depth",
+   "Choose He or Xavier initialization and say why He uses 2/n",
+   "Use batch norm, layer norm and dropout, and switch them correctly with train() and eval()",
+   "Diagnose a training run from its loss curves"
+  ],
+  "needs": [
+   "deep-networks.html",
+   "training-in-pytorch.html",
+   "optimizers.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Vanishing / exploding",
+    "Each layer multiplies the spread by about the same factor; 0.9⁵⁰ ≈ 0.005, 1.1⁵⁰ ≈ 117."
+   ],
+   [
+    "He initialization",
+    "Weights with variance 2/n_in for ReLU: the ReLU halves the energy, the 2 puts it back."
+   ],
+   [
+    "Xavier initialization",
+    "Variance about 1/n_in (averaged with n_out) for tanh-like bends."
+   ],
+   [
+    "Batch norm",
+    "Normalize each feature over the batch, then γx̂ + β; eval uses running averages saved in training."
+   ],
+   [
+    "Layer norm",
+    "Normalize each example over its features: same in training and use; transformers use it."
+   ],
+   [
+    "Dropout",
+    "Zero each output with probability p while training, scale survivors by 1/(1 − p); off in eval."
+   ],
+   [
+    "Residual block",
+    "y = x + f(x): the signal and the gradient always have a straight path."
+   ],
+   [
+    "model.eval()",
+    "Switches dropout off and batch norm to saved averages. Forgetting it is a classic deployment bug."
+   ],
+   [
+    "Loss curve: flat at ln(classes)",
+    "Nothing is learning: a bug in the loop, the data or the model."
+   ],
+   [
+    "Loss curve: training down, validation up",
+    "Overfitting: stop early, regularize, more data."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why does He initialization use variance 2/n instead of 1/n for ReLU layers?",
+    "options": [
+     "ReLU zeros the negative half, halving the signal's energy each layer; the 2 restores it",
+     "Because ReLU has a slope of 2",
+     "Because 2/n trains faster in every network"
+    ],
+    "answer": 0,
+    "why": "Var(z) = n·Var(w)·E[x²], and E[ReLU(z)²] = Var(z)/2. Keeping it steady needs n·Var(w)/2 = 1.",
+    "sec": 1
+   },
+   {
+    "q": "Each layer multiplies the signal's spread by 0.9. After 50 layers about how much is left?",
+    "options": [
+     "0.005",
+     "0.45",
+     "0.9"
+    ],
+    "answer": 0,
+    "why": "0.9⁵⁰ ≈ 0.005: depth turns small factors into huge ones.",
+    "sec": 1
+   },
+   {
+    "q": "Batch norm in eval mode normalizes with…",
+    "options": [
+     "running averages of the mean and variance saved during training",
+     "the current batch's mean and variance",
+     "no normalization at all"
+    ],
+    "answer": 0,
+    "why": "So one example at a time works, and gives the same answer every time.",
+    "sec": 2
+   },
+   {
+    "q": "Dropout with p = 0.2 scales the surviving outputs by…",
+    "options": [
+     "1/0.8 = 1.25",
+     "0.8",
+     "0.2"
+    ],
+    "answer": 0,
+    "why": "So the expected total matches eval mode, where nothing is dropped.",
+    "sec": 3
+   },
+   {
+    "q": "Why do residual connections let much deeper networks train?",
+    "options": [
+     "y = x + f(x) has derivative 1 + f′, so the gradient reaches early layers even when f′ is small",
+     "They remove the need for an optimizer",
+     "They make each layer smaller"
+    ],
+    "answer": 0,
+    "why": "A plain stack multiplies many small factors; the residual's '1 +' gives a straight path.",
+    "sec": 4
+   },
+   {
+    "q": "The training loss sits at 2.30 from step 1 on a 10-class problem. Most likely…",
+    "options": [
+     "nothing is learning: a bug",
+     "the learning rate is too low",
+     "overfitting"
+    ],
+    "answer": 0,
+    "why": "ln 10 ≈ 2.30 is the loss of uniform guessing. Try to overfit one batch to find the bug.",
+    "sec": 5
+   }
+  ]
  }
 }
