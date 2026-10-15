@@ -4,9 +4,10 @@ import "./ham/ham.css";
 import { lab } from "./course/lab.ts";
 import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
-import { MeteorReceiver, WIDTH, composite, align } from "./meteor.ts";
+import { MeteorReceiver, WIDTH, composite, align, Channel } from "./meteor.ts";
 import { PRESETS, canMake, render, irApid, fillGaps, rotate180, Spread, MapView, type Picture } from "./meteor-image.ts";
 import { synthesize, score } from "./meteor-sim.ts";
+import { SignalMeter, pictureQuality } from "./meteor-health.ts";
 import { Projector, rowTimes, drawLines, graticule, drawCities, drawHome, drawCaption, GEOMETRY, type Proj } from "./meteor-map.ts";
 import { passClock } from "./pass-clock.ts";
 
@@ -57,7 +58,7 @@ lab(el("rd-lab"), {
     showLevel();
     const iq = chain.dec.process(chain.mix.process(Float32Array.from(cu8, (v) => (v - 127.5) / 127.5)));
     const spec = spectrumOfIQ(iq, 512, 8);
-    wf.push(spec); signalLevel(spec, chain.fs); lastChunk = performance.now(); source = "dongle";
+    wf.push(spec); snrDb = meter.push(spec, chain.fs); lastChunk = performance.now(); source = "dongle";
     if (!decodingFile && el<HTMLInputElement>("live").checked) {
       if (!rx || rx.fs !== chain.fs) newDecoder(chain.fs);
       rx!.push(iq);
@@ -203,19 +204,9 @@ function paint() {
 setInterval(paint, 1000);
 
 // --- "is it working?": the five stages in plain words, a log of what happened, and the self-test ---
-let source: "dongle" | "file" | "self-test" | null = null, lastChunk = 0, floor: Float32Array | null = null, snrDb = 0;
+let source: "dongle" | "file" | "self-test" | "server" | null = null, lastChunk = 0, snrDb = 0;
+const meter = new SignalMeter();
 let seen = { acquired: false, frames: 0, proven: false, images: 0, locked: false };
-/** How far the satellite's band (±40 kHz) stands above the noise floor, in dB, from the waterfall's spectrum. The floor is
- *  learned per frequency (it falls at once, and creeps up 0.1 dB a minute, so a pass doesn't erase itself), and a band
- *  beside the signal (62–74 kHz) is subtracted, so the dongle filter's shape and the floor's own wobble cancel: noise
- *  alone reads about 0 dB. The scale is compressed: Es/N0 of 1, 3 and 8 dB read about 1.9, 2.8 and 5.1. */
-function signalLevel(spec: Float32Array, fs: number) {
-  const n = spec.length; if (!floor || floor.length !== n) floor = spec.slice();
-  const fl = floor;
-  for (let i = 0; i < n; i++) fl[i] = spec[i] < fl[i] ? fl[i] + 0.2 * (spec[i] - fl[i]) : fl[i] + 0.0002;
-  const band = (f0: number, f1: number) => { let s = 0, k = 0; for (let i = 0; i < n; i++) { const f = Math.abs((i / n - 0.5) * fs); if (f >= f0 && f <= f1) { s += spec[i] - fl[i]; k++; } } return k ? s / k : 0; };
-  snrDb = 0.9 * snrDb + 0.1 * (band(0, 40e3) - band(62e3, 74e3));
-}
 function hlog(text: string) {
   const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   el("hlog").insertAdjacentHTML("afterbegin", `<li>${t} · ${text}</li>`);
@@ -226,7 +217,7 @@ function health() {
   const row = (light: string, title: string, text: string) => `<li>${light} <b>${title}:</b> ${text}</li>`;
   const items = [
     !source ? row("⚪", "Dongle", "not started. Pick a source at the top, or decode a recording below.")
-      : source !== "dongle" ? row("🟢", "Input", source === "file" ? "reading the recording." : "the self-test's synthetic pass.")
+      : source !== "dongle" ? row("🟢", "Input", source === "file" ? "reading the recording." : source === "server" ? "the server's recording of the pass, already decoded there (its full report card is on the recorded passes page)." : "the self-test's synthetic pass.")
       : !live ? row("🔴", "Dongle", "no samples in the last 3 seconds: is it still connected?")
       : clipShare * 100 >= 0.5 ? row("🟡", "Dongle", "samples arriving, but overloaded: lower the gain until the input level line says fine.")
       : row("🟢", "Dongle", "samples arriving, no overload."),
@@ -235,7 +226,7 @@ function health() {
       : snrDb >= 0.7 ? row("🟡", "Signal", `${snrDb.toFixed(1)} dB above the noise: there is a signal, maybe too weak to decode (about 2 dB is needed).`)
       : row("⚪", "Signal", `nothing above the noise (${snrDb.toFixed(1)} dB). Normal while the satellite is below the horizon; during a pass, the antenna isn't hearing it (obstruction, low pass, or the wrong frequency).`),
     !rx ? row("⚪", "Carrier", "the decoder hasn't started.")
-      : rx.acquired ? row("🟢", "Carrier", `found the satellite's exact frequency, ${(st!.freqHz / 1000).toFixed(2)} kHz from where we're tuned (that's Doppler plus the dongle's own error), and following it.`)
+      : rx.acquired || (st as { acquired?: boolean }).acquired ? row("🟢", "Carrier", `found the satellite's exact frequency, ${(st!.freqHz / 1000).toFixed(2)} kHz from where we're tuned (that's Doppler plus the dongle's own error), and following it.`)
       : row("⚪", "Carrier", "searching for the satellite's frequency."),
     !st?.frames ? row("⚪", "Data", rx?.acquired ? `no frames yet. Signal clarity about ${clarity.toFixed(1)} dB; frames need about 2 dB or more.` : "no frames yet.")
       : st.rsProven ? row(good >= st.frames / 2 ? "🟢" : "🟡", "Data", `${st.frames} frames; error correction accepted ${good} (${((100 * good) / st.frames).toFixed(0)}%) and repaired ${st.rsFixed} bytes in them. Error correction accepting a frame means it is genuine Meteor-format data, not noise.`)
@@ -609,3 +600,28 @@ el("c-pic").addEventListener("click", () => {
   const c = el<HTMLCanvasElement>("c-pic");
   openZoom(c, c.height);
 });
+
+// --- a pass the server recorded and decoded (meteor-rec.ts): its channel pictures and timing, without the raw file ---
+const passId = new URLSearchParams(location.search).get("pass");
+if (passId) loadPass(passId).catch((e) => { status.textContent = `Couldn't open the server's recording: ${(e as Error).message}`; });
+async function loadPass(id: string) {
+  const f = (name: string) => `/api/meteor/file?id=${encodeURIComponent(id)}&f=${name}`;
+  status.textContent = "Loading the server's recording…";
+  const m = await fetch(f("meta.json")).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+  source = "server"; decodingFile = true;
+  newDecoder(m.fs, m.sat, m.start);
+  for (const [apid, info] of Object.entries(m.channels as Record<string, { rowSeq: number[]; rowMs: number[] }>)) {
+    const img = new Image(); img.src = f(`ch${apid}.png`); await img.decode();
+    const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+    const g = c.getContext("2d", { willReadFrequently: true })!; g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, img.width, img.height).data, ch = new Channel(), strip = WIDTH * 8;
+    for (let r = 0; r < img.height / 8; r++) { const row = new Uint8Array(strip); for (let i = 0; i < strip; i++) row[i] = px[(r * strip + i) * 4]; ch.rows.push(row); }
+    ch.rowSeq = info.rowSeq; ch.rowMs = info.rowMs;
+    rx!.packets.channels.set(Number(apid), ch);
+  }
+  Object.assign(rx!.stats, m.stats); rx!.packets.stats.images = m.stats.images; rx!.packets.stats.packets = m.stats.packets;
+  decodingFile = false; paint();
+  const sel = el<HTMLSelectElement>("sat"); sel.value = m.sat;
+  status.textContent = `${m.sat.replace("meteor-m2-", "Meteor-M2 ")} over New York, ${new Date(m.start).toLocaleString()}: recorded and decoded by the server (${m.quality.strips} strips). Make a picture below.`;
+  el("combine").scrollIntoView({ behavior: "smooth", block: "start" });
+}

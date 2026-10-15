@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recorded Meteor Passes</title>
+  <meta name="description" content="Every high Meteor-M2 3 and M2 4 pass over New York, recorded and decoded automatically by this site's radio: a report card for each pass (signal, frequency lock, frames, pictures), the pictures, and the raw recording of the latest good pass." />
+  <style>
+    .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 8px 0 16px; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
+    .pass { display: grid; grid-template-columns: 160px 1fr; gap: 14px; align-items: start; }
+    .pass img { width: 160px; max-height: 260px; object-fit: cover; object-position: top; background: #000; border-radius: 6px; display: block; }
+    .pass .noimg { width: 160px; height: 120px; background: #111; border-radius: 6px; color: #777; display: grid; place-items: center; font-size: 0.8rem; }
+    .pass h3 { margin: 0 0 4px; font-size: 1rem; }
+    .pass ol { margin: 6px 0; padding-left: 1.3em; } .pass li { margin: 2px 0; }
+    .pass canvas { width: 100%; max-width: 520px; height: 110px; display: block; background: #0f1218; border-radius: 6px; margin: 6px 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .muted { color: var(--muted); }
+    @media (max-width: 560px) { .pass { grid-template-columns: 1fr; } .pass img, .pass .noimg { width: 100%; max-height: 200px; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">ihor.sh · radio</a> · <a href="./meteor.html">Meteor recorder</a></p>
+  <h1>Recorded Meteor passes</h1>
+  <p>This site's radio in New York records every Meteor-M2 3 and M2 4 pass that climbs to <b id="minel">60</b>° or more by itself: a minute before the satellite rises, the server takes its dongle (nobody else can use it for those 15 minutes), records the signal, and decodes it on the server. Each pass gets a report card below: the five stages the signal goes through, how they went over time, and the pictures. Open one in the picture maker for color, maps and coastlines. Only one raw recording is kept: the newest pass whose picture shows the Earth (more than half its pixels neither black nor white, at least a minute of picture), for opening in SatDump.</p>
+
+  <div class="pane" id="now"></div>
+  <h2>Coming up</h2>
+  <ul id="upcoming"><li class="muted">Loading…</li></ul>
+  <h2>Recorded</h2>
+  <div id="recorded"><p class="muted">Loading…</p></div>
+</main>
+<script type="module" src="/src/meteor-passes-app.ts"></script>
+</body>
+</html>

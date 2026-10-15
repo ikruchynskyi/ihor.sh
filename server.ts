@@ -30,6 +30,7 @@ import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
 import { kokoroTTS } from "./yomu-tts.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
+import { startMeteorRecorder, meteorApi } from "./meteor-rec.ts";
 import { propagation } from "./spacewx.ts";
 import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
@@ -447,6 +448,7 @@ const server = http.createServer(async (req, res) => {
       }
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
     }
+    if (url.pathname.startsWith("/api/meteor/") && meteorApi(url, res)) return; // the server's Meteor pass recordings (meteor-rec.ts)
     if (url.pathname === "/api/radio/sat-ecef") { // a satellite's positions over a pass, for mapping its pictures (sat.ts)
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await satEcef(String(url.searchParams.get("id")), Number(url.searchParams.get("from")), Number(url.searchParams.get("to"))))); }
       catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
@@ -783,6 +785,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 startArchive();
+startMeteorRecorder();
 startEvents();
 startJobs();
 startEmbedding();

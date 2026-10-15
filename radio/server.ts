@@ -259,7 +259,8 @@ const fmtMHz = (hz: number) => (hz / 1e6).toFixed(2);
 /** Where a slice can go: inside the window as it is, or by moving the window if it can still cover everyone. */
 async function place(id: string | null, f: number, width: number) {
   const w2 = width / 2, others = [...slices.values()].filter((s) => s.id !== id);
-  if (f - w2 >= tuning.center - half() && f + w2 <= tuning.center + half()) return f;
+  const spikeInside = Math.abs(tuning.center - f) < w2 + 10e3; // the dongle's DC spike would land in this slice
+  if (f - w2 >= tuning.center - half() && f + w2 <= tuning.center + half() && (others.length || !spikeInside)) return f;
   const lo = Math.min(f - w2, ...others.map((s) => s.center - s.width / 2)), hi = Math.max(f + w2, ...others.map((s) => s.center + s.width / 2));
   if (hi - lo > 2 * half()) {
     const olo = Math.min(...others.map((s) => s.center - s.width / 2)), ohi = Math.max(...others.map((s) => s.center + s.width / 2));

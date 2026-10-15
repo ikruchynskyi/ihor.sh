@@ -42,6 +42,7 @@
   <p class="eyebrow"><a href="./">ihor.sh · radio</a></p>
   <h1>Meteor &amp; weather satellite recorder</h1>
   <p>Catch Russia's <b>Meteor-M2 3 and 4</b> weather satellites with an RTL-SDR: digital LRPT pictures at 137.9 MHz (offset QPSK, 72,000 symbols/s, about 110 kHz wide). Watch the orbit on the map, decode the pictures right here, and record the raw signal to process in <a href="https://github.com/SatDump/SatDump">SatDump</a>. (NOAA 15, 18 and 19, the analog APT satellites, were switched off in 2025.) How digital satellite transmission works is in <a href="./course/21-weather-satellites.html">chapter 21</a>.</p>
+  <p><b>The server records the high passes by itself:</b> <a href="./meteor-passes.html">see the recorded passes</a>, each with a report card and pictures.</p>
 
   <div class="pane passes">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -71,7 +72,7 @@
     </select></label>
 
     <div class="rf-hint">
-      <b>NYC Reception Note:</b> In NYC, FM broadcast filters (like Nooelec Flamingo) notch out 88–108 MHz, but high RF environments also have heavy pager transmitters (152–158 MHz), NOAA weather radio (162.4–162.55 MHz) and aviation (118–137 MHz). If RTL-SDR gain is set too high (e.g. max 49 dB), these out-of-band signals saturate the 8-bit ADC and bury the satellite in intermodulation noise (destroying the 4-dot constellation). Keep dongle gain moderate (about 20–36 dB) and watch the input level line under the recording button: it warns when samples clip. Meteor LRPT decodes best on passes above 35° with a clear view of the sky.
+      <b>Sawbird+ NOAA Power &amp; Gain:</b> Power the Sawbird directly through its side <b>micro-USB port</b> using any phone charger or USB cable (the NESDR SMArt has no bias tee). The Sawbird's built-in 137 MHz SAW filter rejects out-of-band FM broadcast signals. Because the LNA adds +30 dB of gain, set dongle gain to <b>~16–24 dB</b> to prevent ADC saturation from nearby NYC VHF transmitters. Meteor LRPT decodes best on passes above 30° with the V-dipole oriented North-South and legs flat.
     </div>
 
     <div id="rd-lab"></div>
