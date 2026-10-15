@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Which Model When</title>
+  <meta name="description" content="AI from scratch, model zoo 10: every model in the zoo on the same maps, then a bake-off on four real datasets (bank calls, NYC elevator outages, handwritten digits, subway ridership) with score, training time and size. No model wins everywhere; the plain line has the best average rank; boosting is never far off. A guide to choosing, the no-free-lunch theorem, and why one test split can't crown a winner." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; white-space: pre-wrap; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; }
+    .zoo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    @media (max-width: 640px) { .zoo { grid-template-columns: repeat(2, 1fr); } }
+    .zoo figure { margin: 0; } .zoo figcaption { font: 13px/1.4 ui-monospace, Menlo, monospace; color: var(--muted); padding: 3px 0; }
+    .zoo figcaption b { color: var(--fg); }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .cmp td.win { font-weight: 700; color: var(--accent); }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Model zoo 10 of 10 · Which model when</p>
+  <h1>Which model when: the bake-off</h1>
+  <p class="lede">Nine pages, nine models, each with its picture, its math and its failure modes. This page puts them side by side: first on the same toy maps, where you can see each model's built-in assumptions as shapes, then on four real datasets from this course, with scores, training times and sizes. The results are less tidy than the folklore, and the reasons why are the most useful thing on the page.</p>
+
+  <h2>1. The whole zoo on one map</h2>
+  <p>Each panel is one model with sensible settings, trained on the same 200 dots. The shapes are the models' assumptions made visible: straight edges for logistic regression, axis-aligned clouds for naive Bayes, boxes for trees, smooth bubbles for the SVM.</p>
+  <div class="row"><label>data <select id="ds"></select></label><label>label noise <input type="range" id="noise" min="0" max="0.3" step="0.05" value="0.1"> <b id="noiseV"></b></label></div>
+  <div class="zoo" id="zoo"></div>
+  <p class="readout" id="r1"></p>
+  <div class="q" data-answer="b">
+    <p>Try every dataset. Is there one model that's never more than a few points behind the best?</p>
+    <ul><li data-k="a" data-says="Check the ring and the checkerboard.">Logistic regression</li><li data-k="b">The forest, boosting and the MLP come close on every one; no single model is always first</li><li data-k="c" data-says="Look at XOR.">Naive Bayes</li></ul>
+    <div class="why">The flexible models (forest, boosting, a network, an RBF SVM) can bend to any of these shapes, so they're rarely far behind; the simple ones (a line, naive Bayes, one tree) are either the best, when their assumption matches (the diagonal for the line), or far behind, when it doesn't (the checkerboard). Which one tops the list moves with the data and the noise.</div>
+  </div>
+
+  <h2>2. The bake-off: four real datasets</h2>
+  <p>Every model with sensible defaults (scaled inputs where they matter, early stopping for the network, a standardized target for regression), no tuning, one split each: bank calls (AUC, 2,575 test calls), this site's elevator outages (will it last over 4 hours? AUC on the last days, 321 outages), handwritten digits (accuracy, 450 test digits) and subway ridership (mean error in millions of riders a day over 2024). The practice notebook runs it all.</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Model</th><th>Bank calls<br>AUC ↑</th><th>Elevator outages<br>AUC ↑</th><th>Digits<br>accuracy ↑</th><th>Ridership<br>error ↓</th><th>Average rank</th></tr>
+    <tr><td>Logistic / linear (1)</td><td class="win">0.779</td><td class="win">0.895</td><td>0.969</td><td>0.369</td><td class="win">2.5</td></tr>
+    <tr><td>k-nearest neighbors (3)</td><td>0.738</td><td>0.866</td><td>0.942</td><td>0.670</td><td>5.8</td></tr>
+    <tr><td>Naive Bayes (4)</td><td>0.770</td><td>0.855</td><td>0.836</td><td>n/a</td><td>5.3</td></tr>
+    <tr><td>Decision tree (5)</td><td>0.762</td><td>0.796</td><td>0.787</td><td>0.338</td><td>5.8</td></tr>
+    <tr><td>Random forest (6)</td><td>0.773</td><td>0.861</td><td>0.967</td><td>0.378</td><td>4.1</td></tr>
+    <tr><td>Boosted trees (7)</td><td>0.760</td><td>0.876</td><td>0.973</td><td>0.355</td><td>3.5</td></tr>
+    <tr><td>SVM, RBF (8)</td><td>0.711</td><td>0.853</td><td class="win">0.982</td><td class="win">0.236</td><td>4.0</td></tr>
+    <tr><td>MLP (9)</td><td>0.773</td><td>0.720</td><td>0.962</td><td>0.266</td><td>4.4</td></tr>
+  </table></div>
+  <p>And what they cost (training seconds on a laptop · size of the saved model):</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Model</th><th>Bank calls (7,722 rows)</th><th>Digits (1,347 rows, 64 columns)</th><th>Readable?</th></tr>
+    <tr><td>Logistic / linear</td><td>0.01 s · 4 kB</td><td>0.01 s · 8 kB</td><td>Yes: a weight per column</td></tr>
+    <tr><td>k-NN</td><td>0 s · 3.8 MB (it is the data)</td><td>0 s · 0.7 MB</td><td>Per prediction: "these neighbors"</td></tr>
+    <tr><td>Naive Bayes</td><td>0 s · 4 kB</td><td>0 s · 11 kB</td><td>Yes: evidence per feature</td></tr>
+    <tr><td>Decision tree</td><td>0.02 s · 37 kB</td><td>0.01 s · 12 kB</td><td>Yes, if shallow: print the rules</td></tr>
+    <tr><td>Random forest</td><td>0.2 s · 25 MB</td><td>0.2 s · 9 MB</td><td>Only through importance tools</td></tr>
+    <tr><td>Boosted trees</td><td>0.6 s · 0.36 MB</td><td>3.7 s · 2.3 MB</td><td>Only through importance tools</td></tr>
+    <tr><td>SVM, RBF</td><td>2.7 s · 1.4 MB</td><td>0.1 s · 0.4 MB</td><td>No</td></tr>
+    <tr><td>MLP</td><td>0.1 s · 0.1 MB</td><td>0.06 s · 0.12 MB</td><td>No</td></tr>
+  </table></div>
+  <div class="q" data-answer="c">
+    <p>Logistic regression beat boosted trees on the elevator outages by 0.019 AUC on 321 test outages. How confident should you be that it's really better there?</p>
+    <ul><li data-k="a" data-says="0.019 sounds big, but the test set is small.">Very: 0.019 is a clear win</li><li data-k="b" data-says="A small difference isn't proof of no difference either.">Not at all: they're identical</li><li data-k="c">Not very: a bootstrap of the test outages puts the difference anywhere from −0.013 to +0.055</li></ul>
+    <div class="why">Resampling the 321 test outages 1,000 times (probability lesson 4's bootstrap), the 95% interval for "logistic minus boosting" was −0.013 to +0.055; on the 2,575 bank test calls, 0.000 to 0.037. So the line is at least as good, and maybe better, but a single split can't rank models that are this close. Report intervals, use cross-validation, and decide on other grounds (readability, size, speed) when scores tie.</div>
+  </div>
+
+  <h2>3. What the table says</h2>
+  <ul>
+    <li><b>No model wins everywhere.</b> The line won two datasets, the SVM the other two, and boosting, the folklore champion, won none, while never being far off (2nd, 2nd, 4th, 6th).</li>
+    <li><b>Small data favors strong assumptions.</b> All four datasets are small (300 to 8,000 training rows). Simple models with the right built-in assumption (effects add up for the bank calls; distance between images means similarity for digits) need less data to learn it. Boosting's edge grows with rows and interactions, which these sets don't have much of.</li>
+    <li><b>The data's shape picks the winner.</b> Ridership has a level that keeps shifting: trees and forests can't predict outside the levels they saw (0.34 to 0.38), the line overshoots its trend (0.37), and the models that combine smoothly (SVM 0.24, MLP 0.27) adapted best.</li>
+    <li><b>Costs differ by 1,000×.</b> A forest weighs 25 MB where a line weighs 4 kB; k-NN carries its whole training set. When scores tie, that decides.</li>
+  </ul>
+  <p class="gist">Choose by the data's shape, its size and what you need besides accuracy, start with a simple baseline, and don't trust a ranking from one split when the scores are close.</p>
+  <details class="deeper"><summary>Why no model can win everywhere (no free lunch)</summary>
+    <ol>
+      <li>A model only sees the training rows. For any row it hasn't seen, the training data alone doesn't say what the label is: many rules fit the same training data and disagree off it.</li>
+      <li>Every model breaks that tie with built-in assumptions: "nearby points share labels" (k-NN, SVM), "effects add up" (linear), "the answer changes in steps along columns" (trees).</li>
+      <li>Average over every possible way the unseen labels could go, and each assumption is right exactly as often as it's wrong: every model has the same average accuracy off the training data (Wolpert, 1996).</li>
+      <li>So "the best model" only means something for a kind of problem. Real problems aren't random, they have structure, and a model wins when its assumptions match that structure.</li>
+      <li>That's the practical method: look at the data (is it a table, an image, a time series? how many rows? are effects additive?) and pick the models whose assumptions fit, then let validation data decide among them.</li>
+    </ol>
+  </details>
+
+  <h2>4. A guide to choosing</h2>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Your situation</th><th>Start with</th><th>Then try</th></tr>
+    <tr><td>Any table, first hour</td><td>Logistic or linear regression (a baseline you'll compare everything to)</td><td>Boosted trees</td></tr>
+    <tr><td>A table, thousands to millions of rows, interactions</td><td>Boosted trees (LightGBM, XGBoost, CatBoost) with early stopping</td><td>A forest as a low-effort check</td></tr>
+    <tr><td>Many categories with many values</td><td>CatBoost, or out-of-fold target encoding</td><td>An MLP with embeddings, at scale</td></tr>
+    <tr><td>Must explain every decision (credit, health)</td><td>Logistic regression or a shallow tree</td><td>Boosted trees with monotone constraints and explanations</td></tr>
+    <tr><td>Few labeled examples, text</td><td>Naive Bayes, then a linear SVM or logistic regression on tf-idf</td><td>Embeddings from a pretrained model (stage 6)</td></tr>
+    <tr><td>Meaningful distances, medium data (measurements, small images)</td><td>k-NN as a baseline, an RBF SVM</td><td>A CNN for real images (stage 5)</td></tr>
+    <tr><td>Images, audio, text, video</td><td>Pretrained networks (stages 5 and 6)</td><td>Fine-tuning</td></tr>
+    <tr><td>A time series</td><td>Seasonal naive baseline, then boosted trees on lag features (the time-series elective)</td><td>Predict the change, not the level</td></tr>
+    <tr><td>Must run in 1 ms on a phone</td><td>Linear model or a small tree</td><td>Small boosted model, quantized network (serving lesson)</td></tr>
+    <tr><td>No labels at all</td><td>k-means or a Gaussian mixture for groups; PCA to see the structure</td><td>Isolation forest for anomalies</td></tr>
+  </table></div>
+  <p>The unsupervised members of the zoo already have their pages: <a href="./clusters-and-anomalies.html">k-means, Gaussian mixtures and anomaly detection</a> (groups and odd ones out, when there are no labels), and <a href="./l2-eigenvectors-and-pca.html">PCA</a> with <a href="./l3-svd.html">the SVD behind it</a> (the few directions that hold most of the variation: for plots, compression, and fewer columns before k-NN or an SVM).</p>
+  <details class="deeper"><summary>Where it breaks: how bake-offs mislead</summary>
+    <ul>
+      <li><b>One split.</b> As measured above, differences of 0.02 AUC on a few hundred test rows are within noise. Use cross-validation and report intervals (probability lesson 4).</li>
+      <li><b>Defaults against tuned.</b> XGBoost went from 0.744 to 0.774 with tuning (page 7), more than the gap between most models here. Compare models at equal tuning effort, or say you didn't tune.</li>
+      <li><b>Test reuse.</b> Every look at the test set to pick a model leaks a little of it into your choice. Pick on validation data; touch the test set once.</li>
+      <li><b>The wrong metric.</b> AUC ranks; it doesn't check calibration (naive Bayes ranks well with bad probabilities) or cost (chapter 12). Score what the decision needs.</li>
+      <li><b>Leaderboards.</b> Many teams trying many models on one public test set will find one that's lucky on it. A model that ranks first by 0.002 usually isn't first on the next data.</li>
+    </ul>
+  </details>
+  <p>That's the zoo. From here, the path continues with what networks do that no model on these pages can: <a href="./06-convolutions.html">seeing</a>.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a>. Bank marketing: Moro, Cortez and Rita (2014), UCI, CC BY 4.0. Elevator outages: this site's MTA archive. Digits: UCI, via scikit-learn. Ridership: MTA, data.ny.gov.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { DATASETS, data, show, logistic, knn, naiveBayes, tree, forest, boost, svm, mlp } from "/ai/zoo.js";
+const $ = (id) => document.getElementById(id);
+const MODELS = [
+  ["logistic regression", (t) => logistic(t)], ["k-NN, k = 15", (t) => knn(t, { k: 15 })], ["naive Bayes", naiveBayes], ["tree, depth 5", (t) => tree(t, { depth: 5, minLeaf: 3 })],
+  ["forest, 100 trees", (t) => forest(t, { trees: 100, minLeaf: 2 })], ["boosting, 150 rounds", (t) => boost(t, { trees: 150, eta: 0.1, depth: 3 })], ["SVM, RBF", (t) => svm(t, { C: 1, gamma: 3 })], ["MLP, 8 units", (t) => mlp(t, { hidden: 8 })],
+];
+$("ds").innerHTML = Object.entries(DATASETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+$("zoo").innerHTML = MODELS.map(([name], i) => `<figure><canvas id="z${i}" width="260" height="260" aria-label="${name}"></canvas><figcaption id="c${i}"><b>${name}</b></figcaption></figure>`).join("");
+function draw() {
+  const noise = +$("noise").value, set = data($("ds").value, { noise }), scores = [];
+  MODELS.forEach(([name, fit], i) => {
+    const r = show($(`z${i}`), fit, set, { cell: 5 }), val = +r.text.match(/validation ([\d.]+)/)[1];
+    scores.push([val, name]); $(`c${i}`).innerHTML = `<b>${name}</b><br>validation ${val.toFixed(1)}%`;
+  });
+  scores.sort((a, b) => b[0] - a[0]);
+  $("noiseV").textContent = `${Math.round(noise * 100)}%`;
+  $("r1").textContent = `best here: ${scores[0][1]} (${scores[0][0].toFixed(1)}%) · worst: ${scores.at(-1)[1]} (${scores.at(-1)[0].toFixed(1)}%) · the ceiling with ${Math.round(noise * 100)}% flipped labels is about ${(100 - noise * 100).toFixed(0)}%`;
+}
+for (const id of ["ds", "noise"]) $(id).addEventListener("input", draw);
+draw();
+window.blipContext = () => ({ page: "AI model zoo 10: every model on the same toy maps, a bake-off on bank calls, elevator outages, digits and ridership (logistic best average rank, SVM wins digits and ridership, boosting second-tier everywhere), choosing a model, no free lunch, bake-off pitfalls", dataset: $("ds").value, readout: $("r1").textContent });
+</script>
+</body>
+</html>

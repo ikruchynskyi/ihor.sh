@@ -7198,5 +7198,99 @@
     "sec": 4
    }
   ]
+ },
+ "zoo-which-model.html": {
+  "goals": [
+   "Compare the zoo's models on real data by score, training time, size and readability",
+   "Tell a real difference between models from noise with a bootstrap interval",
+   "Choose a first model and a challenger from the data's shape, size and needs"
+  ],
+  "needs": [
+   "zoo-mlp.html",
+   "p4-confidence-and-tests.html"
+  ],
+  "cards": [
+   [
+    "No free lunch",
+    "Averaged over every possible problem, every model is equally good; wins come from assumptions that match the data."
+   ],
+   [
+    "Inductive bias",
+    "A model's built-in assumption: effects add (linear), neighbors agree (k-NN), steps along columns (trees)."
+   ],
+   [
+    "Baseline first",
+    "Fit the simple model before the fancy one; on small, additive data it often ties or wins."
+   ],
+   [
+    "Bootstrap a difference",
+    "Resample the test rows; if the interval for A − B includes 0, one split can't rank them."
+   ],
+   [
+    "Equal tuning effort",
+    "Compare models tuned equally (or all untuned); tuning can move a model more than the gap between models."
+   ],
+   [
+    "Costs decide ties",
+    "Size, speed and readability differ by 1,000×; when scores tie, they choose."
+   ]
+  ],
+  "check": [
+   {
+    "q": "In the bake-off, which model had the best average rank across the four datasets?",
+    "options": [
+     "Boosted trees",
+     "Logistic / linear regression",
+     "The MLP"
+    ],
+    "answer": 1,
+    "why": "Small, mostly additive data favors strong, simple assumptions.",
+    "sec": 2
+   },
+   {
+    "q": "Logistic beat boosting by 0.019 AUC on 321 test outages; the bootstrap interval was −0.013 to +0.055. Conclusion?",
+    "options": [
+     "Logistic is clearly better",
+     "One split can't tell them apart; decide on other grounds or gather more evidence",
+     "Boosting is clearly better"
+    ],
+    "answer": 1,
+    "why": "The interval includes 0.",
+    "sec": 2
+   },
+   {
+    "q": "Why can no model be best on every problem?",
+    "options": [
+     "Some models are buggy",
+     "Off the training data, each model guesses with its own assumptions, and averaged over all possible problems they're right equally often",
+     "Because of random seeds"
+    ],
+    "answer": 1,
+    "why": "No free lunch: match the assumptions to the data.",
+    "sec": 3
+   },
+   {
+    "q": "Your table has 5 million rows, many interactions and some categories with thousands of values. Start with…",
+    "options": [
+     "k-NN",
+     "Boosted trees (CatBoost or LightGBM) with early stopping, after a linear baseline",
+     "A kernel SVM"
+    ],
+    "answer": 1,
+    "why": "Boosting shines at scale with interactions; kernel SVMs and k-NN don't scale.",
+    "sec": 4
+   },
+   {
+    "q": "A model must explain every decision to a regulator. Start with…",
+    "options": [
+     "A random forest",
+     "Logistic regression or a shallow tree",
+     "An MLP"
+    ],
+    "answer": 1,
+    "why": "Weights as odds ratios, or rules you can print.",
+    "sec": 4
+   }
+  ]
  }
 }
