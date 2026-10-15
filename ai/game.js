@@ -14,6 +14,7 @@ export const XP = {
   drill: 10,            // a gap drill passed                              — ai/drill.html (plan lane C)
   exam: 100,            // a stage exam passed (once per stage)            — ai/exam.html (plan lane D)
   game: 5,              // a mini-game round won (capped by the game)      — ai/games/ (plan lane E)
+  practice: 3,          // a generated practice problem solved            — ai/practice.html (plan lane K)
 };
 export const LEECH = 4;          // a review card forgotten this many times is a leech: reread, don't repeat
 export const MAX_FREEZES = 2;    // streak freezes you can hold; one is earned every 7 days of streak

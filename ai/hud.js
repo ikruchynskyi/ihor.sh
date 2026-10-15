@@ -17,7 +17,7 @@ if (!document.getElementById("ai-hud-css")) document.head.insertAdjacentHTML("be
 
 // how today's acts read: [one, many]
 const ACTS = { checkpoint: ["a lesson finished", "lessons finished"], question: ["a question", "questions"], review: ["a card reviewed", "cards reviewed"], notebook: ["a notebook", "notebooks"],
-  daily: ["the daily quiz", "daily quizzes"], drill: ["a gap drill", "gap drills"], exam: ["a stage exam", "stage exams"], game: ["a game round", "game rounds"] };
+  daily: ["the daily quiz", "daily quizzes"], drill: ["a gap drill", "gap drills"], exam: ["a stage exam", "stage exams"], game: ["a game round", "game rounds"], practice: ["a practice problem", "practice problems"] };
 const html = () => {
   const p = progress(), today = Object.entries(p.today).map(([a, n]) => (n > 1 ? `${n} ${ACTS[a]?.[1] ?? a}` : ACTS[a]?.[0] ?? a)).join(", ");
   return `<span title="experience: earned by answering, finishing lessons and notebooks, and reviewing">⚡ <b>${p.xp.toLocaleString()}</b> XP</span>`

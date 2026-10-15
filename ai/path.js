@@ -93,3 +93,14 @@ if (i >= 0 && main) {
     + (next ? `<div>Next: <a href="./${next.href}"><b>${next.title}</b></a> →</div>` : `<div>That's the end of the path so far. <a href="./">See what's coming</a>.</div>`);
   main.append(nav);
 }
+
+// ---------- practice (lane K) ----------
+if (me.practice?.length && main) {
+  const pBox = box("border-left: 4px solid var(--accent); margin-top: 14px;");
+  const links = me.practice
+    .map((id) => `<a href="./practice.html?skill=${encodeURIComponent(id)}"><b>${esc(id.replace(/-/g, " "))}</b> →</a>`)
+    .join(" · ");
+  pBox.innerHTML = `<b>Practice this math</b>: generated problems with step-by-step checks.<br>${links}`;
+  main.append(pBox);
+}
+// ---------- practice (lane K) ----------

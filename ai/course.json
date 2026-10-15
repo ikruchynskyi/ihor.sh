@@ -323,6 +323,11 @@
    "math:approx",
    "math:hat",
    "math:set"
+  ],
+  "practice": [
+   "mean",
+   "mse",
+   "log-rules"
   ]
  },
  "01-matrices-are-moves.html": {
@@ -419,6 +424,12 @@
    "math:norm",
    "math:dot",
    "py:matmul"
+  ],
+  "practice": [
+   "dot-product",
+   "matrix-vector",
+   "vector-norm",
+   "cosine-similarity"
   ]
  },
  "l1-systems-and-inverses.html": {
@@ -524,6 +535,10 @@
   "teaches": [
    "math:inverse",
    "math:transpose"
+  ],
+  "practice": [
+   "determinant-2x2",
+   "inverse-2x2-det"
   ]
  },
  "02-gradients.html": {
@@ -620,6 +635,10 @@
    "math:gradient",
    "math:partial",
    "math:limit"
+  ],
+  "practice": [
+   "poly-derivative",
+   "gradient-step"
   ]
  },
  "c1-derivatives.html": {
@@ -811,6 +830,9 @@
     "why": "One weight, one output, one input wire: blame on that output times the input on that wire. Stacking all of them gives g xᵀ, which also explains the shape rule.",
     "sec": 2
    }
+  ],
+  "practice": [
+   "partial-derivative"
   ]
  },
  "p1-probability-and-bayes.html": {
@@ -904,6 +926,11 @@
   ],
   "teaches": [
    "math:probability"
+  ],
+  "practice": [
+   "bayes-table",
+   "expectation",
+   "conditional-prob"
   ]
  },
  "p2-describing-data.html": {
@@ -1005,6 +1032,9 @@
     "why": "Setting the slope of Σ(xᵢ − c)² to zero gives the mean; Σ|xᵢ − c| stops falling when half the points are on each side, at the median. Squaring is also why the mean chases outliers.",
     "sec": 1
    }
+  ],
+  "practice": [
+   "variance"
   ]
  },
  "l2-eigenvectors-and-pca.html": {
@@ -1106,6 +1136,9 @@
     "why": "Writing u in Σ's perpendicular eigenbasis gives uᵀΣu = λ₁c₁² + λ₂c₂² with c₁² + c₂² = 1: at most λ₁, reached at u = e₁.",
     "sec": 7
    }
+  ],
+  "practice": [
+   "eigenvalues-2x2"
   ]
  },
  "03-a-neuron.html": {
@@ -1297,6 +1330,9 @@
     "why": "Backprop multiplies by local slopes; a slope of 0 stops the blame. Networks train on smooth probabilities instead and only pick the top class afterwards.",
     "sec": 2
    }
+  ],
+  "practice": [
+   "chain-rule"
   ]
  },
  "c3-taylor-and-curvature.html": {
@@ -1488,6 +1524,9 @@
     "why": "Σ(pᵢ − yᵢ) = 1 − 1 = 0. That's also why adding the same number to every score changes nothing: no gradient can push all scores up together.",
     "sec": 4
    }
+  ],
+  "practice": [
+   "softmax-3"
   ]
  },
  "c4-integrals.html": {
@@ -3471,6 +3510,9 @@
     "why": "2³ = 8 equally likely choices per token.",
     "sec": 6
    }
+  ],
+  "practice": [
+   "coin-entropy"
   ]
  },
  "c5-convexity-and-constraints.html": {
