@@ -5,6 +5,6 @@
   "scripts": {
     "build": "cd radio && npm ci && npm run build",
     "start": "node server.ts",
-    "check": "node check.ts"
+    "check": "python3 ai/notebooks/lint.py && node check.ts"
   }
 }
