@@ -28,9 +28,9 @@ def cosine(a, b):
     Returns:
         float: Cosine similarity in range [-1.0, 1.0].
     """
-    ### HINT Compute vector dot product using a @ b.
-    ### HINT Compute vector L2 magnitudes using np.linalg.norm(a) and np.linalg.norm(b).
-    ### HINT Return dot product divided by (norm_a * norm_b).
+    ### HINT The lesson's angle box computes exactly this, as cos = ...: return the same expression.
+    ### HINT a @ b is the dot product; np.linalg.norm(a) is the length of a.
+    ### HINT return (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
     ### BEGIN SOLUTION
     return (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
     ### END SOLUTION
@@ -47,7 +47,8 @@ check(lambda: np.isclose(cosine(np.array([3, 1]), np.array([1, 2.5])), np.cos(np
 # ## 2. A rotation matrix
 # Write `rotation(degrees)`: the 2×2 matrix that turns the plane counterclockwise. Its columns are where
 # $\hat\imath = (1, 0)$ and $\hat\jmath = (0, 1)$ land: $(\cos\theta, \sin\theta)$ and $(-\sin\theta, \cos\theta)$.
-# Then the code below moves a small house shape with it.
+# Careful: `np.array([[...], [...]])` is written **row by row**, so its first row is $(\cos\theta, -\sin\theta)$, the
+# top numbers of the two columns. Then the code below moves a small house shape with it.
 
 # %%
 def rotation(degrees):
@@ -59,7 +60,8 @@ def rotation(degrees):
         NumPy array of shape (2, 2) [[cos(t), -sin(t)], [sin(t), cos(t)]].
     """
     t = np.radians(degrees)
-    ### HINT Form 2x2 matrix with rows [cos(t), -sin(t)] and [sin(t), cos(t)].
+    ### HINT The lesson's rotate box is the 90° case: [[0, -1], [1, 0]]. Replace 0 with cos and 1 with sin.
+    ### HINT return np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]])
     ### BEGIN SOLUTION
     return np.array([[np.cos(t), -np.sin(t)],
                      [np.sin(t),  np.cos(t)]])
