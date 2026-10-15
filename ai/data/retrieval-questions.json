@@ -1,0 +1,180 @@
+{
+ "about": "Questions about the AI from scratch lessons, each with the lesson section that answers it, for evaluating retrieval over course-chunks.json. Written by hand, in different words than the lessons use.",
+ "questions": [
+  {
+   "q": "Why does my model do great on training data but badly on new data?",
+   "page": "11-overfitting.html",
+   "section": 1
+  },
+  {
+   "q": "How do I keep the test set honest while choosing between models?",
+   "page": "11-overfitting.html",
+   "section": 2
+  },
+  {
+   "q": "Of all the payments we flagged, how many were really fraud?",
+   "page": "12-measuring-a-model.html",
+   "section": 2
+  },
+  {
+   "q": "Is the difference in my A/B test real or just luck?",
+   "page": "p4-confidence-and-tests.html",
+   "section": 3
+  },
+  {
+   "q": "Why is checking an experiment every day and stopping early a problem?",
+   "page": "p4-confidence-and-tests.html",
+   "section": 5
+  },
+  {
+   "q": "A column in my data gives away the answer the model should predict",
+   "page": "features-and-leakage.html",
+   "section": 6
+  },
+  {
+   "q": "Find groups of similar customers when there are no labels",
+   "page": "clusters-and-anomalies.html",
+   "section": 2
+  },
+  {
+   "q": "Should I collect more data or train a bigger model?",
+   "page": "ml-strategy.html",
+   "section": 2
+  },
+  {
+   "q": "Subtract the column means from a matrix without writing a loop",
+   "page": "numpy-in-depth.html",
+   "section": 2
+  },
+  {
+   "q": "I changed a slice of an array and my original data changed too",
+   "page": "numpy-in-depth.html",
+   "section": 3
+  },
+  {
+   "q": "After a merge my table has more rows than before",
+   "page": "pandas-and-sklearn.html",
+   "section": 3
+  },
+  {
+   "q": "Training overshoots back and forth across a narrow valley and diverges",
+   "page": "optimizers.html",
+   "section": 1
+  },
+  {
+   "q": "Why ramp the learning rate up slowly at the start of training?",
+   "page": "optimizers.html",
+   "section": 5
+  },
+  {
+   "q": "Activations shrink toward zero as the network gets deeper",
+   "page": "making-nets-train.html",
+   "section": 1
+  },
+  {
+   "q": "My deployed model gives nonsense because batch norm is still in training mode",
+   "page": "making-nets-train.html",
+   "section": 2
+  },
+  {
+   "q": "How much GPU memory do I need to train a 7 billion parameter model?",
+   "page": "gpus-and-scale.html",
+   "section": 3
+  },
+  {
+   "q": "Half precision numbers overflow to infinity during training",
+   "page": "gpus-and-scale.html",
+   "section": 4
+  },
+  {
+   "q": "The same code gives a different accuracy every time I run it",
+   "page": "experiments.html",
+   "section": 1
+  },
+  {
+   "q": "Reuse a network trained on ImageNet for my own photo categories",
+   "page": "deep-cnns.html",
+   "section": 4
+  },
+  {
+   "q": "Randomly flip and crop images during training",
+   "page": "deep-cnns.html",
+   "section": 3
+  },
+  {
+   "q": "Which grid cell is in charge of predicting an object's box?",
+   "page": "inside-a-detector.html",
+   "section": 1
+  },
+  {
+   "q": "Give a class label to every pixel of an image",
+   "page": "inside-a-detector.html",
+   "section": 5
+  },
+  {
+   "q": "A network that keeps a memory while it reads a sequence",
+   "page": "recurrent-networks.html",
+   "section": 1
+  },
+  {
+   "q": "Why can't chatbots count the letters in a word?",
+   "page": "tokens.html",
+   "section": 4
+  },
+  {
+   "q": "Why does king minus man plus woman give queen?",
+   "page": "word-vectors.html",
+   "section": 3
+  },
+  {
+   "q": "How does each word look at the other words in a sentence?",
+   "page": "07-attention.html",
+   "section": 2
+  },
+  {
+   "q": "How much does a call to a language model API cost?",
+   "page": "using-llms.html",
+   "section": 6
+  },
+  {
+   "q": "Get reliable JSON out of a language model",
+   "page": "using-llms.html",
+   "section": 4
+  },
+  {
+   "q": "Stop an agent from obeying instructions hidden in a web page",
+   "page": "08-agents.html",
+   "section": 4
+  },
+  {
+   "q": "What is the slope of the sigmoid function?",
+   "page": "c1-derivatives.html",
+   "section": 4
+  },
+  {
+   "q": "Turn a list of scores into probabilities that add up to one",
+   "page": "05-probability-and-loss.html",
+   "section": 1
+  },
+  {
+   "q": "Find the direction in which the data varies the most",
+   "page": "l2-eigenvectors-and-pca.html",
+   "section": 7
+  },
+  {
+   "q": "Compress a photo by keeping only the biggest singular values",
+   "page": "l3-svd.html",
+   "section": 3
+  },
+  {
+   "q": "What does a 95% confidence interval really mean?",
+   "page": "p4-confidence-and-tests.html",
+   "section": 1
+  },
+  {
+   "q": "How does a decision tree choose where to split?",
+   "page": "13-trees-and-boosting.html",
+   "section": 2
+  }
+ ]
+}
