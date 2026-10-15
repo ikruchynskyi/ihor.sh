@@ -14,7 +14,7 @@ notebook with the kaggle CLI (needs KAGGLE_API_TOKEN).
     python ai/notebooks/build.py --kaggle [names]  # build, then publish to Kaggle (all, or those whose name matches)
 A source containing "# kaggle: gpu" is published with Kaggle's GPU turned on.
 """
-import base64, json, re, subprocess, sys, tempfile, textwrap
+import base64, json, os, re, subprocess, sys, tempfile, textwrap
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -103,13 +103,21 @@ def build(path: Path, dest: Path, solutions: bool):
 
 
 def publish(nb: Path, title: str, gpu: bool):
+    env = dict(os.environ)
+    dotenv = HERE.parent.parent / ".env"
+    if dotenv.exists():
+        for line in dotenv.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("KAGGLE_") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip("'\"\n ")
     with tempfile.TemporaryDirectory() as d:
         (Path(d) / nb.name).write_bytes(nb.read_bytes())
         (Path(d) / "kernel-metadata.json").write_text(json.dumps({
             "id": f"{KAGGLE_USER}/{slug(title)}", "title": title, "code_file": nb.name, "language": "python",
             "kernel_type": "notebook", "is_private": "false", "enable_gpu": "true" if gpu else "false", "enable_internet": "true",
             "dataset_sources": [], "competition_sources": [], "kernel_sources": [], "model_sources": []}))
-        r = subprocess.run(["kaggle", "kernels", "push", "-p", d], capture_output=True, text=True)
+        r = subprocess.run(["kaggle", "kernels", "push", "-p", d], env=env, capture_output=True, text=True)
         print(nb.name, "→", (r.stdout + r.stderr).strip().splitlines()[-1] if (r.stdout + r.stderr).strip() else r.returncode)
 
 
