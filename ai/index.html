@@ -175,6 +175,7 @@
 <script type="module">
 // Your progress on the path (ai/learn.js, this browser only): finished lessons, where to continue, cards due, gaps.
 import { state, dueCards, progressCode, loadProgressCode } from "/ai/learn.js";
+import { dayOf } from "/ai/game.js";
 import { strip } from "/ai/hud.js";
 const live = [...document.querySelectorAll("ol.path li:not(.soon)")].map((li) => ({ li, href: li.querySelector("a")?.getAttribute("href")?.replace("./", "") }));
 for (const { li, href } of live) if (state.done[href]) li.classList.add("done");
@@ -187,7 +188,8 @@ const you = document.createElement("div");
 you.id = "you"; you.className = "card";
 you.innerHTML = (started ? `<div><b>Your progress:</b> ${started} of ${live.length} lessons finished.</div>` : `<div><b>New here?</b> Start at the top; each lesson ends with a short checkpoint that marks it done.</div>`)
   + (next ? `<div>Continue: <a class="go" href="./${next.href}">${next.li.querySelector("b")?.textContent ?? next.href}</a> →</div>` : `<div>You've finished every lesson that's ready. 🎉</div>`)
-  + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · ${gaps} gap${gaps === 1 ? "" : "s"} to revisit` : ""}</div>` : "");
+  + (started ? `<div><a href="./review.html">Review deck</a>: ${due} card${due === 1 ? "" : "s"} due${gaps ? ` · ${gaps} gap${gaps === 1 ? "" : "s"} to revisit` : ""}</div>` : "")
+  + (started >= 2 ? `<div><a href="./daily.html">${state.daily?.[dayOf()] ? `Daily quiz ✓ ${state.daily[dayOf()].score}/5` : "Daily quiz: 5 questions →"}</a></div>` : "");
 you.append(strip(Object.assign(document.createElement("div"), { style: "margin-top:6px" })));
 // progress lives in this browser only: a code carries it to another device
 you.insertAdjacentHTML("beforeend", `<details style="margin-top:6px;font-size:.9rem"><summary>Move your progress to another device</summary>

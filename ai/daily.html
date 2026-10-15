@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Quiz · AI from scratch</title>
+  <meta name="description" content="Five questions a day on what you've learned so far, weighted toward open gaps and lessons finished longest ago." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --red: #e03131;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.7 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2.1rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.12rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 20px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover {
+      opacity: 0.92;
+    }
+    .result-card {
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .score-badge {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .score-badge.perfect {
+      color: var(--green);
+    }
+    .score-badge.good {
+      color: var(--accent);
+    }
+    .share-box {
+      background: color-mix(in srgb, var(--bg) 75%, var(--card));
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 16px 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .share-text {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.92rem;
+      word-break: break-all;
+    }
+    .copy-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .copy-btn:hover {
+      border-color: var(--accent);
+    }
+    .missed-list {
+      margin: 14px 0 0;
+      padding-left: 20px;
+    }
+    .missed-list li {
+      margin: 8px 0;
+    }
+    .q-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .q-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      margin-right: 6px;
+    }
+    .q-tag.gap {
+      background: color-mix(in srgb, var(--red) 15%, transparent);
+      color: var(--red);
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Daily quiz</p>
+  <h1>Daily quiz</h1>
+  <p class="lede">Five questions a day from lessons you've finished, weighted toward topics with open gaps or completed longest ago. Keeps the entire path fresh in a few minutes.</p>
+  
+  <div id="hud"></div>
+  <div id="quiz-area"></div>
+</main>
+
+<script src="/learn-kit.js" type="module"></script>
+<script type="module">
+import { state, save, course, path, answered, gain, XP, slug } from "/ai/learn.js";
+import { dayOf } from "/ai/game.js";
+import { strip } from "/ai/hud.js";
+import { pickDailyQuiz } from "/ai/daily.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+// Render HUD strip
+const hudContainer = $("hud");
+if (hudContainer) {
+  const wrapper = document.createElement("div");
+  wrapper.style.margin = "10px 0 20px";
+  hudContainer.append(strip(wrapper));
+}
+
+const C = await course;
+const P = await path;
+const titles = Object.fromEntries(P.map((l) => [l.href, l.title]));
+const today = dayOf();
+
+// Lesson section caching for gap recording and links
+const lessonSectionsCache = new Map();
+async function getLessonSections(lessonHref) {
+  if (lessonSectionsCache.has(lessonHref)) return lessonSectionsCache.get(lessonHref);
+  try {
+    const html = await fetch(`/ai/${lessonHref}`).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const h2s = [...doc.querySelectorAll("main > h2")];
+    const sections = h2s.map((h2) => ({
+      id: h2.id || slug(h2.textContent),
+      title: h2.textContent.replace(/^\s*\d+\.\s*/, "").trim()
+    }));
+    lessonSectionsCache.set(lessonHref, sections);
+    return sections;
+  } catch {
+    return [];
+  }
+}
+
+const quiz = pickDailyQuiz(C, state, today);
+const area = $("quiz-area");
+
+if (!quiz.unlocked) {
+  // Fewer than 2 lessons finished
+  const nextLesson = P.find((l) => !state.done[l.href]);
+  area.innerHTML = `
+    <div class="card" style="text-align: center; padding: 36px 20px;">
+      <h2 style="margin: 0 0 10px;">Finish 2 lessons to unlock the daily quiz</h2>
+      <p style="color:var(--muted); max-width: 500px; margin: 0 auto 20px;">
+        You've completed ${quiz.count} of 2 required lessons. Once you've finished at least 2 checkpoints, your daily 5-question review unlocks here!
+      </p>
+      ${nextLesson ? `<a class="btn" href="./${nextLesson.href}">Continue: <b>${esc(nextLesson.title)}</b> →</a>` : `<a class="btn" href="./">Start on the path →</a>`}
+    </div>
+  `;
+} else if (state.daily?.[today]) {
+  // Already completed today: show results directly
+  renderCompletedView(state.daily[today]);
+} else {
+  // Ready to take today's quiz
+  renderQuizView();
+}
+
+function renderQuizView() {
+  const firsts = new Map();
+  area.innerHTML = `
+    <div id="q-container">
+      ${quiz.questions.map((c, idx) => {
+        const lessonTitle = titles[c.lesson] || c.lesson;
+        return `
+          <div class="q" data-answer="${"abcde"[c.answer]}" data-idx="${idx}" data-sec="${c.sec ?? ""}">
+            <div class="q-meta">
+              <span class="q-tag ${c.isGap ? "gap" : ""}">Question ${idx + 1} of 5${c.isGap ? " · Gap review" : ""}</span>
+              From <a href="./${c.lesson}" target="_blank">${esc(lessonTitle)}</a>
+            </div>
+            <p>${esc(c.q)}</p>
+            <ul>
+              ${c.options.map((o, k) => `<li data-k="${"abcde"[k]}">${esc(o)}</li>`).join("")}
+            </ul>
+            <div class="why">${esc(c.why)}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    <div id="result-slot"></div>
+  `;
+
+  // Setup questions through learn-kit
+  const qEls = area.querySelectorAll(".q");
+  qEls.forEach((q) => window.learnKit?.setupQuestion(q));
+
+  addEventListener("learnkit:answer", async ({ detail: { q, right, first } }) => {
+    if (!area.contains(q) || !first) return;
+    const idx = +q.dataset.idx;
+    if (firsts.has(idx)) return;
+    firsts.set(idx, right);
+
+    // Record gap tracking through answered()
+    const qData = quiz.questions[idx];
+    const sections = await getLessonSections(qData.lesson);
+    const secObj = qData.sec ? sections[qData.sec - 1] : sections[0];
+    const secId = secObj?.id || String(qData.sec || 1);
+    const lessonTitle = titles[qData.lesson] || qData.lesson;
+    const label = secObj?.title ? `${lessonTitle}: ${secObj.title}` : lessonTitle;
+    answered(qData.lesson, secId, label, right);
+
+    // When all 5 questions answered on first try
+    if (firsts.size === quiz.questions.length) {
+      const results = quiz.questions.map((_, i) => Boolean(firsts.get(i)));
+      const score = results.filter(Boolean).length;
+      state.daily ??= {};
+      state.daily[today] = {
+        score,
+        ids: quiz.questions.map((item) => item.id),
+        results
+      };
+      save();
+
+      // Pay XP once
+      gain(XP.daily, "daily", `daily:${today}`);
+
+      // Scroll to result and render result card
+      renderCompletedView(state.daily[today]);
+      $("result-slot")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+async function renderCompletedView(dailyRecord) {
+  const { score, results } = dailyRecord;
+  const isPerfect = score === 5;
+  const streak = state.streak?.days ?? 1;
+
+  // Build emoji squares
+  const emojis = (results || [true, true, true, true, true])
+    .map((r) => (r ? "🟩" : "🟥"))
+    .join("");
+
+  const shareLine = `AI from scratch · daily ${today} · ${score}/5 ${emojis} · 🔥 ${streak}`;
+
+  // Gather missed questions
+  const missedItems = [];
+  if (results) {
+    for (let i = 0; i < quiz.questions.length; i++) {
+      if (!results[i]) {
+        const q = quiz.questions[i];
+        const sections = await getLessonSections(q.lesson);
+        const secObj = q.sec ? sections[q.sec - 1] : sections[0];
+        const secId = secObj?.id || String(q.sec || 1);
+        const lessonTitle = titles[q.lesson] || q.lesson;
+        missedItems.push({
+          q,
+          lessonTitle,
+          secId,
+          secTitle: secObj?.title || `Section ${q.sec || 1}`
+        });
+      }
+    }
+  }
+
+  const nextLesson = P.find((l) => !state.done[l.href]);
+
+  const html = `
+    <div class="result-card">
+      <div class="result-header">
+        <div>
+          <span class="score-badge ${isPerfect ? "perfect" : "good"}">Daily quiz ${score}/5 ${isPerfect ? "🎉" : "✓"}</span>
+          <div style="color:var(--muted); font-size:0.95rem; margin-top:2px;">Completed for ${today} · +${XP.daily} XP earned</div>
+        </div>
+        <div>
+          ${nextLesson ? `<a class="btn" href="./${nextLesson.href}">Next lesson →</a>` : `<a class="btn" href="./review.html">Review deck →</a>`}
+        </div>
+      </div>
+
+      <div class="share-box">
+        <span class="share-text" id="share-text">${esc(shareLine)}</span>
+        <button type="button" class="copy-btn" id="copy-btn">Copy result</button>
+      </div>
+
+      ${missedItems.length ? `
+        <h3 style="margin: 20px 0 6px; font-size:1.1rem;">Review missed concepts:</h3>
+        <p style="color:var(--muted); margin:0 0 8px; font-size:0.95rem;">Rereading the section turns a gap into mastery:</p>
+        <ul class="missed-list">
+          ${missedItems.map((m) => `
+            <li>
+              <a href="./${m.q.lesson}#${m.secId}"><b>${esc(m.lessonTitle)}</b>: ${esc(m.secTitle)}</a>
+              <div style="font-size:0.88rem; color:var(--muted);">${esc(m.q.q)}</div>
+            </li>
+          `).join("")}
+        </ul>
+      ` : `<p style="color:var(--green); font-weight:600; margin:16px 0 0;">Flawless! All 5 concepts solid.</p>`}
+
+      <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 0.95rem; display: flex; gap: 16px; flex-wrap: wrap;">
+        <a href="./">Back to the path</a>
+        <a href="./review.html">Spaced repetition deck</a>
+      </div>
+    </div>
+  `;
+
+  const slot = $("result-slot");
+  if (slot) {
+    slot.innerHTML = html;
+  } else {
+    area.innerHTML = html;
+  }
+
+  // Bind copy button
+  const copyBtn = document.getElementById("copy-btn");
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(shareLine);
+        copyBtn.textContent = "Copied ✓";
+        setTimeout(() => { copyBtn.textContent = "Copy result"; }, 2500);
+      } catch {
+        const text = document.getElementById("share-text");
+        if (text) {
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          window.getSelection()?.removeAllRanges();
+          window.getSelection()?.addRange(range);
+          copyBtn.textContent = "Selected: Press ⌘C";
+        }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
