@@ -16,6 +16,7 @@ export class RemoteSdr {
   sampleRate = 0;
   centerFrequency = 0; // of your slice
   readonly id = Math.random().toString(36).slice(2, 12);
+  gain = ""; // what the server's radio is set to, as it says (pages show it; the owner sets it)
   radio = ""; // "sat": the server's satellite radio (the Nooelec on the V-dipole) if it can, else the main one
   private width = 1_200_000;
   private streaming = false;
@@ -60,6 +61,7 @@ export class RemoteSdr {
     if (!r.ok || !r.body) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
     this.sampleRate = Number(r.headers.get("x-sample-rate")) || this.sampleRate;
     this.centerFrequency = Number(r.headers.get("x-center")) || this.centerFrequency;
+    this.gain = r.headers.get("x-gain") ?? "";
     this.streaming = true;
     const s = await fetch("/api/state").then((x) => x.json());
     this.tunerName = s.tuner;

@@ -50,12 +50,15 @@ export function lab(root: HTMLElement, opts: LabOpts) {
       if (sdr instanceof RtlSdr) await sdr.setSampleRate(1_024_000);
       else if (Math.abs(target() - 137.5e6) <= 0.5e6) sdr.radio = "sat"; // weather satellites: the radio behind the 137 MHz LNA
       await sdr.setCenterFrequency(target() - OFFSET);
-      await sdr.setGain(gain());
+      if (sdr instanceof RtlSdr) await sdr.setGain(gain()); // the server's radio keeps the gain its owner set for that antenna
+      gIn.parentElement!.hidden = src === "server";
       opts.onStart?.(sdr.sampleRate);
       (src === "server" ? btnServer : btnUsb).textContent = "Stop";
       (src === "server" ? btnUsb : btnServer).disabled = true;
       status.textContent = `Live from ${src === "server" ? "the server's dongle" : "your dongle"} at ${fIn.value} MHz.`;
+      const remote = sdr instanceof RemoteSdr ? sdr : null;
       streaming = sdr.stream((d) => {
+        if (remote?.gain && !status.dataset.gain) { status.dataset.gain = "1"; status.textContent += ` Gain ${remote.gain}, set for this antenna.`; }
         if (opts.everyChunk && sdr) opts.onSamples(d, sdr.sampleRate, sdr.centerFrequency, target());
         else pending = d;
       }).catch((e) => { status.textContent = `Stopped: ${e.message}`; });
@@ -71,6 +74,7 @@ export function lab(root: HTMLElement, opts: LabOpts) {
     const s = sdr; sdr = null;
     s?.stop(); await streaming; await s?.close().catch(() => {});
     btnServer.textContent = "Use the server's dongle"; btnUsb.textContent = "Use my USB dongle";
+    gIn.parentElement!.hidden = false; delete status.dataset.gain;
     btnServer.disabled = false; btnUsb.disabled = !("usb" in navigator) || !window.isSecureContext;
     status.textContent = "Stopped.";
   }
@@ -78,5 +82,5 @@ export function lab(root: HTMLElement, opts: LabOpts) {
   btnServer.addEventListener("click", () => (sdr ? stop() : start("server")));
   btnUsb.addEventListener("click", () => (sdr ? stop() : start("usb")));
   fIn.addEventListener("change", () => sdr?.setCenterFrequency(target() - OFFSET));
-  gIn.addEventListener("change", () => sdr?.setGain(gain()));
+  gIn.addEventListener("change", () => { if (sdr instanceof RtlSdr) sdr.setGain(gain()); });
 }

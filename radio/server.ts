@@ -463,7 +463,8 @@ const server = http.createServer(async (req, res) => {
       if (!raw) try { center = await place(id, center, width); } catch (e) { return json(res, (e as any).code ?? 500, { error: (e as Error).message }); }
       await ensureSdr("iq");
       if (req.socket.destroyed) { if (!listening()) idle = setTimeout(resumeOrRelease, IDLE_MS); return; } // gone while the radio opened: its close already fired
-      const headers = { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(raw ? sdr!.sampleRate : width), "x-center": String(raw ? tuning.center : center), "x-slice-id": id };
+      const headers = { "content-type": "application/octet-stream", "cache-control": "no-store", "x-sample-rate": String(raw ? sdr!.sampleRate : width), "x-center": String(raw ? tuning.center : center), "x-slice-id": id,
+        "x-gain": sdr instanceof HackRf ? `LNA ${sdr.lna} dB, VGA ${sdr.vga} dB${sdr.amp ? ", RF amp on" : ""}` : tuning.gain === null ? "auto" : `${tuning.gain} dB` }; // shown on pages, set by the owner
       res.writeHead(200, headers);
       const leave = () => { if (!listening()) idle = setTimeout(resumeOrRelease, IDLE_MS); tellBand(); console.log(`listener left (${listening()})`); };
       if (raw) { clients.add(res); req.on("close", () => { clients.delete(res); congested.delete(res); leave(); }); }
