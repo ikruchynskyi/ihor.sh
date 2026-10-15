@@ -139,6 +139,13 @@
   "gpu": false,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-clusters-and-anomalies"
  },
+ "data-with-sql.html": {
+  "notebook": "data-with-sql.ipynb",
+  "title": "AI from scratch: data with SQL",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/data-with-sql.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-data-with-sql"
+ },
  "deep-cnns.html": {
   "notebook": "deep-cnns.ipynb",
   "title": "AI from scratch: deep CNNs and transfer learning",

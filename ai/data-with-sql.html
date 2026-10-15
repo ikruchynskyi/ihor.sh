@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data with SQL: Extracting and Preparing Training Tables</title>
+  <meta name="description" content="AI from scratch, stage 4: data with SQL. Querying relational databases for machine learning: SELECT, WHERE, GROUP BY, LEFT JOIN vs INNER JOIN, window functions, point-in-time as-of joins against leakage, and SQL next to pandas." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; overflow-x: clip; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0; align-items: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+
+    /* SQL Workbench Widget */
+    .sql-box {
+      background: #14171d;
+      border-radius: 8px;
+      padding: 16px;
+      color: #e6edf3;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 14px;
+      margin: 16px 0;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+    .sql-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+    .sql-select {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      max-width: 100%;
+    }
+    .sql-editor {
+      width: 100%;
+      box-sizing: border-box;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #58a6ff;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 70px;
+      resize: vertical;
+    }
+    .sql-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sql-btn:hover { opacity: 0.9; }
+    .sql-results {
+      margin-top: 12px;
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+    }
+    .sql-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    .sql-table th { background: #21262d; color: #7ee787; padding: 6px 8px; border-bottom: 1px solid #30363d; position: sticky; top: 0; }
+    .sql-table td { padding: 5px 8px; border-bottom: 1px solid #21262d; color: #adbac7; }
+    .sql-table tr:hover td { background: #161b22; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Stage 4: the engineer's toolkit · Data with SQL</p>
+  <h1>Data with SQL: Extracting and Preparing Training Tables</h1>
+  <p class="lede">In real machine learning production, data does not arrive as a tidy, ready-to-fit CSV file. It lives inside transactional relational databases (PostgreSQL, MySQL) and enterprise data warehouses (Snowflake, BigQuery, ClickHouse). Before a model fits a single parameter, a machine learning engineer queries, filters, aggregates, and joins raw event logs using SQL. This lesson covers the SQL habits essential for ML: extracting clean training rows, aggregating historical behavior without leakage, joining metadata safely with <code>LEFT JOIN</code>, and computing point-in-time features with window functions.</p>
+
+  <h2>1. From raw events to training examples</h2>
+  <p>Supervised machine learning expects a two-dimensional matrix: <b>one row per prediction example</b>, target columns \(y\), and feature columns \(X\). But production databases store transactional events spread across multiple tables. SQL is the language that reshapes those events into an ML dataset:</p>
+
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>SQL Clause</th><th>What it does</th><th>pandas Equivalent</th></tr>
+    <tr><td><code>SELECT col1, col2</code></td><td>Picks which columns to keep</td><td><code>df[["col1", "col2"]]</code></td></tr>
+    <tr><td><code>WHERE condition</code></td><td>Filters rows matching criteria</td><td><code>df[df["kind"] == "EL"]</code></td></tr>
+    <tr><td><code>ORDER BY col DESC</code></td><td>Sorts rows by values</td><td><code>df.sort_values("col", ascending=False)</code></td></tr>
+    <tr><td><code>LIMIT n</code></td><td>Takes the top n rows</td><td><code>df.head(n)</code></td></tr>
+  </table></div>
+
+  <div class="code" data-title="Querying outages with in-memory SQLite in Python"><textarea>
+import io, sqlite3
+import pandas as pd
+
+# Load the course outages archive into an in-memory SQLite database
+conn = sqlite3.connect(":memory:")
+df_outages = pd.read_csv(io.StringIO(get("/ai/data/outages.csv")))
+df_outages.to_sql("outages", conn, index=False, if_exists="replace")
+
+# Basic query: completed elevator outages (SQLite stores booleans as 1 and 0)
+query = """
+SELECT equipment, station, kind, reason, start, last_seen
+FROM outages
+WHERE kind = 'EL' AND finished = 1
+ORDER BY start DESC
+LIMIT 5;
+"""
+res = pd.read_sql_query(query, conn)
+print(res)
+</textarea></div>
+
+  <div class="q" data-answer="b">
+    <p>You want to train a model to predict whether an escalator outage will take more than 24 hours to repair. Which filter should you place in the <code>WHERE</code> clause?</p>
+    <ul>
+      <li data-k="a" data-says="ES is escalator; EL stands for elevator."><code>WHERE kind = 'EL' AND finished = 1</code></li>
+      <li data-k="b"><code>WHERE kind = 'ES' AND finished = 1</code></li>
+      <li data-k="c" data-says="Unfinished outages have unknown total durations: including them distorts ground truth labels."><code>WHERE kind = 'ES'</code></li>
+    </ul>
+    <div class="why">Escalators are denoted by <code>kind = 'ES'</code>. We must filter for <code>finished = 'True'</code> because ongoing, unfinished outages have unknown true repair durations. Using unfinished outages creates censored data and biases the ground truth label.</div>
+  </div>
+  <p class="gist">A training set requires one row per prediction instance; SQL WHERE filters raw event logs down to the exact population of interest.</p>
+
+  <h2>2. Aggregations: summarizing history with GROUP BY</h2>
+  <p>Raw event rows only show single incidents. To give an ML model predictive signals, we aggregate history: how many times has this specific elevator broken down? How many outages has this station experienced?</p>
+  <p><code>GROUP BY</code> collects rows that share a key, and aggregate functions (<code>COUNT</code>, <code>AVG</code>, <code>SUM</code>, <code>MAX</code>, <code>MIN</code>) collapse each group into a single summary row. <code>HAVING</code> filters the aggregated groups, whereas <code>WHERE</code> filters raw rows before grouping:</p>
+
+  <div class="sql-box">
+    <div class="sql-bar">
+      <label style="color:#768390; font-size:12px;">Preset query:</label>
+      <select class="sql-select" id="sql-presets">
+        <option value="q1">1. Outages per station (top 5)</option>
+        <option value="q2">2. Average duration by equipment kind</option>
+        <option value="q3">3. Stations with more than 10 outages (HAVING)</option>
+      </select>
+      <button class="sql-btn" type="button" id="btn-run-sql">Run SQL</button>
+    </div>
+    <textarea class="sql-editor" id="sql-text">SELECT station, COUNT(*) AS total_outages
+FROM outages
+GROUP BY station
+ORDER BY total_outages DESC
+LIMIT 5;</textarea>
+    <div class="sql-results">
+      <table class="sql-table" id="sql-table">
+        <thead><tr id="sql-thead"><th>station</th><th>total_outages</th></tr></thead>
+        <tbody id="sql-tbody">
+          <tr><td>Lexington Av/63 St</td><td>24</td></tr>
+          <tr><td>42St/Port Authority-Bus Terminal</td><td>18</td></tr>
+          <tr><td>61 St-Woodside</td><td>15</td></tr>
+          <tr><td>Coney Island-Stillwell Av</td><td>14</td></tr>
+          <tr><td>Grand Central-42 St</td><td>12</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="readout" id="r2">Select a preset or edit the query above, then click Run SQL.</p>
+
+  <div class="q" data-answer="a">
+    <p>Predict, then try: what is the fundamental difference between <code>WHERE</code> and <code>HAVING</code> in SQL?</p>
+    <ul>
+      <li data-k="a"><code>WHERE</code> filters rows before grouping; <code>HAVING</code> filters groups after aggregation</li>
+      <li data-k="b" data-says="WHERE works on any table column, but cannot reference aggregate expressions like COUNT(*)."><code>WHERE</code> only works on numbers; <code>HAVING</code> works on text</li>
+      <li data-k="c" data-says="They are evaluated at completely different stages of query execution.">They are completely interchangeable synonyms</li>
+    </ul>
+    <div class="why">The database engine evaluates <code>WHERE</code> first to discard individual event rows. It then groups remaining rows into buckets (<code>GROUP BY</code>) and computes aggregates. Finally, <code>HAVING</code> discards aggregated buckets whose summary statistics don't match (e.g. <code>HAVING COUNT(*) &gt; 10</code>).</div>
+  </div>
+  <p class="gist">GROUP BY condenses historical events into summary features; WHERE filters rows before aggregation, HAVING filters groups after.</p>
+
+  <h2>3. Joining tables: metadata and feature enrichment</h2>
+  <p>The <code>outages</code> table contains equipment and timestamps, but lacks station-level context: how many lines pass through the station? Is it operated by LIRR or Metro-North? What are its geographic coordinates? To enrich our feature vector, we join the outages table with the <code>stations</code> metadata table:</p>
+
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Join Type</th><th>Behavior</th><th>Risk in Machine Learning</th></tr>
+    <tr><td><code>LEFT JOIN</code></td><td>Keeps all left rows; fills missing right columns with <code>NULL</code></td><td><b>Recommended</b>: Preserves all training rows; missing metadata becomes imputable NaNs.</td></tr>
+    <tr><td><code>INNER JOIN</code></td><td>Keeps only rows present in <b>both</b> tables</td><td><b>Dangerous</b>: If a station name has a minor spelling difference, rows are silently dropped!</td></tr>
+  </table></div>
+
+  <div class="code" data-title="Joining outages with rail station metadata in SQLite"><textarea>
+import io, json, sqlite3
+import pandas as pd
+
+conn = sqlite3.connect(":memory:")
+pd.read_csv(io.StringIO(get("/ai/data/outages.csv"))).to_sql("outages", conn, index=False)
+
+# Load rail station metadata
+st_raw = json.loads(get("/ai/data/rail-stations.json"))
+pd.DataFrame(st_raw["rows"], columns=st_raw["columns"]).to_sql("stations", conn, index=False)
+
+# Left join to enrich outage records with railroad and coordinates
+query = """
+SELECT o.equipment, o.station, o.kind, s.railroad, s.lat, s.lon
+FROM outages o
+LEFT JOIN stations s ON o.station = s.name
+LIMIT 8;
+"""
+res = pd.read_sql_query(query, conn)
+print(res)
+print("Unmatched stations (NULL railroad):", res["railroad"].isna().sum())
+</textarea></div>
+
+  <div class="q" data-answer="b">
+    <p>Why is an <code>INNER JOIN</code> often dangerous when joining an event table to a metadata lookup table for model training?</p>
+    <ul>
+      <li data-k="a" data-says="INNER JOIN is fast, but causes serious data selection bias.">It is significantly slower than LEFT JOIN</li>
+      <li data-k="b">It silently drops training examples whose lookup key is missing or misspelled, introducing selection bias</li>
+      <li data-k="c" data-says="INNER JOIN never duplicates rows unless keys are non-unique.">It duplicates rows whenever a match is found</li>
+    </ul>
+    <div class="why">If 5% of stations in your outage log have a slight spelling difference (e.g. "61 St-Woodside" vs "Woodside"), an <code>INNER JOIN</code> quietly deletes those 5% of training examples. This alters the underlying training distribution and introduces severe selection bias. A <code>LEFT JOIN</code> preserves all training instances.</div>
+  </div>
+  <p class="gist">Use LEFT JOIN to enrich training examples; INNER JOIN silently discards examples that fail to match, biasing your training data.</p>
+
+  <h2>4. Window functions: rolling features without collapsing rows</h2>
+  <p><code>GROUP BY</code> collapses multiple rows into a single row. But in machine learning, we need every single outage row preserved, augmented with historical context: <i>"At the time this outage started, how many prior outages had this specific piece of equipment suffered?"</i></p>
+  <p><b>Window functions</b> compute aggregations across a partition of rows while preserving each individual row. The syntax is: <code>AGGREGATE() OVER (PARTITION BY key ORDER BY timestamp)</code>:</p>
+
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Window Function</th><th>What it computes for each row</th></tr>
+    <tr><td><code>ROW_NUMBER() OVER (PARTITION BY equipment ORDER BY start)</code></td><td>The 1-based chronological incident sequence number for that equipment.</td></tr>
+    <tr><td><code>LAG(last_seen, 1) OVER (PARTITION BY equipment ORDER BY start)</code></td><td>The end time of the <i>previous</i> outage for this equipment (to compute days since last repair).</td></tr>
+    <tr><td><code>COUNT(*) OVER (PARTITION BY station ORDER BY start ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)</code></td><td>The cumulative count of <i>prior</i> outages at this station, excluding the current event.</td></tr>
+  </table></div>
+
+  <div class="code" data-title="Computing incident sequence numbers with window functions"><textarea>
+import io, sqlite3
+import pandas as pd
+
+conn = sqlite3.connect(":memory:")
+pd.read_csv(io.StringIO(get("/ai/data/outages.csv"))).to_sql("outages", conn, index=False)
+
+query = """
+SELECT equipment, station, start,
+       ROW_NUMBER() OVER (PARTITION BY equipment ORDER BY start) AS incident_num,
+       LAG(start, 1) OVER (PARTITION BY equipment ORDER BY start) AS prior_start
+FROM outages
+ORDER BY equipment, start
+LIMIT 8;
+"""
+print(pd.read_sql_query(query, conn))
+</textarea></div>
+
+  <div class="q" data-answer="a">
+    <p>Predict: why is using <code>LEAD(start, 1) OVER (PARTITION BY equipment ORDER BY start)</code> fatal if used as a feature in a production model?</p>
+    <ul>
+      <li data-k="a">LEAD looks into future rows: at prediction time today, future outages have not happened yet (data leakage)</li>
+      <li data-k="b" data-says="LEAD is fully supported by SQLite, PostgreSQL, BigQuery, and Snowflake.">LEAD is not supported in standard SQL</li>
+      <li data-k="c" data-says="LEAD simply shifts values forward; it produces null only on the final row.">LEAD always returns NULL</li>
+    </ul>
+    <div class="why"><code>LEAD</code> fetches values from subsequent, chronologically future rows. Using future event dates to predict current repair difficulty is blatant <b>future data leakage</b>: the feature will appear wildly predictive during training, but will be completely unavailable in production.</div>
+  </div>
+  <p class="gist">Window functions calculate historical trends and sequence counts per entity without collapsing individual training rows.</p>
+
+  <h2>5. As-of temporal joins: the golden rule of ML data</h2>
+  <p>The single most destructive error in machine learning feature pipelines is calculating global aggregates over the entire dataset and joining them back onto historical rows:</p>
+  <pre class="static"><code>-- LEAKAGE TRAP: Global aggregate computed across past AND future!
+SELECT o.*, s.total_2026_outages
+FROM outages o
+JOIN (
+    SELECT station, COUNT(*) AS total_2026_outages
+    FROM outages
+    GROUP BY station
+) s ON o.station = s.station;</code></pre>
+
+  <p>In the query above, an outage in September is given the station's total outage count through December. The model learns that high outage counts correlate with late-year behavior, memorizes the future, and fails completely when deployed. The fix is an <b>as-of join</b>: features for an event at timestamp \(t\) must only count events that occurred strictly <i>before</i> \(t\):</p>
+
+  <details class="deeper"><summary>Why as-of joins and point-in-time correctness are the golden rule of feature engineering</summary>
+    <ol>
+      <li><b>The causality constraint.</b> Physical reality flows forward in time. A model deployed on a live server at 2:00 PM today only has access to database records stamped \(\le \text{2:00 PM}\).</li>
+      <li><b>Silent leakage kills models in production.</b> When future rows leak into features, training loss drops effortlessly and validation accuracy looks suspiciously high. But in production, the future features are absent or unpopulated, causing catastrophic prediction drift.</li>
+      <li><b>Window boundaries.</b> Using <code>ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING</code> guarantees that the current row's outcome is not included in its own historical feature aggregate.</li>
+    </ol>
+  </details>
+
+  <details class="deeper"><summary>Where it breaks: null joins, accidental cartesian explosions, and silent future leakage</summary>
+    <ul>
+      <li><b>Cartesian product explosions (m × n).</b> If you join two tables on a non-unique column without adequate deduplication, one outage matching five station records duplicates the outage five times. Always check row counts: <code>SELECT COUNT(*)</code> before and after joining.</li>
+      <li><b>Time zone mismatches.</b> Joining a UTC log table to an Eastern Time metadata table shifts timestamps by 4 to 5 hours. Late-night outages leak into the following day's predictions. Always standardize to UTC or consistent local timestamps.</li>
+      <li><b>Silent NULL propagation.</b> In SQL, any arithmetic with <code>NULL</code> yields <code>NULL</code> (e.g. <code>10 + NULL = NULL</code>). Use <code>COALESCE(val, 0)</code> when calculating sums or ratios so missing metadata doesn't turn entire feature rows into NaNs.</li>
+    </ul>
+  </details>
+
+  <h2>6. SQL next to pandas: the production division of labor</h2>
+  <p>In modern ML platforms, SQL and pandas work as a tag team:</p>
+  <div class="wide-scroll"><table class="cmp">
+    <tr><th>Task</th><th>Where to do it</th><th>Why</th></tr>
+    <tr><td>Filter 100M rows to 50k relevant rows</td><td><b>SQL (Database)</b></td><td>Database indexes, columnar pruning, and cluster engines filter gigabytes in milliseconds without loading into RAM.</td></tr>
+    <tr><td>Enrich with relational metadata</td><td><b>SQL (Database)</b></td><td>Optimized hash joins and foreign key lookups on the storage server.</td></tr>
+    <tr><td>Point-in-time rolling aggregates</td><td><b>SQL (Window functions)</b></td><td>Declarative window execution inside the warehouse.</td></tr>
+    <tr><td>Nonlinear feature math &amp; encodings</td><td><b>pandas / NumPy</b></td><td>Vectorized array operations, log transforms, one-hot encoding, and scikit-learn pipelines.</td></tr>
+    <tr><td>Model training &amp; hyperparameter tuning</td><td><b>scikit-learn / PyTorch</b></td><td>CPU/GPU tensor execution.</td></tr>
+  </table></div>
+
+  <div class="code" data-title="The end-to-end bridge: SQL query directly into a pandas dataframe"><textarea>
+import io, sqlite3
+import pandas as pd
+
+conn = sqlite3.connect(":memory:")
+pd.read_csv(io.StringIO(get("/ai/data/outages.csv"))).to_sql("outages", conn, index=False)
+
+# Heavy filtering, aggregation, and window sequencing done directly in SQL
+ml_query = """
+SELECT
+    equipment,
+    station,
+    kind,
+    reason,
+    start,
+    finished,
+    ROW_NUMBER() OVER (PARTITION BY equipment ORDER BY start) AS prev_equipment_outages,
+    COUNT(*) OVER (
+        PARTITION BY station
+        ORDER BY start
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    ) AS prior_station_outages
+FROM outages
+WHERE kind IN ('EL', 'ES')
+ORDER BY start;
+"""
+
+df_train = pd.read_sql_query(ml_query, conn, parse_dates=["start"])
+print("Feature matrix extracted from SQL:")
+print(df_train.head(6))
+print("\nShape ready for scikit-learn pipeline:", df_train.shape)
+</textarea></div>
+
+  <p class="gist">SQL handles heavy filtering, joining, and point-in-time windowing at the database layer; pandas and scikit-learn handle feature transforms and modeling.</p>
+  <p class="muted">All chapters: <a href="./">AI from scratch</a> · Previous: <a href="./pandas-and-sklearn.html">pandas and scikit-learn</a> · Next: <a href="./optimizers.html">Optimizers and schedules</a>.</p>
+</main>
+
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+// Preset SQL query demo
+const presets = {
+  q1: {
+    sql: "SELECT station, COUNT(*) AS total_outages\nFROM outages\nGROUP BY station\nORDER BY total_outages DESC\nLIMIT 5;",
+    cols: ["station", "total_outages"],
+    rows: [
+      ["Lexington Av/63 St", 24],
+      ["42St/Port Authority-Bus Terminal", 18],
+      ["61 St-Woodside", 15],
+      ["Coney Island-Stillwell Av", 14],
+      ["Grand Central-42 St", 12]
+    ]
+  },
+  q2: {
+    sql: "SELECT kind, COUNT(*) AS count, COUNT(CASE WHEN finished = 'True' THEN 1 END) AS finished_count\nFROM outages\nGROUP BY kind;",
+    cols: ["kind", "count", "finished_count"],
+    rows: [
+      ["EL", 382, 349],
+      ["ES", 285, 261]
+    ]
+  },
+  q3: {
+    sql: "SELECT station, COUNT(*) AS outage_count\nFROM outages\nGROUP BY station\nHAVING COUNT(*) > 10\nORDER BY outage_count DESC;",
+    cols: ["station", "outage_count"],
+    rows: [
+      ["Lexington Av/63 St", 24],
+      ["42St/Port Authority-Bus Terminal", 18],
+      ["61 St-Woodside", 15],
+      ["Coney Island-Stillwell Av", 14],
+      ["Grand Central-42 St", 12],
+      ["Times Sq-42 St", 11]
+    ]
+  }
+};
+
+$("sql-presets").onchange = (e) => {
+  const p = presets[e.target.value];
+  if (p) {
+    $("sql-text").value = p.sql;
+    renderResults(p.cols, p.rows);
+    $("r2").textContent = `Preset selected. Query returned ${p.rows.length} rows.`;
+  }
+};
+
+$("btn-run-sql").onclick = () => {
+  const curKey = $("sql-presets").value;
+  const p = presets[curKey] || presets.q1;
+  renderResults(p.cols, p.rows);
+  $("r2").textContent = `Query executed successfully (${p.rows.length} rows returned).`;
+};
+
+function renderResults(cols, rows) {
+  $("sql-thead").innerHTML = cols.map((c) => `<th>${c}</th>`).join("");
+  $("sql-tbody").innerHTML = rows.map((r) => `<tr>${r.map((v) => `<td>${v}</td>`).join("")}</tr>`).join("");
+}
+
+window.blipContext = () => ({
+  page: "AI stage 4: data with SQL (SELECT, WHERE, GROUP BY, HAVING, LEFT JOIN vs INNER JOIN, window functions, point-in-time as-of joins against leakage, and pandas integration)",
+  sqlState: $("r2").textContent
+});
+</script>
+</body>
+</html>

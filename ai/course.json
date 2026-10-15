@@ -7438,5 +7438,109 @@
     "sec": 6
    }
   ]
+ },
+ "data-with-sql.html": {
+  "goals": [
+   "Query relational databases to extract populations of interest using SELECT, WHERE, and LIMIT",
+   "Aggregate historical behavior with GROUP BY and filter summarized groups with HAVING",
+   "Enrich training examples with metadata using LEFT JOIN while avoiding the row loss of INNER JOIN",
+   "Compute sequential metrics and rankings per entity with window functions without collapsing rows",
+   "Prevent future data leakage using as-of point-in-time window boundaries on historical event logs",
+   "Integrate database SQL queries into pandas and scikit-learn training pipelines"
+  ],
+  "needs": [
+   "pandas-and-sklearn.html"
+  ],
+  "cards": [
+   [
+    "Training row contract",
+    "An ML dataset requires one row per prediction instance, with features strictly available at event time."
+   ],
+   [
+    "WHERE vs HAVING",
+    "WHERE filters individual rows before grouping; HAVING filters aggregated groups after aggregation."
+   ],
+   [
+    "LEFT JOIN in ML",
+    "Preserves every left training row while attaching right metadata; unmatched keys become imputable NaNs rather than dropped rows."
+   ],
+   [
+    "Window function",
+    "Computes aggregations across a partition of rows while preserving each individual row (OVER PARTITION BY)."
+   ],
+   [
+    "ROW_NUMBER()",
+    "A window function assigning a 1-based chronological sequence index to rows within a partition."
+   ],
+   [
+    "Point-in-time correctness",
+    "Calculating features at event time t using only records stamped <= t to prevent future data leakage."
+   ],
+   [
+    "ROWS BETWEEN ... PRECEDING",
+    "Window boundary syntax ensuring rolling aggregates exclude future rows and the current target row."
+   ],
+   [
+    "pd.read_sql_query",
+    "Executes a SQL query against an open database connection and returns the result directly as a pandas DataFrame."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why is an INNER JOIN generally avoided when enriching machine learning training rows with metadata tables?",
+    "options": [
+     "It silently drops training examples whose lookup key is missing or misspelled, introducing severe selection bias",
+     "INNER JOIN is mathematically non-deterministic on partitioned databases",
+     "INNER JOIN forces all numeric columns to be converted to floating point"
+    ],
+    "answer": 0,
+    "why": "If 5% of stations in your event log have a slight spelling mismatch, an INNER JOIN silently discards those training examples, biasing the dataset. A LEFT JOIN preserves all training rows.",
+    "sec": 3
+   },
+   {
+    "q": "What distinguishes the WHERE clause from the HAVING clause in SQL?",
+    "options": [
+     "WHERE filters individual rows before aggregation; HAVING filters grouped summary buckets after aggregation",
+     "WHERE only filters strings; HAVING only filters numbers",
+     "WHERE operates on columns; HAVING operates on indexes"
+    ],
+    "answer": 0,
+    "why": "The database filters individual rows with WHERE first, aggregates them into groups with GROUP BY, and finally applies HAVING to discard aggregated buckets.",
+    "sec": 2
+   },
+   {
+    "q": "Why is using LEAD(start, 1) OVER (PARTITION BY equipment ORDER BY start) dangerous when engineering model features?",
+    "options": [
+     "It pulls timestamps from future incidents that have not occurred yet at prediction time, creating catastrophic data leakage",
+     "LEAD is not supported in ANSI SQL",
+     "LEAD causes SQLite to run out of memory"
+    ],
+    "answer": 0,
+    "why": "LEAD accesses chronologically subsequent rows. In production, future incidents have not happened yet, so the model will fail completely.",
+    "sec": 4
+   },
+   {
+    "q": "Which window frame specification ensures a rolling count of past incidents excludes the current incident being predicted?",
+    "options": [
+     "ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING",
+     "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING",
+     "ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING"
+    ],
+    "answer": 0,
+    "why": "Ending at 1 PRECEDING ensures that only strictly historical incidents prior to the current row are counted.",
+    "sec": 5
+   },
+   {
+    "q": "Why should heavy filtering and aggregation be pushed into SQL databases before loading data into pandas?",
+    "options": [
+     "Databases use indexes and columnar storage to prune millions of rows on the server, avoiding transferring gigabytes of raw data into memory",
+     "pandas cannot compute GROUP BY or mean aggregations",
+     "SQL guarantees 100% precision whereas pandas uses approximate floating point"
+    ],
+    "answer": 0,
+    "why": "Databases and warehouses are optimized for distributed scan, index filter, and pushdown aggregation. Filtering 100M rows to 10k in SQL prevents running out of memory in Python.",
+    "sec": 6
+   }
+  ]
  }
 }
