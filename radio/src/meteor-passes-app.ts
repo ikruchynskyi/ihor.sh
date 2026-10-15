@@ -44,7 +44,7 @@ async function load() {
   const d = await fetch("/api/meteor/passes").then((r) => r.json());
   el("minel").textContent = d.minEl;
   el("now").innerHTML = d.recording ? `🔴 <b>Recording ${name(d.recording.sat)} now</b>, until ${when(d.recording.until)}. Its report card appears below when the satellite sets.`
-    : d.upcoming.length ? `Next recording: <b>${name(d.upcoming[0].sat)}</b>, ${when(d.upcoming[0].rise)}, peak ${d.upcoming[0].maxEl.toFixed(0)}°.` : "No pass of 60° or more in the next 48 hours.";
+    : d.upcoming.length ? `Next recording: <b>${name(d.upcoming[0].sat)}</b>, ${when(d.upcoming[0].rise)}, peak ${d.upcoming[0].maxEl.toFixed(0)}°.` : `No pass of ${d.minEl}° or more in the next 48 hours.`;
   el("upcoming").innerHTML = d.upcoming.map((p: any) => `<li>${when(p.rise)}–${new Date(p.set).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · ${name(p.sat)} · peak ${p.maxEl.toFixed(0)}°</li>`).join("") || "<li class=muted>None in the next 48 hours.</li>";
   if (!d.recorded.length) { el("recorded").innerHTML = '<p class="muted">Nothing recorded yet: the first high pass will show up here.</p>'; return; }
   el("recorded").innerHTML = d.recorded.map((p: any) => `

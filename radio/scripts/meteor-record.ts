@@ -107,14 +107,13 @@ function finish() {
     stats: { ...st, acquired: rx.acquired, images: rx.packets.stats.images, packets: rx.packets.stats.packets, maxSnr: +maxSnr.toFixed(2), clipPct: +((100 * clipped) / Math.max(1, 2 * samples)).toFixed(3) },
     quality, channels, timeline, raw: { kept: true, bytes: rawBytes },
   };
-  // keep one raw file: this one if its picture shows the Earth (and drop the older one), else the older one stays
+  // keep two raw files at most: the newest pass whose picture shows the Earth, and the newest one that doesn't (for
+  // debugging the decoder on real signals). This pass keeps its raw; an older raw of the same kind is dropped.
   const index: any[] = existsSync(path.join(DIR, "index.json")) ? JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) : [];
-  if (quality.ok) {
-    for (const p of index.filter((p) => p.rawKept && p.id !== ID)) {
-      rmSync(path.join(DIR, p.id, "raw.cu8"), { force: true }); p.rawKept = false;
-      const mf = path.join(DIR, p.id, "meta.json"); if (existsSync(mf)) { const m = JSON.parse(readFileSync(mf, "utf8")); m.raw.kept = false; writeFileSync(mf, JSON.stringify(m)); }
-    }
-  } else { rmSync(path.join(OUT, "raw.cu8"), { force: true }); meta.raw.kept = false; }
+  for (const p of index.filter((p) => p.rawKept && p.id !== ID && Boolean(p.ok) === quality.ok)) {
+    rmSync(path.join(DIR, p.id, "raw.cu8"), { force: true }); p.rawKept = false;
+    const mf = path.join(DIR, p.id, "meta.json"); if (existsSync(mf)) { const m = JSON.parse(readFileSync(mf, "utf8")); m.raw.kept = false; writeFileSync(mf, JSON.stringify(m)); }
+  }
   writeFileSync(path.join(OUT, "meta.json"), JSON.stringify(meta));
   const summary = { id: ID, sat: SAT, start: START, end, maxEl: meta.maxEl, ok: quality.ok, strips: quality.strips, share: +quality.share.toFixed(3), frames: st.frames, rsBad: st.rsBad, maxSnr: meta.stats.maxSnr, acquired: rx.acquired, channels: Object.keys(channels).map(Number), rawKept: meta.raw.kept };
   writeFileSync(path.join(DIR, "index.json"), JSON.stringify([summary, ...index.filter((p) => p.id !== ID)].sort((a, b) => b.start - a.start)));

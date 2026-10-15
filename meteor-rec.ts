@@ -1,5 +1,5 @@
 // The server's Meteor pass recorder: schedules and serves. Every 20 minutes it computes the next 48 hours of Meteor-M2 3
-// and M2 4 passes over the radio server's place and sets a timer for each one that peaks at 60° or more; a minute
+// and M2 4 passes over the radio server's place and sets a timer for each one that peaks at 40° or more; a minute
 // before the satellite rises it starts radio/scripts/meteor-record.ts as its own process (so decoding never slows the
 // site), which takes the server's dongle until the satellite sets. After a restart mid-pass it records the rest.
 // Products live in data/meteor/<id>/ (git-ignored); /api/meteor/passes lists them, /api/meteor/file serves them.
@@ -11,7 +11,7 @@ import { tleFor, passes } from "./sat.ts";
 
 const DIR = path.join(import.meta.dirname, "data", "meteor"), SCRIPT = path.join(import.meta.dirname, "radio", "scripts", "meteor-record.ts");
 const SATS = [{ id: "meteor-m2-3", catnr: 57166, freq: 137.9 }, { id: "meteor-m2-4", catnr: 59051, freq: 137.9 }];
-const HOME = { lat: 40.73, lon: -73.95 }, MIN_EL = 60, LEAD_MS = 60_000;
+const HOME = { lat: 40.73, lon: -73.95 }, MIN_EL = 40, LEAD_MS = 60_000;   // 40°: user, 2026-10-15 (60° missed too many passes)
 type Planned = { sat: string; freq: number; rise: number; set: number; maxEl: number };
 const timers = new Map<string, NodeJS.Timeout>();
 let upcoming: Planned[] = [], running: { pid: number; sat: string; until: number } | null = null;
