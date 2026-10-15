@@ -37,6 +37,7 @@
   <div class="row"><label>layer sizes <input id="arch" value="2, 16, 16, 1"></label></div>
   <div class="wide"><table class="rules" id="shapes"></table></div>
   <p class="readout" id="r1"></p>
+  <p class="gist">A deep network is "move, then bend" repeated. Each layer's shapes follow from two numbers: how many units it has, and how many feed it.</p>
   <div class="q" data-num="337">
     <p>How many parameters (weights plus biases) does a 2, 16, 16, 1 network have? Work it out, then check the table.</p>
     <div class="why">Layer 1: \(16 \times 2 + 16 = 48\). Layer 2: \(16 \times 16 + 16 = 272\). Layer 3: \(1 \times 16 + 1 = 17\). Total 337. The middle square layer dominates: parameter counts grow with width <i>squared</i>.</div>
@@ -46,6 +47,7 @@
   <p>Running examples one at a time in a loop wastes the hardware. Instead, stack \(m\) examples as the <b>columns</b> of a matrix \(X\) with shape \((n_0, m)\). Then one matrix product computes the layer for all of them at once:</p>
   <p class="formula">\[ Z^{[l]} = W^{[l]} A^{[l-1]} + b^{[l]}, \qquad (n_l, m) = (n_l, n_{l-1}) \cdot (n_{l-1}, m) + (n_l, 1) \]</p>
   <p>Adding a \((n_l, 1)\) bias to a \((n_l, m)\) matrix isn't strictly allowed, so every library <b>broadcasts</b> it: copies the column across all \(m\) examples. Capital letters for batches, small for one example. This is <b>vectorization</b>, and it's why GPUs (stage 4) matter: one big matrix product runs thousands of times faster than the same arithmetic in a loop.</p>
+  <p class="gist">A batch is one matrix, one column per example, so a single matrix product runs a layer for every example at once.</p>
   <div class="q" data-answer="c">
     <p>A batch of 500 examples enters a 2, 16, 16, 1 network. What's the shape of \(Z^{[1]}\)?</p>
     <ul><li data-k="a" data-says="That's W¹'s shape. Z has one column per example.">(16, 2)</li><li data-k="b" data-says="Rows are units here, columns are examples (some libraries flip this; be consistent).">(500, 16)</li><li data-k="c">(16, 500)</li></ul>
@@ -80,6 +82,14 @@ except ValueError as e:
   </table></div>
   <p>\(\odot\) is element-by-element multiplication. The shapes check themselves: every gradient has exactly the shape of the thing it updates, and \(W^\top\) is the only way to get from \(n_l\) rows back to \(n_{l-1}\). The bias gradient sums over the examples because one bias serves them all (Calculus 2: a value used many times collects blame from every use). These are the same vector-Jacobian products from Calculus 2, batched.</p>
 
+  <p class="gist">Blame goes back through each layer's transposed weights and its activation's slope, and every gradient has the shape of the thing it updates.</p>
+  <details class="deeper"><summary>Why does the blame go back through \(W^\top\)?</summary>
+    <ol>
+      <li>Unit \(j\) in layer \(l-1\) feeds every unit \(i\) of layer \(l\), through the weight \(W_{ij}\): \(z_i = \sum_j W_{ij} a_j + b_i\), so \(\partial z_i / \partial a_j = W_{ij}\).</li>
+      <li>A value used in several places collects the blame from every use (chapter 4): \(\partial L / \partial a_j = \sum_i W_{ij}\, \partial L / \partial z_i\).</li>
+      <li>That sum runs down column \(j\) of \(W\), which is row \(j\) of \(W^\top\): stacked for every \(j\), it's \(W^\top dZ\). The forward pass reads \(W\) by rows ("what feeds me?"); the backward pass reads it by columns ("whom did I feed?").</li>
+    </ol>
+  </details>
   <h2>4. Train one: a spiral</h2>
   <p>Two interleaved spirals, 100 points each. No straight line, or small set of them, separates them. The background shows what the network currently answers everywhere: <span style="color:#58c4dd;font-weight:700">blue</span> or <span style="color:#fc6255;font-weight:700">red</span>, paler where it's unsure. Press <b>Train</b>.</p>
   <canvas id="spiral" class="square" width="480" height="480" aria-label="Two spirals and the network's decision regions"></canvas>
@@ -117,6 +127,7 @@ except ValueError as e:
     <p class="formula">\[ \operatorname{Var}(w) = \frac{1}{n_{l-1}} \;\;\text{(Xavier, for tanh)}, \qquad \operatorname{Var}(w) = \frac{2}{n_{l-1}} \;\;\text{(He, for ReLU)} \]</p>
     <p>ReLU gets the extra 2 because it zeroes half its inputs, halving the variance. So in code: <code>W = randn(n_l, n_prev) * sqrt(2 / n_prev)</code>. Stage 4's "making deep nets train" adds normalization layers that keep this balance during training too.</p>
   </details>
+  <p class="gist">Random starting weights break the symmetry between units; their size must keep signals from shrinking or growing as they pass through the layers.</p>
   <div class="q" data-num="0.25" data-tol="0.002">
     <p>A ReLU layer takes 32 inputs. With He initialization, what's the standard deviation of its starting weights?</p>
     <div class="why">\(\sqrt{2/32} = \sqrt{1/16} = 0.25\).</div>
@@ -128,6 +139,14 @@ except ValueError as e:
   <div class="row"><label>layers <input type="range" id="depth" min="1" max="7" step="1" value="1"> <b id="depthV" class="math"></b></label></div>
   <p class="readout" id="r3"></p>
   <p>A single hidden layer of ReLUs makes one straight piece per unit (roughly), so matching \(2^k\) pieces takes about \(2^k\) units; depth does it with \(2k\). Real tasks are built the same way, from parts of parts: edges → corners → shapes → objects in an image (chapter 6), letters → words → phrases in text. Deep networks match that structure. A classic example: the parity of \(n\) bits (is the count of 1s odd?) takes a one-hidden-layer network about \(2^{n-1}\) units but a deep tree of XORs only about \(n\).</p>
+  <p class="gist">Depth reuses earlier work: \(k\) layers can build \(2^k\) pieces that a single layer would need about \(2^k\) units for.</p>
+  <details class="deeper"><summary>Where it breaks: deeper isn't automatically better</summary>
+    <ul>
+      <li><b>Harder to train.</b> Until 2015, plain networks beyond about 20 layers got <i>worse</i>, even on their own training data: blame faded or exploded through the long chain. Residual connections (each layer adds its output to its input, stage 5) fixed it, and networks of 100+ layers became normal.</li>
+      <li><b>Can isn't will.</b> The sawtooth shows what depth can represent, not what gradient descent will find. Many functions a deep network could draw are ones training never reaches.</li>
+      <li><b>Not every problem is parts of parts.</b> For tables of features (prices, ages, counts), a forest of shallow trees often beats a deep network (chapter 13): there's no hierarchy of edges and shapes to reuse.</li>
+    </ul>
+  </details>
   <div class="q" data-num="32">
     <p>How many straight pieces does the sawtooth have after 5 layers?</p>
     <div class="why">\(2^5 = 32\), from just 10 ReLU units. A single hidden layer would need about 32.</div>

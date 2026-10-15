@@ -52,6 +52,7 @@
   </div>
   <p class="readout" id="r1"></p>
   <p>Try batch size 1: each step looks at one point, so the line jitters, yet it gets close quickly. Try 120 (all of them): smooth, but one step per epoch. Most real training sits in between, 32 to a few thousand examples, chosen to fill the GPU. Then try learning rate 0.04: it blows up, because the steepest curvature here is about 76 and calculus 3's limit is 2/76 ≈ 0.026. And notice the slope settles fast but the intercept crawls: km runs from 0 to 10 while the intercept's "feature" is always 1, a stretched valley (condition number about 166). Scaling the input, which stage 4 makes routine, would fix that.</p>
+  <p class="gist">A minibatch step trades an exact gradient for a noisy one and many more steps per pass over the data. Batches of 32 to a few thousand are the usual middle.</p>
   <div class="q" data-num="469">
     <p>MNIST has 60,000 training images. With batches of 128, how many steps is one epoch? (The last batch is smaller.)</p>
     <div class="why">\(60{,}000 / 128 = 468.75\), so 469 steps: 468 full batches and one of 96. Ten epochs is 4,690 steps.</div>
@@ -77,6 +78,22 @@ for epoch in range(40):
 plt.figure(figsize=(6, 2.5)); plt.plot(losses); plt.yscale("log"); plt.xlabel("step"); plt.title("loss"); plt.show()
 </textarea></div>
 
+  <details class="deeper"><summary>Why raise the learning rate when you raise the batch size?</summary>
+    <ol>
+      <li>One step on a batch of \(B\) examples moves the weights by \(\eta\) times the batch's average gradient.</li>
+      <li>\(B\) steps of batch size 1 move them by \(\eta\) times the <i>sum</i> of \(B\) single-example gradients, as long as those gradients barely change over the \(B\) small steps. That sum is \(B\) times the average.</li>
+      <li>So to cover the same ground per example seen, a batch \(B\) times bigger needs a learning rate about \(B\) times bigger: the <b>linear scaling rule</b>. It also gets \(\sqrt B\) times less noise, and the GPU does the \(B\) examples in about the time of one.</li>
+      <li>The rule leans on "the gradient barely changes", which holds only for small steps. That's where it breaks.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: when bigger batches stop paying</summary>
+    <ul>
+      <li><b>The curvature limit.</b> The learning rate can't grow forever: past \(2 / \lambda_{\max}\) (calculus 3) training explodes, however big the batch.</li>
+      <li><b>Past the critical batch size.</b> Once the batch gradient's noise is small next to its size, doubling the batch doubles the work per step but barely cuts the number of steps. Each problem has a batch size beyond which more hardware stops buying speed.</li>
+      <li><b>Early training.</b> At the start the gradient changes fast, so step 2 of the argument fails. Big-batch recipes ramp the learning rate up over the first few hundred steps (warmup, calculus 3).</li>
+    </ul>
+  </details>
+  <p class="gist">A tensor is an array that can live on a GPU and remember how it was made, so <code>backward()</code> can run the chain rule for you.</p>
   <h2>3. Tensors: arrays that remember</h2>
   <p>A PyTorch <b>tensor</b> is a NumPy array with two extra powers: it can live on a GPU, and if you ask, it records every operation done to it, so <code>.backward()</code> can run chapter 4's relay of blame automatically (<b>autograd</b>).</p>
   <div class="wide"><table class="rules">
@@ -176,6 +193,7 @@ x, y = next(iter(train_loader))      # x: (128, 1, 28, 28) images, y: (128,) lab
 
   <h2>6. The optimizer</h2>
   <p>The <b>optimizer</b> turns gradients into weight updates. <code>torch.optim.SGD(model.parameters(), lr=0.1)</code> is chapter 2's rule; <code>torch.optim.AdamW(model.parameters(), lr=1e-3)</code> adds momentum and a separate step size per weight, and is the usual default (stage 4 races them against each other). Either way, the loop doesn't change: <code>zero_grad</code>, <code>backward</code>, <code>step</code>.</p>
+  <p class="gist">The optimizer turns gradients into steps. AdamW adds momentum and a separate step size for each weight, and it's the usual default.</p>
   <div class="q" data-num="0.001" data-tol="0.0000001">
     <p>A config says <code>lr=1e-3</code>. What is that as a plain number?</p>
     <div class="why">\(10^{-3} = 0.001\) (Start 3's scientific notation). 1e-3 for Adam and 0.1 for plain SGD are common starting points.</div>
