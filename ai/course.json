@@ -2725,5 +2725,117 @@
     "sec": 7
    }
   ]
+ },
+ "features-and-leakage.html": {
+  "goals": [
+   "Clean a table: sentinel codes, missing values, scaling, one-hot encoding",
+   "Build a pipeline that learns every preprocessing step from training rows only",
+   "Handle a rare class with stratified splits, class weights and thresholds",
+   "Spot and fix leakage: target leaks, time splits, group splits, preprocessing before the split"
+  ],
+  "needs": [
+   "12-measuring-a-model.html",
+   "13-trees-and-boosting.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "Sentinel code",
+    "A special value like 999 or −1 meaning 'none' or 'unknown': turn it into a flag column."
+   ],
+   [
+    "Standardize",
+    "z = (x − mean) / std, with the mean and std from the training rows only."
+   ],
+   [
+    "Who needs scaling",
+    "Gradient descent, distances (kNN, clustering) and regularized models; trees don't."
+   ],
+   [
+    "One-hot encoding",
+    "One 0/1 column per category, so no fake order is invented."
+   ],
+   [
+    "Pipeline",
+    "Preprocessing + model as one object: fit learns everything from training rows; cross-validation refits it per fold."
+   ],
+   [
+    "Class weights",
+    "class_weight='balanced' makes rare examples count more: recall up, precision down, ranking (AUC) about the same."
+   ],
+   [
+    "Leakage",
+    "Information available while building the model that won't exist when it's used."
+   ],
+   [
+    "Target leak",
+    "A column filled in after the outcome (call duration, treatment given): it knows the answer."
+   ],
+   [
+    "Time split",
+    "Train on the past, test on the later period, whenever data has time in it."
+   ],
+   [
+    "Group split",
+    "Keep each person, device or place entirely in train or entirely in test (GroupKFold)."
+   ]
+  ],
+  "check": [
+   {
+    "q": "The bank's pdays column uses 999 for 'never contacted'. What's the best fix for a linear model?",
+    "options": [
+     "Add a 'contacted before' flag and stop treating 999 as a number of days",
+     "Leave it: 999 is far away, which is roughly right",
+     "Delete the rows with 999"
+    ],
+    "answer": 0,
+    "why": "96% of rows are 999: deleting them throws away the data, and as a number it drags every average.",
+    "sec": 2
+   },
+   {
+    "q": "You standardize all 41,000 rows, then split into train and test. What's wrong?",
+    "options": [
+     "The test rows helped set the mean and spread, so a little test information leaked into training",
+     "Nothing: scaling has no parameters",
+     "Standardizing must come after training"
+    ],
+    "answer": 0,
+    "why": "The leak is small for a scaler but large for feature selection or target encoding. A pipeline makes the habit automatic.",
+    "sec": 4
+   },
+   {
+    "q": "With 11% positives, class_weight='balanced' raises recall from 0.21 to 0.62. What happens to precision?",
+    "options": [
+     "It falls: more people are flagged, and a smaller share of them are real yeses",
+     "It rises with recall",
+     "It stays the same"
+    ],
+    "answer": 0,
+    "why": "Weighting moves the effective threshold; precision and recall trade off (chapter 12).",
+    "sec": 5
+   },
+   {
+    "q": "The interest rate alone scores AUC 0.77 on a random split and 0.50 on a time split. Why?",
+    "options": [
+     "The rate changes over time, so it acts like a calendar: a random split lets the model look up how neighboring days went",
+     "Interest rates are random",
+     "The time split has too few rows"
+    ],
+    "answer": 0,
+    "why": "On a time split the test period has rates never seen in training, which is what launch day looks like.",
+    "sec": 6
+   },
+   {
+    "q": "A model predicting customer churn uses 'number of support tickets in the last 30 days', computed on the day the data was pulled, after the churn happened. Is that a problem?",
+    "options": [
+     "Yes: it includes tickets filed after the moment of prediction, possibly about cancelling",
+     "No: support tickets are a real signal",
+     "Only if the classes are imbalanced"
+    ],
+    "answer": 0,
+    "why": "Rebuild the feature from what was known at prediction time: tickets in the 30 days before that moment.",
+    "sec": 6
+   }
+  ]
  }
 }

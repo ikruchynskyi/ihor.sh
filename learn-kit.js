@@ -78,7 +78,7 @@ main svg:not(.katex svg) { height: auto; }
   .q button.giveup, .q button.think { min-height: 40px; padding: 8px 6px !important; }
   .q li button { min-height: 44px; }
   .q .num input { min-height: 40px; font-size: 16px !important; }   /* 16px stops iOS from zooming into the field */
-  .code .ed > textarea, .code .ed > pre { font-size: 16px !important; }   /* both layers, so colors stay aligned
+  .code .ed > textarea, .code .ed > pre { font-size: 16px !important; }   /* both layers, so colors stay aligned */
 }
 .deeper { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--card) 85%, transparent); padding: 4px 16px; margin: 18px 0; border-radius: 0 10px 10px 0; }
 .deeper > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
@@ -87,7 +87,7 @@ main svg:not(.katex svg) { height: auto; }
 .levels > div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; background: var(--card); }
 .levels > div > b:first-child { display: block; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 @media (max-width: 640px) { .levels { grid-template-columns: 1fr; } }
-.katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; position: relative; }   /* relative: contains KaTeX's absolutely positioned MathML copy */
 `;
 document.head.insertAdjacentHTML("beforeend", `<style id="learn-kit">${css}</style>`);
 const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));

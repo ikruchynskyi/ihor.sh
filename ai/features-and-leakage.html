@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Features and Leakage</title>
+  <meta name="description" content="AI from scratch, stage 3: turning a raw table into columns a model can use (cleaning, sentinel codes, scaling, one-hot encoding, new features), pipelines that fit on training data only, class imbalance, and the leaks that make a model look brilliant until launch, on 10,000 real bank marketing calls." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 3.2em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; }
+    .wide { aspect-ratio: 2 / 1; }
+    .formula { text-align: center; }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Features and leakage · Stage 3: classic ML and judging models</p>
+  <h1>Features and leakage</h1>
+  <p class="lede">A model only sees the columns you hand it. Most of the work in real ML is making those columns honest and useful: cleaning codes that pretend to be numbers, putting columns on comparable scales, turning categories into numbers, and above all making sure no column, and no step of your process, quietly tells the model the answer. This lesson uses 10,297 real phone calls a Portuguese bank made to sell term deposits, 2008 to 2010, and the question the bank cared about: will this person say yes?</p>
+  <p class="muted">Data: the Bank Marketing dataset (Moro, Cortez and Rita, UCI Machine Learning Repository, CC BY 4.0), every fourth row of the full file, in date order.</p>
+
+  <h2>1. Look before you model</h2>
+  <p>Before any model: how many rows, which columns, what the answer looks like. Every box below reuses this one's table <code>df</code>.</p>
+  <div class="code" id="bank" data-title="Run it: the calls"><textarea>
+import io
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv(io.StringIO(get("/ai/data/bank.csv")))   # in a notebook: pd.read_csv(url)
+print(df.shape)
+print("share who said yes:", round((df["y"] == "yes").mean(), 3))
+df.head()
+</textarea></div>
+  <div class="q" data-num="88.6" data-tol="0.3">
+    <p>About 11.4% of calls ended in a yes. A model that says "no" to everyone: what accuracy, in percent?</p>
+    <div class="why">100 − 11.4 = 88.6%, without learning anything. Chapter 12's warning: on lopsided data, accuracy flatters. Section 5 deals with this.</div>
+  </div>
+
+  <h2>2. Cleaning: codes that pretend to be numbers</h2>
+  <p>Real tables are full of values that aren't what they look like. Here, <code>pdays</code> is "days since this person was last contacted", except that <b>999 means never contacted</b>. A model reading it as a number thinks never-contacted people were called 999 days ago: technically far away, but the real story is a yes/no fact. Category columns hide <code>"unknown"</code> the same way. The usual fixes: turn the code into its own yes/no column, and give missing values a sensible fill (often the median) plus a flag saying they were missing, because <i>being</i> missing often carries information.</p>
+  <div class="code" data-uses="bank" data-title="Run it: a sentinel code"><textarea>
+never = df["pdays"] == 999            # True/False per row: never contacted before
+print("never contacted:", round(never.mean(), 3))
+print("yes rate, never contacted:  ", round((df["y"][never] == "yes").mean(), 3))
+print("yes rate, contacted before: ", round((df["y"][~never] == "yes").mean(), 3))   # ~ flips True/False
+print("mean pdays as stored:", round(df["pdays"].mean(), 1), " without the code:", round(df["pdays"][~never].mean(), 1))
+print((df == "unknown").sum()[lambda counts: counts > 0])                          # "unknown" per column
+</textarea></div>
+  <div class="q" data-answer="b">
+    <p>A column "years at current job" uses −1 for "not employed". For a linear model, what's the cleanest fix?</p>
+    <ul><li data-k="a" data-says="A tree could split it off, but a linear model would treat −1 as one year less than 0.">Leave it: −1 is just a number</li><li data-k="b">Add a 0/1 column "not employed", and fill the −1s with a neutral value like 0</li><li data-k="c" data-says="That throws away everyone without a job, who may matter most.">Delete the rows with −1</li></ul>
+    <div class="why">The flag keeps the information (being unemployed may matter a lot); the fill keeps the number column meaningful. Trees cope better with codes, since they can split them off, but the flag helps them too.</div>
+  </div>
+
+  <h2>3. Scaling: who cares about units</h2>
+  <p>Age runs from 17 to 98, the interest rate from 0.6 to 5. Anything that measures distance or takes gradient steps cares: calculus 3 showed that stretched features make a stretched valley that gradient descent zigzags down, and regularization (chapter 11) punishes big weights, which depend on units. Two common rescalings:</p>
+  <p class="formula">\[ z = \frac{x - \mu}{\sigma} \ \ \text{(standardize: mean 0, spread 1)} \qquad x' = \frac{x - \min}{\max - \min} \ \ \text{(min-max: 0 to 1)} \]</p>
+  <p>Trees don't care: "is age &lt; 40?" asks the same question in any units. Linear models, neural networks and anything with distances (k-nearest neighbors, clustering) do.</p>
+  <div class="code" data-uses="bank" data-title="Run it: two scalings"><textarea>
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+cols = ["age", "campaign", "euribor3m", "nr.employed"]
+print(df[cols].describe().loc[["mean", "std", "min", "max"]].round(2))
+z = (df[cols] - df[cols].mean()) / df[cols].std(ddof=0)
+mm = (df[cols] - df[cols].min()) / (df[cols].max() - df[cols].min())
+print("same as StandardScaler:", np.allclose(z, StandardScaler().fit_transform(df[cols])))
+print("same as MinMaxScaler:  ", np.allclose(mm, MinMaxScaler().fit_transform(df[cols])))
+</textarea></div>
+  <p>One rule matters more than which scaling you pick: <b>the mean, spread, min and max come from the training data only</b>, and the same numbers are then applied to validation, test and real traffic. Section 4 shows how to make that automatic.</p>
+
+  <h2>4. Categories into numbers, and pipelines</h2>
+  <p>Models need numbers. For a category like job, writing admin = 1, blue-collar = 2, … invents an order (is a technician "between" two jobs?) that a linear model will take literally. <b>One-hot encoding</b> gives each category its own 0/1 column instead. Categories with a real order (education levels) can be numbered in that order. A column with thousands of categories (zip codes, product ids) is better replaced by counts or by learned embeddings (stage 6).</p>
+  <p>New columns from old ones are often the biggest win, because they say what you know about the problem: the hour and weekday from a timestamp, a ratio (debt ÷ income), a log of a skewed amount (probability 2), a flag for a code. Chapter 13's boosted trees find some interactions themselves; a well-chosen feature still beats hoping.</p>
+  <div class="code" data-uses="bank" data-title="Run it: one-hot and ordinal"><textarea>
+small = df[["job", "education"]].head(5)
+print(pd.get_dummies(small, columns=["job"], dtype=int))           # one 0/1 column per job seen
+
+order = ["illiterate", "basic.4y", "basic.6y", "basic.9y", "high.school", "professional.course", "university.degree"]
+print(small["education"].map({level: i for i, level in enumerate(order)}))   # a real order → numbers in that order
+</textarea></div>
+  <p>Every step above learns something from data: the scaler its means, the encoder its list of categories, an imputer its medians. Each must learn from the training rows only. A <b>pipeline</b> chains the steps with the model, so <code>fit</code> learns everything from the data you give it and <code>predict</code> reuses it, and cross-validation refits the whole chain inside every fold. <code>make_column_transformer</code> sends each group of columns to its own step.</p>
+  <pre class="static"><code>from sklearn.compose import make_column_transformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+
+prep = make_column_transformer((OneHotEncoder(handle_unknown="ignore"), category_columns),
+                               (StandardScaler(), number_columns))
+model = make_pipeline(prep, LogisticRegression(max_iter=2000))
+model.fit(X_train, y_train)          # the scaler's means and the encoder's categories: from training rows only
+model.predict(X_test)                # ...reused here, never refitted</code></pre>
+
+  <h2>5. Imbalance: when yes is rare</h2>
+  <p>With 11% yes, a model minimizing average loss learns that "no" is usually safe, and at the default threshold of 0.5 it finds few of the yeses. Three tools, from the simplest:</p>
+  <ul>
+    <li><b>Split with <code>stratify=y</code></b>, so train and test keep the same 11%.</li>
+    <li><b>Weight the classes</b>: <code>class_weight="balanced"</code> makes each rare example count as much as several common ones in the loss.</li>
+    <li><b>Move the threshold</b> (chapter 12), using what a missed yes and a wasted call each cost. Resampling (copying rare rows, dropping common ones) does roughly what weighting does, with more ways to go wrong.</li>
+  </ul>
+  <div class="code" id="imb" data-uses="bank" data-title="Run it: the same model, with and without class weights"><textarea>
+from sklearn.model_selection import train_test_split
+from sklearn.compose import make_column_transformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import recall_score, precision_score, roc_auc_score
+
+y = (df["y"] == "yes").astype(int)
+X = df.drop(columns=["y", "duration"])                # (why duration goes: section 6)
+cats = list(X.select_dtypes(exclude="number").columns)
+nums = [c for c in X.columns if c not in cats]
+Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, stratify=y, random_state=0)
+
+for weights in [None, "balanced"]:
+    prep = make_column_transformer((OneHotEncoder(handle_unknown="ignore"), cats), (StandardScaler(), nums))
+    model = make_pipeline(prep, LogisticRegression(max_iter=2000, class_weight=weights)).fit(Xtr, ytr)
+    guess = model.predict(Xte)
+    print(f"class_weight={weights}: accuracy {(guess == yte).mean():.3f}  recall {recall_score(yte, guess):.3f}"
+          f"  precision {precision_score(yte, guess):.3f}  AUC {roc_auc_score(yte, model.predict_proba(Xte)[:, 1]):.3f}")
+</textarea></div>
+  <div class="q" data-answer="a">
+    <p>Class weights roughly tripled the recall, accuracy fell, and the AUC didn't move. Why didn't the AUC move?</p>
+    <ul><li data-k="a">Weighting mostly shifts every score the same way, like moving the threshold, so the ranking of calls (which is all AUC measures) barely changes</li><li data-k="b" data-says="AUC depends on the scores, so it would move if the ranking changed.">AUC ignores the model's scores</li><li data-k="c" data-says="It changed which calls were flagged a lot: recall tripled.">The weights had no effect</li></ul>
+    <div class="why">AUC asks "is a random yes scored above a random no?" (chapter 12). Weighting changes where the 0.5 line falls on the scores, not their order, which is why picking a threshold from costs is often all you need.</div>
+  </div>
+
+  <h2>6. Leakage: the model that's too good</h2>
+  <p><b>Leakage</b> is when something available while you build the model won't be available when it's used, so the test score measures a world that doesn't exist. It's the most expensive bug in ML: everything works, the numbers are great, and the model fails at launch. Three kinds cover most real cases.</p>
+  <p><b>A column that knows the answer.</b> <code>duration</code> is how long the call lasted. Long calls are calls where the person was interested, so it predicts yes superbly, but nobody knows a call's length before making it. The dataset's own notes say to drop it for any realistic model. <b>A split that peeks at the future.</b> Below are the calls in time order: the yellow line is the share who said yes, the blue line the 3-month interest rate (euribor). After the 2008 crash, rates collapsed and people started saying yes far more often. A random split puts calls from the same weeks in both training and test, so the model can look up "what did people say when the rate was 1.06%?", and that column alone works like a calendar.</p>
+  <canvas id="time" class="wide" width="720" height="360" aria-label="Calls in time order: yes rate and interest rate, with the test rows marked"></canvas>
+  <div class="row">
+    <label><input type="radio" name="split" value="random" checked> random split</label>
+    <label><input type="radio" name="split" value="time"> time split (last 25% as test)</label>
+    <label><input type="checkbox" id="dur" checked> use <code>duration</code></label>
+  </div>
+  <p class="readout" id="r1"></p>
+  <p>The AUCs in the readout are real: a boosted-tree model (chapter 13) trained on this table in each of the four settings. Run them yourself:</p>
+  <div class="code" id="leaks" data-uses="bank" data-title="Run it: the same model, four ways"><textarea>
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+y = (df["y"] == "yes").astype(int)
+n = len(df)
+
+def auc_of(columns, split):
+    X = df[columns].copy()
+    for c in X.select_dtypes(exclude="number").columns:
+        X[c] = X[c].astype("category")                       # boosted trees can split categories directly
+    if split == "random":
+        tr, te = train_test_split(np.arange(n), test_size=0.25, stratify=y, random_state=0)
+    else:
+        tr, te = np.arange(int(n * 0.75)), np.arange(int(n * 0.75), n)    # train on the past, test on the future
+    model = HistGradientBoostingClassifier(categorical_features="from_dtype", random_state=0).fit(X.iloc[tr], y.iloc[tr])
+    return round(roc_auc_score(y.iloc[te], model.predict_proba(X.iloc[te])[:, 1]), 3)
+
+everything = [c for c in df.columns if c != "y"]
+honest = [c for c in everything if c != "duration"]
+print("random split, with duration:", auc_of(everything, "random"))
+print("random split, honest columns:", auc_of(honest, "random"))
+print("time split,   honest columns:", auc_of(honest, "time"))
+print("the interest rate alone, random split:", auc_of(["euribor3m"], "random"), "  time split:", auc_of(["euribor3m"], "time"))
+</textarea></div>
+  <p>The honest number is the last one with the honest columns: about 0.67, not 0.94. The interest rate alone drops from 0.77 to exactly 0.5, a coin flip, once it can't look up its neighbors. That's not the model getting worse; it's the test getting honest. Whenever the data has time in it, split by time, as the model will meet it.</p>
+  <p><b>A preprocessing step that saw the test rows.</b> The subtle kind. Fitting a scaler, choosing features, or filling missing values on all the data before splitting lets the test rows shape the training. Here is the classic demonstration, on pure noise: 100 people, 5,000 random columns, coin-flip labels. Pick the 20 columns that best match the labels using all 100 rows, then cross-validate.</p>
+  <div class="code" data-title="Run it: selecting features before splitting"><textarea>
+import numpy as np
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import make_pipeline
+
+rng = np.random.default_rng(0)
+X = rng.standard_normal((100, 5000))      # pure noise
+y = rng.integers(0, 2, 100)               # coin flips: nothing to learn
+
+chosen = SelectKBest(f_classif, k=20).fit_transform(X, y)      # chosen with all 100 labels in view
+print("select first, then cross-validate:", cross_val_score(LogisticRegression(), chosen, y, cv=5).mean())
+inside = make_pipeline(SelectKBest(f_classif, k=20), LogisticRegression())
+print("selection inside the pipeline:    ", cross_val_score(inside, X, y, cv=5).mean())
+</textarea></div>
+  <p>About 85% accuracy on coin flips, because each fold's test rows helped choose the columns. Inside a pipeline, every fold chooses its own columns from its own training rows, and the score falls to a coin flip, which is the truth. A scaler fitted on everything leaks far less, but the habit is the same: <b>everything that learns goes inside the pipeline</b>.</p>
+  <p>A fourth kind hides in the rows: the <b>same person, patient, or house in both training and test</b>. The model recognizes them instead of generalizing. Split by the group (scikit-learn's <code>GroupKFold</code>), so each person is entirely on one side.</p>
+  <div class="q" data-answer="c">
+    <p>A hospital model predicts pneumonia from patient records and scores 0.99 AUC. Its strongest feature is "antibiotics prescribed". What's wrong?</p>
+    <ul><li data-k="a" data-says="0.99 is suspiciously high, but the deeper problem is when that column gets its value.">Nothing: antibiotics are a real clue</li><li data-k="b" data-says="Imbalance changes thresholds, not what a column knows.">The classes are imbalanced</li><li data-k="c">Target leakage: antibiotics are prescribed after a diagnosis, so the column records the answer</li></ul>
+    <div class="why">Ask of every column: would I know this value at the moment the model has to decide? Treatment, final status, "closed by", the call's duration: all written after the outcome.</div>
+  </div>
+
+  <h2>7. A leak checklist</h2>
+  <table class="cmp">
+    <tr><th>Ask</th><th>If yes</th></tr>
+    <tr><td>Is any column filled in after the moment of prediction (treatment, duration, status, refund)?</td><td>Drop it, or rebuild it from what was known at that moment.</td></tr>
+    <tr><td>Does the data have time in it?</td><td>Split by time: train on the past, test on the later period.</td></tr>
+    <tr><td>Can the same person, device or place appear twice?</td><td>Split by group.</td></tr>
+    <tr><td>Did anything learn from data before the split (scaling, filling, selecting, encoding, deduplicating)?</td><td>Move it into a pipeline.</td></tr>
+    <tr><td>Is one feature suspiciously strong, or the score better than anyone expected?</td><td>Treat it as a leak until proven otherwise: look at that feature's importance (chapter 13) and how it's made.</td></tr>
+  </table>
+
+  <h2>8. What to carry forward</h2>
+  <ul>
+    <li>Look first: shape, the answer's balance, codes like 999 and "unknown". Turn codes into flags.</li>
+    <li>Scale for gradient descent, distances and regularization; trees don't need it. One-hot for categories without an order.</li>
+    <li>Everything that learns from data (scalers, encoders, imputers, feature selection) is fitted on training rows only: put it in a pipeline.</li>
+    <li>Rare positives: stratify, weight the classes or move the threshold, and judge with recall, precision and AUC, not accuracy.</li>
+    <li>Leakage: a column that knows the answer, a split that peeks at the future or at the same person, a step that saw the test rows. The honest score is the one that matches launch day.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Kaggle Learn's free "Data Leakage" lesson has more examples.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+import { say } from "/ai/plane.js";
+const $ = (id) => document.getElementById(id);
+
+// AUCs of a HistGradientBoostingClassifier on /ai/data/bank.csv, computed by the "four ways" box above.
+const AUC = { random: { dur: 0.934, honest: 0.756 }, time: { dur: 0.824, honest: 0.667 } };
+const rows = (await (await fetch("/ai/data/bank.csv")).text()).trim().split("\n");
+const head = rows.shift().split(","), iy = head.indexOf("y"), ie = head.indexOf("euribor3m"), im = head.indexOf("month");
+const calls = rows.map((r) => { const c = r.split(","); return { yes: c[iy] === "yes", rate: +c[ie], month: c[im] }; });
+const n = calls.length, W = 300;
+const rolling = calls.map((_, i) => { const a = Math.max(0, i - W / 2), b = Math.min(n, i + W / 2); let s = 0; for (let k = a; k < b; k++) s += calls[k].yes; return s / (b - a); });
+let seed = 7;
+const rand = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const randomTest = calls.map(() => rand() < 0.25);
+
+function draw() {
+  const split = document.querySelector("input[name=split]:checked").value, dur = $("dur").checked;
+  const cv = $("time"), g = cv.getContext("2d"), w = cv.width, h = cv.height, L = 44, R = w - 44, T = 28, B = h - 40;
+  const X = (i) => L + (i / (n - 1)) * (R - L), Yy = (v) => B - (v / 0.6) * (B - T), Yr = (v) => B - (v / 5.5) * (B - T);
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, w, h);
+  if (split === "time") { g.fillStyle = "rgba(252,98,85,.18)"; g.fillRect(X(Math.floor(n * 0.75)), T, R - X(Math.floor(n * 0.75)), B - T); }
+  else { g.fillStyle = "rgba(252,98,85,.55)"; calls.forEach((_, i) => randomTest[i] && i % 3 === 0 && g.fillRect(X(i), B + 4, 1, 8)); }
+  for (const [vals, Y, color] of [[calls.map((c) => c.rate), Yr, "#58c4dd"], [rolling, Yy, "#f4d35e"]]) {
+    g.strokeStyle = color; g.lineWidth = 2; g.beginPath(); vals.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke();
+  }
+  g.fillStyle = "#8f98a8"; g.font = "13px ui-monospace, monospace";
+  g.fillText("yellow: share saying yes (0–60%)   blue: interest rate (0–5.5%)", L, 18);
+  g.fillText("2008", L, h - 10); g.fillText("calls in time order →", w / 2 - 70, h - 10); g.fillText("2010", R - 34, h - 10);
+  g.fillStyle = "#fc6255"; g.fillText(split === "time" ? "test: the last quarter" : "test: a random 25% (red ticks)", R - 250, T + 18);
+  const a = AUC[split][dur ? "dur" : "honest"];
+  $("r1").textContent = `AUC ${a.toFixed(3)} · ` + (split === "random"
+    ? dur ? "both leaks: duration knows the answer, and test calls sit between training calls from the same weeks." : "duration gone, but the random split still lets the model look up each test call's neighbors in time."
+    : dur ? "honest split, but duration still knows the answer: no real call has its length before it's made." : "the honest number: what this model would score on the next months of real calls.");
+}
+document.querySelectorAll("input[name=split]").forEach((r) => (r.onchange = () => { draw(); if (r.value === "time" && r.checked) say("Train on the past, test on the future: like launch day.", "think"); }));
+$("dur").onchange = draw;
+draw();
+
+window.blipContext = () => ({ page: "AI from scratch, stage 3: features and leakage on the UCI bank marketing data: sentinel codes (pdays 999), scaling, one-hot encoding, pipelines fitted on training rows only, class imbalance (stratify, class_weight, thresholds), and leakage: target leakage (call duration), time leakage (random vs time split, euribor as a calendar), feature selection before splitting, group leakage", split: document.querySelector("input[name=split]:checked").value, useDuration: $("dur").checked });
+</script>
+</body>
+</html>
