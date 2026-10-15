@@ -22,7 +22,7 @@ if (i >= 0 && (me.goals || prev)) {
   const recall = (prev && C[prev.href]?.cards?.slice(0, 2)) ?? [];
   const top = box("margin: 18px 0 8px; border-left: 4px solid var(--accent);");
   const done = state.done[here];
-  top.innerHTML = (done ? `<div style="color:var(--green,#2f9e44)">✓ You finished this lesson (checkpoint ${done.score}/5). <a href="./review.html">Review deck</a></div>` : "")
+  top.innerHTML = (done ? `<div style="color:var(--green,#2f9e44)">✓ You ${done.testedOut ? "tested out of" : "finished"} this lesson (${done.testedOut ? "tested out" : `checkpoint ${done.score}/5`}). <a href="./review.html">Review deck</a></div>` : "")
     + (needs.length ? `<div><b>You need:</b> ${needs.map((l) => `<a href="./${l.href}">${state.done[l.href] ? "✓ " : ""}${esc(l.title)}</a>`).join(" · ")}</div>` : "")
     + (me.goals ? `<div><b>You'll be able to:</b></div><ul style="margin:4px 0">${me.goals.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>` : "")
     + (recall.length ? `<div><b>Quick recall</b> from <i>${esc(prev.title)}</i>: answer in your head, then open.</div>` + recall.map(([f, b]) => `<details style="margin:2px 0"><summary>${esc(f)}</summary>→ ${esc(b)}</details>`).join("") : "");

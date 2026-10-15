@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Placement Test · AI from scratch</title>
+  <meta name="description" content="Know some machine learning already? Test out of stages with 10 questions each (8 of 10 to pass). Lessons are marked done and concept cards added to your review deck." />
+  <style>
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #fff;
+      --accent: #c2410c;
+      --green: #2f9e44;
+      --amber: #f59f00;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 18px/1.7 ui-sans-serif, system-ui, sans-serif;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 32px 16px 120px;
+    }
+    .eyebrow {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eyebrow a {
+      color: inherit;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 2rem;
+      line-height: 1.25;
+    }
+    .lede {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-top: 4px;
+      margin-bottom: 20px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 20px 22px;
+      margin: 18px 0;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff !important;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 9px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .btn.secondary {
+      background: transparent;
+      color: var(--fg) !important;
+      border: 1px solid var(--line);
+    }
+    .btn.secondary:hover {
+      border-color: var(--fg);
+    }
+    .stage-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .stage-btn {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      color: var(--fg);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stage-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .stage-btn.done-stage {
+      border-color: var(--green);
+    }
+    .q-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .q-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--accent) 15%, transparent);
+      color: var(--accent);
+      margin-right: 6px;
+    }
+    .score-banner {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+  </style>
+  <script type="module" src="/learn-kit.js"></script>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Diagnostic</p>
+  <h1>Placement Test</h1>
+  <p class="lede">Already know some machine learning? Test out of stages (8 of 10 to pass). When you test out, lessons are marked finished and concept cards are added to your review deck so you don't miss anything. (Placement pays no XP.)</p>
+
+  <div class="stage-nav" id="stage-nav"></div>
+  <div id="test-area">Loading placement diagnostic...</div>
+</main>
+
+<script type="module">
+import { state, testOut, course, path } from "/ai/learn.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const STAGES = [
+  { id: "stage-0", title: "Stage 0 · Start here", label: "Stage 0" },
+  { id: "stage-1", title: "Stage 1 · The math of learning", label: "Stage 1: Math" },
+  { id: "stage-2", title: "Stage 2 · How a network learns", label: "Stage 2: Networks" },
+  { id: "stage-3", title: "Stage 3 · Classic ML and judging models", label: "Stage 3: Classic ML" },
+  { id: "stage-4", title: "Stage 4 · The engineer's toolkit", label: "Stage 4: Toolkit" },
+  { id: "zoo", title: "Model zoo", label: "Model Zoo" },
+  { id: "stage-5", title: "Stage 5 · Seeing and reading", label: "Stage 5: Vision & NLP" },
+  { id: "stage-6", title: "Stage 6 · LLM engineering", label: "Stage 6: LLMs" },
+  { id: "stage-7", title: "Stage 7 · Production", label: "Stage 7: Production" }
+];
+
+const urlParams = new URLSearchParams(location.search);
+let activeStageId = urlParams.get("stage") || "stage-0";
+if (!STAGES.find((s) => s.id === activeStageId)) activeStageId = "stage-0";
+
+async function init() {
+  const [examsData, courseData, lessonList] = await Promise.all([
+    fetch("./exams.json").then((r) => r.json()),
+    course,
+    path
+  ]);
+
+  renderStageNav(lessonList);
+  renderStageTest(activeStageId, examsData, courseData, lessonList);
+}
+
+function renderStageNav(lessonList) {
+  const nav = $("stage-nav");
+  nav.innerHTML = STAGES.map((s) => {
+    const stageLessons = lessonList.filter((l) => {
+      if (s.id === "zoo") return l.href.startsWith("zoo-");
+      const num = s.id.replace("stage-", "");
+      return l.stage.startsWith(`Stage ${num} `);
+    });
+    const allDone = stageLessons.length > 0 && stageLessons.every((l) => state.done[l.href]);
+    const isActive = s.id === activeStageId;
+    return `
+      <button type="button" class="stage-btn ${isActive ? "active" : ""} ${allDone ? "done-stage" : ""}" data-stage="${s.id}">
+        ${allDone ? "✓ " : ""}${esc(s.label)}
+      </button>
+    `;
+  }).join("");
+
+  nav.querySelectorAll("[data-stage]").forEach((btn) => {
+    btn.onclick = () => {
+      activeStageId = btn.dataset.stage;
+      history.replaceState(null, "", `?stage=${activeStageId}`);
+      init();
+    };
+  });
+}
+
+function renderStageTest(stageId, examsData, courseData, lessonList) {
+  const area = $("test-area");
+  const stageObj = STAGES.find((s) => s.id === stageId);
+  const titles = Object.fromEntries(lessonList.map((l) => [l.href, l.title]));
+
+  const stageLessons = lessonList.filter((l) => {
+    if (stageId === "zoo") return l.href.startsWith("zoo-");
+    const num = stageId.replace("stage-", "");
+    return l.stage.startsWith(`Stage ${num} `);
+  });
+
+  const allDone = stageLessons.length > 0 && stageLessons.every((l) => state.done[l.href]);
+
+  // If already finished, display status card
+  if (allDone) {
+    area.innerHTML = `
+      <div class="card" style="text-align:center; padding: 36px 20px;">
+        <div style="font-size: 2.2rem; margin-bottom: 8px;">✓</div>
+        <h2 style="margin: 0 0 8px;">You've already completed or tested out of ${esc(stageObj.title)}</h2>
+        <p style="color:var(--muted); max-width: 500px; margin: 0 auto 20px;">
+          All ${stageLessons.length} lessons in this stage are marked done in your browser.
+        </p>
+        <div style="display:flex; justify-content:center; gap: 12px; flex-wrap:wrap;">
+          <a class="btn" href="./">Continue where you left off →</a>
+          <button type="button" class="btn secondary" id="retake-test-btn">Retest anyway</button>
+        </div>
+      </div>
+    `;
+    $("retake-test-btn")?.addEventListener("click", () => {
+      buildAndShowQuestions();
+    });
+    return;
+  }
+
+  buildAndShowQuestions();
+
+  function buildAndShowQuestions() {
+    // 5 questions from exams.json
+    const crossPool = (examsData[stageId] || []).map((q) => ({
+      ...q,
+      lessonTitle: titles[q.lesson] || q.lesson
+    }));
+    const shuffledCross = [...crossPool].sort(() => Math.random() - 0.5).slice(0, 5);
+
+    // 5 questions from checkpoints
+    const checkPool = [];
+    for (const l of stageLessons) {
+      const checks = courseData[l.href]?.check || [];
+      checks.forEach((c) => {
+        checkPool.push({
+          ...c,
+          lesson: l.href,
+          lessonTitle: l.title
+        });
+      });
+    }
+    const shuffledChecks = [...checkPool].sort(() => Math.random() - 0.5).slice(0, 5);
+
+    const raw10 = [...shuffledCross, ...shuffledChecks];
+    const questions = raw10.map((q) => {
+      const originalAnswerText = q.options[q.answer];
+      const shuffledOpts = [...q.options].sort(() => Math.random() - 0.5);
+      const newAnswerIdx = shuffledOpts.indexOf(originalAnswerText);
+      return {
+        ...q,
+        options: shuffledOpts,
+        answer: newAnswerIdx
+      };
+    });
+
+    const firstTries = new Map();
+
+    area.innerHTML = `
+      <div class="card" style="background: color-mix(in srgb, var(--accent) 6%, transparent); border-color: var(--line); margin-bottom: 24px;">
+        <h2 style="margin:0 0 4px; font-size: 1.25rem;">Testing out of: ${esc(stageObj.title)}</h2>
+        <p style="margin:0; font-size: 0.95rem; color: var(--muted);">
+          10 questions from this stage. Score <b>8 of 10</b> or better to test out.
+        </p>
+      </div>
+
+      <div id="q-list">
+        ${questions.map((q, idx) => `
+          <div class="q" data-answer="${"abcde"[q.answer]}" data-idx="${idx}">
+            <div class="q-meta">
+              <span class="q-tag">Question ${idx + 1} of 10</span>
+              From <a href="./${q.lesson}" target="_blank" rel="noopener">${esc(q.lessonTitle)}</a>
+            </div>
+            <p>${esc(q.q)}</p>
+            <ul>
+              ${q.options.map((opt, optIdx) => `<li data-k="${"abcde"[optIdx]}">${esc(opt)}</li>`).join("")}
+            </ul>
+            <div class="why">${esc(q.why)}</div>
+          </div>
+        `).join("")}
+      </div>
+      <div id="result-slot"></div>
+    `;
+
+    area.querySelectorAll(".q").forEach((el) => window.learnKit?.setupQuestion(el));
+
+    addEventListener("learnkit:answer", async ({ detail: { q, right, first } }) => {
+      const idx = parseInt(q.dataset.idx, 10);
+      if (!firstTries.has(idx)) {
+        firstTries.set(idx, right);
+      }
+
+      if (firstTries.size === questions.length) {
+        let score = 0;
+        for (let i = 0; i < questions.length; i++) {
+          if (firstTries.get(i)) score++;
+        }
+
+        const passed = score >= 8;
+
+        if (passed) {
+          await testOut(stageLessons.map((l) => l.href));
+        }
+
+        const nextStageIdx = STAGES.findIndex((s) => s.id === stageId) + 1;
+        const nextStage = STAGES[nextStageIdx];
+
+        const slot = $("result-slot");
+        slot.innerHTML = `
+          <div class="card" style="text-align:center; padding: 32px 20px; border: 2px solid ${passed ? "var(--green)" : "var(--line)"};">
+            <div style="font-size: 2.2rem; margin-bottom: 6px;">${passed ? "🎉" : "📚"}</div>
+            <h2 style="margin: 0 0 6px;">${passed ? "Tested Out Successfully!" : "Placement Diagnostic Complete"}</h2>
+            <div class="score-banner" style="color: ${passed ? "var(--green)" : "var(--fg)"};">
+              Score: ${score} / 10 ${passed ? "✓ Passed" : "(8 needed to test out)"}
+            </div>
+            <p style="color:var(--muted); max-width: 520px; margin: 10px auto 20px;">
+              ${passed
+                ? `You've demonstrated solid understanding of ${esc(stageObj.title)}. All ${stageLessons.length} lessons have been marked as tested out, and their concept cards are now in your review deck!`
+                : `You scored ${score} of 10. ${esc(stageObj.title)} is the sweet spot for your learning. We recommend starting at the beginning of this stage!`
+              }
+            </p>
+            <div style="display:flex; justify-content:center; gap: 12px; flex-wrap:wrap;">
+              ${passed && nextStage
+                ? `<a class="btn" href="./placement.html?stage=${nextStage.id}">Test out of ${esc(nextStage.label)} →</a>
+                   <a class="btn secondary" href="./">Go to course path →</a>`
+                : passed
+                ? `<a class="btn" href="./">Continue on the path →</a>`
+                : `<a class="btn" href="./${stageLessons[0]?.href}">Start ${esc(stageLessons[0]?.title || "first lesson")} →</a>
+                   <button type="button" class="btn secondary" id="retry-stage-btn">Try again</button>`
+              }
+            </div>
+          </div>
+        `;
+
+        slot.scrollIntoView({ behavior: "smooth", block: "start" });
+        $("retry-stage-btn")?.addEventListener("click", () => location.reload());
+        renderStageNav(lessonList);
+      }
+    });
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -101,3 +101,14 @@ export function loadProgressCode(code) {
   for (const k of Object.keys(state)) delete state[k];
   Object.assign(state, structuredClone(EMPTY), next); save();
 }
+
+/** Test out of a group of lessons (Lane F): marks lessons done with testedOut: true and populates their cards, paying no XP. */
+export async function testOut(lessons) {
+  const courseData = await course;
+  for (const l of lessons) {
+    state.done[l] = { at: Date.now(), score: null, testedOut: true };
+    const cards = courseData[l]?.cards || [];
+    cards.forEach((_, i) => { state.cards[`${l}#${i}`] ??= { due: Date.now() + DAY, interval: 0, ease: 2.5, reps: 0 }; });
+  }
+  save();
+}
