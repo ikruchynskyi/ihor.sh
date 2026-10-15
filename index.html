@@ -241,7 +241,7 @@
     <article class="world">
       <header>
         <h3><small>WORLD 3</small>AI</h3>
-        <span class="onair">NEW</span>
+        <span class="onair" data-ai="status">NEW</span>
       </header>
       <p>One path from zero to junior ML engineer. Every idea three ways: a picture you drag, the math with real numbers, and Python you run right in the page, plus a practice notebook, a checkpoint and a review deck for every lesson.</p>
       <nav class="levels" aria-label="AI path">
@@ -258,7 +258,7 @@
       </nav>
       <script type="module">
         // your progress on the AI path (kept in this browser by /ai/learn.js): continue where you left off, ✓ per stage, cards due
-        const { state, path, dueCards } = await import("/ai/learn.js");
+        const { state, path, dueCards, progress } = await import("/ai/learn.js");
         const lessons = await path, done = state.done, n = lessons.filter((l) => done[l.href]).length;
         const start = document.querySelector('[data-ai="start"]'), next = lessons.find((l) => !done[l.href]);
         if (n && next && start) {
@@ -271,6 +271,8 @@
         }
         const due = dueCards().length, review = document.querySelector('[data-ai="review"]');
         if (n && review) review.querySelector(".lv i").textContent = due ? `${due} DUE` : "✓ CAUGHT UP";
+        const p = progress(), status = document.querySelector('[data-ai="status"]');
+        if (p.xp && status) status.textContent = `⚡ ${p.xp.toLocaleString()} XP${p.streak ? ` · 🔥 ${p.streak}` : ""}${due ? ` · ${due} DUE` : ""}`;
       </script>
     </article>
 
