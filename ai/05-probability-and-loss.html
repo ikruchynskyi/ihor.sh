@@ -46,6 +46,15 @@
     <p><b>Why only differences matter.</b> Add the same \(c\) to every score: each \(e^{s_i + c} = e^c \cdot e^{s_i}\), and the \(e^c\) appears on top and in every term of the bottom, so it cancels. Programs use this to stay safe: \(e^{1000}\) overflows to infinity, so they subtract the largest score first, which changes nothing mathematically and keeps every exponent ≤ 0.</p>
     <p><b>The ratio rule.</b> \(p_i / p_j = e^{(s_i - s_j)/T}\). A score 1 higher means \(e \approx 2.7\) times likelier; 2 higher, 7.4 times. As \(T \to 0\) the ratio explodes and the top score takes all; as \(T \to \infty\) every ratio goes to 1, a uniform guess.</p>
   </details>
+  <p class="gist">Softmax turns scores into probabilities in which only differences count: each extra point of score multiplies the odds by \(e\), and temperature stretches or flattens the differences.</p>
+  <details class="deeper"><summary>Why raise \(e\) to the scores, instead of just dividing by their total?</summary>
+    <ol>
+      <li>Scores can be negative, and probabilities can't. Dividing each score by the total would give negative "probabilities", or divide by zero when they cancel. We need something that turns any number into a positive one, keeps the order, and turns differences into ratios.</li>
+      <li>\(b^{s}\) for any base \(b > 1\) does all of that: \(b^{s_i} / b^{s_j} = b^{s_i - s_j}\), so a fixed score gap is a fixed odds ratio.</li>
+      <li>Every base is the same machine with rescaled scores: \(b^{s} = e^{s \ln b}\). Choosing a base is choosing a temperature, and the network can learn any scale it likes. So the base doesn't matter for what the model can say.</li>
+      <li>It matters for the slope. \(e\) is the base whose slope is itself (calculus 1), and that's what makes the gradient come out as the clean \(p - y\) in section 4. With any other base, a factor \(\ln b\) would tag along.</li>
+    </ol>
+  </details>
   <div class="q" data-num="0.75" data-tol="0.005">
     <p>Two answers with scores \(0\) and \(\ln 3 \approx 1.099\), at \(T = 1\). What probability does the second one get?</p>
     <div class="why">\(e^0 = 1\) and \(e^{\ln 3} = 3\), so \(p_2 = 3 / (1 + 3) = 0.75\). A score gap of \(\ln 3\) means "3 times as likely".</div>
@@ -88,6 +97,7 @@ print("SciPy agrees:", np.allclose(scipy_softmax([1000, 999]), softmax([1000, 99
     <p>Why a logarithm? Training data has many examples, and the probability of getting <em>all</em> of them right is a product \(p_1 p_2 p_3 \cdots\), a number that underflows to zero after a few hundred. The log turns the product into a sum, \(\ln(p_1 p_2 \cdots) = \ln p_1 + \ln p_2 + \cdots\), and the minus sign turns "maximize the probability of the data" into "minimize a loss". Minimizing cross-entropy <em>is</em> maximum likelihood.</p>
     <p><b>Units.</b> With \(\log_2\) it's measured in bits: \(p = 1/2\) costs 1 bit, \(p = 1/4\) costs 2. A model guessing uniformly among \(V\) words has loss \(\ln V\) per word. Language models report <b>perplexity</b> \(= e^{L}\): "as unsure as choosing uniformly among this many words". A perplexity of 20 over a 50,000-word vocabulary means the model has narrowed the next word down enormously.</p>
   </details>
+  <p class="gist">Cross-entropy charges \(-\ln\) of the probability given to the truth: nothing for confident and right, no upper limit for confident and wrong.</p>
   <div class="q" data-num="2">
     <p>The model gives the right answer probability 0.25. How many <b>bits</b> of surprise is that?</p>
     <div class="why">\(-\log_2 0.25 = \log_2 4 = 2\). As surprising as calling two coin flips in a row.</div>
@@ -135,7 +145,15 @@ def top_p(p, keep=0.9):
 samples = rng.choice(len(p), size=10_000, p=p)               # sampling: walk the line until u falls in a stretch
 pd.DataFrame({"probability": p, "share of 10,000 samples": np.bincount(samples, minlength=len(p)) / 10_000,
               "after top-p 0.9": top_p(p)}, index=words).round(3)
-</textarea></div>
+</textarea></div><p class="gist">A model knows a distribution, not an answer. Sampling rolls the dice; temperature decides how loaded they are.</p>
+  <details class="deeper"><summary>Where it breaks: probabilities that aren't beliefs</summary>
+    <ul>
+      <li><b>No "none of these".</b> Softmax always adds up to 1 over the answers it knows. A cat-or-dog classifier shown a photo of a car still splits 100% between cat and dog, often confidently. A high softmax probability says "this answer beats the others", not "I recognize this". Detecting inputs unlike the training data needs separate tools.</li>
+      <li><b>Overconfidence.</b> Big networks often say 0.99 when they're right far less than 99% of the time. Their probabilities need checking and rescaling (calibration, chapter 12) before anyone acts on them.</li>
+      <li><b>The long tail.</b> With 50,000 words, thousands of nonsense words each at 0.001% still add up to a few percent: one sampled word in 30 can come from the junk. That's what top-k and top-p cut off.</li>
+    </ul>
+  </details>
+  
 
   <h2>4. The gradient is "what you said minus what was true"</h2>
   <p>Here's the beautiful part. Put softmax and cross-entropy together and do the backprop from chapter 4, and the gradient for each score comes out as simply</p>

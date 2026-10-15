@@ -65,6 +65,15 @@
     <div class="why">Skewed pieces take longer than a die to get there (a single wait is very lopsided), but the sum of 30 already looks normal. The theorem needs independent pieces with finite variance; it doesn't care about their shape.</div>
   </div>
 
+  <p class="gist">Add up many small independent effects and the total is close to a bell curve, whatever each effect looks like on its own.</p>
+  <details class="deeper"><summary>Where it breaks: sums that never become bells</summary>
+    <ul>
+      <li><b>Tails too heavy.</b> The theorem needs each piece to have a finite variance. Some don't: for the Cauchy distribution (the ratio of two bell-curve numbers), the average of 1,000 samples is exactly as spread out as a single sample. Averaging doesn't help at all. Real data with a few gigantic values (outage hours, city sizes, file sizes) lives part of the way toward this.</li>
+      <li><b>Pieces that move together.</b> If the effects aren't independent (a storm delays every train at once, a crash moves every stock), their sum keeps big swings a bell curve would call impossible.</li>
+      <li><b>One piece that dominates.</b> A sum of one huge effect and many tiny ones keeps the huge one's shape.</li>
+      <li><b>The tails last.</b> The middle of the curve turns normal quickly; its far tails much more slowly. A bell curve fit to 30 train waits gets the typical day right and the one-in-a-thousand day wrong, which is the day risk estimates are about.</li>
+    </ul>
+  </details>
   <h2>4. Maximum likelihood: which knob makes the data least surprising?</h2>
   <p>You flip a coin 10 times and get 7 heads. What's your best guess for its chance of heads, \(p\)? For any \(p\), the probability of exactly that sequence is \(p^7 (1 - p)^3\), called the <b>likelihood</b> of \(p\). It's a function of the knob, with the data held fixed. Drag \(p\) and find the top:</p>
   <canvas id="lik" width="800" height="400" aria-label="Likelihood and log-likelihood of a coin's chance of heads"></canvas>
@@ -76,6 +85,7 @@
   <p class="readout" id="r4"></p>
   <p>The <b>maximum likelihood estimate</b> (MLE) is the \(p\) at the top, and here it's exactly what common sense says: \(7/10\). In practice you maximize the <b>log</b>-likelihood instead (green): same top, but products become sums (the math warm-up), and its derivative is easy:</p>
   <p class="formula">\[ \ell(p) = h \ln p + (n - h) \ln(1 - p), \qquad \ell'(p) = \frac{h}{p} - \frac{n - h}{1 - p} = 0 \;\Rightarrow\; p = \frac{h}{n} \]</p>
+  <p class="gist">Maximum likelihood picks the knob settings under which the data you actually saw would have been least surprising.</p>
   <div class="q" data-num="0.7" data-tol="0.001">
     <p>With 7 heads in 10 flips, where is the likelihood highest?</p>
     <div class="why">At \(p = 0.7\). Set the derivative of the log-likelihood to zero (Linear algebra 1's least squares did the same for a line) and the answer is the fraction of heads.</div>
@@ -95,6 +105,7 @@
     <p><b>Linear regression.</b> Suppose each target is the line plus bell-curve noise: \(y_i = w x_i + b + \epsilon_i\), \(\epsilon_i \sim \mathcal N(0, \sigma^2)\). Then \(-\ell = \frac{1}{2\sigma^2} \sum_i (y_i - w x_i - b)^2 + \text{const}\). With \(\sigma\) fixed, the only part that depends on the knobs is the sum of squared errors. <b>Minimizing MSE is maximum likelihood under Gaussian noise.</b></p>
     <p><b>Classification.</b> If the model says "class \(k\) with probability \(\hat p_k\)" and the truth is class \(y\), the likelihood of that example is \(\hat p_y\), so \(-\ell = -\sum_i \ln \hat p_{y_i}\). That's <b>cross-entropy</b>, chapter 5's loss. For two classes with a sigmoid, it's the coin's log-likelihood above with \(p\) coming from the model.</p>
   </details>
+  <p class="gist">Every standard loss is a negative log-likelihood: choosing a loss is choosing what you believe about the noise.</p>
   <div class="q" data-answer="c">
     <p>Your regression targets have rare, huge outliers (like Probability 2's outage hours). Squared error lets them dominate. In likelihood terms, why?</p>
     <ul><li data-k="a" data-says="The loss isn't the problem in itself; it's what the loss assumes about the noise.">Squared error has a bug with big numbers</li><li data-k="b" data-says="The model's capacity has nothing to do with it; even the right line gets pulled.">The model is too small</li><li data-k="c">MSE assumes bell-curve noise, where a 10σ error is essentially impossible, so the fit bends over backwards to avoid it</li></ul>
@@ -113,6 +124,7 @@
   <p>The <span class="b">blue</span> curve is the prior, <span class="g">green</span> the likelihood of the flips so far (scaled to fit), <span class="y">yellow</span> the posterior. With few flips, the prior holds the posterior back from extreme answers; with many, the data takes over and the prior hardly matters. The mystery coin's true \(p\) is hidden. Flip until you're sure.</p>
   <p>The top of the posterior is the <b>MAP</b> (maximum a posteriori) estimate:</p>
   <p class="formula">\[ \hat p_{\text{MAP}} = \frac{h + a - 1}{n + a + b - 2} \qquad \text{with } a = b = 2: \quad \frac{h + 1}{n + 2} \]</p>
+  <p class="gist">A prior is what you believed before; the posterior is prior times likelihood, and the data outweighs the prior as it piles up.</p>
   <div class="q" data-num="0.667" data-tol="0.003">
     <p>Prior Beta(2, 2), then 3 heads and 1 tail. What's the MAP estimate?</p>
     <div class="why">Posterior Beta(5, 3); its peak is \((5 - 1)/(5 + 3 - 2) = 4/6 \approx 0.667\), a little less extreme than the MLE's 3/4. With a = b = 2 the MAP is \((h + 1)/(n + 2)\): exactly the "add one to each count" smoothing from P1's spam filter. Smoothing was a prior all along.</div>
@@ -125,6 +137,7 @@
   <canvas id="ridge" width="800" height="400" aria-label="Least squares slope and MAP slope under a Gaussian prior"></canvas>
   <div class="row"><label>prior spread τ <input type="range" id="tau" min="0.02" max="2" step="0.01" value="0.3"> <b id="tauV" class="math"></b></label><button id="newPts">New noisy points</button></div>
   <p class="readout" id="r6"></p>
+  <p class="gist">L2 regularization is a bell-curve prior on the weights that says "probably small"; its strength is how sure you are of that.</p>
   <div class="q" data-answer="b">
     <p>When does the prior matter most?</p>
     <ul><li data-k="a" data-says="With lots of data the likelihood term grows with n while the prior stays the same size, so the prior fades.">With lots of data</li><li data-k="b">With little or noisy data, or many weights per example</li></ul>

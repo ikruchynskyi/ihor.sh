@@ -1454,6 +1454,17 @@
     "answer": 0,
     "why": "p − 1 = −0.1: a small push up, since it's already fairly confident.",
     "sec": 4
+   },
+   {
+    "q": "Why do the gradients p − y for all the scores always add up to zero?",
+    "options": [
+     "The probabilities add up to 1 and so does y, so whatever the right answer gains, the wrong ones lose",
+     "Because the loss is zero at the minimum",
+     "Because softmax ignores the largest score"
+    ],
+    "answer": 0,
+    "why": "Σ(pᵢ − yᵢ) = 1 − 1 = 0. That's also why adding the same number to every score changes nothing: no gradient can push all scores up together.",
+    "sec": 4
    }
   ]
  },
@@ -1543,6 +1554,17 @@
     ],
     "answer": 1,
     "why": "Noise ∝ 1/√B.",
+    "sec": 4
+   },
+   {
+    "q": "Why does doubling the batch size not halve the gradient's noise?",
+    "options": [
+     "Independent errors partly cancel: the variance of an average of N samples is σ²/N, so the spread falls only like 1/√N",
+     "Because bigger batches use a smaller learning rate",
+     "Because the gradient of a batch is always exact"
+    ],
+    "answer": 0,
+    "why": "Doubling N divides the noise by √2 ≈ 1.41. Halving it takes four times the batch.",
     "sec": 4
    }
   ],
@@ -1638,6 +1660,17 @@
     "answer": 0,
     "why": "λ = σ²/τ².",
     "sec": 7
+   },
+   {
+    "q": "Why is minimizing mean squared error the same as maximum likelihood when the noise is a bell curve?",
+    "options": [
+     "The bell curve's log-density is −(y − ŷ)²/2σ² plus a constant, so the negative log-likelihood is the sum of squared errors, scaled",
+     "Because squared error is always the best loss",
+     "Because the bell curve has no outliers"
+    ],
+    "answer": 0,
+    "why": "Taking the log turns the product of densities into a sum, and the exponent of each bell curve is a squared error. Laplace noise would give absolute error instead.",
+    "sec": 5
    }
   ]
  },

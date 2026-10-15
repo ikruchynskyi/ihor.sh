@@ -38,6 +38,7 @@
   </div>
   <p class="readout" id="r1"></p>
   <p>Left and right edges miss by an amount proportional to \(1/n\); the middle is far better, with errors like \(1/n^2\), the same pattern as forward vs central differences in Calculus 1.</p>
+  <p class="gist">An integral adds up thin strips. Taking each strip's height from its middle makes the sum accurate long before the strips get thin.</p>
   <div class="q" data-num="0.3333" data-tol="0.001" data-show="1/3">
     <p>What is the exact area under \(x^2\) from 0 to 1? (Slide n up and watch where the sums go.)</p>
     <div class="why">\(\int_0^1 x^2\,dx = \tfrac13\). Section 2 shows how to get it without any strips: an antiderivative of \(x^2\) is \(x^3/3\), and \(1/3 - 0 = 1/3\).</div>
@@ -50,6 +51,7 @@
   <p class="legend"><i style="background:#58c4dd"></i>f(t) = 1 + 0.8 sin 2t <i style="background:#f4d35e"></i>area so far A(x) <i style="background:#83c167"></i>A's tangent</p>
   <p class="readout" id="r2"></p>
   <p>So to compute \(\int_a^b f\), find any function \(F\) whose derivative is \(f\) (an <b>antiderivative</b>) and subtract: \(\int_a^b f(x)\,dx = F(b) - F(a)\). Every rule from Calculus 1 read backwards is an integration rule.</p>
+  <p class="gist">The area grows at a rate equal to the curve's height, so integrating undoes differentiating.</p>
   <details class="deeper"><summary>Antiderivatives worth knowing</summary>
     <table class="rules">
       <tr><th>\(f(x)\)</th><th>an antiderivative \(F(x)\)</th></tr>
@@ -73,6 +75,7 @@
     <label>b <input type="range" id="nb" min="-4" max="4" step="0.1" value="1"> <b id="nbV" class="math"></b></label>
   </div>
   <p class="readout" id="r3"></p>
+  <p class="gist">For continuous values, probability is area under a density. The density is probability per unit; only its total area has to be 1.</p>
   <div class="q" data-answer="a">
     <p>Can a density be bigger than 1?</p>
     <ul><li data-k="a">Yes: only the area has to be at most 1</li><li data-k="b" data-says="Set σ to 0.1 and read the peak.">No: it's a probability, so it can't exceed 1</li></ul>
@@ -98,6 +101,22 @@
   <p class="legend"><i style="background:#f4d35e"></i>running estimate <i style="background:#58c4dd"></i>truth ± one standard error</p>
   <p class="readout" id="r4"></p>
   <p>The estimate wanders inside a band that narrows like \(\sigma/\sqrt N\), where \(\sigma\) is the spread of a single sample (here \(\sqrt2\)). That square root is the law of the land for every minibatch: <b>to halve the noise you need four times the data</b>. It's why gradient noise drops slowly as batches grow, and why huge batches give diminishing returns.</p>
+  <p class="gist">The loss you care about is an average over every possible input; a batch estimates it, with noise that shrinks only like one over the square root of its size.</p>
+  <details class="deeper"><summary>Why does the noise shrink like \(1/\sqrt{N}\), and not like \(1/N\)?</summary>
+    <ol>
+      <li>Each sample's loss \(\ell_i\) wanders around the true average with spread \(\sigma\), that is variance \(\sigma^2\).</li>
+      <li>For independent samples, variances add: the sum \(\ell_1 + \dots + \ell_N\) has variance \(N\sigma^2\). (Square the sum's distance from its average and the cross terms, one sample's error times another's, average out to zero because neither tells you anything about the other.)</li>
+      <li>The batch average divides the sum by \(N\), which divides its variance by \(N^2\): \(N\sigma^2 / N^2 = \sigma^2 / N\).</li>
+      <li>Spread is the square root of variance: \(\sigma / \sqrt{N}\). The errors partly cancel each other, but only partly: their total grows like \(\sqrt N\) while the count grows like \(N\).</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: when a sample isn't the world</summary>
+    <ul>
+      <li><b>Samples that repeat each other.</b> Consecutive video frames, or the same customer's 50 rows, aren't independent: step 2's cross terms don't cancel, and 1,000 such rows can carry the information of 20. The noise is far bigger than \(\sigma/\sqrt N\) suggests. That's why shuffling, and splitting by customer (stage 3), matter.</li>
+      <li><b>Rare huge values.</b> If one input in a million has a loss a billion times bigger, \(\sigma\) is enormous and the average jumps every time one shows up. Heavy tails make averages settle slowly or never.</li>
+      <li><b>The wrong world.</b> A batch from the training data estimates the loss on the training world. If real inputs come from somewhere else (phone photos instead of scans), no amount of \(N\) fixes it: ML strategy's data mismatch.</li>
+    </ul>
+  </details>
   <div class="q" data-num="4">
     <p>Your batch gradient is too noisy. How many times bigger must the batch be to cut its noise in half?</p>
     <div class="why">Noise \(\propto 1/\sqrt N\), so half the noise needs \(\sqrt N\) twice as big: \(N\) four times as big. Ten times less noise costs a hundred times more data.</div>
