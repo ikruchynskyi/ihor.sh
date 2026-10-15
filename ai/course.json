@@ -3061,5 +3061,117 @@
     "sec": 6
    }
   ]
+ },
+ "l3-svd.html": {
+  "goals": [
+   "Read A = UΣVᵀ as rotate, stretch, rotate, and find singular values with NumPy",
+   "Relate singular values to eigenvalues of AᵀA and to the condition number",
+   "Build the best rank-k approximation and judge how many layers to keep",
+   "Use the SVD for PCA, for filling in missing ratings, and for least squares (the pseudo-inverse)"
+  ],
+  "needs": [
+   "l2-eigenvectors-and-pca.html",
+   "l1-systems-and-inverses.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "SVD",
+    "A = UΣVᵀ: rotate (Vᵀ), stretch along the axes (Σ), rotate (U). Every matrix has one."
+   ],
+   [
+    "Singular values",
+    "The stretches σ₁ ≥ σ₂ ≥ … ≥ 0: the ellipse's semi-axes for a 2×2 matrix."
+   ],
+   [
+    "σ² and AᵀA",
+    "Singular values squared are the eigenvalues of AᵀA; its eigenvectors are V."
+   ],
+   [
+    "Condition number",
+    "σ₁ / σ_min: how stretched the ellipse is, and how much errors get magnified."
+   ],
+   [
+    "Rank-k approximation",
+    "Keep the k biggest layers σᵢuᵢvᵢᵀ: the closest rank-k matrix (Eckart–Young)."
+   ],
+   [
+    "Energy",
+    "Σσᵢ² over the kept layers ÷ the total: how much of the matrix they hold."
+   ],
+   [
+    "PCA via SVD",
+    "SVD of the centered data: rows of Vᵀ are the components, σ²/(n−1) the variances."
+   ],
+   [
+    "Pseudo-inverse",
+    "A⁺ = VΣ⁺Uᵀ: invert each nonzero stretch; gives least squares and the smallest-norm answer."
+   ],
+   [
+    "Low-rank factors",
+    "Ratings ≈ people's tastes · films' qualities: a few hidden factors explain the table."
+   ],
+   [
+    "LoRA",
+    "Fine-tune with ΔW = BA of rank r: 2·d·r trainable numbers instead of d²."
+   ]
+  ],
+  "check": [
+   {
+    "q": "What does the SVD say every matrix does to the plane?",
+    "options": [
+     "Rotate, stretch along the axes, rotate",
+     "Only stretch along its eigenvectors",
+     "Only rotate"
+    ],
+    "answer": 0,
+    "why": "A = UΣVᵀ: Vᵀ rotates, Σ stretches, U rotates. Eigenvectors needn't exist or be at right angles.",
+    "sec": 1
+   },
+   {
+    "q": "A matrix has singular values 10 and 0.01. What does that tell you?",
+    "options": [
+     "It's badly conditioned (condition number 1,000): solving with it magnifies errors",
+     "It's a rotation",
+     "Its determinant is 10"
+    ],
+    "answer": 0,
+    "why": "σ₁/σ₂ = 1,000: the ellipse is very thin.",
+    "sec": 2
+   },
+   {
+    "q": "Keeping the 20 biggest layers of a photo's SVD gives…",
+    "options": [
+     "The closest possible rank-20 version of the photo",
+     "A random 20% of the pixels",
+     "The photo's 20 brightest rows"
+    ],
+    "answer": 0,
+    "why": "The Eckart–Young theorem: no rank-20 matrix is closer.",
+    "sec": 3
+   },
+   {
+    "q": "In the recommender, why do two singular values stand out?",
+    "options": [
+     "The ratings were made from two hidden tastes, and the SVD found that the table is close to rank 2",
+     "There are two films",
+     "Two people rated everything"
+    ],
+    "answer": 0,
+    "why": "A few big singular values mean a few hidden factors explain most of the table.",
+    "sec": 5
+   },
+   {
+    "q": "LoRA with rank 8 on a 4,096 × 4,096 layer trains how many numbers?",
+    "options": [
+     "65,536",
+     "16.8 million",
+     "4,096"
+    ],
+    "answer": 0,
+    "why": "2 × 4,096 × 8: two thin matrices whose product is the update.",
+    "sec": 7
+   }
+  ]
  }
 }
