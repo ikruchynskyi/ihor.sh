@@ -6,6 +6,7 @@ import { Mixer, FirDecimator, firLowpass } from "./dsp.ts";
 import { spectrumOfIQ, Waterfall } from "./waterfall.ts";
 import { MeteorReceiver, WIDTH, composite, align } from "./meteor.ts";
 import { PRESETS, canMake, render, irApid, fillGaps, rotate180, Spread, MapView, type Picture } from "./meteor-image.ts";
+import { synthesize, score } from "./meteor-sim.ts";
 import { Projector, rowTimes, drawLines, graticule, drawCities, drawHome, drawCaption, GEOMETRY, type Proj } from "./meteor-map.ts";
 import { passClock } from "./pass-clock.ts";
 
@@ -55,7 +56,8 @@ lab(el("rd-lab"), {
     clipShare = 0.8 * clipShare + 0.2 * (clipped / cu8.length);
     showLevel();
     const iq = chain.dec.process(chain.mix.process(Float32Array.from(cu8, (v) => (v - 127.5) / 127.5)));
-    wf.push(spectrumOfIQ(iq, 512, 8));
+    const spec = spectrumOfIQ(iq, 512, 8);
+    wf.push(spec); signalLevel(spec, chain.fs); lastChunk = performance.now(); source = "dongle";
     if (!decodingFile && el<HTMLInputElement>("live").checked) {
       if (!rx || rx.fs !== chain.fs) newDecoder(chain.fs);
       rx!.push(iq);
@@ -158,7 +160,7 @@ let dctx = { sat: "meteor-m2-3", ref: Date.now() };
 
 function newDecoder(fs: number, sat = el<HTMLSelectElement>("sat").value, ref = Date.now()) {
   dctx = { sat, ref };
-  rx = new MeteorReceiver(fs);
+  rx = new MeteorReceiver(fs); seen = { acquired: false, frames: 0, proven: false, images: 0, locked: false };
   drawn.clear();
   el("pics").innerHTML = "";
   el("combine").hidden = el("c-fig").hidden = true;
@@ -166,6 +168,7 @@ function newDecoder(fs: number, sat = el<HTMLSelectElement>("sat").value, ref = 
 }
 
 function paint() {
+  health();
   if (!rx) return;
   const st = rx.stats, pk = rx.packets.stats;
   el("dstat").textContent = `${st.locked ? "🔒 locked" : "searching"} · offset ${(st.freqHz / 1000).toFixed(2)} kHz (Doppler + dongle error, tracked automatically) · ${st.frames} frames · ${pk.packets} packets · ${pk.images} picture strips · error correction: ${st.rsProven ? `${st.rsFixed} bytes repaired, ${st.rsBad} frames beyond repair` : st.frames ? `no frame passed yet (${st.rsBad} tried)` : "waiting"}`;
@@ -198,6 +201,74 @@ function paint() {
   comboMenus();
 }
 setInterval(paint, 1000);
+
+// --- "is it working?": the five stages in plain words, a log of what happened, and the self-test ---
+let source: "dongle" | "file" | "self-test" | null = null, lastChunk = 0, floor: Float32Array | null = null, snrDb = 0;
+let seen = { acquired: false, frames: 0, proven: false, images: 0, locked: false };
+/** How far the satellite's band (±40 kHz) stands above the noise floor, in dB, from the waterfall's spectrum. The floor is
+ *  learned per frequency (it falls at once, and creeps up 0.1 dB a minute, so a pass doesn't erase itself), and a band
+ *  beside the signal (62–74 kHz) is subtracted, so the dongle filter's shape and the floor's own wobble cancel: noise
+ *  alone reads about 0 dB. The scale is compressed: Es/N0 of 1, 3 and 8 dB read about 1.9, 2.8 and 5.1. */
+function signalLevel(spec: Float32Array, fs: number) {
+  const n = spec.length; if (!floor || floor.length !== n) floor = spec.slice();
+  const fl = floor;
+  for (let i = 0; i < n; i++) fl[i] = spec[i] < fl[i] ? fl[i] + 0.2 * (spec[i] - fl[i]) : fl[i] + 0.0002;
+  const band = (f0: number, f1: number) => { let s = 0, k = 0; for (let i = 0; i < n; i++) { const f = Math.abs((i / n - 0.5) * fs); if (f >= f0 && f <= f1) { s += spec[i] - fl[i]; k++; } } return k ? s / k : 0; };
+  snrDb = 0.9 * snrDb + 0.1 * (band(0, 40e3) - band(62e3, 74e3));
+}
+function hlog(text: string) {
+  const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  el("hlog").insertAdjacentHTML("afterbegin", `<li>${t} · ${text}</li>`);
+}
+function health() {
+  const live = source === "dongle" && performance.now() - lastChunk < 3000, st = rx?.stats, pk = rx?.packets.stats;
+  const good = st ? st.frames - st.rsBad : 0, clarity = st && st.evm > 0 ? -10 * Math.log10(st.evm) : 0;
+  const row = (light: string, title: string, text: string) => `<li>${light} <b>${title}:</b> ${text}</li>`;
+  const items = [
+    !source ? row("⚪", "Dongle", "not started. Pick a source at the top, or decode a recording below.")
+      : source !== "dongle" ? row("🟢", "Input", source === "file" ? "reading the recording." : "the self-test's synthetic pass.")
+      : !live ? row("🔴", "Dongle", "no samples in the last 3 seconds: is it still connected?")
+      : clipShare * 100 >= 0.5 ? row("🟡", "Dongle", "samples arriving, but overloaded: lower the gain until the input level line says fine.")
+      : row("🟢", "Dongle", "samples arriving, no overload."),
+    source !== "dongle" ? row("⚪", "Signal", "measured live only (from the waterfall).")
+      : snrDb >= 2 ? row("🟢", "Signal", `the satellite's band stands ${snrDb.toFixed(1)} dB above the noise: enough to decode (it takes about 2 dB on this meter).`)
+      : snrDb >= 0.7 ? row("🟡", "Signal", `${snrDb.toFixed(1)} dB above the noise: there is a signal, maybe too weak to decode (about 2 dB is needed).`)
+      : row("⚪", "Signal", `nothing above the noise (${snrDb.toFixed(1)} dB). Normal while the satellite is below the horizon; during a pass, the antenna isn't hearing it (obstruction, low pass, or the wrong frequency).`),
+    !rx ? row("⚪", "Carrier", "the decoder hasn't started.")
+      : rx.acquired ? row("🟢", "Carrier", `found the satellite's exact frequency, ${(st!.freqHz / 1000).toFixed(2)} kHz from where we're tuned (that's Doppler plus the dongle's own error), and following it.`)
+      : row("⚪", "Carrier", "searching for the satellite's frequency."),
+    !st?.frames ? row("⚪", "Data", rx?.acquired ? `no frames yet. Signal clarity about ${clarity.toFixed(1)} dB; frames need about 2 dB or more.` : "no frames yet.")
+      : st.rsProven ? row(good >= st.frames / 2 ? "🟢" : "🟡", "Data", `${st.frames} frames; error correction accepted ${good} (${((100 * good) / st.frames).toFixed(0)}%) and repaired ${st.rsFixed} bytes in them. Error correction accepting a frame means it is genuine Meteor-format data, not noise.`)
+      : row("🟡", "Data", `${st.frames} frames, but error correction hasn't accepted one yet: the signal is too noisy so far.`),
+    !pk?.images ? row("⚪", "Pictures", "none yet.")
+      : row("🟢", "Pictures", `${pk.images} strips in ${rx!.packets.channels.size} channel${rx!.packets.channels.size > 1 ? "s" : ""}. Make a picture below and check that the coastlines fit.`),
+  ];
+  el("health").innerHTML = items.join("");
+  if (!rx) return;
+  if (rx.acquired && !seen.acquired) hlog(`carrier found, ${(st!.freqHz / 1000).toFixed(2)} kHz off`);
+  if (!rx.acquired && seen.acquired) hlog("lost the carrier: searching again");
+  if (st!.frames && !seen.frames) hlog("first frame decoded");
+  if (st!.rsProven && !seen.proven) hlog("error correction accepted a frame: this is genuine Meteor-format data, not noise");
+  if (pk!.images && !seen.images) hlog("first picture strip");
+  if (seen.locked && !st!.locked) hlog(`signal lost after ${st!.frames} frames`);
+  seen = { acquired: rx.acquired, frames: st!.frames, proven: st!.rsProven, images: pk!.images, locked: st!.locked };
+}
+setInterval(() => { if (!rx) health(); }, 1000);
+
+el("selftest").addEventListener("click", async () => {
+  if (decodingFile) { status.textContent = "Already decoding; wait for it to finish."; return; }
+  decodingFile = true; source = "self-test";
+  hlog("self-test: building a synthetic Meteor-M2 3 pass (3 channels, Doppler, noise at about 3 dB)…");
+  await new Promise((r) => setTimeout(r, 30));
+  const fs = 204800, sim = synthesize({ lines: 12, apids: [64, 65, 68], qShift: -0.5, doppler: (t) => 2100 - 60 * t, sigma: 0.36, start: Date.now() - 60e3 });
+  newDecoder(fs, "meteor-m2-3", Date.now());
+  for (let i = 0; i < sim.iq.length; i += 65536) { rx!.push(sim.iq.subarray(i, i + 65536)); paint(); await new Promise((r) => setTimeout(r, 0)); }
+  decodingFile = false; paint();
+  const { good, checked } = score(rx!.packets.channels.get(64)?.rows ?? []), ok = rx!.stats.rsProven && checked >= 500 && good === checked;
+  const verdict = ok ? `✓ Self-test passed: ${rx!.stats.frames} of ${sim.frames} frames decoded, ${checked} picture blocks, every one exactly right.`
+    : `✗ Self-test failed: ${rx!.stats.frames} of ${sim.frames} frames, ${good} of ${checked} blocks right. The decoder is broken in this browser; please report it.`;
+  hlog(verdict); status.textContent = verdict;
+});
 
 // --- combining channels into one color picture ---
 let comboSet = "";
@@ -330,7 +401,7 @@ async function decodeFile(f: Blob, name: string) {
     ? Date.UTC(+gqrxDate[1], +gqrxDate[2] - 1, +gqrxDate[3], +gqrxDate[4], +gqrxDate[5])
     : (f as File).lastModified ?? Date.now();
 
-  decodingFile = true;
+  decodingFile = true; source = "file";
   const satMatch = name.match(/meteor-m2-\d/)?.[0] ?? el<HTMLSelectElement>("sat").value;
   newDecoder(fs, satMatch, ref);
   el("pics").scrollIntoView({ behavior: "smooth", block: "start" });

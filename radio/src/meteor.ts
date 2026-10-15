@@ -183,6 +183,9 @@ export class MeteorReceiver {
   private frameBits: number[] | null = null; private sinceSync = 0;
   private rsDual: boolean | null = null; // which byte basis the Reed-Solomon code uses, once a frame proves it
 
+  /** Whether the satellite's carrier frequency has been found (the z⁴ spike stood out). */
+  get acquired() { return this.freqKnown; }
+
   readonly fs: number;
   constructor(fs: number) {
     this.fs = fs; this.sps = fs / SYM_RATE; this.rate = this.sps; this.t = this.sps * 2 + 0.3;
