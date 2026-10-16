@@ -92,6 +92,9 @@ If their last Japanese had a mistake, put ONE short friendly correction in "fix"
 Answer with the JSON object only.`;
   const messages = [{ role: "system", content: system }, ...turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }))];
   if (!turns.length || turns.at(-1)!.role === "assistant") messages.push({ role: "user", content: "(Start the conversation: greet me and ask me something.)" });
+  // The reply, its word split and the meme fields usually take 550–770 tokens, and the model sometimes pads its JSON with
+  // whitespace: at 900 a reply could be cut off mid-JSON on all three tries (a 502; 2 of 5 calls for one long English
+  // question, 2026-10-16), so it gets 2000.
   // Local reasoning models now and then leave the answer in their thinking (empty content) or garble channels (Ollama answers 500):
   // asking again fixes both, within one time limit for the whole turn
   const signal = AbortSignal.timeout(150_000);
@@ -100,7 +103,7 @@ Answer with the JSON object only.`;
     try {
       const r = await fetch(`${OLLAMA}/api/chat`, {
         method: "POST", signal,
-        body: JSON.stringify({ model: MODEL, stream: false, think: false, format: SCHEMA, options: { num_predict: 900, temperature: 0.7 }, messages }),
+        body: JSON.stringify({ model: MODEL, stream: false, think: false, format: SCHEMA, options: { num_predict: 2000, temperature: 0.7 }, messages }),
       });
       if (!r.ok) throw new Error(`local model: ${r.status}`);
       const o = JSON.parse((await r.json()).message.content) as Reply;
