@@ -17,6 +17,8 @@
 
 ## Chapters
 
+**Status 2026-10-15: all 21 chapters are built** (`course/01-…` to `21-weather-satellites.html`), each with its runnable script in `course/code/` (`npm run course-check`: all pass). Track B (ham licenses) and Track C (ARRL companion) are built too. What follows is the design each chapter was built from.
+
 ### Part I: The language of waves (no radio hardware yet)
 1. ✅ **Spinning arrows.** A dot on a wheel draws a sine; frequency, amplitude and phase; two shadows (sine and cosine); the direction game (why I/Q exists); adding arrows draws any shape; a station is a fast arrow and FM music is a wobble in its speed. *Built: `course/01-spinning-arrows.html`.*
 2. ✅ **Arrows as numbers.** Complex numbers without the mystery: an arrow is two numbers (I, Q); adding = tip to tail; **multiplying = rotating and stretching** (the key fact of the course); i = "turn a quarter"; e^(iθ) as "the arrow at angle θ", built from many tiny turns. *Code:* store and multiply arrows. *Game:* hit a target by multiplying. *Built: `course/02-arrows-as-numbers.html`, runnable `course/code/ch02.ts`.*
