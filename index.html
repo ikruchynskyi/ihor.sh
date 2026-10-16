@@ -18,20 +18,17 @@
 <script type="application/ld+json">[{"@context":"https://schema.org","@type":"WebSite","name":"ihor.sh","url":"https://ihor.sh/","description":"Hobby projects built and learned in public: a software-defined radio written from scratch with courses, NYC open-data tools, AI and electronics courses, Japanese from zero, a bikepacking planner.","inLanguage":"en","author":{"@type":"Person","name":"Ihor Kruchynskyi","url":"https://ihork.link/"}},
 {"@context":"https://schema.org","@type":"WebAPI","name":"ihor.sh MCP","description":"Live NYC data (subway, buses, ferries, Citi Bike, events, restaurant inspections, jobs, trips), the sky (weather, aircraft, ISS, storms) and radio (stations, callsigns, repeaters) for AI agents over the Model Context Protocol.","url":"https://ihor.sh/mcp","documentation":"https://ihor.sh/llms.txt","provider":{"@type":"Person","name":"Ihor Kruchynskyi","url":"https://ihork.link/"}}]</script>
 <link rel="alternate" type="text/plain" href="/llms.txt" title="ihor.sh for AI agents">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
 <style>
   :root {
     /* shared names, so the reader panel's color themes apply here too */
     --bg: #07090f; --card: #0d1226; --fg: #e8edff; --muted: #7f8bc4; --line: #3b4bb0; --accent: #ffb347; --accent2: #ff5c8a;
     --panel: var(--card); --ink: var(--fg); --dim: var(--muted); --amber: var(--accent); --pink: #ff5c8a; --cyan: #4de1ff; --ok: #5cff9d; --green: var(--ok);
-    --pixel: "Press Start 2P", ui-monospace, monospace; --mono: "VT323", ui-monospace, monospace;
+    --pixel: "Press Start 2P", "Press Start 2P fallback", ui-monospace, monospace; --mono: "VT323", ui-monospace, monospace;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 22px/1.2 var(--mono); min-height: 100vh; overflow-x: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.2 "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif; /* Arcade's default font, as reader.js sets it */ min-height: 100vh; overflow-x: hidden; }
   a { color: inherit; }
   :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
 
@@ -184,6 +181,7 @@
   <a href="#worlds" class="hud-worlds">WORLDS ▾</a>
   <span>6 OF 6 WORLDS OPEN + BONUS</span>
   <span class="score">POKES <span id="pokes">000</span> · HI <span id="hi">000</span></span>
+  <button type="button" class="ihor-read ihor-find" aria-label="Search this site" aria-expanded="false"><span aria-hidden="true">🔍</span><em> FIND</em></button><button type="button" class="ihor-read" aria-expanded="false" aria-label="Reader settings: theme, font, size, spacing"><span aria-hidden="true">🎨</span><em> THEME</em></button>
   <button id="snd" aria-pressed="false">SOUND OFF</button>
 </div>
 

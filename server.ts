@@ -3,7 +3,7 @@
 import "./env.ts";
 import http from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
 import { stationArrivals, ferryBoard, ferryBoats, trainPositions, busStops, busArrivals, busRoute, annotateTrip } from "./transit.ts";
@@ -53,7 +53,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   learn: { dir: path.join(ROOT, "learn"), label: "World 6 · Learn & build" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".json": "application/json", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".cu8": "application/octet-stream" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".json": "application/json", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
 // dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
 // this cap is only a backstop.
@@ -67,7 +67,10 @@ const versioned = (html: string) => html.replace(/(["'])(\/[\w/.-]+\.(?:js|css))
 const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
 // Runs before first paint on every page: sets the visitor's theme and look on <html> (so the pixel or the sleek rules
 // apply at once, no flash), and wraps fetch so reader.js can show "still working" for the page's /api/ calls, with
-// how long each endpoint usually takes in this browser.
+// how long each endpoint usually takes in this browser. The Arcade theme's fonts are self-hosted and declared inline, so no
+// stylesheet blocks the first paint (Google's CSS cost two more origins and, via theme.css's @import, a serial chain).
+// fonts.css also has a size-matched fallback for Press Start 2P, so the pixel text wraps the same before the font arrives
+// (preloading the fonts instead cost the home page ~1 s of LCP in Lighthouse: they competed with theme.css and the scripts).
 const HEAD = `<script>(function(){var h=document.documentElement,r={};try{r=JSON.parse(localStorage.getItem("ihor-reader")||"{}")}catch(e){}
 var t=r.theme||"arcade";h.dataset.theme=t;h.dataset.style=t==="arcade"?"pixel":"sleek";
 var W=window.__wait={active:new Map(),n:0,typical:{},on:new Set()};try{W.typical=JSON.parse(localStorage.getItem("ihor-wait")||"{}")}catch(e){}
@@ -77,6 +80,7 @@ if(u.origin!==location.origin||u.pathname.indexOf("/api/")!==0)return f.apply(wi
 var id=++W.n,rec={key:u.pathname,at:performance.now()};W.active.set(id,rec);tell();
 var done=function(){W.active.delete(id);var ms=performance.now()-rec.at;if(ms>1500){var o=W.typical[rec.key];W.typical[rec.key]=Math.round(o?o*.7+ms*.3:ms);try{localStorage.setItem("ihor-wait",JSON.stringify(W.typical))}catch(e){}}tell()};
 var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
+<style>${readFileSync(path.join(ROOT, "fonts/fonts.css"), "utf8")}</style>
 <link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#07090f">`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
@@ -310,12 +314,16 @@ async function sitemap() {
     .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
 }
 
+// reader.js wires these up; they're in the markup so the bar has its final height at first paint (added by script,
+// they grew it after paint and shifted the whole page down).
+const HUD_BUTTONS = `<button type="button" class="ihor-read ihor-find" aria-label="Search this site" aria-expanded="false"><span aria-hidden="true">🔍</span><em> FIND</em></button><button type="button" class="ihor-read" aria-expanded="false" aria-label="Reader settings: theme, font, size, spacing"><span aria-hidden="true">Aa</span><em> READER</em></button>`;
+
 // Every project page gets the shared game theme, a HUD bar back to the map, and Blip.
 function dress(html: string, world: string, urlPath = "", extra: Meta | null = null) {
   if (html.includes('name="ihor-bare"')) return html; // helper pages shown inside another page (nyc/windy.html)
   const title = extra?.title ?? html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "";
   const [num, name] = world.split(" · "); // "World 2 · NYC": phones show just the name
-  const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${name ? `<em>${num} ·</em> ${name}` : world}</span><b>${title}</b></nav>`;
+  const hud = `<nav class="ihor-hud" aria-label="Site"><a href="/">◄ ihor.sh</a><span>${name ? `<em>${num} ·</em> ${name}` : world}</span>${HUD_BUTTONS}<b>${title}</b></nav>`;
   if (urlPath) html = seo(html, world, urlPath, extra);
   // the page's own </body>, the last one: a script may contain the text "</body>" in a string
   const out = html.replace("</head>", `${HEAD}<link rel="stylesheet" href="${asset("theme.css")}"></head>`).replace(/<body[^>]*>/, (m) => m + hud), end = out.lastIndexOf("</body>");
@@ -326,7 +334,7 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   const data = await readFile(file).catch(() => null);
   if (!data) return notFound(res);
   const ext = path.extname(file);
-  const hashed = file.includes(`${path.sep}assets${path.sep}`);
+  const hashed = file.includes(`${path.sep}assets${path.sep}`) || ext === ".woff2"; // font files are named by Google's content hash
   if (ext === ".html" && !data.includes('name="ihor-bare"')) {
     res.setHeader("vary", "accept");
     if (world === "home") res.setHeader("link", HOME_LINKS);
@@ -364,6 +372,8 @@ async function serveFile(res: http.ServerResponse, file: string, world?: string 
   }
   res.writeHead(200, { "content-type": TYPES[ext] ?? "application/octet-stream", "cache-control": hashed ? "public, max-age=31536000, immutable" : "no-cache" });
   if (world === "home") return res.end(data.toString().replace("<head>", `<head>${HEAD}`).replace(/src="\/(companion|reader)\.js"/g, (_, n) => `src="${asset(n + ".js")}"`));
+  // A module's own imports get the same ?v= as the page's, or "/ai/learn.js" and "/ai/learn.js?v=…" load as two modules.
+  if (ext === ".js" && !hashed) return res.end(versioned(data.toString()));
   res.end(world && ext === ".html" ? dress(versioned(data.toString()), world, urlPath, search ? await pageMeta(urlPath, search) : null) : data);
 }
 
@@ -878,6 +888,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
+    if (/^\/fonts\/[\w-]+\.woff2$/.test(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];

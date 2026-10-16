@@ -6,7 +6,7 @@
    A tiny inline script from server.ts sets <html data-theme data-style> before first paint; reader.js sets the colors
    per theme and lets the visitor change everything. Blip's and the reader's panels live in shadow DOM: they read the
    tokens (custom properties cross the boundary), so they follow the look too. */
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"); /* the sleek themes load theirs on demand (reader.js) */
+/* Press Start 2P, VT323 and Atkinson Hyperlegible are self-hosted and declared in server.ts's HEAD; the sleek themes load theirs on demand (reader.js) */
 
 :root:root {
   /* colors: the Arcade theme (the default); reader.js re-sets these per theme */
@@ -14,8 +14,8 @@
   --field: #05070d; --on-accent: #1b1020; --accent: #ffb347; --accent2: #ff5c8a; --plot: #4de1ff; --plot2: #ffb347; --ok: #5cff9d;
   --blue: #58c4dd; --yellow: #f4d35e; --green: #83c167; --red: #fc6255; --pink: #ff5c8a;
   --alert: #ff5c8a; --bike: #4de1ff; --now: #5cff9d; --later: #4de1ff;
-  --pixel: "Press Start 2P", ui-monospace, monospace;
-  --body-font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --pixel: "Press Start 2P", "Press Start 2P fallback", ui-monospace, monospace;
+  --body-font: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif; /* Arcade's, so first paint matches reader.js */
   --display-font: "Rajdhani", "Inter", ui-sans-serif, system-ui, sans-serif;
   /* tokens, with the pixel look's values; the sleek block swaps them */
   --r: 0px; --r-sm: 0px; --ui: var(--pixel); --ui-case: uppercase; --display: var(--pixel);
@@ -157,6 +157,7 @@ html.ihor-busy, html.ihor-busy body { cursor: progress; }
 /* =====================================================================================================================
    SLEEK: glass panels, soft light, a display face. Everything below only applies when <html data-style="sleek">.
    ===================================================================================================================== */
+:root[data-style="sleek"] { --body-font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif; } /* reader.js's choice still wins: same specificity, later */
 :root:root[data-style="sleek"] {
   --r: 14px; --r-sm: 9px; --ui: var(--body-font); --ui-case: none; --display: var(--display-font);
   --pixel: var(--body-font); --px: 1.55; /* pages that size labels in the pixel face get a readable size instead */

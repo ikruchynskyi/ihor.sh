@@ -25,9 +25,8 @@ if (navigator.modelContext?.registerTool) {
 
 const d3 = await import("https://cdn.jsdelivr.net/npm/d3@7/+esm");
 
-// Fonts must live in the document (an @font-face inside a shadow root isn't picked up). The pixel faces only matter
-// for the pixel look (the Arcade theme); the sleek look uses the page's fonts through --reader-font and --pixel.
-if (document.documentElement.dataset.style === "pixel") document.head.insertAdjacentHTML("beforeend", `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">`);
+// Fonts must live in the document (an @font-face inside a shadow root isn't picked up): the pixel faces are declared in
+// the <head> server.ts adds; the sleek look uses the page's fonts through --reader-font and --pixel.
 
 const store = (s) => ({ get: (k) => { try { return s().getItem(k); } catch { return null; } }, set: (k, v) => { try { s().setItem(k, v); } catch {} } });
 const session = store(() => sessionStorage), local = store(() => localStorage);

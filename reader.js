@@ -6,12 +6,12 @@
 
 const FONTS = {
   inter: { label: "Inter", css: '"Inter", ui-sans-serif, system-ui, -apple-system, sans-serif', google: "Inter:wght@400;600;700" },
-  atkinson: { label: "Atkinson", css: '"Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif', google: "Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400" },
+  atkinson: { label: "Atkinson", css: '"Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif' }, // self-hosted, like the pixel faces (server.ts HEAD)
   literata: { label: "Literata", css: '"Literata", Georgia, serif', google: "Literata:ital,wght@0,400;0,700;1,400" },
   lexend: { label: "Lexend", css: '"Lexend", ui-sans-serif, system-ui, sans-serif', google: "Lexend:wght@400;700" },
   system: { label: "System", css: "ui-sans-serif, system-ui, -apple-system, sans-serif" },
   mono: { label: "Mono", css: '"JetBrains Mono", ui-monospace, monospace', google: "JetBrains+Mono:wght@400;700" },
-  pixel: { label: "Pixel", css: '"VT323", ui-monospace, monospace', google: "VT323" },
+  pixel: { label: "Pixel", css: '"VT323", ui-monospace, monospace' },
 };
 // Display faces for headings: each theme brings one.
 const DISPLAY = {
@@ -20,7 +20,7 @@ const DISPLAY = {
   exo: { css: '"Exo 2", "Inter", ui-sans-serif, sans-serif', google: "Exo+2:wght@600;700;800" },
   cinzel: { css: '"Cinzel", Georgia, serif', google: "Cinzel:wght@600;700" },
   grotesk: { css: '"Space Grotesk", "Inter", ui-sans-serif, sans-serif', google: "Space+Grotesk:wght@600;700" },
-  pressstart: { css: '"Press Start 2P", ui-monospace, monospace', google: "Press+Start+2P" },
+  pressstart: { css: '"Press Start 2P", ui-monospace, monospace' },
 };
 // c: [text, background, card, link/accent, secondary text, borders, labels, second accent]; contrast checked: text/bg 16+:1,
 // secondary text and accent 7+:1. A theme also brings a body font and a display face (the visitor can still change the font).
@@ -91,7 +91,7 @@ function apply() {
       /* for panels in shadow DOM (Blip's chat, this reader panel): custom properties cross the boundary */
       --reader-font: ${f.css}; --reader-size: ${fontKey() === "pixel" ? size + 3 : size}px; --reader-line: ${fontKey() === "pixel" ? Math.max(1.15, s.line - 0.3) : s.line}; --reader-letter: ${s.letter}em; --zoom: ${k.toFixed(3)}; } /* --zoom: the factor on main/#panel/aside below; a zoomed box's own top and max-height scale with it */
     html, body { background: ${bg} !important; color: ${fg}; } ${isHome ? "body { background: transparent !important; } /* keeps the waterfall canvas visible */" : ""}
-    body { font-family: ${f.css}; } ${isHome && fontKey() !== "pixel" ? "body { font-size: 17px; }" : ""}
+    body { font-family: ${f.css}; } ${isHome ? `body { font-size: ${fontKey() === "pixel" ? 22 : 17}px; }` : ""}
     ${look === "pixel" ? "" : `:root:root { --pixel: ${f.css}; --px: 1.55; }`} /* the pixel face's small labels, in a readable font a size up */
     main strong, main b, .ihor-hud b { color: ${fg} !important; } .ihor-hud span { color: ${muted}; }
     ${k !== 1 ? `:is(main, #panel, aside) { zoom: ${k.toFixed(3)}; }` : ""}
@@ -171,24 +171,30 @@ function toggle() {
 root.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) toggle(); });
 
 {
-  button = document.createElement("button");
-  button.className = "ihor-read";
-  button.type = "button";
-  button.setAttribute("aria-expanded", "false");
-  button.setAttribute("aria-label", "Reader settings: theme, font, size, spacing");
-  button.innerHTML = isHome ? "<span aria-hidden='true'>🎨</span><em> THEME</em>" : "<span aria-hidden='true'>Aa</span><em> READER</em>";
+  // In the markup already (server.ts's HUD bar, the home page's), so the bar doesn't grow after first paint.
+  button = document.querySelector(":is(.ihor-hud, .hud) .ihor-read:not(.ihor-find)");
+  if (!button) {
+    button = document.createElement("button");
+    button.className = "ihor-read";
+    button.type = "button";
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("aria-label", "Reader settings: theme, font, size, spacing");
+    button.innerHTML = isHome ? "<span aria-hidden='true'>🎨</span><em> THEME</em>" : "<span aria-hidden='true'>Aa</span><em> READER</em>";
+    const anchor = document.querySelector(".ihor-hud b, .hud #snd");
+    anchor ? anchor.before(button) : document.body.append(button);
+  }
   button.onclick = toggle;
-  // Project pages: before the page title in the HUD bar. Home: before the sound toggle.
-  const anchor = document.querySelector(".ihor-hud b, .hud #snd");
-  anchor ? anchor.before(button) : document.body.append(button);
 }
 
 // ---------- site search: a 🔍 in the site bar, results from /api/site/search (search.ts) ----------
 {
-  const btn = document.createElement("button");
-  btn.className = "ihor-read ihor-find"; btn.type = "button"; btn.setAttribute("aria-label", "Search this site"); btn.setAttribute("aria-expanded", "false");
-  btn.innerHTML = "<span aria-hidden='true'>🔍</span><em> FIND</em>";
-  button.before(btn);
+  let btn = document.querySelector(":is(.ihor-hud, .hud) .ihor-find"); // in the markup too
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.className = "ihor-read ihor-find"; btn.type = "button"; btn.setAttribute("aria-label", "Search this site"); btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = "<span aria-hidden='true'>🔍</span><em> FIND</em>";
+    button.before(btn);
+  }
   const fhost = document.createElement("div");
   fhost.style.cssText = "position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:2147481600;width:min(640px,calc(100vw - 24px))";
   document.body.append(fhost);
