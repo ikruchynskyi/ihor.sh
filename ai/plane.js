@@ -187,7 +187,7 @@ export function graph(id, [x0, x1], [y0, y1], { step = [1, 1], labels = true } =
   };
   const dot = (x, y, color, r = 6) => { g.fillStyle = color; g.beginPath(); g.arc(X(x), Y(y), r, 0, 7); g.fill(); };
   const seg = (ax, ay, bx, by, color, width = 2, dash = []) => { g.setLineDash(dash); g.strokeStyle = color; g.lineWidth = width; g.beginPath(); g.moveTo(X(ax), Y(ay)); g.lineTo(X(bx), Y(by)); g.stroke(); g.setLineDash([]); };
-  const text = (s, x, y, color = C.text) => { g.fillStyle = color; g.fillText(s, X(x), Y(y)); };
+  const text = (s, x, y, color = C.text) => { g.fillStyle = color; g.fillText(s, Math.max(2, Math.min(X(x), W - g.measureText(s).width - 4)), Y(y)); }; // never past the right edge
   return { g, W, H, X, Y, curve, dot, seg, text };
 }
 // erf to about 1e-7 (Abramowitz and Stegun 7.1.26), for the normal distribution's area and GELU

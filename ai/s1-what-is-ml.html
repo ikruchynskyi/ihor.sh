@@ -152,13 +152,13 @@ function r1() {
   for (const [x, y] of rides) P.seg(x, y, x, a * x + b, C.red, 2);
   P.curve((x) => a * x + b, C.blue, 3);
   for (const [x, y] of rides) P.dot(x, y, C.yellow, 5);
-  P.text("km →", 12.1, 1.5, "#8f98a8"); P.text("minutes", 0.15, 47.5, "#8f98a8");
+  P.text("km →", 11.6, 6.6, "#8f98a8"); P.text("minutes", 1.1, 47.5, "#8f98a8"); // clear of the tick labels, which grow on a phone
   const e = mse(a, b);
   $("aV").textContent = a.toFixed(2); $("bV").textContent = b.toFixed(1);
   $("r1").textContent = `model: minutes = ${a.toFixed(2)} × km + ${b.toFixed(1)} · mean squared error = ${e.toFixed(2)}`;
   const L = graph("lossCv", [0, Math.max(1, losses.length - 1)], [0, Math.max(10, ...losses.slice(0, 1), e)], { step: [1e9, 1e9], labels: false });
   if (losses.length > 1) L.curve((t) => losses[Math.round(t)], C.yellow, 2);
-  L.text(losses.length ? `error by training step (${losses.length - 1} steps)` : "the error after each training step appears here", 0, Math.max(10, ...losses.slice(0, 1), e) * 0.82, "#8f98a8");
+  L.text(losses.length ? `error by training step (${losses.length - 1} steps)` : "error by training step appears here", 0, Math.max(10, ...losses.slice(0, 1), e) * 0.82, "#8f98a8");
   if (!running && !praised && e < 11) { praised = true; say("Nice fit! That's training by hand. Now let the computer try.", "happy"); }
 }
 for (const id of ["a", "b"]) $(id).oninput = () => { losses = []; r1(); };
