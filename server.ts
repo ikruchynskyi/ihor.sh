@@ -1,6 +1,6 @@
 // ihor.sh: the home page, the built radio site under /radio/, and /api/ask for Blip, the companion.
 // Public behind a Cloudflare tunnel, so only whitelisted paths are served (never the repo root).
-// Usage: npm run build && npm start   (env: PORT=8080, OLLAMA_MODEL=gpt-oss:20b, OLLAMA_URL=http://localhost:11434)
+import "./env.ts";
 import http from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
@@ -17,7 +17,7 @@ import { roomStream, roomPost } from "./room.ts";
 import { issue, check, cookie, spend, TTL } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
-import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, type MeshMsg } from "./mesh.ts";
+import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./sat.ts";
 import { startJobs, search as jobSearch, job as jobOne, stats as jobStats, rss as jobRss } from "./jobs.ts";
@@ -27,7 +27,9 @@ import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNe
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
 import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
-import { kokoroTTS } from "./yomu-tts.ts";
+import { edgeTTS } from "./yomu-tts.ts";
+import { getNhkArticles, getNhkArticleById } from "./yomu-nhk.ts";
+import { getTemplates, searchTemplates } from "./memes.ts";
 import { buildIndex, siteSearch } from "./search.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
 import { startMeteorRecorder, meteorApi } from "./meteor-rec.ts";
@@ -150,7 +152,7 @@ const attr = (s: string) => s.replace(/"/g, "&quot;");
 const AUTHOR = { "@type": "Person", name: "Ihor Kruchynskyi", url: "https://ihork.link/" };
 const COURSES: [RegExp, string, string][] = [
   [/^\/ai\/\d\d-/, "AI from scratch", "/ai/"], [/^\/learn\/electronics\/\d\d-/, "Electronics from scratch", "/learn/"],
-  [/^\/radio\/course\//, "Radio from scratch", "/radio/course/"], [/^\/radio\/ham\//, "US ham radio license prep", "/radio/ham/"], [/^\/yomu\/(story|grammar|deck|kana|draw|talk|placement|review)/, "Yomu: Japanese from zero", "/yomu/"],
+  [/^\/radio\/course\//, "Radio from scratch", "/radio/course/"], [/^\/radio\/ham\//, "US ham radio license prep", "/radio/ham/"], [/^\/yomu\/(story|grammar|deck|kana|draw|talk|placement|review|jlpt)/, "Yomu: Japanese from zero", "/yomu/"],
 ];
 const APPS: [RegExp, string][] = [
   [/^\/nyc\/(jobs|resume)/, "BusinessApplication"], [/^\/nyc\/(tonight|free|index|archive)?/, "TravelApplication"], [/^\/ride\//, "TravelApplication"],
@@ -431,6 +433,54 @@ const server = http.createServer(async (req, res) => {
       `https://ihor.sh/nyc/jobs.html?${p}`, `Jobs: ${g("name") ?? g("q") ?? "saved search"}`);
     return res.writeHead(200, { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=900" }).end(xml);
   }
+  if (url.pathname.startsWith("/api/memegen/")) { // public (meme links go out through Blip and /mcp), so read-only
+    if (req.method !== "GET" && req.method !== "HEAD") return res.writeHead(405, { allow: "GET, HEAD" }).end();
+    const targetPath = url.pathname.replace(/^\/api\/memegen/, "") + (url.search || "");
+    try {
+      let body: Buffer | undefined;
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(Buffer.from(chunk));
+        body = Buffer.concat(chunks);
+      }
+      let memegenRes = await fetch(`http://127.0.0.1:5055${targetPath}`, {
+        method: req.method,
+        headers: { "content-type": req.headers["content-type"] || "application/json" },
+        ...(body ? { body } : {}),
+      }).catch(() => null);
+      if (!memegenRes || memegenRes.status === 404 || memegenRes.status >= 500) {
+        memegenRes = await fetch(`https://api.memegen.link${targetPath}`, {
+          method: req.method,
+          headers: { "content-type": req.headers["content-type"] || "application/json" },
+          ...(body ? { body } : {}),
+        }).catch(() => null);
+      }
+      if (!memegenRes) return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: "Memegen service offline" }));
+      const contentType = memegenRes.headers.get("content-type") || "image/png";
+      if (contentType.includes("application/json")) {
+        const text = (await memegenRes.text()).replaceAll("http://localhost:5000", "/api/memegen");
+        return res.writeHead(memegenRes.status, {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+        }).end(text);
+      }
+      const buf = Buffer.from(await memegenRes.arrayBuffer());
+      return res.writeHead(memegenRes.status, {
+        "content-type": contentType,
+        "cache-control": "public, max-age=86400",
+      }).end(buf);
+    } catch (e) {
+      return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: "Memegen service offline" }));
+    }
+  }
+  if (url.pathname === "/api/memes/templates") {
+    return res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=86400" }).end(JSON.stringify(getTemplates()));
+  }
+  if (url.pathname === "/api/memes/search") {
+    const q = url.searchParams.get("q") ?? "";
+    const limit = Number(url.searchParams.get("limit")) || 6;
+    return res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ query: q, matches: searchTemplates(q, limit) }));
+  }
   if (url.pathname.startsWith("/api/")) {
     if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");
     const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
@@ -477,15 +527,41 @@ const server = http.createServer(async (req, res) => {
         return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(d));
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
-    if (url.pathname === "/api/yomu/tts") { // Kokoro neural TTS (Kumo jm_kumo voice)
+    if (url.pathname === "/api/yomu/nhk") { // NHK News Web Easy articles for daily reading (yomu-nhk.ts)
+      const id = url.searchParams.get("id");
+      try {
+        if (id) {
+          const article = await getNhkArticleById(id);
+          if (!article) return res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "Article not found" }));
+          return res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=1800" }).end(JSON.stringify(article));
+        }
+        const articles = await getNhkArticles();
+        const list = articles.map((a) => ({
+          id: a.id,
+          title: a.title,
+          pubDate: a.pubDate,
+          formattedDate: a.formattedDate,
+          level: a.level,
+          excerpt: a.excerpt,
+          image: a.image,
+          audio: a.audio,
+          link: a.link,
+          originalUrl: a.originalUrl,
+        }));
+        return res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=1800" }).end(JSON.stringify(list));
+      } catch (e) {
+        return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message }));
+      }
+    }
+    if (url.pathname === "/api/yomu/tts") { // Edge neural TTS (ja-JP-NanamiNeural)
       const text = String(url.searchParams.get("text") ?? "").trim().slice(0, 500);
       const speed = Math.max(0.5, Math.min(2.0, Number(url.searchParams.get("speed")) || 1.0));
       if (!text) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "text parameter required" }));
       try {
-        const buf = await kokoroTTS(text, speed);
+        const buf = await edgeTTS(text, speed);
         return res.writeHead(200, {
           "content-type": "audio/mpeg",
-          "cache-control": "public, max-age=604800, immutable",
+          "cache-control": "public, max-age=31536000, immutable",
           "content-length": buf.length,
         }).end(buf);
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
@@ -497,7 +573,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
-      try { const out = await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80)); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
+      try { const out = await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), Array.isArray(b?.usedMemes) ? b.usedMemes.map(String) : []); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
       catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
@@ -538,7 +614,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (url.pathname === "/api/nyc/restaurants") {
         const [la, lo] = String(q.get("near") ?? "").split(",").map(Number), near = la > 40.4 && la < 41 && lo > -74.3 && lo < -73.6 ? { lat: la, lon: lo } : undefined;
-        return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20), near), 3600);
+        return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20), near).catch(() => []), 3600);
       }
       if (url.pathname === "/api/nyc/311") {
         const [bs, bw, bn, be] = String(q.get("bbox") ?? "").split(",").map(Number);
@@ -678,9 +754,40 @@ const server = http.createServer(async (req, res) => {
       if (Date.now() - meshSentAt < 5000) return json403(res, "One message every 5 seconds: it's a shared radio channel.", 429);
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
-      const { text, channel } = JSON.parse(raw || "{}");
-      try { const id = sendText(String(text ?? "").trim(), Math.max(0, Math.min(7, Number(channel) || 0))); meshSentAt = Date.now(); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ id })); }
+      const { text, channel, to } = JSON.parse(raw || "{}");
+      const target = to != null && to !== "" ? Number(to) : 0xffffffff;
+      try { const id = sendText(String(text ?? "").trim(), Math.max(0, Math.min(7, Number(channel) || 0)), target); meshSentAt = Date.now(); return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ id })); }
       catch (e) { return json403(res, (e as Error).message, 400); }
+    }
+    if (url.pathname === "/api/mesh/clear-nodes" && req.method === "POST") {
+      if (!meshOwner(req)) return json403(res, "Only the node's owner can clear the node list.");
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 200) return res.writeHead(413).end(); }
+      const { keepSelf } = JSON.parse(raw || "{}");
+      try {
+        const result = clearNodes(keepSelf !== false);
+        return res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(result));
+      } catch (e) { return json403(res, (e as Error).message, 400); }
+    }
+    if (url.pathname === "/api/mesh/export") {
+      const format = url.searchParams.get("format");
+      const allNodes = [...mesh.nodes.values()];
+      if (format === "geojson") {
+        const geojson = {
+          type: "FeatureCollection",
+          features: allNodes.filter((n) => n.lat != null && n.lon != null).map((n) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [n.lon, n.lat, n.alt ?? 0] },
+            properties: { id: n.id, num: n.num, name: n.long || n.short || n.id, short: n.short, hw: n.hw, hwModel: n.hwModel, hops: n.hops, snr: n.snr, rssi: n.rssi, battery: n.battery, temp: n.temp, humidity: n.humidity, pressure: n.pressure, heard: n.heard }
+          }))
+        };
+        return res.writeHead(200, { "content-type": "application/geo+json", "cache-control": "no-store", "content-disposition": "attachment; filename=\"mesh-nodes.geojson\"" }).end(JSON.stringify(geojson, null, 2));
+      }
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store", "content-disposition": "attachment; filename=\"mesh-nodes.json\"" }).end(JSON.stringify(allNodes, null, 2));
+    }
+    if (url.pathname === "/api/mesh/logs") {
+      if (!meshOwner(req)) return json403(res, "Only the node's owner can view logs.");
+      return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ logs: mesh.log }));
     }
     if (url.pathname === "/api/mesh/traceroute" && req.method === "POST") { // it transmits on every node along the way: the owner only, and not often
       if (!meshOwner(req)) return json403(res, "Only the node's owner can traceroute: it transmits.");

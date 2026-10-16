@@ -45,9 +45,53 @@ export const enc = {
 
 // ---------- the mesh as we know it ----------
 export const PORTS: Record<number, string> = { 1: "text", 3: "position", 4: "nodeinfo", 5: "routing", 6: "admin", 67: "telemetry", 70: "traceroute", 71: "neighbors", 32: "reply", 34: "paxcounter", 65: "store-forward", 66: "range-test", 73: "map-report" };
+export const HARDWARE_MODELS: Record<number, string> = {
+  0: "Unset",
+  1: "TLora V2", 2: "TLora V1", 3: "TLora V2.1", 4: "T-Beam", 5: "Heltec V2.0",
+  6: "T-Beam V0.7", 7: "T-Echo", 8: "TLora V1.1", 9: "RAK4631 WisBlock", 10: "Heltec V2.1",
+  11: "Heltec V1", 12: "T-Beam S3 Core", 13: "RAK11200", 14: "Nano G1", 15: "TLora V2.1-1.8",
+  16: "TLora T3-S3", 17: "Nano G1 Explorer", 18: "Nano G2 Ultra", 19: "LoRa Type", 20: "wiphone",
+  21: "Wio WM1110", 22: "RAK2560 Solar", 23: "Heltec HRU-3601", 24: "Heltec Wireless Bridge", 25: "Station G1",
+  26: "RAK11310", 27: "Makerfabs Tracker", 28: "Makerfabs", 29: "CanaryOne", 30: "RP2040 LoRa",
+  31: "Station G2", 32: "LoRa Relay V1", 33: "T-Echo Plus", 36: "nRF52 Unknown", 37: "Portduino",
+  38: "Android Sim", 39: "DIY V1", 40: "nRF52840 Dongle", 41: "Disaster Radio V3", 42: "M5Stack",
+  43: "Heltec V3", 44: "Heltec WSL V3", 45: "BetaFPV 2400 TX", 46: "BetaFPV 900 Nano", 47: "RPi Pico",
+  48: "Heltec Wireless Tracker", 49: "Heltec Wireless Paper", 50: "T-Deck", 51: "T-Watch S3", 52: "Picomputer S3",
+  53: "Heltec HT-CT62", 54: "EByte ESP32-S3", 55: "ESP32-S3 Pico", 56: "Chatter 2", 57: "Heltec Paper V1.0",
+  58: "Heltec Tracker V1.0", 59: "unPhone", 60: "TD-LORAC", 61: "CDEBYTE EoRa-S3", 62: "TWC Mesh V4",
+  63: "nRF52 ProMicro DIY", 64: "Bandit Nano", 65: "Heltec Capsule V3", 66: "Vision Master T190", 67: "Vision Master E213",
+  68: "Vision Master E290", 69: "Heltec T114", 70: "SenseCAP Indicator", 71: "Tracker T1000-E", 72: "RAK3172",
+  73: "Wio-E5", 74: "Bandit 900", 75: "ME25LS01", 76: "RP2040 RFM95", 77: "M5Stack CoreBasic",
+  78: "M5Stack Core2", 79: "RPi Pico 2", 80: "M5Stack CoreS3", 81: "Seeed Xiao S3", 82: "MS24SF1",
+  83: "TLora C6", 84: "WisMesh Tap", 85: "Routastic", 86: "Mesh-Tab", 87: "MeshLink",
+  88: "Xiao nRF52 Kit", 89: "ThinkNode M1", 90: "ThinkNode M2", 91: "T-ETH-Elite", 92: "Heltec HRI-3621",
+  93: "Muzi Base", 94: "Heltec Mesh Pocket", 95: "Seeed Solar Node", 96: "NomadStar Meteor Pro", 97: "CrowPanel",
+  98: "Link 32", 99: "Wio Tracker L1", 100: "Wio Tracker L1 E-Ink", 101: "Muzi R1 Neo", 102: "T-Deck Pro",
+  103: "TLora Pager", 104: "M5Stack Reserved", 105: "WisMesh Tag", 106: "RAK3312", 107: "ThinkNode M5",
+  108: "Heltec MeshSolar", 109: "T-Echo Lite", 110: "Heltec V4", 111: "M5Stack C6L", 112: "Cardputer Adv",
+  113: "Heltec Wireless Tracker V2", 114: "T-Watch Ultra", 115: "ThinkNode M3", 116: "WisMesh Tap V2", 117: "RAK3401",
+  118: "RAK6421", 119: "ThinkNode M4", 120: "ThinkNode M6", 121: "Meshstick 1262", 122: "T-Beam 1W",
+  123: "T5 S3 ePaper Pro", 124: "T-Beam BPF", 125: "Mini ePaper S3", 126: "T-Display S3 Pro", 127: "Heltec T096",
+  128: "Mesh Tracker X1", 129: "ThinkNode M7", 130: "ThinkNode M8", 131: "ThinkNode M9", 132: "Heltec V4 R8",
+  133: "Heltec T1", 134: "Station G3", 135: "T-Impulse Plus", 136: "T-Echo Card", 137: "Wio Tracker L2",
+  255: "DIY / Custom",
+};
+export const hwName = (hw?: number) => (hw != null ? HARDWARE_MODELS[hw] ?? `Model ${hw}` : undefined);
 const REGIONS = ["unset", "US", "EU_433", "EU_868", "CN", "JP", "ANZ", "KR", "TW", "RU", "IN", "NZ_865", "TH", "LORA_24", "UA_433", "UA_868", "MY_433", "MY_919", "SG_923"];
 const PRESETS = ["LongFast", "LongSlow", "VeryLongSlow", "MediumSlow", "MediumFast", "ShortSlow", "ShortFast", "LongModerate", "ShortTurbo"];
-export type MeshNode = { num: number; id: string; long?: string; short?: string; hw?: number; role?: number; lat?: number; lon?: number; alt?: number; posAt?: number; snr?: number; rssi?: number; heard?: number; hops?: number; battery?: number; voltage?: number; chUtil?: number; airTx?: number; uptime?: number; viaMqtt?: boolean };
+export type MeshNode = {
+  num: number; id: string; long?: string; short?: string; hw?: number; hwModel?: string; role?: number;
+  lat?: number; lon?: number; alt?: number; posAt?: number; snr?: number; rssi?: number; heard?: number;
+  hops?: number; battery?: number; voltage?: number; chUtil?: number; airTx?: number; uptime?: number;
+  viaMqtt?: boolean; packets?: number;
+  // Environmental telemetry
+  temp?: number; humidity?: number; pressure?: number; gasRes?: number; iaq?: number; lux?: number;
+  windSpeed?: number; windDir?: number;
+  // Air quality
+  pm25?: number; co2?: number;
+  // Neighbors
+  neighbors?: { num: number; id: string; snr?: number }[];
+};
 export const isPublic = (m: MeshMsg) => m.to === BROADCAST;
 export type MeshMsg = { id: number; from: number; to: number; channel: number; text: string; at: number; snr?: number; rssi?: number; hops?: number; mine?: boolean };
 export const mesh = { connected: false, port: "", myNum: 0, region: "", preset: "", channels: [] as { index: number; name: string; role: number }[], nodes: new Map<number, MeshNode>(), messages: [] as MeshMsg[], packets: 0, lastPacket: 0, log: [] as string[],
@@ -62,7 +106,9 @@ export const onMesh = (fn: (ev: string, data: unknown) => void) => { listeners.p
 const emit = (ev: string, data: unknown) => listeners.forEach((fn) => fn(ev, data));
 
 function user(n: MeshNode, u: Map<number, Field[]>) {
-  n.long = str(u, 2) ?? n.long; n.short = str(u, 3) ?? n.short; n.hw = num(u, 5) ?? n.hw; n.role = num(u, 7) ?? n.role;
+  n.long = str(u, 2) ?? n.long; n.short = str(u, 3) ?? n.short; n.hw = num(u, 5) ?? n.hw;
+  if (n.hw != null) n.hwModel = hwName(n.hw);
+  n.role = num(u, 7) ?? n.role;
 }
 function position(n: MeshNode, p: Map<number, Field[]>) {
   const lat = i32(p, 1), lon = i32(p, 2);
@@ -71,6 +117,25 @@ function position(n: MeshNode, p: Map<number, Field[]>) {
 }
 function metrics(n: MeshNode, d: Map<number, Field[]>) {
   n.battery = num(d, 1) ?? n.battery; n.voltage = f32(d, 2) ?? n.voltage; n.chUtil = f32(d, 3) ?? n.chUtil; n.airTx = f32(d, 4) ?? n.airTx; n.uptime = num(d, 5) ?? n.uptime;
+}
+function envMetrics(n: MeshNode, em: Map<number, Field[]>) {
+  n.temp = f32(em, 1) ?? n.temp; n.humidity = f32(em, 2) ?? n.humidity; n.pressure = f32(em, 3) ?? n.pressure;
+  n.gasRes = f32(em, 4) ?? n.gasRes; n.iaq = num(em, 7) ?? n.iaq; n.lux = f32(em, 9) ?? n.lux;
+  n.windDir = num(em, 11) ?? n.windDir; n.windSpeed = f32(em, 12) ?? n.windSpeed;
+}
+function airMetrics(n: MeshNode, am: Map<number, Field[]>) {
+  n.pm25 = num(am, 2) ?? n.pm25; n.co2 = f32(am, 13) ?? num(am, 13) ?? n.co2;
+}
+function neighborInfo(n: MeshNode, ni: Map<number, Field[]>) {
+  const list = ni.get(4) ?? [];
+  const neighbors: { num: number; id: string; snr?: number }[] = [];
+  for (const item of list) {
+    if (!Buffer.isBuffer(item)) continue;
+    const nm = pb(item), idNum = u32(nm, 1);
+    if (!idNum) continue;
+    neighbors.push({ num: idNum, id: hexId(idNum), snr: f32(nm, 2) });
+  }
+  if (neighbors.length) n.neighbors = neighbors;
 }
 
 /** One FromRadio message from the node. Exported for tests. */
@@ -83,6 +148,7 @@ export function fromRadio(buf: Buffer) {
     const u = sub(ni, 2); if (u) user(n, u);
     const p = sub(ni, 3); if (p) position(n, p);
     n.snr = f32(ni, 4) ?? n.snr; n.heard = (u32(ni, 5) ?? 0) * 1000 || n.heard; n.hops = num(ni, 9) ?? n.hops; n.viaMqtt = num(ni, 8) === 1 || n.viaMqtt;
+    if (n.hw != null) n.hwModel = hwName(n.hw);
     const dm = sub(ni, 6); if (dm) metrics(n, dm);
     emit("node", n);
   }
@@ -99,6 +165,7 @@ function packet(p: Map<number, Field[]>) {
   const from = u32(p, 1) ?? 0, to = u32(p, 2) ?? 0, d = sub(p, 4);
   mesh.packets++; mesh.lastPacket = Date.now();
   const n = node(from), rxTime = (u32(p, 7) ?? 0) * 1000 || Date.now(), snr = f32(p, 8), rssi = int(p, 12), hopStart = num(p, 15), hopLimit = num(p, 9);
+  n.packets = (n.packets ?? 0) + 1;
   n.heard = rxTime; if (snr != null && snr !== 0) n.snr = snr; if (rssi) n.rssi = rssi;
   if (hopStart != null && hopLimit != null) n.hops = hopStart - hopLimit;
   if (num(p, 14) === 1) n.viaMqtt = true;
@@ -113,8 +180,13 @@ function packet(p: Map<number, Field[]>) {
       if (to === BROADCAST || (mesh.myNum && to === mesh.myNum)) { mesh.messages.push(msg); mesh.messages = mesh.messages.slice(-300); emit("message", msg); save(); }
     } else if (port === 3) position(n, pb(body));
     else if (port === 4) user(n, pb(body));
-    else if (port === 67) { const t = pb(body), dm = sub(t, 2); if (dm) metrics(n, dm); }
-    else if (port === 70 && trace && (u32(d, 6) === trace.id || from === trace.to)) traced(from, pb(body));
+    else if (port === 67) {
+      const t = pb(body), dm = sub(t, 2), em = sub(t, 3), am = sub(t, 5);
+      if (dm) metrics(n, dm);
+      if (em) envMetrics(n, em);
+      if (am) airMetrics(n, am);
+    } else if (port === 70 && trace && (u32(d, 6) === trace.id || from === trace.to)) traced(from, pb(body));
+    else if (port === 71) neighborInfo(n, pb(body));
   } catch {} // a malformed payload from someone's radio isn't our problem
   emit("node", n);
 }
@@ -126,7 +198,14 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => { try { writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, ports: mesh.ports, encrypted: mesh.encrypted })); } catch {} }, 2000);
 }
-try { const d = JSON.parse(readFileSync(FILE, "utf8")); for (const n of d.nodes) mesh.nodes.set(n.num, n); mesh.messages = d.messages ?? []; mesh.ports = d.ports ?? {}; mesh.encrypted = d.encrypted ?? {}; } catch {}
+try {
+  const d = JSON.parse(readFileSync(FILE, "utf8"));
+  for (const n of d.nodes) {
+    if (n.hw != null && !n.hwModel) n.hwModel = hwName(n.hw);
+    mesh.nodes.set(n.num, n);
+  }
+  mesh.messages = d.messages ?? []; mesh.ports = d.ports ?? {}; mesh.encrypted = d.encrypted ?? {};
+} catch {}
 
 /** Frames are 0x94 0xC3, a 2-byte big-endian length, then a protobuf. Anything else on the line is the node's debug log. */
 export function deframer(onFrame: (b: Buffer) => void, onLog: (line: string) => void = () => {}) {
@@ -182,18 +261,54 @@ export function startMesh() {
   const beat = setInterval(() => { if (fd < 0) return clearInterval(beat); try { send(enc.bytes(7, Buffer.alloc(0))); } catch (e) { clearInterval(beat); restart(`write: ${(e as Error).message}`); } }, 60_000);
 }
 
-/** Sends text to everyone on a channel. Returns the packet id. */
-export function sendText(text: string, channel = 0) {
+/** Sends text to everyone on a channel, or directly to a single node. Returns the packet id. */
+export function sendText(text: string, channel = 0, to = BROADCAST) {
   if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
   const t = Buffer.from(text, "utf8");
   if (!t.length || t.length > 200) throw new Error("Messages are 1–200 bytes.");
   const id = (Math.random() * 0xffffffff) >>> 0;
   const data = Buffer.concat([enc.u(1, 1), enc.bytes(2, t)]);
-  const pkt = Buffer.concat([enc.fixed(2, BROADCAST), enc.u(3, channel), enc.bytes(4, data), enc.fixed(6, id)]);
+  const pkt = Buffer.concat([enc.fixed(2, to), enc.u(3, channel), enc.bytes(4, data), enc.fixed(6, id)]);
   send(enc.bytes(1, pkt));
-  const msg: MeshMsg = { id, from: mesh.myNum, to: BROADCAST, channel, text, at: Date.now(), mine: true };
+  const msg: MeshMsg = { id, from: mesh.myNum, to, channel, text, at: Date.now(), mine: true };
   mesh.messages.push(msg); emit("message", msg); save();
   return id;
+}
+
+/** Sends AdminMessage (port 6) with nodedb_reset = 1 (field 100) to the radio over serial. */
+export function resetNodeDb() {
+  if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
+  const id = (Math.random() * 0xffffffff) >>> 0;
+  const adminMsg = enc.u(100, 1);
+  const data = Buffer.concat([enc.u(1, 6), enc.bytes(2, adminMsg), enc.u(3, 1)]);
+  const pkt = Buffer.concat([enc.fixed(2, mesh.myNum || BROADCAST), enc.u(3, 0), enc.bytes(4, data), enc.fixed(6, id)]);
+  send(enc.bytes(1, pkt));
+  return id;
+}
+
+/** Clears the node database on the server and tells the connected radio to clear its NodeDB. */
+export function clearNodes(keepSelf = true) {
+  const prevCount = mesh.nodes.size;
+  const selfNode = mesh.myNum ? mesh.nodes.get(mesh.myNum) : undefined;
+  mesh.nodes.clear();
+  if (keepSelf && selfNode) {
+    mesh.nodes.set(mesh.myNum, selfNode);
+  }
+  try {
+    writeFileSync(FILE, JSON.stringify({ nodes: [...mesh.nodes.values()], messages: mesh.messages, ports: mesh.ports, encrypted: mesh.encrypted }));
+  } catch {}
+
+  let hardwareReset = false;
+  if (fd >= 0 && mesh.connected) {
+    try {
+      resetNodeDb();
+      hardwareReset = true;
+    } catch (e) {
+      mesh.log.push(`clearNodes radio reset: ${(e as Error).message}`);
+    }
+  }
+  emit("ready", null);
+  return { ok: true, cleared: prevCount - (keepSelf && selfNode ? 1 : 0), hardwareReset };
 }
 
 // ---------- traceroute: which nodes carry a packet to another node and back ----------
@@ -247,5 +362,6 @@ export function meshState(owner = false) {
     nodes: [...mesh.nodes.values()].filter((n) => n.num === mesh.myNum || (n.heard ?? 0) > since).sort((a, b) => (b.heard ?? 0) - (a.heard ?? 0)),
     messages: owner ? mesh.messages : mesh.messages.filter((m) => m.to === BROADCAST), owner,
     tracing: owner && trace ? { to: trace.to, since: trace.since } : null, // a traceroute waiting for its answer (the owner's page shows it)
+    logs: owner ? mesh.log.slice(-100) : [],
   };
 }

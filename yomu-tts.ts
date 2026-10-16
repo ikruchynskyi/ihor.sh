@@ -1,5 +1,6 @@
-// Local Neural TTS for Yomu using Irodori-TTS (Apple Silicon MPS) and pre-generated static audio caches.
-// Completely offline; zero external cloud services (Rewind.ai removed).
+// Edge Neural TTS for Yomu (ja-JP-NanamiNeural).
+// In-memory generation only; zero audio files stored on the server.
+// Caching and reuse occur at the browser level.
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
@@ -10,6 +11,26 @@ const execFileAsync = promisify(execFile);
 
 const ROOT = import.meta.dirname;
 const AUDIO_DIR = path.join(ROOT, "yomu", "data", "audio");
+const EDGE_SERVER_URL = process.env.EDGE_TTS_URL ?? "http://127.0.0.1:5056";
+
+const PYTHON_BINS = [
+  "/Users/irishdash/AI/venv/bin/python3",
+  "/Users/irishdash/.pyenv/shims/python3",
+  "python3",
+];
+
+let resolvedPythonBin: string | null = null;
+async function getPythonBin(): Promise<string> {
+  if (resolvedPythonBin) return resolvedPythonBin;
+  for (const bin of PYTHON_BINS) {
+    try {
+      await execFileAsync(bin, ["-c", "import edge_tts"], { timeout: 3000 });
+      resolvedPythonBin = bin;
+      return bin;
+    } catch {}
+  }
+  return "python3";
+}
 
 const SUBDIRS = ["words", "stories", "kana", "grammar", "kanji", "talk"];
 
@@ -20,26 +41,12 @@ interface CachedManifest {
 }
 const manifestCache = new Map<string, CachedManifest>();
 
-// High-speed in-memory buffer cache (LRU-like cap)
-const bufferCache = new Map<string, Buffer>();
-function cacheBuffer(key: string, buf: Buffer) {
-  if (bufferCache.size > 2000) {
-    const oldest = bufferCache.keys().next().value;
-    if (oldest) bufferCache.delete(oldest);
-  }
-  bufferCache.set(key, buf);
-}
-
 async function lookupStaticFile(text: string): Promise<Buffer | null> {
   const clean = text.trim();
   const stripped = clean.replace(/[。、！？!?,.\s]+$/g, "").trim();
   const candidates = stripped && stripped !== clean ? [clean, stripped] : [clean];
 
   for (const query of candidates) {
-    if (bufferCache.has(`static:${query}`)) {
-      return bufferCache.get(`static:${query}`)!;
-    }
-
     const directHash = createHash("sha1").update(query).digest("hex").slice(0, 12);
 
     for (const sub of SUBDIRS) {
@@ -65,7 +72,6 @@ async function lookupStaticFile(text: string): Promise<Buffer | null> {
         const targetFile = path.join(dir, `${fileKey}.mp3`);
         try {
           const buf = await readFile(targetFile);
-          cacheBuffer(`static:${query}`, buf);
           return buf;
         } catch {}
       } catch {}
@@ -74,69 +80,57 @@ async function lookupStaticFile(text: string): Promise<Buffer | null> {
   return null;
 }
 
-/** Synthesize on-demand using local Irodori-TTS on Apple Silicon MPS. */
-export async function irodoriSingleTTS(text: string): Promise<Buffer> {
-  const clean = text.trim().slice(0, 500);
-  if (!clean) throw new Error("Empty text");
-  const hash = createHash("sha1").update(`irodori:${clean}`).digest("hex");
-  const cachedFile = path.join(AUDIO_DIR, `${hash}.mp3`);
-
-  if (bufferCache.has(`irodori:${clean}`)) {
-    return bufferCache.get(`irodori:${clean}`)!;
-  }
-
-  try {
-    const buf = await readFile(cachedFile);
-    cacheBuffer(`irodori:${clean}`, buf);
-    return buf;
-  } catch {}
-
-  const pythonBin = "/Users/irishdash/Irodori-TTS/.venv/bin/python";
-  const genScript = path.join(ROOT, "yomu", "src", "irodori_gen.py");
-  await execFileAsync(pythonBin, [genScript, "--text", clean, "--output", cachedFile, "--steps", "18"], {
-    timeout: 15_000,
-  });
-  const buf = await readFile(cachedFile);
-  cacheBuffer(`irodori:${clean}`, buf);
-  return buf;
-}
-
 const inflight = new Map<string, Promise<Buffer>>();
 
-/** Synthesize speech for `text` using local static audio caches or on-demand Irodori-TTS. */
-export async function kokoroTTS(text: string, speed = 1.0): Promise<Buffer> {
-  const clean = text.trim().slice(0, 500);
+/**
+ * Synthesize speech for `text` using Microsoft Edge neural TTS (ja-JP-NanamiNeural).
+ * Pure in-memory streaming; no files are saved to the server disk.
+ */
+export async function edgeTTS(text: string, speed = 1.0): Promise<Buffer> {
+  const clean = text.trim().slice(0, 1000);
   if (!clean) throw new Error("Empty text");
 
-  // 1. Check in-memory buffer cache
-  if (bufferCache.has(`irodori:${clean}`)) {
-    return bufferCache.get(`irodori:${clean}`)!;
+  const speedVal = Math.max(0.5, Math.min(2.0, Number(speed) || 1.0));
+  const percent = Math.round((speedVal - 1.0) * 100);
+  const rateStr = `${percent >= 0 ? "+" : ""}${percent}%`;
+
+  // Check static pre-generated audio files (for standard speed exact matches)
+  if (Math.abs(speedVal - 1.0) < 0.05) {
+    const staticBuf = await lookupStaticFile(clean);
+    if (staticBuf) return staticBuf;
   }
 
-  // 2. Check disk cache in root audio dir
-  const hash = createHash("sha1").update(`irodori:${clean}`).digest("hex");
-  const cachedFile = path.join(AUDIO_DIR, `${hash}.mp3`);
-  try {
-    const buf = await readFile(cachedFile);
-    cacheBuffer(`irodori:${clean}`, buf);
-    return buf;
-  } catch {}
-
-  // 3. Check static directories and manifests (words, kana, grammar, etc.)
-  const staticBuf = await lookupStaticFile(clean);
-  if (staticBuf) return staticBuf;
-
-  // 4. Fallback to on-demand local Irodori-TTS with inflight deduplication
-  const key = clean;
-  if (inflight.has(key)) return inflight.get(key)!;
+  // Inflight deduplication for concurrent identical requests
+  const inKey = `${rateStr}:${clean}`;
+  if (inflight.has(inKey)) return inflight.get(inKey)!;
 
   const job = (async () => {
-    return await irodoriSingleTTS(clean);
-  })().finally(() => inflight.delete(key));
+    // 1. Try local in-memory Edge TTS microservice
+    try {
+      const res = await fetch(`${EDGE_SERVER_URL}/tts?text=${encodeURIComponent(clean)}&speed=${speedVal}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const arr = await res.arrayBuffer();
+        return Buffer.from(arr);
+      }
+    } catch {}
 
-  inflight.set(key, job);
+    // 2. Fallback: direct in-memory Python stdout stream (zero disk storage)
+    const pyBin = await getPythonBin();
+    const genScript = path.join(ROOT, "yomu", "src", "edge_tts_speak.py");
+    const { stdout } = await execFileAsync(pyBin, [genScript, clean, String(speedVal), "ja-JP-NanamiNeural"], {
+      encoding: "buffer",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 15_000,
+    });
+    return stdout;
+  })().finally(() => inflight.delete(inKey));
+
+  inflight.set(inKey, job);
   return job;
 }
 
-export const yomuTTS = kokoroTTS;
-
+// Aliases for compatibility
+export const kokoroTTS = edgeTTS;
+export const yomuTTS = edgeTTS;

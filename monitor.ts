@@ -16,7 +16,8 @@ const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
 const DIR = path.join(import.meta.dirname, "data", "monitor");
 const SCAN_DWELL = 0.25, SCAN_HANG = 2.5, SCAN_MAX_HOLD = 15, SCAN_MAX = 150; // seconds on each quiet channel; how long to stay after a transmission ends; the most on any one channel
-const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000, MAX_UTT_S = 25, MIN_UTT_S = 0.7;
+const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000;
+const MAX_UTT_S = 6.0, MIN_UTT_S = 0.3, OVERLAP_S = 0.5, SQUELCH_HANG_S = 0.65;
 
 export type Caption = { at: string; text: string; seconds: number; calls: Call[]; mhz: number; label: string };
 type Scan = { list: { mhz: number; label: string }[]; i: number; hits: Record<string, string>; round?: number; roundStart?: number };
@@ -27,6 +28,26 @@ const viewers = new Set<Viewer>(), ears = new Set<import("node:http").ServerResp
 let state = { on: false, mhz: 0, label: "", mode: "NFM" as "NFM" | "WFM", open: false, since: "", error: "", captions: [] as Caption[], transcribing: 0, scan: null as Scan | null };
 let abort: AbortController | null = null, lastViewer = Date.now(), whisper: ChildProcess | null = null;
 const pending = new Map<string, (r: any) => void>();
+
+interface AudioJob {
+  pcm: Int16Array;
+  mhz: number;
+  label: string;
+  at: string;
+  seq: number;
+}
+let jobSeq = 0;
+const audioQueue: AudioJob[] = [];
+let queueBusy = false;
+
+const NOISE_PHRASES = new Set(["thank you.", "thank you", "thanks for watching.", "thanks for watching", "subtitles by", "you", "bye.", "bye"]);
+function isHallucination(text: string): boolean {
+  const clean = text.trim().toLowerCase();
+  if (NOISE_PHRASES.has(clean)) return true;
+  if (/^\[.*\]$/.test(clean)) return true;
+  if (/^[\(\*\.\s]+$/.test(clean)) return true;
+  return false;
+}
 
 const send = (ev: string, data: unknown) => { const line = `event: ${ev}\ndata: ${JSON.stringify(data)}\n\n`; for (const v of viewers) v.res.write(line); };
 const pub = () => ({ on: state.on, mhz: state.mhz, label: state.label, mode: state.mode, open: state.open, since: state.since, error: state.error, transcribing: state.transcribing, viewers: viewers.size, captions: state.captions.slice(-40), scan: state.scan });
@@ -41,19 +62,115 @@ for line in sys.stdin:
     p = line.strip()
     if not p: continue
     try:
-        r = mlx_whisper.transcribe(p, path_or_hf_repo=${JSON.stringify(MODEL)}, language="en", initial_prompt=PROMPT, condition_on_previous_text=False, temperature=0, no_speech_threshold=0.5, fp16=True)
-        print(json.dumps({"path": p, "text": r.get("text", "").strip(), "segments": [{"s": round(s["start"], 1), "e": round(s["end"], 1), "t": s["text"].strip(), "p": s.get("no_speech_prob")} for s in r.get("segments", [])]}), flush=True)
+        r = mlx_whisper.transcribe(
+            p,
+            path_or_hf_repo=${JSON.stringify(MODEL)},
+            language="en",
+            initial_prompt=PROMPT,
+            condition_on_previous_text=False,
+            temperature=0,
+            no_speech_threshold=0.85,
+            logprob_threshold=-1.5,
+            verbose=False,
+            fp16=True
+        )
+        out = {"path": p, "text": r.get("text", "").strip(), "segments": [{"s": round(s["start"], 1), "e": round(s["end"], 1), "t": s["text"].strip(), "p": s.get("no_speech_prob")} for s in r.get("segments", [])]}
+        print(json.dumps(out), flush=True)
     except Exception as e:
         print(json.dumps({"path": p, "error": str(e)}), flush=True)
 `;
   whisper = spawn(PY, ["-u", "-c", script], { stdio: ["pipe", "pipe", "pipe"] });
   let buf = "";
-  whisper.stdout!.on("data", (d) => { buf += d; let i; while ((i = buf.indexOf("\n")) >= 0) { const row = buf.slice(0, i); buf = buf.slice(i + 1); try { const j = JSON.parse(row); pending.get(j.path)?.(j); pending.delete(j.path); } catch {} } });
+  whisper.stdout!.on("data", (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const row = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      const start = row.indexOf("{");
+      if (start >= 0) {
+        try {
+          const j = JSON.parse(row.slice(start));
+          pending.get(j.path)?.(j);
+          pending.delete(j.path);
+        } catch {}
+      }
+    }
+  });
   whisper.stderr!.on("data", (d) => { const t = String(d); if (!/it\/s|Fetching|%\|/.test(t)) console.warn("whisper:", t.trim().slice(0, 200)); });
   whisper.on("exit", (c) => { console.warn(`whisper worker exited (${c})`); whisper = null; for (const [, r] of pending) r({ error: "worker exited" }); pending.clear(); });
   return whisper;
 }
 const transcribe = (file: string) => new Promise<any>((resolve) => { pending.set(file, resolve); worker().stdin!.write(file + "\n"); setTimeout(() => { if (pending.has(file)) { pending.delete(file); resolve({ error: "timeout" }); } }, 90_000); });
+
+async function processQueue() {
+  if (queueBusy || !audioQueue.length) return;
+  queueBusy = true;
+  state.transcribing = audioQueue.length;
+  send("state", pub());
+
+  while (audioQueue.length > 0) {
+    const job = audioQueue.shift()!;
+    state.transcribing = audioQueue.length + 1;
+    send("state", pub());
+
+    const file = path.join(DIR, `utt-${Date.now()}-${job.seq}.wav`);
+    try {
+      await mkdir(DIR, { recursive: true });
+      await writeFile(file, wav16(job.pcm));
+      const res = await transcribe(file);
+      await unlink(file).catch(() => {});
+
+      const text = String(res?.text ?? "").trim();
+      if (text && !res?.error && (text.match(/[A-Za-z0-9]/g) ?? []).length >= 2 && !isHallucination(text)) {
+        const calls: Call[] = [];
+        for (const c of findCallsigns(text).slice(0, 4)) {
+          const d: any = await fccLookup(c.call).catch(() => null);
+          calls.push(d?.found ? {
+            call: c.call,
+            found: true,
+            name: d.name,
+            cls: d.licenseClass ?? d.type,
+            grid: d.grid,
+            lat: d.lat,
+            lon: d.lon,
+            city: String(d.address ?? "").split(",").slice(-2).join(",").trim(),
+            how: c.how
+          } : { call: c.call, found: false, how: c.how });
+        }
+        const cap: Caption = {
+          at: job.at,
+          text,
+          seconds: +(job.pcm.length / AUDIO_FS).toFixed(1),
+          calls,
+          mhz: job.mhz,
+          label: job.label
+        };
+        state.captions.push(cap);
+        if (state.captions.length > 250) state.captions.shift();
+        send("caption", cap);
+      }
+    } catch (err: any) {
+      console.warn("transcribe queue error:", err?.message);
+    }
+  }
+
+  queueBusy = false;
+  state.transcribing = 0;
+  send("state", pub());
+}
+
+function enqueueAudio(pcm: Int16Array, mhz: number, label: string) {
+  if (pcm.length < MIN_UTT_S * AUDIO_FS) return;
+  audioQueue.push({
+    pcm,
+    mhz,
+    label,
+    at: new Date().toISOString(),
+    seq: ++jobSeq
+  });
+  void processQueue();
+}
 
 // ---------- callsigns in text: "K2ABC", "K 2 A B C", "kilo two alpha bravo charlie" ----------
 const NATO: Record<string, string> = { ALPHA: "A", ALFA: "A", BRAVO: "B", CHARLIE: "C", DELTA: "D", ECHO: "E", FOXTROT: "F", GOLF: "G", HOTEL: "H", INDIA: "I", JULIET: "J", JULIETT: "J", KILO: "K", LIMA: "L", MIKE: "M", NOVEMBER: "N", OSCAR: "O", PAPA: "P", QUEBEC: "Q", ROMEO: "R", SIERRA: "S", TANGO: "T", UNIFORM: "U", VICTOR: "V", WHISKEY: "W", WHISKY: "W", XRAY: "X", "X-RAY": "X", YANKEE: "Y", ZULU: "Z",
@@ -108,26 +225,19 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     else { fails = 0; settle = r.window?.[0] !== window0 ? 0.35 : 0.12; window0 = r.window?.[0]; dwell = SCAN_DWELL; } // skip what was in flight (and the retune)
     hopping = false; send("scan", { i: sc.i, mhz: ch.mhz, label: ch.label, round: sc.round });
   };
-  const finish = async () => {
-    const { mhz, label } = state;
+  const OVERLAP_SAMPLES = Math.round(OVERLAP_S * AUDIO_FS);
+  const flushUtt = (isContinuation = false) => {
+    if (!uttLen) return;
     const n = uttLen; const pcm = new Int16Array(n); let o = 0; for (const part of utt) { pcm.set(part, o); o += part.length; }
-    utt = []; uttLen = 0;
-    if (n < MIN_UTT_S * AUDIO_FS) return;
-    const file = path.join(DIR, `utt-${Date.now()}.wav`);
-    await mkdir(DIR, { recursive: true }); await writeFile(file, wav16(pcm));
-    state.transcribing++; send("state", pub());
-    const res = await transcribe(file); unlink(file).catch(() => {});
-    state.transcribing--;
-    const text = String(res?.text ?? "").trim();
-    if (!text || res?.error || (text.match(/[A-Za-z0-9]/g) ?? []).length < 3) { send("state", pub()); return; } // nothing, or noise heard as punctuation
-    const calls: Call[] = [];
-    for (const c of findCallsigns(text).slice(0, 4)) {
-      const d: any = await fccLookup(c.call).catch(() => null);
-      calls.push(d?.found ? { call: c.call, found: true, name: d.name, cls: d.licenseClass ?? d.type, grid: d.grid, lat: d.lat, lon: d.lon, city: String(d.address ?? "").split(",").slice(-2).join(",").trim(), how: c.how } : { call: c.call, found: false, how: c.how });
+    if (isContinuation && n > OVERLAP_SAMPLES) {
+      const overlap = pcm.slice(n - OVERLAP_SAMPLES);
+      utt = [overlap];
+      uttLen = overlap.length;
+    } else {
+      utt = [];
+      uttLen = 0;
     }
-    const cap: Caption = { at: new Date().toISOString(), text, seconds: +(n / AUDIO_FS).toFixed(1), calls, mhz, label };
-    state.captions.push(cap); if (state.captions.length > 200) state.captions.shift();
-    send("caption", cap); send("state", pub());
+    enqueueAudio(pcm, state.mhz, state.label);
   };
   const reader = r.body.getReader();
   for (;;) {
@@ -142,7 +252,7 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     if (state.scan && (hopping || settle > 0)) { settle -= sec; continue; }
     const on = mode === "WFM" || (++chunks > 15 && snr > 5); // the dongle needs a moment to settle. 5 dB: empty 2 m channels measure 0–1, and a weak repeater (146.955 MHz on the HackRF) sat at 6–8, muted by the old 10
     if (on) closedFor = 0; else closedFor += sec;
-    const nowOpen = on || (open && closedFor < 0.7);
+    const nowOpen = on || (open && closedFor < SQUELCH_HANG_S);
     if (nowOpen !== open) {
       open = nowOpen; state.open = open; send("squelch", { open, db: +db.toFixed(1), snr: Number.isFinite(snr) ? +snr.toFixed(1) : null, mhz: state.mhz }); if (open) utStart = Date.now();
       if (open && state.scan) { state.scan.hits[state.mhz] = new Date().toISOString(); send("hit", { mhz: state.mhz, label: state.label, at: state.scan.hits[state.mhz] }); }
@@ -151,10 +261,15 @@ async function run(mhz: number, mode: "NFM" | "WFM", ac: AbortController) {
     if (open) for (let i = 0; i < a.length; i++) pcm[i] = Math.max(-32767, Math.min(32767, Math.round(a[i] * 24000)));
     const chunk = Buffer.from(pcm.buffer, pcm.byteOffset, pcm.byteLength);
     for (const e of ears) e.write(chunk);
-    if (open) { utt.push(pcm); uttLen += pcm.length; if (uttLen >= MAX_UTT_S * AUDIO_FS) finish(); }
-    else if (uttLen) finish();
+    if (open) {
+      utt.push(pcm);
+      uttLen += pcm.length;
+      if (uttLen >= MAX_UTT_S * AUDIO_FS) flushUtt(true);
+    } else if (uttLen) {
+      flushUtt(false);
+    }
     if (state.scan && chunks > 15) {
-      if ((onFor += sec) > SCAN_MAX_HOLD) { if (uttLen) finish(); void hop(); } // a channel that never goes quiet doesn't stop the scan
+      if ((onFor += sec) > SCAN_MAX_HOLD) { if (uttLen) flushUtt(false); void hop(); } // a channel that never goes quiet doesn't stop the scan
       else if (open) dwell = SCAN_HANG; else if ((dwell -= sec) <= 0 && !uttLen) void hop();
     }
     if (Date.now() - lastViewer > IDLE_MS && !viewers.size) { stopMonitor("nobody listening"); break; }
@@ -180,7 +295,7 @@ export function startScan(list: unknown) {
 export function stopMonitor(why = "stopped", quiet = false) {
   abort?.abort(); abort = null;
   // what was said stays only with those who listened (their page keeps it)
-  if (!quiet) { state = { ...state, on: false, open: false, error: "", captions: [], scan: null }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
+  if (!quiet) { audioQueue.length = 0; state = { ...state, on: false, open: false, error: "", captions: [], scan: null, transcribing: 0 }; send("state", pub()); for (const e of ears) e.end(); ears.clear(); }
   void why;
 }
 /** Server-sent events for the page: state, squelch, caption. */

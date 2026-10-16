@@ -17,6 +17,7 @@ import { issPasses } from "./sat.ts";
 import { search as jobSearch } from "./jobs.ts";
 import { events as eveningEvents, planEvening } from "./evening.ts";
 import { today as ornaToday, plan as ornaPlan } from "./orna.ts";
+import { generateMeme, searchTemplates } from "./memes.ts";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
@@ -322,6 +323,44 @@ const TOOLS: Record<string, Tool> = {
     parameters: { address: { type: "string", description: "Address or place, e.g. '348 E 54th St Manhattan'" } }, required: ["address"],
     run: ({ address }) => addressInfo(String(address)),
   },
+  generate_meme: {
+    description: "Generate a custom meme image from 200+ iconic meme templates (e.g. Doge, Drake, Roll Safe, But It's Honest Work, Captain America elevator dad joke, This Is Fine, Futurama Fry, Success Kid, etc.). Pass top and bottom text, and optionally a template ID or search keyword/mood to pick the most suitable template automatically.",
+    parameters: {
+      top: { type: "string", description: "Top caption / setup line" },
+      bottom: { type: "string", description: "Bottom caption / punchline" },
+      template: { type: "string", description: "Optional template ID (e.g. doge, drake, fine, rollsafe, bihw, captain-america, fry, spiderman, etc.)" },
+      search: { type: "string", description: "Optional search query, mood or topic to find the most fitting template automatically (e.g. 'dad joke', 'honest work', 'panic', 'confusion', 'irony', 'programming')" },
+    },
+    required: ["top", "bottom"],
+    run: async ({ top, bottom, template, search }) => {
+      const res = await generateMeme({ top: String(top ?? ""), bottom: String(bottom ?? ""), template: template ? String(template) : undefined, search: search ? String(search) : undefined });
+      return {
+        url: res.url,
+        template: { id: res.template.id, name: res.template.name },
+        top: res.top,
+        bottom: res.bottom,
+        markdown: res.markdown,
+      };
+    },
+  },
+  search_memes: {
+    description: "Search 200+ meme templates by keywords, phrases, or comedic vibes to find the best template ID, title, and example captions before generating.",
+    parameters: {
+      query: { type: "string", description: "Keyword or vibe to search for (e.g. 'dad joke', 'cat', 'confusion', 'success', 'disaster', 'alien')" },
+      limit: { type: "number", description: "Max results to return (default 6, up to 15)" },
+    },
+    required: ["query"],
+    run: ({ query, limit }) => ({
+      query: String(query ?? ""),
+      matches: searchTemplates(String(query ?? ""), Math.min(15, Math.max(1, Number(limit) || 6))).map((t) => ({
+        id: t.id,
+        name: t.name,
+        lines: t.lines,
+        keywords: t.keywords.slice(0, 8),
+        example: t.example,
+      })),
+    }),
+  },
 };
 /** A map link that opens the NYC map at a point with its "what's here" popup, titled with the place's name. */
 const mapAt = (lat: number, lon: number, name = "") => `/nyc/#at=${lat.toFixed(5)},${lon.toFixed(5)},17${name ? `|${encodeURIComponent(name)}` : ""}`;
@@ -368,6 +407,7 @@ Tools: use them when the answer needs live or outside data (subway status, Citi 
 - "Near me", "closest to me": the page objects may carry the visitor's location (visitorLocation, lat/lon). Pass it to citibike_near, subway_near or bus_arrivals (buses: also by intersection and route, e.g. M15 at 1st Ave & 14 St). If it's missing, ask them to press ◎ on the NYC map (or name a place).
 - Where: on a map page the page objects carry mapView (the area the visitor is looking at). A question that names no place ("what's flying here?", "is it raining?", "any webcams?") is about that area: pass its lat/lon to the tool. With no mapView (the home page, other pages), assume NYC.
 - Do things, don't just describe them: chain tools (find the place, then the nearest bikes, then show it on the map with a page action) and finish with what you found and did.
+- Memes & humor: generate_meme to craft witty, ironic, or dad-joke memes with iconic templates, or search_memes to find matching templates.
 
 How to answer:
 - Be warm, playful and brief: usually 1-4 short sentences, like a game character. Go longer only when asked to explain.
@@ -394,7 +434,7 @@ function pageTools(page: any) {
 async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [], deep = false) {
   const tools = withTools ? { tools: [...toolSpecs, ...extraTools] } : {};
   const budget = { options: { num_predict: deep ? 8000 : 1500 } };
-  const key = process.env.OLLAMA_CLOUD_KEY;
+  const key = process.env.BLIP_LOCAL ? undefined : process.env.OLLAMA_CLOUD_KEY;
   if (key) {
     try {
       const r = await fetch("https://ollama.com/api/chat", {
@@ -407,7 +447,7 @@ async function chat(messages: Msg[], withTools: boolean, extraTools: any[] = [],
   }
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(deep ? 300_000 : 120_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: deep ? (MODEL.startsWith("gpt-oss") ? "high" : true) : localThink(false), ...budget, messages, ...tools }),
+    body: JSON.stringify({ model: MODEL, stream: false, think: localThink(false, deep, MODEL), ...budget, messages, ...tools }),
   });
   if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
   return (await r.json()).message as Msg;

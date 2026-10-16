@@ -5,11 +5,21 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
+import { generateMeme, pickFreshTemplate, sampleTemplatesForTurn } from "./memes.ts";
 const ROOT = import.meta.dirname;
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
 export type Level = (typeof LEVELS)[number];
 export type Turn = { role: "user" | "assistant"; content: string };
-export type Reply = { ja: string; en: string; words: { s: string; r: string; g: string }[]; fix: string };
+export type Reply = {
+  ja: string;
+  en: string;
+  words: { s: string; r: string; g: string }[];
+  fix: string;
+  meme_template?: string;
+  meme_top?: string;
+  meme_bottom?: string;
+  memeUrl?: string;
+};
 
 const SCHEMA = {
   type: "object",
@@ -18,8 +28,11 @@ const SCHEMA = {
     en: { type: "string", description: "natural English translation of Blip's ja reply (always non-empty)" },
     words: { type: "array", description: "ja split into every word and particle, in order, with hiragana reading and a short English gloss", items: { type: "object", properties: { s: { type: "string" }, r: { type: "string" }, g: { type: "string" } }, required: ["s", "r", "g"] } },
     fix: { type: "string", description: "one gentle correction of the learner's last Japanese, in English, or empty" },
+    meme_template: { type: "string", description: "any meme template ID from our 209-template library (e.g. captain-america, bihw, rollsafe, fine, fry, drake, panik-kalm-panik, success, ptj, same, wonka, doge, bongo, spiderman, woman-cat, spongebob, gru, clown, bus, exit, 3hd, disastergirl, harold, etc.)" },
+    meme_top: { type: "string", description: "short witty or ironic setup phrase or dad joke line (1-6 words)" },
+    meme_bottom: { type: "string", description: "short punchline or reaction phrase (1-6 words)" }
   },
-  required: ["ja", "en", "words", "fix"],
+  required: ["ja", "en", "words", "fix", "meme_template", "meme_top", "meme_bottom"],
 };
 
 let grammar: Promise<any[]> | null = null;
@@ -38,9 +51,12 @@ const STYLE: Record<Level, string> = {
 };
 
 /** One turn of conversation. `turns` are the learner's and Blip's previous lines (Blip's as Japanese only). */
-export async function yomuChat(level: Level, turns: Turn[], topic = ""): Promise<Reply> {
+export async function yomuChat(level: Level, turns: Turn[], topic = "", usedMemes: string[] = []): Promise<Reply> {
   const points = await grammarFor(level);
   const isStart = !turns.length || turns.at(-1)!.role === "assistant";
+  const rotation = sampleTemplatesForTurn(usedMemes, 24);
+  const rotationLines = rotation.map((t) => `     * ${t.id} ("${t.name}"): ${t.example?.[0] ? `"${t.example[0]}"` : ""}`).join("\n");
+  const usedNotice = usedMemes.length ? `\n7. MEME VARIETY (DO NOT REUSE): The following meme templates were ALREADY used in this session: [${usedMemes.join(", ")}]. You MUST pick a completely DIFFERENT template from our 209-template catalog!` : "";
   const system = `You are Blip, a small friendly robot who is a patient Japanese conversation partner for a learner practicing JLPT ${level}.
 Talk about whatever the learner wants${topic ? ` (topic: ${topic})` : ""}. Reply ONLY in Japanese at their level, 1–3 short sentences, and end with an engaging question that keeps the conversation moving forward naturally.
 
@@ -59,6 +75,14 @@ CONVERSATION RULES:
    - Style: ${STYLE[level]}
    - Grammar: Use only JLPT ${level} and below: ${points.join("; ")}.
    - Vocabulary: strictly JLPT ${level} or easier. Never use grammar or words above the level, even if the learner does.
+6. WITTY MEME REACTION (ALL 209 MEME TEMPLATES ARE AVAILABLE):
+   For every reply, provide a witty, funny, ironic, or dad-joke meme that comments humorously on the current dialogue line or learner's response.
+   You have access to all 209 templates in the library. Here are 24 fresh template options for this turn:
+${rotationLines}
+   Or pick ANY other valid template ID from our 209 templates (e.g. captain-america, bihw, rollsafe, fine, fry, drake, panik-kalm-panik, success, ptj, same, wonka, doge, bongo, cheems, spiderman, woman-cat, spongebob, gru, clown, bus, exit, 3hd, disastergirl, harold, etc.).
+   - "meme_template": the chosen template ID (or descriptive search term).
+   - "meme_top": short witty setup text or dad joke setup (1-6 words).
+   - "meme_bottom": short punchline or reaction text (1-6 words).${usedNotice}
 
 "en": ALWAYS write the full, natural English translation of your "ja" reply in this field. Never leave "en" empty.
 If the learner writes in English, answer their meaning in simple Japanese anyway (they're practicing), and provide the translation of your Japanese in "en".
@@ -68,7 +92,7 @@ If their last Japanese had a mistake, put ONE short friendly correction in "fix"
 Answer with the JSON object only.`;
   const messages = [{ role: "system", content: system }, ...turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) }))];
   if (!turns.length || turns.at(-1)!.role === "assistant") messages.push({ role: "user", content: "(Start the conversation: greet me and ask me something.)" });
-  // gpt-oss now and then leaves the answer in its thinking (empty content) or garbles its channels (Ollama answers 500):
+  // Local reasoning models now and then leave the answer in their thinking (empty content) or garble channels (Ollama answers 500):
   // asking again fixes both, within one time limit for the whole turn
   const signal = AbortSignal.timeout(150_000);
   let out: Reply | null = null, err: unknown;
@@ -76,7 +100,7 @@ Answer with the JSON object only.`;
     try {
       const r = await fetch(`${OLLAMA}/api/chat`, {
         method: "POST", signal,
-        body: JSON.stringify({ model: MODEL, stream: false, think: localThink(true), format: SCHEMA, options: { num_predict: 900, temperature: 0.7, repeat_penalty: 1.2 }, messages }),
+        body: JSON.stringify({ model: MODEL, stream: false, think: false, format: SCHEMA, options: { num_predict: 900, temperature: 0.7 }, messages }),
       });
       if (!r.ok) throw new Error(`local model: ${r.status}`);
       const o = JSON.parse((await r.json()).message.content) as Reply;
@@ -91,6 +115,25 @@ Answer with the JSON object only.`;
   // split (a small, fast call), and if that fails too the page falls back to the plain line
   if (!wellSplit(out.words, out.ja)) { try { out.words = await splitWords(out.ja); } catch {} }
   if (!wellSplit(out.words, out.ja)) out.words = [];
+
+  if (out.meme_template || out.meme_top || out.meme_bottom) {
+    try {
+      let chosen = out.meme_template;
+      if (chosen && usedMemes.includes(chosen.toLowerCase())) {
+        const alt = pickFreshTemplate(usedMemes, chosen);
+        if (alt) chosen = alt;
+      }
+      const generated = await generateMeme({
+        template: chosen,
+        top: out.meme_top || "",
+        bottom: out.meme_bottom || "",
+        search: chosen,
+      });
+      out.memeUrl = generated.url;
+      out.meme_template = generated.template.id;
+    } catch {}
+  }
+
   return out;
 }
 const letters = (s: string) => s.replace(/[\s\p{P}\p{S}]/gu, "");
@@ -103,7 +146,7 @@ export function wellSplit(words: Reply["words"], ja: string) {
 export async function splitWords(ja: string): Promise<Reply["words"]> {
   const r = await fetch(`${OLLAMA}/api/chat`, {
     method: "POST", signal: AbortSignal.timeout(60_000),
-    body: JSON.stringify({ model: MODEL, stream: false, think: localThink(true), format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
+    body: JSON.stringify({ model: MODEL, stream: false, think: false, format: { type: "object", properties: { words: SCHEMA.properties.words }, required: ["words"] }, options: { num_predict: 700, temperature: 0 },
       messages: [{ role: "system", content: 'Split the Japanese sentence into dictionary words and particles, in order, covering every character: s = surface form, r = hiragana reading, g = short English meaning (particles: "particle: marks the topic" etc.; punctuation: g ""). One word per item, never a phrase. JSON only.' }, { role: "user", content: ja }] }),
   });
   if (!r.ok) throw new Error(`local model: ${r.status}`);
