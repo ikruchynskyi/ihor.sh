@@ -218,7 +218,7 @@ async function scanFm() {
 // slice around their own station: mixed to 0 Hz, low-passed and decimated here (2.4 MS/s → 480 k → 240 k, or one
 // stage to 1.2 M), 8-bit like the dongle's own bytes. Slices are absolute frequencies, so everyone tunes on their own;
 // the window itself moves only when it can still cover every slice.
-type Slice = { id: string; res: http.ServerResponse; center: number; width: number; tag: string; phase: number; stages: FirDecimator[]; congested: boolean };
+type Slice = { id: string; res: http.ServerResponse; center: number; width: number; tag: string; phase: number; stages: FirDecimator[]; congested: boolean; scale: number };
 const slices = new Map<string, Slice>();
 const overviewers = new Set<http.ServerResponse>();
 const listening = () => clients.size + slices.size;
@@ -254,7 +254,7 @@ function sliceOut(sl: Slice, x: Float32Array) {
   for (const st of sl.stages) y = st.process(y);
   if (sl.congested) return;
   const b = new Uint8Array(y.length);
-  for (let i = 0; i < y.length; i++) b[i] = Math.max(0, Math.min(255, Math.round(y[i] * 127.5 + 127.5)));
+  for (let i = 0; i < y.length; i++) b[i] = Math.max(0, Math.min(255, Math.round(y[i] * sl.scale + 127.5)));
   if (!sl.res.write(b)) { sl.congested = true; sl.res.once("drain", () => (sl.congested = false)); }
 }
 const fmtMHz = (hz: number) => (hz / 1e6).toFixed(2);
@@ -451,6 +451,10 @@ const server = http.createServer(async (req, res) => {
     }
     // GET /api/stream?center=Hz&width=240000|1200000&id=… : your slice of the window (no center: the window's middle,
     // 1.2 MHz wide, which is what older pages expect). ?raw=1, the whole 2.4 MHz, only on this computer's own network.
+    // ?boost=1 scales the slice by √(rate ÷ width): narrowing 2.4 MHz to 240 kHz leaves a tenth of the noise power, which
+    // at the dongle's scale is about 1 count of 8 bits (a Meteor pass on 2026-10-16: 92% of samples were 127 or 128,
+    // about 1 dB lost to rounding). Boosted, the noise keeps the dongle's level; a strong station could clip, so only
+    // weak-signal recorders ask for it.
     if (url.pathname === "/api/stream") {
       const q = url.searchParams, raw = q.get("raw") === "1" && !req.headers["x-via-ihor"];
       const width = WIDTHS.includes(Number(q.get("width"))) ? Number(q.get("width")) : 1_200_000;
@@ -470,7 +474,7 @@ const server = http.createServer(async (req, res) => {
       if (raw) { clients.add(res); req.on("close", () => { clients.delete(res); congested.delete(res); leave(); }); }
       else {
         slices.get(id)?.res.destroy(); // the same page reconnecting replaces its old stream
-        slices.set(id, { id, res, center, width, tag: id.slice(-4), phase: 0, stages: stages(sdr!.sampleRate, width), congested: false });
+        slices.set(id, { id, res, center, width, tag: id.slice(-4), phase: 0, stages: stages(sdr!.sampleRate, width), congested: false, scale: 127.5 * (q.get("boost") === "1" ? Math.sqrt(sdr!.sampleRate / width) : 1) });
         req.on("close", () => { if (slices.get(id)?.res === res) slices.delete(id); leave(); });
       }
       console.log(`listener joined (${listening()})`);

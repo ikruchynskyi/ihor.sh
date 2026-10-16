@@ -54,7 +54,7 @@ if (FILE) { // a recording replayed as if it were arriving live (for testing the
   log(`recording ${SAT} on ${FREQ} MHz until ${new Date(UNTIL).toISOString()} (peak ${MAX_EL}°)`);
   const abort = new AbortController();
   setTimeout(() => abort.abort(), Math.max(1000, UNTIL + 30_000 - Date.now()));
-  const slice = (base: string) => fetch(`${base}/api/stream?id=meteor-recorder&center=${Math.round(FREQ * 1e6)}&width=240000`, { signal: abort.signal }).catch((e) => { log(`radio server ${base}: ${(e as Error).message}`); return null; });
+  const slice = (base: string) => fetch(`${base}/api/stream?id=meteor-recorder&center=${Math.round(FREQ * 1e6)}&width=240000&boost=1`, { signal: abort.signal }).catch((e) => { log(`radio server ${base}: ${(e as Error).message}`); return null; });
   let res: Response | null = await slice(SAT_SDR);
   if (res?.ok && res.body) log("on the satellite radio (:8074)");
   else { log(`satellite radio unavailable (${res?.status ?? "no answer"}${res ? `: ${(await res.json().catch(() => ({}))).error ?? ""}` : ""}): using the shared radio`); res = null; }
