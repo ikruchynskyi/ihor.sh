@@ -7,59 +7,143 @@ type Station = { call: string; mhz: number; city: string; state: string; km: num
 type Dial = { scan: { at: number; gain: number | null } | null; stations: Station[]; internet: { name: string; tags: string[]; url: string; https: boolean; homepage: string | null; claimsFm: number | null }[] };
 let data: Dial | null = null, playing: string | null = null;
 
-const HEARD: Record<string, string> = { clear: "clear", heard: "heard, weak", spillover: "only a neighbor's spillover", "co-channel": "its channel is taken here by", "not heard": "not heard here", "not scanned": "not scanned yet" };
-const ago = (t: number) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+const HEARD: Record<string, string> = {
+  clear: "Clear signal",
+  heard: "Heard (weak)",
+  spillover: "Neighbor spillover",
+  "co-channel": "Co-channel conflict",
+  "not heard": "Not heard",
+  "not scanned": "Not scanned yet"
+};
+const ago = (t: number) => {
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`;
+};
 
 function play(name: string, url: string, https: boolean) {
   if (!https) return void window.open(url, "_blank", "noopener"); // an http stream can't play inside an https page
   const a = $<HTMLAudioElement>("audio");
-  a.src = url; a.play().catch(() => {});
+  a.src = url;
+  a.play().catch(() => {});
   playing = name;
-  $("player").hidden = false;
-  $("player").innerHTML = `▶ <b>${esc(name)}</b> <button id="stop">■ Stop</button>`;
+  const player = $("player");
+  player.hidden = false;
+  player.innerHTML = `
+    <div class="player-content">
+      <div class="player-info">
+        <span class="player-pulse"></span>
+        <span class="player-label">PLAYING:</span>
+        <strong class="player-title">${esc(name)}</strong>
+      </div>
+      <button id="stop" class="player-stop">■ Stop</button>
+    </div>`;
   $("stop").onclick = stop;
 }
-function stop() { const a = $<HTMLAudioElement>("audio"); a.pause(); a.removeAttribute("src"); $("player").hidden = true; playing = null; }
+
+function stop() {
+  const a = $<HTMLAudioElement>("audio");
+  a.pause();
+  a.removeAttribute("src");
+  $("player").hidden = true;
+  playing = null;
+}
 
 function render() {
   if (!data) return;
   const q = $<HTMLInputElement>("q").value.trim().toLowerCase(), only = $<HTMLInputElement>("onlyHeard").checked;
   const match = (s: string) => !q || s.toLowerCase().includes(q);
   const rows = data.stations.filter((s) => (!only || s.heard === "clear" || s.heard === "heard") && match(`${s.mhz} ${s.call} ${s.city} ${s.state} ${s.licensee} ${s.streams.map((x) => x.name).join(" ")}`));
+
   $("rows").innerHTML = rows.map((s) => `<tr>
     <td class="f">${s.mhz.toFixed(1)}</td>
-    <td><b>${esc(s.call)}</b>${s.streams[0] ? `<br><span class="muted">${esc(s.streams[0].name)}</span>` : ""}</td>
+    <td>
+      <div class="station-name">${esc(s.call)}</div>
+      ${s.streams[0] ? `<span class="stream-tag">${esc(s.streams[0].name)}</span>` : ""}
+    </td>
     <td class="hide-sm muted">${esc(s.city)}, ${esc(s.state)} · ${Math.round(s.km)} km · ${s.erpKw} kW</td>
-    <td class="heard-${s.heard === "co-channel" ? "not" : s.heard.split(" ")[0]}">${s.snrDb !== null ? `<span class="meter" title="${s.snrDb} dB over the noise"><i style="width:${Math.max(0, Math.min(100, (s.snrDb / 40) * 100))}%"></i></span>` : ""}${esc(HEARD[s.heard] ?? s.heard)}${s.sharesWith ? ` ${esc(s.sharesWith)}` : ""}${s.snrDb !== null && !s.sharesWith ? ` <span class="muted">${s.snrDb.toFixed(0)} dB</span>` : ""}</td>
-    <td class="acts">${s.heard === "clear" || s.heard === "heard" ? `<a href="../?listen=${s.mhz}" title="Tune this site's radio to ${s.mhz} MHz (Spectrum Lab: press 'Listen to server SDR')">📡 ${s.mhz}</a>` : ""}${s.streams.slice(0, 2).map((x, i) => `<button class="play" data-call="${esc(s.call)}" data-i="${i}" title="${esc(x.name)}${x.https ? "" : " (opens a new tab)"}">▶${s.streams.length > 1 ? ` ${i + 1}` : ""}</button>`).join("")}</td>
-  </tr>`).join("") || `<tr><td colspan="5" class="muted">No station matches.</td></tr>`;
-  $("internet").innerHTML = data.internet.filter((s) => match(`${s.name} ${s.tags.join(" ")}`)).map((s, i) => `<li><button class="play" data-net="${data!.internet.indexOf(s)}">▶</button> <b>${esc(s.name)}</b> <span class="muted">${esc(s.tags.slice(0, 4).join(", "))}${s.claimsFm ? ` · says "${s.claimsFm}" in its name, but no licensed station matches` : ""}${s.https ? "" : " · opens in a new tab"}</span>${s.homepage ? ` <a href="${esc(s.homepage)}" target="_blank" rel="noopener">site</a>` : ""}</li>`).join("");
+    <td class="heard-${s.heard === "co-channel" ? "not" : s.heard.split(" ")[0]}">
+      <div class="meter-wrap">
+        ${s.snrDb !== null ? `<span class="meter" title="${s.snrDb} dB over the noise"><i style="width:${Math.max(0, Math.min(100, (s.snrDb / 40) * 100))}%"></i></span>` : ""}
+        <span>${esc(HEARD[s.heard] ?? s.heard)}${s.sharesWith ? ` ${esc(s.sharesWith)}` : ""}</span>
+        ${s.snrDb !== null && !s.sharesWith ? `<span class="muted">(${s.snrDb.toFixed(0)} dB)</span>` : ""}
+      </div>
+    </td>
+    <td class="acts">
+      ${s.heard === "clear" || s.heard === "heard" ? `<a class="btn-tune" href="../?listen=${s.mhz}" title="Tune live SDR to ${s.mhz} MHz in Spectrum Lab">📡 SDR</a>` : ""}
+      ${s.streams.slice(0, 2).map((x, i) => `<button class="play" data-call="${esc(s.call)}" data-i="${i}" title="${esc(x.name)}${x.https ? "" : " (opens a new tab)"}">▶ ${s.streams.length > 1 ? `Stream ${i + 1}` : "Stream"}</button>`).join("")}
+    </td>
+  </tr>`).join("") || `<tr><td colspan="5" class="muted" style="text-align:center;padding:24px;">No stations match the search filter.</td></tr>`;
+
+  $("internet").innerHTML = data.internet.filter((s) => match(`${s.name} ${s.tags.join(" ")}`)).map((s) => `<li class="card">
+    <div class="net-top">
+      <span class="net-title">${esc(s.name)}</span>
+      <button class="play" data-net="${data!.internet.indexOf(s)}">▶ Stream</button>
+    </div>
+    <div class="net-tags">
+      ${s.tags.length ? s.tags.slice(0, 5).map((t) => `<span class="stream-tag" style="display:inline-block;margin-right:4px;">#${esc(t)}</span>`).join("") : ""}
+      ${s.claimsFm ? `<span class="muted">· claims "${s.claimsFm}"</span>` : ""}
+      ${s.homepage ? `<br><a href="${esc(s.homepage)}" target="_blank" rel="noopener">Visit station website ↗</a>` : ""}
+    </div>
+  </li>`).join("") || `<li class="muted" style="grid-column:1/-1;text-align:center;padding:16px;">No internet stations match the filter.</li>`;
 }
 
 async function load() {
   const r = await fetch("/api/radio/stations").catch(() => null);
-  if (!r?.ok) { $("scanLine").textContent = "The station list is only available on ihor.sh."; return; }
+  if (!r?.ok) {
+    const scanLine = $("scanLine");
+    if (scanLine) {
+      scanLine.hidden = false;
+      scanLine.textContent = "The station list is only available on ihor.sh.";
+    }
+    return;
+  }
   data = await r.json();
   const heard = data!.stations.filter((s) => s.heard === "clear" || s.heard === "heard").length;
-  $("scanLine").innerHTML = data!.scan
-    ? `${data!.stations.length} licensed stations within 100 km; my antenna hears <b>${heard}</b> of them (band scanned ${ago(data!.scan.at)}${data!.scan.gain !== null ? ` at ${data!.scan.gain} dB gain` : ""}). <button id="rescan">Scan again</button>`
-    : `${data!.stations.length} licensed stations within 100 km. The antenna hasn't scanned the band yet. <button id="rescan">Scan now</button>`;
-  $("rescan").onclick = rescan;
-  if (!data!.scan) $<HTMLInputElement>("onlyHeard").checked = false; // nothing to filter by yet
+
+  const tTotal = document.getElementById("t-total");
+  if (tTotal) tTotal.textContent = String(data!.stations.length);
+
+  const tHeard = document.getElementById("t-heard");
+  if (tHeard) tHeard.textContent = String(heard);
+
+  const tScan = document.getElementById("t-scan");
+  if (tScan) {
+    tScan.textContent = data!.scan ? `${ago(data!.scan.at)}${data!.scan.gain !== null ? ` (${data!.scan.gain} dB)` : ""}` : "Not scanned";
+  }
+
+  const rescanBtn = document.getElementById("rescan");
+  if (rescanBtn) rescanBtn.onclick = rescan;
+
+  if (!data!.scan) $<HTMLInputElement>("onlyHeard").checked = false;
   render();
 }
+
 async function rescan() {
-  $("rescan").textContent = "Scanning (about 8 s)…";
+  const btn = document.getElementById("rescan");
+  if (btn) btn.textContent = "Scanning band (8s)…";
   const r = await fetch("/api/scan/fm", { method: "POST" }).catch(() => null), d = await r?.json().catch(() => null);
-  if (!r?.ok) $("scanLine").insertAdjacentHTML("beforeend", ` <span class="muted">${esc(d?.error ?? "The radio isn't answering.")}</span>`);
-  else await load();
+  if (!r?.ok) {
+    if (btn) btn.textContent = "Error scanning";
+    const scanLine = $("scanLine");
+    if (scanLine) {
+      scanLine.hidden = false;
+      scanLine.textContent = esc(d?.error ?? "The radio isn't answering.");
+    }
+  } else {
+    if (btn) btn.textContent = "🔄 Scan FM band";
+    await load();
+  }
 }
+
 $("q").addEventListener("input", render);
 $("onlyHeard").addEventListener("change", render);
 document.addEventListener("click", (e) => {
   const b = (e.target as HTMLElement).closest<HTMLElement>("button.play");
   if (!b || !data) return;
-  if (b.dataset.net) { const s = data.internet[+b.dataset.net]; return play(s.name, s.url, s.https); }
+  if (b.dataset.net) {
+    const s = data.internet[+b.dataset.net];
+    return play(s.name, s.url, s.https);
+  }
   const st = data.stations.find((s) => s.call === b.dataset.call)!, x = st.streams[+b.dataset.i!];
   play(`${st.call} ${st.mhz}: ${x.name}`, x.url, x.https);
 });
@@ -68,13 +152,17 @@ load();
 // What Blip sees and can do here.
 (window as any).blipContext = () => ({
   page: "NYC radio stations: FCC-licensed FM stations, what the site's antenna hears (band scan), internet streams",
-  playing, scannedAt: data?.scan ? new Date(data.scan.at).toISOString() : null,
+  playing,
+  scannedAt: data?.scan ? new Date(data.scan.at).toISOString() : null,
   heardByMyAntenna: data?.stations.filter((s) => s.heard === "clear" || s.heard === "heard").map((s) => `${s.mhz} ${s.call} (${s.city}) ${s.snrDb} dB${s.streams.length ? ", has a stream" : ""}`),
   notHeard: data?.stations.filter((s) => s.heard === "not heard").slice(0, 30).map((s) => `${s.mhz} ${s.call} (${s.city}, ${Math.round(s.km)} km)`),
   internetOnly: data?.internet.slice(0, 30).map((s) => s.name),
 });
 (window as any).blipActions = {
-  play_station: { label: "turned on the radio", description: "Play a station's internet stream: by call sign (WNYC), FM frequency (93.9), name or genre (jazz). Or 'stop'.", parameters: { query: { type: "string", description: "Call sign, frequency, name or genre, or 'stop'" } },
+  play_station: {
+    label: "turned on the radio",
+    description: "Play a station's internet stream: by call sign (WNYC), FM frequency (93.9), name or genre (jazz). Or 'stop'.",
+    parameters: { query: { type: "string", description: "Call sign, frequency, name or genre, or 'stop'" } },
     run: ({ query }: { query: string }) => {
       const q = String(query ?? "").toLowerCase().trim();
       if (!data) return;
@@ -83,7 +171,15 @@ load();
       if (st) return play(`${st.call} ${st.mhz}: ${st.streams[0].name}`, st.streams[0].url, st.streams[0].https);
       const net = data.internet.find((s) => s.name.toLowerCase().includes(q) || s.tags.some((t) => t.includes(q)));
       if (net) play(net.name, net.url, net.https);
-    } },
-  listen_on_sdr: { label: "tuned my radio", description: "Open Spectrum Lab tuned to an FM station off the air (only for stations the antenna hears).", parameters: { mhz: { type: "number", description: "FM frequency, e.g. 93.9" } },
-    run: ({ mhz }: { mhz: number }) => { const f = Number(mhz); if (f >= 87.9 && f <= 108) location.href = `../?listen=${f}`; } },
+    }
+  },
+  listen_on_sdr: {
+    label: "tuned my radio",
+    description: "Open Spectrum Lab tuned to an FM station off the air (only for stations the antenna hears).",
+    parameters: { mhz: { type: "number", description: "FM frequency, e.g. 93.9" } },
+    run: ({ mhz }: { mhz: number }) => {
+      const f = Number(mhz);
+      if (f >= 87.9 && f <= 108) location.href = `../?listen=${f}`;
+    }
+  },
 };

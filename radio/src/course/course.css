@@ -49,9 +49,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 0.86em; }
 .lab { border: 2px dashed var(--accent); border-radius: 14px; padding: 4px 18px 10px; margin: 20px 0; }
 .lab-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font: 0.88rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
 .lab-bar button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent); background: var(--card); color: var(--fg); cursor: pointer; }
-.lab-bar button:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--line); }
 .lab-bar input, .lab-bar select { font: inherit; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
 .lab-bar input { width: 7em; }
+.lab-bar input[type="checkbox"] { width: auto; margin: 0 4px 0 0; vertical-align: middle; cursor: pointer; }
 .lab-status { font: 0.85rem ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin: 8px 0 12px; }
 .note { font-size: 0.9rem; color: var(--muted); }
 /* interactive source viewer (src/codeview.ts): breaks out of the reading column on wide screens */

@@ -94,7 +94,7 @@
     <p class="note"><button type="button" class="btn" id="selftest">Run the self-test</button> builds a fake Meteor-M2 3 pass in this browser, exactly as the satellite builds its signal, a little weaker than a typical pass, and decodes it. Passing proves the decoding software works here. It can't prove your antenna hears the satellite: for that, watch stages 2–5 during a real pass, and the final proof is a picture whose yellow coastlines sit on the real coasts.</p>
     <ul id="hlog" class="muted"></ul>
   </div>
-  <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin,.f32,.cf32"> (8-bit unsigned or 32-bit float IQ centered on satellite; sample rate from file name, else <input id="frate" type="number" value="204800" style="width:7em"> S/s)</p>
+  <p class="note">Or decode a recording: <input type="file" id="file" accept=".cu8,.raw,.bin,.f32,.cf32"> (8-bit unsigned or 32-bit float IQ centered on satellite; sample rate from file name, else <input id="frate" type="number" value="240000" style="width:7em"> S/s) · <button type="button" class="btn" id="load-sample">⚡ Load test sample (.cu8)</button> <a href="./data/meteor-m2-3-137.9MHz-sample-240000sps.cu8" download>save sample (1.2 MB)</a></p>
   <div id="pics"></div>
   <div id="combine" class="pane" hidden>
     <b>Make a picture</b>

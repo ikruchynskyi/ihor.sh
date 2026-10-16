@@ -3,45 +3,447 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NYC Radio Stations</title>
-  <meta name="description" content="Every FM station on the air around New York (FCC licenses), checked against what this site's own antenna actually hears in a band scan, with each station's internet stream; plus internet-only stations from the city." />
+  <title>NYC Radio Stations · Live FM Band Scan &amp; Streams</title>
+  <meta name="description" content="Every FM station on the air around New York (FCC licenses), checked against what this site's antenna hears in a live band scan, with direct SDR tuning and internet streams." />
   <style>
-    body { margin: 0; font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
-    h1 { margin: 0 0 6px; }
-    .muted { color: var(--muted, #9aa3cf); font-size: .9rem; }
-    .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 14px 0; }
-    .bar input[type=search] { flex: 1 1 220px; }
-    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line, #3b4bb0); vertical-align: middle; }
-    th { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #9aa3cf); }
-    td.f { font: 600 1rem ui-monospace, Menlo, monospace; white-space: nowrap; }
-    .meter { display: inline-block; width: 60px; height: 8px; background: var(--line, #3b4bb0); vertical-align: middle; margin-right: 6px; }
-    .meter i { display: block; height: 100%; background: #5cff9d; }
-    .heard-clear { color: #5cff9d; } .heard-heard { color: #ffd166; } .heard-spillover, .heard-not { color: var(--muted, #9aa3cf); }
-    .acts { white-space: nowrap; } .acts a, .acts button { margin-right: 6px; }
-    button.play { padding: 3px 8px; font-size: .8rem; }
-    #player { position: sticky; bottom: 0; padding: 10px 12px; margin-top: 16px; background: var(--card, #0d1226); border: 2px solid var(--line, #3b4bb0); }
-    #internet li { margin: 4px 0; }
-    @media (max-width: 700px) { .hide-sm { display: none; } }
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #ffffff;
+      --card-hover: #f7f6f2;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --live: #10b981;
+      --warn: #f59e0b;
+      --player-bg: #0f172a;
+      --player-fg: #f8fafc;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #090d1a;
+        --fg: #e2e8f0;
+        --muted: #94a3b8;
+        --line: #243054;
+        --card: #0f1629;
+        --card-hover: #16203b;
+        --accent: #38bdf8;
+        --accent-hover: #0284c7;
+        --live: #34d399;
+        --warn: #fbbf24;
+        --player-bg: #090d1a;
+        --player-fg: #f8fafc;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 24px 16px 120px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .eyebrow {
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .eyebrow a { color: inherit; }
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .lede {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 20px;
+    }
+    h2 {
+      margin: 40px 0 12px;
+      font-size: 1.3rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    /* Top Stats Grid */
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 16px 0 24px;
+    }
+    .tile {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+    }
+    .tile b {
+      font: 26px/1.2 "Press Start 2P", ui-monospace, monospace;
+      color: var(--fg);
+    }
+    .tile span {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .btn-rescan {
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--card-hover);
+      color: var(--fg);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      width: fit-content;
+    }
+    .btn-rescan:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Filter Bar */
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .search-input {
+      flex: 1 1 240px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+    .filter-checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .filter-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Table */
+    .scroll-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--line);
+      background: var(--card);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: var(--card-hover);
+    }
+    td.f {
+      font: 700 1.05rem ui-monospace, Menlo, monospace;
+      white-space: nowrap;
+      color: var(--accent);
+    }
+    .station-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .stream-tag {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* Meter */
+    .meter-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .meter {
+      display: inline-block;
+      width: 50px;
+      height: 7px;
+      background: var(--line);
+      border-radius: 4px;
+      overflow: hidden;
+      vertical-align: middle;
+    }
+    .meter i {
+      display: block;
+      height: 100%;
+      background: var(--live);
+      border-radius: 4px;
+    }
+    .heard-clear { color: var(--live); font-weight: 600; }
+    .heard-heard { color: var(--warn); font-weight: 600; }
+    .heard-spillover, .heard-not { color: var(--muted); }
+
+    /* Actions */
+    .acts {
+      white-space: nowrap;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-tune {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--fg);
+      text-decoration: none;
+      transition: all 0.12s ease;
+    }
+    .btn-tune:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      text-decoration: none;
+    }
+    button.play {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    button.play:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Internet stations */
+    #internet {
+      list-style: none;
+      padding: 0;
+      margin: 14px 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 10px;
+    }
+    #internet li {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      justify-content: space-between;
+    }
+    .net-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .net-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .net-tags {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Sticky Bottom Player */
+    #player {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(600px, calc(100% - 32px));
+      z-index: 1000;
+      padding: 12px 18px;
+      background: var(--player-bg);
+      color: var(--player-fg);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+    }
+    .player-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .player-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--live);
+      box-shadow: 0 0 8px var(--live);
+      flex-shrink: 0;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .player-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--live);
+    }
+    .player-stop {
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .player-stop:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    @media (max-width: 700px) {
+      .hide-sm { display: none; }
+      main { padding-bottom: 140px; }
+    }
   </style>
 </head>
 <body>
 <main>
-  <h1>NYC radio stations</h1>
-  <p class="muted">Every FM station licensed within 100 km of the city, from the <a href="https://www.fcc.gov/media/radio/fm-query">FCC's records</a>, checked against what this site's own antenna (an RTL-SDR on a Mac mini in the city) actually hears: a scan of the whole FM band every few hours measures each channel's signal above the noise. <b>📡</b> listens off the air in <a href="../">Spectrum Lab</a>; <b>▶</b> plays the station's internet stream.</p>
-  <p class="muted" id="scanLine">Loading…</p>
-  <div class="bar">
-    <input type="search" id="q" placeholder="Search: call sign, city, frequency or genre" aria-label="Search stations" />
-    <label><input type="checkbox" id="onlyHeard" checked /> Only stations my antenna hears</label>
+  <p class="eyebrow"><a href="/">ihor.sh</a> / <a href="/radio/">Radio</a> / NYC Stations</p>
+  <h1>NYC Radio Stations</h1>
+  <p class="lede">Every FM radio station licensed within 100 km of New York City (via FCC records), cross-referenced in real time with what this site's antenna (an RTL-SDR on a Mac mini in NYC) actually receives during automated band scans. Tune the live receiver via <a href="../">Spectrum Lab</a> or listen directly to internet streams.</p>
+
+  <div class="tiles">
+    <div class="tile card">
+      <b id="t-total">–</b>
+      <span>licensed FM stations within 100 km</span>
+    </div>
+    <div class="tile card">
+      <b id="t-heard">–</b>
+      <span>stations heard on our antenna</span>
+    </div>
+    <div class="tile card">
+      <b id="t-scan">–</b>
+      <span>last band scan time</span>
+      <button id="rescan" class="btn-rescan">🔄 Scan FM band</button>
+    </div>
   </div>
-  <table>
-    <thead><tr><th>MHz</th><th>Station</th><th class="hide-sm">Where</th><th>My antenna</th><th>Listen</th></tr></thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <h2 style="font-size:1.1rem;margin-top:32px">Internet-only stations from the city</h2>
-  <p class="muted">Streams based in and around NYC (from <a href="https://www.radio-browser.info/">Radio Browser</a>) that match no licensed FM station. A frequency in a stream's name (<i>"… 101.5"</i>) is only a label: these can't be heard over the air.</p>
+
+  <p class="muted" id="scanLine" hidden>Loading…</p>
+
+  <div class="bar card">
+    <input type="search" id="q" class="search-input" placeholder="Search call sign, frequency, city, or stream genre (e.g. WNYC, 93.9, jazz)..." aria-label="Search stations" />
+    <label class="filter-checkbox">
+      <input type="checkbox" id="onlyHeard" checked />
+      <span>Only show stations received by our antenna</span>
+    </label>
+  </div>
+
+  <div class="scroll-wrap card">
+    <table>
+      <thead>
+        <tr>
+          <th>MHz</th>
+          <th>Station</th>
+          <th class="hide-sm">Location &amp; Power</th>
+          <th>Antenna Reception</th>
+          <th>Listen</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <h2>Internet-only stations from NYC</h2>
+  <p class="muted">Independent streaming stations operating in and around NYC (via <a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser</a>). Frequencies appearing in stream names are branding labels rather than over-the-air transmitters.</p>
   <ul id="internet"></ul>
+
   <div id="player" hidden></div>
   <audio id="audio" preload="none"></audio>
 </main>

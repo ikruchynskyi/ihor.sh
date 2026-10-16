@@ -8,36 +8,92 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     html, body { height: 100%; margin: 0; }
-    body { display: flex; flex-direction: column; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
-    .wrap { flex: 1; display: grid; grid-template-columns: 1fr 400px; min-height: 0; }
+    body { display: flex; flex-direction: column; font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; background: var(--bg, #080c1a); color: var(--fg, #e2e8f0); }
+    .wrap { flex: 1; display: grid; grid-template-columns: 1fr 420px; min-height: 0; }
     #map { min-height: 300px; }
-    aside { overflow: auto; padding: 12px 14px; border-left: 3px solid var(--line, #3b4bb0); background: var(--card, #0d1226); display: flex; flex-direction: column; }
-    aside h1 { margin: 0 0 4px; }
-    #live { font: 9px "Press Start 2P", monospace; color: var(--muted); }
+    aside { overflow: auto; padding: 12px 14px; border-left: 3px solid var(--line, #3b4bb0); background: var(--card, #0d1226); display: flex; flex-direction: column; gap: 4px; }
+    aside h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    #live { font: 9px "Press Start 2P", monospace; color: var(--muted, #9aa3cf); }
     #live.on { color: #5cff9d; }
     .muted { color: var(--muted, #9aa3cf); font-size: .85rem; }
-    .tabs2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+    .tabs2 { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .tabs2 button { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line, #3b4bb0); background: var(--card, #0d1226); color: var(--fg, #e2e8f0); cursor: pointer; font: inherit; font-size: .88rem; }
+    .tabs2 button[aria-pressed="true"] { border-color: var(--accent, #ffb347); background: color-mix(in srgb, var(--accent, #ffb347) 18%, transparent); font-weight: 600; }
+    
+    /* Traffic stats */
+    details.traffic-box { margin: 4px 0; }
+    details.traffic-box summary { cursor: pointer; font-size: .85rem; user-select: none; }
+    .traffic-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 6px; margin: 6px 0 4px; }
+    .stat-card { background: color-mix(in srgb, var(--line, #3b4bb0) 20%, transparent); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line, #3b4bb0); text-align: center; }
+    .stat-card b { display: block; font-size: 1.05rem; color: #fff; }
+    .stat-card span { font-size: .75rem; color: var(--muted, #9aa3cf); }
+
+    /* Node filters */
+    #nodeFilters { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+    .filter-row { display: flex; gap: 6px; align-items: center; }
+    #nodeSearch { flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--line, #3b4bb0); border-radius: 6px; background: var(--bg, #080c1a); color: #fff; font: inherit; font-size: .85rem; }
+    #nodeSearch:focus { outline: 1px solid var(--accent, #ffb347); }
+    .filter-row select { padding: 4px 6px; border: 1px solid var(--line, #3b4bb0); border-radius: 6px; background: var(--bg, #080c1a); color: #fff; font: inherit; font-size: .82rem; }
+    .filter-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pill { font: 11px ui-sans-serif, system-ui, sans-serif; padding: 2px 7px; border-radius: 12px; border: 1px solid var(--line, #3b4bb0); background: transparent; color: var(--muted, #9aa3cf); cursor: pointer; }
+    .pill.active { border-color: var(--accent, #ffb347); color: #fff; background: color-mix(in srgb, var(--accent, #ffb347) 22%, transparent); font-weight: 600; }
+    .filter-export { display: flex; justify-content: space-between; align-items: center; font-size: .75rem; color: var(--muted, #9aa3cf); margin-top: 2px; }
+    .filter-export a { color: var(--muted, #9aa3cf); text-decoration: underline; }
+    .filter-export a:hover { color: var(--accent, #ffb347); }
+
+    /* Nodes list */
     #nodes, #chat { list-style: none; padding: 0; margin: 0; }
-    #nodes li { padding: 6px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #nodes { overflow: auto; flex: 1; }
+    #nodes li { padding: 8px 0; border-bottom: 1px solid var(--line, #3b4bb0); cursor: pointer; }
+    #nodes li.flash { background: color-mix(in srgb, var(--accent, #ffb347) 25%, transparent); }
+    .node-actions { display: inline-flex; gap: 4px; margin-top: 4px; }
+    .node-actions button { padding: 2px 7px; font-size: 11px; border-radius: 4px; border: 1px solid var(--line, #3b4bb0); background: var(--card, #0d1226); color: var(--fg, #e2e8f0); cursor: pointer; }
+    .node-actions button:hover:not(:disabled) { border-color: var(--accent, #ffb347); }
+    .node-actions button:disabled { opacity: .6; cursor: default; }
+
+    /* Badges & Telemetry */
+    .badge { display: inline-block; min-width: 26px; padding: 1px 4px; border-radius: 4px; font: 700 11px ui-monospace, Menlo, monospace; text-align: center; color: #10131a; border: 1px solid #10131a; box-shadow: 0 0 3px #000; white-space: nowrap; }
+    .hw-badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font: 600 10px ui-sans-serif, system-ui, sans-serif; background: color-mix(in srgb, var(--line, #3b4bb0) 60%, transparent); color: #cbd5e1; vertical-align: 1px; }
+    .env-tag { display: inline-block; padding: 1px 4px; font-size: 11px; color: #7dd3fc; margin-top: 2px; }
+    .sig-good { color: #5cff9d; }
+    .sig-fair { color: #f4d35e; }
+    .sig-weak { color: #ff8860; }
+
+    /* Chat & Direct Messages */
     #chat { flex: 1; min-height: 160px; overflow: auto; }
-    #chat li { padding: 6px 8px; margin: 4px 0; border-left: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--bg, #000) 50%, transparent); }
+    #chat li { padding: 6px 8px; margin: 4px 0; border-left: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--bg, #000) 50%, transparent); border-radius: 0 4px 4px 0; }
     #chat li.mine { border-left-color: var(--accent, #ffb347); }
     #chat li.dm { border-left-color: #ff5c8a; }
     #chat li b, #trace b[data-num] { cursor: pointer; text-decoration: underline dotted; }
-    #nodes li.flash { background: color-mix(in srgb, var(--accent, #ffb347) 25%, transparent); }
-    #trace { margin: 8px 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); font-size: .9rem; } #trace[hidden], #sortBox[hidden] { display: none; }
+    #chat .t { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+    
+    #dmBar { display: flex; gap: 6px; align-items: center; margin: 6px 0 2px; font-size: .85rem; }
+    #dmTarget { flex: 1; min-width: 0; padding: 4px 6px; border: 1px solid var(--line, #3b4bb0); border-radius: 6px; background: var(--bg, #080c1a); color: #fff; font: inherit; }
+
+    #send { display: flex; gap: 6px; margin-top: 6px; }
+    #send input, #login input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); border-radius: 6px; background: var(--bg, #080c1a); color: #fff; font: inherit; }
+    #send button, #login button, .btn-warn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent, #ffb347); background: var(--accent, #ffb347); color: #10131a; font: 600 inherit; cursor: pointer; }
+    .btn-warn { border-color: #ef4444; background: #dc2626; color: #fff; }
+    .btn-warn:hover { background: #b91c1c; }
+    #send[hidden], #login[hidden], #dmBar[hidden], #nodeFilters[hidden], button[hidden], [hidden] { display: none !important; }
+
+    /* Traceroute */
+    #trace { margin: 6px 0; padding: 6px 8px; border: 1px solid var(--line, #3b4bb0); border-radius: 6px; font-size: .9rem; background: color-mix(in srgb, var(--card) 60%, transparent); }
     .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--accent, #ffb347); border-right-color: transparent; border-radius: 50%; vertical-align: -1px; animation: spin .9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .tracing-ring { animation: ring 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
     @keyframes ring { from { opacity: 1; transform: scale(.6); } to { opacity: 0; transform: scale(1.6); } }
-    #chat .t { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
-    .badge { display: inline-block; min-width: 26px; padding: 1px 4px; border-radius: 4px; font: 700 11px ui-monospace, Menlo, monospace; text-align: center; color: #10131a; border: 1px solid #10131a; box-shadow: 0 0 3px #000; white-space: nowrap; }
-    #send { display: flex; gap: 6px; margin-top: 8px; }
-    #send input, #login input { flex: 1; min-width: 0; }
-    #login { display: flex; gap: 6px; }
-    #send[hidden], #login[hidden], button[hidden] { display: none !important; }
-    details.owner { margin-top: 10px; }
+
+    /* Owner section */
+    details.owner { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line, #3b4bb0); }
     details.owner summary { cursor: pointer; }
+    #login { display: flex; gap: 6px; margin: 6px 0; }
+    .owner-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .owner-actions button { padding: 4px 10px; font-size: .85rem; }
+    .serial-logs { max-height: 140px; overflow: auto; background: #000; border: 1px solid var(--line, #3b4bb0); padding: 6px; font: 11px/1.3 ui-monospace, Menlo, monospace; color: #a3e635; white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; border-radius: 4px; }
+    details.logs-box { margin-top: 6px; }
+    details.logs-box summary { cursor: pointer; font-size: .85rem; }
+
     @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; grid-template-rows: 50vh auto; } aside { border-left: 0; border-top: 3px solid var(--line); } }
   </style>
 </head>
@@ -49,18 +105,49 @@
     <div><span id="live">CONNECTING…</span> · <span id="info" class="muted"></span></div>
     <details><summary class="muted">What is this?</summary>
       <p class="muted"><b>Meshtastic</b> turns cheap LoRa radios (915 MHz in the US, under a watt) into a text-messaging mesh with no phones, internet or towers. Each radio repeats what it hears, up to a few <b>hops</b>, so messages travel across the city from rooftop to rooftop. Our node sits on a desk on USB; this page shows every node it has heard and the public channel's chat.</p>
-      <p class="muted">Under the hood: the node speaks protobuf over serial, framed by the bytes <code>0x94 0xC3</code> and a length. Our server decodes it with a few dozen lines of our own TypeScript (no Meshtastic library). <b>SNR</b> is how far above the noise a signal arrived (LoRa still decodes below 0 dB, down to about −20); <b>hops</b> is how many radios relayed it. Positions are as nodes broadcast them, usually rounded on purpose.</p>
+      <p class="muted">Under the hood: the node speaks protobuf over serial, framed by the bytes <code>0x94 0xC3</code> and a length. Our server decodes it with our own TypeScript (no Meshtastic library). <b>SNR</b> is how far above the noise a signal arrived (LoRa still decodes below 0 dB, down to about −20); <b>hops</b> is how many radios relayed it. Positions are as nodes broadcast them, usually rounded on purpose.</p>
+    </details>
+    <details class="traffic-box" id="trafficBox"><summary class="muted">Mesh spectrum &amp; traffic</summary>
+      <div id="trafficStats" class="traffic-stats"></div>
     </details>
     <div id="trace" hidden aria-live="polite"></div>
     <div class="tabs2" id="tabs"></div>
-    <label id="sortBox" class="muted" hidden>Sort by <select id="sort"><option value="heard">last heard</option><option value="hops">hops (direct first)</option></select></label>
+    <div id="nodeFilters" hidden>
+      <div class="filter-row">
+        <input id="nodeSearch" type="search" placeholder="Search name, ID, hardware…" aria-label="Search nodes" autocomplete="off">
+        <label class="muted">Sort <select id="sort"><option value="heard">last heard</option><option value="hops">hops</option><option value="snr">best signal</option><option value="name">name</option></select></label>
+      </div>
+      <div class="filter-pills" id="filterPills">
+        <button type="button" class="pill active" data-filter="all">All (<span id="countAll">0</span>)</button>
+        <button type="button" class="pill" data-filter="direct">Direct (<span id="countDirect">0</span>)</button>
+        <button type="button" class="pill" data-filter="map">On Map (<span id="countMap">0</span>)</button>
+        <button type="button" class="pill" data-filter="sensors">Sensors (<span id="countSensors">0</span>)</button>
+      </div>
+      <div class="filter-export">
+        <span id="nodeCountText" class="muted"></span>
+        <span>Export: <a href="/api/mesh/export?format=geojson" target="_blank" download="mesh-nodes.geojson">GeoJSON</a> · <a href="/api/mesh/export" target="_blank" download="mesh-nodes.json">JSON</a></span>
+      </div>
+    </div>
     <ul id="nodes" hidden></ul>
+    <div id="dmBar" hidden>
+      <span class="muted">To:</span>
+      <select id="dmTarget" aria-label="Select direct message recipient"></select>
+    </div>
     <ul id="chat" aria-live="polite"></ul>
     <form id="send" hidden><input id="msg" maxlength="200" placeholder="Message everyone on this channel" aria-label="Message" autocomplete="off"><button>Send</button></form>
-    <details class="owner" id="ownerBox"><summary class="muted">Node owner</summary>
-      <p class="muted">The owner can send to the mesh, see direct messages sent to this node, and traceroute any node (📡 in its popup or list entry). Visitors see the public channels only.</p>
+    <details class="owner" id="ownerBox"><summary class="muted">Node owner &amp; admin</summary>
+      <p class="muted">The owner can send to channels, exchange direct messages, clear the node list, and traceroute nodes (📡 in list / popup). Visitors see public channels only.</p>
       <form id="login"><input id="key" type="password" placeholder="owner key" aria-label="Owner key" autocomplete="current-password"><button>Sign in</button></form>
-      <button id="logout" hidden>Sign out</button>
+      <div id="ownerControls" hidden>
+        <div class="owner-actions">
+          <button type="button" id="clearNodesBtn" class="btn-warn" title="Reset the node database on both the server and connected radio">🗑️ Clear node list</button>
+          <button type="button" id="logout">Sign out</button>
+        </div>
+        <details class="logs-box" id="logsBox">
+          <summary class="muted">Radio serial logs (<span id="logCount">0</span>)</summary>
+          <pre id="serialLogs" class="serial-logs"></pre>
+        </details>
+      </div>
       <p class="muted" id="ownerMsg"></p>
     </details>
   </aside>

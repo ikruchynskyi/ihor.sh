@@ -374,6 +374,19 @@ el("file").addEventListener("change", () => {
   if (f) decodeFile(f, f.name);
 });
 
+el("load-sample")?.addEventListener("click", async () => {
+  const name = "meteor-m2-3-137.9MHz-sample-240000sps.cu8";
+  status.textContent = `Downloading test sample ${name}…`;
+  try {
+    const res = await fetch(`./data/${name}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    decodeFile(blob, name);
+  } catch (e) {
+    status.textContent = `Failed to load sample: ${(e as Error).message}`;
+  }
+});
+
 async function decodeFile(f: Blob, name: string) {
   if (decodingFile) { status.textContent = "Already decoding a recording; wait for it to finish."; return; }
   // Parse sample rate: our '204800sps', Gqrx 'gqrx_YYYYMMDD_HHMMSS_<freq>_<rate>_fc.raw', or the rate box

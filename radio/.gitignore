@@ -4,3 +4,5 @@ dist
 *.cf32
 *.raw
 *.wav
+# the Meteor page's "Load test sample" recording (made by scripts/generate-sample-meteor.ts)
+!public/data/meteor-m2-3-137.9MHz-sample-240000sps.cu8
