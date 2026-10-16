@@ -91,16 +91,8 @@
     <div class="row">
       <button id="connect" class="primary">Connect USB SDR</button>
       <button id="remote" class="primary" disabled title="Checking for the server SDR…">Listen to server SDR</button>
-      <label>Listen (MHz) <input id="liveFreq" type="number" step="0.1" value="98.7" /></label>
-      <label id="gainBox">Gain <select id="gain"></select></label>
-      <span id="hrf" class="row" hidden title="The server's HackRF: LNA and VGA are the gain before and after its mixer; the RF amp adds 14 dB in front of everything">
-        <label>LNA <select id="lna"><option>0</option><option>8</option><option>16</option><option>24</option><option>32</option><option>40</option></select> dB</label>
-        <label>VGA <input id="vga" type="range" min="0" max="62" step="2" value="24" style="width:7em" /> <b id="vgaV">24</b> dB</label>
-        <label id="ampBox"><input id="amp" type="checkbox" /> RF amp +14 dB</label>
-      </span>
       <label title="Show who's allowed where: the US band plan over the spectrum"><input id="bandPlan" type="checkbox" /> Band plan</label>
     </div>
-    <div class="stat" id="radioStat" hidden></div>
     <p class="stat" id="liveHelp">Live mode: plug in an RTL-SDR (R820T/R820T2 tuner) and press Connect. Our own driver runs in the browser over WebUSB, so there's nothing to install and your samples never leave your computer. Chrome, Edge or Opera. Windows: install the WinUSB driver once with Zadig. Linux: unload the <code>dvb_usb_rtl28xxu</code> kernel module.</p>
     <div id="status" class="stat"></div>
   </section>
@@ -122,6 +114,7 @@
     </div>
     <div class="stat" id="hover">Click to tune · drag the band or its edges · drag the orange squelch line up to just above the noise, so only signals louder than it play · pinch or Ctrl+wheel to zoom, drag to pan · click here, then wheel or ←/→ to step</div>
     <div class="row">
+      <label>Listen (MHz) <input id="liveFreq" type="number" step="0.1" value="98.7" /></label>
       <label>Mode <select id="mode"><option>WFM</option><option>NFM</option><option>AM</option><option>USB</option><option>LSB</option><option>CW</option></select></label>
       <label>Tune offset (kHz) <input id="offset" type="number" step="0.1" value="200" /></label>
       <label>Bandwidth (kHz) <input id="bw" type="number" step="0.1" value="200" /></label>
@@ -129,6 +122,15 @@
       <label title="Clicks, the wheel and the arrow keys snap the frequency to this step">Step <select id="step"><option value="0">auto</option><option>10</option><option>100</option><option>1000</option><option>5000</option><option>6250</option><option>12500</option><option>25000</option><option>100000</option></select></label>
       <button id="run" class="primary">Receive</button>
     </div>
+    <div class="row">
+      <label id="gainBox">Gain <select id="gain"></select></label>
+      <span id="hrf" class="row" hidden title="The server's HackRF: LNA and VGA are the gain before and after its mixer; the RF amp adds 14 dB in front of everything">
+        <label>LNA <select id="lna"><option>0</option><option>8</option><option>16</option><option>24</option><option>32</option><option>40</option></select> dB</label>
+        <label>VGA <input id="vga" type="range" min="0" max="62" step="2" value="24" style="width:7em" /> <b id="vgaV">24</b> dB</label>
+        <label id="ampBox"><input id="amp" type="checkbox" /> RF amp +14 dB</label>
+      </span>
+    </div>
+    <div class="stat" id="radioStat" hidden></div>
     <div class="row">
       <label>Zoom <input id="zoom" type="range" min="0" max="6" step="0.1" value="0" /></label>
       <label title="How many dB from the noise floor to full brightness">Contrast <input id="wfRange" type="range" min="15" max="90" step="1" value="50" /></label>

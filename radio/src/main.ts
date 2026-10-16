@@ -788,11 +788,6 @@ function onSamples(cu8: Uint8Array) {
 
 $("connect").addEventListener("click", () => (sdr ? disconnect() : connect(false)));
 $("remote").addEventListener("click", () => (sdr ? disconnect() : connect(true)));
-// ?listen=146.73 (from the repeater map): preset the listen frequency; it's used when a live source connects.
-{
-  const f = Number(new URLSearchParams(location.search).get("listen"));
-  if (f >= 24 && f <= 1766) { $<HTMLInputElement>("liveFreq").value = f.toFixed(3); liveStatus(`Ready to listen on ${f.toFixed(3)} MHz: connect the server SDR or your own dongle.`); }
-}
 
 // What Blip can do here: tune the receiver.
 (window as any).blipActions = {
@@ -832,6 +827,16 @@ if (!("usb" in navigator)) {
 
 meter();
 $("demo").click();
+// ?listen=146.73 (repeater map, station list; optional &mode=AM): preset the listen frequency and the demodulator it
+// needs, after the demo so the demo's WFM doesn't override it. Both are used when a live source connects.
+{
+  const q = new URLSearchParams(location.search), f = Number(q.get("listen")), m = q.get("mode")?.toUpperCase() as Mode;
+  if (f >= 24 && f <= 1766) {
+    setMode(m in DEFAULT_BW ? m : f >= 87.5 && f <= 108 ? "WFM" : f >= 108 && f < 137 ? "AM" : "NFM");
+    $<HTMLInputElement>("liveFreq").value = f.toFixed(3);
+    liveStatus(`Ready to listen on ${f.toFixed(3)} MHz ${modeNow()}: press "Listen to server SDR" or "Connect USB SDR".`);
+  }
+}
 
 // What Blip sees here: the tuning and, in CW mode, what the Morse decoder has read so far.
 (window as any).blipContext = () => ({
