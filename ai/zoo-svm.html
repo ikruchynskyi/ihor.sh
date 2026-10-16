@@ -48,13 +48,16 @@
     <ul><li data-k="a" data-says="That's true for logistic regression, where every point has some pull.">A little: every point counts</li><li data-k="b">Not at all: its hinge loss is zero and it's not a support vector</li><li data-k="c" data-says="Deleting points far from the boundary can't flip anything.">A lot: it's the most confident point</li></ul>
     <div class="why">\(\max(0, 1 - 3) = 0\): it contributes nothing to the loss and nothing to the gradient. The solution is the same with or without it. That sparsity is the SVM's signature, and on the bank calls it's a weakness too: the model ignores the bulk of easy cases and lives on the ambiguous ones.</div>
   </div>
-  <details class="deeper"><summary>Why the kernel trick works</summary>
+  <details class="deeper"><summary>Why the dual form enables the kernel trick</summary>
     <ol>
-      <li>The optimum can always be written as a weighted sum of training points, \(w = \sum_i \alpha_i y_i x_i\), with \(\alpha_i = 0\) for every point that isn't a support vector. (Only margin points push on the solution.)</li>
-      <li>So the score is \(f(x) = \sum_i \alpha_i y_i \,(x_i \cdot x) + b\): the data enters only through dot products between points.</li>
-      <li>Now map each point to new columns \(\phi(x)\), say all squares and products, and fit a line there: the score needs only \(\phi(x_i)\cdot\phi(x)\). For 2 columns, \((a \cdot b + 1)^2\) equals \(\phi(a)\cdot\phi(b)\) where \(\phi\) lists 6 columns (1, each column, each square, the product), each with the right constant in front: a dot product in 6 columns, computed from one in 2.</li>
-      <li>A <b>kernel</b> \(K(a, b)\) is any such shortcut. The RBF kernel \(K(a, b) = e^{-\gamma \lVert a - b \rVert^2}\) is a dot product in infinitely many columns, computed from a distance.</li>
-      <li>So the SVM fits a straight street in a space too big to build, and on the map it bends. The cost: the model is a sum over support vectors, and training compares every pair of points (section 4).</li>
+      <li>The primal SVM minimizes \(\tfrac{1}{2}\lVert w \rVert^2\) subject to margin constraints \(y_i(w \cdot x_i + b) \ge 1 - \xi_i\). Introducing Lagrange multipliers \(\alpha_i \ge 0\) yields the Lagrangian \(\mathcal{L}(w, b, \alpha)\).</li>
+      <li>Setting \(\nabla_w \mathcal{L} = 0\) reveals that the optimal weights are always a linear combination of training examples: \(w = \sum_{i=1}^n \alpha_i y_i x_i\). By the KKT complementarity conditions, \(\alpha_i = 0\) for every point safely beyond the margin; only support vectors push on the boundary.</li>
+      <li>Substituting \(w\) back into the Lagrangian yields the <b>dual optimization problem</b>:
+        <p class="formula">\[ \max_\alpha \sum_{i=1}^n \alpha_i \;-\; \tfrac{1}{2} \sum_{i=1}^n \sum_{j=1}^n \alpha_i \alpha_j y_i y_j \langle x_i, x_j \rangle \quad \text{s.t. } 0 \le \alpha_i \le C,\; \sum_{i=1}^n \alpha_i y_i = 0 \]</p>
+      </li>
+      <li><b>The key insight:</b> the feature vectors \(x_i\) never appear in isolation; they enter the dual problem exclusively through pairwise inner products \(\langle x_i, x_j \rangle\). Scoring a new point \(x\) likewise needs only \(f(x) = \sum_i \alpha_i y_i \langle x_i, x \rangle + b\).</li>
+      <li>Because individual coordinates are never accessed, we can replace every inner product with a <b>kernel</b> \(K(x_i, x_j) = \langle \phi(x_i), \phi(x_j) \rangle\). For 2 features, the polynomial kernel \((a \cdot b + 1)^2\) computes the dot product of 6 expanded feature columns directly in 2 dimensions without ever building \(\phi(x)\).</li>
+      <li>The RBF kernel \(K(a, b) = e^{-\gamma \lVert a - b \rVert^2}\) represents an inner product in an infinite-dimensional feature space. The SVM fits an optimal linear hyperplane there, which projects onto the 2-D map as smooth, curving contours. The cost is computing the \(n \times n\) Gram matrix comparing all pairs of points (section 4).</li>
     </ol>
   </details>
 

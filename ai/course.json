@@ -5249,6 +5249,10 @@
     "Lowercase, strip punctuation and separators, then exact or whole-word containment checks."
    ],
    [
+    "CheckList behavioral tests",
+    "Unit-testing models: Minimum Functionality (simple skills), Invariance (changes that shouldn't matter), Directional (changes that must push in one direction)."
+   ],
+   [
     "Cohen's kappa",
     "(p_o − p_e)/(1 − p_e): agreement corrected for chance; 0 = chance, 1 = perfect."
    ],
@@ -5263,6 +5267,10 @@
    [
     "Faithfulness",
     "Every claim in a RAG answer supported by the retrieved passages, graded apart from correctness."
+   ],
+   [
+    "NLI faithfulness filter",
+    "Natural Language Inference checks if the source passage entails each generated claim: catches hallucinations in milliseconds."
    ],
    [
     "Paired comparison",
@@ -5320,6 +5328,17 @@
     ],
     "answer": 0,
     "why": "Faithfulness asks whether every claim is grounded in the passages.",
+    "sec": 4
+   },
+   {
+    "q": "In an NLI faithfulness filter, which classification confirms a claim is grounded in the retrieved source?",
+    "options": [
+     "Entailment",
+     "Neutral",
+     "Contradiction"
+    ],
+    "answer": 0,
+    "why": "Entailment means the premise strictly implies the hypothesis claim.",
     "sec": 4
    },
    {
@@ -7103,6 +7122,10 @@
    [
     "Kernel trick",
     "The data enters only through dot products, so a kernel K(a, b) fits a straight street in a huge feature space without building it."
+   ],
+   [
+    "Dual form",
+    "w = ∑ α_i y_i x_i; the Lagrangian dual optimization objective and prediction depend only on inner products ⟨x_i, x_j⟩."
    ],
    [
     "RBF γ",

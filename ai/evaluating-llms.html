@@ -19,6 +19,8 @@
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
     .card .lbl { font-size: 13px; color: var(--muted); }
     .grade button { min-height: 44px; min-width: 9em; }
+    .katex-display { overflow-x: auto; max-width: 100%; }
+    select { max-width: 100%; }
   </style>
 </head>
 <body>
@@ -53,7 +55,13 @@ for d in data:
         print("  contains-check disagrees:", repr(d["answer"][:60]), "label", d["label"])
 </textarea></div>
   <p>Exact match is too strict: "ResNet-50 has 50 layers." is right and doesn't match "50". The contains-check is much better (16 of 18), and its two misses are instructive: "Despite the 50 in its name, ResNet-50 has 152 layers" and "A starts at zero; B is random" both contain the right word next to a wrong claim, and both pass. Every automatic check is a trade between being fooled and being too strict; look at its disagreements.</p>
-  <p class="gist">Code-based checks (normalize, match, parse, validate) are free and repeatable; tune them on their disagreements with careful labels.</p>
+  <p>Beyond string matching, teams write <b>behavioral tests</b> (the CheckList methodology, Ribeiro et al., 2020) to unit-test capabilities across systematic variations:</p>
+  <ul>
+    <li><b>Minimum Functionality Tests (MFT):</b> Simple unit tests targeting a single linguistic skill. For negation: <i>"The ride was not bad"</i> must score positive; <i>"The train didn't arrive on time"</i> must score negative.</li>
+    <li><b>Invariance Tests (INV):</b> Perturbations that <i>must not</i> alter the model's judgment. Swapping names (<i>"Alex said..."</i> vs <i>"Sam said..."</i>), innocuous adjectives, or neutral filler sentences should leave classifications and factual extraction untouched.</li>
+    <li><b>Directional Expectation Tests (DIR):</b> Changes that <i>must push</i> the output in a known direction. Appending <i>"The battery died after ten minutes"</i> to a product review should never raise its sentiment score; adding supporting evidence to a query must never decrease confidence.</li>
+  </ul>
+  <p class="gist">Code-based checks (normalize, match, parse, validate) and CheckList behavioral tests (MFT, INV, DIR) are free and repeatable; tune them on their disagreements with careful labels.</p>
 
   <h2>3. A model as the judge</h2>
   <p>For open-ended answers (a summary, an explanation, an email) no string check works, so teams ask a strong model to grade with a rubric: "Given the question, the reference answer and the reply, is the reply correct? Answer yes or no." It scales, and with a capable judge it agrees with human graders about as often as two humans agree with each other. But it's a model with its own errors, and its agreement has to be measured, not assumed. In the practice notebook the judge is SmolLM2-360M, the same small model as before: it agrees with the labels on 11 of 18 answers, 61%. A "judge" that answers "correct" to everything gets 9 of 18, because half the answers are correct; so 61% is barely better than not reading at all.</p>
@@ -81,7 +89,14 @@ for d in data:
 
   <h2>4. Faithfulness: is every claim in the sources?</h2>
   <p>For a RAG system, "correct" splits in two: <b>answer correctness</b> (matches the truth) and <b>faithfulness</b> (every claim is supported by the retrieved passages). The retrieval notebook's small model, asked "Why does Adam need bias correction?" from passages of the optimizers lesson, began correctly ("it uses a running average of recent gradients") and then claimed bias correction "helps to prevent the bias-variance tradeoff", which no passage says. A faithfulness check splits the answer into claims and asks, for each, whether a passage supports it: chapter 8's number check for Blip is a cheap version, a judge model a general one.</p>
-  <p class="gist">For grounded systems, grade faithfulness (every claim supported by the passages) separately from correctness.</p>
+  <p>How do you automate faithfulness without relying on a slow, verbose chat model? Use a <b>Natural Language Inference (NLI)</b> classifier as an automated filter. NLI treats the retrieved source passage as the <i>premise</i> and each sentence of the model's answer as a <i>hypothesis</i>, classifying the relationship into three categories:</p>
+  <ul>
+    <li><b>Entailment:</b> The passage strictly proves the claim (the claim is grounded).</li>
+    <li><b>Contradiction:</b> The claim directly disputes the passage (hallucination).</li>
+    <li><b>Neutral:</b> The passage neither confirms nor denies the claim (unsupported speculation).</li>
+  </ul>
+  <p>NLI cross-encoders score claim-passage pairs in milliseconds and output calibrated probabilities. Any generated sentence scoring low on entailment or high on neutral/contradiction can be flagged, pruned, or returned for retrieval refinement before reaching a user.</p>
+  <p class="gist">For grounded systems, grade faithfulness (every claim supported by the passages) separately from correctness; NLI cross-encoders serve as fast, calibrated entailment filters.</p>
 
   <h2>5. Is the new version actually better?</h2>
   <p>Change a prompt, a model or a retriever, rerun the eval, compare. That comparison is Probability 4 again: both versions answer the same questions, so use a <b>paired</b> test on the questions where they disagree. In the notebook, adding retrieval to SmolLM2-360M raised its score on 20 short questions from 9 to 13. All 4 changed questions went RAG's way, and still the exact test says \(p = 2 \times 0.5^4 = 0.125\): with 20 questions, even a clean 4-to-0 isn't conclusive.</p>
