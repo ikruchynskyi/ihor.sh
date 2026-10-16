@@ -9,7 +9,7 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Review</p>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Review Deck · <a href="/yomu/quiz.html">Daily Miniquiz</a> · <a href="/yomu/practice.html">Practice</a> · <a href="/yomu/jlpt.html">JLPT Trainer</a> · <a href="/yomu/stories.html">Stories</a></p>
   <h1>Review</h1>
   <p class="lede">Try to recall before you flip. Be honest with the grade: <b>Again</b> brings it back in a minute, <b>Easy</b> pushes it days away. Ten minutes a day beats an hour a week.</p>
   <div id="settings"></div>
@@ -34,7 +34,14 @@ function finish() {
   stats();
   const total = Object.keys(state.srs).length;
   $("card").innerHTML = total
-    ? `<p><b>All caught up!</b> ${done ? `${done} reviews done. ` : ""}Come back tomorrow, or practice a few extra.</p><button id="extra">Practice 10 random cards</button> <a href="/yomu/">Back to the path</a>`
+    ? `<p><b>All caught up!</b> ${done ? `${done} reviews done. ` : ""}Come back tomorrow, or practice a few extra.</p>
+       <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:14px;">
+         <button id="extra">Practice 10 random cards</button>
+         <a class="btn" href="/yomu/quiz.html">Daily Miniquiz</a>
+         <a class="btn" href="/yomu/practice.html">Type words</a>
+         <a class="btn" href="/yomu/jlpt.html">JLPT trainer</a>
+         <a class="btn" href="/yomu/">Back to the path</a>
+       </div>`
     : `<p>Your deck is empty. Add kana, words, kanji or grammar from the <a href="/yomu/">path</a> and they'll show up here.</p>`;
   if ($("extra")) $("extra").onclick = () => { extra = true; queue = shuffle(Object.entries(state.srs).map(([id, c]) => ({ id, ...c }))).slice(0, 10); show(); };
   if (done >= 10) blip(`${done} reviews! お疲れさま!`, "happy", 5);

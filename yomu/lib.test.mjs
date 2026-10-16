@@ -50,3 +50,33 @@ assert.equal(wordAudioUrl("nonexistent_word_12345"), null);
 assert.equal(state.settings.slow, false);
 console.log("audio playback ok");
 
+// knowledge gaps & daily quiz
+import { recordGap, getActiveGaps, clearGap, saveDailyQuizResult, getDailyQuizResult } from "./lib.js";
+const testGap = { id: "test:wa-ga", title: "は vs が", category: "Particles", level: "N5", link: "/yomu/grammar.html", why: "は marks topic, が marks subject" };
+recordGap(testGap, false); // missed question
+let active = getActiveGaps();
+assert.ok(active.some((g) => g.id === "test:wa-ga" && g.missCount === 1));
+
+recordGap(testGap, true); // 1 correct
+recordGap(testGap, true); // 2 correct -> resolved
+active = getActiveGaps();
+assert.ok(!active.some((g) => g.id === "test:wa-ga"));
+
+recordGap(testGap, false); // reopened on miss
+assert.ok(getActiveGaps().some((g) => g.id === "test:wa-ga"));
+clearGap("test:wa-ga");
+assert.ok(!getActiveGaps().some((g) => g.id === "test:wa-ga"));
+
+saveDailyQuizResult("2026-10-14", { level: "N5", score: 4, total: 5, gaps: ["test:wa-ga"] });
+const qRes = getDailyQuizResult("2026-10-14");
+assert.equal(qRes.score, 4);
+assert.equal(qRes.total, 5);
+assert.equal(qRes.level, "N5");
+console.log("knowledge gaps & daily quiz ok");
+
+// progress is saved under the "yomu" key (a missing KEY once made every save throw, silently)
+import { save } from "./lib.js";
+globalThis.localStorage = { s: {}, getItem(k) { return this.s[k] ?? null; }, setItem(k, v) { this.s[k] = v; } };
+state.xp = 7; save();
+assert.equal(JSON.parse(localStorage.s.yomu ?? "{}").xp, 7, "progress must be saved under the 'yomu' key");
+console.log("progress saving ok");

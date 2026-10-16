@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daily Miniquiz &amp; Gap Diagnostic · Yomu</title>
+  <meta name="description" content="Daily 5-minute Japanese miniquiz to recap stories, grammar, and vocabulary across JLPT N5–N1. Pinpoints knowledge gaps with 1-click review and SRS deck integration." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .quiz-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .quiz-header-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px dashed var(--line);
+      margin-bottom: 16px;
+    }
+    .quiz-mode-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .mode-btn {
+      padding: 6px 12px !important;
+      font-size: 0.85rem !important;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .mode-btn[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .lvl-pills {
+      display: flex;
+      gap: 4px;
+    }
+    .lvl-pill {
+      padding: 4px 10px !important;
+      font-size: 0.8rem !important;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lvl-pill[aria-pressed="true"] {
+      background: color-mix(in srgb, var(--accent) 15%, var(--card));
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: bold;
+    }
+    .progress-track {
+      height: 8px;
+      background: color-mix(in srgb, var(--line) 40%, transparent);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0 20px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .q-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+      font-size: 0.82rem;
+    }
+    .tag-category {
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .tag-level {
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .tag-recap {
+      background: color-mix(in srgb, #f59f00 20%, transparent);
+      color: #d9480f;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .q-prompt-box {
+      font-size: 1.5rem;
+      line-height: 1.8;
+      margin: 14px 0 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .audio-play-btn {
+      font-size: 0.85rem !important;
+      padding: 4px 10px !important;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .hint-container {
+      background: color-mix(in srgb, var(--fg) 4%, transparent);
+      border-left: 3px solid var(--line);
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0 16px;
+      font-size: 0.9rem;
+    }
+    .choices-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .choice-card-btn {
+      padding: 12px 16px !important;
+      font-size: 1.1rem !important;
+      text-align: left !important;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 2px solid var(--line);
+      background: var(--card);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: none !important;
+    }
+    .choice-card-btn:hover:not([disabled]) {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 5%, var(--card));
+    }
+    .choice-card-btn.right {
+      border-color: var(--ok) !important;
+      background: color-mix(in srgb, var(--ok) 12%, var(--card)) !important;
+      color: var(--ok);
+      font-weight: bold;
+    }
+    .choice-card-btn.wrong {
+      border-color: var(--bad) !important;
+      background: color-mix(in srgb, var(--bad) 12%, var(--card)) !important;
+      color: var(--bad);
+      opacity: 0.85;
+    }
+    .choice-key {
+      font-size: 0.75rem;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+    .feedback-box {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      animation: fadeIn 0.2s ease;
+    }
+    .feedback-box.is-correct {
+      background: color-mix(in srgb, var(--ok) 10%, var(--card));
+      border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+    }
+    .feedback-box.is-wrong {
+      background: color-mix(in srgb, var(--bad) 8%, var(--card));
+      border-color: color-mix(in srgb, var(--bad) 40%, var(--line));
+    }
+    .fb-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fb-why {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin: 6px 0 12px;
+    }
+    .fb-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .btn-next {
+      background: var(--accent);
+      color: #fff;
+      font-weight: bold;
+      padding: 8px 18px !important;
+      border: none !important;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    /* Post-quiz Diagnostic styling */
+    .diagnostic-hero {
+      text-align: center;
+      padding: 20px 10px;
+    }
+    .diag-score {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin: 10px 0;
+    }
+    .diag-stars {
+      font-size: 1.6rem;
+      margin: 8px 0;
+      letter-spacing: 2px;
+    }
+    .diag-banner {
+      background: color-mix(in srgb, var(--accent) 10%, var(--card));
+      border: 1px dashed var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      font-weight: 600;
+    }
+    .gap-card {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--bad);
+      border-radius: 6px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .gap-card.resolved {
+      border-left-color: var(--ok);
+      opacity: 0.75;
+    }
+    .gap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .gap-title {
+      font-weight: bold;
+      font-size: 1.05rem;
+      color: var(--fg);
+    }
+    .gap-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .clean-slate {
+      text-align: center;
+      padding: 24px 16px;
+      background: color-mix(in srgb, var(--ok) 8%, var(--card));
+      border: 1px dashed color-mix(in srgb, var(--ok) 40%, var(--line));
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 600px) {
+      .quiz-card { padding: 16px; }
+      .q-prompt-box { font-size: 1.25rem; }
+      .quiz-header-bar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">
+    <a href="/yomu/">Yomu · Japanese</a> · Daily Miniquiz &amp; Gap Diagnostic · <a href="/yomu/review.html">Review</a> · <a href="/yomu/stories.html">Stories</a>
+  </p>
+  <h1>Daily Miniquiz · 今日のミニクイズ</h1>
+  <p class="lede">
+    5 quick questions to recap stories, grammar, and vocabulary. Identifies weak spots and creates targeted 1-click reviews.
+  </p>
+
+  <div id="settings"></div>
+
+  <section class="quiz-card" id="quizContainer">
+    <div class="quiz-header-bar">
+      <div>
+        <div style="font-weight: 600; font-size: 0.95rem;" id="quizDateLabel">Loading date…</div>
+        <div class="muted" style="font-size: 0.8rem;" id="streakBadge">🔥 0-day streak</div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <div class="lvl-pills" id="lvlPills">
+          <button class="lvl-pill" data-lvl="N5">N5</button>
+          <button class="lvl-pill" data-lvl="N4">N4</button>
+          <button class="lvl-pill" data-lvl="N3">N3</button>
+          <button class="lvl-pill" data-lvl="N2">N2</button>
+          <button class="lvl-pill" data-lvl="N1">N1</button>
+        </div>
+        <div class="quiz-mode-pills" id="modePills">
+          <button class="mode-btn" data-mode="daily" aria-pressed="true">🎯 Daily Quiz</button>
+          <button class="mode-btn" data-mode="practice">🔁 Practice</button>
+          <button class="mode-btn" data-mode="gaps">⚡ Drill Gaps (<span id="gapCountBadge">0</span>)</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="quizBody">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div id="qArea"></div>
+    </div>
+
+    <div id="diagnosticArea" hidden></div>
+  </section>
+
+  <section class="card2" id="allGapsSection">
+    <h3>Active Knowledge Gaps</h3>
+    <p class="muted">Concepts flagged during quizzes and story comprehension. Master them in targeted drills to resolve.</p>
+    <div id="activeGapsList"></div>
+  </section>
+</main>
+
+<script type="module">
+import {
+  state,
+  save,
+  gain,
+  addCard,
+  settingsBar,
+  esc,
+  speak,
+  blip,
+  recordGap,
+  getActiveGaps,
+  clearGap,
+  saveDailyQuizResult,
+  getDailyQuizResult
+} from "/yomu/lib.js";
+
+import {
+  generateDailyQuiz,
+  generateGapsQuiz,
+  formatQuizShareText
+} from "/yomu/quiz.js";
+
+const $ = (id) => document.getElementById(id);
+
+// Initialize settings bar
+settingsBar($("settings"), () => {
+  renderCurrentQuestion();
+});
+
+// App State
+let currentLevel = state.start?.level ?? "N5";
+let currentMode = "daily"; // "daily" | "practice" | "gaps"
+let questions = [];
+let currentIdx = 0;
+let userScore = 0;
+let userAnswers = []; // records { q, choiceIdx, isCorrect }
+let sessionGaps = [];
+let isAnswered = false;
+
+// Date string (YYYY-MM-DD)
+const todayStr = new Date().toISOString().slice(0, 10);
+const todayDisplay = new Date().toLocaleDateString(undefined, {
+  weekday: "long",
+  year: "numeric",
+  month: "short",
+  day: "numeric"
+});
+
+function updateHeader() {
+  $("quizDateLabel").textContent = `📅 ${todayDisplay}`;
+  $("streakBadge").textContent = `🔥 ${state.streak.days || 0}-day streak · ★ ${state.xp} XP`;
+  
+  // Level pills
+  $("lvlPills").querySelectorAll("[data-lvl]").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.lvl === currentLevel);
+  });
+
+  // Mode pills
+  $("modePills").querySelectorAll("[data-mode]").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.mode === currentMode);
+  });
+
+  const activeGaps = getActiveGaps();
+  $("gapCountBadge").textContent = activeGaps.length;
+}
+
+// Attach control events
+$("lvlPills").querySelectorAll("[data-lvl]").forEach((b) => {
+  b.onclick = () => {
+    currentLevel = b.dataset.lvl;
+    updateHeader();
+    startQuiz();
+  };
+});
+
+$("modePills").querySelectorAll("[data-mode]").forEach((b) => {
+  b.onclick = () => {
+    currentMode = b.dataset.mode;
+    updateHeader();
+    startQuiz();
+  };
+});
+
+async function startQuiz() {
+  $("quizBody").hidden = false;
+  $("diagnosticArea").hidden = true;
+  $("qArea").innerHTML = '<p class="muted" style="text-align:center; padding:30px;">Loading today\'s recap questions…</p>';
+
+  currentIdx = 0;
+  userScore = 0;
+  userAnswers = [];
+  sessionGaps = [];
+  isAnswered = false;
+
+  const activeGaps = getActiveGaps();
+
+  if (currentMode === "daily") {
+    questions = await generateDailyQuiz(todayStr, currentLevel, activeGaps);
+  } else if (currentMode === "gaps") {
+    if (!activeGaps.length) {
+      $("qArea").innerHTML = `
+        <div class="clean-slate">
+          <h3>🎉 No Active Knowledge Gaps!</h3>
+          <p class="muted">You have cleared all identified weak spots. Try Today's Daily Quiz or a Practice Recap!</p>
+          <button class="btn-next" id="goDailyBtn">Take Daily Quiz</button>
+        </div>`;
+      $("goDailyBtn").onclick = () => {
+        currentMode = "daily";
+        updateHeader();
+        startQuiz();
+      };
+      return;
+    }
+    questions = await generateGapsQuiz(activeGaps, currentLevel);
+  } else {
+    // Practice mode: random seed
+    const randSeed = `${todayStr}-${Math.random()}`;
+    questions = await generateDailyQuiz(randSeed, currentLevel, activeGaps);
+  }
+
+  renderCurrentQuestion();
+  renderActiveGapsSection();
+}
+
+function renderCurrentQuestion() {
+  if (currentIdx >= questions.length) {
+    finishQuiz();
+    return;
+  }
+
+  const q = questions[currentIdx];
+  isAnswered = false;
+
+  // Progress Bar
+  const pct = Math.round((currentIdx / questions.length) * 100);
+  $("progressFill").style.width = `${pct}%`;
+
+  const qHtml = `
+    <div class="q-meta">
+      <span class="tag-category">${esc(q.category)}</span>
+      <span class="tag-level">${esc(q.level)}</span>
+      ${q.isGapRecap ? '<span class="tag-recap">⚡ Gap Review</span>' : ''}
+      <span class="muted" style="margin-left:auto;">Question ${currentIdx + 1} of ${questions.length}</span>
+    </div>
+
+    <div class="q-prompt-box">
+      <div class="jp">${q.prompt}</div>
+      <button class="mini audio-play-btn" id="audioBtn" title="Listen in native Japanese audio">▶ Listen</button>
+    </div>
+
+    ${q.hint ? `
+      <div>
+        <button class="mini" id="hintToggleBtn" style="color:var(--muted); margin-bottom:8px;">💡 Show English Hint</button>
+        <div class="hint-container" id="hintBox" hidden>${esc(q.hint)}</div>
+      </div>
+    ` : ''}
+
+    <div class="choices-grid" id="choicesGrid">
+      ${q.choices.map((c, i) => `
+        <button class="choice-card-btn jp" data-idx="${i}">
+          <span>${esc(c)}</span>
+          <span class="choice-key">[${i + 1}]</span>
+        </button>
+      `).join("")}
+    </div>
+
+    <div id="feedbackContainer"></div>
+  `;
+
+  $("qArea").innerHTML = qHtml;
+
+  // Audio button
+  $("audioBtn").onclick = () => {
+    speak(q.audioText || q.promptPlain);
+  };
+
+  // Hint toggle
+  const hintToggleBtn = $("hintToggleBtn");
+  if (hintToggleBtn) {
+    hintToggleBtn.onclick = () => {
+      const box = $("hintBox");
+      const hidden = box.hidden;
+      box.hidden = !hidden;
+      hintToggleBtn.textContent = hidden ? "💡 Hide English Hint" : "💡 Show English Hint";
+    };
+  }
+
+  // Choices buttons
+  $("choicesGrid").querySelectorAll("[data-idx]").forEach((btn) => {
+    btn.onclick = () => onSelectChoice(+btn.dataset.idx);
+  });
+}
+
+function onSelectChoice(chosenIdx) {
+  if (isAnswered) return;
+  isAnswered = true;
+
+  const q = questions[currentIdx];
+  const isCorrect = chosenIdx === q.correctIndex;
+
+  if (isCorrect) userScore++;
+  userAnswers.push({ q, chosenIdx, isCorrect });
+
+  // Record gap in persistence
+  const gapItem = recordGap({
+    id: q.id,
+    title: q.topic,
+    category: q.category,
+    level: q.level,
+    link: q.link,
+    why: q.why,
+    sampleQ: q.promptPlain
+  }, isCorrect);
+
+  if (!isCorrect) {
+    sessionGaps.push(q);
+  }
+
+  // Highlight choices
+  const buttons = $("choicesGrid").querySelectorAll(".choice-card-btn");
+  buttons.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.correctIndex) {
+      b.classList.add("right");
+    } else if (i === chosenIdx) {
+      b.classList.add("wrong");
+    }
+  });
+
+  // Render Feedback Box
+  const fbContainer = $("feedbackContainer");
+  fbContainer.innerHTML = `
+    <div class="feedback-box ${isCorrect ? 'is-correct' : 'is-wrong'}">
+      <div class="fb-title ${isCorrect ? 'right' : 'wrong'}">
+        ${isCorrect ? '✓ 正解！(seikai: Correct!)' : `✗ 惜しい！(oshii: Not quite: ${esc(q.correctAnswerText)})`}
+      </div>
+      <div class="fb-why">${esc(q.why)}</div>
+      
+      ${!isCorrect ? `
+        <div style="font-size:0.85rem; color:var(--bad); margin-bottom:8px;">
+          📌 Tagged as learning gap: <b>${esc(q.topic)}</b>
+        </div>
+        <div class="fb-actions">
+          <a class="btn mini" href="${q.link}" target="_blank" rel="noopener">📖 View Lesson / Story</a>
+          <button class="mini" id="addDeckBtn">+ Add to Review Deck</button>
+        </div>
+      ` : ''}
+
+      <div style="margin-top:14px;">
+        <button class="btn-next" id="nextQBtn">
+          ${currentIdx + 1 < questions.length ? 'Next Question →' : 'View Diagnostic Report →'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  if (!isCorrect && $("addDeckBtn")) {
+    $("addDeckBtn").onclick = (e) => {
+      addCard(q.id, {
+        word: q.promptPlain,
+        front: q.promptPlain,
+        reading: q.correctAnswerText,
+        meaning: q.why || q.hint,
+        kind: "quiz_gap"
+      });
+      e.target.textContent = "✓ Added to Deck";
+      e.target.disabled = true;
+      gain(1);
+    };
+  }
+
+  $("nextQBtn").onclick = () => {
+    currentIdx++;
+    renderCurrentQuestion();
+  };
+
+  // Blip commentary during quiz
+  if (isCorrect) {
+    blip("正解！(seikai)", "happy", 2);
+  } else {
+    blip("Don't worry! Gaps help you know what to review next.", "think", 0);
+  }
+}
+
+// Keyboard shortcuts (1, 2, 3, 4, Enter, Space)
+window.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  
+  if (!isAnswered && ["1", "2", "3", "4"].includes(e.key)) {
+    const idx = parseInt(e.key, 10) - 1;
+    const btns = $("choicesGrid")?.querySelectorAll(".choice-card-btn");
+    if (btns && btns[idx]) btns[idx].click();
+  } else if (isAnswered && (e.key === "Enter" || e.key === " ")) {
+    e.preventDefault();
+    const nextBtn = $("nextQBtn");
+    if (nextBtn) nextBtn.click();
+  }
+});
+
+function finishQuiz() {
+  $("quizBody").hidden = true;
+  $("diagnosticArea").hidden = false;
+
+  const total = questions.length;
+  const pct = Math.round((userScore / total) * 100);
+
+  // If daily challenge, award completion XP and record daily result
+  if (currentMode === "daily") {
+    gain(20);
+    saveDailyQuizResult(todayStr, {
+      level: currentLevel,
+      score: userScore,
+      total,
+      gaps: sessionGaps.map((g) => g.id)
+    });
+  }
+
+  const isPerfect = userScore === total;
+  let stars = "★★★☆☆";
+  let verdict = "よくできました (Great job)!";
+  if (isPerfect) {
+    stars = "★★★★★";
+    verdict = "満点 (manten)! Perfect recap!";
+    blip("満点 (manten)! Fantastic job on today's quiz!", "happy", 6);
+  } else if (userScore >= 3) {
+    stars = "★★★★☆";
+    verdict = "がんばりました (Solid effort)!";
+    blip(`${userScore}/${total}! You're making solid progress. Review the gaps below.`, "happy", 2);
+  } else {
+    stars = "★★☆☆☆";
+    verdict = "復習しましょう (Let's review)!";
+    blip("Every gap you find is a concept ready to be mastered.", "think", 1);
+  }
+
+  const diagHtml = `
+    <div class="diagnostic-hero">
+      <div class="muted" style="text-transform:uppercase; letter-spacing:0.05em; font-size:0.85rem;">
+        ${currentMode === "daily" ? "Daily Quiz Result" : currentMode === "gaps" ? "Gap Remediation Result" : "Practice Recap Result"}
+      </div>
+      <div class="diag-score">${userScore} / ${total}</div>
+      <div class="diag-stars" style="color:var(--accent);">${stars}</div>
+      <div style="font-size:1.2rem; font-weight:600;">${verdict}</div>
+
+      <div class="diag-banner">
+        <span>★ +20 XP awarded</span>
+        <span>·</span>
+        <span>🔥 ${state.streak.days || 1}-day streak active</span>
+      </div>
+
+      <div style="display:flex; justify-content:center; gap:10px; margin:16px 0;">
+        <button class="btn mini" id="shareBtn">📋 Copy Daily Score (Share)</button>
+        <button class="btn mini" id="retakeBtn">🔁 Practice Another Set</button>
+      </div>
+    </div>
+
+    <div style="margin-top:20px; border-top:1px dashed var(--line); padding-top:20px;">
+      <h3>Identified Knowledge Gaps Today (${sessionGaps.length})</h3>
+      
+      ${sessionGaps.length === 0 ? `
+        <div class="clean-slate">
+          <h4>🎉 Zero Knowledge Gaps Identified!</h4>
+          <p class="muted">All checked concepts were recalled accurately. You're ready for the next story!</p>
+        </div>
+      ` : `
+        <p class="muted">Review these flagged concepts so they don't trip you up in longer stories:</p>
+        <div id="sessionGapsList">
+          ${sessionGaps.map((q) => `
+            <div class="gap-card">
+              <div class="gap-header">
+                <span class="gap-title">${esc(q.topic)}</span>
+                <span class="tag-category">${esc(q.category)} · ${esc(q.level)}</span>
+              </div>
+              <div style="font-size:0.92rem; margin:6px 0;"><b>Question:</b> ${q.prompt}</div>
+              <div class="fb-why">${esc(q.why)}</div>
+              <div class="gap-actions">
+                <a class="btn mini" href="${q.link}" target="_blank" rel="noopener">📖 Open Lesson / Story</a>
+                <button class="mini" data-adddeck="${esc(q.id)}">+ Add to SRS Review Deck</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `}
+    </div>
+
+    <div style="margin-top:24px; display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+      <a class="btn" href="/yomu/review.html">Go to SRS Review Deck</a>
+      <a class="btn" href="/yomu/stories.html">Continue Reading Stories</a>
+      <a class="btn" href="/yomu/">Back to Path</a>
+    </div>
+  `;
+
+  $("diagnosticArea").innerHTML = diagHtml;
+
+  // Share score button
+  $("shareBtn").onclick = () => {
+    const text = formatQuizShareText(todayStr, currentLevel, userScore, total, state.streak.days || 1);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      $("shareBtn").textContent = "✓ Copied to clipboard!";
+      setTimeout(() => ($("shareBtn").textContent = "📋 Copy Daily Score (Share)"), 2500);
+    }
+  };
+
+  $("retakeBtn").onclick = () => {
+    currentMode = "practice";
+    updateHeader();
+    startQuiz();
+  };
+
+  // Add deck buttons in report
+  $("diagnosticArea").querySelectorAll("[data-adddeck]").forEach((b) => {
+    b.onclick = () => {
+      const q = sessionGaps.find((item) => item.id === b.dataset.adddeck);
+      if (q) {
+        addCard(q.id, {
+          word: q.promptPlain,
+          front: q.promptPlain,
+          reading: q.correctAnswerText,
+          meaning: q.why || q.hint,
+          kind: "quiz_gap"
+        });
+        b.textContent = "✓ Added";
+        b.disabled = true;
+        gain(1);
+      }
+    };
+  });
+
+  renderActiveGapsSection();
+}
+
+function renderActiveGapsSection() {
+  const activeGaps = getActiveGaps();
+  $("gapCountBadge").textContent = activeGaps.length;
+
+  const container = $("activeGapsList");
+  if (!activeGaps.length) {
+    container.innerHTML = `
+      <div class="clean-slate">
+        <p style="margin:0;"><b>No active knowledge gaps!</b> When you miss questions in daily quizzes or stories, they'll appear here for targeted drills.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <span><b>${activeGaps.length}</b> concept${activeGaps.length === 1 ? '' : 's'} needing review</span>
+      <button class="btn mini" id="drillAllGapsBtn">⚡ Drill Active Gaps (5 questions)</button>
+    </div>
+    ${activeGaps.map((g) => `
+      <div class="gap-card">
+        <div class="gap-header">
+          <span class="gap-title">${esc(g.title)}</span>
+          <span class="tag-level">${esc(g.level)} · ${esc(g.category)}</span>
+        </div>
+        ${g.sampleQ ? `<div style="font-size:0.88rem; color:var(--muted); margin:4px 0;">Context: ${esc(g.sampleQ)}</div>` : ''}
+        ${g.why ? `<div style="font-size:0.9rem; margin:6px 0;">${esc(g.why)}</div>` : ''}
+        <div style="font-size:0.8rem; color:var(--muted); margin-bottom:8px;">
+          Missed: ${g.missCount || 1}x · Correct: ${g.correctCount || 0}x · Last seen: ${esc(g.lastMissed || 'Today')}
+        </div>
+        <div class="gap-actions">
+          <a class="btn mini" href="${g.link || '/yomu/'}" target="_blank" rel="noopener">📖 Lesson</a>
+          <button class="mini" data-resolve="${esc(g.id)}">✓ Mark Mastered</button>
+        </div>
+      </div>
+    `).join("")}
+  `;
+
+  if ($("drillAllGapsBtn")) {
+    $("drillAllGapsBtn").onclick = () => {
+      currentMode = "gaps";
+      updateHeader();
+      startQuiz();
+      window.scrollTo({ top: $("quizContainer").offsetTop - 20, behavior: "smooth" });
+    };
+  }
+
+  container.querySelectorAll("[data-resolve]").forEach((b) => {
+    b.onclick = () => {
+      clearGap(b.dataset.resolve);
+      renderActiveGapsSection();
+      updateHeader();
+    };
+  });
+}
+
+// Initial boot
+const urlParams = new URLSearchParams(location.search);
+if (urlParams.get("mode") === "gaps") currentMode = "gaps";
+if (urlParams.get("level")) currentLevel = urlParams.get("level");
+
+updateHeader();
+startQuiz();
+</script>
+</body>
+</html>

@@ -100,9 +100,11 @@ export const kanaLine = (tokens) => tokens.map(tok).map(reading).join("");
 
 // ---------- progress (this browser only) ----------
 const KEY = "yomu";
-const DEFAULTS = { settings: { script: "kanji", furigana: "all", translation: true, rate: 0.85, slow: false, voice: "kokoro" }, known: {}, srs: {}, done: {}, xp: 0, streak: { last: "", days: 0 }, start: null };
+const DEFAULTS = { settings: { script: "kanji", furigana: "all", translation: true, rate: 0.85, slow: false }, known: {}, srs: {}, done: {}, xp: 0, streak: { last: "", days: 0 }, start: null, gaps: {}, dailyQuiz: {} };
 export const state = (() => { try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return structuredClone(DEFAULTS); } })();
 state.settings = { ...DEFAULTS.settings, ...state.settings };
+state.gaps ??= {};
+state.dailyQuiz ??= {};
 export const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
 
 /** XP and a daily streak: a little game loop around studying. */
@@ -131,7 +133,87 @@ export function grade(id, g) {
 }
 export const dueCards = () => Object.entries(state.srs).filter(([, c]) => c.due <= Date.now()).map(([id, c]) => ({ id, ...c }));
 
-// ---------- speech (Kokoro Kumo neural AI voice + browser fallback) ----------
+// ---------- knowledge gaps & daily miniquiz ----------
+export function recordGap(gap, isCorrect) {
+  if (!gap || !gap.id) return null;
+  state.gaps ??= {};
+  const g = state.gaps[gap.id] || {
+    id: gap.id,
+    title: gap.title || gap.id,
+    category: gap.category || "General",
+    level: gap.level || "N5",
+    link: gap.link || "",
+    why: gap.why || "",
+    sampleQ: gap.sampleQ || "",
+    missCount: 0,
+    correctCount: 0,
+    history: [],
+    created: Date.now()
+  };
+  if (gap.title) g.title = gap.title;
+  if (gap.category) g.category = gap.category;
+  if (gap.level) g.level = gap.level;
+  if (gap.link) g.link = gap.link;
+  if (gap.why) g.why = gap.why;
+  if (gap.sampleQ) g.sampleQ = gap.sampleQ;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (isCorrect) {
+    g.correctCount = (g.correctCount || 0) + 1;
+    g.lastCorrect = today;
+    g.streak = (g.streak || 0) + 1;
+    if (g.streak >= 2 || (g.correctCount >= g.missCount && g.streak >= 1)) {
+      g.resolved = true;
+      g.resolvedAt = today;
+    }
+  } else {
+    g.missCount = (g.missCount || 0) + 1;
+    g.lastMissed = today;
+    g.streak = 0;
+    g.resolved = false;
+  }
+  g.history = g.history || [];
+  g.history.push({ date: today, ok: !!isCorrect });
+  if (g.history.length > 10) g.history.shift();
+
+  state.gaps[gap.id] = g;
+  save();
+  return g;
+}
+
+export function getActiveGaps() {
+  state.gaps ??= {};
+  return Object.values(state.gaps).filter((g) => !g.resolved);
+}
+
+export function clearGap(id) {
+  state.gaps ??= {};
+  if (state.gaps[id]) {
+    state.gaps[id].resolved = true;
+    state.gaps[id].resolvedAt = new Date().toISOString().slice(0, 10);
+    save();
+  }
+}
+
+export function saveDailyQuizResult(dateStr, result) {
+  state.dailyQuiz ??= {};
+  state.dailyQuiz[dateStr] = {
+    date: dateStr,
+    level: result.level,
+    score: result.score,
+    total: result.total,
+    gaps: result.gaps || [],
+    completedAt: Date.now()
+  };
+  save();
+}
+
+export function getDailyQuizResult(dateStr) {
+  state.dailyQuiz ??= {};
+  return state.dailyQuiz[dateStr] || null;
+}
+
+// ---------- speech (Edge neural AI voice + pre-generated audio + browser fallback) ----------
 let jaVoice = null;
 const pickVoice = () => (jaVoice = ("speechSynthesis" in W ? speechSynthesis.getVoices() : []).filter((v) => v.lang.replace("_", "-").startsWith("ja")).sort((a, b) => Number(/Google|Kyoko|Otoya|O-ren/i.test(b.name)) - Number(/Google|Kyoko|Otoya|O-ren/i.test(a.name)))[0] ?? null);
 if ("speechSynthesis" in W) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
@@ -280,7 +362,10 @@ if (typeof window !== "undefined") {
   getTalkAudioManifest();
 }
 
-/** Read Japanese aloud (pre-rendered neural audio, local Irodori-TTS, or browser voice). Resolves when done. */
+// Browser-level in-memory cache for synthesized MP3 blobs (reused across plays without server disk storage)
+const browserAudioCache = new Map();
+
+/** Read Japanese aloud (pre-rendered neural audio, Edge neural TTS, or browser voice). Resolves when done. */
 export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.rate), audioUrl = null) {
   stopAudio();
   const clean = String(text ?? "").trim();
@@ -289,20 +374,37 @@ export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.r
 
   const speed = state.settings.slow ? 0.7 : (Number(rate) || 1.0);
 
-  // If using neural audio (either pre-rendered static audio or on-demand local TTS)
-  if (state.settings.voice !== "browser" && typeof Audio !== "undefined") {
+  if (typeof Audio !== "undefined") {
     return new Promise((resolve) => {
       const audio = getPlayer();
       if (!audio) return browserSpeak(clean, speed).then(resolve);
 
       const staticResolved = audioUrl || wordAudioUrl(clean) || wordAudioUrl(cleanWord) || kanaAudioUrl(clean) || grammarAudioUrl(clean) || talkAudioUrl(clean);
-      const targetUrl = staticResolved || `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`;
+      let targetUrl = staticResolved;
+      if (!targetUrl) {
+        const cacheKey = `${clean}|${speed}`;
+        if (browserAudioCache.has(cacheKey)) {
+          targetUrl = browserAudioCache.get(cacheKey);
+        } else {
+          const apiUrl = `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${speed}`;
+          // Prefetch as blob and store in browser memory cache for instantaneous reuse
+          fetch(apiUrl)
+            .then((r) => (r.ok ? r.blob() : null))
+            .then((blob) => {
+              if (blob && !browserAudioCache.has(cacheKey)) {
+                browserAudioCache.set(cacheKey, URL.createObjectURL(blob));
+              }
+            })
+            .catch(() => {});
+          targetUrl = apiUrl;
+        }
+      }
       currentAudio = audio;
 
-      // If playing pre-generated slow audio file, playbackRate stays 1.0; otherwise apply playbackRate
+      // If playing pre-generated slow audio file, edge-tts, or cached blob (speed adjusted), playbackRate stays 1.0
       try {
-        const isFileAlreadySlow = targetUrl.includes("_slow.mp3");
-        audio.playbackRate = isFileAlreadySlow ? 1.0 : speed;
+        const isSpeedPreSet = targetUrl.includes("_slow.mp3") || targetUrl.startsWith("/api/yomu/tts") || targetUrl.startsWith("blob:");
+        audio.playbackRate = isSpeedPreSet ? 1.0 : speed;
         audio.defaultPlaybackRate = audio.playbackRate;
         audio.preservesPitch = true;
       } catch {}
@@ -323,14 +425,8 @@ export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.r
 
       audio.onended = () => done(true);
       audio.onerror = () => {
-        // If static audio URL failed (e.g. 404), fall back to /api/yomu/tts
-        if (targetUrl !== `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`) {
-          audio.onerror = () => browserSpeak(clean, speed).then(done);
-          audio.src = `/api/yomu/tts?text=${encodeURIComponent(clean)}&speed=${encodeURIComponent(speed)}`;
-          audio.play().catch(() => browserSpeak(clean, speed).then(done));
-        } else {
-          browserSpeak(clean, speed).then(done);
-        }
+        // Fallback to browser voice on audio error
+        browserSpeak(clean, speed).then(done);
       };
 
       if (!audio.src.endsWith(targetUrl) && audio.src !== targetUrl) {
@@ -346,8 +442,8 @@ export function speak(text, rate = (state.settings.slow ? 0.7 : state.settings.r
             done(false);
             return;
           }
-          console.warn("Audio play rejected:", err);
-          browserSpeak(clean, rate).then(done);
+          console.warn("Audio play rejected, falling back to browser voice:", err);
+          browserSpeak(clean, speed).then(done);
         });
       }
     });
@@ -505,19 +601,13 @@ export async function strokes(ch, el) {
 // ---------- the settings bar every page shows ----------
 export function settingsBar(el, onChange, opts = {}) {
   const s = state.settings;
-  const showVoice = opts.voice !== false;
   el.innerHTML = `<div class="yset" role="group" aria-label="Display">
     <span>Script</span>${[["kanji", "漢字 + furigana"], ["kana", "かな only"], ["romaji", "Romaji"]].map(([v, l]) => `<button data-s="${v}" aria-pressed="${s.script === v}">${l}</button>`).join("")}
     <label>Furigana <select id="yfuri"><option value="all">on all kanji</option><option value="unknown">only on words I don't know</option><option value="none">off</option></select></label>
     <label><input type="checkbox" id="ytr" ${s.translation ? "checked" : ""}> English</label>
     <label><input type="checkbox" id="yslow" ${s.slow ? "checked" : ""}> Slow mode</label>
-    ${showVoice ? `<label>Voice <select id="yvoice"><option value="kokoro">Kokoro Kumo (Neural)</option><option value="browser">Browser voice</option></select></label>` : ""}
     <span class="yxp" title="XP and streak">★ ${state.xp} XP · 🔥 ${state.streak.days} day${state.streak.days === 1 ? "" : "s"}</span></div>`;
   el.querySelector("#yfuri").value = s.furigana;
-  if (showVoice) {
-    el.querySelector("#yvoice").value = s.voice || "kokoro";
-    el.querySelector("#yvoice").onchange = (e) => { s.voice = e.target.value; save(); onChange?.(); };
-  }
   el.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { s.script = b.dataset.s; save(); settingsBar(el, onChange, opts); onChange?.(); }));
   el.querySelector("#yfuri").onchange = (e) => { s.furigana = e.target.value; save(); onChange?.(); };
   el.querySelector("#ytr").onchange = (e) => { s.translation = e.target.checked; save(); onChange?.(); };

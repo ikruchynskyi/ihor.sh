@@ -54,7 +54,7 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Table of Contents · <a href="/yomu/reader.html">Reader</a> · <a href="/yomu/practice.html">Practice</a></p>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Table of Contents · <a href="/yomu/reader.html?nhk=today">Daily NHK News</a> · <a href="/yomu/reader.html">Reader</a> · <a href="/yomu/practice.html">Practice</a> · <a href="/yomu/jlpt.html">JLPT Trainer</a></p>
   <h1>All Stories · 目次</h1>
   <p class="lede">87 graded Japanese dialogue stories from JLPT N5 to N1 (2,036 spoken turns). Follow Yuki, Sam, and Blip across New York and Japan with studio neural audio, tap-to-translate vocabulary, grammar drills, and comprehensive unit capstone reviews.</p>
   
@@ -182,6 +182,14 @@ $("search").addEventListener("input", (e) => {
 });
 
 renderList();
+
+window.blipContext = () => ({
+  page: "All stories table of contents",
+  totalStories: stories.length,
+  completedStories: Object.values(state.done || {}).filter((d) => d.finished).length,
+  selectedLevel: currentLevel,
+  role: "Help learner pick stories suited to their JLPT level and discuss the storyline of Yuki, Sam, and Blip across New York and Japan."
+});
 </script>
 </body>
 </html>

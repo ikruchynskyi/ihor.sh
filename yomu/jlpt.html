@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JLPT N5–N1 Exam Trainer · 日本語能力試験</title>
+  <meta name="description" content="Authentic practice trainer for the Japanese Language Proficiency Test (JLPT N5 to N1). Timed exam simulation, grammar star questions, listening comprehension, official 180-point scoring with sectional minimum threshold gatekeepers, and official learning resources." />
+  <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .disclaimer-card {
+      background: color-mix(in srgb, #f59f00 12%, var(--card));
+      border: 1px solid color-mix(in srgb, #f59f00 40%, var(--line));
+      border-left: 5px solid #f59f00;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 14px 0 20px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+    .disclaimer-card h3 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #d9480f;
+    }
+    .disclaimer-card p { margin: 6px 0; }
+    .official-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px dashed color-mix(in srgb, #f59f00 30%, var(--line));
+      font-size: 0.85rem;
+    }
+    .official-links a { font-weight: 600; text-decoration: underline; color: inherit; }
+
+    .jlpt-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    .ctrl-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .lvl-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .lvl-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all .15s;
+    }
+    .lvl-btn:hover { border-color: var(--accent); }
+    .lvl-btn[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .mode-pills { display: flex; gap: 8px; }
+    .mode-btn {
+      padding: 5px 12px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    .mode-btn[aria-pressed="true"] {
+      background: color-mix(in srgb, var(--accent) 15%, var(--card));
+      border-color: var(--accent);
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .exam-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 16px;
+    }
+    .exam-timer {
+      font-family: ui-monospace, monospace;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .q-mondai {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .q-instruction {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--fg);
+    }
+    .q-body {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0 16px;
+      font-size: 1.25rem;
+      line-height: 1.9;
+    }
+    .q-underline {
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .star-sentence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 12px 0;
+      font-size: 1.1rem;
+    }
+    .star-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 50px;
+      height: 38px;
+      border-bottom: 2px solid var(--line);
+      padding: 0 8px;
+    }
+    .star-slot.target {
+      border-bottom: 2px solid var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .q-choices {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 14px 0;
+    }
+    @media (max-width: 600px) {
+      .q-choices { grid-template-columns: 1fr; }
+    }
+    .q-choice-btn {
+      text-align: left;
+      padding: 12px 14px !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 8px !important;
+      background: var(--card) !important;
+      font-size: 1.05rem !important;
+      cursor: pointer;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      transition: all .12s;
+    }
+    .q-choice-btn:hover {
+      border-color: var(--accent) !important;
+      background: color-mix(in srgb, var(--accent) 5%, var(--card)) !important;
+    }
+    .q-choice-btn.selected {
+      border-color: var(--accent) !important;
+      background: color-mix(in srgb, var(--accent) 15%, var(--card)) !important;
+      font-weight: 600;
+    }
+    .q-choice-btn.ans-correct {
+      border-color: var(--ok) !important;
+      background: color-mix(in srgb, var(--ok) 18%, var(--card)) !important;
+    }
+    .q-choice-btn.ans-wrong {
+      border-color: var(--bad) !important;
+      background: color-mix(in srgb, var(--bad) 15%, var(--card)) !important;
+      opacity: 0.8;
+    }
+    .choice-num {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--fg) 10%, transparent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .q-explain {
+      background: color-mix(in srgb, var(--accent) 8%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      font-size: 0.92rem;
+    }
+    .q-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+    }
+
+    /* Scorecard */
+    .scorecard {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 18px 0;
+    }
+    .score-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 32px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .score-badge {
+      font-size: 2rem;
+      font-weight: 800;
+      padding: 6px 18px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .score-badge.pass { background: #e6fcf5; color: #0ca678; border: 2px solid #20c997; }
+    .score-badge.fail { background: #ffe3e3; color: #c92a2a; border: 2px solid #ff8787; }
+    .score-badge.sec-fail { background: #fff4e6; color: #d9480f; border: 2px solid #ffa94d; font-size: 1.4rem; }
+
+    .score-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .sec-row {
+      display: grid;
+      grid-template-columns: 220px 1fr 100px;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+    @media (max-width: 640px) {
+      .sec-row { grid-template-columns: 1fr; gap: 4px; }
+    }
+    .score-bar-track {
+      height: 12px;
+      background: var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .score-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 6px;
+      transition: width .4s ease;
+    }
+    .score-bar-fill.ok { background: var(--ok); }
+    .score-bar-fill.warn { background: #f59f00; }
+    .score-bar-fill.bad { background: var(--bad); }
+    .sec-threshold {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #000;
+      opacity: 0.4;
+    }
+
+    .review-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .rev-item {
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--card);
+    }
+    .rev-item.correct { border-left: 4px solid var(--ok); }
+    .rev-item.incorrect { border-left: 4px solid var(--bad); }
+
+    .audio-player-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: color-mix(in srgb, var(--accent) 8%, var(--card));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .transcript-box {
+      margin: 10px 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--card) 95%, var(--accent));
+      border: 1px dashed var(--line);
+      font-size: 0.92rem;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · JLPT Trainer · <a href="/yomu/stories.html">Stories</a> · <a href="/yomu/review.html">Review</a></p>
+  <h1>JLPT N5–N1 Exam Trainer</h1>
+  <p class="lede">Realistic mock exam simulation for the Japanese Language Proficiency Test. Features timed sections, grammar star sentences (文の組み立て), authentic cloze, reading passages, listening tasks, and official sectional threshold scoring (180 points total).</p>
+
+  <div id="settings"></div>
+
+  <!-- Prominent Unofficial Disclaimer -->
+  <div class="disclaimer-card" role="region" aria-label="Official Disclaimer and Information">
+    <h3>⚠️ Unofficial Practice Simulator &amp; Diagnostic Trainer</h3>
+    <p>This trainer is an independent educational tool designed to simulate the pacing, question formats, and scoring mechanics of the JLPT. <b>It is NOT an official JLPT test and does NOT confer official certification or formal scores.</b></p>
+    <p>Official registration, worldwide exam dates (typically held in July and December), test site locators, and official certification can only be acquired through the official sponsors: <b>The Japan Foundation</b> and <b>Japan Educational Exchanges and Services (JEES)</b>.</p>
+    <div class="official-links">
+      <span>Official Portals:</span>
+      <a href="https://www.jlpt.jp/" target="_blank" rel="noopener">jlpt.jp (日本語)</a>
+      <a href="https://www.jlpt.jp/e/" target="_blank" rel="noopener">jlpt.jp/e/ (English)</a>
+      <a href="https://www.jlpt.jp/e/samples/sampleindex.html" target="_blank" rel="noopener">Official Sample Workbooks</a>
+      <a href="https://www.jlpt.jp/e/about/candolist.html" target="_blank" rel="noopener">JLPT Can-do Self-Evaluation</a>
+    </div>
+  </div>
+
+  <!-- Level & Mode Selection Controls -->
+  <div class="jlpt-controls">
+    <div class="ctrl-row">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-weight:700; font-size:0.9rem;">JLPT Level:</span>
+        <div class="lvl-pills" id="lvlPills">
+          <button class="lvl-btn" data-lvl="N5">N5</button>
+          <button class="lvl-btn" data-lvl="N4">N4</button>
+          <button class="lvl-btn" data-lvl="N3">N3</button>
+          <button class="lvl-btn" data-lvl="N2">N2</button>
+          <button class="lvl-btn" data-lvl="N1">N1</button>
+        </div>
+      </div>
+      <div class="mode-pills" id="modePills">
+        <button class="mode-btn" data-mode="drill" aria-pressed="true">Quick Practice (Instant Feedback)</button>
+        <button class="mode-btn" data-mode="exam" aria-pressed="false">Full Timed Exam (180 pts)</button>
+      </div>
+    </div>
+    <div id="lvlDescription" class="muted" style="font-size:0.86rem; border-top:1px dashed var(--line); padding-top:8px;"></div>
+  </div>
+
+  <section class="card2" id="examArea"></section>
+</main>
+
+<script type="module">
+import { state, save, gain, addCard, settingsBar, esc, speak, stopAudio, LEVELS, vocab, kanjiDeck, grammarDeck, cloze, choiceLabel, shuffle, blip } from "/yomu/lib.js";
+
+const $ = (id) => document.getElementById(id);
+settingsBar($("settings"), () => renderQuestion());
+
+// Official JLPT Scoring & Standards
+const BENCHMARKS = {
+  N5: { pass: 80, time: 25, label: "Basic Japanese: daily phrases & basic sentences", kanji: "~100 kanji", words: "~800 words", sec1Min: 38, sec2Min: 19, combinedSec12: true },
+  N4: { pass: 90, time: 30, label: "Elementary Japanese: everyday conversations & simple texts", kanji: "~300 kanji", words: "~1,500 words", sec1Min: 38, sec2Min: 19, combinedSec12: true },
+  N3: { pass: 95, time: 35, label: "Intermediate Japanese: bridge between daily and native natural Japanese", kanji: "~650 kanji", words: "~3,750 words", sec1Min: 19, sec2Min: 19, sec3Min: 19 },
+  N2: { pass: 90, time: 40, label: "Pre-advanced Japanese: business, articles, news, and varied circumstances", kanji: "~1,000 kanji", words: "~6,000 words", sec1Min: 19, sec2Min: 19, sec3Min: 19 },
+  N1: { pass: 100, time: 45, label: "Advanced Japanese: complex nuances, academic papers, and debates", kanji: "~2,000 kanji", words: "~10,000 words", sec1Min: 19, sec2Min: 19, sec3Min: 19 }
+};
+
+// State
+const params = new URLSearchParams(location.search);
+let currentLvl = (params.get("level") ?? state.start?.level ?? "N5").toUpperCase();
+if (!BENCHMARKS[currentLvl]) currentLvl = "N5";
+
+let currentMode = params.get("mode") === "exam" ? "exam" : "drill";
+let questions = [];
+let qIndex = 0;
+let userAnswers = {};
+let timerInterval = null;
+let secondsRemaining = 0;
+let isSubmitted = false;
+
+// UI Initialization
+function updateLvlButtons() {
+  document.querySelectorAll("#lvlPills .lvl-btn").forEach((b) => {
+    const active = b.dataset.lvl === currentLvl;
+    b.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  document.querySelectorAll("#modePills .mode-btn").forEach((b) => {
+    const active = b.dataset.mode === currentMode;
+    b.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  const b = BENCHMARKS[currentLvl];
+  $("lvlDescription").innerHTML = `<b>${currentLvl} Target:</b> ${esc(b.label)} (${b.kanji}, ${b.words}). <b>Official Pass Threshold:</b> ${b.pass}/180 total points with minimum 19 pts per section (38/120 combined for N4/N5 Language+Reading).`;
+}
+
+document.querySelectorAll("#lvlPills .lvl-btn").forEach((b) => {
+  b.onclick = () => {
+    currentLvl = b.dataset.lvl;
+    updateLvlButtons();
+    loadTest();
+  };
+});
+document.querySelectorAll("#modePills .mode-btn").forEach((b) => {
+  b.onclick = () => {
+    currentMode = b.dataset.mode;
+    updateLvlButtons();
+    loadTest();
+  };
+});
+
+// Listening Comprehension Curated Data: Task Comprehension Fallbacks & Quick Situational Responses
+const TASK_FALLBACKS = {
+  N5: {
+    dialogue: [
+      { who: "男", jp: "すみません、この電車は東京駅に行きますか。", en: "Excuse me, does this train go to Tokyo Station?" },
+      { who: "女", jp: "いいえ、行きませんよ。次の急行に乗ってください。", en: "No, it doesn't. Please take the next express train." },
+      { who: "男", jp: "わかりました。ありがとうございます。", en: "Understood. Thank you very much." }
+    ],
+    q: "男の人はこれからどうしますか。",
+    en: "What will the man do next?",
+    choices: ["次の急行に乗る", "この電車に乗る", "歩いて行く", "タクシーに乗る"],
+    answer: "次の急行に乗る",
+    explanation: "女性が「次の急行に乗ってください」と案内しているため、「次の急行に乗る」が正解です。"
+  },
+  N4: {
+    dialogue: [
+      { who: "女", jp: "田中さん、明日の会議の資料、もう準備できましたか。", en: "Tanaka-san, are the materials for tomorrow's meeting ready yet?" },
+      { who: "男", jp: "すみません、まだ半分しか終わっていません。今日中に終わらせます。", en: "Sorry, I'm only halfway finished. I will finish it by the end of today." },
+      { who: "女", jp: "じゃあ、私も手伝いましょうか。", en: "Well then, shall I help you too?" },
+      { who: "男", jp: "本当ですか。助かります！", en: "Really? That helps a lot!" }
+    ],
+    q: "男の人の資料の準備は今どうなっていますか。",
+    en: "What is the current status of the man's preparation of the materials?",
+    choices: ["半分だけ終わっている", "すべて終わっている", "まだ始めていない", "明日に延期された"],
+    answer: "半分だけ終わっている",
+    explanation: "男性が「まだ半分しか終わっていません」と報告しているため、「半分だけ終わっている」が正解です。"
+  },
+  N3: {
+    dialogue: [
+      { who: "男", jp: "来週の出張のスケジュール、変更になったって聞いたんだけど。", en: "I heard the schedule for next week's business trip changed." },
+      { who: "女", jp: "ええ、先方のご都合で、水曜日から木曜日に延期になりました。", en: "Yes, due to the client's circumstances, it was postponed from Wednesday to Thursday." },
+      { who: "男", jp: "そうなんだ。新幹線のチケットはもう予約し直した？", en: "I see. Have you rebooked the Shinkansen tickets yet?" },
+      { who: "女", jp: "はい、先ほど完了しました。", en: "Yes, I just completed that a moment ago." }
+    ],
+    q: "出張はいつに変更になりましたか。",
+    en: "When was the business trip rescheduled to?",
+    choices: ["木曜日", "水曜日", "金曜日", "来月"],
+    answer: "木曜日",
+    explanation: "「水曜日から木曜日に延期になりました」とあるため、「木曜日」が正解です。"
+  },
+  N2: {
+    dialogue: [
+      { who: "女", jp: "部長、来期の広告展開の件ですが、SNSを中心に据える方向で進めてよろしいでしょうか。", en: "Director, regarding next term's advertising rollout, is it fine to proceed with SNS as the central focus?" },
+      { who: "男", jp: "若年層への訴求としては妥当だが、既存のシニア層の顧客も蔑ろにはできないよ。", en: "It's appropriate for appealing to youth, but we cannot neglect our existing senior customer base either." },
+      { who: "女", jp: "では、紙媒体のダイレクトメールも併用する形で再提案いたします。", en: "In that case, I will resubmit a proposal combining it with print direct mail." },
+      { who: "男", jp: "そうしてくれると安心だね。よろしく頼むよ。", en: "That would reassure me. Please do so." }
+    ],
+    q: "女の人は今後どのような提案をすることにしましたか。",
+    en: "What kind of proposal did the woman decide to prepare?",
+    choices: ["SNSと紙媒体のダイレクトメールを併用する案", "SNSだけの広告に絞る案", "シニア層向けに紙媒体のみとする案", "広告展開自体を取りやめる案"],
+    answer: "SNSと紙媒体のダイレクトメールを併用する案",
+    explanation: "シニア層も蔑ろにできないという指摘に対し、女性が「紙媒体のダイレクトメールも併用する形で再提案いたします」と応じているため正解です。"
+  },
+  N1: {
+    dialogue: [
+      { who: "男", jp: "今回の新規事業の立ち上げ、経営陣の間でも賛否が真っ二つに分かれているそうだね。", en: "Regarding this new business launch, I hear opinions among executive management are split right down the middle." },
+      { who: "女", jp: "ええ。採算性を懸念する声が根強い一方で、市場の先手を打つべきだという推進派も譲りません。", en: "Yes. While concerns over profitability remain deep, proponents insisting on preempting the market refuse to concede." },
+      { who: "男", jp: "トップの最終決断が待たれるところだな。いずれにせよ、綿密なリスクヘッジが不可欠だろう。", en: "We must await the leadership's final verdict. In any case, rigorous risk hedging will be essential." },
+      { who: "女", jp: "おっしゃる通りです。最悪のシナリオも想定したシミュレーションを追加で用意します。", en: "Just as you say. I will prepare an additional simulation factoring in worst-case scenarios." }
+    ],
+    q: "二人が共通して不可欠だと認識していることは何ですか。",
+    en: "What do both individuals mutually recognize as indispensable?",
+    choices: ["最悪の事態を想定したリスクへの備え", "新規事業の即時断念", "経営陣の完全な意見一致", "競合他社への市場譲渡"],
+    answer: "最悪の事態を想定したリスクへの備え",
+    explanation: "「綿密なリスクヘッジが不可欠」「最悪のシナリオも想定したシミュレーションを追加で用意する」と述べており、リスクへの備えが不可欠であると一致しています。"
+  }
+};
+
+const QUICK_RESPONSES = {
+  N5: [
+    {
+      prompt: "駅まで歩いてどのくらいかかりますか。",
+      promptEn: "How long does it take to walk to the station?",
+      choices: ["十分くらいです。", "いいえ、歩きません。", "電車で行きます。"],
+      answer: 0,
+      explanation: "「どのくらいかかりますか」と所要時間を尋ねられているので、「十分くらいです」と答えるのが自然です。"
+    },
+    {
+      prompt: "コーヒーをもう一杯いかがですか。",
+      promptEn: "Would you like another cup of coffee?",
+      choices: ["はい、いただきます。", "いいえ、飲みました。", "とてもおいしいでした。"],
+      answer: 0,
+      explanation: "飲み物の勧め（〜はいかがですか）に対する返答として「はい、いただきます」または「いいえ、結構です」が適切です。"
+    },
+    {
+      prompt: "荷物をお持ちしましょうか。",
+      promptEn: "Shall I carry your luggage?",
+      choices: ["あ、ありがとうございます。助かります。", "はい、持ちましょう。", "いいえ、持ってください。"],
+      answer: 0,
+      explanation: "相手の親切な申し出（〜ましょうか）に対して感謝して受ける「ありがとうございます。助かります」が自然です。"
+    },
+    {
+      prompt: "明日の午後、図書館へ行きませんか。",
+      promptEn: "Won't you go to the library tomorrow afternoon?",
+      choices: ["いいですね。ぜひ行きましょう。", "図書館は静かですね。", "はい、行きませんでした。"],
+      answer: 0,
+      explanation: "相手からの誘い（〜ませんか）に対する受諾として「いいですね。ぜひ行きましょう」が適切です。"
+    }
+  ],
+  N4: [
+    {
+      prompt: "この書類、黒いボールペンで書いても構いませんか。",
+      promptEn: "Do you mind if I write this document with a black pen?",
+      choices: ["ええ、黒のペンでお願いします。", "いいえ、構いますよ。", "はい、書かないでください。"],
+      answer: 0,
+      explanation: "許可を求める「〜ても構いませんか」に対し、許可を与える「ええ、〜でお願いします」が自然です。"
+    },
+    {
+      prompt: "すみません、コピー機の使い方がよく分からないんですが…。",
+      promptEn: "Excuse me, I'm not really sure how to use the copy machine...",
+      choices: ["あ、私がやり方を教えましょうか。", "ええ、よく使いますよ。", "じゃあ、コピーしてください。"],
+      answer: 0,
+      explanation: "「〜んですが」と困っていることを伝えているので、助けを申し出る「教えましょうか」が最も自然な応答です。"
+    },
+    {
+      prompt: "田中さんへの伝言、お願いしてもよろしいですか。",
+      promptEn: "May I ask you to pass a message to Tanaka-san?",
+      choices: ["はい、かしこまりました。", "いいえ、田中さんはいません。", "伝言を聞いてあげます。"],
+      answer: 0,
+      explanation: "伝言の依頼に対するビジネスの丁寧な承諾として「かしこまりました」が適切です。「〜してあげる」は恩着せがましく失礼になります。"
+    },
+    {
+      prompt: "雨がやんだら、買い物に行こうと思っているんだ。",
+      promptEn: "Once the rain stops, I'm thinking of going shopping.",
+      choices: ["じゃあ、私も一緒に行っていい？", "雨が降らなくてよかったね。", "買い物に行ったほうがいいよ。"],
+      answer: 0,
+      explanation: "話し手の意向（〜と思っている）に対する会話の発展として「私も一緒に行っていい？」と同行を希望するのが自然です。"
+    }
+  ],
+  N3: [
+    {
+      prompt: "山田さん、企画書の件、部長にはもうお話しされましたか。",
+      promptEn: "Yamada-san, have you spoken to the director about the proposal yet?",
+      choices: ["いえ、これからご報告に伺うところです。", "はい、もうおっしゃいました。", "部長が話してくれました。"],
+      answer: 0,
+      explanation: "自分の行動をへりくだって報告する謙譲表現「ご報告に伺う」が正解です。「おっしゃる」は相手の動作を高める尊敬語なので自分の動作には使えません。"
+    },
+    {
+      prompt: "来週の勉強会、参加できるかどうか、まだ微妙なんですよね。",
+      promptEn: "Regarding next week's study session, it's still uncertain whether I can attend.",
+      choices: ["分かりました。確定したら教えてくださいね。", "微妙に参加するんですね。", "参加できなかったんですね。"],
+      answer: 0,
+      explanation: "予定が未定（微妙）という相手に対し、「確定したら教えて」と促すのが最も適切な受け応えです。"
+    },
+    {
+      prompt: "せっかくのチャンスだし、チャレンジしてみたらどう？",
+      promptEn: "It's a great opportunity, why don't you give it a shot?",
+      choices: ["そうだね、ダメ元でやってみるよ。", "うん、チャンスがなかったんだ。", "チャレンジしなくてよかった。"],
+      answer: 0,
+      explanation: "後押しに対して「ダメ元（失敗を覚悟の上）で挑戦する」と前向きに応じるのが適切です。"
+    },
+    {
+      prompt: "急な仕事が入っちゃって、今日の映画、行けそうにないんだ。",
+      promptEn: "Urgent work came up, so it doesn't look like I can make it to the movie today.",
+      choices: ["そっか、残念だけど仕事なら仕方ないね。", "映画、とても面白かったよ。", "じゃあ、今すぐ行こうか。"],
+      answer: 0,
+      explanation: "急な都合の悪化に対する共感と了解を示す「残念だけど仕事なら仕方ないね」が最も自然です。"
+    }
+  ],
+  N2: [
+    {
+      prompt: "本日の打ち合わせ資料、事前に目を通しておいていただけますでしょうか。",
+      promptEn: "Could you please look over today's meeting materials beforehand?",
+      choices: ["かしこまりました。会議前に拝見しておきます。", "はい、ご覧になっておきます。", "ええ、目を通してください。"],
+      answer: 0,
+      explanation: "自分の「見る」動作には謙譲語「拝見する」を用います。「ご覧になる」は相手を立てる尊敬語なので誤りです。"
+    },
+    {
+      prompt: "今回のプロジェクト、予算の都合上、見直しを余儀なくされそうだね。",
+      promptEn: "Due to budget constraints, it looks like we will be forced to revise this project.",
+      choices: ["ええ、どの項目を削るか早急に詰めましょう。", "ええ、予算が増えて安心しましたね。", "見直す必要がなくて助かりました。"],
+      answer: 0,
+      explanation: "「〜を余儀なくされる」はやむを得ず強いられるという意味です。見直しが必要となるため、削減項目の検討を提案する1が適切です。"
+    },
+    {
+      prompt: "佐藤さん、プレゼンの準備、手伝おうか？",
+      promptEn: "Sato-san, shall I help you with presentation prep?",
+      choices: ["お気持ちだけありがたくいただきます。", "ええ、手伝っても構いませんよ。", "手伝わせてください。"],
+      answer: 0,
+      explanation: "好意の申し出を角を立てずに遠慮する定型表現「お気持ちだけありがたくいただきます」が適切です。"
+    },
+    {
+      prompt: "あの件、先方に断られるかと思いきや、あっさり承諾されたよ。",
+      promptEn: "Regarding that matter, contrary to fears they'd refuse, they readily consented!",
+      choices: ["へえ！案ずるより産むが易しだったね。", "やっぱり断られてしまったんだね。", "承諾されなくて残念だったね。"],
+      answer: 0,
+      explanation: "「〜かと思いきや」（〜と予想していたのに実際は違って）に対して、「案ずるより産むが易し（心配するより実行するほうが簡単）」で返すのが自然です。"
+    }
+  ],
+  N1: [
+    {
+      prompt: "部長、先ほど提出いたしました企画書ですが、不備な点がございましたら何なりとお申し付けください。",
+      promptEn: "Director, regarding the proposal I submitted earlier, if there are any shortcomings please do not hesitate to instruct me.",
+      choices: ["うん、後でじっくり目を通させてもらうよ。", "はい、何なりとお申し付けします。", "いえ、不備な点は申し上げません。"],
+      answer: 0,
+      explanation: "部下からの謙譲な申し出（不備があれば何なりとお申し付けください）に対し、上司が「目を通させてもらうよ（読ませてもらう）」と応じるのが自然です。"
+    },
+    {
+      prompt: "今回のシステムトラブル、君が気づいてくれなかったら、取り返しのつかないことになるところだったよ。",
+      promptEn: "If you hadn't noticed this system trouble, it would have resulted in something irreversible.",
+      choices: ["滅相もございません。大したお役には立てず恐縮です。", "ええ、取り返しのつかないことになりました。", "本当にお気の毒なことでしたね。"],
+      answer: 0,
+      explanation: "目上からの高い称賛や感謝に対して謙遜する最上級の表現「滅相もございません（とんでもないことです）」が適切です。"
+    },
+    {
+      prompt: "彼の提案には一理あるとはいえ、現状での導入は時期尚早と言わざるを得ないね。",
+      promptEn: "Although there is some truth in his proposal, I must say introducing it now is premature.",
+      choices: ["同感です。拙速な判断は避けたほうが賢明ですね。", "ええ、今すぐ導入に踏み切りましょう。", "彼の提案にはまったく理がありませんね。"],
+      answer: 0,
+      explanation: "「時期尚早と言わざるを得ない（早すぎる）」という慎重論に賛同し、「拙速（早まって失敗すること）を避ける」と返すのが最も論理的で自然です。"
+    },
+    {
+      prompt: "彼、チームのリーダーに抜擢されて、すっかり浮き足立っているようだね。",
+      promptEn: "Having been chosen as team leader, he seems completely restless and unsteady with excitement.",
+      choices: ["大役を任されて、平常心を失っているのかもしれませんね。", "地に足がついていて頼もしい限りですね。", "リーダーを外されて落胆しているんですね。"],
+      answer: 0,
+      explanation: "「浮き足立つ（うきあしだつ）」は、落ち着きを失ってそわそわ・ふらふらする状態を指す慣用句です。平常心を失っていると解釈する1が正解です。"
+    }
+  ]
+};
+
+// Build Question Bank
+async function generateQuestions(lvl, mode) {
+  const [words, kanjis, grammars] = await Promise.all([
+    vocab(lvl),
+    kanjiDeck(lvl),
+    grammarDeck(lvl)
+  ]);
+
+  const pool = [];
+  const countPerType = mode === "exam" ? 4 : 2;
+
+  // 1. Kanji Reading (漢字読み)
+  const readingCandidates = shuffle(words.filter((w) => w.w !== w.r && w.w.length >= 2 && !w.w.includes(";")));
+  for (const w of readingCandidates.slice(0, countPerType)) {
+    const distractors = shuffle(words.filter((x) => x.r !== w.r && Math.abs(x.r.length - w.r.length) <= 1)).slice(0, 3).map((x) => x.r);
+    while (distractors.length < 3) distractors.push(w.r + "ん");
+    const choices = shuffle([w.r, ...distractors]);
+    pool.push({
+      section: "vocab",
+      sectionName: "言語知識（文字・語彙）",
+      mondai: "問題１ 漢字読み",
+      instruction: "下線の言葉の読み方として最もよいものを、1・2・3・4から一つ選びなさい。",
+      promptHtml: `<div class="jp"><span class="q-underline">${esc(w.w)}</span>の意味や使い方を調べました。</div>`,
+      plainPrompt: `${w.w}の読み方`,
+      choices,
+      answer: choices.indexOf(w.r),
+      targetWord: w.w,
+      targetReading: w.r,
+      meaning: w.m,
+      kind: "word"
+    });
+  }
+
+  // 2. Orthography (表記)
+  const kanjiEx = shuffle(kanjis.filter((k) => k.ex && k.ex.length > 0));
+  for (const k of kanjiEx.slice(0, countPerType)) {
+    const [word, read, mean] = k.ex[0];
+    const otherWords = shuffle(words.filter((x) => x.w !== word && x.w.length === word.length)).slice(0, 3).map((x) => x.w);
+    if (otherWords.length >= 3) {
+      const choices = shuffle([word, ...otherWords]);
+      pool.push({
+        section: "vocab",
+        sectionName: "言語知識（文字・語彙）",
+        mondai: "問題２ 表記",
+        instruction: "下線の言葉を漢字で書くとき、最もよいものを、1・2・3・4から一つ選びなさい。",
+        promptHtml: `<div class="jp">これはとても<span class="q-underline">${esc(read)}</span>です。</div>`,
+        plainPrompt: `${read}の漢字表記`,
+        choices,
+        answer: choices.indexOf(word),
+        targetWord: word,
+        targetReading: read,
+        meaning: mean || k.m.join(", "),
+        kind: "kanji"
+      });
+    }
+  }
+
+  // 3. Context Meaning (文脈規定)
+  const contextWords = shuffle(words.filter((w) => w.m && w.m.length > 3));
+  for (const w of contextWords.slice(0, countPerType)) {
+    const distractors = shuffle(words.filter((x) => x.w !== w.w)).slice(0, 3).map((x) => x.w);
+    const choices = shuffle([w.w, ...distractors]);
+    pool.push({
+      section: "vocab",
+      sectionName: "言語知識（文字・語彙）",
+      mondai: "問題３ 文脈規定",
+      instruction: "（　）に入れるのに最もよいものを、1・2・3・4から一つ選びなさい。",
+      promptHtml: `<div class="jp">英語で「${esc(w.m.split(";")[0])}」を意味する言葉は（　）です。</div>`,
+      plainPrompt: `意味: ${w.m.split(";")[0]}`,
+      choices,
+      answer: choices.indexOf(w.w),
+      targetWord: w.w,
+      targetReading: w.r,
+      meaning: w.m,
+      kind: "word"
+    });
+  }
+
+  // 4. Grammar Cloze (文法形式の判断)
+  const grammarCandidates = shuffle(grammars.filter((g) => g.examples && g.examples.length > 0));
+  for (const g of grammarCandidates.slice(0, countPerType + 1)) {
+    const ex = g.examples[0];
+    const choices = shuffle([...ex.choices]);
+    const ansIdx = choices.indexOf(ex.answer);
+    pool.push({
+      section: "grammar",
+      sectionName: "言語知識（文法）・読解",
+      mondai: "問題４ 文法形式の判断",
+      instruction: "次の文の（　）に入れるのに最もよいものを、1・2・3・4から一つ選びなさい。",
+      promptHtml: `<div class="jp">${cloze(ex, { ...state.settings, furigana: "all" })}</div><div class="muted" style="margin-top:6px; font-size:0.9rem;">${esc(ex.en)}</div>`,
+      plainPrompt: ex.en,
+      choices,
+      answer: ansIdx >= 0 ? ansIdx : 0,
+      grammarPattern: g.pattern,
+      grammarExplain: g.explain,
+      kind: "grammar"
+    });
+  }
+
+  // 5. Star Sentence Arrangement (文の組み立て ★)
+  for (const g of grammarCandidates.slice(countPerType + 1, countPerType + 3)) {
+    const ex = g.examples[1] || g.examples[0];
+    if (ex && ex.t && ex.t.length >= 4) {
+      const parts = ex.t.map((tok) => tok[0]).filter((s) => s && s !== "。" && s !== "、");
+      if (parts.length >= 4) {
+        const segs = parts.slice(0, 4);
+        const shuffled = shuffle(segs);
+        // The third slot in the 1 2 ★ 4 arrangement is index 2 in original order
+        const targetPiece = segs[2];
+        const ansIdx = shuffled.indexOf(targetPiece);
+        pool.push({
+          section: "grammar",
+          sectionName: "言語知識（文法）・読解",
+          mondai: "問題５ 文の組み立て（★）",
+          instruction: "次の文の ★ に入る最もよいものを、1・2・3・4から一つ選びなさい。",
+          promptHtml: `
+            <div class="star-sentence jp">
+              <span class="star-slot">①</span>
+              <span class="star-slot">②</span>
+              <span class="star-slot target">★</span>
+              <span class="star-slot">④</span>
+            </div>
+            <div class="muted" style="font-size:0.9rem;">Target sentence meaning: <i>"${esc(ex.en)}"</i></div>
+          `,
+          plainPrompt: `文の組み立て: ${ex.en}`,
+          choices: shuffled,
+          answer: ansIdx,
+          grammarPattern: g.pattern,
+          grammarExplain: `Original order: 「${segs.join(" ")}」. The ★ position takes 「${targetPiece}」.`,
+          kind: "grammar"
+        });
+      }
+    }
+  }
+
+  // 6. Reading Comprehension (読解)
+  try {
+    const storyIdx = await fetch("/yomu/stories/index.json").then((r) => r.json());
+    const lvlStories = storyIdx.filter((s) => s.level === lvl);
+    if (lvlStories.length > 0) {
+      const pickedStory = lvlStories[Math.floor(Math.random() * lvlStories.length)];
+      const fullStory = await fetch(`/yomu/stories/${pickedStory.id}.json`).then((r) => r.json());
+      if (fullStory && fullStory.questions && fullStory.questions.length > 0) {
+        const qData = fullStory.questions[0];
+        const passageSnippet = fullStory.lines.slice(0, 5).map((l) => `${l.who}: ${l.t.map((tok) => tok[0]).join("")}`).join("<br/>");
+        pool.push({
+          section: "grammar",
+          sectionName: "言語知識（文法）・読解",
+          mondai: "問題６ 読解（内容理解）",
+          instruction: "次の文章を読んで、後の問いに対する答えとして最もよいものを、1・2・3・4から一つ選びなさい。",
+          promptHtml: `
+            <div style="font-size:0.95rem; line-height:1.8; background:var(--card); border:1px solid var(--line); border-radius:6px; padding:12px; margin-bottom:12px;" class="jp">
+              ${passageSnippet}
+            </div>
+            <div class="jp" style="font-weight:600; margin-top:8px;">${esc(qData.q)}</div>
+            <div class="muted" style="font-size:0.85rem;">${esc(qData.en || "")}</div>
+          `,
+          plainPrompt: qData.q,
+          choices: qData.choices,
+          answer: qData.answer,
+          kind: "reading"
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Story load error", e);
+  }
+
+  // 7. Listening Comprehension (聴解 - 課題理解 & 即時応答)
+  // 7a. Task Comprehension (課題理解)
+  try {
+    const storyIdx = await fetch("/yomu/stories/index.json").then((r) => r.json());
+    const lvlStories = shuffle(storyIdx.filter((s) => s.level === lvl));
+    const targetTaskCount = mode === "exam" ? 2 : 1;
+    let addedTasks = 0;
+
+    for (const storyItem of lvlStories) {
+      if (addedTasks >= targetTaskCount) break;
+      try {
+        const fullStory = await fetch(`/yomu/stories/${storyItem.id}.json`).then((r) => r.json());
+        if (fullStory && fullStory.lines && fullStory.lines.length >= 2 && fullStory.questions && fullStory.questions.length > 0) {
+          const qData = fullStory.questions[Math.floor(Math.random() * fullStory.questions.length)];
+          const dialogueLines = fullStory.lines.slice(0, 5);
+          const audioText = dialogueLines.map((l) => `${l.who}。「${l.t.map((tok) => tok[0]).join("")}」`).join("　");
+          const transcriptHtml = dialogueLines.map((l) => {
+            const lineJp = l.t.map((tok) => tok[0]).join("");
+            return `<div style="margin-bottom:6px;"><b>${esc(l.who)}:</b> <span class="jp">${esc(lineJp)}</span><br/><span class="muted" style="font-size:0.85rem;">${esc(l.en)}</span></div>`;
+          }).join("");
+
+          const choices = [...qData.choices];
+          const correctChoice = choices[qData.answer];
+          const shuffledChoices = shuffle(choices);
+
+          pool.push({
+            section: "listening",
+            sectionName: "聴解（リスニング）",
+            mondai: "問題７ 聴解（課題理解）",
+            instruction: "音声をよく聴いて、話の内容に関する問いに対する答えとして最もよいものを、1・2・3・4から一つ選びなさい。",
+            promptHtml: `
+              <div class="audio-player-box">
+                <button class="btn play-audio-btn" type="button">▶️ Play Dialogue Audio (音声を聞く)</button>
+                <button class="mini toggle-transcript-btn" type="button">👁️ Show Script (スクリプトを表示)</button>
+              </div>
+              <div class="transcript-box" style="display:none;">
+                <div style="font-weight:600; margin-bottom:8px; color:var(--muted); font-size:0.85rem;">DIALOGUE SCRIPT (会話スクリプト):</div>
+                ${transcriptHtml}
+              </div>
+              <div class="jp" style="font-weight:600; font-size:1.1rem; margin-top:12px;">${esc(qData.q)}</div>
+              <div class="muted" style="font-size:0.85rem;">${esc(qData.en || "")}</div>
+            `,
+            audioText,
+            transcriptHtml,
+            plainPrompt: qData.q,
+            choices: shuffledChoices,
+            answer: shuffledChoices.indexOf(correctChoice),
+            explanation: `Dialogue reference from Story: "${fullStory.title?.ja || ""} (${fullStory.title?.en || ""})". Question: ${qData.q} → 正解: ${correctChoice}`,
+            kind: "listening"
+          });
+          addedTasks++;
+        }
+      } catch (err) {
+        console.warn("Story task load err", err);
+      }
+    }
+
+    // Fallback task comprehension if story questions unavailable
+    if (addedTasks === 0) {
+      const fb = TASK_FALLBACKS[lvl] || TASK_FALLBACKS["N5"];
+      const audioText = fb.dialogue.map((l) => `${l.who}。「${l.jp}」`).join("　");
+      const transcriptHtml = fb.dialogue.map((l) => `
+        <div style="margin-bottom:6px;"><b>${esc(l.who)}:</b> <span class="jp">${esc(l.jp)}</span><br/><span class="muted" style="font-size:0.85rem;">${esc(l.en)}</span></div>
+      `).join("");
+      const shuffledChoices = shuffle(fb.choices);
+      pool.push({
+        section: "listening",
+        sectionName: "聴解（リスニング）",
+        mondai: "問題７ 聴解（課題理解）",
+        instruction: "音声をよく聴いて、話の内容に関する問いに対する答えとして最もよいものを、1・2・3・4から一つ選びなさい。",
+        promptHtml: `
+          <div class="audio-player-box">
+            <button class="btn play-audio-btn" type="button">▶️ Play Dialogue Audio (音声を聞く)</button>
+            <button class="mini toggle-transcript-btn" type="button">👁️ Show Script (スクリプトを表示)</button>
+          </div>
+          <div class="transcript-box" style="display:none;">
+            <div style="font-weight:600; margin-bottom:8px; color:var(--muted); font-size:0.85rem;">DIALOGUE SCRIPT (会話スクリプト):</div>
+            ${transcriptHtml}
+          </div>
+          <div class="jp" style="font-weight:600; font-size:1.1rem; margin-top:12px;">${esc(fb.q)}</div>
+          <div class="muted" style="font-size:0.85rem;">${esc(fb.en || "")}</div>
+        `,
+        audioText,
+        transcriptHtml,
+        plainPrompt: fb.q,
+        choices: shuffledChoices,
+        answer: shuffledChoices.indexOf(fb.answer),
+        explanation: fb.explanation,
+        kind: "listening"
+      });
+    }
+  } catch (e) {
+    console.error("Listening task comprehension error", e);
+  }
+
+  // 7b. Quick Situational Response (即時応答)
+  try {
+    const qrList = shuffle(QUICK_RESPONSES[lvl] || QUICK_RESPONSES["N5"]);
+    const qrCount = mode === "exam" ? 2 : 1;
+    for (const qr of qrList.slice(0, qrCount)) {
+      const correctChoice = qr.choices[qr.answer];
+      const shuffledChoices = shuffle(qr.choices);
+      const transcriptHtml = `
+        <div style="margin-bottom:6px;"><b>Spoken Prompt (発話):</b> <span class="jp">${esc(qr.prompt)}</span> <span class="muted">(${esc(qr.promptEn)})</span></div>
+        <div class="muted" style="font-size:0.85rem; margin-top:6px;"><b>Options:</b><br/>${qr.choices.map((c, ci) => `${ci + 1}. <span class="jp">${esc(c)}</span>`).join("<br/>")}</div>
+      `;
+      pool.push({
+        section: "listening",
+        sectionName: "聴解（リスニング）",
+        mondai: "問題８ 聴解（即時応答）",
+        instruction: "質問や呼びかけを聞いて、最もよい返事を、1・2・3から一つ選びなさい。",
+        promptHtml: `
+          <div class="audio-player-box">
+            <button class="btn play-audio-btn" type="button">▶️ Play Spoken Prompt (音声を聞く)</button>
+            <button class="mini toggle-transcript-btn" type="button">👁️ Show Script (スクリプトを表示)</button>
+          </div>
+          <div class="transcript-box" style="display:none;">
+            ${transcriptHtml}
+          </div>
+          <div class="muted" style="font-size:0.92rem; margin-top:8px;">
+            Listen to the short spoken prompt above and choose the most natural reply.
+          </div>
+        `,
+        audioText: qr.prompt,
+        transcriptHtml,
+        plainPrompt: `即時応答: 「${qr.prompt}」に対する最も自然な返事`,
+        choices: shuffledChoices,
+        answer: shuffledChoices.indexOf(correctChoice),
+        explanation: qr.explanation,
+        kind: "listening"
+      });
+    }
+  } catch (e) {
+    console.error("Listening quick response error", e);
+  }
+
+  return pool;
+}
+
+// Timer for Full Exam
+function startTimer(totalMinutes) {
+  clearInterval(timerInterval);
+  secondsRemaining = totalMinutes * 60;
+  timerInterval = setInterval(() => {
+    secondsRemaining--;
+    const m = Math.floor(secondsRemaining / 60);
+    const s = secondsRemaining % 60;
+    const timeStr = `${m}:${s < 10 ? "0" : ""}${s}`;
+    const el = $("examTimer");
+    if (el) el.textContent = `⏳ ${timeStr}`;
+    if (secondsRemaining <= 0) {
+      clearInterval(timerInterval);
+      alert("Time is up! Submitting exam simulation.");
+      submitExam();
+    }
+  }, 1000);
+}
+
+// Load and Render
+async function loadTest() {
+  stopAudio();
+  clearInterval(timerInterval);
+  isSubmitted = false;
+  userAnswers = {};
+  qIndex = 0;
+  $("examArea").innerHTML = `<div style="text-align:center; padding:30px;"><p class="muted">Loading ${currentLvl} question pool…</p></div>`;
+
+  questions = await generateQuestions(currentLvl, currentMode);
+  if (currentMode === "exam") {
+    startTimer(BENCHMARKS[currentLvl].time);
+  }
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (isSubmitted) return renderScorecard();
+  if (!questions || questions.length === 0) {
+    $("examArea").innerHTML = `<p class="muted">No questions available for this level. Please select another level.</p>`;
+    return;
+  }
+
+  const q = questions[qIndex];
+  const userAns = userAnswers[qIndex];
+  const isAnswered = userAns !== undefined;
+
+  let timerHtml = "";
+  if (currentMode === "exam") {
+    const m = Math.floor(secondsRemaining / 60);
+    const s = secondsRemaining % 60;
+    timerHtml = `<span class="exam-timer" id="examTimer">⏳ ${m}:${s < 10 ? "0" : ""}${s}</span>`;
+  }
+
+  let choicesHtml = q.choices.map((c, i) => {
+    let cls = "q-choice-btn";
+    if (userAns === i) cls += " selected";
+    if (currentMode === "drill" && isAnswered) {
+      if (i === q.answer) cls += " ans-correct";
+      else if (userAns === i) cls += " ans-wrong";
+    }
+    return `
+      <button class="${cls}" data-choice="${i}">
+        <span class="choice-num">${i + 1}</span>
+        <span class="jp">${esc(choiceLabel(c, state.settings))}</span>
+      </button>
+    `;
+  }).join("");
+
+  let feedbackHtml = "";
+  if (currentMode === "drill" && isAnswered) {
+    const isRight = userAns === q.answer;
+    feedbackHtml = `
+      <div class="q-explain">
+        <b>${isRight ? "✓ Correct (正解)!" : "✗ Incorrect (不正解)"}</b>
+        ${q.meaning ? `<br/><b>Meaning:</b> ${esc(q.meaning)}` : ""}
+        ${q.grammarPattern ? `<br/><b>Grammar Pattern:</b> <code>${esc(q.grammarPattern)}</code> — ${esc(q.grammarExplain || "")}` : ""}
+        ${q.explanation ? `<br/><b>Explanation:</b> ${esc(q.explanation)}` : ""}
+        ${q.targetWord ? `<div style="margin-top:8px;"><button class="mini" id="addSrsBtn">➕ Add "${esc(q.targetWord)}" to Review SRS</button></div>` : ""}
+      </div>
+    `;
+  }
+
+  $("examArea").innerHTML = `
+    <div class="exam-header">
+      <div>
+        <span style="font-weight:700; color:var(--accent);">${esc(q.sectionName)}</span>
+        <span class="muted"> · Question ${qIndex + 1} of ${questions.length}</span>
+      </div>
+      ${timerHtml}
+    </div>
+
+    <div class="q-mondai">${esc(q.mondai)}</div>
+    <div class="q-instruction">${esc(q.instruction)}</div>
+    <div class="q-body">${q.promptHtml}</div>
+
+    <div class="q-choices">${choicesHtml}</div>
+    ${feedbackHtml}
+
+    <div class="q-nav">
+      <button class="mini" id="prevBtn" ${qIndex === 0 ? "disabled" : ""}>← Previous</button>
+      <div style="display:flex; gap:8px;">
+        ${currentMode === "exam" ? `<button class="btn" style="background:#d9480f;" id="finishExamBtn">Submit Exam</button>` : ""}
+        ${qIndex < questions.length - 1
+          ? `<button class="btn" id="nextBtn">Next →</button>`
+          : `<button class="btn" style="background:var(--ok);" id="finishExamBtn">Finish &amp; View Results</button>`
+        }
+      </div>
+    </div>
+  `;
+
+  // Audio trigger for listening questions
+  const playBtn = $("examArea").querySelector(".play-audio-btn");
+  if (playBtn && q.audioText) {
+    playBtn.onclick = async () => {
+      playBtn.disabled = true;
+      const originalText = playBtn.innerHTML;
+      playBtn.innerHTML = "🔊 Playing audio (再生中…)";
+      try {
+        await speak(q.audioText);
+      } finally {
+        playBtn.disabled = false;
+        playBtn.innerHTML = originalText;
+      }
+    };
+  }
+
+  // Transcript toggle trigger
+  const transBtn = $("examArea").querySelector(".toggle-transcript-btn");
+  const transBox = $("examArea").querySelector(".transcript-box");
+  if (transBtn && transBox) {
+    transBtn.onclick = () => {
+      const isHidden = transBox.style.display === "none";
+      transBox.style.display = isHidden ? "block" : "none";
+      transBtn.textContent = isHidden ? "🙈 Hide Script (スクリプトを隠す)" : "👁️ Show Script (スクリプトを表示)";
+    };
+  }
+
+  // Bind Choice Click
+  $("examArea").querySelectorAll("[data-choice]").forEach((b) => {
+    b.onclick = () => {
+      if (currentMode === "drill" && isAnswered) return; // prevent changing after revealed
+      userAnswers[qIndex] = +b.dataset.choice;
+      if (currentMode === "drill") {
+        if (+b.dataset.choice === q.answer) {
+          gain(10);
+          blip("正解！ Great job!", "happy", 2);
+        } else {
+          blip("惜しい！ Check the explanation.", "puzzled", 0);
+        }
+      }
+      renderQuestion();
+    };
+  });
+
+  // Bind Add to SRS button
+  if ($("addSrsBtn") && q.targetWord) {
+    $("addSrsBtn").onclick = () => {
+      addCard(q.kind === "kanji" ? `k:${q.targetWord}` : `w:${q.targetWord}`, {
+        front: q.targetWord,
+        reading: q.targetReading || q.targetWord,
+        meaning: q.meaning || "",
+        kind: q.kind || "word"
+      });
+      $("addSrsBtn").textContent = "✓ Added to SRS!";
+      $("addSrsBtn").disabled = true;
+    };
+  }
+
+  // Navigation
+  if ($("prevBtn")) $("prevBtn").onclick = () => { if (qIndex > 0) { qIndex--; renderQuestion(); } };
+  if ($("nextBtn")) $("nextBtn").onclick = () => { if (qIndex < questions.length - 1) { qIndex++; renderQuestion(); } };
+  if ($("finishExamBtn")) $("finishExamBtn").onclick = submitExam;
+}
+
+function submitExam() {
+  clearInterval(timerInterval);
+  isSubmitted = true;
+  renderScorecard();
+}
+
+function renderScorecard() {
+  const b = BENCHMARKS[currentLvl];
+  let vocabTotal = 0, vocabCorrect = 0;
+  let grammarTotal = 0, grammarCorrect = 0;
+  let listeningTotal = 0, listeningCorrect = 0;
+
+  questions.forEach((q, idx) => {
+    const isCorrect = userAnswers[idx] === q.answer;
+    if (q.section === "vocab") {
+      vocabTotal++;
+      if (isCorrect) vocabCorrect++;
+    } else if (q.section === "grammar") {
+      grammarTotal++;
+      if (isCorrect) grammarCorrect++;
+    } else if (q.section === "listening") {
+      listeningTotal++;
+      if (isCorrect) listeningCorrect++;
+    }
+  });
+
+  // Calculate scaled scores to 60 points per section (Total 180)
+  const vocabScore = vocabTotal ? Math.round((vocabCorrect / vocabTotal) * 60) : 0;
+  const grammarScore = grammarTotal ? Math.round((grammarCorrect / grammarTotal) * 60) : 0;
+  const listeningScore = listeningTotal ? Math.round((listeningCorrect / listeningTotal) * 60) : 0;
+  const totalScore = vocabScore + grammarScore + listeningScore;
+
+  // Official JLPT Gatekeeper Evaluation
+  let passed = false;
+  let failReason = "";
+
+  if (b.combinedSec12) {
+    // For N4 & N5: Language Knowledge & Reading combined threshold is 38 / 120
+    const combinedLangReading = vocabScore + grammarScore;
+    const langReadingPassed = combinedLangReading >= b.sec1Min;
+    const listeningPassed = listeningScore >= b.sec2Min;
+    const totalPassed = totalScore >= b.pass;
+
+    if (totalPassed && langReadingPassed && listeningPassed) {
+      passed = true;
+    } else if (totalPassed && (!langReadingPassed || !listeningPassed)) {
+      failReason = "Sectional Benchmark Not Met (基準点割れ): Overall score reached the pass mark, but a section did not meet the required minimum threshold.";
+    } else {
+      failReason = `Total score (${totalScore}/180) did not meet the ${currentLvl} pass mark of ${b.pass}.`;
+    }
+  } else {
+    // For N1, N2, N3: Each section requires at least 19 / 60
+    const sec1Ok = vocabScore >= b.sec1Min;
+    const sec2Ok = grammarScore >= b.sec2Min;
+    const sec3Ok = listeningScore >= (b.sec3Min || 19);
+    const totalPassed = totalScore >= b.pass;
+
+    if (totalPassed && sec1Ok && sec2Ok && sec3Ok) {
+      passed = true;
+    } else if (totalPassed && (!sec1Ok || !sec2Ok || !sec3Ok)) {
+      failReason = "Sectional Benchmark Not Met (基準点割れ): Real JLPT rules mandate at least 19/60 in every individual section. One or more sections fell below 19.";
+    } else {
+      failReason = `Total score (${totalScore}/180) did not meet the ${currentLvl} pass mark of ${b.pass}.`;
+    }
+  }
+
+  if (passed) {
+    gain(50);
+    blip(`合格おめでとう！ You passed the simulated ${currentLvl} exam!`, "happy", 8);
+  } else {
+    blip(`Keep practicing! The official sectional minimums require balanced mastery.`, "neutral", 0);
+  }
+
+  // Render Scorecard HTML
+  $("examArea").innerHTML = `
+    <div class="scorecard">
+      <div class="score-summary">
+        <div>
+          <span class="score-badge ${passed ? "pass" : failReason.includes("Sectional") ? "sec-fail" : "fail"}">
+            ${passed ? "合格 (PASS)" : failReason.includes("Sectional") ? "基準点割れ (SECTION FAIL)" : "不合格 (FAIL)"}
+          </span>
+        </div>
+        <div>
+          <div style="font-size:1.8rem; font-weight:800; color:var(--fg);">${totalScore} <small style="font-size:1rem; color:var(--muted);">/ 180 pts</small></div>
+          <div class="muted">Pass Mark: <b>${b.pass}</b> / 180 · Level: <b>${currentLvl}</b></div>
+        </div>
+      </div>
+
+      ${failReason ? `<div style="margin:12px 0; padding:10px 14px; background:color-mix(in srgb, var(--bad) 10%, transparent); border-radius:6px; font-size:0.9rem; color:var(--bad);"><b>Diagnostic Notice:</b> ${esc(failReason)}</div>` : ""}
+
+      <div class="score-bars">
+        <div class="sec-row">
+          <div><b>言語知識（文字・語彙）</b><br/><span class="muted">${vocabCorrect}/${vocabTotal} correct</span></div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill ${vocabScore >= 19 ? "ok" : "bad"}" style="width:${Math.round((vocabScore / 60) * 100)}%;"></div>
+            <div class="sec-threshold" style="left:31.6%;" title="Section minimum: 19 pts"></div>
+          </div>
+          <div style="text-align:right; font-weight:700;">${vocabScore} / 60</div>
+        </div>
+
+        <div class="sec-row">
+          <div><b>言語知識（文法）・読解</b><br/><span class="muted">${grammarCorrect}/${grammarTotal} correct</span></div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill ${grammarScore >= 19 ? "ok" : "bad"}" style="width:${Math.round((grammarScore / 60) * 100)}%;"></div>
+            <div class="sec-threshold" style="left:31.6%;" title="Section minimum: 19 pts"></div>
+          </div>
+          <div style="text-align:right; font-weight:700;">${grammarScore} / 60</div>
+        </div>
+
+        <div class="sec-row">
+          <div><b>聴解（リスニング）</b><br/><span class="muted">${listeningCorrect}/${listeningTotal} correct</span></div>
+          <div class="score-bar-track">
+            <div class="score-bar-fill ${listeningScore >= 19 ? "ok" : "bad"}" style="width:${Math.round((listeningScore / 60) * 100)}%;"></div>
+            <div class="sec-threshold" style="left:31.6%;" title="Section minimum: 19 pts"></div>
+          </div>
+          <div style="text-align:right; font-weight:700;">${listeningScore} / 60</div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin:20px 0;">
+        <button class="btn" id="retakeBtn">🔄 Retake / Try Another Set</button>
+        <button class="btn" style="background:var(--accent);" id="addMissedSrsBtn">📥 Add All Missed Questions to SRS</button>
+        <a class="btn" href="/yomu/review.html">Go to Review Deck</a>
+      </div>
+
+      <h3>Question by Question Diagnostic</h3>
+      <div class="review-list">
+        ${questions.map((q, idx) => {
+          const userAns = userAnswers[idx];
+          const isCorrect = userAns === q.answer;
+          const userChoiceText = userAns !== undefined ? q.choices[userAns] : "Not answered";
+          const correctChoiceText = q.choices[q.answer];
+          return `
+            <div class="rev-item ${isCorrect ? "correct" : "incorrect"}">
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--muted); margin-bottom:4px;">
+                <span>${esc(q.mondai)}</span>
+                <span>${isCorrect ? "<b style='color:var(--ok);'>✓ Correct</b>" : "<b style='color:var(--bad);'>✗ Incorrect</b>"}</span>
+              </div>
+              <div style="font-size:1.05rem; margin:6px 0;" class="jp">
+                ${q.kind === "listening" ? `
+                  <div style="margin-bottom:8px; display:flex; gap:8px; align-items:center;">
+                    <button class="mini rev-play-audio-btn" data-qidx="${idx}">🔊 Play Audio</button>
+                    ${q.transcriptHtml ? `<button class="mini rev-toggle-transcript-btn" data-qidx="${idx}">👁️ Toggle Script</button>` : ""}
+                  </div>
+                  ${q.transcriptHtml ? `<div class="rev-transcript-box" id="revTrans_${idx}" style="display:none; margin:8px 0; padding:10px; border-radius:6px; background:var(--bg); border:1px dashed var(--line); font-size:0.9rem;">${q.transcriptHtml}</div>` : ""}
+                  <div class="jp" style="font-weight:600;">${esc(q.plainPrompt || "")}</div>
+                ` : q.promptHtml}
+              </div>
+              <div style="font-size:0.9rem;">
+                Your answer: <b class="jp">${esc(choiceLabel(userChoiceText, state.settings))}</b> · 
+                Correct answer: <b class="jp" style="color:var(--ok);">${esc(choiceLabel(correctChoiceText, state.settings))}</b>
+              </div>
+              ${q.grammarExplain ? `<div class="muted" style="margin-top:6px; font-size:0.85rem;">Explanation: ${esc(q.grammarExplain)}</div>` : ""}
+              ${q.explanation ? `<div class="muted" style="margin-top:6px; font-size:0.85rem;">Explanation: ${esc(q.explanation)}</div>` : ""}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+
+  // Bind post-exam audio & script buttons
+  $("examArea").querySelectorAll(".rev-play-audio-btn").forEach((btn) => {
+    btn.onclick = async () => {
+      const q = questions[+btn.dataset.qidx];
+      if (!q || !q.audioText) return;
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = "🔊 Playing…";
+      try {
+        await speak(q.audioText);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    };
+  });
+  $("examArea").querySelectorAll(".rev-toggle-transcript-btn").forEach((btn) => {
+    btn.onclick = () => {
+      const box = $(`revTrans_${btn.dataset.qidx}`);
+      if (!box) return;
+      const isHidden = box.style.display === "none";
+      box.style.display = isHidden ? "block" : "none";
+      btn.textContent = isHidden ? "🙈 Hide Script" : "👁️ Toggle Script";
+    };
+  });
+
+  $("retakeBtn").onclick = loadTest;
+  $("addMissedSrsBtn").onclick = () => {
+    let count = 0;
+    questions.forEach((q, idx) => {
+      if (userAnswers[idx] !== q.answer && q.targetWord) {
+        addCard(q.kind === "kanji" ? `k:${q.targetWord}` : `w:${q.targetWord}`, {
+          front: q.targetWord,
+          reading: q.targetReading || q.targetWord,
+          meaning: q.meaning || "",
+          kind: q.kind || "word"
+        });
+        count++;
+      }
+    });
+    alert(`Added ${count} items to your spaced repetition review deck!`);
+  };
+}
+
+// Initial Boot
+updateLvlButtons();
+loadTest();
+
+window.blipContext = () => ({
+  page: "JLPT Exam Trainer",
+  level: currentLvl,
+  mode: currentMode,
+  role: "Encourage the learner, explain official JLPT rules and sectional thresholds, and recommend official resources (jlpt.jp)."
+});
+</script>
+</body>
+</html>

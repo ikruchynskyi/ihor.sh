@@ -50,7 +50,7 @@
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, stopAudio, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip, pitchInfo, renderPitch, storyAudioUrl, wordAudioUrl, LEVELS } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, stopAudio, listen, canListen, similarity, addCard, strokes, plain, kanaLine, hasKanji, blip, pitchInfo, renderPitch, storyAudioUrl, wordAudioUrl, LEVELS, data, recordGap } from "/yomu/lib.js";
 import { pic } from "/yomu/pics.js";
 import { photo } from "/yomu/photos.js";
 
@@ -145,10 +145,13 @@ $("readDone").onclick = () => { complete("story", 10); location.hash = "#s-words
 async function showWord(raw, el) {
   const t = tok(raw), pop = $("pop"), r = el.getBoundingClientRect();
   const pitch = await pitchInfo(t.s, reading(t));
+  const ks = [...t.s].filter(hasKanji);
+  const mnemonicsData = await data("mnemonics").catch(() => ({}));
   pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
     ${renderPitch(pitch)}
     <div>${esc(t.g)}</div>
-    <div class="row"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}<button class="mini" id="pClose">✕</button></div>`;
+    ${ks.length ? `<div class="kanji-row" style="margin-top:6px;display:flex;gap:4px;">${ks.map((c) => `<button class="mini" data-k="${esc(c)}">${esc(c)}</button>`).join("")}</div><div id="kmeta" style="margin:4px 0;font-size:0.88rem;"></div>` : ""}
+    <div class="row" style="margin-top:8px;"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}<button class="mini" id="pClose">✕</button></div>`;
   pop.hidden = false;
   pop.style.left = `${Math.min(innerWidth - 310, r.left + scrollX)}px`; pop.style.top = `${r.bottom + scrollY + 6}px`;
   $("pPlay").onclick = () => {
@@ -158,6 +161,10 @@ async function showWord(raw, el) {
   $("pClose").onclick = () => (pop.hidden = true);
   if ($("pAdd")) $("pAdd").onclick = () => { addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g, kind: "word" }); $("pAdd").textContent = "✓ Added"; gain(1); };
   if ($("pKnow")) $("pKnow").onclick = () => { state.known[t.s] = !state.known[t.s]; save(); $("pKnow").textContent = state.known[t.s] ? "✓ Known" : "I know it"; renderLines(); };
+  pop.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => {
+    const char = b.dataset.k, m = mnemonicsData?.[char];
+    $("kmeta").innerHTML = `<b>${esc(char)}</b> <a href="/yomu/kanji.html?k=${encodeURIComponent(char)}" target="_blank">dictionary</a>${m ? `<br><span style="font-size:0.84rem;color:var(--accent);">💡 <b>${esc(m.r)}</b>: <i>“${esc(m.m)}”</i></span>` : ""}`;
+  }));
 }
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = true; });
 
@@ -186,7 +193,16 @@ function quiz(container, items, step, xp) {
     const q = items[+box.dataset.q], ok = +b.dataset.c === q.answer;
     box.dataset.done = "1"; answered++; if (ok) right++;
     b.classList.add(ok ? "right" : "wrong");
-    box.querySelector(".fb").innerHTML = `<b class="${ok ? "right" : "wrong"}">${ok ? "Correct!" : `Not quite: ${esc(q.choices[q.answer])}`}</b> ${esc(q.why ?? "")}`;
+    recordGap({
+      id: `${u.id}:${step}:${box.dataset.q}`,
+      title: q.q,
+      category: step === "grammar" ? "Story Grammar" : "Reading Comprehension",
+      level: u.level,
+      link: `/yomu/story.html?u=${u.id}`,
+      why: q.why || q.hint || q.en || "",
+      sampleQ: q.q
+    }, ok);
+    box.querySelector(".fb").innerHTML = `<b class="${ok ? "right" : "wrong"}">${ok ? "Correct!" : `Not quite: ${esc(q.choices[q.answer])}`}</b> ${esc(q.why ?? "")}${!ok ? ` <span class="muted">(Flagged for <a href="/yomu/quiz.html?mode=gaps">Daily Miniquiz recap</a>)</span>` : ""}`;
     if (answered === items.length) { complete(step, xp); blip(right === items.length ? "Perfect! 満点 (manten)!" : `${right}/${items.length}. Read the explanation and try the next one!`, right === items.length ? "happy" : "think", right === items.length ? 6 : 0); }
   }));
 }

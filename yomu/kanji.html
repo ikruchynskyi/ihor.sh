@@ -36,6 +36,7 @@ const params = new URLSearchParams(location.search);
 const k = [...(params.get("k") ?? "")][0] ?? "";
 const allWords = (await Promise.all(DECK_LEVELS.map(async (lv) => (await vocab(lv)).map((w) => ({ ...w, lv }))))).flat();
 const localKanji = new Map((await data("kanji")).map((x) => [x.k, x]));
+const mnemonics = await data("mnemonics").catch(() => ({}));
 const reading = (r) => (state.settings.script === "romaji" ? romaji(toHiragana(r.replace(/[.\-]/g, ""))) : r);
 let info = null;
 
@@ -52,13 +53,21 @@ function render() {
   const meanings = found ? i.meanings : loc?.m ?? [], kun = found ? i.kun : loc?.kun ?? [], on = found ? i.on : loc?.on ?? [];
   const jlpt = (found && i.jlpt) || (loc ? `N${loc.n}` : ""), strokesN = (found && i.strokes) || loc?.s;
   const uses = allWords.filter((w) => w.w.includes(k));
+  const mnem = mnemonics?.[k];
   document.title = `${k} · Yomu Kanji Dictionary`;
   $("page").innerHTML = `<section class="card2"><div class="khead"><div><div class="glyph jp">${esc(k)}</div><div class="stroke" id="ks"></div><p style="text-align:center"><button class="mini" id="replay">✍ Strokes again</button></p></div><div>
     <h1 style="margin:0">${esc(meanings.join(", ") || (i && !found ? "Not in Jisho's kanji dictionary" : "…"))}</h1>
     <div class="badges">${jlpt ? `<span>JLPT ${esc(jlpt)}</span>` : `<span>not on the JLPT lists</span>`}${strokesN ? `<span>${strokesN} strokes</span>` : ""}${found && i.grade ? `<span>${esc(i.grade)}</span>` : ""}${found && i.freq ? `<span>#${i.freq} of 2,500 in newspapers</span>` : ""}</div>
     <p class="rd">Kun (Japanese) <span class="jp">${kun.map((r) => esc(reading(r))).join("、") || "—"}</span><br>On (Chinese) <span class="jp">${on.map((r) => esc(reading(r))).join("、") || "—"}</span><br>
     <span class="muted">Kun readings are for the kanji on its own or with kana after it (the dot marks where the kana starts); on readings for compounds of two or more kanji.</span></p>
-    ${found && (i.radical || i.parts?.length) ? `<p>Radical: <span class="jp">${esc(i.radical?.char ?? "")}</span> <span class="muted">${esc(i.radical?.meaning ?? "")}</span>${i.parts?.length ? ` · Parts: ${i.parts.map((p) => (p === k ? `<span class="jp">${esc(p)}</span>` : `<a class="klink jp" href="${kanjiHref(p)}">${esc(p)}</a>`)).join(" ")}` : ""}<br><span class="muted">Parts make a story to remember it by: ask Blip for one.</span></p>` : ""}
+    ${mnem ? `
+      <div style="background:color-mix(in srgb, var(--accent) 8%, var(--card)); border:1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); border-left:4px solid var(--accent); border-radius:8px; padding:10px 14px; margin:12px 0;">
+        <div style="font-weight:700; font-size:0.92rem; color:var(--accent); margin-bottom:4px;">💡 Mnemonic &amp; Radicals:</div>
+        <div style="font-size:0.9rem;">Radical: <b>${esc(mnem.r)}</b> · Parts: <span class="jp" style="font-weight:600;">${esc(mnem.parts.join(" + "))}</span></div>
+        <div style="margin-top:6px; font-style:italic; font-size:0.95rem; line-height:1.4;">“${esc(mnem.m)}”</div>
+      </div>
+    ` : ""}
+    ${found && (i.radical || i.parts?.length) ? `<p>Radical: <span class="jp">${esc(i.radical?.char ?? "")}</span> <span class="muted">${esc(i.radical?.meaning ?? "")}</span>${i.parts?.length ? ` · Parts: ${i.parts.map((p) => (p === k ? `<span class="jp">${esc(p)}</span>` : `<a class="klink jp" href="${kanjiHref(p)}">${esc(p)}</a>`)).join(" ")}` : ""}</p>` : ""}
     <p><button class="mini" id="kadd">${inDeck("k:" + k) ? "✓ In your review deck" : "+ Add to review"}</button> ${!info ? '<span class="muted">Loading from Jisho…</span>' : ""}</p></div></div></section>
     ${uses.length ? `<h2>Words with ${esc(k)} on the JLPT lists <span class="muted">(${uses.length})</span></h2><div class="words2">${uses.slice(0, 24).map((w) => wordRow(w.w, w.r, w.m, ` · ${w.lv}`)).join("")}</div>` : ""}
     ${found && (i.onWords.length || i.kunWords.length) ? `<h2>Compounds by reading</h2><div class="words2">${[...i.kunWords, ...i.onWords].map(([w, r, m]) => wordRow(w, toHiragana(r), m)).join("")}</div>` : ""}

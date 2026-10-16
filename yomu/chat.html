@@ -26,6 +26,8 @@
     #pop .kanji-row button { font-family: "Hiragino Mincho ProN", "Noto Serif JP", serif !important; font-size: 1.3rem !important; text-transform: none !important; padding: 4px 8px !important; }
     #pop .kmeta { margin-top: 6px; font-size: .9rem; }
     .local { font-size: .9rem; }
+    .meme-wrap { margin: 10px 0 6px; max-width: 320px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: #000; }
+    .meme-wrap img { display: block; width: 100%; height: auto; }
   </style>
 </head>
 <body>
@@ -33,7 +35,6 @@
   <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Chat</p>
   <h1>Chat with Blip in Japanese</h1>
   <p class="lede">Talk about anything: Blip stays inside your level's grammar and words, answers in Japanese and keeps the conversation going. Tap any word for its reading and meaning, tap a kanji for its readings, and reveal the English when you want it. Write in Japanese (kana is fine) or in English; Blip corrects one thing at a time.</p>
-  <p class="muted local">🔒 This chat runs on a local model on the site owner's own computer (not a cloud service), so nothing you write leaves it. A reply takes 10–30 seconds.</p>
   <div id="settings"></div>
   <div class="levels" id="levels"></div>
   <div class="topics" id="topics"></div>
@@ -44,7 +45,7 @@
 </main>
 <div id="pop" hidden></div>
 <script type="module">
-import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, browserSpeak, listen, canListen, addCard, hasKanji, data, blip, pitchInfo, renderPitch } from "/yomu/lib.js";
+import { state, save, gain, settingsBar, renderTokens, tok, reading, romaji, esc, speak, listen, canListen, addCard, hasKanji, data, blip, pitchInfo, renderPitch } from "/yomu/lib.js";
 const $ = (id) => document.getElementById(id);
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 const params = new URLSearchParams(location.search);
@@ -72,8 +73,9 @@ function renderLog() {
   $("log").innerHTML = turns.map((t, i) => t.role === "user"
     ? `<div class="msg you"><div class="jp">${esc(t.content)}</div></div>`
     : `<div class="msg blip" data-i="${i}"><div class="jp">${t.words?.length ? renderTokens(toTokens(t.words), state.settings, state.known) : `<span class="w g" data-line="${i}" tabindex="0">${esc(t.content)}</span>`}</div>
+      ${t.memeUrl ? `<div class="meme-wrap"><img src="${esc(t.memeUrl)}" alt="Blip meme reaction (${esc(t.memeTemplate || "")})" loading="lazy"></div>` : ""}
       <div class="tools"><button class="mini" data-play="${i}">▶</button><button class="mini" data-en="${i}">${t.showEn ? "Hide English" : "English"}</button></div>
-      ${t.showEn ? `<div class="en">${esc(t.en)}</div>` : ""}${t.fix ? `<div class="fix">✎ ${esc(t.fix)}</div>` : ""}</div>`).join("") + (pending ? `<div class="msg blip wait">Blip is thinking<span class="dots"></span> <span class="muted">(local model, 10–30 s)</span></div>` : "");
+      ${t.showEn ? `<div class="en">${esc(t.en)}</div>` : ""}${t.fix ? `<div class="fix">✎ ${esc(t.fix)}</div>` : ""}</div>`).join("") + (pending ? `<div class="msg blip wait">Blip is thinking<span class="dots"></span></div>` : "");
   $("log").lastElementChild?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 let pending = false;
@@ -81,12 +83,13 @@ async function send(text) {
   text = text.trim(); if (!text || pending) return;
   turns.push({ role: "user", content: text }); keep();
   pending = true; renderLog(); $("q").value = ""; $("send").disabled = true;
+  const usedMemes = turns.map((t) => t.memeTemplate).filter(Boolean);
   try {
-    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.map((t) => ({ role: t.role, content: t.content })) }) });
+    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.map((t) => ({ role: t.role, content: t.content })), usedMemes }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix }); keep();
-    gain(2); browserSpeak(d.ja);
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, memeUrl: d.memeUrl, memeTemplate: d.meme_template }); keep();
+    gain(2); speak(d.ja);
   } catch (e) { $("status").textContent = e.message; turns.pop(); keep(); }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
@@ -94,10 +97,10 @@ async function start(t) {
   topic = t; turns = []; keep(); $("status").textContent = "";
   pending = true; renderLog(); $("send").disabled = true;
   try {
-    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [] }) });
+    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: [], usedMemes: [] }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || "The local model didn't answer. Try again in a moment.");
-    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "" }); keep(); browserSpeak(d.ja);
+    turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: "", memeUrl: d.memeUrl, memeTemplate: d.meme_template }); keep(); speak(d.ja);
   } catch (e) { $("status").textContent = e.message; }
   finally { pending = false; $("send").disabled = false; renderLog(); $("q").focus(); }
 }
@@ -109,7 +112,7 @@ $("mic").onclick = async () => { $("mic").disabled = true; $("mic").textContent 
 // Tap a word: reading, romaji, meaning, its kanji; tap the plain line (when the model's split didn't cover it): the English.
 $("log").addEventListener("click", async (e) => {
   const b = e.target.closest("button");
-  if (b?.dataset.play != null) return browserSpeak(turns[+b.dataset.play].content);
+  if (b?.dataset.play != null) return speak(turns[+b.dataset.play].content);
   if (b?.dataset.en != null) { const t = turns[+b.dataset.en]; t.showEn = !t.showEn; keep(); return renderLog(); }
   const w = e.target.closest(".w.g"); if (!w) return;
   if (w.dataset.line != null) { const t = turns[+w.dataset.line]; t.showEn = true; keep(); return renderLog(); }
@@ -117,10 +120,11 @@ $("log").addEventListener("click", async (e) => {
   showWord(t, w);
 });
 $("log").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches(".w.g")) e.target.click(); });
-let kanjiIndex = null;
+let kanjiIndex = null, mnemonicsData = null;
 async function showWord(t, el) {
   const pop = $("pop"), r = el.getBoundingClientRect();
   kanjiIndex ??= new Map((await data("kanji")).map((k) => [k.k, k]));
+  mnemonicsData ??= await data("mnemonics").catch(() => ({}));
   const ks = [...t.s].filter((c) => hasKanji(c) && kanjiIndex.has(c));
   const pitch = await pitchInfo(t.s, reading(t));
   pop.innerHTML = `<div class="big jp">${esc(t.s)}</div><div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
@@ -130,10 +134,13 @@ async function showWord(t, el) {
     <div class="row"><button class="mini" id="pPlay">▶</button>${t.k === "p" ? "" : `<button class="mini" id="pAdd">+ Review</button>`}<button class="mini" id="pClose">✕</button></div>`;
   pop.hidden = false;
   pop.style.left = `${Math.min(innerWidth - 310, r.left + scrollX)}px`; pop.style.top = `${r.bottom + scrollY + 6}px`;
-  $("pPlay").onclick = () => browserSpeak(t.s || reading(t));
+  $("pPlay").onclick = () => speak(t.s || reading(t));
   $("pClose").onclick = () => (pop.hidden = true);
   if ($("pAdd")) $("pAdd").onclick = () => { addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: reading(t), meaning: t.g ?? "", kind: "word" }); $("pAdd").textContent = "✓ Added"; gain(1); };
-  pop.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { const k = kanjiIndex.get(b.dataset.k); $("kmeta").innerHTML = `<b>${esc(k.k)}</b> ${esc(k.m.join(", "))} · <span class="jp">on: ${esc(k.on.join("、"))} · kun: ${esc(k.kun.join("、"))}</span> · N${k.n} · <a href="/yomu/deck.html?level=N${k.n}&type=kanji#${encodeURIComponent(k.k)}">deck</a>`; }));
+  pop.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => {
+    const k = kanjiIndex.get(b.dataset.k), m = mnemonicsData?.[k.k];
+    $("kmeta").innerHTML = `<b>${esc(k.k)}</b> ${esc(k.m.join(", "))} · <span class="jp">on: ${esc(k.on.join("、"))} · kun: ${esc(k.kun.join("、"))}</span> · N${k.n} · <a href="/yomu/kanji.html?k=${encodeURIComponent(k.k)}">details</a>${m ? `<br><span style="font-size:0.84rem;color:var(--accent);">💡 <b>${esc(m.r)}</b>: <i>“${esc(m.m)}”</i></span>` : ""}`;
+  }));
 }
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = true; });
 document.addEventListener("click", (e) => { if (!e.target.closest("#pop") && !e.target.closest(".w.g")) $("pop").hidden = true; });

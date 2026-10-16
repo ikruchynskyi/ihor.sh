@@ -6,6 +6,19 @@
   <title>Yomu Grammar</title>
   <meta name="description" content="Every JLPT grammar point from N5 to N1 (274 points) in order: a plain-English explanation, example sentences with audio and furigana, a quick fill-in quiz, and reference links." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
+  <style>
+    .confusion-box {
+      background: color-mix(in srgb, #f59f00 12%, var(--card));
+      border: 1px solid color-mix(in srgb, #f59f00 35%, var(--line));
+      border-left: 4px solid #f59f00;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 12px 0 16px;
+      font-size: 0.93rem;
+      line-height: 1.5;
+    }
+    .confusion-box b { color: #d9480f; }
+  </style>
 </head>
 <body>
 <main>
@@ -42,6 +55,7 @@ function render() {
 function fill(box) {
   const p = points.find((x) => x.id === box.dataset.id);
   box.innerHTML = `<p>${esc(p.explain)}</p>
+    ${p.confusion ? `<div class="confusion-box">💡 <b>Common Confusion &amp; Nuance:</b> ${esc(p.confusion.replace(/^Common Confusion:\s*/, ""))}</div>` : ""}
     ${p.examples.map((ex, i) => `<div class="ex"><span class="t jp" style="font-size:1.3rem">${renderTokens(ex.t, state.settings, state.known)}</span> <button class="mini" data-play="${i}" aria-label="Play">▶</button>${state.settings.translation ? `<div class="muted">${esc(ex.en)}</div>` : ""}</div>`).join("")}
     <h4>Quick check</h4>
     ${p.examples.map((ex, i) => `<div class="quiz" data-q="${i}"><div class="jp" style="font-size:1.2rem">${cloze(ex, state.settings)}</div><div class="muted">${esc(ex.en)}</div>

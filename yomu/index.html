@@ -40,7 +40,7 @@
   <p class="muted credits">Kanji: <a href="https://www.edrdg.org/wiki/index.php/KANJIDIC_Project">KANJIDIC</a> (EDRDG, CC BY-SA 4.0) · JLPT levels: <a href="http://www.tanos.co.uk/jlpt/">Jonathan Waller's JLPT resources</a> · word lists: <a href="https://github.com/jamsinclair/open-anki-jlpt-decks">open-anki-jlpt-decks</a> · stroke order: <a href="https://kanjivg.tagaini.net/">KanjiVG</a> (CC BY-SA 3.0) · grammar path covers 274 points across JLPT N5–N1; each point links to deeper reference. Progress is kept in this browser only.</p>
 </main>
 <script type="module">
-import { state, save, settingsBar, esc, dueCards, LEVELS, vocab, kanjiDeck, grammarDeck, GOJUON, inDeck, learned, blip } from "/yomu/lib.js";
+import { state, save, settingsBar, esc, dueCards, LEVELS, vocab, kanjiDeck, grammarDeck, GOJUON, inDeck, learned, blip, getActiveGaps, getDailyQuizResult } from "/yomu/lib.js";
 import { photo } from "/yomu/photos.js";
 photo("hero", document.getElementById("photo"));
 const $ = (id) => document.getElementById(id);
@@ -75,12 +75,18 @@ async function renderToday() {
   const due = dueCards().length;
   const next = await nextStep();
   const lvl = state.start?.level ?? "N5";
+  const today = new Date().toISOString().slice(0, 10);
+  const quizDone = getDailyQuizResult(today);
+  const activeGaps = getActiveGaps();
   
   $("today").innerHTML = `
     <div class="hub-dashboard">
       <div class="hub-status">
         <span class="status-tag"><b>Today's Progress</b></span>
         <span>${due ? `<a href="/yomu/review.html"><b>${due} card${due === 1 ? "" : "s"} due for review</b></a>` : "<span class='right'>✓ No reviews due</span>"}</span>
+        <span>·</span>
+        <span>${quizDone ? `<a href="/yomu/quiz.html" class="right"><b>✓ Daily Quiz: ${quizDone.score}/${quizDone.total}</b></a>` : `<a href="/yomu/quiz.html"><b>🎯 Daily Miniquiz: Ready</b></a>`}</span>
+        ${activeGaps.length ? `<span>·</span><span><a href="/yomu/quiz.html?mode=gaps" style="color:var(--accent)"><b>⚠️ ${activeGaps.length} gap${activeGaps.length === 1 ? "" : "s"} identified</b></a></span>` : ""}
         <span>·</span>
         <span>Next recommended: <a href="${next.href}"><b>${esc(next.label)}</b></a></span>
       </div>
@@ -89,6 +95,7 @@ async function renderToday() {
           <h4>📖 Graded Stories &amp; Reading</h4>
           <div class="hub-links">
             <a href="/yomu/stories.html"><b>Table of Contents</b> <span>All 87 Stories (N5–N1)</span></a>
+            <a href="/yomu/reader.html?nhk=today"><b>Daily NHK News</b> <span>Real news simplified</span></a>
             <a href="/yomu/placement.html"><b>Placement Test</b> <span>5-min adaptive test</span></a>
             <a href="/yomu/reader.html"><b>Immersion Reader</b> <span>Tap-to-translate text</span></a>
           </div>
@@ -105,7 +112,9 @@ async function renderToday() {
         <div class="hub-col">
           <h4>🧠 Practice &amp; SRS</h4>
           <div class="hub-links">
+            <a href="/yomu/quiz.html"><b>Daily Miniquiz</b> <span>5-min recap &amp; gaps</span></a>
             <a href="/yomu/review.html"><b>Review Deck</b> <span>Spaced repetition</span></a>
+            <a href="/yomu/jlpt.html?level=${lvl}"><b>JLPT Exam Trainer</b> <span>N5–N1 mock simulator</span></a>
             <a href="/yomu/practice.html"><b>Word Typing Drills</b> <span>Speed &amp; memory</span></a>
             <a href="/yomu/deck.html?level=${lvl}&type=words"><b>Vocabulary Decks</b> <span>Word flashcards</span></a>
             <a href="/yomu/deck.html?level=${lvl}&type=kanji"><b>Kanji Decks</b> <span>Kanji flashcards</span></a>

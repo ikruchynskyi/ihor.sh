@@ -3,10 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yomu Custom Text Reader</title>
-  <meta name="description" content="Paste any Japanese text to read with tap-to-translate ruby furigana, pitch accent contours, Kokoro neural audio, pronunciation shadowing, difficulty breakdown, and 1-click spaced repetition cards." />
+  <title>Yomu Immersion &amp; NHK News Reader</title>
+  <meta name="description" content="Read daily simplified Japanese news from NHK News Web Easy with native announcer audio, or paste any Japanese text to read with tap-to-translate ruby furigana, pitch accent contours, pronunciation shadowing, and spaced repetition cards." />
   <link rel="stylesheet" href="/yomu/yomu.css" />
   <style>
+    .reader-tabs { display: flex; gap: 8px; margin: 14px 0 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .tab-btn { font-size: 0.95rem !important; padding: 6px 14px !important; border-radius: 6px !important; cursor: pointer; }
+    .tab-btn.active { background: var(--accent) !important; color: #fff !important; }
+    .nhk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin: 14px 0; }
+    .nhk-card { border: 1px solid var(--line); border-radius: 10px; background: var(--card-bg, rgba(255,255,255,0.02)); padding: 14px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+    .nhk-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .nhk-card-img { width: 100%; height: 140px; object-fit: cover; border-radius: 6px; background: #111; }
+    .nhk-card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--muted); }
+    .nhk-badge { padding: 2px 7px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+    .nhk-badge.N5 { background: #40c05722; color: #40c057; }
+    .nhk-badge.N4 { background: #20c99722; color: #20c997; }
+    .nhk-badge.N3 { background: #15aabf22; color: #15aabf; }
+    .nhk-badge.N2 { background: #4c6ef522; color: #4c6ef5; }
+    .nhk-badge.N1 { background: #7950f222; color: #7950f2; }
+    .nhk-card-title { margin: 0; font-size: 1.05rem; line-height: 1.5; font-weight: 600; }
+    .nhk-card-excerpt { font-size: 0.86rem; color: var(--muted); line-height: 1.5; margin: 0; }
+    .nhk-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .nhk-filter-bar button.active { background: var(--accent) !important; color: #fff !important; }
+    .nhk-article-header { border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 20px; background: color-mix(in srgb, var(--accent) 6%, transparent); display: flex; flex-direction: column; gap: 12px; }
+    .nhk-article-header h2 { margin: 0; font-size: 1.45rem; line-height: 1.4; }
+    .nhk-article-img { width: 100%; max-height: 320px; object-fit: cover; border-radius: 8px; }
+    .nhk-player-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    .nhk-player-bar audio { flex: 1; min-width: 260px; height: 38px; }
     .samples { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
     .samples button { font-size: .88rem !important; padding: 4px 10px !important; text-transform: none !important; }
     .reader-card { padding: 16px; margin: 14px 0; }
@@ -35,13 +58,35 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Reader</p>
-  <h1>Custom Text Reader</h1>
-  <p class="lede">Paste any Japanese article, story, news, or lyrics. Every word gets tap-to-translate furigana and authentic pitch accent, line audio in Kokoro's neural voice, pronunciation shadowing, and one-click spaced review.</p>
+  <p class="eyebrow"><a href="/yomu/">Yomu · Japanese</a> · Immersion &amp; News Reader · <a href="/yomu/stories.html">Stories</a> · <a href="/yomu/jlpt.html">JLPT Trainer</a></p>
+  <h1>Immersion &amp; News Reader</h1>
+  <p class="lede">Read today's Japanese news from NHK News Web Easy with native announcer audio, or paste your own articles, stories, and lyrics. Every word gets tap-to-translate furigana and authentic pitch accent, line audio, pronunciation shadowing, and one-click spaced repetition review.</p>
 
   <div id="settings"></div>
 
-  <section class="card2 reader-card" id="inputCard">
+  <div class="reader-tabs" role="tablist">
+    <button type="button" class="tab-btn active" id="tabNhk">📰 Daily NHK News</button>
+    <button type="button" class="tab-btn" id="tabCustom">✏️ Custom Text</button>
+  </div>
+
+  <section id="nhkSection">
+    <div class="card2 reader-card" style="margin-top:0">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin:0">Today's NHK News Web Easy · やさしい日本語ニュース</h3>
+        <span class="muted" style="font-size:.85rem">Daily simplified news with native NHK broadcast audio</span>
+      </div>
+      <div class="nhk-filter-bar">
+        <span class="muted" style="font-size:.85rem">Difficulty:</span>
+        <button type="button" class="mini active" data-filter="all">All</button>
+        <button type="button" class="mini" data-filter="N4">N4</button>
+        <button type="button" class="mini" data-filter="N3">N3</button>
+        <button type="button" class="mini" id="refreshNhk" style="margin-left:auto">↺ Refresh</button>
+      </div>
+    </div>
+    <div class="nhk-grid" id="nhkGrid"><p class="muted" style="padding:16px">Loading today's NHK news stories...</p></div>
+  </section>
+
+  <section class="card2 reader-card" id="inputCard" hidden>
     <div class="samples">
       <span class="muted" style="align-self:center">Try a sample:</span>
       <button type="button" data-sample="sakura">🌸 桜の季節 (N4/N5 news)</button>
@@ -107,7 +152,69 @@ for (const [lvl, list] of [["N1", n1], ["N2", n2], ["N3", n3], ["N4", n4], ["N5"
 }
 const KANJI_MAP = new Map(kanjiList.map((k) => [k.k, k]));
 
-const PARTICLES = new Set(["は", "が", "を", "に", "で", "と", "へ", "も", "から", "まで", "より", "ね", "よ", "か", "の", "や", "ばかり", "だけ", "ほど", "くらい", "ぐらい", "ので", "のに"]);
+const PARTICLE_DEFS = new Map([
+  ["など", "et cetera, etc., and the like, and so forth"],
+  ["などなど", "et cetera, etc., and so on"],
+  ["等", "et cetera, etc., and the like"],
+  ["について", "about, regarding, concerning"],
+  ["によると", "according to"],
+  ["として", "as, in the role/capacity of"],
+  ["によって", "by means of, depending on, due to"],
+  ["による", "due to, caused by, by"],
+  ["とともに", "together with, along with"],
+  ["に対して", "towards, against, in contrast to"],
+  ["対して", "towards, against, in contrast to"],
+  ["において", "in, at, regarding"],
+  ["に関して", "concerning, regarding"],
+  ["に関する", "related to, regarding"],
+  ["ために", "for the sake of, in order to, because of"],
+  ["ため", "purpose, reason, because of"],
+  ["ように", "in order that, so that, like"],
+  ["ような", "like, similar to, such as"],
+  ["だけでなく", "not only ~, but also"],
+  ["ばかりでなく", "not only ~, but also"],
+  ["をはじめ", "starting with, such as"],
+  ["を通じて", "through, throughout"],
+  ["を通して", "through, via"],
+  ["にかけて", "extending over, through to"],
+  ["にわたって", "spanning over, across"],
+  ["に比べて", "compared to"],
+  ["にとって", "for, from the standpoint of"],
+  ["に基づいて", "based on, on the basis of"],
+  ["にもかかわらず", "despite, in spite of"],
+  ["わけではない", "doesn't mean that, not necessarily"],
+  ["わけにはいかない", "cannot afford to, must not"],
+  ["に違いない", "must be, no doubt that"],
+  ["は", "topic marker"],
+  ["が", "subject marker"],
+  ["を", "direct object marker"],
+  ["に", "target, location, time particle"],
+  ["で", "location of action, means, by"],
+  ["と", "and, with, quotation particle"],
+  ["へ", "direction particle (towards)"],
+  ["も", "also, too particle"],
+  ["から", "from, since, because"],
+  ["まで", "until, up to, as far as"],
+  ["より", "than, rather than"],
+  ["ね", "tag particle (isn't it, right?)"],
+  ["よ", "emphasis particle (I tell you)"],
+  ["か", "question / or particle"],
+  ["の", "possessive / noun modifier particle"],
+  ["や", "and (non-exhaustive list)"],
+  ["ばかり", "only, merely, just did"],
+  ["だけ", "only, just, limit"],
+  ["ほど", "degree, extent, about"],
+  ["くらい", "about, approximately"],
+  ["ぐらい", "about, approximately"],
+  ["ので", "because, since"],
+  ["のに", "even though, although"],
+  ["やら", "and, or (uncertainty)"],
+  ["とか", "and, or, such as"],
+  ["こそ", "precisely, especially (emphasis)"],
+  ["さえ", "even, if only"],
+  ["すら", "even (stronger than さえ)"]
+]);
+const PARTICLES = new Set(PARTICLE_DEFS.keys());
 const AUX = new Map([
   ["です", { r: "です", m: "be verb (polite)" }],
   ["でした", { r: "でした", m: "was (past polite)" }],
@@ -146,6 +253,18 @@ function tokenizeLine(text) {
     }
     if (auxMatched) { tokens.push(auxMatched); continue; }
 
+    // Multi-character particle / grammar expression match (up to 7 chars)
+    let particleMatched = null;
+    for (let len = Math.min(7, text.length - i); len >= 1; len--) {
+      const sub = text.slice(i, i + len);
+      if (PARTICLE_DEFS.has(sub)) {
+        particleMatched = [sub, sub, PARTICLE_DEFS.get(sub), "p"];
+        i += len;
+        break;
+      }
+    }
+    if (particleMatched) { tokens.push(particleMatched); continue; }
+
     // Longest match from VOCAB_MAP (up to 8 chars)
     let vocabMatched = null;
     for (let len = Math.min(8, text.length - i); len >= 2; len--) {
@@ -158,13 +277,6 @@ function tokenizeLine(text) {
       }
     }
     if (vocabMatched) { tokens.push(vocabMatched); continue; }
-
-    // 1-character particle
-    if (PARTICLES.has(ch)) {
-      tokens.push([ch, null, "particle", "p"]);
-      i++;
-      continue;
-    }
 
     // 1-character dictionary word
     if (VOCAB_MAP.has(ch)) {
@@ -190,7 +302,8 @@ function tokenizeLine(text) {
       !/[。、！？!?…「」『』\s\n\r・]/.test(text[j]) &&
       !KANJI_MAP.has(text[j]) &&
       !VOCAB_MAP.has(text.slice(j, j + 2)) &&
-      !PARTICLES.has(text[j]) &&
+      !PARTICLE_DEFS.has(text.slice(j, j + 2)) &&
+      !PARTICLE_DEFS.has(text[j]) &&
       !AUX.has(text.slice(j, j + 2))
     ) {
       j++;
@@ -297,14 +410,34 @@ function renderAnalysis(stats) {
 function renderCurrent() {
   if (!currentParsed) return;
   const container = $("articleView");
-  container.innerHTML = currentParsed
+  const nhkHeader = currentNhkArticle ? `
+    <div class="nhk-article-header">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+        <div>
+          <span class="nhk-badge ${esc(currentNhkArticle.level)}">${esc(currentNhkArticle.level)} Easy</span>
+          <span class="muted" style="margin-left:8px; font-size:.85rem">📅 ${esc(currentNhkArticle.formattedDate)}</span>
+        </div>
+        <button type="button" class="mini" id="closeNhk">← Back to Articles</button>
+      </div>
+      <h2 class="jp" style="margin:4px 0">${esc(currentNhkArticle.title)}</h2>
+      ${currentNhkArticle.image ? `<img class="nhk-article-img" src="${esc(currentNhkArticle.image)}" alt="${esc(currentNhkArticle.title)}">` : ""}
+      ${currentNhkArticle.audio ? `
+        <div class="nhk-player-bar">
+          <span style="font-size:.88rem; font-weight:600">🎙️ NHK Native Broadcast:</span>
+          <audio controls src="${esc(currentNhkArticle.audio)}" preload="metadata"></audio>
+        </div>` : ""}
+      <p class="muted" style="margin:0; font-size:.82rem">Source: <a href="${esc(currentNhkArticle.originalUrl || currentNhkArticle.link)}" target="_blank" rel="noopener">NHK News Web Easy ↗</a></p>
+    </div>
+  ` : "";
+
+  container.innerHTML = nhkHeader + currentParsed
     .map((para, pi) => `
       <div class="article-p">${para
         .map((sent, si) => `
           <span class="article-sent" id="s-${pi}-${si}" data-pi="${pi}" data-si="${si}">
             <span class="sent-text">${renderTokens(sent.tokens, state.settings, state.known)}</span>
             <span class="sent-act">
-              <button class="mini" data-play="${pi}-${si}" aria-label="Play sentence" title="Play with Kokoro neural voice">▶</button>
+              <button class="mini" data-play="${pi}-${si}" aria-label="Play sentence" title="Play sentence audio">▶</button>
               ${canListen() ? `<button class="mini" data-shadow="${pi}-${si}" aria-label="Shadow sentence" title="Practice saying this line">🎤</button>` : ""}
             </span>
             <div class="shadow-fb" id="fb-${pi}-${si}"></div>
@@ -313,6 +446,18 @@ function renderCurrent() {
       </div>`)
     .join("");
   container.hidden = false;
+  if ($("closeNhk")) {
+    $("closeNhk").onclick = () => {
+      currentNhkArticle = null;
+      container.hidden = true;
+      $("analysisCard").hidden = true;
+      $("nhkSection").hidden = false;
+      const url = new URL(location);
+      url.searchParams.delete("nhk");
+      history.replaceState(null, "", url.toString());
+      $("nhkSection").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+  }
 }
 
 // Click handling for words, play and shadowing
@@ -350,18 +495,36 @@ $("articleView").addEventListener("click", async (e) => {
   showWordPopover(rawToken, w);
 });
 
+const dictLookupCache = new Map();
+async function lookupDictWord(word) {
+  if (dictLookupCache.has(word)) return dictLookupCache.get(word);
+  try {
+    const res = await fetch(`/api/yomu/search?q=${encodeURIComponent(word)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hit = data?.results?.find((r) => r.w === word || r.r === word) || data?.results?.[0] || null;
+    dictLookupCache.set(word, hit);
+    return hit;
+  } catch {
+    return null;
+  }
+}
+
 // Popover
 async function showWordPopover(raw, el) {
   const t = tok(raw), pop = $("pop"), r = el.getBoundingClientRect();
+  pop.dataset.currentWord = t.s;
   const pitch = await pitchInfo(t.s, reading(t));
+  mnemonicsData ??= await data("mnemonics").catch(() => ({}));
   const ks = [...t.s].filter(hasKanji);
+  const initialGloss = t.g && t.g !== "(vocabulary lookup)" ? t.g : "";
 
   pop.innerHTML = `
     <div class="big jp">${esc(t.s)}</div>
-    <div class="jp">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
+    <div class="jp" id="popReading">${esc(reading(t))} · <i>${esc(romaji(reading(t), t.k === "p"))}</i></div>
     ${renderPitch(pitch)}
-    <div>${esc(t.g || "(vocabulary lookup)")}</div>
-    ${ks.length ? `<div class="kanji-row">${ks.map((c) => `<a href="${kanjiHref(c)}" target="_blank" title="${esc(c)}'s dictionary page">${esc(c)}</a>`).join("")}</div>` : ""}
+    <div id="popGloss" style="margin:4px 0">${initialGloss ? esc(initialGloss) : `<span class="muted"><i>Looking up dictionary…</i></span>`}</div>
+    ${ks.length ? `<div class="kanji-row">${ks.map((c) => { const m = mnemonicsData?.[c]; return `<a href="${kanjiHref(c)}" target="_blank" title="${esc(c)}${m ? `: ${esc(m.r)} — ${esc(m.m)}` : "'s dictionary page"}">${esc(c)}</a>`; }).join("")}</div>` : ""}
     <div class="row" style="margin-top:8px">
       <button class="mini" id="pPlay">▶ Hear</button>
       ${t.k === "p" ? "" : `<button class="mini" id="pAdd">${state.srs["w:" + t.s] ? "✓ In Review" : "+ Review"}</button><button class="mini" id="pKnow">${state.known[t.s] ? "✓ Known" : "I know it"}</button>`}
@@ -388,6 +551,33 @@ async function showWordPopover(raw, el) {
       $("pKnow").textContent = state.known[t.s] ? "✓ Known" : "I know it";
       renderCurrent();
     };
+  }
+
+  // If gloss was missing, asynchronously look up via /api/yomu/search
+  if (!initialGloss) {
+    lookupDictWord(t.s).then((hit) => {
+      if (pop.dataset.currentWord !== t.s) return;
+      if (hit && hit.m) {
+        t.g = hit.m;
+        raw[2] = hit.m;
+        if (hit.r && !raw[1]) {
+          raw[1] = hit.r;
+          if ($("popReading")) $("popReading").innerHTML = `${esc(hit.r)} · <i>${esc(romaji(hit.r, false))}</i>`;
+        }
+        if ($("popGloss")) {
+          $("popGloss").innerHTML = `<div>${esc(hit.m)}</div>${hit.jlpt ? `<span class="badge ${esc(hit.jlpt)}" style="margin-top:4px;display:inline-block">${esc(hit.jlpt)}</span>` : ""}`;
+        }
+        if ($("pAdd")) {
+          $("pAdd").onclick = () => {
+            addCard(`w:${t.s}`, { word: t.s, front: t.s, reading: hit.r || reading(t), meaning: hit.m, kind: "word" });
+            $("pAdd").textContent = "✓ Added";
+            gain(1);
+          };
+        }
+      } else {
+        if ($("popGloss")) $("popGloss").innerHTML = `<span class="muted">(no dictionary entry)</span>`;
+      }
+    });
   }
 }
 addEventListener("keydown", (e) => { if (e.key === "Escape") $("pop").hidden = true; });
@@ -449,8 +639,130 @@ $("savedSelect").onchange = (e) => {
 };
 updateSavedDropdown();
 
+// NHK Daily News Integration
+let nhkArticles = [];
+let currentNhkArticle = null;
+let activeFilter = "all";
+
+$("tabNhk").onclick = () => {
+  $("tabNhk").classList.add("active");
+  $("tabCustom").classList.remove("active");
+  $("nhkSection").hidden = false;
+  $("inputCard").hidden = true;
+};
+$("tabCustom").onclick = () => {
+  $("tabCustom").classList.add("active");
+  $("tabNhk").classList.remove("active");
+  $("nhkSection").hidden = true;
+  $("inputCard").hidden = false;
+};
+
+async function loadNhkList(force = false) {
+  $("nhkGrid").innerHTML = `<p class="muted" style="padding:16px">Fetching latest NHK stories...</p>`;
+  try {
+    const r = await fetch("/api/yomu/nhk" + (force ? "?refresh=1" : ""));
+    if (!r.ok) throw new Error("Could not load NHK stories");
+    nhkArticles = await r.json();
+    renderNhkGrid();
+  } catch (e) {
+    $("nhkGrid").innerHTML = `<p class="muted" style="padding:16px">Failed to load NHK news: ${esc(e.message)}</p>`;
+  }
+}
+
+function renderNhkGrid() {
+  const filtered = activeFilter === "all" ? nhkArticles : nhkArticles.filter((a) => a.level === activeFilter);
+  if (!filtered.length) {
+    $("nhkGrid").innerHTML = `<p class="muted" style="padding:16px">No articles match filter ${esc(activeFilter)}.</p>`;
+    return;
+  }
+  $("nhkGrid").innerHTML = filtered.map((a) => `
+    <div class="nhk-card" data-nhk-id="${esc(a.id)}">
+      ${a.image ? `<img class="nhk-card-img" src="${esc(a.image)}" alt="" loading="lazy">` : ""}
+      <div class="nhk-card-meta">
+        <span class="nhk-badge ${esc(a.level)}">${esc(a.level)} Easy</span>
+        <span>📅 ${esc(a.formattedDate)}</span>
+        ${a.audio ? `<span title="Native broadcast audio">🎙️ Audio</span>` : ""}
+      </div>
+      <h4 class="nhk-card-title jp">${esc(a.title)}</h4>
+      <p class="nhk-card-excerpt jp">${esc(a.excerpt)}</p>
+      <div style="margin-top:auto; display:flex; justify-content:space-between; align-items:center; padding-top:6px;">
+        <button type="button" class="mini">Read in Reader →</button>
+        <span class="muted" style="font-size:.78rem">NHK Easy</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+$("nhkGrid").addEventListener("click", (e) => {
+  const card = e.target.closest("[data-nhk-id]");
+  if (card) openNhkArticle(card.dataset.nhkId);
+});
+
+document.querySelectorAll(".nhk-filter-bar button[data-filter]").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".nhk-filter-bar button[data-filter]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    renderNhkGrid();
+  };
+});
+
+$("refreshNhk").onclick = () => loadNhkList(true);
+
+async function openNhkArticle(id) {
+  let article = nhkArticles.find((a) => a.id === id);
+  if (!article || !article.text) {
+    try {
+      const r = await fetch(`/api/yomu/nhk?id=${encodeURIComponent(id)}`);
+      if (!r.ok) throw new Error("Article not found");
+      article = await r.json();
+    } catch (e) {
+      alert("Could not load article: " + e.message);
+      return;
+    }
+  }
+  currentNhkArticle = article;
+  $("rawText").value = article.text;
+  currentParsed = parseText(article.text);
+  const stats = analyzeText(currentParsed);
+  renderAnalysis(stats);
+  renderCurrent();
+  $("nhkSection").hidden = true;
+  $("inputCard").hidden = true;
+  const url = new URL(location);
+  url.searchParams.set("nhk", article.id);
+  history.replaceState(null, "", url.toString());
+  $("articleView").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// URL query parameter routing
+const params = new URLSearchParams(location.search);
+const nhkParam = params.get("nhk");
+const tabParam = params.get("tab");
+
+if (tabParam === "custom") {
+  $("tabCustom").click();
+} else {
+  loadNhkList().then(() => {
+    if (nhkParam) {
+      if (nhkParam === "today" || nhkParam === "latest") {
+        if (nhkArticles[0]) openNhkArticle(nhkArticles[0].id);
+      } else {
+        openNhkArticle(nhkParam);
+      }
+    }
+  });
+}
+
 // Preload pitch accent data in background
 pitchInfo("日本語", "にほんご");
+
+window.blipContext = () => ({
+  page: "Yomu immersion reader",
+  role: "Explain Japanese vocabulary, grammar structures, or nuances of whatever text the learner is reading.",
+  textLength: $("rawText").value?.length || 0,
+  nhkArticle: currentNhkArticle ? currentNhkArticle.title : null
+});
 </script>
 </body>
 </html>
