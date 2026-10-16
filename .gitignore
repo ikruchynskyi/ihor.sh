@@ -14,7 +14,7 @@ __pycache__/
 radio/fm-scan.json
 # tunnel credentials for compose.yaml
 cloudflared/
-radio/gains.json
+radio/gains*.json
 catboost_info/
 
 # Yomu runtime caches the server rewrites (Jisho lookups, NHK Easy articles)

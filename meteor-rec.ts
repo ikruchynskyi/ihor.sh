@@ -32,6 +32,9 @@ let upcoming: Planned[] = [], running: { pid: number; sat: string; until: number
 function startRecorder(p: Planned) {
   if (running && Date.now() < running.until + 60_000) { console.log(`meteor: ${p.sat} skipped, ${running.sat} is still recording`); return; }
   const id = `${new Date(p.rise).toISOString().slice(0, 16).replace(/[-:T]/g, "")}-${p.sat}`;
+  // `running` doesn't survive a restart, and a restart mid-pass re-plans that pass: a second recorder would take over
+  // the radio stream and start raw.cu8 over (2026-10-16 19:21: two restarts cost the pass its first 7 minutes).
+  if (existsSync(path.join(DIR, id))) { console.log(`meteor: ${id} already recorded or recording`); return; }
   const child = spawn(process.execPath, [SCRIPT, "--sat", p.sat, "--freq", String(p.freq), "--until", String(p.set), "--max-el", p.maxEl.toFixed(0), "--id", id], { detached: true, stdio: "ignore" });
   child.unref(); // keeps running if the site server restarts
   running = { pid: child.pid ?? 0, sat: p.sat, until: p.set };
