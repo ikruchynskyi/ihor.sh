@@ -10,6 +10,10 @@
 # `answer(n)` are there when you're stuck.
 #
 # Use a GPU: Colab → Runtime → Change runtime type → T4 GPU; Kaggle → Settings → Accelerator → GPU, Internet on.
+#
+# The first code cell downloads the Oxford-IIIT Pet photos (about 800 MB) from Oxford's own server, which is often
+# slow: in October 2026 it ran at 160–370 KB/s, so the download alone can take 35–80 minutes. Start it, then read
+# ahead in the lesson while it runs; it only happens once per session.
 
 # %%
 %pip install -q gradio huggingface_hub

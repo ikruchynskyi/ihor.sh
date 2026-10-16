@@ -175,7 +175,8 @@ check(lambda: too_small == 0.001 and too_big == 0.03,
 # The Oxford-IIIT Pet photos show cats and dogs. Instead of starting from zero knobs, we take **ResNet-18**, a
 # model already trained on 1.2 million everyday photos, so it already knows edges, fur and eyes. We swap its last
 # layer for one with just two answers, cat or dog, and train for two short passes over 2,000 photos. The first
-# cell downloads about 800 MB of photos; on a computer without a GPU, the training cell is slow (see the top).
+# cell downloads about 800 MB of photos from Oxford's server, which is often slow (the download alone can take over
+# half an hour); on a computer without a GPU, the training cell is slow too (see the top).
 
 # %%
 import torch, torchvision

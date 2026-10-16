@@ -21,17 +21,16 @@ s4-your-first-shared-model | 5 | 5/5 | 2 | 0 | 2 | 0 | 0 | 1
 | s3 | reading formulas aloud and turning them into code | normal difficulty | it's what s3 teaches, with worked examples; no change |
 | s4 | torch.allclose "not introduced" | misread | Exercise 3's text names it and says what it does; pointed the student there |
 | s4 | notebook timed out after 30 min | test setup | GPU notebooks are no longer run on the student's machine (11 notebooks) |
-| s4 | Oxford's pet-photo server is slow (160–370 KB/s here: 800 MB takes 35–80 min) | real | **proposal below** |
+| s4 | Oxford's pet-photo server is slow (160–370 KB/s here: 800 MB takes 35–80 min) | real | notes added to the s1 and s4 notebooks (owner's decision) |
 
-## Proposal for the owner
+## Owner's decision
 
-**Load the Oxford-IIIT Pet photos from a fast mirror.** s1 Part 2 and the s4 notebook download them from Oxford's
-server through torchvision, which ran at 160–370 KB/s from here, so the download alone can take over half an hour
-on Colab or Kaggle too. Milestone 5 already loads CIFAR-10 from the Hugging Face hub. Moving both notebooks to a
-Hugging Face copy of the same dataset (license: CC BY-SA 4.0, as the original) means changing their loading cells
-and re-testing both versions on a GPU. Decide: switch to a mirror, or keep Oxford and warn about the download time.
+Keep Oxford's server and warn learners (2026-10-16): both notebooks now say the photos come from Oxford's often-slow
+server and the download alone can take over half an hour; s4 suggests reading ahead while it runs.
 
 ## Passages changed (proofread in place)
+
+- `ai/notebooks/src/s4-your-first-shared-model.py`: a paragraph after "Use a GPU" about the slow download; `ai/notebooks/src/s1-what-is-ml.py`: Part 2's first paragraph.
 
 - `ai/notebooks/src/s1-what-is-ml.py`: the intro paragraph about Part 2, and the Part 2 heading and its first
   paragraph (81ee6b0).

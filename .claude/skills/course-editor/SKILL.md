@@ -27,6 +27,14 @@ Then loop:
    something that needs you, then prints those events (one JSON line each) and exits; you're notified.
 2. Handle each event (below), then start `watch` again. An idle `-- nothing new` after the timeout is fine: start it again.
 
+## Priority: content and structure
+
+The review exists to find out whether the course's **content and structure** carry a beginner: gaps in the ledger,
+steps too big, unclear explanations, missing examples, lessons in the wrong order, questions that don't test the
+idea. Spend your effort there. Infrastructure (slow downloads, timeouts, the test machine, tooling) gets the
+smallest fix that unblocks the student, usually a one-line note to learners in the course, and no engineering
+unless the owner asks.
+
 ## Events
 
 - **`ask`** (the student waits 5 minutes: answer first, fix later). Read only the section it's in. Answer **as the
