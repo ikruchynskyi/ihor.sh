@@ -15,8 +15,10 @@
     canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; }
     .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
     table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
-    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
     .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    .wide-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin: 12px 0; }
+    .katex-display { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+    select { max-width: 100%; }
   </style>
 </head>
 <body>
@@ -102,12 +104,115 @@ print("exact: -1 per step, +10 at the end, discounted:", [round(sum(-gamma ** k 
     </ul>
   </details>
 
-  <h2>5. What to carry forward</h2>
+  <h2>5. Direct Preference Optimization: alignment without a reward model</h2>
+  <p>RLHF with PPO works, but running it is famously complicated: you must train a separate reward model network, freeze it, and then run an actor-critic reinforcement learning loop that samples tokens from the model in an inner loop. If the policy drifts too far from the base model, it can produce gibberish or game the reward model.</p>
+  <p>In 2023, Rafailov et al. noticed an exact mathematical shortcut. When an agent optimizes a reward function with a penalty for drifting (in KL divergence) from a frozen reference model \(\pi_{\text{ref}}\), the optimal reward can be written directly in terms of the model's own probabilities:</p>
+  <p class="formula">\[ r(x, y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x) \]</p>
+  <p>where \(\beta\) is a temperature parameter and \(Z(x)\) is a normalizing factor. When people compare two completions \(y_w\) (winner) and \(y_l\) (loser) for a prompt \(x\), the Bradley-Terry preference probability is the sigmoid of their reward difference. Substituting the formula above makes \(Z(x)\) cancel out completely!</p>
+  <p>This gives <b>Direct Preference Optimization (DPO)</b>. Instead of training a reward model and running PPO, DPO trains the model directly on preference pairs \((x, y_w, y_l)\) using binary cross-entropy:</p>
+  <p class="formula">\[ \mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l)} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right] \]</p>
+  <p>The term inside the sigmoid is simply how much the policy has boosted the winning answer's likelihood relative to the reference, minus how much it boosted the losing answer's likelihood. If the model already prefers \(y_w\) over \(y_l\) more than the reference model did, the loss is small; if it prefers the loser, gradients push the policy to increase \(\pi_\theta(y_w)\) and decrease \(\pi_\theta(y_l)\).</p>
+
+  <div class="row">
+    <label>Drift penalty \(\beta\): <input type="range" id="dpo-beta" min="0.05" max="0.50" step="0.05" value="0.10"> <b id="dpo-betav">0.10</b></label>
+    <label>Policy training:
+      <select id="dpo-stage">
+        <option value="init">Untrained (π = ref)</option>
+        <option value="partial">Partially aligned</option>
+        <option value="aligned" selected>Fully aligned</option>
+      </select>
+    </label>
+  </div>
+  <div class="wide-scroll">
+  <table class="cmp" id="dpo-table">
+    <thead>
+      <tr><th>Prompt</th><th>Winning response \(y_w\) vs Loser \(y_l\)</th><th>Implicit \(\Delta r\)</th><th>\(P(y_w \succ y_l)\)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Transit directions</b></td>
+        <td><span style="color:#2f9e44">✓ Take the A train to JFK</span><br><span style="color:#e03131">✗ Take the 7 train to Newark</span></td>
+        <td id="dpo-dr1">0.40</td>
+        <td id="dpo-p1">59.9%</td>
+      </tr>
+      <tr>
+        <td><b>Concise code</b></td>
+        <td><span style="color:#2f9e44">✓ Clean 3-line dictionary comprehension</span><br><span style="color:#e03131">✗ 20-line verbose loop with global state</span></td>
+        <td id="dpo-dr2">0.50</td>
+        <td id="dpo-p2">62.2%</td>
+      </tr>
+      <tr>
+        <td><b>Fact retrieval</b></td>
+        <td><span style="color:#2f9e44">✓ Accurate historical date and citation</span><br><span style="color:#e03131">✗ Confidently hallucinated event</span></td>
+        <td id="dpo-dr3">0.60</td>
+        <td id="dpo-p3">64.6%</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="readout" id="dpo-readout">At \(\beta = 0.10\), the policy balances reward improvement with staying tethered to \(\pi_{\text{ref}}\).</p>
+
+  <div class="q" data-answer="b">
+    <p>In Direct Preference Optimization, what happens if \(\beta\) is set to a very large value?</p>
+    <ul>
+      <li data-k="a" data-says="A larger beta penalizes deviations from the reference model more heavily.">The policy changes rapidly and ignores the reference model</li>
+      <li data-k="b">The policy is anchored tightly to the reference model \(\pi_{\text{ref}}\), making updates very conservative</li>
+      <li data-k="c" data-says="DPO never uses a separate reward model or PPO loop.">It reverts to standard PPO</li>
+    </ul>
+    <div class="why">\(\beta\) controls the strength of the KL divergence penalty against drifting from the frozen reference model. Higher \(\beta\) keeps \(\pi_\theta\) closer to \(\pi_{\text{ref}}\).</div>
+  </div>
+
+  <div class="code" data-title="Run it: DPO loss in PyTorch"><textarea>
+import torch
+import torch.nn.functional as F
+
+def dpo_loss(pi_w, pi_l, ref_w, ref_l, beta=0.1):
+    # Implicit reward difference
+    u = beta * ((pi_w - ref_w) - (pi_l - ref_l))
+    # Binary cross-entropy: -log(sigmoid(u))
+    return -F.logsigmoid(u).mean()
+
+# Reference model assigns similar log-probs: winner -1.2, loser -1.4
+ref_w = torch.tensor([-1.2])
+ref_l = torch.tensor([-1.4])
+
+# 1. Untrained policy (identical to reference):
+# u = 0 -> loss = -ln(0.5) ≈ 0.693
+l0 = dpo_loss(ref_w, ref_l, ref_w, ref_l)
+print(f"loss before training: {l0:.3f}")
+
+# 2. Aligned policy: boosted winner, suppressed loser
+pi_w = torch.tensor([-0.6])
+pi_l = torch.tensor([-2.8])
+l1 = dpo_loss(pi_w, pi_l, ref_w, ref_l)
+print(f"loss after alignment: {l1:.3f}")
+</textarea></div>
+
+  <p class="gist">Direct Preference Optimization mathematically bypasses the reward model and PPO loop, optimizing preference pairs directly with cross-entropy against a frozen reference.</p>
+
+  <details class="deeper"><summary>Why the reward model can be bypassed</summary>
+    <ol>
+      <li>Standard RLHF solves:
+        <div class="formula">\[ \max_\pi \mathbb{E}[r(x, y)] - \beta\, \mathbb{D}_{\text{KL}}(\pi \parallel \pi_{\text{ref}}) \]</div>
+      </li>
+      <li>Calculus shows the optimal policy is an exponential tilt:
+        <div class="formula">\[ \pi^*(y \mid x) = \frac{1}{Z(x)} \pi_{\text{ref}}(y \mid x) \exp\left(\frac{1}{\beta} r(x, y)\right) \]</div>
+      </li>
+      <li>Taking logs and rearranging for \(r\):
+        <div class="formula">\[ r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x) \]</div>
+      </li>
+      <li>The Bradley-Terry preference model depends only on the reward difference \(r(x, y_w) - r(x, y_l)\), so the unknown \(Z(x)\) cancels out!</li>
+      <li>Therefore, we can fit \(\pi_\theta\) directly by maximizing the likelihood of human preference judgments, without ever explicitly training \(r\).</li>
+    </ol>
+  </details>
+
+  <h2>6. What to carry forward</h2>
   <ul>
     <li>Agent, state, action, reward; the goal is the discounted return.</li>
-    <li>Bellman: \(Q(s, a) = \mathbb{E}[r + \gamma \max Q(s', \cdot)]\); values flow backward from rewards.</li>
+    <li>Bellman: \(Q(s, a) = r + \gamma \max_{a'} Q(s', a')\); values flow backward from rewards.</li>
     <li>Q-learning: a step toward the temporal-difference target; explore with ε.</li>
-    <li>Policy gradients raise the probability of actions before high returns; PPO and RLHF build on them.</li>
+    <li>Policy gradients raise the probability of actions before high returns; PPO builds on them.</li>
+    <li><b>DPO</b> directly tunes language models on preference pairs against a reference model, cutting out the separate reward model.</li>
     <li>The agent optimizes the reward you wrote: design it, and watch for hacking.</li>
   </ul>
   <p class="muted">All lessons: <a href="./">AI from scratch</a>. Sutton and Barto, "Reinforcement Learning: An Introduction" (free online), and OpenAI's "Spinning Up in Deep RL" are the standard next steps.</p>
@@ -161,6 +266,33 @@ $("play").onclick = () => { if (timer) { clearInterval(timer); timer = null; $("
 $("step10").onclick = () => { for (let i = 0; i < 10; i++) episode(); draw(); };
 $("reset").onclick = reset; ["eps", "gam"].forEach((id) => $(id).addEventListener("input", draw));
 reset();
+
+// DPO interactive widget
+function updateDPO() {
+  const beta = +$("dpo-beta").value;
+  $("dpo-betav").textContent = beta.toFixed(2);
+  const stage = $("dpo-stage").value;
+  const baseDelta = stage === "init" ? [0, 0, 0] : stage === "partial" ? [1.8, 2.2, 2.5] : [4.0, 5.0, 6.0];
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  
+  for (let i = 0; i < 3; i++) {
+    const dr = beta * baseDelta[i];
+    const p = sig(dr);
+    $(`dpo-dr${i + 1}`).textContent = dr.toFixed(2);
+    $(`dpo-p${i + 1}`).textContent = `${(p * 100).toFixed(1)}%`;
+  }
+  
+  if (stage === "init") {
+    $("dpo-readout").textContent = `Untrained policy (π_θ = π_ref): implicit reward difference is 0.00, P(y_w ≻ y_l) = 50.0% (neutral coin toss).`;
+  } else if (stage === "partial") {
+    $("dpo-readout").textContent = `Partially trained at β = ${beta.toFixed(2)}: preference probabilities rise to ~${(sig(beta * 2.2) * 100).toFixed(0)}%.`;
+  } else {
+    $("dpo-readout").textContent = `Fully aligned at β = ${beta.toFixed(2)}: implicit reward difference is strong (up to ${(beta * 6.0).toFixed(2)}), preference win rate reaches ${(sig(beta * 5.0) * 100).toFixed(0)}%.`;
+  }
+}
+$("dpo-beta").oninput = updateDPO;
+$("dpo-stage").onchange = updateDPO;
+updateDPO();
 </script>
 </body>
 </html>

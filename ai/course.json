@@ -5872,7 +5872,7 @@
    "Define agent, state, action, reward and the discounted return",
    "Explain the Bellman equation and how values flow backward from rewards",
    "Implement Q-learning with ε-greedy exploration",
-   "Explain policy gradients, RLHF, and why RL is hard (sparse rewards, instability, reward hacking)"
+   "Explain policy gradients, RLHF, DPO, and why RL is hard (sparse rewards, instability, reward hacking)"
   ],
   "needs": [
    "p1-probability-and-bayes.html",
@@ -5912,6 +5912,10 @@
    [
     "Reward hacking",
     "The agent optimizes the reward as written, not as meant (the boat that circles forever)."
+   ],
+   [
+    "Direct Preference Optimization (DPO)",
+    "Trains policy on preference pairs directly using log-ratios against a frozen reference, without a reward model."
    ]
   ],
   "check": [
@@ -5949,15 +5953,15 @@
     "sec": 3
    },
    {
-    "q": "In RLHF, what plays the role of the reward?",
+    "q": "Why can Direct Preference Optimization (DPO) eliminate the separate reward model?",
     "options": [
-     "A reward model trained to predict which of two answers people prefer",
-     "The number of tokens",
-     "The training loss"
+     "Under a KL penalty, the optimal reward can be written analytically as a log-ratio of policy to reference probabilities",
+     "Because it only works on binary choices",
+     "Because neural networks do not need rewards"
     ],
     "answer": 0,
-    "why": "Human preference pairs → reward model → PPO on the language model.",
-    "sec": 4
+    "why": "Substituting the closed-form reward into the Bradley-Terry preference model cancels the partition function, yielding cross-entropy directly on pairs.",
+    "sec": 5
    },
    {
     "q": "An agent rewarded for hitting targets circles them forever instead of finishing the race. This is…",

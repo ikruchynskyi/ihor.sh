@@ -180,5 +180,29 @@ print("first 20 episodes:", np.mean(lengths[:20]).round(1), "· last 50:", np.me
 check(lambda: np.mean(lengths[-50:]) > 300, "from a few dozen steps to hundreds: actions that came before long balances got more likely")
 
 # %% [markdown]
+# ## 6. Direct Preference Optimization (DPO)
+# In DPO, instead of fitting a separate reward model network and running PPO, we train the policy $\pi_\theta$ directly
+# on pairs $(x, y_w, y_l)$ against a frozen reference model $\pi_{\text{ref}}$.
+# Write `dpo_loss(pi_w, pi_l, ref_w, ref_l, beta=0.1)`: calculate the implicit reward difference
+# `u = beta * ((pi_w - ref_w) - (pi_l - ref_l))` and return `-F.logsigmoid(u).mean()`.
+
+# %%
+import torch.nn.functional as F
+
+def dpo_loss(pi_w, pi_l, ref_w, ref_l, beta=0.1):
+    ### HINT u = beta * ((pi_w - ref_w) - (pi_l - ref_l))
+    ### HINT return -F.logsigmoid(u).mean()
+    ### BEGIN SOLUTION
+    u = beta * ((pi_w - ref_w) - (pi_l - ref_l))
+    return -F.logsigmoid(u).mean()
+    ### END SOLUTION
+
+# %%
+ref_w, ref_l = torch.tensor([0.0]), torch.tensor([0.0])
+check(lambda: abs(dpo_loss(torch.tensor([0.0]), torch.tensor([0.0]), ref_w, ref_l).item() - 0.6931) < 1e-3
+      and abs(dpo_loss(torch.tensor([5.0]), torch.tensor([-5.0]), ref_w, ref_l).item() - 0.3132) < 1e-3,
+      "loss is ln 2 ≈ 0.693 when policy equals reference; drops to 0.313 when winning response is preferred")
+
+# %% [markdown]
 # ## Next
 # Back to the path: https://ihor.sh/ai/ · OpenAI, "Spinning Up in Deep RL": https://spinningup.openai.com/
