@@ -514,7 +514,7 @@ const server = http.createServer(async (req, res) => {
         const data = url.pathname === "/api/radio/propagation" ? await propagation()
           : url.pathname === "/api/radio/sats" ? await hamPasses(ok ? +la.toFixed(2) : undefined, ok ? +lo.toFixed(2) : undefined, Math.min(72, Number(url.searchParams.get("hours")) || 24))
           : await satTrack(String(url.searchParams.get("id") ?? "iss"), ok ? la : undefined, ok ? lo : undefined);
-        return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/propagation" || url.pathname === "/api/radio/sats" ? 600 : 5}` }).end(JSON.stringify(data));
+        return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${url.pathname === "/api/radio/propagation" || url.pathname === "/api/radio/sats" ? 600 : 2}` }).end(JSON.stringify(data));
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (url.pathname === "/api/site/search") {

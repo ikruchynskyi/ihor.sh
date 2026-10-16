@@ -751,6 +751,7 @@ const horizonLayer = L.layerGroup().addTo(map);
 let sats: any = null;
 let satShown: string | null = null;
 let satTimer: ReturnType<typeof setInterval> | undefined;
+let satMarker: any = null;
 let satHome = map.getCenter();
 
 const at = () => `lat=${satHome.lat.toFixed(2)}&lon=${satHome.lng.toFixed(2)}`;
@@ -890,15 +891,8 @@ async function showSat(id: string) {
     iconAnchor: [13, 13]
   });
 
-  const v = t.view;
-  L.marker([t.now[0], t.now[1]], { icon })
-    .bindPopup(
-      `<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>
-       ${t.now[2]} km altitude · ${v?.aboveHorizon ? `<b class="good">Above horizon: ${v.elevation}° (${v.direction})</b>` : "Below horizon"}<br>
-       ↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}
-       ${t.sat.pictures ? `<br><a class="sat-rec-btn" href="${picUrl(t.sat.pictures)}" target="_blank" rel="noopener" style="margin-top:8px;">🎙️ Open Satellite Recorder & Decoder →</a>` : ""}`,
-      { autoPan: false }
-    )
+  satMarker = L.marker([t.now[0], t.now[1]], { icon })
+    .bindPopup(satPopup(t), { autoPan: false })
     .addTo(satLayer)
     .openPopup();
 
@@ -906,15 +900,22 @@ async function showSat(id: string) {
   clearInterval(satTimer);
   satTimer = setInterval(() => {
     if (satShown === id) showSatQuiet(id);
-  }, 10_000);
+  }, 5_000);
+}
+
+/** The satellite marker's popup: rebuilt on every refresh, so altitude and elevation stay current while it's open. */
+function satPopup(t: any) {
+  const v = t.view;
+  return `<b>${esc(t.sat.name)}</b> <span class="muted">${esc(t.sat.kind)}</span><br>
+       ${t.now[2]} km altitude · ${v?.aboveHorizon ? `<b class="good">Above horizon: ${v.elevation}° (${v.direction})</b>` : "Below horizon"}<br>
+       ↓ ${esc(t.sat.down)}${t.sat.up ? `<br>↑ ${esc(t.sat.up)}` : ""}
+       ${t.sat.pictures ? `<br><a class="sat-rec-btn" href="${picUrl(t.sat.pictures)}" target="_blank" rel="noopener" style="margin-top:8px;">🎙️ Open Satellite Recorder & Decoder →</a>` : ""}`;
 }
 
 async function showSatQuiet(id: string) {
   const t = await fetch(`/api/radio/sat-track?id=${encodeURIComponent(id)}&${at()}`).then((r) => r.json()).catch(() => null);
-  if (!t || t.error) return;
-  satLayer.eachLayer((l: any) => {
-    if (l.setLatLng && l.getLatLng) l.setLatLng([t.now[0], t.now[1]]);
-  });
+  if (!t || t.error || satShown !== id || !satMarker) return;
+  satMarker.setLatLng([t.now[0], t.now[1]]).setPopupContent(satPopup(t));
 }
 
 loadSats();
