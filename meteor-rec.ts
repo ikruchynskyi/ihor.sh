@@ -1,5 +1,6 @@
 // The server's Meteor pass recorder: schedules and serves. Every 20 minutes it computes the next 48 hours of Meteor-M2 3
-// and M2 4 passes over the radio server's place and sets a timer for each one that peaks at 40° or more; a minute
+// and M2 4 passes over the radio server's place and sets a timer for each one that spends a minute or more in the part of
+// the sky the antenna hears (WINDOW); a minute
 // before the satellite rises it starts radio/scripts/meteor-record.ts as its own process (so decoding never slows the
 // site), which takes the server's dongle until the satellite sets. After a restart mid-pass it records the rest.
 // Products live in data/meteor/<id>/ (git-ignored); /api/meteor/passes lists them, /api/meteor/file serves them.
@@ -7,12 +8,24 @@ import { spawn } from "node:child_process";
 import { existsSync, createReadStream, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type http from "node:http";
-import { tleFor, passes } from "./sat.ts";
+import { tleFor, passes, look, site, type Tle } from "./sat.ts";
 
 const DIR = path.join(import.meta.dirname, "data", "meteor"), SCRIPT = path.join(import.meta.dirname, "radio", "scripts", "meteor-record.ts");
 const SATS = [{ id: "meteor-m2-3", catnr: 57166, freq: 137.9 }, { id: "meteor-m2-4", catnr: 59051, freq: 137.9 }];
-const HOME = { lat: 40.73, lon: -73.95 }, MIN_EL = 40, LEAD_MS = 60_000;   // 40°: user, 2026-10-15 (60° missed too many passes)
-type Planned = { sat: string; freq: number; rise: number; set: number; maxEl: number };
+const HOME = { lat: 40.73, lon: -73.95 }, LEAD_MS = 60_000;
+// Where the balcony's V-dipole hears Meteor: the first three passes (2026-10-15/16) only ever had signal with the
+// satellite north (azimuth ~350–35°) at 25–55° up; overhead and the southern sky gave nothing, and a 42° pass through the
+// south and west gave no frames. So a pass is worth recording for its minutes in this window, not for its peak (user,
+// 2026-10-16; was "peaks at 40° or more"). ponytail: fixed box from 3 passes, widen az/el as more passes show signal.
+const WINDOW = { minEl: 20, maxEl: 60, azFrom: 315, azTo: 45, minutes: 1 };
+type Planned = { sat: string; freq: number; rise: number; set: number; maxEl: number; northMin: number };
+
+/** Minutes of a pass the satellite spends inside WINDOW (sampled every 10 s). */
+export function windowMinutes(tle: Tle, rise: number, set: number) {
+  const here = site(HOME.lat, HOME.lon); let n = 0;
+  for (let t = rise; t < set; t += 10_000) { const { el, az } = look(tle, t, here); if (el >= WINDOW.minEl && el <= WINDOW.maxEl && (az >= WINDOW.azFrom || az <= WINDOW.azTo)) n++; }
+  return n / 6;
+}
 const timers = new Map<string, NodeJS.Timeout>();
 let upcoming: Planned[] = [], running: { pid: number; sat: string; until: number } | null = null;
 
@@ -29,7 +42,10 @@ async function plan() {
   const next: Planned[] = [];
   for (const s of SATS) {
     const tle = await tleFor(s.catnr).catch(() => null); if (!tle) continue;
-    for (const p of passes(tle, HOME.lat, HOME.lon, Date.now() - 20 * 60e3, 48, 10)) if (p.maxEl >= MIN_EL && p.set > Date.now()) next.push({ sat: s.id, freq: s.freq, rise: p.rise, set: p.set, maxEl: p.maxEl });
+    for (const p of passes(tle, HOME.lat, HOME.lon, Date.now() - 20 * 60e3, 48, WINDOW.minEl)) {
+      const northMin = windowMinutes(tle, p.rise, p.set);
+      if (northMin >= WINDOW.minutes && p.set > Date.now()) next.push({ sat: s.id, freq: s.freq, rise: p.rise, set: p.set, maxEl: p.maxEl, northMin });
+    }
   }
   upcoming = next.sort((a, b) => a.rise - b.rise);
   for (const p of upcoming) {
@@ -51,7 +67,7 @@ export function meteorApi(url: URL, res: http.ServerResponse): boolean {
   if (url.pathname === "/api/meteor/passes") {
     const recorded = existsSync(path.join(DIR, "index.json")) ? JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) : [];
     const now = running && Date.now() < running.until + 60_000 ? running : null;
-    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ minEl: MIN_EL, home: HOME, recording: now && { sat: now.sat, until: now.until }, upcoming: upcoming.filter((p) => p.set > Date.now()), recorded }));
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ window: WINDOW, home: HOME, recording: now && { sat: now.sat, until: now.until }, upcoming: upcoming.filter((p) => p.set > Date.now()), recorded }));
     return true;
   }
   if (url.pathname === "/api/meteor/file") {
