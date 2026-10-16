@@ -9,6 +9,14 @@ db.exec(`create virtual table pages using fts5(url unindexed, world unindexed, t
 const put = db.prepare(`insert into pages (url, world, title, description, headings, body) values (?, ?, ?, ?, ?, ?)`);
 let ready: Promise<number> | null = null;
 
+// Tooling that lives beside a world's pages but isn't the site: dot-folders (ai/review/.venv), dependencies, caches,
+// and the course-review runs (ai/review/). Never served, listed or indexed. Paths are relative to a world, "/"-led.
+const PRIVATE = /\/(\.[^/]*|node_modules|__pycache__)(\/|$)|^\/ai\/review\//;
+export const isPrivate = (urlPath: string) => PRIVATE.test(urlPath);
+/** A world's public pages, as paths relative to its folder ("lesson.html", "sub/index.html"). */
+export const publicPages = async (dir: string, name: string) =>
+  (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html") && !isPrivate(`/${name}/${f}`)).sort();
+
 const text = (html: string) => html.replace(/<(script|style|svg)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
 const grab = (html: string, re: RegExp) => [...html.matchAll(re)].map((m) => text(m[1])).filter(Boolean);
 
@@ -19,7 +27,7 @@ export function buildIndex(root: string, worlds: Record<string, { dir: string; l
     const add = (url: string, world: string, title: string, description: string, headings: string, body: string) => { put.run(url, world, title, description, headings, body.slice(0, 30_000)); n++; };
     add("/", "home", "ihor.sh: the home page", "Every world and project on one screen.", "", text(await readFile(path.join(root, "index.html"), "utf8")));
     for (const [name, { dir, label }] of Object.entries(worlds)) {
-      for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
+      for (const f of await publicPages(dir, name)) {
         const html = await readFile(path.join(dir, f), "utf8");
         if (html.includes('name="ihor-bare"')) continue;
         const body = html.match(/<body[\s\S]*$/i)?.[0] ?? html;

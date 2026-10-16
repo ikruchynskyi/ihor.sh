@@ -2,7 +2,7 @@
 // Public behind a Cloudflare tunnel, so only whitelisted paths are served (never the repo root).
 import "./env.ts";
 import http from "node:http";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { startArchive, summary } from "./archive.ts";
@@ -30,7 +30,7 @@ import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
 import { edgeTTS } from "./yomu-tts.ts";
 import { getNhkArticles, getNhkArticleById } from "./yomu-nhk.ts";
 import { getTemplates, searchTemplates } from "./memes.ts";
-import { buildIndex, siteSearch } from "./search.ts";
+import { buildIndex, isPrivate, publicPages, siteSearch } from "./search.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
 import { startMeteorRecorder, meteorApi } from "./meteor-rec.ts";
 import { propagation } from "./spacewx.ts";
@@ -87,7 +87,7 @@ var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
 async function siteMap() {
   const lines = ["/ — home: the project select screen"];
   for (const [name, { dir }] of Object.entries(WORLDS))
-    for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
+    for (const f of await publicPages(dir, name)) {
       const page = await readFile(path.join(dir, f), "utf8"), title = page.match(/<title>([^<]*)/)?.[1]?.trim();
       if (page.includes('name="ihor-bare"')) continue;
       lines.push(`/${name}/${f.replace(/index\.html$/, "")} — ${title ?? f}`);
@@ -251,7 +251,7 @@ function llmsTxt() {
       `- /api/ serves the site's own pages only; /sitemap.xml lists every page.`, `- Author: Ihor Kruchynskyi (https://ihork.link/).`, ``];
     for (const [name, { dir, label }] of Object.entries(WORLDS)) {
       out.push(`## ${label}`, ``);
-      for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort()) {
+      for (const f of await publicPages(dir, name)) {
         const page = await readFile(path.join(dir, f), "utf8");
         if (page.includes('name="ihor-bare"')) continue;
         const title = page.match(/<title>([^<]*)/)?.[1]?.trim() ?? f, desc = page.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "";
@@ -308,7 +308,7 @@ async function sitemap() {
   for (const level of ["N5", "N4", "N3", "N2", "N1"]) for (const type of ["kanji", "words"]) urls.push([`${SITE}/yomu/deck.html?level=${level}&type=${type}`, (await stat(path.join(ROOT, "yomu/deck.html"))).mtime]);
   for (const level of ["N5", "N4", "N3"]) urls.push([`${SITE}/yomu/grammar.html?level=${level}`, (await stat(path.join(ROOT, "yomu/grammar.html"))).mtime]);
   for (const [name, { dir }] of Object.entries(WORLDS))
-    for (const f of (await readdir(dir, { recursive: true })).filter((f) => f.endsWith(".html")).sort())
+    for (const f of await publicPages(dir, name))
       if (!(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
@@ -895,6 +895,7 @@ const server = http.createServer(async (req, res) => {
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();
     if (world) {
       const rel = decodeURIComponent(rest);
+      if (isPrivate(`/${name}${rel}`)) return notFound(res);
       const file = path.resolve(world.dir, "." + rel + (rel.endsWith("/") ? "index.html" : ""));
       if (!file.startsWith(world.dir + path.sep)) return res.writeHead(403).end();
       return serveFile(res, file, world.label, url.pathname, url.searchParams);
