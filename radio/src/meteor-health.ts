@@ -5,8 +5,9 @@ import type { Channel } from "./meteor.ts";
 /** How far the satellite's band (±40 kHz) stands above the noise floor, in dB, from a spectrum (dB, 0 Hz in the middle).
  *  The floor is learned per frequency (it falls at once, and creeps up 0.1 dB a minute, so a pass doesn't erase itself),
  *  and a band beside the signal (62–74 kHz) is subtracted, so the dongle filter's shape and the floor's own wobble
- *  cancel: noise alone reads about 0 dB. The scale is compressed: Es/N0 of 1, 3 and 8 dB read about 1.9, 2.8 and 5.1;
- *  decoding takes about 2 on this meter. */
+ *  cancel: noise alone reads about 0 dB. It reads about 0.9 × 10·log10(1 + Es/N0): on synthetic passes (meteor-sim.ts at
+ *  240 kS/s, 2026-10-16) Es/N0 of −3, 0, 1, 2 and 4 dB read 1.6, 2.7, 3.2, 3.7 and 5.0, and pictures start at 1 dB (3.2).
+ *  Real passes need a little more: the first error-corrected frames came at about 3.5. */
 export class SignalMeter {
   db = 0; private floor: Float32Array | null = null;
   push(spec: Float32Array, fs: number) {

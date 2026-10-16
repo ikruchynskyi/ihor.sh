@@ -222,8 +222,8 @@ function health() {
       : clipShare * 100 >= 0.5 ? row("🟡", "Dongle", "samples arriving, but overloaded: lower the gain until the input level line says fine.")
       : row("🟢", "Dongle", "samples arriving, no overload."),
     source !== "dongle" ? row("⚪", "Signal", "measured live only (from the waterfall).")
-      : snrDb >= 2 ? row("🟢", "Signal", `the satellite's band stands ${snrDb.toFixed(1)} dB above the noise: enough to decode (it takes about 2 dB on this meter).`)
-      : snrDb >= 0.7 ? row("🟡", "Signal", `${snrDb.toFixed(1)} dB above the noise: there is a signal, maybe too weak to decode (about 2 dB is needed).`)
+      : snrDb >= 3.5 ? row("🟢", "Signal", `the satellite's band stands ${snrDb.toFixed(1)} dB above the noise: enough to decode (it takes about 3.5 dB on this meter).`)
+      : snrDb >= 0.7 ? row("🟡", "Signal", `${snrDb.toFixed(1)} dB above the noise: there is a signal, maybe too weak to decode (about 3.5 dB is needed).`)
       : row("⚪", "Signal", `nothing above the noise (${snrDb.toFixed(1)} dB). Normal while the satellite is below the horizon; during a pass, the antenna isn't hearing it (obstruction, low pass, or the wrong frequency).`),
     !rx ? row("⚪", "Carrier", "the decoder hasn't started.")
       : rx.acquired || (st as { acquired?: boolean }).acquired ? row("🟢", "Carrier", `found the satellite's exact frequency, ${(st!.freqHz / 1000).toFixed(2)} kHz from where we're tuned (that's Doppler plus the dongle's own error), and following it.`)

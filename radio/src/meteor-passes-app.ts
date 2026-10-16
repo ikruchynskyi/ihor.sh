@@ -17,8 +17,8 @@ function card(m: any) {
   const row = (light: string, title: string, text: string) => `<li>${light} <b>${title}:</b> ${text}</li>`;
   return [
     clip >= 0.5 ? row("🟡", "Dongle", `recorded, but ${clip.toFixed(2)}% of samples clipped: the gain was too high for this band.`) : row("🟢", "Dongle", `recorded ${Math.round((m.end - m.start) / 60e3)} minutes without overload.`),
-    best >= 2 ? row("🟢", "Signal", `the satellite's band rose ${best.toFixed(1)} dB above the noise at best: enough to decode.`)
-      : best >= 0.7 ? row("🟡", "Signal", `rose only ${best.toFixed(1)} dB above the noise: weak (about 2 dB is needed).`)
+    best >= 3.5 ? row("🟢", "Signal", `the satellite's band rose ${best.toFixed(1)} dB above the noise at best: enough to decode.`)
+      : best >= 0.7 ? row("🟡", "Signal", `rose only ${best.toFixed(1)} dB above the noise: too weak for clean frames (about 3.5 dB is needed).`)
       : row("⚪", "Signal", `never rose above the noise (${best.toFixed(1)} dB): the antenna didn't hear the satellite (blocked, or the satellite was off).`),
     st.acquired || firstLock ? row("🟢", "Carrier", `found${firstLock ? ` at ${new Date(firstLock.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}, ${firstLock.el.toFixed(0)}° up` : ""}.`) : row("⚪", "Carrier", "never found."),
     !st.frames ? row("⚪", "Data", "no frames.")
