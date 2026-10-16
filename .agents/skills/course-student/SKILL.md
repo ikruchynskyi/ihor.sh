@@ -60,6 +60,11 @@ Resume any time: `L path` shows where you are, `L show` reopens the current less
 5. **The notebook**, if the lesson has one: `L nb LESSON` makes your copy. Fill each `# YOUR CODE HERE` / `...`,
    then `L nbcheck LESSON` (some take minutes: they download data and train). Stuck: `L hint LESSON N`, again for the
    next hint. After the last hint it shows the solution, and that gets logged as a struggle by itself.
+   **You can't program except what the course showed you.** Write each answer only from syntax and calls the course
+   has shown, and for every exercise log where you saw it:
+   `echo '{"kind": "exercise", "exercise": 3, "quote": "for x in xs: visits each item", "how": "copied the loop shape from §4"}' | L note`.
+   `done` refuses until every exercise has one, and the quotes get checked. If the course never showed you how,
+   take `L hint` first, and log the struggle, instead of writing what you happen to know.
 6. **Finish:** `echo '{"minutes": 25, "hardest": "…", "would_continue": true, "confidence": 3}' | L done`.
    `done` refuses while a question is unanswered.
 
@@ -74,6 +79,17 @@ Resume any time: `L path` shows where you are, `L show` reopens the current less
 - A notebook part that only downloads something huge or trains for a long time without a GPU, with nothing to write
   (like s1's Part 2 preview): skip it as a learner on a laptop would, and log it if the notebook didn't say you could.
 - Before you stop for the day: `L clean`.
+
+## Stay in character
+
+- **Use the course's words.** If a word you're about to write never appeared in what you were shown (say
+  "broadcasting", when the lesson said "arithmetic on whole arrays"), that's your own knowledge talking. Rephrase
+  with the course's words, or log that the course never named it.
+- **Work like a beginner:** a section at a time, in order. Run each code box when you reach it, not all at the end.
+  Read its output and say what surprised you.
+- **Real time:** `done` records the actual minutes. Give `minutes` as your estimate for a human beginner, and say so.
+- **Everything you name as hard is a struggle.** If you'd put it in `hardest`, it should already be in a struggle
+  note, at the moment you met it.
 
 ## Log every struggle, the moment it happens
 

@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPO / "ai" / "notebooks"))
 import build, lint  # the notebooks' exercise numbering and the path order, shared with the course's own tools
 
 ATTENTION = {"struggle", "ask", "quit", "guess", "error", "wrong_twice", "answer_used", "done"}
-NOTE_KINDS = {"struggle", "guess", "quit", "observation"}
+NOTE_KINDS = {"struggle", "guess", "quit", "observation", "exercise"}
 STRUGGLES = {"unknown term or symbol", "step too big", "unclear wording", "example missing", "widget confusing or broken",
              "code error", "question ambiguous", "answer seems wrong", "too long or boring"}
 
@@ -210,6 +210,7 @@ def cmd_note(args):
     ev = json.loads(sys.stdin.read())
     if ev.get("kind") not in NOTE_KINDS: sys.exit(f"kind must be one of {sorted(NOTE_KINDS)}")
     if ev["kind"] == "struggle" and ev.get("type") not in STRUGGLES: sys.exit(f"a struggle's type is one of {sorted(STRUGGLES)}")
+    if ev["kind"] == "exercise" and not (ev.get("exercise") and ev.get("quote")): sys.exit('an exercise note needs "exercise": N and "quote": where the course showed you how')
     ev.setdefault("lesson", lesson())
     print("logged:", log(ev.pop("kind"), **ev)["kind"])
 
@@ -234,8 +235,16 @@ def cmd_done(args):
     les, evs = parsed(stem), [e for e in lines(RUN / "log.jsonl") if e.get("lesson") == stem]
     missing = [q["n"] for q in les.qs if not any(e["kind"] == "answer" and e["q"] == q["n"] for e in evs)]
     if missing: sys.exit(f"Answer every question first: Q{', Q'.join(map(str, missing))} of {stem}.")
+    if any(e["kind"] == "nb_start" for e in evs):
+        cited = {int(e["exercise"]) for e in evs if e["kind"] == "exercise"}
+        uncited = [n for n in range(1, len(exercises(stem)) + 1) if n not in cited]
+        if uncited: sys.exit(f"For each notebook exercise, note where the course showed you how (kind \"exercise\"): {uncited} still need one.")
     summary = json.loads(sys.stdin.read() or "{}") if not sys.stdin.isatty() else {}
-    log("done", lesson=stem, **summary)
+    if summary.get("hardest") and not any(e["kind"] == "struggle" for e in evs):  # named it, didn't log it: log it
+        log("struggle", lesson=stem, type="step too big", section="?", quote="", auto=True, expected="(from the lesson summary)", happened=summary["hardest"], quit=False)
+    start = next((e["ts"] for e in evs if e["kind"] == "show"), None)
+    wall = round((time.time() - time.mktime(time.strptime(start, "%Y-%m-%dT%H:%M:%S"))) / 60) if start else None
+    log("done", lesson=stem, wall_minutes=wall, **{("estimated_minutes" if k == "minutes" else k): v for k, v in summary.items()})
     st["current"] += 1; jsave(RUN / "state.json", st)
     cmd_clean([])
     print(f"✓ {stem} done. Next: {LESSONS[st['current']] if st['current'] < len(LESSONS) else 'the path is finished'}.")
@@ -323,7 +332,7 @@ def norm(s): return re.sub(r"\s+", " ", re.sub(r"\\[()\[\]]", "", html.unescape(
 def cmd_audit(args):
     seen, bad = norm((RUN / "seen.txt").read_text() if (RUN / "seen.txt").exists() else ""), 0
     for e in lines(RUN / "log.jsonl"):
-        if e["kind"] in ("answer", "struggle", "guess"):
+        if e["kind"] in ("answer", "struggle", "guess", "exercise") and not e.get("auto"):
             q = norm(e.get("quote"))
             if not q: print(f"no quote: {e['kind']} {e.get('lesson')} Q{e.get('q', '')} {e.get('value', '')}"); bad += 1
             elif q not in seen: print(f"quote not in what it was shown: {e.get('lesson')} Q{e.get('q', '')}: {e.get('quote')[:120]!r}"); bad += 1

@@ -621,5 +621,6 @@ start a new run and skip the lessons verified below (or rerun them after big cha
 | Lesson | Verified | Result | Fixes | Open |
 |---|---|---|---|---|
 | s1-what-is-ml | 2026-10-15 | 4/4 questions first try, notebook 4/4 without hints, 20 min, confidence 4/5 | 81ee6b0 notebook Part 2 marked optional with its real cost; c29e04a §2 chart labels clear on a phone, plane.js text() kept inside charts | the student named squared error and learning rate as hardest but logged no struggle for them: recheck on the final rerun |
-| s2-just-enough-code | in progress | | | |
+| s2-just-enough-code | 2026-10-16 (provisional) | 7/7 first try, 9 code boxes ran, notebook 9 ✓ without hints; only 4.5 real minutes (reported 25), boxes run in one burst, no struggles logged, and it said "broadcasting", a word the lesson never uses: the student answered as an expert | none to the course; tool: exercise citations required, "hardest" logged as a struggle, real minutes recorded | rerun s2 under the new rules on the final pass; zero-indexing and "arithmetic on whole arrays" named hardest |
+| s3-math-warm-up | in progress | | | |
 
