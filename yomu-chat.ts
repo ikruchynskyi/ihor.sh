@@ -108,6 +108,9 @@ Answer with the JSON object only.`;
       out = o;
     } catch (e) { err = e; }
   }
+  // The model answers some topics with nothing, every time (qwen3.5 on Tiananmen 1989, 2026-10-16): say so and move on,
+  // in N5 words, instead of an error.
+  if (!out && (err as Error)?.message === "empty reply") return { ...DECLINE, words: DECLINE.words.map((w) => ({ ...w })) };
   if (!out) throw err;
   out.ja = String(out.ja ?? "").trim(); out.en = String(out.en ?? "").trim(); out.fix = String(out.fix ?? "").trim();
   out.words = (Array.isArray(out.words) ? out.words : []).map((w) => ({ s: String(w.s ?? ""), r: String(w.r ?? w.s ?? ""), g: String(w.g ?? "") })).filter((w) => w.s);
@@ -136,6 +139,19 @@ Answer with the JSON object only.`;
 
   return out;
 }
+const DECLINE: Reply = {
+  ja: "ごめんなさい、その話はできません。ほかの話をしましょう！何が好きですか？",
+  en: "Sorry, I can't talk about that. Let's talk about something else! What do you like?",
+  fix: "",
+  words: [
+    { s: "ごめんなさい", r: "ごめんなさい", g: "sorry" }, { s: "、", r: "", g: "" }, { s: "その", r: "その", g: "that" },
+    { s: "話", r: "はなし", g: "talk, topic" }, { s: "は", r: "は", g: "topic particle" }, { s: "できません", r: "できません", g: "can't (do)" },
+    { s: "。", r: "", g: "" }, { s: "ほかの", r: "ほかの", g: "other" }, { s: "話", r: "はなし", g: "talk, topic" },
+    { s: "を", r: "を", g: "object particle" }, { s: "しましょう", r: "しましょう", g: "let's do" }, { s: "！", r: "", g: "" },
+    { s: "何", r: "なに", g: "what" }, { s: "が", r: "が", g: "subject particle" }, { s: "好き", r: "すき", g: "liked" },
+    { s: "ですか", r: "ですか", g: "is it? (question)" }, { s: "？", r: "", g: "" },
+  ],
+};
 const letters = (s: string) => s.replace(/[\s\p{P}\p{S}]/gu, "");
 export function wellSplit(words: Reply["words"], ja: string) {
   const plain = letters(ja), covered = letters(words.map((w) => w.s).join(""));
