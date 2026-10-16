@@ -1,0 +1,344 @@
+"""The simulated-learner review of AI from scratch (ai/PLAN.md §10): one tool for both agents, stdlib only.
+
+The student (.agents/skills/course-student) sees lessons the way a learner does, with answers hidden until it has
+committed to one, and everything it does lands in a shared log. The editor (.claude/skills/course-editor) waits on
+that log for struggles and questions, replies, fixes the course, and audits the student's citations.
+
+  student:  init · path · show [lesson] · answer L Q VALUE --quote "…" · run L BOX [--file F] · note (JSON on stdin)
+            ask "question" [--wait S] · inbox · done (JSON on stdin) · nb L · hint L N · nbcheck L
+  editor:   watch [--timeout S] · reply ID "text" · audit · report · selftest
+
+Files live in ai/review/run/ (git-ignored): log.jsonl (student → editor), replies.jsonl (editor → student),
+seen.txt (every lesson view shown, for citation checks), state.json, editor.json, nb/ (the student's notebooks).
+COURSE_ROOT points at another copy of ai/ (the editor's calibration run with planted gaps); REVIEW_PY is the Python
+that runs notebooks (one with numpy, pandas, scikit-learn, torch).
+"""
+import ast, html, json, os, re, subprocess, sys, time
+from html.parser import HTMLParser
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("COURSE_ROOT", REPO / "ai"))
+RUN = REPO / "ai" / "review" / "run"
+sys.path.insert(0, str(REPO / "ai" / "notebooks"))
+import build, lint  # the notebooks' exercise numbering and the path order, shared with the course's own tools
+
+ATTENTION = {"struggle", "ask", "quit", "guess", "error", "wrong_twice", "answer_used", "done"}
+NOTE_KINDS = {"struggle", "guess", "quit", "observation"}
+STRUGGLES = {"unknown term or symbol", "step too big", "unclear wording", "example missing", "widget confusing or broken",
+             "code error", "question ambiguous", "answer seems wrong", "too long or boring"}
+
+
+# ---------- files ----------
+def jload(p, default):
+    try: return json.loads(Path(p).read_text())
+    except (OSError, ValueError): return default
+def jsave(p, d): Path(p).write_text(json.dumps(d, ensure_ascii=False, indent=1))
+def lines(p): return [json.loads(l) for l in Path(p).read_text().splitlines() if l.strip()] if Path(p).exists() else []
+def append(p, ev):
+    ev = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), **ev}
+    with open(p, "a") as f: f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    return ev
+def state(): return jload(RUN / "state.json", {"current": 0, "shown": [], "hints": {}, "replies_read": 0, "asks": 0})
+def log(kind, **kw): return append(RUN / "log.jsonl", {"kind": kind, **kw})
+
+
+# ---------- the path ----------
+LESSONS = [stem for stem, _ in lint.path()]
+def lesson(name=None):
+    if name is None: return LESSONS[min(state()["current"], len(LESSONS) - 1)]
+    name = name.removesuffix(".html")
+    hits = [s for s in LESSONS if s == name] or [s for s in LESSONS if s.startswith(name + "-") or s.startswith(name)]
+    if not hits: sys.exit(f"No lesson '{name}'. `path` lists them.")
+    return hits[0]
+def allowed(stem):
+    if LESSONS.index(stem) > state()["current"]: sys.exit(f"{stem} is ahead of you: finish {lesson()} first (`done`).")
+
+
+# ---------- a lesson as a learner sees it ----------
+class Lesson(HTMLParser):
+    """Text of <main>, questions with their answers kept aside, code boxes. Scripts, styles and .why text are hidden."""
+    VOID = {"input", "br", "img", "meta", "link", "hr", "source", "col", "wbr"}
+
+    def __init__(self, src):
+        super().__init__(convert_charrefs=True)
+        self.out, self.stack, self.qs, self.boxes, self.inmain, self.skip = [], [], [], [], False, 0
+        self.feed(src)
+        self.text = re.sub(r"\n{3,}", "\n\n", "".join(self.out)).strip()
+
+    def cls(self, a): return (dict(a).get("class") or "").split()
+    def within(self, c): return any(c in s[1] for s in self.stack)
+    def q(self): return self.qs[-1] if self.within("q") and self.qs else None
+
+    def handle_starttag(self, tag, a):
+        d, c = dict(a), self.cls(a)
+        if tag == "main": self.inmain = True
+        if not self.inmain: return
+        if tag in ("script", "style"): self.skip += 1
+        if tag == "canvas": self.out.append(f"\n[interactive picture: {d.get('aria-label') or d.get('id') or 'drag or click it on the page'}]\n")
+        if tag == "input" and d.get("type") == "range": self.out.append(f" [slider {d.get('min')}…{d.get('max')}, now {d.get('value')}] ")
+        if tag in self.VOID: return
+        self.stack.append((tag, c, d))
+        if tag == "div" and "q" in c:
+            kind = "choice" if "data-answer" in d else "number" if "data-num" in d else "open"
+            self.qs.append({"n": len(self.qs) + 1, "kind": kind, "key": d.get("data-answer"), "num": d.get("data-num"),
+                            "tol": float(d.get("data-tol") or 0.01), "stem": "", "options": {}, "says": {}, "why": ""})
+            self.out.append(f"\n\nQ{len(self.qs)} [" + {"choice": "pick one letter", "number": "type a number", "open": "think, then answer in words"}[kind] + "]: ")
+        elif tag == "li" and self.q() and "data-k" in d:
+            self.q()["options"][d["data-k"]] = ""
+            if d.get("data-says"): self.q()["says"][d["data-k"]] = d["data-says"]
+            self.out.append(f"\n   {d['data-k']}) ")
+        elif tag == "div" and "code" in c:
+            self.boxes.append({"n": len(self.boxes) + 1, "id": d.get("id"), "uses": d.get("data-uses"), "title": d.get("data-title", ""), "code": ""})
+            self.out.append(f"\n\n[code box {len(self.boxes)}{': ' + d['data-title'] if d.get('data-title') else ''}]\n```python\n")
+        elif tag == "details" and "deeper" in c: self.out.append("\n\n[optional deeper box] ")
+        elif tag in ("h1", "h2", "h3"): self.out.append("\n\n" + "#" * int(tag[1]) + " ")
+        elif tag == "li": self.out.append("\n- ")
+        elif tag in ("td", "th"): self.out.append(" | ")
+        elif tag in ("p", "div", "summary", "tr"): self.out.append("\n")
+
+    def handle_endtag(self, tag):
+        if not self.inmain: return
+        if tag in ("script", "style"): self.skip = max(0, self.skip - 1)
+        if tag == "main": self.inmain = False
+        while self.stack:
+            t, c, _ = self.stack.pop()
+            if t == "div" and "code" in c: self.out.append("```\n")
+            if t == tag: break
+
+    def handle_data(self, data):
+        if not self.inmain or self.skip: return
+        q = self.q()
+        if q and self.within("why"): q["why"] += data; return
+        if self.within("code") and any(s[0] == "textarea" for s in self.stack):
+            self.boxes[-1]["code"] += data; self.out.append(data); return
+        if q:
+            if any(s[0] == "li" for s in self.stack) and q["options"]: q["options"][list(q["options"])[-1]] += data
+            else: q["stem"] += data
+        self.out.append(re.sub(r"\s+", " ", data) if not self.within("code") else data)
+
+
+def parsed(stem): return Lesson((ROOT / f"{stem}.html").read_text())
+
+
+# ---------- student commands ----------
+def cmd_init(args):
+    RUN.mkdir(parents=True, exist_ok=True)
+    if (RUN / "log.jsonl").exists() and "--fresh" not in args: sys.exit(f"A run exists in {RUN}. Continue it, or `init --fresh` to start over.")
+    for f in ("log.jsonl", "replies.jsonl", "seen.txt", "state.json", "editor.json"): (RUN / f).unlink(missing_ok=True)
+    jsave(RUN / "state.json", state())
+    log("start", lessons=len(LESSONS), root=str(ROOT))
+    print(f"Run started: {len(LESSONS)} lessons, first {LESSONS[0]}. Next: `show`.")
+
+def cmd_path(args):
+    cur = state()["current"]
+    for i, s in enumerate(LESSONS): print(("✓ " if i < cur else "→ " if i == cur else "  ") + s)
+
+def cmd_show(args):
+    stem = lesson(args[0] if args else None); allowed(stem)
+    cmd_inbox([])
+    les, st = parsed(stem), state()
+    if stem not in st["shown"]:
+        st["shown"].append(stem); jsave(RUN / "state.json", st)
+        with open(RUN / "seen.txt", "a") as f: f.write(f"\n\n===== {stem} =====\n{les.text}\n")
+        log("show", lesson=stem, questions=len(les.qs), boxes=len(les.boxes))
+    print(f"===== {stem} ({len(les.qs)} questions, {len(les.boxes)} code boxes) =====\n{les.text}")
+
+def flag(args, name, default=None):
+    return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else default
+
+def cmd_answer(args):
+    if len(args) < 3: sys.exit('answer LESSON Q VALUE --quote "the words from the lesson you relied on"')
+    stem, n, value = lesson(args[0]), int(args[1]), args[2]; allowed(stem)
+    quote = flag(args, "--quote")
+    q = parsed(stem).qs[n - 1]
+    tries = sum(1 for e in lines(RUN / "log.jsonl") if e["kind"] == "answer" and e["lesson"] == stem and e["q"] == n)
+    if q["kind"] == "choice": ok = value.strip().lower() == q["key"]
+    elif q["kind"] == "number":
+        try: v, t = float(value.replace(",", "")), float(q["num"]); ok = abs(v - t) <= max(abs(t) * q["tol"], 1e-9) if q["tol"] < 1 else abs(v - t) <= q["tol"]
+        except ValueError: ok = False
+    else: ok = None
+    log("answer", lesson=stem, q=n, value=value, correct=ok, attempt=tries + 1, quote=quote)
+    if ok is False and tries >= 1: log("wrong_twice", lesson=stem, q=n, stem=q["stem"].strip()[:200], value=value)
+    if q["kind"] == "choice" and not ok and value in q["says"]: print("Not quite:", q["says"][value])
+    print({True: "✓ Right.", False: "✗ Not right.", None: "Here's the lesson's answer; compare it with yours."}[ok])
+    if ok is not False or tries >= 1: print("Why:", re.sub(r"\s+", " ", q["why"]).strip() or "(no explanation in the lesson)")
+    else: print("Try once more before the explanation is shown.")
+
+PRELUDE = '''import os, sys, ast, io, contextlib, urllib.request
+os.environ.setdefault("MPLBACKEND", "Agg")
+REPO, LESSON_DIR = {repo!r}, {root!r}
+def get(url):
+    if url.startswith("http"): return urllib.request.urlopen(url).read().decode()
+    return open(os.path.join(REPO, url.lstrip("/")) if url.startswith("/") else os.path.join(LESSON_DIR, url), encoding="utf-8").read()
+def plot(*a, **k): print("[a plot is drawn here]")
+def table(rows): print(rows)
+def _run(src, quiet=False):
+    tree = ast.parse(src); last = tree.body.pop() if tree.body and isinstance(tree.body[-1], ast.Expr) else None
+    with (contextlib.redirect_stdout(io.StringIO()) if quiet else contextlib.nullcontext()):
+        exec(compile(tree, "<box>", "exec"), globals())
+        if last is not None:
+            v = eval(compile(ast.Expression(last.value), "<box>", "eval"), globals())
+            if v is not None: print(v)
+'''
+
+def cmd_run(args):
+    if len(args) < 2: sys.exit("run LESSON BOX [--file your_version.py]")
+    stem, n = lesson(args[0]), int(args[1]); allowed(stem)
+    les = parsed(stem); box = les.boxes[n - 1]
+    code = Path(flag(args, "--file")).read_text() if flag(args, "--file") else html.unescape(box["code"])
+    uses = [b for b in les.boxes if box["uses"] and b["id"] in box["uses"].split()]
+    script = PRELUDE.format(repo=str(REPO), root=str(ROOT)) + "".join(f"_run({b['code']!r}, quiet=True)\n" for b in uses) + f"_run({code!r})\n"
+    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), "-c", script], capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired: r = subprocess.CompletedProcess([], 1, "", "timed out after 300 s")
+    out = (r.stdout + ("\n" + r.stderr.strip().splitlines()[-1] if r.returncode and r.stderr.strip() else "")).strip()
+    log("run", lesson=stem, box=n, own_code=bool(flag(args, "--file")), ok=r.returncode == 0, output=out[-400:])
+    if r.returncode: log("error", lesson=stem, box=n, what="code box failed", output=out[-400:])
+    print(out or "(no output)")
+
+def cmd_note(args):
+    ev = json.loads(sys.stdin.read())
+    if ev.get("kind") not in NOTE_KINDS: sys.exit(f"kind must be one of {sorted(NOTE_KINDS)}")
+    if ev["kind"] == "struggle" and ev.get("type") not in STRUGGLES: sys.exit(f"a struggle's type is one of {sorted(STRUGGLES)}")
+    ev.setdefault("lesson", lesson())
+    print("logged:", log(ev.pop("kind"), **ev)["kind"])
+
+def cmd_inbox(args):
+    st, rs = state(), lines(RUN / "replies.jsonl")
+    for r in rs[st["replies_read"]:]: print(f"📩 From the editor ({r.get('to') or 'note'}): {r['text']}\n")
+    st["replies_read"] = len(rs); jsave(RUN / "state.json", st)
+
+def cmd_ask(args):
+    if not args: sys.exit('ask "your question" [--wait SECONDS]')
+    st = state(); st["asks"] += 1; jsave(RUN / "state.json", st)
+    aid = f"ask-{st['asks']}"
+    log("ask", id=aid, lesson=lesson(), question=args[0])
+    wait, t0 = int(flag(args, "--wait", 300)), time.time()
+    while time.time() - t0 < wait:
+        if any(r.get("to") == aid for r in lines(RUN / "replies.jsonl")): return cmd_inbox([])
+        time.sleep(5)
+    print(f"No answer yet ({aid}). Carry on as a real learner would; the answer will show in `inbox` and at the next `show`.")
+
+def cmd_done(args):
+    st, stem = state(), lesson()
+    les, evs = parsed(stem), [e for e in lines(RUN / "log.jsonl") if e.get("lesson") == stem]
+    missing = [q["n"] for q in les.qs if not any(e["kind"] == "answer" and e["q"] == q["n"] for e in evs)]
+    if missing: sys.exit(f"Answer every question first: Q{', Q'.join(map(str, missing))} of {stem}.")
+    summary = json.loads(sys.stdin.read() or "{}") if not sys.stdin.isatty() else {}
+    log("done", lesson=stem, **summary)
+    st["current"] += 1; jsave(RUN / "state.json", st)
+    print(f"✓ {stem} done. Next: {LESSONS[st['current']] if st['current'] < len(LESSONS) else 'the path is finished'}.")
+
+
+# ---------- notebooks ----------
+def exercises(stem):
+    "[(hints, solution)] numbered as build.py numbers them."
+    src, out = (REPO / "ai" / "notebooks" / "src" / f"{stem}.py").read_text(), []
+    for chunk in re.split(r"^# %%", src, flags=re.M)[1:]:
+        head, _, body = chunk.partition("\n")
+        if "[markdown]" in head: continue
+        for m in build.EXERCISE.finditer(body.strip("\n")):
+            if not m.group(0).startswith("check("):
+                out.append(([h.split("### HINT", 1)[1].strip() for h in m.group(1).splitlines()], m.group(3).strip()))
+    return out
+
+def nbfile(stem): return RUN / "nb" / f"{stem}.py"
+
+def cmd_nb(args):
+    stem = lesson(args[0] if args else None); allowed(stem)
+    src = (REPO / "ai" / "notebooks" / "src" / f"{stem}.py")
+    if not src.exists(): sys.exit(f"{stem} has no notebook.")
+    f = nbfile(stem)
+    if not f.exists():
+        cells = build.cells(src.read_text(), solutions=False)
+        helpers = build.HELPERS % ("{}", "{}") + '\ndef hint(n): print("Use: python3 ai/review/learner.py hint %s %%d" %% n)\nanswer = hint\n' % stem
+        parts, first = [], True
+        for c in cells:
+            body = "".join(c["source"])
+            if c["cell_type"] == "markdown": parts.append("\n".join("# " + l for l in body.splitlines()))
+            elif first and "_HINTS" in body: parts.append(helpers); first = False
+            else: parts.append(re.sub(r"(?m)^(\s*)([!%].*)$", r"\1# notebook command, skipped here: \2", body))
+        f.parent.mkdir(parents=True, exist_ok=True); f.write_text("\n\n# %%\n".join(parts) + "\n")
+        log("nb_start", lesson=stem, exercises=len(exercises(stem)))
+    print(f"Your notebook: {f}\nFill each `# YOUR CODE HERE` / `...`, then `nbcheck {stem}`. {len(exercises(stem))} exercises.")
+
+def cmd_hint(args):
+    stem, n = lesson(args[0]), int(args[1]); allowed(stem)
+    hints, sol = exercises(stem)[n - 1]
+    st = state(); k = f"{stem}:{n}"; i = st["hints"].get(k, 0); st["hints"][k] = i + 1; jsave(RUN / "state.json", st)
+    if i < len(hints): log("hint", lesson=stem, exercise=n, level=i + 1); print(f"Hint {i + 1} of {len(hints)}: {hints[i]}")
+    else: log("answer_used", lesson=stem, exercise=n); print("No hints left. The solution:\n" + sol)
+
+def cmd_nbcheck(args):
+    stem = lesson(args[0] if args else None); f = nbfile(stem)
+    if not f.exists(): sys.exit(f"Run `nb {stem}` first.")
+    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), str(f)], capture_output=True, text=True, timeout=1800, cwd=f.parent, env={**os.environ, "MPLBACKEND": "Agg"})
+    except subprocess.TimeoutExpired: r = subprocess.CompletedProcess([], 1, "", "timed out after 30 min")
+    ok, bad = r.stdout.count("✓"), r.stdout.count("✗")
+    log("nbcheck", lesson=stem, passed=ok, failed=bad, crashed=r.returncode != 0, tail=(r.stdout + r.stderr)[-300:])
+    if r.returncode: log("error", lesson=stem, what="notebook crashed", output=r.stderr.strip()[-300:])
+    print(r.stdout[-3000:], r.stderr[-800:] if r.returncode else "", f"\n{ok} ✓, {bad} ✗")
+
+
+# ---------- editor commands ----------
+def cmd_watch(args):
+    "Block until the student logs something that needs the editor, print it compactly, and remember where we were."
+    ed = jload(RUN / "editor.json", {"offset": 0})
+    wait, t0 = int(flag(args, "--timeout", 3000)), time.time()
+    while True:
+        evs = lines(RUN / "log.jsonl")[ed["offset"]:]
+        hits = [e for e in evs if e["kind"] in ATTENTION]
+        if hits or time.time() - t0 > wait:
+            ed["offset"] += len(evs); jsave(RUN / "editor.json", ed)
+            for e in hits: print(json.dumps({k: v for k, v in e.items() if v not in (None, "", [])}, ensure_ascii=False))
+            print(f"-- {len(evs)} new events, {len(hits)} need you; student is on {lesson()}" if evs else "-- nothing new")
+            return
+        time.sleep(10)
+
+def cmd_reply(args):
+    if len(args) < 2: sys.exit('reply ask-N|note "text"')
+    append(RUN / "replies.jsonl", {"to": None if args[0] == "note" else args[0], "text": args[1]})
+    print("sent")
+
+def norm(s): return re.sub(r"\s+", " ", html.unescape(s or "")).strip().lower()
+
+def cmd_audit(args):
+    seen, bad = norm((RUN / "seen.txt").read_text() if (RUN / "seen.txt").exists() else ""), 0
+    for e in lines(RUN / "log.jsonl"):
+        if e["kind"] in ("answer", "struggle", "guess"):
+            q = norm(e.get("quote"))
+            if not q: print(f"no quote: {e['kind']} {e.get('lesson')} Q{e.get('q', '')} {e.get('value', '')}"); bad += 1
+            elif q not in seen: print(f"quote not in what it was shown: {e.get('lesson')} Q{e.get('q', '')}: {e.get('quote')[:120]!r}"); bad += 1
+    print(f"{bad} citation problems")
+
+def cmd_report(args):
+    rows, evs = {}, lines(RUN / "log.jsonl")
+    for e in evs:
+        if "lesson" not in e: continue
+        r = rows.setdefault(e["lesson"], {"q": set(), "first": 0, "hints": 0, "answers_used": 0, "struggles": 0, "asks": 0, "quits": 0, "errors": 0})
+        if e["kind"] == "answer":
+            if e["attempt"] == 1 and e["correct"]: r["first"] += 1
+            r["q"].add(e["q"])
+        r["hints"] += e["kind"] == "hint"; r["answers_used"] += e["kind"] == "answer_used"; r["struggles"] += e["kind"] == "struggle"
+        r["asks"] += e["kind"] == "ask"; r["quits"] += e["kind"] == "quit"; r["errors"] += e["kind"] == "error"
+    print("lesson | questions | right first try | hints | answers used | struggles | asks | quit points | errors")
+    for s, r in rows.items():
+        print(f"{s} | {len(r['q'])} | {r['first']}/{len(r['q'])} | {r['hints']} | {r['answers_used']} | {r['struggles']} | {r['asks']} | {r['quits']} | {r['errors']}")
+
+def cmd_selftest(args):
+    "Every lesson parses; no explanation text leaks into the learner's view; every choice key is one of the options."
+    problems = 0
+    for stem in LESSONS:
+        les = parsed(stem)
+        for q in les.qs:
+            why = norm(q["why"])
+            if len(why) > 30 and why[:80] in norm(les.text): print(f"{stem} Q{q['n']}: explanation visible"); problems += 1
+            if q["kind"] == "choice" and q["key"] not in q["options"]: print(f"{stem} Q{q['n']}: answer {q['key']} not among {list(q['options'])}"); problems += 1
+    print(f"{len(LESSONS)} lessons, {problems} problems"); sys.exit(1 if problems else 0)
+
+
+if __name__ == "__main__":
+    cmds = {k[4:]: v for k, v in globals().items() if k.startswith("cmd_")}
+    if len(sys.argv) < 2 or sys.argv[1] not in cmds: sys.exit(__doc__)
+    if sys.argv[1] not in ("init", "selftest", "path") and not RUN.exists(): sys.exit("No run yet: `init` first.")
+    cmds[sys.argv[1]](sys.argv[2:])

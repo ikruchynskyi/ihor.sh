@@ -547,8 +547,8 @@ proofreads what changed. Every struggle is treated like a failing test (PEDAGOGY
 
 | Role | Who | Sees | Does |
 |---|---|---|---|
-| **Learner** | a capable model (Claude Sonnet) held to a persona; a second, different model (local `qwen3.5:35b`) as a cross-check on stages 0–2 | only what the path has shown so far, in `ai/index.html` order: each lesson's rendered text, widget readouts, code-box output, its notebook | reads, predicts before every reveal, answers every question, runs every code box and notebook exercise, takes checkpoints and stage exams, asks the instructor when stuck, says "I'd quit here" when it would |
-| **Instructor** | Blip through `/api/ask` with the lesson's page context (what a real visitor gets) | the current page and the course | answers the learner, and says for each answer whether the course already covered it (where) or not |
+| **Learner** | Gemini with `.agents/skills/course-student` (the token-heavy role), held to a persona; it works in the browser like a visitor | only what the path has shown so far, in `ai/index.html` order: each lesson's rendered text, widget readouts, code-box output, its notebook | reads, predicts before every reveal, answers every question, runs every code box and notebook exercise, takes checkpoints and stage exams, asks the instructor when stuck, says "I'd quit here" when it would |
+| **Instructor** | Claude with `.claude/skills/course-editor` (the same agent as the editor), answering only from the course | the current page and the course | answers the learner, and says for each answer whether the course already covered it (where) or not |
 | **Auditor** | a script plus a small model | the learner's transcript and the cumulative text it was shown | checks every cited quote is really in what was shown (string match), and flags reasoning that uses outside knowledge |
 | **Editor** | an agent following `.claude/skills/course-guardrail` | transcripts, struggle log, the repo | turns each struggle into a fit plan and a fix, then reruns the learner on the changed lesson |
 | **Owner** | you | per-stage review packets | proofreads the changes, accepts or sends back |
@@ -566,7 +566,10 @@ proofreads what changed. Every struggle is treated like a failing test (PEDAGOGY
   where kind is one of: unknown term or symbol, step too big, unclear wording, example missing, widget confusing or
   broken, code error, question ambiguous, answer seems wrong, too long/boring.
 
-### 10.3 Tooling (to build in `ai/review/`, committed; transcripts git-ignored, summaries committed)
+### 10.3 Tooling (built: `ai/review/learner.py`, `browse.py`, `setup.sh`; the run in `ai/review/run/` is git-ignored, packets in `ai/review/packets/` are committed)
+The two skills drive these: `learner.py` shows lessons with answers hidden, grades, runs code and notebooks, carries
+questions and replies, and audits citations; `browse.py` is Playwright on the real pages (screenshots, widgets,
+in-page Run, JS errors and overflow logged automatically). The design notes below are what they implement.
 1. `render.py`: Playwright renders each lesson in path order to text: prose, formulas (KaTeX alt text), question
    stems and options (answers hidden until the learner commits), widget readouts at their default and after scripted
    moves, and code-box output. One file per lesson, plus the cumulative "seen so far" text for citation checks.

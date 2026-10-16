@@ -20,3 +20,5 @@ catboost_info/
 # Yomu runtime caches the server rewrites (Jisho lookups, NHK Easy articles)
 yomu/data/jisho/
 yomu/data/nhk-cache.json
+ai/review/run/
+ai/review/.venv/
