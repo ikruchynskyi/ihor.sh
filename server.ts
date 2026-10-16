@@ -26,6 +26,7 @@ import { startEvening, events as eveningEvents, eventById, planEvening } from ".
 import { aircraft, trace, iss, storms, weather, radioDial, streetPhotos, photoNear, photoImages, mapillaryGraph } from "./sky.ts";
 import { shipsNow } from "./ships.ts";
 import { yomuChat, isLevel } from "./yomu-chat.ts";
+import { inLine, LineFull } from "./llm.ts";
 import { kanjiInfo, wordSearch } from "./yomu-dict.ts";
 import { edgeTTS } from "./yomu-tts.ts";
 import { getNhkArticles, getNhkArticleById } from "./yomu-nhk.ts";
@@ -112,6 +113,18 @@ function dataAllowed(ip: string, bucket = dataHits, max = 150) {
   if (bucket.size > 5000) bucket.clear();
   return true;
 }
+// Blip in the site chat: one question per visitor session every 30 s (MCP and A2A have their own auth and no such limit).
+const ASK_EVERY_MS = 30_000, lastAsk = new Map<string, number>(); // session id → when its last question came in
+/** Seconds this session must still wait, or 0 (and the question counts). */
+function askWait(id: string, now = Date.now()) {
+  const left = Math.ceil(((lastAsk.get(id) ?? -Infinity) + ASK_EVERY_MS - now) / 1000);
+  if (left > 0) return left;
+  if (lastAsk.size > 50_000) lastAsk.clear();
+  lastAsk.set(id, now);
+  return 0;
+}
+const busyReply = (res: http.ServerResponse, e: unknown) => res.writeHead(503, { "content-type": "application/json", "retry-after": "60" }).end(JSON.stringify({ error: (e as Error).message }));
+
 function allowed(ip: string) {
   const now = Date.now(), d = new Date().toDateString();
   if (d !== day) { day = d; today = 0; hits.clear(); }
@@ -207,7 +220,7 @@ function seo(html: string, world: string, urlPath: string, extra: Meta | null = 
   ]).replace(/</g, "\\u003c");
   const full = `${title} · ${worldName} · ihor.sh`;
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${attr(full)}</title>`);
-  if (extra?.desc) out = out.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${desc}">`);
+  if (extra?.desc) out = out.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${desc}">`); // story.html etc. close it with " />"
   if (extra?.h1) out = out.replace(/<h1 id="title">[^<]*<\/h1>/, `<h1 id="title">${extra.h1}</h1>`); // so a reader without JavaScript sees the story's name
   if (extra?.lede) out = out.replace(/<p class="lede" id="scene"><\/p>/, `<p class="lede" id="scene">${attr(extra.lede)}</p>`);
   return out.replace("</head>", `<link rel="canonical" href="${attr(url)}">
@@ -433,7 +446,7 @@ const server = http.createServer(async (req, res) => {
     console.log(`${url.pathname.slice(1)}: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
     if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
     const viaMcp = url.pathname === "/mcp";
-    return (viaMcp ? mcp : a2a)(req, res, (q) => ask({ messages: [{ role: "user", content: q }], page: viaMcp ? { url: "mcp", title: "MCP client" } : { url: "a2a", title: "A2A agent" } }, SYSTEM))
+    return (viaMcp ? mcp : a2a)(req, res, (q) => inLine(() => ask({ messages: [{ role: "user", content: q }], page: viaMcp ? { url: "mcp", title: "MCP client" } : { url: "a2a", title: "A2A agent" } }, SYSTEM)))
       .catch((e) => { if (!res.headersSent) res.writeHead(500).end(String(e.message)); });
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
@@ -583,25 +596,30 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
       const b = JSON.parse(raw), turns = (Array.isArray(b?.turns) ? b.turns : []).filter((t: any) => (t?.role === "user" || t?.role === "assistant") && typeof t.content === "string");
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
-      try { const out = await yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), Array.isArray(b?.usedMemes) ? b.usedMemes.map(String) : []); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
-      catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
+      let gone = false; res.on("close", () => { gone = true; });
+      try { const out = await inLine(() => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), Array.isArray(b?.usedMemes) ? b.usedMemes.map(String) : [])); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
+      catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
+      const wait = askWait(session!.id);
+      if (wait) return res.writeHead(429, { "content-type": "application/json", "retry-after": String(wait) }).end(JSON.stringify({ error: `Blip takes one question every 30 seconds. Ask again in ${wait} s.`, retryAfter: wait }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 64_000) return res.writeHead(413).end(); }
       const body = JSON.parse(raw);
+      let gone = false; res.on("close", () => { gone = true; }); // left while in line: their turn is skipped
       if (!body?.stream) {
-        const answer = await ask(body, SYSTEM);
-        return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(answer));
+        try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, SYSTEM)))); }
+        catch (e) { if (e instanceof LineFull) return busyReply(res, e); throw e; }
       }
-      // Streamed: one JSON line per step as Blip thinks and calls tools (the chat shows them while it waits), then the answer.
+      // Streamed: its place in line while it waits, then one JSON line per step as Blip thinks and calls tools (the chat
+      // shows them while it waits), then the answer.
       res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
       try {
-        const answer = await ask(body, SYSTEM, (step) => res.write(JSON.stringify({ step }) + "\n"));
+        const answer = await inLine(() => gone ? Promise.reject(new Error("left")) : ask(body, SYSTEM, (step) => res.write(JSON.stringify({ step }) + "\n")), (queue) => res.write(JSON.stringify({ queue }) + "\n"));
         res.end(JSON.stringify(answer) + "\n");
-      } catch (e) { res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
+      } catch (e) { if (!gone) res.end(JSON.stringify({ error: (e as Error).message }) + "\n"); }
       return;
     }
     if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm", "/api/slice", "/api/overview"].includes(url.pathname)) return proxySdr(req, res);

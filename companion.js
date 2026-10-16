@@ -772,11 +772,13 @@ async function send(q) {
           if (!row) continue;
           const j = JSON.parse(row);
           if (j.step) { doing = j.step.kind === "tool" ? (TOOL_DOING[j.step.tool] ?? allActions()[j.step.tool]?.label ?? j.step.tool.replace(/_/g, " ")) : j.step.n ? (deep ? `thinking hard · round ${j.step.n + 1}` : "putting it together") : doing; hop(3); }
+          else if (j.queue) doing = `in line · ${j.queue} ahead of you`; // the server answers one question at a time
           else data = j;
         }
         if (done) break;
       }
     }
+    if (r.status === 429 && data.retryAfter) throw Object.assign(new Error(data.error), { retryAfter: data.retryAfter });
     if (!r.ok || data.error || !data.reply) throw new Error(data.error || "Blip lost the signal. Try again?");
     history.push({ role: "assistant", content: data.reply }); save();
     clearInterval(pinging); clearInterval(tick);
@@ -787,11 +789,25 @@ async function send(q) {
     setMood("happy", 1500);
   } catch (err) {
     history.pop(); save(); input.value = q;
+    if (err.retryAfter) { cooldown(out, err.retryAfter); return; } // the server's limit: one question per visitor every 30 s
     out.parentElement.classList.add("err"); out.textContent = err.message;
     setMood("dizzy", 1400);
   } finally {
     clearInterval(pinging); clearInterval(tick); pending = false;
   }
+}
+// Blip says when it can take the next question, counting down; the question waits in the box.
+function cooldown(el, seconds) {
+  const until = Date.now() + seconds * 1000;
+  const show = () => {
+    const left = Math.ceil((until - Date.now()) / 1000);
+    el.textContent = left > 0
+      ? `I take one question every 30 seconds, so each one gets my full attention. Yours is still in the box: ask me again in ${left} s.`
+      : "Ready! Press Enter and I'm all yours.";
+    if (left <= 0) clearInterval(t);
+  };
+  const t = setInterval(show, 1000);
+  show();
 }
 function typeOut(el, text) {
   const step = Math.max(1, Math.ceil(text.length / 120));

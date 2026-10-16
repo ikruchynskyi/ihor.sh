@@ -19,3 +19,36 @@ export const localThink = (json: boolean, deep = false, model = LOCAL_MODEL) => 
   if (supportsEffort(model)) return deep ? "high" : "low";
   return true;
 };
+
+// The line for model requests: one at a time, first come first served. Blip (the site chat, MCP, A2A) and Yomu's chat
+// share it, since the local model answers one request at a time. A full line refuses newcomers instead of queueing them
+// past what a visitor would wait for (and past Cloudflare's 100 s for a reply that isn't streamed).
+export const MAX_WAITING = 8;
+let busy = false;
+const line: (() => void)[] = [];
+export class LineFull extends Error {}
+/** Runs fn when it's this request's turn. ahead(n) hears how many are before it, only when it has to wait. */
+export async function inLine<T>(fn: () => Promise<T>, ahead?: (n: number) => void): Promise<T> {
+  if (busy) {
+    if (line.length >= MAX_WAITING) throw new LineFull(`Blip is answering ${line.length + 1} people already. Try again in a minute.`);
+    await new Promise<void>((go) => { line.push(go); ahead?.(line.length); });
+  }
+  busy = true;
+  try { return await fn(); }
+  finally { const next = line.shift(); if (next) next(); else busy = false; } // hands the turn straight on: busy stays true
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-check of the line
+  const assert = (await import("node:assert/strict")).default;
+  const order: string[] = [], waits: number[] = [], sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const job = (name: string, ms: number, fail = false) => inLine(async () => { order.push(`start ${name}`); await sleep(ms); order.push(`end ${name}`); if (fail) throw new Error(name); return name; }, (n) => waits.push(n));
+  const all = await Promise.allSettled([job("a", 30), job("b", 10, true), job("c", 10)]);
+  assert.deepEqual(order, ["start a", "end a", "start b", "end b", "start c", "end c"]); // one at a time, in order
+  assert.deepEqual(waits, [1, 2]); // b waited behind a; c behind a and b
+  assert.deepEqual(all.map((r) => r.status), ["fulfilled", "rejected", "fulfilled"]); // a failure still passes the turn on
+  const many = Array.from({ length: MAX_WAITING + 2 }, (_, i) => job(`m${i}`, 1));
+  const settled = await Promise.allSettled(many);
+  assert.equal(settled.filter((r) => r.status === "rejected" && r.reason instanceof LineFull).length, 1); // 1 running + 8 waiting; the 10th is refused
+  assert.equal(await job("after", 1), "after"); // and the line is free again
+  console.log("llm.ts: line OK");
+}
