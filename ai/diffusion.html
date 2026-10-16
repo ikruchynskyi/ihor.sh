@@ -19,6 +19,9 @@
     table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; }
     .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
     .cmp code, main p code, main li code { overflow-wrap: anywhere; }
+    figure { margin: 0; text-align: center; font-size: 14px; color: var(--muted); }
+    .katex-display { overflow-x: auto; max-width: 100%; }
+    select { max-width: 100%; }
     @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -65,11 +68,48 @@
   <p>Ten steps already give the shape; more steps refine it. Real samplers (DDIM, DPM-Solver) make 20–50 steps as good as the original 1,000. And notice where the points land: <i>on</i> the training dots, every one. That's the next section's lesson.</p>
   <p class="gist">Sampling runs the denoiser backward from pure noise in small steps, each committing to a little more detail.</p>
 
-  <h2>4. Text, guidance and latents</h2>
+  <h2>4. Autoencoders and VAEs: learning a smooth latent space</h2>
+  <p>Before running diffusion on high-resolution images, models first compress pixels into a low-dimensional space. An <b>autoencoder</b> uses an encoder network \(f(x)\) to compress an image into a compact vector \(z\) (the <b>latent</b>, or bottleneck), and a decoder network \(g(z)\) to reconstruct the image \(\hat x\). The loss is reconstruction error \(\lVert x - \hat x \rVert^2\).</p>
+  <p>A plain autoencoder compresses well, but its latent space is full of <b>holes</b>: distinct clusters with vast empty chasms in between. If you pick a point in the empty space between training clusters, the decoder produces garbled nonsense. You cannot sample from it.</p>
+  <p>A <b>Variational Autoencoder (VAE)</b> fixes this by turning each image into a probability distribution: the encoder outputs a mean \(\mu(x)\) and a spread \(\sigma(x)\). To sample a latent vector \(z\) while allowing backpropagation, the <b>reparameterization trick</b> moves the randomness into an independent noise draw \(\varepsilon \sim \mathcal{N}(0, I)\):</p>
+  <p class="formula">\[ z = \mu + \sigma \odot \varepsilon \]</p>
+  <p>The VAE loss balances reconstruction against a Kullback–Leibler (KL) divergence penalty that pulls every encoding toward a standard normal bell curve \(\mathcal{N}(0, I)\):</p>
+  <p class="formula">\[ \mathcal{L}_{\text{VAE}} = \text{reconstruction error} + \mathbb{D}_{\text{KL}}\big(\mathcal{N}(\mu, \sigma^2) \parallel \mathcal{N}(0, I)\big) \]</p>
+  <p>The KL penalty prevents the encoder from scattering clusters across empty space. It forces the representations to overlap into a continuous, dense landscape. Below, an actual VAE trained on 8 × 8 handwritten digits maps every digit into a 2-D latent space. Drag the crosshair across the plane: the decoded digit morphs smoothly with zero gaps or broken images.</p>
+
+  <div class="pair">
+    <figure><canvas id="latent-map" class="sq" width="320" height="320" aria-label="2D latent space plane: drag the cursor to sample"></canvas>2-D latent space \(z = (z_1, z_2)\)</figure>
+    <figure><canvas id="latent-digit" class="sq" width="320" height="320" aria-label="Decoded 8x8 handwritten digit"></canvas>decoded digit \(\hat x = g(z)\)</figure>
+  </div>
+  <p class="readout" id="r-vae">Drag in the latent plane: position decodes continuously into a handwritten digit.</p>
+
+  <div class="q" data-answer="a">
+    <p>Why is the reparameterization trick \(z = \mu + \sigma \odot \varepsilon\) necessary in a VAE?</p>
+    <ul>
+      <li data-k="a">Drawing random numbers directly has no derivative; moving the noise into an external input \(\varepsilon\) lets backpropagation compute \(\frac{\partial L}{\partial \mu}\) and \(\frac{\partial L}{\partial \sigma}\)</li>
+      <li data-k="b" data-says="Standard normal noise is used in both cases; the distribution is unchanged.">It turns Gaussian noise into uniform noise</li>
+      <li data-k="c" data-says="The encoder still uses a neural network with the same layers.">It removes the need for an encoder</li>
+    </ul>
+    <div class="why">You cannot backpropagate gradients through a stochastic sampling node \(z \sim \mathcal{N}(\mu, \sigma^2)\). Writing \(z = \mu + \sigma \varepsilon\) makes \(z\) a deterministic, differentiable function of the network's outputs.</div>
+  </div>
+
+  <p class="gist">A VAE maps images to a continuous distribution with no holes; the reparameterization trick lets backpropagation flow through the sampling step.</p>
+
+  <details class="deeper"><summary>Why plain autoencoders leave holes in latent space</summary>
+    <ol>
+      <li>An ordinary autoencoder only minimizes reconstruction error \(\lVert x - g(f(x)) \rVert^2\).</li>
+      <li>To minimize reconstruction, the encoder can map each training class to a tiny, isolated point very far from others, where they never interfere.</li>
+      <li>Because no training example ever falls into the spaces between these isolated points, the decoder never learns what those latent coordinates mean.</li>
+      <li>Sampling a random vector from the empty space yields strange, unrecognizable artifacts.</li>
+      <li>The VAE's KL divergence penalty acts like a spring pulling all latent distributions toward \(\mathcal{N}(0, I)\), forcing them to fill the space without leaving unmapped gaps.</li>
+    </ol>
+  </details>
+
+  <h2>5. Text, guidance and latents</h2>
   <ul>
     <li><b>Conditioning.</b> To follow a prompt, the denoiser also gets the text, embedded by a text encoder (CLIP or a T5, the embeddings lesson's kind of model), mixed in through cross-attention (chapter 7): every image patch can attend to every word.</li>
     <li><b>Classifier-free guidance.</b> During training the text is dropped 10% of the time, so the same network learns both \(\varepsilon(x_t, t, \text{text})\) and \(\varepsilon(x_t, t)\). At sampling, push past the conditional prediction, away from the unconditional one: \(\hat\varepsilon = \varepsilon_{\text{uncond}} + w(\varepsilon_{\text{cond}} - \varepsilon_{\text{uncond}})\). The "guidance scale" \(w\), often 5–8, trades variety for following the prompt.</li>
-    <li><b>Latent diffusion.</b> A 1024 × 1024 color image is 3 million numbers. Stable Diffusion first compresses images with an autoencoder to a 128 × 128 × 4 latent (65,536 numbers, 48 times fewer), runs diffusion there, and decodes at the end. That's what made it run on one consumer GPU.</li>
+    <li><b>Latent diffusion.</b> A 1024 × 1024 color image is 3 million numbers. Stable Diffusion first compresses images with a VAE to a 128 × 128 × 4 latent (65,536 numbers, 48 times fewer), runs diffusion there, and decodes with the VAE at the end. That's what made it run on one consumer GPU.</li>
   </ul>
   <div class="q" data-num="48" data-tol="0.01">
     <p>A 1024 × 1024 × 3 image is encoded to a 128 × 128 × 4 latent. How many times fewer numbers does diffusion work on?</p>
@@ -84,15 +124,16 @@
     </ul>
   </details>
 
-  <h2>5. What to carry forward</h2>
+  <h2>6. What to carry forward</h2>
   <ul>
     <li>Forward: \(x_t = \sqrt{\bar\alpha_t} x_0 + \sqrt{1 - \bar\alpha_t} \varepsilon\), a fixed schedule from image to noise.</li>
     <li>Train a U-Net to predict \(\varepsilon\) with MSE at every noise level.</li>
     <li>Sample from noise in 20–1,000 small denoising steps.</li>
+    <li><b>VAEs</b> compress images into continuous latent spaces via reparameterization and KL divergence.</li>
     <li>Text via cross-attention, classifier-free guidance scale \(w\), latent diffusion for speed.</li>
     <li>Check for memorization and know the data's rights.</li>
   </ul>
-  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Ho, Jain and Abbeel, "Denoising Diffusion Probabilistic Models" (2020); Rombach et al., "High-Resolution Image Synthesis with Latent Diffusion Models" (2022).</p>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Papers: Kingma & Welling, "Auto-Encoding Variational Bayes" (2013); Ho, Jain and Abbeel, "Denoising Diffusion Probabilistic Models" (2020); Rombach et al., "High-Resolution Image Synthesis with Latent Diffusion Models" (2022).</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
@@ -164,6 +205,166 @@ $("flowPlay").onclick = () => {
   }, n > 100 ? 15 : 60);
 };
 drawFlow("Press Sample. Green: the training data. Orange: generated points.");
+
+// ---------- 4. VAE 2-D latent space decoder ----------
+let vaeModel = null;
+let curZ = [0.0, 0.0];
+
+async function loadVAE() {
+  try {
+    vaeModel = await fetch("/ai/data/vae-digits.json").then((r) => r.json());
+    renderVAE();
+  } catch (e) {
+    console.error("Failed to load VAE weights", e);
+  }
+}
+
+function decodeVAE(z1, z2) {
+  if (!vaeModel) return null;
+  const { w1, b1, w2, b2 } = vaeModel;
+  const h = new Float32Array(24);
+  for (let i = 0; i < 24; i++) {
+    const val = w1[i][0] * z1 + w1[i][1] * z2 + b1[i];
+    h[i] = val > 0 ? val : 0;
+  }
+  const out = new Float32Array(64);
+  for (let k = 0; k < 64; k++) {
+    let s = b2[k];
+    const row = w2[k];
+    for (let i = 0; i < 24; i++) s += row[i] * h[i];
+    out[k] = 1 / (1 + Math.exp(-s));
+  }
+  return out;
+}
+
+function renderVAE() {
+  const mapCv = $("latent-map");
+  if (!mapCv) return;
+  const gMap = mapCv.getContext("2d"), W = mapCv.width, H = mapCv.height;
+  gMap.fillStyle = "#14171d";
+  gMap.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2, scale = W / 5.0;
+
+  // Prior density gradient
+  const grad = gMap.createRadialGradient(cx, cy, 0, cx, cy, scale * 2.5);
+  grad.addColorStop(0, "rgba(88, 196, 221, 0.12)");
+  grad.addColorStop(0.6, "rgba(88, 196, 221, 0.04)");
+  grad.addColorStop(1, "rgba(20, 23, 29, 0)");
+  gMap.fillStyle = grad;
+  gMap.fillRect(0, 0, W, H);
+
+  // Grid lines
+  gMap.strokeStyle = "rgba(255, 255, 255, 0.06)";
+  gMap.lineWidth = 1;
+  for (let u = -2; u <= 2; u++) {
+    if (u === 0) continue;
+    gMap.beginPath();
+    gMap.moveTo(cx + u * scale, 0); gMap.lineTo(cx + u * scale, H);
+    gMap.moveTo(0, cy - u * scale); gMap.lineTo(W, cy - u * scale);
+    gMap.stroke();
+  }
+
+  // N(0, I) prior contour rings (1-sigma, 2-sigma)
+  gMap.strokeStyle = "rgba(88, 196, 221, 0.35)";
+  gMap.lineWidth = 1.5;
+  [1, 2].forEach((r) => {
+    gMap.beginPath();
+    gMap.arc(cx, cy, r * scale, 0, Math.PI * 2);
+    gMap.stroke();
+  });
+
+  // Coordinate axes
+  gMap.strokeStyle = "rgba(221, 218, 211, 0.3)";
+  gMap.lineWidth = 1;
+  gMap.beginPath();
+  gMap.moveTo(0, cy); gMap.lineTo(W, cy);
+  gMap.moveTo(cx, 0); gMap.lineTo(cx, H);
+  gMap.stroke();
+
+  // Axis labels
+  gMap.font = "11px ui-monospace, monospace";
+  gMap.fillStyle = "#8b8a86";
+  gMap.fillText("z₁", W - 18, cy - 6);
+  gMap.fillText("z₂", cx + 6, 16);
+  gMap.fillText("1σ", cx + scale + 4, cy - 6);
+  gMap.fillText("2σ", cx + 2 * scale + 4, cy - 6);
+
+  // Reticle at current coordinates
+  const px = cx + curZ[0] * scale;
+  const py = cy - curZ[1] * scale;
+
+  gMap.fillStyle = "rgba(244, 162, 89, 0.35)";
+  gMap.beginPath();
+  gMap.arc(px, py, 14, 0, Math.PI * 2);
+  gMap.fill();
+
+  gMap.fillStyle = "#f4a259";
+  gMap.beginPath();
+  gMap.arc(px, py, 5, 0, Math.PI * 2);
+  gMap.fill();
+
+  gMap.strokeStyle = "#fff";
+  gMap.lineWidth = 1.5;
+  gMap.beginPath();
+  gMap.moveTo(px - 10, py); gMap.lineTo(px + 10, py);
+  gMap.moveTo(px, py - 10); gMap.lineTo(px, py + 10);
+  gMap.stroke();
+
+  // Decode and draw digit
+  const digitCv = $("latent-digit"), gDig = digitCv.getContext("2d");
+  gDig.fillStyle = "#14171d";
+  gDig.fillRect(0, 0, digitCv.width, digitCv.height);
+
+  const pixels = decodeVAE(curZ[0], curZ[1]);
+  if (pixels) {
+    const pw = digitCv.width / 8;
+    const ph = digitCv.height / 8;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const val = pixels[r * 8 + c];
+        const red = Math.round(val * 244);
+        const grn = Math.round(val * 162);
+        const blu = Math.round(val * 89);
+        gDig.fillStyle = `rgb(${red},${grn},${blu})`;
+        gDig.fillRect(c * pw, r * ph, pw, ph);
+      }
+    }
+  }
+
+  const dens = Math.exp(-0.5 * (curZ[0] * curZ[0] + curZ[1] * curZ[1])) / (2 * Math.PI);
+  $("r-vae").textContent = `Latent z = (${curZ[0].toFixed(2)}, ${curZ[1].toFixed(2)}) · prior density N(0, I): ${dens.toFixed(4)} · smooth continuous decoding without holes`;
+}
+
+function handleMapPointer(e) {
+  const rect = $("latent-map").getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+  const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+  const z1 = ((x / rect.width) - 0.5) * 5.0;
+  const z2 = (0.5 - (y / rect.height)) * 5.0;
+  curZ = [Math.max(-2.5, Math.min(2.5, z1)), Math.max(-2.5, Math.min(2.5, z2))];
+  renderVAE();
+}
+
+let vaeDragging = false;
+const mapEl = $("latent-map");
+if (mapEl) {
+  mapEl.addEventListener("pointerdown", (e) => {
+    vaeDragging = true;
+    mapEl.setPointerCapture(e.pointerId);
+    handleMapPointer(e);
+  });
+  mapEl.addEventListener("pointermove", (e) => {
+    if (vaeDragging) handleMapPointer(e);
+  });
+  mapEl.addEventListener("pointerup", (e) => {
+    vaeDragging = false;
+    try { mapEl.releasePointerCapture(e.pointerId); } catch {}
+  });
+  mapEl.addEventListener("pointercancel", () => { vaeDragging = false; });
+}
+
+loadVAE();
 </script>
 </body>
 </html>

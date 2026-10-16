@@ -5981,6 +5981,7 @@
    "Describe the forward process and the noise schedule",
    "Explain the training objective: predict the added noise at every level",
    "Explain sampling as many small denoising steps from pure noise",
+   "Explain Variational Autoencoders (VAEs), the reparameterization trick, and smooth latent spaces",
    "Explain text conditioning, classifier-free guidance, latent diffusion, and memorization"
   ],
   "needs": [
@@ -6005,6 +6006,10 @@
    [
     "Sampling",
     "Start from pure noise and denoise step by step (DDPM, or 20–50 steps with DDIM)."
+   ],
+   [
+    "Variational Autoencoder (VAE)",
+    "Compresses images to z = μ + σ ⊙ ε (reparameterization trick); KL penalty keeps the latent space dense and continuous."
    ],
    [
     "Classifier-free guidance",
@@ -6047,6 +6052,17 @@
     "sec": 2
    },
    {
+    "q": "Why is the reparameterization trick z = μ + σ ⊙ ε necessary when training a VAE?",
+    "options": [
+     "Random sampling cannot be differentiated; writing z as a function of external noise ε lets backprop compute gradients for μ and σ",
+     "It transforms Gaussian noise into uniform noise",
+     "It removes the need for an encoder"
+    ],
+    "answer": 0,
+    "why": "Backpropagation requires deterministic operations; moving randomness to ε restores differentiability.",
+    "sec": 4
+   },
+   {
     "q": "Raising the classifier-free guidance scale w from 1 to 3 makes samples…",
     "options": [
      "follow the prompt more strictly, with less variety",
@@ -6055,7 +6071,7 @@
     ],
     "answer": 0,
     "why": "In the notebook: 97% → 100% read as the requested digit, variety (pixel spread) 0.30 → 0.24.",
-    "sec": 4
+    "sec": 5
    },
    {
     "q": "Why does latent diffusion run much faster than diffusion on pixels?",
@@ -6066,7 +6082,7 @@
     ],
     "answer": 0,
     "why": "Every denoising step works on the small latent; a decoder makes pixels once at the end.",
-    "sec": 4
+    "sec": 5
    },
    {
     "q": "Why did the page's 2-D sampler produce only copies of its training points?",
@@ -6077,7 +6093,7 @@
     ],
     "answer": 0,
     "why": "Memorization is the ideal denoiser's behavior; capacity limits are part of why models generalize.",
-    "sec": 4
+    "sec": 5
    }
   ]
  },

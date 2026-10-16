@@ -181,5 +181,59 @@ check(lambda: rates[0] < 0.5 < rates[1] <= rates[3] and spread[3] < spread[0],
       "w = 0 ignores the label (a few 3s by chance); w = 1 follows it; w = 3 follows it always, with less variety: the guidance trade-off")
 
 # %% [markdown]
+# ## 7. Variational autoencoder: the reparameterization trick
+# Stable Diffusion compresses high-resolution images with a VAE into a latent space where diffusion runs.
+# The encoder outputs mean `mu` and `logvar` ($\log \sigma^2$). Write `reparameterize(mu, logvar)`: sample
+# $z = \mu + \sigma \odot \varepsilon$ where $\sigma = \exp(0.5 \cdot \text{logvar})$ and $\varepsilon \sim \mathcal{N}(0, I)$.
+# Moving the random draw to an external noise $\varepsilon$ makes $z$ differentiable with respect to `mu` and `logvar`.
+
+# %%
+def reparameterize(mu, logvar):
+    ### HINT std = torch.exp(0.5 * logvar)
+    ### HINT return mu + torch.randn_like(std) * std
+    ### BEGIN SOLUTION
+    std = torch.exp(0.5 * logvar)
+    return mu + torch.randn_like(std) * std
+    ### END SOLUTION
+
+torch.manual_seed(42)
+test_mu = torch.randn(10, 4, requires_grad=True)
+test_logvar = torch.randn(10, 4, requires_grad=True)
+test_z = reparameterize(test_mu, test_logvar)
+if test_z is not None and test_z is not ...:
+    test_z.sum().backward()
+    print("reparameterized sample shape:", test_z.shape, "· mu grad:", test_mu.grad.norm().item())
+
+# %%
+check(lambda: (
+    abs(reparameterize(torch.zeros(2000, 2), torch.zeros(2000, 2)).std().item() - 1.0) < 0.08
+    and test_mu.grad is not None
+), "randomness moved to external normal draw; gradients backpropagate directly through mu")
+
+# %% [markdown]
+# ## 8. VAE loss: Kullback-Leibler divergence to standard normal
+# To keep the latent space dense with no unmapped holes, the VAE penalizes divergence from $\mathcal{N}(0, I)$.
+# Write `vae_kl_loss(mu, logvar)`: the analytical KL divergence averaged over the batch:
+# $$D_{\text{KL}} = -\frac{1}{2 B} \sum_{i=1}^B \sum_{j=1}^D (1 + \text{logvar}_{i,j} - \mu_{i,j}^2 - \exp(\text{logvar}_{i,j}))$$
+
+# %%
+def vae_kl_loss(mu, logvar):
+    ### HINT kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
+    ### HINT return kl.mean()
+    ### BEGIN SOLUTION
+    kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
+    return kl.mean()
+    ### END SOLUTION
+
+test_kl = vae_kl_loss(torch.zeros(5, 4), torch.zeros(5, 4))
+print("KL at N(0, I):", test_kl.item() if test_kl is not None and test_kl is not ... else None)
+
+# %%
+check(lambda: (
+    torch.allclose(vae_kl_loss(torch.zeros(5, 4), torch.zeros(5, 4)), torch.tensor(0.0))
+    and vae_kl_loss(torch.ones(5, 4), torch.zeros(5, 4)) > 1.5
+), "zero KL penalty when encoder matches the standard normal prior; positive penalty when it drifts")
+
+# %% [markdown]
 # ## Next
 # Back to the path: https://ihor.sh/ai/ · Hugging Face's "Annotated Diffusion Model": https://huggingface.co/blog/annotated-diffusion
