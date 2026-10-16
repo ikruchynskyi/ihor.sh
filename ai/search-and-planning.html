@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Search, Planning and Constraints</title>
+  <meta name="description" content="AI from scratch elective: search, planning and constraints. States, actions and costs; Breadth-First Search, Dijkstra and A* with admissible heuristics on NYC rail; minimax with alpha-beta pruning; and constraint satisfaction with forward checking." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 2.4em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 10px 0; align-items: center; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; touch-action: none; border-radius: 6px; }
+    .formula { text-align: center; overflow-x: auto; overflow-y: hidden; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
+    .legend i:first-child { margin-left: 0; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: #e5e5e0; border-radius: 999px; font-size: 13px; font-weight: 600; }
+    button { font: inherit; font-size: 14px; padding: 6px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 6px; cursor: pointer; }
+    button:hover { background: #f0ede6; }
+    button.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    select { font: inherit; font-size: 14px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+    table.cmp { border-collapse: collapse; width: 100%; font-size: 15px; margin: 12px 0; }
+    .cmp th, .cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+    .cmp code { font-size: 13px; }
+  </style>
+</head>
+<body>
+<main data-lang="python">
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Elective · Search and planning</p>
+  <h1>Search, planning and constraints</h1>
+  <p class="lede">Before neural networks learned to approximate functions from data, artificial intelligence began with a clean mathematical question: if you have an exact model of the world, how do you find the best sequence of moves to reach a goal? This is search and planning — the foundation of route navigation, chess engines, robotics pathing, and modern chain-of-thought agent reasoning. In this lesson we build the classical algorithms of CS221: from breadth-first search and Dijkstra to A* on New York rail, minimax game search with α-β pruning, and constraint satisfaction for scheduling.</p>
+
+  <h2>1. States, actions and costs: BFS vs Dijkstra</h2>
+  <p>A search problem defines a <b>state space</b> (every situation the agent could be in), a start state, a set of <b>actions</b> available from each state, a <b>transition model</b> giving the resulting state, an <b>action cost</b> \(c(s, a)\), and a goal test. Together, these form a <b>graph</b>: states are <b>nodes</b>, actions are <b>edges</b> connecting them, and reachable states are <b>neighbors</b>.</p>
+  <p>The simplest search is <b>Breadth-First Search (BFS)</b>: it explores outward level by level using a first-in, first-out (FIFO) queue. BFS finds the path with the fewest hops. But real actions take different amounts of time or fuel. When step costs differ, BFS fails to find the cheapest route: a 3-hop journey taking 60 minutes will be picked over a 4-hop journey taking 56 minutes.</p>
+  <p><b>Uniform-Cost Search (UCS)</b>, also known as <b>Dijkstra's algorithm</b>, fixes this by prioritizing cumulative cost \(g(s)\) from the start using a <b>priority queue</b> (Python's <code>heapq</code>). It always expands the frontier node with the lowest total travel cost so far.</p>
+
+  <div class="row">
+    <label>Algorithm:
+      <select id="algo-select">
+        <option value="bfs">Breadth-First Search (hops)</option>
+        <option value="dijkstra">Dijkstra / Uniform-Cost (cost g)</option>
+        <option value="astar" selected>A* Search (cost g + heuristic h)</option>
+      </select>
+    </label>
+    <button id="btn-run" class="active">Run</button>
+    <button id="btn-step">Step</button>
+    <button id="btn-reset">Reset</button>
+  </div>
+
+  <canvas id="rail-canvas" width="760" height="380" aria-label="Interactive NYC commuter rail network showing search node expansions"></canvas>
+
+  <p class="legend">
+    <i style="background:#8f98a8"></i>unvisited
+    <i style="background:#58c4dd"></i>frontier (queue)
+    <i style="background:#a78bfa"></i>expanded
+    <i style="background:#f4a259"></i>optimal path
+  </p>
+  <p class="readout" id="search-readout">Click Run to watch the search navigate from Grand Central to Stamford.</p>
+
+  <p class="gist">Breadth-First Search finds the path with the fewest hops; Uniform-Cost Search finds the lowest cumulative cost using a priority queue.</p>
+
+  <div class="code" data-title="Run it: Uniform-Cost Search with heapq on an NYC rail graph"><textarea>
+import heapq
+
+# Commuter rail graph: station -> list of (neighbor, minutes)
+rail = {
+    "Grand Central": [("Harlem-125th", 10), ("Penn Station", 12)],
+    "Harlem-125th": [("Grand Central", 10), ("White Plains", 22), ("Yonkers", 14), ("New Rochelle", 18)],
+    "Penn Station": [("Grand Central", 12), ("Woodside", 11)],
+    "Woodside": [("Penn Station", 11), ("Jamaica", 10), ("New Rochelle", 25)],
+    "Jamaica": [("Woodside", 10), ("Mineola", 14)],
+    "Mineola": [("Jamaica", 14), ("Hicksville", 9)],
+    "Hicksville": [("Mineola", 9)],
+    "Yonkers": [("Harlem-125th", 14)],
+    "White Plains": [("Harlem-125th", 22), ("Stamford", 28)],
+    "New Rochelle": [("Harlem-125th", 18), ("Woodside", 25), ("Greenwich", 16)],
+    "Greenwich": [("New Rochelle", 16), ("Stamford", 12)],
+    "Stamford": [("Greenwich", 12), ("White Plains", 28)],
+}
+
+def uniform_cost_search(start, goal):
+    pq = [(0, start, [start])]
+    visited = {}
+    expanded = []
+    while pq:
+        cost, cur, path = heapq.heappop(pq)
+        if cur in visited and visited[cur] <= cost:
+            continue
+        visited[cur] = cost
+        expanded.append(cur)
+        if cur == goal:
+            return cost, path, expanded
+        for nbr, step_cost in rail[cur]:
+            if nbr not in visited or cost + step_cost < visited[nbr]:
+                heapq.heappush(pq, (cost + step_cost, nbr, path + [nbr]))
+    return None, None, expanded
+
+cost, path, expanded = uniform_cost_search("Grand Central", "Stamford")
+print(f"Dijkstra found: {' -> '.join(path)}")
+print(f"Total time: {cost} min · Stations expanded: {len(expanded)} (rippled across all lines)")
+</textarea></div>
+
+  <h2>2. A* search: guiding the search with heuristics</h2>
+  <p>Dijkstra expands blindly in all directions like ripples in a pond: heading toward Connecticut, it still expands Long Island stations (Jamaica, Mineola, Hicksville) simply because their cumulative minutes are small. To guide search toward the goal, we add a <b>heuristic</b> \(h(s)\): an estimate of the remaining cost from state \(s\) to the goal.</p>
+  <p><b>A* search</b> evaluates each node by the sum:</p>
+  <p class="formula">\[ f(s) = g(s) + h(s) \]</p>
+  <p>where \(g(s)\) is the exact cost incurred so far, and \(h(s)\) is the estimated cost to go. The priority queue always pops the state with smallest \(f(s)\).</p>
+  <p>A heuristic is <b>admissible</b> if it never overestimates the true remaining cost: \(h(s) \le h^*(s)\) for every state \(s\). On maps, straight-line Euclidean distance divided by the train's maximum speed is always admissible: no track can be shorter than a straight line, and no train can exceed its top speed.</p>
+
+  <div class="q" data-num="30" data-tol="0" data-show="30">
+    <p>A destination is 30 miles away in a straight line. If the maximum possible train speed on any track is 60 mph (1 mile per minute), what is the maximum admissible heuristic \(h\) in minutes?</p>
+    <div class="why">\(30\text{ miles} \div 1\text{ mile/min} = 30\text{ minutes}\). If you guessed 35 minutes, you might overestimate if a direct high-speed line existed, which would break the admissibility guarantee.</div>
+  </div>
+
+  <p>Look at the canvas above when you switch the algorithm to <b>A* Search</b>: Dijkstra explored <b>12 stations</b> all the way to Long Island, whereas A* focused immediately along the Sound corridor to Stamford, expanding only <b>5 stations</b>!</p>
+
+  <p class="gist">A* prioritizes \(f(s) = g(s) + h(s)\); if \(h(s)\) never overestimates (admissible), A* finds the optimal path while exploring far fewer states.</p>
+
+  <details class="deeper"><summary>Why an admissible heuristic guarantees the shortest path</summary>
+    <ol>
+      <li>Suppose A* is about to pop a suboptimal goal node \(G_2\) from the queue with cost \(g(G_2) > C^*\), where \(C^*\) is the true optimal cost.</li>
+      <li>Because the true optimal path to the best goal \(G^*\) has not been completed yet, there must be at least one unexpanded ancestor node \(n\) along that optimal path currently waiting in the priority queue.</li>
+      <li>Since the heuristic is admissible (\(h(n) \le h^*(n)\)), its evaluation score satisfies:
+        <div class="formula">\[ f(n) = g(n) + h(n) \le g(n) + h^*(n) = C^* \]</div>
+      </li>
+      <li>At the goal node \(G_2\), the remaining cost is zero (\(h(G_2) = 0\)), so \(f(G_2) = g(G_2) > C^*\).</li>
+      <li>Combining these inequalities: \(f(n) \le C^* < f(G_2)\). Because the priority queue always pops the node with the lowest \(f\), it will pop \(n\) before \(G_2\)!</li>
+      <li>Therefore, A* cannot terminate on a suboptimal goal while an optimal route remains unexplored.</li>
+    </ol>
+  </details>
+
+  <h2>3. Adversarial search: Minimax and α-β pruning</h2>
+  <p>When another agent acts against you in a zero-sum game, you cannot plan a fixed sequence of moves; you must plan for their best responses. This is <b>adversarial search</b>. One player is <b>MAX</b> (trying to maximize the utility score), and the other is <b>MIN</b> (trying to minimize it).</p>
+  <p>The <b>Minimax value</b> of a state is defined recursively:</p>
+  <p class="formula">\[ V(s) = \begin{cases} \text{Utility}(s) & \text{if } \text{IsTerminal}(s) \\ \max_{a \in A(s)} V(\text{Result}(s, a)) & \text{if } \text{Player}(s) = \text{MAX} \\ \min_{a \in A(s)} V(\text{Result}(s, a)) & \text{if } \text{Player}(s) = \text{MIN} \end{cases} \]</p>
+  <p>Plain minimax visits every leaf in the game tree: for branching factor \(b\) and depth \(d\), it checks \(O(b^d)\) positions. But we can skip whole branches that cannot affect the decision. This is <b>α-β pruning</b>:</p>
+  <ul>
+    <li>\(\alpha\): the highest value MAX has already secured along the current search path.</li>
+    <li>\(\beta\): the lowest value MIN has already secured along the current search path.</li>
+  </ul>
+  <p>Whenever \(\beta \le \alpha\), MIN already has a move that keeps the score at or below \(\beta\), while MAX already has a better alternative elsewhere worth at least \(\alpha\). MAX will never allow the game to enter this subtree, so we can prune (cut off) the remaining children immediately.</p>
+
+  <canvas id="tree-canvas" width="760" height="260" aria-label="Game tree showing alpha-beta pruning of subtrees"></canvas>
+  <div class="row">
+    <button id="btn-tree-minimax">Show Plain Minimax (8 leaves evaluated)</button>
+    <button id="btn-tree-prune" class="active">Show α-β Pruning (5 leaves evaluated)</button>
+  </div>
+  <p class="readout" id="tree-readout">α-β pruning skips branches without changing the chosen move: 3 leaves pruned.</p>
+
+  <div class="q" data-answer="a">
+    <p>Why does α-β pruning never change the move that Minimax chooses?</p>
+    <ul>
+      <li data-k="a">It only skips branches that are guaranteed to be worse than an alternative already available to one of the players</li>
+      <li data-k="b" data-says="Pruning does not approximate: it computes the exact minimax value.">It approximates the score by dropping unlikely moves</li>
+      <li data-k="c" data-says="Alpha-beta pruning works with any heuristic or utility function.">It requires an admissible heuristic</li>
+    </ul>
+    <div class="why">If \(\beta \le \alpha\), the parent node will never be chosen by rational players regardless of what unknown values lie deeper in the pruned branch.</div>
+  </div>
+
+  <p class="gist">Minimax plans against an adversary; α-β pruning skips branches that cannot change the outcome, cutting the effective branching factor in half.</p>
+
+  <h2>4. Constraint satisfaction: Backtracking and forward checking</h2>
+  <p>In standard search, we look for a sequence of actions. In a <b>Constraint Satisfaction Problem (CSP)</b>, the state is factored into a set of <b>variables</b> \(X = \{X_1, X_2, \dots, X_n\}\), each with a <b>domain</b> of allowed values \(D_i\), and a set of <b>constraints</b> specifying which combinations of assignments are legal. The goal is simply to find any complete, consistent assignment.</p>
+  <p>Consider scheduling overnight track maintenance across four interconnected rail lines: Hudson (\(H\)), Harlem (\(M\)), New Haven (\(N\)), and LIRR (\(L\)). Available shifts are Nights \(\{1, 2, 3\}\). Lines that share junction trackage or maintenance crews cannot be serviced on the same night: \(H \ne M\), \(M \ne N\), \(H \ne N\), and \(M \ne L\).</p>
+  <p>Brute-force testing all \(3^4 = 81\) combinations is wasteful. <b>Backtracking search</b> assigns one variable at a time, checking consistency after each assignment. Adding <b>forward checking</b> makes it much smarter: whenever variable \(X\) is assigned, it immediately filters the domains of all unassigned neighbors, removing values that conflict. If any variable's domain becomes empty, it backtracks immediately before wasting work on a doomed subtree.</p>
+
+  <div class="code" data-title="Run it: Backtracking CSP with forward checking"><textarea>
+# Rail lines (variables) and allowed maintenance nights (domain)
+variables = ["H", "M", "N", "L"]
+initial_domains = {v: [1, 2, 3] for v in variables}
+neighbors = {
+    "H": ["M", "N"],
+    "M": ["H", "N", "L"],
+    "N": ["H", "M"],
+    "L": ["M"]
+}
+
+checks = 0
+
+def forward_checking(assignment, domains):
+    global checks
+    if len(assignment) == len(variables):
+        return assignment
+    # Pick the next unassigned variable
+    var = [v for v in variables if v not in assignment][0]
+    for val in domains[var]:
+        checks += 1
+        # Filter neighboring domains
+        new_domains = {v: list(vals) for v, vals in domains.items()}
+        new_domains[var] = [val]
+        consistent = True
+        for nbr in neighbors[var]:
+            if nbr not in assignment:
+                new_domains[nbr] = [x for x in new_domains[nbr] if x != val]
+                if not new_domains[nbr]:
+                    consistent = False
+                    break
+        if consistent:
+            result = forward_checking({**assignment, var: val}, new_domains)
+            if result:
+                return result
+    return None
+
+solution = forward_checking({}, initial_domains)
+print(f"Assigned nights: {solution} · Domain checks: {checks} (plain backtracking took 7)")
+</textarea></div>
+
+  <p class="gist">CSPs represent problems as variables, domains, and constraints; backtracking with forward checking prunes dead ends early by tracking remaining legal values.</p>
+
+  <details class="deeper"><summary>Where it breaks: state explosions, bad heuristics, and world mismatch</summary>
+    <ul>
+      <li><b>Combinatorial Explosion.</b> The number of states grows exponentially with search depth (\(b^d\)). For chess (\(b \approx 35, d \approx 80\)) or Go (\(b \approx 250\)), exhaustive search to the end of the game is mathematically impossible. Modern game engines (like AlphaZero) truncate search at a fixed depth and replace leaf evaluations with learned neural network value heads.</li>
+      <li><b>Inadmissible or Weak Heuristics.</b> If \(h(s)\) overestimates, A* loses its optimality guarantee and can return a suboptimal path. Conversely, if \(h(s) = 0\), A* degrades to Dijkstra. A good heuristic must be both admissible and informative (close to \(h^*\)).</li>
+      <li><b>World Mismatch and Uncertainty.</b> Classical search assumes a deterministic, static model of the environment. In the real world, trains get delayed, weather changes, and human opponents do not play perfectly rationally. Planning under uncertainty requires Markov Decision Processes (MDPs) and Reinforcement Learning.</li>
+    </ul>
+  </details>
+
+  <h2>5. What to carry forward</h2>
+  <ul>
+    <li><b>Graphs</b> model states (nodes) and transitions (edges) with costs.</li>
+    <li><b>BFS</b> finds fewest hops; <b>Uniform-Cost Search (Dijkstra)</b> finds lowest cost using a priority queue.</li>
+    <li><b>A* search</b> combines known cost \(g\) with heuristic estimate \(h\); an admissible heuristic (\(h \le h^*\)) guarantees the shortest path while exploring far fewer states.</li>
+    <li><b>Minimax</b> solves zero-sum two-player games; <b>α-β pruning</b> skips branches that cannot change the outcome.</li>
+    <li><b>CSPs</b> represent problems as variables and constraints; <b>forward checking</b> prunes neighbor domains to catch dead ends early.</li>
+  </ul>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Commuter rail data: <a href="./data/rail-stations.json">NYC Rail Stations</a> (ODbL). Core curriculum reference: Stanford CS221 (Artificial Intelligence: Principles and Techniques).</p>
+</main>
+
+<script type="module" src="/learn-kit.js"></script>
+<script type="module" src="/ai/path.js"></script>
+<script type="module">
+const $ = (id) => document.getElementById(id);
+
+// 1. NYC Rail Stations Graph Data
+const stations = {
+  "Grand Central": { x: 190, y: 280, line: "MNR" },
+  "Harlem-125th": { x: 230, y: 220, line: "MNR" },
+  "Penn Station": { x: 120, y: 300, line: "LIRR" },
+  "Woodside": { x: 300, y: 320, line: "LIRR" },
+  "Jamaica": { x: 440, y: 330, line: "LIRR" },
+  "Mineola": { x: 580, y: 320, line: "LIRR" },
+  "Hicksville": { x: 700, y: 310, line: "LIRR" },
+  "Yonkers": { x: 190, y: 140, line: "MNR" },
+  "White Plains": { x: 300, y: 130, line: "MNR" },
+  "New Rochelle": { x: 390, y: 180, line: "MNR" },
+  "Greenwich": { x: 490, y: 140, line: "MNR" },
+  "Stamford": { x: 590, y: 100, line: "MNR" }
+};
+
+const edges = {
+  "Grand Central": [["Harlem-125th", 10], ["Penn Station", 12]],
+  "Harlem-125th": [["Grand Central", 10], ["White Plains", 22], ["Yonkers", 14], ["New Rochelle", 18]],
+  "Penn Station": [["Grand Central", 12], ["Woodside", 11]],
+  "Woodside": [["Penn Station", 11], ["Jamaica", 10], ["New Rochelle", 25]],
+  "Jamaica": [["Woodside", 10], ["Mineola", 14]],
+  "Mineola": [["Jamaica", 14], ["Hicksville", 9]],
+  "Hicksville": [["Mineola", 9]],
+  "Yonkers": [["Harlem-125th", 14]],
+  "White Plains": [["Harlem-125th", 22], ["Stamford", 28]],
+  "New Rochelle": [["Harlem-125th", 18], ["Woodside", 25], ["Greenwich", 16]],
+  "Greenwich": [["New Rochelle", 16], ["Stamford", 12]],
+  "Stamford": [["Greenwich", 12], ["White Plains", 28]]
+};
+
+const START = "Grand Central", GOAL = "Stamford";
+const maxSpeed = 7.0; // px per minute, guarantees admissibility
+
+function dist(a, b) {
+  return Math.hypot(stations[b].x - stations[a].x, stations[b].y - stations[a].y);
+}
+
+function heuristic(name) {
+  return dist(name, GOAL) / maxSpeed;
+}
+
+// Search state
+let searchSteps = [];
+let stepIndex = 0;
+let animTimer = null;
+
+function precomputeSearch(algo) {
+  searchSteps = [];
+  const visited = new Map(); // name -> best cost g
+  const explored = new Set();
+  
+  if (algo === "bfs") {
+    // FIFO queue of [name, path, cost]
+    const queue = [[START, [START], 0]];
+    const enqueued = new Set([START]);
+    while (queue.length > 0) {
+      const [cur, path, cost] = queue.shift();
+      explored.add(cur);
+      searchSteps.push({
+        cur,
+        explored: new Set(explored),
+        frontier: new Set(queue.map(q => q[0])),
+        path: cur === GOAL ? path : [],
+        cost,
+        done: cur === GOAL
+      });
+      if (cur === GOAL) break;
+      for (const [nbr, stepCost] of edges[cur]) {
+        if (!enqueued.has(nbr)) {
+          enqueued.add(nbr);
+          queue.push([nbr, [...path, nbr], cost + stepCost]);
+        }
+      }
+    }
+  } else {
+    // Priority queue
+    // items: { f, g, name, path }
+    let pq = [{
+      f: algo === "astar" ? heuristic(START) : 0,
+      g: 0,
+      name: START,
+      path: [START]
+    }];
+
+    while (pq.length > 0) {
+      pq.sort((a, b) => a.f - b.f);
+      const top = pq.shift();
+      const { g, name, path } = top;
+      if (visited.has(name) && visited.get(name) <= g) continue;
+      visited.set(name, g);
+      explored.add(name);
+
+      searchSteps.push({
+        cur: name,
+        explored: new Set(explored),
+        frontier: new Set(pq.map(item => item.name)),
+        path: name === GOAL ? path : [],
+        cost: g,
+        done: name === GOAL
+      });
+
+      if (name === GOAL) break;
+
+      for (const [nbr, stepCost] of edges[name]) {
+        const newG = g + stepCost;
+        if (!visited.has(nbr) || newG < visited.get(nbr)) {
+          const newF = algo === "astar" ? newG + heuristic(nbr) : newG;
+          pq.push({ f: newF, g: newG, name: nbr, path: [...path, nbr] });
+        }
+      }
+    }
+  }
+}
+
+function drawRail() {
+  const canvas = $("rail-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = "#14171d";
+  ctx.fillRect(0, 0, W, H);
+
+  const step = searchSteps[stepIndex] || {
+    cur: null,
+    explored: new Set(),
+    frontier: new Set([START]),
+    path: [],
+    cost: 0,
+    done: false
+  };
+
+  // Draw edges
+  ctx.lineWidth = 2;
+  const drawnEdges = new Set();
+  for (const [u, nbrs] of Object.entries(edges)) {
+    for (const [v, w] of nbrs) {
+      const key = [u, v].sort().join("--");
+      if (drawnEdges.has(key)) continue;
+      drawnEdges.add(key);
+      const p1 = stations[u], p2 = stations[v];
+      ctx.strokeStyle = "#2e3440";
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      // edge weight label
+      const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+      ctx.fillStyle = "#6b6a66";
+      ctx.font = "11px ui-monospace, monospace";
+      ctx.fillText(`${w}m`, mx - 8, my - 4);
+    }
+  }
+
+  // Draw highlighted optimal path if found
+  if (step.path && step.path.length > 1) {
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#f4a259";
+    ctx.beginPath();
+    for (let i = 0; i < step.path.length; i++) {
+      const p = stations[step.path[i]];
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
+
+  // Draw nodes
+  for (const [name, pos] of Object.entries(stations)) {
+    let color = "#8f98a8";
+    let radius = 6;
+    if (step.path && step.path.includes(name)) {
+      color = "#f4a259";
+      radius = 9;
+    } else if (name === step.cur) {
+      color = "#ffd166";
+      radius = 9;
+    } else if (step.explored.has(name)) {
+      color = "#a78bfa";
+      radius = 7;
+    } else if (step.frontier.has(name)) {
+      color = "#58c4dd";
+      radius = 7;
+    }
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // station label
+    ctx.fillStyle = (name === START || name === GOAL || step.path.includes(name)) ? "#ffffff" : "#adb5bd";
+    ctx.font = (name === START || name === GOAL) ? "bold 13px ui-sans-serif, sans-serif" : "11px ui-sans-serif, sans-serif";
+    ctx.fillText(name, pos.x + 10, pos.y + 4);
+  }
+
+  // Update readout
+  const algoName = $("algo-select").options[$("algo-select").selectedIndex].text;
+  if (step.done) {
+    $("search-readout").textContent = `${algoName}: found path [${step.path.join(" -> ")}] in ${step.cost} minutes · Stations expanded: ${step.explored.size}`;
+  } else if (step.cur) {
+    $("search-readout").textContent = `${algoName}: expanding ${step.cur} (frontier size: ${step.frontier.size}, expanded: ${step.explored.size})`;
+  } else {
+    $("search-readout").textContent = `${algoName}: ready to search from Grand Central to Stamford.`;
+  }
+}
+
+function runSearch() {
+  if (animTimer) clearInterval(animTimer);
+  precomputeSearch($("algo-select").value);
+  stepIndex = 0;
+  drawRail();
+  animTimer = setInterval(() => {
+    if (stepIndex < searchSteps.length - 1) {
+      stepIndex++;
+      drawRail();
+    } else {
+      clearInterval(animTimer);
+      animTimer = null;
+    }
+  }, 350);
+}
+
+$("btn-run").onclick = runSearch;
+$("btn-step").onclick = () => {
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+  if (searchSteps.length === 0 || stepIndex >= searchSteps.length - 1) {
+    precomputeSearch($("algo-select").value);
+    stepIndex = 0;
+  } else {
+    stepIndex++;
+  }
+  drawRail();
+};
+$("btn-reset").onclick = () => {
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+  precomputeSearch($("algo-select").value);
+  stepIndex = 0;
+  drawRail();
+};
+$("algo-select").onchange = runSearch;
+
+// 2. Minimax Tree Visualization
+let showPruning = true;
+
+function drawTree() {
+  const cv = $("tree-canvas");
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = "#14171d";
+  ctx.fillRect(0, 0, W, H);
+
+  // Tree nodes:
+  // Root: MAX at (380, 40)
+  // L (MIN) at (200, 110), R (MIN) at (560, 110)
+  // L1 (MAX) at (120, 180), L2 (MAX) at (280, 180), R1 (MAX) at (480, 180), R2 (MAX) at (640, 180)
+  // Leaves:
+  // L1 leaves: 3 at (90, 230), 5 at (150, 230)
+  // L2 leaves: 6 at (250, 230), 9 at (310, 230)
+  // R1 leaves: 1 at (450, 230), 2 at (510, 230)
+  // R2 leaves: 0 at (610, 230), 8 at (670, 230)
+
+  const nodes = [
+    { id: "root", x: 380, y: 35, label: "MAX: 5", type: "max" },
+    { id: "L", x: 200, y: 105, label: "MIN: 5", type: "min" },
+    { id: "R", x: 560, y: 105, label: showPruning ? "MIN: <=2" : "MIN: 2", type: "min" },
+    { id: "L1", x: 120, y: 175, label: "5", type: "max" },
+    { id: "L2", x: 280, y: 175, label: "9", type: "max" },
+    { id: "R1", x: 480, y: 175, label: "2", type: "max" },
+    { id: "R2", x: 640, y: 175, label: showPruning ? "pruned" : "8", type: "max", pruned: showPruning }
+  ];
+
+  const edgesTree = [
+    ["root", "L"], ["root", "R"],
+    ["L", "L1"], ["L", "L2"],
+    ["R", "R1"], ["R", "R2", showPruning]
+  ];
+
+  const leaves = [
+    { parent: "L1", x: 90, y: 235, val: 3 },
+    { parent: "L1", x: 150, y: 235, val: 5, best: true },
+    { parent: "L2", x: 250, y: 235, val: 6 },
+    { parent: "L2", x: 310, y: 235, val: 9, best: true },
+    { parent: "R1", x: 450, y: 235, val: 1 },
+    { parent: "R1", x: 510, y: 235, val: 2, best: true },
+    { parent: "R2", x: 610, y: 235, val: 0, pruned: showPruning },
+    { parent: "R2", x: 670, y: 235, val: 8, pruned: showPruning }
+  ];
+
+  // Draw edges
+  ctx.lineWidth = 2;
+  for (const [u, v, isPruned] of edgesTree) {
+    const p1 = nodes.find(n => n.id === u), p2 = nodes.find(n => n.id === v);
+    ctx.strokeStyle = isPruned ? "#4a4e58" : "#adb5bd";
+    if (isPruned) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw leaf edges
+  for (const lf of leaves) {
+    const parent = nodes.find(n => n.id === lf.parent);
+    ctx.strokeStyle = lf.pruned ? "#3b404d" : "#6c757d";
+    if (lf.pruned) ctx.setLineDash([3, 3]); else ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(parent.x, parent.y);
+    ctx.lineTo(lf.x, lf.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw internal nodes
+  for (const n of nodes) {
+    ctx.fillStyle = n.pruned ? "#252932" : (n.type === "max" ? "#c2410c" : "#2563eb");
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = n.pruned ? "#6b7280" : "#ffffff";
+    ctx.font = "bold 11px ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(n.label, n.x, n.y - 18);
+  }
+
+  // Draw leaves
+  for (const lf of leaves) {
+    ctx.fillStyle = lf.pruned ? "#252932" : (lf.best ? "#f4a259" : "#4b5563");
+    ctx.beginPath();
+    ctx.arc(lf.x, lf.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = lf.pruned ? "#4b5563" : "#ffffff";
+    ctx.font = "bold 12px ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(lf.val, lf.x, lf.y + 4);
+  }
+
+  // Draw cut mark on pruned branch
+  if (showPruning) {
+    const r2 = nodes.find(n => n.id === "R2");
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(r2.x - 20, r2.y - 20);
+    ctx.lineTo(r2.x + 20, r2.y + 20);
+    ctx.moveTo(r2.x + 20, r2.y - 20);
+    ctx.lineTo(r2.x - 20, r2.y + 20);
+    ctx.stroke();
+
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 12px ui-sans-serif, sans-serif";
+    ctx.fillText("Pruned: β = 2 ≤ α = 5", r2.x + 35, r2.y);
+  }
+
+  ctx.textAlign = "left";
+}
+
+$("btn-tree-minimax").onclick = () => {
+  showPruning = false;
+  $("btn-tree-minimax").classList.add("active");
+  $("btn-tree-prune").classList.remove("active");
+  $("tree-readout").textContent = "Plain Minimax evaluates every leaf: all 8 leaves visited.";
+  drawTree();
+};
+
+$("btn-tree-prune").onclick = () => {
+  showPruning = true;
+  $("btn-tree-prune").classList.add("active");
+  $("btn-tree-minimax").classList.remove("active");
+  $("tree-readout").textContent = "α-β pruning skips branches without changing the chosen move: 3 leaves pruned.";
+  drawTree();
+};
+
+// Initial render
+precomputeSearch("astar");
+drawRail();
+drawTree();
+
+window.blipContext = () => ({
+  page: "AI from scratch, elective: Search, planning and constraints",
+  algo: $("algo-select").value,
+  graph: "NYC commuter rail (Grand Central to Stamford)",
+  heuristic: "Admissible straight-line distance / max speed"
+});
+</script>
+</body>
+</html>

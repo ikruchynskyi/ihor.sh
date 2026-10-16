@@ -7543,5 +7543,109 @@
     "sec": 6
    }
   ]
+ },
+ "search-and-planning.html": {
+  "goals": [
+   "Model problems with states, actions, transition models and step costs",
+   "Compare Breadth-First Search, Uniform-Cost Search (Dijkstra) and A* search",
+   "Explain why an admissible heuristic guarantees finding the optimal path",
+   "Apply minimax with α-β pruning to zero-sum games and forward checking to CSPs"
+  ],
+  "needs": [
+   "08-agents.html",
+   "s2-just-enough-code.html"
+  ],
+  "teaches": [],
+  "cards": [
+   [
+    "State space and graph",
+    "States are nodes, actions are edges with costs, and reachable states are neighbors."
+   ],
+   [
+    "Breadth-First Search (BFS)",
+    "Explores level by level using a FIFO queue; optimal for hop count, not for varied step costs."
+   ],
+   [
+    "Uniform-Cost Search (Dijkstra)",
+    "Pops the lowest cumulative cost g(s) using a priority queue (heapq); finds the cheapest path."
+   ],
+   [
+    "A* Search",
+    "Pops the lowest f(s) = g(s) + h(s); focuses search toward the goal with a heuristic."
+   ],
+   [
+    "Admissible heuristic",
+    "h(s) never overestimates remaining cost (h(s) ≤ h*(s)); guarantees A* finds the optimal path."
+   ],
+   [
+    "Minimax",
+    "Recursive value of zero-sum games: MAX maximizes score, MIN minimizes score."
+   ],
+   [
+    "α-β pruning",
+    "Cuts branches whenever β ≤ α without changing the chosen move, halving search depth effort."
+   ],
+   [
+    "Constraint Satisfaction (CSP)",
+    "Variables, domains and constraints; backtracking with forward checking prunes dead ends early."
+   ]
+  ],
+  "check": [
+   {
+    "q": "Why does Breadth-First Search fail to find the fastest route when step travel times vary?",
+    "options": [
+     "It minimizes hop count rather than cumulative travel time",
+     "It requires a neural network",
+     "It only works on binary trees"
+    ],
+    "answer": 0,
+    "why": "BFS treats all edges as having equal weight 1, so it prefers 3 slow hops over 4 fast hops.",
+    "sec": 1
+   },
+   {
+    "q": "What data structure does Uniform-Cost Search use to expand the cheapest state next?",
+    "options": [
+     "A priority queue (heapq)",
+     "A stack (LIFO)",
+     "A circular buffer"
+    ],
+    "answer": 0,
+    "why": "A priority queue extracts the minimum cumulative cost in logarithmic time.",
+    "sec": 1
+   },
+   {
+    "q": "Why must a heuristic h(s) in A* search be admissible (never overestimate)?",
+    "options": [
+     "To guarantee that A* finds the true optimal path rather than stopping early on a suboptimal goal",
+     "To make the code run faster",
+     "Because negative costs are forbidden"
+    ],
+    "answer": 0,
+    "why": "If h(s) overestimated, an optimal path could look falsely expensive and get bypassed.",
+    "sec": 2
+   },
+   {
+    "q": "In minimax search with α-β pruning, when can search beneath a node be pruned?",
+    "options": [
+     "When β ≤ α",
+     "When depth is an odd number",
+     "When the score reaches zero"
+    ],
+    "answer": 0,
+    "why": "When β ≤ α, the opponent can force an outcome worse than an option MAX already secured.",
+    "sec": 3
+   },
+   {
+    "q": "What does forward checking do after assigning a variable in a CSP?",
+    "options": [
+     "Filters neighboring variables' domains to remove values that conflict with the new assignment",
+     "Assigns all remaining variables randomly",
+     "Restarts search from the beginning"
+    ],
+    "answer": 0,
+    "why": "Forward checking prunes incompatible values in neighbors and backtracks immediately if any domain empties.",
+    "sec": 4
+   }
+  ]
  }
 }

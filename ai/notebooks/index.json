@@ -419,6 +419,13 @@
   "gpu": true,
   "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-a-pet-breed-classifier-on-the-web"
  },
+ "search-and-planning.html": {
+  "notebook": "search-and-planning.ipynb",
+  "title": "AI from scratch: search, planning and constraints",
+  "colab": "https://colab.research.google.com/github/ikruchynskyi/ihor.sh/blob/main/ai/notebooks/search-and-planning.ipynb",
+  "gpu": false,
+  "kaggle": "https://www.kaggle.com/code/irishdash/ai-from-scratch-search-planning-and-constraints"
+ },
  "seq2seq.html": {
   "notebook": "seq2seq.ipynb",
   "title": "AI from scratch: seq2seq and beam search",
