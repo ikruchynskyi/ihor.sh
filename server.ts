@@ -600,7 +600,7 @@ const server = http.createServer(async (req, res) => {
       if (!isLevel(b?.level)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "level must be N5, N4, N3, N2 or N1" }));
       let gone = false; res.on("close", () => { gone = true; });
       try { const out = await inLine(() => gone ? Promise.reject(new Error("left")) : yomuChat(b.level, turns, String(b.topic ?? "").slice(0, 80), Array.isArray(b?.usedMemes) ? b.usedMemes.map(String) : [])); return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out)); }
-      catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
+      catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
       const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
