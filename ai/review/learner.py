@@ -159,6 +159,7 @@ def flag(args, name, default=None):
 def cmd_answer(args):
     if len(args) < 3: sys.exit('answer LESSON Q VALUE --quote "the words from the lesson you relied on"')
     stem, n, value = lesson(args[0]), int(args[1]), args[2]; allowed(stem)
+    cmd_inbox([])  # editor messages arrive between steps, not only at the next lesson
     quote = flag(args, "--quote")
     q = parsed(stem).qs[n - 1]
     tries = sum(1 for e in lines(RUN / "log.jsonl") if e["kind"] == "answer" and e["lesson"] == stem and e["q"] == n)
@@ -193,7 +194,7 @@ def _run(src, quiet=False):
 
 def cmd_run(args):
     if len(args) < 2: sys.exit("run LESSON BOX [--file your_version.py]")
-    stem, n = lesson(args[0]), int(args[1]); allowed(stem)
+    stem, n = lesson(args[0]), int(args[1]); allowed(stem); cmd_inbox([])
     les = parsed(stem); box = les.boxes[n - 1]
     code = Path(flag(args, "--file")).read_text() if flag(args, "--file") else html.unescape(box["code"])
     uses = [b for b in les.boxes if box["uses"] and b["id"] in box["uses"].split()]
@@ -211,7 +212,7 @@ def cmd_note(args):
     if ev.get("kind") not in NOTE_KINDS: sys.exit(f"kind must be one of {sorted(NOTE_KINDS)}")
     if ev["kind"] == "struggle" and ev.get("type") not in STRUGGLES: sys.exit(f"a struggle's type is one of {sorted(STRUGGLES)}")
     if ev["kind"] == "exercise" and not (ev.get("exercise") and ev.get("quote")): sys.exit('an exercise note needs "exercise": N and "quote": where the course showed you how')
-    ev.setdefault("lesson", lesson())
+    ev.setdefault("lesson", lesson()); cmd_inbox([])
     print("logged:", log(ev.pop("kind"), **ev)["kind"])
 
 def cmd_inbox(args):
