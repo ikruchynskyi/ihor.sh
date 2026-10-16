@@ -3,75 +3,405 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bike and Train Escapes</title>
-  <meta name="description" content="Overnight bike trips from New York City by Metro-North, LIRR and NJ Transit: a checker that says whether your full-size bike can ride a given train (rush hours, holidays, summer rules, from the official pages), and four tested escapes to campgrounds with their seasons, booking links and routes you can open in the route notebook." />
+  <title>Bike and Train Escapes · NYC Rail &amp; Campgrounds</title>
+  <meta name="description" content="Overnight bike trips from New York City by Metro-North, LIRR and NJ Transit: a checker that says whether your full-size bike can ride a given train (rush hours, holidays, summer rules, from the official pages), and tested escapes to campgrounds with their seasons, booking links and routes." />
   <style>
-    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 120px; }
-    h1 { margin: 0 0 6px; } h2 { margin: 34px 0 8px; }
-    .hint { font-size: 14px; color: var(--muted); }
-    .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; }
-    .verdict { padding: 12px 16px; border-left: 6px solid var(--muted); margin: 10px 0; }
-    .verdict.ok { border-color: #2f9e44; } .verdict.no { border-color: #e03131; }
-    .verdict b.big { font-size: 1.15rem; }
-    .trip { padding: 14px 18px; margin: 14px 0; }
-    .trip h3 { margin: 0 0 4px; }
-    .trip p { margin: 6px 0; }
-    .tag { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); margin-right: 6px; }
-    .open { color: #1e6b35; font-weight: 600; } .closed { color: #e03131; font-weight: 600; }
-    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-    .found { padding: 10px 14px; margin: 8px 0; }
-    .found p { margin: 3px 0; }
-    .tag.mine { border-color: var(--accent); }
-    input[list] { min-width: 220px; }
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #ffffff;
+      --card-hover: #f7f6f2;
+      --accent: #c2410c;
+      --accent-hover: #9a3412;
+      --success: #22c55e;
+      --error: #ef4444;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8b949e;
+        --line: #30363d;
+        --card: #161b22;
+        --card-hover: #1c2128;
+        --accent: #f97316;
+        --accent-hover: #ea580c;
+        --success: #4ade80;
+        --error: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 120px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .eyebrow {
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .eyebrow a { color: inherit; }
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .lede {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 24px;
+    }
+    h2 {
+      margin: 40px 0 12px;
+      font-size: 1.35rem;
+      letter-spacing: -0.01em;
+    }
+    .hint {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 4px 0;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    /* Checker Form Controls */
+    .checker-box {
+      padding: 20px;
+      margin: 16px 0;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+    .field-label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .select-control, .input-control {
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.15s ease;
+      font-family: inherit;
+    }
+    .select-control:focus, .input-control:focus {
+      border-color: var(--accent);
+    }
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      user-select: none;
+      padding-bottom: 10px;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Verdict Banner */
+    .verdict {
+      padding: 16px 20px;
+      border-radius: 8px;
+      border-left: 6px solid var(--muted);
+      background: var(--card-hover);
+      margin-top: 16px;
+      transition: all 0.2s ease;
+    }
+    .verdict.ok {
+      border-color: var(--success);
+      background: rgba(34, 197, 94, 0.08);
+    }
+    .verdict.no {
+      border-color: var(--error);
+      background: rgba(239, 68, 68, 0.08);
+    }
+    .verdict b.big {
+      font-size: 1.25rem;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    .verdict.ok b.big { color: var(--success); }
+    .verdict.no b.big { color: var(--error); }
+    .verdict p { margin: 6px 0 0; }
+    .verdict button {
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      margin-left: 6px;
+    }
+    .verdict button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Trip Cards */
+    .trip {
+      padding: 20px;
+      margin: 16px 0;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .trip:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .trip h3 {
+      margin: 0 0 8px;
+      font-size: 1.25rem;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--fg);
+    }
+    .tag.mine {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(194, 65, 12, 0.08);
+    }
+    .open { color: var(--success); font-weight: 700; }
+    .closed { color: var(--error); font-weight: 700; }
+
+    .trip-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 8px 16px;
+      margin: 12px 0 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--card-hover);
+      font-size: 0.9rem;
+    }
+    .trip-details p { margin: 0; }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    button, .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--fg);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    button:hover, .button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .button.primary, button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .button.primary:hover, button.primary:hover {
+      background: var(--accent-hover);
+      color: #fff;
+    }
+
+    /* Found Items */
+    .found {
+      padding: 16px;
+      margin: 12px 0;
+    }
+    .found p { margin: 4px 0; }
+    .found .ride {
+      font-size: 0.95rem;
+      color: var(--fg);
+      font-weight: 600;
+      padding: 6px 0;
+    }
+    .found .actions {
+      margin-top: 10px;
+    }
+
+    /* Custom Notes Input */
+    .note-input {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+    }
+    .note-input:focus {
+      border-color: var(--accent);
+    }
+    ul.tips-list {
+      padding-left: 20px;
+      margin: 12px 0;
+    }
+    ul.tips-list li {
+      margin: 6px 0;
+    }
   </style>
 </head>
 <body>
 <main>
-  <p class="eyebrow"><a href="/ride/">Ride</a> · Bike + train escapes</p>
-  <h1>Bike + train escapes</h1>
-  <p class="lede">Leave the city on a train with your bike, ride to a campground, come back the next day. The hard part isn't the riding: it's knowing which trains take a full-size bike. Each railroad bans bikes at rush hour and on certain holidays, with different hours, so the checker below applies all of their rules for you. Every rule comes from the railroad's own page (linked), checked October 10, 2026.</p>
+  <p class="eyebrow"><a href="/">ihor.sh</a> / <a href="/ride/">Ride</a> / Bike + Train Escapes</p>
+  <h1>Bike + Train Escapes</h1>
+  <p class="lede">Leave NYC on a commuter rail train with your bicycle, pedal to a scenic campground, and ride back the next morning. Knowing which trains take a full-size bike shouldn't require reading 15 pages of rules: this checker applies all rush-hour, holiday, and summer bans directly from official MTA and NJ Transit regulations.</p>
 
   <h2>Can my bike ride this train?</h2>
-  <div class="card" style="padding:12px 16px">
-    <div class="row">
-      <label>Railroad <select id="rr"><option value="MNR">Metro-North</option><option value="LIRR">LIRR</option><option value="NJT">NJ Transit</option></select></label>
-      <label>Train <select id="dir"><option value="out">leaving the city</option><option value="in">coming back</option></select></label>
-      <label><span id="whenLabel">departs</span> <input type="datetime-local" id="when"></label>
-      <label><input type="checkbox" id="fold"> folding bike</label>
+  <div class="checker-box card">
+    <div class="controls-grid">
+      <label class="field-label">
+        Railroad
+        <select id="rr" class="select-control">
+          <option value="MNR">Metro-North</option>
+          <option value="LIRR">Long Island Rail Road</option>
+          <option value="NJT">NJ Transit</option>
+        </select>
+      </label>
+
+      <label class="field-label">
+        Direction
+        <select id="dir" class="select-control">
+          <option value="out">Leaving the city</option>
+          <option value="in">Coming back into NYC</option>
+        </select>
+      </label>
+
+      <label class="field-label">
+        <span id="whenLabel">Departs the city at</span>
+        <input type="datetime-local" id="when" class="input-control">
+      </label>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="fold">
+        <span>Folding bike (permitted always)</span>
+      </label>
     </div>
+
     <div id="verdict" class="verdict" aria-live="polite"></div>
   </div>
 
-  <h2>Escapes</h2>
-  <p class="hint">Distances are approximate: "Plan this ride" opens it in the route notebook with the real route, climbing, water, food (with opening hours), daylight and the forecast. Book campsites ahead: state parks fill up on summer weekends.</p>
+  <h2>Tested Escapes</h2>
+  <p class="hint">Distances are approximate: "Plan this ride" opens it directly in the route notebook with turn-by-turn road profile, elevation climb, water/food resupply, daylight hours, and live weather forecast.</p>
   <div id="trips"></div>
 
   <h2 id="make">Make your own escape</h2>
-  <p>Pick a station and how far you'd ride, and the page lists every campground mapped in OpenStreetMap around it. Measure the real bike ride to any of them, open it in the route notebook, and save the trip to your list. These come straight from the map, so they aren't checked the way the trips above are: look at the campground's own website for its season and how to book, and whether it takes tents for one night.</p>
-  <div class="card" style="padding:12px 16px">
-    <div class="row">
-      <label>Railroad <select id="mkRr"><option value="MNR">Metro-North</option><option value="LIRR">LIRR</option><option value="NJT">NJ Transit</option></select></label>
-      <label>Station <input id="mkSt" list="mkStations" placeholder="type a station"><datalist id="mkStations"></datalist></label>
-      <label>within <input type="range" id="mkKm" min="5" max="60" step="5" value="30"> <span id="mkKmV"></span></label>
-      <label><input type="checkbox" id="mkHike"> include hike-in trail sites</label>
-      <button id="mkGo">Find campgrounds</button>
+  <p>Pick any commuter rail station and maximum ride distance, and the finder queries every tent campground mapped in OpenStreetMap around it. Measure the real bike route, open in the notebook, and save to your favorites.</p>
+  <div class="checker-box card">
+    <div class="controls-grid">
+      <label class="field-label">
+        Railroad
+        <select id="mkRr" class="select-control">
+          <option value="MNR">Metro-North</option>
+          <option value="LIRR">Long Island Rail Road</option>
+          <option value="NJT">NJ Transit</option>
+        </select>
+      </label>
+
+      <label class="field-label">
+        Station
+        <input id="mkSt" class="input-control" list="mkStations" placeholder="Type station name (e.g. Beacon, Croton-Harmon)...">
+        <datalist id="mkStations"></datalist>
+      </label>
+
+      <label class="field-label">
+        Radius: <strong id="mkKmV" style="color:var(--accent);">30 km</strong>
+        <input type="range" id="mkKm" min="5" max="60" step="5" value="30" style="accent-color:var(--accent);margin-top:6px;">
+      </label>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="mkHike">
+        <span>Include hike-in / trail sites</span>
+      </label>
     </div>
-    <p class="hint" id="mkStatus" aria-live="polite"></p>
+
+    <div style="margin-top:12px;">
+      <button id="mkGo" class="primary" style="padding:10px 20px;">Find Campgrounds</button>
+    </div>
+    <p class="hint" id="mkStatus" aria-live="polite" style="margin-top:12px;"></p>
     <div id="mkOut"></div>
   </div>
-  <h2 id="mine">Your escapes</h2>
-  <div id="mineList"><p class="hint">None yet: make one above and press "Save".</p></div>
 
-  <h2>Good to know</h2>
-  <ul>
-    <li>Walk your bike in stations and on platforms; bikes go where they don't block aisles or doors, and riders with disabilities always come first.</li>
-    <li>E-bikes and scooters aren't allowed on NJ Transit trains; check the MTA's rules for electric bikes before you bring one on Metro-North or the LIRR.</li>
-    <li>Rules change. The checker follows the pages below as of the date above; if a conductor or a sign says otherwise, they win.</li>
+  <h2 id="mine">Your Saved Escapes</h2>
+  <div id="mineList"><p class="hint">None yet: build one in the section above and press "Save as my escape".</p></div>
+
+  <h2>Rail Rules &amp; Best Practices</h2>
+  <ul class="tips-list">
+    <li><strong>Platform courtesy:</strong> Walk your bike on platforms and through stations; never ride inside terminals. Always yield doors and priority spaces to riders with disabilities.</li>
+    <li><strong>Electric bikes:</strong> E-bikes and scooters are strictly prohibited on NJ Transit trains. Check MTA guidelines before carrying lithium battery bikes on Metro-North or LIRR.</li>
+    <li><strong>Conductor authority:</strong> If a train car is at maximum capacity or a crew member issues an instruction, train crew discretion supersedes standard timetables.</li>
   </ul>
   <p class="hint" id="sources"></p>
 </main>
+
 <script type="module">
 import { bikeOK, nextOK, inSeason, ESCAPES, SOURCES, NAMES, LIMITS } from "/ride/escapes.js";
 const $ = (id) => document.getElementById(id);
@@ -79,117 +409,260 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 const fmt = (d) => d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-// default: this coming Friday at 6 pm, the most common "let's go" moment (and a banned one, which is the point)
-const fri = new Date(); fri.setDate(fri.getDate() + ((5 - fri.getDay() + 7) % 7)); fri.setHours(18, 0, 0, 0);
+// default: this coming Friday at 6 pm
+const fri = new Date();
+fri.setDate(fri.getDate() + ((5 - fri.getDay() + 7) % 7));
+fri.setHours(18, 0, 0, 0);
 if (fri < new Date()) fri.setDate(fri.getDate() + 7);
 $("when").value = local(fri);
 
 function check() {
   const rr = $("rr").value, dir = $("dir").value, when = new Date($("when").value), fold = $("fold").checked;
-  $("whenLabel").textContent = dir === "out" ? "departs the city at" : "arrives in the city at";
+  $("whenLabel").textContent = dir === "out" ? "Departs the city at" : "Arrives in the city at";
   if (isNaN(when)) return;
   const r = bikeOK(rr, dir, when, { folding: fold }), alt = !r.ok ? nextOK(rr, dir, when) : null;
-  $("verdict").className = `verdict card ${r.ok ? "ok" : "no"}`;
-  $("verdict").innerHTML = `<b class="big">${r.ok ? "✓ Yes" : "✗ No"}</b>, on ${NAMES[rr]} ${dir === "out" ? "leaving" : "arriving"} ${fmt(when)}. ${esc(r.why)}
-    ${alt ? `<p>Earliest with a bike: <b>${fmt(alt)}</b> <button id="useAlt">use it</button></p>` : ""}
+  $("verdict").className = `verdict ${r.ok ? "ok" : "no"}`;
+  $("verdict").innerHTML = `
+    <div><b class="big">${r.ok ? "✓ Bikes Allowed" : "✗ Bikes Prohibited"}</b> on ${NAMES[rr]} ${dir === "out" ? "leaving NYC" : "arriving NYC"} at ${fmt(when)}.</div>
+    <p>${esc(r.why)}</p>
+    ${alt ? `<p style="margin-top:8px;">Earliest permitted train with full-size bike: <strong>${fmt(alt)}</strong> <button type="button" id="useAlt">Switch to this time</button></p>` : ""}
     ${r.note ? `<p class="hint">${esc(r.note)}</p>` : ""}
-    <p class="hint">${esc(LIMITS[rr])} · <a href="${SOURCES[rr]}">${NAMES[rr]}'s bike rules</a></p>`;
+    <p class="hint" style="margin-top:8px;">${esc(LIMITS[rr])} · <a href="${SOURCES[rr]}" target="_blank" rel="noopener">${NAMES[rr]}'s official bike regulations</a></p>`;
   if (alt) $("useAlt").onclick = () => { $("when").value = local(alt); check(); };
 }
+
 for (const id of ["rr", "dir", "when", "fold"]) $(id).addEventListener("input", check);
 check();
 
 const today = new Date();
 $("trips").innerHTML = ESCAPES.map((e) => {
-  const open = inSeason(today, ...e.camp.season), [o, c] = e.camp.season.map((md) => new Date(`2026-${md}T12:00`).toLocaleDateString([], { month: "short", day: "numeric" }));
+  const open = inSeason(today, ...e.camp.season);
+  const [o, c] = e.camp.season.map((md) => new Date(`2026-${md}T12:00`).toLocaleDateString([], { month: "short", day: "numeric" }));
   const plan = "/ride/#plan=" + encodeURIComponent(e.plan.map(([a, b, n]) => `${a},${b},${n}`).join("|"));
   return `<article class="trip card" id="${e.id}">
     <h3>${esc(e.title)}</h3>
-    <span class="tag">🚆 ${NAMES[e.rr]}</span><span class="tag">⛺ ${open ? `<span class="open">open now</span>` : `<span class="closed">closed for the season</span>`} (${o} – ${c})</span>
+    <div class="tag-row">
+      <span class="tag">🚆 ${NAMES[e.rr]}</span>
+      <span class="tag">⛺ ${open ? `<span class="open">● Open now</span>` : `<span class="closed">○ Closed for season</span>`} (${o} – ${c})</span>
+    </div>
     <p>${esc(e.blurb)}</p>
-    <p><b>Train:</b> ${esc(e.line)}.</p>
-    <p><b>Ride:</b> ${esc(e.ride)}</p>
-    <p><b>Sleep:</b> <a href="${e.camp.info}">${esc(e.camp.name)}</a>, season ${o} to ${c} (2026). <a href="${e.camp.book}">Book a site</a>.</p>
-    <p><b>Home:</b> ${esc(e.back)}</p>
-    <div class="actions"><a class="button" href="${plan}">🗺 Plan this ride</a><button data-rr="${e.rr}">Check my trains</button></div>
+    <div class="trip-details">
+      <p><strong>Train:</strong> ${esc(e.line)}</p>
+      <p><strong>Ride:</strong> ${esc(e.ride)}</p>
+      <p><strong>Sleep:</strong> <a href="${e.camp.info}" target="_blank" rel="noopener">${esc(e.camp.name)}</a> · <a href="${e.camp.book}" target="_blank" rel="noopener">Book site</a></p>
+      <p><strong>Return:</strong> ${esc(e.back)}</p>
+    </div>
+    <div class="actions">
+      <a class="button primary" href="${plan}">🗺 Plan this ride</a>
+      <button type="button" data-rr="${e.rr}">Check train times</button>
+    </div>
   </article>`;
 }).join("");
-$("trips").addEventListener("click", (ev) => { const rr = ev.target.closest("[data-rr]")?.dataset.rr; if (rr) { $("rr").value = rr; check(); $("rr").scrollIntoView({ behavior: "smooth", block: "center" }); } });
-$("sources").innerHTML = "Sources: " + Object.entries(SOURCES).map(([k, u]) => `<a href="${u}">${NAMES[k]}</a>`).join(" · ") + " · campground seasons from NY State Parks and NJ DEP (each linked in its trip).";
+
+$("trips").addEventListener("click", (ev) => {
+  const rr = ev.target.closest("[data-rr]")?.dataset.rr;
+  if (rr) {
+    $("rr").value = rr;
+    check();
+    $("rr").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+});
+
+$("sources").innerHTML = "Sources: " + Object.entries(SOURCES).map(([k, u]) => `<a href="${u}" target="_blank" rel="noopener">${NAMES[k]}</a>`).join(" · ") + " · campground seasons via NY State Parks and NJ DEP.";
+
 // ---------- make your own ----------
-const getJSON = (u, opts) => fetch(u, opts).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
+const getJSON = (u, opts) => fetch(u, opts).then(async (r) => {
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`);
+  return d;
+});
 const KEY = "ride-escapes-mine";
-let mine = []; try { mine = JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch {}
+let mine = [];
+try { mine = JSON.parse(localStorage.getItem(KEY) ?? "[]"); } catch {}
 const saveMine = () => { try { localStorage.setItem(KEY, JSON.stringify(mine)); } catch {} };
 let stations = [], found = [], fromSt = null;
-$("mkGo").disabled = true; $("mkStatus").textContent = "Loading the stations…";
-getJSON("/api/ride/stations").then((d) => { stations = d; fillStations(); $("mkGo").disabled = false; $("mkStatus").textContent = ""; }).catch(() => ($("mkStatus").textContent = "Couldn't load the station list. Try again in a minute."));
-function fillStations() { const rr = $("mkRr").value; $("mkStations").innerHTML = stations.filter((x) => x.rr.includes(rr)).map((x) => `<option value="${esc(x.name)}">`).join(""); }
+
+$("mkGo").disabled = true;
+$("mkStatus").textContent = "Loading railroad station database…";
+getJSON("/api/ride/stations").then((d) => {
+  stations = d;
+  fillStations();
+  $("mkGo").disabled = false;
+  $("mkStatus").textContent = "";
+}).catch(() => ($("mkStatus").textContent = "Couldn't load the station list. Try again in a minute."));
+
+function fillStations() {
+  const rr = $("mkRr").value;
+  $("mkStations").innerHTML = stations.filter((x) => x.rr.includes(rr)).map((x) => `<option value="${esc(x.name)}">`).join("");
+}
 $("mkRr").onchange = fillStations;
-const kmLabel = () => ($("mkKmV").textContent = `${$("mkKm").value} km`); $("mkKm").oninput = kmLabel; kmLabel();
+
+const kmLabel = () => ($("mkKmV").textContent = `${$("mkKm").value} km`);
+$("mkKm").oninput = kmLabel;
+kmLabel();
+
 const planLink = (pts) => "/ride/#plan=" + encodeURIComponent(pts.map(([a, b, n]) => `${a},${b},${n}`).join("|"));
+
 $("mkGo").onclick = async () => {
   const rr = $("mkRr").value, name = $("mkSt").value.trim().toLowerCase();
   fromSt = stations.find((x) => x.rr.includes(rr) && x.name.toLowerCase() === name) ?? stations.find((x) => x.rr.includes(rr) && x.name.toLowerCase().includes(name));
-  if (!name || !fromSt) { $("mkStatus").textContent = "Pick a station from the list (start typing its name)."; return; }
-  $("mkSt").value = fromSt.name; $("mkStatus").textContent = `Looking for campgrounds within ${$("mkKm").value} km of ${fromSt.name} (OpenStreetMap can take up to a minute)…`; $("mkOut").innerHTML = "";
-  try { found = (await getJSON(`/api/ride/camps?lat=${fromSt.lat}&lon=${fromSt.lon}&km=${$("mkKm").value}`)).camps; } catch (e) { $("mkStatus").textContent = e.message; return; }
+  if (!name || !fromSt) {
+    $("mkStatus").textContent = "Pick a valid station from the suggestions.";
+    return;
+  }
+  $("mkSt").value = fromSt.name;
+  $("mkStatus").textContent = `Searching OpenStreetMap for campgrounds within ${$("mkKm").value} km of ${fromSt.name}…`;
+  $("mkOut").innerHTML = "";
+  try {
+    found = (await getJSON(`/api/ride/camps?lat=${fromSt.lat}&lon=${fromSt.lon}&km=${$("mkKm").value}`)).camps;
+  } catch (e) {
+    $("mkStatus").textContent = e.message;
+    return;
+  }
   renderFound();
 };
+
 $("mkHike").onchange = () => found.length && renderFound();
+
 function renderFound() {
   const list = found.filter((c) => $("mkHike").checked || !c.backcountry);
-  $("mkStatus").textContent = list.length ? `${list.length} campground${list.length > 1 ? "s" : ""} within ${$("mkKm").value} km of ${fromSt.name} (straight-line distance; measure the ride for the real one).` : `No campgrounds mapped within ${$("mkKm").value} km of ${fromSt.name}${found.length ? " (only hike-in trail sites: tick the box to see them)" : ""}. Try a bigger distance or another station.`;
+  $("mkStatus").textContent = list.length
+    ? `Found ${list.length} campground${list.length > 1 ? "s" : ""} within ${$("mkKm").value} km of ${fromSt.name}.`
+    : `No campgrounds found within ${$("mkKm").value} km of ${fromSt.name}${found.length ? " (only hike-in trail sites found: enable checkbox above)" : ""}. Try increasing the radius.`;
+
   $("mkOut").innerHTML = list.map((c) => `<div class="found card" data-osm="${esc(c.osm)}">
-    <p><b>${esc(c.name)}</b> <span class="hint">${c.km} km away${c.backcountry ? " · hike-in trail site" : ""}${c.operator ? ` · ${esc(c.operator)}` : ""}${c.fee ? ` · fee: ${esc(c.fee)}` : ""}${c.season ? ` · hours: ${esc(c.season)}` : ""}</span></p>
-    <p class="hint">${c.website ? `<a href="${esc(c.website)}" rel="noopener" target="_blank">its website</a> · ` : "no website mapped · "}<a href="https://www.openstreetmap.org/${esc(c.osm)}" target="_blank" rel="noopener">on OpenStreetMap</a></p>
+    <p><strong>${esc(c.name)}</strong> <span class="hint">${c.km} km direct${c.backcountry ? " · hike-in trail site" : ""}${c.operator ? ` · ${esc(c.operator)}` : ""}${c.fee ? ` · fee: ${esc(c.fee)}` : ""}${c.season ? ` · hours: ${esc(c.season)}` : ""}</span></p>
+    <p class="hint">${c.website ? `<a href="${esc(c.website)}" rel="noopener" target="_blank">Official Website</a> · ` : "No website mapped · "}<a href="https://www.openstreetmap.org/${esc(c.osm)}" target="_blank" rel="noopener">OpenStreetMap details</a></p>
     <p class="hint ride"></p>
-    <div class="actions"><button data-act="measure">⏱ Measure the ride</button><a class="button" href="${planLink([[fromSt.lat, fromSt.lon, `${fromSt.name} station`], [c.lat, c.lon, c.name]])}">🗺 Plan it</a><button data-act="save">＋ Save as my escape</button></div></div>`).join("");
+    <div class="actions">
+      <button type="button" data-act="measure">⏱ Measure bike ride</button>
+      <a class="button primary" href="${planLink([[fromSt.lat, fromSt.lon, `${fromSt.name} station`], [c.lat, c.lon, c.name]])}">🗺 Plan route</a>
+      <button type="button" data-act="save">＋ Save as my escape</button>
+    </div>
+  </div>`).join("");
 }
+
 $("mkOut").addEventListener("click", async (ev) => {
-  const box = ev.target.closest("[data-osm]"), act = ev.target.dataset.act; if (!box || !act) return;
+  const box = ev.target.closest("[data-osm]"), act = ev.target.dataset.act;
+  if (!box || !act) return;
   const c = found.find((x) => x.osm === box.dataset.osm);
   if (act === "measure") {
-    const out = box.querySelector(".ride"); out.textContent = "Measuring the bike route…";
+    const out = box.querySelector(".ride");
+    out.textContent = "Calculating cycling route & elevation profile…";
     try {
-      const r = await getJSON("/api/ride/route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ points: [[fromSt.lat, fromSt.lon], [c.lat, c.lon]], bike: "hybrid", hills: 0.5 }) });
-      let up = 0; r.points.forEach((p, i) => { if (i && p[2] != null && r.points[i - 1][2] != null) up += Math.max(0, p[2] - r.points[i - 1][2]); });
-      c.rideKm = Math.round(r.km); c.rideUp = Math.round(up / 10) * 10;
-      out.innerHTML = `🚲 <b>${c.rideKm} km</b> by bike, about ${c.rideUp} m of climbing (roughly ${Math.round(r.minutes / 60 * 10) / 10} h of riding)`;
-    } catch (e) { out.textContent = e.message; }
+      const r = await getJSON("/api/ride/route", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ points: [[fromSt.lat, fromSt.lon], [c.lat, c.lon]], bike: "hybrid", hills: 0.5 })
+      });
+      let up = 0;
+      r.points.forEach((p, i) => {
+        if (i && p[2] != null && r.points[i - 1][2] != null) up += Math.max(0, p[2] - r.points[i - 1][2]);
+      });
+      c.rideKm = Math.round(r.km);
+      c.rideUp = Math.round(up / 10) * 10;
+      out.innerHTML = `🚲 <strong>${c.rideKm} km</strong> cycling distance, ~${c.rideUp} m elevation gain (est. ${(Math.round(r.minutes / 60 * 10) / 10)} hrs)`;
+    } catch (e) {
+      out.textContent = e.message;
+    }
   }
   if (act === "save") {
-    mine.unshift({ id: `${fromSt.name}|${c.osm}`, rr: $("mkRr").value, station: { name: fromSt.name, lat: fromSt.lat, lon: fromSt.lon }, camp: { name: c.name, lat: c.lat, lon: c.lon, website: c.website, osm: c.osm }, rideKm: c.rideKm ?? null, rideUp: c.rideUp ?? null, note: "", saved: new Date().toISOString().slice(0, 10) });
-    mine = mine.filter((m, i, a) => a.findIndex((x) => x.id === m.id) === i).slice(0, 100); saveMine(); renderMine();
-    ev.target.textContent = "✓ Saved"; ev.target.disabled = true;
+    mine.unshift({
+      id: `${fromSt.name}|${c.osm}`,
+      rr: $("mkRr").value,
+      station: { name: fromSt.name, lat: fromSt.lat, lon: fromSt.lon },
+      camp: { name: c.name, lat: c.lat, lon: c.lon, website: c.website, osm: c.osm },
+      rideKm: c.rideKm ?? null,
+      rideUp: c.rideUp ?? null,
+      note: "",
+      saved: new Date().toISOString().slice(0, 10)
+    });
+    mine = mine.filter((m, i, a) => a.findIndex((x) => x.id === m.id) === i).slice(0, 100);
+    saveMine();
+    renderMine();
+    ev.target.textContent = "✓ Saved";
+    ev.target.disabled = true;
   }
 });
+
 // shareable: #escape=<base64 of one escape>
-const toB64 = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/=+$/, ""), fromB64 = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
+const toB64 = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/=+$/, "");
+const fromB64 = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
+
 function renderMine() {
   $("mineList").innerHTML = mine.length ? mine.map((m, i) => `<article class="trip card">
     <h3>${esc(m.station.name)} → ${esc(m.camp.name)}</h3>
-    <span class="tag mine">yours</span><span class="tag">🚆 ${NAMES[m.rr]}</span><span class="tag">from OpenStreetMap: check the season and booking</span>
-    <p>${m.rideKm ? `🚲 ${m.rideKm} km${m.rideUp ? `, ~${m.rideUp} m up` : ""} each way` : "Ride not measured yet: plan it to see."} ${m.camp.website ? ` · <a href="${esc(m.camp.website)}" target="_blank" rel="noopener">campground's website</a>` : ""}</p>
-    <p><input data-note="${i}" value="${esc(m.note)}" placeholder="your notes: booked? site number? which train?" style="width:100%"></p>
-    <div class="actions"><a class="button" href="${planLink([[m.station.lat, m.station.lon, `${m.station.name} station`], [m.camp.lat, m.camp.lon, m.camp.name]])}">🗺 Plan this ride</a><button data-rr="${m.rr}">Check my trains</button><button data-share="${i}">🔗 Share</button><button data-del="${i}">Remove</button></div>
-  </article>`).join("") : `<p class="hint">None yet: make one above and press "Save".</p>`;
+    <div class="tag-row">
+      <span class="tag mine">Saved trip</span>
+      <span class="tag">🚆 ${NAMES[m.rr]}</span>
+      <span class="tag">Saved ${m.saved || "recently"}</span>
+    </div>
+    <p>${m.rideKm ? `🚲 <strong>${m.rideKm} km</strong>${m.rideUp ? `, ~${m.rideUp} m elevation` : ""} each way` : "Ride distance not measured yet."} ${m.camp.website ? ` · <a href="${esc(m.camp.website)}" target="_blank" rel="noopener">Campground website</a>` : ""}</p>
+    <div style="margin:8px 0;">
+      <input class="note-input" data-note="${i}" value="${esc(m.note)}" placeholder="Add trip notes: booked site #, train departure, packing notes...">
+    </div>
+    <div class="actions">
+      <a class="button primary" href="${planLink([[m.station.lat, m.station.lon, `${m.station.name} station`], [m.camp.lat, m.camp.lon, m.camp.name]])}">🗺 Plan this ride</a>
+      <button type="button" data-rr="${m.rr}">Check trains</button>
+      <button type="button" data-share="${i}">🔗 Share link</button>
+      <button type="button" data-del="${i}" style="color:var(--error);border-color:var(--error);">Remove</button>
+    </div>
+  </article>`).join("") : `<p class="hint">No saved trips yet. Use the tool above to find a campground and save it here.</p>`;
 }
-$("mineList").addEventListener("input", (e) => { const i = e.target.dataset.note; if (i != null) { mine[+i].note = e.target.value.slice(0, 200); saveMine(); } });
+
+$("mineList").addEventListener("input", (e) => {
+  const i = e.target.dataset.note;
+  if (i != null) {
+    mine[+i].note = e.target.value.slice(0, 200);
+    saveMine();
+  }
+});
+
 $("mineList").addEventListener("click", async (e) => {
   const del = e.target.dataset.del, share = e.target.dataset.share, rr = e.target.closest("[data-rr]")?.dataset.rr;
-  if (del != null) { mine.splice(+del, 1); saveMine(); renderMine(); }
-  if (share != null) { const { note, ...m } = mine[+share], url = `${location.origin}/ride/escapes.html#escape=${toB64(m)}`; try { await navigator.clipboard.writeText(url); e.target.textContent = "✓ Link copied"; } catch { prompt("Copy this link:", url); } }
-  if (rr) { $("rr").value = rr; check(); $("rr").scrollIntoView({ behavior: "smooth", block: "center" }); }
+  if (del != null) {
+    mine.splice(+del, 1);
+    saveMine();
+    renderMine();
+  }
+  if (share != null) {
+    const { note, ...m } = mine[+share];
+    const url = `${location.origin}/ride/escapes.html#escape=${toB64(m)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      e.target.textContent = "✓ Link copied";
+    } catch {
+      prompt("Copy this link:", url);
+    }
+  }
+  if (rr) {
+    $("rr").value = rr;
+    check();
+    $("rr").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 });
+
 // someone shared one with you: add it (once) to your list
 try {
   const sh = location.hash.match(/^#escape=([A-Za-z0-9+/]+)$/)?.[1];
-  if (sh) { const m = fromB64(sh); if (m?.station?.name && m?.camp?.name && Number.isFinite(m.camp.lat) && NAMES[m.rr]) { m.note = "shared with you"; mine = [m, ...mine.filter((x) => x.id !== m.id)]; saveMine(); history.replaceState(null, "", location.pathname + "#mine"); } }
+  if (sh) {
+    const m = fromB64(sh);
+    if (m?.station?.name && m?.camp?.name && Number.isFinite(m.camp.lat) && NAMES[m.rr]) {
+      m.note = "shared with you";
+      mine = [m, ...mine.filter((x) => x.id !== m.id)];
+      saveMine();
+      history.replaceState(null, "", location.pathname + "#mine");
+    }
+  }
 } catch {}
 renderMine();
 
-window.blipContext = () => ({ page: "Ride: bike + train escapes from NYC (bike rules checker, overnight trips, and a builder for your own from OpenStreetMap campgrounds near any station)", yourEscapes: mine.map((m) => `${m.station.name} → ${m.camp.name}${m.rideKm ? ` (${m.rideKm} km)` : ""}`), check: { railroad: $("rr").value, direction: $("dir").value, when: $("when").value, folding: $("fold").checked, verdict: $("verdict").textContent.trim().slice(0, 300) }, trips: ESCAPES.map((e) => ({ title: e.title, railroad: NAMES[e.rr], campOpenNow: inSeason(new Date(), ...e.camp.season) })) });
+window.blipContext = () => ({
+  page: "Ride: bike + train escapes from NYC (bike rules checker, overnight trips, and a builder for your own from OpenStreetMap campgrounds near any station)",
+  yourEscapes: mine.map((m) => `${m.station.name} → ${m.camp.name}${m.rideKm ? ` (${m.rideKm} km)` : ""}`),
+  check: { railroad: $("rr").value, direction: $("dir").value, when: $("when").value, folding: $("fold").checked, verdict: $("verdict").textContent.trim().slice(0, 300) },
+  trips: ESCAPES.map((e) => ({ title: e.title, railroad: NAMES[e.rr], campOpenNow: inSeason(new Date(), ...e.camp.season) }))
+});
 </script>
 </body>
 </html>

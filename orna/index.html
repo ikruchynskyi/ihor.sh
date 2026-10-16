@@ -6,83 +6,516 @@
   <title>Orna Guild Shop Planner</title>
   <meta name="description" content="Orna RPG guild shop planner: which guild sells which crafting material today, the next date for any material at every guild, and how many guild proofs (Coral, Tower Shards…) your amount costs, with calendar reminders." />
   <style>
-    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 ui-sans-serif, system-ui, sans-serif; }
-    main { max-width: 900px; margin: 0 auto; padding: 28px 16px 96px; }
-    .guilds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-    .guild { padding: 10px 12px; }
-    .guild b { display: block; } .guild small { color: var(--muted); }
-    .guild ul { margin: 6px 0 0; padding-left: 18px; }
-    .guild li a { text-decoration: underline dotted; }
-    form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
-    form label { display: grid; gap: 4px; font-size: .9rem; color: var(--muted); }
-    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-    th, td { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); }
-    .muted { color: var(--muted); font-size: .9rem; }
-    .lang { float: right; }
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #ffffff;
+      --card-hover: #f7f6f2;
+      --accent: #c2410c;
+      --accent-hover: #9a3412;
+      --badge-bg: rgba(194, 65, 12, 0.08);
+      --badge-fg: #c2410c;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8b949e;
+        --line: #30363d;
+        --card: #161b22;
+        --card-hover: #1c2128;
+        --accent: #f97316;
+        --accent-hover: #ea580c;
+        --badge-bg: rgba(249, 115, 22, 0.15);
+        --badge-fg: #fdba74;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px 96px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .eyebrow {
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .eyebrow a { color: inherit; }
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 10px;
+    }
+    .lede {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 24px;
+    }
+    .lang-btn {
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .lang-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--badge-bg);
+      color: var(--badge-fg);
+    }
+
+    /* Today's Guild Grid */
+    .guilds {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .guild {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .guild:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .guild-header {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    .guild-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .guild-currency {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .guild ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .guild li a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--card-hover);
+      color: var(--fg);
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: all 0.12s ease;
+    }
+    .guild li a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--badge-bg);
+    }
+
+    /* Form */
+    .plan-card {
+      padding: 20px;
+      margin: 16px 0;
+    }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 200px;
+    }
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .input-field {
+      padding: 10px 14px;
+      font-size: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .input-field:focus {
+      border-color: var(--accent);
+    }
+    .quick-qty {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .qty-chip {
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--card-hover);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      cursor: pointer;
+      color: var(--muted);
+      user-select: none;
+    }
+    .qty-chip:hover {
+      color: var(--fg);
+      border-color: var(--accent);
+    }
+    .btn-submit {
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      height: 44px;
+    }
+    .btn-submit:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Plan Results */
+    #plan {
+      margin-top: 20px;
+    }
+    .plan-result {
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .plan-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .plan-material-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+    .scroll {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border-bottom: 2px solid var(--line);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: var(--card-hover);
+    }
+    .cost-val {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .cal-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--fg);
+      text-decoration: none;
+      transition: all 0.12s ease;
+      white-space: nowrap;
+    }
+    .cal-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .in-days-pill {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: var(--card-hover);
+      color: var(--muted);
+      margin-left: 4px;
+    }
+    .in-days-pill.today {
+      background: rgba(34, 197, 94, 0.15);
+      color: #16a34a;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
 <main>
-  <p class="eyebrow">ihor.sh · Orna</p>
-  <h1>Guild shop planner</h1>
-  <p class="lede">In <a href="https://playorna.com" target="_blank" rel="noopener">Orna</a>, each guild's shop sells a few crafting materials a day, paid in that guild's own proofs. This finds the next day each guild sells what you need and what it will cost. The same planner runs in the Telegram bot <a href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener">@IrishmooshBot</a>, which can also read your screenshots.</p>
-  <button class="lang" id="lang" aria-pressed="false">Українською</button>
-  <h2>On sale today <span class="muted" id="today"></span></h2>
+  <div class="header-bar">
+    <div>
+      <p class="eyebrow"><a href="/">ihor.sh</a> / Orna RPG</p>
+      <h1>Guild Shop Planner</h1>
+    </div>
+    <button class="lang-btn" id="lang" aria-pressed="false">Українською</button>
+  </div>
+  <p class="lede">In <a href="https://playorna.com" target="_blank" rel="noopener">Orna</a>, each guild shop sells crafting materials that rotate daily, paid in proofs (Coral, Tower Shards, etc.). This planner predicts the next date each guild sells what you need, calculates exact costs, and sets Google Calendar reminders. Also available in Telegram via <a href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener">@IrishmooshBot</a> with screenshot reading.</p>
+
+  <h2>
+    <span>On sale today</span>
+    <span class="badge" id="today">Loading…</span>
+  </h2>
   <div class="guilds" id="guilds"></div>
 
   <h2>Plan a purchase</h2>
-  <form id="planForm">
-    <label>Material <input id="mat" list="mats" placeholder="e.g. Adamantine" autocomplete="off" required></label>
-    <datalist id="mats"></datalist>
-    <label>How many <input id="qty" type="number" min="1" step="1" value="100"></label>
-    <button>Plan</button>
-  </form>
+  <div class="plan-card card">
+    <form id="planForm">
+      <div class="form-group">
+        <label for="mat">Material</label>
+        <input id="mat" class="input-field" list="mats" placeholder="e.g. Adamantine, Ortitanium..." autocomplete="off" required>
+        <datalist id="mats"></datalist>
+      </div>
+
+      <div class="form-group" style="max-width: 220px;">
+        <label for="qty">Quantity</label>
+        <input id="qty" class="input-field" type="number" min="1" step="1" value="100">
+        <div class="quick-qty">
+          <button type="button" class="qty-chip" data-q="50">50</button>
+          <button type="button" class="qty-chip" data-q="100">100</button>
+          <button type="button" class="qty-chip" data-q="250">250</button>
+          <button type="button" class="qty-chip" data-q="500">500</button>
+          <button type="button" class="qty-chip" data-q="1000">1k</button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">Calculate Plan</button>
+    </form>
+  </div>
+
   <div id="plan"></div>
-  <p class="muted">Dates come from the community "Material Forecast" sheet; proof costs use OrnaCodex's formula (tier × 10 + rarity × 5, scaled per currency). Days are New York dates. Not affiliated with Northern Forge Studios.</p>
+
+  <p class="muted" style="margin-top: 32px; font-size: 0.85rem; line-height: 1.5;">Dates derived from the community Material Forecast sheet; costs calculated using OrnaCodex's formula (tier × 10 + rarity × 5, scaled per currency). Days reflect New York timezone. Independent community tool, not affiliated with Northern Forge Studios.</p>
 </main>
+
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 let uk = false, names = [], lastPlan = null, lastToday = null;
 const label = (en) => (uk ? names.find((n) => n.en === en)?.uk ?? en : en);
+
 const cal = (p, g) => {
   const d = g.date.replace(/-/g, ""), next = new Date(Date.parse(g.date) + 86400_000).toISOString().slice(0, 10).replace(/-/g, "");
   const text = `Orna: buy ${p.count || ""} ${p.material} at ${g.guild}`.replace(/\s+/g, " ");
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(text)}&dates=${d}/${next}&details=${encodeURIComponent(g.proofs ? `${g.proofs} ${g.currency}` : "")}`;
 };
+
 function renderToday() {
   const t = lastToday;
+  if (!t) return;
   $("today").textContent = t.date;
-  $("guilds").innerHTML = t.guilds.map((g) => `<div class="guild card"><b>${esc(g.guild)}</b><small>${esc(g.currency)}</small>
-    <ul>${g.materials.length ? g.materials.map((m) => `<li><a href="#plan" data-m="${esc(m)}">${esc(label(m))}</a></li>`).join("") : '<li class="muted">nothing today</li>'}</ul></div>`).join("");
+  $("guilds").innerHTML = t.guilds.map((g) => `
+    <div class="guild card">
+      <div class="guild-header">
+        <span class="guild-title">${esc(g.guild)}</span>
+        <span class="guild-currency">${esc(g.currency)}</span>
+      </div>
+      <ul>
+        ${g.materials.length
+          ? g.materials.map((m) => `<li><a href="#plan" data-m="${esc(m)}" title="Plan ${esc(label(m))}">📦 ${esc(label(m))}</a></li>`).join("")
+          : '<li class="muted" style="font-size:0.85rem;">No items recorded today</li>'}
+      </ul>
+    </div>`).join("");
 }
+
 function renderPlan() {
   const p = lastPlan;
   if (!p) return;
-  if (p.error) return ($("plan").innerHTML = `<p>${esc(p.error)}</p>`);
-  $("plan").innerHTML = `<p><b>${esc(label(p.material))}</b>${uk ? "" : p.uk ? ` <span class="muted">(${esc(p.uk)})</span>` : ""} · ${p.tier ? `tier ${p.tier}, ${esc(p.rarity)}, base rate 100:${p.baseRate}` : "tier unknown, so no proof counts"}</p>
-    <table><tr><th>Guild</th><th>Next on sale</th><th>Cost for ${p.count || "?"}</th><th></th></tr>${p.guilds.map((g) => `<tr><td>${esc(g.guild)}</td>
-      <td>${esc(new Date(g.date + "T12:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }))} <span class="muted">${g.inDays ? `in ${g.inDays} d` : "today"}</span></td>
-      <td>${g.proofs != null ? `${g.proofs.toLocaleString()} ${esc(g.currency)}` : "–"}</td><td><a href="${cal(p, g)}" target="_blank" rel="noopener">📅 remind me</a></td></tr>`).join("")}</table>`;
+  if (p.error) {
+    $("plan").innerHTML = `<div class="plan-result card"><p style="color:var(--accent);margin:0;">⚠️ ${esc(p.error)}</p></div>`;
+    return;
+  }
+
+  $("plan").innerHTML = `
+    <div class="plan-result card">
+      <div class="plan-info">
+        <span class="plan-material-name">${esc(label(p.material))}</span>
+        ${uk ? "" : p.uk ? `<span class="muted">(${esc(p.uk)})</span>` : ""}
+        ${p.tier ? `<span class="badge">Tier ${p.tier}</span>` : ""}
+        ${p.rarity ? `<span class="badge" style="text-transform:capitalize;">${esc(p.rarity)}</span>` : ""}
+        <span class="muted" style="font-size:0.85rem;">Base rate: 100 : ${p.baseRate ?? "–"}</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Guild</th>
+              <th>Next on Sale</th>
+              <th>Cost for ${p.count ? p.count.toLocaleString() : "?"} units</th>
+              <th>Reminder</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${p.guilds.map((g) => `
+              <tr>
+                <td><strong>${esc(g.guild)}</strong></td>
+                <td>
+                  ${esc(new Date(g.date + "T12:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }))}
+                  <span class="in-days-pill ${g.inDays === 0 ? "today" : ""}">${g.inDays ? `in ${g.inDays}d` : "Today"}</span>
+                </td>
+                <td class="cost-val">${g.proofs != null ? `${g.proofs.toLocaleString()} <span style="font-weight:normal;font-size:0.85rem;color:var(--muted);">${esc(g.currency)}</span>` : "–"}</td>
+                <td><a class="cal-link" href="${cal(p, g)}" target="_blank" rel="noopener">📅 Add to Calendar</a></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
+
 async function plan(material, count) {
-  $("mat").value = material; if (count) $("qty").value = count;
+  $("mat").value = material;
+  if (count) $("qty").value = count;
   lastPlan = await fetch(`/api/orna/plan?material=${encodeURIComponent(material)}&count=${Number($("qty").value) || 0}`).then((r) => r.json());
   renderPlan();
   return $("plan");
 }
-$("planForm").addEventListener("submit", (e) => { e.preventDefault(); plan($("mat").value); });
-$("guilds").addEventListener("click", (e) => { const m = e.target.closest("a[data-m]")?.dataset.m; if (m) { e.preventDefault(); plan(m).then((el) => el.scrollIntoView({ behavior: "smooth", block: "start" })); } });
-$("lang").onclick = () => { uk = !uk; $("lang").textContent = uk ? "English" : "Українською"; $("lang").setAttribute("aria-pressed", String(uk)); renderToday(); renderPlan(); };
 
-[lastToday, names] = await Promise.all([fetch("/api/orna/today").then((r) => r.json()), fetch("/api/orna/materials").then((r) => r.json())]);
+$("planForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  plan($("mat").value);
+});
+
+// Quick quantity chips
+document.querySelectorAll(".qty-chip").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $("qty").value = btn.dataset.q;
+    if ($("mat").value.trim()) {
+      plan($("mat").value);
+    }
+  });
+});
+
+$("guilds").addEventListener("click", (e) => {
+  const m = e.target.closest("a[data-m]")?.dataset.m;
+  if (m) {
+    e.preventDefault();
+    plan(m).then((el) => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+});
+
+$("lang").onclick = () => {
+  uk = !uk;
+  $("lang").textContent = uk ? "English" : "Українською";
+  $("lang").setAttribute("aria-pressed", String(uk));
+  renderToday();
+  renderPlan();
+};
+
+[lastToday, names] = await Promise.all([
+  fetch("/api/orna/today").then((r) => r.json()),
+  fetch("/api/orna/materials").then((r) => r.json())
+]);
+
 $("mats").innerHTML = names.map((n) => `<option value="${esc(n.en)}">${esc(n.uk ?? "")}</option>`).join("");
 renderToday();
 
 window.blipActions = {
-  plan_material: { label: "planned the purchase", description: "Plan buying an Orna crafting material: next date at each guild and the proofs it costs.", parameters: { material: { type: "string", description: "Material name, English or Ukrainian" }, count: { type: "number", description: "How many" } },
-    run: ({ material, count }) => plan(String(material ?? ""), Number(count) || 0) },
+  plan_material: {
+    label: "planned the purchase",
+    description: "Plan buying an Orna crafting material: next date at each guild and the proofs it costs.",
+    parameters: {
+      material: { type: "string", description: "Material name, English or Ukrainian" },
+      count: { type: "number", description: "How many" }
+    },
+    run: ({ material, count }) => plan(String(material ?? ""), Number(count) || 0)
+  },
 };
 window.blipContext = () => ({ page: "Orna guild shop planner", today: lastToday, lastPlan });
 </script>

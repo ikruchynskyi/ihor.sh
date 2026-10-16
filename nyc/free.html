@@ -30,17 +30,38 @@
     .now .time { color: var(--now); font-weight: 600; }
     .later .time { color: var(--later); }
     .meta { font-size: 0.85rem; color: var(--muted); }
+    .eyebrow { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 4px; }
+    .eyebrow a { color: var(--muted); text-decoration: none; }
+    .eyebrow a:hover { color: var(--fg); }
+    .btn { display: inline-flex; align-items: center; padding: 5px 12px; font-size: 0.82rem; font-weight: 500; border-radius: 999px; text-decoration: none; border: 1px solid var(--line); background: var(--card); color: var(--fg); transition: all .15s ease; cursor: pointer; }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.alt { background: color-mix(in srgb, var(--card) 80%, transparent); color: var(--muted); }
+    .btn.alt:hover { color: var(--fg); border-color: var(--muted); }
+    .badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 4px 0 6px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+    .badge.free { background: color-mix(in srgb, var(--now) 14%, transparent); color: var(--now); border-color: color-mix(in srgb, var(--now) 30%, transparent); }
+    .badge.pwyw { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+    .badge.now { background: color-mix(in srgb, var(--now) 15%, transparent); color: var(--now); border-color: var(--now); font-weight: 700; }
+    .badge.later { background: color-mix(in srgb, var(--later) 12%, transparent); color: var(--later); }
+    .badge.allday { background: var(--bg); color: var(--muted); }
+    .badge.who { background: var(--bg); color: var(--fg); }
+    .badge.dist { background: var(--bg); color: var(--muted); }
+    .item { transition: border-color .15s, box-shadow .15s; }
+    .item:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+    #q { flex: 1 1 200px; }
   </style>
 </head>
 <body>
 <main>
+  <p class="eyebrow"><a href="/">ihor.sh</a> · <a href="/nyc/">NYC</a> · Free NYC</p>
   <h1>Free NYC</h1>
   <div class="muted">Free and pay-what-you-wish museums, gardens, zoos and ferries on any day, plus the day's free pop-ups, city events and deals. Rules are hand-checked (see each link), but policies change, so confirm before you go. · <a href="./">Subway Bailout map</a></div>
 
   <div class="bar" id="days"></div>
   <div class="bar">
+    <input type="search" id="q" placeholder="Filter places, museums, pop-ups..." aria-label="Search places and events" />
     <input type="date" id="date" aria-label="Pick a date" />
-    <button id="locate">📍 Sort by distance</button>
+    <button id="locate" type="button">📍 Sort by distance</button>
     <select id="cat" aria-label="Event category"><option value="">All event types</option></select>
     <span class="muted" id="locStatus"></span>
   </div>
@@ -101,14 +122,21 @@ function jump() {
   hs.forEach((h, i) => (h.id = `s${i}`));
   $("jump").innerHTML = hs.map((h) => `<a class="btn alt" href="#${h.id}">${esc(h.textContent)}</a>`).join(" ");
 }
+$("q").addEventListener("input", render);
+
 function render() {
+  const qStr = ($("q").value ?? "").trim().toLowerCase();
+  const match = (s) => !qStr || String(s ?? "").toLowerCase().includes(qStr);
+
   dealsFor($("date").value).then((d) => {
     const box = $("deals");
     if (!box || !d || (!d.sampleSales.length && !d.cityDeals.length)) return box && (box.innerHTML = "");
     const end = (iso) => new Date(iso.slice(0, 10) + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const sales = d.sampleSales.map((s) => ({ ...s, km: me && s.lat ? distance(me, s) / 1000 : null })).sort((a, b) => (a.km ?? 99) - (b.km ?? 99));
-    box.innerHTML = `<h2>Sample sales &amp; deals (${d.cityDeals.length + sales.length})</h2><div class="muted">Discount weeks from the NYC Events Calendar and designer sample sales from <a href="${esc(d.source)}" target="_blank" rel="noopener">Chicmi</a>. Not free, but cheaper than usual.</div>`
-      + d.cityDeals.map((e) => `<div class="item"><div class="top"><span class="name">🎟 ${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div><div class="meta">${esc(e.summary)}</div><div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("")
+    const sales = d.sampleSales.filter((s) => match(`${s.name} ${s.place} ${s.address} ${s.summary}`)).map((s) => ({ ...s, km: me && s.lat ? distance(me, s) / 1000 : null })).sort((a, b) => (a.km ?? 99) - (b.km ?? 99));
+    const cityDeals = d.cityDeals.filter((e) => match(`${e.name} ${e.when} ${e.summary}`));
+    if (!sales.length && !cityDeals.length && qStr) return (box.innerHTML = "");
+    box.innerHTML = `<h2>Sample sales &amp; deals (${cityDeals.length + sales.length})</h2><div class="muted">Discount weeks from the NYC Events Calendar and designer sample sales from <a href="${esc(d.source)}" target="_blank" rel="noopener">Chicmi</a>. Not free, but cheaper than usual.</div>`
+      + cityDeals.map((e) => `<div class="item"><div class="top"><span class="name">🎟 ${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div><div class="meta">${esc(e.summary)}</div><div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("")
       + sales.map((s) => `<div class="item"><div class="top"><span class="name">🛍 ${esc(s.name)}</span><span class="time">until ${end(s.end)}</span></div>
         <div class="meta">${esc(s.lat ? `${s.place}${s.address && s.address !== s.place ? ` · ${s.address}` : ""}` : "Online")}${s.km != null ? ` · ${s.km.toFixed(1)} km` : ""}</div>
         <div class="meta">${esc(s.summary)}</div><div class="meta"><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a></div></div>`).join("");
@@ -117,8 +145,9 @@ function render() {
   cityEvents($("date").value).then((list) => {
     const box = $("cityEvents");
     if (!box || !list.length) return box && (box.innerHTML = "");
-    const near = list.map((e) => ({ ...e, km: me && e.lat ? distance(me, e) / 1000 : null })).sort((a, b) => (a.km ?? 0) - (b.km ?? 0) || String(a.start).localeCompare(String(b.start)));
-    box.innerHTML = `<h2>Free city events (${list.length})</h2><div class="muted">From the <a href="https://www.nyc.gov/events" target="_blank" rel="noopener">NYC Events Calendar</a>: parks, culture and city programs marked free.</div>` +
+    const near = list.filter((e) => match(`${e.name} ${e.place} ${e.summary}`)).map((e) => ({ ...e, km: me && e.lat ? distance(me, e) / 1000 : null })).sort((a, b) => (a.km ?? 0) - (b.km ?? 0) || String(a.start).localeCompare(String(b.start)));
+    if (!near.length && qStr) return (box.innerHTML = "");
+    box.innerHTML = `<h2>Free city events (${near.length})</h2><div class="muted">From the <a href="https://www.nyc.gov/events" target="_blank" rel="noopener">NYC Events Calendar</a>: parks, culture and city programs marked free.</div>` +
       near.map((e) => `<div class="item"><div class="top"><span class="name">${esc(e.name)}</span><span class="time">${esc(e.when.split(" · ")[1] ?? "")}</span></div>
         <div class="meta">${esc(e.place)}${e.km != null ? ` · ${e.km.toFixed(1)} km` : ""}</div><div class="meta">${esc(e.summary)}</div>
         <div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a></div></div>`).join("");
@@ -135,20 +164,29 @@ function render() {
     st: isToday ? status(it, new Date()) : (it.start || it.end ? "later" : "allday"),
     km: me && it.lat ? distance(me, it) / 1000 : null,
   }));
-  const places = items.filter((i) => i.kind !== "perk")
+  const places = items.filter((i) => i.kind !== "perk" && match(`${i.name} ${i.who} ${i.price} ${i.note}`))
     .sort((a, b) => ORDER[a.st] - ORDER[b.st] || (a.km ?? 0) - (b.km ?? 0) || (a.start ?? "").localeCompare(b.start ?? ""));
-  const perks = items.filter((i) => i.kind === "perk");
+  const perks = items.filter((i) => i.kind === "perk" && match(`${i.name} ${i.who} ${i.price} ${i.note}`));
 
-  const card = (i) => `<div class="item ${i.st}">
+  const card = (i) => {
+    const isFree = String(i.price).toLowerCase().includes("free");
+    return `<div class="item ${i.st}">
     <div class="top"><span class="name">${esc(i.name)}</span><span class="time">${i.kind === "perk" ? "" : esc(timeLabel(i))}</span></div>
-    <div class="meta">${esc(i.price)} · ${esc(i.who)}${i.km != null ? ` · ${i.km.toFixed(1)} km` : ""}</div>
+    <div class="badges">
+      <span class="badge ${isFree ? "free" : "pwyw"}">${esc(i.price)}</span>
+      ${i.who ? `<span class="badge who">${esc(i.who)}</span>` : ""}
+      ${i.st === "now" ? `<span class="badge now">🟢 Open now</span>` : i.st === "allday" ? `<span class="badge allday">All day</span>` : ""}
+      ${i.km != null ? `<span class="badge dist">📍 ${i.km.toFixed(1)} km</span>` : ""}
+    </div>
     ${i.note ? `<div class="meta">${esc(i.note)}</div>` : ""}
     <div class="meta"><a href="${esc(i.url)}" target="_blank" rel="noopener">source</a> · checked ${esc(i.checked)}</div>
   </div>`;
+  };
 
   const events = feed.events
     .map((e) => ({ ...e, on: onDate(e, $("date").value, day) }))
     .filter((e) => e.on && (!$("cat").value || e.category === $("cat").value))
+    .filter((e) => match(`${e.title} ${e.category} ${e.borough} ${e.address} ${e.teaser}`))
     .map((e) => {
       const it = e.on;
       return { ...e, ...it, st: isToday ? status(it, new Date()) : "later", km: me && e.lat ? distance(me, e) / 1000 : null };
@@ -158,21 +196,30 @@ function render() {
   const ago = feed.updated ? Math.round((Date.now() / 1000 - feed.updated) / 60) : null;
   const eventCard = (e) => `<div class="item ${e.st}">
     <div class="top"><span class="name">${esc(e.title)}</span><span class="time">${esc(timeLabel(e))}</span></div>
-    <div class="meta">${esc(e.category)}${e.borough ? ` · ${esc(e.borough)}` : ""}${e.km != null ? ` · ${e.km.toFixed(1)} km` : ""}${e.frequency && e.frequency !== "One-time" ? ` · ${esc(e.frequency.toLowerCase())}, check the dates` : ""}</div>
-    <div class="meta">${esc(e.address)}</div>
-    <div class="meta">${esc(e.teaser)}</div>
+    <div class="badges">
+      <span class="badge free">Free</span>
+      <span class="badge who">${esc(e.category)}</span>
+      ${e.borough ? `<span class="badge dist">📍 ${esc(e.borough)}</span>` : ""}
+      ${e.km != null ? `<span class="badge dist">${e.km.toFixed(1)} km</span>` : ""}
+    </div>
+    ${e.address ? `<div class="meta">${esc(e.address)}</div>` : ""}
+    ${e.teaser ? `<div class="meta">${esc(e.teaser)}</div>` : ""}
     <div class="meta"><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a></div>
   </div>`;
   const eventsBlock = feed.events.length ? `<h2>Free pop-ups &amp; events (${events.length})</h2>
     <div class="muted">From <a href="${esc(feed.source)}" target="_blank" rel="noopener">NYC for FREE</a> (@nyc_forfree), refreshed hourly${ago != null ? `, last ${ago} min ago` : ""}. Brand pop-ups run out fast, so check the link before you go.</div>
-    ${events.map(eventCard).join("") || `<p class="muted">No free events listed for this day${$("cat").value ? " in this category" : ""}.</p>`}` : "";
+    ${events.map(eventCard).join("") || `<p class="muted">No free events listed for this day${$("cat").value ? " in this category" : ""}${qStr ? ` matching "${esc(qStr)}"` : ""}.</p>`}` : "";
 
-  $("list").innerHTML = (isToday ? GROUPS : [["later", "Timed"], ["allday", "All day"]])
+  const mainBlocks = (isToday ? GROUPS : [["later", "Timed"], ["allday", "All day"]])
     .map(([k, title]) => [title, places.filter((i) => i.st === k)])
     .filter(([, l]) => l.length)
-    .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("")
-    + eventsBlock + `<div id="cityEvents"></div><div id="deals"></div>`
-    + `<h2>Always-on perks</h2>${perks.map(card).join("")}`;
+    .map(([title, l]) => `<h2>${title}</h2>${l.map(card).join("")}`).join("");
+
+  const perksBlock = perks.length ? `<h2>Always-on perks (${perks.length})</h2>${perks.map(card).join("")}` : "";
+
+  $("list").innerHTML = (mainBlocks || eventsBlock || perksBlock)
+    ? mainBlocks + eventsBlock + `<div id="cityEvents"></div><div id="deals"></div>` + perksBlock
+    : `<p class="muted" style="padding: 24px 0; text-align: center;">No free places or events found${qStr ? ` matching "${esc(qStr)}"` : ""}. Try clearing your search.</p>`;
   jump();
 }
 

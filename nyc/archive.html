@@ -3,107 +3,518 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MTA Archive</title>
+  <title>MTA Archive · NYC Subway Delays &amp; Outages</title>
   <meta name="description" content="Every NYC subway alert and elevator/escalator outage, recorded every 5 minutes: which lines get disrupted most, and which elevators break most.">
   <style>
-    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #d9480f;
-            --unplanned: #e8507a; --planned: #5b7cfa; color-scheme: light dark; }
+    :root {
+      --bg: #fbfaf7;
+      --fg: #1d1d1b;
+      --muted: #6b6a66;
+      --line: #dddad3;
+      --card: #ffffff;
+      --card-hover: #f7f6f2;
+      --accent: #d9480f;
+      --unplanned: #e8507a;
+      --planned: #5b7cfa;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --fg: #e6edf3;
+        --muted: #8b949e;
+        --line: #30363d;
+        --card: #161b22;
+        --card-hover: #1c2128;
+        --accent: #f78166;
+        --unplanned: #f85149;
+        --planned: #58a6ff;
+      }
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
-    main { max-width: 860px; margin: 0 auto; padding: 28px 16px 96px; }
-    h2 { margin: 40px 0 6px; }
-    .muted { color: var(--muted); font-size: .9rem; }
-    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 20px 0; }
-    .tile { padding: 14px 16px; }
-    .tile b { display: block; font: 26px/1.3 "Press Start 2P", ui-monospace, monospace; color: var(--fg); }
-    .tile span { color: var(--muted); font-size: .85rem; }
-    .chart { padding: 16px; position: relative; }
-    .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin: 0 0 12px; }
-    .legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
-    .rows { display: grid; grid-template-columns: 34px 1fr 40px; gap: 6px 10px; align-items: center; }
-    .bullet { width: 28px; height: 28px; border-radius: 50%; display: inline-grid; vertical-align: middle; place-items: center; font: 700 14px ui-sans-serif, system-ui, sans-serif; color: #fff; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 96px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .eyebrow {
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .eyebrow a { color: inherit; }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0 0 10px;
+    }
+    .lede {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+    h2 {
+      margin: 40px 0 8px;
+      font-size: 1.35rem;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    h2 .count-badge {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .muted { color: var(--muted); font-size: .9rem; margin-top: 0; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .tile {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .tile b {
+      font: 28px/1.2 "Press Start 2P", ui-monospace, monospace;
+      color: var(--fg);
+    }
+    .tile span {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* Filter Controls */
+    .filter-card {
+      padding: 16px;
+      margin: 24px 0 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .filter-input-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .filter-input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .filter-input:focus {
+      border-color: var(--accent);
+    }
+    .clear-btn {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .clear-btn:hover {
+      color: var(--fg);
+      border-color: var(--accent);
+    }
+    .line-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .chip:hover {
+      transform: translateY(-1px);
+    }
+    .chip.active {
+      outline: 2px solid var(--fg);
+      outline-offset: 1px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .filter-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart {
+      padding: 16px;
+      position: relative;
+    }
+    .legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend i {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    .rows {
+      display: grid;
+      grid-template-columns: 34px 1fr 44px;
+      gap: 8px 10px;
+      align-items: center;
+    }
+    .rows .row-item {
+      display: contents;
+    }
+    .rows .row-item.dimmed {
+      opacity: 0.25;
+    }
+    .bullet {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-grid;
+      vertical-align: middle;
+      place-items: center;
+      font: 700 13px ui-sans-serif, system-ui, sans-serif;
+      color: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
     .bullet.dark { color: #111; }
-    .track { display: flex; gap: 2px; height: 16px; }
+    .track {
+      display: flex;
+      gap: 2px;
+      height: 18px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: var(--line);
+    }
     .track i, .cols i { display: block; min-width: 0; }
-    .val { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; text-align: right; }
-    .cols { display: flex; align-items: flex-end; gap: 3px; height: 160px; border-bottom: 2px solid var(--line); }
-    .cols div { flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; height: 100%; justify-content: flex-start; cursor: default; }
-    .cols div:hover i, .rows .track:hover i { filter: brightness(1.25); }
-    .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .8rem; margin-top: 6px; }
-    #tip { position: fixed; pointer-events: none; z-index: 10; padding: 8px 10px; background: #05070d; color: #e8edff; border: 2px solid var(--line); font-size: .85rem; line-height: 1.4; max-width: 260px; }
-    .alert { padding: 12px 14px; margin: 10px 0; }
-    .alert p { margin: 6px 0 0; }
-    .alert p .bullet { width: 20px; height: 20px; font-size: 11px; }
-    .alert .when { color: var(--muted); font-size: .85rem; }
-    .live { color: #5cff9d; font-size: .8rem; }
-    .scroll { overflow-x: auto; }
-    table { width: 100%; font-size: .9rem; }
-    th, td { padding: 8px 8px 8px 0; vertical-align: top; text-align: left; }
-    td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
-    details { margin-top: 12px; }
-    summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
-    .empty { color: var(--muted); font-style: italic; }
+    .val {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: .85rem;
+      text-align: right;
+      font-weight: 600;
+    }
+    .cols {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 160px;
+      border-bottom: 2px solid var(--line);
+      padding-top: 10px;
+    }
+    .cols div {
+      flex: 1;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+      height: 100%;
+      justify-content: flex-start;
+      cursor: default;
+    }
+    .cols div:hover i, .rows .track:hover i {
+      filter: brightness(1.25);
+    }
+    .axis {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: .8rem;
+      margin-top: 8px;
+    }
+    #tip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      padding: 8px 12px;
+      background: #11141a;
+      color: #f0f4fc;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      max-width: 280px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .alert {
+      padding: 14px 16px;
+      margin: 10px 0;
+    }
+    .alert-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .alert p {
+      margin: 8px 0 4px;
+      line-height: 1.45;
+    }
+    .alert p .bullet {
+      width: 20px;
+      height: 20px;
+      font-size: 11px;
+    }
+    .alert .when {
+      color: var(--muted);
+      font-size: .85rem;
+      margin-top: 6px;
+    }
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #22c55e;
+      font-weight: 700;
+      font-size: 0.75rem;
+      background: rgba(34, 197, 94, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .scroll {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      font-size: .9rem;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      border-bottom: 2px solid var(--line);
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    td {
+      border-bottom: 1px solid var(--line);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: var(--card-hover);
+    }
+    td.n {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    details {
+      margin-top: 14px;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: .9rem;
+      user-select: none;
+    }
+    summary:hover {
+      color: var(--fg);
+    }
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 16px;
+      text-align: center;
+    }
+    .station-name {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .station-trains {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .station-trains .bullet {
+      width: 22px;
+      height: 22px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
 <main>
-  <p class="eyebrow">NYC · subway history</p>
+  <p class="eyebrow"><a href="/">ihor.sh</a> / <a href="/nyc/">NYC</a> / Subway History</p>
   <h1>MTA Archive</h1>
-  <p class="lede">The MTA only shows what's broken <em>right now</em>. Every 5 minutes this page records every subway alert and every elevator and escalator outage, so over time it can answer what nobody else publishes: how often does my line get disrupted, and which elevators break most?</p>
+  <p class="lede">The MTA only shows what's broken <em>right now</em>. Every 5 minutes this page records every subway alert and elevator/escalator outage, so over time it can answer what nobody else publishes: how often does each line get disrupted, and which equipment breaks most?</p>
   <p class="muted" id="coverage">Loading the archive…</p>
 
   <div class="tiles">
     <div class="tile card"><b id="t-alerts">–</b><span>subway alerts active now</span></div>
-    <div class="tile card"><b id="t-out">–</b><span>elevators &amp; escalators out now</span></div>
-    <div class="tile card"><b id="t-seen">–</b><span>alerts recorded, last 30 days</span></div>
+    <div class="tile card"><b id="t-out">–</b><span>elevators &amp; escalators out</span></div>
+    <div class="tile card"><b id="t-seen">–</b><span>alerts recorded (last 30d)</span></div>
     <div class="tile card"><b id="t-days">–</b><span>days recorded so far</span></div>
   </div>
 
-  <h2>Alerts by line</h2>
-  <p class="muted">Every alert seen in the last 30 days that names the line. One alert can name several lines.</p>
-  <div class="chart card">
-    <div class="legend"><span><i style="background:var(--unplanned)"></i>Unplanned (delays, reroutes, reduced service)</span><span><i style="background:var(--planned)"></i>Planned work</span></div>
-    <div class="rows" id="by-line"></div>
-    <details><summary>Show as a table</summary><div class="scroll"><table id="by-line-table"></table></div></details>
+  <!-- Interactive Search & Line Filter Bar -->
+  <div class="filter-card card">
+    <div class="filter-input-wrap">
+      <input type="search" id="q" class="filter-input" placeholder="Search line, station, or alert (e.g. L, 7, Times Sq, Elevator)..." autocomplete="off">
+      <button type="button" id="clearBtn" class="clear-btn" hidden>Clear</button>
+    </div>
+    <div class="line-chips" id="lineChips">
+      <button type="button" class="chip active" data-line="ALL">ALL</button>
+      <!-- Line chips injected by JS -->
+    </div>
+    <div id="filterStatus" class="filter-status" hidden></div>
+  </div>
+
+  <h2>
+    Latest unplanned alerts
+    <span class="count-badge" id="recentBadge">0</span>
+  </h2>
+  <div id="recent"></div>
+
+  <h2>
+    Elevators &amp; escalators out now
+    <span class="count-badge" id="outBadge">0</span>
+  </h2>
+  <p class="muted">Elevators first: for accessible riders a broken elevator means the station does not exist.</p>
+  <div class="scroll card chart">
+    <table id="out"></table>
+  </div>
+
+  <h2>
+    Broke down the most
+    <span class="count-badge" id="worstBadge">0</span>
+  </h2>
+  <p class="muted">Equipment with the most observed downtime in the last 30 days (excluding planned outages).</p>
+  <div class="scroll card chart">
+    <table id="worst"></table>
   </div>
 
   <h2>Alerts per day</h2>
-  <p class="muted">New alerts by the day we first saw them (New York time). This fills in as the archive grows.</p>
+  <p class="muted">New alerts by the day we first saw them (New York time). Fills in continuously.</p>
   <div class="chart card">
-    <div class="legend"><span><i style="background:var(--unplanned)"></i>Unplanned</span><span><i style="background:var(--planned)"></i>Planned work</span></div>
+    <div class="legend">
+      <span><i style="background:var(--unplanned)"></i>Unplanned</span>
+      <span><i style="background:var(--planned)"></i>Planned work</span>
+    </div>
     <div class="cols" id="by-day" role="img"></div>
     <div class="axis"><span id="d-first"></span><span id="d-last"></span></div>
   </div>
 
-  <h2>Latest unplanned alerts</h2>
-  <div id="recent"></div>
-
-  <h2>Elevators &amp; escalators out now</h2>
-  <p class="muted">Elevators first: for many riders a broken elevator means the station doesn't exist.</p>
-  <div class="scroll card chart"><table id="out"></table></div>
-
-  <h2>Broke down the most</h2>
-  <p class="muted">Equipment with the most downtime we observed in the last 30 days, not counting planned work. An outage already in progress when the archive started counts from the MTA's start date, clipped to the window.</p>
-  <div class="scroll card chart"><table id="worst"></table></div>
+  <h2>
+    Alerts by line
+    <span class="count-badge" id="byLineBadge">Last 30 days</span>
+  </h2>
+  <p class="muted">Every alert seen in the last 30 days that names the line. One alert can affect multiple lines.</p>
+  <div class="chart card">
+    <div class="legend">
+      <span><i style="background:var(--unplanned)"></i>Unplanned (delays, reroutes, breaks)</span>
+      <span><i style="background:var(--planned)"></i>Planned work</span>
+    </div>
+    <div class="rows" id="by-line"></div>
+    <details>
+      <summary>Show line counts as a table</summary>
+      <div class="scroll" style="margin-top:10px">
+        <table id="by-line-table"></table>
+      </div>
+    </details>
+  </div>
 
   <h2>How this works</h2>
-  <p>A small job on the server fetches the MTA's public feeds every 5 minutes: <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json">subway alerts</a> and <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fnyct_ene.json">elevator and escalator outages</a>. Each alert and outage is stored once with the first and last time we saw it, so "how long did it last" is accurate to about 5 minutes. Gaps happen when the server or the feed is down; the poll log keeps track of them.</p>
-  <p class="muted">Data: MTA. This page is not affiliated with the MTA.</p>
+  <p>A lightweight server worker queries the MTA's real-time feeds every 5 minutes: <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/camsys%2Fsubway-alerts.json" target="_blank" rel="noopener">subway alerts</a> and <a href="https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fnyct_ene.json" target="_blank" rel="noopener">elevator and escalator outages</a>. Outages are recorded with their start and resolution times, giving accurate downtime without spamming queries.</p>
+  <p class="muted">Data: MTA GTFS-RT. Independent open-source archive, not affiliated with the MTA.</p>
 </main>
 <div id="tip" hidden></div>
 
 <script>
   // Official MTA line colors; express variants (6X, 7X, FX) share their line's color.
-  const LINE = { 1: "#EE352E", 2: "#EE352E", 3: "#EE352E", 4: "#00933C", 5: "#00933C", 6: "#00933C", 7: "#B933AD",
-    A: "#0039A6", C: "#0039A6", E: "#0039A6", B: "#FF6319", D: "#FF6319", F: "#FF6319", M: "#FF6319", G: "#6CBE45",
-    J: "#996633", Z: "#996633", L: "#A7A9AC", N: "#FCCC0A", Q: "#FCCC0A", R: "#FCCC0A", W: "#FCCC0A",
-    GS: "#808183", FS: "#808183", H: "#808183", S: "#808183", SI: "#0039A6", SIR: "#0039A6" };
+  const LINE = {
+    1: "#EE352E", 2: "#EE352E", 3: "#EE352E",
+    4: "#00933C", 5: "#00933C", 6: "#00933C",
+    7: "#B933AD",
+    A: "#0039A6", C: "#0039A6", E: "#0039A6",
+    B: "#FF6319", D: "#FF6319", F: "#FF6319", M: "#FF6319",
+    G: "#6CBE45",
+    J: "#996633", Z: "#996633",
+    L: "#A7A9AC",
+    N: "#FCCC0A", Q: "#FCCC0A", R: "#FCCC0A", W: "#FCCC0A",
+    GS: "#808183", FS: "#808183", H: "#808183", S: "#808183",
+    SI: "#0039A6", SIR: "#0039A6"
+  };
+
+  const PRIMARY_LINES = ["1", "2", "3", "4", "5", "6", "7", "A", "C", "E", "B", "D", "F", "M", "G", "J", "Z", "L", "N", "Q", "R", "W", "S", "SIR"];
   const LABEL = { GS: "S", FS: "S", H: "S", SI: "SIR", "6X": "6", "7X": "7", FX: "F" };
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
   const bullet = (r) => {
     const c = LINE[r] ?? LINE[r.replace(/X$/, "")] ?? "#808183";
-    return `<span class="bullet ${["#FCCC0A", "#A7A9AC"].includes(c) ? "dark" : ""}" style="background:${c}" title="${esc(r)} line">${esc(LABEL[r] ?? r)}</span>`;
+    const dark = ["#FCCC0A", "#A7A9AC"].includes(c);
+    return `<span class="bullet ${dark ? "dark" : ""}" style="background:${c}" title="${esc(r)} line">${esc(LABEL[r] ?? r)}</span>`;
   };
+
   const fmt = (t) => new Date(t * 1000).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const day = (t) => new Date(t * 1000).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" });
   const dur = (s) => s < 3600 ? `${Math.max(5, Math.round(s / 60))} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${Math.round(s / 86400)} days`;
@@ -111,14 +522,182 @@
 
   const tip = document.getElementById("tip");
   function hover(el, html) {
-    const show = (e) => { tip.innerHTML = html; tip.hidden = false; const r = el.getBoundingClientRect(); tip.style.left = Math.min(innerWidth - 270, (e?.clientX ?? r.x) + 12) + "px"; tip.style.top = (e?.clientY ?? r.bottom) + 12 + "px"; };
-    el.addEventListener("pointermove", show); el.addEventListener("focus", () => show());
-    el.addEventListener("pointerleave", () => (tip.hidden = true)); el.addEventListener("blur", () => (tip.hidden = true));
+    const show = (e) => {
+      tip.innerHTML = html;
+      tip.hidden = false;
+      const r = el.getBoundingClientRect();
+      tip.style.left = Math.min(innerWidth - 290, (e?.clientX ?? r.x) + 12) + "px";
+      tip.style.top = (e?.clientY ?? r.bottom) + 12 + "px";
+    };
+    el.addEventListener("pointermove", show);
+    el.addEventListener("focus", () => show());
+    el.addEventListener("pointerleave", () => (tip.hidden = true));
+    el.addEventListener("blur", () => (tip.hidden = true));
     el.tabIndex = 0;
   }
 
+  // App State
+  let archiveData = null;
+  let activeLineFilter = "ALL";
+  let activeQuery = "";
+
+  // Render Line Filter Chips
+  function setupChips() {
+    const container = document.getElementById("lineChips");
+    PRIMARY_LINES.forEach((line) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.dataset.line = line;
+      btn.textContent = line;
+      const c = LINE[line];
+      if (c) {
+        btn.style.borderColor = c;
+      }
+      container.appendChild(btn);
+    });
+
+    container.addEventListener("click", (e) => {
+      const btn = e.target.closest(".chip");
+      if (!btn) return;
+      activeLineFilter = btn.dataset.line;
+      container.querySelectorAll(".chip").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+        if (b === btn && b.dataset.line !== "ALL") {
+          b.style.backgroundColor = LINE[b.dataset.line] || "var(--accent)";
+          b.style.color = ["#FCCC0A", "#A7A9AC"].includes(LINE[b.dataset.line]) ? "#111" : "#fff";
+        } else if (b.dataset.line !== "ALL") {
+          b.style.backgroundColor = "";
+          b.style.color = "";
+        }
+      });
+      renderFiltered();
+    });
+  }
+
+  // Reactive Filter & Search
+  function matchesFilter(text, routes = []) {
+    const q = activeQuery.trim().toLowerCase();
+    const l = activeLineFilter;
+
+    // Line match
+    if (l !== "ALL") {
+      const routeList = Array.isArray(routes) ? routes : routes.split(/[,/]/).map((s) => s.trim());
+      const hasLine = routeList.some((r) => r === l || LABEL[r] === l || r.replace(/X$/, "") === l);
+      if (!hasLine && !text.toLowerCase().includes(` ${l.toLowerCase()} `) && !text.toLowerCase().includes(`[${l.toLowerCase()}]`)) {
+        return false;
+      }
+    }
+
+    // Text search match
+    if (q) {
+      const combined = (text + " " + (Array.isArray(routes) ? routes.join(" ") : routes)).toLowerCase();
+      if (!combined.includes(q)) return false;
+    }
+
+    return true;
+  }
+
+  function renderFiltered() {
+    if (!archiveData) return;
+    const d = archiveData;
+    const isFiltered = activeLineFilter !== "ALL" || activeQuery.trim().length > 0;
+
+    const clearBtn = document.getElementById("clearBtn");
+    clearBtn.hidden = !isFiltered;
+
+    const filterStatus = document.getElementById("filterStatus");
+    if (isFiltered) {
+      filterStatus.hidden = false;
+      const terms = [];
+      if (activeLineFilter !== "ALL") terms.push(`Line: <strong>${activeLineFilter}</strong>`);
+      if (activeQuery.trim()) terms.push(`Search: "<strong>${esc(activeQuery.trim())}</strong>"`);
+      filterStatus.innerHTML = `Filtering by: ${terms.join(" · ")}`;
+    } else {
+      filterStatus.hidden = true;
+    }
+
+    // 1. Filter Alerts by Line Chart
+    const rows = document.getElementById("by-line");
+    rows.querySelectorAll(".row-item").forEach((el) => {
+      const route = el.dataset.r;
+      const match = activeLineFilter === "ALL" || route === activeLineFilter || LABEL[route] === activeLineFilter || route.replace(/X$/, "") === activeLineFilter;
+      el.classList.toggle("dimmed", !match);
+    });
+
+    // 2. Filter Recent Unplanned Alerts
+    const recentFiltered = d.recent.filter((a) => {
+      const routes = a.routes ? a.routes.split(",") : [];
+      return matchesFilter(a.header + " " + a.type, routes);
+    });
+
+    document.getElementById("recentBadge").textContent = `${recentFiltered.length} shown`;
+    document.getElementById("recent").innerHTML = recentFiltered.map((a) => `<div class="alert card">
+      <div class="alert-header">
+        ${[...new Set((a.routes ? a.routes.split(",") : []).map((r) => LABEL[r] ? r.replace(/X$/, "") : r))].map(bullet).join(" ")}
+        <b>${esc(a.type)}</b>
+        ${a.active ? `<span class="live">● ACTIVE</span>` : ""}
+      </div>
+      <p>${esc(a.header).replace(/\[(\w{1,3})\]/g, (m, r) => LINE[r] || LINE[r.replace(/X$/, "")] ? bullet(r) : m)}</p>
+      <p class="when">First seen ${fmt(a.first_seen)}${a.active ? "" : ` · lasted about ${dur(a.last_seen - a.first_seen)}`}</p>
+    </div>`).join("") || `<p class="empty">${isFiltered ? "No alerts match the selected filter." : "No unplanned alerts recorded yet."}</p>`;
+
+    // 3. Filter Outages
+    const kind = (k) => (k === "EL" ? "Elevator" : "Escalator");
+    const out = [...d.outagesNow].sort((a, b) => (a.kind === "EL" ? 0 : 1) - (b.kind === "EL" ? 0 : 1) || a.start - b.start);
+    const outFiltered = out.filter((o) => matchesFilter(`${o.station} ${o.serving} ${o.reason} ${kind(o.kind)}`, o.trains.split("/")));
+
+    document.getElementById("outBadge").textContent = `${outFiltered.length} out`;
+    document.getElementById("out").innerHTML = outFiltered.length ? `<tr><th>Station</th><th>What</th><th>Why</th><th>Out since</th><th>Back (est.)</th></tr>` +
+      outFiltered.map((o) => `<tr>
+        <td>
+          <div class="station-name">${esc(o.station)}</div>
+          <div class="station-trains">${o.trains.split("/").map((t) => LINE[t] ? bullet(t) : esc(t)).join(" ")}</div>
+        </td>
+        <td>${kind(o.kind)}${o.ada ? " <em>(accessible route)</em>" : ""}<br><span class="muted">${esc(o.serving)}</span></td>
+        <td>${esc(o.reason)}</td>
+        <td class="n">${o.start ? day(o.start) : "–"}<br><span class="muted">${o.start ? dur(d.now - o.start) : ""}</span></td>
+        <td class="n">${o.est_return ? day(o.est_return) : "–"}</td>
+      </tr>`).join("") : `<tr><td colspan="5" class="empty">${isFiltered ? "No current outages match this filter." : "No outages recorded."}</td></tr>`;
+
+    // 4. Filter Worst Outages
+    const worstFiltered = d.worst.filter((w) => matchesFilter(`${w.station} ${w.equipment} ${w.serving} ${kind(w.kind)}`, w.trains.split(/[,/]/)));
+    document.getElementById("worstBadge").textContent = `${worstFiltered.length} records`;
+    document.getElementById("worst").innerHTML = worstFiltered.length ? `<tr><th>Station</th><th>What</th><th>Outages</th><th>Total Down</th></tr>` +
+      worstFiltered.map((w) => `<tr>
+        <td>
+          <div class="station-name">${esc(w.station)}</div>
+          <span class="muted">${esc(w.trains)}</span>
+        </td>
+        <td>${kind(w.kind)} <span class="muted">${esc(w.equipment)}</span><br><span class="muted">${esc(w.serving)}</span></td>
+        <td class="n"><strong>${w.outages}</strong></td>
+        <td class="n">${dur(w.down_s)}</td>
+      </tr>`).join("") : `<tr><td colspan="4" class="empty">${isFiltered ? "No historical records match this filter." : "Not enough history yet."}</td></tr>`;
+  }
+
+  // Main Load
   async function load() {
+    setupChips();
+    const qInput = document.getElementById("q");
+    qInput.addEventListener("input", (e) => {
+      activeQuery = e.target.value;
+      renderFiltered();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      activeQuery = "";
+      qInput.value = "";
+      activeLineFilter = "ALL";
+      document.querySelectorAll(".chip").forEach((b) => {
+        b.classList.toggle("active", b.dataset.line === "ALL");
+        b.style.backgroundColor = "";
+        b.style.color = "";
+      });
+      renderFiltered();
+    });
+
     const d = await fetch("/api/nyc/archive").then((r) => r.json());
+    archiveData = d;
     const days = Math.max(1, Math.ceil((d.now - d.coverage.first) / 86400));
     document.getElementById("coverage").textContent = d.coverage.first
       ? `Recording since ${day(d.coverage.first)} · ${d.coverage.polls} feed checks (${d.coverage.polls - d.coverage.ok} failed) · last check ${ago(Math.max(d.lastAlerts, d.lastOutages))}`
@@ -128,49 +707,51 @@
     document.getElementById("t-seen").textContent = d.counts.alertsSeen;
     document.getElementById("t-days").textContent = days;
 
-    // Alerts by line: unplanned first (it's the interesting part), then planned, sorted by unplanned.
+    // Alerts by line
     const lines = Object.entries(d.byRoute).sort((a, b) => b[1].unplanned - a[1].unplanned || (b[1].planned + b[1].unplanned) - (a[1].planned + a[1].unplanned));
     const max = Math.max(1, ...lines.map(([, v]) => v.planned + v.unplanned));
     const rows = document.getElementById("by-line");
-    rows.innerHTML = lines.map(([r, v]) => `${bullet(r)}<div class="track" data-r="${esc(r)}">` +
-      `<i style="flex:0 0 ${v.unplanned / max * 100}%;background:var(--unplanned)"></i><i style="flex:0 0 ${v.planned / max * 100}%;background:var(--planned)"></i></div>` +
-      `<span class="val">${v.planned + v.unplanned}</span>`).join("") || `<p class="empty">No alerts recorded yet.</p>`;
-    rows.querySelectorAll(".track").forEach((el) => { const v = d.byRoute[el.dataset.r]; hover(el, `<b>${esc(el.dataset.r)} line</b><br>${v.unplanned} unplanned · ${v.planned} planned work`); });
-    document.getElementById("by-line-table").innerHTML = `<tr><th>Line</th><th>Unplanned</th><th>Planned</th></tr>` +
-      lines.map(([r, v]) => `<tr><td>${esc(r)}</td><td class="n">${v.unplanned}</td><td class="n">${v.planned}</td></tr>`).join("");
+    rows.innerHTML = lines.map(([r, v]) => `
+      <div class="row-item" data-r="${esc(r)}">
+        ${bullet(r)}
+        <div class="track" data-r="${esc(r)}">
+          <i style="flex:0 0 ${v.unplanned / max * 100}%;background:var(--unplanned)"></i>
+          <i style="flex:0 0 ${v.planned / max * 100}%;background:var(--planned)"></i>
+        </div>
+        <span class="val">${v.planned + v.unplanned}</span>
+      </div>`).join("") || `<p class="empty">No alerts recorded yet.</p>`;
 
-    // Alerts per day: the last 30 days, empty days included so gaps read as gaps.
+    rows.querySelectorAll(".track").forEach((el) => {
+      const v = d.byRoute[el.dataset.r];
+      if (v) hover(el, `<b>${esc(el.dataset.r)} line</b><br>${v.unplanned} unplanned · ${v.planned} planned work`);
+    });
+
+    document.getElementById("by-line-table").innerHTML = `<tr><th>Line</th><th>Unplanned</th><th>Planned</th><th>Total</th></tr>` +
+      lines.map(([r, v]) => `<tr><td>${bullet(r)} <b>${esc(r)}</b></td><td class="n">${v.unplanned}</td><td class="n">${v.planned}</td><td class="n"><strong>${v.unplanned + v.planned}</strong></td></tr>`).join("");
+
+    // Alerts per day: last 30 days
     const cols = document.getElementById("by-day"), keys = [];
     for (let i = 29; i >= 0; i--) keys.push(new Date((d.now - i * 86400) * 1000).toLocaleDateString("en-CA", { timeZone: "America/New_York" }));
     const dmax = Math.max(1, ...keys.map((k) => (d.byDay[k]?.planned ?? 0) + (d.byDay[k]?.unplanned ?? 0)));
-    cols.innerHTML = keys.map((k) => { const v = d.byDay[k] ?? { planned: 0, unplanned: 0 };
-      return `<div data-k="${k}"><i style="height:${v.unplanned / dmax * 100}%;background:var(--unplanned)"></i><i style="height:${v.planned / dmax * 100}%;background:var(--planned)"></i></div>`; }).join("");
-    cols.querySelectorAll("div").forEach((el) => { const v = d.byDay[el.dataset.k] ?? { planned: 0, unplanned: 0 };
-      hover(el, `<b>${new Date(el.dataset.k + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</b><br>${v.unplanned} unplanned · ${v.planned} planned work`); });
+    cols.innerHTML = keys.map((k) => {
+      const v = d.byDay[k] ?? { planned: 0, unplanned: 0 };
+      return `<div data-k="${k}"><i style="height:${v.unplanned / dmax * 100}%;background:var(--unplanned)"></i><i style="height:${v.planned / dmax * 100}%;background:var(--planned)"></i></div>`;
+    }).join("");
+    cols.querySelectorAll("div").forEach((el) => {
+      const v = d.byDay[el.dataset.k] ?? { planned: 0, unplanned: 0 };
+      hover(el, `<b>${new Date(el.dataset.k + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</b><br>${v.unplanned} unplanned · ${v.planned} planned work`);
+    });
     cols.setAttribute("aria-label", `New alerts per day for the last 30 days, peaking at ${dmax}.`);
     const short = (k) => new Date(k + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
     document.getElementById("d-first").textContent = short(keys[0]);
     document.getElementById("d-last").textContent = short(keys.at(-1));
 
-    document.getElementById("recent").innerHTML = d.recent.map((a) => `<div class="alert card">
-      ${[...new Set((a.routes ? a.routes.split(",") : []).map((r) => LABEL[r] ? r.replace(/X$/, "") : r))].map(bullet).join(" ")} <b>${esc(a.type)}</b>
-      ${a.active ? `<span class="live">● ACTIVE</span>` : ""}
-      <p>${esc(a.header).replace(/\[(\w{1,3})\]/g, (m, r) => LINE[r] || LINE[r.replace(/X$/, "")] ? bullet(r) : m)}</p>
-      <p class="when">First seen ${fmt(a.first_seen)}${a.active ? "" : ` · lasted about ${dur(a.last_seen - a.first_seen)}`}</p></div>`).join("") || `<p class="empty">No unplanned alerts recorded yet.</p>`;
-
-    const kind = (k) => (k === "EL" ? "Elevator" : "Escalator");
-    const out = [...d.outagesNow].sort((a, b) => (a.kind === "EL" ? 0 : 1) - (b.kind === "EL" ? 0 : 1) || a.start - b.start);
-    document.getElementById("out").innerHTML = `<tr><th>Station</th><th>What</th><th>Why</th><th>Out since</th><th>Back (est.)</th></tr>` +
-      out.map((o) => `<tr><td><b>${esc(o.station)}</b><br>${o.trains.split("/").map((t) => LINE[t] ? bullet(t) : esc(t)).join(" ")}</td>
-        <td>${kind(o.kind)}${o.ada ? " (accessible route)" : ""}<br><span class="muted">${esc(o.serving)}</span></td>
-        <td>${esc(o.reason)}</td><td class="n">${o.start ? day(o.start) : "–"}<br><span class="muted">${o.start ? dur(d.now - o.start) : ""}</span></td>
-        <td class="n">${o.est_return ? day(o.est_return) : "–"}</td></tr>`).join("");
-
-    document.getElementById("worst").innerHTML = d.worst.length ? `<tr><th>Station</th><th>What</th><th>Outages</th><th>Down</th></tr>` +
-      d.worst.map((w) => `<tr><td><b>${esc(w.station)}</b> <span class="muted">${esc(w.trains)}</span></td><td>${kind(w.kind)} <span class="muted">${esc(w.equipment)}</span><br><span class="muted">${esc(w.serving)}</span></td>
-        <td class="n">${w.outages}</td><td class="n">${dur(w.down_s)}</td></tr>`).join("") : `<tr><td class="empty">Not enough history yet.</td></tr>`;
+    renderFiltered();
   }
-  load().catch(() => { document.getElementById("coverage").textContent = "Couldn't load the archive. Try again in a minute."; });
+
+  load().catch(() => {
+    document.getElementById("coverage").textContent = "Couldn't load the archive. Try again in a minute.";
+  });
 </script>
 </body>
 </html>
