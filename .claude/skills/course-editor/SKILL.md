@@ -13,6 +13,8 @@ needs you.
 
 ## Start
 
+First read the progress table in `ai/PLAN.md` §10.7: it says which lessons are verified and what's still open.
+
 ```sh
 alias L="python3 ai/review/learner.py"
 L path            # a run exists? if not: L init, then tell the owner to start the student
@@ -42,7 +44,9 @@ Then loop:
 - **`error`**: a code box, notebook or page failed. Reproduce it (`L run`, the page at
   `http://localhost:8080/ai/LESSON.html`, `L nbcheck`). If it's real, it's a bug: fix it. If the student wrote broken
   code, reply with a pointer, not the answer.
-- **`done`**: nothing to do. Every few lessons, run `L audit`: quotes that aren't in what the student was shown mean
+- **`done`**: record the lesson in the progress table in `ai/PLAN.md` §10.7 (date, result, fix commits, open items),
+  commit it with your next fix or on its own, and push. That table is how the next session picks up. Every few
+  lessons, run `L audit`: quotes that aren't in what the student was shown mean
   it used outside knowledge. Reply with
   `L reply note "Q3 of LESSON: your quote isn't from the course; answer again using only what it showed you"`.
 

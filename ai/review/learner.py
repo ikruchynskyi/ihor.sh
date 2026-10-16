@@ -5,7 +5,7 @@ committed to one, and everything it does lands in a shared log. The editor (.cla
 that log for struggles and questions, replies, fixes the course, and audits the student's citations.
 
   student:  init · path · show [lesson] · answer L Q VALUE --quote "…" · run L BOX [--file F] · note (JSON on stdin)
-            ask "question" [--wait S] · inbox · done (JSON on stdin) · nb L · hint L N · nbcheck L
+            ask "question" [--wait S] · inbox · done (JSON on stdin) · nb L · hint L N · nbcheck L · clean
   editor:   watch [--timeout S] · reply ID "text" · audit · report · selftest
 
 Files live in ai/review/run/ (git-ignored): log.jsonl (student → editor), replies.jsonl (editor → student),
@@ -13,7 +13,7 @@ seen.txt (every lesson view shown, for citation checks), state.json, editor.json
 COURSE_ROOT points at another copy of ai/ (the editor's calibration run with planted gaps); REVIEW_PY is the Python
 that runs notebooks (one with numpy, pandas, scikit-learn, torch).
 """
-import ast, html, json, os, re, subprocess, sys, time
+import ast, html, json, os, re, shutil, subprocess, sys, time
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -41,6 +41,15 @@ def append(p, ev):
     return ev
 def state(): return jload(RUN / "state.json", {"current": 0, "shown": [], "hints": {}, "replies_read": 0, "asks": 0})
 def log(kind, **kw): return append(RUN / "log.jsonl", {"kind": kind, **kw})
+def work(stem):
+    """One scratch folder per lesson for code and notebooks, with every download cache pointed inside it, so datasets
+    and model weights never land in the repo or the machine's shared caches. `done` and `clean` delete it."""
+    w = RUN / "work" / stem; w.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "MPLBACKEND": "Agg", "TMPDIR": str(w / "tmp"), "TORCH_HOME": str(w / "torch"), "HF_HOME": str(w / "hf"),
+           "XDG_CACHE_HOME": str(w / "cache"), "SCIKIT_LEARN_DATA": str(w / "sklearn"), "KAGGLEHUB_CACHE": str(w / "kaggle"), "MPLCONFIGDIR": str(w / "mpl")}
+    (w / "tmp").mkdir(exist_ok=True)
+    return w, env
+def size(p): return sum(f.stat().st_size for f in Path(p).rglob("*") if f.is_file()) if Path(p).exists() else 0
 
 
 # ---------- the path ----------
@@ -189,7 +198,8 @@ def cmd_run(args):
     code = Path(flag(args, "--file")).read_text() if flag(args, "--file") else html.unescape(box["code"])
     uses = [b for b in les.boxes if box["uses"] and b["id"] in box["uses"].split()]
     script = PRELUDE.format(repo=str(REPO), root=str(ROOT)) + "".join(f"_run({b['code']!r}, quiet=True)\n" for b in uses) + f"_run({code!r})\n"
-    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), "-c", script], capture_output=True, text=True, timeout=300)
+    w, env = work(stem)
+    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), "-c", script], capture_output=True, text=True, timeout=300, cwd=w, env=env)
     except subprocess.TimeoutExpired: r = subprocess.CompletedProcess([], 1, "", "timed out after 300 s")
     out = (r.stdout + ("\n" + r.stderr.strip().splitlines()[-1] if r.returncode and r.stderr.strip() else "")).strip()
     log("run", lesson=stem, box=n, own_code=bool(flag(args, "--file")), ok=r.returncode == 0, output=out[-400:])
@@ -227,6 +237,7 @@ def cmd_done(args):
     summary = json.loads(sys.stdin.read() or "{}") if not sys.stdin.isatty() else {}
     log("done", lesson=stem, **summary)
     st["current"] += 1; jsave(RUN / "state.json", st)
+    cmd_clean([])
     print(f"✓ {stem} done. Next: {LESSONS[st['current']] if st['current'] < len(LESSONS) else 'the path is finished'}.")
 
 
@@ -272,13 +283,20 @@ def cmd_hint(args):
 def cmd_nbcheck(args):
     stem = lesson(args[0] if args else None); f = nbfile(stem)
     if not f.exists(): sys.exit(f"Run `nb {stem}` first.")
-    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), str(f)], capture_output=True, text=True, timeout=1800, cwd=f.parent, env={**os.environ, "MPLBACKEND": "Agg"})
+    w, env = work(stem)
+    try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), str(f)], capture_output=True, text=True, timeout=1800, cwd=w, env=env)
     except subprocess.TimeoutExpired: r = subprocess.CompletedProcess([], 1, "", "timed out after 30 min")
     ok, bad = r.stdout.count("✓"), r.stdout.count("✗")
     log("nbcheck", lesson=stem, passed=ok, failed=bad, crashed=r.returncode != 0, tail=(r.stdout + r.stderr)[-300:])
     if r.returncode: log("error", lesson=stem, what="notebook crashed", output=r.stderr.strip()[-300:])
     print(r.stdout[-3000:], r.stderr[-800:] if r.returncode else "", f"\n{ok} ✓, {bad} ✗")
 
+
+def cmd_clean(args):
+    "Delete every lesson's scratch folder (downloads, caches, files the code wrote) and stray downloads; keep logs and notes."
+    freed = sum(size(p) for p in [RUN / "work", RUN / "nb" / "data"])
+    for p in [RUN / "work", RUN / "nb" / "data"]: shutil.rmtree(p, ignore_errors=True)
+    print(f"cleaned {freed / 1e6:.0f} MB; the run now takes {size(RUN) / 1e6:.1f} MB")
 
 # ---------- editor commands ----------
 def cmd_watch(args):

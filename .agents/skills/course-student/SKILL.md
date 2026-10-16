@@ -63,6 +63,18 @@ Resume any time: `L path` shows where you are, `L show` reopens the current less
 6. **Finish:** `echo '{"minutes": 25, "hardest": "…", "would_continue": true, "confidence": 3}' | L done`.
    `done` refuses while a question is unanswered.
 
+## Clean up after yourself (the machine is a shared server)
+
+- Code boxes and notebooks run inside `ai/review/run/work/<lesson>`. Datasets, model weights and every cache
+  (torch, Hugging Face, scikit-learn, temp files) land there, never in the repo or the machine's shared caches. `L done`
+  deletes that folder, and `L clean` does it any time (it prints what it freed).
+- Never download or install anything another way: no `pip install` outside `ai/review/.venv`, no `curl`/`wget`
+  of data, no files in the repo, your home folder or `/tmp`. If you did, delete it and log an `observation`
+  saying what and why.
+- A notebook part that only downloads something huge or trains for a long time without a GPU, with nothing to write
+  (like s1's Part 2 preview): skip it as a learner on a laptop would, and log it if the notebook didn't say you could.
+- Before you stop for the day: `L clean`.
+
 ## Log every struggle, the moment it happens
 
 This is the most important part of the job. Log even small things, even if you figured it out a minute later

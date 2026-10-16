@@ -607,3 +607,15 @@ that quietly fills gaps would hide the very problems this review exists to find.
 - Every notebook completed by the learner with at most `hint(1)` on average per exercise.
 - Every fix went through the guardrail's fit plan, kept `npm run check` and `--depth` green, and the owner accepted
   the stage packet.
+
+### 10.7 Progress (the editor updates this after every lesson; pick up from here)
+
+Student: Gemini (`.agents/skills/course-student`). Editor: Claude (`.claude/skills/course-editor`). The live run is
+`ai/review/run/` (git-ignored; `python3 ai/review/learner.py path` and `report` show it). If that folder is gone,
+start a new run and skip the lessons verified below (or rerun them after big changes).
+
+| Lesson | Verified | Result | Fixes | Open |
+|---|---|---|---|---|
+| s1-what-is-ml | 2026-10-15 | 4/4 questions first try, notebook 4/4 without hints, 20 min, confidence 4/5 | 81ee6b0 notebook Part 2 marked optional with its real cost; c29e04a §2 chart labels clear on a phone, plane.js text() kept inside charts | the student named squared error and learning rate as hardest but logged no struggle for them: recheck on the final rerun |
+| s2-just-enough-code | in progress | | | |
+
