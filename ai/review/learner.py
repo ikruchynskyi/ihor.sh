@@ -281,6 +281,7 @@ def cmd_nb(args):
             else: parts.append(re.sub(r"(?m)^(\s*)([!%].*)$", r"\1# notebook command, skipped here: \2", body))
         f.parent.mkdir(parents=True, exist_ok=True); f.write_text("\n\n# %%\n".join(parts) + "\n")
         log("nb_start", lesson=stem, exercises=len(exercises(stem)))
+    if "# kaggle: gpu" in src.read_text(): print("Note: this notebook is meant for a GPU (Colab or Kaggle); `nbcheck` won't run it here.")
     print(f"Your notebook: {f}\nFill each `# YOUR CODE HERE` / `...`, then `nbcheck {stem}`. {len(exercises(stem))} exercises.")
 
 def cmd_hint(args):
@@ -293,6 +294,11 @@ def cmd_hint(args):
 def cmd_nbcheck(args):
     stem = lesson(args[0] if args else None); f = nbfile(stem)
     if not f.exists(): sys.exit(f"Run `nb {stem}` first.")
+    if "# kaggle: gpu" in (REPO / "ai" / "notebooks" / "src" / f"{stem}.py").read_text() and "--force" not in args:
+        log("nbcheck_skipped", lesson=stem, why="GPU notebook")
+        return print("This notebook says to use a GPU (Colab or Kaggle), and this machine would take over 30 minutes.\n"
+                     "Do what a learner can do here: fill every exercise and cite it with an exercise note; the editor checks\n"
+                     "GPU notebooks separately. `nbcheck LESSON --force` runs it anyway.")
     w, env = work(stem)
     try: r = subprocess.run([os.environ.get("REVIEW_PY", sys.executable), str(f)], capture_output=True, text=True, timeout=1800, cwd=w, env=env)
     except subprocess.TimeoutExpired: r = subprocess.CompletedProcess([], 1, "", "timed out after 30 min")
