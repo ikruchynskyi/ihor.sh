@@ -13,8 +13,10 @@
 # - Stuck? Type `hint(1)` in any cell and run it for a hint on exercise 1 (run it again for the next hint), or
 #   `answer(1)` to see the answer. That's what they're there for.
 #
-# Part 2 trains a real image model and is faster on a free GPU: in Colab, *Runtime → Change runtime type → T4 GPU*;
-# on Kaggle, *Settings → Accelerator → GPU* and turn *Internet* on.
+# Part 2 is an optional preview with nothing to write: it downloads about 800 MB of photos and trains a real image
+# model. That takes a few minutes on a free GPU (in Colab, *Runtime → Change runtime type → T4 GPU*; on Kaggle,
+# *Settings → Accelerator → GPU* and turn *Internet* on) but can take half an hour on a computer without one.
+# Without a GPU, skip it: nothing later depends on it.
 
 # %%
 import warnings
@@ -166,13 +168,14 @@ check(lambda: too_small == 0.001 and too_big == 0.03,
 # Picking the learning rate is a real, daily part of training models; stage 2 shows why a too-big one explodes.
 # Set `lr` back to `0.01` before moving on.
 #
-# ## Part 2. Preview: a real model in five minutes
+# ## Part 2 (optional). Preview: a real image model
 # Now a taste of where the path goes. **Just run these cells and watch**: every line is explained in later lessons
 # (images as numbers in stage 5, training loops in stage 2), and there's nothing to write.
 #
 # The Oxford-IIIT Pet photos show cats and dogs. Instead of starting from zero knobs, we take **ResNet-18**, a
 # model already trained on 1.2 million everyday photos, so it already knows edges, fur and eyes. We swap its last
-# layer for one with just two answers, cat or dog, and train for two short passes over 2,000 photos.
+# layer for one with just two answers, cat or dog, and train for two short passes over 2,000 photos. The first
+# cell downloads about 800 MB of photos; on a computer without a GPU, the training cell is slow (see the top).
 
 # %%
 import torch, torchvision
