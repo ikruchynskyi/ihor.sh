@@ -85,7 +85,7 @@ async function send(text) {
   pending = true; renderLog(); $("q").value = ""; $("send").disabled = true;
   const usedMemes = turns.map((t) => t.memeTemplate).filter(Boolean);
   try {
-    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.map((t) => ({ role: t.role, content: t.content })), usedMemes }) });
+    const r = await fetch("/api/yomu/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level, topic, turns: turns.slice(-12).map((t) => ({ role: t.role, content: t.content.slice(0, 600) })) /* all the server reads (yomu-chat.ts): a whole long chat would outgrow its 32 KB cap */, usedMemes }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) throw new Error(d.error || `The local model didn't answer (HTTP ${r.status}). Try again in a moment.`);
     turns.push({ role: "assistant", content: d.ja, en: d.en, words: d.words, fix: d.fix, memeUrl: d.memeUrl, memeTemplate: d.meme_template }); keep();

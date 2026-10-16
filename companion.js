@@ -756,7 +756,10 @@ async function send(q) {
   let doing = deep ? "thinking hard" : "thinking";
   const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ? " · the model is slow right now, hang on" : ""}`; }, 500);
   try {
-    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: history, page: pageInfo(), stream: true, deep }) })
+    // Only what the server reads (blip.ts ask: the last 12 messages, 2000 characters each): a whole long chat, or a few
+    // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.
+    const messages = history.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, page: pageInfo(), stream: true, deep }) })
       .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
     let data = {};
     if (!r.ok || !/x-ndjson/.test(r.headers.get("content-type") ?? "")) data = await r.json().catch(() => ({}));
