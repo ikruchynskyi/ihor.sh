@@ -300,7 +300,7 @@ def cmd_reply(args):
     append(RUN / "replies.jsonl", {"to": None if args[0] == "note" else args[0], "text": args[1]})
     print("sent")
 
-def norm(s): return re.sub(r"\s+", " ", html.unescape(s or "")).strip().lower()
+def norm(s): return re.sub(r"\s+", " ", re.sub(r"\\[()\[\]]", "", html.unescape(s or ""))).strip().lower()  # math as rendered or as source
 
 def cmd_audit(args):
     seen, bad = norm((RUN / "seen.txt").read_text() if (RUN / "seen.txt").exists() else ""), 0
