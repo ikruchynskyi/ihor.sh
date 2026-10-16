@@ -167,6 +167,11 @@ test the page right away (it's live), then commit and push at once.
 
 Effort: S ≈ an hour or two of agent work, M ≈ half a day, L ≈ a day or more.
 
+**Status 2026-10-15: every lane has shipped** (B daily quiz, C gap drills, D exams/badges/portfolio, E mini-games,
+F placement, H1 SQL, H2 workbench, I milestones 2–7, J reference pages, K practice generators, L keyboard access,
+M cold-learner notebook read, N home-page XP), checked: each lane's files exist and `ai/*.test.mjs` all pass.
+Lane G was only 47 of 79 notebooks on Kaggle; the other 32 are being published (2026-10-15).
+
 ### Wave 1 (start together)
 
 #### Lane B: the daily quiz (gamification P2), M
@@ -382,15 +387,18 @@ Effort: S ≈ an hour or two of agent work, M ≈ half a day, L ≈ a day or mor
 
 Lanes that write the most new content (D, I, H1, H2, K) are the longest. G and N are quick.
 
-## 7. Open questions for the owner (answer before or during wave 1)
+## 7. Open questions for the owner (settled by what shipped)
 1. Daily quiz share line: keep it, or leave sharing out entirely?
 2. Exams: may a learner take a stage exam before finishing the stage (the plan says yes, "try anyway")?
 3. Milestone 5 needs a small public image dataset with a clear license: pick one (e.g. Oxford-IIIT Pets, CC BY-SA 4.0)?
 4. SQL lesson: SQLite only, or show DuckDB too (not in Pyodide by default)?
 
+As built: (1) the daily quiz keeps its share line; (2) a stage exam can be taken early, with a note recommending the
+lessons first; (3) milestone 5 uses CIFAR-10 (from the Hugging Face hub); (4) the SQL lesson is SQLite only.
+
 ---
 
-## 8. Next: Guided End-to-End Capstone Project ("Personal AI Copilot & Research Partner")
+## 8. Guided End-to-End Capstone Project ("Personal AI Copilot & Research Partner"): shipped (`capstone.html`, milestone 7)
 
 An end-of-course guided hands-on capstone project that ties together the entire curriculum into a real-world, highly useful application the learner can deploy and use daily:
 
@@ -419,7 +427,7 @@ An end-of-course guided hands-on capstone project that ties together the entire 
 
 ---
 
-## 9. Stanford-depth additions (revised 2026-10-15 after review)
+## 9. Stanford-depth additions (revised 2026-10-15 after review): steps A–D shipped and reviewed (a00b512)
 
 The first draft of this section (commit `9b74879`) proposed nine steps inspired by CS221, CS229, CS224U, CS231n,
 CS234 and CS236. A review against the lessons as they stand found that about half of it is **already shipped**, and
@@ -525,3 +533,74 @@ The draft was written from lesson titles, not lesson contents, and that is how i
 - Notebooks: both versions tested, then published to Kaggle (`build.py`).
 - The page works at 390 px and 1280 px wide with no horizontal scroll.
 - One step per commit, pushed and deployed.
+
+---
+
+## 10. In-depth review: a simulated learner with only basic arithmetic (after the course is complete)
+
+**Goal.** Before calling the path finished, prove the claim on the home page: someone who knows only school
+arithmetic can get from Start 1 to the capstone using nothing but the course. An LLM plays that learner, a second
+LLM is the instructor they can ask, a third keeps notes on every struggle and fixes the course, and the owner
+proofreads what changed. Every struggle is treated like a failing test (PEDAGOGY.md §5).
+
+### 10.1 Roles
+
+| Role | Who | Sees | Does |
+|---|---|---|---|
+| **Learner** | a capable model (Claude Sonnet) held to a persona; a second, different model (local `qwen3.5:35b`) as a cross-check on stages 0–2 | only what the path has shown so far, in `ai/index.html` order: each lesson's rendered text, widget readouts, code-box output, its notebook | reads, predicts before every reveal, answers every question, runs every code box and notebook exercise, takes checkpoints and stage exams, asks the instructor when stuck, says "I'd quit here" when it would |
+| **Instructor** | Blip through `/api/ask` with the lesson's page context (what a real visitor gets) | the current page and the course | answers the learner, and says for each answer whether the course already covered it (where) or not |
+| **Auditor** | a script plus a small model | the learner's transcript and the cumulative text it was shown | checks every cited quote is really in what was shown (string match), and flags reasoning that uses outside knowledge |
+| **Editor** | an agent following `.claude/skills/course-guardrail` | transcripts, struggle log, the repo | turns each struggle into a fit plan and a fix, then reruns the learner on the changed lesson |
+| **Owner** | you | per-stage review packets | proofreads the changes, accepts or sends back |
+
+### 10.2 The learner's persona and rules (its system prompt)
+- **Knows:** whole numbers, negatives, decimals, fractions, percentages, order of operations, reading a simple
+  chart, fluent English, using a browser. **Doesn't know:** algebra beyond "a letter stands for a number",
+  exponents, logs, functions, any programming, any statistics or ML vocabulary.
+- **Only course knowledge.** Every answer, prediction and line of code ends with a citation: the lesson, section and
+  a short verbatim quote from what it was shown that justifies the step. A step it can't cite is written as a
+  guess and flagged. ML knowledge from pretraining isn't allowed. Citations make that rule checkable.
+- **Honest effort.** Predicts first, then checks; uses `hint(1)` before `hint(2)` before `answer(n)`; records time and
+  attempts; may ask the instructor at most three times per section before writing "stuck".
+- **Struggle notes** in a fixed form: `{lesson, section, kind, quote, what I expected, what happened, would I quit}`,
+  where kind is one of: unknown term or symbol, step too big, unclear wording, example missing, widget confusing or
+  broken, code error, question ambiguous, answer seems wrong, too long/boring.
+
+### 10.3 Tooling (to build in `ai/review/`, committed; transcripts git-ignored, summaries committed)
+1. `render.py`: Playwright renders each lesson in path order to text: prose, formulas (KaTeX alt text), question
+   stems and options (answers hidden until the learner commits), widget readouts at their default and after scripted
+   moves, and code-box output. One file per lesson, plus the cumulative "seen so far" text for citation checks.
+2. `learner.py`: runs the learner lesson by lesson with the persona, the lesson text, a memory of its own notes
+   (not the full earlier text, as a real learner forgets), and tools: `ask_instructor`, `run_code` (Pyodide in the
+   headless page), `answer_question`, `run_notebook_cell` (the blank notebook in a scratch Jupyter kernel).
+3. `audit.py`: verifies every citation quote is a substring of the seen-so-far text; scores outside-knowledge
+   leaks; computes the metrics below.
+4. `report.py`: a per-stage packet (Markdown, published as a private page for the owner): struggles ranked by
+   how many learners hit them and whether they'd quit, the instructor's "not covered" answers, metrics, and the
+   editor's fixes with before/after excerpts.
+
+### 10.4 Calibrating the learner first (stage 0 pilot)
+Plant three known gaps in a scratch copy of stage 0: a symbol used one lesson early, a deleted worked example, and
+a question whose answer needs an untaught step. The learner must flag all three, and the auditor must catch a
+deliberately injected outside-knowledge answer. Tune the persona until it does. Without this check, a smart model
+that quietly fills gaps would hide the very problems this review exists to find.
+
+### 10.5 The run
+1. **Readiness gate:** every lesson live; `npm run check` 0/0; `lint.py --depth` complete; every notebook passes
+   both ways and is on Kaggle; the content is tagged (`review-start`).
+2. **Stage by stage, in order.** Run both learners on a stage; the editor fixes its struggles (earliest lesson that
+   causes them, per "fix the ledger, not the symptom"), reruns the learner on the changed lessons until each
+   struggle is gone, and only then moves on: later stages build on the fixed earlier ones.
+3. **Owner packet per stage:** read the changed passages in place on the site, then accept or comment.
+4. **Final full rerun** from Start 1 to the capstone with a fresh learner (no notes from earlier runs): the
+   metrics must meet the bar in 10.6 with nothing new found.
+5. Reuse for the other courses afterwards with their own personas: Radio (school math, no electronics), Electronics
+   (school math), Yomu (no Japanese; the "ledger" is JLPT level).
+
+### 10.6 Done means (per lesson, then for the whole path)
+- Zero citation failures the auditor can't resolve, and zero instructor answers marked "not covered".
+- No "I'd quit here" left, and no step where the learner needed `answer(n)`.
+- Checkpoint questions right on the first try ≥ 80%; every stage exam passed on the first attempt.
+- Every notebook completed by the learner with at most `hint(1)` on average per exercise.
+- Every fix went through the guardrail's fit plan, kept `npm run check` and `--depth` green, and the owner accepted
+  the stage packet.
