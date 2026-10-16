@@ -34,6 +34,7 @@
 
   <h2>1. States, actions and costs: BFS vs Dijkstra</h2>
   <p>A search problem defines a <b>state space</b> (every situation the agent could be in), a start state, a set of <b>actions</b> available from each state, a <b>transition model</b> giving the resulting state, an <b>action cost</b> \(c(s, a)\), and a goal test. Together, these form a <b>graph</b>: states are <b>nodes</b>, actions are <b>edges</b> connecting them, and reachable states are <b>neighbors</b>.</p>
+  <p class="muted">The map below is a <b>simplified sketch</b> built from real station names: positions are roughly to scale, minutes are round numbers, Grand Central–Penn Station is a crosstown subway transfer, and two links (Woodside–New Rochelle, White Plains–Stamford) don't exist as passenger rail. They're there to give the search real choices.</p>
   <p>The simplest search is <b>Breadth-First Search (BFS)</b>: it explores outward level by level using a first-in, first-out (FIFO) queue. BFS finds the path with the fewest hops. But real actions take different amounts of time or fuel. When step costs differ, BFS fails to find the cheapest route: a 3-hop journey taking 60 minutes will be picked over a 4-hop journey taking 56 minutes.</p>
   <p><b>Uniform-Cost Search (UCS)</b>, also known as <b>Dijkstra's algorithm</b>, fixes this by prioritizing cumulative cost \(g(s)\) from the start using a <b>priority queue</b> (Python's <code>heapq</code>). It always expands the frontier node with the lowest total travel cost so far.</p>
 
@@ -115,7 +116,7 @@ print(f"Total time: {cost} min · Stations expanded: {len(expanded)} (rippled ac
     <div class="why">\(30\text{ miles} \div 1\text{ mile/min} = 30\text{ minutes}\). If you guessed 35 minutes, you might overestimate if a direct high-speed line existed, which would break the admissibility guarantee.</div>
   </div>
 
-  <p>Look at the canvas above when you switch the algorithm to <b>A* Search</b>: Dijkstra explored <b>12 stations</b> all the way to Long Island, whereas A* focused immediately along the Sound corridor to Stamford, expanding only <b>5 stations</b>!</p>
+  <p>Look at the canvas above when you switch the algorithm to <b>A* Search</b>: Dijkstra expanded <b>almost every station</b>, out to Long Island,, whereas A* focused immediately along the Sound corridor to Stamford, expanding only <b>5 stations</b>!</p>
 
   <p class="gist">A* prioritizes \(f(s) = g(s) + h(s)\); if \(h(s)\) never overestimates (admissible), A* finds the optimal path while exploring far fewer states.</p>
 
@@ -148,7 +149,7 @@ print(f"Total time: {cost} min · Stations expanded: {len(expanded)} (rippled ac
     <button id="btn-tree-minimax">Show Plain Minimax (8 leaves evaluated)</button>
     <button id="btn-tree-prune" class="active">Show α-β Pruning (5 leaves evaluated)</button>
   </div>
-  <p class="readout" id="tree-readout">α-β pruning skips branches without changing the chosen move: 3 leaves pruned.</p>
+  <p class="readout" id="tree-readout">α-β: 5 leaves evaluated, 3 pruned, same move. Leaf 9 is skipped because that MAX node already has 6 and the MIN above it already has 5; R2 is skipped because R is already ≤ 2 and MAX already has 5.</p>
 
   <div class="q" data-answer="a">
     <p>Why does α-β pruning never change the move that Minimax chooses?</p>
@@ -160,7 +161,7 @@ print(f"Total time: {cost} min · Stations expanded: {len(expanded)} (rippled ac
     <div class="why">If \(\beta \le \alpha\), the parent node will never be chosen by rational players regardless of what unknown values lie deeper in the pruned branch.</div>
   </div>
 
-  <p class="gist">Minimax plans against an adversary; α-β pruning skips branches that cannot change the outcome, cutting the effective branching factor in half.</p>
+  <p class="gist">Minimax plans against an adversary; α-β pruning skips branches that cannot change the outcome, at best cutting the effective branching factor from \(b\) to about \(\sqrt b\), so the same time searches twice as deep.</p>
 
   <h2>4. Constraint satisfaction: Backtracking and forward checking</h2>
   <p>In standard search, we look for a sequence of actions. In a <b>Constraint Satisfaction Problem (CSP)</b>, the state is factored into a set of <b>variables</b> \(X = \{X_1, X_2, \dots, X_n\}\), each with a <b>domain</b> of allowed values \(D_i\), and a set of <b>constraints</b> specifying which combinations of assignments are legal. The goal is simply to find any complete, consistent assignment.</p>
@@ -226,7 +227,7 @@ print(f"Assigned nights: {solution} · Domain checks: {checks} (plain backtracki
     <li><b>Minimax</b> solves zero-sum two-player games; <b>α-β pruning</b> skips branches that cannot change the outcome.</li>
     <li><b>CSPs</b> represent problems as variables and constraints; <b>forward checking</b> prunes neighbor domains to catch dead ends early.</li>
   </ul>
-  <p class="muted">All lessons: <a href="./">AI from scratch</a>. Commuter rail data: <a href="./data/rail-stations.json">NYC Rail Stations</a> (ODbL). Core curriculum reference: Stanford CS221 (Artificial Intelligence: Principles and Techniques).</p>
+  <p class="muted">All lessons: <a href="./">AI from scratch</a>. The rail network here is a simplified sketch (section 1), not a timetable. Core curriculum reference: Stanford CS221 (Artificial Intelligence: Principles and Techniques).</p>
 </main>
 
 <script type="module" src="/learn-kit.js"></script>
@@ -266,7 +267,7 @@ const edges = {
 };
 
 const START = "Grand Central", GOAL = "Stamford";
-const maxSpeed = 7.0; // px per minute, guarantees admissibility
+const maxSpeed = 11; // px per minute on this sketch: no link is faster (the tightest, White Plains–Stamford, needs 10.4), so h never overestimates
 
 function dist(a, b) {
   return Math.hypot(stations[b].x - stations[a].x, stations[b].y - stations[a].y);
@@ -501,7 +502,7 @@ function drawTree() {
     { id: "L", x: 200, y: 105, label: "MIN: 5", type: "min" },
     { id: "R", x: 560, y: 105, label: showPruning ? "MIN: <=2" : "MIN: 2", type: "min" },
     { id: "L1", x: 120, y: 175, label: "5", type: "max" },
-    { id: "L2", x: 280, y: 175, label: "9", type: "max" },
+    { id: "L2", x: 280, y: 175, label: showPruning ? ">=6" : "9", type: "max" },
     { id: "R1", x: 480, y: 175, label: "2", type: "max" },
     { id: "R2", x: 640, y: 175, label: showPruning ? "pruned" : "8", type: "max", pruned: showPruning }
   ];
@@ -516,7 +517,7 @@ function drawTree() {
     { parent: "L1", x: 90, y: 235, val: 3 },
     { parent: "L1", x: 150, y: 235, val: 5, best: true },
     { parent: "L2", x: 250, y: 235, val: 6 },
-    { parent: "L2", x: 310, y: 235, val: 9, best: true },
+    { parent: "L2", x: 310, y: 235, val: 9, best: !showPruning, pruned: showPruning }, // MIN above already has 5; MAX here has 6 ≥ 5, so 9 is never needed
     { parent: "R1", x: 450, y: 235, val: 1 },
     { parent: "R1", x: 510, y: 235, val: 2, best: true },
     { parent: "R2", x: 610, y: 235, val: 0, pruned: showPruning },
@@ -606,7 +607,7 @@ $("btn-tree-prune").onclick = () => {
   showPruning = true;
   $("btn-tree-prune").classList.add("active");
   $("btn-tree-minimax").classList.remove("active");
-  $("tree-readout").textContent = "α-β pruning skips branches without changing the chosen move: 3 leaves pruned.";
+  $("tree-readout").textContent = "α-β: 5 leaves evaluated, 3 pruned, same move. Leaf 9 is skipped because that MAX node already has 6 and the MIN above it already has 5; R2 is skipped because R is already ≤ 2 and MAX already has 5.";
   drawTree();
 };
 

@@ -5270,7 +5270,7 @@
    ],
    [
     "NLI faithfulness filter",
-    "Natural Language Inference checks if the source passage entails each generated claim: catches hallucinations in milliseconds."
+    "Natural Language Inference checks whether the source passage entails each generated claim; a cheap first filter with its own misses, so spot-check it against labels."
    ],
    [
     "Paired comparison",
@@ -5975,8 +5975,8 @@
     "q": "Why can Direct Preference Optimization (DPO) eliminate the separate reward model?",
     "options": [
      "Under a KL penalty, the optimal reward can be written analytically as a log-ratio of policy to reference probabilities",
-     "Because it only works on binary choices",
-     "Because neural networks do not need rewards"
+     "It still trains a reward model, just a smaller one inside the policy, and then runs PPO",
+     "Human preference labels are already numeric rewards, so there is nothing to learn"
     ],
     "answer": 0,
     "why": "Substituting the closed-form reward into the Bradley-Terry preference model cancels the partition function, yielding cross-entropy directly on pairs.",
@@ -7125,7 +7125,7 @@
    ],
    [
     "Dual form",
-    "w = ∑ α_i y_i x_i; the Lagrangian dual optimization objective and prediction depend only on inner products ⟨x_i, x_j⟩."
+    "w = Σ α_i y_i x_i; the dual problem and the prediction use the data only through dot products x_i · x_j, which a kernel can replace."
    ],
    [
     "RBF γ",

@@ -75,10 +75,10 @@
   <p class="formula">\[ z = \mu + \sigma \odot \varepsilon \]</p>
   <p>The VAE loss balances reconstruction against a Kullback–Leibler (KL) divergence penalty that pulls every encoding toward a standard normal bell curve \(\mathcal{N}(0, I)\):</p>
   <p class="formula">\[ \mathcal{L}_{\text{VAE}} = \text{reconstruction error} + \mathbb{D}_{\text{KL}}\big(\mathcal{N}(\mu, \sigma^2) \parallel \mathcal{N}(0, I)\big) \]</p>
-  <p>The KL penalty prevents the encoder from scattering clusters across empty space. It forces the representations to overlap into a continuous, dense landscape. Below, an actual VAE trained on 8 × 8 handwritten digits maps every digit into a 2-D latent space. Drag the crosshair across the plane: the decoded digit morphs smoothly with zero gaps or broken images.</p>
+  <p>The KL penalty prevents the encoder from scattering clusters across empty space. It forces the representations to overlap into a continuous, dense landscape. Below, an actual VAE trained on 8 × 8 handwritten digits maps every digit into a 2-D latent space. Drag the crosshair across the plane (or click it and use the arrow keys): the decoded digit changes gradually from one shape to the next. Its decoder is tiny, 2 → 24 → 64 numbers (1,672 weights), so expect blurry in-between shapes rather than crisp new digits.</p>
 
   <div class="pair">
-    <figure><canvas id="latent-map" class="sq" width="320" height="320" aria-label="2D latent space plane: drag the cursor to sample"></canvas>2-D latent space \(z = (z_1, z_2)\)</figure>
+    <figure><canvas id="latent-map" class="sq" width="320" height="320" tabindex="0" aria-label="2D latent space plane: drag, or use the arrow keys, to move the point"></canvas>2-D latent space \(z = (z_1, z_2)\)</figure>
     <figure><canvas id="latent-digit" class="sq" width="320" height="320" aria-label="Decoded 8x8 handwritten digit"></canvas>decoded digit \(\hat x = g(z)\)</figure>
   </div>
   <p class="readout" id="r-vae">Drag in the latent plane: position decodes continuously into a handwritten digit.</p>
@@ -333,7 +333,7 @@ function renderVAE() {
   }
 
   const dens = Math.exp(-0.5 * (curZ[0] * curZ[0] + curZ[1] * curZ[1])) / (2 * Math.PI);
-  $("r-vae").textContent = `Latent z = (${curZ[0].toFixed(2)}, ${curZ[1].toFixed(2)}) · prior density N(0, I): ${dens.toFixed(4)} · smooth continuous decoding without holes`;
+  $("r-vae").textContent = `Latent z = (${curZ[0].toFixed(2)}, ${curZ[1].toFixed(2)}) · prior density N(0, I): ${dens.toFixed(4)}`;
 }
 
 function handleMapPointer(e) {
@@ -362,6 +362,13 @@ if (mapEl) {
     try { mapEl.releasePointerCapture(e.pointerId); } catch {}
   });
   mapEl.addEventListener("pointercancel", () => { vaeDragging = false; });
+  mapEl.addEventListener("keydown", (e) => {
+    const d = { ArrowLeft: [-0.1, 0], ArrowRight: [0.1, 0], ArrowUp: [0, 0.1], ArrowDown: [0, -0.1] }[e.key];
+    if (!d) return;
+    e.preventDefault();
+    curZ = [Math.max(-2.5, Math.min(2.5, curZ[0] + d[0])), Math.max(-2.5, Math.min(2.5, curZ[1] + d[1]))];
+    renderVAE();
+  });
 }
 
 loadVAE();

@@ -113,44 +113,12 @@ print("exact: -1 per step, +10 at the end, discounted:", [round(sum(-gamma ** k 
   <p class="formula">\[ \mathcal{L}_{\text{DPO}}(\pi_\theta; \pi_{\text{ref}}) = -\mathbb{E}_{(x, y_w, y_l)} \left[ \log \sigma \left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)} \right) \right] \]</p>
   <p>The term inside the sigmoid is simply how much the policy has boosted the winning answer's likelihood relative to the reference, minus how much it boosted the losing answer's likelihood. If the model already prefers \(y_w\) over \(y_l\) more than the reference model did, the loss is small; if it prefers the loser, gradients push the policy to increase \(\pi_\theta(y_w)\) and decrease \(\pi_\theta(y_l)\).</p>
 
+  <p>One number decides how far the model may move: \(\beta\). The loss only sees the product of \(\beta\) and the policy's <b>shift</b> \(m\): how much more it now favors the winner over the loser than the reference did (the difference of the two log-ratios above). Predict first: if you double \(\beta\), does the model need to move more or less to reach the same loss?</p>
   <div class="row">
-    <label>Drift penalty \(\beta\): <input type="range" id="dpo-beta" min="0.05" max="0.50" step="0.05" value="0.10"> <b id="dpo-betav">0.10</b></label>
-    <label>Policy training:
-      <select id="dpo-stage">
-        <option value="init">Untrained (π = ref)</option>
-        <option value="partial">Partially aligned</option>
-        <option value="aligned" selected>Fully aligned</option>
-      </select>
-    </label>
+    <label>\(\beta\) <input type="range" id="dpo-beta" min="0.05" max="1" step="0.05" value="0.1"> <b id="dpo-betav">0.10</b></label>
+    <label>Shift \(m\) <input type="range" id="dpo-m" min="0" max="20" step="0.5" value="2"> <b id="dpo-mv">2.0</b></label>
   </div>
-  <div class="wide-scroll">
-  <table class="cmp" id="dpo-table">
-    <thead>
-      <tr><th>Prompt</th><th>Winning response \(y_w\) vs Loser \(y_l\)</th><th>Implicit \(\Delta r\)</th><th>\(P(y_w \succ y_l)\)</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><b>Transit directions</b></td>
-        <td><span style="color:#2f9e44">✓ Take the A train to JFK</span><br><span style="color:#e03131">✗ Take the 7 train to Newark</span></td>
-        <td id="dpo-dr1">0.40</td>
-        <td id="dpo-p1">59.9%</td>
-      </tr>
-      <tr>
-        <td><b>Concise code</b></td>
-        <td><span style="color:#2f9e44">✓ Clean 3-line dictionary comprehension</span><br><span style="color:#e03131">✗ 20-line verbose loop with global state</span></td>
-        <td id="dpo-dr2">0.50</td>
-        <td id="dpo-p2">62.2%</td>
-      </tr>
-      <tr>
-        <td><b>Fact retrieval</b></td>
-        <td><span style="color:#2f9e44">✓ Accurate historical date and citation</span><br><span style="color:#e03131">✗ Confidently hallucinated event</span></td>
-        <td id="dpo-dr3">0.60</td>
-        <td id="dpo-p3">64.6%</td>
-      </tr>
-    </tbody>
-  </table>
-  </div>
-  <p class="readout" id="dpo-readout">At \(\beta = 0.10\), the policy balances reward improvement with staying tethered to \(\pi_{\text{ref}}\).</p>
+  <p class="readout" id="dpo-readout" aria-live="polite"></p>
 
   <div class="q" data-answer="b">
     <p>In Direct Preference Optimization, what happens if \(\beta\) is set to a very large value?</p>
@@ -162,31 +130,21 @@ print("exact: -1 per step, +10 at the end, discounted:", [round(sum(-gamma ** k 
     <div class="why">\(\beta\) controls the strength of the KL divergence penalty against drifting from the frozen reference model. Higher \(\beta\) keeps \(\pi_\theta\) closer to \(\pi_{\text{ref}}\).</div>
   </div>
 
-  <div class="code" data-title="Run it: DPO loss in PyTorch"><textarea>
-import torch
-import torch.nn.functional as F
+  <div class="code" data-title="Run it: the DPO loss on one pair"><textarea>
+import numpy as np
 
 def dpo_loss(pi_w, pi_l, ref_w, ref_l, beta=0.1):
-    # Implicit reward difference
-    u = beta * ((pi_w - ref_w) - (pi_l - ref_l))
-    # Binary cross-entropy: -log(sigmoid(u))
-    return -F.logsigmoid(u).mean()
+    m = (pi_w - ref_w) - (pi_l - ref_l)   # the shift: log-ratio of the winner minus that of the loser
+    u = beta * m                          # implicit reward difference
+    return np.log(1 + np.exp(-u))         # −log σ(u)
 
-# Reference model assigns similar log-probs: winner -1.2, loser -1.4
-ref_w = torch.tensor([-1.2])
-ref_l = torch.tensor([-1.4])
-
-# 1. Untrained policy (identical to reference):
-# u = 0 -> loss = -ln(0.5) ≈ 0.693
-l0 = dpo_loss(ref_w, ref_l, ref_w, ref_l)
-print(f"loss before training: {l0:.3f}")
-
-# 2. Aligned policy: boosted winner, suppressed loser
-pi_w = torch.tensor([-0.6])
-pi_l = torch.tensor([-2.8])
-l1 = dpo_loss(pi_w, pi_l, ref_w, ref_l)
-print(f"loss after alignment: {l1:.3f}")
+ref_w, ref_l = -1.2, -1.4                 # the reference's log-probabilities of the two answers
+print("policy = reference:", round(dpo_loss(ref_w, ref_l, ref_w, ref_l), 3))      # ln 2: a coin toss
+pi_w, pi_l = -0.6, -2.8                   # the policy raised the winner and lowered the loser (m = 2)
+for beta in [0.1, 1.0]:
+    print(f"beta {beta}: loss {dpo_loss(pi_w, pi_l, ref_w, ref_l, beta):.3f}")
 </textarea></div>
+  <p>The same shift of 2 leaves the loss at 0.598 with \(\beta = 0.1\) but 0.127 with \(\beta = 1\): with a large \(\beta\), small moves already satisfy the loss, so training stops pushing early and the model stays close to the reference.</p>
 
   <p class="gist">Direct Preference Optimization mathematically bypasses the reward model and PPO loop, optimizing preference pairs directly with cross-entropy against a frozen reference.</p>
 
@@ -267,31 +225,16 @@ $("step10").onclick = () => { for (let i = 0; i < 10; i++) episode(); draw(); };
 $("reset").onclick = reset; ["eps", "gam"].forEach((id) => $(id).addEventListener("input", draw));
 reset();
 
-// DPO interactive widget
+// DPO: the loss sees only β·m, so a larger β reaches the same loss with a smaller shift away from the reference
 function updateDPO() {
-  const beta = +$("dpo-beta").value;
+  const beta = +$("dpo-beta").value, m = +$("dpo-m").value, u = beta * m;
   $("dpo-betav").textContent = beta.toFixed(2);
-  const stage = $("dpo-stage").value;
-  const baseDelta = stage === "init" ? [0, 0, 0] : stage === "partial" ? [1.8, 2.2, 2.5] : [4.0, 5.0, 6.0];
-  const sig = (z) => 1 / (1 + Math.exp(-z));
-  
-  for (let i = 0; i < 3; i++) {
-    const dr = beta * baseDelta[i];
-    const p = sig(dr);
-    $(`dpo-dr${i + 1}`).textContent = dr.toFixed(2);
-    $(`dpo-p${i + 1}`).textContent = `${(p * 100).toFixed(1)}%`;
-  }
-  
-  if (stage === "init") {
-    $("dpo-readout").textContent = `Untrained policy (π_θ = π_ref): implicit reward difference is 0.00, P(y_w ≻ y_l) = 50.0% (neutral coin toss).`;
-  } else if (stage === "partial") {
-    $("dpo-readout").textContent = `Partially trained at β = ${beta.toFixed(2)}: preference probabilities rise to ~${(sig(beta * 2.2) * 100).toFixed(0)}%.`;
-  } else {
-    $("dpo-readout").textContent = `Fully aligned at β = ${beta.toFixed(2)}: implicit reward difference is strong (up to ${(beta * 6.0).toFixed(2)}), preference win rate reaches ${(sig(beta * 5.0) * 100).toFixed(0)}%.`;
-  }
+  $("dpo-mv").textContent = m.toFixed(1);
+  const p = 1 / (1 + Math.exp(-u)), loss = Math.log(1 + Math.exp(-u)), need = Math.log(1 / (Math.exp(0.2) - 1)) / beta;
+  $("dpo-readout").textContent = `implicit reward difference β·m = ${u.toFixed(2)} · P(winner preferred) = ${(p * 100).toFixed(0)}% · loss ${loss.toFixed(3)} · to reach loss 0.2 the shift must be m = ${need.toFixed(1)}`;
 }
 $("dpo-beta").oninput = updateDPO;
-$("dpo-stage").onchange = updateDPO;
+$("dpo-m").oninput = updateDPO;
 updateDPO();
 </script>
 </body>

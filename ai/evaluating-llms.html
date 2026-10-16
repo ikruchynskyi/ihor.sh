@@ -95,8 +95,9 @@ for d in data:
     <li><b>Contradiction:</b> The claim directly disputes the passage (hallucination).</li>
     <li><b>Neutral:</b> The passage neither confirms nor denies the claim (unsupported speculation).</li>
   </ul>
-  <p>NLI cross-encoders score claim-passage pairs in milliseconds and output calibrated probabilities. Any generated sentence scoring low on entailment or high on neutral/contradiction can be flagged, pruned, or returned for retrieval refinement before reaching a user.</p>
-  <p class="gist">For grounded systems, grade faithfulness (every claim supported by the passages) separately from correctness; NLI cross-encoders serve as fast, calibrated entailment filters.</p>
+  <p>An NLI classifier is a small model, far cheaper than a chat model as judge, so it can check every sentence of every answer. Sentences it doesn't score as entailed get flagged, dropped, or sent back for another retrieval.</p>
+  <p>It has misses of its own, so treat it like the graders in section 1: measure its agreement with your labels before trusting it. NLI models learn from short sentence pairs, so they get worse when the premise is a long passage (split it and check the claim against each chunk); they're weak on numbers, dates and units ("ResNet-50 has 152 layers" can look entailed by a passage about ResNet-50); and a claim stitched together from two passages is entailed by neither one alone.</p>
+  <p class="gist">For grounded systems, grade faithfulness (every claim supported by the passages) separately from correctness; an NLI model is a cheap first filter, checked against labels like any other grader.</p>
 
   <h2>5. Is the new version actually better?</h2>
   <p>Change a prompt, a model or a retriever, rerun the eval, compare. That comparison is Probability 4 again: both versions answer the same questions, so use a <b>paired</b> test on the questions where they disagree. In the notebook, adding retrieval to SmolLM2-360M raised its score on 20 short questions from 9 to 13. All 4 changed questions went RAG's way, and still the exact test says \(p = 2 \times 0.5^4 = 0.125\): with 20 questions, even a clean 4-to-0 isn't conclusive.</p>

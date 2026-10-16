@@ -115,3 +115,9 @@ Verified by:     the commands you ran and the cold-learner read
 | DSPy planned inside a Pyodide lesson | It must run where it will run |
 | Mercer's theorem in a summary box with no module; one notebook given two different file names | Keep plans consistent |
 | A notebook whose first exercise asked for NumPy and gradient formulas right after a no-code lesson | Ramp, not cliff; within the ledger |
+| A lesson teaching admissible heuristics whose own A* demo used a heuristic that overestimated at 7 of 12 stations (its comment said "guarantees admissibility") | Check every widget against the rule it teaches, by computing it |
+| An α-β pruning picture that showed a pruned leaf as evaluated, while the text gave the right count | A figure must show what the text says: compute it, then draw it |
+| A DPO slider whose output said "bigger β, stronger preference" next to a quiz saying "bigger β, more conservative" | A widget must not contradict the lesson; model the real relationship |
+| `import torch` in an in-browser Pyodide code box, even though the plan said lessons can't run PyTorch | It must run where it will run: open the page and press Run |
+| An SVM primal written with slack variables but no \(C\sum\xi_i\) penalty; KKT and ⟨·,·⟩ used with nothing on the path teaching them | Formulas are checked like code; use the path's notation |
+| The "NLI in milliseconds" claim removed from a plan, then shipped anyway in a concept card | Grep cards, quizzes and commit messages for removed claims too |
