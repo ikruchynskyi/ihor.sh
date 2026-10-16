@@ -86,7 +86,7 @@ var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
 async function siteMap() {
-  const lines = ["/ — home: the project select screen"];
+  const lines = ["/ — home: the project select screen", "/terms — terms of use and disclaimer: as is, not advice, live data and AI answers can be wrong, what the site stores"];
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of await publicPages(dir, name)) {
       const page = await readFile(path.join(dir, f), "utf8"), title = page.match(/<title>([^<]*)/)?.[1]?.trim();
@@ -162,7 +162,7 @@ async function radioStatus() {
 }
 
 // Search and sharing: a fuller title, canonical URL, Open Graph/Twitter cards and JSON-LD breadcrumbs.
-const SITE = "https://ihor.sh";
+const SITE = "https://ihor.sh", SITE_LABEL = "ihor.sh"; // SITE_LABEL: the "world" of site-level pages (/terms)
 const attr = (s: string) => s.replace(/"/g, "&quot;");
 // ---------- SEO, for people and for agents: titles, descriptions, Open Graph, JSON-LD by page kind, and real pages
 // for the query-addressed ones (a Yomu story, a deck level), so crawlers without JavaScript still see what each is ----------
@@ -205,7 +205,7 @@ function seo(html: string, world: string, urlPath: string, extra: Meta | null = 
   const url = extra?.canonical ?? SITE + urlPath.replace(/index\.html$/, "");
   const image = extra?.image ?? `${SITE}/og.png`;
   const worldName = world.split(" · ")[1] ?? world, worldUrl = `${SITE}/${urlPath.split("/")[1]}/`;
-  const crumbs = [["ihor.sh", `${SITE}/`], [worldName, worldUrl], ...(url === worldUrl ? [] : [[title, url]])];
+  const crumbs = world === SITE_LABEL ? [["ihor.sh", `${SITE}/`], [title, url]] : [["ihor.sh", `${SITE}/`], [worldName, worldUrl], ...(url === worldUrl ? [] : [[title, url]])];
   const course = COURSES.find(([re]) => re.test(urlPath)), app = !course && APPS.find(([re]) => re.test(urlPath));
   const page = course
     ? { "@type": "LearningResource", name: title, description: desc, url, inLanguage: urlPath.startsWith("/yomu/") ? ["en", "ja"] : "en", learningResourceType: "interactive lesson", isAccessibleForFree: true, author: AUTHOR,
@@ -218,7 +218,7 @@ function seo(html: string, world: string, urlPath: string, extra: Meta | null = 
     { "@context": "https://schema.org", ...page, isPartOf: page["@type"] === "LearningResource" ? (page as any).isPartOf : { "@type": "WebSite", name: "ihor.sh", url: `${SITE}/` } },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map(([name, item], i) => ({ "@type": "ListItem", position: i + 1, name, item })) },
   ]).replace(/</g, "\\u003c");
-  const full = `${title} · ${worldName} · ihor.sh`;
+  const full = world === SITE_LABEL ? `${title} · ihor.sh` : `${title} · ${worldName} · ihor.sh`;
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${attr(full)}</title>`);
   if (extra?.desc) out = out.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${desc}">`); // story.html etc. close it with " />"
   if (extra?.h1) out = out.replace(/<h1 id="title">[^<]*<\/h1>/, `<h1 id="title">${extra.h1}</h1>`); // so a reader without JavaScript sees the story's name
@@ -262,6 +262,7 @@ function llmsTxt() {
       `- Live data (subway, buses, ferries, Citi Bike, ships in the harbor, events, restaurant inspections, jobs, weather, aircraft, the ISS, radio) is on the MCP endpoint ${SITE}/mcp (Streamable HTTP; its tools need a bearer token from the owner, except site_search, which is open), or by asking Blip on any page.`,
       `- Search the whole site (pages, lessons, tools, Yomu stories and grammar): ${SITE}/search?q=<words> (keyless; JSON {query, hits: [{title, url, world, snippet}]}, or Markdown with Accept: text/markdown or &format=md; &n= up to 20).`,
       `- /api/ serves the site's own pages only; /sitemap.xml lists every page.`, `- Author: Ihor Kruchynskyi (https://ihork.link/).`, ``];
+    out.push(`- [Terms of use and disclaimer](${SITE}/terms): as is, not advice, live data and AI answers can be wrong, what the site stores.`, ``);
     for (const [name, { dir, label }] of Object.entries(WORLDS)) {
       out.push(`## ${label}`, ``);
       for (const f of await publicPages(dir, name)) {
@@ -315,14 +316,15 @@ const HOME_LINKS = [`</llms.txt>; rel="service-doc"; type="text/plain"`, `</.wel
   `</.well-known/agent-card.json>; rel="describedby"; type="application/json"`, `</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"`].join(", ");
 
 async function sitemap() {
-  const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime]];
+  const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime], [`${SITE}/terms`, (await stat(path.join(ROOT, "terms.html"))).mtime]];
   // the query-addressed pages: every story, deck level and grammar level
   for (const st of (await readJson("yomu/stories/index.json")) ?? []) urls.push([`${SITE}/yomu/story.html?u=${st.id}`, (await stat(path.join(ROOT, `yomu/stories/${st.id}.json`)).catch(() => ({ mtime: new Date() }))).mtime]);
   for (const level of ["N5", "N4", "N3", "N2", "N1"]) for (const type of ["kanji", "words"]) urls.push([`${SITE}/yomu/deck.html?level=${level}&type=${type}`, (await stat(path.join(ROOT, "yomu/deck.html"))).mtime]);
   for (const level of ["N5", "N4", "N3"]) urls.push([`${SITE}/yomu/grammar.html?level=${level}`, (await stat(path.join(ROOT, "yomu/grammar.html"))).mtime]);
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of await publicPages(dir, name))
-      if (!(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
+      // story/deck/grammar.html without a query are canonically their first story or level, listed above
+      if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
 }
@@ -890,6 +892,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(summary(days)));
     }
     if (url.pathname === "/") return serveFile(res, path.join(ROOT, "index.html"), "home");
+    if (url.pathname === "/terms") return serveFile(res, path.join(ROOT, "terms.html"), SITE_LABEL, url.pathname, url.searchParams);
     if (url.pathname === "/robots.txt") return res.writeHead(200, { "content-type": "text/plain" }).end(ROBOTS);
     if (WELL_KNOWN[url.pathname]) { const [type, body] = WELL_KNOWN[url.pathname](); return res.writeHead(200, { "content-type": type, "access-control-allow-origin": "*", "cache-control": "public, max-age=3600" }).end(body); }
     // Search for agents and scripts: keyless and cross-origin, unlike /api/ (the site's own pages only). JSON by default;

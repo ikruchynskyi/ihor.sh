@@ -25,6 +25,8 @@ export function buildIndex(root: string, worlds: Record<string, { dir: string; l
   return (ready ??= (async () => {
     let n = 0;
     const add = (url: string, world: string, title: string, description: string, headings: string, body: string) => { put.run(url, world, title, description, headings, body.slice(0, 30_000)); n++; };
+    const terms = await readFile(path.join(root, "terms.html"), "utf8");
+    add("/terms", "ihor.sh", "Terms of use and disclaimer", text(terms.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ""), grab(terms, /<h2[^>]*>([\s\S]*?)<\/h2>/gi).join(" · "), text(terms.match(/<body[\s\S]*$/i)?.[0] ?? terms));
     add("/", "home", "ihor.sh: the home page", "Every world and project on one screen.", "", text(await readFile(path.join(root, "index.html"), "utf8")));
     for (const [name, { dir, label }] of Object.entries(worlds)) {
       for (const f of await publicPages(dir, name)) {

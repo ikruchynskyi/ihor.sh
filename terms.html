@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terms of use and disclaimer</title>
+  <meta name="description" content="The terms for using ihor.sh, a personal hobby site: everything is provided as is, live data and AI answers can be wrong, what the site stores, and what it asks of visitors." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin-top: 2em; }
+    li { margin: 6px 0; }
+    .muted { color: var(--muted); font-size: .95rem; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">ihor.sh · Terms</p>
+  <h1>Terms of use and disclaimer</h1>
+  <p class="lede">ihor.sh is a personal hobby site: projects built and learned in public by one person, Ihor Kruchynskyi, and served from a computer at home. By using it you agree to these terms. They are short, and they come down to this: everything here is free, offered as is, and may be wrong, so check anything that matters.</p>
+  <p class="muted">Last updated October 16, 2026.</p>
+
+  <h2>Provided as is</h2>
+  <p>The site, its tools, courses, data and AI answers are provided "as is" and "as available", without warranties of any kind, express or implied, including accuracy, completeness, fitness for a particular purpose and availability. The site can be slow, change, or go offline at any time (it runs on one home machine). To the fullest extent the law allows, the author is not liable for any loss or damage that comes from using the site or relying on anything on it.</p>
+
+  <h2>Not professional advice</h2>
+  <p>The courses and articles are learning material written by a hobbyist. They are not professional, engineering, legal, financial, career or medical advice. Electronics and radio lessons describe circuits and equipment: mains voltage, batteries, antennas near power lines and RF power can hurt people and property, so follow the safety rules for your equipment and your local regulations.</p>
+
+  <h2>Live data can be late or wrong</h2>
+  <p>Transit times, service alerts, weather, storm tracks, aircraft and ship positions, satellite passes, events, restaurant inspection results, deals and job listings come from public and third-party sources (the City of New York, the MTA, the National Weather Service and others, as credited on each page). They can be delayed, incomplete or wrong, and the site is not affiliated with or endorsed by any of them.</p>
+  <ul>
+    <li>Don't rely on the site for safety: for weather and storm warnings, follow the National Weather Service and local officials; in an emergency, call 911.</li>
+    <li>Check times, prices, opening hours and listings with the source before you go, buy or apply.</li>
+  </ul>
+
+  <h2>AI answers</h2>
+  <p>Blip, the site's chat, Yomu's conversation practice and the job and resume tools write their answers with AI language models. Those answers can be wrong, out of date or made up, even when they sound sure. Check anything important with a reliable source.</p>
+  <ul>
+    <li>What you type into Blip, together with the text of the page you're on, is sent to a model on Ollama Cloud (ollama.com), or to the model running on the author's own computer when the cloud isn't available. When Blip searches the web, your question may go to a search service (Tavily, Ollama or DuckDuckGo). Resume text you paste into the job tools is sent the same way. Yomu's chat runs only on the author's own computer.</li>
+    <li>Don't type passwords, financial details or anything you'd want kept private.</li>
+    <li>To keep it fair for everyone, Blip takes one question per visitor every 30 seconds, and questions wait in line while the model is busy.</li>
+  </ul>
+
+  <h2>Radio</h2>
+  <p>The site's radios only receive. Listening is legal in most places, but laws on what you may receive, record and share differ by country, and transmitting needs the right license. The ham radio lessons are study material, not affiliated with the FCC, ARRL or any exam organization; check current rules and question pools with them.</p>
+
+  <h2>What the site stores</h2>
+  <ul>
+    <li><b>One cookie</b> (<code>ihs</code>): a random, signed session token that lasts 24 hours. It lets the site's own pages use its data API and keeps the rate limits fair. It isn't used to track you across sites, and there are no analytics or advertising trackers.</li>
+    <li><b>Your browser's storage</b> keeps your theme and reading settings, course progress and chat history on your device. Settings and progress stay there; a chat sends its conversation along with each new question, so the model has the context, and the server doesn't keep it. Clearing your browser's site data removes all of it.</li>
+    <li><b>Your location</b> is used only when you ask for something near you, and only to look it up. It isn't stored.</li>
+    <li><b>Server logs</b> keep errors and, for the agent endpoints (MCP and A2A), the requesting IP address and user agent. The site is served through Cloudflare, which processes requests under its own privacy policy.</li>
+  </ul>
+
+  <h2>Using the site fairly</h2>
+  <ul>
+    <li>Use it for lawful purposes only.</li>
+    <li>Don't try to break, overload or get around the site's limits, its authentication or its rate limits.</li>
+    <li>The data API at <code>/api/</code> serves the site's own pages only. Programs and AI agents are welcome to use <a href="/llms.txt">/llms.txt</a>, the search at <code>/search</code> and the MCP endpoint described there.</li>
+    <li>You are responsible for what you create with the site's tools, such as memes, and for how you use it.</li>
+  </ul>
+
+  <h2>Other people's work</h2>
+  <p>Links to other sites, and content and data from third parties, belong to their owners and come under their terms. Names and trademarks such as JLPT, MTA, Citi Bike and Meteor-M belong to their owners and are used only to describe what a page is about; their use doesn't mean any endorsement.</p>
+
+  <h2>Changes and contact</h2>
+  <p>These terms may change as the site changes; the date at the top shows the last update. Questions or concerns: reach the author through <a href="https://ihork.link/" rel="noopener">ihork.link</a>.</p>
+</main>
+</body>
+</html>
