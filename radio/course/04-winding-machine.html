@@ -86,6 +86,24 @@
 
   <p>Each crossing in the diagram is one combine step, called a <b>butterfly</b>: one multiplication by a spinning arrow, one addition and one subtraction. There are log₂N layers of them, with N/2 butterflies per layer. That's the <b>Fast Fourier Transform (FFT)</b>: identical answers, but N × log₂N steps instead of N × N. At N = 1024 it's 100 times less work, and the gap keeps growing.</p>
 
+  <!-- 4b -->
+  <h2 id="inverse">Going back: the inverse FFT</h2>
+  <p>The winding machine turns a signal into a list of arrows: for each speed, how long its arrow is and at what angle it started. Can you go back, from the list to the signal? You already know how: chapter 1 built shapes by chaining spinning arrows tip to tail. Take every arrow the machine found, set each one spinning at its own speed from its own starting angle, and add them up. Out comes the original signal. That's the <b>inverse FFT</b>: the same butterflies, with every arrow spun forwards instead of backwards.</p>
+  <div class="q" data-answer="b"><p>Predict: below, the signal from the top of this chapter is rebuilt from the three arrows the machine found. What happens if you leave out the fastest one, 7 turns per second, length 0.35?</p>
+    <ul><li data-k="a" data-says="The other two arrows are still there, so most of the shape survives.">The whole path collapses</li><li data-k="b">The overall shape stays, but the extra curls the fast arrow drew disappear</li><li data-k="c" data-says="Every arrow is part of the sum: removing one changes it.">Nothing visible changes</li></ul>
+    <div class="why">Each arrow contributes only its own speed. Without the 7 turns/s arrow, the rounded curls it added at every point are gone, and the 2 and the −3 still draw their five-pointed star.</div>
+  </div>
+  <div class="scene" id="s-inverse">
+    <div class="controls">
+      <label for="iv-2"><input id="iv-2" type="checkbox" checked> 2 turns/s (length 1)</label>
+      <label for="iv-m3"><input id="iv-m3" type="checkbox" checked> −3 turns/s (0.55)</label>
+      <label for="iv-7"><input id="iv-7" type="checkbox" checked> 7 turns/s (0.35)</label>
+    </div>
+    <p class="readout" id="r-inverse" aria-live="polite"></p>
+  </div>
+  <p>Leave an arrow out and that speed is simply gone from the rebuilt signal, while everything else stays exactly as it was. That makes the round trip a tool: go to arrows, change the length of some, come back. It's how frequency-based audio effects work, and chapter 19 uses exactly this to turn hiss down.</p>
+  <p class="gist">The spectrum is the signal written as a list of spinning arrows. Adding the arrows back up (the inverse FFT) gives the signal back, so you can change a signal one speed at a time.</p>
+
   <!-- 5 -->
   <h2 id="real">Your real radio, untangled</h2>
   <p>Here are the 4000 real samples from chapter 3, the fuzzy ring recorded at 98.45 MHz, run through the winding machine (the fast version, with a window, averaged over 7 blocks):</p>
@@ -125,6 +143,10 @@
       <li><b>(1/N) Σ</b>: add them all up and divide by how many: the center of mass.</li>
       <li><b style="color:var(--yellow)">X[k]</b>: where the center of mass lands, for test speed k. Its length is the strength of speed k in the signal; its angle is the hidden arrow's starting angle (its phase).</li>
     </ul>
+    <math display="block"><mi style="color:var(--blue)">x</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><munderover><mo>∑</mo><mrow><mi style="color:var(--pink)">k</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover><mi style="color:var(--yellow)">X</mi><mo>[</mo><mi style="color:var(--pink)">k</mi><mo>]</mo><mo>·</mo><msup><mi>e</mi><mrow><mo>+</mo><mi>j</mi><mn>2</mn><mi>π</mi><mi style="color:var(--pink)">k</mi><mi>n</mi><mo>/</mo><mi>N</mi></mrow></msup></math>
+    <ul>
+      <li>The inverse: every found arrow X[k], spinning <em>forwards</em> at its speed k, added up. (No 1/N here, because the forward machine already divided by N.)</li>
+    </ul>
     <math display="block"><mtext>strength in dB</mtext><mo>=</mo><mn>10</mn><mo>·</mo><msub><mi>log</mi><mn>10</mn></msub><mo>(</mo><mtext>power</mtext><mo>)</mo></math>
     <ul>
       <li>Power is the length squared. Every 10 dB is 10× the power; 3 dB is about 2×.</li>
@@ -162,6 +184,7 @@ out[i] = 10 * Math.log10((re[j] ** 2 + im[j] ** 2) / wsum ** 2 + 1e-20);   // po
   <p><b>Try it yourself:</b> <code>node course/code/ch04.ts</code> builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples:</p>
 <pre><code>hidden arrows found: 2 turns/block (length 1.00), 7 turns/block (length 0.35), -3 turns/block (length 0.55)
 FFT vs plain machine on 1024 random samples: biggest difference 3.0e-6 (float rounding)
+inverse FFT of the FFT: back to the samples within 1.3e-7 (float rounding)
 time for 1024 samples: plain machine 15.6 ms, FFT 21 µs  (753× faster)
 real samples around 98.45 MHz: strongest station at 98.73 MHz, 25 dB above the noise floor
 all checks passed</code></pre>

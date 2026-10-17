@@ -170,6 +170,26 @@ function wind(parts: Part[], g: number, n = N, window = false): [number, number]
   function fmt(sec: number) { return sec >= 1 ? `${sec.toFixed(1)} s` : sec >= 1e-3 ? `${(sec * 1e3).toFixed(2)} ms` : `${(sec * 1e6).toFixed(1)} µs`; }
 }
 
+// --- 4b. Going back: rebuild the signal from the arrows the machine found ----------------------------------------------
+{
+  const ids = ["iv-2", "iv-m3", "iv-7"], box = (id: string) => (el(id) as HTMLInputElement).checked;
+  const s = new Scene(el("s-inverse"), (g, w, h) => {
+    const sc = Math.min(h, w) * 0.22, cx = w / 2, cy = h / 2, kept = MYSTERY.filter((_, i) => box(ids[i]));
+    const path = (parts: Part[], color: string, width: number, alpha = 1) => {
+      g.globalAlpha = alpha; g.strokeStyle = color; g.lineWidth = width; g.beginPath();
+      for (let i = 0; i <= 900; i++) { const [x, y] = at(parts, i / 900); i ? g.lineTo(cx + x * sc, cy - y * sc) : g.moveTo(cx + x * sc, cy - y * sc); }
+      g.stroke(); g.globalAlpha = 1;
+    };
+    path(MYSTERY, C.yellow, 2, 0.3); // the original, faint
+    path(kept, C.blue, 2.5); // rebuilt from the kept arrows
+    label(g, "faint yellow: the original · blue: rebuilt from the arrows you keep", w / 2, h - 10, C.muted, "center", 12);
+  }, 300, { animated: false, label: "A signal rebuilt by adding up the spinning arrows found by the winding machine, with some left out" });
+  controls(s, ids, () => {
+    const n = ids.filter(box).length;
+    el("r-inverse").textContent = n === 3 ? "All three arrows: the rebuilt path lies exactly on the original." : n === 0 ? "No arrows: nothing to add up, just a point." : `${n} of 3 arrows: the speeds you left out are gone, the rest is unchanged.`;
+  });
+}
+
 // --- 5. Your real radio data ------------------------------------------------------------------------
 {
   const b = captureBytes(), iq = new Float32Array(b.length);

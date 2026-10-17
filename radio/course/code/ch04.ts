@@ -37,6 +37,16 @@ let worst = 0; for (let k = 0; k < N; k++) worst = Math.max(worst, Math.abs(Fr[k
 console.log(`FFT vs plain machine on ${N} random samples: biggest difference ${worst.toExponential(1)} (float rounding)`);
 assert.ok(worst < 1e-3);
 
+// 2b. Going back: the inverse FFT (spin forwards instead of backwards; with our fft that's "mirror, FFT, mirror, divide
+//     by N", the trick chapter 19's code uses) gives back exactly the samples we started with.
+{
+  const Br = Float32Array.from(Fr), Bi = Float32Array.from(Fi).map((v) => -v);
+  fft(Br, Bi);
+  let back = 0; for (let t = 0; t < N; t++) back = Math.max(back, Math.abs(Br[t] / N - r1[t]), Math.abs(-Bi[t] / N - i1[t]));
+  console.log(`inverse FFT of the FFT: back to the samples within ${back.toExponential(1)} (float rounding)`);
+  assert.ok(back < 1e-5);
+}
+
 // 3. …but much faster.
 let t0 = performance.now(); for (let i = 0; i < 3; i++) dft(r1, i1); const slow = (performance.now() - t0) / 3;
 t0 = performance.now(); for (let i = 0; i < 300; i++) fft(Float32Array.from(r1), Float32Array.from(i1)); const fast = (performance.now() - t0) / 300;
