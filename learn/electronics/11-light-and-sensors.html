@@ -40,7 +40,7 @@
   </div>
 
   <h2>2. Optocouplers: a signal across a gap</h2>
-  <p>Put an LED and a phototransistor face to face in one package, with nothing but plastic between them. Current in the LED makes light, the light makes current on the other side, but no wire connects the two. That's <b>isolation</b>: a microcontroller can switch a mains-powered circuit, or read a signal from a noisy motor, without the two sharing a ground. The ratio of output to input current is the <b>current transfer ratio</b> (CTR), typically 50–200%, and it falls as the LED ages.</p>
+  <p>Put an LED and a phototransistor (chapter 4's bipolar transistor, with light making its base current) face to face in one package, with nothing but plastic between them. Current in the LED makes light, the light makes current on the other side, but no wire connects the two. That's <b>isolation</b>: a microcontroller can switch a mains-powered circuit, or read a signal from a noisy motor, without the two sharing a ground. The ratio of output to input current is the <b>current transfer ratio</b> (CTR), typically 50–200%, and it falls as the LED ages.</p>
   <div class="q" data-answer="c">
     <p>Why use an optocoupler between a microcontroller and a circuit connected to mains voltage?</p>
     <ul><li data-k="a" data-says="It has some gain (CTR), but that's not the reason: a transistor could amplify too.">To amplify the signal</li><li data-k="b" data-says="Speed is actually worse through an optocoupler than a wire.">To make the signal faster</li><li data-k="c">So no conductive path exists between the two: a fault on the mains side can't reach the low-voltage side (or you)</li></ul>

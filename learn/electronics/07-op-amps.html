@@ -29,7 +29,7 @@
   <div class="plain card"><b>In plain words:</b> an op-amp is a servant that watches its two inputs and moves its output, as hard as it can, until they're equal. Wire its output back to its − input through some resistors, and you decide what "equal" means, and so what the output does.</div>
 
   <h2>1. A huge gain, and nowhere to put it</h2>
-  <p>With nothing connected around it ("open loop"), the output is \(A\,(V_+ - V_-)\) with \(A \approx 100{,}000\), clipped at the supply rails (here ±12 V, minus about 1.5 V). Move the two inputs, in millivolts.</p>
+  <p>With nothing connected around it ("open loop"), the output is \(A\,(V_+ - V_-)\) with \(A \approx 100{,}000\), clipped at the supply <b>rails</b> (here a ±12 V supply: one rail 12 V above ground and one 12 V below, so the output can swing both ways; it stops about 1.5 V short of each). Move the two inputs, in millivolts.</p>
   <canvas id="c1" width="800" height="300" aria-label="Open-loop op-amp: two inputs and an output that saturates"></canvas>
   <div class="row"><label>V₊ <input type="range" id="vp" min="-1" max="1" step="0.0001" value="0.05"> <span id="vpv" class="math"></span></label><label>V₋ <input type="range" id="vn" min="-1" max="1" step="0.0001" value="0"> <span id="vnv" class="math"></span></label></div>
   <p class="readout" id="o1"></p>

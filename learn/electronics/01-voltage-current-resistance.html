@@ -74,6 +74,7 @@ print("power:", 5 * r.current[1], "W");
     <label><input type="checkbox" id="ldr"> R₂ is a light sensor (LDR)</label><label id="lightl" hidden>light <input type="range" id="light" min="0" max="100" value="60"></label></div>
   <p class="readout" id="o2"></p>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> with two plain resistors, make the middle point exactly 1.00 V.</p>
+  <p>"The voltage at the middle point" hides a second point. A voltage is always a difference between two points, like a height measured from the floor. So circuits pick one point as the floor and call it <b>ground</b>, 0 V: here the battery's − end. The middle point's voltage is how far it sits above ground.</p>
   <p>This is how a microcontroller reads most simple sensors. A light-dependent resistor (LDR) drops from about 100 kΩ in the dark to about 1 kΩ in sunlight; put it in a divider and the middle voltage tracks the light. The chip's analog-to-digital converter (ADC) turns that voltage into a number, here 0 to 4095 for 3.3 V like an ESP32. Tick the box and change the light.</p>
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>Why the divider formula holds: both resistors carry the same current, \(I = V / (R_1 + R_2)\) (in series, resistances add). The middle point sits \(I R_2\) above ground:</p>

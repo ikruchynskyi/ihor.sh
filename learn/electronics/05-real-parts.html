@@ -118,6 +118,7 @@ for (const want of [5200, 333, 91000, 15.5]) {
     <div class="card"><b>Film</b>Stable and accurate, for timing and audio, and for mains (X/Y safety types). Bigger for the same value.</div>
     <div class="card"><b>Tantalum</b>Compact and stable, polarized. When they fail they can short and burn, so they're used with a margin on voltage.</div>
   </div>
+  <p><b>Decoupling</b>, the ceramic's main job: a chip draws its current in short gulps, nanoseconds long, each time its transistors switch. Its supply is centimeters of wire away, and a wire resists fast changes of current (a wire is a very small coil, chapter 3), so the voltage at the chip dips on every gulp. A 100 nF ceramic soldered right next to the chip's power pin is a small local bucket (chapter 2's stored charge, at nanosecond scale) that covers each gulp before the far supply can. That's why there is one beside nearly every chip on every board.</p>
   <p>Ceramic and film capacitors are marked in a code like a resistor's, in picofarads: two digits and a number of zeros. "104" is 10 followed by 4 zeros pF = 100,000 pF = 100 nF = 0.1 µF, the most common capacitor in electronics.</p>
   <p>Now the trap with ceramics. A 10 µF, 6.3 V X5R capacitor in a small package, at its rated voltage, can be down to 2–4 µF. Slide the DC voltage across it:</p>
   <canvas id="c4" width="800" height="260" aria-label="A ceramic capacitor's capacitance falling with DC voltage"></canvas>

@@ -31,7 +31,7 @@
   <div class="plain card"><b>In plain words:</b> a microcontroller is a tiny computer whose memory has a few special addresses wired straight to its pins. Write a 1 to the right bit and a pin goes to 3.3 V; read a bit and you learn whether a pin is high or low. Everything else in this chapter is built on that one trick.</div>
 
   <h2>1. Pins are bits in a register</h2>
-  <p>A <b>GPIO</b> (general-purpose input/output) port is a byte in memory where each bit drives one pin. Writing <code>PORT = 0b00000101</code> lights the LEDs on pins 0 and 2 and turns the others off. Click the bits, or set the byte directly.</p>
+  <p>A <b>GPIO</b> (general-purpose input/output) port is a byte in memory where each bit drives one pin. Writing <code>PORT = 0b00000101</code> lights the LEDs on pins 0 and 2 and turns the others off (<code>0b</code> marks a number written in binary, chapter 12; the rightmost bit is pin 0). Eight bits are hard to read at a glance, so programmers write them in <b>hexadecimal</b>, marked <code>0x</code>: each hex digit stands for four bits, with 0–9 and then A–F for ten to fifteen. 0000 0101 is 0x05; 1111 1111 is 0xFF. Click the bits, or set the byte directly.</p>
   <canvas id="c1" width="800" height="170" aria-label="Eight LEDs driven by the bits of a port register"></canvas>
   <div class="row"><span id="pbits"></span></div>
   <div class="row"><label>PORT = 0x<input type="text" id="phex" value="05" maxlength="2"></label></div>

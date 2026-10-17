@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Diodes and Transistors</title>
-  <meta name="description" content="Electronics from scratch, chapter 4: the diode as a one-way valve and its curve, turning AC into smooth DC, a MOSFET switching a motor from a microcontroller pin with PWM and a flyback diode, and why 3.3 V chips need logic-level MOSFETs." />
+  <meta name="description" content="Electronics from scratch, chapter 4: the diode as a one-way valve and its curve, turning AC into smooth DC, a MOSFET switching a motor from a microcontroller pin with PWM and a flyback diode, why 3.3 V chips need logic-level MOSFETs, and the bipolar transistor run half on as an amplifier." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
@@ -26,8 +26,8 @@
 <main>
   <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Chapter 4</p>
   <h1>Diodes and transistors</h1>
-  <p class="lede">Resistors, capacitors and coils only ever react to what you do to them. This chapter's parts make decisions. A <b>diode</b> lets current flow one way and not the other. A <b>transistor</b> lets a tiny signal, like a 3.3 V pin on a microcontroller, switch a big current, like a motor's. Every chip in every computer is billions of transistors doing exactly the switching you'll do below.</p>
-  <div class="plain card"><b>In plain words:</b> a diode is a <b>one-way valve</b> (a check valve) for current: forwards it opens once you push past about 0.7 V, backwards it stays shut. A MOSFET transistor is a <b>tap with a handle</b>: the gate is the handle, and turning it takes almost no effort, while the water through the tap can be a flood.</div>
+  <p class="lede">Resistors, capacitors and coils only ever react to what you do to them. This chapter's parts make decisions. A <b>diode</b> lets current flow one way and not the other. A <b>transistor</b> lets a tiny signal, like a 3.3 V pin on a microcontroller, switch a big current, like a motor's, or copy a small wiggle as a big one. Every chip in every computer is billions of transistors doing exactly the switching you'll do below.</p>
+  <div class="plain card"><b>In plain words:</b> a diode is a <b>one-way valve</b> (a check valve) for current: forwards it opens once you push past about 0.7 V, backwards it stays shut. A MOSFET transistor is a <b>tap with a handle</b>: the gate is the handle, and turning it takes almost no effort, while the water through the tap can be a flood. Open the tap fully and it's a switch; hold it part way and the flow follows your hand: an amplifier.</div>
 
   <h2>1. A one-way valve</h2>
   <p>Push current through a diode with the battery, then flip the battery around.</p>
@@ -81,7 +81,7 @@ plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000
   <p class="goal" id="g2">🎯 <b>Challenge:</b> get the ripple below 10% with the 1 kΩ load.</p>
 
   <h2>3. A MOSFET switches a motor</h2>
-  <p>A microcontroller pin can only give a few milliamps at 3.3 V; a motor wants an amp at 12 V. A MOSFET joins them: the pin drives its gate, and the motor's current goes through it. Turn the pin on and off, then try <b>PWM</b>: switching it on and off fast, where the fraction of time it's on sets the speed.</p>
+  <p>A microcontroller pin can only give a few milliamps at 3.3 V; a motor wants an amp at 12 V. A MOSFET joins them. It has three legs: the <b>gate</b> (the handle), the <b>drain</b> (the load's current comes in here) and the <b>source</b> (it leaves here, to ground). The pin drives the gate, and the motor's current goes from drain to source. This is an <b>N-channel</b> MOSFET, turned on by raising its gate above its source; a <b>P-channel</b> one is its mirror image, turned on by pulling the gate below the source, and chapter 12 pairs one of each. Turn the pin on and off, then try <b>PWM</b>: switching it on and off fast, where the fraction of time it's on sets the speed.</p>
   <canvas id="c3" width="800" height="400" aria-label="A microcontroller pin driving a MOSFET that switches a motor, with a scope of the drain voltage"></canvas>
   <div class="row"><button id="pin">Pin ON</button><label>PWM duty <input type="range" id="duty" min="0" max="100" step="1" value="0"> <span id="dv" class="math"></span></label>
     <label><input type="checkbox" id="fly3" checked> flyback diode</label><button id="new3" hidden>New MOSFET</button></div>
@@ -104,12 +104,46 @@ plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000
     <label>gate voltage <input type="range" id="vg4" min="0" max="12" step="0.1" value="3.3"> <span id="vg4v" class="math"></span></label></div>
   <p class="readout" id="o4"></p>
   <p class="goal" id="g4">🎯 <b>Challenge:</b> from an ESP32's 3.3 V pin, switch the full 1 A load with the MOSFET wasting under 0.1 W.</p>
-  <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot. Next: <a href="./05-real-parts.html"><b>real parts</b></a>: reading color codes and datasheets, and choosing values and ratings that survive the real world.</p>
+  <p>That's the whole trick of a transistor switch: fully off or fully on, never in between, and nothing gets hot.</p>
   <div class="q" data-answer="c">
     <p>A MOSFET is half on: 6 V across it and 1 A through it. Fully on, 0.05 V across it at the same 1 A. How do the heats compare?</p>
     <ul><li data-k="a" data-says="Heat is V × I across the switch: compare 6 W with 0.05 W.">About the same</li><li data-k="b" data-says="Check the numbers: 6 × 1 versus 0.05 × 1.">Half on is twice as hot</li><li data-k="c">Half on is 120 times hotter (6 W vs 0.05 W)</li></ul>
     <div class="why">\(6 \times 1 = 6\) W, enough to burn a small package without a heatsink, against \(0.05 \times 1 = 0.05\) W. Fully on or fully off, never in between.</div>
   </div>
+
+  <h2>5. Half on, on purpose: a transistor that amplifies</h2>
+  <p>Section 4 said never to leave a transistor half on. Yet a hi-fi amplifier (chapter 16) and a linear regulator (chapter 10) keep theirs half on all the time, on purpose. What could the in-between be good for?</p>
+  <p>Meet the other transistor family, the <b>bipolar junction transistor</b> (BJT), like the 2N3904 in every starter kit. Its legs are the <b>base</b> (the handle), the <b>collector</b> (the load's current comes in) and the <b>emitter</b> (it leaves, to ground). Base to emitter is a diode, with section 1's curve: below about 0.6 V nothing happens. Above it, a small current into the base lets a current about <b>β</b> ("beta", 200 for this one) times bigger flow from collector to emitter. Here an input voltage feeds the base through 47 kΩ, and the load is 1 kΩ from 9 V. Slide the input slowly from 0 and watch the output (the collector's voltage).</p>
+  <canvas id="c5" width="800" height="400" aria-label="An input voltage drives an NPN transistor's base through 47 kilohms; a 1 kilohm load goes from 9 V to its collector; a graph of output voltage against input voltage"></canvas>
+  <div class="row"><label>input <input type="range" id="v5" min="0" max="4" step="0.01" value="0"> <span id="v5v" class="math"></span></label><label>wiggle on the input <select id="w5"><option value="0">none</option><option value="0.1">±0.1 V</option><option value="0.8">±0.8 V</option></select></label></div>
+  <p class="readout" id="o5"></p>
+  <div class="q" data-num="0.41" data-tol="0.06" data-unit="V">
+    <p>Predict before you add the wiggle. Set the input to 1.6 V. The wiggle moves the input 0.1 V up and down. How far up and down will the output move? (volts)</p>
+    <div class="why">About 0.41 V, four times the input's wiggle, and upside down: input up, output down. Pick the ±0.1 V wiggle and see. That's <b>amplification</b>: the same shape, bigger, paid for by the 9 V supply, not by the input.</div>
+  </div>
+  <p>The curve has three parts, and you've now been in all of them:</p>
+  <ul>
+    <li><b>Off</b> (input below about 0.6 V): no base current, no collector current, all 9 V across the transistor. An open switch.</li>
+    <li><b>Amplifying</b> (about 0.6 to 2.7 V): the collector current is β times the base current, so the output follows every move of the input, about four times bigger and upside down. This is section 4's half-on state, and it warms the transistor: here at most 20 mW, because the currents are milliamps; an amplifier pushing amps into a speaker needs a heatsink.</li>
+    <li><b>Saturated</b> (above about 2.7 V): the 1 kΩ load can't pass more than 9 mA, so more base current changes nothing. About 0.2 V is left across the transistor: a closed switch, and cool again.</li>
+  </ul>
+  <p>A MOSFET has the same middle region (section 4's half-on), set by its gate voltage instead of a base current. Switching circuits (logic, PWM, motors) live at the two ends, where nothing gets hot; amplifiers, linear regulators and oscillators live in the middle and pay for it in heat. A <b>PNP</b> transistor is the BJT's mirror image, turned on by pulling its base below its emitter.</p>
+  <p class="goal" id="g5">🎯 <b>Challenge:</b> with the ±0.8 V wiggle, find an input where the output swings its full 3 V or more both ways, without either tip being flattened (clipped).</p>
+  <details class="deeper"><summary>Why is the gain about 4?</summary>
+    <ol>
+      <li>In the middle region the base sits near 0.65 V and barely moves (section 1: ten times the current adds only 60 mV).</li>
+      <li>So the 47 kΩ resistor has \(V_{in} - 0.65\) across it, and the base current is \(I_B \approx (V_{in} - 0.65)/47\,\text{k}\Omega\). Raising the input by 0.1 V adds about 2.1 µA.</li>
+      <li>The collector current is β times that: \(200 \times 2.1\) µA = 0.43 mA more.</li>
+      <li>That extra current drops 0.43 V more across the 1 kΩ load (Ohm's law), so the collector, at 9 V minus that drop, falls by 0.43 V.</li>
+      <li>In one line: gain \(\approx -\beta \, R_{load} / R_{base} = -200 \times 1/47 \approx -4.3\). The solver gets −4.1, because the base voltage does creep up a little.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: every transistor has a different β</summary>
+    <p>The gain above has β in it, and β is a poor number to build on: the <a href="https://www.onsemi.com/pdf/datasheet/2n3903-d.pdf">2N3904 datasheet</a> allows anything from 100 to 300 (at 10 mA), and it drifts with temperature. Solving this same circuit at 1.6 V in with three β's:</p>
+    <ul><li>β = 100: output 7.05 V, gain −2.1</li><li>β = 200: output 5.17 V, gain −4.1</li><li>β = 300: output 3.32 V, gain −6.2</li></ul>
+    <p>Two transistors from the same bag give amplifiers that differ threefold, and the high-β one sits so close to saturation that a big wiggle clips. Real designs fix this with feedback, trading some gain for a result set by resistors instead of by β: chapter 7 does exactly that with op-amps.</p>
+  </details>
+  <p>Next: <a href="./05-real-parts.html"><b>real parts</b></a>: reading color codes and datasheets, and choosing values and ratings that survive the real world.</p>
 
   <p class="muted">Previous: <a href="./03-coils-and-resonance.html">Coils, resonance and antennas</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Try things in the <a href="/learn/lab.html">circuit lab</a>.</p>
 </main>
@@ -230,7 +264,48 @@ scene($("c4"), (g) => {
   g.font = "13px ui-monospace, monospace"; g.fillStyle = C.green; g.fillText("logic-level", X(1.6), Y(0.6)); g.fillStyle = C.blue; g.fillText("standard", X(5.4), Y(0.6)); g.fillStyle = "#8f98a8"; g.fillText("3.3 V pin", X(3.3) + 4, gy + 16); g.fillText("load current (to 1 A)", gx + 6, gy + 16); g.fillText("gate voltage →", gx + gw - 110, gy + gh - 6);
 }, () => []);
 
-window.blipContext = () => ({ page: "Electronics chapter 4: diodes and transistors", diode: s1, rectifier: s2 && { capacitor: s2.Cf, load: s2.R, ripple: s2.ripple }, motor: { pin: pinOn, duty: +$("duty").value, flyback: $("fly3").checked, mosfetDead: dead, current: s3.iL }, logicLevel: s4 && { type: $("type4").value, gate: s4.vg, heatW: s4.heat } });
+// 5. a bipolar transistor: off, amplifying, saturated
+const Q5 = { is: 6.7e-15, bf: 200, br: 1 }; // the lab's 2N3904
+const amp5 = (vin) => { const r = solve([{ type: "V", a: 1, b: 0, volts: vin }, { type: "R", a: 1, b: 2, ohms: 47e3 }, { type: "V", a: 3, b: 0, volts: 9 }, { type: "R", a: 3, b: 4, ohms: 1000 }, { type: "Q", a: 4, b: 0, g: 2, ...Q5 }]); return { ib: r.current[1], ic: r.current[3], vout: r.v[4] }; };
+const curve5 = Array.from({ length: 401 }, (_, k) => [k / 100, amp5(k / 100).vout]);
+let s5;
+function calc5() {
+  const vin = +$("v5").value, w = +$("w5").value, o = amp5(vin), hi = amp5(vin + w).vout, lo = amp5(Math.max(0, vin - w)).vout;
+  const region = o.ic < 1e-5 ? "off" : o.vout < 0.3 ? "saturated" : "amplifying";
+  s5 = { vin, w, ...o, region, swingUp: lo - o.vout, swingDown: o.vout - hi };
+  $("v5v").textContent = `${vin.toFixed(2)} V`;
+  $("o5").innerHTML = `<b>${region}</b> · base ${fmtA(o.ib)} · collector ${fmtA(o.ic)}${region === "amplifying" ? ` (${Math.round(o.ic / o.ib)} × the base)` : ""} · output ${o.vout.toFixed(2)} V · heat in the transistor ${(o.ic * o.vout * 1000).toFixed(1)} mW` + (w ? ` · wiggle in ±${w.toFixed(1)} V, out +${s5.swingUp.toFixed(2)} / −${s5.swingDown.toFixed(2)} V` : "");
+  // a clean ±0.8 V swing: both halves at least 3 V (true from about 1.42 to 2.06 V in)
+  goal("g5", w === 0.8 && s5.swingUp > 3 && s5.swingDown > 3, `The output now rests near the middle of its 0–9 V range, with room to swing both ways. Inputs from about 1.4 to 2.1 V do it; choosing that resting point is called <b>biasing</b> an amplifier.`);
+}
+$("v5").oninput = calc5; $("w5").onchange = calc5; calc5();
+const still5 = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function bjtSym(g, x, y, on) { // an NPN: base from the left, collector up, emitter down with its arrow
+  g.strokeStyle = C.text; g.lineWidth = 3; g.beginPath(); g.arc(x - 6, y, 26, 0, 7); g.stroke();
+  g.beginPath(); g.moveTo(x - 50, y); g.lineTo(x - 16, y); g.moveTo(x - 16, y - 14); g.lineTo(x - 16, y + 14); g.stroke();
+  g.strokeStyle = on ? C.green : C.text; g.beginPath(); g.moveTo(x - 16, y - 7); g.lineTo(x, y - 20); g.lineTo(x, y - 30); g.moveTo(x - 16, y + 7); g.lineTo(x, y + 20); g.lineTo(x, y + 30); g.stroke();
+  g.fillStyle = on ? C.green : C.text; g.beginPath(); g.moveTo(x, y + 20); g.lineTo(x - 10, y + 18); g.lineTo(x - 5, y + 11); g.fill();
+}
+const t5 = () => performance.now() / 1000;
+scene($("c5"), (g) => {
+  const wig = s5.w && !still5 ? s5.w * Math.sin(2 * Math.PI * 0.5 * t5()) : 0, now = amp5(Math.max(0, s5.vin + wig));
+  g.fillStyle = "#2a2f3a"; g.fillRect(30, 185, 70, 30); g.fillStyle = C.text; g.font = "13px ui-monospace, monospace"; g.fillText("input", 44, 205);
+  resistor(g, [100, 200], [200, 200], "47 kΩ"); bjtSym(g, 250, 200, s5.region !== "off");
+  resistor(g, [250, T], [250, 170], "1 kΩ load"); tag(g, 270, T + 4, "9 V", "#8f98a8"); tag(g, 270, 150, `out ${now.vout.toFixed(2)} V`, C.yellow);
+  g.strokeStyle = C.wire; g.lineWidth = 3; g.beginPath(); g.moveTo(250, 230); g.lineTo(250, B); g.moveTo(220, B); g.lineTo(280, B); g.stroke(); g.fillStyle = "#8f98a8"; g.fillText("ground", 226, B + 20);
+  g.fillText(`base ${fmtA(now.ib)}`, 120, 240); g.fillText(`collector ${fmtA(now.ic)}`, 120, 260);
+  // output against input
+  const gx = 390, gy = 40, gw = 390, gh = 290, X = (v) => gx + (v / 4) * gw, Y = (v) => gy + gh - 18 - (v / 10) * (gh - 18); // 0–10 V, the floor lifted off the axis label
+  g.fillStyle = "#0b0d12"; g.fillRect(gx, gy, gw, gh);
+  g.fillStyle = "rgba(131,193,103,.12)"; g.fillRect(X(0.6), gy, X(2.7) - X(0.6), gh);
+  g.strokeStyle = C.blue; g.lineWidth = 2.5; g.beginPath(); curve5.forEach(([v, o], k) => (k ? g.lineTo(X(v), Y(o)) : g.moveTo(X(v), Y(o)))); g.stroke();
+  if (s5.w) { g.strokeStyle = "#f4d35e66"; g.lineWidth = 6; g.beginPath(); for (let v = Math.max(0, s5.vin - s5.w); v <= Math.min(4, s5.vin + s5.w) + 1e-9; v += 0.02) { const p = [X(v), Y(amp5(v).vout)]; v === Math.max(0, s5.vin - s5.w) ? g.moveTo(...p) : g.lineTo(...p); } g.stroke(); }
+  g.fillStyle = C.yellow; g.beginPath(); g.arc(X(Math.max(0, s5.vin + wig)), Y(now.vout), 7, 0, 7); g.fill();
+  g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace"; g.fillText("output (0–10 V)", gx + 6, gy + 16); g.fillText("input (0–4 V) →", gx + gw - 118, gy + gh - 4);
+  g.fillText("off", X(0.1), Y(8.3)); g.fillStyle = C.green; g.fillText("amplifying", X(1.2), Y(8.3)); g.fillStyle = "#8f98a8"; g.fillText("saturated", X(2.95), Y(8.3));
+}, () => [{ pts: [[250, T], [250, 170]], amps: s5.ic }, { pts: [[250, 230], [250, B]], amps: s5.ic + s5.ib }, { pts: [[100, 200], [200, 200]], amps: s5.ib }]);
+
+window.blipContext = () => ({ page: "Electronics chapter 4: diodes and transistors", diode: s1, rectifier: s2 && { capacitor: s2.Cf, load: s2.R, ripple: s2.ripple }, motor: { pin: pinOn, duty: +$("duty").value, flyback: $("fly3").checked, mosfetDead: dead, current: s3.iL }, logicLevel: s4 && { type: $("type4").value, gate: s4.vg, heatW: s4.heat }, bjtAmplifier: s5 && { input: s5.vin, region: s5.region, output: s5.vout, wiggle: s5.w } });
 </script>
 </body>
 </html>

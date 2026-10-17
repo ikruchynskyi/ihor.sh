@@ -129,14 +129,14 @@ print("v1 =", v[0].toFixed(4), "V   v2 =", v[1].toFixed(4), "V");
   </div>
 
   <h2>5. Superposition: one source at a time</h2>
-  <p>In a circuit of resistors (linear parts), the effect of several sources is the sum of each one's effect alone, with the others turned off (voltage sources replaced by wires, current sources by gaps). It's why you can think about a signal and its DC bias separately: an amplifier's input is "1.65 V of DC plus a small audio wave", and each can be analyzed on its own.</p>
+  <p>In a circuit of resistors (linear parts), the effect of several sources is the sum of each one's effect alone, with the others turned off (voltage sources replaced by wires; current sources, parts that push a fixed current whatever the voltage, by gaps). It's why you can think about a signal and its DC bias separately: an amplifier's input is "1.65 V of DC plus a small audio wave", and each can be analyzed on its own.</p>
   <div class="q" data-num="7" data-unit="V">
     <p>Two equal resistors from a +10 V source and a +4 V source meet at a middle point. With only the 10 V source (4 V replaced by a wire) the middle is at 5 V; with only the 4 V one, 2 V. What's the middle voltage with both?</p>
     <div class="why">\(5 + 2 = 7\) V, the average of 10 and 4, as you'd expect for equal resistors.</div>
   </div>
 
   <h2>6. AC: waves are spinning arrows</h2>
-  <p>For a sine wave, Ohm's law needs one more idea: <b>timing</b>. In a capacitor, current flows most while the voltage is changing fastest, so the current wave peaks a quarter cycle <em>before</em> the voltage wave. The trick (the same one the <a href="/radio/course/01-spinning-arrows.html">radio course</a> starts with) is to draw each wave as an arrow spinning around a circle: the wave is its shadow, and timing differences are just angles between arrows. Below, an RC low-pass filter: the resistor's and capacitor's voltages are arrows at right angles, and they add like chapter 1's vectors to make the input.</p>
+  <p>For a sine wave, Ohm's law needs one more idea: <b>timing</b>. In a capacitor, current flows most while the voltage is changing fastest, so the current wave peaks a quarter cycle <em>before</em> the voltage wave. The trick (the same one the <a href="/radio/course/01-spinning-arrows.html">radio course</a> starts with) is to draw each wave as an arrow spinning around a circle: the wave is its shadow, and timing differences are just angles between arrows. Below, an RC low-pass filter: the resistor's and capacitor's voltages are arrows at right angles, and they add like the sides of chapter 2's right triangle to make the input.</p>
   <canvas id="c6" width="800" height="400" aria-label="Phasors: spinning arrows for the input, resistor and capacitor voltages, with their waves"></canvas>
   <div class="row"><label>frequency (× the cutoff) <input type="range" id="fq" min="-1.5" max="1.5" step="0.01" value="0"> <span id="fqv" class="math"></span></label><label><input type="checkbox" id="spin" checked> spin</label></div>
   <p class="readout" id="o6"></p>

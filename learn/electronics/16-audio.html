@@ -46,8 +46,8 @@
   <h2>3. Amplifier classes, drawn and played</h2>
   <p>The output stage has to push real current into a speaker, and the ways of doing it trade quality against heat:</p>
   <ul>
-    <li><b>Class A:</b> one transistor biased half-on all the time, so it amplifies the whole wave smoothly. It also burns power even in silence: at most 25% of the supply's power reaches the speaker (with a simple resistor load).</li>
-    <li><b>Class B:</b> two transistors in push-pull, one for the positive half, one for the negative. Nothing flows at rest, up to 78.5% efficient. But each transistor needs ~0.6 V to turn on (chapter 4), so near zero <em>neither</em> conducts: a little flat step at every zero crossing, <b>crossover distortion</b>, that sounds harsh exactly when the music is quiet.</li>
+    <li><b>Class A:</b> one transistor biased half-on all the time (chapter 4's amplifying region), so it amplifies the whole wave smoothly. It also burns power even in silence: at most 25% of the supply's power reaches the speaker (with a simple resistor load).</li>
+    <li><b>Class B:</b> two transistors in push-pull, one for the positive half, one for the negative. Nothing flows at rest, up to 78.5% efficient. But each transistor needs ~0.6 V to turn on (chapter 4: a bipolar transistor's base and emitter form a diode), so near zero <em>neither</em> conducts: a little flat step at every zero crossing, <b>crossover distortion</b>, that sounds harsh exactly when the music is quiet.</li>
     <li><b>Class AB:</b> class B with a small idle current through both so the handover is seamless. Almost every hi-fi amplifier.</li>
     <li><b>Class D:</b> the output transistors only switch fully on or off at hundreds of kHz (chapter 13's PWM, with the duty following the music), and an LC filter (chapter 8) smooths it back to audio. Switches waste almost nothing: 90%+, which is why a tiny Bluetooth speaker runs all day.</li>
   </ul>

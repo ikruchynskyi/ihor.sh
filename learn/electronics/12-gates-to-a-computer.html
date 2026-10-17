@@ -54,7 +54,7 @@
   </div>
 
   <h2>3. NAND can build everything</h2>
-  <p>A surprising fact: with enough NAND gates you can build every other gate, and so a whole computer. NOT is a NAND with its inputs tied together. AND is a NAND followed by a NOT. OR is a NAND of the two inputs, each NOT-ed first (that's De Morgan's law: "not (not A and not B)" means "A or B").</p>
+  <p>A surprising fact: with enough NAND gates you can build every other gate, and so a whole computer. NOT is a NAND with its inputs tied together. AND is a NAND followed by a NOT. OR is a NAND of the two inputs, each NOT-ed first (that's De Morgan's law: "not (not A and not B)" means "A or B"). Written in Boolean algebra's shorthand, where a bar over something means NOT, a dot means AND and a plus means OR:</p>
   <p class="formula">\[ \overline{A} = \overline{A \cdot A}, \qquad A \cdot B = \overline{\overline{A \cdot B}}, \qquad A + B = \overline{\overline{A} \cdot \overline{B}} \]</p>
   <div class="q" data-num="3" data-tol="0">
     <p>How many NAND gates make an OR gate this way?</p>
