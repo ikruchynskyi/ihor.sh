@@ -8,7 +8,7 @@ export const HACKRF_FILTERS = [{ vendorId: 0x1d50, productId: 0x6089 }]; // Hack
 export const isHackRf = (d: { vendorId: number; productId: number }) => HACKRF_FILTERS.some((f) => f.vendorId === d.vendorId && f.productId === d.productId);
 
 // vendor requests (libhackrf's hackrf.c)
-const SET_TRANSCEIVER_MODE = 1, SAMPLE_RATE_SET = 6, BASEBAND_FILTER_BANDWIDTH_SET = 7, BOARD_ID_READ = 14, VERSION_STRING_READ = 15, SET_FREQ = 16, AMP_ENABLE = 17, SET_LNA_GAIN = 19, SET_VGA_GAIN = 20;
+const SET_TRANSCEIVER_MODE = 1, SAMPLE_RATE_SET = 6, BASEBAND_FILTER_BANDWIDTH_SET = 7, BOARD_ID_READ = 14, VERSION_STRING_READ = 15, SET_FREQ = 16, AMP_ENABLE = 17, SET_LNA_GAIN = 19, SET_VGA_GAIN = 20, ANTENNA_ENABLE = 23;
 const MODE_OFF = 0, MODE_RECEIVE = 1;
 const BULK_ENDPOINT = 1; // 0x81
 const BUFFER_BYTES = 262_144; // libhackrf's transfer size: 128 Ki samples, 55 ms at 2.4 MS/s
@@ -38,6 +38,7 @@ export class HackRf {
     h.tunerName = `${BOARDS[board] ?? dev.productName ?? "HackRF"}${version ? ` (${version})` : ""}`;
     await h.out(SET_TRANSCEIVER_MODE, MODE_OFF);
     await h.setAmp(false); // off until asked for: NYC's FM and TV transmitters would overload it
+    await h.out(ANTENNA_ENABLE, 0); // antenna-port power (3.3 V, 50 mA) off, always: an LNA that wants more (the server's SAWbird+ NOAA draws 170 mA) or a plain antenna could be damaged by it
     return h;
   }
 
