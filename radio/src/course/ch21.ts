@@ -1,13 +1,12 @@
-// Chapter 21: digital pictures from a weather satellite. A pass and its Doppler, QPSK on a constellation (and the Costas
-// loop that stops it spinning), the convolutional code fixing errors, JPEG-style blocks, and a lab: a whole simulated
-// pass decoded live by src/lrpt.ts, with the picture building up strip by strip.
+// Chapter 21: digital radio from a weather satellite. A pass and its Doppler, symbols and the matched filter, an eye
+// diagram with Gardner's early/late check, and QPSK on a constellation (and the Costas loop that stops it spinning).
 import "./course.css";
 import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, label, line, dot } from "./anim.ts";
-import { Transmitter, Channel, Receiver, ConvEncoder, Viterbi, pass, earthStrip, encodeStrip, decodeStrip, W, SYM_RATE, FRAME_BYTES } from "../lrpt.ts";
+import { Transmitter, Channel, Receiver, pass, SYM_RATE } from "../lrpt.ts";
+import { symbols, shape, noise, matched, snrAt, gardner, centerTx, centerMf, SPS, PULSE } from "./symbols.ts";
 
 const el = (id: string) => document.getElementById(id)!;
-const sel = (id: string) => (el(id) as HTMLSelectElement).value;
 const checked = (id: string) => (el(id) as HTMLInputElement).checked;
 const constellation = (g: CanvasRenderingContext2D, pts: [number, number][], cx: number, cy: number, r: number, color: string) => {
   line(g, cx - r, cy, cx + r, cy, C.grid, 1); line(g, cx, cy - r, cx, cy + r, C.grid, 1);
@@ -36,6 +35,61 @@ const SNR = (range: number) => 13 - 20 * Math.log10(range / 850); // Es/N0 in dB
   controls(s, ["ps-e"], () => (el("ps-eo").textContent = `${val("ps-e")}°`));
 }
 
+// --- 1b. Symbols and the matched filter ----------------------------------------------------------------------------------
+{
+  const sym = symbols(400), tx = shape(sym), N = 16, k0 = 20, PEAK = Math.max(...PULSE); // show 16 symbols from the middle of the stream
+  let rx = new Float64Array(0), mf = new Float64Array(0);
+  const s = new Scene(el("s-symbols"), (g, w, h) => {
+    const on = checked("sy-m"), L = 12, R = w - 12, mid = h / 2, amp = h * 0.28;
+    const X = (sym: number) => L + ((sym - k0) / N) * (R - L), Y = (v: number) => mid - v * amp;
+    line(g, L, mid, R, mid, C.grid, 1);
+    g.strokeStyle = "#5b6475"; g.lineWidth = 2; g.beginPath(); // what was meant: ±1 per symbol
+    for (let k = k0; k < k0 + N; k++) { g.moveTo(X(k), Y(sym[k])); g.lineTo(X(k + 1), Y(sym[k])); }
+    g.stroke();
+    g.fillStyle = on ? "rgba(88,196,221,0.35)" : C.blue; // what arrives: noisy samples (the bump of symbol k peaks at centerTx(k))
+    for (let n = Math.ceil(centerTx(k0 - 0.5)); n < centerTx(k0 + N - 0.5); n++) { const kk = (n - centerTx(0)) / SPS + 0.5; g.fillRect(X(kk) - 1.5, Y(rx[n] / PEAK) - 1.5, 3, 3); } // drawn at the scale of the symbol (a lone bump peaks at PEAK)
+    if (on) {
+      g.strokeStyle = C.yellow; g.lineWidth = 2; g.beginPath();
+      for (let n = Math.ceil(centerMf(k0 - 0.5)); n < centerMf(k0 + N - 0.5); n++) { const kk = (n - centerMf(0)) / SPS + 0.5, x = X(kk), y = Y(mf[n]); n === Math.ceil(centerMf(k0 - 0.5)) ? g.moveTo(x, y) : g.lineTo(x, y); }
+      g.stroke();
+      for (let k = k0; k < k0 + N; k++) line(g, X(k + 0.5), Y(mf[centerMf(k)]) - 7, X(k + 0.5), Y(mf[centerMf(k)]) + 7, C.white, 2);
+    }
+    label(g, on ? "gray: meant · dots: arrived · yellow: filtered · white: middles" : "gray: meant (+1 or −1) · blue: what arrives", w / 2, h - 6, C.muted, "center", 11);
+  }, 230, { animated: false, label: "Symbols as ±1 steps, the noisy samples that arrive, and the matched filter's smooth output" });
+  controls(s, ["sy-n", "sy-m"], () => {
+    const sigma = val("sy-n"), nz = noise(tx.length, sigma);
+    rx = Float64Array.from(tx, (v, i) => v + nz[i]); mf = matched(rx);
+    el("sy-no").textContent = sigma.toFixed(2);
+    const a = snrAt(rx, sym, centerTx), b = snrAt(mf, sym, centerMf);
+    el("r-symbols").innerHTML = `SNR at the symbols' middles: one sample <em class="b">${a.toFixed(1)} dB</em>` + (checked("sy-m") ? ` · after the matched filter <em class="y">${b.toFixed(1)} dB</em> (${(b - a).toFixed(1)} dB better)` : "");
+  });
+}
+
+// --- 1c. When to look: an eye diagram and Gardner's early/late check ---------------------------------------------------------
+{
+  const sym = symbols(400, 11), tx = shape(sym), nz = noise(tx.length, 0.08, 4), y = matched(Float64Array.from(tx, (v, i) => v + nz[i]));
+  const s = new Scene(el("s-timing"), (g, w, h) => {
+    const off = val("tm-o"), L = 20, R = w - 20, mid = (h - 20) / 2, amp = (h - 40) * 0.38;
+    const X = (u: number) => L + ((u + 1) / 2) * (R - L), Y = (v: number) => mid - v * amp; // u: −1 … +1 symbol around a middle
+    line(g, L, mid, R, mid, C.grid, 1);
+    g.strokeStyle = "rgba(88,196,221,0.25)"; g.lineWidth = 1.2;
+    for (let k = 10; k < 150; k++) {
+      g.beginPath();
+      for (let j = -SPS; j <= SPS; j++) { const v = y[centerMf(k) + j]; j === -SPS ? g.moveTo(X(j / SPS), Y(v)) : g.lineTo(X(j / SPS), Y(v)); }
+      g.stroke();
+    }
+    line(g, X(0), 10, X(0), h - 30, C.green, 1, [3, 4]); label(g, "the middle", X(0), h - 16, C.green, "center", 11);
+    line(g, X(off), 10, X(off), h - 30, C.yellow, 2.5); label(g, "you sample here", X(off), 22, C.yellow, off > 0.2 ? "right" : off < -0.2 ? "left" : "center", 11);
+    line(g, X(off - 0.5), mid - 8, X(off - 0.5), mid + 8, C.pink, 2); label(g, "halfway", X(off - 0.5), mid + 22, C.pink, "center", 10);
+  }, 260, { animated: false, label: "An eye diagram: every symbol's stretch of the filtered signal overlaid, with the chosen sampling moment" });
+  controls(s, ["tm-o"], () => {
+    const off = val("tm-o"), e = gardner(y, sym, off);
+    el("tm-oo").textContent = off === 0 ? "at the middle" : `${Math.abs(off).toFixed(2)} symbol ${off < 0 ? "early" : "late"}`;
+    el("r-timing").innerHTML = `SNR here <em class="y">${snrAt(y, sym, centerMf, off).toFixed(1)} dB</em> (at the middle: ${snrAt(y, sym, centerMf, 0).toFixed(1)} dB) · Gardner's error <em class="p">${e >= 0 ? "+" : ""}${e.toFixed(2)}</em>: ` +
+      (Math.abs(e) < 0.03 ? "on time" : e > 0 ? "early, so sample a little later" : "late, so sample a little earlier");
+  });
+}
+
 // --- 2. QPSK, spinning and locked -------------------------------------------------------------------------------------
 {
   let tx = new Transmitter(), ch = new Channel(), rx = new Receiver(() => {}), key = "", lastT = -1;
@@ -50,78 +104,4 @@ const SNR = (range: number) => 13 - 20 * Math.log10(range / 850); // Es/N0 in dB
   controls(s, ["qp-n", "qp-f"], () => { el("qp-no").textContent = `${val("qp-n")} dB`; el("qp-fo").textContent = `${val("qp-f")} Hz`; });
 }
 
-// --- 3. The convolutional code --------------------------------------------------------------------------------------------
-{
-  const text = "METEOR-M", bits = Uint8Array.from([...text].flatMap((c) => [...Array(8)].map((_, i) => (c.charCodeAt(0) >> (7 - i)) & 1)).concat(Array(8).fill(0)));
-  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const s = new Scene(el("s-conv"), (g, w, h) => {
-    seed = 7 + val("cv-s"); const coded = new ConvEncoder().encode(bits), nerr = Math.round(val("cv-e")), flip = new Set<number>();
-    while (flip.size < nerr) flip.add(Math.floor(rnd() * coded.length));
-    const rx = Array.from(coded, (b, i) => (flip.has(i) ? 1 - b : b)), v = new Viterbi(); for (let i = 0; i < rx.length; i += 2) v.push(1 - 2 * rx[i], 1 - 2 * rx[i + 1]); v.flush();
-    const per = Math.floor((w - 20) / 6.2), cell = (w - 20) / per;
-    rx.forEach((b, i) => { const x = 10 + (i % per) * cell, y = 10 + Math.floor(i / per) * 15; g.fillStyle = flip.has(i) ? C.red : b ? C.blue : "#2a3242"; g.fillRect(x, y, cell - 1, 12); });
-    const out = String.fromCharCode(...[...Array(text.length)].map((_, c) => v.out.slice(c * 8, c * 8 + 8).reduce((a, b) => (a << 1) | b, 0)));
-    const raw = String.fromCharCode(...[...Array(text.length)].map((_, c) => [...Array(8)].reduce((a, _, i) => (a << 1) | rx[2 * (c * 8 + i)], 0))).replace(/[^\x20-\x7e]/g, "·");
-    label(g, `${coded.length} coded bits (red: flipped by noise)`, 10, h - 34, C.muted, "left", 11);
-    label(g, `decoded: ${out}`, 10, h - 12, out === text ? C.green : C.red, "left", 15);
-    el("r-conv").innerHTML = `${nerr} of ${coded.length} bits flipped (${((nerr / coded.length) * 100).toFixed(1)}%). Reading every other bit without the code would give <em class="p">${raw}</em>; Viterbi gives <em class="${out === text ? "g" : "p"}">${out}</em>.`;
-  }, 200, { animated: false, label: "A message's coded bits with some flipped, and what the Viterbi decoder recovers" });
-  controls(s, ["cv-e", "cv-s"], () => (el("cv-eo").textContent = String(val("cv-e"))));
-}
-
-// --- 4. JPEG-style blocks -------------------------------------------------------------------------------------------------
-{
-  const strips = [0, 1, 2, 3, 4, 5].map((k) => earthStrip(60 + k));
-  const s = new Scene(el("s-dct"), (g, w, h) => {
-    const keep = Math.round(val("dc-k")), sc = Math.min(1.4, (w - 30) / (2 * W)), img = (rows: Uint8Array[], x0: number) => rows.forEach((r, k) => { for (let y = 0; y < 8; y++) for (let x = 0; x < W; x++) { const v = r[y * W + x]; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x0 + x * sc, 20 + (k * 8 + y) * sc, sc + 0.5, sc + 0.5); } });
-    const back = strips.map((r) => decodeStrip(encodeStrip(r, keep), keep));
-    img(strips, 10); img(back, 20 + W * sc);
-    label(g, "original", 10, 14, C.muted, "left", 11); label(g, `${keep} of 64 numbers per block`, 20 + W * sc, 14, C.muted, "left", 11);
-    let se = 0, n = 0; strips.forEach((r, k) => r.forEach((v, i) => { se += (v - back[k][i]) ** 2; n++; }));
-    el("r-dct").innerHTML = `Each 8×8 block becomes 64 "how much of this pattern" numbers; keeping the first <em class="y">${keep}</em> (the smooth patterns) sends ${((keep / 64) * 100).toFixed(0)}% of the data. PSNR <em class="b">${(10 * Math.log10(255 ** 2 / (se / n))).toFixed(1)} dB</em>.`;
-  }, 110, { animated: false, label: "A strip of satellite picture, original and rebuilt from a few DCT coefficients per block" });
-  controls(s, ["dc-k"]);
-}
-
-// --- Lab: a whole pass -----------------------------------------------------------------------------------------------------
-{
-  const N = 96, out = el("lab-img") as HTMLCanvasElement, cv = el("lab-plot") as HTMLCanvasElement;
-  out.width = W; out.height = N * 8;
-  const og = out.getContext("2d")!;
-  let p = pass(60), k = N, tx = new Transmitter(), ch = new Channel(), rx = new Receiver(() => {}), timer = 0, log: { f: number; tracked: number; snr: number; ok: boolean }[] = [];
-  const start = () => {
-    clearTimeout(timer); p = pass(+sel("lab-e")); k = 0; log = []; tx = new Transmitter(); ch = new Channel();
-    og.fillStyle = "#000"; og.fillRect(0, 0, W, N * 8);
-    rx = new Receiver((strip, rows) => { const img = og.createImageData(W, 8); rows.forEach((v, i) => { img.data[4 * i] = img.data[4 * i + 1] = img.data[4 * i + 2] = v; img.data[4 * i + 3] = 255; }); og.putImageData(img, 0, (strip % N) * 8); if (log[strip]) log[strip].ok = true; });
-    step();
-  };
-  const step = () => {
-    if (k >= N) return;
-    // frame k is sent at time t; Doppler slides smoothly through it; the noise follows the distance
-    const at = (j: number) => p.points[Math.min(p.points.length - 1, Math.round((j / N) * (p.points.length - 1)))], a = at(k), b = at(k + 1), n = (FRAME_BYTES * 8 * 4);
-    const snr = SNR(a.range) + val("lab-a");
-    rx.push(ch.apply(tx.next(1), (i) => a.doppler + ((b.doppler - a.doppler) * i) / n, snr));
-    log.push({ f: a.doppler, tracked: rx.stats.freqHz, snr, ok: false });
-    draw(a.el); k++;
-    timer = window.setTimeout(step, 1000 / +sel("lab-v"));
-  };
-  const draw = (elev: number) => {
-    const g = cv.getContext("2d")!, w = (cv.width = cv.clientWidth * devicePixelRatio), h = (cv.height = 300 * devicePixelRatio), r = devicePixelRatio;
-    g.setTransform(r, 0, 0, r, 0, 0); const W2 = w / r, H2 = h / r;
-    g.fillStyle = C.stage; g.fillRect(0, 0, W2, H2);
-    constellation(g, rx.constellation.slice(-400), 80, 80, 70, rx.stats.locked ? C.green : C.blue);
-    const L = 170, R = W2 - 10, X = (i: number) => L + (i / N) * (R - L), Y = (f: number) => 80 - (f / 3500) * 70;
-    line(g, L, Y(0), R, Y(0), C.grid, 1, [3, 4]);
-    log.forEach((q, i) => { dot(g, X(i), Y(q.f), "#3a4252", 2); dot(g, X(i), Y(q.tracked), C.blue, 1.6); g.fillStyle = q.ok ? C.green : C.red; g.fillRect(X(i), 160, Math.max(1, (R - L) / N - 0.5), 10); });
-    label(g, "Doppler: true (gray), tracked (blue)", L, 12, C.muted, "left", 11); label(g, "frames: decoded (green), lost (red)", L, 186, C.muted, "left", 11);
-    const last = log[log.length - 1];
-    label(g, `elevation ${elev.toFixed(0)}°   Es/N0 ${last ? last.snr.toFixed(1) : "–"} dB   ${rx.stats.locked ? "LOCKED" : "searching…"}`, 10, 220, rx.stats.locked ? C.green : C.yellow, "left", 13);
-    label(g, `${rx.stats.frames} frames decoded, ${rx.stats.badFrames} failed the checksum, QPSK rotation ${rx.stats.rotation < 0 ? "?" : rx.stats.rotation * 90 + "°"}`, 10, 242, C.muted, "left", 12);
-    el("lab-r").textContent = `${k + 1 >= N ? "Pass over. " : ""}${(p.T / 60).toFixed(1)} minutes of pass in ${(N / +sel("lab-v")).toFixed(0)} seconds; each strip is one frame.`;
-  };
-  el("lab-go").addEventListener("click", start);
-  el("lab-ao").textContent = `${val("lab-a")} dB`; el("lab-a").addEventListener("input", () => (el("lab-ao").textContent = `${val("lab-a")} dB`));
-  start();
-}
-
-(window as unknown as { blipContext: () => unknown }).blipContext = () => ({ page: "Radio course chapter 21: digital pictures from weather satellites (Meteor-M style LRPT): passes and Doppler, QPSK and the Costas loop, convolutional code and Viterbi, DCT blocks, sync words, and a simulated pass lab", labElevation: sel("lab-e") });
+(window as unknown as { blipContext: () => unknown }).blipContext = () => ({ page: "Radio course chapter 21: digital radio from weather satellites (Meteor-M style LRPT): passes and Doppler, symbols and the matched filter, eye diagrams and Gardner timing recovery, QPSK, Es/N0, the 4th-power trick and the Costas loop" });

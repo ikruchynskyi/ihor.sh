@@ -1,4 +1,5 @@
-// The radio course's ledger check (course/ledger.json): a term may appear in a chapter before the one that teaches it only
+// The radio course's ledger check (course/ledger.json): a term may appear in a chapter earlier on the path (the course
+// index's order) than the one that teaches it only
 // in a paragraph that points there ("chapter 10", "ch. 10", "chapters 9 and 10", or a link to its page). Also: every page
 // has a gist (<p class="gist">) and, from chapter 2 on, a "Before you start" box. Code (<pre>, <code>) and math don't count.
 //   node scripts/course-ledger.ts            report
@@ -7,7 +8,9 @@ import { readFileSync, existsSync } from "node:fs";
 
 type Term = string | { re: string; case?: boolean };
 const L = JSON.parse(readFileSync("course/ledger.json", "utf8")) as { chapters: Record<string, string>; teaches: Record<string, Record<string, Term>> };
-const nums = Object.keys(L.chapters).sort();
+// The path is the course index's order (Part V's pictures come before Part VI's receiver chapters), not the numbers.
+const order = [...readFileSync("course/index.html", "utf8").matchAll(/\["(\d\d)-[a-z0-9-]+"/g)].map((m) => m[1]);
+const nums = order.filter((n) => L.chapters[n]), pos = (n: string) => nums.indexOf(n);
 
 /** The page as paragraphs of plain text (code, math, scripts and styles removed). */
 function paragraphs(file: string): string[] {
@@ -34,7 +37,7 @@ for (const [teach, terms] of Object.entries(L.teaches)) for (const [name, t] of 
   const own = pages.get(teach);
   if (own && !own.some((p) => re.test(p))) findings.push(`ch${teach}: "${name}" is listed as taught here, but the page never says it`);
   for (const [n, paras] of pages) {
-    if (n >= teach) break;
+    if (pos(n) >= pos(teach)) break;
     for (const p of paras) if (re.test(p) && !pointers(p).has(Number(teach)))
       findings.push(`ch${n}: "${name}" (taught in ch${teach}) in: ${p.replace(re, (m) => `»${m}«`).slice(0, 170)}`);
   }

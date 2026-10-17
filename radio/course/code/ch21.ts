@@ -1,8 +1,9 @@
-// Radio from scratch, chapter 21: digital pictures from a weather satellite (Meteor-M style LRPT). The pass's geometry
-// and Doppler, the convolutional code and Viterbi, the 4th-power frequency estimate, and the whole link end to end.
+// Radio from scratch, chapter 21: digital radio from a weather satellite (Meteor-M style LRPT). The pass's geometry and
+// Doppler, symbols and the matched filter, finding each symbol's middle (Gardner), and the 4th-power frequency estimate.
 // Run it:  node course/code/ch21.ts
 import assert from "node:assert/strict";
-import { ConvEncoder, Viterbi, Transmitter, Channel, Receiver, pass, earthStrip, encodeStrip, decodeStrip, FRAME_BYTES, SYM_RATE } from "../../src/lrpt.ts";
+import { Transmitter, Channel, Receiver, pass } from "../../src/lrpt.ts";
+import { symbols, shape, noise, matched, snrAt, gardner, centerTx, centerMf, SPS } from "../../src/course/symbols.ts";
 
 // 1. A pass: how long the satellite is up, and how far its frequency slides.
 for (const el of [10, 30, 90]) {
@@ -12,37 +13,22 @@ for (const el of [10, 30, 90]) {
 const overhead = pass(90);
 assert.ok(overhead.T > 13 * 60 && overhead.T < 17 * 60 && Math.abs(Math.max(...overhead.points.map((x) => x.doppler)) - 3300) < 300);
 
-// 2. The convolutional code: flip 4% of the coded bits; Viterbi gets the message back.
-let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const msg = Uint8Array.from({ length: 4000 }, () => (rnd() < 0.5 ? 1 : 0)), coded = new ConvEncoder().encode(msg);
-let flipped = 0; const rx = Array.from(coded, (b) => (rnd() < 0.04 ? (flipped++, 1 - b) : b));
-const v = new Viterbi(); for (let i = 0; i < rx.length; i += 2) v.push(1 - 2 * rx[i], 1 - 2 * rx[i + 1]); v.flush();
-const wrong = msg.reduce((a, b, i) => a + (b !== v.out[i] ? 1 : 0), 0);
-console.log(`convolutional code: ${flipped} of ${coded.length} coded bits flipped (4%), ${wrong} message bits wrong after Viterbi`);
-assert.ok(wrong === 0);
+// 2. Symbols and the matched filter: the SNR at the symbols' middles, looking at one sample vs filtering with the pulse.
+const sym = symbols(400), tx = shape(sym), nz = noise(tx.length, 0.1), rx = Float64Array.from(tx, (v, i) => v + nz[i]);
+const raw = snrAt(rx, sym, centerTx), mf = snrAt(matched(rx), sym, centerMf);
+console.log(`at ${SPS} samples per symbol: one sample at the middle ${raw.toFixed(1)} dB, after the matched filter ${mf.toFixed(1)} dB (${(mf - raw).toFixed(1)} dB better)`);
+assert.ok(mf - raw > 5);
 
-// 3. Pictures: 8×8 blocks, keeping the first coefficients of each.
-const strip = earthStrip(40);
-for (const keep of [1, 6, 15, 36]) {
-  const back = decodeStrip(encodeStrip(strip, keep), keep); let se = 0; for (let i = 0; i < strip.length; i++) se += (strip[i] - back[i]) ** 2;
-  console.log(`keeping ${String(keep).padStart(2)} of 64 coefficients: ${(keep / 64 * 100).toFixed(0).padStart(3)}% of the numbers, PSNR ${(10 * Math.log10(255 ** 2 / (se / strip.length))).toFixed(1)} dB`);
-}
+// 3. When to look: the matched filter's output is cleanest at the middle; Gardner's error says early or late.
+const y = matched(rx);
+for (const off of [-0.25, 0, 0.25]) console.log(`sampling ${off === 0 ? "at the middle   " : off < 0 ? "¼ symbol early  " : "¼ symbol late   "}: SNR ${snrAt(y, sym, centerMf, off).toFixed(1)} dB, Gardner's error ${gardner(y, sym, off) >= 0 ? "+" : ""}${gardner(y, sym, off).toFixed(3)}`);
+assert.ok(snrAt(y, sym, centerMf, 0) > snrAt(y, sym, centerMf, 0.25) + 3 && gardner(y, sym, 0.25) < -0.05 && gardner(y, sym, -0.25) > 0.05 && Math.abs(gardner(y, sym, 0)) < 0.02);
 
-// 4. The whole link: 30 frames through Doppler and noise. The receiver needs a moment to measure the frequency and to
-// find which of QPSK's four rotations is right, then decodes every frame; below about 4 dB it loses lock entirely.
-function link(esn0: number, doppler: number) {
-  const tx = new Transmitter(), ch = new Channel(); let se = 0, n = 0;
-  const r = new Receiver((s, rows) => { const ref = earthStrip(s); for (let i = 0; i < rows.length; i++) { se += (rows[i] - ref[i]) ** 2; n++; } });
-  for (let k = 0; k < 30; k++) r.push(ch.apply(tx.next(1), doppler, esn0));
-  return { r, psnr: n ? 10 * Math.log10(255 ** 2 / (se / n)) : 0 };
+// 4. The 4th-power trick finds the Doppler without knowing the data.
+for (const dop of [-2000, 1000, 2500]) {
+  const r = new Receiver(() => {}), ch = new Channel(), t = new Transmitter();
+  for (let k = 0; k < 4; k++) r.push(ch.apply(t.next(1), dop, 8));
+  console.log(`a ${String(dop).padStart(5)} Hz offset, Es/N0 8 dB: the 4th-power FFT measures ${r.coarseHz.toFixed(0).padStart(5)} Hz`);
+  assert.ok(Math.abs(r.coarseHz - dop) < 40);
 }
-console.log(`frames of ${FRAME_BYTES} bytes, ${(FRAME_BYTES * 8) / SYM_RATE * 1000 | 0} ms each at ${SYM_RATE / 1000}k symbols/s`);
-const res: Record<number, ReturnType<typeof link>> = {};
-for (const [esn0, dop] of [[12, 0], [6, 2500], [4, -2000], [2, 1000]] as const) {
-  const { r, psnr } = (res[esn0] = link(esn0, dop));
-  console.log(`Es/N0 ${String(esn0).padStart(2)} dB, Doppler ${String(dop).padStart(5)} Hz: measured ${r.coarseHz.toFixed(0).padStart(5)} Hz, rotation ${r.stats.rotation}, ${String(r.stats.frames).padStart(2)}/30 frames (${r.stats.badFrames} failed the CRC), picture PSNR ${psnr.toFixed(1)} dB`);
-}
-assert.ok(Math.abs(res[6].r.coarseHz - 2500) < 40, "the 4th-power trick finds the Doppler");
-assert.ok(res[12].r.stats.frames >= 25 && res[6].r.stats.frames >= 25 && res[6].psnr > 22);
-assert.ok(res[2].r.stats.frames === 0, "the cliff: too much noise, nothing at all");
 console.log("all checks passed");

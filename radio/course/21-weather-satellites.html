@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Digital Pictures From Space</title>
-  <meta name="description" content="Radio from scratch, chapter 21: weather pictures from a satellite's digital downlink, in the style of Meteor-M's LRPT at 137.9 MHz. A pass and its Doppler shift, QPSK and the Costas loop that stops the constellation spinning, the 4th-power trick, a convolutional code that Viterbi decodes through noise, JPEG-style 8×8 blocks, sync words and the four-rotation puzzle, and a whole pass decoded live in the browser." />
+  <title>Digital Radio From Space</title>
+  <meta name="description" content="Radio from scratch, chapter 21: a weather satellite's digital downlink, in the style of Meteor-M's LRPT at 137.9 MHz. A pass and its Doppler shift, symbols and their pulse shape, the matched filter, finding the middle of each symbol (Gardner timing recovery), QPSK and Es/N0, and the 4th-power trick and Costas loop that lock onto the frequency." />
 </head>
 <body>
 <main>
   <p class="eyebrow">Radio from scratch · Chapter 21</p>
-  <h1>Digital pictures from space</h1>
+  <h1>Digital radio from space</h1>
 
   <div class="prereq"><b>Before you start</b>This chapter uses:
     <ul>
       <li><a href="./02-arrows-as-numbers.html">Chapter 2: arrows as numbers</a> and <a href="./05-moving-a-station.html">chapter 5: mixing</a></li>
       <li><a href="./06-averaging-is-filtering.html">Chapter 6: filters</a> and <a href="./04-winding-machine.html">chapter 4: the FFT</a></li>
+      <li><a href="./03-taking-snapshots.html#noise">Chapter 3: noise and SNR</a> and <a href="./11-numbers-to-speakers.html">chapter 11: two clocks that never agree</a></li>
       <li><a href="./20-analog-tv.html">Chapter 20: analog TV</a> (helpful: the same picture, sent the other way)</li>
     </ul>
   </div>
 
   <p>Russia's Meteor-M weather satellites circle the Earth from pole to pole, 830 km up, and broadcast what their cameras see, unencrypted, to anyone with a $30 dongle and a homemade antenna. The signal is called <b>LRPT</b> (low rate picture transmission): around 137.1 or 137.9 MHz, 72,000 symbols a second, a strip of picture at a time as the satellite sweeps over you. Chapter 20's TV was analog: the voltage <em>was</em> the brightness. This one is digital: numbers, packed, protected and modulated. Everything that makes digital radio work is in it.</p>
-  <p>This chapter builds a link with the same structure (we simplified two layers, noted where they come up) and decodes a whole simulated pass in your browser. The question to keep in mind: <b>how can a picture come through perfectly when a fifth of the bits arrive wrong?</b></p>
+  <p>This chapter and the next build a link with the same structure (we simplified two layers, noted where they come up). This one gets from the antenna to clean symbols: catching a signal whose frequency slides, finding where each symbol starts, and reading its arrow. <a href="./22-surviving-errors.html">Chapter 22</a> turns symbols into a picture that survives the errors. The question for this chapter: <b>how does a receiver read 72,000 arrows a second, when it doesn't know their frequency, their timing or their data?</b></p>
 
   <!-- 1 -->
   <h2 id="pass">A pass, and a frequency that slides</h2>
@@ -32,8 +33,38 @@
   <div class="q" data-answer="b">
     <p>The Doppler shift changes fastest when the satellite is…</p>
     <ul><li data-k="a" data-says="Near the horizon it's moving almost straight toward or away from you: the shift is large but nearly constant.">rising, just over the horizon</li><li data-k="b">at its highest point, flying past</li><li data-k="c" data-says="It does change: the curve isn't a straight line.">the shift is constant through the pass</li></ul>
-    <div class="why">Overhead, its motion swings from "toward you" to "away from you" in a few minutes, so the curve is steepest there (up to about 50 Hz a second on an overhead pass). The receiver has to track that, which is section 3's job.</div>
+    <div class="why">Overhead, its motion swings from "toward you" to "away from you" in a few minutes, so the curve is steepest there (up to about 50 Hz a second on an overhead pass). The receiver has to track that, which is the last section's job.</div>
   </div>
+
+  <!-- 1b -->
+  <h2 id="symbols">Symbols: one arrow position at a time</h2>
+  <p>FM sends music as a smooth wobble. A digital transmitter instead holds its arrow at one of a few positions for a fixed time, a <b>symbol</b>, then moves to the next. LRPT sends 72,000 symbols a second, so each lasts about 14 µs. Jumping instantly between positions would splash energy far outside the channel (sharp edges are made of fast arrows, chapter 4), so each symbol is sent as a smooth bump, a <b>pulse shape</b>. LRPT's is called root-raised-cosine. The bumps of neighboring symbols overlap, but are designed so they don't disturb each other at the right moments.</p>
+  <div class="q" data-answer="b"><p>Predict: the receiver takes several samples during each symbol, all noisy. Which gives the best estimate of the symbol's value?</p>
+    <ul><li data-k="a" data-says="It throws away all the other samples, which carry the symbol too.">The single sample in its middle</li><li data-k="b">A weighted average of all the samples across the symbol</li><li data-k="c" data-says="The biggest sample is often the one with the most noise in it.">The largest sample</li></ul>
+    <div class="why">Every sample carries some of the symbol, and each has its own independent noise. Averaging them, weighted by how much of the symbol is in each, keeps all the symbol and averages away the noise (chapter 6). Try it below.</div>
+  </div>
+  <div class="scene" id="s-symbols">
+    <div class="controls">
+      <label for="sy-n">Noise <input id="sy-n" type="range" min="0" max="0.4" step="0.01" value="0.1"><output id="sy-no"></output></label>
+      <label for="sy-m"><input id="sy-m" type="checkbox"> Matched filter</label>
+    </div>
+    <p class="readout" id="r-symbols" aria-live="polite"></p>
+  </div>
+  <p>The gray staircase is what was meant (+1 or −1 for each symbol, one shadow only to keep the picture readable); the blue dots are what arrives, eight noisy samples per symbol. Tick <b>Matched filter</b>: the receiver filters with the pulse's own shape as the weights (chapter 6's weighted average). The yellow result is smooth, and at each symbol's middle (the white marks) it lands close to +1 or −1. In this picture the filter improves the signal-to-noise ratio at the middles by about 9 dB, because it collects all eight samples' worth of the symbol instead of one. No other filter can do better on this kind of noise: weighting each moment by how much of the symbol it holds is the best possible. That's why it's called the <b>matched filter</b>.</p>
+  <p class="gist">A symbol is one arrow position held for a fixed time. Filtering with the pulse's own shape collects all of its energy before the receiver looks.</p>
+
+  <!-- 1c -->
+  <h2 id="timing">When to look: the middle of each symbol</h2>
+  <p>After the matched filter, each symbol is clearest at one moment, its middle. Sample there and the values are crisp; sample between two symbols and you get a blur of both. But the receiver's clock and the satellite's never quite agree (chapter 11's two clocks), so the right moment drifts slowly, and the receiver has to find it and keep finding it.</p>
+  <div class="scene" id="s-timing">
+    <div class="controls">
+      <label for="tm-o">Where the receiver samples <input id="tm-o" type="range" min="-0.5" max="0.5" step="0.01" value="0.2"><output id="tm-oo"></output></label>
+    </div>
+    <p class="readout" id="r-timing" aria-live="polite"></p>
+  </div>
+  <p>This is every symbol's stretch of the filtered signal drawn on top of the others: an <b>eye diagram</b>. Where the eye is open widest, the symbols are clearest; that's the middle. Slide the sampling moment away from it and the signal-to-noise ratio drops fast: a quarter of a symbol off costs about 10 dB here.</p>
+  <p>How does the receiver find the middle without knowing the data? <b>Gardner's trick</b> takes one extra sample, halfway between two symbols. When the two symbols differ (+1 then −1), the signal must cross zero exactly halfway. If the halfway sample isn't zero, the receiver is early or late: multiply it by the difference of the two symbols, and the sign of the result says which (positive: early; negative: late). The receiver nudges its sampling clock a little at every symbol, chapter 11's control loop again, this time steering time. When neighboring symbols are the same, the halfway sample tells nothing, and the difference is zero, so it adds nothing to the nudge.</p>
+  <p class="gist">Sample each symbol at its middle. Gardner's check of the halfway point between symbols says early or late, and keeps the receiver's clock there.</p>
 
   <!-- 2 -->
   <h2 id="qpsk">Four arrows for two bits: QPSK</h2>
@@ -45,7 +76,7 @@
     </div>
     <p class="readout" id="r-qpsk" aria-live="polite"></p>
   </div>
-  <p><b>Es/N0</b> is the energy in one symbol over the noise's energy per hertz: the SNR that matters for digital links. The left picture is what the receiver gets; the right one is after it measured and removed the frequency error, then kept tracking it.</p>
+  <p><b>Es/N0</b> is chapter 3's signal-to-noise ratio, counted per symbol: one symbol's energy compared with the noise in a bandwidth as wide as the symbol rate. It's what decides how often noise pushes a symbol into the wrong quarter. The left picture is what the receiver gets; the right one is after it measured and removed the frequency error, then kept tracking it.</p>
 
   <!-- 3 -->
   <h2 id="lock">Finding the frequency: the 4th-power trick and the Costas loop</h2>
@@ -55,88 +86,45 @@
   <div class="q" data-answer="c">
     <p>A Costas loop can lock with the constellation rotated by 0°, 90°, 180° or 270°: all four look identical. How does the receiver find out which is right?</p>
     <ul><li data-k="a" data-says="The loop has no way to tell: the four rotations are perfect copies of each other.">The loop always locks at 0°</li><li data-k="b" data-says="The carrier carries no marker of its own phase.">From the carrier's phase</li><li data-k="c">It decodes all four, and keeps the one where the known sync word shows up</li></ul>
-    <div class="why">Every frame starts with the same 32-bit sync word, 0x1ACFFC1D. Decoded with the wrong rotation, the bits are garbage and the word never appears; with the right one, it appears every frame. Our receiver runs four decoders until one finds two sync words, then keeps only that one.</div>
+    <div class="why">Every frame of data starts with the same 32 bits, the <b>sync word</b> (0x1ACFFC1D in hexadecimal, chapter 3). Read with the wrong rotation, the bits are garbage and the word never appears; with the right one, it appears every frame. Our receiver tries all four until one finds two sync words in a row, then keeps only that one. Chapter 22 shows what else the sync word is for.</div>
   </div>
 
-  <!-- 4 -->
-  <h2 id="code">Fixing errors before they happen: the convolutional code</h2>
-  <p>At the edge of a pass, a few percent of the symbols are on the wrong side of a line. Instead of sending each bit once, the transmitter sends <b>two</b> bits for every bit of data, each a different mix (XOR) of the last seven data bits. Every data bit leaves traces in 14 transmitted bits, so a few of them can be wrong and the others still agree on what it was. The decoder, the <b>Viterbi algorithm</b>, keeps 64 guesses at once (one per possible state of those seven bits), scores each by how well it explains what arrived, and at every step throws away the worse of each pair. Flip bits and watch:</p>
-  <div class="scene" id="s-conv">
-    <div class="controls">
-      <label for="cv-e">Bits flipped <input id="cv-e" type="range" min="0" max="16" step="1" value="5"><output id="cv-eo"></output></label>
-      <label for="cv-s">Which ones <input id="cv-s" type="range" min="0" max="20" step="1" value="0"></label>
-    </div>
-    <p class="readout" id="r-conv" aria-live="polite"></p>
-  </div>
-  <p>It's not magic: errors bunched too close together defeat it, and below about Es/N0 = 4 dB there are simply too many. Then the picture doesn't get worse gradually as an analog picture would; it goes from perfect to nothing within a decibel or two: the <b>cliff effect</b> of digital radio. (The real link adds a second layer, Reed-Solomon, which repairs most of what Viterbi misses. Ours uses a simpler checksum instead: a damaged frame is just dropped.)</p>
-  <div class="q" data-num="72" data-tol="0">
-    <p>The code is "rate ½": two coded bits per data bit. LRPT sends 72,000 QPSK symbols a second. How many thousand data bits per second is that?</p>
-    <div class="why">72,000 symbols × 2 bits = 144,000 coded bits, half of them data: 72 kbit/s. Half the capacity spent on protection, and worth it: without the code the picture would be unusable for most of a pass.</div>
-  </div>
-
-  <!-- 5 -->
-  <h2 id="dct">Pictures in 8×8 blocks</h2>
-  <p>72 kbit/s is slow for pictures, so they're compressed the JPEG way. Each 8×8 block of pixels is rewritten as 64 numbers saying how much of each of 64 standard patterns it contains, from "flat" through "gentle slope" to "fine checkerboard" (a 2-D version of chapter 4's Fourier transform, the DCT). Clouds and coastlines are mostly smooth, so the first few numbers carry almost everything and the rest can be dropped or rounded coarsely:</p>
-  <div class="scene" id="s-dct">
-    <div class="controls"><label for="dc-k">Numbers kept per block <input id="dc-k" type="range" min="1" max="36" step="1" value="6"></label></div>
-    <p class="readout" id="r-dct" aria-live="polite"></p>
-  </div>
-  <p>Meteor sends three such pictures at once, from different wavelengths (visible light and infrared: infrared sees clouds at night by their cold), which decoders combine into false-color images. Ours sends one.</p>
+    <p class="gist">Raising each symbol to the 4th power erases QPSK's data and leaves four times the frequency error, which one FFT measures; a Costas loop then tracks the drift symbol by symbol.</p>
 
   <!-- code -->
   <h2 id="incode">In code</h2>
-  <p>The link is <code>src/lrpt.ts</code>, about 300 lines, transmitter and receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code>:</p>
-<pre><code>for (let ns = 0; ns &lt; 64; ns++) {                       // each state: the last 6 data bits
-  const u = ns &gt;&gt; 5, p0 = (ns &amp; 31) &lt;&lt; 1, p1 = p0 | 1;    // the two states it can come from
-  const e0 = exp[(u &lt;&lt; 6) | p0], e1 = exp[(u &lt;&lt; 6) | p1];  // the bit pairs each path would have sent (±1)
-  const m0 = m[p0] + a * e0[0] + b * e0[1], m1 = m[p1] + a * e1[0] + b * e1[1];
-  if (m1 &gt; m0) { n[ns] = m1; d[ns] = 1; } else n[ns] = m0;  // keep the better path, remember which
-}</code></pre>
-  <p>The receiver, symbol by symbol: matched filter → Gardner timing → AGC → (once) the 4th-power FFT → Costas loop → four rotations into four Viterbi decoders → sync word search → descramble → checksum → picture.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch21.ts</code>:</p>
+  <p>The link is <code>src/lrpt.ts</code>, about 300 lines, transmitter and receiver. The receiver's front end, from this chapter, for every sample and then every symbol:</p>
+<pre><code>// matched filter: the transmitter's own pulse, used as filter weights (chapter 6)
+let a = 0, b = 0; for (let j = 0; j &lt; L; j++) { a += H[j] * m[2 * j]; b += H[j] * m[2 * j + 1]; }
+// Gardner: the previous symbol minus this one, times the sample halfway between them
+const e = (this.prevI - sI) * mI + (this.prevQ - sQ) * mQ;
+this.t += this.rate + GAINS.g1 * e;                   // nudge where the next symbol is sampled
+// Costas loop: how far the symbol sits off its nearest QPSK point, as an angle; steer phase and frequency
+const err = Math.sign(zi) * zq - Math.sign(zq) * zi;
+this.w += 0.0004 * err; this.cphase += this.w + 0.03 * err;</code></pre>
+  <p>Chapter 22 picks up where this ends: four rotations into four decoders, the sync word, and the picture.</p>
+  <p><b>Try it yourself:</b> <code>node course/code/ch21.ts</code> (the symbols use <code>src/course/symbols.ts</code>, the same code as this page's pictures):</p>
 <pre><code>a pass rising to 10°: 11.4 min above the horizon, Doppler 2128 → -2128 Hz, closest 2428 km
 a pass rising to 30°: 14.7 min above the horizon, Doppler 2814 → -2814 Hz, closest 1442 km
 a pass rising to 90°: 15.6 min above the horizon, Doppler 3032 → -3032 Hz, closest 830 km
-convolutional code: 320 of 8000 coded bits flipped (4%), 0 message bits wrong after Viterbi
-keeping  1 of 64 coefficients:   2% of the numbers, PSNR 23.0 dB
-keeping  6 of 64 coefficients:   9% of the numbers, PSNR 36.4 dB
-keeping 15 of 64 coefficients:  23% of the numbers, PSNR 40.1 dB
-keeping 36 of 64 coefficients:  56% of the numbers, PSNR 41.6 dB
-frames of 488 bytes, 54 ms each at 72k symbols/s
-Es/N0 12 dB, Doppler     0 Hz: measured     0 Hz, rotation 1, 26/30 frames (0 failed the CRC), picture PSNR 42.4 dB
-Es/N0  6 dB, Doppler  2500 Hz: measured  2500 Hz, rotation 1, 25/30 frames (0 failed the CRC), picture PSNR 42.5 dB
-Es/N0  4 dB, Doppler -2000 Hz: measured -2000 Hz, rotation 1, 24/30 frames (1 failed the CRC), picture PSNR 42.5 dB
-Es/N0  2 dB, Doppler  1000 Hz: measured   998 Hz, rotation -1,  0/30 frames (2 failed the CRC), picture PSNR 0.0 dB
+at 8 samples per symbol: one sample at the middle 10.9 dB, after the matched filter 19.7 dB (8.8 dB better)
+sampling ¼ symbol early  : SNR 9.2 dB, Gardner's error +0.255
+sampling at the middle   : SNR 19.7 dB, Gardner's error +0.006
+sampling ¼ symbol late   : SNR 9.9 dB, Gardner's error -0.254
+a -2000 Hz offset, Es/N0 8 dB: the 4th-power FFT measures -2000 Hz
+a  1000 Hz offset, Es/N0 8 dB: the 4th-power FFT measures  1002 Hz
+a  2500 Hz offset, Es/N0 8 dB: the 4th-power FFT measures  2500 Hz
 all checks passed</code></pre>
-  <p>The first 4 frames of each run go to measuring the frequency and finding the rotation. At 4 dB nearly everything still comes through; at 2 dB the frequency is still found (998 Hz for 1000), but the code gives up: the cliff.</p>
-
-  <!-- lab -->
-  <h2 id="lab">Lab: a pass, decoded live</h2>
-  <div class="lab">
-    <p>A whole pass, sped up: the satellite rises, the signal strengthens as it comes closer, the Doppler slides through zero, and it sets. Every frame is a strip of picture, encoded, modulated, Doppler-shifted, buried in noise, and decoded by the receiver above, as it arrives.</p>
-    <div class="controls">
-      <label class="note">Highest elevation <select id="lab-e"><option value="15">15° (low, far)</option><option value="40">40°</option><option value="60" selected>60°</option><option value="88">88° (overhead)</option></select></label>
-      <label for="lab-a">Antenna <input id="lab-a" type="range" min="-6" max="6" step="1" value="0"><output id="lab-ao"></output></label>
-      <label class="note">Speed <select id="lab-v"><option value="6">slow</option><option value="12" selected>normal</option><option value="30">fast</option></select></label>
-      <button id="lab-go" type="button">▶ Start the pass</button>
-    </div>
-    <div style="display:grid;grid-template-columns:minmax(0,256px) 1fr;gap:12px;margin-top:10px;align-items:start">
-      <canvas id="lab-img" style="width:100%;image-rendering:pixelated;border-radius:6px;background:#000" aria-label="The picture, strip by strip"></canvas>
-      <canvas id="lab-plot" style="width:100%;height:300px;border-radius:8px" aria-label="Constellation, Doppler tracking and decoded frames"></canvas>
-    </div>
-    <p class="readout" id="lab-r" aria-live="polite"></p>
-    <p class="note">For real passes: a V-dipole (two 53 cm rods at 120°, horizontal) outdoors, a dongle at 137.9 MHz recording 288 kS/s or more, and <a href="https://github.com/SatDump/SatDump">SatDump</a>, which implements the full LRPT stack including the parts simplified here. Pass times for your location: <a href="https://www.n2yo.com/">n2yo.com</a> (search "METEOR-M").</p>
-  </div>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does the frequency of a satellite's signal slide during a pass?</summary><p>Doppler: approaching, the waves are compressed (higher frequency); receding, stretched (lower). The change is fastest as it flies past overhead.</p></details>
+  <details><summary>Why filter with the pulse's own shape before looking at a symbol?</summary><p>Every sample during the symbol carries some of it, each with its own noise. Weighting them by the pulse's shape keeps all of the symbol and averages away the most noise: about 9 dB better than one sample, here.</p></details>
+  <details><summary>The halfway sample between a +1 and a −1 symbol is slightly negative. Is the receiver early or late?</summary><p>Late: the signal has already crossed zero on its way to −1. (Previous − current = 2, times a negative halfway sample: a negative error, which the loop answers by sampling a little earlier.)</p></details>
   <details><summary>How does the 4th power remove QPSK's data?</summary><p>Multiplying angles by four turns all four QPSK angles (45° + k·90°) into 180°, so only the frequency error remains, at four times its size.</p></details>
-  <details><summary>What does a sync word do besides marking frames?</summary><p>It resolves the 90° ambiguity of the Costas loop: only the right rotation decodes to the known pattern.</p></details>
-  <details><summary>Why do digital pictures fail suddenly instead of getting gradually snowy?</summary><p>The error-correcting code fixes everything up to a point, so the picture stays perfect; past it, errors overwhelm the code and whole frames are lost.</p></details>
 
   <nav class="next">
     <a href="./20-analog-tv.html">← Chapter 20: How analog TV worked</a>
-    <a href="./">Back to the course →</a>
+    <a href="./22-surviving-errors.html">Next: Chapter 22, Pictures that survive errors →</a>
   </nav>
 </main>
 <script type="module" src="/src/course/ch21.ts"></script>
