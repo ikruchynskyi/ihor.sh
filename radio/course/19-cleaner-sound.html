@@ -89,6 +89,7 @@
   <div class="scene" id="s-musical"></div>
 
   <p>The fixes are both about being gentle. A <b>floor</b>: never turn a bin down by more than 20 dB, so the hiss that's left is a soft, steady bed instead of silence with sparkles. And <b>smoothing</b>: a gain may rise quickly (so the start of a word isn't cut) but falls back only gradually. Spectrum Lab's strength slider moves both at once: from subtracting half the hiss with a −6 dB floor, to twice the hiss with a −20 dB floor.</p>
+  <p class="gist">A voice can be cleaned frequency by frequency: in short overlapping frames, turn down each bin that's no louder than the hiss learned in the pauses, gently enough that nothing warbles.</p>
 
   <div class="notation">
     <math><msub><mi>G</mi><mi>k</mi></msub><mo>=</mo><mi>max</mi><mo>(</mo><msub><mi>G</mi><mtext>floor</mtext></msub><mo>,</mo><mspace width="0.3em"/><mn>1</mn><mo>−</mo><mi>α</mi><mfrac><msub><mi>N</mi><mi>k</mi></msub><msub><mi>S</mi><mi>k</mi></msub></mfrac><mo>)</mo></math>

@@ -80,7 +80,7 @@ The ARRL Handbook (100th edition) runs from fundamentals to station building in 
 - **Radio technology** (ch. 5–17): RF techniques and matching, power sources, DSP and SDR (this course's Parts I–III), oscillators and synthesizers (PLL: ch. 12), filters (ch. 6), modulation (ch. 9–10), receiving (the whole receiver course), transmitting and power amplifiers (new: class A/B/C/D efficiency animations), transceiver design, digital modes (FT8, PSK31, RTTY, packet: new chapters with decoders), data platforms.
 - **Systems** (ch. 18–27): repeaters (offsets, tones: links to squelch, ch. 11), propagation, transmission lines, antennas, safety, construction, station assembly, test equipment (an oscilloscope and spectrum analyzer simulator), troubleshooting, RFI/EMC (finding interference with a waterfall, which this site's dongle needed in real life).
 
-## Track D: closing the gaps (planned 2026-10-17)
+## Track D: closing the gaps (planned and built 2026-10-17 ✅)
 A learner new to radio read the course cold (2026-10-17) and found terms used before they're taught. The full read of all
 21 chapters is the "Already covered" search for every item below; each step is one commit.
 
@@ -159,3 +159,5 @@ sentence.
 - Truth: every formula in `src/ham/antenna-math.ts`, checked against textbook values by `antenna-math.test.ts` (dipole
   2.15 dBi, short dipole 1.76, full wave 3.82, FSPL, dish gain, the 17.32 Fresnel rule, the 468 rule). Facts with a source:
   the SAWbird datasheet, GPS's −128.5 dBm minimum (IS-GPS-200), Meteor LRPT's RHCP (WMO OSCAR). No number without one.
+
+**Status 2026-10-17:** D0–D6 built and committed one step each; `node scripts/course-ledger.ts` reports no findings, and `npm run course-check` now fails on any (a new term needs a ledger entry in the chapter that teaches it). Chapter 22 exists (D4).

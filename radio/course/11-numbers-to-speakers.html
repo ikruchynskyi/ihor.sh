@@ -88,6 +88,7 @@
     <li><b>Hysteresis:</b> it opens at the threshold, but only closes again 3 dB <em>below</em> it. Without that gap, a signal hovering right at the threshold would chop the sound on and off many times a second.</li>
   </ul>
   <p>Set the threshold too low and noise gets through; too high and the start of weak messages is cut off. Real radios have a squelch knob for exactly this.</p>
+  <p class="gist">Between the demodulator and the speaker: a cushion absorbs two clocks' drift, resampling converts the rate, AGC evens out the volume, and a squelch mutes the empty channel.</p>
   <div class="q"><p>Why does the squelch close 3 dB below where it opens, instead of at the same threshold?</p>
     <div class="why">A signal hovering right at one threshold would cross it many times a second, chopping the sound into stutter. With a gap (hysteresis), once open it stays open until the signal clearly drops: the same trick every thermostat uses.</div>
   </div>

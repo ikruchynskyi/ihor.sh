@@ -56,6 +56,7 @@
     <li><b>The FM demodulator</b> needs the <b>previous sample</b>, because it measures how far the arrow turned since then (chapter 9). For the first sample of a chunk, "then" is in the previous chunk.</li>
   </ul>
   <p>The solution is unglamorous and complete: each step is a small object that <b>keeps its memory between calls</b>. Processing a chunk updates the memory; the next call carries on from it. Processing a whole file is then just processing one very big chunk, so a single implementation serves both.</p>
+  <p class="gist">Each step of a live receiver keeps a little memory from the previous chunk, so processing in chunks gives exactly the same numbers as processing everything at once.</p>
 
   <div class="q"><p>How would you <em>prove</em> that the memory is handled perfectly, without listening for clicks?</p>
     <div class="why">Feed the same signal both ways, once as one big buffer and once as chunks of an awkward size (say 12 345 samples, so nothing lines up), and compare every output number. They must be <b>identical, bit for bit</b>, not just close. That's the test this site's receiver passes for every mode (see "In code" below).</div>

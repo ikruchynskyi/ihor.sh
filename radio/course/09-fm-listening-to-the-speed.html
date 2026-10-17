@@ -58,6 +58,7 @@
     <li><b>Add a little noise</b> (up to about 0.2). The pink bars get fuzzy, but the yellow line, after the audio filter has averaged the fuzz away, still follows the music closely: you'd hear the music with a little hiss.</li>
     <li><b>Add more</b> (0.4 and up). Suddenly some bars shoot to the top or bottom (shown in red). Look at the dots on the left: noise sometimes pushes the arrow close to the center (the red dot), and near the center a tiny push changes the angle enormously. Each wild bar is a loud <b>click</b>, and the audio filter can't average it away: one huge bar drags the yellow line far off course. FM doesn't fade gently as the signal weakens: it stays clean, then rather suddenly breaks up into crackles. Radio engineers call this the <b>threshold effect</b>.</li>
   </ul>
+  <p class="gist">FM's sound is how far the arrow turns between samples: multiply each sample by the mirrored previous one and take the angle. Lengths never enter, so fading doesn't either.</p>
 
   <!-- 3 -->
   <h2 id="mpx">What's inside a real broadcast</h2>

@@ -11,6 +11,12 @@
   <p class="eyebrow">Radio from scratch · Chapter 2</p>
   <h1>Arrows as numbers</h1>
 
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./01-spinning-arrows.html">Chapter 1: the spinning arrow</a>, its two shadows (sine and cosine), and adding arrows tip to tail</li>
+    </ul>
+  </div>
+
   <p>In chapter 1, the game showed that one shadow isn't enough: to know which way an arrow spins, you need both its sideways shadow and its up-down shadow. So whenever a radio measures a signal, it writes down <b>two numbers at a time</b>.</p>
   <p>This chapter is about what you can <em>do</em> with those pairs of numbers. Adding them turns out to be easy. Multiplying them turns out to be surprising, and that surprise is the engine of every software radio.</p>
   <p>Here's a taste. Below is one arrow, called <b>z</b>. The dots show what you get by multiplying z by itself again and again: z, z×z, z×z×z, and so on. <b>Drag the white ring</b> to change z:</p>
@@ -71,6 +77,7 @@
   </div>
 
   <p>After a few rounds you'll notice that you stop fiddling and start aiming: point the multiplier at the angle you need to turn by, and make it as long as the stretch you need. That instinct is the whole of complex multiplication.</p>
+  <p class="gist">An arrow is two numbers, I and Q. Adding arrows adds their parts; multiplying arrows multiplies their lengths and adds their angles, so multiplying by an arrow of length 1 just turns.</p>
 
   <!-- 5 -->
   <h2 id="spin">Multiply again and again, and it spins</h2>

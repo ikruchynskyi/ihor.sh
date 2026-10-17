@@ -33,6 +33,7 @@
   <div id="desc-tree"></div>
 
   <p>The key word is <b>endpoint</b>: a numbered, one-way mailbox on the device. Endpoint 0 is the control channel every device has; endpoint 0x81 is where the radio samples come out. Everything a radio app does is either a message through endpoint 0 or a big read from endpoint 0x81.</p>
+  <p class="gist">On USB the host asks and the device answers: small control transfers through endpoint 0 change settings, bulk transfers from endpoint 0x81 carry the samples, and samples are lost only when nobody is asking.</p>
 
   <!-- 2 -->
   <h2 id="setup">A control transfer, byte by byte</h2>

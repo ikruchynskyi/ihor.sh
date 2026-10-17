@@ -63,6 +63,7 @@
     <li><b>Send finished audio:</b> about the same size as a narrow slice (both are 48 000 pairs or samples of numbers per second), but the listener can no longer see or retune within the signal; every change needs a round trip to the server. That's why sending the slice is usually the better deal.</li>
     <li><b>Compress the audio</b> (with a codec like Opus, what video calls use): tiny, but it adds delay and processing.</li>
   </ul>
+  <p class="gist">Over a network, keep I and Q bytes in pairs, and send each listener only the slice they need, mixed, filtered and decimated on the server.</p>
   <p>Public web receivers such as KiwiSDR and OpenWebRX send each listener their own slice plus a low-resolution waterfall of the whole band. That's the plan for this site's public version too.</p>
 
   <!-- 3 -->

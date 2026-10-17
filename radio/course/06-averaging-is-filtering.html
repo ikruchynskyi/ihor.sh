@@ -76,6 +76,7 @@
     <li><b>Sinc × window:</b> fade the chopped sinc's ends smoothly to zero. The cutoff stays where you put it, and the leftovers drop to about 1/1000 of the arrow's length (−60 dB). This is the <b>windowed-sinc</b> filter, and it's what this site's receiver uses.</li>
   </ul>
   <p>Now drag <b>Weights</b> up and down with the windowed sinc: more weights make the edge between "keep" and "remove" steeper. Fewer weights make it gentler. That's the basic trade-off of every filter: <b>sharpness costs arithmetic.</b></p>
+  <p class="gist">A filter is a weighted average. Its effect on each speed is the winding machine run on its weights, so choosing the weights (a windowed sinc) chooses what passes.</p>
 
   <!-- 4 -->
   <h2 id="real">Filtering a real band</h2>

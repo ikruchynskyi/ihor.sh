@@ -20,6 +20,14 @@
   <p class="eyebrow">Radio from scratch · Chapter 16</p>
   <h1>The whole receiver</h1>
 
+  <div class="prereq"><b>Before you start</b>This chapter puts together everything so far:
+    <ul>
+      <li><a href="./03-taking-snapshots.html">Chapters 3–8</a>: samples, the spectrum, mixing, filtering, decimating, chunks</li>
+      <li><a href="./09-fm-listening-to-the-speed.html">Chapters 9–11</a>: demodulating and playing the sound</li>
+      <li><a href="./12-inside-the-dongle.html">Chapters 12–15</a>: the dongle, USB, the driver and the network</li>
+    </ul>
+  </div>
+
   <p>Fifteen chapters ago, a radio station was a spinning arrow. Since then you've seen how to sample it, find it among hundreds of others, move it, isolate it, thin it out, keep it flowing, turn its speed or length into sound, and play that sound steadily. You've seen the chips that capture it and the USB messages that bring it in. This chapter puts everything on one page.</p>
 
   <!-- 1 -->
@@ -44,6 +52,7 @@
     <li><code>server.ts</code> + <code>src/remote.ts</code>: the network source (chapter 15).</li>
   </ul>
   <p>The key design decision is the layering. The driver doesn't know what a radio station is; the signal blocks don't know where their numbers come from (USB, network, a file, or a test). That's why every chapter's script can feed the real code with made-up signals, and why the same blocks run in the browser, in Node, and on the server. The <a href="../build.html#code">build guide's source viewers</a> walk through the most important files line by line.</p>
+  <p class="gist">The receiver is a chain of small streaming blocks that don't know where their numbers come from, so the same code runs on USB, the network, files and tests.</p>
 
   <!-- 3 -->
   <h2 id="speed">How fast is it? Measured on your computer</h2>
