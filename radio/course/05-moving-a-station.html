@@ -19,7 +19,7 @@
     </ul>
   </div>
 
-  <p>Chapter 4 gave us a picture of the whole slice of radio band the dongle captures: dozens of stations side by side. But you want to listen to <b>one</b> of them. (An old radio did this with a coil and a capacitor, a tuned circuit that only rings at one station's frequency: <a href="/learn/electronics/03-coils-and-resonance.html">try it in Electronics ch. 3</a>. We'll do it with numbers instead.) Every step that follows (the filter that removes the neighbors, the demodulator that pulls out the sound) is easiest when the station you want sits <b>exactly in the middle, at 0</b>.</p>
+  <p>Chapter 4 gave us a picture of the whole slice of radio band the dongle captures: dozens of stations side by side. But you want to listen to <b>one</b> of them. (An old radio did this with a coil and a capacitor, a tuned circuit that only rings at one station's frequency: <a href="/learn/electronics/03-coils-and-resonance.html">try it in Electronics ch. 3</a>. We'll do it with numbers instead.) Every step that follows (the filter that removes the neighbors, the demodulator that pulls out the sound, chapter 9) is easiest when the station you want sits <b>exactly in the middle, at 0</b>.</p>
   <p>The station you want is rarely there. When you ask for 98.7 MHz, the dongle is deliberately tuned a quarter of a MHz lower (to avoid its own spike at 0 Hz, <a class="back" href="./04-winding-machine.html#real">↩ ch. 4</a>), so 98.7 shows up at +250 kHz. This chapter is about sliding it to the center.</p>
 
   <!-- 1 -->
@@ -144,7 +144,7 @@ all checks passed</code></pre>
   <details><summary>A station is at +300 kHz. You mix by 100 kHz. Where is it now?</summary><p>At +200 kHz: everything moves down by the mixing frequency.</p></details>
   <details><summary>You mix by −150 kHz. What happens to a station at −150 kHz?</summary><p>It moves to 0: subtracting −150 means adding 150, so −150 + 150 = 0. Mixing by a negative frequency moves everything up.</p></details>
   <details><summary>Why does mixing with cos alone produce two copies of every station?</summary><p>A cosine is half a forward-spinning arrow plus half a backward-spinning one. Multiplying by it shifts every station both down and up.</p></details>
-  <details><summary>What would happen if the NCO forgot its angle at the end of every chunk and restarted at 0?</summary><p>The local oscillator would jump back to angle 0 every ~55 ms. The shifted signal would jump too, which you'd hear as a click 18 times a second (chapter 8).</p></details>
+  <details><summary>What would happen if the NCO forgot its angle at the end of every chunk (chapter 8's pieces of a live stream) and restarted at 0?</summary><p>The local oscillator would jump back to angle 0 every ~55 ms. The shifted signal would jump too, which you'd hear as a click 18 times a second (chapter 8).</p></details>
 
   <nav class="next">
     <a href="./04-winding-machine.html">← Chapter 4: The winding machine</a>

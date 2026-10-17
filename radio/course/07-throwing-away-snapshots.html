@@ -20,7 +20,7 @@
   </div>
 
   <p>After chapters 5 and 6, our station sits alone in the middle of the band. Everything else has been filtered away. But look at what we're still carrying: the dongle sends 2.4 million samples per second, enough to describe a 2.4 MHz-wide slice of radio (<a class="back" href="./03-taking-snapshots.html#fold">↩ ch. 3</a>), and our FM station is only 0.2 MHz wide. More than 90% of every sample's information is now empty space.</p>
-  <p>Every later step, the demodulator and the audio, would have to grind through all those useless samples. So the next move is to <b>keep only some of them</b>: one in every M. This is called <b>decimation</b> (from the Roman punishment of removing one in ten; we remove far more). It's simple, but it has one trap, and it's exactly the trap from chapter 3.</p>
+  <p>Every later step, the demodulator (which turns the station into sound, chapter 9) and the audio, would have to grind through all those useless samples. So the next move is to <b>keep only some of them</b>: one in every M. This is called <b>decimation</b> (from the Roman punishment of removing one in ten; we remove far more). It's simple, but it has one trap, and it's exactly the trap from chapter 3.</p>
 
   <!-- 1 -->
   <h2 id="fold">What keeping every M-th sample does</h2>
@@ -65,7 +65,7 @@
   <p>Our receiver picks the biggest M that keeps the new rate at least <b>1.5 times the width</b> of the signal it's keeping. The extra half leaves room for the filter's edge (chapter 6: no filter is a perfect rectangle) so that whatever folds in lands in the margin, not on the station. It also never goes below 48 000 samples per second, the rate sound cards like, so the audio step later has an easy job:</p>
   <ul>
     <li><b>Broadcast FM</b> (200 kHz wide) at 2.4 MS/s: keep every 8th → 300 000 samples per second.</li>
-    <li><b>Narrow FM, AM, single sideband</b> (3–12.5 kHz wide): keep every 50th → 48 000 per second.</li>
+    <li><b>Narrow FM, AM, single sideband</b> (chapter 10's modes, 3–12.5 kHz wide): keep every 50th → 48 000 per second. In the code below, USB and LSB are upper and lower sideband, nothing to do with the USB cable.</li>
   </ul>
   <p>From here on, the receiver works on 8 to 50 times fewer numbers than the dongle delivered.</p>
 

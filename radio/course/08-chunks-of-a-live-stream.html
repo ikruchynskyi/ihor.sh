@@ -25,7 +25,7 @@
 
   <!-- 1 -->
   <h2 id="hear">Hear the problem</h2>
-  <p>Below is a pretend FM station playing a steady tone, run through the receiver's real steps (mixer, filter + decimator, FM demodulator, audio filter) chunk by chunk. Choose which step <b>forgets</b> what it was doing at the end of each chunk, and look at, then listen to, the result:</p>
+  <p>Below is a pretend FM station playing a steady tone, run through the receiver's real steps (mixer, filter + decimator, FM demodulator from chapter 9, audio filter) chunk by chunk. Choose which step <b>forgets</b> what it was doing at the end of each chunk, and look at, then listen to, the result:</p>
 
   <div class="scene" id="s-chunks">
     <div class="controls">
@@ -33,7 +33,7 @@
         <option value="none">nothing (the right way)</option>
         <option value="mixer">the mixer's angle</option>
         <option value="filter" selected>the filters' history</option>
-        <option value="demod">the demodulator's previous sample</option>
+        <option value="demod">the demodulator's previous sample (chapter 9)</option>
         <option value="all">everything</option>
       </select></label>
       <label for="ck-ms">Chunk length <input id="ck-ms" type="range" min="2" max="60" step="1" value="8"><output id="ck-mso"></output></label>
@@ -94,7 +94,7 @@ buf.set(this.hist); buf.set(x, this.hist.length);            // old tail + new c
 // … compute outputs at positions next, next + m, next + 2m, … …
 this.next += count * m - n;                                  // where the next kept sample falls in the next chunk
 this.hist = buf.slice(buf.length - this.hist.length);        // keep the new tail</code></pre>
-  <p>The FM demodulator remembers the previous sample (<code>pi</code>, <code>pq</code>). The test that proves it all works, from <code>src/dsp.test.ts</code>:</p>
+  <p>The FM demodulator (chapter 9) remembers the previous sample (<code>pi</code>, <code>pq</code>). The test that proves it all works, from <code>src/dsp.test.ts</code>:</p>
 <pre><code>const whole = new Receiver(fs, 200e3, mode, bw).process(iq).audio;
 const r = new Receiver(fs, 200e3, mode, bw);
 for (let s = 0; s &lt; iq.length; s += 2 * 12_345) parts.push(...r.process(iq.subarray(s, s + 2 * 12_345)).audio);

@@ -19,7 +19,7 @@
     </ul>
   </div>
 
-  <p>After chapter 5, the station you want sits in the middle of the band, at 0. But its neighbors are still there on both sides, and when we extract the sound (chapter 9) they'd come out as noise and crosstalk. We need a way to <b>keep what's near 0 and remove everything else</b>.</p>
+  <p>After chapter 5, the station you want sits in the middle of the band, at 0. But its neighbors are still there on both sides, and when we extract the sound (chapter 9) they'd come out as noise and <b>crosstalk</b> (another station's sound leaking into yours). We need a way to <b>keep what's near 0 and remove everything else</b>.</p>
   <p>That's a <b>filter</b>, and the surprising thing is how simple the basic idea is: <b>averaging</b>. You've done it a hundred times without calling it filtering.</p>
 
   <!-- 1 -->
@@ -70,7 +70,7 @@
   </div>
 
   <ul>
-    <li><b>Plain average:</b> the bumpy response from the previous section. Notice you can't choose what to keep: the "Keep" slider does nothing, because a plain average's passband is fixed by its length.</li>
+    <li><b>Plain average:</b> the bumpy response from the previous section. Notice you can't choose what to keep: the "Keep" slider does nothing, because a plain average's <b>passband</b> (the range of frequencies it lets through) is fixed by its length.</li>
     <li><b>Triangle:</b> fade the weights in and out. Smoother edges in the weights give smaller bumps in the response, but the cutoff is still fixed by the length.</li>
     <li><b>Sinc, chopped:</b> what we actually want is a response shaped like a <b>rectangle</b>: everything inside ±"Keep" passes untouched, everything outside is removed. The weights whose winding gives a rectangle follow a curve called the <b>sinc</b>, sin(x)/x: a central hump with ripples dying away on both sides. Now the "Keep" slider works. But we had to chop the sinc off at some point, and that sudden edge brings ripples back (the same edge problem as chapter 4's window, <a class="back" href="./04-winding-machine.html#window">↩</a>).</li>
     <li><b>Sinc × window:</b> fade the chopped sinc's ends smoothly to zero. The cutoff stays where you put it, and the leftovers drop to about 1/1000 of the arrow's length (−60 dB). This is the <b>windowed-sinc</b> filter, and it's what this site's receiver uses.</li>
@@ -94,7 +94,7 @@
   <!-- lab -->
   <h2 id="lab">Lab: remove the neighbors from a real station</h2>
   <div class="lab">
-    <p>Your chosen station, centered (chapter 5), then filtered. Make the passband narrower and wider and watch the neighbors and the HD Radio sidebands disappear.</p>
+    <p>Your chosen station, centered (chapter 5), then filtered. Make the passband narrower and wider and watch the neighbors and the HD Radio sidebands (chapter 10) disappear.</p>
     <div class="scene" id="s-lab">
       <div class="controls">
         <label for="lf-c">Keep <input id="lf-c" type="range" min="20" max="250" step="10" value="100"><output id="lf-co"></output></label>
@@ -104,7 +104,7 @@
     <ol>
       <li>At ±100 kHz the station's analog hump survives, while its HD Radio rectangles (which start about 130 kHz from the center) are cut away.</li>
       <li>Shrink to ±50 kHz: you start cutting into the station itself. Its music would lose its loud passages (chapter 9 explains why FM needs its full width).</li>
-      <li>Open up to ±250 kHz: now the HD Radio sidebands are kept too, and so is part of the next station.</li>
+      <li>Open up to ±250 kHz: now the HD Radio sidebands (chapter 10) are kept too, and so is part of the next station.</li>
     </ol>
   </div>
 

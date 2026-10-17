@@ -88,9 +88,9 @@
   <ul>
     <li><b>Stereo FM.</b> Lock onto the 19 kHz pilot (a phase-locked loop: chapter 12's idea, in software), double it to 38 kHz, use it to shift the stereo band down (chapter 5), and add and subtract with the mono signal (<a class="back" href="./09-fm-listening-to-the-speed.html#mpx">↩ ch. 9</a>).</li>
     <li><b>RDS.</b> The station name and song title at 57 kHz: slow digital data (1187.5 bits per second). Your first digital demodulator.</li>
-    <li><b>Aircraft tracking (ADS-B).</b> Planes broadcast their position at 1090 MHz in bursts of on/off pulses. No audio at all: just find the pulses, decode the bits, check the checksum, and put dots on a map.</li>
+    <li><b>Aircraft tracking (ADS-B).</b> Planes broadcast their position at 1090 MHz in bursts of on/off pulses. No audio at all: just find the pulses, decode the bits, check the checksum (chapter 22), and put dots on a map.</li>
     <li><b>APRS.</b> Ham radio position reports at 144.39 MHz: tones that encode bits (AFSK), like an old modem.</li>
-    <li><b>Weather satellites.</b> Meteor-M satellites send pictures at 137 MHz as they pass overhead; you'll need to track the satellite and correct for its motion (Doppler: chapter 5's mixer, with a frequency that changes).</li>
+    <li><b>Weather satellites.</b> Meteor-M satellites send pictures at 137 MHz as they pass overhead; you'll need to track the satellite and correct for its motion (Doppler, chapter 21: chapter 5's mixer, with a frequency that changes).</li>
     <li><b>A public WebSDR.</b> This site's server, sending each listener only their slice (<a class="back" href="./15-the-network-source.html#bandwidth">↩ ch. 15</a>).</li>
   </ul>
   <p>For more depth: <a href="https://pysdr.org">PySDR</a> (free, the same ideas in Python), Richard Lyons' <em>Understanding Digital Signal Processing</em> (the intuition book), and Johnson, Sethares and Klein's <em>Software Receiver Design</em> (builds a full digital receiver). The <a href="../build.html">build guide</a> is the reference for writing your own app for your own dongle; <a href="../examples/hello-dongle.html">Hello, dongle</a> is an 80-line starting point.</p>

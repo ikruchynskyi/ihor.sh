@@ -145,7 +145,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <p>From this chapter on, every idea ends as code: the real lines that run the receiver on this site.</p>
-  <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes from 0 to 255, alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1 (<code>src/iq.ts</code>):</p>
+  <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes, whole numbers from 0 to 255 (chapter 3 explains why), alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1 (<code>src/iq.ts</code>):</p>
 <pre><code>for (let i = 0; i &lt; out.length; i++) out[i] = (u[i] - 127.5) / 127.5;
 // out = [I0, Q0, I1, Q1, I2, Q2, …]: one arrow per pair</code></pre>
   <p><b>Multiplying arrows.</b> Here is the heart of the receiver's mixer (<code>src/dsp.ts</code>), which you'll meet properly in chapter 5. For every incoming arrow (<code>iq[k]</code>, <code>iq[k+1]</code>) it multiplies by a spinning arrow (<code>c</code>, <code>s</code>), using exactly the formula above with a = I, b = Q, c = cos, d = sin:</p>

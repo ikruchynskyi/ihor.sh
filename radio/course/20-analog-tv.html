@@ -77,7 +77,7 @@
 
   <!-- 5 -->
   <h2 id="comb">Separating brightness and color: the comb</h2>
-  <p>Brightness and color are added together in one signal. How does the receiver pull them apart? Because the color wiggle flips each line and the picture usually doesn't change much from one line to the next, two neighboring lines added together cancel the color and keep the brightness; subtracted, they cancel the brightness and keep the color. It's called a <b>comb filter</b>: its frequency response has teeth at exactly the subcarrier's harmonics.</p>
+  <p>Brightness and color are added together in one signal. How does the receiver pull them apart? Because the color wiggle flips each line and the picture usually doesn't change much from one line to the next, two neighboring lines added together cancel the color and keep the brightness; subtracted, they cancel the brightness and keep the color. It's called a <b>comb filter</b>, because its frequency response is a row of teeth, one every 15.7 kHz (the line rate). A picture that changes little from line to line puts the brightness's energy at whole-number multiples of the line rate, its <b>harmonics</b> (like chapter 10's overtones); the color, flipped on every line, sits exactly halfway between them. The comb's teeth land on one set and its gaps on the other.</p>
   <div class="scene" id="s-comb">
     <p class="readout" id="r-comb" aria-live="polite"></p>
   </div>
