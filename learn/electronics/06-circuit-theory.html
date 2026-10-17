@@ -128,12 +128,20 @@ print("v1 =", v[0].toFixed(4), "V   v2 =", v[1].toFixed(4), "V");
     <div class="why">Maximum power transfer: \(R_L = R_{th}\). That's why radio gear is "50 Ω everywhere" (radio course, chapter 12).</div>
   </div>
 
+  <p class="gist">Seen from two terminals, any circuit of sources and resistors is one battery with one resistor in series: measure the open-circuit voltage and the short-circuit current, and you know it.</p>
+
   <h2>5. Superposition: one source at a time</h2>
   <p>In a circuit of resistors (linear parts), the effect of several sources is the sum of each one's effect alone, with the others turned off (voltage sources replaced by wires; current sources, parts that push a fixed current whatever the voltage, by gaps). It's why you can think about a signal and its DC bias separately: an amplifier's input is "1.65 V of DC plus a small audio wave", and each can be analyzed on its own.</p>
   <div class="q" data-num="7" data-unit="V">
     <p>Two equal resistors from a +10 V source and a +4 V source meet at a middle point. With only the 10 V source (4 V replaced by a wire) the middle is at 5 V; with only the 4 V one, 2 V. What's the middle voltage with both?</p>
     <div class="why">\(5 + 2 = 7\) V, the average of 10 and 4, as you'd expect for equal resistors.</div>
   </div>
+
+  <details class="deeper"><summary>Where it breaks: add a diode and the sums stop working</summary>
+    <p>Superposition, and Thevenin too, need every part to be linear: twice the voltage, twice the current. A diode isn't (chapter 4). Put a 1 kΩ resistor and a silicon diode in series, and drive them with a 1 V battery, then a 2 V one, then both in series (3 V). The course's solver gives:</p>
+    <ul><li>1 V alone: 0.37 mA</li><li>2 V alone: 1.34 mA</li><li>both, 3 V: 2.32 mA, not the 0.37 + 1.34 = 1.71 mA superposition predicts</li></ul>
+    <p>The 1 V battery on its own barely gets past the diode's 0.6 V knee; added on top of 2 V, the whole extra volt goes into the resistor. With two plain resistors (2 kΩ in total) the sums would be exact: 0.5 + 1.0 = 1.5 mA. This is why the simulator can't solve a circuit with diodes in one step and repeats its linear solve (section 3), and why amplifier designers analyze small wiggles around a fixed operating point, where a curve looks almost straight.</p>
+  </details>
 
   <h2>6. AC: waves are spinning arrows</h2>
   <p>For a sine wave, Ohm's law needs one more idea: <b>timing</b>. In a capacitor, current flows most while the voltage is changing fastest, so the current wave peaks a quarter cycle <em>before</em> the voltage wave. The trick (the same one the <a href="/radio/course/01-spinning-arrows.html">radio course</a> starts with) is to draw each wave as an arrow spinning around a circle: the wave is its shadow, and timing differences are just angles between arrows. Below, an RC low-pass filter: the resistor's and capacitor's voltages are arrows at right angles, and they add like the sides of chapter 2's right triangle to make the input.</p>

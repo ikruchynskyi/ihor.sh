@@ -46,6 +46,21 @@
     <div class="why">\((9 - 2)\,\text{V} / 1000\,Ω = 7\) mA. And the resistor's voltage is the other 7 V: the meter readings agree with each other, which is the best check that you measured right.</div>
   </div>
 
+  <p class="gist">Voltage across a part, current through it in series, resistance with the power off; then check that the readings agree with each other.</p>
+  <details class="deeper"><summary>Why does an ammeter across a battery blow its fuse?</summary>
+    <ol>
+      <li>On its current range the meter is a 0.1 Ω shunt: nearly a wire.</li>
+      <li>Across a 9 V battery, the only other resistance in the loop is the battery's own, about 1.5 Ω (chapter 5).</li>
+      <li>So \(I = 9 / (1.5 + 0.1) \approx 5.6\) A flows, while the fuse on a meter's milliamp range is usually rated for a fraction of an amp.</li>
+      <li>The fuse melts, which is its job: without it the shunt or the probes would. A lithium cell, with far less resistance inside, pushes far more.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: the meter becomes part of the circuit</summary>
+    <p>"The 10 MΩ input barely disturbs anything" holds only while the circuit's own resistances are much smaller. The meter sits in parallel with what it measures, which is chapter 1's loaded divider. Measure the middle of a divider of two equal resistors on 9 V; it should read 4.5 V:</p>
+    <ul><li>two 10 kΩ: the meter reads 4.498 V, fine</li><li>two 1 MΩ: 4.29 V, 5% low</li><li>two 10 MΩ: 3.00 V, a third low, because the meter in parallel turns the bottom 10 MΩ into 5 MΩ</li></ul>
+    <p>If a reading looks wrong in a high-resistance circuit, the meter may be the cause. Compare the resistances before you trust the number.</p>
+  </details>
+
   <h2>3. Soldering: heat the joint, not the solder</h2>
   <p>Solder is a metal alloy that melts at a low temperature: lead-free SAC305 at about 217 °C, the old tin-lead 63/37 at 183 °C. It only bonds to metal that is itself above that temperature, which is why you touch the iron to the pad <em>and</em> the lead together, wait a second or two for them to heat, and feed the solder into the joint (not onto the iron). The flux inside the solder cleans the metal as it melts. Good: a shiny, concave cone, like a little volcano. Bad: a ball sitting on top (a <b>cold joint</b>, the solder never wet the pad), or a pad cooked so long it lifts off the board.</p>
   <canvas id="c3" width="800" height="260" aria-label="A soldering joint heating up: pad temperature, iron and solder"></canvas>

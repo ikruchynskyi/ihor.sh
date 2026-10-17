@@ -63,6 +63,11 @@ for (const t of [1, 2, 3, 5]) print(`t = ${t} s: simulated ${v[Math.round(t / dt
 </textarea></div>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> make the capacitor reach 63% in exactly 1 second (τ = 1 s, within 5%).</p>
 
+  <p class="gist">A capacitor fills like a bucket through a pipe: fast at first, slower as it fills, and \(R \times C\) seconds sets the pace.</p>
+  <details class="deeper"><summary>Where it breaks: "full after 5τ" isn't full enough for a chip</summary>
+    <p>After 5τ the capacitor is 99.3% full, still 0.67% short. For your eye that's full. For chapter 1's 12-bit ADC, which splits 3.3 V into 4,096 steps, 0.67% is about 27 steps of error. To get within one step, the gap \(e^{-t/\tau}\) has to shrink below \(1/4096\), which takes \(t = \tau \ln 4096 \approx 8.3\,\tau\). That's why ADC datasheets give a minimum sampling time, and why a sensor with a big resistance in front of an ADC reads wrong if the chip samples too quickly: it takes its reading before the ADC's own small capacitor has finished filling.</p>
+  </details>
+
   <h2>2. Running on stored charge</h2>
   <p>The battery fills a big capacitor, which also feeds an LED through a resistor. Now <b>unplug the battery</b>: the LED keeps glowing on the stored charge, then fades as the bucket empties.</p>
   <canvas id="c2" width="800" height="400" aria-label="A capacitor keeping an LED lit after the battery is unplugged"></canvas>

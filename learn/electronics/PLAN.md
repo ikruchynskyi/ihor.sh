@@ -35,7 +35,14 @@ answers, a gist per core idea, optional "Why …?" and "Where it breaks" boxes. 
 - Truth: the ch4 §5 numbers come from `circuit.js` (9 V, 1 kΩ, 47 kΩ, 2N3904 is 6.7e-15, β 200): active from
   about 0.6 to 2.7 V in, gain about −4 around 1.6 V, saturated at 3.3 V in with 0.17 V left across it.
 
-## Track B: depth and intuition (planned)
-- Gap: no chapter has a gist; ch12–16 have no deeper box at all, and most chapters' boxes are formula derivations
-  with no "Where it breaks". Plan: one gist per chapter after the section where its idea is seen; a "Where it breaks"
-  box (numbers from code) where the chapter has none; a "Why" box where no reason is given yet. Not started.
+## Track B: depth and intuition (built 2026-10-17)
+- Gap: no chapter had a gist; ch12–16 had no deeper box at all; most boxes were derivations with no limits.
+- Built: one gist per chapter, after the section where its idea has been seen. "Where it breaks" boxes where a chapter
+  had no limits yet: ch2 (5τ vs a 12-bit ADC: τ ln 4096 ≈ 8.3τ), ch4 (β 100–300), ch6 (a diode breaks
+  superposition: 0.37 + 1.34 ≠ 2.32 mA), ch12 (ripple carry), ch13 (UART clocks may differ by 0.5/9.5 ≈ 5.3%), ch15
+  (a 10 MΩ meter on a 10 MΩ divider reads 3.00 V, not 4.5), ch16 (√2 is only for sines: a square wave gives 19.8 W, not 9.9).
+  "Why" boxes where no reason was given: ch4 (gain ≈ −βR_load/R_base), ch14 (ω ≈ V/k), ch15 (an ammeter across a battery,
+  5.6 A), ch16 (RMS from the average of sin²). Chapters that already explain their limits (ch1 loading and the LED, ch3
+  losses, ch5, ch7 §7, ch8 stacked stages, ch9 RC vs crystal, ch10 dropout and discontinuous mode, ch11 ADC steps) got
+  only a gist.
+- Truth: solver numbers from circuit.js (2N3904 and silicon diode models); the rest is arithmetic shown in the box.

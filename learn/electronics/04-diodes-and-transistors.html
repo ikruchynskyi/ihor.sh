@@ -128,6 +128,7 @@ plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000
     <li><b>Saturated</b> (above about 2.7 V): the 1 kΩ load can't pass more than 9 mA, so more base current changes nothing. About 0.2 V is left across the transistor: a closed switch, and cool again.</li>
   </ul>
   <p>A MOSFET has the same middle region (section 4's half-on), set by its gate voltage instead of a base current. Switching circuits (logic, PWM, motors) live at the two ends, where nothing gets hot; amplifiers, linear regulators and oscillators live in the middle and pay for it in heat. A <b>PNP</b> transistor is the BJT's mirror image, turned on by pulling its base below its emitter.</p>
+  <p class="gist">A transistor is a valve worked by a small signal. Fully on or fully off, it's a switch that stays cool; in between, it's an amplifier that copies a small wiggle as a big one, and it gets warm.</p>
   <p class="goal" id="g5">🎯 <b>Challenge:</b> with the ±0.8 V wiggle, find an input where the output swings its full 3 V or more both ways, without either tip being flattened (clipped).</p>
   <details class="deeper"><summary>Why is the gain about 4?</summary>
     <ol>

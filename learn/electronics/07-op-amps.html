@@ -69,6 +69,8 @@ table(rows);
 print("At 1.2 V the output wants −12 V but the rails stop it at −10.5 V, and rule 1 breaks: V− is no longer 0.");
 </textarea></div>
 
+  <p class="gist">With negative feedback, an op-amp moves its output until its two inputs are equal, so the resistors around it, not the op-amp, set the gain.</p>
+
   <h2>3. Non-inverting, and the buffer</h2>
   <p>Feed the signal to the + input instead and put the divider in the feedback: the output stays the right way up, and the input draws no current at all. Gain:</p>
   <p class="formula">\[ V_{out} = \left(1 + \frac{R_f}{R_g}\right) V_{in} \]</p>

@@ -60,6 +60,8 @@
     <div class="why">\(D = 3.3/12 = 0.275\). The chip's own feedback loop sets it, and keeps adjusting as the input and load change.</div>
   </div>
 
+  <p class="gist">A linear regulator burns the extra voltage as heat, so its efficiency is \(V_{out}/V_{in}\); a switching regulator chops and smooths, and passes nearly all the power through.</p>
+
   <h2>3. A boost converter: more volts out than in</h2>
   <p>Rearrange the same parts: the switch now shorts the coil to ground, storing energy; when it lets go, the coil's current has to keep flowing and forces itself through the diode into the output at a higher voltage, chapter 3's flyback spike, harnessed. That's how one AA cell runs a 5 V USB gadget, and how LED drivers make 30 V.</p>
   <p class="formula">\[ V_{out} = \frac{V_{in}}{1 - D} \qquad (\text{ideal}) \]</p>

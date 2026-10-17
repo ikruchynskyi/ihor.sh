@@ -108,6 +108,12 @@ plot(tx.slice(0, 200), { label: "first 200 samples" });
 // Try: replace vote(s, c) with a single sample s[c] and run it a few times: noise starts flipping letters.
 </textarea></div>
 
+  <details class="deeper"><summary>Where it breaks: two clocks that disagree</summary>
+    <p>With no clock wire, the receiver times every bit with its own clock and hopes it matches the sender's. It resyncs only at each start bit, then samples in the middle of each bit time. Any mismatch piles up across the frame:</p>
+    <ol><li>The last sample, the stop bit's, lands 9.5 bit times after the start bit's falling edge.</li><li>It still reads the right bit as long as it's off by less than half a bit.</li><li>So the two clocks may disagree by at most \(0.5 / 9.5 \approx 5.3\%\) in total, before counting how sharp the edges are.</li></ol>
+    <p>A microcontroller running from a crystal is off by thousandths of a percent (chapter 9's 20 ppm is 0.002%), no problem at all. One timed by its built-in RC oscillator is far less exact, and drifts as it warms (chapter 9 again); past the limit, a serial monitor prints garbage: the same bits, sampled at the wrong moments. The fix is a crystal, or a bus with a clock wire.</p>
+  </details>
+
   <h2>5. I²C: many chips on two shared wires</h2>
   <p>Sensors (temperature, pressure, accelerometers) usually speak <b>I²C</b>: one clock line SCL and one data line SDA, shared by up to ~100 devices, each with a 7-bit address. The controller starts a message with a <b>start condition</b> (SDA falls while SCL is high), clocks out the address and a read/write bit, and the device that recognizes its address pulls SDA low for one bit: the <b>ACK</b>. Then bytes follow, each acknowledged, and a <b>stop condition</b> (SDA rises while SCL is high) ends it. Data only changes while SCL is low; a change while it's high is a start or stop.</p>
   <canvas id="c5" width="800" height="230" aria-label="An I2C write: start, address, R/W, ACK, data byte, ACK, stop"></canvas>
@@ -140,6 +146,7 @@ const clocks = msg.filter((b) => b !== "S" && b !== "P").length;
 print(`${clocks} clock pulses; at 100 kHz that's ${(clocks / 100).toFixed(2)} ms`);
 </textarea></div>
 
+  <p class="gist">A pin is a bit in memory, and a bus is an agreement about when each bit is valid: UART by an agreed speed, I²C and SPI by a clock wire.</p>
   <p>The site's own radio dongle is the extreme case of all this: its tuner chip is set up over I²C, and samples stream over USB, which the <a href="/radio/course/13-usb-from-zero.html">radio course</a> decodes from zero. Next: <a href="./14-motors.html">motors</a>, where PWM gets to push something.</p>
   <p class="muted">Previous: <a href="./12-gates-to-a-computer.html">From gates to a computer</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
 </main>

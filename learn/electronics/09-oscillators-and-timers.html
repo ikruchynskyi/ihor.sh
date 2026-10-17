@@ -76,6 +76,8 @@ for (const [f, D, C] of [[1, 0.55, 10e-6], [1000, 0.6, 10e-9], [38000, 0.5001, 1
 // The 38 kHz line is an infrared remote's carrier: duty ≈ 50% needs R1 ≪ R2.
 </textarea></div>
 
+  <p class="gist">An oscillator is feedback that comes back in step and at least as strong as it left. In a 555 that loop is a capacitor charging between ⅓ and ⅔ of the supply, so R and C alone set the rhythm.</p>
+
   <h2>3. The 555 as a one-shot</h2>
   <p>Wired differently (monostable), the 555 waits. A short low pulse on the trigger pin starts it: the output goes high, the capacitor charges through R from 0 to ⅔, and then the output drops and stays low until the next trigger. It turns a quick button press into a clean pulse of a set length.</p>
   <canvas id="c3" width="800" height="300" aria-label="555 one-shot: trigger, capacitor, output"></canvas>

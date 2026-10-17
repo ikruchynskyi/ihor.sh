@@ -92,6 +92,12 @@ const bits = (n) => [0, 1, 2, 3].map((i) => (n >> i) & 1), num = (b) => b.reduce
 for (const [x, y] of [[5, 3], [9, 6], [15, 1], [7, 7]]) { const r = add4(bits(x), bits(y)); print(`${x} + ${y} = ${num(r.bits) + 16 * r.carry}  (4 bits: ${num(r.bits)}, carry out ${r.carry})`); }
 </textarea></div>
 
+  <details class="deeper"><summary>Where it breaks: the carry has to ripple</summary>
+    <p>The adder above looks instant, but a real gate isn't: its output changes a moment after its inputs, because its transistors have to charge the next gate's input, a small capacitor (chapter 2). Call one full adder's carry delay \(d\). The fourth column can't know its carry-in until the third has finished, which waits for the second, and so on: the carry ripples along the chain.</p>
+    <ul><li>4 bits: the last sum is ready after about \(4d\).</li><li>64 bits, like a modern CPU's registers: about \(64d\), sixteen times longer, and the clock can't tick until it's done.</li></ul>
+    <p>Your challenge above, every carry lit at once, is exactly this worst case. Real processors use carry-lookahead adders, which work out the carries for a group of columns side by side with extra gates, so the delay grows far more slowly than the number of bits.</p>
+  </details>
+
   <h2>5. A circuit that remembers</h2>
   <p>Loop two NAND gates into each other and something new happens: the circuit holds its state after you let go. Press <b>Set</b> and Q becomes 1 and stays 1; press <b>Reset</b> and it becomes 0 and stays. That's one bit of memory, an <b>SR latch</b>. Add a gate so it only listens when a clock ticks, and it's a <b>flip-flop</b>, the building block of registers and counters.</p>
   <canvas id="c5" width="800" height="260" aria-label="An SR latch from two cross-coupled NAND gates"></canvas>
@@ -101,6 +107,8 @@ for (const [x, y] of [[5, 3], [9, 6], [15, 1], [7, 7]]) { const r = add4(bits(x)
     <p>Why does the latch keep its value when both buttons are released?</p>
     <div class="why">Each gate's output is the other's input. With Q = 1, the lower gate sees 1 and outputs Q̄ = 0, which keeps the upper gate's output at 1: they hold each other up. The loop is stable in two states, and whichever one you last pushed it into is where it stays. That feedback (chapter 9's idea, with a decision instead of an oscillation) is what memory is.</div>
   </div>
+
+  <p class="gist">Gates combine 1s and 0s by fixed rules; loop a gate's output back into its input and the circuit remembers.</p>
 
   <h2>6. Counting</h2>
   <p>A flip-flop wired to flip on every clock tick divides the frequency by two. Feed its output to a second one, which flips half as often, and so on. Read the outputs together and they count in binary. Chapter 9's watch divided 32,768 Hz by 2 fifteen times exactly this way.</p>

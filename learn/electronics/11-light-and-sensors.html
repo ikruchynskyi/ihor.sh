@@ -75,6 +75,8 @@ for (const n of [3500, 2900, 2048, 1200, 400]) print(`ADC ${n} → ${celsius(n).
 print("one count at 25 °C ≈", (celsius(2047) - celsius(2048)).toFixed(3), "°C");
 </textarea></div>
 
+  <p class="gist">A sensor reading is a chain: the world changes a resistance or a current, a circuit turns that into a voltage, the ADC turns the voltage into a number, and code undoes each step to get back to the world.</p>
+
   <h2>4. How fine can an ADC see?</h2>
   <p>An ADC with \(N\) bits splits its range into \(2^N\) steps, so every voltage gets rounded to the nearest step, exactly as the radio course's 8-bit dongle does with radio samples. Slide the bits and watch the staircase approach the real curve.</p>
   <canvas id="c4" width="800" height="280" aria-label="A smooth signal and its ADC staircase for a chosen number of bits"></canvas>

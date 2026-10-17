@@ -83,6 +83,8 @@ plot(v.slice(0, 400).map((y, k) => [k * dt * 1e6, y]), { label: "capacitor volta
 </textarea></div>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> make it ring at exactly 1 swing per second (1.00 Hz, within 3%).</p>
 
+  <p class="gist">A coil keeps current flowing and a capacitor keeps voltage steady; joined, they trade energy back and forth at one frequency, \(1/(2\pi\sqrt{LC})\).</p>
+
   <h2>3. Tuning a radio</h2>
   <p>Now three "stations" arrive at once, mixed together as they would be on an antenna. A coil and a capacitor in series only let through frequencies near their own ringing frequency. Turn the capacitor, the tuning knob of every old radio, and pick one station out. (Everything here is scaled down 1000×, AM's 540–1600 kHz to 540–1600 Hz, so the waves fit on the screen.)</p>
   <canvas id="c3" width="800" height="400" aria-label="Three stations through a tuned circuit: input, output and station strengths"></canvas>

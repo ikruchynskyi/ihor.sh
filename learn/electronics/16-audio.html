@@ -43,6 +43,8 @@
     <div class="why">\(1 / 0.01 = 100\), and \(20 \log_{10} 100 = 40\) dB. Two ×10 steps, 20 dB each.</div>
   </div>
 
+  <p class="gist">Sound's chain is pressure to millivolts to volts to current to pressure. Each stage's gain adds up in decibels, and every flaw is the copy not being exact.</p>
+
   <h2>3. Amplifier classes, drawn and played</h2>
   <p>The output stage has to push real current into a speaker, and the ways of doing it trade quality against heat:</p>
   <ul>
@@ -68,6 +70,18 @@
   <div class="row"><label>peak voltage <input type="range" id="sv" min="0" max="20" step="0.1" value="6"> <span id="svv"></span></label><label>impedance <select id="sz"><option>4</option><option selected>8</option></select> Ω</label></div>
   <p class="readout" id="o4"></p>
   <p class="formula">\[ P = \frac{V_\text{rms}^2}{R}, \qquad V_\text{rms} = \frac{V_\text{peak}}{\sqrt{2}} \]</p>
+  <details class="deeper"><summary>Why divide by √2?</summary>
+    <ol>
+      <li>At each instant a resistor turns \(v^2/R\) into heat. For a sine, \(v = V_\text{peak}\sin\theta\), where \(\theta\) is the spinning arrow's angle (chapter 6), so the power swings between zero and \(V_\text{peak}^2/R\).</li>
+      <li>What heats the coil and moves the air is the average power over a cycle, so we need the average of \(\sin^2\theta\).</li>
+      <li>An arrow of length 1 casts shadows \(\cos\theta\) and \(\sin\theta\) on two walls at right angles (chapter 6), so \(\sin^2\theta + \cos^2\theta = 1\) at every instant (chapter 2's right triangle).</li>
+      <li>Over a whole cycle, \(\sin^2\) and \(\cos^2\) are the same wave shifted by a quarter turn, so they have the same average. Two equal averages that add to 1 are ½ each.</li>
+      <li>Average power is \(V_\text{peak}^2 / 2R = (V_\text{peak}/\sqrt2)^2 / R\). The RMS voltage is the steady voltage that would heat the resistor just as much.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks: √2 is only for sines</summary>
+    <p>A square wave spends all its time at ±peak, so its RMS is the peak itself. At the same 12.6 V peak into 8 Ω, a sine delivers \(12.6^2 / (2 \times 8) \approx 9.9\) W and a square wave \(12.6^2 / 8 \approx 19.8\) W, twice as much. An amplifier that clips hard (section 3) flattens its sine toward a square, so it pushes more power into the speaker than its sine rating suggests, much of it at the high harmonics a square wave is made of. RMS is still the right idea; only the √2 changes with the shape.</p>
+  </details>
   <div class="q" data-num="8.94" data-tol="0.05">
     <p>What RMS voltage drives an 8 Ω speaker at 10 W?</p>
     <div class="why">\(V = \sqrt{P R} = \sqrt{80} \approx 8.94\) V RMS, a 12.6 V peak, so the amplifier's supply has to be at least ±13 V (or 26 V for a bridged class D). Doubling the loudness you hear takes about ten times the power.</div>

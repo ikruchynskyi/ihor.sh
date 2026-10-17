@@ -40,6 +40,17 @@
     <div class="why">\(6 / 2 = 3\) A, maybe ten times its running current. That's what the driver, the battery and the wires must survive at every start (a motor starts from standstill, so it starts at stall current) and why a stuck motor overheats: all that current goes into heating the winding.</div>
   </div>
 
+  <p class="gist">A motor's current is whatever its back-EMF leaves over, \((V - k\omega)/R\): small while it spins freely, largest when it's stalled.</p>
+  <details class="deeper"><summary>Why does an unloaded motor's speed follow the voltage?</summary>
+    <ol>
+      <li>Unloaded, the motor only has to beat a little friction, so it needs almost no torque.</li>
+      <li>Torque is \(k I\), so almost no current flows: \(I \approx 0\).</li>
+      <li>Then \(V - k\omega \approx 0\): the back-EMF has risen until it nearly matches the supply.</li>
+      <li>So \(\omega \approx V / k\). For this page's motor, \(k = 0.01\) V·s/rad: at 6 V, 600 rad/s, which is \(600 \times 60 / 2\pi \approx 5{,}700\) rpm.</li>
+      <li>Halve the voltage and the speed halves. That's why PWM (section 3), which sets an average voltage, sets the speed.</li>
+    </ol>
+  </details>
+
   <h2>2. The H-bridge</h2>
   <p>To run a motor both ways you need to swap which terminal is positive. Four switches (MOSFETs, chapter 4) in an "H" do it: close the top-left and bottom-right and current flows left to right through the motor; close the other diagonal and it flows right to left. Close both bottoms and the motor's terminals are shorted together: its own back-EMF drives a current that brakes it hard. Close two switches on the <em>same side</em> and you've connected the supply straight to ground: <b>shoot-through</b>, which in real life means smoke. Driver chips (L298, DRV8833, TB6612) contain the four switches plus the logic that makes shoot-through impossible.</p>
   <canvas id="c2" width="800" height="330" aria-label="An H-bridge with four switches and a motor"></canvas>
