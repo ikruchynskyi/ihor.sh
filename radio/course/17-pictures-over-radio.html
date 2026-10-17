@@ -36,6 +36,18 @@
 
   <p>That's all SSTV is, repeated for every row: about 240 to 500 rows, each taking a tenth of a second to half a second, so a picture takes from 36 seconds to three minutes. Because only the pitch matters, not the loudness, the signal survives fading, just like FM (<a class="back" href="./09-fm-listening-to-the-speed.html#demod">↩ ch. 9: only the angle matters</a>). In fact, SSTV is usually sent <em>over</em> FM: the radio's FM demodulator gives you the tones, and the SSTV decoder then measures their pitch.</p>
   <p class="gist">SSTV turns each pixel's brightness into a tone's pitch, line by line. The decoder measures pitch with chapter 9's FM trick and straightens the picture by fitting a line through the sync pulses.</p>
+  <details class="deeper"><summary>Why does fitting a line fix a slanted picture?</summary>
+    <ol>
+      <li>If the sender's clock runs slightly fast, every line is slightly shorter than expected, by the same amount.</li>
+      <li>So the measured start of line n is a + b · n: a straight line, with b the true line length.</li>
+      <li>Each measured sync time is also off by some noise.</li>
+      <li>A straight line fitted through all the sync times averages that noise away: one bad sync barely moves it.</li>
+      <li>Predicting each line's start from the line, not from its own noisy sync, puts every line in the right place.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>One parity bit catches one wrong bit, not two. If noise flips a single bit of the VIS header, the count of 1s turns odd and the decoder ignores the header. If it flips two, the count is even again: the header passes the check and names the wrong mode, and the decoder draws a picture with the wrong line length. Stronger checks (chapter 22's checksum) use many check bits for exactly this.</p>
+  </details>
 
   <!-- 2 -->
   <h2 id="line">Anatomy of a line</h2>

@@ -44,4 +44,19 @@ for (const [esn0, dop] of [[12, 0], [6, 2500], [4, -2000], [2, 1000]] as const) 
 assert.ok(Math.abs(res[6].r.coarseHz - 2500) < 40, "the 4th-power trick finds the Doppler");
 assert.ok(res[12].r.stats.frames >= 25 && res[6].r.stats.frames >= 25 && res[6].psnr > 22);
 assert.ok(res[2].r.stats.frames === 0, "the cliff: too much noise, nothing at all");
+// 5. Bursts ("Where it breaks"): the same number of wrong coded bits, scattered or in a row.
+{
+  let sd = 3; const r = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const m = Uint8Array.from({ length: 2000 }, () => (r() < 0.5 ? 1 : 0)), c = new ConvEncoder().encode(m);
+  const dec = (flip: Set<number>) => { const v = new Viterbi(); for (let i = 0; i < c.length; i += 2) v.push((flip.has(i) ? -1 : 1) * (1 - 2 * c[i]), (flip.has(i + 1) ? -1 : 1) * (1 - 2 * c[i + 1])); v.flush(); return m.reduce((a, b, i) => a + (b !== v.out[i] ? 1 : 0), 0); };
+  for (const len of [6, 16]) {
+    let scattered = 0, burst = 0;
+    for (let t = 0; t < 20; t++) {
+      const s = new Set<number>(); while (s.size < len) s.add(100 + Math.floor(r() * 3600)); scattered += dec(s);
+      const b = new Set<number>(), st = 100 + Math.floor(r() * 3600); for (let i = 0; i < len; i++) b.add(st + i); burst += dec(b);
+    }
+    console.log(`${String(len).padStart(2)} wrong coded bits, 20 tries: scattered → ${scattered} wrong data bits in all, in a row → ${burst}`);
+    assert.ok(scattered === 0 && burst > 10);
+  }
+}
 console.log("all checks passed");

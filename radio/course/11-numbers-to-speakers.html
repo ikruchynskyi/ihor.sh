@@ -89,6 +89,18 @@
   </ul>
   <p>Set the threshold too low and noise gets through; too high and the start of weak messages is cut off. Real radios have a squelch knob for exactly this.</p>
   <p class="gist">Between the demodulator and the speaker: a cushion absorbs two clocks' drift, resampling converts the rate, AGC evens out the volume, and a squelch mutes the empty channel.</p>
+  <details class="deeper"><summary>Why does a tiny clock difference become a glitch?</summary>
+    <ol>
+      <li>The dongle delivers samples at its rate f; the sound card plays them at f · (1 + ε), with ε a few parts per million.</li>
+      <li>After t seconds, the card has played ε · f · t more samples than arrived.</li>
+      <li>That's ε · t seconds of sound, taken from the cushion.</li>
+      <li>At 50 ppm and one hour: 50 × 10⁻⁶ × 3600 s = 0.18 s.</li>
+      <li>A cushion of a few hundred milliseconds therefore runs dry, or overflows, within hours: a glitch, unless the player stretches or squeezes the sound to match.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Straight-line resampling is only good when there are many samples per wave. This chapter's script: with 50 samples per wave the worst error is 0.20%, with 10 it's 4.9%, and with only 4 it's 21%. Speech at a 48 kHz sound card has well over 10 samples per wave for every note that matters, but music's highest notes come close to 4, which is why good players use smoother curves than straight lines.</p>
+  </details>
   <div class="q"><p>Why does the squelch close 3 dB below where it opens, instead of at the same threshold?</p>
     <div class="why">A signal hovering right at one threshold would cross it many times a second, chopping the sound into stutter. With a gap (hysteresis), once open it stays open until the signal clearly drops: the same trick every thermostat uses.</div>
   </div>

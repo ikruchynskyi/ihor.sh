@@ -57,6 +57,18 @@
   </ul>
   <p>The solution is unglamorous and complete: each step is a small object that <b>keeps its memory between calls</b>. Processing a chunk updates the memory; the next call carries on from it. Processing a whole file is then just processing one very big chunk, so a single implementation serves both.</p>
   <p class="gist">Each step of a live receiver keeps a little memory from the previous chunk, so processing in chunks gives exactly the same numbers as processing everything at once.</p>
+  <details class="deeper"><summary>Why must chunked and whole agree exactly, not just closely?</summary>
+    <ol>
+      <li>Every output sample is computed from the same input samples by the same arithmetic.</li>
+      <li>With the memory handled right, the chunked run carries exactly the values the whole run had at each boundary.</li>
+      <li>So each output is the same operations on the same numbers, in the same order.</li>
+      <li>Computer arithmetic, though rounded, rounds the same way every time for the same operations in the same order.</li>
+      <li>So the results are identical bit for bit, and any difference at all proves something at a boundary is wrong.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>"The same order" matters. Chapter 4's FFT and plain winding machine compute exactly the same thing in a different order, and their results differ by 3 millionths (rounding). A receiver that filtered with FFTs in chunks would pass a "close enough" test but not a bit-for-bit one, so its test would have to allow for rounding, and could then miss a small boundary bug.</p>
+  </details>
 
   <div class="q"><p>How would you <em>prove</em> that the memory is handled perfectly, without listening for clicks?</p>
     <div class="why">Feed the same signal both ways, once as one big buffer and once as chunks of an awkward size (say 12 345 samples, so nothing lines up), and compare every output number. They must be <b>identical, bit for bit</b>, not just close. That's the test this site's receiver passes for every mode (see "In code" below).</div>

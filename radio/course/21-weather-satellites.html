@@ -52,6 +52,15 @@
   </div>
   <p>The gray staircase is what was meant (+1 or −1 for each symbol, one shadow only to keep the picture readable); the blue dots are what arrives, eight noisy samples per symbol. Tick <b>Matched filter</b>: the receiver filters with the pulse's own shape as the weights (chapter 6's weighted average). The yellow result is smooth, and at each symbol's middle (the white marks) it lands close to +1 or −1. In this picture the filter improves the signal-to-noise ratio at the middles by about 9 dB, because it collects all eight samples' worth of the symbol instead of one. No other filter can do better on this kind of noise: weighting each moment by how much of the symbol it holds is the best possible. That's why it's called the <b>matched filter</b>.</p>
   <p class="gist">A symbol is one arrow position held for a fixed time. Filtering with the pulse's own shape collects all of its energy before the receiver looks.</p>
+  <details class="deeper"><summary>Why is the matched filter about 9 dB better than one sample?</summary>
+    <ol>
+      <li>Each of the 8 samples across a symbol carries some of the symbol, and each has its own independent noise.</li>
+      <li>Adding 8 samples adds the symbol's parts as numbers: the symbol grows about 8 times.</li>
+      <li>Independent noises add as powers (chapter 3): 8 times the power, √8 times the RMS.</li>
+      <li>So the signal-to-noise ratio grows 8 times: 10 · log₁₀ 8 = 9.0 dB.</li>
+      <li>Weighting by the pulse's shape does this best when the samples hold unequal parts of the symbol. The script measures 8.8 dB.</li>
+    </ol>
+  </details>
 
   <!-- 1c -->
   <h2 id="timing">When to look: the middle of each symbol</h2>
@@ -65,6 +74,9 @@
   <p>This is every symbol's stretch of the filtered signal drawn on top of the others: an <b>eye diagram</b>. Where the eye is open widest, the symbols are clearest; that's the middle. Slide the sampling moment away from it and the signal-to-noise ratio drops fast: a quarter of a symbol off costs about 10 dB here.</p>
   <p>How does the receiver find the middle without knowing the data? <b>Gardner's trick</b> takes one extra sample, halfway between two symbols. When the two symbols differ (+1 then −1), the signal must cross zero exactly halfway. If the halfway sample isn't zero, the receiver is early or late: multiply it by the difference of the two symbols, and the sign of the result says which (positive: early; negative: late). The receiver nudges its sampling clock a little at every symbol, chapter 11's control loop again, this time steering time. When neighboring symbols are the same, the halfway sample tells nothing, and the difference is zero, so it adds nothing to the nudge.</p>
   <p class="gist">Sample each symbol at its middle. Gardner's check of the halfway point between symbols says early or late, and keeps the receiver's clock there.</p>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Gardner's check needs changes. Between two equal symbols (+1, +1) the halfway sample isn't zero, and the difference of the two symbols is zero, so the check says nothing either way. A long run of equal symbols gives the clock no news, and it can drift off the middle. That's one reason the satellite scrambles its data before sending (chapter 22: XOR with a known pattern): it breaks long runs, so changes keep coming.</p>
+  </details>
 
   <!-- 2 -->
   <h2 id="qpsk">Four arrows for two bits: QPSK</h2>

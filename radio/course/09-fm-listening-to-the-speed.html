@@ -59,6 +59,18 @@
     <li><b>Add more</b> (0.4 and up). Suddenly some bars shoot to the top or bottom (shown in red). Look at the dots on the left: noise sometimes pushes the arrow close to the center (the red dot), and near the center a tiny push changes the angle enormously. Each wild bar is a loud <b>click</b>, and the audio filter can't average it away: one huge bar drags the yellow line far off course. FM doesn't fade gently as the signal weakens: it stays clean, then rather suddenly breaks up into crackles. Radio engineers call this the <b>threshold effect</b>.</li>
   </ul>
   <p class="gist">FM's sound is how far the arrow turns between samples: multiply each sample by the mirrored previous one and take the angle. Lengths never enter, so fading doesn't either.</p>
+  <details class="deeper"><summary>Why does the mirrored multiplication give exactly the turn?</summary>
+    <ol>
+      <li>Write the new sample as length r₁ at angle a, the previous one as length r₀ at angle b.</li>
+      <li>Mirroring the previous one flips its angle: length r₀ at angle −b.</li>
+      <li>Multiplying multiplies lengths and adds angles (chapter 2): length r₁·r₀ at angle a − b.</li>
+      <li>a − b is the turn between the samples, already as a direction, so no wrap-around arithmetic is needed.</li>
+      <li>The length r₁·r₀ never enters the angle, so a fading signal gives the same output.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>The demodulator can only see turns of less than half a turn per sample (chapter 3's honest zone). At the 300 kS/s the receiver keeps for broadcast FM (chapter 7), half a turn per sample is a speed of 150 kHz from the center. A broadcast station stays within about ±100 kHz (it's 200 kHz wide), so it fits. Decimate further and the fast moments of the music would wrap round and come out as loud wrong values: the sample rate has to stay above the station's width, which is the same rule as chapter 7's.</p>
+  </details>
 
   <!-- 3 -->
   <h2 id="mpx">What's inside a real broadcast</h2>

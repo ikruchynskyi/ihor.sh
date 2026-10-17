@@ -78,10 +78,27 @@
 
   <p>After a few rounds you'll notice that you stop fiddling and start aiming: point the multiplier at the angle you need to turn by, and make it as long as the stretch you need. That instinct is the whole of complex multiplication.</p>
   <p class="gist">An arrow is two numbers, I and Q. Adding arrows adds their parts; multiplying arrows multiplies their lengths and adds their angles, so multiplying by an arrow of length 1 just turns.</p>
+  <details class="deeper"><summary>Why do lengths multiply and angles add?</summary>
+    <ol>
+      <li>Write the multiplier as z = I + j·Q. Multiplying an arrow a by it means a·I + a·(j·Q), and multiplication spreads over the sum as with ordinary numbers.</li>
+      <li>a·I is a stretched by I, in a's own direction.</li>
+      <li>a·j·Q is a turned a quarter turn (that's what j does), stretched by Q.</li>
+      <li>So the product is "I steps along a, then Q steps at right angles to a": the same recipe as drawing z itself, but on a grid tilted to a's direction and scaled by a's length.</li>
+      <li>On that tilted grid, the recipe (I, Q) lands at z's angle measured from a's direction, at z's length times a's length.</li>
+      <li>So the product's angle is a's angle plus z's, and its length is a's length times z's.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>On paper an arrow of length exactly 1 stays length 1 forever, however often you multiply by it. In a computer every multiplication is rounded a tiny bit, and the errors add up: chapter 5's script measures the length drifting off by 5.6 millionths after 10 million multiplications with 32-bit numbers. That's why real code keeps an angle and computes each arrow fresh from it, instead of multiplying over and over.</p>
+  </details>
 
   <!-- 5 -->
   <h2 id="spin">Multiply again and again, and it spins</h2>
   <p>Now let's go back to the opening spiral and understand it. Start with the arrow pointing at 1. Multiply it by a small "step" arrow. Then multiply the result by the same step again. And again. Each multiplication <b>turns by the step's angle</b> and <b>stretches by the step's length</b>:</p>
+
+  <div class="q" data-num="90" data-tol="0" data-unit="°"><p>Predict: an arrow of length 1 at 30°, multiplied by itself: z × z × z. At what angle does the result point?</p>
+    <div class="why">Angles add: 30° + 30° + 30° = 90°, straight up. Lengths multiply: 1 × 1 × 1 = 1.</div>
+  </div>
 
   <div class="scene" id="s-spin">
     <div class="controls">

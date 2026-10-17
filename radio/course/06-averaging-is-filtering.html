@@ -77,6 +77,18 @@
   </ul>
   <p>Now drag <b>Weights</b> up and down with the windowed sinc: more weights make the edge between "keep" and "remove" steeper. Fewer weights make it gentler. That's the basic trade-off of every filter: <b>sharpness costs arithmetic.</b></p>
   <p class="gist">A filter is a weighted average. Its effect on each speed is the winding machine run on its weights, so choosing the weights (a windowed sinc) chooses what passes.</p>
+  <details class="deeper"><summary>Why is the frequency response the winding machine run on the weights?</summary>
+    <ol>
+      <li>Feed the filter one arrow of speed f: sample n is the arrow at angle 2πfn.</li>
+      <li>Each output is a weighted sum of the last N inputs: y[n] = Σ h_k · x[n − k].</li>
+      <li>The input k samples ago is today's arrow turned back by 2πfk, so y[n] = today's arrow × Σ h_k · (the arrow at angle −2πfk).</li>
+      <li>That sum doesn't depend on n: it's one fixed arrow, H(f).</li>
+      <li>So the filter just stretches and turns an arrow of speed f by H(f), and H(f) is the weights wound around at speed f: chapter 4's machine applied to the weights.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>No filter removes everything. This chapter's best shape, the windowed sinc, leaves leftovers 62 dB down (<code>course/code/ch06.ts</code>). That sounds like nothing, until the neighbor is 70 dB stronger than your station, as a powerful FM transmitter next to a weak one can be: then 70 − 62 = 8 dB of it still gets through, stronger than your station. The fixes cost arithmetic (more weights) or happen earlier: stop the strong signal before it reaches the radio (chapter 12).</p>
+  </details>
 
   <!-- 4 -->
   <h2 id="real">Filtering a real band</h2>

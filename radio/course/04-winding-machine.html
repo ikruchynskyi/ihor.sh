@@ -60,6 +60,16 @@
   <p>On the left, the blue path is the whole second of signal, un-spun by the test speed. Most of the time it's a tangle wrapped around the middle, and the <em class="y">center of mass</em> stays close to zero. But at <b>2</b>, <b>−3</b> and <b>7</b> turns per second, the path suddenly bunches to one side and the center of mass leaps out.</p>
   <p>On the right is how far the center of mass is from zero, for every test speed. Three spikes, at exactly the three hidden speeds, and each spike's height is that arrow's length: 1, 0.55, 0.35. We've untangled the signal.</p>
   <p>That graph has a name: the <b>spectrum</b>. And this machine is the <b>Fourier transform</b>. It's the same picture you see in Spectrum Lab's top plot, and in every waterfall: each column is one test speed, and the brightness is how far the center of mass jumped.</p>
+  <details class="deeper"><summary>Why do all the other speeds cancel?</summary>
+    <ol>
+      <li>Un-spinning by test speed k turns an arrow of speed m into one of speed m − k (chapter 2: angles add).</li>
+      <li>If m − k is a whole number of turns per block, other than 0, its N positions are spread evenly around the circle.</li>
+      <li>Turn that whole set of positions by one step: each position lands where the next one was, so the set, and its sum, is unchanged.</li>
+      <li>But turning a sum turns it too. A sum that stays the same when turned must be zero.</li>
+      <li>So every speed except k averages to exactly zero, and speed k, which stops turning, averages to its own arrow.</li>
+      <li>That's why the center of mass picks out one speed at a time.</li>
+    </ol>
+  </details>
 
   <!-- 3 -->
   <h2 id="window">Speeds that fall between the cracks</h2>
@@ -79,10 +89,16 @@
     <li>Now tick <b>Fade the ends</b> and try 3.50 again. Fading the signal in and out at the start and end of each block (a gentle bump called a <b>Hann window</b>) stops the sudden jump at the block's edges, which is what caused most of the leakage. The peak gets a little wider, but the leakage far away drops dramatically.</li>
   </ul>
   <p>Real stations never spin at whole numbers of turns per block, so real spectrum displays always use a window. Ours does.</p>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>A speed halfway between two test speeds never cancels anywhere. For 3.5 turns per block (computed in <code>course/code/ch04.ts</code> for 256 samples), the plain machine shows it at −3.9 dB at test speeds 3 and 4, still −30 dB ten speeds away, and −41 dB at speed 40. A weak station anywhere near a strong one hides under that. The Hann window trades a slightly wider peak (−1.4 dB at speed 3) for leftovers of −71 dB ten speeds away and −104 dB at speed 40, which is why every real spectrum display uses a window.</p>
+  </details>
 
   <!-- 4 -->
   <h2 id="fft">The fast way: the FFT</h2>
   <p>The plain machine is slow. To test N speeds, it un-spins all N samples for each one: N × N steps. For the 1024-sample blocks behind Spectrum Lab's waterfall that's over a million steps per row, many times per second.</p>
+  <div class="q" data-num="1.05" data-tol="0.06"><p>Estimate first: the plain machine un-spins all N samples for each of N test speeds. For a 1024-sample block, about how many million steps is that?</p>
+    <div class="why">1024 × 1024 ≈ 1.05 million, for every row of the waterfall. The FFT below does the same job in 1024 × 10 ≈ 10 thousand.</div>
+  </div>
   <p>In 1965, Cooley and Tukey published a shortcut (Gauss had found it around 1805, but it was only printed after his death). The insight: <b>the work for different test speeds overlaps</b>. Split the samples into the even-numbered ones and the odd-numbered ones, and run the winding machine on each half separately. The answers for test speed k and for speed k + N/2 come out of the <em>same</em> two half-machines, combined once with a plus and once with a minus. Then split each half again, and again, until you're left with single samples.</p>
 
   <div class="scene" id="s-cost">
@@ -195,6 +211,8 @@ FFT vs plain machine on 1024 random samples: biggest difference 3.0e-6 (float ro
 inverse FFT of the FFT: back to the samples within 1.3e-7 (float rounding)
 time for 1024 samples: plain machine 15.6 ms, FFT 21 µs  (753× faster)
 real samples around 98.45 MHz: strongest station at 98.73 MHz, 25 dB above the noise floor
+3.5 turns/block, no window  : speed 3 -3.9 dB, speed 14 -30.3 dB, speed 40 -40.9 dB
+3.5 turns/block, Hann window: speed 3 -1.4 dB, speed 14 -71.1 dB, speed 40 -103.7 dB
 all checks passed</code></pre>
 
   <!-- check -->

@@ -60,4 +60,10 @@ let best = 0; sp.forEach((v, i) => { if (Math.abs(i - 256) > 20 && v > sp[best])
 const mhz = (CAPTURE.center + ((best - 256) / 512) * CAPTURE.rate) / 1e6;
 console.log(`real samples around ${CAPTURE.center / 1e6} MHz: strongest station at ${mhz.toFixed(2)} MHz, ${(sp[best] - floor).toFixed(0)} dB above the noise floor`);
 assert.ok(Math.abs(mhz - 98.7) < 0.1, "should be 98.7 FM");
+// 5. Leakage ("Where it breaks"): a speed of 3.5 turns per block, 256 samples, plain and with a Hann window.
+{
+  const N = 256, at = (win: boolean, k: number) => { let re = 0, im = 0, ws = 0; for (let n = 0; n < N; n++) { const w = win ? 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / N) : 1; ws += w; const a = (2 * Math.PI * (3.5 - k) * n) / N; re += w * Math.cos(a); im += w * Math.sin(a); } return 20 * Math.log10(Math.hypot(re, im) / ws); };
+  for (const win of [false, true]) console.log(`3.5 turns/block, ${win ? "Hann window" : "no window  "}: speed 3 ${at(win, 3).toFixed(1)} dB, speed 14 ${at(win, 14).toFixed(1)} dB, speed 40 ${at(win, 40).toFixed(1)} dB`);
+  assert.ok(at(false, 14) > -31 && at(true, 14) < -70);
+}
 console.log("all checks passed");

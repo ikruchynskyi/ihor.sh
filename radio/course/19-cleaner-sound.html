@@ -90,6 +90,18 @@
 
   <p>The fixes are both about being gentle. A <b>floor</b>: never turn a bin down by more than 20 dB, so the hiss that's left is a soft, steady bed instead of silence with sparkles. And <b>smoothing</b>: a gain may rise quickly (so the start of a word isn't cut) but falls back only gradually. Spectrum Lab's strength slider moves both at once: from subtracting half the hiss with a −6 dB floor, to twice the hiss with a −20 dB floor.</p>
   <p class="gist">A voice can be cleaned frequency by frequency: in short overlapping frames, turn down each bin that's no louder than the hiss learned in the pauses, gently enough that nothing warbles.</p>
+  <details class="deeper"><summary>Why do the overlapping windows add back to exactly 1?</summary>
+    <ol>
+      <li>The window used twice is a Hann window: w(n) = ½ − ½ · cos(2πn / N).</li>
+      <li>The next frame starts half a frame later, where the cosine is half a turn further on.</li>
+      <li>Half a turn flips a cosine's sign: that frame's window at the same moment is ½ + ½ · cos(2πn / N).</li>
+      <li>Added: ½ − ½ cos + ½ + ½ cos = 1, at every moment.</li>
+      <li>So frames left untouched rebuild the sound exactly, and changed frames blend smoothly into each other.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>The noise tracker can't tell a steady tone from hiss. It rises about 8 dB a second whenever a bin's level doesn't dip, so a whistle 20 dB above the hiss looks like hiss after about 20 ÷ 8 = 2.5 seconds, and gets turned down. Speech is safe because it keeps pausing. For a steady whistle, chapter 18's filter shift is the right tool.</p>
+  </details>
 
   <div class="notation">
     <math><msub><mi>G</mi><mi>k</mi></msub><mo>=</mo><mi>max</mi><mo>(</mo><msub><mi>G</mi><mtext>floor</mtext></msub><mo>,</mo><mspace width="0.3em"/><mn>1</mn><mo>−</mo><mi>α</mi><mfrac><msub><mi>N</mi><mi>k</mi></msub><msub><mi>S</mi><mi>k</mi></msub></mfrac><mo>)</mo></math>

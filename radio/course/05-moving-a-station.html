@@ -27,6 +27,10 @@
   <p>You already know the trick from chapter 4: multiplying by an arrow spinning backwards <b>subtracts</b> its speed from everything (<a class="back" href="./04-winding-machine.html#unspin">↩ un-spinning</a>). There, we used it to test for one speed at a time. Here we use it to <em>move</em> things: multiply the whole signal, sample by sample, by an arrow spinning backwards at 200 kHz, and every station in the band slows down by exactly 200 kHz.</p>
   <p>On the left, in slow motion, is the arrow of the FM station at +200 kHz. On the right is the whole band. Slide:</p>
 
+  <div class="q" data-num="-150" data-tol="0" data-unit="kHz"><p>Predict: you multiply the whole band by an arrow spinning backwards at 250 kHz. Where does a station at +100 kHz end up?</p>
+    <div class="why">Every frequency moves down by 250 kHz: 100 − 250 = −150 kHz.</div>
+  </div>
+
   <div class="scene" id="s-shift">
     <div class="controls">
       <label for="sh-f">Shift by <input id="sh-f" type="range" min="-500" max="500" step="10" value="0"><output id="sh-fo"></output></label>
@@ -43,6 +47,18 @@
   </ul>
   <p>This operation is called <b>mixing</b>, or more precisely <b>frequency shifting</b>, and the spinning arrow you multiply by is the <b>local oscillator</b>.</p>
   <p class="gist">Multiplying every sample by an arrow spinning backwards at f₀ slides the whole band down by f₀. With both shadows, everything moves one way only.</p>
+  <details class="deeper"><summary>Why does every station move by the same amount?</summary>
+    <ol>
+      <li>A station is an arrow spinning at its frequency f.</li>
+      <li>The NCO's arrow spins backwards at f₀.</li>
+      <li>Multiplying adds the angles (chapter 2), so after t seconds the product's angle is that of a speed f − f₀.</li>
+      <li>The band is a sum of stations, and multiplying a sum multiplies each part: every station gets the same treatment.</li>
+      <li>So every frequency moves down by exactly f₀, and nothing changes shape.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Sampled frequencies live on a circle (chapter 3), so a shift can push a station off one edge and onto the other. At 1.024 MS/s the honest zone is −512 to +512 kHz. Move a station at +450 kHz up by 200 kHz (mix by −200 kHz) and it should land at +650 kHz, which doesn't exist: it appears at 650 − 1024 = −374 kHz, on the opposite side. Receivers keep the station they want well inside the zone, and filter before shifting anything far.</p>
+  </details>
 
   <!-- 2 -->
   <h2 id="copies">Why it takes both shadows</h2>

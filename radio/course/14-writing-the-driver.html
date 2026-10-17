@@ -51,6 +51,18 @@
   <p>Neither chip has a public datasheet. The knowledge in the trace above was pieced together over years by the open-source community: people recorded what Windows TV software sent to these sticks, studied leaked reference code from the chip makers, and experimented. In 2012 they discovered the RTL2832U's undocumented "SDR mode" that ships raw samples, which is what turned a $20 TV stick into a radio receiver. The results live in osmocom's <b>librtlsdr</b> and the <b>Linux kernel's</b> drivers; our driver is a fresh TypeScript implementation of that shared knowledge.</p>
   <p>That's also why the trace decoder above can name every register: the names come from the same community work. Writing a driver for a chip without a datasheet means reading other drivers carefully, and testing a lot.</p>
   <p class="gist">A driver is the right register writes in the right order. This one's knowledge comes from years of open-source work, and it's checked against fake chips, recorded traces and a real station's pilot tone.</p>
+  <details class="deeper"><summary>Why does the driver keep its own copy of the registers?</summary>
+    <ol>
+      <li>Most of the tuner's registers can be written but not read back.</li>
+      <li>A register is one byte, and many settings use only some of its bits.</li>
+      <li>To change those bits, the driver must write the whole byte, so it must know the other bits' current values.</li>
+      <li>Since it can't ask the chip, it keeps its own copy of every byte it has written, and edits that.</li>
+      <li>That copy is the "shadow" register.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>A copy is only right while nothing else changes the chip. This chapter's bug list has the case where it wasn't: after many resets the tuner's analog side stopped passing any signal while its digital side still answered 0x69 as if all was well. The driver's copy said everything was set; the chip disagreed, and only cutting its power fixed it. Robust drivers reset the chip and rewrite every register from the copy at start-up, rather than trusting what they think is there.</p>
+  </details>
 
   <!-- 3 -->
   <h2 id="source">The source, annotated</h2>

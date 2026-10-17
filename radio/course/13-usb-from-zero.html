@@ -34,6 +34,18 @@
 
   <p>The key word is <b>endpoint</b>: a numbered, one-way mailbox on the device. Endpoint 0 is the control channel every device has; endpoint 0x81 is where the radio samples come out. Everything a radio app does is either a message through endpoint 0 or a big read from endpoint 0x81.</p>
   <p class="gist">On USB the host asks and the device answers: small control transfers through endpoint 0 change settings, bulk transfers from endpoint 0x81 carry the samples, and samples are lost only when nobody is asking.</p>
+  <details class="deeper"><summary>Why are samples lost when the bus is ten times fast enough?</summary>
+    <ol>
+      <li>On USB the host asks, the device answers: data moves only while a request is waiting.</li>
+      <li>The dongle's own buffer holds only a moment's worth of samples.</li>
+      <li>If no request is pending when its buffer fills, new samples have nowhere to go and are dropped.</li>
+      <li>One 256 KiB request takes 55 ms to fill at 2.4 MS/s, and the program needs time to send the next.</li>
+      <li>So the driver keeps several requests queued at once: the bus's speed doesn't help if nobody is asking.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Plug the dongle into an old USB 1.1 port, or a hub that runs at that "full speed", and the bus itself is too slow: 12 Mbit/s is 1.5 MB/s (<a href="https://en.wikipedia.org/wiki/USB#Signaling_rate">USB signaling rates</a>), while 2.4 MS/s needs 4.8 MB/s. Streaming then drops about two thirds of the samples whatever the driver does. The fixes: a USB 2.0 port, or a lower sample rate (1.024 MS/s needs 2 MB/s, still too much; 0.25 MS/s would fit).</p>
+  </details>
 
   <!-- 2 -->
   <h2 id="setup">A control transfer, byte by byte</h2>

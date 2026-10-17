@@ -43,6 +43,18 @@
     <p class="readout" id="r-conv" aria-live="polite"></p>
   </div>
   <p class="gist">Each sent bit is an XOR of several data bits, so every data bit is spread over many sent bits; the Viterbi decoder finds the data whose spread best explains what arrived, and a few wrong bits can't outvote the rest.</p>
+  <details class="deeper"><summary>Why can the Viterbi decoder keep only 64 guesses?</summary>
+    <ol>
+      <li>What the encoder sends next depends only on the next data bit and the six before it.</li>
+      <li>So two guesses that agree on the last six bits behave the same from now on, whatever came earlier.</li>
+      <li>Of two such guesses, the one that explains what arrived worse so far can never overtake the better one later.</li>
+      <li>So at every step, for each of the 2⁶ = 64 patterns of the last six bits, only the best guess needs keeping.</li>
+      <li>At the end, the best of the 64 traces back the most likely data, without ever trying all 2^(number of bits) messages.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>The code spreads each data bit over 14 sent bits, which works against errors spread out, not bunched up. In this chapter's script, 16 wrong bits scattered over a 2000-bit message gave no wrong data bits in 20 tries; the same 16 wrong bits in a row gave 28 wrong data bits over the 20 tries, and even 6 in a row gave 19. Real links shuffle bits before sending (interleaving), so that a burst of noise becomes scattered errors by the time it reaches the decoder.</p>
+  </details>
   <div class="q" data-num="72" data-tol="0">
     <p>The code is "rate ½": two coded bits per data bit. LRPT sends 72,000 QPSK symbols a second. How many thousand data bits per second is that?</p>
     <div class="why">72,000 symbols × 2 bits = 144,000 coded bits, half of them data: 72 kbit/s. Half the capacity spent on protection, and worth it: without the code the picture would be unusable for most of a pass.</div>
@@ -51,6 +63,9 @@
   <!-- 3 -->
   <h2 id="frames">Frames, sync words and checksums</h2>
   <p>The decoded bits arrive as one endless stream. To cut it into frames, every frame starts with the same 32 bits, the <b>sync word</b> (chapter 21). Finding it marks where each frame begins, and, as chapter 21 showed, which of the four QPSK rotations is the right one.</p>
+  <div class="q" data-num="54" data-tol="1.5" data-unit="ms"><p>Estimate first: LRPT carries 72,000 data bits a second (chapter 21: two coded bits per symbol, half of them data). How many milliseconds does a frame of 488 bytes take?</p>
+    <div class="why">488 × 8 = 3904 bits; 3904 ÷ 72,000 ≈ 0.054 s: about 54 ms, the number this chapter's script prints.</div>
+  </div>
   <p>Then the receiver checks the frame. The satellite computes a number from the frame's bytes and sends it at the end: a <b>checksum</b>, here a 16-bit CRC, the big brother of chapter 17's single parity bit. The receiver computes the same number from what it got. If the two disagree, something in the frame is still wrong after Viterbi, and the frame is dropped rather than painted into the picture as garbage. (The real Meteor link uses <b>Reed-Solomon</b> codes here instead, which can also repair a few bad bytes per frame. Ours just drops.)</p>
   <p>Viterbi isn't magic: errors bunched close together defeat it, and below about Es/N0 = 4 dB there are simply too many. Then the picture doesn't fade gradually the way an analog picture fills with snow. It goes from perfect to nothing within a decibel or two: the <b>cliff effect</b> of digital radio. You'll see it in the lab below.</p>
   <p class="gist">Sync words find the frames, checksums throw away the ones still damaged, and the code keeps the picture perfect right up to the cliff.</p>
@@ -87,6 +102,8 @@ Es/N0 12 dB, Doppler     0 Hz: measured     0 Hz, rotation 1, 26/30 frames (0 fa
 Es/N0  6 dB, Doppler  2500 Hz: measured  2500 Hz, rotation 1, 25/30 frames (0 failed the CRC), picture PSNR 42.5 dB
 Es/N0  4 dB, Doppler -2000 Hz: measured -2000 Hz, rotation 1, 24/30 frames (1 failed the CRC), picture PSNR 42.5 dB
 Es/N0  2 dB, Doppler  1000 Hz: measured   998 Hz, rotation -1,  0/30 frames (2 failed the CRC), picture PSNR 0.0 dB
+ 6 wrong coded bits, 20 tries: scattered → 0 wrong data bits in all, in a row → 19
+16 wrong coded bits, 20 tries: scattered → 0 wrong data bits in all, in a row → 28
 all checks passed</code></pre>
   <p>The first 4 frames of each run go to measuring the frequency and finding the rotation. At 4 dB nearly everything still comes through; at 2 dB the frequency is still found (998 Hz for 1000), but the code gives up: the cliff.</p>
 

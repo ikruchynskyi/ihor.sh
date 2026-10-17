@@ -77,6 +77,11 @@
   <p>Back to the puzzle from the beginning: how can arrows spinning in perfect circles draw a wave with flat tops and sharp corners?</p>
   <p>Start with one arrow, then attach a second, smaller arrow to its tip. The second arrow spins at its own speed, carried along by the first, like a moon going around a planet that goes around a sun. Now watch the height of the <em>very last tip</em>:</p>
 
+  <div class="q" data-answer="b"><p>Predict: the second arrow below spins 3 times as fast and is a third as long. With it added, what happens to the tops of the wave?</p>
+    <ul><li data-k="a" data-says="The small arrow adds bumps, but on the tops it mostly pushes against the big one.">They get taller and pointier</li><li data-k="b">They get flatter: the wave starts to look squarer</li><li data-k="c" data-says="Adding an arrow always changes the sum somewhere.">Nothing changes at the tops</li></ul>
+    <div class="why">At the moment the big arrow points straight up, the fast one points straight down, so the top gets pressed flat while the sides steepen. That's the first step toward the square wave.</div>
+  </div>
+
   <div class="scene" id="s-add">
     <div class="controls">
       <label for="a-f">Second arrow speed <input id="a-f" type="range" min="1" max="8" step="1" value="3"><output id="a-fo"></output></label>
@@ -88,6 +93,18 @@
   <p>Now look again at the opening animation. It used four arrows: speeds 1, 3, 5 and 7, each shorter than the last (1, 1/3, 1/5, 1/7). Every extra arrow squares off the wave a little more. With enough arrows, you could draw <em>any</em> shape you like, a square wave, a heartbeat, your voice.</p>
   <p>Turn that around and you get one of the most important ideas in all of science and engineering: <b>any signal can be taken apart into spinning arrows</b>. A chord on a piano is a few arrows. The noise of a crowd is millions of them. And the airwaves over New York City right now are an enormous pile of spinning arrows, from radio stations, phones, airplanes and Wi-Fi routers, all added together in the same air.</p>
   <p class="gist">A wave is the shadow of an arrow spinning in a circle. Any signal is a sum of such arrows, and a radio station is one fast arrow whose speed carries the music.</p>
+  <details class="deeper"><summary>Why can't one shadow tell the direction?</summary>
+    <ol>
+      <li>A wheel turning counter-clockwise has, at some moment, its dot at angle θ: sideways cos θ, height sin θ.</li>
+      <li>The same wheel turning clockwise at the same speed is, at that moment, at angle −θ.</li>
+      <li>Its sideways shadow is cos(−θ), which equals cos θ: exactly the same as the other wheel's, at every moment.</li>
+      <li>Its height is sin(−θ) = −sin θ: the opposite of the other wheel's.</li>
+      <li>So the sideways shadow alone can't see the direction, and the height shadow can. A radio records both, I and Q, for exactly this.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Arrows can draw any shape, but a sharp corner never comes out exactly. With the opening animation's four arrows (lengths 1, 1/3, 1/5, 1/7), the flat top sits at 0.785 and the wave overshoots next to each jump, to 0.930: 9.2% of the jump. With 50 arrows the bump gets narrower but not lower: still 9.0% (both from <code>course/code/ch01.ts</code>). That overshoot is why a sharp edge in a signal always needs many fast arrows, and why filters (chapter 6) and pulse shapes (chapter 21) are made smooth.</p>
+  </details>
   <p>Taking a signal apart into its arrows is called the <b>Fourier transform</b>, and chapter 4 builds a machine that does it.</p>
 
   <!-- 5 -->

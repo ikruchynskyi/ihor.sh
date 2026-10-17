@@ -90,6 +90,18 @@
   <p>Stations are tall, but they fill only a few bins. Sorted, they all end up at the right. The bin in the exact middle of the sorted list, the <b>median</b>, is noise, even with a dozen stations in the band. It only fails when stations cover more than half the band: in the chapter's script, five wide FM stations covering a third of the bins nudge it up by 1 dB.</p>
   <p>With a floor, signal strength becomes a difference. In decibels, a difference is a ratio: a carrier 20 dB above the floor is 100 times stronger than the noise in one bin. That's the <b>signal-to-noise ratio</b>, SNR (chapter 3), which Spectrum Lab's meter shows.</p>
   <p class="gist">A spectrum display is FFTs: more samples give finer bins, averaging calms the grass, the median bin is the noise floor, and every strength is a number of dB above it.</p>
+  <details class="deeper"><summary>Why is the median bin the noise floor?</summary>
+    <ol>
+      <li>Sort every bin's level from lowest to highest.</li>
+      <li>Stations are tall but few: they all end up at the high end of the list.</li>
+      <li>The bin in the exact middle has half the bins below it and half above.</li>
+      <li>As long as stations fill less than half the bins, the middle one is a noise bin.</li>
+      <li>So the median ignores the stations without knowing where they are; an average would be dragged up by them.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>It works only while noise is the majority. In this chapter's script, five FM stations covering 34% of the bins already lift the median by 1.1 dB (−56.3 to −55.2 dB). In the FM band, where stations sit every 200 kHz, more than half the bins can be stations, and the "floor" becomes a station's level. Spectrum displays then use a lower percentile (the 20th, say) or a floor learned on an empty stretch.</p>
+  </details>
 
   <div class="notation">
     <math><msub><mi>L</mi><mtext>dB</mtext></msub><mo>=</mo><mn>10</mn><msub><mi>log</mi><mn>10</mn></msub><mi>P</mi><mspace width="2em"/><mtext>floor</mtext><mo>=</mo><mtext>median</mtext><mo>(</mo><msub><mi>L</mi><mn>0</mn></msub><mo>,</mo><mo>…</mo><mo>,</mo><msub><mi>L</mi><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>)</mo></math>

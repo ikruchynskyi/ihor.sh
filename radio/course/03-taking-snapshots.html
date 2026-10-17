@@ -136,6 +136,19 @@
   <p>Two numbers describe this. The first says how big the wiggle is: the <b>RMS</b>, short for <em>root mean square</em>. Take each number's distance from the middle (x = byte − 127.5, in counts), square it (that's its power, from the dB rule above), average the squares, and take the square root. The RMS is the noise's typical size. Noise sometimes jumps far past it: in this chapter's script, 0.28% of the numbers land beyond 3× the RMS and 0.005% beyond 4×. So noise at 32 counts RMS, a quarter of the way to the ruler's end, almost never clips (0.007% of numbers), while at 64 counts, halfway, 4.5% do.</p>
   <p>The second says how much the station stands out: the <b>signal-to-noise ratio, SNR</b>, the station's power divided by the noise's power, in decibels. It decides whether a station can be heard, or a picture decoded, and gain can't raise it: gain only carries station and noise up the ruler together. What raises it is less noise reaching the ruler in the first place: a better antenna, or a quiet amplifier right at the antenna (chapter 12).</p>
   <p class="gist">Gain moves the station and the noise up the ruler together. It can't improve the signal-to-noise ratio; it can only lose some, to rounding when everything is tiny or to clipping when it's too big.</p>
+  <details class="deeper"><summary>Why does a whole extra turn vanish from the photos?</summary>
+    <ol>
+      <li>A photo records only where the arrow points: its angle.</li>
+      <li>Angles that differ by a whole turn point the same way.</li>
+      <li>So an arrow that turns 1.1 turns between photos lands exactly where one turning 0.1 would: the photos can't tell them apart.</li>
+      <li>Any speed is therefore indistinguishable from one shifted by a whole turn per photo, which is the formula f_seen = f − k·f_s.</li>
+      <li>Only within ±½ turn per photo is every speed's position sequence different from every other's: the honest zone.</li>
+      <li>With one shadow, +f and −f also merge (chapter 1), so only half of that zone stays honest.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>"6 dB per bit" assumes a signal that fills the ruler. A signal far smaller than one mark is almost all rounding error, but a little noise rescues it: noise of about one mark makes the rounding jump around at random, so it behaves like more noise instead of wiping the signal out. This chapter's script shows both sides: with the noise at 0.5 counts RMS the station loses only 1.3 dB to rounding; at 0.05 counts it loses 4.8 dB. Designers sometimes add a little noise on purpose for this, and call it dither.</p>
+  </details>
   <p>This site's satellite radio managed both mistakes in one day (16 October 2026). In the morning its recorded numbers sat near 1 count RMS, 92% of them exactly 127 or 128. In the afternoon, after an amplifier was added at the antenna, they reached 75 counts RMS with 13% clipped, and a whole satellite pass decoded nothing. Turning the gain down until the noise sat between about 10 and 20 counts RMS fixed it.</p>
 
   <!-- 5 -->

@@ -64,6 +64,18 @@
     <li><b>Compress the audio</b> (with a codec like Opus, what video calls use): tiny, but it adds delay and processing.</li>
   </ul>
   <p class="gist">Over a network, keep I and Q bytes in pairs, and send each listener only the slice they need, mixed, filtered and decimated on the server.</p>
+  <details class="deeper"><summary>Why does an odd byte make a mirror image?</summary>
+    <ol>
+      <li>After an odd-sized piece, every pair is read as (Q, I) instead of (I, Q).</li>
+      <li>Swapping the two numbers reflects each arrow across the 45° line: an arrow at angle θ ends up at 90° − θ.</li>
+      <li>An arrow that was turning counter-clockwise by some angle each sample now turns clockwise by the same angle.</li>
+      <li>So a station at +f now spins at −f: it appears on the opposite side of the center.</li>
+      <li>Half the stream is swapped and half isn't, so each station shows up at both +f and −f.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Slices only save bandwidth until the listeners add up. This chapter's script: ten listeners each sent the whole 1.024 MS/s band need 20 MB/s; each sent a 250 kHz slice, still 5 MB/s, too much for a 2.5 MB/s upload; a 48 kHz slice fits (0.96 MB/s), and compressed audio is tiny (0.08 MB/s). Past that, the server has to share one FFT among everyone, or limit how many people can listen.</p>
+  </details>
   <p>Public web receivers such as KiwiSDR and OpenWebRX send each listener their own slice plus a low-resolution waterfall of the whole band. That's the plan for this site's public version too.</p>
 
   <!-- 3 -->

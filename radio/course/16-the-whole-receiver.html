@@ -53,6 +53,18 @@
   </ul>
   <p>The key design decision is the layering. The driver doesn't know what a radio station is; the signal blocks don't know where their numbers come from (USB, network, a file, or a test). That's why every chapter's script can feed the real code with made-up signals, and why the same blocks run in the browser, in Node, and on the server. The <a href="../build.html#code">build guide's source viewers</a> walk through the most important files line by line.</p>
   <p class="gist">The receiver is a chain of small streaming blocks that don't know where their numbers come from, so the same code runs on USB, the network, files and tests.</p>
+  <details class="deeper"><summary>Why does layering make the receiver testable?</summary>
+    <ol>
+      <li>Each block takes numbers in and gives numbers out, and keeps its own small memory (chapter 8).</li>
+      <li>None of them knows whether the numbers came from a dongle, a network, a file or a test.</li>
+      <li>So a test can feed any block a made-up signal whose right answer is known (a 1000 Hz tone must come out at 1000 Hz).</li>
+      <li>And the driver can be tested against a pretend chip, without signals at all.</li>
+      <li>Each layer is checked on its own; real hardware is needed only for the last check.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>Made-up signals only test what you thought of. Every bug in chapter 14's list (a string the dongle can't serve, a stalled chip after a fast reopen, a stuck tuner) passed every test with fake signals and fake chips, and showed up only on real hardware. That's why the test suite ends with a real station's 19 kHz pilot, and why abuse tests (open and close six times fast) exist.</p>
+  </details>
 
   <!-- 3 -->
   <h2 id="speed">How fast is it? Measured on your computer</h2>

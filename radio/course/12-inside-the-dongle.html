@@ -37,6 +37,15 @@
   <p>This is the noise across the 9.6 MHz this site's satellite receiver (a HackRF behind the SAWbird) hears, with no satellite overhead. Far from 137.5 MHz (below 135.5 or above 141) is the receiver's own noise. Across the middle, the amplified noise of the antenna stands about <b>27 dB</b> higher, 500 times the power, with the filter's sloping edges in between. So the receiver adds less than 0.01 dB to the noise of the station, and turning it up or down changes nothing that matters, only where things sit on the ruler. That's the whole case for an amplifier at the antenna. (Move one around a chain with a lossy cable in the <a href="../ham/handbook/rf-design.html#cascade">noise-figure lab</a>; the physics of where noise comes from is <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
   <p>Two things go with it. The picture's flat-topped shape is a <b>filter</b>: the SAWbird keeps 2.6 MHz around 137.5 MHz before amplifying, because an amplifier makes everything bigger, including strong FM stations and pagers that would otherwise clip the amplifier or the dongle (chapter 3). And the gains <em>after</em> the amplifier go <em>down</em>: on this receiver, the measured sweet spot was the HackRF's own amplifiers at 16 and 12 dB, about 7 counts RMS on the ruler. Turned up much further, it ran out of room: at about 70 counts RMS the 27 dB lead had shrunk to 9. If strong stations still overload, an <b>attenuator</b> (a part that weakens everything by a fixed number of dB) belongs after the amplifier, never before it, where it would cost signal-to-noise.</p>
   <p class="gist">The first amplifier decides the noise. Put a quiet one at the antenna, filter before it, and turn every gain after it down until nothing clips.</p>
+  <details class="deeper"><summary>Why does the first amplifier decide?</summary>
+    <ol>
+      <li>Every part adds some noise of its own; what matters is how big that noise is compared with the signal at that point.</li>
+      <li>An amplifier with gain G makes the signal, and the noise it arrives with, G times bigger.</li>
+      <li>The next part then adds its own noise, unchanged, so compared with the now G-times-bigger signal it counts G times less.</li>
+      <li>So each part's noise counts divided by all the gain in front of it, and the first part's counts in full.</li>
+      <li>Measured on this site's receiver: behind the SAWbird, the antenna's noise stands 27 dB above the receiver's own, so the receiver adds 0.008 dB. Without an amplifier in front, the receiver's noise would count in full.</li>
+    </ol>
+  </details>
 
   <!-- 1 -->
   <h2 id="path">The signal's journey</h2>
@@ -99,8 +108,9 @@
     <p class="formula">\[ f_\text{LO} = \frac{f_\text{VCO}}{2^k}, \quad 1.77\,\text{GHz} \le f_\text{VCO} \lt 3.54\,\text{GHz}, \qquad \frac{f_\text{VCO}}{2 f_\text{xtal}} = N + \frac{\text{frac}}{65\,536} \]</p>
     <ul><li>Example, 98.45 MHz: f<sub>LO</sub> = 98.45 + 3.57 = 102.02 MHz; image 105.59 MHz; k = 5 (÷32), so f<sub>VCO</sub> = 3264.64 MHz.</li><li>With the 28.8 MHz crystal, 3264.64 / 57.6 = 56.678: N = 56 and frac = 0.678 × 65 536 ≈ 44 419, the numbers in the trace above. The leftover rounding is why each tuning is a few hertz off.</li></ul>
   </details>
-
-
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>The PLL can't hit every frequency exactly: its fraction has 65,536 steps per crystal multiple. This chapter's script shows the leftover error: 4 Hz at 98.45 MHz, but 176 Hz at 1089.75 MHz. For FM that's nothing. For a Morse signal heard as a 700 Hz beat (chapter 10), 176 Hz moves the pitch by a quarter, and for a narrow digital signal it can matter. Receivers that care measure the error and correct it in software, with chapter 5's mixer.</p>
+  </details>
 
   <!-- lab -->
   <h2 id="lab">Lab: explore the whole range</h2>

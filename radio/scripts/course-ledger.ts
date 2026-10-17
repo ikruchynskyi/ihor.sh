@@ -46,6 +46,9 @@ for (const [n] of pages) {
   const html = readFileSync(`course/${L.chapters[n]}`, "utf8");
   if (!/class="gist"/.test(html)) findings.push(`ch${n}: no gist (<p class="gist">)`);
   if (n !== "01" && !/Before you start/.test(html)) findings.push(`ch${n}: no "Before you start" box`);
+  const boxes = [...html.matchAll(/<details class="deeper"><summary>([^<]*)/g)].map((m) => m[1]); // the depth layers (ai/notebooks/PEDAGOGY.md §6)
+  if (!boxes.some((b) => /^Why/.test(b))) findings.push(`ch${n}: no "Why …?" box (<details class="deeper">)`);
+  if (!boxes.some((b) => /break/i.test(b))) findings.push(`ch${n}: no "Where it breaks" box`);
 }
 for (const f of findings) console.log(f);
 console.log(findings.length ? `${findings.length} ledger findings` : "ledger: every term is taught before it's used");

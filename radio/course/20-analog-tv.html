@@ -79,6 +79,18 @@
   <h2 id="comb">Separating brightness and color: the comb</h2>
   <p>Brightness and color are added together in one signal. How does the receiver pull them apart? Because the color wiggle flips each line and the picture usually doesn't change much from one line to the next, two neighboring lines added together cancel the color and keep the brightness; subtracted, they cancel the brightness and keep the color. It's called a <b>comb filter</b>, because its frequency response is a row of teeth, one every 15.7 kHz (the line rate). A picture that changes little from line to line puts the brightness's energy at whole-number multiples of the line rate, its <b>harmonics</b> (like chapter 10's overtones); the color, flipped on every line, sits exactly halfway between them. The comb's teeth land on one set and its gaps on the other.</p>
   <p class="gist">Analog TV is a spot sweeping lines, its brightness following the voltage. Sync pulses below black mark each line and field, and color rides on top as a faint spinning arrow that black-and-white sets ignore.</p>
+  <details class="deeper"><summary>Why do two neighboring lines separate brightness from color?</summary>
+    <ol>
+      <li>Line n carries brightness Y plus color C riding on the subcarrier.</li>
+      <li>The subcarrier has 227.5 cycles per line, so on line n + 1 it's upside down: Y − C, if the picture didn't change.</li>
+      <li>Adding the two lines: (Y + C) + (Y − C) = 2Y. Half of it is the brightness.</li>
+      <li>Subtracting: (Y + C) − (Y − C) = 2C. Half of it is the color.</li>
+      <li>That's the comb filter: one line of memory, one addition, one subtraction.</li>
+    </ol>
+  </details>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>It relies on neighboring lines being alike. Where the picture changes from one line to the next, say a horizontal edge from black (7.5 IRE) to white (100 IRE), the difference between the lines isn't color at all, yet half of it, about 46 IRE, comes out as color: shimmering fake color along horizontal edges, a classic NTSC artifact. Better TVs compared three lines, or whole frames, to tell real color from edges.</p>
+  </details>
   <div class="scene" id="s-comb">
     <p class="readout" id="r-comb" aria-live="polite"></p>
   </div>
