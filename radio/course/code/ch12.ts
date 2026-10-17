@@ -36,4 +36,14 @@ for (const mhz of [98.45, 118.45, 162.3, 440.0, 1089.75]) {
 // The tuner's range: the lowest and highest frequencies the divider choice allows.
 console.log(`below ${(1.77e9 / 64 - 3.57e6) / 1e6} MHz there's no divider big enough: pll(20 MHz) = ${pll(20e6)}`);
 console.log(`image of 98.45 MHz: ${(98.45 + 2 * 3.57).toFixed(2)} MHz (oscillator + 3.57 lands on the same IF)`);
+// Before the dongle: this site's measured noise (src/course/data/sawbird.ts): how far the SAWbird's band stands above the
+// receiver's own noise, and how much that receiver then adds.
+{
+  const { SAWBIRD_FLOOR } = await import("../../src/course/data/sawbird.ts");
+  const med = (v: number[]) => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const own = med(SAWBIRD_FLOOR.filter(([f]) => f < 134.5 || f > 141).map(([, d]) => d)), inside = med(SAWBIRD_FLOOR.filter(([f]) => f > 136.6 && f < 138.2).map(([, d]) => d));
+  const added = 10 * Math.log10(1 + 10 ** (-(inside - own) / 10));
+  assert.ok(inside - own > 25 && added < 0.01);
+  console.log(`measured: the amplified antenna noise is ${(inside - own).toFixed(1)} dB above the receiver's own, which adds ${added.toFixed(3)} dB to it`);
+}
 console.log("all checks passed");

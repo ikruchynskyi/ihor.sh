@@ -15,13 +15,28 @@
     <ul>
       <li><a href="./05-moving-a-station.html#copies">Chapter 5: mixing, and why one shadow makes two copies</a></li>
       <li><a href="./06-averaging-is-filtering.html#weights">Chapter 6: filters</a> and <a href="./07-throwing-away-snapshots.html#fold">chapter 7: decimation</a></li>
-      <li><a href="./03-taking-snapshots.html#ruler">Chapter 3: sampling and the 8-bit ruler</a></li>
+      <li><a href="./03-taking-snapshots.html#ruler">Chapter 3: sampling and the 8-bit ruler</a>, and <a href="./03-taking-snapshots.html#noise">noise, RMS and SNR</a></li>
     </ul>
   </div>
 
   <p>Since chapter 3 we've taken the I/Q numbers for granted: they arrive over USB, and we process them. This chapter opens the box. The surprise is how little in it is new. The dongle uses exactly the tools you've already learned (mixing, filtering, sampling, decimating), partly with electronics and partly with numbers, to deliver a 2.4 MHz slice of radio from anywhere between 24 and 1766 MHz.</p>
   <p>Inside are two chips: a <b>tuner</b> (Rafael Micro R820T2), which handles the radio waves, and an <b>RTL2832U</b>, which turns them into numbers and talks USB. Between them they share one tiny component that sets the pace for everything: a <b>28.8 MHz crystal</b> (a sliver of quartz that vibrates at one extremely steady rate, the chip's metronome).</p>
   <p>Two words you'll meet from here on. Chips are controlled through <b>registers</b>: small numbered memory slots, each holding one byte, where writing a number changes a setting (one register picks the gain, three more set the tuning, and so on). And the two chips talk to each other over <b>I2C</b> ("I-squared-C"): a simple two-wire connection that lets one chip read and write another chip's registers. Our computer never talks to the tuner directly; it asks the RTL2832U to pass messages along (chapter 13).</p>
+
+  <!-- 0 -->
+  <h2 id="before">Before the dongle: the antenna and the first amplifier</h2>
+  <p>Everything in this chapter starts at the dongle's antenna socket. What arrives there was caught by an <b>antenna</b>: a piece of metal in which the passing radio wave pushes electrons back and forth (chapter 1's "what is actually spinning"), making a tiny voltage, often a millionth of a volt or less. How long an antenna should be and how to aim it is the subject of <a href="../ham/lessons/06-waves-and-wavelength.html">ham lesson 6</a>, and <a href="../ham/lessons/07-antennas.html">lesson 7</a>. Here, one question. The station arrives together with the antenna's own noise (chapter 3), and then every part of the receiver adds noise of its own. Whose noise wins?</p>
+  <div class="q" data-answer="b"><p>Predict: a weak satellite is buried in the dongle's own noise. You add an amplifier with 41 dB of gain right at the antenna. What should happen to the dongle's gain knob?</p>
+    <ul><li data-k="a" data-says="The amplifier already made everything 41 dB bigger; more gain only walks toward the ruler's ends.">Turn it up too, to make the most of it</li><li data-k="b">Turn it down, so the bigger signal still fits the ruler</li><li data-k="c" data-says="It does matter: 41 dB more on an unchanged knob can push everything off the ruler.">Leave it: the amplifier and the knob don't interact</li></ul>
+    <div class="why">Down. The amplifier did its job before the dongle added any noise; the knob's only job now is chapter 3's: fill the ruler without clipping. This site's satellite radio clipped 13% of its recorded numbers on 16 October because nobody turned it down.</div>
+  </div>
+  <p>The part that adds the least noise wins, as long as it comes <em>first</em>. A <b>low-noise amplifier</b> (<b>LNA</b>) at the antenna adds very little noise of its own and makes everything it hears, the station and the antenna's noise, much bigger. By the time the dongle adds its own noise, the signal is so far above it that it hardly counts. How much noise a part adds is its <b>noise figure</b>, in dB: 0 dB would be a perfect part; the SAWbird+ NOAA amplifier on this site's satellite antenna is rated 1.1 dB, with 41 dB of gain (Nooelec's datasheet). Here's what that looks like, measured:</p>
+
+  <div class="scene" id="s-sawbird"><p class="readout" id="r-sawbird"></p></div>
+
+  <p>This is the noise across the 9.6 MHz this site's satellite receiver (a HackRF behind the SAWbird) hears, with no satellite overhead. Far from 137.5 MHz (below 135.5 or above 141) is the receiver's own noise. Across the middle, the amplified noise of the antenna stands about <b>27 dB</b> higher, 500 times the power, with the filter's sloping edges in between. So the receiver adds less than 0.01 dB to the noise of the station, and turning it up or down changes nothing that matters, only where things sit on the ruler. That's the whole case for an amplifier at the antenna. (Move one around a chain with a lossy cable in the <a href="../ham/handbook/rf-design.html#cascade">noise-figure lab</a>; the physics of where noise comes from is <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
+  <p>Two things go with it. The picture's flat-topped shape is a <b>filter</b>: the SAWbird keeps 2.6 MHz around 137.5 MHz before amplifying, because an amplifier makes everything bigger, including strong FM stations and pagers that would otherwise clip the amplifier or the dongle (chapter 3). And the gains <em>after</em> the amplifier go <em>down</em>: on this receiver, the measured sweet spot was the HackRF's own amplifiers at 16 and 12 dB, about 7 counts RMS on the ruler. Turned up much further, it ran out of room: at about 70 counts RMS the 27 dB lead had shrunk to 9. If strong stations still overload, an <b>attenuator</b> (a part that weakens everything by a fixed number of dB) belongs after the amplifier, never before it, where it would cost signal-to-noise.</p>
+  <p class="gist">The first amplifier decides the noise. Put a quiet one at the antenna, filter before it, and turn every gain after it down until nothing clips.</p>
 
   <!-- 1 -->
   <h2 id="path">The signal's journey</h2>
@@ -128,6 +143,7 @@ await this.writeReg(0x15, sdm &amp; 0xff);
  1089.75 MHz: × 2, VCO 2.1866 GHz, integer 37, fraction 63078 → reg 0x14 = 0x6, off by -175.8 Hz  (driver wrote the same)
 below 24.08625 MHz there's no divider big enough: pll(20 MHz) = null
 image of 98.45 MHz: 105.59 MHz (oscillator + 3.57 lands on the same IF)
+measured: the amplified antenna noise is 27.4 dB above the receiver's own, which adds 0.008 dB to it
 all checks passed</code></pre>
 
   <h2 id="check">Check yourself</h2>

@@ -6,9 +6,33 @@ import { spectrumOf } from "../waterfall.ts";
 import { spectrum } from "./plots.ts";
 import { lab } from "./lab.ts";
 import { pll } from "./pllmath.ts";
+import { SAWBIRD_FLOOR } from "./data/sawbird.ts";
 
 const el = (id: string) => document.getElementById(id)!;
 const IF = 3.57e6, XTAL = 28.8e6;
+
+// --- 0. Before the dongle: this site's satellite receiver, measured --------------------------------------------------
+{
+  const med = (v: number[]) => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const own = med(SAWBIRD_FLOOR.filter(([f]) => f < 134.5 || f > 141).map(([, d]) => d)); // outside the SAWbird's band
+  const inside = med(SAWBIRD_FLOOR.filter(([f]) => f > 136.6 && f < 138.2).map(([, d]) => d));
+  new Scene(el("s-sawbird"), (g, w, h) => {
+    const L = 44, R = 12, T = 18, B = 34, f0 = SAWBIRD_FLOOR[0][0], f1 = SAWBIRD_FLOOR.at(-1)![0], top = 35;
+    const X = (f: number) => L + ((f - f0) / (f1 - f0)) * (w - L - R), Y = (db: number) => T + (1 - (db - own + 5) / (top + 5)) * (h - T - B);
+    for (let d = 0; d <= 30; d += 10) { line(g, L, Y(own + d), w - R, Y(own + d), d ? C.grid : C.axis, 1); label(g, `+${d} dB`, L - 6, Y(own + d) + 4, C.muted, "right", 11); }
+    for (let f = Math.ceil(f0); f <= f1; f++) label(g, `${f}`, X(f), h - B + 16, C.muted, "center", 11);
+    label(g, "MHz", w - R, h - 6, C.muted, "right", 11);
+    g.fillStyle = "rgba(244,211,94,0.08)"; g.fillRect(X(136.2), T, X(138.8) - X(136.2), h - T - B); // the SAWbird's passband (2.6 MHz)
+    line(g, L, Y(own), w - R, Y(own), C.green, 1.5, [5, 4]);
+    label(g, "the HackRF's own noise", X(133.0), Y(own) - 6, C.green, "left", 12);
+    g.strokeStyle = C.yellow; g.lineWidth = 2; g.beginPath();
+    SAWBIRD_FLOOR.forEach(([f, d], i) => (i ? g.lineTo(X(f), Y(d)) : g.moveTo(X(f), Y(d)))); g.stroke();
+    label(g, "the antenna's noise, amplified", X(137.5), Y(inside) - 8, C.yellow, "center", 12);
+    line(g, X(134.6), Y(inside), X(139), Y(inside), C.yellow, 1, [5, 4]); // the passband's level, carried left to compare
+    line(g, X(134.9), Y(own), X(134.9), Y(inside), C.white, 1.5); label(g, `${(inside - own).toFixed(0)} dB`, X(134.9) - 6, Y((own + inside) / 2), C.white, "right", 13);
+  }, 260, { animated: false, label: "Measured noise across 9.6 MHz: the SAWbird's 2.6 MHz band stands about 27 dB above the receiver's own noise" });
+  el("r-sawbird").innerHTML = `Measured 17 October 2026, no satellite up: the amplified antenna noise is <em class="y">${(inside - own).toFixed(1)} dB</em> above the receiver's own, so the receiver adds <em class="b">${(10 * Math.log10(1 + 10 ** (-(inside - own) / 10))).toFixed(3)} dB</em> to it.`;
+}
 // A realistic slice of the NYC FM dial: [MHz, strength in dB above the noise]
 const STATIONS: [number, number][] = [[88.3, 32], [89.9, 22], [92.3, 40], [93.9, 25], [95.5, 34], [96.3, 30], [97.1, 36], [98.7, 38], [99.5, 40],
   [100.3, 38], [101.1, 28], [102.7, 34], [103.5, 27], [104.3, 30], [105.1, 24], [106.7, 28], [107.5, 28]];
