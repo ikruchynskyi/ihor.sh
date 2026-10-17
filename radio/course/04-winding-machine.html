@@ -56,7 +56,7 @@
   <!-- 3 -->
   <h2 id="window">Speeds that fall between the cracks</h2>
   <p>A computer can't try <em>every</em> test speed; it tries a fixed list. If it looks at a block of N samples, it tries whole numbers of turns per block: 0, 1, 2, …, plus the same negative ones. Those are the yellow dots below. The grey curve shows what every speed in between would have given.</p>
-  <p>The vertical scale here is in <b>decibels</b> (dB), a scale where each step of 20 dB means the arrow is 10× shorter. It stretches the bottom of the graph so you can see tiny leftovers, which matters because a weak station may be thousands of times weaker than a strong one next to it.</p>
+  <p>The vertical scale here is in <b>decibels</b> (dB), a scale where each step of 20 dB means the arrow is 10× shorter (chapter 3: 10× shorter is 100× less power, and every 10 dB is 10× the power). It stretches the bottom of the graph so you can see tiny leftovers, which matters because a weak station may be thousands of times weaker than a strong one next to it.</p>
 
   <div class="scene" id="s-leak">
     <div class="controls">
@@ -104,7 +104,7 @@
       <li>Find 98.7 FM's hump. Compare its width with the 0.2 MHz spacing between FM channels. The dongle is tuned 0.25 MHz below the station you ask for, so the station sits clear of the spike in the middle.</li>
       <li>See the flat rectangles on both sides of the hump? That's <b>HD Radio</b>: the same station sending digital audio in two sidebands next to its analog signal. On the waterfall, the flat tops make them look like solid bars.</li>
       <li>Type other frequencies (97.1, 100.3, 92.3) and watch different stations move into view. The axis is in real MHz.</li>
-      <li>Try a frequency with no stations nearby, like 107.0, and look at the noise floor. Then raise the gain: the noise rises too.</li>
+      <li>Try a frequency with no stations nearby, like 107.0, and look at the <b>noise floor</b>: the level the spectrum settles to where there's no station, which is chapter 3's noise seen one frequency at a time (chapter 18 measures it). Then raise the gain: the floor rises, and so does every station, by the same amount (chapter 3: gain can't change how far a station stands above the noise).</li>
       <li>Look for the narrow spike in the middle that never moves: that's the dongle's own 0 Hz leftover, not a station.</li>
     </ol>
   </div>

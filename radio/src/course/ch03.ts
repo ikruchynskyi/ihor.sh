@@ -185,6 +185,55 @@ function wheel(g: CanvasRenderingContext2D, cx: number, cy: number, R: number, t
   });
 }
 
+// --- 4b. Noise, gain and the ruler: RMS, clipping and SNR (the same model as course/code/ch03.ts) ------------------
+{
+  let seed = 1;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const gauss = () => Math.sqrt(-2 * Math.log(rnd())) * Math.cos(TAU * rnd()); // RMS 1
+  const N = 20000, ni = new Float32Array(N), nq = new Float32Array(N);
+  for (let n = 0; n < N; n++) { ni[n] = gauss(); nq[n] = gauss(); } // fixed noise, so the picture doesn't flicker
+  let bytes = new Uint8Array(2 * N);
+  const s = new Scene(el("s-noise"), (g, w, h) => {
+    const side = Math.min(h - 30, w * 0.45), cx = side / 2 + 10, cy = (h - 14) / 2, sc = side / 2 / 128;
+    g.strokeStyle = C.red; g.lineWidth = 1; g.strokeRect(cx - 128 * sc, cy - 128 * sc, 256 * sc, 256 * sc);
+    line(g, cx - 128 * sc, cy, cx + 128 * sc, cy, C.axis, 1); line(g, cx, cy - 128 * sc, cx, cy + 128 * sc, C.axis, 1);
+    g.fillStyle = C.blue;
+    for (let n = 0; n < 3000; n++) g.fillRect(cx + (bytes[2 * n] - 127.5) * sc - 1, cy - (bytes[2 * n + 1] - 127.5) * sc - 1, 2, 2);
+    label(g, "the whole ruler: 0–255 each way", cx, h - 4, C.muted, "center", 11);
+    const hx = side + 40, hw = w - hx - 12, hb = h - 34;
+    line(g, hx, hb, hx + hw, hb, C.axis, 1);
+    label(g, "0", hx, hb + 14, C.muted, "left", 11); label(g, "byte value (I and Q)", hx + hw / 2, hb + 14, C.muted, "center", 11); label(g, "255", hx + hw, hb + 14, C.muted, "right", 11);
+    const hist = new Uint32Array(256); for (const b of bytes) hist[b]++;
+    const max = Math.max(...hist);
+    for (let v = 0; v < 256; v++) {
+      if (!hist[v]) continue;
+      const bh = Math.max(1, (hist[v] / max) * (hb - 16));
+      g.fillStyle = v === 0 || v === 255 ? C.red : C.yellow;
+      g.fillRect(hx + (v / 256) * hw, hb - bh, Math.max(1.5, hw / 256), bh);
+    }
+  }, 300, { animated: false, label: "Samples of a station plus noise after a gain knob and the 8-bit ruler, as dots and as a histogram of byte values" });
+  controls(s, ["no-g", "no-s"], () => {
+    const gdb = val("no-g"), sdb = val("no-s"), gain = 0.05 * 10 ** (gdb / 20), A = Math.sqrt(2 * 10 ** (sdb / 10)); // noise power 2 per arrow
+    el("no-go").textContent = `${gdb} dB`; el("no-so").textContent = `${sdb} dB`;
+    const byte = (v: number) => Math.max(0, Math.min(255, Math.round(gain * v + 127.5)));
+    bytes = new Uint8Array(2 * N);
+    let dot = 0, ss = 0, sq = 0, clip = 0;
+    for (let n = 0; n < N; n++) {
+      const si = A * Math.cos(0.37 * n), sqq = A * Math.sin(0.37 * n), bi = byte(si + ni[n]), bq = byte(sqq + nq[n]);
+      bytes[2 * n] = bi; bytes[2 * n + 1] = bq;
+      const xi = bi - 127.5, xq = bq - 127.5;
+      dot += xi * si + xq * sqq; ss += si * si + sqq * sqq; sq += xi * xi + xq * xq;
+      clip += +(bi === 0 || bi === 255) + +(bq === 0 || bq === 255);
+    }
+    const c = dot / ss; let pe = 0; // the station's share of what came out (scale c), and everything else
+    for (let n = 0; n < N; n++) pe += (bytes[2 * n] - 127.5 - c * A * Math.cos(0.37 * n)) ** 2 + (bytes[2 * n + 1] - 127.5 - c * A * Math.sin(0.37 * n)) ** 2;
+    const snr = 10 * Math.log10((c * c * ss) / pe), rms = Math.sqrt(sq / (2 * N)), lost = sdb - snr;
+    el("r-noise").innerHTML = `RMS <em class="b">${rms.toFixed(rms < 10 ? 1 : 0)} counts</em> of 127.5` +
+      ` · clipped <em style="color:var(--red)">${((100 * clip) / (2 * N)).toFixed(clip ? 2 : 0)}%</em>` +
+      ` · SNR <em class="y">${snr.toFixed(1)} dB</em> (${sdb} dB in the air${lost > 0.3 ? `: <em style="color:var(--red)">${lost.toFixed(1)} dB lost to the ${rms > 20 ? "clipping" : "rounding"}</em>` : ""})`;
+  });
+}
+
 // --- 5. Real samples from the dongle on the Mac mini -------------------------------------------------
 {
   const bytes = captureBytes();
@@ -248,7 +297,9 @@ function wheel(g: CanvasRenderingContext2D, cx: number, cy: number, R: number, t
       live = cu8; s.redraw();
       let lo = 255, hi = 0, clip = 0;
       for (const b of cu8) { if (b < lo) lo = b; if (b > hi) hi = b; if (b === 0 || b === 255) clip++; }
+      let sq = 0; for (const b of cu8) sq += (b - 127.5) ** 2;
       el("r-lab").innerHTML = `Using <em class="y">${hi - lo + 1}</em> of the 256 marks (bytes ${lo}–${hi})` +
+        ` · RMS <em class="b">${Math.sqrt(sq / cu8.length).toFixed(1)} counts</em>` +
         ` · clipped: <em style="color:var(--red)">${((100 * clip) / cu8.length).toFixed(2)}%</em>`;
     },
   });

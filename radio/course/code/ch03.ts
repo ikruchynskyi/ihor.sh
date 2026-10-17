@@ -40,4 +40,44 @@ for (let k = 0; k < 4; k++) {
 let lo = 255, hi = 0; for (const b of bytes) { lo = Math.min(lo, b); hi = Math.max(hi, b); }
 console.log(`${bytes.length / 2} real samples at ${CAPTURE.rate / 1e6} MS/s: bytes ${lo}..${hi}, using ${hi - lo + 1} of 256 marks`);
 console.log(`at 2.4 MS/s the dongle sends 2.4e6 × 2 bytes = ${(2.4e6 * 2 / 1e6).toFixed(1)} MB every second`);
+// 5. Noise and RMS. Noise is a small random number added to every I and Q; its typical size is the RMS (root mean
+//    square: square, average, square root). How often does noise of a given RMS hit the ruler's ends (±127.5 counts)?
+let seed = 1;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const gauss = () => Math.sqrt(-2 * Math.log(rnd())) * Math.cos(TAU * rnd()); // RMS 1
+const rms = (x: number[]) => Math.sqrt(x.reduce((s, v) => s + v * v, 0) / x.length);
+for (const r of [8, 32, 64, 113]) {
+  const x = Array.from({ length: 200000 }, () => r * gauss());
+  const clipped = x.filter((v) => Math.abs(v) >= 127.5).length / x.length;
+  assert.ok(Math.abs(rms(x) / r - 1) < 0.01);
+  console.log(`noise at ${String(r).padStart(3)} counts RMS: ${(100 * clipped).toFixed(r < 60 ? 3 : 1)}% of numbers reach the ends of the ruler`);
+}
+const big = Array.from({ length: 200000 }, gauss);
+console.log(`noise peaks: ${(100 * big.filter((v) => Math.abs(v) > 3).length / big.length).toFixed(2)}% beyond 3 × RMS, ${(100 * big.filter((v) => Math.abs(v) > 4).length / big.length).toFixed(3)}% beyond 4 × RMS`);
+
+// 6. Gain makes the station and the noise bigger together, so their ratio (SNR) doesn't change, until the ruler gets in
+//    the way: too small and rounding adds its own error, too big and clipping does.
+const station = Math.sqrt(2 * 10); // an arrow whose power is 10× the noise's (noise RMS 1 in I and in Q: power 2 per arrow)
+const snrAfter = (gainDb: number) => {
+  const g = 0.05 * 10 ** (gainDb / 20), byte = (v: number) => Math.max(0, Math.min(255, Math.round(g * v + 127.5))) - 127.5; // gain, then the 8-bit ruler
+  const s: number[][] = [], r: number[][] = [];
+  for (let n = 0; n < 50000; n++) {
+    const a = 0.37 * n, si = station * Math.cos(a), sq = station * Math.sin(a);
+    s.push([si, sq]); r.push([byte(si + gauss()), byte(sq + gauss())]);
+  }
+  // how much of the station is in what came out (the best scale c), and everything else: noise, rounding, clipping
+  let dot = 0, ss = 0; for (let n = 0; n < s.length; n++) { dot += r[n][0] * s[n][0] + r[n][1] * s[n][1]; ss += s[n][0] ** 2 + s[n][1] ** 2; }
+  const c = dot / ss; let pe = 0;
+  for (let n = 0; n < s.length; n++) pe += (r[n][0] - c * s[n][0]) ** 2 + (r[n][1] - c * s[n][1]) ** 2;
+  return { snr: 10 * Math.log10((c * c * ss) / pe), noiseRms: 0.05 * 10 ** (gainDb / 20) };
+};
+for (const gdb of [0, 20, 40, 52, 60, 66]) {
+  const { snr, noiseRms } = snrAfter(gdb);
+  console.log(`gain ${String(gdb).padStart(2)} dB: noise ${noiseRms.toFixed(2).padStart(6)} counts RMS → SNR after the ruler ${snr.toFixed(1)} dB (10.0 in the air)`);
+}
+assert.ok(Math.abs(snrAfter(40).snr - 10) < 0.3 && snrAfter(0).snr < 6 && snrAfter(20).snr < 9.5 && snrAfter(66).snr < 8.5);
+
+// 7. The real capture: its RMS and how much of it clipped.
+const xs = Array.from(bytes, (b) => b - 127.5);
+console.log(`the real samples: ${rms(xs).toFixed(1)} counts RMS, ${xs.filter((v) => Math.abs(v) === 127.5).length} of ${xs.length} numbers clipped`);
 console.log("all checks passed");

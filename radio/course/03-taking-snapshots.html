@@ -11,6 +11,13 @@
   <p class="eyebrow">Radio from scratch · Chapter 3</p>
   <h1>Taking snapshots</h1>
 
+  <div class="prereq"><b>Before you start</b>This chapter uses:
+    <ul>
+      <li><a href="./01-spinning-arrows.html">Chapter 1: frequency</a> (turns per second, in hertz)</li>
+      <li><a href="./02-arrows-as-numbers.html">Chapter 2: an arrow is two numbers</a>, I and Q, and its length</li>
+    </ul>
+  </div>
+
   <p>Until now our arrows have spun smoothly, and we could watch them every instant. A computer can't do that. It can only <b>look at the arrow every so often</b>: take a snapshot, write down two numbers (I and Q, from chapter 2), wait, take another. Each snapshot is called a <b>sample</b>, and your dongle takes up to 2.4 million of them every second.</p>
   <p>That sounds like plenty. But snapshots can lie. You've seen it in films: a car speeds up, and its wheels seem to slow down, stop, and then spin <em>backwards</em>. Here's the same thing, slowed way down so you can follow it. The left wheel is real; the right one is what a camera taking 4 photos per second sees:</p>
 
@@ -53,7 +60,7 @@
   <p>Now tick <b>Only one shadow</b>. The graph folds in half: +0.3 and −0.3 now look identical, just like chapter 1's game. The honest zone shrinks to 0 to ½.</p>
   <p>This graph <em>is</em> the most famous rule in signal processing, usually stated as a formula. In plain words:</p>
   <ul>
-    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab. (Radio people write the photo rate as <b>MS/s</b>, mega-samples per second: 2.4 MS/s is 2.4 million snapshots per second; <b>kS/s</b> is thousands.)</li>
+    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab (the scrolling picture of every frequency at once that chapter 4 builds). (Radio people write the photo rate as <b>MS/s</b>, mega-samples per second: 2.4 MS/s is 2.4 million snapshots per second; <b>kS/s</b> is thousands.)</li>
     <li><b>With one shadow</b>, only 0 to ½, so you need <b>twice as many photos</b> for the same range. That's why a music CD stores 44 100 samples per second: to capture sounds up to 22 050 Hz, just above the highest pitch humans hear.</li>
   </ul>
   <p>And here's the catch for radio: arrows outside the zone don't politely disappear. A station 1.5 MHz away would land <em>on top of</em> a station 0.9 MHz away in the other direction. So the dongle has to remove everything outside the zone <b>before</b> it takes its photos. Its chip contains a filter that does exactly that; you'll see its numbers in the code below, and learn how filters work in chapter 6.</p>
@@ -97,11 +104,39 @@
 
   <p>Things to try:</p>
   <ul>
-    <li><b>More marks</b>: every extra bit doubles the marks and halves the error, which makes the error about <b>6 dB</b> quieter. (A <b>bit</b> is one binary digit, 0 or 1; <em>n</em> bits can count 2<sup>n</sup> marks, so 8 bits, one byte, give 256. <b>Decibels</b>, dB, measure ratios of strength: every 10 dB is 10× the power, so 20 dB is 100× and 50 dB is 100 000×. Chapter 4 uses them a lot.) With 8 bits (256 marks), a full-size signal is about <b>50 dB</b>, i.e. 100 000 times, stronger than the measuring error.</li>
+    <li><b>More marks</b>: every extra bit doubles the marks and halves the error, which makes the error about <b>6 dB</b> quieter. (A <b>bit</b> is one binary digit, 0 or 1. Written side by side, each bit is worth twice the one to its right: 1, 2, 4, 8, …, so <em>n</em> bits count 2<sup>n</sup> marks, and 8 bits, one byte, give 256. The rightmost bit, worth 1, is the <b>least significant</b>. <b>Decibels</b>, dB, measure ratios of strength: every 10 dB is 10× the <em>power</em>, so 20 dB is 100× and 50 dB is 100 000×. Power grows with the square of size: an arrow twice as long carries 4× the power (+6 dB), one ten times as long 100× (+20 dB). That's why halving the error is "6 dB". In a formula, dB = 10 · log<sub>10</sub>(power ratio), where the <b>logarithm</b> log<sub>10</sub> counts powers of ten: log<sub>10</sub> 100 = 2, so 100× is 20 dB.) With 8 bits (256 marks), a full-size signal is about <b>50 dB</b>, i.e. 100 000 times, stronger than the measuring error.</li>
     <li><b>A small signal</b> (drag the size down): it only spans a few marks, so the recording is a crude staircase and the error is almost as big as the signal itself. A weak station, much smaller than one mark, disappears completely.</li>
     <li><b>A huge signal</b> (above 100%): the tops get cut off at the ends of the ruler. That's <b>clipping</b>, and it's even worse than the staircase: it creates fake arrows that weren't in the air.</li>
   </ul>
   <p>This is what the <b>gain</b> knob on a radio is for. It makes the signal bigger or smaller before it's measured. Too little gain and weak stations are lost between the marks; too much and strong stations clip. Good gain fills most of the ruler without touching the ends.</p>
+
+  <!-- 4b -->
+  <h2 id="noise">Noise, and how big a wiggle is</h2>
+  <p>Unplug the antenna and the dongle's numbers still don't sit at 127.5: they jitter. That jitter is <b>noise</b>, a small random arrow added to every sample, with a new length and a new direction every time. Some of it comes from the receiver itself (warm electronics never sit perfectly still), some arrives through the antenna: the sky, the city's electrical gadgets, distant transmitters. Every receiver has it, and it decides how weak a station can be and still be heard. (Where it comes from, in physics: <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
+  <p>Below, a station (one steady arrow, like the FM ring above) arrives with noise on top, and goes through a gain knob and the 8-bit ruler. Left: every sample as a dot, inside the box of the whole ruler. Right: how often each byte value occurs, red at the ends where numbers clip. The readout underneath gives two numbers, the RMS and the SNR, explained just after you've played with it.</p>
+
+  <div class="q" data-answer="b"><p>Predict first: you turn the gain up by 20 dB. What happens to how far the station stands above the noise?</p>
+    <ul><li data-k="a" data-says="The gain multiplies the noise too, by exactly as much.">It rises by 20 dB</li><li data-k="b">Nothing, as long as everything still fits on the ruler</li><li data-k="c" data-says="Gain doesn't favor the noise either: both are multiplied alike.">It falls by 20 dB</li></ul>
+    <div class="why">Gain multiplies everything that arrived, station and noise alike, so their ratio stays put. Only the ruler can spoil it, at either end. Try it below.</div>
+  </div>
+
+  <div class="scene" id="s-noise">
+    <div class="controls">
+      <label for="no-g">Gain <input id="no-g" type="range" min="0" max="66" step="1" value="40"><output id="no-go"></output></label>
+      <label for="no-s">Station above the noise, in the air <input id="no-s" type="range" min="0" max="20" step="1" value="10"><output id="no-so"></output></label>
+    </div>
+    <p class="readout" id="r-noise" aria-live="polite"></p>
+  </div>
+
+  <ul>
+    <li><b>At the start</b> (gain 40 dB), the readout's RMS is about 17 counts (it measures everything that arrived: the station is most of it, the noise alone wiggles by about 5) and the station stands 10 dB above the noise, exactly as in the air.</li>
+    <li><b>Raise the gain.</b> The cloud grows, station and noise together, and the station's lead doesn't move. Then the cloud reaches the box's edges, red bars appear, and the lead starts to shrink: at 66 dB it's 2.4 dB lower. Clipping chops the station's tops and turns them into extra noise.</li>
+    <li><b>Lower it.</b> At 20 dB the whole cloud fits on a handful of marks, rounding adds its own error, and the lead shrinks again: 1.3 dB lower, and 4.8 dB lower at 0 dB.</li>
+  </ul>
+  <p>Two numbers describe this. The first says how big the wiggle is: the <b>RMS</b>, short for <em>root mean square</em>. Take each number's distance from the middle (x = byte − 127.5, in counts), square it (that's its power, from the dB rule above), average the squares, and take the square root. The RMS is the noise's typical size. Noise sometimes jumps far past it: in this chapter's script, 0.28% of the numbers land beyond 3× the RMS and 0.005% beyond 4×. So noise at 32 counts RMS, a quarter of the way to the ruler's end, almost never clips (0.007% of numbers), while at 64 counts, halfway, 4.5% do.</p>
+  <p>The second says how much the station stands out: the <b>signal-to-noise ratio, SNR</b>, the station's power divided by the noise's power, in decibels. It decides whether a station can be heard, or a picture decoded, and gain can't raise it: gain only carries station and noise up the ruler together. What raises it is less noise reaching the ruler in the first place: a better antenna, or a quiet amplifier right at the antenna (chapter 12).</p>
+  <p class="gist">Gain moves the station and the noise up the ruler together. It can't improve the signal-to-noise ratio; it can only lose some, to rounding when everything is tiny or to clipping when it's too big.</p>
+  <p>This site's satellite radio managed both mistakes in one day (16 October 2026). In the morning its recorded numbers sat near 1 count RMS, 92% of them exactly 127 or 128. In the afternoon, after an amplifier was added at the antenna, they reached 75 counts RMS with 13% clipped, and a whole satellite pass decoded nothing. Turning the gain down until the noise sat between about 10 and 20 counts RMS fixed it.</p>
 
   <!-- 5 -->
   <h2 id="real">What real samples look like</h2>
@@ -109,7 +144,7 @@
 
   <div class="scene" id="s-real"><p class="readout" id="r-real"></p></div>
 
-  <p>On the left, look at the shape: a <b>fuzzy ring</b>. Remember chapter 1: an FM station never changes the length of its arrow, only its speed. Here one strong station dominates everything else in this slice of the band, so its snapshots all land near one circle, at whatever angle the arrow happened to be. The fuzz is everything else (weaker stations and noise) added on top. Even in raw bytes, you can see that FM is "constant length, changing angle".</p>
+  <p>On the left, look at the shape: a <b>fuzzy ring</b>. Remember chapter 1: an FM station never changes the length of its arrow, only its speed. Here one strong station dominates everything else in this slice of the band, so its snapshots all land near one circle, at whatever angle the arrow happened to be. The fuzz is everything else (weaker stations and noise) added on top. Even in raw bytes, you can see that FM is "constant length, changing angle". These samples' RMS is 23.1 counts, with nothing clipped: a well-set gain.</p>
   <p>On the right, zoomed into the yellow box, the dots sit on a <b>perfect grid</b>. Those are the ruler's marks: every I and Q had to be written as a whole number, so each dot snapped to the nearest crossing. You're looking at quantization in real data.</p>
 
   <!-- lab -->
@@ -122,7 +157,7 @@
       <li>Connect, and note how many of the 256 marks are in use.</li>
       <li>Raise the gain step by step to the maximum. Watch the cloud grow until it slams into the edges of the box and red bars appear at 0 and 255. That's clipping.</li>
       <li>Lower it to 0 dB. The cloud shrinks to a small blob that uses only a handful of marks. Weak stations are now lost between them.</li>
-      <li>Find the gain that fills most of the box with no red bars. That's the best setting for this antenna and this spot.</li>
+      <li>Find the gain that fills most of the box with no red bars. That's the best setting for this antenna and this spot. Its RMS will usually be somewhere around 10 to 40 counts.</li>
     </ol>
     <p class="note">The server's dongle is shared: if someone is listening to it, they'll hear your frequency and gain changes. "Use my USB dongle" needs Chrome, Edge or Opera on an https:// or localhost page (see <a href="../build.html">Build for your own dongle</a>).</p>
   </div>
@@ -142,11 +177,16 @@
     <ul>
       <li>For a signal that fills the ruler. 8 bits gives about 50 dB. Every bit of headroom you leave unused costs 6 dB.</li>
     </ul>
+    <math display="block"><mtext>RMS</mtext><mo>=</mo><msqrt><mfrac><mn>1</mn><mi>N</mi></mfrac><munderover><mo>∑</mo><mrow><mi>n</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msup><msub><mi>x</mi><mi>n</mi></msub><mn>2</mn></msup></msqrt><mspace width="1.5em"/><mtext>SNR</mtext><mo>=</mo><mn>10</mn><mo>·</mo><msub><mi>log</mi><mn>10</mn></msub><mfrac><msub><mi>P</mi><mtext>station</mtext></msub><msub><mi>P</mi><mtext>noise</mtext></msub></mfrac><mtext> dB</mtext></math>
+    <ul>
+      <li><b>x<sub>n</sub></b>: each number's distance from the ruler's middle; Σ adds them up. P is power, the square of size. A ratio of <em>lengths</em> L is 20 · log<sub>10</sub> L dB, because power is length squared.</li>
+    </ul>
   </div>
 
   <!-- code -->
   <h2 id="code">In code</h2>
   <p><b>Choosing the photo rate.</b> The dongle's chip runs its own measuring at 28.8 million samples per second, then thins that out to the rate you ask for. Our driver programs the ratio between the two (<code>src/rtlsdr.ts</code>):</p>
+<p class="note">A number starting with <code>0x</code> is written in <b>hexadecimal</b>, base 16: the digits run 0–9 then a–f, so each hex digit holds exactly 4 bits and <code>0xff</code> is 255. Code for chips uses it everywhere.</p>
 <pre><code>const ratio = Math.floor((XTAL * 2 ** 22) / rate) &amp; 0x0ffffffc;   // XTAL = 28.8 MHz
 // 2.4 MS/s → ratio = 12 × 2^22 exactly: keep one sample out of every 12</code></pre>
   <p><b>The filter that stops aliasing.</b> Before thinning out, the chip filters away everything outside the new honest zone. These are the filter's weights, written into the chip when it starts up. Chapter 6 explains what the numbers mean:</p>
@@ -165,6 +205,18 @@ sample 2: bytes (146, 104) → arrow I = 0.145, Q = -0.184
 sample 3: bytes (136, 153) → arrow I = 0.067, Q = 0.200
 4000 real samples at 1.024 MS/s: bytes 74..186, using 113 of 256 marks
 at 2.4 MS/s the dongle sends 2.4e6 × 2 bytes = 4.8 MB every second
+noise at   8 counts RMS: 0.000% of numbers reach the ends of the ruler
+noise at  32 counts RMS: 0.007% of numbers reach the ends of the ruler
+noise at  64 counts RMS: 4.5% of numbers reach the ends of the ruler
+noise at 113 counts RMS: 26.0% of numbers reach the ends of the ruler
+noise peaks: 0.28% beyond 3 × RMS, 0.005% beyond 4 × RMS
+gain  0 dB: noise   0.05 counts RMS → SNR after the ruler 5.2 dB (10.0 in the air)
+gain 20 dB: noise   0.50 counts RMS → SNR after the ruler 8.7 dB (10.0 in the air)
+gain 40 dB: noise   5.00 counts RMS → SNR after the ruler 10.0 dB (10.0 in the air)
+gain 52 dB: noise  19.91 counts RMS → SNR after the ruler 10.0 dB (10.0 in the air)
+gain 60 dB: noise  50.00 counts RMS → SNR after the ruler 9.9 dB (10.0 in the air)
+gain 66 dB: noise  99.76 counts RMS → SNR after the ruler 7.6 dB (10.0 in the air)
+the real samples: 23.1 counts RMS, 0 of 8000 numbers clipped
 all checks passed</code></pre>
 
   <!-- check -->
@@ -177,6 +229,10 @@ all checks passed</code></pre>
     <p>1.024 MHz: from −0.512 to +0.512 MHz around the tuned frequency. (With only one shadow it would be half that.)</p></details>
   <details><summary>Why is turning the gain all the way up a bad idea next to a powerful station?</summary>
     <p>The strong station's signal overruns the ends of the ruler and clips. Clipping distorts it and creates fake signals that can cover the weak station you wanted.</p></details>
+  <details><summary>You turn the gain up 10 dB and a weak station is no easier to hear. Why not?</summary>
+    <p>Gain made the station 10 dB bigger and the noise 10 dB bigger too, so the signal-to-noise ratio didn't change. Only less noise (a better antenna, a quiet amplifier at the antenna) or a stronger station raises it.</p></details>
+  <details><summary>A recording's samples have an RMS of 1 count. What's wrong, and what's lost?</summary>
+    <p>The gain is far too low: the whole signal fits on two or three marks, so rounding adds error of its own and weak stations fall between the marks. Raise the gain until the RMS is somewhere around 10 to 40 counts.</p></details>
 
   <nav class="next">
     <a href="./02-arrows-as-numbers.html">← Chapter 2: Arrows as numbers</a>
