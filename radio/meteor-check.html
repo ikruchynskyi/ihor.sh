@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meteor Station Check</title>
+  <meta name="description" content="A health check for this site's weather-satellite station: it measures the radio and its antenna chain (level, clipping, the amplifier's margin, interference), maps where in the sky the antenna hears the satellites from every recorded pass, and recommends what to change." />
+  <style>
+    .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 12px 14px; margin: 8px 0 16px; font: 0.9rem/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .lights { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 10px 0; }
+    .light { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--card); font: 0.85rem ui-sans-serif, system-ui, sans-serif; }
+    .light b { display: block; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .rec { border-left: 4px solid var(--line); padding: 8px 12px; margin: 10px 0; background: var(--card); border-radius: 0 10px 10px 0; font: 0.9rem/1.5 ui-sans-serif, system-ui, sans-serif; }
+    .rec.bad { border-color: #fc6255; } .rec.warn { border-color: #f4d35e; } .rec.ok { border-color: #83c167; } .rec.info { border-color: #58c4dd; }
+    .rec h3 { margin: 0 0 4px; font-size: 0.98rem; } .rec .area { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .rec .fix { margin: 6px 0 0; } .rec .fix::before { content: "What to do: "; font-weight: 700; }
+    canvas.plot { width: 100%; display: block; background: #0f1218; border-radius: 8px; margin: 8px 0; }
+    table.t { width: 100%; border-collapse: collapse; font: 0.85rem ui-sans-serif, system-ui, sans-serif; }
+    table.t th, table.t td { padding: 6px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .scroll { overflow-x: auto; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .muted { color: var(--muted); }
+    .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px 12px; margin: 10px 0; }
+    .calc label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 0.85rem; }
+    .calc input, .calc select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); min-width: 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">ihor.sh · radio</a> · <a href="./meteor-passes.html">Recorded passes</a></p>
+  <h1>Meteor station check</h1>
+  <p>This page checks the station that records Meteor weather satellites: a V-dipole on a balcony in New York, a SAWbird amplifier and filter, an FM band-stop filter, and a HackRF on a server. It measures what can be measured from here, reads every recorded pass back to see where in the sky the antenna hears the satellites, and says what to change. A check runs by itself every half hour when the radio is free; you can run one now (it borrows the radio for about two seconds, never during a pass).</p>
+
+  <div class="pane">
+    <div class="row"><button id="run" type="button">▶ Check the radio now</button><span id="status" class="muted" aria-live="polite"></span></div>
+    <div class="lights" id="lights"></div>
+  </div>
+
+  <h2 id="recs">What to do</h2>
+  <div id="recommendations"><p class="muted">Loading…</p></div>
+
+  <h2 id="radio">The radio and its antenna chain</h2>
+  <p>One second of everything the radio hears, 9.6 MHz around 137.5 MHz. Outside the amplifier's filter you see the receiver's own noise (green line); inside, the antenna's noise lifted by the amplifier (yellow). The two Meteor channels, 137.1 and 137.9 MHz, are shaded; red marks are narrow peaks (possible interference). The numbers are explained in <a href="./course/03-taking-snapshots.html#noise">course chapter 3</a> and <a href="./course/12-inside-the-dongle.html#before">chapter 12</a>.</p>
+  <canvas class="plot" id="spec" height="260" aria-label="The radio's spectrum with the amplifier's passband, the Meteor channels and any interference"></canvas>
+  <div class="pane" id="radio-facts"></div>
+
+  <h2 id="sky">Where the antenna hears the satellites</h2>
+  <p>Every recorded pass, read back: the strongest signal-meter reading in each direction and height of the sky (north up, the horizon at the edge, straight up in the middle). Decoding needs about 3.5. Gray: the satellite passed there but was barely heard. The dashed outline is the recorder's window: passes that spend enough time inside it get recorded.</p>
+  <canvas class="plot" id="skymap" height="340" aria-label="A sky map of the best signal heard in each direction and elevation"></canvas>
+
+  <h2 id="passes">Pass by pass</h2>
+  <div class="scroll"><table class="t" id="pass-table"></table></div>
+
+  <h2 id="trend">Over time</h2>
+  <p>Each automatic check: the amplifier's margin (yellow; higher is better) and the input level in counts RMS (blue). A sudden change is a change in the antenna chain or new interference.</p>
+  <canvas class="plot" id="trendplot" height="200" aria-label="The amplifier's margin and the input level over time"></canvas>
+
+  <h2 id="tune">What can be tuned</h2>
+  <div class="scroll"><table class="t">
+    <tr><th>Setting</th><th>Where</th><th>What it does</th></tr>
+    <tr><td>HackRF LNA and VGA gain</td><td>Owner settings below</td><td>Where the signal sits on the 8-bit ruler. It can't improve the signal-to-noise ratio, only lose some by clipping or by being too quiet. Aim for about 6–10 counts RMS with nothing clipped.</td></tr>
+    <tr><td>HackRF RF amp</td><td>Always off</td><td>Only adds overload behind a 41 dB amplifier.</td></tr>
+    <tr><td>The recorder's sky window and satellites</td><td>Owner settings below</td><td>Which passes get recorded: those spending enough minutes in the part of the sky the antenna hears.</td></tr>
+    <tr><td>The antenna's place, height and orientation</td><td>On the balcony</td><td>Usually the biggest gain: a clear view of the sky where the passes are, away from metal and electronics (<a href="./ham/handbook/antennas.html#placement">antenna lab</a>).</td></tr>
+    <tr><td>Antenna type</td><td>Hardware</td><td>A circular antenna (a QFH or crossed dipoles) gets back the 3 dB a linear V-dipole loses on Meteor's circular signal (<a href="./ham/handbook/antennas.html#polarization">antenna lab</a>).</td></tr>
+    <tr><td>Amplifier power, cables, chokes</td><td>Hardware</td><td>The SAWbird on its own USB power, short cable from antenna to amplifier, a choke at the feed point (<a href="./ham/handbook/antennas.html#feeding">antenna lab</a>).</td></tr>
+  </table></div>
+
+  <h2 id="owner">Owner settings</h2>
+  <div class="pane" id="owner-pane">
+    <div id="login" class="row"><label for="key" class="muted">Owner key</label><input id="key" type="password" autocomplete="current-password" style="flex:1;min-width:160px"><button id="signin" type="button">Sign in</button></div>
+    <div id="controls" hidden>
+      <div class="calc">
+        <label for="lna">HackRF LNA, dB <select id="lna"><option>0</option><option>8</option><option>16</option><option>24</option><option>32</option><option>40</option></select></label>
+        <label for="vga">HackRF VGA, dB <input id="vga" type="number" min="0" max="62" step="2"></label>
+        <label for="w-azf">Window from azimuth, ° <input id="w-azf" type="number" min="0" max="359"></label>
+        <label for="w-azt">to azimuth, ° <input id="w-azt" type="number" min="0" max="359"></label>
+        <label for="w-elmin">lowest elevation, ° <input id="w-elmin" type="number" min="0" max="89"></label>
+        <label for="w-elmax">highest elevation, ° <input id="w-elmax" type="number" min="1" max="90"></label>
+        <label for="w-min">minutes inside, at least <input id="w-min" type="number" min="0" max="15" step="0.5"></label>
+      </div>
+      <div class="row"><label><input id="sat-3" type="checkbox"> Record Meteor-M2 3</label><label><input id="sat-4" type="checkbox"> Record Meteor-M2 4</label></div>
+      <div class="row" style="margin-top:10px"><button id="save" type="button">Save</button><button id="signout" type="button" class="alt">Sign out</button><span id="save-status" class="muted" aria-live="polite"></span></div>
+    </div>
+  </div>
+</main>
+<script type="module" src="/src/meteor-check-app.ts"></script>
+</body>
+</html>

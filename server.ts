@@ -33,7 +33,7 @@ import { getNhkArticles, getNhkArticleById } from "./yomu-nhk.ts";
 import { getTemplates, searchTemplates } from "./memes.ts";
 import { buildIndex, isPrivate, publicPages, siteSearch } from "./search.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
-import { startMeteorRecorder, meteorApi } from "./meteor-rec.ts";
+import { startMeteorRecorder, meteorApi, meteorCheckApi } from "./meteor-rec.ts";
 import { propagation } from "./spacewx.ts";
 import { upscale } from "./upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./monitor.ts";
@@ -428,6 +428,9 @@ const MESH_KEY = process.env.MESH_OWNER_KEY || (() => {
 const MESH_COOKIE = createHmac("sha256", SESSION_SECRET).update(`mesh-owner:${MESH_KEY}`).digest("base64url");
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", MESH_COOKIE);
+// The Meteor station check (radio/meteor-check.html) uses the same owner key, with its own cookie for /api/meteor.
+const METEOR_COOKIE = createHmac("sha256", SESSION_SECRET).update(`meteor-owner:${MESH_KEY}`).digest("base64url");
+const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", METEOR_COOKIE);
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
@@ -528,7 +531,17 @@ const server = http.createServer(async (req, res) => {
       }
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(monitorState()));
     }
-    if (url.pathname.startsWith("/api/meteor/") && meteorApi(url, res)) return; // the server's Meteor pass recordings (meteor-rec.ts)
+    if (url.pathname === "/api/meteor/owner" && req.method === "POST") { // the station owner signs in (same key as the mesh page)
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
+      const key = String(JSON.parse(raw || "{}").key ?? "");
+      if (key === "logout") return res.writeHead(200, { "set-cookie": "ihmet=; Path=/api/meteor; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
+      if (!spend(`meteor-login:${req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
+      const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+      return res.writeHead(200, { "set-cookie": `ihmet=${METEOR_COOKIE}; Path=/api/meteor; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
+    }
+    if (url.pathname.startsWith("/api/meteor/") && (meteorApi(url, res) || meteorCheckApi(url, req, res, meteorOwner(req)))) return; // the Meteor recordings and the station check (meteor-rec.ts, meteor-diag.ts)
     if (url.pathname === "/api/radio/sat-ecef") { // a satellite's positions over a pass, for mapping its pictures (sat.ts)
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await satEcef(String(url.searchParams.get("id")), Number(url.searchParams.get("from")), Number(url.searchParams.get("to"))))); }
       catch (e) { return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
