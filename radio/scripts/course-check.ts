@@ -12,4 +12,6 @@ for (const f of readdirSync("course/code").filter((f) => /^ch\d+\.ts$/.test(f)).
   } catch (e) { failed++; console.log(`✗ ${f}\n${String((e as { stdout?: string }).stdout ?? "").slice(-400)}${String((e as Error).message).slice(0, 300)}`); }
 }
 console.log(failed ? `${failed} failed` : "all chapter scripts pass");
+// the ledger (course/ledger.json): terms taught before they're used. A report for now; strict once Track D is done.
+try { console.log(execFileSync("node", ["scripts/course-ledger.ts"], { encoding: "utf8" }).trim().split("\n").at(-1)); } catch (e) { failed++; console.log(String((e as { stdout?: string }).stdout ?? e)); }
 process.exit(failed ? 1 : 0);
