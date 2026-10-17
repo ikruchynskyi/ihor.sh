@@ -161,3 +161,19 @@ sentence.
   the SAWbird datasheet, GPS's −128.5 dBm minimum (IS-GPS-200), Meteor LRPT's RHCP (WMO OSCAR). No number without one.
 
 **Status 2026-10-17:** D0–D6 built and committed one step each; `node scripts/course-ledger.ts` reports no findings, and `npm run course-check` now fails on any (a new term needs a ledger entry in the chapter that teaches it). Chapter 22 exists (D4).
+
+## Track E: depth and intuition (planned 2026-10-17)
+- Topic: every chapter's core idea gets the AI course's depth layers 3 and 4 (PEDAGOGY.md §6): an optional "Why …?" box
+  (4–8 short steps, each with its reason) and a "Where it breaks" box (a concrete case with numbers and what people do
+  about it); chapters short on intuition drills get a predict or estimate question.
+- Already covered (counted 2026-10-17, by script over each page): predict questions (`.q`) 0 in ch. 1, 2, 5 and 1 in
+  ch. 4, 6, 7, 8, 19, 22; "pause and ponder" only in ch. 1–5; extreme-case prompts mostly ch. 1–6 and 11; estimates almost
+  none (ch. 11, 19, 21); "Why" check-yourself questions in every chapter; a script checking the claims in ch. 2–22; no
+  `details.deeper` box anywhere (ch. 11–16's "The math, step by step" boxes are formula summaries, not reasons).
+- Gap: layers 3 and 4 in all 22 chapters; predict questions for ch. 1, 2, 5; estimates for ch. 4, 7, 22.
+- Where it goes: each box right after the chapter's gist or the section it deepens (3b); questions before the scene they
+  predict. Boxes are optional: nothing after them depends on them.
+- Needs: only terms the ledger already places at or before each chapter (the checker scans box text too).
+- Truth: every new number is computed in that chapter's script (course/code/chNN.ts; a ch01.ts is added for chapter 1's
+  square-wave overshoot) or is arithmetic shown in the box itself.
+- Checks: course-ledger.ts requires both boxes in every chapter (strict, like lint.py --depth for the AI course).
