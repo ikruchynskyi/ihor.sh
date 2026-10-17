@@ -79,3 +79,62 @@ The ARRL Handbook (100th edition) runs from fundamentals to station building in 
 - **Fundamentals** (ch. 2–4): electricity, AC and reactance, resonant circuits, EM waves, components, amplifiers and op-amps, analog-digital interfacing → shared with Track B's new chapters.
 - **Radio technology** (ch. 5–17): RF techniques and matching, power sources, DSP and SDR (this course's Parts I–III), oscillators and synthesizers (PLL: ch. 12), filters (ch. 6), modulation (ch. 9–10), receiving (the whole receiver course), transmitting and power amplifiers (new: class A/B/C/D efficiency animations), transceiver design, digital modes (FT8, PSK31, RTTY, packet: new chapters with decoders), data platforms.
 - **Systems** (ch. 18–27): repeaters (offsets, tones: links to squelch, ch. 11), propagation, transmission lines, antennas, safety, construction, station assembly, test equipment (an oscilloscope and spectrum analyzer simulator), troubleshooting, RFI/EMC (finding interference with a waterfall, which this site's dongle needed in real life).
+
+## Track D: closing the gaps (planned 2026-10-17)
+A learner new to radio read the course cold (2026-10-17) and found terms used before they're taught. The full read of all
+21 chapters is the "Already covered" search for every item below; each step is one commit.
+
+**D0. A ledger and a checker.** `course/ledger.json` lists, per chapter, the terms it teaches (with their other names);
+`scripts/course-ledger.ts` (run by `npm run course-check`) flags any use of a term in an earlier chapter's text, unless
+that paragraph points to the chapter that teaches it ("chapter 10", "ch. 10"). It also requires a gist on every page and a
+"Before you start" box from chapter 2 on. Gap: the course had no ledger (the guardrail's table: "no machine ledger").
+
+**D1. Noise, RMS and one rule for decibels (ch. 3, ch. 4).**
+- Topic: say what noise is, measure how big a wiggle is (RMS) and how often it hits the ruler's ends (clipping %), and use
+  decibels for both power and length without a contradiction.
+- Already covered: ch3 #ruler (bits, dB "10 dB = 10× power", clipping, gain), ch3 #real ("weaker stations and noise"),
+  ch4 #cracks ("each 20 dB, the arrow 10× shorter"), ch4 #lab and its code output ("noise floor"), ch4 notation
+  ("power is the length squared"), ch18 #floor (noise floor as a median, SNR), ham lesson 2 (RMS of a sine, dB), ham
+  lesson 11 (thermal noise, noise figure).
+- Gap: noise is used from ch3 and never explained; the noise floor is used in ch4 and defined in ch18; dB for lengths
+  (×10 = 20 dB) is stated in ch4 before the reason (power = length²); RMS is taught nowhere in this course.
+- Where it goes: ch3, a new section after #ruler, "Noise, and how big a wiggle is" (3b: it belongs next to gain and
+  clipping); the dB sentence in #ruler gets the length rule (3a); ch4 #lab gets one sentence defining the noise floor with
+  a pointer to ch18 (3a).
+- Needs: samples and the 8-bit ruler (ch3), arrows' length (ch2), power as length² (moved into ch3 with this step),
+  averaging (everyday). New here: noise as a random arrow added to every sample, RMS ("the typical size"), with a widget
+  (noise cloud on the ruler, gain slider, RMS and clipping % readouts) → words → formula → `ch03.ts` checks.
+- Verified by: course-check, npm test, build, the page at 390/1280, the cold read; numbers from `course/code/ch03.ts`.
+
+**D2. Before the dongle: antenna, the first amplifier and gain staging (ch. 12).**
+- Topic: say why an amplifier right at the antenna lets weak satellites through and why more gain later doesn't, and set
+  the gains of a chain so nothing clips.
+- Already covered: ch3 (gain, clipping), ch12 (tuner, IF, the analog half), ham lesson 6 and 7 (waves, antennas), ham
+  lesson 11 (thermal noise, noise figure, preamps, attenuators), the site's own station (SAWbird+ NOAA, HackRF Pro,
+  measured 2026-10-16/17).
+- Gap: the receiver course never mentions an antenna, an LNA or noise figure.
+- Where it goes: ch12, a new section "Before the dongle" before #journey (3b), linking ham lessons 7 and 11 for the
+  physics instead of teaching it twice.
+- Needs: noise and RMS (D1), dB (ch3), gain and clipping (ch3), the tuner (ch12). New here: each stage adds its own
+  noise, so the first one decides (a stacked-noise widget), and the measured numbers from this site's station.
+
+**D3. Going back: the inverse FFT (ch. 4).** Ch19 #overlap uses "inverse FFT" in its main text; ch4 teaches only the
+forward direction. A short section in ch4 after #fft: wind the other way and add (3b). Ch19 then points to it.
+
+**D4. Split chapter 21 (it teaches about ten new ideas).** Product decision made by the learner, 2026-10-17 ("fix all gaps").
+- 21 (same URL, `21-weather-satellites.html`), *Digital radio from space*: the pass and Doppler, symbols and pulse shaping,
+  the matched filter, finding the middle of each symbol (timing recovery, Gardner), QPSK and the constellation, Es/N0 as
+  "SNR per symbol" (ch18's SNR), the 4th-power trick and the Costas loop.
+- 22 (new, `22-surviving-errors.html`), *Pictures that survive errors*: XOR (with a pointer to Electronics), the
+  convolutional code and Viterbi, the sync word and the rotation choice, checksums, the cliff effect, 8×8 DCT pictures,
+  and the live pass lab.
+- Needs: as listed per section in each page's "Before you start". Also touches: `index.html`, `vite.config.ts`,
+  ch20's next link, `meteor.html` and `check.ts` (still valid: the URL stays), `course/code/ch21.ts` split into ch22.ts.
+
+**D5. Names before their chapter.** Sidebands in ch4–6's labs (pointer to ch10), "USB/LSB" in ch7 (upper sideband, not
+the cable; pointer to ch10), "crystal" defined in ch11 (where it's first used; ch12 links back), "passband" and
+"crosstalk" defined in ch6, binary place values in ch3's bits sentence (ch17 needs "least significant bit"), "harmonics"
+in ch20 (ch10's overtones), hexadecimal in ch3's code (moved from ch13's "Before you start"), logarithms in ch3's dB
+sentence.
+
+**D6. Gists and "Before you start".** A `<p class="gist">` for each chapter's core idea; "Before you start" for ch2–4 and 16.
