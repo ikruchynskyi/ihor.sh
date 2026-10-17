@@ -38,9 +38,16 @@ function chart(c: HTMLCanvasElement, tl: Point[], at?: number) {
   const line = (vals: number[], max: number, color: string) => { g.strokeStyle = color; g.lineWidth = 2 * devicePixelRatio; g.beginPath(); vals.forEach((v, i) => { const x = X(tl[i].t), y = h - 6 - (Math.max(0, Math.min(max, v)) / max) * (h - 16); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); };
   g.fillStyle = "rgba(131,193,103,0.18)"; tl.forEach((p, i) => { if (p.acquired && i) g.fillRect(X(tl[i - 1].t), 0, X(p.t) - X(tl[i - 1].t), h); }); // carrier found
   line(tl.map((p) => p.el), 90, "#8f98a8"); line(tl.map((p) => p.snr), 6, "#f4d35e"); line(tl.map((p) => p.frames), maxF, "#58c4dd");
-  g.fillStyle = "#c8ced8"; g.font = `${11 * devicePixelRatio}px ui-monospace, monospace`;
-  const label = "elevation · signal dB · frames · green: carrier locked";
-  g.fillText(g.measureText(label).width < w - 12 ? label : "elev · signal · frames · green: lock", 6, 13 * devicePixelRatio); // a phone: the short one
+  // the legend: a swatch in each line's color, then what it is and its scale (a phone gets the short words)
+  g.font = `${11 * devicePixelRatio}px ui-monospace, monospace`;
+  const keys = (long: boolean): [string, string][] => [["#8f98a8", long ? "elevation 0–90°" : "elev"], ["#f4d35e", long ? "signal 0–6 dB" : "signal"],
+    ["#58c4dd", long ? (tl.at(-1)!.frames ? `frames 0–${tl.at(-1)!.frames}` : "frames: none") : "frames"], ["rgba(131,193,103,0.6)", long ? "locked" : "lock"]];
+  const sw = 14 * devicePixelRatio, gap = 10 * devicePixelRatio, width = (k: [string, string][]) => k.reduce((a, [, t]) => a + sw + 4 * devicePixelRatio + g.measureText(t).width + gap, 0);
+  let lx = 6 * devicePixelRatio; const ly = 12 * devicePixelRatio;
+  for (const [color, text] of width(keys(true)) < w - 12 ? keys(true) : keys(false)) {
+    g.fillStyle = color; g.fillRect(lx, ly - 5 * devicePixelRatio, sw, color.startsWith("rgba") ? 8 * devicePixelRatio : 3 * devicePixelRatio); // lines get a stroke, the lock band a block
+    g.fillStyle = "#c8ced8"; g.fillText(text, lx + sw + 4 * devicePixelRatio, ly); lx += sw + 4 * devicePixelRatio + g.measureText(text).width + gap;
+  }
   if (at !== undefined) { g.fillStyle = "#fff"; g.fillRect(X(at) - devicePixelRatio / 2, 0, devicePixelRatio, h); }
 }
 
@@ -85,7 +92,7 @@ function passMap(orbit: number[][], tl: Point[], home: { lat: number; lon: numbe
   return {
     W, H,
     dot(c: HTMLCanvasElement, t: number) {
-      c.width = W * dpr; c.height = H * dpr; c.style.width = `${W}px`; c.style.height = `${H}px`;
+      c.width = W * dpr; c.height = H * dpr; c.style.width = `${W}px`; // height follows the width (CSS height: auto), so a narrow tip shrinks the map instead of squashing it
       const d = c.getContext("2d")!; d.drawImage(base, 0, 0); d.scale(dpr, dpr);
       const i = Math.max(0, Math.min(sub.length - 1, orbit.findIndex((o) => o[0] >= t))), [x, y] = px(sub[i][0], sub[i][1]);
       d.strokeStyle = "rgba(255,255,255,0.6)"; d.setLineDash([3, 3]); d.lineWidth = 1; d.beginPath(); d.moveTo(hx, hy); d.lineTo(x, y); d.stroke(); d.setLineDash([]);
@@ -111,7 +118,7 @@ function scrub(c: HTMLCanvasElement, tip: HTMLElement, m: any, home: { lat: numb
     const o = orbit?.length ? orbit.reduce((a, b) => (Math.abs(b[0] - t) < Math.abs(a[0] - t) ? b : a)) : null, s = o ? seen(o.slice(1), home) : null;
     chart(c, tl, t);
     tip.innerHTML = `<b>${new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}</b> · `
-      + (s ? `${s.el.toFixed(0)}° up, ${s.dir} (${s.az.toFixed(0)}°)<br>over ${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? "N" : "S"} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? "E" : "W"} · ` : `${p.el.toFixed(0)}° up<br>`)
+      + (s ? `${s.el.toFixed(0)}° up, ${s.dir} (${s.az.toFixed(0)}°)<br>over ${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? "N" : "S"} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? "E" : "W"}<br>` : `${p.el.toFixed(0)}° up<br><br>`) // fixed lines: the tip's height doesn't jump either
       + `signal ${p.snr.toFixed(1)} dB · ${p.frames} frames${p.acquired ? " · locked" : ""}` + (map ? "<canvas></canvas>" : "");
     if (map) map.dot(tip.querySelector("canvas")!, t);
     tip.hidden = false; tip.style.left = `${Math.min(r.width - tip.offsetWidth, Math.max(0, e.clientX - r.left - tip.offsetWidth / 2))}px`;
