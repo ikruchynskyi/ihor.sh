@@ -21,4 +21,7 @@ near(A.LINEAR_VS_CIRCULAR_DB, 3.01, 0.01, "linear vs circular");
 near(A.trimmed(1.0, 140.2, 137.5), 1.0196, 0.0001, "resonating 2.7 MHz high: lengthen 2%");
 near(A.cutList(137.5).vDipoleLeg, 0.529, 0.002, "V-dipole leg at 137.5 MHz: the 53 cm design");
 near(A.cutList(146).dipoleLeg * 2 * 3.2808, 468 / 146, 0.02, "the 468 rule, in feet");
+near(A.dipoleOverReflectorDbi(0.25, 90), 7.48, 0.05, "dipole λ/4 over a reflector, straight up");
+near(A.dipoleOverReflectorDbi(0.25, 30), 4.5, 0.1, "the same, at 30° elevation");
+near(A.dipoleOverReflectorDbi(0.25, 10), -3.9, 0.15, "the same, at 10° elevation");
 console.log("antenna math: every formula matches its known value");

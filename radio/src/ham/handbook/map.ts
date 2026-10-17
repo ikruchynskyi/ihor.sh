@@ -1,6 +1,6 @@
 // The ARRL Handbook (100th edition) table of contents, section by section, mapped to this site's visual explanations.
 // Only section titles are listed (for navigation alongside the book); all explanations are this site's own.
-// Link keys: L7#yagi = license lesson 7, C4#fft = "Radio from scratch" chapter 4, rf#… / ws#… = companion labs,
+// Link keys: L7#yagi = license lesson 7, C4#fft = "Radio from scratch" chapter 4, rf#… / ws#… / ant#… = companion labs,
 // build#… = developer guide, app = Spectrum Lab, ham = license dashboard.
 
 export const PARTS: [string, number[]][] = [
@@ -180,16 +180,16 @@ export const TOC = `
 20.5 Baluns and Transmission Line Transformers | ws#balun
 20.6 PC Transmission Lines | L8#matching
 21 Antennas
-21.1 Antenna Basics | L7#pattern
-21.2 Dipoles and the Half-Wave Antenna | L7#dipole L7#length
-21.3 Vertical (Ground-Plane) Antennas | L7#ground
+21.1 Antenna Basics | L7#pattern ant#catch ant#wire ant#budget
+21.2 Dipoles and the Half-Wave Antenna | L7#dipole L7#length ant#build
+21.3 Vertical (Ground-Plane) Antennas | L7#ground ant#build
 21.4 T and Inverted-L Antennas | L7#short
 21.5 Slopers and Vertical Dipoles | L7#zoo
 21.6 Yagi Antennas | L7#yagi
 21.7 Quad and Loop Antennas | L7#receive
 21.8 HF Mobile Antennas | L7#short L15#power
-21.9 VHF/UHF Mobile Antennas | L7#short
-21.11 VHF/UHF Beams | L7#yagi
+21.9 VHF/UHF Mobile Antennas | L7#short ant#polarization
+21.11 VHF/UHF Beams | L7#yagi ant#dish ant#fresnel
 21.12 Radio Direction Finding Antennas | L7#receive
 21.13 Rotators | L13#hf
 22 Safe Practices
@@ -248,6 +248,7 @@ export function resolve(key: string): { href: string; text: string; kind: string
   if (k.startsWith("C")) return { href: `../../course/${COURSE_FILES[+k.slice(1)]}.html${hash}`, text: `Course ch. ${+k.slice(1)}`, kind: "course" };
   if (k === "rf") return { href: `./rf-design.html${hash}`, text: "RF lab", kind: "lab" };
   if (k === "ws") return { href: `./workshop.html${hash}`, text: "Workshop lab", kind: "lab" };
+  if (k === "ant") return { href: `./antennas.html${hash}`, text: "Antenna lab", kind: "lab" };
   if (k === "build") return { href: `../../build.html${hash}`, text: "Build guide", kind: "course" };
   if (k === "app") return { href: "../../", text: "Spectrum Lab", kind: "course" };
   return { href: "../", text: "License practice", kind: "lesson" };

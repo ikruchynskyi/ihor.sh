@@ -60,3 +60,19 @@ export function cutList(mhz: number) {
     fiveEighthsWhip: 0.95 * 2.5 * q, // a 5/8-wave whip, which needs a matching coil at its base
   };
 }
+
+/** A horizontal half-wave dipole `hWl` wavelengths above a large, perfect reflector (image theory): gain in dBi at an
+ *  elevation (degrees), broadside to the wire. Free-space dipole for comparison: 2.15 dBi. */
+export function dipoleOverReflectorDbi(hWl: number, elevDeg: number) {
+  const TAU = 2 * Math.PI, n = 300;
+  const p = (th: number, ph: number) => { // th from straight up, ph from the wire
+    const c = Math.sin(th) * Math.cos(ph), s = Math.sqrt(Math.max(1e-12, 1 - c * c));
+    return ((Math.cos((Math.PI / 2) * c) / s) * 2 * Math.sin(TAU * hWl * Math.cos(th))) ** 2; // the image is inverted
+  };
+  let sum = 0;
+  for (let i = 0; i < n; i++) for (let j = 0; j < 2 * n; j++) {
+    const th = ((i + 0.5) * Math.PI) / 2 / n, ph = ((j + 0.5) * TAU) / (2 * n);
+    sum += p(th, ph) * Math.sin(th) * (Math.PI / 2 / n) * (TAU / (2 * n));
+  }
+  return 10 * Math.log10((4 * Math.PI * p(((90 - elevDeg) * Math.PI) / 180, Math.PI / 2)) / sum);
+}

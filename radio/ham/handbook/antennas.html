@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Antennas in Practice</title>
+  <meta name="description" content="A practical antenna lab: how much an antenna catches, what longer wires do, link budgets with a noise floor, Fresnel zones, circular polarization for satellites, starting lengths and trimming, where to put it, and a field guide to dishes, grid dishes, cellular panels, patches, phased arrays and more, with calculators." />
+  <style>
+    .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 14px; margin: 10px 0; font: 0.9rem ui-sans-serif, system-ui, sans-serif; }
+    .calc label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); }
+    .calc input, .calc select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); min-width: 0; }
+    .cut { width: 100%; border-collapse: collapse; font: 0.9rem ui-sans-serif, system-ui, sans-serif; margin: 8px 0; }
+    .cut td, .cut th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+    .cut td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .zoo { width: 100%; border-collapse: collapse; font: 0.88rem/1.45 ui-sans-serif, system-ui, sans-serif; }
+    .zoo th, .zoo td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .scroll { overflow-x: auto; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="./">Handbook companion</a> · Labs</p>
+  <h1>Antennas in practice</h1>
+  <div class="prereq"><b>Before you start</b>This lab builds on:
+    <ul>
+      <li><a href="../lessons/06-waves-and-wavelength.html#lambda">Lesson 6: wavelength</a> and <a href="../lessons/06-waves-and-wavelength.html#polarization">polarization</a></li>
+      <li><a href="../lessons/07-antennas.html#dipole">Lesson 7: the dipole</a>, <a href="../lessons/07-antennas.html#pattern">patterns and gain in dBi</a>, <a href="../lessons/07-antennas.html#ground">height above ground</a></li>
+      <li><a href="../lessons/08-feed-lines-and-swr.html#measure">Lesson 8: SWR and antenna analyzers</a>; <a href="../lessons/02-decibels-and-prefixes.html#db">lesson 2: dB and dBm</a></li>
+      <li><a href="../lessons/11-receivers-and-transmitters.html#noise">Lesson 11: thermal noise and noise figure</a>, and <a href="../lessons/11-receivers-and-transmitters.html#budget">the link budget</a></li>
+    </ul>
+  </div>
+  <p>Lesson 7 explains what an antenna is: a wire whose current launches a wave, and catches one the same way. This lab is about doing antenna work: how much signal an antenna can catch, whether a link will work before you build it, what to cut and how to trim it, where to put it, and how to recognize the antennas you see on rooftops, towers and phones. Every number on this page comes from a formula you can see, checked against textbook values in <code>src/ham/antenna-math.test.ts</code>.</p>
+
+  <!-- 1 -->
+  <h2 id="catch">What an antenna catches is an area</h2>
+  <p>A passing radio wave carries its power spread over space, so many watts (or rather, picowatts) per square meter. An antenna collects the power falling on a certain <em>area</em> of that wave, its <b>effective aperture</b>. It isn't the metal's size: a thin wire catches the power of an area far wider than itself.</p>
+  <div class="q" data-answer="c"><p>Predict: the same dipole design, built for 1375 MHz instead of 137.5 MHz (ten times the frequency). How much of a passing wave's power does it collect?</p>
+    <ul><li data-k="a" data-says="Its gain is the same, 2.15 dBi, but its capture area isn't.">The same</li><li data-k="b" data-says="Close: it's smaller, but by more than 10×.">10 times less</li><li data-k="c">100 times less</li></ul>
+    <div class="why">A dipole's aperture scales with the wavelength squared. Ten times the frequency is a tenth of the wavelength and a hundredth of the area: 20 dB less signal from the same wave. That's why high frequencies need gain.</div>
+  </div>
+  <div class="scene" id="s-aperture">
+    <div class="controls">
+      <label for="ap-f">Frequency <input id="ap-f" type="range" min="0" max="4" step="any" value="2.13830"><output id="ap-fo"></output></label>
+      <label for="ap-g">Antenna gain <input id="ap-g" type="range" min="-5" max="40" step="0.05" value="2.15"><output id="ap-go"></output></label>
+    </div>
+    <p class="readout" id="r-aperture" aria-live="polite"></p>
+  </div>
+  <p>The yellow square is the area the antenna collects, drawn to scale next to a person 1.8 m tall. At 137.5 MHz a dipole collects 0.62 m², about a large window. At 1.37 GHz the same design collects 100 times less, so a GPS or satellite-TV receiver uses gain (a patch, a dish) to get its area back. Gain and area are the same thing seen two ways: doubling the area is +3 dB.</p>
+  <p class="gist">An antenna collects the wave's power over an area: its gain times the wavelength squared, divided by 4π. Low frequencies come with big areas for free; high frequencies have to buy them with gain.</p>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>The aperture formula is for an antenna matched to its feed line and without losses. A short, loaded whip has nearly the same pattern, and so nearly the same aperture, as a full-size dipole, but most of what it collects heats its loading coil instead (<a href="../lessons/07-antennas.html#short">lesson 7: efficiency</a>). On the lower HF bands that's often acceptable for receiving, because the sky's noise is collected just as poorly and the signal-to-noise ratio survives; at VHF and above, where the receiver's own noise dominates, the loss counts in full.</p>
+  </details>
+
+  <!-- 2 -->
+  <h2 id="wire">Longer wires: more lobes</h2>
+  <p>Lesson 7 says that as a wire gets longer, more lobes form, swinging toward the wire's ends. Here is that sentence as a picture: a straight wire fed in the middle, seen from the side, with its length in wavelengths.</p>
+  <div class="scene" id="s-wire">
+    <div class="controls">
+      <label for="wi-l">Wire length <input id="wi-l" type="range" min="0.1" max="3" step="0.05" value="0.5"><output id="wi-lo"></output></label>
+    </div>
+    <p class="readout" id="r-wire" aria-live="polite"></p>
+  </div>
+  <ul>
+    <li><b>Up to a half wave</b>, one figure-eight broadside to the wire: 1.76 dBi for a very short wire, 2.15 dBi at a half wave.</li>
+    <li><b>Toward a full wave</b>, the figure-eight gets narrower and stronger: 3.82 dBi. At 1.25 waves (the "extended double Zepp" of lesson 7's field guide) it peaks at 5.16 dBi with small side lobes.</li>
+    <li><b>Beyond</b>, the current along the wire reverses in places, the pattern breaks into more lobes, and the strongest ones swing toward the wire's ends: the long-wire antenna.</li>
+  </ul>
+  <p>The feed-point impedance changes along with it (lesson 7), so a wire that isn't a half wave long usually needs a tuner or a matching section.</p>
+
+  <!-- 3 -->
+  <h2 id="budget">Will it get through? The link budget, with the numbers</h2>
+  <p>Lesson 11 adds it up in decibels: transmitter power, plus both antennas' gains, minus losses, minus the <b>path loss</b>, gives the received level. Where does the path loss come from? From the aperture above. The transmitted power spreads over a sphere that grows with the distance squared, and the receiving antenna catches only its aperture's share, which shrinks with the wavelength squared. Together that's the <b>free-space path loss</b>: 20 dB more for every 10× the distance and for every 10× the frequency. Then compare the received level with the receiver's noise floor (lesson 11: −174 dBm per hertz, plus 10·log<sub>10</sub> of the bandwidth, plus the noise figure):</p>
+  <div class="scene" id="s-budget">
+    <div class="calc">
+      <label for="lb-p">Preset <select id="lb-p">
+        <option value="hand">2 m handhelds, 10 km apart</option>
+        <option value="repeater">Handheld to a hilltop repeater, 40 km</option>
+        <option value="wifi">Wi-Fi across a big room, 30 m</option>
+        <option value="sat">A 5 W example satellite overhead at 830 km, 137.9 MHz</option>
+        <option value="hills">Two hilltops with Yagis, 2 m, 100 km</option>
+      </select></label>
+      <label for="lb-tx">Transmitter, watts <input id="lb-tx" type="number" min="0.001" step="any" value="5"></label>
+      <label for="lb-gt">Their antenna, dBi <input id="lb-gt" type="number" step="0.5" value="0"></label>
+      <label for="lb-gr">Your antenna, dBi <input id="lb-gr" type="number" step="0.5" value="0"></label>
+      <label for="lb-d">Distance, km <input id="lb-d" type="number" min="0.001" step="any" value="10"></label>
+      <label for="lb-f">Frequency, MHz <input id="lb-f" type="number" min="0.1" step="any" value="146"></label>
+      <label for="lb-l">Other losses, dB <input id="lb-l" type="number" step="0.5" value="0"></label>
+      <label for="lb-b">Bandwidth, kHz <input id="lb-b" type="number" min="0.01" step="any" value="12.5"></label>
+      <label for="lb-n">Your noise figure, dB <input id="lb-n" type="number" min="0" step="0.5" value="3"></label>
+    </div>
+    <p class="readout" id="r-budget" aria-live="polite"></p>
+  </div>
+  <p>Free space is the best case: the formula assumes nothing in the way. Real paths add losses for ground, terrain, buildings and foliage (lesson 9), often tens of dB at VHF in a city, which is why the presets leave you a large margin to play with. Two lessons from the numbers. First, every 6 dB of extra margin doubles the free-space range. Second, the receiver's side counts as much as the transmitter's: 3 dB more antenna gain at your end is the same as doubling their power.</p>
+  <p>The satellite preset (an example power, not any satellite's published figure) shows why weather satellites are hard. The path loss straight overhead at 830 km is 133.6 dB; at the horizon, 2 500 km or more away, about 10 dB worse. A real satellite also doesn't use free space alone: its signal is right-hand circular (next sections), and your antenna's sky view decides which part of the pass you hear at all.</p>
+  <details class="deeper"><summary>Why 20 dB per decade of distance and of frequency?</summary>
+    <ol>
+      <li>An isotropic transmitter spreads P watts over a sphere of area 4πd², so the power per square meter at distance d is P / (4πd²).</li>
+      <li>An isotropic receiving antenna collects an area λ² / (4π) (section 1, with gain 1).</li>
+      <li>Received power = P · λ² / (4πd)², so the loss is (4πd / λ)².</li>
+      <li>In dB that's 20·log<sub>10</sub>(4πd/λ): doubling d or halving λ (doubling the frequency) adds 6 dB; 10× adds 20 dB.</li>
+      <li>With d in km and f in MHz, the constants collect into the familiar 20·log<sub>10</sub> d + 20·log<sub>10</sub> f + 32.45.</li>
+    </ol>
+    <p>The loss grows with frequency only because the receiving antenna's area shrinks. Two dishes of fixed size do the opposite: their gains grow with frequency faster than the path loss does.</p>
+  </details>
+
+  <!-- 4 -->
+  <h2 id="fresnel">Clearing the path: the Fresnel zone</h2>
+  <p>A line of sight isn't a line. The wave travels in a fat, football-shaped region around it, the <b>first Fresnel zone</b>, and an obstacle that pokes into it takes signal away even if you can still see the far antenna. It's widest in the middle of the path and grows with distance and wavelength:</p>
+  <div class="scene" id="s-fresnel">
+    <div class="controls">
+      <label for="fz-d">Path length <input id="fz-d" type="range" min="0" max="2" step="0.01" value="1"><output id="fz-do"></output></label>
+      <label for="fz-f">Frequency <input id="fz-f" type="range" min="1" max="4" step="0.01" value="2.16"><output id="fz-fo"></output></label>
+      <label for="fz-o">Obstacle height <input id="fz-o" type="range" min="0" max="1" step="0.01" value="0.3"><output id="fz-oo"></output></label>
+    </div>
+    <p class="readout" id="r-fresnel" aria-live="polite"></p>
+  </div>
+  <p>The usual rule of thumb is to keep at least 60% of the first zone's radius clear of buildings, trees and the ground itself. On a 10 km link at 2.4 GHz the zone is 17.7 m in radius at the middle, which is why point-to-point links sit on masts even when the far end looks visible from the roof.</p>
+
+  <!-- 5 -->
+  <h2 id="polarization">Polarization: lining up, and going circular</h2>
+  <p>Lesson 6 shows that two linear antennas at right angles hear each other badly. The loss follows the angle between them: nothing when aligned, 3 dB at 45°, and in theory everything at 90° (in practice, reflections leave you 20 dB or more down). Satellites have a problem with that: as a satellite tumbles and the wave crosses the ionosphere, its polarization angle changes on the way, so a linear signal would fade in and out. So many satellites send <b>circular polarization</b>: the field's direction spins as the wave travels. Meteor-M's picture downlink is right-hand circular (<a href="https://space.oscar.wmo.int/satellites/view/meteor_m_n2_3">WMO OSCAR</a>).</p>
+  <div class="scene" id="s-pol">
+    <div class="controls">
+      <label for="po-a">Your antenna's angle <input id="po-a" type="range" min="0" max="90" step="1" value="30"><output id="po-ao"></output></label>
+      <label for="po-c"><input id="po-c" type="checkbox"> The incoming wave is circular</label>
+    </div>
+    <p class="readout" id="r-pol" aria-live="polite"></p>
+  </div>
+  <p>A linear antenna receiving a circular wave always loses exactly half the power, 3 dB, but never more, whatever the angle: a steady small loss instead of deep fades. That's the trade the 137 MHz V-dipole makes. A circular antenna of the right hand (a crossed dipole fed 90° apart, a quadrifilar helix, a helix) gets those 3 dB back; one of the wrong hand loses a great deal. Reflections from buildings flip the hand, which is one reason a satellite signal arriving straight from the sky beats one bounced off a wall.</p>
+
+  <!-- 6 -->
+  <h2 id="build">Building: start long, then trim</h2>
+  <p>No formula gives the exact length of a real antenna: the wire's thickness, insulation, nearby objects and the ground all shift its resonance by a few percent. So the craft is the same for every antenna: cut a little long, measure where it resonates (an antenna analyzer or a NanoVNA, <a href="../lessons/08-feed-lines-and-swr.html#measure">lesson 8</a>), and trim. Starting lengths for some common builds:</p>
+  <div class="calc">
+    <label for="cl-f">Frequency, MHz <input id="cl-f" type="number" min="1" step="any" value="146"></label>
+  </div>
+  <div class="scroll"><table class="cut" id="cut-list" aria-live="polite"></table></div>
+  <p>These all start from a quarter wavelength and take off about 5% for the "end effect" (lesson 7's 468 rule, in meters). Then trim. Shortening raises the resonant frequency, lengthening lowers it, in proportion: a wire that resonates 2% too high needs to be 2% longer.</p>
+  <div class="calc">
+    <label for="tr-l">Length now (any unit) <input id="tr-l" type="number" min="0" step="any" value="52.0"></label>
+    <label for="tr-m">It resonates at, MHz <input id="tr-m" type="number" min="0.1" step="any" value="140.2"></label>
+    <label for="tr-t">You want, MHz <input id="tr-t" type="number" min="0.1" step="any" value="137.5"></label>
+  </div>
+  <p class="readout" id="r-trim" aria-live="polite"></p>
+  <p>Trim in two or three steps, not one: the proportion is exact for a simple wire, but feed lines, insulation and nearby objects make the second measurement worth taking. And measure the antenna where it will live: a dipole tuned on the lawn shifts when it goes up the mast.</p>
+  <p class="gist">Cut a quarter wavelength minus about 5% per element, measure where it resonates, and scale its length by measured ÷ wanted. Repeat once.</p>
+
+  <!-- 7 -->
+  <h2 id="feeding">Feeding it: the cable, the balun, the choke</h2>
+  <p>What happens between the antenna and the radio decides as much as the antenna does. Three practical rules, each explained in depth elsewhere:</p>
+  <ul>
+    <li><b>Mind the loss.</b> Coax loss grows with frequency and length (<a href="../lessons/08-feed-lines-and-swr.html#loss">lesson 8</a>). On receive, a lossy cable in front of the first amplifier adds its whole loss to the noise figure, which is why weak-signal VHF and UHF stations put the preamplifier at the antenna (<a href="./rf-design.html#cascade">noise-figure lab</a>; <a href="../../course/12-inside-the-dongle.html#before">course chapter 12</a> shows it measured).</li>
+    <li><b>Stop the shield from becoming antenna.</b> A balanced antenna (a dipole) on unbalanced coax lets current run down the outside of the shield, distorting the pattern and picking up household noise. A choke at the feed point stops it (<a href="./workshop.html#balun">workshop lab</a>).</li>
+    <li><b>Keep water out.</b> Seal outdoor connectors; water in coax raises its loss year by year (<a href="../lessons/08-feed-lines-and-swr.html#weather">lesson 8</a>).</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="placement">Where to put it</h2>
+  <p>The same antenna can work brilliantly or not at all depending on where it is. In rough order of importance:</p>
+  <ul>
+    <li><b>Clear sky in the directions you need.</b> At VHF and above, signals travel nearly in straight lines (lesson 9), and walls, balconies and roofs above the antenna block or weaken them. This site's own 137 MHz antenna on a north-facing balcony is a measured example: over its first four satellite passes in October 2026 it heard signal only with the satellite to the north at about 25° to 55° above the horizon; overhead and the southern sky, hidden by the building and the balcony above, gave next to nothing (a fifth pass, after an amplifier was added, also heard the south-southwest faintly, low in the sky).</li>
+    <li><b>Away from metal.</b> Metal within about a quarter wavelength (55 cm at 137 MHz, 51 cm at 146 MHz) detunes an antenna and bends its pattern: railings, gutters, window frames, a metal table.</li>
+    <li><b>Away from noise.</b> In a city, much of what you hear on receive is electrical noise from nearby devices (lesson 11). Moving an antenna a few meters away from a building's wiring can lower the noise more than any amplifier can raise the signal.</li>
+    <li><b>Height</b> helps on VHF/UHF (a farther horizon, fewer obstacles) and shapes the pattern on HF (<a href="../lessons/07-antennas.html#ground">lesson 7: the ground matters</a>).</li>
+  </ul>
+  <details class="deeper"><summary>Where it breaks: "a reflector under the antenna"</summary>
+    <p>A large metal sheet a quarter wavelength below a horizontal dipole sends the dipole's downward half back up. Computed for a perfect, very large reflector (<code>antenna-math.ts</code>): 7.5 dBi straight up instead of the dipole's 2.15, 4.5 dBi at 30° elevation, about the same as the dipole alone at 20°, and 6 dB worse at 10°. So it helps when the signal comes from high in the sky and nothing up there blocks it, and hurts near the horizon. Two things break it in practice. A reflector much smaller than the antenna (a small table under a 1 m dipole) reflects little and mostly detunes it; and one closer than about a tenth of a wavelength drags the feed impedance down and the efficiency with it. A concrete floor or balcony slab below the antenna is already a lossy, uncontrolled reflector of this kind.</p>
+  </details>
+
+  <!-- 9 -->
+  <h2 id="zoo">Beyond ham radio: a field guide</h2>
+  <p>Every antenna you see is one of a few ideas from this page and lesson 7, tuned for a job.</p>
+  <h3 id="dish">Dishes, solid and grid</h3>
+  <p>A dish is a curved mirror that collects a big area of the wave and focuses it onto a small antenna, the <b>feed</b>, at its focal point. Its gain is set by how many wavelengths across it is: twice the diameter or twice the frequency, four times the area, +6 dB, and a beam half as wide.</p>
+  <div class="scene" id="s-dish">
+    <div class="calc">
+      <label for="di-p">Preset <select id="di-p">
+        <option value="tv">Satellite TV dish, 60 cm at 11.7 GHz</option>
+        <option value="goes">Weather-satellite dish, 1.2 m at 1694 MHz</option>
+        <option value="grid">Grid dish for 2.4 GHz Wi-Fi, 60 cm</option>
+        <option value="gsm">Grid dish for 900 MHz cellular, 1 m</option>
+        <option value="eme">A ham Moon-bounce dish, 3 m at 1296 MHz</option>
+      </select></label>
+      <label for="di-d">Diameter, m <input id="di-d" type="number" min="0.05" step="any" value="0.6"></label>
+      <label for="di-f">Frequency, MHz <input id="di-f" type="number" min="1" step="any" value="11700"></label>
+      <label for="di-e">Efficiency, % <input id="di-e" type="number" min="10" max="90" step="1" value="60"></label>
+    </div>
+    <p class="readout" id="r-dish" aria-live="polite"></p>
+  </div>
+  <p>A <b>grid dish</b> is a dish made of parallel rods instead of a solid sheet. To a wave whose electric field runs along the rods, rods spaced much closer than a wavelength look like solid metal, so the grid reflects it just as well while letting wind through. To a wave whose field runs across the rods, the grid is nearly invisible. So a grid dish works for one polarization only, set by the feed, and the rods must be mounted parallel to it. The common "grid antenna" for 900 MHz cellular or 2.4 GHz Wi-Fi is exactly this.</p>
+  <p>A satellite TV dish is usually an <b>offset</b> dish: a slice of a larger parabola, with the feed below the beam so it doesn't block it. That's why it seems to point at the ground.</p>
+  <h3 id="others">The rest of the zoo</h3>
+  <div class="scroll"><table class="zoo">
+    <tr><th>Antenna</th><th>Where you see it</th><th>How it works</th><th>Pattern and polarization</th></tr>
+    <tr><td><b>Cellular sector panel</b></td><td>The rectangular panels on rooftops and towers, usually three per site</td><td>A column of patch or dipole elements in a box, with a reflector behind: a vertical phased array (lesson 7). The elements' timing can tilt the beam slightly downward ("electrical downtilt") to cover the street, not the horizon.</td><td>A beam aimed at one sector (a third of the compass for a three-panel site), narrow in elevation; usually two slanted polarizations (±45°) in one panel, for diversity</td></tr>
+    <tr><td><b>Patch</b></td><td>GPS receivers, car-roof sharks' fins, Wi-Fi access points</td><td>A metal square above a ground plane, about half a wavelength across in the board's material; a cut corner or two feeds make it circular</td><td>One broad lobe away from the ground plane; GPS patches are right-hand circular</td></tr>
+    <tr><td><b>Phased array</b></td><td>Starlink terminals, modern radars, 5G base stations</td><td>Hundreds of patches whose timing a chip sets for each one: lesson 7's two phased verticals, many times over, steering the beam with no moving parts</td><td>A narrow beam pointed electronically</td></tr>
+    <tr><td><b>Yagi</b></td><td>TV antennas on old roofs, ham beams</td><td>One driven element and parasitic helpers (lesson 7)</td><td>One main direction; linear</td></tr>
+    <tr><td><b>Log-periodic</b></td><td>Wideband TV and test antennas</td><td>Many dipoles of steadily changing length; whichever is resonant does the work (lesson 7's field guide)</td><td>Like a modest Yagi, but over a huge frequency range</td></tr>
+    <tr><td><b>Helix</b> and <b>quadrifilar helix (QFH)</b></td><td>Satellite ground stations, weather-satellite hobbyists</td><td>A wire coiled around a cylinder radiates a circular wave along its axis (helix); two loops twisted into a helix, four arms in all (QFH), cover the whole sky at once</td><td>Circular; the helix is a beam, the QFH sees the whole sky</td></tr>
+    <tr><td><b>Discone</b></td><td>Scanner and monitoring stations</td><td>A disc above a cone: a very wideband vertical</td><td>All around the horizon; vertical; works over a very wide frequency range, with no gain</td></tr>
+    <tr><td><b>Ferrite rod</b></td><td>Inside every AM radio</td><td>A coil on a magnetic rod: a tiny loop (lesson 7's receiving loops) that works because AM broadcast's sky and city noise is far stronger than the radio's own</td><td>A figure-eight with deep nulls off the rod's ends: turn the radio to null out interference</td></tr>
+    <tr><td><b>Phone and laptop antennas</b></td><td>Inside the case: copper patterns at the edges</td><td>Folded, shortened elements (often "PIFAs", planar inverted-F antennas) sharing a small board, several per phone for different bands and for MIMO</td><td>Roughly all around; whatever the hand and the case allow</td></tr>
+    <tr><td><b>NFC and RFID coils</b></td><td>Payment cards, phone wallets, door badges</td><td>Not really radiating antennas: two coils a few centimeters apart, coupled by their magnetic fields like a loose transformer</td><td>Works only up to a few centimeters</td></tr>
+  </table></div>
+
+  <!-- 10 -->
+  <h2 id="safety">Safety first</h2>
+  <p>Antenna work is where hams get hurt. Never put up an antenna where it could fall onto, or be blown into, a power line; use a ground and a lightning arrestor for outdoor antennas; don't climb towers alone; and keep people out of the strong field close to a transmitting antenna (<a href="../lessons/14-safety.html#towers">lesson 14</a>).</p>
+
+  <!-- check -->
+  <h2 id="check">Check yourself</h2>
+  <details><summary>Why does a GPS receiver need a patch with gain, when a simple dipole is fine at 137 MHz?</summary>
+    <p>A dipole's capture area shrinks with the wavelength squared. At 1575 MHz it's about 130 times smaller than at 137 MHz, so the receiver needs gain to collect enough of the wave.</p></details>
+  <details><summary>You double the distance of a free-space link. How much signal do you lose, and how could you win it back?</summary>
+    <p>6 dB. Four times the transmitter power, or 3 dB more gain at each end, or 6 dB more at one.</p></details>
+  <details><summary>Your V-dipole hears a circular satellite. What do you lose, and what would get it back?</summary>
+    <p>3 dB, all the time, at any angle. A circular antenna of the same hand (a QFH or crossed dipoles) recovers it.</p></details>
+  <details><summary>Your 2 m antenna resonates at 150 MHz instead of 146. Longer or shorter, and by how much?</summary>
+    <p>Longer, by 150 ÷ 146 ≈ 1.027: about 2.7%. Then measure again.</p></details>
+  <details><summary>A grid dish gives almost nothing after you mounted it. What's the first thing to check?</summary>
+    <p>Its rods' direction: a grid reflects only the polarization parallel to its rods, so the rods must run the same way as the feed's polarization.</p></details>
+
+  <nav class="next">
+    <a href="./">← Handbook companion</a>
+    <a href="../lessons/07-antennas.html">Lesson 7: Antennas →</a>
+  </nav>
+</main>
+<script type="module" src="/src/ham/handbook/antennas.ts"></script>
+</body>
+</html>
