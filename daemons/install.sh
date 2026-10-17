@@ -32,7 +32,7 @@ for agent in "$AGENTS"/sh.ihor.*.plist "$AGENTS"/sh.ihor.*.plist.disabled-by-dae
   daemon="/Library/LaunchDaemons/$label.plist"
   cp "$agent" "$daemon"
   # Daemons start with no user and an empty environment: run as the user, with their home and Homebrew on the PATH.
-  # The agent's own variables stay (sdr-sat's SDR_DEVICE=rtl and PORT=8074).
+  # The agent's own variables stay (sdr's SDR_DEVICE=rtl; sdr-sat's SDR_DEVICE=hackrf and PORT=8074).
   for key in UserName GroupName EnvironmentVariables:HOME EnvironmentVariables:PATH; do $PB -c "Delete :$key" "$daemon" 2>/dev/null || true; done
   $PB -c "Add :EnvironmentVariables dict" "$daemon" 2>/dev/null || true
   $PB -c "Add :UserName string $USER_NAME" -c "Add :GroupName string staff" \

@@ -6,13 +6,15 @@ import { HackRf, isHackRf } from "../src/hackrf.ts";
 
 export type Sdr = RtlSdr | HackRf;
 
-// SDR_DEVICE=rtl: only the RTL-SDR (the satellite server on :8074 keeps to it). Unset: the HackRF, else the RTL-SDR.
+// SDR_DEVICE=hackrf: only the HackRF (the satellite server on :8074: it sits behind the SAWbird on the V-dipole since
+// 2026-10-17). SDR_DEVICE=rtl: only the RTL-SDR (the main server on :8073). Unset: the HackRF, else the RTL-SDR.
 const ONLY = process.env.SDR_DEVICE;
 
 export async function openDongle(): Promise<Sdr> {
   const usb = () => new WebUSB({ allowAllDevices: true }).getDevices();
   const hack = ONLY !== "rtl" && (await usb()).find(isHackRf);
-  if (hack) try { return await HackRf.open(shim(hack)); } catch (e) { console.error(`HackRF won't open (${(e as Error).message}): trying the RTL-SDR`); }
+  if (hack) try { return await HackRf.open(shim(hack)); } catch (e) { console.error(`HackRF won't open (${(e as Error).message})${ONLY === "hackrf" ? "" : ": trying the RTL-SDR"}`); if (ONLY === "hackrf") throw e; }
+  if (ONLY === "hackrf") throw new Error("No HackRF plugged in (SDR_DEVICE=hackrf)");
   // A fresh WebUSB object each attempt: after a reset the dongle re-enumerates as a new device.
   return RtlSdr.openWithRetry(async () => {
     const dev = (await usb()).find(isRtl);

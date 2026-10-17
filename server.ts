@@ -135,7 +135,7 @@ function allowed(ip: string) {
 }
 
 // A live view of a weather satellite (radio=sat, 137–138 MHz) goes to the satellite radio, radio/server.ts on :8074 with the
-// Nooelec on the V-dipole; when that can't stream, to the main radio as everything else.
+// HackRF behind the SAWbird on the V-dipole; when that can't stream, to the main radio as everything else.
 const SDR_SAT_PORT = 8074;
 async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse, port = /[?&]radio=sat\b/.test(req.url ?? "") ? SDR_SAT_PORT : SDR_PORT, counted = false) {
   const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };

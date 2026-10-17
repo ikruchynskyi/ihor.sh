@@ -17,7 +17,7 @@ export class RemoteSdr {
   centerFrequency = 0; // of your slice
   readonly id = Math.random().toString(36).slice(2, 12);
   gain = ""; // what the server's radio is set to, as it says (pages show it; the owner sets it)
-  radio = ""; // "sat": the server's satellite radio (the Nooelec on the V-dipole) if it can, else the main one
+  radio = ""; // "sat": the server's satellite radio (the HackRF on the V-dipole) if it can, else the main one
   private width = 1_200_000;
   private streaming = false;
   private abort = new AbortController();

@@ -1,5 +1,5 @@
 // Records and decodes one Meteor pass on the server, started by the scheduler (meteor-rec.ts) a minute before the
-// satellite rises. It asks the satellite radio (radio/server.ts on :8074, the Nooelec;
+// satellite rises. It asks the satellite radio (radio/server.ts on :8074, the HackRF behind the SAWbird on the V-dipole;
 // the shared radio on :8073 when that one can't open) for a 240 kHz slice at the satellite's frequency, writes
 // the raw 8-bit I/Q to disk (for SatDump), decodes it as it arrives with the same receiver the page uses, and when the
 // satellite sets writes small products the page can show without touching the raw file: one grayscale PNG per channel,

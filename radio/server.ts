@@ -62,8 +62,8 @@ async function applyHackrf(s: Sdr | null = sdr) {
 
 // Gain is remembered per band (kept in gains.json): FM broadcast wants far less than a 2 m repeater, so moving the
 // window into another band brings back what was last set there.
-// The satellite server (:8074, the Nooelec behind a SAWbird LNA, 2026-10-16) keeps its own file: in a shared one, moving
-// the HackRF's gain in a band also wrote :8073's RTL gain there, and :8074 started at 32.8 dB next time, 15% clipped.
+// The satellite server (:8074) keeps its own file: in a shared one, one server's change to a band's gain also rewrote the
+// other's (2026-10-16: :8074 started at 32.8 dB next time, 15% clipped).
 const GAINS_FILE = path.resolve(import.meta.dirname, PORT === 8073 ? "gains.json" : `gains-${PORT}.json`); // git-ignored
 type Gains = { gain: number | null; lna: number; vga: number; amp: boolean };
 const gainMemory: Record<string, Gains> = await readFile(GAINS_FILE, "utf8").then(JSON.parse).catch(() => ({}));
