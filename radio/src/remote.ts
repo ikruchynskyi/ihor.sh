@@ -44,7 +44,7 @@ export class RemoteSdr {
     if (!this.streaming) { this.centerFrequency = freq; return; }
     this.centerFrequency = (await this.post("/api/slice", { id: this.id, center: freq })).center;
   }
-  async setGain(db: number | null) { await this.post("/api/tune", { gain: db }); } // shared by everyone
+  async setGain(_db: number | null) {} // the server's gains are its owner's: radio/server.ts refuses them from the internet
   /** The radio's shared controls: { gain } (RTL-SDR) or { lna, vga, amp } (HackRF). Throws the server's reason when refused. */
   async tune(body: object) { return this.post("/api/tune", body); }
 

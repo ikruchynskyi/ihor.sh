@@ -372,7 +372,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/tune" && req.method === "POST") {
       let body = "";
       for await (const c of req) body += c;
-      const { center, gain, lna, vga, amp } = JSON.parse(body || "{}");
+      const parsed = JSON.parse(body || "{}"), viaInternet = !!req.headers["x-via-ihor"];
+      // Gains are the owner's: from the internet (ihor.sh's proxy marks it), only the frequency can change. A visitor's
+      // gain used to be accepted here, which let anyone retune the station's gains (and its saved gains.json).
+      const { center } = parsed, { gain, lna, vga, amp } = viaInternet ? ({} as Record<string, undefined>) : parsed;
+      if (viaInternet && ["gain", "lna", "vga", "amp"].some((k) => k in parsed)) return json(res, 403, { error: "The server's gains are set by its owner.", ...state() });
       if (typeof center === "number") { // moves the whole window, so only when it still covers every slice
         if (center < 24e6 || center > 1.766e9) return json(res, 400, { error: "Frequency must be 24–1766 MHz" });
         const out = [...slices.values()].find((s) => Math.abs(s.center - center) + s.width / 2 > half());
