@@ -138,3 +138,24 @@ in ch20 (ch10's overtones), hexadecimal in ch3's code (moved from ch13's "Before
 sentence.
 
 **D6. Gists and "Before you start".** A `<p class="gist">` for each chapter's core idea; "Before you start" for ch2–4 and 16.
+
+## Track C, added 2026-10-17: Antennas in practice (`ham/handbook/antennas.html`)
+- Topic: a learner can choose, build, trim, place and judge an antenna, and recognize the antennas around them (cellular
+  panels, grid and solid dishes, patches and phased arrays, helices, discones, ferrite rods, NFC coils).
+- Already covered (read): ham lesson 6 (wavelength, polarization, cross-polarization widget, multipath), lesson 7 (the
+  dipole's standing wave and feed impedance, the 468/234 length calculator, patterns, dBi/dBd, ERP calculator, Yagi, phased
+  verticals, ground and height, loading and efficiency, a one-line field guide, receiving and DF antennas), lesson 8 (Z0,
+  SWR, analyzers, loss, tuners, stubs, matching, Smith chart), lesson 11 (thermal noise, noise figure), workshop#balun
+  (common-mode current, chokes), rf#cascade (preamp placement), course ch3 (noise, SNR) and ch12 (the first amplifier).
+- Gap: the practical side: how much an antenna collects (aperture), link budgets with a noise floor, what longer wires do
+  to the pattern (lesson 7 says it in words), clearing the path (Fresnel zones), circular polarization for satellites,
+  starting lengths and trimming, placement, and every non-ham antenna beyond one line each.
+- Where it goes: a new companion lab page (3c: lesson 7 is already one of the longest lessons and is tied to exam pools),
+  map key `ant`, linked from the Handbook's chapter 21 sections, lesson 7 and course ch12. It links to lessons 6–8, 11 and
+  the workshop rather than teaching them again.
+- Needs: dB and dBm (L2), wavelength and polarization (L6), dipole, patterns, gain in dBi (L7), SWR and analyzers (L8),
+  noise floor and noise figure (L11), noise and SNR (C3). New here: effective aperture, the link budget, Fresnel zones,
+  linear vs circular (3 dB), trimming, dish gain and beamwidth, each as widget → words → formula.
+- Truth: every formula in `src/ham/antenna-math.ts`, checked against textbook values by `antenna-math.test.ts` (dipole
+  2.15 dBi, short dipole 1.76, full wave 3.82, FSPL, dish gain, the 17.32 Fresnel rule, the 468 rule). Facts with a source:
+  the SAWbird datasheet, GPS's −128.5 dBm minimum (IS-GPS-200), Meteor LRPT's RHCP (WMO OSCAR). No number without one.
