@@ -43,7 +43,10 @@ for agent in "$AGENTS"/sh.ihor.*.plist "$AGENTS"/sh.ihor.*.plist.disabled-by-dae
   # stop the login agent, then (re)start the daemon
   sudo -u "$USER_NAME" launchctl bootout "gui/$UID_N/$label" 2>/dev/null || true
   launchctl bootout "system/$label" 2>/dev/null || true
-  launchctl bootstrap system "$daemon"
+  # bootout returns before the old job is gone, and bootstrapping too soon fails with "5: Input/output error"
+  # (2026-10-17: sdr-sat stayed down): wait for it to go, and try once more after a pause
+  for _ in 1 2 3 4 5 6 7 8 9 10; do launchctl print "system/$label" >/dev/null 2>&1 || break; sleep 1; done
+  launchctl bootstrap system "$daemon" || { sleep 3; launchctl bootstrap system "$daemon"; }
   # keep the agent's file, renamed so it doesn't also load at login (two copies would fight over the port)
   case "$agent" in *.disabled-by-daemon) ;; *) mv "$agent" "$agent.disabled-by-daemon" ;; esac
   echo "$label: now a boot daemon, running as $USER_NAME"
