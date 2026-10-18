@@ -316,6 +316,7 @@ function tokenizeLine(text) {
 
 // Stored text state
 let currentParsed = null;
+let mnemonicsData = null; // kanji mnemonics for the word popover, loaded on first use
 
 function parseText(raw) {
   const paragraphs = raw.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
