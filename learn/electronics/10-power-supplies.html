@@ -80,22 +80,6 @@
     <ul><li data-k="a" data-says="The chip gets 3.3/9 ≈ 37% of it.">Into the microcontroller</li><li data-k="b">Into heat in the regulator (about 63%)</li><li data-k="c" data-says="A linear regulator's own consumption is a few mA: small next to the voltage it drops.">Into the regulator's own circuitry</li></ul>
     <div class="why">(9 − 3.3)/9 = 63% is burned as heat. A buck would deliver about 90%: the same battery lasts about 2.4 times longer.</div>
   </div>
-  <div class="code" data-title="Build it: a battery-life calculator"><textarea>
-// Energy in the battery (Wh) = capacity (Ah) × average voltage. Each regulator delivers a share of it.
-function life({ mAh, vAvg }, vOut, iOut, kind) {
-  const energyWh = (mAh / 1000) * vAvg, pOut = vOut * iOut;
-  const efficiency = kind === "linear" ? vOut / vAvg : 0.9;     // linear: Vout/Vin; buck: ≈ 90%
-  return { hours: (energyWh * efficiency) / pOut, efficiency };
-}
-const batteries = { "Li-ion 3000 mAh": { mAh: 3000, vAvg: 3.7 }, "9 V 550 mAh": { mAh: 550, vAvg: 7.8 }, "4×AA 2500 mAh": { mAh: 2500, vAvg: 5.0 } };
-const rows = [["battery", "linear (h)", "buck (h)", "buck is"]];
-for (const [name, b] of Object.entries(batteries)) {
-  const L = life(b, 3.3, 0.1, "linear"), B = life(b, 3.3, 0.1, "buck");
-  rows.push([name, +L.hours.toFixed(1), +B.hours.toFixed(1), `${(B.hours / L.hours).toFixed(2)}×`]);
-}
-table(rows);
-print("From Li-ion to 3.3 V the gap is small: the voltages are already close. From 9 V it's large.");
-</textarea></div>
 
   <p>Chips like the AMS1117 (an LDO), the MP1584 (a buck) and the MT3608 (a boost) on tiny modules cost under a dollar; now you know what's inside each and when to reach for which. Try the <b>5 V regulated supply</b> template in the <a href="/learn/lab.html">circuit lab</a>: watch the raw DC ripple while the 7805's output stays flat, until you load it too hard. Next: <a href="./11-light-and-sensors.html"><b>light and sensors</b></a>.</p>
   <p class="muted">Previous: <a href="./09-oscillators-and-timers.html">Oscillators and timers</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>

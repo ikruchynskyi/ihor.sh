@@ -54,20 +54,6 @@
     <p>\(R_{in} = 1\) kΩ, \(R_f = 4.7\) kΩ, input +1 V DC. What's the output?</p>
     <div class="why">\(-4.7/1 \times 1 = -4.7\) V.</div>
   </div>
-  <div class="code" data-title="Build it: check the golden rules with the site's simulator"><textarea>
-// An op-amp (gain 100,000, ±12 V rails) as an inverting amplifier, solved by learn/circuit.js
-const { solve } = await import("/learn/circuit.js");
-const amp = (vin, rin, rf) => solve([
-  { type: "V", a: 1, b: 0, volts: vin },
-  { type: "R", a: 1, b: 2, ohms: rin },
-  { type: "R", a: 2, b: 3, ohms: rf },
-  { type: "OA", p: 0, n: 2, o: 3, gain: 1e5, vp: 10.5, vn: -10.5 },
-]).v;
-const rows = [["V_in", "V_out", "gain", "V− (should be ≈ 0)"]];
-for (const vin of [0.1, 0.5, 1, 1.2]) { const v = amp(vin, 1000, 10000); rows.push([vin, +v[3].toFixed(4), +(v[3] / vin).toFixed(4), v[2].toExponential(2)]); }
-table(rows);
-print("At 1.2 V the output wants −12 V but the rails stop it at −10.5 V, and rule 1 breaks: V− is no longer 0.");
-</textarea></div>
 
   <p class="gist">With negative feedback, an op-amp moves its output until its two inputs are equal, so the resistors around it, not the op-amp, set the gain.</p>
 

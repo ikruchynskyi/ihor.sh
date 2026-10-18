@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Filters</title>
-  <meta name="description" content="Electronics from scratch, chapter 8: filters. A hum and a hiss separated by RC filters, Bode plots and decibels, steeper filters by stacking stages, band-pass and Q, and active Sallen-Key filters from Butterworth-flat to resonant peaks, with the math and code for each." />
+  <meta name="description" content="Electronics from scratch, chapter 8: filters. A hum and a hiss separated by RC filters, Bode plots and decibels, steeper filters by stacking stages, band-pass and Q, and active Sallen-Key filters from Butterworth-flat to resonant peaks, with the math for each." />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
     body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
@@ -82,30 +82,12 @@
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>For the unity-gain Sallen-Key low-pass:</p>
     <p class="formula">\[ H(f) = \frac{1}{1 - (f/f_0)^2 + j\,(f/f_0)/Q}, \qquad f_0 = \frac{1}{2\pi\sqrt{R_1 R_2 C_1 C_2}}, \qquad Q = \frac{\sqrt{R_1 R_2 C_1 C_2}}{C_2 (R_1 + R_2)} \]</p>
-    <p>At \(f = f_0\) the real part vanishes and \(|H| = Q\): a Q of 2 means the filter <em>boosts</em> its cutoff frequency twice. In time (the right-hand graph, the output after the input jumps from 0 to 1), a high Q rings and overshoots; Butterworth overshoots about 4%; Q = 0.5 creeps up without overshoot. Choosing Q is choosing between a sharp corner and a calm response.</p>
+    <p>At \(f = f_0\) the real part vanishes and \(|H| = Q\): a Q of 2 means the filter <em>boosts</em> its cutoff frequency twice. To design one: pick \(R_1 = R_2 = R\), then \(C_1 = 2Q/(2\pi f_0 R)\) and \(C_2 = 1/(2Q \cdot 2\pi f_0 R)\) give exactly the \(f_0\) and \(Q\) you want. In time (the right-hand graph, the output after the input jumps from 0 to 1), a high Q rings and overshoots; Butterworth overshoots about 4%; Q = 0.5 creeps up without overshoot. Choosing Q is choosing between a sharp corner and a calm response.</p>
   </details>
   <div class="q" data-num="2">
     <p>A Sallen-Key low-pass with Q = 2. What's its gain exactly at \(f_0\)?</p>
     <div class="why">\(|H(f_0)| = Q = 2\), a +6 dB bump. Fine for a synthesizer's resonant filter; bad for a measurement.</div>
   </div>
-  <div class="code" data-title="Build it: design a filter and check its response"><textarea>
-// Complex helpers: [re, im]
-const div1 = (b) => { const d = b[0] ** 2 + b[1] ** 2; return [b[0] / d, -b[1] / d]; };
-const abs = (a) => Math.hypot(...a), dB = (a) => 20 * Math.log10(abs(a));
-
-// Sallen-Key unity gain: pick R1 = R2 = R, then C1 = 2Q / (2π f0 R), C2 = 1 / (2Q · 2π f0 R) gives the Q you want.
-function design(f0, Q, R = 10e3) { const w = 2 * Math.PI * f0; return { R, C1: (2 * Q) / (w * R), C2: 1 / (2 * Q * w * R) }; }
-function response({ R, C1, C2 }, f) {
-  const f0 = 1 / (2 * Math.PI * Math.sqrt(R * R * C1 * C2)), Q = Math.sqrt(R * R * C1 * C2) / (C2 * 2 * R), x = f / f0;
-  return div1([1 - x * x, x / Q]);
-}
-const parts = design(1000, 0.707);
-print(`1 kHz Butterworth: R = 10 kΩ, C1 = ${(parts.C1 * 1e9).toFixed(1)} nF, C2 = ${(parts.C2 * 1e9).toFixed(1)} nF`);
-const rows = [["f (Hz)", "gain (dB)"]];
-for (const f of [100, 500, 1000, 2000, 10000]) rows.push([f, +dB(response(parts, f)).toFixed(2)]);
-table(rows);
-print("A decade above the cutoff: about −40 dB, twice a single RC's −20.");
-</textarea></div>
 
   <p class="gist">A filter's order sets how steeply it falls, 20 dB per decade for each order, and its Q sets the shape of the corner: sharp and ringing, or flat and calm.</p>
   <p>Filters are everywhere: the anti-aliasing filter in front of every ADC (the <a href="/radio/course/03-taking-snapshots.html">radio course</a> explains why), the crossover in a speaker, the tuned circuits in a radio, the smoothing after a PWM output. The radio course's <a href="/radio/course/06-averaging-is-filtering.html">chapter 6</a> builds the same filters in software, with numbers instead of capacitors.</p>

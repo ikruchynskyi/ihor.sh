@@ -55,25 +55,14 @@
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>The <b>Beta equation</b> describes an NTC with temperatures in kelvin (\(T_0 = 298.15\) K = 25 °C, where it measures \(R_0\), and a constant \(B\) from the datasheet, here 3950):</p>
     <p class="formula">\[ R(T) = R_0\, e^{B\left(\frac{1}{T} - \frac{1}{T_0}\right)} \]</p>
-    <p>With the thermistor on the bottom of the divider: \(V = 3.3 \cdot \frac{R}{R + 10\text{k}}\), and the ADC reports \(n = \text{round}(4095 \cdot V / 3.3)\). Going back, in code: \(R = 10\text{k} \cdot \frac{n}{4095 - n}\), then solve the Beta equation for \(T\):</p>
+    <p>With the thermistor on the bottom of the divider: \(V = 3.3 \cdot \frac{R}{R + 10\text{k}}\), and the ADC reports \(n = \text{round}(4095 \cdot V / 3.3)\). Going back, which is what the chip's firmware does with each reading: \(R = 10\text{k} \cdot \frac{n}{4095 - n}\), then solve the Beta equation for \(T\):</p>
     <p class="formula">\[ \frac{1}{T} = \frac{1}{T_0} + \frac{1}{B} \ln\frac{R}{R_0} \]</p>
+    <p>Near 25 °C one count is worth about 0.02 °C (about 45 counts per degree), so rounding to whole counts costs only about 0.02 °C.</p>
   </details>
   <div class="q" data-num="2048" data-tol="2">
     <p>At 25 °C the thermistor is exactly 10 kΩ, equal to the fixed resistor. What does the 12-bit ADC read?</p>
     <div class="why">Half of 3.3 V, so half of full scale: \(4095/2 \approx 2048\).</div>
   </div>
-  <div class="code" data-title="Build it: ADC counts → degrees"><textarea>
-// The reverse of the chain above: what firmware on an ESP32 or Arduino does with each reading.
-const R0 = 10000, B = 3950, T0 = 298.15, RFIX = 10000, FULL = 4095;
-function celsius(counts) {
-  const R = RFIX * counts / (FULL - counts);                 // divider, thermistor at the bottom
-  const invT = 1 / T0 + Math.log(R / R0) / B;                // the Beta equation, solved for T
-  return 1 / invT - 273.15;
-}
-for (const n of [3500, 2900, 2048, 1200, 400]) print(`ADC ${n} → ${celsius(n).toFixed(1)} °C`);
-// Each count near room temperature is worth how much? (the resolution)
-print("one count at 25 °C ≈", (celsius(2047) - celsius(2048)).toFixed(3), "°C");
-</textarea></div>
 
   <p class="gist">A sensor reading is a chain: the world changes a resistance or a current, a circuit turns that into a voltage, the ADC turns the voltage into a number, and code undoes each step to get back to the world.</p>
 

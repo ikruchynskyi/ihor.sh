@@ -62,7 +62,7 @@
   <p>The other direction, voltage to number, is the <b>ADC</b> from chapter 11: a 12-bit ADC on 3.3 V splits the range into 4,096 steps of 0.8 mV each, and <code>analogRead()</code> returns which step the pin is on.</p>
 
   <h2>4. UART: two wires, agreed speed</h2>
-  <p>The simplest way two chips talk. No clock wire: both sides agree on a speed in advance (the <b>baud rate</b>, bits per second, e.g. 9600 or 115200). The line idles high. A byte starts with a <b>start bit</b> (low), then 8 data bits, least significant first, then a <b>stop bit</b> (high). The receiver sees the falling edge of the start bit, waits half a bit, and then samples once per bit time. This is what a USB-serial adapter, a GPS module and the Arduino's Serial Monitor all speak. Type text and watch it go out.</p>
+  <p>The simplest way two chips talk. No clock wire: both sides agree on a speed in advance (the <b>baud rate</b>, bits per second, e.g. 9600 or 115200). The line idles high. A byte starts with a <b>start bit</b> (low), then 8 data bits, least significant first, then a <b>stop bit</b> (high). The receiver sees the falling edge of the start bit, waits half a bit, and then samples once per bit time. (Many receivers take several samples around the middle of each bit and go with the majority, so a single noise spike can't flip it.) This is what a USB-serial adapter, a GPS module and the Arduino's Serial Monitor all speak. Type text and watch it go out.</p>
   <canvas id="c4" width="800" height="200" aria-label="A UART frame: start bit, 8 data bits least significant first, stop bit"></canvas>
   <div class="row"><label>send <input type="text" id="utext" value="Hi" maxlength="4" style="width:6em"></label><label>baud <select id="ubaud"><option>9600</option><option selected>115200</option></select></label></div>
   <p class="readout" id="o4"></p>
@@ -76,37 +76,6 @@
     <p>What number (decimal) is the mystery byte? (Bonus: which ASCII letter?)</p>
     <div class="why">Data bits in time order: 1 1 0 1 0 0 1 0. That's least significant first, so reversed it reads 0100 1011 = 64 + 8 + 2 + 1 = 75 = 0x4B, ASCII <b>K</b>.</div>
   </div>
-  <div class="code" id="uart" data-title="Build it: a UART encoder and a decoder that survives noise"><textarea>
-// Transmit at 16 samples per bit (receivers oversample like this), add noise, then decode.
-const OS = 16;
-function encode(text) {
-  const s = Array(OS * 4).fill(1);                                    // idle high
-  for (const ch of text) {
-    const b = ch.charCodeAt(0), bits = [0, ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (b >> i) & 1), 1];
-    for (const v of bits) for (let k = 0; k < OS; k++) s.push(v);
-  }
-  return s.concat(Array(OS * 4).fill(1));
-}
-const vote = (s, c) => (s[c - 2] + s[c - 1] + s[c] + s[c + 1] + s[c + 2] >= 3 ? 1 : 0);  // majority of 5 samples
-function decode(s) {
-  let out = "", i = 0;
-  while (i < s.length - 10 * OS) {
-    if (s[i] === 1 && s[i + 1] === 0) {                                  // falling edge: a start bit
-      const mid = i + 1 + OS / 2;                                       // middle of the start bit
-      if (vote(s, mid) !== 0) { i++; continue; }                        // a glitch, not a start bit
-      let b = 0;
-      for (let k = 0; k < 8; k++) b |= vote(s, mid + (k + 1) * OS) << k; // each data bit, voted at its middle
-      out += String.fromCharCode(b); i = mid + 9 * OS;                  // skip to the stop bit
-    } else i++;
-  }
-  return out;
-}
-const tx = encode("Hello!");
-const noisy = tx.map((v) => (Math.random() < 0.03 ? 1 - v : v));       // flip 3% of the samples
-print("clean:", decode(tx), " noisy:", decode(noisy));
-plot(tx.slice(0, 200), { label: "first 200 samples" });
-// Try: replace vote(s, c) with a single sample s[c] and run it a few times: noise starts flipping letters.
-</textarea></div>
 
   <details class="deeper"><summary>Where it breaks: two clocks that disagree</summary>
     <p>With no clock wire, the receiver times every bit with its own clock and hopes it matches the sender's. It resyncs only at each start bit, then samples in the middle of each bit time. Any mismatch piles up across the frame:</p>
@@ -134,17 +103,6 @@ plot(tx.slice(0, 200), { label: "first 200 samples" });
     <ul><li data-k="a" data-says="SPI would need a chip-select pin per sensor: five pins, plus the shared three.">SPI</li><li data-k="b">I²C</li><li data-k="c" data-says="UART is point-to-point: one partner per pair of pins.">UART</li></ul>
     <div class="why">I²C: two wires for all of them, each sensor with its own address. SPI shines when speed matters (a big color display, an SD card), UART when it's one partner (a GPS module, a PC).</div>
   </div>
-  <div class="code" data-title="Build it: an I²C message, bit by bit"><textarea>
-// The bits on SDA for: write `data` to the device at 7-bit `addr`. 'S' start, 'A' ACK slot, 'P' stop.
-function i2cWrite(addr, data) {
-  const bits = (n, w) => [...Array(w)].map((_, i) => (n >> (w - 1 - i)) & 1);  // most significant bit first
-  return ["S", ...bits(addr, 7), 0 /* write */, "A", ...data.flatMap((d) => [...bits(d, 8), "A"]), "P"];
-}
-const msg = i2cWrite(0x76, [0xF4, 0x27]);  // BME280 sensor: register 0xF4 (ctrl_meas) = 0x27 (measure continuously)
-print(msg.join(" "));
-const clocks = msg.filter((b) => b !== "S" && b !== "P").length;
-print(`${clocks} clock pulses; at 100 kHz that's ${(clocks / 100).toFixed(2)} ms`);
-</textarea></div>
 
   <p class="gist">A pin is a bit in memory, and a bus is an agreement about when each bit is valid: UART by an agreed speed, I²C and SPI by a clock wire.</p>
   <p>The site's own radio dongle is the extreme case of all this: its tuner chip is set up over I²C, and samples stream over USB, which the <a href="/radio/course/13-usb-from-zero.html">radio course</a> decodes from zero. Next: <a href="./14-motors.html">motors</a>, where PWM gets to push something.</p>

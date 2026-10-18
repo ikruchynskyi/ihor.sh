@@ -52,19 +52,6 @@
     <ul><li data-k="a" data-says="Current doubles too, and power is voltage times current.">It doubles</li><li data-k="b">It goes up 4 times</li><li data-k="c" data-says="The resistance didn't change, so the current follows the voltage.">It stays the same</li></ul>
     <div class="why">\(P = V^2 / R\): twice the voltage, twice the current, four times the power.</div>
   </div>
-  <div class="code" id="solver" data-title="Build it: solve circuits in code with this site's solver"><textarea>
-// The simulator behind every picture on this page, as a library. Nodes are numbered; 0 is ground.
-// Elements: V (voltage source), R (resistor), D (diode/LED), C, L, … between nodes a and b.
-const { solve } = await import("/learn/circuit.js");
-
-const r = solve([
-  { type: "V", a: 1, b: 0, volts: 5 },        // battery: + at node 1, − at ground
-  { type: "R", a: 1, b: 0, ohms: 1000 },      // 1 kΩ from node 1 back to ground
-]);
-print("voltage at node 1:", r.v[1], "V");
-print("current through the resistor:", r.current[1] * 1000, "mA");
-print("power:", 5 * r.current[1], "W");
-</textarea></div>
 
   <p class="gist">Current is the push divided by the resistance, \(I = V/R\); it's the same all the way around a loop, and every watt the push spends there turns into heat.</p>
 
@@ -81,7 +68,7 @@ print("power:", 5 * r.current[1], "W");
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>Why the divider formula holds: both resistors carry the same current, \(I = V / (R_1 + R_2)\) (in series, resistances add). The middle point sits \(I R_2\) above ground:</p>
     <p class="formula">\[ V_{\text{out}} = I R_2 = V \cdot \frac{R_2}{R_1 + R_2} \]</p>
-    <p><b>The catch: loading.</b> Connect something to the middle point, say a 10 kΩ input, and it sits in parallel with \(R_2\), lowering it, so \(V_{\text{out}}\) sags. Rule of thumb: whatever reads the divider should have at least 10× the resistance of \(R_2\). Microcontroller inputs (millions of ohms) are fine; driving a motor from a divider is not. Try it in the code below.</p>
+    <p><b>The catch: loading.</b> Connect something to the middle point, say a 10 kΩ input, and it sits in parallel with \(R_2\), lowering it, so \(V_{\text{out}}\) sags. Rule of thumb: whatever reads the divider should have at least 10× the resistance of \(R_2\). Microcontroller inputs (millions of ohms) are fine; driving a motor from a divider is not. The numbers, from this page's solver, for 9 V across 10 kΩ over 5 kΩ (3.00 V with nothing connected): a 1 MΩ load gives 2.99 V, 100 kΩ gives 2.90 V, 10 kΩ gives 2.25 V, and 1 kΩ drags it down to 0.69 V.</p>
   </details>
   <div class="q" data-num="3" data-unit="V">
     <p>9 V across \(R_1 = 10\) kΩ on top and \(R_2 = 5\) kΩ on the bottom. What's the middle voltage?</p>
@@ -92,17 +79,6 @@ print("power:", 5 * r.current[1], "W");
     <ul><li data-k="a">It goes down</li><li data-k="b" data-says="Brighter light lowers the LDR's resistance, and it's the bottom resistor.">It goes up</li><li data-k="c" data-says="R₂ changes, so its share of the voltage changes.">It doesn't change</li></ul>
     <div class="why">More light, less resistance in \(R_2\), smaller share \(R_2 / (R_1 + R_2)\). Swap the LDR to the top position and the reading goes up with light instead.</div>
   </div>
-  <div class="code" data-title="Build it: a divider, and what a load does to it"><textarea>
-const { solve } = await import("/learn/circuit.js");
-const divider = (load) => solve([
-  { type: "V", a: 1, b: 0, volts: 9 },
-  { type: "R", a: 1, b: 2, ohms: 10000 },
-  { type: "R", a: 2, b: 0, ohms: 5000 },
-  ...(load ? [{ type: "R", a: 2, b: 0, ohms: load }] : []),
-]).v[2];
-print("no load:", divider(0).toFixed(3), "V  (formula: 9 × 5/15 = 3)");
-for (const load of [1e6, 100e3, 50e3, 10e3, 1e3]) print(`with a ${load / 1000} kΩ load: ${divider(load).toFixed(3)} V`);
-</textarea></div>
 
   <h2>3. In parallel: the current splits</h2>
   <p>Side by side, each resistor gets the full battery voltage and takes its own current, V / R. The battery supplies the sum. Electrons don't get lost at a junction: what flows in flows out (that's Kirchhoff's current law). The more paths, the lower the total resistance.</p>
@@ -141,17 +117,6 @@ for (const load of [1e6, 100e3, 50e3, 10e3, 1e3]) print(`with a ${load / 1000} k
     <p>A blue LED drops about 3.0 V. From a 3.3 V supply, what resistor gives 10 mA?</p>
     <div class="why">\((3.3 - 3.0) / 0.010 = 30\) Ω. With only 0.3 V of margin, small changes in the LED's voltage swing the current a lot; blue and white LEDs on 3.3 V are touchy.</div>
   </div>
-  <div class="code" data-title="Build it: sweep the resistor"><textarea>
-const { solve, RED_LED } = await import("/learn/circuit.js");
-const rows = [["resistor (Ω)", "LED current (mA)", "LED voltage (V)", "resistor power (mW)"]];
-for (const R of [100, 220, 330, 470, 1000, 2200]) {
-  const r = solve([{ type: "V", a: 1, b: 0, volts: 5 }, { type: "R", a: 1, b: 2, ohms: R }, { type: "D", a: 2, b: 0, ...RED_LED }]);
-  const i = r.current[1];
-  rows.push([R, +(i * 1000).toFixed(2), +r.v[2].toFixed(3), +(i * i * R * 1000).toFixed(1)]);
-}
-table(rows);
-print("The LED's voltage barely moves (≈1.8–2.0 V) while its current changes 20×: that's the steep curve.");
-</textarea></div>
   <p>Want to try your own? Build any of these in the <a href="/learn/lab.html">circuit lab</a>. Next: <a href="./02-capacitors-and-time.html"><b>capacitors and time</b></a>, the RC circuit, which is also the simplest filter in the radio course.</p>
 
   <p class="muted">All chapters: <a href="/learn/">Learn &amp; build</a>. Circuits solved by our own modified nodal analysis (<code>learn/circuit.js</code>).</p>

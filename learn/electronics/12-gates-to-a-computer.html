@@ -60,15 +60,6 @@
     <p>How many NAND gates make an OR gate this way?</p>
     <div class="why">Two to invert A and B, one to NAND the results: 3.</div>
   </div>
-  <div class="code" id="gates" data-title="Build it: every gate from NAND"><textarea>
-const NAND = (a, b) => (a && b ? 0 : 1);
-const NOT = (a) => NAND(a, a);
-const AND = (a, b) => NOT(NAND(a, b));
-const OR = (a, b) => NAND(NOT(a), NOT(b));
-const XOR = (a, b) => AND(OR(a, b), NAND(a, b));
-const truth = (name, f) => print(name.padEnd(4), [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b]) => `${a}${b}→${f(a, b)}`).join("  "));
-truth("AND", AND); truth("OR", OR); truth("XOR", XOR); truth("NAND", NAND);
-</textarea></div>
 
   <h2>4. Adding numbers</h2>
   <p>In binary each place is worth twice the one to its right: 1, 2, 4, 8. Adding works like school addition: add a column, write the low bit, carry the high bit into the next column. One column is a <b>full adder</b>: sum = A XOR B XOR carry-in, carry-out = majority of the three. Chain four of them and you have a 4-bit adder. Click the bits.</p>
@@ -80,17 +71,6 @@ truth("AND", AND); truth("OR", OR); truth("XOR", XOR); truth("NAND", NAND);
     <p>What decimal number is binary 1101?</p>
     <div class="why">\(8 + 4 + 0 + 1 = 13\).</div>
   </div>
-  <div class="code" data-uses="gates" data-title="Build it: a 4-bit adder from the gates above"><textarea>
-// A full adder from gates, then four in a chain (uses NAND/AND/OR/XOR from the block above)
-const fullAdder = (a, b, cin) => { const s1 = XOR(a, b); return { sum: XOR(s1, cin), carry: OR(AND(a, b), AND(s1, cin)) }; };
-function add4(A, B) {             // A, B: arrays of 4 bits, least significant first
-  let carry = 0; const out = [];
-  for (let i = 0; i < 4; i++) { const r = fullAdder(A[i], B[i], carry); out.push(r.sum); carry = r.carry; }
-  return { bits: out, carry };
-}
-const bits = (n) => [0, 1, 2, 3].map((i) => (n >> i) & 1), num = (b) => b.reduce((s, v, i) => s + (v << i), 0);
-for (const [x, y] of [[5, 3], [9, 6], [15, 1], [7, 7]]) { const r = add4(bits(x), bits(y)); print(`${x} + ${y} = ${num(r.bits) + 16 * r.carry}  (4 bits: ${num(r.bits)}, carry out ${r.carry})`); }
-</textarea></div>
 
   <details class="deeper"><summary>Where it breaks: the carry has to ripple</summary>
     <p>The adder above looks instant, but a real gate isn't: its output changes a moment after its inputs, because its transistors have to charge the next gate's input, a small capacitor (chapter 2). Call one full adder's carry delay \(d\). The fourth column can't know its carry-in until the third has finished, which waits for the second, and so on: the carry ripples along the chain.</p>
@@ -127,24 +107,6 @@ for (const [x, y] of [[5, 3], [9, 6], [15, 1], [7, 7]]) { const r = add4(bits(x)
     <ul><li data-k="a" data-says="The ALU here only adds and subtracts.">The ALU multiplies</li><li data-k="b">A loop: add 6 to A, count B down by 1, jump back while B isn't 0</li><li data-k="c" data-says="Nothing's stored ahead of time: watch the registers change step by step.">It looks it up in memory</li></ul>
     <div class="why">Seven trips round the loop. Early computers really did multiply this way (or with shift-and-add, which is faster); modern CPUs have multiplier circuits built from many adders.</div>
   </div>
-  <div class="code" data-title="Build it: the toy CPU in 25 lines"><textarea>
-// Instructions: ["SET", reg, n] ["ADD", reg, reg] ["DEC", reg] ["JNZ", reg, line] ["HALT"]
-const program = [["SET", "A", 0], ["SET", "B", 7], ["SET", "C", 6], ["ADD", "A", "C"], ["DEC", "B"], ["JNZ", "B", 3], ["HALT"]];
-function run(program, maxSteps = 1000) {
-  const r = { A: 0, B: 0, C: 0 }; let pc = 0, steps = 0;
-  while (steps++ < maxSteps) {
-    const [op, x, y] = program[pc];                          // fetch + decode
-    if (op === "HALT") break;
-    if (op === "SET") r[x] = y;                               // execute
-    if (op === "ADD") r[x] = (r[x] + r[y]) & 255;             // an 8-bit adder: wraps at 256
-    if (op === "DEC") r[x] = (r[x] - 1) & 255;
-    pc = op === "JNZ" && r[x] !== 0 ? y : pc + 1;             // the program counter moves on, or jumps
-  }
-  return { registers: r, steps };
-}
-print(run(program));
-// Try: compute 2^7 by doubling, or a countdown that never halts (maxSteps stops it).
-</textarea></div>
 
   <p>Try gates in the <a href="/learn/lab.html">circuit lab</a> (Insert circuit → "Logic gate with two switches"). Next: <a href="./13-microcontrollers-and-buses.html">microcontrollers</a>, a whole computer like this one on a chip with its own memory and pins, and how it talks to other chips.</p>
   <p class="muted">Previous: <a href="./11-light-and-sensors.html">Light and sensors</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>

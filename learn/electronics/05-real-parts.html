@@ -78,22 +78,6 @@
     <p>Your calculation says 5.2 kΩ for a pull-up resistor. What do you buy, and does it matter?</p>
     <div class="why">The nearest E12 values are 4.7 kΩ and 5.6 kΩ; either works, because a pull-up's value is rarely critical (anything from 2k to 10k would do). When it is critical, like a precise divider, choose 1% parts from E96, or combine two resistors. Good designs are built so that standard values and their tolerances don't matter.</div>
   </div>
-  <div class="code" data-title="Build it: generate a series and pick the nearest value"><textarea>
-// The rounded E12 values (the formula gives 1.21, 1.47, …; the standard keeps two historic tweaks)
-const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
-const formula = Array.from({ length: 12 }, (_, k) => +(10 ** (k / 12)).toFixed(2));
-print("10^(k/12):", formula);
-
-function nearest(ohms, series = E12) {
-  const decade = 10 ** Math.floor(Math.log10(ohms));
-  const options = [...series, 10].map((v) => v * decade);
-  return options.reduce((best, v) => (Math.abs(Math.log(v / ohms)) < Math.abs(Math.log(best / ohms)) ? v : best));
-}
-for (const want of [5200, 333, 91000, 15.5]) {
-  const got = nearest(want);
-  print(`want ${want} Ω → buy ${got} Ω (${((got / want - 1) * 100).toFixed(1)}% off)`);
-}
-</textarea></div>
 
   <h2>3. Power ratings: how hot does it get?</h2>
   <p>A resistor turns \(P = V^2/R\) into heat, and its body can only shed so much. The common small one is rated ¼ W: at that power it runs roughly 70–100 °C above the room. Choose the voltage and resistance, then a package.</p>

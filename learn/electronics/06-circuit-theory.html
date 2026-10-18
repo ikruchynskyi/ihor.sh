@@ -77,32 +77,6 @@
     <p class="formula">\[ \begin{pmatrix} G_a + G_b + G_c & -G_c \\ -G_c & G_c + G_d \end{pmatrix} \begin{pmatrix} v_1 \\ v_2 \end{pmatrix} = \begin{pmatrix} 10\,G_a \\ 0 \end{pmatrix} \]</p>
     <p>A pattern you can write without thinking: each diagonal entry is the sum of conductances touching that node; each off-diagonal entry is minus the conductance between two nodes; the right side is current pushed in by sources. Diodes and transistors make the equations non-linear: the simulator guesses, linearizes around the guess, solves this same kind of matrix, and repeats (Newton's method, chapter 2 of the AI course).</p>
   </details>
-  <div class="code" data-title="Build it: nodal analysis from scratch"><textarea>
-// Resistors between nodes (0 = ground) and current sources into nodes. Returns node voltages.
-function solve(n, resistors, sources) {
-  const G = Array.from({ length: n }, () => new Array(n).fill(0)), I = new Array(n).fill(0);
-  for (const [a, b, ohms] of resistors) {
-    const g = 1 / ohms;
-    if (a) G[a - 1][a - 1] += g;
-    if (b) G[b - 1][b - 1] += g;
-    if (a && b) { G[a - 1][b - 1] -= g; G[b - 1][a - 1] -= g; }
-  }
-  for (const [node, amps] of sources) I[node - 1] += amps;
-  // Gaussian elimination with partial pivoting
-  for (let c = 0; c < n; c++) {
-    const p = G.slice(c).reduce((best, row, k) => (Math.abs(row[c]) > Math.abs(G[best][c]) ? k + c : best), c);
-    [G[c], G[p]] = [G[p], G[c]]; [I[c], I[p]] = [I[p], I[c]];
-    for (let r = c + 1; r < n; r++) { const f = G[r][c] / G[c][c]; for (let k = c; k < n; k++) G[r][k] -= f * G[c][k]; I[r] -= f * I[c]; }
-  }
-  const v = new Array(n).fill(0);
-  for (let r = n - 1; r >= 0; r--) v[r] = (I[r] - G[r].slice(r + 1).reduce((s, g, k) => s + g * v[r + 1 + k], 0)) / G[r][r];
-  return v;
-}
-// The example: a 10 V source through 1 kΩ is the same as 10 mA pushed into node 1 with 1 kΩ to ground
-// (a source transformation; that's how a voltage source fits into G·v = i).
-const v = solve(2, [[1, 0, 1000], [1, 0, 2000], [1, 2, 1000], [2, 0, 3000]], [[1, 10 / 1000]]);
-print("v1 =", v[0].toFixed(4), "V   v2 =", v[1].toFixed(4), "V");
-</textarea></div>
 
   <h2>4. Any circuit, seen from two terminals, is one battery and one resistor</h2>
   <p>This is Thevenin's theorem, and it's the most useful shortcut in electronics. However complicated a circuit of sources and resistors is, from the outside, at two terminals, it behaves exactly like one voltage source \(V_{th}\) with one resistor \(R_{th}\) in series. Below, a voltage divider is the "black box". Turn the load and watch the operating point slide along a straight line.</p>
@@ -164,21 +138,6 @@ print("v1 =", v[0].toFixed(4), "V   v2 =", v[1].toFixed(4), "V");
     <ul><li data-k="a">Infinite: it blocks DC</li><li data-k="b" data-says="That's at very high frequency, where 1/(ωC) → 0.">Zero</li><li data-k="c" data-says="Its impedance depends on frequency: 1/(2πfC).">1 MΩ</li></ul>
     <div class="why">\(1/(\omega C)\) with \(\omega = 0\) is infinite. At high frequency it's nearly a wire. "Passes AC, blocks DC" in one formula.</div>
   </div>
-  <div class="code" data-title="Build it: AC analysis with complex numbers"><textarea>
-// A tiny complex-number kit: [re, im]
-const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
-const mul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
-const div = (a, b) => { const d = b[0] ** 2 + b[1] ** 2; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
-const abs = (a) => Math.hypot(...a), deg = (a) => (Math.atan2(a[1], a[0]) * 180) / Math.PI;
-
-const R = 1000, C = 1e-6, fc = 1 / (2 * Math.PI * R * C);
-const Zc = (f) => div([1, 0], [0, 2 * Math.PI * f * C]);          // 1 / (jωC)
-const H = (f) => div(Zc(f), add([R, 0], Zc(f)));                     // the divider, with complex impedances
-const rows = [["f (Hz)", "|H|", "dB", "phase (°)"]];
-for (const f of [10, fc / 2, fc, 2 * fc, 10 * fc, 100 * fc]) rows.push([+f.toFixed(1), +abs(H(f)).toFixed(3), +(20 * Math.log10(abs(H(f)))).toFixed(1), +deg(H(f)).toFixed(1)]);
-table(rows);
-// Try: an RLC series circuit, Z = R + jωL + 1/(jωC). Where is |Z| smallest?
-</textarea></div>
 
   <p>Every chapter from here on uses these tools: <a href="./07-op-amps.html">op-amps</a> (next) are analyzed with KCL and one extra rule, filters with impedances, power supplies with Thevenin. Build any of these circuits in the <a href="/learn/lab.html">circuit lab</a> and check the numbers with its meters and scope.</p>
   <p class="muted">Previous: <a href="./05-real-parts.html">Real parts</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>

@@ -58,23 +58,6 @@
     <ul><li data-k="a" data-says="The capacitor charges faster, but it also has further to go: the thresholds scale too.">It speeds up</li><li data-k="b" data-says="The charging time depends only on the ratio of the thresholds to the supply.">It slows down</li><li data-k="c">Nothing: the thresholds are fractions of the supply, so it cancels</li></ul>
     <div class="why">Both the target the capacitor charges toward and the thresholds are proportional to \(V_s\); only their ratio enters the logarithm.</div>
   </div>
-  <div class="code" data-title="Build it: pick 555 parts for a target frequency and duty cycle"><textarea>
-// Given f and a duty cycle D (> 50%), and a capacitor you have: solve the two timing equations for R1, R2.
-//   t_high = 0.693 (R1 + R2) C,   t_low = 0.693 R2 C
-const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
-const nearest = (r) => { const d = 10 ** Math.floor(Math.log10(r)); return [...E12, 10].map((v) => v * d).reduce((a, b) => (Math.abs(Math.log(b / r)) < Math.abs(Math.log(a / r)) ? b : a)); };
-
-function design555(f, D, C) {
-  const T = 1 / f, tHigh = D * T, tLow = T - tHigh;
-  const R2 = tLow / (0.693 * C), R1 = tHigh / (0.693 * C) - R2;
-  return { R1, R2, R1std: nearest(R1), R2std: nearest(R2) };
-}
-for (const [f, D, C] of [[1, 0.55, 10e-6], [1000, 0.6, 10e-9], [38000, 0.5001, 1e-9]]) {
-  const r = design555(f, D, C), fReal = 1.44 / ((r.R1std + 2 * r.R2std) * C);
-  print(`${f} Hz, duty ${+(D * 100).toFixed(2)}%: R1 = ${r.R1.toFixed(0)} Ω → ${r.R1std} Ω, R2 = ${r.R2.toFixed(0)} Ω → ${r.R2std} Ω, actual ${fReal.toFixed(1)} Hz`);
-}
-// The 38 kHz line is an infrared remote's carrier: duty ≈ 50% needs R1 ≪ R2.
-</textarea></div>
 
   <p class="gist">An oscillator is feedback that comes back in step and at least as strong as it left. In a 555 that loop is a capacitor charging between ⅓ and ⅔ of the supply, so R and C alone set the rhythm.</p>
 

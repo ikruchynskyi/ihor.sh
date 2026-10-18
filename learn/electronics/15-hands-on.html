@@ -108,21 +108,6 @@
     <p>Why give a board a solid ground plane instead of routing ground as a trace like any other net?</p>
     <div class="why">Every current returns to its source. With a plane, the return current flows directly under its signal trace, so the loop it makes is tiny: little inductance (less ringing, section 4's lesson again), little radiated noise, and the same 0 V everywhere on the board. A thin ground trace makes big loops and a "ground" that's a few millivolts different at each chip, which analog circuits and ADCs (chapter 11) notice.</div>
   </div>
-  <div class="code" data-title="Build it: a trace width calculator, and the voltage a trace drops"><textarea>
-// IPC-2221: I = k · ΔT^0.44 · A^0.725, A in mil², k = 0.048 outer / 0.024 inner layers.
-function traceWidth(amps, rise = 10, oz = 1, outer = true) {
-  const k = outer ? 0.048 : 0.024, area = (amps / (k * rise ** 0.44)) ** (1 / 0.725);  // mil²
-  const thickMil = 1.378 * oz;                                                          // 1 oz/ft² = 35 µm = 1.378 mil
-  return { mil: area / thickMil, mm: (area / thickMil) * 0.0254 };
-}
-// The trace's resistance: R = ρ L / (w t), copper ρ = 1.72e-8 Ω·m.
-const resistance = (lengthMm, widthMm, oz = 1) => (1.72e-8 * lengthMm * 1e-3) / (widthMm * 1e-3 * 35e-6 * oz);
-for (const I of [0.5, 1, 2, 5]) {
-  const w = traceWidth(I), R = resistance(100, w.mm);
-  print(`${I} A → ${w.mm.toFixed(2)} mm wide (${w.mil.toFixed(0)} mil); a 10 cm run is ${(R * 1000).toFixed(0)} mΩ and drops ${(I * R * 1000).toFixed(0)} mV`);
-}
-// Try: an inner layer (outer = false) needs about twice the width for the same current: it can't cool to the air.
-</textarea></div>
 
   <p>Then build something: the <a href="/learn/lab.html">circuit lab</a> has every circuit from this course to rehearse before you build it for real. Next: <a href="./16-audio.html">audio</a>, amplifiers and the speakers and microphones they drive.</p>
   <p class="muted">Previous: <a href="./14-motors.html">Motors</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>

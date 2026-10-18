@@ -93,36 +93,6 @@
     <div class="why">The stepper counts its way to positions, the DC motor is the cheap fast spinner, and the servo is an angle for one wire and a pulse. (Big robot arms actually use DC or brushless motors with encoders, which is the servo idea scaled up.)</div>
   </div>
 
-  <div class="code" data-title="Build it: a motor spinning up (two equations, stepped in time)"><textarea>
-// Electrical: L di/dt = V − R i − k ω.  Mechanical: J dω/dt = k i − b ω − load.
-const R = 2, L = 0.002, k = 0.01, J = 2e-6, b = 1e-6;
-function spinUp(V, load = 0, T = 0.3, dt = 1e-5) {
-  let i = 0, w = 0; const speed = [], current = [];
-  for (let n = 0, t = 0; t < T; n++, t += dt) {
-    i += (dt / L) * (V - R * i - k * w);
-    w += (dt / J) * (k * i - b * w - load);
-    if (w < 0 && load > 0) w = 0;                               // a load can stall it, not run it backwards
-    if (n % 300 === 0) { speed.push([t * 1000, (w * 60) / (2 * Math.PI)]); current.push([t * 1000, i]); }
-  }
-  return { speed, current, rpm: (w * 60) / (2 * Math.PI), i };
-}
-const r = spinUp(6);
-print(`6 V, no load: ${r.rpm.toFixed(0)} rpm, ${(r.i * 1000).toFixed(0)} mA running; stall would be ${6 / R} A`);
-plot(r.speed, { label: "speed (rpm) vs time (ms)" });
-plot(r.current, { label: "current (A) vs time (ms): the start is a stall" });
-// Try: spinUp(6, 0.01) for a load, or spinUp(3) at half the voltage (half the speed: speed ∝ voltage).
-</textarea></div>
-  <div class="code" data-title="Build it: stepper coil sequences"><textarea>
-// Full steps: one coil at a time (A+, B+, A−, B−). Half steps add both-coils-on in between.
-const FULL = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-const HALF = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-function moveTo(degrees, half = false, stepDeg = 1.8) {
-  const seq = half ? HALF : FULL, per = half ? stepDeg / 2 : stepDeg, n = Math.round(degrees / per);
-  return { steps: n, reached: n * per, coils: [...Array(Math.min(n, 8))].map((_, s) => seq[(s + 1) % seq.length]) };
-}
-print(moveTo(90));
-print(moveTo(10, true));   // 10° isn't a whole number of steps: it lands on the nearest one
-</textarea></div>
 
   <p>In the <a href="/learn/lab.html">circuit lab</a>, "MOSFET motor driver with flyback" is section 2's bottom half of the bridge. Next: <a href="./15-hands-on.html">hands-on</a>, building these for real on a breadboard and a PCB.</p>
   <p class="muted">Previous: <a href="./13-microcontrollers-and-buses.html">Microcontrollers and buses</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>

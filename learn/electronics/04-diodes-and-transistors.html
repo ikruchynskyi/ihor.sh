@@ -56,28 +56,12 @@
     <p>Between peaks the capacitor alone feeds the load current \(I\) for about one period \(1/f\) (half-wave) and sags by \(\Delta V = Q/C = I/(f C)\):</p>
     <p class="formula">\[ V_{\text{ripple}} \approx \frac{I}{f\, C} \quad (\text{half-wave}), \qquad \frac{I}{2 f C} \quad (\text{bridge}) \]</p>
     <p>100 mA from 60 Hz with 1000 µF: \(0.1 / (60 \times 0.001) = 1.67\) V of ripple, half that with a bridge. That's why mains supplies use big electrolytic capacitors, and why a bridge rectifier is the default.</p>
+    <p>The formula assumes the ripple is small next to the output, so the load's current hardly changes. With a 12 V peak into 100 Ω (about 110 mA), this page's solver gives 0.37 V of ripple with 4700 µF (formula: 0.39 V) and 1.57 V with 1000 µF (1.83 V). With 220 µF it gives 5.2 V where the formula says 8.3 V: the output sags so far that the load draws less current.</p>
   </details>
   <div class="q" data-num="0.83" data-tol="0.02" data-unit="V">
     <p>A bridge rectifier at 60 Hz, 1000 µF, 100 mA load. Ripple, in volts?</p>
     <div class="why">\(0.1 / (2 \times 60 \times 0.001) \approx 0.83\) V. The bridge refills the capacitor twice per cycle.</div>
   </div>
-  <div class="code" data-title="Build it: a rectifier with a smoothing capacitor"><textarea>
-const { simulate } = await import("/learn/circuit.js");
-const f = 60, dt = 1 / (f * 400);
-const rect = (C) => simulate([
-  { type: "V", a: 1, b: 0, volts: (t) => 12 * Math.sin(2 * Math.PI * f * t) },    // 12 V peak AC
-  { type: "D", a: 1, b: 2, is: 1e-14, n: 1 },                                        // one silicon diode
-  { type: "C", a: 2, b: 0, farads: C },
-  { type: "R", a: 2, b: 0, ohms: 100 },                                              // ≈ 110 mA load
-], { dt, steps: 400 * 6 }).v.map((v) => v[2]);
-for (const C of [220e-6, 1000e-6, 4700e-6]) {
-  const tail = rect(C).slice(-800);
-  print(`${C * 1e6} µF: output ${Math.min(...tail).toFixed(2)}–${Math.max(...tail).toFixed(2)} V, ripple ${(Math.max(...tail) - Math.min(...tail)).toFixed(2)} V (formula ≈ ${(0.11 / (f * C)).toFixed(2)} V)`);
-}
-// The formula assumes the ripple is small next to the output (the load current stays about the same):
-// it's good at 4700 µF, rough at 1000 µF, and overestimates at 220 µF, where the output sags so far the load draws less.
-plot(rect(1000e-6).map((y, k) => [k * dt * 1000, y]), { label: "output with 1000 µF, ms" });
-</textarea></div>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> get the ripple below 10% with the 1 kΩ load.</p>
 
   <h2>3. A MOSFET switches a motor</h2>

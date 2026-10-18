@@ -71,16 +71,6 @@
     <p>A 10 µH coil and a 1 nF capacitor. What frequency do they ring at, in MHz?</p>
     <div class="why">\(\sqrt{10^{-5} \times 10^{-9}} = 10^{-7}\); \(1/(2\pi \times 10^{-7}) \approx 1.59\) MHz, the top of the AM broadcast band.</div>
   </div>
-  <div class="code" data-title="Build it: ring a tank, and count its frequency"><textarea>
-const { simulate } = await import("/learn/circuit.js");
-const L = 10e-6, C = 1e-9, f0 = 1 / (2 * Math.PI * Math.sqrt(L * C)), dt = 1 / (f0 * 100);
-const out = simulate([{ type: "C", a: 1, b: 0, farads: C, v0: 5 }, { type: "L", a: 1, b: 0, henries: L }], { dt, steps: 1000 });
-const v = out.v.map((n) => n[1]);
-let crossings = 0;
-for (let k = 1; k < v.length; k++) if (v[k - 1] < 0 && v[k] >= 0) crossings++;     // one per cycle
-print("formula:", (f0 / 1e6).toFixed(4), "MHz   counted:", (crossings / (1000 * dt) / 1e6).toFixed(4), "MHz");
-plot(v.slice(0, 400).map((y, k) => [k * dt * 1e6, y]), { label: "capacitor voltage, µs" });
-</textarea></div>
   <p class="goal" id="g2">🎯 <b>Challenge:</b> make it ring at exactly 1 swing per second (1.00 Hz, within 3%).</p>
 
   <p class="gist">A coil keeps current flowing and a capacitor keeps voltage steady; joined, they trade energy back and forth at one frequency, \(1/(2\pi\sqrt{LC})\).</p>

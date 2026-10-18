@@ -1,7 +1,9 @@
 # Electronics from scratch: plan
 
 The path is `learn/index.html` chapter order (1–16). The standard is the `learn-kit.js` header: questions before
-answers, a gist per core idea, optional "Why …?" and "Where it breaks" boxes. Checks:
+answers, a gist per core idea, optional "Why …?" and "Where it breaks" boxes. Ideas from the AI course are adapted, not copied:
+here a learner builds intuition by playing with circuits (widgets solved live by `circuit.js`), so chapters have **no
+code boxes**. A number a code box would have shown goes in the text or a box, computed with `circuit.js` first. Checks:
 `node learn/circuit.test.mjs && node learn/lab/lab.test.mjs`, then a cold read of each changed page at 390 and 1280 px.
 
 ## Track A: close the gaps (2026-10-17)
@@ -46,3 +48,10 @@ answers, a gist per core idea, optional "Why …?" and "Where it breaks" boxes. 
   losses, ch5, ch7 §7, ch8 stacked stages, ch9 RC vs crystal, ch10 dropout and discontinuous mode, ch11 ADC steps) got
   only a gist.
 - Truth: solver numbers from circuit.js (2N3904 and silicon diode models); the rest is arithmetic shown in the box.
+
+## Track C: no code boxes (2026-10-17)
+- The owner's call: code doesn't build electronics intuition; widgets do. All 25 "Build it" code boxes were removed.
+  Most repeated a widget on the same page. Their few unique points moved into the text with numbers from `circuit.js`:
+  ch1 a load on a divider (3.00 V unloaded; 2.99 / 2.90 / 2.25 / 0.69 V with 1 MΩ / 100 kΩ / 10 kΩ / 1 kΩ), ch4 where the
+  ripple formula fails (220 µF: 5.2 V simulated vs 8.3 V by formula), ch8 the Sallen-Key part recipe, ch11 one ADC count
+  ≈ 0.02 °C near 25 °C, ch13 majority sampling in UART receivers.
