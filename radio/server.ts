@@ -220,7 +220,7 @@ async function scanFm() {
 // slice around their own station: mixed to 0 Hz, low-passed and decimated here (2.4 MS/s → 480 k → 240 k, or one
 // stage to 1.2 M), 8-bit like the dongle's own bytes. Slices are absolute frequencies, so everyone tunes on their own;
 // the window itself moves only when it can still cover every slice.
-type Slice = { id: string; res: http.ServerResponse; center: number; width: number; tag: string; phase: number; stages: FirDecimator[]; congested: boolean; scale: number };
+type Slice = { id: string; res: http.ServerResponse; center: number; width: number; tag: string; phase: number; stages: FirDecimator[]; congested: boolean; scale: number; via: boolean }; // via: streamed out through ihor.sh (counts against the upload)
 const slices = new Map<string, Slice>();
 const overviewers = new Set<http.ServerResponse>();
 const listening = () => clients.size + slices.size;
@@ -464,8 +464,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/stream") {
       const q = url.searchParams, raw = q.get("raw") === "1" && !req.headers["x-via-ihor"];
       const width = WIDTHS.includes(Number(q.get("width"))) ? Number(q.get("width")) : 1_200_000;
-      const used = [...slices.values()].reduce((t, s) => t + 2 * s.width, 0);
-      if (!raw && used + 2 * width > BUDGET) return json(res, 503, { error: "The radio's upload is full right now (too many listeners). Try again in a few minutes." });
+      // The budget is the internet upload, so only slices going out through ihor.sh count: a local stream (the Meteor
+      // recorder on this machine) uploads nothing and must never be refused because visitors filled the upload.
+      const via = !!req.headers["x-via-ihor"], used = [...slices.values()].filter((s) => s.via).reduce((t, s) => t + 2 * s.width, 0);
+      if (!raw && via && used + 2 * width > BUDGET) return json(res, 503, { error: "The radio's upload is full right now (too many listeners). Try again in a few minutes." });
       clearTimeout(idle);
       if (mode === "aprs" || mode === "adsb") { paused = mode; push(mode, "offline", { mode: "iq", reason: "spectrum" }); }
       const id = String(q.get("id") ?? "").replace(/[^\w-]/g, "").slice(0, 40) || Math.random().toString(36).slice(2);
@@ -480,7 +482,7 @@ const server = http.createServer(async (req, res) => {
       if (raw) { clients.add(res); req.on("close", () => { clients.delete(res); congested.delete(res); leave(); }); }
       else {
         slices.get(id)?.res.destroy(); // the same page reconnecting replaces its old stream
-        slices.set(id, { id, res, center, width, tag: id.slice(-4), phase: 0, stages: stages(sdr!.sampleRate, width), congested: false, scale: 127.5 * (q.get("boost") === "1" ? Math.sqrt(sdr!.sampleRate / width) : 1) });
+        slices.set(id, { id, res, center, width, tag: id.slice(-4), phase: 0, stages: stages(sdr!.sampleRate, width), congested: false, scale: 127.5 * (q.get("boost") === "1" ? Math.sqrt(sdr!.sampleRate / width) : 1), via });
         req.on("close", () => { if (slices.get(id)?.res === res) slices.delete(id); leave(); });
       }
       console.log(`listener joined (${listening()})`);
