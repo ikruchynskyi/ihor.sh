@@ -78,7 +78,9 @@ export class Scene {
     c.style.touchAction = "none"; // a drag on the canvas moves the point instead of scrolling
     c.tabIndex = 0;
     const plane = () => this.opts.plane!(this.w, this.h);
-    const at = (e: PointerEvent) => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    // In the canvas's own CSS pixels (what draw() and the handles use). The reader's text size zooms the page with CSS
+    // zoom, and then the on-screen rectangle is bigger than clientWidth: unscaled, a press never landed on a handle.
+    const at = (e: PointerEvent) => { const r = c.getBoundingClientRect(), k = c.clientWidth / (r.width || 1); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
     const nearest = (px: number, py: number) => {
       let best = -1, bd = 26;
       hs.forEach((h, i) => { const [hx, hy] = toPx(plane(), h.x, h.y); const d = Math.hypot(hx - px, hy - py); if (d < bd) { bd = d; best = i; } });

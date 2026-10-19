@@ -121,7 +121,8 @@ function scrub(c: HTMLCanvasElement, tip: HTMLElement, m: any, home: { lat: numb
       + (s ? `${s.el.toFixed(0)}° up, ${s.dir} (${s.az.toFixed(0)}°)<br>over ${Math.abs(s.lat).toFixed(1)}°${s.lat >= 0 ? "N" : "S"} ${Math.abs(s.lon).toFixed(1)}°${s.lon >= 0 ? "E" : "W"}<br>` : `${p.el.toFixed(0)}° up<br><br>`) // fixed lines: the tip's height doesn't jump either
       + `signal ${p.snr.toFixed(1)} dB · ${p.frames} frames${p.acquired ? " · locked" : ""}` + (map ? "<canvas></canvas>" : "");
     if (map) map.dot(tip.querySelector("canvas")!, t);
-    tip.hidden = false; tip.style.left = `${Math.min(r.width - tip.offsetWidth, Math.max(0, e.clientX - r.left - tip.offsetWidth / 2))}px`;
+    tip.hidden = false; const k = c.clientWidth / (r.width || 1); // on-screen px → the box's own px (the reader's text size zooms the page)
+    tip.style.left = `${Math.min(c.clientWidth - tip.offsetWidth, Math.max(0, (e.clientX - r.left) * k - tip.offsetWidth / 2))}px`;
   };
   c.addEventListener("pointermove", show); c.addEventListener("pointerdown", show);
   c.addEventListener("pointerleave", () => { tip.hidden = true; chart(c, tl); });
