@@ -361,6 +361,12 @@ function json(res: http.ServerResponse, code: number, body: unknown) {
   res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
 }
 
+// The owner's controls (gains, the raw full-window stream) answer only this machine, and only requests that didn't come
+// through ihor.sh's proxy (which marks them x-via-ihor). The header alone wasn't enough: the server listened on every
+// interface, so anything on the LAN, sending no header, counted as the owner (SECURITY.md).
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const fromOwner = (req: http.IncomingMessage) => LOOPBACK.has(req.socket.remoteAddress ?? "") && !req.headers["x-via-ihor"];
+
 const state = () => ({ ...radio(), rate: sdr?.sampleRate ?? RATE, center: tuning.center, gain: tuning.gain, listeners: listening(), half: half(),
   mode, watchers: { aprs: watchers.aprs.size, adsb: watchers.adsb.size } });
 
@@ -372,7 +378,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/tune" && req.method === "POST") {
       let body = "";
       for await (const c of req) body += c;
-      const parsed = JSON.parse(body || "{}"), viaInternet = !!req.headers["x-via-ihor"];
+      const parsed = JSON.parse(body || "{}"), viaInternet = !fromOwner(req);
       // Gains are the owner's: from the internet (ihor.sh's proxy marks it), only the frequency can change. A visitor's
       // gain used to be accepted here, which let anyone retune the station's gains (and its saved gains.json).
       const { center } = parsed, { gain, lna, vga, amp } = viaInternet ? ({} as Record<string, undefined>) : parsed;
@@ -462,7 +468,7 @@ const server = http.createServer(async (req, res) => {
     // about 1 dB lost to rounding). Boosted, the noise keeps the dongle's level; a strong station could clip, so only
     // weak-signal recorders ask for it.
     if (url.pathname === "/api/stream") {
-      const q = url.searchParams, raw = q.get("raw") === "1" && !req.headers["x-via-ihor"];
+      const q = url.searchParams, raw = q.get("raw") === "1" && fromOwner(req);
       const width = WIDTHS.includes(Number(q.get("width"))) ? Number(q.get("width")) : 1_200_000;
       // The budget is the internet upload, so only slices going out through ihor.sh count: a local stream (the Meteor
       // recorder on this machine) uploads nothing and must never be refused because visitors filled the upload.
@@ -528,5 +534,8 @@ server.on("error", (e: NodeJS.ErrnoException) => {
   console.error(`Port ${PORT} is already in use (another server.ts still running?). Stop it, or pick another port: PORT=8074 npm run serve`);
   process.exit(1);
 });
-server.listen(PORT, () => console.log(`Spectrum Lab + server SDR on http://0.0.0.0:${PORT} (LAN only, don't port-forward)`));
+// This machine only by default (ihor.sh's proxy and the Meteor recorder run here). RADIO_HOST=0.0.0.0 opens it to the LAN
+// again; the owner's controls stay this-machine-only either way (fromOwner).
+const HOST = process.env.RADIO_HOST ?? "127.0.0.1";
+server.listen(PORT, HOST, () => console.log(`Spectrum Lab + server SDR on http://${HOST}:${PORT} (don't port-forward)`));
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, async () => { await release(); process.exit(0); });

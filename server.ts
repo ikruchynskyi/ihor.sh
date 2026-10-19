@@ -14,7 +14,7 @@ import { startEvents, currentEvents } from "./events.ts";
 import { ask, systemPrompt, toolCatalog } from "./blip.ts";
 import { mcp, a2a, serverCard, agentCard } from "./mcp.ts";
 import { roomStream, roomPost } from "./room.ts";
-import { issue, check, cookie, spend, TTL } from "./session.ts";
+import { issue, check, cookie, spend, TTL, clientIp } from "./session.ts";
 import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./ride.ts";
 import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./mesh.ts";
@@ -55,7 +55,7 @@ const WORLDS: Record<string, { dir: string; label: string }> = {
   learn: { dir: path.join(ROOT, "learn"), label: "World 6 · Learn & build" },
   orna: { dir: path.join(ROOT, "orna"), label: "Bonus · ORNA" },
 };
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".json": "application/json", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".cu8": "application/octet-stream" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".woff2": "font/woff2", ".json": "application/json", ".wav": "audio/wav", ".mp3": "audio/mpeg", ".cu8": "application/octet-stream" };
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
 // dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
 // this cap is only a backstop.
@@ -463,6 +463,13 @@ const json403 = (res: http.ServerResponse, error: string, code = 403) => res.wri
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
+  // On every response (SECURITY.md): browsers mustn't guess content types, other sites mustn't frame the pages
+  // (clickjacking the owner pages), no plugins, no <base> hijack; HTTPS only on the live domain.
+  res.setHeader("x-content-type-options", "nosniff");
+  res.setHeader("x-frame-options", "SAMEORIGIN");
+  res.setHeader("content-security-policy", "frame-ancestors 'self'; object-src 'none'; base-uri 'self'");
+  res.setHeader("referrer-policy", "strict-origin-when-cross-origin");
+  if (/(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0])) res.setHeader("strict-transport-security", "max-age=31536000");
   const session = check(SESSION_SECRET, cookie(req.headers.cookie));
   // Pages hand out a session; any request renews one past half its life, so a map left open keeps working.
   if ((!session && !url.pathname.startsWith("/api/")) || (session && session.age > TTL / 2)) {
@@ -471,7 +478,7 @@ const server = http.createServer(async (req, res) => {
   }
   // MCP and A2A for other agents: their own bearer-token auth, not the site session; same per-IP budget as the chat.
   if (url.pathname === "/mcp" || url.pathname === "/a2a") {
-    const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+    const ip = clientIp(req);
     console.log(`${url.pathname.slice(1)}: ${req.method} ${req.url} from ${ip} ua=${String(req.headers["user-agent"] ?? "-").slice(0, 80)} auth=${req.headers.authorization ? "yes" : "no"} accept=${req.headers.accept ?? "-"}`); // the token itself is never logged
     if (!spend(`mcp:${ip}`, 300, 10 * 60_000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
     const viaMcp = url.pathname === "/mcp";
@@ -480,7 +487,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === "/jobs/feed.xml") { // RSS for a saved job search (feed readers have no session, so it lives outside /api/)
     const p = url.searchParams, g = (k: string) => String(p.get(k) ?? "").slice(0, 200) || undefined;
-    if (!spend(`rss:${String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress)}`, 60, 3600_000)) return res.writeHead(429).end("Too many requests.");
+    if (!spend(`rss:${clientIp(req)}`, 60, 3600_000)) return res.writeHead(429).end("Too many requests.");
     const xml = jobRss({ q: g("q"), company: g("company"), exclude: g("exclude"), region: g("region"), remote: g("remote"), salaryMin: Number(p.get("salary")) || undefined, hideNoSalary: p.get("nosalary") === "0", seniority: g("seniority"), func: g("func"), source: g("source"), hideFlagged: p.get("flagged") === "0", titleOnly: p.get("title") === "1" },
       `https://ihor.sh/nyc/jobs.html?${p}`, `Jobs: ${g("name") ?? g("q") ?? "saved search"}`);
     return res.writeHead(200, { "content-type": "application/rss+xml; charset=utf-8", "cache-control": "public, max-age=900" }).end(xml);
@@ -535,7 +542,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname.startsWith("/api/")) {
     if (!fromSite(req.headers) || !session) return json403(res, "This API serves ihor.sh pages only. Reload the page if you see this there.");
-    const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+    const ip = clientIp(req);
     if (METERED.some((p) => url.pathname.startsWith(p)) && (!spend(`s:${session.id}`, 150, 10 * 60_000) || !spend(`ip:${ip}`, 600, 10 * 60_000)))
       return json403(res, "Slow down a little: too many lookups in the last few minutes.", 429);
   }
@@ -544,7 +551,7 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === "/api/radio/monitor/events") return monitorEvents(res);
       if (url.pathname === "/api/radio/monitor/audio") return monitorAudio(res);
       if (req.method === "POST") {
-        const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+        const ip = clientIp(req);
         if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
         let raw = ""; for await (const c of req) { raw += c; if (raw.length > 20_000) return res.writeHead(413).end(); } // a scan list: up to 150 channels
         const b = JSON.parse(raw || "{}");
@@ -560,7 +567,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
       const key = String(JSON.parse(raw || "{}").key ?? "");
       if (key === "logout") return res.writeHead(200, { "set-cookie": "ihmet=; Path=/api/meteor; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
-      if (!spend(`meteor-login:${req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!spend(`meteor-login:${clientIp(req)}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
       if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
       const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
       return res.writeHead(200, { "set-cookie": `ihmet=${METEOR_COOKIE}; Path=/api/meteor; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
@@ -629,7 +636,7 @@ const server = http.createServer(async (req, res) => {
       } catch (e) { return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     if (url.pathname === "/api/yomu/chat" && req.method === "POST") { // Yomu's level chat: the local model only (yomu-chat.ts)
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
       let raw = "";
       for await (const c of req) { raw += c; if (raw.length > 32_000) return res.writeHead(413).end(); }
@@ -640,7 +647,7 @@ const server = http.createServer(async (req, res) => {
       catch (e) { if (e instanceof LineFull) return busyReply(res, e); if (gone) return; console.warn(`yomu chat: 502 (${(e as Error).message})`); return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: `The local model didn't answer (${(e as Error).message}). Try again in a moment.` })); }
     }
     if (url.pathname === "/api/ask" && req.method === "POST") {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!allowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Blip needs a breather. Try again in a few minutes." }));
       const wait = askWait(session!.id);
       if (wait) return res.writeHead(429, { "content-type": "application/json", "retry-after": String(wait) }).end(JSON.stringify({ error: `Blip takes one question every 30 seconds. Ask again in ${wait} s.`, retryAfter: wait }));
@@ -664,13 +671,13 @@ const server = http.createServer(async (req, res) => {
     if (["/api/state", "/api/tune", "/api/stream", "/api/aprs/events", "/api/adsb/events", "/api/scan/fm", "/api/slice", "/api/overview"].includes(url.pathname)) return proxySdr(req, res);
     if (url.pathname === "/api/viewer" && req.method === "POST") return proxySdr(req, res);
     if (url.pathname === "/api/receiver" && req.method === "POST") {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
       return proxySdr(req, res);
     }
     if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
     if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/311"].includes(url.pathname)) {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
       const day = /^\d{4}-\d{2}-\d{2}$/;
@@ -717,7 +724,7 @@ const server = http.createServer(async (req, res) => {
     // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.
     if (url.pathname === "/api/nyc/windy-key") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify({ key: process.env.WINDY_KEY ?? "" }));
     if (url.pathname === "/api/nyc/photos" || url.pathname === "/api/nyc/photo-near" || url.pathname === "/api/nyc/photo-images") { // Mapillary street photos
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = url.searchParams;
+      const ip = clientIp(req), q = url.searchParams;
       if (!dataAllowed(ip, photoHits, 600)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       try {
         const out = url.pathname === "/api/nyc/photo-images" ? await photoImages(String(q.get("ids") ?? "").split(",")) : url.pathname === "/api/nyc/photos" ? await streetPhotos(...(String(q.get("bbox") ?? "").split(",").map(Number) as [number, number, number, number])) : await photoNear(Number(q.get("lat")), Number(q.get("lon")));
@@ -729,7 +736,7 @@ const server = http.createServer(async (req, res) => {
     const rm = url.pathname.match(/^\/api\/room\/(spectrum)(\/events)?$/);
     if (rm) return rm[2] ? roomStream(rm[1], req, res) : req.method === "POST" ? roomPost(rm[1], req, res) : res.writeHead(405).end();
     if (url.pathname === "/api/nyc/trace") {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       try { return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=60" }).end(JSON.stringify(await trace(String(url.searchParams.get("hex") ?? "").toLowerCase()))); }
       catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
@@ -753,14 +760,14 @@ const server = http.createServer(async (req, res) => {
     // three kinds of request it makes. Walking around asks for a lot, so it has a budget of its own.
     const mly = url.pathname.match(/^\/api\/mly\/(images|image_ids|\d{1,20}\/tiles)$/);
     if (mly) {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!dataAllowed(ip, mlyHits, 3000)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: { message: "Too many requests, try again in a few minutes." } }));
       const out = await mapillaryGraph(mly[1], url.searchParams).catch((e) => e as Error & { code?: number });
       if (out instanceof Error) return res.writeHead(out.code === 400 || out.code === 404 ? out.code : 502, { "content-type": "application/json" }).end(JSON.stringify({ error: { message: out.message } }));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "private, max-age=600" }).end(out);
     }
     if (url.pathname === "/api/nyc/upscale" && req.method === "POST") { // ✨ in a camera window: its frame now, ~4× by AI (upscale.ts)
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), id = String(url.searchParams.get("cam") ?? "");
+      const ip = clientIp(req), id = String(url.searchParams.get("cam") ?? "");
       const fail = (code: number, error: string) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
       if (!dataAllowed(ip, upscaleHits, 30)) return fail(429, "That's a lot of upscaling: try again in a few minutes.");
       // the picture comes from our own camera list (or Mapillary's link for a street photo), never from a URL the page sends
@@ -811,7 +818,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
       const key = String(JSON.parse(raw || "{}").key ?? "");
       if (key === "logout") return res.writeHead(200, { "set-cookie": "ihmesh=; Path=/api/mesh; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
-      if (!spend(`mesh-login:${req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!spend(`mesh-login:${clientIp(req)}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
       if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
       const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
       return res.writeHead(200, { "set-cookie": `ihmesh=${MESH_COOKIE}; Path=/api/mesh; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
@@ -884,7 +891,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await repeatersIn(bs, bw, bn, be)));
     }
     if (url.pathname === "/api/radio/callsign") {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress);
+      const ip = clientIp(req);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests." }));
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await callsign(String(url.searchParams.get("call") ?? ""))));
     }
@@ -935,7 +942,7 @@ const server = http.createServer(async (req, res) => {
     // Search for agents and scripts: keyless and cross-origin, unlike /api/ (the site's own pages only). JSON by default;
     // Markdown with Accept: text/markdown or ?format=md. Rate-limited per IP like the other data endpoints.
     if (url.pathname === "/search") {
-      const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress), q = String(url.searchParams.get("q") ?? "").slice(0, 120);
+      const ip = clientIp(req), q = String(url.searchParams.get("q") ?? "").slice(0, 120);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json", "access-control-allow-origin": "*" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       if (!q.trim()) return res.writeHead(400, { "content-type": "application/json", "access-control-allow-origin": "*" }).end(JSON.stringify({ error: "Add ?q=, e.g. /search?q=op-amp" }));
       const hits = (await siteSearch(q, Math.min(20, Number(url.searchParams.get("n")) || 8))).map((h) => ({ ...h, url: new URL(h.url, SITE).href, snippet: h.snippet.replace(/<\/?b>/g, "") }));

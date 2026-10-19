@@ -49,3 +49,16 @@ if (import.meta.url === `file://${process.argv[1]}`) { // node session.ts: self-
   assert.ok(spend("k", 2, 1000, 0) && spend("k", 2, 1000, 1) && !spend("k", 2, 1000, 2) && spend("k", 2, 1000, 1001));
   console.log("session ok");
 }
+
+// Who's asking. Through the Cloudflare tunnel every request arrives from the tunnel, with the visitor's address in
+// CF-Connecting-IP (and their country in CF-IPCountry). Those headers are only trusted from the tunnel: the Mac itself
+// (cloudflared on the host) or an address in TRUSTED_PROXY (comma-separated, e.g. the tunnel container's). Anyone
+// reaching the server directly (the LAN, with HOST=0.0.0.0) could otherwise name any address and dodge every rate limit.
+const TRUSTED = new Set(["127.0.0.1", "::1", ...String(process.env.TRUSTED_PROXY ?? "").split(",").map((s) => s.trim()).filter(Boolean)]);
+type Req = { headers: Record<string, string | string[] | undefined>; socket: { remoteAddress?: string } };
+const peer = (req: Req) => String(req.socket.remoteAddress ?? "?").replace(/^::ffff:/, "");
+const viaTunnel = (req: Req) => TRUSTED.has(peer(req));
+/** The visitor's IP address, for rate limits and logs. */
+export const clientIp = (req: Req) => (viaTunnel(req) && req.headers["cf-connecting-ip"] ? String(req.headers["cf-connecting-ip"]) : peer(req));
+/** The visitor's country code from Cloudflare ("XX" when unknown or not via the tunnel). */
+export const clientCountry = (req: Req) => (viaTunnel(req) ? String(req.headers["cf-ipcountry"] ?? "XX").toUpperCase() : "XX");

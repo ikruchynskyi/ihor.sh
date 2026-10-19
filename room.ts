@@ -4,6 +4,7 @@
 // Server-sent events out, POST in; the last 100 events are kept in memory per room.
 import type http from "node:http";
 import { createHash } from "node:crypto";
+import { clientIp, clientCountry } from "./session.ts";
 
 export type Who = { name: string; flag: string; key: string };
 type Ev = { id: number; at: number; who: Who; kind: "say" | "action" | "join" | "leave"; text: string; data?: Record<string, unknown> };
@@ -14,10 +15,10 @@ const lastPost = new Map<string, number[]>();
 const flagOf = (cc: string) => (/^[A-Z]{2}$/.test(cc) && cc !== "XX" && cc !== "T1" ? String.fromCodePoint(...[...cc].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "🏳️");
 /** 73.12.x.x·a3 for 73.12.44.5: the network part shows, the rest doesn't; two hex letters from a hash tell neighbors apart. */
 export function who(req: http.IncomingMessage): Who {
-  const ip = String(req.headers["cf-connecting-ip"] ?? req.socket.remoteAddress ?? "?").replace(/^::ffff:/, "");
+  const ip = clientIp(req);
   const tag = createHash("sha256").update(`room:${ip}`).digest("hex").slice(0, 2);
   const masked = ip.includes(":") ? `${ip.split(":").slice(0, 2).join(":")}:…` : ip.split(".").slice(0, 2).concat("x", "x").join(".");
-  return { name: `${masked}·${tag}`, flag: flagOf(String(req.headers["cf-ipcountry"] ?? "XX").toUpperCase()), key: tag + masked };
+  return { name: `${masked}·${tag}`, flag: flagOf(clientCountry(req)), key: tag + masked };
 }
 
 function broadcast(name: string, ev: Omit<Ev, "id" | "at">) {
