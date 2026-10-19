@@ -32,6 +32,7 @@ import { edgeTTS } from "./yomu-tts.ts";
 import { getNhkArticles, getNhkArticleById } from "./yomu-nhk.ts";
 import { getTemplates, searchTemplates } from "./memes.ts";
 import { buildIndex, isPrivate, publicPages, siteSearch } from "./search.ts";
+import { lastChanged, newest, longDate } from "./freshness.ts";
 import { hamPasses, satTrack, satEcef } from "./sat.ts";
 import { startMeteorRecorder, meteorApi, meteorCheckApi } from "./meteor-rec.ts";
 import { propagation } from "./spacewx.ts";
@@ -175,7 +176,7 @@ const APPS: [RegExp, string][] = [
   [/^\/nyc\/(jobs|resume)/, "BusinessApplication"], [/^\/nyc\/(tonight|free|index|archive)?/, "TravelApplication"], [/^\/ride\//, "TravelApplication"],
   [/^\/learn\/lab/, "EducationalApplication"], [/^\/radio\/(index\.html)?$|^\/radio\/(sstv|meteor|cw|repeaters|mesh|stations|aprs|adsb)/, "UtilitiesApplication"], [/^\/orna\//, "GameApplication"],
 ];
-type Meta = { title?: string; desc?: string; image?: string; canonical?: string; h1?: string; lede?: string; teaches?: string[]; level?: string };
+type Meta = { title?: string; desc?: string; image?: string; canonical?: string; h1?: string; lede?: string; teaches?: string[]; level?: string; data?: string[] }; // data: files whose changes date the page
 const cache = new Map<string, Promise<any>>();
 const readJson = (rel: string) => { if (!cache.has(rel)) cache.set(rel, readFile(path.join(ROOT, rel), "utf8").then(JSON.parse).catch(() => null)); return cache.get(rel)!; };
 /** The page behind a query: a story, a deck level, a grammar level. */
@@ -187,19 +188,27 @@ async function pageMeta(urlPath: string, search: URLSearchParams): Promise<Meta 
     const grammar = (story.grammar ?? []).map((g: any) => g.title).filter(Boolean);
     return { title: `${story.title.ja} · ${story.title.en}: a JLPT ${story.level} Japanese story`, h1: `${story.title.ja} <small class="muted">${story.title.en}</small>`, lede: story.scene,
       desc: `${story.scene} A graded JLPT ${story.level} Japanese story (unit ${story.unit}) with every word tappable, audio and shadowing, grammar${grammar.length ? ` (${grammar.slice(0, 3).join("; ")})` : ""}, kanji with stroke order, sentence building and comprehension questions.`,
-      image: credits[u] ? `${SITE}/yomu/img/${u}.jpg` : undefined, canonical: `${SITE}/yomu/story.html?u=${u}`, teaches: grammar, level: `JLPT ${story.level}` };
+      image: credits[u] ? `${SITE}/yomu/img/${u}.jpg` : undefined, canonical: `${SITE}/yomu/story.html?u=${u}`, teaches: grammar, level: `JLPT ${story.level}`, data: [`yomu/stories/${u}.json`] };
   }
   if (urlPath === "/yomu/deck.html") {
     const level = /^N[1-5]$/.test(search.get("level") ?? "") ? search.get("level")! : "N5", type = search.get("type") === "kanji" ? "kanji" : "words";
-    return { title: `${level} ${type}: the JLPT ${level} ${type === "kanji" ? "kanji" : "vocabulary"} deck`, desc: `Every JLPT ${level} ${type === "kanji" ? "kanji with readings, meanings, stroke order and example words" : "word with its reading and meaning, pictures for the concrete ones"}: learn ten at a time, quiz yourself, add them to spaced review.`, canonical: `${SITE}/yomu/deck.html?level=${level}&type=${type}`, level: `JLPT ${level}` };
+    return { title: `${level} ${type}: the JLPT ${level} ${type === "kanji" ? "kanji" : "vocabulary"} deck`, desc: `Every JLPT ${level} ${type === "kanji" ? "kanji with readings, meanings, stroke order and example words" : "word with its reading and meaning, pictures for the concrete ones"}: learn ten at a time, quiz yourself, add them to spaced review.`, canonical: `${SITE}/yomu/deck.html?level=${level}&type=${type}`, level: `JLPT ${level}` , data: [type === "kanji" ? "yomu/data/kanji.json" : `yomu/data/vocab-${level.toLowerCase()}.json`] };
   }
   if (urlPath === "/yomu/grammar.html") {
     const level = /^N[3-5]$/.test(search.get("level") ?? "") ? search.get("level")! : "N5";
-    return { title: `${level} grammar: every JLPT ${level} point explained`, desc: `All JLPT ${level} grammar points with plain explanations, examples with audio, links to Tae Kim's guide and a quick quiz for each.`, canonical: `${SITE}/yomu/grammar.html?level=${level}`, level: `JLPT ${level}` };
+    return { title: `${level} grammar: every JLPT ${level} point explained`, desc: `All JLPT ${level} grammar points with plain explanations, examples with audio, links to Tae Kim's guide and a quick quiz for each.`, canonical: `${SITE}/yomu/grammar.html?level=${level}`, level: `JLPT ${level}` , data: ["yomu/data/grammar.json"] };
   }
   return null;
 }
+/** The repo file behind a page URL ("/radio/course/" → radio/dist/course/index.html). */
+function pageFile(urlPath: string) {
+  const [, w, ...rest] = urlPath.split("/"), world = WORLDS[w];
+  let file = world ? rest.join("/") : urlPath.slice(1);
+  if (!file || file.endsWith("/")) file += "index.html"; else if (!path.extname(file)) file += ".html";
+  return path.relative(ROOT, path.join(world?.dir ?? ROOT, file));
+}
 function seo(html: string, world: string, urlPath: string, extra: Meta | null = null) {
+  const modified = newest(pageFile(urlPath), ...(extra?.data ?? [])); // the last commit that changed the page or its data
   const baseTitle = html.match(/<title>([^<]*)/)?.[1]?.trim() ?? "ihor.sh";
   const title = extra?.title ?? baseTitle, desc = attr(extra?.desc ?? html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "");
   const url = extra?.canonical ?? SITE + urlPath.replace(/index\.html$/, "");
@@ -214,6 +223,7 @@ function seo(html: string, world: string, urlPath: string, extra: Meta | null = 
     : app
     ? { "@type": "WebApplication", name: title, description: desc, url, applicationCategory: app[1], operatingSystem: "Web", browserRequirements: "Requires JavaScript", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, author: AUTHOR }
     : { "@type": "WebPage", name: title, description: desc, url, inLanguage: "en", author: AUTHOR };
+  if (modified) (page as Record<string, unknown>).dateModified = modified;
   const ld = JSON.stringify([
     { "@context": "https://schema.org", ...page, isPartOf: page["@type"] === "LearningResource" ? (page as any).isPartOf : { "@type": "WebSite", name: "ihor.sh", url: `${SITE}/` } },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: crumbs.map(([name, item], i) => ({ "@type": "ListItem", position: i + 1, name, item })) },
@@ -223,32 +233,45 @@ function seo(html: string, world: string, urlPath: string, extra: Meta | null = 
   if (extra?.desc) out = out.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${desc}">`); // story.html etc. close it with " />"
   if (extra?.h1) out = out.replace(/<h1 id="title">[^<]*<\/h1>/, `<h1 id="title">${extra.h1}</h1>`); // so a reader without JavaScript sees the story's name
   if (extra?.lede) out = out.replace(/<p class="lede" id="scene"><\/p>/, `<p class="lede" id="scene">${attr(extra.lede)}</p>`);
+  // A visible date of the last content change, at the end of the page's main content (readers and AI search both weigh it).
+  const endMain = out.lastIndexOf("</main>");
+  if (modified && endMain > 0) out = `${out.slice(0, endMain)}<p class="page-updated" style="margin:40px 0 0;font-size:.85em;color:var(--muted,#8a93a3)">Last updated <time datetime="${modified}">${longDate(modified)}</time></p>\n${out.slice(endMain)}`;
   return out.replace("</head>", `<link rel="canonical" href="${attr(url)}">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1"><meta name="author" content="${AUTHOR.name}">
-<meta property="og:type" content="${course ? "article" : "website"}"><meta property="og:site_name" content="ihor.sh"><meta property="og:locale" content="en_US"><meta property="og:title" content="${attr(full)}">
+<meta property="og:type" content="${course ? "article" : "website"}">${modified ? `<meta property="article:modified_time" content="${modified}">` : ""}<meta property="og:site_name" content="ihor.sh"><meta property="og:locale" content="en_US"><meta property="og:title" content="${attr(full)}">
 <meta property="og:description" content="${desc}"><meta property="og:url" content="${attr(url)}"><meta property="og:image" content="${attr(image)}">
 ${image.endsWith("og.png") ? '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' : ""}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${attr(full)}"><meta name="twitter:description" content="${desc}"><meta name="twitter:image" content="${attr(image)}">
 <script type="application/ld+json">${ld}</script></head>`);
 }
 
 // Crawlers and AI agents are welcome everywhere but the API (which serves the site's own pages) and the agent endpoints.
-// Content-Signal (contentsignals.org): search, answering with the pages and training are all fine.
+// Content-Signal (contentsignals.org): search, answering with the pages and training are all fine. A named group replaces
+// the * group for that bot (RFC 9309), so every group repeats the same rules: the old named groups only said "Allow: /",
+// which let GPTBot & co. into /api/. AI crawlers come in three kinds, each its own decision: search indexing, fetching for
+// a user's question in real time, and training. (Cloudflare's own bot settings can still block one of them at the edge.)
+const RULES = "Content-Signal: search=yes, ai-input=yes, ai-train=yes\nAllow: /\nDisallow: /api/\nDisallow: /mcp\nDisallow: /a2a";
 const ROBOTS = `User-agent: *
-Content-Signal: search=yes, ai-input=yes, ai-train=yes
-Allow: /
-Disallow: /api/
-Disallow: /mcp
-Disallow: /a2a
+${RULES}
 
 # AI agents: /llms.txt maps the site; /search?q= searches it (JSON, or Markdown with Accept: text/markdown); live data (subway, jobs, events, weather, radio...) is on the MCP endpoint /mcp.
-User-agent: GPTBot
-Allow: /
-User-agent: ClaudeBot
-Allow: /
+# AI search indexing
+User-agent: OAI-SearchBot
+User-agent: Claude-SearchBot
 User-agent: PerplexityBot
-Allow: /
+${RULES}
+
+# AI answers, fetched live for a user's question
+User-agent: ChatGPT-User
+User-agent: Claude-User
+User-agent: Perplexity-User
+${RULES}
+
+# AI training
+User-agent: GPTBot
+User-agent: ClaudeBot
 User-agent: Google-Extended
-Allow: /
+User-agent: Applebot-Extended
+${RULES}
 
 Sitemap: ${SITE}/sitemap.xml
 `;
@@ -316,17 +339,18 @@ const HOME_LINKS = [`</llms.txt>; rel="service-doc"; type="text/plain"`, `</.wel
   `</.well-known/agent-card.json>; rel="describedby"; type="application/json"`, `</.well-known/agent-skills/index.json>; rel="describedby"; type="application/json"`].join(", ");
 
 async function sitemap() {
-  const urls: [string, Date][] = [[`${SITE}/`, (await stat(path.join(ROOT, "index.html"))).mtime], [`${SITE}/terms`, (await stat(path.join(ROOT, "terms.html"))).mtime]];
+  // <lastmod>: the last commit that changed the page (or the data a query page shows), not the file's mtime (freshness.ts)
+  const urls: [string, string][] = [[`${SITE}/`, lastChanged("index.html")], [`${SITE}/terms`, lastChanged("terms.html")]];
   // the query-addressed pages: every story, deck level and grammar level
-  for (const st of (await readJson("yomu/stories/index.json")) ?? []) urls.push([`${SITE}/yomu/story.html?u=${st.id}`, (await stat(path.join(ROOT, `yomu/stories/${st.id}.json`)).catch(() => ({ mtime: new Date() }))).mtime]);
-  for (const level of ["N5", "N4", "N3", "N2", "N1"]) for (const type of ["kanji", "words"]) urls.push([`${SITE}/yomu/deck.html?level=${level}&type=${type}`, (await stat(path.join(ROOT, "yomu/deck.html"))).mtime]);
-  for (const level of ["N5", "N4", "N3"]) urls.push([`${SITE}/yomu/grammar.html?level=${level}`, (await stat(path.join(ROOT, "yomu/grammar.html"))).mtime]);
+  for (const st of (await readJson("yomu/stories/index.json")) ?? []) urls.push([`${SITE}/yomu/story.html?u=${st.id}`, newest("yomu/story.html", `yomu/stories/${st.id}.json`)]);
+  for (const level of ["N5", "N4", "N3", "N2", "N1"]) for (const type of ["kanji", "words"]) urls.push([`${SITE}/yomu/deck.html?level=${level}&type=${type}`, newest("yomu/deck.html", type === "kanji" ? "yomu/data/kanji.json" : `yomu/data/vocab-${level.toLowerCase()}.json`)]);
+  for (const level of ["N5", "N4", "N3"]) urls.push([`${SITE}/yomu/grammar.html?level=${level}`, newest("yomu/grammar.html", "yomu/data/grammar.json")]);
   for (const [name, { dir }] of Object.entries(WORLDS))
     for (const f of await publicPages(dir, name))
       // story/deck/grammar.html without a query are canonically their first story or level, listed above
-      if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, (await stat(path.join(dir, f))).mtime]);
+      if (!(name === "yomu" && /^(story|deck|grammar)\.html$/.test(f)) && !(await readFile(path.join(dir, f), "utf8")).includes('name="ihor-bare"')) urls.push([`${SITE}/${name}/${f.replace(/index\.html$/, "")}`, lastChanged(path.relative(ROOT, path.join(dir, f)))]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-    .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc><lastmod>${d.toISOString().slice(0, 10)}</lastmod></url>`).join("\n")}\n</urlset>\n`;
+    .map(([u, d]) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc>${d ? `<lastmod>${d}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`;
 }
 
 // reader.js wires these up; they're in the markup so the bar has its final height at first paint (added by script,
