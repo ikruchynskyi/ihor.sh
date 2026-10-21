@@ -34,6 +34,7 @@
   <div class="row"><label>type <select id="t1"><option value="lp">low-pass</option><option value="hp">high-pass</option></select></label><label>cutoff <input type="range" id="fc1" min="1" max="4.5" step="0.01" value="2.6"> <span id="fc1v" class="math"></span></label></div>
   <p class="readout" id="o1"></p>
   <p class="goal" id="g1">🎯 <b>Challenge:</b> keep the whistle and remove at least 95% of the hum.</p>
+  <p>Filters move signals by factors of a hundred or a thousand, so filter people count gain in <b>decibels</b> (dB): every ×10 in voltage is 20 dB. Letting 10% through is −20 dB, 1% is −40 dB, and the cutoff's 71% is −3 dB. Draw frequency on a scale where each step is ×10 and gain in dB, and an RC filter's curve turns into nearly straight lines: that's a <b>Bode plot</b>, the middle graph above. It's flat in the passband, then falls 20 dB for every ×10 in frequency (a <b>decade</b>).</p>
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>From chapter 6, the RC low-pass passes \(|H(f)| = 1/\sqrt{1 + (f/f_c)^2}\); swapping R and C (high-pass) gives \(|H(f)| = (f/f_c)/\sqrt{1 + (f/f_c)^2}\). Filter people measure gain in <b>decibels</b>:</p>
     <p class="formula">\[ G_{dB} = 20 \log_{10} |H| \]</p>
