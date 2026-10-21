@@ -1,7 +1,7 @@
 // Chapter 21: digital radio from a weather satellite. A pass and its Doppler, symbols and the matched filter, an eye
 // diagram with Gardner's early/late check, and QPSK on a constellation (and the Costas loop that stops it spinning).
 import "./course.css";
-import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
+import "../../../public/learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, label, line, dot } from "./anim.ts";
 import { Transmitter, Channel, Receiver, pass, SYM_RATE } from "../lrpt.ts";
 import { symbols, shape, noise, matched, snrAt, gardner, centerTx, centerMf, SPS, PULSE } from "./symbols.ts";

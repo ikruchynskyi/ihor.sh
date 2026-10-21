@@ -1,7 +1,7 @@
 // Chapter 19: cleaner sound. The voice filter (biquads), noise reduction (overlap-add, gains, the noise tracker),
 // AGC hang, the soft limiter, and the continuous stream. Scenes use the receiver's real classes where they exist.
 import "./course.css";
-import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
+import "../../../public/learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, line, label, dot, circle } from "./anim.ts";
 import { Biquad, Agc, NoiseReducer, Receiver, fft, normalize, type Mode } from "../dsp.ts";
 import { decodeCU8 } from "../iq.ts";

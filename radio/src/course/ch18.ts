@@ -1,7 +1,7 @@
 // Chapter 18: reading the band. Resolution, averaging, the noise floor, colors, clicking to tune, filter shift, and a
 // squelch in the chart's decibels. Every scene runs the receiver's real code (synth, avgSpectrum, Receiver).
 import "./course.css";
-import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
+import "../../../public/learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, line, label } from "./anim.ts";
 import { synth, avgSpectrum, Receiver, normalize } from "../dsp.ts";
 import { decodeCU8 } from "../iq.ts";

@@ -1,7 +1,7 @@
 // Chapter 22: pictures that survive errors. XOR and the convolutional encoder, Viterbi decoding through flipped bits,
 // JPEG-style blocks, and a lab: a whole simulated pass decoded live by src/lrpt.ts, the picture building up strip by strip.
 import "./course.css";
-import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
+import "../../../public/learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, Scene, controls, val, label, line, dot } from "./anim.ts";
 import { Transmitter, Channel, Receiver, ConvEncoder, Viterbi, pass, earthStrip, encodeStrip, decodeStrip, W, FRAME_BYTES } from "../lrpt.ts";
 

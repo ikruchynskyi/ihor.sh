@@ -64,9 +64,13 @@ const SDR_PORT = Number(process.env.SDR_PORT ?? 8073);
 const MAX_LISTENERS = 12;
 let listeners = 0;
 // Cloudflare keeps CSS/JS for hours, so links carry the file's modification time to bust its cache.
-const asset = (name: string) => `/${name}?v=${Math.round(statSync(path.join(ROOT, name)).mtimeMs)}`;
+// Files served at the site root ("/theme.css") live in public/; everything else is at its own path in the repo.
+const PUBLIC = path.join(ROOT, "public");
+const PUBLIC_FILES = new Set(["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"]);
+const onDisk = (name: string) => path.join(PUBLIC_FILES.has(`/${name}`) ? PUBLIC : ROOT, name);
+const asset = (name: string) => `/${name}?v=${Math.round(statSync(onDisk(name)).mtimeMs)}`;
 // The same for a page's own scripts and styles ("/yomu/lib.js" → "/yomu/lib.js?v=…") when they live in this repo.
-const versioned = (html: string) => html.replace(/(["'])(\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(path.join(ROOT, p)) ? `${q}${asset(p.slice(1))}${q}` : m));
+const versioned = (html: string) => html.replace(/(["'])(\/[\w/.-]+\.(?:js|css))\1/g, (m, q, p) => (existsSync(onDisk(p.slice(1))) ? `${q}${asset(p.slice(1))}${q}` : m));
 const companion = () => `<script type="module" src="${asset("reader.js")}"></script><script type="module" src="${asset("companion.js")}"></script>`;
 // Runs before first paint on every page: sets the visitor's theme and look on <html> (so the pixel or the sleek rules
 // apply at once, no flash), and wraps fetch so reader.js can show "still working" for the page's /api/ calls, with
@@ -83,7 +87,7 @@ if(u.origin!==location.origin||u.pathname.indexOf("/api/")!==0)return f.apply(wi
 var id=++W.n,rec={key:u.pathname,at:performance.now()};W.active.set(id,rec);tell();
 var done=function(){W.active.delete(id);var ms=performance.now()-rec.at;if(ms>1500){var o=W.typical[rec.key];W.typical[rec.key]=Math.round(o?o*.7+ms*.3:ms);try{localStorage.setItem("ihor-wait",JSON.stringify(W.typical))}catch(e){}}tell()};
 var p=f.apply(window,arguments);p.then(done,done);return p}})()</script>
-<style>${readFileSync(path.join(ROOT, "fonts/fonts.css"), "utf8")}</style>
+<style>${readFileSync(path.join(PUBLIC, "fonts/fonts.css"), "utf8")}</style>
 <link rel="icon" href="/favicon.svg"><link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="theme-color" content="#07090f">`;
 
 // Site map for the system prompt, read from the built pages so new lessons show up on restart.
@@ -956,8 +960,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/llms.txt") return res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }).end(await llmsTxt());
     if (url.pathname === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml", "cache-control": "public, max-age=3600" }).end(await sitemap());
-    if (/^\/fonts\/[\w-]+\.woff2$/.test(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
-    if (["/companion.js", "/theme.css", "/reader.js", "/maps.js", "/learn-kit.js", "/blip-wardrobe.js", "/og.png", "/favicon.svg", "/manifest.json", "/icon-192.png", "/icon-512.png"].includes(url.pathname)) return serveFile(res, path.join(ROOT, url.pathname));
+    if (/^\/fonts\/[\w-]+\.woff2$/.test(url.pathname)) return serveFile(res, path.join(PUBLIC, url.pathname));
+    if (PUBLIC_FILES.has(url.pathname)) return serveFile(res, path.join(PUBLIC, url.pathname));
     const [, name, rest] = url.pathname.match(/^\/([a-z]+)(\/.*)?$/) ?? [];
     const world = WORLDS[name];
     if (world && !rest) return res.writeHead(301, { location: `/${name}/` }).end();

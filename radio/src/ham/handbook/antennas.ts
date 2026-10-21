@@ -1,7 +1,7 @@
 // Antennas in practice: aperture, wire patterns, link budget, Fresnel zone, polarization, cut list and trimming, dishes.
 // Every number comes from ../antenna-math.ts, which antenna-math.test.ts checks against known values.
 import "../ham.css";
-import "../../../../learn-kit.js"; // questions, gists, deeper boxes (shared with the courses)
+import "../../../../public/learn-kit.js"; // questions, gists, deeper boxes (shared with the courses)
 import { C, Scene, controls, val, label, line } from "../../course/anim.ts";
 import * as A from "../antenna-math.ts";
 

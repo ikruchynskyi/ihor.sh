@@ -2,7 +2,7 @@
 // interlace, color as a spinning arrow on the subcarrier, the comb filter, what fits in a dongle's capture, and a live
 // lab: an NTSC transmitter and receiver (src/ntsc.ts) with your picture or webcam, a bandwidth knob and noise.
 import "./course.css";
-import "../../../learn-kit.js"; // questions, runnable code and math (shared with the other courses)
+import "../../../public/learn-kit.js"; // questions, runnable code and math (shared with the other courses)
 import { C, TAU, Scene, controls, val, label, line, arrow, circle, dot } from "./anim.ts";
 import { FS, LINE, FRAME, ACT0, ACT_N, encodeFrame, channel, decodeFrame, testCard } from "../ntsc.ts";
 
