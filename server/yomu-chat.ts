@@ -6,7 +6,7 @@ import path from "node:path";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 import { generateMeme, pickFreshTemplate, sampleTemplatesForTurn } from "./memes.ts";
-const ROOT = import.meta.dirname;
+const ROOT = path.join(import.meta.dirname, "..");
 const LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
 export type Level = (typeof LEVELS)[number];
 export type Turn = { role: "user" | "assistant"; content: string };

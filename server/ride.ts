@@ -126,7 +126,7 @@ export async function placeSearch(q: string) {
 
 // ---------- bike + train escapes: stations, and campgrounds near one ----------
 const RAIL = { MNR: /Metro-North/i, LIRR: /Long Island Rail Road|LIRR/i, NJT: /NJ Transit/i } as const;
-const STATIONS_FILE = path.join(import.meta.dirname, "data", "rail-stations.json");
+const STATIONS_FILE = path.join(import.meta.dirname, "..", "data", "rail-stations.json");
 let stationsCache: { at: number; v: any[] } | null = (() => { try { return JSON.parse(readFileSync(STATIONS_FILE, "utf8")); } catch { return null; } })(); // survives restarts
 /** Every Metro-North, LIRR and NJ Transit station (OpenStreetMap), with which of the three serve it. Cached a week. */
 export async function railStations() {

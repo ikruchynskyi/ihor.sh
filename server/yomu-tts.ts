@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const ROOT = import.meta.dirname;
+const ROOT = path.join(import.meta.dirname, "..");
 const AUDIO_DIR = path.join(ROOT, "yomu", "data", "audio");
 const EDGE_SERVER_URL = process.env.EDGE_TTS_URL ?? "http://127.0.0.1:5056";
 

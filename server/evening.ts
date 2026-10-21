@@ -10,9 +10,9 @@ import { cityEvents, restaurantsNear, tripPlan } from "./nycapi.ts";
 import { annotateTrip } from "./transit.ts";
 import { currentEvents } from "./events.ts";
 // @ts-ignore: plain JS shared with the Free NYC page
-import { onDay, onDate } from "./nyc/free.js";
+import { onDay, onDate } from "../nyc/free.js";
 
-const dir = path.join(import.meta.dirname, "data");
+const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, "evening.db"));
 db.exec(`
@@ -116,7 +116,7 @@ export async function fromPermits() {
 }
 /** NYC for FREE's listings (archived hourly by events.ts) and museum free hours (Free NYC's checked rules). */
 export function fromFree(days = 7) {
-  const today = nyDate(), seen = new Set<string>(), rules = JSON.parse(readFileSync(path.join(import.meta.dirname, "nyc", "free.json"), "utf8"));
+  const today = nyDate(), seen = new Set<string>(), rules = JSON.parse(readFileSync(path.join(import.meta.dirname, "..", "nyc", "free.json"), "utf8"));
   const feed = currentEvents().events as any[];
   for (let k = 0; k <= days; k++) {
     const date = addDays(today, k), day = new Date(`${date}T12:00:00`);

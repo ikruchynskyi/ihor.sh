@@ -9,7 +9,7 @@ import path from "node:path";
 const SOURCE = "https://www.nycforfree.co";
 const EVERY_MS = 60 * 60_000;
 
-const dir = path.join(import.meta.dirname, "data");
+const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, "events.db"));
 db.exec(`

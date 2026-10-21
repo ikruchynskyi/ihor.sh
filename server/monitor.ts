@@ -8,13 +8,13 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { writeFile, unlink, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { Receiver, firLowpass, FirDecimator } from "./radio/src/dsp.ts";
+import { Receiver, firLowpass, FirDecimator } from "../radio/src/dsp.ts";
 import { callsign as fccLookup } from "./ham.ts";
 
 const SDR = `http://${process.env.SDR_HOST ?? "127.0.0.1"}:${process.env.SDR_PORT ?? 8073}`;
 const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
-const DIR = path.join(import.meta.dirname, "data", "monitor");
+const DIR = path.join(import.meta.dirname, "..", "data", "monitor");
 const SCAN_DWELL = 0.25, SCAN_HANG = 2.5, SCAN_MAX_HOLD = 15, SCAN_MAX = 150; // seconds on each quiet channel; how long to stay after a transmission ends; the most on any one channel
 const WIDTH = 240_000, AUDIO_FS = 16_000, IDLE_MS = 10 * 60_000;
 const MAX_UTT_S = 6.0, MIN_UTT_S = 0.3, OVERLAP_S = 0.5, SQUELCH_HANG_S = 0.65;

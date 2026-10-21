@@ -181,7 +181,7 @@ let tlesAt = 0;
 /** Elements for every satellite in the list, cached 6 h, in memory and in data/tle.json so a restart doesn't download them
  *  again (CelesTrak refuses addresses that ask too often). From CelesTrak's amateur, stations and weather groups; when
  *  CelesTrak refuses, SatNOGS's copy of each of ours; when both fail, the last saved set, however old. */
-const TLE_FILE = new URL("./data/tle.json", import.meta.url);
+const TLE_FILE = new URL("../data/tle.json", import.meta.url);
 async function loadTles() {
   if (tles.size && Date.now() - tlesAt < 6 * 3600e3) return;
   const saved = JSON.parse(await readFile(TLE_FILE, "utf8").catch(() => "null")) as { at: number; sets: [string, string, string][] } | null;

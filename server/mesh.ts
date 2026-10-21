@@ -193,7 +193,7 @@ function packet(p: Map<number, Field[]>) {
 }
 
 // ---------- the serial link ----------
-const FILE = path.join(import.meta.dirname, "data", "mesh.json");
+const FILE = path.join(import.meta.dirname, "..", "data", "mesh.json");
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 function save() {
   clearTimeout(saveTimer);

@@ -1,7 +1,7 @@
 // Checks the station check's analysis on a synthetic window with a known passband and a known interfering carrier,
 // and its recommendation rules. Run: node meteor-diag.test.ts
 import assert from "node:assert/strict";
-import { fft } from "./radio/src/dsp.ts";
+import { fft } from "../radio/src/dsp.ts";
 import { analyzeWindow, recommend, sectorOf, bandOf, DEFAULTS, type RadioCheck, type PassSummary, type SkyCell } from "./meteor-diag.ts";
 
 // A 9.6 MS/s window at 137.5 MHz: noise everywhere, 25 dB more between 136.2 and 138.8 MHz (the "amplifier"), and a

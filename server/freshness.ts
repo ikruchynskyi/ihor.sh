@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { statSync } from "node:fs";
 import path from "node:path";
 
-const ROOT = import.meta.dirname;
+const ROOT = path.join(import.meta.dirname, "..");
 const changed = new Map<string, string>(); // repo-relative path → YYYY-MM-DD of the newest commit that touched it
 try {
   const log = execFileSync("git", ["-c", `safe.directory=${ROOT}`, "log", "--name-only", "--no-renames", "--format=@%cs"], { cwd: ROOT, maxBuffer: 256 * 2 ** 20 }).toString();

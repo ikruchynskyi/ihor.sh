@@ -11,7 +11,7 @@ import type http from "node:http";
 import { tleFor, passes, look, site, type Tle } from "./sat.ts";
 import { settings, saveSettings, cleanSettings, measure, remember, history, latestSaved, passes as passStats, recommend, type RadioCheck } from "./meteor-diag.ts";
 
-const DIR = path.join(import.meta.dirname, "data", "meteor"), SCRIPT = path.join(import.meta.dirname, "radio", "scripts", "meteor-record.ts");
+const DIR = path.join(import.meta.dirname, "..", "data", "meteor"), SCRIPT = path.join(import.meta.dirname, "..", "radio", "scripts", "meteor-record.ts");
 const SATS = [{ id: "meteor-m2-3", catnr: 57166, freq: 137.9 }, { id: "meteor-m2-4", catnr: 59051, freq: 137.9 }];
 const HOME = { lat: 40.73, lon: -73.95 }, LEAD_MS = 60_000;
 // Where the balcony's V-dipole hears Meteor: the first three passes (2026-10-15/16) only ever had signal with the

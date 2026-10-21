@@ -1,5 +1,5 @@
 // A live room on a page: who's here (masked IP + country flag), a chat, and the page's actions ("listening to
-// 100.3 MHz WFM") with a button to join someone. Server side: room.ts in the site root.
+// 100.3 MHz WFM") with a button to join someone. Server side: server/room.ts in the site's repo.
 export type RoomEv = { id: number; at: number; who: { name: string; flag: string; key: string }; kind: "say" | "action" | "join" | "leave"; text: string; data?: Record<string, string | number> };
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

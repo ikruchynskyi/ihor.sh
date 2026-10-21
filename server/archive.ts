@@ -11,7 +11,7 @@ const ALERTS = FEED + "camsys%2Fsubway-alerts.json";
 const OUTAGES = FEED + "nyct%2Fnyct_ene.json";
 const EVERY_MS = 5 * 60_000;
 
-const dir = path.join(import.meta.dirname, "data");
+const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, "mta.db"));
 db.exec(`

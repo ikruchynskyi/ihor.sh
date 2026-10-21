@@ -92,7 +92,7 @@ Return at most 8 bullets, the ones that gain the most. Reply as JSON.`,
   });
   // …and on the summary: a sentence naming a skill the job wants but the résumé doesn't have is dropped
   if (job && out.summary) {
-    const { jobTerms } = await import("./nyc/resume.js") as any, lacking = jobTerms(String(job.description)).skills.filter((t: string) => !new RegExp(`\\b${t.replace(/[.+#]/g, (c: string) => `\\${c}`)}\\b`, "i").test(resume));
+    const { jobTerms } = await import("../nyc/resume.js") as any, lacking = jobTerms(String(job.description)).skills.filter((t: string) => !new RegExp(`\\b${t.replace(/[.+#]/g, (c: string) => `\\${c}`)}\\b`, "i").test(resume));
     out.summary = out.summary.split(/(?<=[.!?])\s+/).filter((sen: string) => !lacking.some((t: string) => new RegExp(`\\b${t.replace(/[.+#]/g, (c: string) => `\\${c}`)}\\b`, "i").test(sen))).join(" ");
   }
   // …and a promoted role or invented specifics get a visible warning rather than slipping through

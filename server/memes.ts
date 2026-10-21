@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
-const ROOT = import.meta.dirname;
+const ROOT = path.join(import.meta.dirname, "..");
 const LOCAL_MEMEGEN = process.env.MEMEGEN_URL || "http://127.0.0.1:5055";
 
 export type MemeTemplate = {

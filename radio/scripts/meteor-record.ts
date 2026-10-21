@@ -14,7 +14,7 @@ import { deflateSync, crc32 } from "node:zlib";
 import { MeteorReceiver, WIDTH, type Channel } from "../src/meteor.ts";
 import { spectrumOfIQ } from "../src/waterfall.ts";
 import { SignalMeter, pictureQuality } from "../src/meteor-health.ts";
-import { tleFor, look, site } from "../../sat.ts";
+import { tleFor, look, site } from "../../server/sat.ts";
 
 const arg = (k: string) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : undefined; };
 const SAT = arg("sat") ?? "meteor-m2-3", FREQ = Number(arg("freq") ?? 137.9), FILE = arg("file"), FS = Number(arg("fs") ?? 240000);

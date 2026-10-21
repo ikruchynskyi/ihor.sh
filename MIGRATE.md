@@ -25,7 +25,7 @@ Use `./manage.sh` (or the matching `npm run` scripts):
 ./manage.sh deploy              # rebuild containers, restart host daemons, run npm run check (npm run deploy)
 ./manage.sh restart [service]   # restart web, tts, memegen, tunnel, host, sdr, sdr-sat, ollama (./restart.sh)
 ./manage.sh test [file...]      # run unit tests inside the web container (npm test)
-./manage.sh check               # run lint.py + check.ts + aso-check.ts (npm run check)
+./manage.sh check               # run lint.py + scripts/check.ts + scripts/aso-check.ts (npm run check)
 ./manage.sh logs [service]      # follow container logs, or ~/Library/Logs/ihor-*.log for sdr/sdr-sat/host
 ./manage.sh shell               # open a shell inside the web container
 ```

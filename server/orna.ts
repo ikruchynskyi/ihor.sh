@@ -16,7 +16,7 @@ const RARITY: Record<string, number> = { common: 0, rare: 1, famed: 2, legendary
 export const baseRate = (tier: number, rarity: string) => tier * 10 + (RARITY[rarity.trim().toLowerCase()] ?? 0) * 5;
 export const proofsNeeded = (count: number, guild: string, base: number) => Math.ceil((count * PROOFS[guild].scaling * base) / 100);
 
-export const MATERIALS: Record<string, { tier: number; rarity: string; uk?: string }> = JSON.parse(readFileSync(path.join(import.meta.dirname, "orna", "materials.json"), "utf8"));
+export const MATERIALS: Record<string, { tier: number; rarity: string; uk?: string }> = JSON.parse(readFileSync(path.join(import.meta.dirname, "..", "orna", "materials.json"), "utf8"));
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 /** "October 9" → the next date on or after `today` (this year, or next if it has passed). */

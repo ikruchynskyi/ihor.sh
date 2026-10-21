@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const DIR = path.join(import.meta.dirname, "yomu", "data", "jisho");
+const DIR = path.join(import.meta.dirname, "..", "yomu", "data", "jisho");
 const UA = { "user-agent": "ihor.sh Yomu (https://ihor.sh/yomu/; caches every page it reads, so it asks once)" };
 const GAP_MS = 400; // politeness: at most one Jisho request every 400 ms, whoever asks
 let next = 0;

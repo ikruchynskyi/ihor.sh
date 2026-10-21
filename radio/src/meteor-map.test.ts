@@ -1,7 +1,7 @@
 // Run: node src/meteor-map.test.ts. A real Meteor-M2 3 orbit over New York: pixels → ground (by intersecting each
 // scan ray with the Earth) → back to pixels with the projector must land where they started.
 import assert from "node:assert/strict";
-import { parseTle, sgp4, gmst, passes } from "../../sat.ts";
+import { parseTle, sgp4, gmst, passes } from "../../server/sat.ts";
 import { Projector, rowTimes, ecef } from "./meteor-map.ts";
 import { WIDTH } from "./meteor.ts";
 

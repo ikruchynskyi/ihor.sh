@@ -107,7 +107,7 @@ case "$cmd" in
         run_node "$f"
       done
     else
-      for f in *.test.ts learn/*.test.mjs learn/lab/*.test.mjs nyc/*.test.* ride/*.test.mjs yomu/*.test.mjs ai/*.test.mjs; do
+      for f in server/*.test.ts learn/*.test.mjs learn/lab/*.test.mjs nyc/*.test.* ride/*.test.mjs yomu/*.test.mjs ai/*.test.mjs; do
         [ -f "$f" ] || continue
         echo "→ $f"
         run_node "$f"

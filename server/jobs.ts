@@ -8,7 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-const dir = path.join(import.meta.dirname, "data");
+const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, "jobs.db"));
 db.exec(`

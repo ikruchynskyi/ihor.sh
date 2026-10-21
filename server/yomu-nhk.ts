@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const ROOT = import.meta.dirname;
+const ROOT = path.join(import.meta.dirname, "..");
 const CACHE_FILE = path.join(ROOT, "yomu/data/nhk-cache.json");
 const FEED_URL = "https://nhkeasier.com/feed/";
 

@@ -9,9 +9,9 @@ import http from "node:http";
 import net from "node:net";
 import path from "node:path";
 import { promisify } from "node:util";
-import { transcribeLocal } from "./monitor.ts";
-import { upscaleLocal } from "./upscale.ts";
-import { findMeshPort } from "./mesh.ts";
+import { transcribeLocal } from "./server/monitor.ts";
+import { upscaleLocal } from "./server/upscale.ts";
+import { findMeshPort } from "./server/mesh.ts";
 
 const execFileAsync = promisify(execFile);
 const ROOT = import.meta.dirname;
