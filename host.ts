@@ -4,7 +4,7 @@
 //    - HTTP 127.0.0.1:8075: `/whisper` (mlx_whisper captions on Metal) and `/upscale` (SeedVR2-3B mflux upscaler on Metal).
 //    - TCP  127.0.0.1:8076: raw serial bridge to the Meshtastic USB radio (`/dev/cu.usbmodem*`).
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { closeSync, createReadStream, existsSync, openSync, writeSync, constants } from "node:fs";
+import { closeSync, createReadStream, existsSync, openSync, statSync, writeSync, constants } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -76,6 +76,10 @@ async function ensureDockerAndContainers() {
         await execFileAsync("docker", ["rm", "-f", "memegen"], { timeout: 10_000 });
       }
     } catch {}
+    // A deploy (manage.sh rebuild, restart.sh) is recreating containers right now: running `compose up` too would race it
+    // for port 8080. The file is removed when the deploy ends; one older than 10 minutes is a deploy that died, so heal anyway.
+    const lock = path.join(ROOT, "data", ".deploying");
+    if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs < 10 * 60_000) return;
     // Check if web container is running; if not, run `docker compose up -d`
     const { stdout: psOut } = await execFileAsync("docker", ["compose", "ps", "--status", "running", "--format", "{{.Service}}"], { cwd: ROOT, timeout: 10_000 }).catch(() => ({ stdout: "" }));
     const running = new Set(psOut.trim().split(/\r?\n/).filter(Boolean));

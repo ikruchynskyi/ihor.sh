@@ -4,6 +4,9 @@
 # run on the Mac host as LaunchDaemons (or login agents) and restart without sudo when their process exits.
 set -u
 cd "$(dirname "$0")"
+# While containers are being restarted, the host supervisor (host.ts) must not run its own `docker compose up`:
+# both would grab port 8080 at once ("Address already in use"). It skips self-healing while this file is fresh.
+mkdir -p data && touch data/.deploying && trap 'rm -f data/.deploying' EXIT
 
 ensure_docker() {
   if ! docker info >/dev/null 2>&1; then

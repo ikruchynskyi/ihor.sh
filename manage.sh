@@ -71,6 +71,8 @@ case "$cmd" in
 
   rebuild|build)
     ensure_docker
+    # host.ts skips its self-healing `docker compose up` while this file is fresh (see restart.sh)
+    mkdir -p data && touch data/.deploying && trap 'rm -f data/.deploying' EXIT
     echo "Building radio/dist on host..."
     npm run build
     if [ -z "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' memegen 2>/dev/null)" ]; then
