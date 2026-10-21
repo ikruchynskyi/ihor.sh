@@ -168,9 +168,9 @@ test the page right away (it's live), then commit and push at once.
 Effort: S ≈ an hour or two of agent work, M ≈ half a day, L ≈ a day or more.
 
 **Status 2026-10-21: every lane has shipped** (B daily quiz, C gap drills, D exams/badges/portfolio, E mini-games,
-F placement, G all 79/79 Kaggle notebooks published, H1 SQL, H2 workbench, I milestones 2–7, J reference pages, K practice generators, L keyboard access,
+F placement, G all 78/78 Kaggle notebooks published, H1 SQL, H2 workbench, I milestones 2–6, J reference pages, K practice generators, L keyboard access,
 M cold-learner notebook read, N home-page XP), checked: each lane's files exist and `ai/*.test.mjs` all pass.
-Lane G finished publishing all 79 of 79 notebooks to Kaggle on 2026-10-21 (including the final 18 notebooks + republished `s1-what-is-ml` v4 and `milestone-7` v2).
+Lane G finished publishing all 78 of 78 notebooks to Kaggle on 2026-10-21 (including the final 18 notebooks + republished `s1-what-is-ml` v4).
 
 ### Wave 1 (start together)
 
@@ -395,35 +395,6 @@ Lanes that write the most new content (D, I, H1, H2, K) are the longest. G and N
 
 As built: (1) the daily quiz keeps its share line; (2) a stage exam can be taken early, with a note recommending the
 lessons first; (3) milestone 5 uses CIFAR-10 (from the Hugging Face hub); (4) the SQL lesson is SQLite only.
-
----
-
-## 8. Guided End-to-End Capstone Project ("Personal AI Copilot & Research Partner"): shipped (`capstone.html`, milestone 7)
-
-An end-of-course guided hands-on capstone project that ties together the entire curriculum into a real-world, highly useful application the learner can deploy and use daily:
-
-### 8.1 The Project
-- **Application**: An autonomous, local or cloud-deployable **Personal AI Research & Second-Brain Copilot** that ingests markdown notes, PDFs, voice memos, and receipts, indexes them with SQLite and PyTorch vector embeddings, performs hybrid RAG with verifiable citation grounding, classifies item priority using cost-aware boosted trees, and serves via a monitored FastAPI web endpoint.
-- **Why it matters**: Solves a real problem (personal knowledge management with zero hallucinations and full provenance) rather than scoring on an artificial benchmark.
-
-### 8.2 Cross-Curricular Coverage
-1. **Data Engineering & SQL (Stage 4)**: SQLite schema (`data-with-sql.html`) with window functions for document versioning and chunk indexing without temporal leakage.
-2. **Foundations & Geometry (Stages 1–2, L1–L3, P1–P5)**: High-dimensional vector dot-products, cosine similarity, SVD/PCA 2D semantic projection map in the browser.
-3. **Classic Tabular ML (Stage 3 & Model Zoo)**: Baseline heuristic vs. Logistic Regression vs. LightGBM/HistGradientBoosting on document metadata to predict urgency/category; cost-sensitive decision threshold tuning.
-4. **Deep Learning in PyTorch (Stages 2, 4, 5)**: Custom neural bi-encoder / re-ranking head in PyTorch (`nn.Module`), training loop with AdamW, learning rate schedules, dropout, and batching.
-5. **Multimodal Audio/Vision (Stage 5 & Electives)**: Audio voice memo transcription (Whisper pipeline) and document image/receipt OCR parser (PyTorch vision/detector).
-6. **LLMs, Grounded RAG & Agents (Stage 6)**: Hybrid dense vector + BM25 sparse keyword retrieval; prompt engineering with strict citation schema (`[doc#chunk]`); automated evaluation harness measuring Citation Grounding Ratio, Context Recall@k, and Faithfulness; structured tool-calling (database query, math calculator, web retrieval).
-7. **Production Serving & MLOps (Stage 7)**: Asynchronous FastAPI server with Pydantic request/response validation; latency/token budget metrics; production Model Card detailing provenance, intended use, and limitations; real-time MLOps drift monitor computing PSI (Population Stability Index) on incoming query embeddings to detect distribution shift.
-
-### 8.3 Guided Milestones & Deliverables
-- **Milestone 1**: Data Pipeline & SQLite Ingestion (chunking, token counts, metadata schema).
-- **Milestone 2**: Tabular Importance Classifier (LightGBM/Logistic baseline, calibration, ROC/PR curves, cost-sensitive threshold).
-- **Milestone 3**: PyTorch Embeddings & 2D SVD Semantic Map (vector indexing, similarity search).
-- **Milestone 4**: Multimodal Voice/Image Ingestion (Whisper audio transcription / OCR).
-- **Milestone 5**: Grounded RAG & Automated Eval Suite (citation generator, faithfulness & recall eval script).
-- **Milestone 6**: FastAPI Service & Web UI (async API, streaming chat interface, Pydantic validation).
-- **Milestone 7**: Production MLOps, PSI Drift & Model Card (latency tracking, embedding drift detection, structured Model Card).
-- **Deliverables**: Source repository + `milestone-7.ipynb` Colab/Kaggle notebook + Hugging Face Space URL + Model Card. Unlocks the "Capstone Engineer" distinction on `ai/portfolio.html`.
 
 ---
 
