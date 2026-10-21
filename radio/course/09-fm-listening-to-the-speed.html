@@ -74,7 +74,7 @@
 
   <!-- 3 -->
   <h2 id="mpx">What's inside a real broadcast</h2>
-  <p>A real FM station sends more than one sound. Here's the spectrum (<a class="back" href="./04-winding-machine.html#spectrum">↩ ch. 4</a>) of our demodulator's output for 98.7 FM, recorded by this site's dongle: everything the station packs into the arrow's speed, from 0 to 64 kHz.</p>
+  <p>Why can't we just take the demodulator's 300 kS/s output and decimate it straight down to 48 kS/s for your speakers? Because a real FM station packs several hidden signals into the arrow's speed above the 15 kHz human hearing range — and if we don't filter them off before decimating to audio speed (<a class="back" href="./07-throwing-away-snapshots.html#fold">↩ ch. 7</a>), they fold right down on top of the music as whistles and hiss. Here's the spectrum (<a class="back" href="./04-winding-machine.html#spectrum">↩ ch. 4</a>) of our demodulator's output for 98.7 FM, recorded by this site's dongle, from 0 to 64 kHz.</p>
 
   <div class="scene" id="s-mpx"></div>
 
@@ -92,6 +92,7 @@
 
   <!-- 4 -->
   <h2 id="deemph">De-emphasis: why FM needs a bass boost (sort of)</h2>
+  <p>Even after we low-pass filter at 15 kHz to keep only the mono audio, playing that signal straight to your speakers sounds tinny, overly bright, and full of high-pitched hiss. Why?</p>
   <div class="q" data-answer="a"><p>Predict: noise jiggles the arrow's angle at random. Why would that come out louder at <em>high</em> pitches than low ones?</p>
     <ul><li data-k="a">The demodulator reports how fast the angle changes, and fast jitter changes it fastest</li><li data-k="b" data-says="The speaker isn't the cause: the hiss rises in the numbers already.">Speakers are louder at high pitches</li><li data-k="c" data-says="They do (pre-emphasis), but that boosts the music, not the noise.">FM stations send more treble</li></ul>
     <div class="why">Speed of change is bigger for quick wiggles than slow ones, so the demodulated noise rises with frequency. De-emphasis turns the treble down by exactly what the station boosted, taking the hiss down with it.</div>

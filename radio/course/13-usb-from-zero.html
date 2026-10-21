@@ -49,7 +49,7 @@
 
   <!-- 2 -->
   <h2 id="setup">A control transfer, byte by byte</h2>
-  <p>A control transfer always starts with an 8-byte <b>setup packet</b> from the host. Five fields, always in the same order:</p>
+  <p>Why do we care about the exact bytes of a USB control transfer? Because the RTL2832U chip has no high-level "tune to 98.7 MHz" command: every action in <a href="./12-inside-the-dongle.html">chapter 12</a> and <a href="./14-writing-the-driver.html">chapter 14</a> (powering on the chip, setting the sample rate, writing the tuner's PLL registers over I2C) is done by packing a register address into an 8-byte <b>setup packet</b> from the host. It always has five fields, in the same order:</p>
   <ul>
     <li><b style="color:var(--pink)">request type</b> (1 byte): direction and kind. 0x40 means "host to device, vendor-specific"; 0xC0 means "device to host, vendor-specific". "Vendor-specific" means the meaning is defined by the chip's maker, not by the USB standard.</li>
     <li><b>request</b> (1 byte): which command. The RTL2832U uses just one, 0.</li>

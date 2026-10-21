@@ -44,6 +44,12 @@
 
   <!-- 3 -->
   <h2 id="multiply">Multiplying arrows: turn and stretch</h2>
+  <p>Adding arrows happens automatically in the air when stations meet on your antenna. <b>Multiplying</b> two arrows is what <em>our receiver code</em> does to almost every pair of numbers from the dongle. Why would you ever multiply two arrows in a radio? Because one operation does three jobs that build almost the whole receiver:</p>
+  <ul>
+    <li><b>Generate our own spinning arrow</b> (<a href="#spin">section 5</a> below): multiply an arrow by the same small turn step after step, and it spins at any speed we choose.</li>
+    <li><b>Slide a station to 0 Hz so we can isolate it</b> (<a href="./04-winding-machine.html">chapters 4</a> and <a href="./05-moving-a-station.html">5</a>): multiply an incoming signal by our own arrow spinning backward at the station's speed, and the two spins cancel.</li>
+    <li><b>Extract the sound from FM</b> (<a href="./09-fm-listening-to-the-speed.html">chapter 9</a>): multiply each new arrow by the previous one turned backward to measure how far the station spun since the last snapshot — which <em>is</em> the music.</li>
+  </ul>
   <p>What should it mean to "multiply" two arrows? Let's think about what multiplying ordinary numbers does. Multiplying by 2 <b>stretches</b>: everything gets twice as big. Multiplying by −1 <b>flips</b>: 3 becomes −3, pointing the other way. A flip is a half turn.</p>
   <p>So multiplication of ordinary numbers is already "stretch and turn", just with very limited turning: no turn, or a half turn. Arrows can point in any direction, so the natural extension is: <b>multiplying by an arrow stretches by its length and turns by its angle</b>. In other words:</p>
   <ul>
@@ -117,7 +123,7 @@
 
   <!-- 6 -->
   <h2 id="euler">The arrow at angle θ, built from tiny turns</h2>
-  <p>One last idea, and it explains a formula you may have seen and been confused by.</p>
+  <p>You already have everything you need to write arrow code — you don't need a new formula to run the receiver. We show you this last idea for one practical reason: every radio book, chip datasheet, and the compact formulas in <a href="./04-winding-machine.html">chapters 4</a>–<a href="./06-averaging-is-filtering.html">6</a> write "the arrow of length 1 at angle θ" as <b>e<sup>jθ</sup></b>. Taking two minutes to see why an exponent lands on a circle turns those formulas from intimidating symbols into a picture you already know.</p>
   <p>Here's a strange-sounding way to build a turn. Start at 1 and take a small step <b>sideways</b>: multiply by an arrow that's 1 to the right and a tiny bit up. Because that step is perpendicular to where you're pointing, it mostly turns you and barely stretches you. Do lots of those small steps in a row, and you curl around the circle.</p>
   <p>Below, the total amount of "sideways" is <b>θ</b> (the Greek letter theta), shared out over <b>n</b> steps: each step multiplies by 1 + j·θ/n. The ring on the circle marks the arrow at angle θ, the place we'd like to land.</p>
 

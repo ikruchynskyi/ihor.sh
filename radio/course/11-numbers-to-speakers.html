@@ -19,7 +19,7 @@
     </ul>
   </div>
 
-  <p>The demodulator hands us numbers: about 48 000 per second, each saying where the speaker cone should be. Getting them to come out of the speakers smoothly, for hours, turns out to involve four practical problems that every radio, phone and video call has to solve. None of them is hard, but each one, ignored, makes the radio sound broken.</p>
+  <p>The demodulator hands us numbers: about 48 000 per second, each saying where the speaker cone should be. Getting them to come out of the speakers smoothly, for hours, turns out to involve four practical problems that every radio, phone and video call has to solve: (1) the dongle's clock and the sound card's clock slowly drift apart, (2) their sample rates (say 50 000 vs 48 000 Hz) don't match, (3) AM and SSB volume swings wildly with signal strength, and (4) an empty two-way channel blasts loud hiss between transmissions. None of them is hard, but each one, ignored, makes the radio sound broken.</p>
 
   <!-- 1 -->
   <h2 id="clocks">Two clocks that never agree</h2>
@@ -70,7 +70,7 @@
 
   <!-- 4 -->
   <h2 id="squelch">Squelch: silence between transmissions</h2>
-  <p>Two-way radio (airport towers, police, taxis, hams) is silent most of the time. A receiver tuned to an empty channel plays pure noise: a loud hiss, for minutes, between every short message. A <b>squelch</b> mutes the sound whenever the channel is too weak to contain a transmission:</p>
+  <p>Two-way radio (airport towers, police, taxis, hams) is silent most of the time, and automatic volume (section 3 above) makes that silence worse: when nobody is talking, AGC sees the quiet background fuzz and turns the volume all the way up! A receiver tuned to an empty channel then plays a loud hiss for minutes between every short message. A <b>squelch</b> mutes the sound whenever the channel is too weak to contain a transmission:</p>
 
   <div class="scene" id="s-squelch">
     <div class="controls">

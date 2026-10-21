@@ -23,7 +23,7 @@
 
   <!-- 1 -->
   <h2 id="xor">Mixing bits: XOR</h2>
-  <p>The protection is built from one operation on bits. <b>XOR</b> ("exclusive or", written ⊕) takes two bits and gives 1 if they differ, 0 if they're the same: 0⊕0 = 0, 0⊕1 = 1, 1⊕0 = 1, 1⊕1 = 0. One way to see it: XOR with 1 flips a bit, XOR with 0 leaves it alone. So doing it twice with the same bit undoes it, x ⊕ k ⊕ k = x, which is how the satellite's scrambling of every frame is undone too. (In hardware it's one logic gate: <a href="../../learn/electronics/12-gates-to-a-computer.html">Electronics chapter 12</a>.)</p>
+  <p>If the satellite sent each picture bit only once, a single noisy symbol from chapter 21 would flip that bit forever. To let a bit survive noise, the transmitter mixes each data bit into <em>many</em> sent bits before broadcasting so the survivors can outvote a mistake. That whole protection layer is built from one reversible operation on bits. <b>XOR</b> ("exclusive or", written ⊕) takes two bits and gives 1 if they differ, 0 if they're the same: 0⊕0 = 0, 0⊕1 = 1, 1⊕0 = 1, 1⊕1 = 0. One way to see it: XOR with 1 flips a bit, XOR with 0 leaves it alone. So doing it twice with the same bit undoes it, x ⊕ k ⊕ k = x, which is how the satellite's scrambling of every frame is undone too. (In hardware it's one logic gate: <a href="../../learn/electronics/12-gates-to-a-computer.html">Electronics chapter 12</a>.)</p>
   <div class="scene" id="s-xor">
     <div class="controls">
       <button id="xr-0" type="button">Send a 0</button> <button id="xr-1" type="button">Send a 1</button>
@@ -72,7 +72,7 @@
 
   <!-- 4 -->
   <h2 id="dct">Pictures in 8×8 blocks</h2>
-  <p>72 kbit/s is slow for pictures, so they're compressed the JPEG way. Each 8×8 block of pixels is rewritten as 64 numbers saying how much of each of 64 standard patterns it contains, from "flat" through "gentle slope" to "fine checkerboard" (a 2-D version of chapter 4's Fourier transform, the DCT). Clouds and coastlines are mostly smooth, so the first few numbers carry almost everything and the rest can be dropped or rounded coarsely:</p>
+  <p>After Viterbi and the frame checksums, our receiver has a clean stream of 72,000 data bits a second. Why isn't the job finished — why not just send raw pixel brightnesses the way chapter 17's SSTV did? Because a weather satellite strip is 1,500 pixels wide across three camera channels, and sending raw pixels that fast would take about five times more data than 72 kbit/s can carry! So the satellite compresses the image the JPEG way before sending (which is also why a single unfixed bit error would corrupt a whole block of pixels). Each 8×8 block of pixels is rewritten as 64 numbers saying how much of each of 64 standard patterns it contains, from "flat" through "gentle slope" to "fine checkerboard" (a 2-D version of chapter 4's Fourier transform, the DCT). Clouds and coastlines are mostly smooth, so the first few numbers carry almost everything and the rest can be dropped or rounded coarsely:</p>
   <div class="scene" id="s-dct">
     <div class="controls"><label for="dc-k">Numbers kept per block <input id="dc-k" type="range" min="1" max="36" step="1" value="6"></label></div>
     <p class="readout" id="r-dct" aria-live="polite"></p>

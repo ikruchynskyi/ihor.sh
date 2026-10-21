@@ -66,7 +66,7 @@
 
   <!-- 3 -->
   <h2 id="vis">The VIS header: which mode is this?</h2>
-  <p>Before the picture, every transmission sends a short header that names its mode, the <b>VIS code</b> (vertical interval signaling): a 1900 Hz leader, a 1200 Hz break and start bit, then seven data bits at 30 ms each (<b>1100 Hz = 1, 1300 Hz = 0</b>, least significant bit first), an even-parity bit, and a 1200 Hz stop bit:</p>
+  <p>In the previous section you saw that Martin, Scottie, Robot and PD modes all have different line lengths and color layouts: if a receiver starts drawing lines without knowing which format is arriving, the whole picture turns into scrambled stripes. So before the first line of pixels, every transmission sends a short digital "doorbell" that names its mode, the <b>VIS code</b> (vertical interval signaling): a 1900 Hz leader, a 1200 Hz break and start bit, then seven data bits at 30 ms each (<b>1100 Hz = 1, 1300 Hz = 0</b>, least significant bit first), an even-parity bit, and a 1200 Hz stop bit:</p>
 
   <div class="scene" id="s-vis">
     <div class="controls"><label for="vs-m">Mode <select id="vs-m"></select></label></div>

@@ -49,6 +49,7 @@
 
   <!-- 1 -->
   <h2 id="path">The signal's journey</h2>
+  <p>Once the antenna and the first amplifier have delivered a signal strong enough to beat the receiver's own noise, it enters the dongle's two chips. How do those two chips get a 98.7 MHz radio wave down to the 2.4 MS/s USB stream we've been using since chapter 3?</p>
   <div class="q" data-answer="b"><p>Predict: the dongle's converter is 8 bits at 28.8 MHz. Where does the tuner put a 98.7 MHz station before it's digitized?</p>
     <ul><li data-k="a" data-says="Far too fast for a cheap converter to sample.">It stays at 98.7 MHz</li><li data-k="b">A few MHz up: an intermediate frequency</li><li data-k="c" data-says="The analog part can't do that cleanly with one shadow (section 2); the digital part does it later.">At exactly 0 Hz</li></ul>
     <div class="why">A few MHz (the IF), slow enough for the 8-bit converter. Then the RTL2832U does chapter 5's mixing, chapter 6's filter and chapter 7's decimation in digital form.</div>
@@ -85,7 +86,7 @@
 
   <!-- 3 -->
   <h2 id="pll">Making any frequency from one crystal: the PLL</h2>
-  <p>The local oscillator has to run at <em>exactly</em> the right frequency: 102.02 MHz for 98.45, or 1093.32 MHz for planes at 1090. All from one 28.8 MHz crystal. The circuit that does it is a <b>phase-locked loop</b> (PLL): a fast, adjustable oscillator (the VCO) that's constantly compared with the crystal and nudged until its speed is an exact multiple of it. Think of a gear train: the crystal turns at one speed, and the gears set the ratio.</p>
+  <p>In software (chapter 5), making a local oscillator at any frequency was just typing a number into <code>Math.cos</code>. In hardware, how does the tuner chip make 102.02 MHz to listen to 98.45 FM — or 1093.32 MHz for aircraft at 1090 — when you can't pack a million quartz crystals into a $30 stick? Inside the dongle there is only <b>one</b> 28.8 MHz crystal, and in <a href="./14-writing-the-driver.html">chapter 14</a> our driver will have to program the gear ratios that turn that one crystal into any frequency on the dial. The circuit that does it is a <b>phase-locked loop</b> (PLL): a fast, adjustable oscillator (the VCO) that's constantly compared with the crystal and nudged until its speed is an exact multiple of it. Think of a gear train: the crystal turns at one speed, and the gears set the ratio.</p>
   <p>Type any frequency and see exactly how the tuner makes it. These are the same steps and numbers our driver uses:</p>
 
   <div class="scene" id="s-pll-box">

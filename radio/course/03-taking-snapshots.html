@@ -91,7 +91,7 @@
 
   <!-- 4 -->
   <h2 id="ruler">Each photo is measured with a ruler</h2>
-  <p>There's a second way snapshots lose information. Each I and Q number has to be stored, and your dongle stores each one as a single <b>byte</b>: a whole number from 0 to 255. It's like measuring with a ruler that has only <b>256 marks</b>. The true value is somewhere between two marks, and gets written down as the nearest one.</p>
+  <p>A digital snapshot has two limits. Sections 1–3 covered the limit in <b>time</b>: how often the camera flashes, which sets how wide a slice of the radio band you can see without aliasing. Now comes the limit in <b>size</b>: how finely each flash writes down the arrow's I and Q coordinates — and why your dongle has a <b>gain</b> knob you must set before you can hear weak stations. Each I and Q number has to be sent over USB, and your dongle packs each one into a single <b>byte</b>: a whole number from 0 to 255. It's like measuring with a ruler that has only <b>256 marks</b>. The true value is somewhere between two marks, and gets written down as the nearest one.</p>
   <p>Below, the <em class="b">blue</em> curve is the true signal and the <em class="y">yellow</em> dots are what gets recorded. The <em class="p">pink</em> line underneath is the error, the difference, magnified five times.</p>
 
   <div class="scene" id="s-bits">
@@ -112,7 +112,7 @@
 
   <!-- 4b -->
   <h2 id="noise">Noise, and how big a wiggle is</h2>
-  <p>Unplug the antenna and the dongle's numbers still don't sit at 127.5: they jitter. That jitter is <b>noise</b>, a small random arrow added to every sample, with a new length and a new direction every time. Some of it comes from the receiver itself (warm electronics never sit perfectly still), some arrives through the antenna: the sky, the city's electrical gadgets, distant transmitters. Every receiver has it, and it decides how weak a station can be and still be heard. (Where it comes from, in physics: <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
+  <p>Why can't we just turn the gain knob up until every weak station spans plenty of marks on the ruler? Because the station never arrives alone. Unplug the antenna and the dongle's numbers still don't sit at 127.5: they jitter. That jitter is <b>noise</b>, a small random arrow added to every sample, with a new length and a new direction every time. Some of it comes from the receiver itself (warm electronics never sit perfectly still), some arrives through the antenna: the sky, the city's electrical gadgets, distant transmitters. Every receiver has it, and it decides how weak a station can be and still be heard — and how you set the gain knob in the live lab right below. (Where it comes from, in physics: <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
   <p>Below, a station (one steady arrow, like the FM ring above) arrives with noise on top, and goes through a gain knob and the 8-bit ruler. Left: every sample as a dot, inside the box of the whole ruler. Right: how often each byte value occurs, red at the ends where numbers clip. The readout underneath gives two numbers, the RMS and the SNR, explained just after you've played with it.</p>
 
   <div class="q" data-answer="b"><p>Predict first: you turn the gain up by 20 dB. What happens to how far the station stands above the noise?</p>

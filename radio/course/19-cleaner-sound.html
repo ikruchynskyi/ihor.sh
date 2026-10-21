@@ -25,7 +25,7 @@
   <!-- 1 -->
   <h2 id="voice">A filter for voices</h2>
   <p>Narrow FM, AM and SSB carry speech, and speech lives between about 300 and 3000 Hz. Below it, many repeaters add a quiet <b>CTCSS tone</b>, 67 to 250 Hz, that opens other radios' squelch: you hear it as a hum. Above it is mostly hiss. So the first cleanup is a band-pass: cut below 300 Hz, cut above 3000 Hz.</p>
-  <p>Chapter 6's filters were long lists of weights, hundreds of multiplications per sample. For audio there's a cheaper kind, with <b>memory of its own output</b>: each new output sample mixes the last two inputs and the last two <em>outputs</em>. Feed it a single click and watch it answer:</p>
+  <p>Why not use chapter 6's FIR filter here? Because at 48 000 audio samples a second, a 100 Hz hum is a very slow wave (480 samples per turn), so cutting sharply at 300 Hz with chapter 6's sliding average would take hundreds of weights — hundreds of multiplications per sample. For audio there's a much cheaper kind of filter that needs only <b>five multiplications</b>, because it keeps <b>memory of its own output</b>: each new output sample mixes the last two inputs and the last two <em>outputs</em>. Feed it a single click and watch it answer:</p>
 
   <div class="scene" id="s-biquad">
     <div class="controls">

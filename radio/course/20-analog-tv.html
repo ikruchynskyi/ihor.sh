@@ -98,7 +98,7 @@
 
   <!-- 6 -->
   <h2 id="rf">On the air, and what a dongle can catch</h2>
-  <p>The video was sent as AM (chapter 10), with most of one sideband cut off to save space (<b>vestigial sideband</b>), and the sound as FM 4.5 MHz above the picture carrier. A whole channel is 6 MHz. Slide the dongle's capture window across it:</p>
+  <p>Up to here we've built and decoded the signal on a studio wire, where brightness and color reach up to 4.2 MHz. Putting that onto the airwaves hits a problem: ordinary AM (chapter 10) creates two mirror-image sidebands, which would make the picture alone 8.4 MHz wide — wider than the 6 MHz channel regulators allotted for picture and sound combined! So TV transmitters used AM with most of the lower sideband shaved off to save space (<b>vestigial sideband</b>), and placed the FM sound carrier 4.5 MHz above the picture carrier. Slide our dongle's narrower capture window across that 6 MHz channel to see what fits:</p>
   <div class="scene" id="s-rf">
     <div class="controls">
       <label for="rf-c">Tune to <input id="rf-c" type="range" min="0" max="6" step="0.05" value="2.4"></label>
