@@ -17,7 +17,7 @@
     .cmp code, main p code, main li code { overflow-wrap: anywhere; }
     .sac { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; font: 14px/1.4 ui-monospace, Menlo, monospace; }
     .sac > div { background: #14171d; color: #d8dee9; border-radius: 8px; padding: 8px; min-height: 180px; }
-    .sac h4 { margin: 0 0 6px; font: 600 13px ui-sans-serif, system-ui; color: #9aa4b2; }
+    .sac h3 { margin: 0 0 6px; font: 600 13px ui-sans-serif, system-ui; color: #9aa4b2; }
     .sac .r { display: flex; justify-content: space-between; padding: 1px 6px; border-radius: 4px; margin: 2px 0; transition: opacity .3s; }
     .sac .grp { margin-bottom: 8px; }
     @media (max-width: 560px) { .sac { grid-template-columns: 1fr; } .sac > div { min-height: 0; } }
@@ -85,7 +85,7 @@ f.loc[f["hours"] > 300, ["station", "kind", "reason", "hours"]]
   <h2>3. Group, then combine</h2>
   <p><code>groupby</code> is three steps under one name: <b>split</b> the rows by a key, <b>apply</b> a summary to each group, <b>combine</b> the answers into a table. Step through it on six outages:</p>
   <div class="row"><label>summary <select id="agg"><option value="count">count</option><option value="mean" selected>mean</option><option value="max">max</option></select></label><button id="step">Next step</button><button id="restart">Start over</button></div>
-  <div class="sac"><div id="s0"><h4>1. the rows</h4></div><div id="s1"><h4>2. split by reason</h4></div><div id="s2"><h4>3. apply, combine</h4></div></div>
+  <div class="sac"><div id="s0"><h3>1. the rows</h3></div><div id="s1"><h3>2. split by reason</h3></div><div id="s2"><h3>3. apply, combine</h3></div></div>
   <p class="readout" id="r3"></p>
   <div class="code" data-uses="out" data-title="Run it: by reason, by station, and a pivot table"><textarea>
 f = df[df["finished"]].copy()
@@ -204,9 +204,9 @@ const AGG = { count: (a) => a.length, mean: (a) => +(a.reduce((s, x) => s + x, 0
 function render() {
   const agg = $("agg").value, groups = {};
   ROWS.forEach(([k, v]) => (groups[k] ??= []).push(v));
-  $("s0").innerHTML = "<h4>1. the rows (reason, hours)</h4>" + ROWS.map(([k, v]) => row(k, v)).join("");
-  $("s1").innerHTML = "<h4>2. split by reason</h4>" + (step >= 1 ? Object.entries(groups).map(([k, vs]) => `<div class="grp">${vs.map((v) => row(k, v)).join("")}</div>`).join("") : "");
-  $("s2").innerHTML = `<h4>3. apply ${agg}, combine</h4>` + (step >= 2 ? Object.entries(groups).map(([k, vs]) => row(k, AGG[agg](vs))).join("") : "");
+  $("s0").innerHTML = "<h3>1. the rows (reason, hours)</h3>" + ROWS.map(([k, v]) => row(k, v)).join("");
+  $("s1").innerHTML = "<h3>2. split by reason</h3>" + (step >= 1 ? Object.entries(groups).map(([k, vs]) => `<div class="grp">${vs.map((v) => row(k, v)).join("")}</div>`).join("") : "");
+  $("s2").innerHTML = `<h3>3. apply ${agg}, combine</h3>` + (step >= 2 ? Object.entries(groups).map(([k, vs]) => row(k, AGG[agg](vs))).join("") : "");
   $("r3").textContent = ["Press Next step to split the rows by their key.", `Split: ${Object.keys(groups).length} groups, one per reason. Nothing is computed yet.`,
     `Combined: one row per group. In pandas: df.groupby("reason")["hours"].${agg}()`][step];
 }

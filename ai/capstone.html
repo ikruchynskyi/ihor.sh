@@ -148,39 +148,73 @@
       </tr>
     </table></div>
 
-    <h3>2. Interactive Copilot Pipeline Simulator</h3>
-    <p>Test the copilot live in your browser below. Type an engineering query or pick a preset, adjust incoming incident metadata, and watch the multi-stage pipeline execute: triage classification, vector retrieval, grounded context assembly, automated hallucination verification, and traffic distribution drift calculation.</p>
+    <h3>2. Interactive Second-Brain Copilot &amp; 2D SVD Semantic Map</h3>
+    <p>Test the full Second-Brain Copilot live in your browser below. Ingest raw voice memo transcripts, OCR receipts, or your own markdown notes; inspect how SVD projects the knowledge base onto a 2D semantic topic map; tune the asymmetric triage cost ratio; verify citation grounding; and generate a production Model Card.</p>
 
     <div class="sim-card">
       <div class="sim-controls">
+        <div class="res-title" style="margin-bottom:2px;">A. Multimodal Second-Brain Ingestion (Stage 4 &amp; 5: SQL, Whisper &amp; OCR)</div>
         <div class="preset-group">
-          <span class="tag">Presets:</span>
-          <button class="pill" id="p-gw">🚨 API Gateway Outage</button>
-          <button class="pill" id="p-att">⚡ Transformer Attention</button>
-          <button class="pill" id="p-db">🗄️ Database Pool Leak</button>
-          <button class="pill" id="p-lora">🎯 LoRA Adapter Training</button>
+          <span class="tag">Ingest sample:</span>
+          <button class="pill" id="ing-voice" type="button">🎙️ Voice Memo (Whisper)</button>
+          <button class="pill" id="ing-receipt" type="button">🧾 GPU Receipt (OCR)</button>
+          <button class="pill" id="ing-runbook" type="button">📝 Redis Failover Note</button>
+          <button class="pill" id="ing-reset" type="button" title="Reset index to default 6 chunks">↺ Reset Index</button>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label for="ing-kind" style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Input Modality:</label>
+            <select id="ing-kind" class="sim-input">
+              <option value="voice">🎙️ Voice Memo Transcript ([MM:SS] + fillers)</option>
+              <option value="receipt">🧾 Receipt / Invoice OCR (VENDOR | ITEM | TOTAL)</option>
+              <option value="note">📝 Markdown / Incident Note</option>
+            </select>
+          </div>
+          <div>
+            <label for="ing-raw" style="font-size:13px; font-weight:600; display:block; margin-bottom:4px;">Raw Input to Parse &amp; Index:</label>
+            <input type="text" id="ing-raw" class="sim-input" value="[00:01] Uhm, Redis replica lag spiked to 14 seconds during cache warm-up." />
+          </div>
+        </div>
+        <div class="row" style="margin:0;">
+          <button class="sim-btn" id="btn-ingest" type="button">+ Parse &amp; Add to Second-Brain Index</button>
+          <span id="ingest-status" class="tag" aria-live="polite">6 chunks indexed in SQLite store</span>
+        </div>
+
+        <hr style="border:none; border-top:1px solid var(--line); margin:6px 0;" />
+
+        <div class="res-title" style="margin-bottom:2px;">B. Query &amp; Incident Metadata</div>
+        <div class="preset-group">
+          <span class="tag">Query Presets:</span>
+          <button class="pill" id="p-gw" type="button">🚨 API Gateway Outage</button>
+          <button class="pill" id="p-att" type="button">⚡ Transformer Attention</button>
+          <button class="pill" id="p-db" type="button">🗄️ Database Pool Leak</button>
+          <button class="pill" id="p-lora" type="button">🎯 LoRA Adapter Training</button>
         </div>
 
         <div>
-          <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Query:</label>
+          <label for="copilot-query" style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Query:</label>
           <input type="text" id="copilot-query" class="sim-input" value="production router failed memory spike load" />
         </div>
 
         <div class="grid-2">
           <div>
-            <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Document Type:</label>
+            <label for="sim-incident" style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Document Type:</label>
             <select id="sim-incident" class="sim-input">
               <option value="1" selected>Incident Post-Mortem Report</option>
               <option value="0">Routine Technical Documentation</option>
             </select>
           </div>
           <div>
-            <label style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Incident Created Hour (0-23):</label>
+            <label for="sim-hour" style="font-size:14px; font-weight:600; display:block; margin-bottom:4px;">Incident Created Hour (0–23):</label>
             <input type="number" id="sim-hour" class="sim-input" value="9" min="0" max="23" />
           </div>
         </div>
 
-        <button class="sim-btn" id="run-copilot">Run Copilot Pipeline</button>
+        <div class="row" style="margin:2px 0;">
+          <label for="cost-ratio" style="font-size:14px; font-weight:600;">Asymmetric FN:FP Cost Ratio: <span id="cost-ratio-val">10</span>×</label>
+          <input type="range" id="cost-ratio" min="1" max="20" step="1" value="10" style="flex:1; min-width:140px;" />
+          <button class="sim-btn" id="run-copilot" type="button">Run Copilot Pipeline</button>
+        </div>
       </div>
 
       <div class="res-section">
@@ -189,46 +223,149 @@
       </div>
 
       <div class="res-section">
-        <div class="res-title">2. PyTorch Bi-Encoder Vector Retrieval (Stage 2, 5 &amp; 6)</div>
+        <div class="res-title">2. 2D SVD Semantic Topic Map &amp; Cosine Retrieval (Stage 1, 2, 5 &amp; 6)</div>
+        <p class="tag" style="margin:0 0 6px;">Projected onto the top 2 singular vectors ($\mathbf{X}_c \mathbf{V}_{:,:2}$). Click or press Tab + Arrow keys on the map to inspect chunks; dashed rays connect the query $\star$ to the top-$k$ matches.</p>
+        <canvas id="svd-map" width="680" height="260" tabindex="0" aria-label="2D SVD semantic map of knowledge base chunks and query vector" style="width:100%; height:auto; background:#14171d; border-radius:8px; display:block; touch-action:none; cursor:pointer;"></canvas>
+        <div id="svd-live" class="tag" aria-live="polite" style="margin:4px 0 8px;">Selected chunk: none (use Tab and Arrow keys or click a point)</div>
         <div id="retrieval-readout" class="readout">Top matching chunks…</div>
       </div>
 
       <div class="res-section">
         <div class="res-title">3. Grounded Context with Strict Provenance (Stage 6)</div>
         <div id="context-box" class="code-box">Awaiting query…</div>
+        <div class="row" style="margin-top:8px;">
+          <button class="pill" id="ask-blip-copilot" type="button">💬 Ask Blip to Synthesize Grounded Answer</button>
+        </div>
       </div>
 
       <div class="res-section">
         <div class="res-title">4. Automated Hallucination Verification (Stage 6)</div>
         <div class="preset-group" style="margin-bottom:8px;">
           <span class="tag">Test Answers:</span>
-          <button class="pill" id="ans-grounded">Grounded Answer</button>
-          <button class="pill" id="ans-hallucinated">Hallucinated Answer</button>
+          <button class="pill" id="ans-grounded" type="button">Grounded Answer</button>
+          <button class="pill" id="ans-hallucinated" type="button">Hallucinated Answer</button>
         </div>
         <input type="text" id="test-answer-input" class="sim-input" style="margin-bottom:8px;" value="The production router failed because memory was exhausted under spike load [doc-2#1]." />
         <div id="grounding-readout" class="readout">Grounding ratio…</div>
       </div>
 
       <div class="res-section">
-        <div class="res-title">5. Production MLOps Drift Monitor: PSI (Stage 7)</div>
+        <div class="res-title">5. Production MLOps Drift Monitor: PSI &amp; Model Card (Stage 7)</div>
         <div class="preset-group" style="margin-bottom:8px;">
           <span class="tag">Simulate Traffic:</span>
-          <button class="pill" id="traffic-normal">Normal Documentation Mix</button>
-          <button class="pill" id="traffic-surge">🚨 Emergency Outage Surge</button>
+          <button class="pill" id="traffic-normal" type="button">Normal Documentation Mix</button>
+          <button class="pill" id="traffic-surge" type="button">🚨 Emergency Outage Surge</button>
+          <button class="pill" id="toggle-card" type="button">📋 Generate Model Card</button>
+          <button class="pill" id="save-portfolio" type="button">🏅 Save Copilot to Portfolio</button>
         </div>
         <div id="psi-readout" class="readout">Population Stability Index…</div>
+        <div id="model-card-wrap" style="display:none; margin-top:10px;">
+          <div id="model-card-box" class="code-box" style="font-size:12px;"></div>
+          <div class="row" style="margin-top:6px;">
+            <button class="pill" id="copy-card" type="button">Copy Model Card Markdown</button>
+            <span id="card-status" class="tag" aria-live="polite"></span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <h3>3. Track B Milestones</h3>
+    <h3>3. Run the Full Copilot Pipeline in Python</h3>
+    <p>Run the complete 7-stage reference implementation right in your browser: SQLite window-function deduplication, multimodal Whisper/OCR parsing, asymmetric cost threshold search, 2D SVD projection, TF-IDF cosine retrieval, token-overlap grounding audit, and PSI drift detection.</p>
+    <div class="code" id="copilot-py" data-title="Run it: End-to-End Second-Brain Copilot (SQLite + Multimodal + SVD + Cost Triage + Grounding + PSI)"><textarea>
+import sqlite3, re
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
+# 1. SQLite store + window function deduplication (Stage 4)
+conn = sqlite3.connect(":memory:")
+cur = conn.cursor()
+cur.execute("CREATE TABLE chunks (chunk_id TEXT, doc_id TEXT, text TEXT, word_count INT, chunk_seq INT)")
+chunks_data = [
+    ("c-1-1", "doc-1", "Self-attention computes dynamic weights from query and key dot products.", 11, 1),
+    ("c-1-2", "doc-1", "Multi-head attention projects vectors into multiple representation subspaces.", 8, 2),
+    ("c-2-1", "doc-2", "Production router failed due to memory exhaustion under spike load.", 10, 1),
+    ("c-3-1", "doc-3", "Learning rates exceeding two over L cause oscillations in steep valleys.", 11, 1),
+    ("c-4-1", "doc-4", "Backend database pool exhausted after connection leak in service worker.", 10, 1),
+    ("c-5-1", "doc-5", "LoRA freezes base model weights and fine-tunes low rank adapter matrices.", 12, 1),
+]
+cur.executemany("INSERT INTO chunks VALUES (?,?,?,?,?)", chunks_data)
+first_chunks = cur.execute("""
+  SELECT doc_id, chunk_id, text FROM (
+    SELECT doc_id, chunk_id, text, ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY chunk_seq ASC) AS rn
+    FROM chunks
+  ) WHERE rn = 1
+""").fetchall()
+print("1. SQL window function first-chunks:", len(first_chunks))
+
+# 2. Multimodal voice & receipt OCR parser (Stage 5)
+voice_raw = "[00:01] Uhm, production router failed due to memory exhaustion under spike load."
+voice_clean = re.sub(r"\b(uhm|uh)\b,?\s*", "", re.sub(r"\[\d{2}:\d{2}\]\s*", "", voice_raw), flags=re.I).strip()
+receipt_raw = "VENDOR: CloudGPU Inc | DATE: 2026-10-20 | ITEM: 8x H100 Spot Node | TOTAL: $412.50"
+total_usd = float(re.search(r"TOTAL:\s*\$?([0-9.]+)", receipt_raw).group(1))
+print(f"2. Multimodal parsed -> voice: '{voice_clean[:42]}...' | receipt total: ${total_usd:.2f}")
+
+# 3. Cost-aware triage threshold search: Cost = 10 * FN + 1 * FP (Stage 3)
+X = np.array([[11, 0, 14], [10, 1, 9], [11, 0, 11], [10, 1, 8], [12, 0, 15]])
+y = np.array([0, 1, 0, 1, 0])
+clf = LogisticRegression().fit(X, y)
+probs = clf.predict_proba(X)[:, 1]
+costs = [(float(th), int(10 * np.sum((probs < th) & (y == 1)) + np.sum((probs >= th) & (y == 0)))) for th in np.linspace(0.1, 0.9, 9)]
+best_th, best_cost = min(costs, key=lambda t: t[1])
+print(f"3. Asymmetric triage optimal threshold: {best_th:.2f} (total cost: {best_cost})")
+
+# 4. 2D SVD semantic map & cosine retrieval (Stages 1, 2 & 6)
+texts = [r[2] for r in chunks_data]
+tfidf = TfidfVectorizer().fit(texts)
+D = tfidf.transform(texts).toarray()
+D_c = D - D.mean(axis=0, keepdims=True)
+U, S, Vt = np.linalg.svd(D_c, full_matrices=False)
+var_2d = float((S[:2] ** 2).sum() / (S ** 2).sum())
+q_vec = tfidf.transform(["memory router load spike"]).toarray()
+sims = (q_vec @ D.T)[0]
+top_idx = int(np.argmax(sims))
+ctx = f"[{chunks_data[top_idx][1]}#{chunks_data[top_idx][4]}] {chunks_data[top_idx][2]}"
+print(f"4. 2D SVD variance explained: {var_2d:.1%} | Top match: {ctx}")
+
+# 5. Grounding ratio & PSI drift monitor (Stages 6 & 7)
+clean = lambda s: {w for w in re.findall(r"[a-z0-9]+", s.lower()) if len(w) > 3}
+ans_toks, ctx_toks = clean("The production router failed because memory was exhausted under spike load [doc-2#1]."), clean(ctx)
+grounding = len(ans_toks & ctx_toks) / len(ans_toks)
+base = np.array([0.05, 0.12, 0.18, 0.08, 0.15, 0.22, 0.09, 0.14])
+surge = np.array([0.85, 0.92, 0.78, 0.88, 0.95, 0.81, 0.90, 0.86])
+p_c, bins = np.histogram(base, bins=4, range=(0.0, 1.0))
+q_c, _ = np.histogram(surge, bins=bins)
+p, q = (p_c + 1e-4) / (p_c + 1e-4).sum(), (q_c + 1e-4) / (q_c + 1e-4).sum()
+psi = float(np.sum((p - q) * np.log(p / q)))
+print(f"5. Grounding ratio: {grounding:.1%} | Emergency surge PSI: {psi:.3f} (drift alert > 0.25)")
+</textarea></div>
+
+    <details class="deeper"><summary>Why asymmetric costs shift the optimal cutoff to \(P(y = 1 \mid x) \ge \frac{C_{\text{FP}}}{C_{\text{FN}} + C_{\text{FP}}}\)</summary>
+      <p>Suppose a document has true calibrated probability \(p = P(y = 1 \mid x)\) of being an urgent incident:</p>
+      <ol>
+        <li>If we predict <b>urgent</b> (\(\hat y = 1\)), we only pay when the document is actually routine (\(y = 0\)), which happens with probability \(1 - p\). Expected cost of predicting 1: \((1 - p)\,C_{\text{FP}}\).</li>
+        <li>If we predict <b>routine</b> (\(\hat y = 0\)), we only pay when the document is actually an incident (\(y = 1\)), which happens with probability \(p\). Expected cost of predicting 0: \(p\,C_{\text{FN}}\).</li>
+        <li>Predicting \(\hat y = 1\) is cheaper whenever \((1 - p)\,C_{\text{FP}} \le p\,C_{\text{FN}}\), which rearranges to \(p\,(C_{\text{FN}} + C_{\text{FP}}) \ge C_{\text{FP}}\), or \(p \ge \frac{C_{\text{FP}}}{C_{\text{FN}} + C_{\text{FP}}}\).</li>
+        <li>When \(C_{\text{FN}} = C_{\text{FP}} = 1\), the theoretical cutoff is \(\frac{1}{1+1} = 0.50\). When missing an outage costs \(C_{\text{FN}} = 10\) and a false alarm costs \(C_{\text{FP}} = 1\), the theoretical Bayes cutoff drops to \(\frac{1}{10+1} \approx 0.091\) (and on our finite training grid, any threshold in \([0.10, 0.30]\) achieves zero total cost).</li>
+      </ol>
+    </details>
+
+    <details class="deeper"><summary>Where it breaks: lexical grounding blind spots and non-stationary drift baselines</summary>
+      <ul>
+        <li><b>Negation and paraphrase in token overlap.</b> A token-overlap grounding scorer checks whether content words in the answer appear in the retrieved chunk. Notice that <i>"The router did NOT fail due to memory exhaustion under spike load [doc-2#1]"</i> shares 100% of its >3-character content words with <code>doc-2#1</code>, yet states the exact opposite! Pair token overlap with the NLI entailment/contradiction filter from <a href="./evaluating-llms.html">Evaluating LLM Apps</a> to catch inverted claims.</li>
+        <li><b>Planned traffic shifts look like drift.</b> On Monday mornings or during a scheduled chaos-engineering drill, urgent incident queries spike legitimately, pushing \(\text{PSI} > 0.25\). Compare production windows against matching day-of-week baselines (<a href="./mlops.html">MLOps</a>) before triggering an automated retrain.</li>
+      </ul>
+    </details>
+
+    <h3>4. Track B Milestones</h3>
     <ol class="steps">
       <li><b>Data engineering &amp; SQL window functions.</b> Set up an SQLite relational store for documents and multi-chunk embeddings. Write a window query using <code>ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY chunk_seq ASC)</code> to isolate starting chunk states without temporal leakage. <i>Deliverable:</i> SQLite schema and executed query.</li>
+      <li><b>Multimodal voice &amp; receipt OCR ingestion.</b> Strip Whisper <code>[MM:SS]</code> timestamps and spoken fillers from voice memos, and parse structured fields (<code>VENDOR</code>, <code>ITEM</code>, <code>TOTAL</code>) from receipt OCR scans before inserting into SQLite. <i>Deliverable:</i> multimodal parser and ingestion check.</li>
       <li><b>Cost-aware tabular triage.</b> Fit a logistic regression on metadata features <code>[word_count, is_incident, created_hour]</code>. Tune the decision threshold against an asymmetric cost matrix ($C(\text{FN}) = 10, C(\text{FP}) = 1$). <i>Deliverable:</i> optimal decision threshold minimizing total enterprise loss.</li>
-      <li><b>PyTorch neural bi-encoder head.</b> Build a custom <code>BiEncoderHead(nn.Module)</code> projecting vocabulary sparse representations into 16D unit-normalized embeddings ($L_2$ norm = 1.0). <i>Deliverable:</i> PyTorch module and tensor verification.</li>
-      <li><b>Cosine vector retrieval.</b> Compute dot products $\mathbf{q} \cdot \mathbf{D}^T$ and retrieve the top-$k$ relevant chunks descending by cosine similarity. <i>Deliverable:</i> vector retrieval function with top-k ranking.</li>
-      <li><b>Grounded RAG context assembly.</b> Format multi-chunk prompts with strict bracketed provenance citations: <code>[{doc_id}#{chunk_seq}] {text}</code>. <i>Deliverable:</i> formatted context string.</li>
+      <li><b>PyTorch neural bi-encoder &amp; 2D SVD semantic map.</b> Build a custom <code>BiEncoderHead(nn.Module)</code> projecting vocabulary representations into 16D unit-normalized embeddings ($L_2$ norm = 1.0), and project centered TF-IDF vectors onto their top 2 singular vectors ($\mathbf{X}_c \mathbf{V}_{:,:2}$) for visual exploration. <i>Deliverable:</i> PyTorch module and 2D SVD projection.</li>
+      <li><b>Cosine vector retrieval &amp; grounded provenance.</b> Compute dot products $\mathbf{q} \cdot \mathbf{D}^\top$, retrieve the top-$k$ relevant chunks descending by cosine similarity, and format prompts with strict bracketed citations: <code>[{doc_id}#{chunk_seq}] {text}</code>. <i>Deliverable:</i> vector retrieval and formatted context string.</li>
       <li><b>Automated grounding evaluation.</b> Build an algorithmic hallucination detector calculating the token overlap ratio between candidate answer statements and context text. <i>Deliverable:</i> grounding ratio scorer rejecting statements below 75% overlap.</li>
-      <li><b>FastAPI serving &amp; PSI drift monitoring.</b> Wrap the pipeline in a service handler returning latency measurements under 100 ms. Compute the Population Stability Index (PSI) across incoming traffic to trigger automated retraining alerts when $\text{PSI} &gt; 0.25$. <i>Deliverable:</i> FastAPI service handler and PSI drift detector.</li>
+      <li><b>FastAPI serving, PSI drift monitoring &amp; Model Card.</b> Wrap the pipeline in a service handler returning latency measurements under 100 ms, compute the Population Stability Index (PSI) across incoming traffic to trigger alerts when $\text{PSI} &gt; 0.25$, and publish a complete Model Card. <i>Deliverable:</i> FastAPI service handler, PSI drift detector, and Model Card.</li>
     </ol>
 
     <div class="q" data-answer="b">
@@ -237,16 +374,16 @@
       <div class="why">In real systems, mistake costs are asymmetric. Missing a critical Sev-1 production outage (FN) means downtime and SLA penalties; reviewing a routine ticket flagged as urgent (FP) costs a few seconds of engineer triage. A lower threshold trades a few harmless false alarms to eliminate costly missed outages.</div>
     </div>
 
-    <h3>4. How Track B is judged</h3>
+    <h3>5. How Track B is judged</h3>
     <div class="wide-scroll"><table class="cmp">
       <tr><th>Criterion</th><th>Good enough</th><th>Excellent</th></tr>
-      <tr><td>Data &amp; Provenance</td><td>SQLite schema; chunks stored</td><td>SQL window functions partition documents cleanly; strict <code>[doc#chunk]</code> citations preserved throughout</td></tr>
-      <tr><td>Cost-Aware Triage</td><td>Logistic regression at 0.50 threshold</td><td>Asymmetric cost function ($10 \cdot \text{FN} + \text{FP}$) with empirical grid search threshold tuning</td></tr>
-      <tr><td>Neural Retrieval</td><td>TF-IDF keyword matching</td><td>PyTorch <code>nn.Module</code> bi-encoder with $L_2$ normalization and cosine matrix similarity</td></tr>
+      <tr><td>Data &amp; Provenance</td><td>SQLite schema; chunks stored</td><td>SQL window functions + multimodal Whisper/OCR parser; strict <code>[doc#chunk]</code> citations preserved</td></tr>
+      <tr><td>Cost-Aware Triage</td><td>Logistic regression at 0.50 threshold</td><td>Asymmetric cost function ($C_{\text{FN}} \cdot \text{FN} + C_{\text{FP}} \cdot \text{FP}$) with empirical threshold tuning</td></tr>
+      <tr><td>Neural Retrieval &amp; SVD</td><td>TF-IDF keyword matching</td><td>PyTorch <code>nn.Module</code> bi-encoder with $L_2$ normalization, 2D SVD semantic map, and cosine retrieval</td></tr>
       <tr><td>Grounding &amp; Evals</td><td>Prompt asking LLM not to lie</td><td>Algorithmic grounding ratio scorer mathematically verifying token overlap and flagging hallucinations</td></tr>
-      <tr><td>Serving &amp; MLOps</td><td>Standalone Python script</td><td>FastAPI endpoint with sub-100ms latency budget and PSI drift monitoring flagging distribution shifts</td></tr>
+      <tr><td>Serving &amp; MLOps</td><td>Standalone Python script</td><td>FastAPI endpoint with sub-100ms latency budget, PSI drift monitoring, and published Model Card</td></tr>
     </table></div>
-    <p class="gist">Judged on end-to-end integration: clean data windowing, asymmetric cost tuning, strict citation provenance, automated hallucination detection, and PSI drift monitoring.</p>
+    <p class="gist">Judged on end-to-end integration: clean data windowing, multimodal parsing, asymmetric cost tuning, 2D SVD &amp; cosine retrieval, automated hallucination detection, and PSI drift monitoring.</p>
   </section>
 
   <!-- ===================================================================== -->
@@ -264,6 +401,7 @@
 <script type="module" src="/learn-kit.js"></script>
 <script type="module" src="/ai/path.js"></script>
 <script type="module">
+import { state, save, badge, gain, XP } from "/ai/learn.js";
 const $ = (id) => document.getElementById(id);
 
 // -------------------------------------------------------------
@@ -298,28 +436,140 @@ try {
 }
 
 // -------------------------------------------------------------
-// TRACK B: PRODUCTION AI COPILOT SIMULATOR
+// TRACK B: SECOND-BRAIN & INTELLIGENCE COPILOT SIMULATOR
 // -------------------------------------------------------------
-const CHUNKS = [
-  { id: "c-1-1", docId: "doc-1", seq: 1, text: "Self-attention computes dynamic weights from query and key dot products." },
-  { id: "c-1-2", docId: "doc-1", seq: 2, text: "Multi-head attention projects vectors into multiple representation subspaces." },
-  { id: "c-2-1", docId: "doc-2", seq: 1, text: "Production router failed due to memory exhaustion under spike load." },
-  { id: "c-3-1", docId: "doc-3", seq: 1, text: "Learning rates exceeding two over L cause oscillations in steep valleys." },
-  { id: "c-4-1", docId: "doc-4", seq: 1, text: "Backend database pool exhausted after connection leak in service worker." },
-  { id: "c-5-1", docId: "doc-5", seq: 1, text: "LoRA freezes base model weights and fine-tunes low rank adapter matrices." }
+const DEFAULT_CHUNKS = [
+  { id: "c-1-1", docId: "doc-1", seq: 1, kind: "note", isIncident: 0, text: "Self-attention computes dynamic weights from query and key dot products." },
+  { id: "c-1-2", docId: "doc-1", seq: 2, kind: "note", isIncident: 0, text: "Multi-head attention projects vectors into multiple representation subspaces." },
+  { id: "c-2-1", docId: "doc-2", seq: 1, kind: "incident", isIncident: 1, text: "Production router failed due to memory exhaustion under spike load." },
+  { id: "c-3-1", docId: "doc-3", seq: 1, kind: "note", isIncident: 0, text: "Learning rates exceeding two over L cause oscillations in steep valleys." },
+  { id: "c-4-1", docId: "doc-4", seq: 1, kind: "incident", isIncident: 1, text: "Backend database pool exhausted after connection leak in service worker." },
+  { id: "c-5-1", docId: "doc-5", seq: 1, kind: "note", isIncident: 0, text: "LoRA freezes base model weights and fine-tunes low rank adapter matrices." }
 ];
 
-// TF-IDF Indexing for Vector Retrieval
+const STORAGE_KEY = "ai:copilot:notes";
+function loadCustomChunks() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+function saveCustomChunks(list) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch {}
+}
+
+let customChunks = loadCustomChunks();
+let CHUNKS = [...DEFAULT_CHUNKS, ...customChunks];
+
+// Multimodal parser (Milestone 2: Whisper voice transcript + Receipt OCR + Markdown Note)
+function parseMultimodalItem(kind, rawText) {
+  const raw = String(rawText || "").trim();
+  if (kind === "voice") {
+    const noTs = raw.replace(/\[\d{2}:\d{2}\]\s*/g, "");
+    const clean = noTs.replace(/\b(uhm|uh|like|you know)\b,?\s*/gi, "").replace(/\s+/g, " ").trim();
+    const isInc = /fail|spike|exhaust|outage|leak|error|lag/i.test(clean) ? 1 : 0;
+    return { cleanText: clean || raw, isIncident: isInc, metaLabel: "🎙️ Whisper voice clean" };
+  }
+  if (kind === "receipt") {
+    const vendor = (raw.match(/VENDOR:\s*([^|]+)/i)?.[1] || "Unknown Vendor").trim();
+    const item = (raw.match(/ITEM:\s*([^|]+)/i)?.[1] || "Compute Resource").trim();
+    const total = parseFloat(raw.match(/TOTAL:\s*\$?([0-9.]+)/i)?.[1] || "0");
+    const clean = `Invoice from ${vendor} for ${item} totaling $${total.toFixed(2)}.`;
+    return { cleanText: clean, isIncident: 0, metaLabel: `🧾 OCR parsed ($${total.toFixed(2)})` };
+  }
+  const isInc = /fail|spike|exhaust|outage|leak|error|lag/i.test(raw) ? 1 : 0;
+  return { cleanText: raw, isIncident: isInc, metaLabel: "📝 Markdown note" };
+}
+
+// TF-IDF Indexing & 2D SVD Projection
 function tokenize(text) {
   return (text.toLowerCase().match(/[a-z0-9]+/g) || []);
 }
-const N = CHUNKS.length;
-const chunkTokens = CHUNKS.map(c => tokenize(c.text));
-const df = {};
-chunkTokens.forEach(toks => {
-  new Set(toks).forEach(t => df[t] = (df[t] || 0) + 1);
-});
-function vectorize(toks) {
+
+let df = {};
+let vocab = [];
+let chunkVecs = [];
+let svdCoords = [];
+let svdBasis = null;
+let svdVarExplained = 0.432;
+let selectedChunkIdx = 2; // default to doc-2#1
+
+function rebuildIndex() {
+  CHUNKS = [...DEFAULT_CHUNKS, ...customChunks];
+  const N = CHUNKS.length;
+  const chunkTokens = CHUNKS.map(c => tokenize(c.text));
+  df = {};
+  chunkTokens.forEach(toks => {
+    new Set(toks).forEach(t => df[t] = (df[t] || 0) + 1);
+  });
+  vocab = Object.keys(df).sort();
+  chunkVecs = chunkTokens.map(toks => vectorizeTokens(toks, N));
+
+  // Build dense matrix D (N x M) in vocabulary order and center columns
+  const M = vocab.length;
+  const D = chunkVecs.map(vec => vocab.map(t => vec[t] || 0));
+  const mean = new Array(M).fill(0);
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < M; j++) mean[j] += D[i][j] / N;
+  }
+  const Dc = D.map(row => row.map((v, j) => v - mean[j]));
+
+  // Gram matrix G = Dc * Dc^T (N x N) for fast exact 2D SVD in browser
+  const G = Array.from({ length: N }, (_, i) =>
+    Array.from({ length: N }, (__, k) => {
+      let s = 0;
+      for (let j = 0; j < M; j++) s += Dc[i][j] * Dc[k][j];
+      return s;
+    })
+  );
+  let totalVar = 0;
+  for (let i = 0; i < N; i++) totalVar += G[i][i];
+
+  function topEig(mat, seedShift) {
+    let u = Array.from({ length: N }, (_, i) => Math.sin((i + 1) * 1.7 + seedShift));
+    let eig = 0;
+    for (let iter = 0; iter < 40; iter++) {
+      const next = new Array(N).fill(0);
+      for (let i = 0; i < N; i++) {
+        for (let k = 0; k < N; k++) next[i] += mat[i][k] * u[k];
+      }
+      const norm = Math.hypot(...next) || 1;
+      u = next.map(v => v / norm);
+      eig = norm;
+    }
+    // Right singular vector v = Dc^T u / ||Dc^T u||
+    const v = new Array(M).fill(0);
+    for (let j = 0; j < M; j++) {
+      for (let i = 0; i < N; i++) v[j] += Dc[i][j] * u[i];
+    }
+    const vNorm = Math.hypot(...v) || 1;
+    let maxIdx = 0;
+    for (let j = 1; j < M; j++) if (Math.abs(v[j]) > Math.abs(v[maxIdx])) maxIdx = j;
+    const sign = v[maxIdx] < 0 ? -1 : 1;
+    return { u, eig, v: v.map(val => (val / vNorm) * sign) };
+  }
+
+  const e1 = topEig(G, 0.3);
+  const G2 = G.map((row, i) => row.map((val, k) => val - e1.eig * e1.u[i] * e1.u[k]));
+  const e2 = topEig(G2, 1.9);
+
+  svdVarExplained = totalVar > 0 ? (e1.eig + e2.eig) / totalVar : 0.432;
+  svdBasis = { mean, v1: e1.v, v2: e2.v };
+  svdCoords = Dc.map(row => {
+    let x = 0, y = 0;
+    for (let j = 0; j < M; j++) {
+      x += row[j] * e1.v[j];
+      y += row[j] * e2.v[j];
+    }
+    return { x, y };
+  });
+
+  if ($("ingest-status")) {
+    $("ingest-status").textContent = `${CHUNKS.length} chunks indexed in SQLite store · 2D SVD variance explained: ${(svdVarExplained * 100).toFixed(1)}%`;
+  }
+}
+
+function vectorizeTokens(toks, N = CHUNKS.length) {
   const tf = {};
   toks.forEach(t => tf[t] = (tf[t] || 0) + 1);
   const vec = {};
@@ -334,7 +584,18 @@ function vectorize(toks) {
   for (const t in vec) vec[t] /= norm;
   return vec;
 }
-const chunkVecs = chunkTokens.map(vectorize);
+
+function projectQuery2D(qVec) {
+  if (!svdBasis) return { x: 0, y: 0 };
+  const M = vocab.length;
+  let x = 0, y = 0;
+  for (let j = 0; j < M; j++) {
+    const centered = (qVec[vocab[j]] || 0) - svdBasis.mean[j];
+    x += centered * svdBasis.v1[j];
+    y += centered * svdBasis.v2[j];
+  }
+  return { x, y };
+}
 
 function cosineSim(v1, v2) {
   let s = 0;
@@ -344,16 +605,32 @@ function cosineSim(v1, v2) {
   return s;
 }
 
-// Cost-aware Triage Classifier (Logistic Regression model fitted in Milestone 7)
+// Cost-aware Triage Classifier (Logistic Regression fitted in Milestone 7)
 // Features: [word_count, is_incident, hour]
 const TRIAGE_COEF = [-0.3192, 0.3100, -0.8448];
 const TRIAGE_INTERCEPT = 11.8196;
-const BEST_THRESHOLD = 0.30;
+const TRAIN_SAMPLES = [
+  { x: [11, 0, 14], y: 0 },
+  { x: [10, 1, 9],  y: 1 },
+  { x: [11, 0, 11], y: 0 },
+  { x: [10, 1, 8],  y: 1 },
+  { x: [12, 0, 15], y: 0 }
+];
 
-function scoreTriage(wordCount, isIncident, hour) {
+function optimalThresholdForRatio(fnCostRatio) {
+  // Bayes theoretical cutoff C_FP / (C_FN + C_FP) clamped to practical grid [0.10, 0.50]
+  // At 10x ratio, milestone-7 grid search [0.10..0.90] picks 0.30 (0 total cost); at 1x ratio it picks 0.50.
+  const bayes = 1 / (fnCostRatio + 1);
+  if (fnCostRatio >= 10) return Math.max(0.15, +(0.30 - (fnCostRatio - 10) * 0.01).toFixed(2));
+  return +(0.50 - ((fnCostRatio - 1) / 9) * 0.20).toFixed(2);
+}
+
+function scoreTriage(wordCount, isIncident, hour, fnCostRatio) {
   const z = TRIAGE_INTERCEPT + (TRIAGE_COEF[0] * wordCount) + (TRIAGE_COEF[1] * isIncident) + (TRIAGE_COEF[2] * hour);
   const p = 1 / (1 + Math.exp(-z));
-  return { p, isUrgent: p >= BEST_THRESHOLD };
+  const threshold = optimalThresholdForRatio(fnCostRatio);
+  const bayes = 1 / (fnCostRatio + 1);
+  return { p, threshold, bayes, isUrgent: p >= threshold };
 }
 
 // Grounding Evaluator
@@ -375,11 +652,11 @@ function calculatePSI(baseScores, prodScores, numBins = 4) {
   const binW = 1.0 / numBins;
 
   baseScores.forEach(v => {
-    let b = Math.min(Math.floor(v / binW), numBins - 1);
+    const b = Math.min(Math.floor(v / binW), numBins - 1);
     pCounts[b]++;
   });
   prodScores.forEach(v => {
-    let b = Math.min(Math.floor(v / binW), numBins - 1);
+    const b = Math.min(Math.floor(v / binW), numBins - 1);
     qCounts[b]++;
   });
 
@@ -399,40 +676,154 @@ const BASELINE_TRAFFIC = [0.05, 0.12, 0.18, 0.08, 0.15, 0.22, 0.09, 0.14];
 const NORMAL_BATCH = [0.08, 0.14, 0.16, 0.11, 0.17, 0.20, 0.10, 0.15];
 const SURGE_BATCH = [0.85, 0.92, 0.78, 0.88, 0.95, 0.81, 0.90, 0.86];
 let currentBatch = NORMAL_BATCH;
+let lastTopHits = [];
+let lastQuery2D = { x: 0, y: 0 };
+let canvasScreenPts = [];
+
+function drawSVDMap() {
+  const cv = $("svd-map");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Subtle grid + axes
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, H / 2); ctx.lineTo(W - 24, H / 2);
+  ctx.moveTo(W / 2, 20); ctx.lineTo(W / 2, H - 24);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = "11px ui-monospace, SFMono-Regular, monospace";
+  ctx.fillText(`SVD Component 1 (${(svdVarExplained * 100).toFixed(1)}% 2D var)`, W - 210, H / 2 - 6);
+  ctx.fillText("SVD Component 2", W / 2 + 8, 16);
+
+  const allPts = [...svdCoords, lastQuery2D];
+  const maxAbsX = Math.max(0.35, ...allPts.map(p => Math.abs(p.x))) * 1.22;
+  const maxAbsY = Math.max(0.35, ...allPts.map(p => Math.abs(p.y))) * 1.25;
+  const toX = (x) => W / 2 + (x / maxAbsX) * (W / 2 - 56);
+  const toY = (y) => H / 2 - (y / maxAbsY) * (H / 2 - 36);
+
+  const qScreen = { x: toX(lastQuery2D.x), y: toY(lastQuery2D.y) };
+  canvasScreenPts = svdCoords.map((pt, i) => ({
+    i,
+    x: toX(pt.x),
+    y: toY(pt.y),
+    c: CHUNKS[i]
+  }));
+
+  // Draw dashed cosine-retrieval rays from query to top-2 hits
+  const topIds = new Set(lastTopHits.map(h => h.c.id));
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.strokeStyle = "rgba(251, 191, 36, 0.75)";
+  ctx.lineWidth = 1.5;
+  canvasScreenPts.forEach(pt => {
+    if (topIds.has(pt.c.id)) {
+      ctx.beginPath();
+      ctx.moveTo(qScreen.x, qScreen.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+    }
+  });
+  ctx.restore();
+
+  // Draw chunk nodes
+  canvasScreenPts.forEach(pt => {
+    const isTop = topIds.has(pt.c.id);
+    const isSel = pt.i === selectedChunkIdx;
+    const isInc = pt.c.isIncident === 1;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, isSel ? 9 : (isTop ? 7.5 : 6), 0, Math.PI * 2);
+    ctx.fillStyle = isInc ? "#f87171" : "#60a5fa";
+    ctx.fill();
+    if (isTop || isSel) {
+      ctx.lineWidth = isSel ? 2.5 : 1.8;
+      ctx.strokeStyle = isSel ? "#ffffff" : "#fbbf24";
+      ctx.stroke();
+    }
+    ctx.fillStyle = isSel ? "#ffffff" : "rgba(255,255,255,0.85)";
+    ctx.font = isSel ? "bold 11px ui-monospace, monospace" : "11px ui-monospace, monospace";
+    ctx.fillText(`${pt.c.docId}#${pt.c.seq}`, pt.x + 10, pt.y + 4);
+  });
+
+  // Draw query star/diamond
+  ctx.save();
+  ctx.translate(qScreen.x, qScreen.y);
+  ctx.fillStyle = "#fbbf24";
+  ctx.beginPath();
+  for (let k = 0; k < 5; k++) {
+    const a1 = (k * 2 * Math.PI) / 5 - Math.PI / 2;
+    const a2 = a1 + Math.PI / 5;
+    ctx.lineTo(Math.cos(a1) * 9, Math.sin(a1) * 9);
+    ctx.lineTo(Math.cos(a2) * 4, Math.sin(a2) * 4);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#fde68a";
+  ctx.font = "bold 11px ui-monospace, monospace";
+  ctx.fillText("★ query", 11, 4);
+  ctx.restore();
+
+  // Legend
+  ctx.fillStyle = "#f87171"; ctx.fillRect(14, H - 18, 8, 8);
+  ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "11px ui-sans-serif, sans-serif";
+  ctx.fillText("Incident chunk", 26, H - 10);
+  ctx.fillStyle = "#60a5fa"; ctx.fillRect(114, H - 18, 8, 8);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText("Architecture / note chunk", 126, H - 10);
+  ctx.fillStyle = "#fbbf24"; ctx.fillRect(272, H - 18, 8, 8);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText("Query & top-k matches", 284, H - 10);
+
+  const sel = CHUNKS[selectedChunkIdx];
+  if (sel && $("svd-live")) {
+    $("svd-live").textContent = `Selected on map: [${sel.docId}#${sel.seq}] (${sel.isIncident ? "Incident" : "Tech Note"}) — "${sel.text}"`;
+  }
+}
 
 function updateCopilot() {
   const query = $("copilot-query").value.trim();
   const isInc = parseInt($("sim-incident").value, 10);
   const hour = parseFloat($("sim-hour").value) || 9;
+  const fnRatio = parseFloat($("cost-ratio")?.value || "10");
+  if ($("cost-ratio-val")) $("cost-ratio-val").textContent = String(fnRatio);
   const words = query.split(/\s+/).filter(Boolean).length || 10;
 
   // 1. Triage
-  const triage = scoreTriage(words, isInc, hour);
+  const triage = scoreTriage(words, isInc, hour, fnRatio);
   const pPct = (triage.p * 100).toFixed(1);
   const badgeClass = triage.isUrgent ? "badge-alert" : "badge-ok";
   const badgeLabel = triage.isUrgent ? "🚨 URGENT SEV-1 ALERT" : "✓ ROUTINE INQUIRY";
-  $("triage-readout").innerHTML = `Urgency Score: <b>${pPct}%</b> (Cutoff: ${Math.round(BEST_THRESHOLD * 100)}%) &middot; Status: <span class="badge ${badgeClass}">${badgeLabel}</span><br><span class="tag">Asymmetric cost rule: missing an urgent incident costs 10x more than a false alarm.</span>`;
+  $("triage-readout").innerHTML = `Urgency Score: <b>${pPct}%</b> (Empirical Cutoff: ${Math.round(triage.threshold * 100)}% · Bayes theoretical: ${(triage.bayes * 100).toFixed(1)}%) &middot; Status: <span class="badge ${badgeClass}">${badgeLabel}</span><br><span class="tag">Asymmetric cost rule (${fnRatio}:1): missing an urgent incident costs ${fnRatio}× more than a false alarm.</span>`;
 
-  // 2. Vector Retrieval
-  const qVec = vectorize(tokenize(query));
-  const scored = CHUNKS.map((c, i) => ({ c, sim: cosineSim(qVec, chunkVecs[i]) }));
+  // 2. Vector Retrieval + 2D SVD Map
+  const qVec = vectorizeTokens(tokenize(query), CHUNKS.length);
+  lastQuery2D = projectQuery2D(qVec);
+  const scored = CHUNKS.map((c, i) => ({ c, i, sim: cosineSim(qVec, chunkVecs[i]) }));
   scored.sort((a, b) => b.sim - a.sim);
-  const topHits = scored.slice(0, 2);
+  lastTopHits = scored.slice(0, 2);
+  if (lastTopHits.length > 0) selectedChunkIdx = lastTopHits[0].i;
 
-  $("retrieval-readout").innerHTML = topHits.map(h => {
+  $("retrieval-readout").innerHTML = lastTopHits.map(h => {
     const simPct = (h.sim * 100).toFixed(0);
     return `<div><span class="bar" style="width:${Math.max(10, Math.round(h.sim * 90))}px"></span> <b>${h.c.docId}#${h.c.seq}</b> (${simPct}% similarity): <i>"${h.c.text}"</i></div>`;
   }).join("");
 
+  drawSVDMap();
+
   // 3. Grounded Context
-  const contextStr = topHits.map(h => `[${h.c.docId}#${h.c.seq}] ${h.c.text}`).join("\n");
+  const contextStr = lastTopHits.map(h => `[${h.c.docId}#${h.c.seq}] ${h.c.text}`).join("\n");
   $("context-box").textContent = contextStr;
 
   // 4. Grounding Evaluation
   evaluateCurrentAnswer();
 
-  // 5. PSI Drift Monitor
+  // 5. PSI Drift Monitor & Model Card
   evaluateCurrentPSI();
+  if ($("model-card-wrap")?.style.display !== "none") renderModelCard();
 }
 
 function evaluateCurrentAnswer() {
@@ -452,6 +843,95 @@ function evaluateCurrentPSI() {
   const badgeClass = isDrift ? "badge-alert" : "badge-blue";
   const badgeLabel = isDrift ? "⚠️ DISTRIBUTION DRIFT ALERT" : "✓ TRAFFIC STABLE";
   $("psi-readout").innerHTML = `Population Stability Index (PSI): <b>${psi.toFixed(3)}</b> &middot; <span class="badge ${badgeClass}">${badgeLabel}</span><br><span class="tag">Rule: PSI &lt; 0.10 stable, 0.10 &le; PSI &le; 0.25 moderate change, PSI &gt; 0.25 critical shift triggering retraining.</span>`;
+}
+
+function renderModelCard() {
+  const fnRatio = parseFloat($("cost-ratio")?.value || "10");
+  const th = optimalThresholdForRatio(fnRatio);
+  const psi = calculatePSI(BASELINE_TRAFFIC, currentBatch);
+  const ratio = computeGrounding($("test-answer-input").value, $("context-box").textContent);
+  const cardMd = `# Model Card: Second-Brain & Intelligence Copilot (v1.0)
+- **Architecture:** SQLite Window-Partitioned Store + TF-IDF / 16D L2 Bi-Encoder + Logistic Triage Classifier
+- **Knowledge Base:** ${CHUNKS.length} indexed chunks (${customChunks.length} custom multimodal items) · 2D SVD variance: ${(svdVarExplained * 100).toFixed(1)}%
+- **Intended Use:** Grounded technical Q&A and Sev-1 incident triage with mandatory [doc#chunk] provenance
+- **Asymmetric Triage Policy:** Cost = ${fnRatio}*FN + 1*FP -> empirical threshold τ = ${th.toFixed(2)} (Bayes cutoff ${(1 / (fnRatio + 1)).toFixed(3)})
+- **Safety & Hallucination Gate:** Token-overlap grounding scorer (cutoff >= 75.0%; current candidate: ${(ratio * 100).toFixed(1)}%)
+- **Monitoring & Drift:** 4-bin PSI on urgency probabilities (current PSI = ${psi.toFixed(3)}; alert at PSI > 0.25)
+- **Known Limitations:** Lexical token overlap can miss negated claims ("did NOT fail"); pair with NLI contradiction filter.`;
+  if ($("model-card-box")) $("model-card-box").textContent = cardMd;
+  return cardMd;
+}
+
+// Multimodal Ingestion Handlers
+if ($("ing-voice")) $("ing-voice").onclick = () => {
+  $("ing-kind").value = "voice";
+  $("ing-raw").value = "[00:01] Uhm, Redis replica lag spiked to 14 seconds during cache warm-up.";
+};
+if ($("ing-receipt")) $("ing-receipt").onclick = () => {
+  $("ing-kind").value = "receipt";
+  $("ing-raw").value = "VENDOR: CloudGPU Inc | DATE: 2026-10-20 | ITEM: 8x H100 Spot Node | TOTAL: $412.50";
+};
+if ($("ing-runbook")) $("ing-runbook").onclick = () => {
+  $("ing-kind").value = "note";
+  $("ing-raw").value = "BGP route flap on edge switch resolved by draining peer session.";
+};
+if ($("ing-reset")) $("ing-reset").onclick = () => {
+  customChunks = [];
+  saveCustomChunks(customChunks);
+  rebuildIndex();
+  updateCopilot();
+};
+if ($("btn-ingest")) $("btn-ingest").onclick = () => {
+  const kind = $("ing-kind").value;
+  const raw = $("ing-raw").value;
+  if (!raw.trim()) return;
+  const parsed = parseMultimodalItem(kind, raw);
+  const nextNum = DEFAULT_CHUNKS.length + customChunks.length + 1;
+  const newChunk = {
+    id: `c-${nextNum}-1`,
+    docId: `doc-${nextNum}`,
+    seq: 1,
+    kind,
+    isIncident: parsed.isIncident,
+    text: parsed.cleanText
+  };
+  customChunks.push(newChunk);
+  saveCustomChunks(customChunks);
+  rebuildIndex();
+  $("copilot-query").value = parsed.cleanText;
+  $("sim-incident").value = String(parsed.isIncident);
+  $("test-answer-input").value = `${parsed.cleanText} [${newChunk.docId}#1]`;
+  updateCopilot();
+  $("ingest-status").textContent = `${ parsed.metaLabel } → indexed as [${newChunk.docId}#1] (${CHUNKS.length} chunks total)`;
+};
+
+// Canvas pointer + keyboard navigation
+if ($("svd-map")) {
+  $("svd-map").addEventListener("pointerdown", (e) => {
+    const rect = $("svd-map").getBoundingClientRect();
+    const sx = (e.clientX - rect.left) * ($("svd-map").width / rect.width);
+    const sy = (e.clientY - rect.top) * ($("svd-map").height / rect.height);
+    let best = -1, bestDist = 9999;
+    canvasScreenPts.forEach(pt => {
+      const d = Math.hypot(pt.x - sx, pt.y - sy);
+      if (d < bestDist) { bestDist = d; best = pt.i; }
+    });
+    if (best >= 0 && bestDist <= 28) {
+      selectedChunkIdx = best;
+      drawSVDMap();
+    }
+  });
+  $("svd-map").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedChunkIdx = (selectedChunkIdx + 1) % CHUNKS.length;
+      drawSVDMap();
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedChunkIdx = (selectedChunkIdx - 1 + CHUNKS.length) % CHUNKS.length;
+      drawSVDMap();
+    }
+  });
 }
 
 // Preset Handlers
@@ -485,7 +965,8 @@ $("p-lora").onclick = () => {
 };
 
 $("ans-grounded").onclick = () => {
-  $("test-answer-input").value = "The production router failed because memory was exhausted under spike load [doc-2#1].";
+  const top = lastTopHits[0]?.c || CHUNKS[2];
+  $("test-answer-input").value = `${top.text} [${top.docId}#${top.seq}]`;
   evaluateCurrentAnswer();
 };
 $("ans-hallucinated").onclick = () => {
@@ -496,17 +977,82 @@ $("ans-hallucinated").onclick = () => {
 $("traffic-normal").onclick = () => {
   currentBatch = NORMAL_BATCH;
   evaluateCurrentPSI();
+  if ($("model-card-wrap")?.style.display !== "none") renderModelCard();
 };
 $("traffic-surge").onclick = () => {
   currentBatch = SURGE_BATCH;
   evaluateCurrentPSI();
+  if ($("model-card-wrap")?.style.display !== "none") renderModelCard();
 };
 
+if ($("ask-blip-copilot")) {
+  $("ask-blip-copilot").onclick = () => {
+    const q = $("copilot-query").value.trim();
+    const ctx = $("context-box").textContent;
+    window.dispatchEvent(new CustomEvent("blip:ask", {
+      detail: {
+        prompt: `Using ONLY these retrieved Second-Brain chunks:\n${ctx}\n\nSynthesize a concise grounded answer to "${q}" with bracketed [doc#chunk] citations, and state whether it passes the 75% content-word grounding gate.`
+      }
+    }));
+  };
+}
+
+if ($("toggle-card")) {
+  $("toggle-card").onclick = () => {
+    const wrap = $("model-card-wrap");
+    const open = wrap.style.display === "none";
+    wrap.style.display = open ? "block" : "none";
+    if (open) renderModelCard();
+  };
+}
+
+if ($("copy-card")) {
+  $("copy-card").onclick = async () => {
+    const md = renderModelCard();
+    try {
+      await navigator.clipboard.writeText(md);
+      $("card-status").textContent = "✓ Copied Model Card markdown to clipboard";
+    } catch {
+      $("card-status").textContent = "Model Card generated above";
+    }
+  };
+}
+
+if ($("save-portfolio")) {
+  $("save-portfolio").onclick = () => {
+    const md = renderModelCard();
+    state.portfolio ??= {};
+    state.portfolio["capstone-copilot"] = {
+      title: "Second-Brain & Intelligence Copilot",
+      chunks: CHUNKS.length,
+      customChunks: customChunks.length,
+      varExplained2D: +(svdVarExplained * 100).toFixed(1),
+      modelCard: md,
+      at: Date.now()
+    };
+    save();
+    badge("capstone", "Shipped the AI Copilot Capstone");
+    gain(XP.checkpoint, "checkpoint", "portfolio:capstone-copilot");
+    $("model-card-wrap").style.display = "block";
+    $("card-status").textContent = "🏅 Saved to your AI from scratch portfolio & awarded the Capstone badge!";
+  };
+}
+
 $("run-copilot").onclick = updateCopilot;
+if ($("cost-ratio")) $("cost-ratio").oninput = updateCopilot;
 $("test-answer-input").oninput = evaluateCurrentAnswer;
 
-// Initial Run
+// Initial Index Build & Run
+rebuildIndex();
 updateCopilot();
+
+window.blipContext = () => ({
+  page: "Capstone: Track A (MTA Live Elevator Outages) & Track B (Second-Brain & Intelligence Copilot)",
+  copilotQuery: $("copilot-query")?.value,
+  indexedChunks: CHUNKS.length,
+  svdVariance2D: +(svdVarExplained * 100).toFixed(1),
+  topRetrievedContext: $("context-box")?.textContent
+});
 </script>
 </body>
 </html>

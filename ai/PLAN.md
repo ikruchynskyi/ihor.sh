@@ -167,14 +167,10 @@ test the page right away (it's live), then commit and push at once.
 
 Effort: S ≈ an hour or two of agent work, M ≈ half a day, L ≈ a day or more.
 
-**Status 2026-10-15: every lane has shipped** (B daily quiz, C gap drills, D exams/badges/portfolio, E mini-games,
-F placement, H1 SQL, H2 workbench, I milestones 2–7, J reference pages, K practice generators, L keyboard access,
+**Status 2026-10-21: every lane has shipped** (B daily quiz, C gap drills, D exams/badges/portfolio, E mini-games,
+F placement, G all 79/79 Kaggle notebooks published, H1 SQL, H2 workbench, I milestones 2–7, J reference pages, K practice generators, L keyboard access,
 M cold-learner notebook read, N home-page XP), checked: each lane's files exist and `ai/*.test.mjs` all pass.
-Lane G was only 47 of 79 notebooks on Kaggle; 61 are up as of 2026-10-16 00:45. Kaggle then refused pushes with
-429 for over an hour (a daily quota). **Still to publish**, one `python3 ai/notebooks/build.py --kaggle NAME.html` each
-(Kaggle runs at most 5 at once): reinforcement-learning, search-and-planning, seq2seq, serving, speech, time-series,
-tokens, using-llms, word-vectors, zoo-boosting, zoo-forest, zoo-knn, zoo-linear, zoo-logistic, zoo-mlp,
-zoo-naive-bayes, zoo-svm, zoo-which-model; and republish s1-what-is-ml (its Part 2 text changed in 81ee6b0).
+Lane G finished publishing all 79 of 79 notebooks to Kaggle on 2026-10-21 (including the final 18 notebooks + republished `s1-what-is-ml` v4 and `milestone-7` v2).
 
 ### Wave 1 (start together)
 

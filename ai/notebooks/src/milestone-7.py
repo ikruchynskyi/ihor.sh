@@ -2,20 +2,21 @@
 # # Milestone 7: Production AI Copilot from scratch
 # *AI from scratch, milestone 7* · capstone combine notebook for Stage 7
 #
-# Build a complete production AI Copilot that ties together every pillar of the curriculum:
+# Build a complete production AI Copilot ("Personal Second-Brain & Incident Partner") that ties together every pillar of the curriculum:
 # 1. **Data Engineering with SQL**: Ingest documents into an SQLite relational store and use window functions to retrieve point-in-time chunk states without leakage.
-# 2. **Classic Tabular Classifier & Cost Matrix**: Predict document urgency and priority using metadata, tuning the decision threshold against asymmetric false-negative vs false-positive mistake costs.
-# 3. **PyTorch Neural Bi-Encoder**: Implement a custom neural projection head in PyTorch that maps text vectors to normalized embeddings, and build cosine vector search.
-# 4. **Grounded RAG with Strict Provenance**: Format multi-chunk contexts with explicit `[doc#chunk]` citation brackets.
-# 5. **Automated Grounding Evaluation**: Quantify the citation grounding ratio mathematically to catch hallucinations before reaching users.
-# 6. **Production Serving**: Wrap the pipeline in a FastAPI-compatible service handler with input validation and latency budgets.
-# 7. **MLOps Drift Monitoring**: Compute the Population Stability Index (PSI) to detect distribution drift on incoming production queries.
+# 2. **Multimodal Voice & Receipt OCR Ingestion**: Clean Whisper voice-memo transcripts and parse structured fields from receipt OCR scans before indexing.
+# 3. **Classic Tabular Classifier & Cost Matrix**: Predict document urgency and priority using metadata, tuning the decision threshold against asymmetric false-negative vs false-positive mistake costs.
+# 4. **PyTorch Neural Bi-Encoder**: Implement a custom neural projection head in PyTorch that maps text vectors to unit-normalized embeddings, and build cosine vector search.
+# 5. **2D SVD Semantic Topic Map**: Project high-dimensional TF-IDF vectors onto their top 2 right singular vectors so the copilot can render an interactive 2D topic map.
+# 6. **Grounded RAG with Strict Provenance**: Format multi-chunk contexts with explicit `[doc#chunk]` citation brackets.
+# 7. **Automated Grounding Evaluation**: Quantify the citation grounding ratio mathematically to catch hallucinations before reaching users.
+# 8. **Production Serving & MLOps Drift**: Wrap the pipeline in a FastAPI-compatible service handler with a 100 ms latency budget, and compute the Population Stability Index (PSI) to detect distribution drift.
 #
 # Replace each `...` under `# YOUR CODE HERE`, run the cell, then the check under it; `hint(n)` and `answer(n)`
 # are there when you're stuck.
 
 # %%
-import math, time, sqlite3, json
+import math, time, sqlite3, json, re
 import numpy as np
 import torch
 import torch.nn as nn
@@ -27,7 +28,7 @@ print(f"PyTorch version: {torch.__version__} · SQLite3 version: {sqlite3.sqlite
 
 # %% [markdown]
 # ## 1. Data engineering & SQL window functions
-# Our copilot ingests technical documents and incident reports.
+# Our copilot ingests technical documents, voice memos, receipts, and incident reports.
 # An in-memory SQLite database has been initialized below with two tables:
 # - `documents`: `doc_id TEXT PRIMARY KEY, title TEXT, is_incident INT, created_hour INT, is_urgent INT`
 # - `chunks`: `chunk_id TEXT PRIMARY KEY, doc_id TEXT, text TEXT, word_count INT, chunk_seq INT`
@@ -62,8 +63,8 @@ chunks_data = [
 cur.executemany("INSERT INTO chunks VALUES (?,?,?,?,?)", chunks_data)
 conn.commit()
 
-### HINT query = "SELECT doc_id, chunk_id, text FROM (SELECT doc_id, chunk_id, text, ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY chunk_seq ASC) as rn FROM chunks) WHERE rn = 1"
-### HINT first_chunks = cur.execute(query).fetchall()
+### HINT Start by partitioning rows per document: SELECT doc_id, chunk_id, text, ROW_NUMBER() OVER (PARTITION BY doc_id ORDER BY chunk_seq ASC) as rn FROM chunks
+### HINT Filter the outer query with WHERE rn = 1 and call cur.execute(query).fetchall()
 ### BEGIN SOLUTION
 query = """
 SELECT doc_id, chunk_id, text
@@ -83,7 +84,55 @@ if "first_chunks" in locals() and isinstance(first_chunks, list):
 check(lambda: len(first_chunks) == 5 and all(len(row) == 3 for row in first_chunks), "SQL window function extracts exactly one starting chunk per document without duplicates")
 
 # %% [markdown]
-# ## 2. Tabular metadata classifier & asymmetric cost-aware threshold
+# ## 2. Multimodal ingestion: Whisper voice transcripts & receipt OCR
+# A real second-brain copilot ingests more than clean markdown: it receives raw Whisper audio transcripts
+# with `[MM:SS]` timestamps and spoken fillers (`uhm`, `uh`), plus OCR text from receipts (`VENDOR: ... | ITEM: ... | TOTAL: $...`).
+#
+# Write `parse_multimodal_item(raw_text, source_kind)`:
+# - When `source_kind == "voice"`:
+#   1. Strip `[MM:SS]` timestamps using `re.sub(r"\[\d{2}:\d{2}\]\s*", "", raw_text)`.
+#   2. Strip filler words `uhm` and `uh` using `re.sub(r"\b(uhm|uh)\b,?\s*", "", text, flags=re.I).strip()`.
+#   3. Set `is_incident = int(any(w in cleaned.lower() for w in ("failed", "outage", "exhausted", "leak")))`.
+#   4. Return `{"text": cleaned, "is_incident": is_incident, "word_count": len(cleaned.split())}`.
+# - When `source_kind == "receipt"`:
+#   1. Extract `vendor = re.search(r"VENDOR:\s*([^|]+)", raw_text).group(1).strip()`.
+#   2. Extract `item = re.search(r"ITEM:\s*([^|]+)", raw_text).group(1).strip()`.
+#   3. Extract `total = float(re.search(r"TOTAL:\s*\$?([0-9.]+)", raw_text).group(1))`.
+#   4. Format `summary = f"Receipt from {vendor}: {item} totaling ${total:.2f}."` and return
+#      `{"text": summary, "is_incident": 0, "word_count": len(summary.split()), "total_usd": total}`.
+
+# %%
+sample_voice = "[00:01] Uhm, production router failed due to memory exhaustion under spike load."
+sample_receipt = "VENDOR: CloudGPU Inc | DATE: 2026-10-20 | ITEM: 8x H100 Spot Node | TOTAL: $412.50"
+
+### HINT For "voice", chain the two re.sub(...) calls, check whether any incident keyword is in cleaned.lower(), and count cleaned.split().
+### HINT For "receipt", extract vendor, item, and total with re.search(...), build the summary string, and return the dict including "total_usd".
+### BEGIN SOLUTION
+def parse_multimodal_item(raw_text, source_kind):
+    if source_kind == "voice":
+        cleaned = re.sub(r"\[\d{2}:\d{2}\]\s*", "", raw_text)
+        cleaned = re.sub(r"\b(uhm|uh)\b,?\s*", "", cleaned, flags=re.I).strip()
+        is_inc = int(any(w in cleaned.lower() for w in ("failed", "outage", "exhausted", "leak")))
+        return {"text": cleaned, "is_incident": is_inc, "word_count": len(cleaned.split())}
+    vendor = re.search(r"VENDOR:\s*([^|]+)", raw_text).group(1).strip()
+    item = re.search(r"ITEM:\s*([^|]+)", raw_text).group(1).strip()
+    total = float(re.search(r"TOTAL:\s*\$?([0-9.]+)", raw_text).group(1))
+    summary = f"Receipt from {vendor}: {item} totaling ${total:.2f}."
+    return {"text": summary, "is_incident": 0, "word_count": len(summary.split()), "total_usd": total}
+### END SOLUTION
+
+if "parse_multimodal_item" in locals() and callable(parse_multimodal_item):
+    try:
+        print("Voice:", parse_multimodal_item(sample_voice, "voice"))
+        print("Receipt:", parse_multimodal_item(sample_receipt, "receipt"))
+    except Exception:
+        pass
+
+# %%
+check(lambda: parse_multimodal_item(sample_voice, "voice")["is_incident"] == 1 and "[00:01]" not in parse_multimodal_item(sample_voice, "voice")["text"] and abs(parse_multimodal_item(sample_receipt, "receipt")["total_usd"] - 412.50) < 1e-6, "multimodal parser cleans Whisper voice transcripts and extracts structured receipt totals")
+
+# %% [markdown]
+# ## 3. Tabular metadata classifier & asymmetric cost-aware threshold
 # Before running expensive RAG search, the copilot triages incoming documents: is this an urgent incident?
 # Features: `[word_count, is_incident, created_hour]`.
 # 1. Fit a `LogisticRegression` on `X` and labels `y = [0, 1, 0, 1, 0]`.
@@ -103,8 +152,8 @@ X = np.array([
 ])
 y = np.array([0, 1, 0, 1, 0])
 
-### HINT clf = LogisticRegression().fit(X, y); probs = clf.predict_proba(X)[:, 1]
-### HINT for th in np.linspace(0.1, 0.9, 9): preds = (probs >= th).astype(int); cost = 10 * np.sum((preds==0)&(y==1)) + np.sum((preds==1)&(y==0))
+### HINT Fit LogisticRegression().fit(X, y) and take column 1 of predict_proba(X).
+### HINT Loop over np.linspace(0.1, 0.9, 9), compute fn and fp at each threshold, and keep the threshold with lowest 10 * fn + fp.
 ### BEGIN SOLUTION
 clf = LogisticRegression().fit(X, y)
 probs = clf.predict_proba(X)[:, 1]
@@ -130,7 +179,7 @@ if "best_threshold" in locals() and isinstance(best_threshold, float):
 check(lambda: best_threshold <= 0.5 and best_cost == 0, "asymmetric threshold prevents costly false negatives (missing an urgent alert)")
 
 # %% [markdown]
-# ## 3. PyTorch Neural Bi-Encoder projection head
+# ## 4. PyTorch Neural Bi-Encoder projection head
 # Implement a PyTorch `nn.Module` class named `BiEncoderHead`:
 # - Has a linear layer `self.proj = nn.Linear(in_features, out_features, bias=False)`.
 # - In `forward(x)`, passes `x` through `self.proj` and returns the L2-normalized vector `F.normalize(..., p=2, dim=-1)`.
@@ -143,9 +192,8 @@ tfidf = TfidfVectorizer().fit(all_chunk_texts)
 vocab_size = len(tfidf.get_feature_names_out())
 D_tensor = torch.tensor(tfidf.transform(all_chunk_texts).toarray(), dtype=torch.float32)
 
-### HINT class BiEncoderHead(nn.Module):
-### HINT     def __init__(self, in_features, out_features=16): super().__init__(); self.proj = nn.Linear(in_features, out_features, bias=False)
-### HINT     def forward(self, x): return F.normalize(self.proj(x), p=2, dim=-1)
+### HINT Subclass nn.Module, create self.proj = nn.Linear(in_features, out_features, bias=False) in __init__.
+### HINT In forward(self, x), return F.normalize(self.proj(x), p=2, dim=-1).
 ### BEGIN SOLUTION
 class BiEncoderHead(nn.Module):
     def __init__(self, in_features, out_features=16):
@@ -168,7 +216,42 @@ if "doc_embeddings" in locals() and isinstance(doc_embeddings, torch.Tensor):
 check(lambda: doc_embeddings.shape == (6, 16) and torch.allclose(torch.norm(doc_embeddings, dim=-1), torch.ones(6)), "PyTorch bi-encoder projects document chunks into unit-normalized 16D embedding vectors")
 
 # %% [markdown]
-# ## 4. Cosine vector retrieval
+# ## 5. 2D SVD semantic topic map projection
+# To visualize the knowledge base in the browser, the copilot projects the high-dimensional TF-IDF matrix onto 2D
+# using Singular Value Decomposition ($\mathbf{X}_c = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^\top$, from L3 SVD):
+# Write `project_chunks_2d(tfidf_matrix)` that:
+# 1. Centers the matrix by subtracting the column mean: `X_c = tfidf_matrix - np.mean(tfidf_matrix, axis=0, keepdims=True)`.
+# 2. Computes `U, S, Vt = np.linalg.svd(X_c, full_matrices=False)`.
+# 3. Projects onto the first 2 right singular vectors: `coords_2d = X_c @ Vt[:2].T`.
+# 4. Computes the fraction of variance captured by the first 2 singular values: `var_ratio = float(np.sum(S[:2] ** 2) / np.sum(S ** 2))`.
+# Return `(coords_2d, var_ratio)`.
+
+# %%
+X_tfidf_np = D_tensor.numpy()
+
+### HINT Center the columns first: X_c = tfidf_matrix - np.mean(tfidf_matrix, axis=0, keepdims=True), then call np.linalg.svd(X_c, full_matrices=False).
+### HINT Multiply X_c @ Vt[:2].T for the (N, 2) coordinates, and divide np.sum(S[:2] ** 2) by np.sum(S ** 2).
+### BEGIN SOLUTION
+def project_chunks_2d(tfidf_matrix):
+    X_c = tfidf_matrix - np.mean(tfidf_matrix, axis=0, keepdims=True)
+    U, S, Vt = np.linalg.svd(X_c, full_matrices=False)
+    coords_2d = X_c @ Vt[:2].T
+    var_ratio = float(np.sum(S[:2] ** 2) / np.sum(S ** 2))
+    return coords_2d, var_ratio
+### END SOLUTION
+
+if "project_chunks_2d" in locals() and callable(project_chunks_2d):
+    try:
+        coords_2d, svd_var = project_chunks_2d(X_tfidf_np)
+        print(f"2D SVD shape: {coords_2d.shape} · Variance explained by top 2 axes: {svd_var:.3f}")
+    except Exception:
+        pass
+
+# %%
+check(lambda: project_chunks_2d(X_tfidf_np)[0].shape == (6, 2) and abs(project_chunks_2d(X_tfidf_np)[1] - 0.4323) < 0.01, "SVD projects the 6 chunks into 2D coordinates capturing 43.2% of total variance")
+
+# %% [markdown]
+# ## 6. Cosine vector retrieval
 # Write `retrieve_top_k(query_str, top_k=3)` that:
 # 1. Transforms `query_str` into TF-IDF vector, converts to PyTorch float tensor `q_tensor`.
 # 2. Computes query embedding `q_emb = model(q_tensor)`.
@@ -176,9 +259,8 @@ check(lambda: doc_embeddings.shape == (6, 16) and torch.allclose(torch.norm(doc_
 # 4. Returns the top `top_k` indices sorted descending by similarity as a list of integers.
 
 # %%
-### HINT q_tensor = torch.tensor(tfidf.transform([query_str]).toarray(), dtype=torch.float32)
-### HINT with torch.no_grad(): q_emb = model(q_tensor); sims = torch.mm(q_emb, doc_embeddings.T)[0]
-### HINT return [int(idx) for idx in torch.argsort(-sims)[:top_k].numpy()]
+### HINT Transform [query_str] with tfidf, wrap in torch.tensor(..., dtype=torch.float32), and pass through model(q_tensor).
+### HINT Compute sims = torch.mm(q_emb, doc_embeddings.T)[0] and return [int(idx) for idx in torch.argsort(-sims)[:top_k].numpy()].
 ### BEGIN SOLUTION
 def retrieve_top_k(query_str, top_k=3):
     q_tensor = torch.tensor(tfidf.transform([query_str]).toarray(), dtype=torch.float32)
@@ -199,7 +281,7 @@ if "retrieve_top_k" in locals() and callable(retrieve_top_k):
 check(lambda: len(retrieve_top_k("memory router load spike", top_k=3)) == 3 and retrieve_top_k("memory router load spike", top_k=3)[0] == 2, "vector search retrieves the router memory outage chunk as the top match for memory spike query")
 
 # %% [markdown]
-# ## 5. Grounded RAG context assembly with citation provenance
+# ## 7. Grounded RAG context assembly with citation provenance
 # Write `build_grounded_context(retrieved_indices)` that accepts a list of chunk indices and builds
 # a context string where each retrieved chunk is tagged with its provenance identifier:
 # `[{doc_id}#{chunk_seq}] {text}`
@@ -207,8 +289,8 @@ check(lambda: len(retrieve_top_k("memory router load spike", top_k=3)) == 3 and 
 # Example: `"[doc-2#1] Production router failed due to memory exhaustion under spike load."`
 
 # %%
-### HINT lines = [f"[{chunks_data[i][1]}#{chunks_data[i][4]}] {chunks_data[i][2]}" for i in retrieved_indices]
-### HINT return "\n".join(lines)
+### HINT For each index i in retrieved_indices, format f"[{chunks_data[i][1]}#{chunks_data[i][4]}] {chunks_data[i][2]}".
+### HINT Join the formatted lines with "\n".join(lines).
 ### BEGIN SOLUTION
 def build_grounded_context(retrieved_indices):
     lines = [f"[{chunks_data[i][1]}#{chunks_data[i][4]}] {chunks_data[i][2]}" for i in retrieved_indices]
@@ -226,7 +308,7 @@ if "build_grounded_context" in locals() and callable(build_grounded_context):
 check(lambda: "[doc-2#1]" in build_grounded_context([2, 4, 0]) and "Production router failed" in build_grounded_context([2, 4, 0]), "grounded context includes chunk text with strict document citation brackets")
 
 # %% [markdown]
-# ## 6. Automated grounding evaluation (hallucination detection)
+# ## 8. Automated grounding evaluation (hallucination detection)
 # To verify the copilot doesn't hallucinate unsupported facts, evaluate grounding mathematically:
 # Write `compute_grounding_ratio(answer_sentence, context_text)` that:
 # 1. Normalizes `answer_sentence` and `context_text` to lowercase and strips punctuation.
@@ -241,9 +323,8 @@ grounded_ans = "The production router failed because memory was exhausted under 
 hallucinated_ans = "The quantum neural database was hacked by unauthorized alien actors."
 sample_ctx = "[doc-2#1] Production router failed due to memory exhaustion under spike load."
 
-### HINT clean = lambda s: [w for w in "".join(c if c.isalnum() else " " for c in s.lower()).split() if len(w) > 3]
-### HINT a_toks, c_toks = set(clean(answer_sentence)), set(clean(context_text))
-### HINT return len(a_toks & c_toks) / len(a_toks) if a_toks else 0.0
+### HINT Tokenize lowercase alphanumeric words longer than 3 characters into sets a_toks and c_toks.
+### HINT Return len(a_toks & c_toks) / len(a_toks) if a_toks is non-empty, else 0.0.
 ### BEGIN SOLUTION
 def compute_grounding_ratio(answer_sentence, context_text):
     def clean(s):
@@ -267,11 +348,11 @@ if "compute_grounding_ratio" in locals() and callable(compute_grounding_ratio):
 check(lambda: compute_grounding_ratio(grounded_ans, sample_ctx) >= 0.75 and compute_grounding_ratio(hallucinated_ans, sample_ctx) < 0.15, "grounding evaluator verifies cited statements and rejects ungrounded hallucinations")
 
 # %% [markdown]
-# ## 7. Production FastAPI service handler
+# ## 9. Production FastAPI service handler
 # Write `copilot_service(request_dict)` simulating a FastAPI endpoint handler:
 # `request_dict` contains `{"query": str, "metadata": [word_count, is_incident, hour]}`.
 # 1. Start timer `t0 = time.perf_counter()`.
-# 2. Score urgency using `clf.predict_proba([metadata])[0, 1]`. Mark `is_urgent = bool(p_urgent >= best_threshold)`.
+# 2. Score urgency using `clf.predict_proba([request_dict["metadata"]])[0, 1]`. Mark `is_urgent = bool(p_urgent >= best_threshold)`.
 # 3. Retrieve top-2 chunk indices with `retrieve_top_k(query, top_k=2)`.
 # 4. Build context and citations list `[f"{chunks_data[i][1]}#{chunks_data[i][4]}" for i in hits]`.
 # 5. Measure latency in milliseconds: `latency_ms = (time.perf_counter() - t0) * 1000`.
@@ -279,11 +360,8 @@ check(lambda: compute_grounding_ratio(grounded_ans, sample_ctx) >= 0.75 and comp
 # `{"citations": list[str], "is_urgent": bool, "urgency_score": float, "latency_ms": float}`
 
 # %%
-### HINT t0 = time.perf_counter()
-### HINT p = float(clf.predict_proba([request_dict["metadata"]])[0, 1])
-### HINT hits = retrieve_top_k(request_dict["query"], top_k=2)
-### HINT cits = [f"{chunks_data[i][1]}#{chunks_data[i][4]}" for i in hits]
-### HINT return {"citations": cits, "is_urgent": bool(p >= best_threshold), "urgency_score": p, "latency_ms": (time.perf_counter() - t0) * 1000}
+### HINT Score urgency probability p with clf.predict_proba([request_dict["metadata"]])[0, 1] and retrieve hits = retrieve_top_k(request_dict["query"], top_k=2).
+### HINT Format citations as [f"{chunks_data[i][1]}#{chunks_data[i][4]}" for i in hits] and measure latency_ms = (time.perf_counter() - t0) * 1000.
 ### BEGIN SOLUTION
 def copilot_service(request_dict):
     t0 = time.perf_counter()
@@ -311,7 +389,7 @@ if "copilot_service" in locals() and callable(copilot_service):
 check(lambda: copilot_service({"query": "router load spike", "metadata": [10, 1, 9]})["is_urgent"] is True and "doc-2#1" in copilot_service({"query": "router load spike", "metadata": [10, 1, 9]})["citations"] and copilot_service({"query": "router load spike", "metadata": [10, 1, 9]})["latency_ms"] < 100, "production service completes classification, vector retrieval, and provenance formatting in under 100 ms")
 
 # %% [markdown]
-# ## 8. Real-time MLOps drift monitor: Population Stability Index (PSI)
+# ## 10. Real-time MLOps drift monitor: Population Stability Index (PSI)
 # In production, query distributions drift over time (e.g. shifts from routine ML questions to outage incidents).
 # Implement `calculate_psi(baseline_scores, production_scores, num_bins=4)`:
 # 1. Compute empirical histograms using `np.histogram` across range `(0, 1)`.
@@ -325,10 +403,8 @@ baseline_traffic = np.array([0.05, 0.12, 0.18, 0.08, 0.15, 0.22, 0.09, 0.14])
 in_distribution_batch = np.array([0.08, 0.14, 0.16, 0.11, 0.17, 0.20, 0.10, 0.15])
 drifted_incident_batch = np.array([0.85, 0.92, 0.78, 0.88, 0.95, 0.81, 0.90, 0.86])
 
-### HINT p_counts, bins = np.histogram(baseline_scores, bins=num_bins, range=(0.0, 1.0))
-### HINT q_counts, _ = np.histogram(production_scores, bins=bins)
-### HINT p = (p_counts + 1e-4) / np.sum(p_counts + 1e-4); q = (q_counts + 1e-4) / np.sum(q_counts + 1e-4)
-### HINT return float(np.sum((p - q) * np.log(p / q)))
+### HINT Bin both arrays over range=(0.0, 1.0) with np.histogram, add 1e-4 to counts, and divide each by its sum to get p and q.
+### HINT Return float(np.sum((p - q) * np.log(p / q))).
 ### BEGIN SOLUTION
 def calculate_psi(baseline_scores, production_scores, num_bins=4):
     p_counts, bins = np.histogram(baseline_scores, bins=num_bins, range=(0.0, 1.0))
