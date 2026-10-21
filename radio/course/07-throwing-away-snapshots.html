@@ -144,7 +144,7 @@ all checks passed</code></pre>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why must you filter before decimating, not after?</summary><p>Decimating stacks every slice of the spectrum onto the middle one. Anything still in the other slices lands on your station and can never be separated again. Filtering afterwards is too late.</p></details>
-  <details><summary>A 300 kHz-wide signal at 2.4 MS/s. Can you keep every 10th sample?</summary><p>No: that leaves 240 kS/s, narrower than the signal itself, so its edges would fold over. Every 8th (300 kS/s) is the absolute limit; every 5th or 6th leaves a safe margin.</p></details>
+  <details><summary>A 300 kHz-wide signal at 2.4 MS/s. Can you keep every 10th sample?</summary><p>No: that leaves 240 kS/s, narrower than the signal itself, so its edges would fold over. Every 8th (300 kS/s) is the absolute limit. The receiver's 1.5× rule asks for at least 450 kS/s, so every 5th (480 kS/s) is the most it would thin out.</p></details>
   <details><summary>Why compute only every M-th output instead of all of them?</summary><p>Each output is its own weighted average and doesn't depend on the others, so the ones you'd throw away don't need computing at all: M times less work, identical results.</p></details>
 
   <nav class="next">

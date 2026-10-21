@@ -974,3 +974,6 @@ if (params.get("sat")) {
   activeSatellite: satShown,
   nearestRepeaters: shown.slice(0, 10).map((r) => `${r.callsign} ${r.outputMHz} MHz (${r.km.toFixed(1)} km)`)
 });
+
+// Links like /radio/repeaters/#sats (from the SSTV page) open straight on the satellites view.
+if (location.hash === "#sats") $("toggleSatChip").click();

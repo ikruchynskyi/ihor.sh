@@ -183,7 +183,7 @@ all checks passed</code></pre>
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does a moving average remove fast wiggles but keep slow ones?</summary><p>Averaging is a center of mass. A fast arrow turns all the way round within the averaging window, so its positions cancel; a slow arrow barely moves, so its positions add up.</p></details>
   <details><summary>An average of 10 samples. Which arrow speed cancels completely: 0.05, 0.1 or 0.15 turns per sample?</summary><p>0.1: exactly one full turn in 10 samples. (0.2, 0.3, … also cancel.)</p></details>
-  <details><summary>Why don't we just use a plain average as our filter?</summary><p>You can't choose its cutoff (it's fixed by its length), and its leftovers come back in bumps that are only about 30 dB down. A windowed sinc lets you choose the cutoff and leaves about 60 dB of rejection.</p></details>
+  <details><summary>Why don't we just use a plain average as our filter?</summary><p>You can't choose its cutoff (it's fixed by its length), and its leftovers come back in bumps: with 41 weights, the worst one far from the passband is still only 29 dB down (this chapter's script). A windowed sinc of the same length lets you choose the cutoff and leaves 62 dB.</p></details>
   <details><summary>You want the edge between "keep" and "remove" twice as steep. What does that cost?</summary><p>About twice as many weights, and so twice the multiplications per sample.</p></details>
 
   <nav class="next">
