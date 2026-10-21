@@ -9,7 +9,7 @@ import path from "node:path";
 const ROOT = import.meta.dirname;
 const changed = new Map<string, string>(); // repo-relative path → YYYY-MM-DD of the newest commit that touched it
 try {
-  const log = execFileSync("git", ["log", "--name-only", "--no-renames", "--format=@%cs"], { cwd: ROOT, maxBuffer: 256 * 2 ** 20 }).toString();
+  const log = execFileSync("git", ["-c", `safe.directory=${ROOT}`, "log", "--name-only", "--no-renames", "--format=@%cs"], { cwd: ROOT, maxBuffer: 256 * 2 ** 20 }).toString();
   let day = "";
   for (const line of log.split("\n")) if (line.startsWith("@")) day = line.slice(1); else if (line && !changed.has(line)) changed.set(line, day);
 } catch { /* no git here: mtimes below */ }

@@ -5,6 +5,12 @@
   "scripts": {
     "build": "cd radio && npm ci && npm run build",
     "start": "node server.ts",
-    "check": "python3 ai/notebooks/lint.py && node check.ts && node aso-check.ts"
+    "test": "./manage.sh test",
+    "check": "python3 ai/notebooks/lint.py && node check.ts && node aso-check.ts",
+    "rebuild": "./manage.sh rebuild",
+    "deploy": "./manage.sh deploy",
+    "restart": "./restart.sh",
+    "status": "./manage.sh status",
+    "logs": "./manage.sh logs"
   }
 }

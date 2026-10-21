@@ -11,7 +11,7 @@ import path from "node:path";
 import { Receiver, firLowpass, FirDecimator } from "./radio/src/dsp.ts";
 import { callsign as fccLookup } from "./ham.ts";
 
-const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
+const SDR = `http://${process.env.SDR_HOST ?? "127.0.0.1"}:${process.env.SDR_PORT ?? 8073}`;
 const PY = process.env.WHISPER_PY ?? "/Users/irishdash/AI/venv/bin/python3";
 const MODEL = process.env.WHISPER_MODEL ?? "mlx-community/whisper-large-v3-mlx";
 const DIR = path.join(import.meta.dirname, "data", "monitor");
@@ -101,7 +101,10 @@ for line in sys.stdin:
   whisper.on("exit", (c) => { console.warn(`whisper worker exited (${c})`); whisper = null; for (const [, r] of pending) r({ error: "worker exited" }); pending.clear(); });
   return whisper;
 }
-const transcribe = (file: string) => new Promise<any>((resolve) => { pending.set(file, resolve); worker().stdin!.write(file + "\n"); setTimeout(() => { if (pending.has(file)) { pending.delete(file); resolve({ error: "timeout" }); } }, 90_000); });
+export const transcribeLocal = (file: string) => new Promise<any>((resolve) => { pending.set(file, resolve); worker().stdin!.write(file + "\n"); setTimeout(() => { if (pending.has(file)) { pending.delete(file); resolve({ error: "timeout" }); } }, 90_000); });
+const transcribe = (file: string) => process.env.HOST_BRIDGE
+  ? fetch(`${process.env.HOST_BRIDGE}/whisper`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ file: path.basename(file) }), signal: AbortSignal.timeout(90_000) }).then((r) => r.json()).catch((e) => ({ error: (e as Error).message }))
+  : transcribeLocal(file);
 
 async function processQueue() {
   if (queueBusy || !audioQueue.length) return;

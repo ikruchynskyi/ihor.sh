@@ -1,6 +1,7 @@
 #!/bin/sh
-# Turn the ihor.sh login agents (~/Library/LaunchAgents/sh.ihor.*.plist) into boot daemons, so the site, the two radio
-# servers (sdr, sdr-sat) and the tunnel start when the Mac boots, before anyone logs in. They still run as you (not root).
+# Turn the ihor.sh login agents (~/Library/LaunchAgents/sh.ihor.*.plist) into boot daemons, so the host supervisor
+# (`sh.ihor.server`, which starts Docker Desktop, Ollama, `docker compose up -d`, and the MLX/Meshtastic host bridge)
+# and the two USB radio servers (`sdr`, `sdr-sat`) start when the Mac boots, before anyone logs in. They still run as you (not root).
 #   sudo ./daemons/install.sh            install (or update) the daemons
 #   sudo ./daemons/install.sh --undo     back to login agents
 set -eu
@@ -52,4 +53,8 @@ for agent in "$AGENTS"/sh.ihor.*.plist "$AGENTS"/sh.ihor.*.plist.disabled-by-dae
   echo "$label: now a boot daemon, running as $USER_NAME"
 done
 [ "$found" = 1 ] || { echo "No sh.ihor.* agents in $AGENTS"; exit 1; }
-echo "Done. Check: sudo launchctl print system/sh.ihor.server | head -20   (./restart.sh works with either kind)"
+DOCKER_SETTINGS="$USER_HOME/Library/Group Containers/group.com.docker/settings-store.json"
+if [ -f "$DOCKER_SETTINGS" ]; then
+  sudo -u "$USER_NAME" python3 -c "import json,pathlib; p=pathlib.Path('$DOCKER_SETTINGS'); d=json.loads(p.read_text()); d['AutoStart']=True; p.write_text(json.dumps(d,indent=2)+'\n')" 2>/dev/null || true
+fi
+echo "Done. Check: ./manage.sh status   (./restart.sh works with both Docker and launchd)"

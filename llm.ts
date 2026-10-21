@@ -1,10 +1,9 @@
 import "./env.ts";
 
 // The local model: what Blip and Jobs AI fall back to when Ollama Cloud fails or its free credits run out, and Yomu's
-// only model (its chat promises nothing leaves this machine). Default qwen3.5:35b (was gpt-oss:20b, which had beaten
-// nemotron-3.5-lightning on Yomu's Japanese); OLLAMA_MODEL in .env overrides it.
+// only model (its chat promises nothing leaves this machine). Default qwen3.8:27b-mlx; OLLAMA_MODEL in .env overrides it.
 export const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
-export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.5:35b";
+export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.8:27b-mlx";
 
 /** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"). */
 export const supportsEffort = (model = LOCAL_MODEL) =>

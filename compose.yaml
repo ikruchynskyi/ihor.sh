@@ -1,48 +1,87 @@
-# Running on another host: see MIGRATE.md
+# ihor.sh containerized stack on macOS (or Linux: see MIGRATE.md).
+# Runs web (server.ts + Meteor recorder), tts (Edge neural TTS), memegen, and tunnel (cloudflared) on one isolated network (`ihor`).
+# Host-only hardware/MLX services (Ollama :11434, SDR :8073, SDR-sat :8074, MLX bridge :8075, Meshtastic serial :8076)
+# stay on the host and are reached by `web` via `host.docker.internal`.
 services:
   web:
-    build: .
+    build:
+      context: .
+      target: web
+    container_name: ihor-web
     restart: unless-stopped
-    ports: ["8080:8080"]
+    ports: ["127.0.0.1:8080:8080"]
     environment:
-      OLLAMA_URL: http://ollama:11434
+      HOST: "0.0.0.0"
+      OLLAMA_URL: http://host.docker.internal:11434
+      SDR_HOST: host.docker.internal
+      HOST_BRIDGE: http://host.docker.internal:8075
+      MESH_HOST: host.docker.internal:8076
+      MEMEGEN_URL: http://memegen:5000
+      EDGE_TTS_URL: http://tts:5056
+      TRUSTED_PROXY: 172.30.0.1,172.30.0.10,192.168.65.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - ./.env:/app/.env          # SESSION_SECRET / MESH_OWNER_KEY get appended here on first start
+      - ./.env:/app/.env:ro
       - ./data:/app/data
-    # Meshtastic radio, Linux names it /dev/ttyACM0 or /dev/ttyUSB0 (uncomment + set MESH_PORT in .env):
-    # devices: ["/dev/ttyACM0:/dev/ttyACM0"]
+      - ./.git:/app/.git:ro
+      - ./yomu/data/jisho:/app/yomu/data/jisho
+      - ./yomu/data/nhk-cache.json:/app/yomu/data/nhk-cache.json
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks:
+      ihor:
+        ipv4_address: 172.30.0.2
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-  # Shares web's network, so the 127.0.0.1:8073 calls in server.ts and the SDR's "local only" admin API keep working.
-  sdr:
-    build: .
+  tts:
+    build:
+      context: .
+      target: tts
+    container_name: ihor-tts
     restart: unless-stopped
-    working_dir: /app/radio
-    command: ["node", "server.ts"]
-    network_mode: service:web
-    devices: ["/dev/bus/usb:/dev/bus/usb"]   # RTL-SDR dongle (Linux host only; delete this line if there's none)
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks: ["ihor"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5056/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
-  sdr-sat:   # the RTL-SDR kept for satellites (the Meteor recorder); without it the recorder uses sdr
-    build: .
+  memegen:
+    image: memegen:latest
+    container_name: memegen
     restart: unless-stopped
-    working_dir: /app/radio
-    command: ["node", "server.ts"]
-    environment: { SDR_DEVICE: rtl, PORT: "8074" }
-    network_mode: service:web
-    devices: ["/dev/bus/usb:/dev/bus/usb"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks: ["ihor"]
 
-  # Same network as web, so config.yml's  service: http://localhost:8080  is unchanged.
   tunnel:
     image: cloudflare/cloudflared:latest
+    container_name: ihor-tunnel
     restart: unless-stopped
-    network_mode: service:web
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
     volumes: ["./cloudflared:/etc/cloudflared:ro"]
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --credentials-file /etc/cloudflared/tunnel.json
+    depends_on: ["web"]
+    networks:
+      ihor:
+        ipv4_address: 172.30.0.10
 
-  ollama:
-    image: ollama/ollama
-    restart: unless-stopped
-    volumes: ["ollama:/root/.ollama"]
-    # NVIDIA GPU:  deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
-
-volumes:
-  ollama:
+networks:
+  ihor:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

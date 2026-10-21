@@ -3,6 +3,7 @@
 // No Meshtastic library: the few protobuf messages we need are decoded and encoded by hand below.
 import { execFileSync } from "node:child_process";
 import { closeSync, createReadStream, existsSync, openSync, readdirSync, readFileSync, writeFileSync, writeSync, constants } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 
 // ---------- protobuf, just enough ----------
@@ -229,13 +230,34 @@ export function deframer(onFrame: (b: Buffer) => void, onLog: (line: string) => 
 }
 const frame = (body: Buffer) => { const h = Buffer.from([0x94, 0xc3, 0, 0]); h.writeUInt16BE(body.length, 2); return Buffer.concat([h, body]); };
 
-let fd = -1, stream: ReturnType<typeof createReadStream> | null = null;
-const send = (toRadio: Buffer) => { if (fd >= 0) writeSync(fd, frame(toRadio)); };
-const findPort = () => process.env.MESH_PORT || readdirSync("/dev").filter((f) => /^cu\.(usbserial|usbmodem|SLAB_USBtoUART|wchusbserial)/.test(f)).map((f) => `/dev/${f}`)[0] || "";
+let fd = -1, stream: ReturnType<typeof createReadStream> | null = null, sock: net.Socket | null = null;
+const writeRaw = (b: Buffer) => { if (sock && !sock.destroyed) sock.write(b); else if (fd >= 0) writeSync(fd, b); };
+const send = (toRadio: Buffer) => writeRaw(frame(toRadio));
+export const findMeshPort = () => process.env.MESH_PORT || readdirSync("/dev").filter((f) => /^cu\.(usbserial|usbmodem|SLAB_USBtoUART|wchusbserial)/.test(f)).map((f) => `/dev/${f}`)[0] || "";
 
 let gotMyInfo = false;
 export function startMesh() {
-  const port = findPort();
+  const feed = deframer((b) => { mesh.connected = true; try { fromRadio(b); } catch (e) { mesh.log.push(`bad frame: ${(e as Error).message}`); } },
+    (l) => { mesh.log.push(l); if (mesh.log.length > 200) mesh.log = mesh.log.slice(-100); });
+  if (process.env.MESH_HOST) {
+    const [host, portStr] = process.env.MESH_HOST.split(":");
+    const s = net.connect(Number(portStr) || 8076, host || "127.0.0.1");
+    let closed = false;
+    const restart = (why: string) => { if (closed) return; closed = true; mesh.connected = false; mesh.log.push(why); try { s.destroy(); } catch {} if (sock === s) sock = null; setTimeout(startMesh, 15_000); };
+    s.on("connect", () => {
+      sock = s; mesh.port = `tcp://${process.env.MESH_HOST}`;
+      writeRaw(Buffer.alloc(32, 0xc3));
+      gotMyInfo = false;
+      const ask = (k: number) => { if (sock !== s || gotMyInfo || k > 10) return; try { writeRaw(Buffer.alloc(32, 0xc3)); send(enc.u(3, Math.floor(Math.random() * 1e9))); } catch {} setTimeout(() => ask(k + 1), 4000); };
+      setTimeout(() => ask(0), 200);
+      const beat = setInterval(() => { if (sock !== s) return clearInterval(beat); try { send(enc.bytes(7, Buffer.alloc(0))); } catch (e) { clearInterval(beat); restart(`write: ${(e as Error).message}`); } }, 60_000);
+    });
+    s.on("data", (c) => feed(c as Buffer));
+    s.on("error", (e) => restart(`serial bridge: ${e.message}`));
+    s.on("close", () => restart("serial bridge closed"));
+    return;
+  }
+  const port = findMeshPort();
   if (!port || !existsSync(port)) { setTimeout(startMesh, 60_000); return; }
   try {
     // macOS puts a serial port's settings back to defaults when the last handle closes, so hold it open while setting them.
@@ -243,19 +265,17 @@ export function startMesh() {
     execFileSync("stty", ["-f", port, "115200", "raw", "-echo", "-hupcl", "clocal"]); // -hupcl: don't reset the board when we close
   } catch (e) { mesh.log.push(`open ${port}: ${(e as Error).message}`); setTimeout(startMesh, 60_000); return; }
   mesh.port = port;
-  const feed = deframer((b) => { mesh.connected = true; try { fromRadio(b); } catch (e) { mesh.log.push(`bad frame: ${(e as Error).message}`); } },
-    (l) => { mesh.log.push(l); if (mesh.log.length > 200) mesh.log = mesh.log.slice(-100); });
   stream = createReadStream("", { fd: openSync(port, constants.O_RDONLY | constants.O_NOCTTY), highWaterMark: 512 });
   stream.on("data", (c) => feed(c as Buffer));
   const restart = (why: string) => { mesh.connected = false; mesh.log.push(why); try { stream?.destroy(); closeSync(fd); } catch {} fd = -1; setTimeout(startMesh, 10_000); };
   stream.on("error", (e) => restart(`serial: ${e.message}`));
   stream.on("close", () => { if (fd >= 0) restart("serial closed"); });
   // Wake the serial API (a run of 0xC3), then ask for everything it knows.
-  writeSync(fd, Buffer.alloc(32, 0xc3));
+  writeRaw(Buffer.alloc(32, 0xc3));
   // Opening the port can reset the board (it then boots for a few seconds), so ask again until it says who it is (any
   // other traffic doesn't count: a board that was swapped must report its own node number, not the last one's).
   gotMyInfo = false;
-  const ask = (k: number) => { if (fd < 0 || gotMyInfo || k > 10) return; try { writeSync(fd, Buffer.alloc(32, 0xc3)); send(enc.u(3, Math.floor(Math.random() * 1e9))); } catch {} setTimeout(() => ask(k + 1), 4000); };
+  const ask = (k: number) => { if (fd < 0 || gotMyInfo || k > 10) return; try { writeRaw(Buffer.alloc(32, 0xc3)); send(enc.u(3, Math.floor(Math.random() * 1e9))); } catch {} setTimeout(() => ask(k + 1), 4000); };
   setTimeout(() => ask(0), 200);
   // A heartbeat keeps the node in API mode (it falls back to plain logs after a quiet spell).
   const beat = setInterval(() => { if (fd < 0) return clearInterval(beat); try { send(enc.bytes(7, Buffer.alloc(0))); } catch (e) { clearInterval(beat); restart(`write: ${(e as Error).message}`); } }, 60_000);
@@ -263,7 +283,7 @@ export function startMesh() {
 
 /** Sends text to everyone on a channel, or directly to a single node. Returns the packet id. */
 export function sendText(text: string, channel = 0, to = BROADCAST) {
-  if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
+  if ((fd < 0 && !sock) || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
   const t = Buffer.from(text, "utf8");
   if (!t.length || t.length > 200) throw new Error("Messages are 1–200 bytes.");
   const id = (Math.random() * 0xffffffff) >>> 0;
@@ -277,7 +297,7 @@ export function sendText(text: string, channel = 0, to = BROADCAST) {
 
 /** Sends AdminMessage (port 6) with nodedb_reset = 1 (field 100) to the radio over serial. */
 export function resetNodeDb() {
-  if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
+  if ((fd < 0 && !sock) || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
   const id = (Math.random() * 0xffffffff) >>> 0;
   const adminMsg = enc.u(100, 1);
   const data = Buffer.concat([enc.u(1, 6), enc.bytes(2, adminMsg), enc.u(3, 1)]);
@@ -299,7 +319,7 @@ export function clearNodes(keepSelf = true) {
   } catch {}
 
   let hardwareReset = false;
-  if (fd >= 0 && mesh.connected) {
+  if ((fd >= 0 || sock) && mesh.connected) {
     try {
       resetNodeDb();
       hardwareReset = true;
@@ -342,7 +362,7 @@ function traced(from: number, rd: Map<number, Field[]>) {
 }
 /** Ask the mesh for the route to node `to`. The answer comes as a "traceroute" event (or one with an error after a minute). */
 export function traceroute(to: number) {
-  if (fd < 0 || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
+  if ((fd < 0 && !sock) || !mesh.connected) throw new Error("The Meshtastic node isn't connected.");
   if (!(to > 0 && to < UNKNOWN) || to === mesh.myNum) throw new Error("Pick another node to trace.");
   if (trace) throw new Error("A traceroute is already waiting for its answer.");
   const id = (Math.random() * 0xffffffff) >>> 0;

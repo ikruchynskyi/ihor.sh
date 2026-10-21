@@ -23,7 +23,7 @@ const ID = arg("id") ?? `${new Date(START).toISOString().slice(0, 16).replace(/[
 const ROOT = path.resolve(import.meta.dirname, "../.."), DIR = path.join(ROOT, "data", "meteor"), OUT = path.join(DIR, ID);
 const CATNR: Record<string, number> = { "meteor-m2-3": 57166, "meteor-m2-4": 59051 };
 const HOME = { lat: 40.73, lon: -73.95 }; // the radio server's place (radio/server.ts REF)
-const SAT_SDR = "http://127.0.0.1:8074", SDR = "http://127.0.0.1:8073"; // the satellite radio, else the shared one
+const SDR_HOST = process.env.SDR_HOST ?? "127.0.0.1", SAT_SDR = `http://${SDR_HOST}:${process.env.SDR_SAT_PORT ?? 8074}`, SDR = `http://${SDR_HOST}:${process.env.SDR_PORT ?? 8073}`; // the satellite radio, else the shared one
 mkdirSync(OUT, { recursive: true });
 const log = (m: string) => { const line = `${new Date().toISOString()} ${m}`; console.log(line); writeFileSync(path.join(OUT, "log.txt"), line + "\n", { flag: "a" }); };
 

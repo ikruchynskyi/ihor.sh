@@ -25,8 +25,8 @@ async function cached<T>(file: string, make: () => Promise<T>): Promise<T> {
   const f = path.join(DIR, file);
   try { return JSON.parse(await readFile(f, "utf8")); } catch {}
   const v = await make();
-  await mkdir(path.dirname(f), { recursive: true });
-  await writeFile(f, JSON.stringify(v, null, 1));
+  await mkdir(path.dirname(f), { recursive: true }).catch(() => {});
+  await writeFile(f, JSON.stringify(v, null, 1)).catch(() => {});
   return v;
 }
 const inflight = new Map<string, Promise<unknown>>(); // two visitors asking for the same kanji share one fetch

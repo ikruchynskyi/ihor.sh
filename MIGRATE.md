@@ -1,59 +1,48 @@
-# Moving ihor.sh to another host (Docker)
+# Running ihor.sh in Docker (macOS & Linux)
 
-`compose.yaml` runs everything that the Mac runs as LaunchDaemons:
+## Architecture on the Mac mini
 
-| service   | what                                                        | Mac equivalent       |
-|-----------|-------------------------------------------------------------|----------------------|
-| `web`     | `server.ts` on :8080 (and the Meteor recorder it starts)    | `sh.ihor.server`     |
-| `sdr`     | `radio/server.ts` on :8073 + HackRF (else the RTL-SDR)      | `sh.ihor.sdr`        |
-| `sdr-sat` | `radio/server.ts` on :8074 + RTL-SDR (`SDR_DEVICE=rtl`)     | `sh.ihor.sdr-sat`    |
-| `tunnel`  | cloudflared, same tunnel and ingress                        | `sh.ihor.tunnel`     |
-| `ollama`  | local fallback model (gpt-oss:20b)                          | the Ollama app       |
+`compose.yaml` runs the internet-facing services in hardened Docker containers on an isolated bridge network (`ihor`, `172.30.0.0/24`), while USB and Apple Silicon Metal/MLX services stay on the macOS host (`127.0.0.1` only) and are reached from `web` via `host.docker.internal`:
 
-`sdr`, `sdr-sat` and `tunnel` share `web`'s network namespace, so `127.0.0.1:8073` and `:8074` in the code, the SDR's "local only" admin API and
-`service: http://localhost:8080` in the tunnel config work unchanged.
+| Service | Where | Port / Address | Purpose |
+|---|---|---|---|
+| `web` | Docker (`ihor-web`) | `127.0.0.1:8080` (`172.30.0.2`) | `server.ts` and the Meteor pass recorder (`meteor-rec.ts`) |
+| `tts` | Docker (`ihor-tts`) | `http://tts:5056` | Edge neural TTS (`yomu/src/edge_tts_server.py`) |
+| `memegen` | Docker (`memegen`) | `http://memegen:5000` | Local meme generator for Blip and Yomu |
+| `tunnel` | Docker (`ihor-tunnel`) | `172.30.0.10` | `cloudflared` tunnel (`ihor.sh`, `www.ihor.sh` → `http://web:8080`) |
+| `host` | Mac (`sh.ihor.server`) | `127.0.0.1:8075`, `:8076` | `host.ts`: starts Docker Desktop + Compose on boot; bridges `mlx_whisper` (`:8075/whisper`), `mflux` SeedVR2 upscaler (`:8075/upscale`), and Meshtastic USB serial (`:8076`) |
+| `sdr` | Mac (`sh.ihor.sdr`) | `127.0.0.1:8073` | `radio/server.ts` (`SDR_DEVICE=rtl`, Nooelec RTL-SDR) |
+| `sdr-sat` | Mac (`sh.ihor.sdr-sat`) | `127.0.0.1:8074` | `radio/server.ts` (`SDR_DEVICE=hackrf`, HackRF Pro for weather satellites) |
+| `ollama` | Mac (`Ollama.app`) | `127.0.0.1:11434` | Local LLM & embeddings (`qwen3.8:27b-mlx`, `nomic-embed-text`) |
 
-## 1. Old host (Mac): stop, so data is consistent and only one tunnel runs
+## Managing from the host
+
+Use `./manage.sh` (or the matching `npm run` scripts):
 
 ```sh
-for s in server sdr sdr-sat tunnel; do sudo launchctl bootout system/sh.ihor.$s; done
+./manage.sh status              # container health + host services (sdr, sdr-sat, host-bridge, ollama)
+./manage.sh rebuild             # build radio/dist, rebuild & restart Docker containers (npm run rebuild)
+./manage.sh deploy              # rebuild containers, restart host daemons, run npm run check (npm run deploy)
+./manage.sh restart [service]   # restart web, tts, memegen, tunnel, host, sdr, sdr-sat, ollama (./restart.sh)
+./manage.sh test [file...]      # run unit tests inside the web container (npm test)
+./manage.sh check               # run lint.py + check.ts + aso-check.ts (npm run check)
+./manage.sh logs [service]      # follow container logs, or ~/Library/Logs/ihor-*.log for sdr/sdr-sat/host
+./manage.sh shell               # open a shell inside the web container
 ```
 
-## 2. Copy what git doesn't have
+## Boot startup on macOS
+
+1. `/Library/LaunchDaemons/sh.ihor.{server,sdr,sdr-sat,tunnel}.plist` start at boot before any user logs in (`sudo ./daemons/install.sh`).
+2. On macOS, `sh.ihor.server` runs `node server.ts` → `host.ts`.
+3. `host.ts` checks `docker info` (starting Docker Desktop if needed; `AutoStart: true` is also enabled in `~/Library/Group Containers/group.com.docker/settings-store.json`), ensures Ollama is serving on `127.0.0.1:11434`, and runs `docker compose up -d` (with `restart: unless-stopped` on every container). A 60 s watchdog loop keeps Docker and the compose stack up.
+4. To run `server.ts` directly on macOS without Docker (for local debugging), set `HOST_DIRECT=1 node server.ts`.
+
+## Moving to another host (Linux)
 
 ```sh
 NEW=user@newhost:ihor.sh
 git clone <repo> ihor.sh                                   # on the new host
-rsync -a .env data $NEW/                                   # data/ is ~200 MB, mostly jobs.db
-ssh user@newhost mkdir -p ihor.sh/cloudflared
-scp ~/.cloudflared/config.yml $NEW/cloudflared/
-scp ~/.cloudflared/8c3e4fe3-0e26-426d-8531-2ba7ea4a2c90.json $NEW/cloudflared/tunnel.json
+rsync -a .env data cloudflared $NEW/                       # data/ is ~900 MB (jobs.db, mta.db, meteor passes)
 ```
 
-Also `radio/gains.json` (the gain each band was tuned to; worth keeping). Optional: `radio/fm-scan.json` (last FM scan; rebuilt on the next scan anyway). `data/` includes the Meteor recordings (`data/meteor`).
-
-## 3. New host: hardware
-
-- **Radios**: `sdr` takes the HackRF (else the RTL-SDR), `sdr-sat` only the RTL-SDR. With one radio, keep `sdr` and delete
-  the `sdr-sat` service (the Meteor recorder then uses `sdr`); with none, also delete the `devices:` line under `sdr`.
-- **Meshtastic radio**: uncomment `devices:` under `web` and set `MESH_PORT=/dev/ttyACM0` (or `ttyUSB0`) in `.env`;
-  the auto-detect only knows macOS names (`/dev/cu.usbmodem*`).
-- USB passthrough needs a **Linux** host; Docker Desktop on macOS/Windows can't pass USB devices.
-- **Ollama**: an NVIDIA GPU needs the commented `deploy:` line in `compose.yaml`; on CPU gpt-oss:20b is very slow.
-  No local model wanted: delete the `ollama` service (Blip and Jobs AI use Ollama Cloud first; Yomu chat is local only).
-
-## 4. Start and check
-
-```sh
-docker compose up -d --build
-docker compose exec ollama ollama pull gpt-oss:20b
-docker compose exec web node check.ts                      # every page and API answers
-docker compose logs -f web sdr sdr-sat tunnel
-```
-
-Deploy afterwards: `git pull && docker compose up -d --build`.
-
-## Rolling back to the Mac
-
-`docker compose down` on the new host, copy `data/` back, then
-`for s in server sdr sdr-sat tunnel; do sudo launchctl bootstrap system /Library/LaunchDaemons/sh.ihor.$s.plist; done`.
+Also copy `radio/gains.json` (per-band tuned gains). On a Linux host with USB passthrough, `sdr`, `sdr-sat`, and `ollama` can either run as systemd services on the host (reached via `host.docker.internal`) or as additional services in `compose.yaml` with `devices: ["/dev/bus/usb:/dev/bus/usb"]`.

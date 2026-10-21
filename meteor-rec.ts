@@ -106,7 +106,7 @@ export function meteorCheckApi(url: URL, req: http.IncomingMessage, res: http.Se
       if (typeof clean === "string") return send(res, 400, { error: clean });
       if (body.lna !== undefined || body.vga !== undefined) { // the HackRF's gains for the weather band, amp always off
         const why = busy(); if (why) return send(res, 409, { error: `Gains can't change now: ${why}.` });
-        const r = await fetch("http://127.0.0.1:8074/api/tune", { method: "POST", body: JSON.stringify({ center: 137.5e6, lna: Number(body.lna), vga: Number(body.vga), amp: false }) });
+        const r = await fetch(`http://${process.env.SDR_HOST ?? "127.0.0.1"}:${process.env.SDR_SAT_PORT ?? 8074}/api/tune`, { method: "POST", body: JSON.stringify({ center: 137.5e6, lna: Number(body.lna), vga: Number(body.vga), amp: false }) });
         if (!r.ok) return send(res, 502, { error: `The radio refused: ${(await r.json().catch(() => ({}))).error ?? r.status}` });
       }
       saveSettings(clean);

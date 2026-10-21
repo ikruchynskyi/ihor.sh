@@ -47,7 +47,7 @@ function py(): ChildProcess {
 
 /** A JPEG/PNG frame → the same picture ~4× larger (short side up to 1080 px), as a base64 JPEG: the page shows it as a
  *  data: URL, so nothing is kept on the server. */
-export function upscale(image: Buffer): Promise<{ img: string; w: number; h: number; ms: number }> {
+export function upscaleLocal(image: Buffer): Promise<{ img: string; w: number; h: number; ms: number }> {
   if (pending.size >= MAX_QUEUE) return Promise.reject(new Error("The upscaler is busy. Try again in a minute."));
   clearTimeout(idle);
   const id = ++seq;
@@ -56,4 +56,12 @@ export function upscale(image: Buffer): Promise<{ img: string; w: number; h: num
     pending.set(id, (r) => { clearTimeout(t); r.error ? reject(new Error(r.error)) : resolve(r); });
     py().stdin!.write(JSON.stringify({ id, img: image.toString("base64") }) + "\n");
   });
+}
+
+export async function upscale(image: Buffer): Promise<{ img: string; w: number; h: number; ms: number }> {
+  if (!process.env.HOST_BRIDGE) return upscaleLocal(image);
+  const r = await fetch(`${process.env.HOST_BRIDGE}/upscale`, { method: "POST", body: image, signal: AbortSignal.timeout(185_000) });
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error(j.error || `upscale HTTP ${r.status}`);
+  return j;
 }

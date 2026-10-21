@@ -7,7 +7,7 @@ import { fft } from "./radio/src/dsp.ts";
 import { tleFor, look, site } from "./sat.ts";
 
 const DIR = path.join(import.meta.dirname, "data", "meteor");
-const SAT_SDR = "http://127.0.0.1:8074", HOME = { lat: 40.73, lon: -73.95 };
+const SAT_SDR = `http://${process.env.SDR_HOST ?? "127.0.0.1"}:${process.env.SDR_SAT_PORT ?? 8074}`, HOME = { lat: 40.73, lon: -73.95 };
 const CATNR: Record<string, number> = { "meteor-m2-3": 57166, "meteor-m2-4": 59051 };
 export const LRPT = [137.1, 137.9]; // MHz; each channel 150 kHz wide (WMO OSCAR)
 const HISTORY = path.join(DIR, "health.json"), SETTINGS = path.join(DIR, "settings.json");

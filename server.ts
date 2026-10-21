@@ -59,6 +59,7 @@ const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".j
 // The dongle server (radio/server.ts, `npm run serve` in radio/) when it's running. Listeners get slices of the
 // dongle's window (~0.5 MB/s each in Spectrum Lab), and the dongle server keeps the total under its upload budget;
 // this cap is only a backstop.
+const SDR_HOST = process.env.SDR_HOST ?? "127.0.0.1";
 const SDR_PORT = Number(process.env.SDR_PORT ?? 8073);
 const MAX_LISTENERS = 12;
 let listeners = 0;
@@ -98,7 +99,8 @@ async function siteMap() {
 }
 
 const SYSTEM = systemPrompt(await siteMap());
-buildIndex(ROOT, WORLDS).then((n) => console.log(`search: ${n} pages indexed`)).catch((e) => console.warn("search index:", e.message));
+const IN_HOST_SUPERVISOR = process.platform === "darwin" && !process.env.HOST_DIRECT;
+if (!IN_HOST_SUPERVISOR) buildIndex(ROOT, WORLDS).then((n) => console.log(`search: ${n} pages indexed`)).catch((e) => console.warn("search index:", e.message));
 
 // ponytail: in-memory per-IP + daily caps, reset on restart; enough for a hobby site on one box.
 const hits = new Map<string, number[]>();
@@ -137,13 +139,13 @@ function allowed(ip: string) {
 
 // A live view of a weather satellite (radio=sat, 137–138 MHz) goes to the satellite radio, radio/server.ts on :8074 with the
 // HackRF behind the SAWbird on the V-dipole; when that can't stream, to the main radio as everything else.
-const SDR_SAT_PORT = 8074;
+const SDR_SAT_PORT = Number(process.env.SDR_SAT_PORT ?? 8074);
 async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse, port = /[?&]radio=sat\b/.test(req.url ?? "") ? SDR_SAT_PORT : SDR_PORT, counted = false) {
   const offline = (msg: string) => { if (!res.headersSent) res.writeHead(503, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: msg })); };
   const stream = req.url?.startsWith("/api/stream");
   if (stream && !counted && listeners >= MAX_LISTENERS) return offline("The server SDR is full right now. Try again in a few minutes.");
   const fallback = () => (res.headersSent ? res.destroy() : proxySdr(req, res, SDR_PORT, counted || !!stream)); // mid-stream: just end it
-  const up = http.request({ host: "127.0.0.1", port, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json", "x-via-ihor": "1" } }, (r) => { // x-via-ihor: from the internet (no raw full-window stream)
+  const up = http.request({ host: SDR_HOST, port, path: req.url, method: req.method, headers: { "content-type": req.headers["content-type"] ?? "application/json", "x-via-ihor": "1" } }, (r) => { // x-via-ihor: from the internet (no raw full-window stream)
     if (port !== SDR_PORT && r.statusCode !== 200) { r.resume(); return fallback(); }
     res.writeHead(r.statusCode ?? 502, r.headers);
     r.pipe(res);
@@ -157,7 +159,7 @@ async function proxySdr(req: http.IncomingMessage, res: http.ServerResponse, por
 /** What the dongle is doing (raw IQ for Spectrum Lab, APRS or ADS-B decoding), for the home page cards. */
 async function radioStatus() {
   try {
-    const st = await (await fetch(`http://127.0.0.1:${SDR_PORT}/api/state`, { signal: AbortSignal.timeout(1500) })).json();
+    const st = await (await fetch(`http://${SDR_HOST}:${SDR_PORT}/api/state`, { signal: AbortSignal.timeout(1500) })).json();
     return { sdr: true, mode: st.mode, aprs: st.mode === "aprs", adsb: st.mode === "adsb", sdrListeners: st.listeners, watchers: st.watchers };
   } catch { return { sdr: false, mode: "offline", aprs: false, adsb: false, sdrListeners: 0, watchers: { aprs: 0, adsb: 0 } }; }
 }
@@ -439,14 +441,14 @@ export function fromSite(h: http.IncomingHttpHeaders) {
 // The signing secret lives in .env, created on first start, so restarts don't end anyone's session.
 const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   const s = randomBytes(32).toString("hex");
-  appendFileSync(path.join(ROOT, ".env"), `\nSESSION_SECRET=${s}\n`);
+  try { appendFileSync(path.join(ROOT, ".env"), `\nSESSION_SECRET=${s}\n`); } catch {}
   return s;
 })();
 // The Meshtastic node's owner signs in once with this key (made on first start, kept in .env) to send and to see
 // direct messages. The key is exchanged for an HttpOnly cookie, so it never sits in a URL.
 const MESH_KEY = process.env.MESH_OWNER_KEY || (() => {
   const k = randomBytes(18).toString("base64url");
-  appendFileSync(path.join(ROOT, ".env"), `\nMESH_OWNER_KEY=${k}\n`);
+  try { appendFileSync(path.join(ROOT, ".env"), `\nMESH_OWNER_KEY=${k}\n`); } catch {}
   return k;
 })();
 const MESH_COOKIE = createHmac("sha256", SESSION_SECRET).update(`mesh-owner:${MESH_KEY}`).digest("base64url");
@@ -502,7 +504,8 @@ const server = http.createServer(async (req, res) => {
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
         body = Buffer.concat(chunks);
       }
-      let memegenRes = await fetch(`http://127.0.0.1:5055${targetPath}`, {
+      const memegenBase = process.env.MEMEGEN_URL || "http://127.0.0.1:5055";
+      let memegenRes = await fetch(`${memegenBase}${targetPath}`, {
         method: req.method,
         headers: { "content-type": req.headers["content-type"] || "application/json" },
         ...(body ? { body } : {}),
@@ -517,7 +520,7 @@ const server = http.createServer(async (req, res) => {
       if (!memegenRes) return res.writeHead(502, { "content-type": "application/json" }).end(JSON.stringify({ error: "Memegen service offline" }));
       const contentType = memegenRes.headers.get("content-type") || "image/png";
       if (contentType.includes("application/json")) {
-        const text = (await memegenRes.text()).replaceAll("http://localhost:5000", "/api/memegen");
+        const text = (await memegenRes.text()).replace(/https?:\/\/(?:localhost|127\.0\.0\.1|memegen)(?::\d+)?/g, "/api/memegen");
         return res.writeHead(memegenRes.status, {
           "content-type": "application/json; charset=utf-8",
           "cache-control": "public, max-age=3600",
@@ -973,14 +976,18 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-startArchive();
-startMeteorRecorder();
-startEvents();
-startJobs();
-startEmbedding();
-startEvening();
-startMesh();
-// HOST=0.0.0.0 (in .env) also serves the local network directly, e.g. /mcp at http://<this Mac's address>:8080/mcp;
-// the default is this machine only (the Cloudflare tunnel connects here).
-const HOST = process.env.HOST ?? "127.0.0.1";
-server.listen(PORT, HOST, () => console.log(`ihor.sh on http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`));
+if (IN_HOST_SUPERVISOR) {
+  await import("./host.ts");
+} else {
+  startArchive();
+  startMeteorRecorder();
+  startEvents();
+  startJobs();
+  startEmbedding();
+  startEvening();
+  startMesh();
+  // HOST=0.0.0.0 (in .env) also serves the local network directly, e.g. /mcp at http://<this Mac's address>:8080/mcp;
+  // the default is this machine only (the Cloudflare tunnel connects here).
+  const HOST = process.env.HOST ?? "127.0.0.1";
+  server.listen(PORT, HOST, () => console.log(`ihor.sh on http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`));
+}

@@ -239,7 +239,7 @@ function fccFm() {
     return [...best.values()].sort((a, b) => a.mhz - b.mhz);
   });
 }
-const SDR = `http://127.0.0.1:${process.env.SDR_PORT ?? 8073}`;
+const SDR = `http://${process.env.SDR_HOST ?? "127.0.0.1"}:${process.env.SDR_PORT ?? 8073}`;
 /** The latest FM band scan from our dongle; asks for a new one (in the background) when it's over 6 hours old. */
 async function fmScan() {
   const last = await json(`${SDR}/api/scan/fm`, 5_000).catch(() => null);
