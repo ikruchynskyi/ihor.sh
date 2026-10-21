@@ -23,6 +23,27 @@
     .goal { margin: 4px 0; font-size: 1rem; }
     .milestone { font-size: 1rem; border-left: 4px solid var(--accent); padding: 4px 12px; margin: 12px 0 0; }
     .check li { margin: 4px 0; }
+    #map-box { margin: 18px 0 8px; }
+    #map-svg { display: block; width: 100%; overflow: visible; }
+    #map-svg .st { cursor: pointer; outline: none; }
+    #map-svg .st:focus-visible .ring, #map-svg .st:hover .ring { stroke: var(--accent); stroke-width: 3; }
+    #map-svg .st.sel .ring { stroke: var(--accent); stroke-width: 4; }
+    #map-svg text { font: 600 13px ui-sans-serif, system-ui, sans-serif; fill: var(--fg); }
+    #map-svg text.sub { font-weight: 400; font-size: 11.5px; fill: var(--muted); }
+    #map-svg text.num { font-size: 15px; font-weight: 700; }
+    #map-svg .here { animation: here 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes here { 50% { opacity: 0.25; } }
+    @media (prefers-reduced-motion: reduce) { #map-svg .here { animation: none; } }
+    #map-d { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: var(--card); padding: 10px 16px; margin-top: 8px; font-size: 1rem; }
+    #map-d h3 { margin: 0 0 2px; font-size: 1.05rem; }
+    #map-d p { margin: 4px 0; }
+    #map-d ul { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    #map-d li a, #map-d li span { display: inline-block; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.88rem; text-decoration: none; color: var(--fg); }
+    #map-d li a:hover, #map-d li a:focus-visible { border-color: var(--accent); }
+    #map-d li.done a { border-color: var(--green, #2f9e44); }
+    #map-d li.done a::before { content: "✓ "; color: var(--green, #2f9e44); }
+    #map-d li.next a { border-color: var(--accent); font-weight: 600; }
+    #map-d li.soon span { opacity: 0.55; }
   </style>
 </head>
 <body>
@@ -32,6 +53,13 @@
   <p class="lede">One path from zero to <b>junior ML engineer</b>. If you can do school arithmetic, you can start: stage 0 gives you just enough code and math, and every idea after that comes three ways: a picture you drag, the math worked out with real numbers, and Python code you edit and run right in the page, plus a practice notebook for every lesson. Questions along the way ask you to predict before you're told.</p>
   <p class="muted"><a href="./review.html">Review deck</a> · <a href="./glossary.html">Glossary</a> (every term on the path)</p>
   <p>Take the lessons in order: each one only leans on the ones before it, and every lesson ends with a link to the next. Each stage ends with a milestone project. Faded lessons are planned and on their way.</p>
+
+  <section id="map-box" aria-labelledby="map-h">
+    <h2 id="map-h" style="font-size:1.2rem;margin-bottom:4px">The path at a glance</h2>
+    <p class="muted" style="margin:0;font-size:1rem">Each stop is a stage; the ring fills as you finish its lessons. Click a stop to see its lessons and jump straight to one.</p>
+    <svg id="map-svg" role="group" aria-label="Map of the course stages"></svg>
+    <div id="map-d" aria-live="polite"></div>
+  </section>
 
   <h2 class="stage" id="stage-0">Stage 0 · Start here</h2>
   <p class="goal">For anyone. What machine learning is, how these pages work, and the bits of code and math the rest of the path uses.</p>
@@ -277,6 +305,80 @@ if ($("best-estimate")) $("best-estimate").textContent = bests["estimate"] != nu
 if ($("best-loss-doctor")) $("best-loss-doctor").textContent = bests["loss-doctor"] != null ? `Best streak: ${bests["loss-doctor"]}` : "Play →";
 if ($("best-seed-lottery")) $("best-seed-lottery").textContent = bests["seed-lottery"] != null ? `Best streak: ${bests["seed-lottery"]}` : "Play →";
 if ($("best-eval-graders")) $("best-eval-graders").textContent = bests["eval-graders"] != null ? `Best: ${bests["eval-graders"]}/18` : "Play →";
+
+// The path at a glance: the stages above drawn as a line of stops, read from this page's own lists (so it never goes stale).
+{
+  const svg = $("map-svg"), box = $("map-d"), NS = "http://www.w3.org/2000/svg";
+  const text = (n) => [...n.childNodes].filter((c) => c.nodeType === 3).map((c) => c.textContent).join("").trim();
+  const stops = [...document.querySelectorAll("h2.stage")].filter((h) => /^stage-\d$|^zoo$|^electives$/.test(h.id)).map((h) => {
+    let el = h.nextElementSibling, ol = null, goal = "", milestone = "";
+    for (; el && el.tagName !== "H2"; el = el.nextElementSibling) {
+      if (el.matches("p.goal")) goal = el.innerHTML;
+      else if (el.matches("ol.path")) ol = el;
+      else if (el.matches("p.milestone")) milestone = el.innerHTML;
+    }
+    const lessons = [...(ol?.children ?? [])].map((li) => {
+      const a = li.querySelector("a"), href = a?.getAttribute("href")?.replace("./", "") ?? "";
+      return { href, title: li.querySelector("b")?.textContent ?? href, soon: li.classList.contains("soon"), done: !!state.done[href] };
+    });
+    const [head, name] = text(h).includes("·") ? text(h).split(" · ") : ["", text(h)];
+    return { id: h.id, num: head.replace("Stage ", "") || (h.id === "zoo" ? "Z" : "E"), name, goal, milestone, lessons,
+      branch: h.id === "electives" ? "stage-5" : null };
+  });
+  const nextHref = next?.href, hereIdx = stops.findIndex((s) => s.lessons.some((l) => l.href === nextHref));
+  let sel = Math.max(0, hereIdx);
+  const wrap = (t, n) => { const out = [""]; for (const w of t.split(" ")) { const cur = out[out.length - 1]; if (cur && (cur + " " + w).length > n) out.push(w); else out[out.length - 1] = cur ? cur + " " + w : w; } return out.slice(0, 2); };
+  const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
+  const draw = () => {
+    const W = svg.clientWidth || 700, cols = W >= 620 ? 5 : W >= 440 ? 3 : 2, R = 20, rowH = 132, cw = W / cols;
+    const main = stops.filter((s) => !s.branch), pos = new Map();
+    main.forEach((s, i) => { const r = Math.floor(i / cols), c = r % 2 ? cols - 1 - (i % cols) : i % cols; pos.set(s.id, [cw * (c + 0.5), 34 + r * rowH]); });
+    const lastY = Math.max(...[...pos.values()].map(([, y]) => y));
+    stops.filter((s) => s.branch).forEach((s) => pos.set(s.id, [pos.get(s.branch)[0], lastY + rowH])); // a branch: a row of its own, under its parent
+    const H = Math.max(...[...pos.values()].map(([, y]) => y)) + 78;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("height", H); svg.replaceChildren();
+    let d = "";
+    main.forEach((s, i) => { // the line: straight along a row, a half circle to turn into the next one
+      const [x, y] = pos.get(s.id); if (!i) { d = `M${x},${y}`; return; }
+      const [px, py] = pos.get(main[i - 1].id);
+      if (py === y) d += ` L${x},${y}`; else { const side = px > W / 2 ? 1 : -1, ex = px + side * cw * 0.45; d += ` C${ex},${py} ${ex},${y} ${x},${y}`; }
+    });
+    mk("path", { d, fill: "none", stroke: "var(--accent)", "stroke-width": 6, "stroke-linecap": "round", opacity: 0.35 }, svg);
+    for (const s of stops.filter((s) => s.branch)) {
+      const [x, y] = pos.get(s.id), [px, py] = pos.get(s.branch);
+      // from under the parent's label down to the branch's ring
+      mk("path", { d: `M${px},${py + R + 52} L${x},${y - R}`, fill: "none", stroke: "var(--accent)", "stroke-width": 4, "stroke-dasharray": "6 6", opacity: 0.45 }, svg);
+    }
+    stops.forEach((s, i) => {
+      const [x, y] = pos.get(s.id), ready = s.lessons.filter((l) => !l.soon), done = ready.filter((l) => l.done).length;
+      const g = mk("g", { class: "st" + (i === sel ? " sel" : ""), tabindex: 0, role: "button", "aria-pressed": String(i === sel),
+        "aria-label": `${s.num.length === 1 && /\d/.test(s.num) ? "Stage " + s.num + ": " : ""}${s.name}, ${done} of ${ready.length} lessons done` }, svg);
+      if (i === hereIdx) mk("circle", { cx: x, cy: y, r: R + 7, fill: "none", stroke: "var(--accent)", "stroke-width": 2, class: "here" }, g);
+      mk("circle", { cx: x, cy: y, r: R, fill: "var(--card)", stroke: "var(--line)", "stroke-width": 2, class: "ring" }, g);
+      if (done) { // progress arc, clockwise from the top
+        const f = done / ready.length, a = f * 2 * Math.PI - 1e-6, ex = x + R * Math.sin(a), ey = y - R * Math.cos(a);
+        mk("path", { d: f >= 1 ? `M${x},${y - R} A${R},${R} 0 1 1 ${x - 0.01},${y - R}` : `M${x},${y - R} A${R},${R} 0 ${f > 0.5 ? 1 : 0} 1 ${ex},${ey}`,
+          fill: "none", stroke: "var(--green, #2f9e44)", "stroke-width": 4 }, g);
+      }
+      mk("text", { x, y: y + 5, "text-anchor": "middle", class: "num" }, g).textContent = s.num;
+      wrap(s.name, Math.max(10, Math.floor(cw / 8))).forEach((line, k) => { mk("text", { x, y: y + R + 18 + k * 16, "text-anchor": "middle" }, g).textContent = line; });
+      mk("text", { x, y: y + R + 18 + Math.min(2, wrap(s.name, Math.max(10, Math.floor(cw / 8))).length) * 16, "text-anchor": "middle", class: "sub" }, g).textContent = `${done} of ${ready.length} done`;
+      const pick = () => { sel = i; draw(); show(); svg.querySelectorAll(".st")[i].focus(); };
+      g.addEventListener("click", pick);
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+    });
+  };
+  const show = () => {
+    const s = stops[sel];
+    box.innerHTML = `<h3>${/\d/.test(s.num) ? `Stage ${s.num} · ` : ""}${s.name}</h3><p>${s.goal}</p>
+      <ul>${s.lessons.map((l) => l.soon ? `<li class="soon"><span title="planned">${l.title}</span></li>`
+        : `<li class="${l.done ? "done" : l.href === nextHref ? "next" : ""}"><a href="./${l.href}">${l.title}</a></li>`).join("")}</ul>
+      ${s.milestone ? `<p class="muted" style="font-size:.95rem">${s.milestone}</p>` : ""}<p style="font-size:.9rem"><a href="#${s.id}">See this stage's lessons in full ↓</a></p>`;
+  };
+  draw(); show();
+  let lastW = 0;
+  new ResizeObserver(() => { if (svg.clientWidth !== lastW) { lastW = svg.clientWidth; draw(); } }).observe(svg);
+}
 </script>
 </body>
 </html>
