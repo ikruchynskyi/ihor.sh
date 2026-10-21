@@ -65,7 +65,7 @@
     <p>The numbers 2, 4, 4, 4, 5, 5, 7, 9 have mean 5. What's their standard deviation (dividing by \(n\))?</p>
     <div class="why">Distances from 5: −3, −1, −1, −1, 0, 0, 2, 4. Squared: 9, 1, 1, 1, 0, 0, 4, 16, which add up to 32. Divided by 8: variance 4. Square root: \(\sigma = 2\).</div>
   </div>
-  <p><b>Standardizing</b> turns any value into "how many standard deviations from the mean": the <b>z-score</b> \(z = (x - \bar{x}) / \sigma\). After it, every feature has mean 0 and spread 1. That's exactly the <b>feature scaling</b> models need: Calculus 3 showed gradient descent zigzagging in a stretched valley, and putting all features on the same scale is what un-stretches it.</p>
+  <p><b>Standardizing</b> turns any value into "how many standard deviations from the mean": the <b>z-score</b> \(z = (x - \bar{x}) / \sigma\). After it, every feature has mean 0 and spread 1. That's exactly the <b>feature scaling</b> models need: Calculus 3 will show gradient descent zigzagging in a stretched valley, and putting all features on the same scale is what un-stretches it.</p>
   <p class="gist">The standard deviation is the typical distance from the mean, and a z-score measures any value in those units, which puts every feature on one scale.</p>
   <div class="q" data-num="1.5" data-tol="0.001">
     <p>Test scores have mean 70 and standard deviation 10. What's the z-score of a score of 85?</p>

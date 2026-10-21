@@ -53,7 +53,7 @@ print("An H100 GPU's peak in bfloat16: about 990,000 GFLOP/s (dense)")
       <li>A \(4096 \times 4096\) product in bfloat16 (2 bytes a number): \(2 \cdot 4096^3 \approx 1.4 \times 10^{11}\) FLOPs, while reading two matrices and writing one moves \(3 \cdot 4096^2 \cdot 2 \approx 10^8\) bytes. Intensity ≈ 1,365.</li>
       <li>A ReLU on the same numbers: one comparison per number, 2 bytes read and 2 written. Intensity ≈ 0.25.</li>
       <li>The A100's balance point is \(312 \times 10^{12} / 2 \times 10^{12} \approx 156\) FLOPs per byte. The matmul is far above it (compute-bound: the cores are the limit); the ReLU is 600 times below it (memory-bound: the cores wait).</li>
-      <li>That's why libraries <b>fuse</b> element-wise steps into the matmul that precedes them (one trip to memory instead of three), and why FlashAttention, which never writes chapter 7's \(n \times n\) score table to memory, is faster while doing the same arithmetic.</li>
+      <li>That's why libraries <b>fuse</b> element-wise steps into the matmul that precedes them (one trip to memory instead of three), and why FlashAttention is faster while doing the same arithmetic: attention (chapter 7) compares every word with every other in an \(n \times n\) table of scores, and FlashAttention never writes that table to memory.</li>
     </ol>
   </details>
   <p class="gist">A GPU computes far faster than it fetches, so work that reuses each number many times (matrix products) runs at full speed and element-wise work waits on memory.</p>

@@ -64,7 +64,7 @@
     <tr><th></th><th>Batch norm</th><th>Layer norm</th></tr>
     <tr><td>\(\mu, \sigma\) over</td><td>the batch, per feature</td><td>the features, per example</td></tr>
     <tr><td>Training vs use</td><td>Different: training uses the batch's numbers, use (eval) uses running averages saved during training</td><td>The same: every example normalizes itself</td></tr>
-    <tr><td>Where</td><td>CNNs (chapter 6's kind)</td><td>Transformers (chapter 7), RNNs, small batches</td></tr>
+    <tr><td>Where</td><td>image networks (CNNs, chapter 6)</td><td>language networks (transformers, chapter 7; RNNs), small batches</td></tr>
   </table>
   <div class="code" data-title="Build it: batch norm from scratch, in training and in use"><textarea>
 import numpy as np

@@ -152,7 +152,7 @@ print("NumPy's own (LAPACK, the same idea):", np.linalg.solve([[1, 2], [3, 1]], 
     <p>For a 2×2 matrix there's a formula: swap the diagonal, negate the other two, divide by the determinant:</p>
     <p class="formula">\[ \begin{pmatrix} a & b \\ c & d \end{pmatrix}^{-1} = \frac{1}{ad - bc} \begin{pmatrix} d & -b \\ -c & a \end{pmatrix} \]</p>
     <p>Check it on \(A = \begin{pmatrix} 2 & 1 \\ 1 & 1 \end{pmatrix}\): \(\det A = 2 - 1 = 1\), so \(A^{-1} = \begin{pmatrix} 1 & -1 \\ -1 & 2 \end{pmatrix}\), and multiplying, row 1 times column 1 is \(1 \cdot 2 + (-1) \cdot 1 = 1\), row 1 times column 2 is \(1 \cdot 1 + (-1) \cdot 1 = 0\): the identity, as promised.</p>
-    <p>Dividing by the determinant is the whole story. When \(\det A = 0\), the plane was squashed flat, many points landed on the same spot, and no move can tell them apart again: <b>no inverse</b>. When \(\det A\) is tiny, the inverse exists but is huge, so a tiny change in \(b\) (a rounding error, a noisy measurement) makes a huge change in \(x\). That's an <b>ill-conditioned</b> system, the same stretched valley that made gradient descent zigzag in Calculus 3.</p>
+    <p>Dividing by the determinant is the whole story. When \(\det A = 0\), the plane was squashed flat, many points landed on the same spot, and no move can tell them apart again: <b>no inverse</b>. When \(\det A\) is tiny, the inverse exists but is huge, so a tiny change in \(b\) (a rounding error, a noisy measurement) makes a huge change in \(x\). That's an <b>ill-conditioned</b> system, the same stretched valley that will make gradient descent zigzag in Calculus 3.</p>
     <p>Determinants multiply, because areas do: doing \(B\) then \(A\) scales area by \(\det B\), then by \(\det A\), so \(\det(AB) = \det A \cdot \det B\). Undoing must scale it back, so \(\det(A^{-1}) = 1 / \det A\).</p>
   </details>
   <div class="q" data-num="2">
@@ -171,7 +171,7 @@ print("NumPy's own (LAPACK, the same idea):", np.linalg.solve([[1, 2], [3, 1]], 
   <p>A practical rule: in code, almost never compute an inverse just to solve \(Ax = b\). Elimination is faster and loses less to rounding. In NumPy that's <code>np.linalg.solve(A, b)</code>, not <code>np.linalg.inv(A) @ b</code>.</p>
 
   <h2>6. Linear regression with no training loop</h2>
-  <p>Start 2's six taxi rides give six equations for two knobs, \(a \cdot \text{km} + b = \text{minutes}\), one per ride. Six lines through a two-knob plane don't meet in one point: there's <b>no exact answer</b>. Least squares asks for the next best thing, the \((a, b)\) with the smallest squared error. Its gradient (Calculus 2) is zero exactly where</p>
+  <p>Start 2's six taxi rides give six equations for two knobs, \(a \cdot \text{km} + b = \text{minutes}\), one per ride. Six lines through a two-knob plane don't meet in one point: there's <b>no exact answer</b>. Least squares asks for the next best thing, the \((a, b)\) with the smallest squared error. That best line is the one whose leftover errors are perpendicular to the table's columns (chapter 1's dot product of zero; the box below shows why), which works out to</p>
   <p class="formula">\[ X^\top X \, w = X^\top y \]</p>
   <p>with \(X\) the rides' table (a column of km and a column of 1s), \(y\) the minutes, \(w = (a, b)\). These are the <b>normal equations</b>: always a square system, 2 equations for 2 knobs here, which our <code>solve</code> handles in one go.</p>
   <div class="code" data-uses="solve" data-title="Run it: least squares, solved exactly"><textarea>
@@ -199,7 +199,7 @@ print("with a duplicated column:", solve(X2.T @ X2, X2.T @ y), " rank of X2:", n
       <li>Whatever the knobs, \(Xw\) is a mix of \(X\)'s columns. With 2 columns and 6 rides, the reachable predictions form a flat plane inside 6-dimensional space, and \(y\) usually sits off it.</li>
       <li>The closest point of a plane to an outside point is straight below it: the error \(y - Xw\) is perpendicular to the plane (a plumb line hangs straight down to the floor: the shortest way down is the perpendicular one).</li>
       <li>Perpendicular to the plane means perpendicular to each column: column · error = 0 for both. Stacked up, that's \(X^\top (y - Xw) = 0\).</li>
-      <li>Multiply out: \(X^\top X\, w = X^\top y\). The same equations Calculus 2 got by setting the gradient to zero, now as a picture.</li>
+      <li>Multiply out: \(X^\top X\, w = X^\top y\). Calculus 2 reaches the same equations a second way, by setting the gradient to zero.</li>
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks: when least squares misleads</summary>
