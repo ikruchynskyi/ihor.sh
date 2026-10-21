@@ -20,26 +20,6 @@
     .table { overflow-x: auto; }
     nav.toc { font: 0.9rem ui-sans-serif, system-ui, sans-serif; display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 18px 0 8px; }
     .cta { display: inline-block; margin: 6px 0 18px; padding: 10px 16px; border-radius: 10px; border: 2px solid var(--accent); font: 600 0.95rem ui-sans-serif, system-ui, sans-serif; text-decoration: none; }
-    .ov { margin: 28px 0 8px; }
-    .ov-lane { font: 600 0.72rem ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
-    .ov-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
-    .ov-n { flex: 1 1 8.5em; text-align: left; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--fg); font: 0.88rem ui-sans-serif, system-ui, sans-serif; cursor: pointer; position: relative; }
-    .ov-n small { display: block; color: var(--muted); font-size: 0.74rem; margin-top: 2px; font-variant-numeric: tabular-nums; }
-    .ov-n:hover, .ov-n:focus-visible { border-color: var(--accent); }
-    .ov-n[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
-    .ov-n.on { border-color: var(--accent); }
-    .ov-n + .ov-n::before { content: "→"; position: absolute; left: -11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.8rem; }
-    .ov-n.br { border-style: dashed; }
-    .ov-n.br + .ov-n.br::before { content: none; }
-    .ov-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 8px; font: 0.85rem ui-sans-serif, system-ui, sans-serif; }
-    .ov-bar button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--fg); cursor: pointer; }
-    .ov-bar button:hover:not(:disabled), .ov-bar button:focus-visible { border-color: var(--accent); }
-    .ov-bar button:disabled { opacity: 0.4; cursor: default; }
-    #ov-d { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; background: var(--card); padding: 12px 16px; min-height: 9em; }
-    #ov-d h3 { margin: 0 0 4px; font: 600 1.05rem ui-sans-serif, system-ui, sans-serif; }
-    #ov-d p { margin: 6px 0; font-size: 0.95rem; }
-    #ov-d .here { color: var(--muted); font-size: 0.9rem; }
-    #ov-d .go a { display: inline-block; margin: 2px 10px 0 0; }
   </style>
 </head>
 <body>
@@ -66,14 +46,6 @@
     <div><b>Antenna</b><span>the radio waves</span></div>
   </div>
   <p>Or, through the network: your page → HTTP → <code>server.ts</code> on a computer with the dongle → the same driver (running in Node) → the dongle. Your page sees the same bytes either way.</p>
-
-  <section class="ov" aria-labelledby="ov-h">
-    <h3 id="ov-h">The same trip, block by block</h3>
-    <p>Here is the trip of one station, 98.7 FM, from the air to your speakers, through the layers above. Click any block (or press <b>Walk me through</b>) to see what happens there, the course chapter that explains it, and the section of this guide with its code. Dashed blocks are other things the same machine can do.</p>
-    <div id="ov-map"></div>
-    <div class="ov-bar"><button id="ov-prev" disabled>← Back</button><button id="ov-next">Walk me through →</button><span class="note" id="ov-step"></span></div>
-    <div id="ov-d" aria-live="polite"></div>
-  </section>
 
   <h2 id="setup">Setup: what each visitor needs</h2>
   <div class="cols">
@@ -260,76 +232,5 @@ for (;;) {
   <nav class="next"><a href="./">← Spectrum Lab</a><a href="./course/01-spinning-arrows.html">The course: Radio from scratch →</a></nav>
 </main>
 <script type="module" src="/src/build.ts"></script>
-<script type="module">
-  // The big picture: every block of the receiver, what the 98.7 FM signal looks like there, and where the course teaches it.
-  const C = (n, f, t) => `<a href="./course/${f}">Chapter ${n}${t ? ": " + t : ""}</a>`;
-  const B = (a, t) => `<a href="#${a}">This guide: ${t}</a>`;
-  const OV = [
-    ["In the air and the dongle (hardware)", [
-      ["antenna + first amplifier", "radio waves", "A piece of metal in which the passing wave pushes electrons back and forth, making a voltage a millionth of a volt or less. A quiet amplifier right at the antenna decides how much noise the whole receiver adds.",
-        "98.7 MHz: an arrow turning 98.7 million times a second, buried among hundreds of other stations and the antenna's own noise.", [C(12, "12-inside-the-dongle.html#before", "the first amplifier")]],
-      ["tuner: mix to the IF", "98.7 MHz → a few MHz", "The tuner chip mixes the band down to a fixed intermediate frequency (3.57 MHz), where a sharp filter is easy. Its local oscillator is made from one 28.8 MHz crystal by a PLL. The mirror-image station (the image) must be filtered out first.",
-        "Slowed from 98 MHz to a few MHz, slow enough for an 8-bit converter to photograph.", [C(12, "12-inside-the-dongle.html#path", "the signal's journey"), C(12, "12-inside-the-dongle.html#pll", "the PLL"), B("tuning", "tuning and sample rate")]],
-      ["ADC: take snapshots", "28.8 MS/s, 8 bits", "The analog-to-digital converter photographs the wave 28.8 million times a second and writes each photo as a whole number from 0 to 255. Too few photos per second makes fast arrows pretend to be slow ones (aliasing); too coarse a ruler loses weak stations (the gain knob).",
-        "The first numbers: one byte per photo. Your station is one arrow among many in them.", [C(3, "03-taking-snapshots.html#fold", "aliasing"), C(3, "03-taking-snapshots.html#ruler", "the 8-bit ruler"), B("tuning", "tuning and sample rate")]],
-      ["digital mix, filter, thin out", "28.8 → 2.4 MS/s", "Inside the RTL2832U chip, the same three tools you build in chapters 5–7: a digital mixer (which also makes the second shadow, so the numbers become I/Q pairs), a filter, and keeping one sample in twelve.",
-        "A 2.4 MHz-wide slice of the band; 98.7 sits 250 kHz above the center (the dongle tunes a little low to dodge its own 0 Hz spike).", [C(7, "07-throwing-away-snapshots.html#fold", "decimation"), B("registers", "the RTL2832U registers")]],
-    ]],
-    ["Getting the numbers to your code", [
-      ["USB", "4.8 MB/s", "The computer asks, the dongle answers: small control transfers set the chips' registers, and a bulk stream carries the samples. Samples are lost only when nobody is asking.",
-        "The same bytes, now in your computer: I, Q, I, Q, … 2.4 million pairs a second.", [C(13, "13-usb-from-zero.html#tree", "USB from zero"), C(14, "14-writing-the-driver.html#trace", "the driver"), B("usb", "USB in one minute"), B("stream", "streaming without losing samples")]],
-      ["network (optional)", "a slice per listener", "On this site one dongle serves many listeners over the internet. Pieces arrive in any size (keep I and Q paired or ghosts appear), and each listener gets only their slice.",
-        "Either way the receiver sees the same stream of numbers.", [C(15, "15-the-network-source.html#pairs", "the network source"), B("network", "our server's API")]],
-      ["bytes → arrows", "2.4 MS/s", "Each byte becomes a number between −1 and +1; each I/Q pair is one arrow.",
-        "From here on it is all arithmetic on arrows.", [C(2, "02-arrows-as-numbers.html", "arrows as numbers"), B("data", "the data: what arrives")]],
-    ]],
-    ["In software: your receiver, step by step", [
-      ["mixer", "2.4 MS/s", "Multiply every arrow by a spinning one (the NCO) so the station you want slides to 0 Hz. One multiplication slides the whole band.",
-        "98.7 FM now sits at 0 Hz, but its neighbors are still all around it.", [C(5, "05-moving-a-station.html#shift", "moving a station"), B("code", "read the real code")]],
-      ["filter + decimate", "2.4 → 0.3 MS/s", "A windowed-sinc filter keeps only the middle of the band, then we keep one sample in eight. Filter first, or the removed stations fold onto yours.",
-        "98.7 FM alone, in 300 thousand samples a second instead of 2.4 million.", [C(6, "06-averaging-is-filtering.html#weights", "filters"), C(7, "07-throwing-away-snapshots.html#skip", "only compute what you keep")]],
-      ["FM demodulator", "300 kS/s", "Multiply each arrow by the mirror of the one before and take the angle: how far it turned. That turn per sample is the sound. Lengths never enter, so fading doesn't matter.",
-        "A wave of numbers: the music, plus a 19 kHz stereo pilot and slow data above it.", [C(9, "09-fm-listening-to-the-speed.html#demod", "the demodulator"), B("code", "read the real code")]],
-      ["de-emphasis + audio filter", "300 → 50 kS/s", "Turn the treble down by exactly what the station boosted (taking the hiss with it), cut off the pilot, and drop to a speaker-friendly rate.",
-        "Balanced mono audio.", [C(9, "09-fm-listening-to-the-speed.html#deemph", "de-emphasis")]],
-      ["AGC + squelch + resample", "50 kS/s", "Even out the volume, mute the empty channel, and convert to the sound card's rate while the two clocks slowly drift apart.",
-        "Steady audio that keeps flowing chunk after chunk (every block remembers the end of the last chunk).", [C(11, "11-numbers-to-speakers.html#agc", "AGC"), C(8, "08-chunks-of-a-live-stream.html#memory", "chunks")]],
-      ["speakers", "48 kS/s", "The numbers say where the speaker cone should be, 48 thousand times a second.",
-        "Sound.", [C(11, "11-numbers-to-speakers.html#clocks", "two clocks")]],
-    ]],
-    ["Beside the main path (same blocks, other uses)", [
-      ["spectrum + waterfall", "from the 2.4 MS/s stream", "The winding machine (FFT) shows how strong every frequency is. Stacked over time it is the waterfall you click to tune.",
-        "98.7 FM is a hump standing far above the noise floor.", [C(4, "04-winding-machine.html#spectrum", "the winding machine"), C(18, "18-reading-the-band.html", "reading the band"), B("waterfall", "how the waterfall is drawn")], true],
-      ["AM, SSB, Morse", "instead of the FM demodulator", "Sound in the arrow's length, in one sideband, or just switched on and off.",
-        "Aircraft, ham voice and CW.", [C(10, "10-am-ssb-and-morse.html", "AM, SSB and Morse")], true],
-      ["cleaner sound", "after the demodulator", "Voice filter, noise reduction, AGC hang and a soft limiter.", "The same audio, easier to listen to for an hour.", [C(19, "19-cleaner-sound.html", "cleaner sound")], true],
-      ["pictures: SSTV, TV, satellites", "instead of the speaker", "Pitch becomes brightness (SSTV), a spot sweeping lines (analog TV), or QPSK symbols with error correction (weather satellites).",
-        "Not sound, but a picture.", [C(17, "17-pictures-over-radio.html", "SSTV"), C(20, "20-analog-tv.html", "analog TV"), C(21, "21-weather-satellites.html", "satellites"), C(22, "22-surviving-errors.html", "error correction")], true],
-    ]],
-  ];
-  {
-    const flat = [], map = document.getElementById("ov-map"), d = document.getElementById("ov-d");
-    map.innerHTML = OV.map(([lane, ns]) => `<p class="ov-lane">${lane}</p><div class="ov-row">${ns.map((n) => {
-      const i = flat.push(n) - 1;
-      return `<button class="ov-n${n[5] ? " br" : ""}" data-i="${i}" aria-pressed="false">${n[0]}<small>${n[1]}</small></button>`;
-    }).join("")}</div>`).join("");
-    const btns = [...map.querySelectorAll(".ov-n")], mainN = flat.filter((n) => !n[5]).length;
-    let cur = -1;
-    const show = (i) => {
-      cur = i;
-      btns.forEach((b, k) => { b.setAttribute("aria-pressed", String(k === i)); b.classList.toggle("on", k <= i && k < mainN); });
-      const [name, rate, what, here, links] = flat[i];
-      d.innerHTML = `<h3>${name}</h3><p>${what}</p><p class="here"><b>The signal here:</b> ${here}</p><p class="go">Learn it: ${links.join(" ")}</p>`;
-      document.getElementById("ov-prev").disabled = i <= 0;
-      document.getElementById("ov-next").textContent = i >= mainN - 1 ? "Done" : "Next →";
-      document.getElementById("ov-next").disabled = i >= mainN - 1;
-      document.getElementById("ov-step").textContent = i < mainN ? `step ${i + 1} of ${mainN}` : "";
-    };
-    btns.forEach((b, k) => b.addEventListener("click", () => show(k)));
-    document.getElementById("ov-prev").addEventListener("click", () => show(Math.max(0, cur - 1)));
-    document.getElementById("ov-next").addEventListener("click", () => show(Math.min(mainN - 1, cur + 1)));
-    d.innerHTML = "<p class='here'>Pick a block above, or press Walk me through.</p>";
-  }
-</script>
 </body>
 </html>
