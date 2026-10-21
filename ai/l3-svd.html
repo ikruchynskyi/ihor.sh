@@ -21,7 +21,7 @@
 </head>
 <body>
 <main data-lang="python">
-  <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 3 · Stage 1: the math of learning</p>
+  <p class="eyebrow"><a href="./">AI from scratch</a> · Linear algebra 3 · Stage 3: classic ML and judging models</p>
   <h1>Singular value decomposition: rotate, stretch, rotate</h1>
   <p class="lede">Linear algebra 2 found the arrows a matrix only stretches, but only some matrices have enough of them, and only symmetric ones keep them at right angles. The <b>singular value decomposition</b> (SVD) works for every matrix, any shape: each one is a rotation, then a stretch along the axes, then another rotation. Ordering the stretches from biggest to smallest turns out to be one of the most useful ideas in machine learning: compression, PCA, recommendations, solving equations that have no exact answer, and fine-tuning big models cheaply all come from it.</p>
 
@@ -78,7 +78,7 @@ print("U and V are rotations (or reflections):", np.allclose(U.T @ U, np.eye(2))
   <p class="gist">Eigenvalues tell you what happens if you apply a matrix over and over; singular values tell you the most and least it can stretch anything in one go.</p>
   <details class="deeper"><summary>Where it breaks: eigenvalues that hide a stretch</summary>
     <p>The shear \(\begin{bmatrix} 1 & 1 \\ 0 & 1 \end{bmatrix}\) has eigenvalues 1 and 1: judged by them, nothing grows. Its singular values are 1.618 and 0.618: some arrows grow by 62% in one step. Both are right about different questions. Applied 100 times, the shear moves a point by about 100 (it grows linearly, not exponentially), while a matrix with an eigenvalue of 1.1 would blow it up by \(1.1^{100} \approx 13{,}800\).</p>
-    <p>In a neural network a gradient passes through one weight matrix per layer, and each is different. What sets how much it can grow or shrink at each step is that layer's singular values, which is why stage 2's "making nets train" talks about keeping them near 1 (careful initialization, normalization).</p>
+    <p>In a neural network a gradient passes through one weight matrix per layer, and each is different. What sets how much it can grow or shrink at each step is that layer's singular values, which is why stage 4's "making nets train" talks about keeping them near 1 (careful initialization, normalization).</p>
   </details>
   <div class="q" data-num="1" data-tol="0.5">
     <p>Estimate: float32 numbers carry about 7 significant digits. You solve a system whose matrix has condition number \(10^6\). Roughly how many digits of the answer can you trust?</p>
