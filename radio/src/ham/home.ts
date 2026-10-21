@@ -67,7 +67,7 @@ function render() {
 }
 
 async function choose(next: PoolId) {
-  id = next; setLastPool(id);
+  id = next; setLastPool(id); renderLessons(id);
   document.querySelectorAll<HTMLButtonElement>(".tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === id)));
   pool = await loadPool(id); mem = loadMemory(id); render();
 }
@@ -75,7 +75,13 @@ async function choose(next: PoolId) {
 el("tabs").innerHTML = POOL_IDS.map((p) => `<button type="button" data-p="${p}" aria-pressed="false">${NAMES[p][0]}<small>${NAMES[p][1]}</small></button>`).join("");
 el("tabs").addEventListener("click", (e) => { const b = (e.target as HTMLElement).closest("button"); if (b) choose(b.dataset.p as PoolId); });
 
-el("lessons").innerHTML = LESSONS.map((l) => `<li>${l.ready ? `<a href="./lessons/${l.slug}.html"><b>${esc(l.title)}</b></a>` : `<b>${esc(l.title)}</b> <span class="note">(coming)</span>`}: ${esc(l.blurb)}</li>`).join("");
+// Each lesson says which exams it covers; lessons with nothing on the exam picked above are faded.
+const renderLessons = (p: PoolId) => { el("lessons").innerHTML = LESSONS.map((l) => {
+  const on = POOL_IDS.filter((q) => l.groups.some((g) => g.startsWith(q))), off = !on.includes(p);
+  const exams = `<span class="note">${on.map((q) => NAMES[q][0]).join(" · ")}${off ? ` (not on the ${NAMES[p][0]} exam)` : ""}</span>`;
+  const course = l.course ? ` <span class="note">Builds on <a href="../course/">Radio from scratch</a> ${l.course}.</span>` : "";
+  return `<li${off ? ' class="off"' : ""}>${l.ready ? `<a href="./lessons/${l.slug}.html"><b>${esc(l.title)}</b></a>` : `<b>${esc(l.title)}</b> <span class="note">(coming)</span>`}: ${esc(l.blurb)} ${exams}${course}</li>`;
+}).join(""); };
 
 // Reset asks twice in-page instead of with a browser dialog.
 const reset = el("reset") as HTMLButtonElement;

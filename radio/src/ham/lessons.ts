@@ -1,7 +1,7 @@
 // The visual lessons behind the license track, and which exam groups each one teaches.
 // `ready: false` lessons are planned; the practice pages only link to ready ones.
 
-export interface Lesson { slug: string; title: string; blurb: string; groups: string[]; ready: boolean }
+export interface Lesson { slug: string; title: string; blurb: string; groups: string[]; ready: boolean; course?: string }
 
 export const LESSONS: Lesson[] = [
   { slug: "01-volts-amps-ohms", title: "Volts, amps and ohms", blurb: "Pressure, flow and resistance; Ohm's law, power, series and parallel, meters.", groups: ["T5A", "T5C", "T5D", "T7D", "G5B", "G5C"], ready: true },
@@ -13,8 +13,8 @@ export const LESSONS: Lesson[] = [
   { slug: "07-antennas", title: "Antennas", blurb: "Current on a dipole, lengths, verticals, gain and patterns, Yagis, loops and direction finding.", groups: ["T9A", "G9B", "G9C", "G9D", "E9A", "E9B", "E9C", "E9D", "E9H"], ready: true },
   { slug: "08-feed-lines-and-swr", title: "Feed lines and SWR", blurb: "Waves that bounce back, standing waves, SWR, loss, tuners, the Smith chart.", groups: ["T7C", "T9B", "G9A", "E9E", "E9F", "E9G"], ready: true },
   { slug: "09-propagation", title: "Propagation", blurb: "Line of sight, the ionosphere by day and night, skip, MUF, the sun, sporadic E, meteors.", groups: ["T3C", "G3A", "G3B", "G3C", "E3A", "E3B", "E3C"], ready: true },
-  { slug: "10-signals-and-modes", title: "Signals and modes", blurb: "Bandwidths, deviation, sidebands, digital modes and constellations, TV and SSTV.", groups: ["T8A", "T8D", "G8A", "G8B", "G8C", "E8B", "E8C", "E8D", "E2B"], ready: true },
-  { slug: "11-receivers-and-transmitters", title: "Receivers and transmitters", blurb: "Superhets and SDRs, overload and intermod, amplifier classes, oscillators and PLLs.", groups: ["T7A", "T7B", "T4B", "G7B", "G7C", "G4D", "E4C", "E4D", "E7B", "E7E", "E7F", "E7H"], ready: true },
+  { slug: "10-signals-and-modes", title: "Signals and modes", blurb: "Bandwidths, deviation, sidebands, digital modes and constellations, TV and SSTV.", groups: ["T8A", "T8D", "G8A", "G8B", "G8C", "E8B", "E8C", "E8D", "E2B"], ready: true, course: "ch. 4, 5, 9 and 10" },
+  { slug: "11-receivers-and-transmitters", title: "Receivers and transmitters", blurb: "Superhets and SDRs, overload and intermod, amplifier classes, oscillators and PLLs.", groups: ["T7A", "T7B", "T4B", "G7B", "G7C", "G4D", "E4C", "E4D", "E7B", "E7E", "E7F", "E7H"], ready: true, course: "ch. 5–7 and 12" },
   { slug: "12-rules-and-bands", title: "Rules and bands", blurb: "Who may transmit where: an interactive band chart, power limits, identification, licensing.", groups: ["T1A", "T1B", "T1C", "T1D", "T1E", "T1F", "G1A", "G1B", "G1C", "G1D", "G1E", "E1A", "E1B", "E1C", "E1D", "E1E", "E1F"], ready: true },
   { slug: "13-operating", title: "On the air", blurb: "Phonetics and Q codes, repeaters and tones, nets and emergencies, satellites, contests, DX.", groups: ["T2A", "T2B", "T2C", "T8B", "T8C", "G2A", "G2B", "G2C", "G2D", "G2E", "E2A", "E2C", "E2D", "E2E"], ready: true },
   { slug: "14-safety", title: "Safety", blurb: "Shock and lightning, towers, and RF exposure: how close is too close, by frequency.", groups: ["T0A", "T0B", "T0C", "G0A", "G0B", "E0A"], ready: true },
