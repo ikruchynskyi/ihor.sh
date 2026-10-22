@@ -186,3 +186,29 @@ Each "Needs" was looked up in the chapter named.
   check` after deploy, each page opened at 390 and 1280 px with no console errors, and a cold read as a learner who
   finished ch16.
 - Order of work: one chapter per commit (17 with the shared module first), each pushed and deployed.
+
+### Status (2026-10-21)
+- Built and deployed: chapters 17–22 (commits 212584a, 090c2b6, 8d6edbb and the deploy commit), the shared
+  `learn/build.js`, `learn/build.test.mjs`, and the lab parts (LDR, LM393, LM386, MCP1700, speaker, supply/net labels,
+  modules, the 4017's real pins and weak outputs, current-limited regulators, AO3400A).
+- Left to do, in order:
+  1. **Chapter 23, design your own** (`23-design-your-own.html`). Data is written and its breadboard checked:
+     `DESIGN23` (the whole thermostat fan: 12 V adapter, buck module to 5 V, 470 µF, ESP32, BME280, AO3400A low-side
+     switch with 100 Ω gate resistor, 100 kΩ pull-down and 1N5819 flyback), `P23` (the fan driver alone, simulated with
+     a 1 kHz 3.3 V PWM standing in for GPIO25, with a breadboard), and `REVIEWS` (six schematics, one planted mistake
+     each: LED without resistor, MCP1700 on 9 V, LM393 without pull-up, floating 4017 RESET, motor without flyback,
+     two BME280s at 0x76). Still to do:
+     - `build.js`: honor `noSim` (DESIGN23 and the I²C review have modules only; don't simulate or show voltages),
+       and a review mode for `schematic()` (no part cards; a pick is checked against `bug` and answered with `says`).
+     - The page, following the plan above: the review game first, then the spec and each decision as a predict-first
+       question with the answer folded away (goal, blocks and why a microcontroller, supply: 7805 at 0.25 A from 12 V
+       is ≈ 1.75 W → buck; sensor; fan switch: IRLZ44N only specified from 4 V, AO3400A < 48 mΩ at 2.5 V; gate
+       pull-down for boot; gate resistor 33 mA vs the pin's 40 mA; flyback; GPIO25 for 25 kHz PWM; common ground),
+       the full schematic, the live fan driver and its breadboard, the learner's own checklist, then KiCad (ch15) and
+       where to go next.
+     - `build.test.mjs`: P23's numbers (fan current at 50% PWM, drain clamped near 12 V + the Schottky's drop with
+       D1, the spike without it) and that each review's `bug` names a real part; check the motor review's spike.
+     - Register: ch22's "Coming next" line becomes a link, `learn/index.html`, the home page (6-23), `scripts/check.ts`.
+  2. A cold-learner read of chapters 17–23 end to end (ideally the simulated-student review), then fix what it finds.
+  3. Optional, from the reads so far: schematic text is small on wide drawings at 1280 px (the drawings scale to
+     fit); a zoom or a taller layout for ch19 and ch22 would help.

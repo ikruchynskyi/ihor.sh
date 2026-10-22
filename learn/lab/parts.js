@@ -88,9 +88,10 @@ export const PARTS = {
   probe: { name: "Scope probe", cat: "Meters", pins: [[0, 0]], props: { ch: 1 }, fields: [["ch", "scope channel", "select", [1, 2, 3, 4]]],
     desc: "Touch it to a point: the oscilloscope below draws that point's voltage (against ground) over time, with Vpp, RMS, average and frequency.", stamp() {} },
   nmos: { name: "N-MOSFET", cat: "Semiconductors", pins: [[0, 0], [2, -2], [2, 2]], pinNames: ["gate", "drain", "source"], props: { vth: 2, k: 10, model: "IRLZ44N (logic level)" },
-    fields: [["model", "type", "select", ["IRLZ44N (logic level)", "IRF540N (standard)", "2N7000 (small signal)"]]],
+    fields: [["model", "type", "select", ["IRLZ44N (logic level)", "AO3400A (2.5 V gate)", "IRF540N (standard)", "2N7000 (small signal)"]]],
     desc: "A switch worked by voltage: gate above the source by more than the threshold, and current flows drain → source. Logic-level ones switch fully on from 3.3–5 V.", chapter: "04-diodes-and-transistors.html",
-    stamp(p, c) { const m = { "IRLZ44N (logic level)": { vth: 1.5, k: 30 }, "IRF540N (standard)": { vth: 3.5, k: 15 }, "2N7000 (small signal)": { vth: 2.1, k: 0.3 } }[p.model] ?? { vth: p.vth, k: p.k };
+    stamp(p, c) { // AO3400A: 1.05 V typical threshold; k sets "fully on at 2.5 V" near its datasheet's 48 mΩ maximum: 1 / (0.048 × (2.5 − 1.05)) ≈ 14
+      const m = { "AO3400A (2.5 V gate)": { vth: 1.05, k: 14 }, "IRLZ44N (logic level)": { vth: 1.5, k: 30 }, "IRF540N (standard)": { vth: 3.5, k: 15 }, "2N7000 (small signal)": { vth: 2.1, k: 0.3 } }[p.model] ?? { vth: p.vth, k: p.k };
       c.add({ type: "M", a: c.pin(1), b: c.pin(2), g: c.pin(0), ...m }, { main: true }); c.add({ type: "R", a: c.pin(0), b: c.pin(2), ohms: 1e9 }); } },
   bjt: { name: "Transistor (BJT)", cat: "Semiconductors", pins: [[0, 0], [2, -2], [2, 2]], pinNames: ["base", "collector", "emitter"], props: { model: "2N3904 (NPN)" }, fields: [["model", "type", "select", Object.keys(BJTS)]],
     desc: "A current amplifier: a small current into the base (about 0.65 V above the emitter) lets β times more flow collector → emitter (NPN). Fully on it drops only ~0.1 V (saturated); a PNP works upside down, from the positive side.", chapter: "04-diodes-and-transistors.html",

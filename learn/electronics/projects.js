@@ -349,3 +349,90 @@ export const P22 = {
     ],
   },
 };
+
+// ---------- ch23: the capstone, a thermostat fan ----------
+// The whole design, drawn with modules and labels (not simulated: the boards aren't in the lab)…
+export const DESIGN23 = {
+  noLab: true, noSim: true,
+  parts: [
+    { type: "battery", a: [0, 3], b: [0, 6], v: 12 }, flag([0, 3], "+12V"), gnd([0, 6]),
+    { type: "module", at: [4, 2], title: "buck 12→5 V", w: 7, left: ["VIN+", null, "VIN−"], right: ["VOUT+", null, "VOUT−"] },
+    w([4, 3], [3, 3]), flag([3, 3], "+12V"), w([4, 5], [3, 5]), gnd([3, 5]), w([11, 3], [13, 3]), flag([13, 3], "+5V"), w([11, 5], [13, 5]), gnd([13, 5]),
+    { type: "capacitor", a: [15, 3], b: [15, 6], farads: 470e-6 }, flag([15, 3], "+5V"), gnd([15, 6]),
+    { type: "module", at: [19, 0], title: "ESP32 dev board", w: 8, left: ["5V", null, "GND"], right: ["GPIO21", null, "GPIO22", null, "GPIO25", null, "3V3"] },
+    w([19, 1], [18, 1]), flag([18, 1], "+5V"), w([19, 3], [18, 3]), gnd([18, 3]),
+    w([27, 1], [29, 1]), flag([29, 1], "SDA"), w([27, 3], [29, 3]), flag([29, 3], "SCL"), w([27, 5], [29, 5]), flag([29, 5], "FAN"), w([27, 7], [29, 7]), flag([29, 7], "+3.3V"),
+    { type: "module", at: [21, 11], title: "BME280", w: 6, left: ["VCC", null, "GND", null, null, "SCL", null, "SDA", null, "CSB", null, "SDO"], right: [] },
+    w([21, 12], [19, 12]), flag([19, 12], "+3.3V"), w([21, 14], [19, 14]), gnd([19, 14]), w([21, 17], [19, 17]), flag([19, 17], "SCL"), w([21, 19], [19, 19]), flag([19, 19], "SDA"),
+    w([21, 21], [19, 21]), flag([19, 21], "+3.3V"), w([21, 23], [19, 23]), gnd([19, 23]),
+    flag([2, 12], "FAN"), { type: "resistor", a: [2, 12], b: [5, 12], ohms: 100 }, w([5, 12], [8, 12]),
+    { type: "resistor", a: [6, 12], b: [6, 15], ohms: 100e3 }, gnd([6, 15]),
+    { type: "nmos", at: [8, 12], model: "AO3400A (2.5 V gate)" }, gnd([10, 14]),
+    { type: "motor", a: [10, 7], b: [10, 10], ohms: 60, henries: 1e-3 }, flag([10, 7], "+12V"),
+    { type: "diode", a: [13, 10], b: [13, 7], model: "1N5819 (Schottky)" }, w([10, 7], [13, 7]), w([10, 10], [13, 10]),
+  ],
+  why: {
+    BAT1: { name: "12 V adapter", job: "One supply for everything: the fan needs 12 V, the rest is made from it." },
+    U1: { name: "buck module, set to 5 V", job: "12 V to 5 V for the ESP32 board. A buck, not a 7805: at the ESP32's quarter-amp bursts a 7805 would burn (12 − 5) × 0.25 ≈ 1.75 W, about 95 °C above the room in a TO-220 with no heatsink (chapter 18). Most modules have a trim pot: set 5.0 V with a meter before connecting anything.", ch: `<a href="./10-power-supplies.html">chapter 10 §2</a>, <a href="./18-power-supply.html">chapter 18 §2</a>` },
+    C1: { name: "bulk capacitor on 5 V", job: "Covers the ESP32's Wi-Fi bursts so the supply doesn't sag into a brown-out (chapter 22 §5).", value: "470 µF, 10 V or more." },
+    U2: { name: "ESP32 dev board", job: "Reads the sensor, decides, drives the fan with PWM, could show it on a display or the web. Its 5V pin feeds its own 3.3 V regulator, whose 3V3 pin feeds the sensor.", ch: `<a href="./22-microcontroller.html">chapter 22</a>` },
+    U3: { name: "BME280 breakout", job: "The temperature, on I²C at 0x76, exactly as in chapter 22. (An NTC thermistor in a divider on an ADC1 pin, chapter 11, would do too.)" },
+    R1: { name: "gate resistor", job: "Limits the current the GPIO pushes into the MOSFET's gate, which is a small capacitor, at each switch: at most 3.3 V / 100 Ω = 33 mA for an instant, under the ESP32 pin's 40 mA.", value: "100 Ω." },
+    R2: { name: "gate pull-down", job: "Holds the gate at 0 V while the ESP32 resets and boots, when its pins float (chapter 13): without it the fan can twitch on at every power-up.", value: "100 kΩ: weak enough that the pin barely notices it." },
+    Q1: { name: "AO3400A MOSFET", job: "The fan's switch. Chosen for a 3.3 V gate: its datasheet promises under 48 mΩ at only 2.5 V, while the IRLZ44N only promises anything from 4 V up. At 0.2 A it burns 0.2² × 0.048 ≈ 2 mW.", value: "SOT-23, a tiny surface-mount part: on a breadboard, solder it to a SOT-23 adapter board first." },
+    M1: { name: "12 V fan", job: "A motor, so a coil (chapters 3 and 14). This one draws about 0.2 A.", ch: `<a href="./14-motors.html">chapter 14</a>` },
+    D1: { name: "flyback diode", job: "Gives the fan's coil current a path when the MOSFET switches off, every PWM cycle. Without it the drain spikes far above 12 V (chapter 4 §3).", value: "1N5819 Schottky: fast enough for 25 kHz PWM, 1 A." },
+  },
+};
+// …and its one analog part, the fan driver, simulated, with a 3.3 V PWM standing in for GPIO25.
+export const P23 = {
+  speed: 0.002,
+  parts: [
+    { type: "battery", a: [12, 3], b: [12, 6], v: 12 }, flag([12, 3], "+12V"), gnd([12, 6]),
+    { type: "source", a: [0, 7], b: [0, 10], wave: "square", freq: 1000, amp: 1.65, offset: 1.65, duty: 50 }, gnd([0, 10]),
+    w([0, 7], [0, 6]), w([0, 6], [2, 6]), { type: "resistor", a: [2, 6], b: [5, 6], ohms: 100 }, w([5, 6], [7, 6]),
+    { type: "resistor", a: [6, 6], b: [6, 9], ohms: 100e3 }, gnd([6, 9]),
+    { type: "nmos", at: [7, 6], model: "AO3400A (2.5 V gate)" }, gnd([9, 8]),
+    { type: "motor", a: [9, 1], b: [9, 4], ohms: 60, henries: 1e-3 }, flag([9, 1], "+12V"),
+    { type: "diode", a: [5, 4], b: [5, 1], model: "1N5819 (Schottky)" }, w([9, 1], [5, 1]), w([9, 4], [5, 4]),
+  ],
+  why: {
+    BAT1: { name: "12 V adapter", job: "The fan's supply." },
+    V1: { name: "GPIO25 (stand-in)", job: "The ESP32's PWM pin, 0 to 3.3 V. Slowed to 1 kHz here so you can watch it; the real build uses 25 kHz, above hearing (chapter 14 §3)." },
+    R1: { name: "gate resistor", job: DESIGN23.why.R1.job, remove: "short" },
+    R2: { name: "gate pull-down", job: DESIGN23.why.R2.job, remove: true },
+    Q1: { name: "AO3400A MOSFET", job: DESIGN23.why.Q1.job },
+    M1: { name: "12 V fan (modeled as its winding: 60 Ω, 1 mH)", job: "The load: about 0.2 A at full speed; at 50% PWM, half on average." },
+    D1: { name: "flyback diode", job: DESIGN23.why.D1.job, remove: true, without: "Each time the MOSFET switches off, the fan's coil forces its current on and the drain spikes far above 12 V (the simulator has no breakdown voltage, so it shows how far the coil would push; a real AO3400A would take the hit at about 30 V, and not for long)." },
+  },
+  bb: {
+    cols: 20, margin: 70,
+    parts: [
+      { ref: "BAT1", kind: "off", legs: ["T+2", "T-2"], box: [-34, 27], label: "12 V" },
+      { ref: "V1", kind: "off", legs: ["j3", "B-4"], box: [-34, 300], label: "GPIO25", colors: ["#36c", "#222"] },
+      { kind: "wire", from: "T-3", to: "B-3", color: "black" },
+      { ref: "R1", kind: "res", legs: ["i3", "i7"] }, { ref: "R2", kind: "res", legs: ["h7", "B-8"] },
+      { ref: "Q1", kind: "to92", legs: ["g7", "g8", "g9"], label: "AO3400A", note: "A SOT-23 part on a 3-pin adapter board, legs in the adapter's order (here G, D, S): check yours, adapters differ." },
+      { kind: "wire", from: "j9", to: "B-9", color: "black" }, { kind: "wire", from: "c8", to: "h8", color: "green" }, // the drain, across the gap to the fan's strip
+      { ref: "M1", kind: "off", legs: ["T+13", "a8"], box: [330, 140], label: "fan" },
+      { ref: "D1", kind: "diode", legs: ["b8", "T+8"], note: "Banded end (cathode) to +12 V: it conducts only when the fan's coil pushes the drain above the supply." },
+    ],
+  },
+};
+
+// ---------- ch23: the design review, one planted mistake each ----------
+export const REVIEWS = [
+  { title: "A power-on light", bug: ["LED1"], says: "The LED has nothing limiting its current: 9 V straight across it (chapter 1 §4). It needs a resistor in series, about (9 − 1.9) V / 10 mA ≈ 680 Ω.",
+    parts: [{ type: "battery", a: [0, 3], b: [0, 6], v: 9 }, w([0, 3], [0, 1]), w([0, 1], [3, 1]), { type: "switch", a: [3, 1], b: [6, 1], closed: true }, w([6, 1], [8, 1]), { type: "led", a: [8, 1], b: [8, 4], color: "red" }, w([8, 4], [8, 6]), w([8, 6], [0, 6]), gnd([0, 6])] },
+  { title: "A 3.3 V rail from a 9 V battery", bug: ["U1"], says: "The MCP1700's input is rated to 6 V, with 6.5 V as its absolute maximum (chapter 18): 9 V destroys it. Feed it from a 5 V rail, or use a regulator rated for 9 V.",
+    parts: [{ type: "battery", a: [0, 2], b: [0, 5], v: 9 }, gnd([0, 5]), w([0, 2], [0, 1]), w([0, 1], [2, 1]), { type: "capacitor", a: [2, 1], b: [2, 4], farads: 1e-6 }, gnd([2, 4]), { type: "ldo1700", at: [3, 1] }, w([2, 1], [3, 1]), gnd([5, 3]), w([7, 1], [9, 1]), { type: "capacitor", a: [9, 1], b: [9, 4], farads: 1e-6 }, gnd([9, 4]), { type: "resistor", a: [11, 1], b: [11, 4], ohms: 330 }, w([9, 1], [11, 1]), gnd([11, 4])] },
+  { title: "A comparator switching a lamp", bug: ["U1"], says: "The LM393's output is open collector: it can pull the gate down but nothing pulls it up (chapter 20). A 10 kΩ pull-up from the output to +12 V is missing; as drawn, the lamp never lights.",
+    parts: [{ type: "battery", a: [-3, 2], b: [-3, 5], v: 12 }, flag([-3, 2], "+12V"), gnd([-3, 5]), { type: "resistor", a: [1, 1], b: [1, 4], ohms: 10e3 }, flag([1, 1], "+12V"), { type: "resistor", a: [1, 4], b: [1, 7], ohms: 4.7e3 }, gnd([1, 7]), w([1, 4], [4, 4]), w([4, 4], [4, 5]), w([4, 5], [5, 5]), { type: "lm393", at: [5, 4] }, flag([7, 2], "+12V"), gnd([7, 6]), w([5, 3], [4, 3]), w([4, 3], [4, 2]), flag([4, 2], "+12V"), w([9, 4], [11, 4]), { type: "nmos", at: [11, 4] }, gnd([13, 6]), { type: "lamp", a: [13, -1], b: [13, 2], volts: 12, watts: 5 }, flag([13, -1], "+12V")] },
+  { title: "A counter on a 555 clock", bug: ["U2"], says: "The 4017's RESET (pin 15) is connected to nothing. The simulator quietly reads an unconnected input as low, so it looks fine here; a real CMOS input floats and resets the count at random (chapters 13 and 19). Tie it to ground. A simulator is only as honest as its models.",
+    parts: [{ type: "battery", a: [-3, 3], b: [-3, 6], v: 9 }, flag([-3, 3], "+9V"), gnd([-3, 6]), { type: "source", a: [0, 4], b: [0, 7], wave: "square", freq: 2, amp: 4.5, offset: 4.5 }, gnd([0, 7]), w([0, 4], [0, 3]), w([0, 3], [4, 3]), { type: "counter4017", at: [4, 2] }, flag([7, 1], "+9V"), gnd([7, 14]), w([4, 5], [3, 5]), w([3, 5], [3, 6]), gnd([3, 6]), { type: "led", a: [10, 3], b: [13, 3], color: "red" }, { type: "led", a: [10, 4], b: [13, 4], color: "green" }, w([13, 3], [13, 6]), { type: "resistor", a: [13, 6], b: [13, 9], ohms: 1e3 }, gnd([13, 9])] },
+  { title: "A motor on a MOSFET", bug: ["M1", "Q1"], says: "No flyback diode across the motor. Every time the MOSFET turns off, the motor's coil current has nowhere to go and the drain spikes (chapter 4 §3, chapter 14 §2). Hover the drain while it switches. Add a diode across the motor, cathode to +12 V.",
+    parts: [{ type: "battery", a: [-3, 3], b: [-3, 6], v: 12 }, flag([-3, 3], "+12V"), gnd([-3, 6]), { type: "source", a: [0, 6], b: [0, 9], wave: "square", freq: 2, amp: 2.5, offset: 2.5 }, gnd([0, 9]), w([0, 6], [0, 5]), w([0, 5], [3, 5]), { type: "nmos", at: [3, 5] }, gnd([5, 7]), { type: "motor", a: [5, 0], b: [5, 3], ohms: 6, henries: 1e-3 }, flag([5, 0], "+12V")], speed: 0.2 },
+  { title: "Two sensors on one bus", bug: ["U3"], says: "Both BME280s have SDO tied to ground, so both answer at 0x76 and collide (chapter 22 §3). Tie the second one's SDO to +3.3V: it becomes 0x77.", noSim: true,
+    parts: [{ type: "module", at: [0, 0], title: "ESP32", w: 6, left: [], right: ["3V3", null, "GPIO21", null, "GPIO22", null, "GND"] }, w([6, 1], [8, 1]), flag([8, 1], "+3.3V"), w([6, 3], [8, 3]), flag([8, 3], "SDA"), w([6, 5], [8, 5]), flag([8, 5], "SCL"), w([6, 7], [8, 7]), gnd([8, 7]),
+      ...[13, 23].flatMap((x) => [{ type: "module", at: [x, 0], title: "BME280", w: 6, left: ["VCC", null, "GND", null, null, "SCL", null, "SDA", null, "CSB", null, "SDO"], right: [] }, w([x, 1], [x - 2, 1]), flag([x - 2, 1], "+3.3V"), w([x, 3], [x - 2, 3]), gnd([x - 2, 3]), w([x, 6], [x - 2, 6]), flag([x - 2, 6], "SCL"), w([x, 8], [x - 2, 8]), flag([x - 2, 8], "SDA"), w([x, 10], [x - 2, 10]), flag([x - 2, 10], "+3.3V"), w([x, 12], [x - 2, 12]), gnd([x - 2, 12])])] },
+];
