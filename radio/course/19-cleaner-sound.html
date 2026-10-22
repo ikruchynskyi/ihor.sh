@@ -24,7 +24,7 @@
 
   <!-- 1 -->
   <h2 id="voice">A filter for voices</h2>
-  <p>Narrow FM, AM and SSB carry speech, and speech lives between about 300 and 3000 Hz. Below it, many repeaters add a quiet <b>CTCSS tone</b>, 67 to 250 Hz, that opens other radios' squelch: you hear it as a hum. Above it is mostly hiss. So the first cleanup is a band-pass: cut below 300 Hz, cut above 3000 Hz.</p>
+  <p>Narrow FM, AM and SSB carry speech, and speech lives between about 300 and 3000 Hz. Below it, many repeaters (relay stations on hills and towers that rebroadcast handheld radios) add a quiet <b>CTCSS tone</b>, 67 to 250 Hz, that opens other radios' squelch: you hear it as a hum. Above it is mostly hiss. So the first cleanup is a band-pass (a filter that keeps only a band in the middle): cut below 300 Hz, cut above 3000 Hz.</p>
   <p>Why not use chapter 6's FIR filter here? Because at 48 000 audio samples a second, a 100 Hz hum is a very slow wave (480 samples per turn), so cutting sharply at 300 Hz with chapter 6's sliding average would take hundreds of weights — hundreds of multiplications per sample. For audio there's a much cheaper kind of filter that needs only <b>five multiplications</b>, because it keeps <b>memory of its own output</b>: each new output sample mixes the last two inputs and the last two <em>outputs</em>. Feed it a single click and watch it answer:</p>
 
   <div class="scene" id="s-biquad">
@@ -55,6 +55,7 @@
     <math><mtext>low-pass:</mtext><mspace width="0.6em"/><msub><mi>b</mi><mn>0</mn></msub><mo>=</mo><msub><mi>b</mi><mn>2</mn></msub><mo>=</mo><mfrac><mrow><mn>1</mn><mo>−</mo><mi>cos</mi><mi>ω</mi></mrow><mn>2</mn></mfrac><mo>,</mo><mspace width="0.6em"/><msub><mi>b</mi><mn>1</mn></msub><mo>=</mo><mn>1</mn><mo>−</mo><mi>cos</mi><mi>ω</mi></math>
     <math><msub><mi>a</mi><mn>1</mn></msub><mo>=</mo><mo>−</mo><mn>2</mn><mi>cos</mi><mi>ω</mi><mo>,</mo><mspace width="0.6em"/><msub><mi>a</mi><mn>2</mn></msub><mo>=</mo><mn>1</mn><mo>−</mo><mi>α</mi></math>
     <ul>
+      <li>The names: x[n] is input sample n and y[n] output sample n; the b's weigh the newest inputs and the a's the last two outputs. ω (omega) is the cutoff f<sub>c</sub> written as an angle per sample. Q sets the shape of the corner at the cutoff: 1/√2 is the flattest, higher values add a bump. α (alpha) is just a helper made from ω and Q.</li>
       <li>Every coefficient is then divided by <b>1 + α</b>. <b>Q = 1/√2</b> gives the flattest passband (a Butterworth filter). The high-pass uses (1 + cos ω)/2 and −(1 + cos ω) for the b's.</li>
       <li>The <b>a</b>'s are the memory of the output. They make it cheap, and they're also why a badly designed one can ring forever (an unstable filter). The cookbook's recipe is always stable.</li>
     </ul>
@@ -104,10 +105,10 @@
   </details>
 
   <div class="notation">
-    <math><msub><mi>G</mi><mi>k</mi></msub><mo>=</mo><mi>max</mi><mo>(</mo><msub><mi>G</mi><mtext>floor</mtext></msub><mo>,</mo><mspace width="0.3em"/><mn>1</mn><mo>−</mo><mi>α</mi><mfrac><msub><mi>N</mi><mi>k</mi></msub><msub><mi>S</mi><mi>k</mi></msub></mfrac><mo>)</mo></math>
+    <math><msub><mi>G</mi><mi>k</mi></msub><mo>=</mo><mi>max</mi><mo>(</mo><msub><mi>G</mi><mtext>floor</mtext></msub><mo>,</mo><mspace width="0.3em"/><mn>1</mn><mo>−</mo><mi>β</mi><mfrac><msub><mi>N</mi><mi>k</mi></msub><msub><mi>S</mi><mi>k</mi></msub></mfrac><mo>)</mo></math>
     <math><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>←</mo><mrow><mo>{</mo><mtable><mtr><mtd><mn>0.65</mn><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>+</mo><mn>0.35</mn><msub><mi>G</mi><mi>k</mi></msub></mtd><mtd><mtext>rising</mtext></mtd></mtr><mtr><mtd><mn>0.75</mn><msub><mover><mi>G</mi><mo>~</mo></mover><mi>k</mi></msub><mo>+</mo><mn>0.25</mn><msub><mi>G</mi><mi>k</mi></msub></mtd><mtd><mtext>falling</mtext></mtd></mtr></mtable></mrow></math>
     <ul>
-      <li><b>S<sub>k</sub></b>: bin k's power (smoothed over a few frames); <b>N<sub>k</sub></b>: its hiss level; <b>α</b>: how much hiss to subtract (0.5 to 2); <b>G̃<sub>k</sub></b>: the gain actually used.</li>
+      <li><b>S<sub>k</sub></b>: bin k's power (smoothed over a few frames); <b>N<sub>k</sub></b>: its hiss level; <b>β</b> (beta): how much hiss to subtract (0.5 to 2); <b>G̃<sub>k</sub></b>: the gain actually used.</li>
       <li>The same gain is applied to bin k and its mirror image (bin N − k), so the output stays real sound.</li>
     </ul>
   </div>
@@ -148,7 +149,7 @@
 
   <!-- 6 -->
   <h2 id="limiter">Peaks that don't crackle</h2>
-  <p>The volume knob goes up to +30 dB, and a speaker can only move so far: samples past ±1 get chopped flat, a <b>hard clip</b>, which sounds like crackling. Instead of a sharp corner at ±1, bend the curve smoothly, with <b>tanh</b>, which is a straight line for small sounds and gently levels off for big ones:</p>
+  <p>The volume knob goes up to +30 dB, and a speaker can only move so far: samples past ±1 get chopped flat, a <b>hard clip</b>, which sounds like crackling. Instead of a sharp corner at ±1, bend the curve smoothly, with <b>tanh</b> (the "hyperbolic tangent", a standard S-shaped curve), which is a straight line for small sounds and gently levels off for big ones:</p>
 
   <div class="scene" id="s-limiter">
     <div class="controls">
@@ -166,7 +167,7 @@
   <!-- 7 -->
   <h2 id="stream">One stream that never stutters</h2>
   <p>Chapter 11's player scheduled every chunk as its own little sound, placed right after the previous one. It has three weak spots. Each chunk is resampled to the sound card's rate on its own, so what happens at the joins is up to the browser. The cushion is a fixed 150 ms, too little when the server's stream crosses the internet and stalls. And clock drift is fixed with a jolt: a dropped chunk or a pause to refill.</p>
-  <p>Spectrum Lab now plays everything through <b>one continuous stream</b>: a ring buffer, a reader that walks through it at a fractional speed, and a little control loop. Watch it:</p>
+  <p>Spectrum Lab now plays everything through <b>one continuous stream</b>: a ring buffer (a fixed stretch of memory written round and round, like a circular track), a reader that walks through it at a fractional speed, and a little control loop. Watch it:</p>
 
   <div class="scene" id="s-ring">
     <div class="controls">
