@@ -34,7 +34,7 @@
   <div class="row"><label>direction θ <input type="range" id="th" min="0" max="360" step="5" value="30"> <b id="thV" class="math"></b></label></div>
   <p class="legend"><i style="background:#f4d35e"></i>gradient ∇f <i style="background:#58c4dd"></i>your direction u <i style="background:#83c167"></i>along the contour</p>
   <p class="readout" id="r1"></p>
-  <p>Stack the partials into a vector and you get the <b>gradient</b> \(\nabla f\). Walk in any direction \(u\) (a unit vector) and your slope is the <b>directional derivative</b> \(\nabla f \cdot u = |\nabla f|\cos\alpha\), where \(\alpha\) is the angle between them. Turn θ and watch the readout: the slope is biggest, exactly \(|\nabla f|\), when \(u\) points along the gradient, and it's zero when you walk along the contour. That's why the gradient always crosses contour lines at right angles, and why "step against the gradient" is the fastest way down.</p>
+  <p>Stack the partials into a vector and you get the <b>gradient</b> \(\nabla f\). Walk in any direction \(u\) (a <b>unit vector</b>: an arrow of length 1, so it says which way and nothing about how far) and your slope is the <b>directional derivative</b> \(\nabla f \cdot u = \lVert \nabla f \rVert\cos\alpha\), where \(\alpha\) is the angle between them. Turn θ and watch the readout: the slope is biggest, exactly \(\lVert \nabla f \rVert\), when \(u\) points along the gradient, and it's zero when you walk along the contour. That's why the gradient always crosses contour lines at right angles, and why "step against the gradient" is the fastest way down.</p>
   <p class="gist">A partial derivative is a slope with everything else frozen. Stacked, they make the gradient, and the slope in any direction is the gradient dotted with that direction.</p>
   <details class="deeper"><summary>Why do two slopes give the slope in every direction?</summary>
     <ol>
@@ -56,12 +56,12 @@
   </div>
   <div class="q" data-answer="c">
     <p>In which direction is the directional derivative zero?</p>
-    <ul><li data-k="a" data-says="That's where it's biggest: +|∇f|.">Along the gradient</li><li data-k="b" data-says="That's where it's most negative: −|∇f|, the way gradient descent walks.">Against the gradient</li><li data-k="c">Along the contour line, at right angles to the gradient</li></ul>
-    <div class="why">\(\nabla f \cdot u = |\nabla f|\cos 90° = 0\). Walking along a contour keeps the height constant, which is what a contour line means.</div>
+    <ul><li data-k="a" data-says="That's where it's biggest: +‖∇f‖.">Along the gradient</li><li data-k="b" data-says="That's where it's most negative: −‖∇f‖, the way gradient descent walks.">Against the gradient</li><li data-k="c">Along the contour line, at right angles to the gradient</li></ul>
+    <div class="why">\(\nabla f \cdot u = \lVert \nabla f \rVert\cos 90° = 0\). Walking along a contour keeps the height constant, which is what a contour line means.</div>
   </div>
 
   <h2>2. The gradients you'll meet every day</h2>
-  <p>In ML the inputs are vectors and matrices, and a handful of gradients cover nearly everything. Each can be checked one partial at a time, like section 1:</p>
+  <p>In ML the inputs are vectors and matrices, and a handful of gradients cover nearly everything. Each can be checked one partial at a time, like section 1. A small subscript on the gradient says which knobs it's taken with respect to: \(\nabla_w\) is "the gradient as \(w\)'s numbers change, everything else held fixed".</p>
   <table class="rules">
     <tr><th>function (a number)</th><th>gradient</th><th>why</th></tr>
     <tr><td>\(w \cdot x\)</td><td>\(\nabla_w = x\)</td><td>\(\partial/\partial w_i\) of \(\sum w_j x_j\) leaves \(x_i\)</td></tr>
@@ -69,7 +69,7 @@
     <tr><td>\(\tfrac1n \lVert Xw - y \rVert^2\)</td><td>\(\nabla_w = \tfrac2n X^\top (Xw - y)\)</td><td>MSE: the errors, sent back through the data</td></tr>
     <tr><td>\(L(Wx)\), with \(g = \nabla L\) at \(Wx\)</td><td>\(\nabla_W = g\,x^\top\)</td><td>weight \(W_{ij}\) touches only output \(i\), with strength \(x_j\)</td></tr>
   </table>
-  <p>The last row is the one backprop uses for every layer: the gradient for a weight matrix is an <b>outer product</b>, "blame on each output" times "input on each wire". And there's a <b>shape rule</b> that catches most bugs: the gradient of a number with respect to anything has the same shape as that thing. \(W\) is 3×4, so \(\nabla_W L\) is 3×4.</p>
+  <p>The last row is the one backprop uses for every layer: the gradient for a weight matrix is an <b>outer product</b> (a table holding every \(g_i\) times every \(x_j\): \(g\) as a column times \(x\) transposed into a row, linear algebra 1), "blame on each output" times "input on each wire". And there's a <b>shape rule</b> that catches most bugs: the gradient of a number with respect to anything has the same shape as that thing. \(W\) is 3×4, so \(\nabla_W L\) is 3×4.</p>
   <p class="gist">The gradient for a weight matrix is "blame on each output" times "input on each wire", and it always has the matrix's own shape.</p>
   <details class="deeper"><summary>Why is a weight matrix's gradient an outer product?</summary>
     <ol>
@@ -180,7 +180,7 @@ function r1() {
   arrow(P, [x, y], [x + 0.7 * u[0], y + 0.7 * u[1]], C.blue, 4);
   g.fillStyle = C.yellow; g.beginPath(); g.arc(X(x), Y(y), 9, 0, 7); g.fill();
   $("thV").textContent = `${$("th").value}°`;
-  $("r1").textContent = `(x, y) = (${x}, ${y}) · f = ${f(x, y).toFixed(3)} · ∂f/∂x = ${gr[0].toFixed(2)} · ∂f/∂y = ${gr[1].toFixed(2)} · |∇f| = ${n.toFixed(3)} · slope along u: ∇f·u = ${du.toFixed(3)}`;
+  $("r1").textContent = `(x, y) = (${x}, ${y}) · f = ${f(x, y).toFixed(3)} · ∂f/∂x = ${gr[0].toFixed(2)} · ∂f/∂y = ${gr[1].toFixed(2)} · ‖∇f‖ = ${n.toFixed(3)} · slope along u: ∇f·u = ${du.toFixed(3)}`;
   if (n > 0.5 && Math.abs(du) < 0.02 && !told) { told = true; say("Zero slope: you're walking along the contour, at right angles to the gradient.", "happy"); }
 }
 $("th").oninput = r1; r1();

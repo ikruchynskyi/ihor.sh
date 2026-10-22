@@ -199,7 +199,7 @@ for msg in ["win a free lunch now", "see you at lunch tomorrow", "are you free n
   <ul>
     <li><b>Bernoulli(\(p\))</b>: one yes/no trial, 1 with probability \(p\), else 0. A click, a fraud, a correct prediction.</li>
     <li><b>Binomial(\(n, p\))</b>: the number of yeses in \(n\) independent Bernoulli trials. \(P(k) = \binom{n}{k} p^k (1-p)^{n-k}\), where \(\binom{n}{k}\) ("n choose k") counts the orders the \(k\) yeses could come in.</li>
-    <li><b>Uniform</b>: every value in a range equally likely. <code>Math.random()</code> is uniform between 0 and 1.</li>
+    <li><b>Uniform</b>: every value in a range equally likely. NumPy's <code>rng.random()</code> is uniform between 0 and 1.</li>
   </ul>
   <p>Below, the bars are the binomial's <b>PMF</b> (probability mass function: the probability of each exact value) and the <span class="g">green steps</span> its <b>CDF</b> (cumulative distribution function: the probability of that value <i>or less</i>, a running sum of the bars).</p>
   <canvas id="binom" width="800" height="400" aria-label="Binomial distribution: bars for each count and the cumulative curve"></canvas>
@@ -221,7 +221,7 @@ for msg in ["win a free lunch now", "see you at lunch tomorrow", "are you free n
   <div class="row"><button id="one">Draw 1</button><button id="many">Draw 500</button><button id="clr">Clear</button></div>
   <p class="readout" id="r7"></p>
   <details class="deeper"><summary>The math, step by step</summary>
-    <p>Solve \(u = F(x)\) for \(x\): \(u = 1 - e^{-x/4}\), so \(e^{-x/4} = 1 - u\), so \(x = -4 \ln(1 - u)\). If \(U\) is uniform, then \(P(F^{-1}(U) \le x) = P(U \le F(x)) = F(x)\): the samples have exactly the CDF we wanted.</p>
+    <p>Solve \(u = F(x)\) for \(x\): \(u = 1 - e^{-x/4}\), so \(e^{-x/4} = 1 - u\), so \(x = -4 \ln(1 - u)\). Write \(F^{-1}\) for that undoing (the CDF read backwards, as a matrix inverse undoes a move in linear algebra 1). If \(U\) is uniform, then \(P(F^{-1}(U) \le x) = P(U \le F(x)) = F(x)\): the samples have exactly the CDF we wanted.</p>
     <p>For a list of options it's the same idea with a staircase CDF: walk the running total of the probabilities until it passes \(u\). That's exactly how chapter 5 and the tiny transformer pick the next word from softmax's probabilities.</p>
   </details>
   <div class="q" data-num="2.77" data-tol="0.01">

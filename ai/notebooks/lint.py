@@ -42,6 +42,7 @@ NOTATION = {  # ledger id → (pattern inside math: $...$ or \(...\)), pattern f
     "math:norm": (r"\\lVert|\\\|", "‖"), "math:transpose": (r"\^\\top|\^\{?T\b", "ᵀ"), "math:matrix": (r"\\begin\{[bp]matrix\}", None),
     "math:dot": (r"\\cdot", None), "math:probability": (r"\bP\(|\\mid", None), "math:expectation": (r"\\mathbb\{E\}|\\operatorname\{E\}", "𝔼"),
     "math:hat": (r"\\hat", None), "math:argmax": (r"\\arg\s*\\?(max|min)|argmax|argmin", None), "math:inverse": (r"\^\{-1\}", "⁻¹"),
+    "math:trig": (r"\\sin\b|\\cos\b", None),
     "math:set": (r"\\in\b|\\mathbb\{R\}", "∈|ℝ"), "math:limit": (r"\\lim", None), "math:approx": (r"\\approx", "≈"),
 }
 

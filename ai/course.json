@@ -424,7 +424,8 @@
    "math:matrix",
    "math:norm",
    "math:dot",
-   "py:matmul"
+   "py:matmul",
+   "math:trig"
   ],
   "practice": [
    "dot-product",
@@ -1064,10 +1065,6 @@
    [
     "PCA",
     "Center the data, take the covariance matrix's top eigenvectors; each eigenvalue is the variance that direction keeps."
-   ],
-   [
-    "Condition number",
-    "λmax / λmin of the Hessian: how stretched the loss valley is, and how slowly gradient descent crawls."
    ]
   ],
   "check": [

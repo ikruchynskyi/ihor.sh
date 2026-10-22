@@ -142,7 +142,7 @@
   </details>
 
   <h2>8. The two-dimensional bell curve</h2>
-  <p>The bell curve has a version for several variables at once, the <b>multivariate normal</b>. In 2D it's a hill whose contour lines are ellipses. It's described by the two means and a <b>covariance matrix</b>: each variable's variance on the diagonal, their covariance off it:</p>
+  <p>The bell curve has a version for several variables at once, the <b>multivariate normal</b>. In 2D it's a hill whose contour lines are ellipses. It's described by the two means and a <b>covariance matrix</b>: each variable's variance on the diagonal, their covariance off it, written with the correlation \(\rho\) (rho, the \(r\) of section 7) as \(\rho\,\sigma_x\sigma_y\). The matrix is traditionally called \(\Sigma\): the same capital sigma as the sum sign, used here as a name, not as "add these up". Which one is meant is always clear from what sits around it.</p>
   <p class="formula">\[ \Sigma = \begin{pmatrix} \sigma_x^2 & \rho\,\sigma_x \sigma_y \\ \rho\,\sigma_x \sigma_y & \sigma_y^2 \end{pmatrix} \]</p>
   <p>Shape it: the dots are 600 samples, the rings are 1 and 2 standard deviations.</p>
   <canvas id="gauss" class="square" width="500" height="500" aria-label="Samples from a 2D normal distribution with its covariance ellipses"></canvas>

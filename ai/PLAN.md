@@ -594,3 +594,56 @@ start a new run and skip the lessons verified below (or rerun them after big cha
 | 01-matrices-are-moves | 2026-10-16 | 7/7 first try, notebook 11 ✓ without hints, 5 exercises cited, 8 real minutes, worked section by section | none: "how basis vectors decide where every vector lands", named hardest, is the lesson's core idea with its widget | |
 | l1-systems-and-inverses | next | | | |
 
+
+## 11. Guardrail review of the math (Start 3 and stage 1), 2026-10-22
+
+The owner asked for the math to be easy and logical against the course guardrail. Read as the §10.2 learner (school
+arithmetic, no algebra, trig or notation beyond what the path has taught): `s3-math-warm-up`, `01-matrices-are-moves`,
+`l1-systems-and-inverses`, `02-gradients`, `c1-derivatives`, `c2-many-variables`, `p1-probability-and-bayes`,
+`p2-describing-data`, `l2-eigenvectors-and-pca`, every section, box and code box; then a scan of the whole path, in
+`course.json` order, for the first lesson using each notation. `lint.py` and `--depth` were green before: the ledger
+checks that a lesson declaring a symbol *uses* it, not that the page *explains* it, which is how l1 "teaches" the
+transpose without a word about it.
+
+**What holds up.** Every lesson opens with its purpose, sections are pictures first, questions come before reveals,
+the order inside stage 1 builds (moves → equations → slopes → rules → many inputs → probability → data → eigenvectors),
+and s3, 02 and p1 need almost nothing.
+
+**Gaps (all 3a: a clause or a sentence where the thing is first used; none needs a new section):**
+- M1 `01` §1: "Pythagoras" used for the length, never said. Gloss it in one clause (school geometry is outside the
+  persona).
+- M2 `01` §2: the dot product's gist and formula lean on \(\cos\theta\); no lesson says what a cosine is, and 02, c1
+  and c2 lean on it (and on sin) too. One sentence with the picture: an arrow of length 1 at angle θ; its shadow on
+  the other arrow's line is \(\cos\theta\) (1 same way, 0 at right angles, −1 opposite), and its height is
+  \(\sin\theta\), a wave as θ turns. Register `math:trig` in `lint.py`, taught by `01`, so no later lesson uses sin/cos
+  ahead of it.
+- M3 `01` box: \(W \in \mathbb{R}^{m\times n}\) with ℝ never said. Gloss: ℝ is "any number on the number line";
+  \(\mathbb{R}^{m\times n}\) is a table of them, m rows by n columns.
+- M4 `01` code: `b1[:, None]` unexplained; a comment.
+- M5 `l1` §6: \(X^\top\) and `X.T` used, never taught. Teach it before the formula: picture (the table flipped so rows
+  become columns), words (\(X^\top v\) dots every column of X with v), code (`X.T`). This is the lesson `course.json`
+  credits with `math:transpose`, so c2, l2 and chapter 4 then stand on something real.
+- M6 `l1` §3: "Part 4 fine-tunes ... LoRA": stage 6. And open §3 with why it matters (a duplicated column is a repeated
+  equation), not only at its end.
+- M7 `02` §1: \((x+h)^2 = x^2 + 2xh + h^2\) is a step the persona can't take; show the multiplication.
+- M8 `c1`: \(\frac{d}{dx}\) used with only the prime taught (02); Δ never named. One clause each.
+- M9 `c2`: \(|\nabla f|\) where 01 taught \(\lVert\cdot\rVert\) (make it ‖·‖); \(\nabla_w\) and "unit vector" unnamed;
+  "outer product" said before it's shown. One clause each.
+- M10 `p1`: "Math.random()" is JavaScript in a Python course (`rng.random()`); \(F^{-1}\) unnamed in its box.
+- M11 `p2` §8: Σ, taught in s3 as "add these up", reused as the covariance matrix's name without a word; ρ unnamed.
+- M12 `l2` §8 "Eigenvalues are curvature" teaches the Hessian and condition number before Calculus 3 (stage 2), and
+  ends with a graded question on them: a preview used as an exercise, and the same content Calculus 3 §3 teaches in
+  full (taught twice). Make §8 a short, labeled preview pointing to Calculus 3; move its one idea Calculus 3 lacks
+  (the Hessian's eigenvectors are the valley's axes, its eigenvalues the curvatures along them, Linear algebra 2) and
+  its question into Calculus 3 §3, where the Hessian is taught. `l2` §3: gloss "polynomial".
+- Also touches: `lint.py` NOTATION (`math:trig`), `course.json` (`01` teaches `math:trig`), the notebooks only if a
+  changed formula appears in them (checked by `build.py` and running both versions).
+- Verified by: `npm run check`, `python3 ai/notebooks/lint.py --depth`, each changed page opened at 390 and 1280 px
+  with no console errors, and a cold read of each changed passage.
+- Not reviewed here: the stage-2-and-later math lessons (c3–c5, p3–p5, l3). Same method next, if wanted.
+- **Done 2026-10-22:** M1–M13 as planned. `01` defines cosine and sine with the shadow picture (and registers
+  `math:trig`; `lint.py` now warns if any lesson uses sin/cos before it, tested by planting one in s3); `l1` teaches the
+  transpose before the normal equations; `l2` §8 is a labeled preview box, its idea and question now in `c3` §3, and
+  its duplicate "Condition number" card removed (c3 has one). `npm run check` and `lint.py --depth` stay 0/0 and 73/73;
+  the nine changed pages render at 390 and 1280 px with no KaTeX or console errors. No notebook referenced the moved
+  section.

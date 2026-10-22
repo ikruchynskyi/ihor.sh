@@ -42,7 +42,7 @@
     <p>For \(f(x) = x^2\) at \(a = 3\) with \(h = 0.1\), what is the red line's slope \(\frac{f(a+h) - f(a)}{h}\)?</p>
     <div class="why">\((3.1^2 - 9)/0.1 = (9.61 - 9)/0.1 = 6.1\), which is \(2a + h\). The true slope at 3 is 6.</div>
   </div>
-  <p>A derivative is also a <b>sensitivity</b>: near \(a\), \(f(a + \Delta) \approx f(a) + f'(a)\,\Delta\). If the loss has derivative 6 with respect to a weight, nudging that weight up by 0.001 raises the loss by about 0.006. Gradient descent (chapter 2) is just this sentence used backwards.</p>
+  <p>A derivative is also a <b>sensitivity</b>: near \(a\), with \(\Delta\) (the Greek capital delta, "a small change") for the nudge, \(f(a + \Delta) \approx f(a) + f'(a)\,\Delta\). If the loss has derivative 6 with respect to a weight, nudging that weight up by 0.001 raises the loss by about 0.006. Gradient descent (chapter 2) is just this sentence used backwards.</p>
   <p class="gist">Zoom in far enough and a smooth curve looks like a straight line; the derivative is that line's slope, and it says how much the output moves per unit you move the input.</p>
   <details class="deeper"><summary>Where it breaks: kinks, jumps, and "near"</summary>
     <ul>
@@ -64,7 +64,7 @@
     <tr><td>\(e^x\)</td><td>\(e^x\)</td><td>its own slope (section 3)</td></tr>
     <tr><td>\(\ln x\)</td><td>\(1/x\)</td><td>the log flattens as it grows</td></tr>
   </table>
-  <p>Plus \(\sin' = \cos\) and \(\cos' = -\sin\) for waves. Two worked examples: \(\frac{d}{dx}\, x^2 \sin x = 2x \sin x + x^2 \cos x\) (product rule), and the bell curve \(\frac{d}{dx}\, e^{-x^2} = e^{-x^2} \cdot (-2x)\) (chain rule: outside slope times inside slope). The chain rule is the one that matters most: a network is a long chain of functions, and backprop (chapter 4) is the chain rule run from the loss backwards.</p>
+  <p>Plus \(\sin' = \cos\) and \(\cos' = -\sin\) for waves (chapter 1's sine and cosine: the height and the shadow of a turning arrow). One more way of writing a derivative: \(\frac{d}{dx}\) in front of a formula means "the derivative of this, as \(x\) changes", the same thing as the prime, handy when the function has no name. Two worked examples: \(\frac{d}{dx}\, x^2 \sin x = 2x \sin x + x^2 \cos x\) (product rule), and the bell curve \(\frac{d}{dx}\, e^{-x^2} = e^{-x^2} \cdot (-2x)\) (chain rule: outside slope times inside slope). The chain rule is the one that matters most: a network is a long chain of functions, and backprop (chapter 4) is the chain rule run from the loss backwards.</p>
   <div class="q" data-num="10">
     <p>\(f(x) = 3x^4 - 2x + 7\). What is \(f'(1)\)?</p>
     <div class="why">\(f'(x) = 12x^3 - 2\), so \(f'(1) = 10\). The 7 disappears: shifting a function up doesn't change its slope.</div>

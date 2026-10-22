@@ -35,7 +35,7 @@
     <div><b>The picture</b>The slope of the line that just touches the curve: how many units it rises per unit you walk right.</div>
     <div><b>The math</b>\(f'(x) = \lim_{h \to 0} \dfrac{f(x + h) - f(x)}{h}\): rise over run, with the run shrunk to nothing.</div>
   </div>
-  <p>For simple functions the limit can be worked out once, by hand, and gives rules you can reuse. Take \(f(x) = x^2\):</p>
+  <p>For simple functions the limit can be worked out once, by hand, and gives rules you can reuse. Take \(f(x) = x^2\). The one algebra step: \((x+h)^2\) is \((x+h)\) times \((x+h)\), and multiplying every part by every part gives \(x \cdot x + x \cdot h + h \cdot x + h \cdot h = x^2 + 2xh + h^2\). (Check with numbers: \((3+1)^2 = 16 = 9 + 6 + 1\).) Then the \(x^2\)s cancel and the \(h\) divides out:</p>
   <p class="formula">\[ \frac{(x+h)^2 - x^2}{h} = \frac{x^2 + 2xh + h^2 - x^2}{h} = 2x + h \;\xrightarrow{\;h \to 0\;}\; 2x \]</p>
   <p>So the slope of \(x^2\) at any \(x\) is \(2x\). The same algebra gives the rules every library uses: \((x^n)' = n x^{n-1}\), \((e^x)' = e^x\), \((\ln x)' = 1/x\), and slopes of sums add up. A computer can also skip the algebra and just try a small \(h\), which is what the code below does. Watch what happens when \(h\) gets <em>too</em> small.</p>
   <div class="q" data-num="7">

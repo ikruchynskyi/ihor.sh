@@ -90,7 +90,13 @@
   <p class="legend"><i style="background:#f4d35e"></i>gradient descent <i style="background:#fc6255"></i>Newton</p>
   <p class="readout" id="r3"></p>
   <p>Section 2's rule now applies per direction: η must stay under \(2/a\) for the steep direction, so the gentle direction shrinks by only \(1 - \eta b\) per step, under \(1 - 2/\kappa\). The steps needed grow in proportion to \(\kappa\). Gradient descent zigzags across the valley while barely moving along it. Real networks have condition numbers in the thousands and up, which is why plain gradient descent is slow and why optimizers like momentum and Adam exist (stage 4).</p>
+  <p>This valley's axes happen to be \(x\) and \(y\). A real one is tilted, but its main axes are still easy to find: the Hessian is symmetric, so its eigenvectors (Linear algebra 2) are at right angles to each other, and they are the valley's main axes. Each eigenvalue is the curvature along its axis, so the condition number is the largest eigenvalue over the smallest. Standardizing features (Probability 2) pushes those eigenvalues toward equal, which is why scaled inputs train faster.</p>
+
   <p class="gist">With many weights there are many curvatures. One learning rate must suit the steepest, so the gentlest crawls, and the condition number counts how much slower.</p>
+  <div class="q">
+    <p>A loss valley's Hessian has eigenvalues 100 and 1. Using the biggest learning rate that's still stable, roughly how many steps does it take to shrink the error along the flat direction by a factor of \(e\)?</p>
+    <div class="why">The rate must be below \(2/100\); take about \(1/100\). Along the flat direction (curvature 1) each step then shrinks the error by a factor of about \(1 - 1/100\), so it takes about 100 steps per factor of \(e\): the condition number. Fix the scaling and both directions converge in a step or two.</div>
+  </div>
   <p><b>Newton's method</b> fixes it outright: step by \(-H^{-1}\nabla L\) instead of \(-\eta \nabla L\). Dividing by the curvature makes every direction equally easy; on a quadratic it lands on the minimum in one step, whatever \(\kappa\) is. Tick the box.</p>
   <div class="q" data-num="1e18" data-show="10¹⁸">
     <p>So why don't we train networks with Newton's method? A model has \(10^9\) parameters. How many entries does its Hessian have?</p>

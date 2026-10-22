@@ -32,7 +32,7 @@
   <p>In machine learning, everything becomes a vector: a pixel image is a long list of brightness values, a word becomes a list of a few hundred numbers. Same idea, just with more than two directions to walk in.</p>
   <div class="levels">
     <div><b>The picture</b>An arrow: how far right, how far up. Its length is how far the tip is from the start.</div>
-    <div><b>The math</b>A list of numbers \(v = (v_1, v_2, \dots, v_n)\). Its length comes from Pythagoras: \(\lVert v \rVert = \sqrt{v_1^2 + v_2^2 + \dots + v_n^2}\).</div>
+    <div><b>The math</b>A list of numbers \(v = (v_1, v_2, \dots, v_n)\). Its length comes from Pythagoras (in a right triangle, the long side squared equals the other two sides squared, added): \(\lVert v \rVert = \sqrt{v_1^2 + v_2^2 + \dots + v_n^2}\).</div>
   </div>
   <div class="q" data-num="5">
     <p>Drag the arrow to (3, 4). How long is it? (Predict first, then check the readout under the picture.)</p>
@@ -61,6 +61,7 @@ print("an image has", image.size, "numbers; its length is", np.linalg.norm(image
     <div><b>The math</b>Add and scale coordinate by coordinate: \(a + b = (a_1 + b_1,\ a_2 + b_2)\), \(\ c\,a = (c\,a_1,\ c\,a_2)\).</div>
   </div>
   <p>One more operation, the most important one in this whole course: the <b>dot product</b>. Multiply matching coordinates and add them up: \(a \cdot b = a_1 b_1 + a_2 b_2\). It's one number, and it measures how much two arrows <em>point the same way</em>: big and positive when they agree, zero when they're at right angles, negative when they oppose. The readout above shows it live; drag \(b\) around \(a\) and watch the sign flip as it crosses the right angle.</p>
+  <p>To say exactly how much, there's one more name to learn. Put an arrow of length 1 at an angle \(\theta\) (theta) from another arrow, and drop its shadow straight onto that arrow's line. The shadow's length is the <b>cosine</b> of the angle, \(\cos\theta\): 1 when the two point the same way, 0 at a right angle, −1 when they point opposite ways, and in between for everything else. (How high the tip sits above the line is the <b>sine</b>, \(\sin\theta\); turn the arrow round and round and both trace out waves. They come back in calculus.) With that, the dot product is the two lengths multiplied, times how much they agree:</p>
   <p class="formula">\[ a \cdot b = a_1 b_1 + a_2 b_2 = \lVert a \rVert\,\lVert b \rVert \cos\theta \]</p>
   <p>Remember this one. A neuron (chapter 3) is a dot product of inputs and weights. Attention (chapter 7) is dot products between words. A matrix, next section, is a stack of dot products.</p>
   <p class="gist">The dot product is one number for how much two arrows agree: their lengths multiplied, times the cosine of the angle between them.</p>
@@ -164,7 +165,7 @@ print("det(shear) =", np.linalg.det(shear).round(6), " det(rotate) =", np.linalg
   <details class="deeper" open><summary>The math, step by step</summary>
     <p>A real layer also adds a <b>bias</b> vector \(b\) (it shifts the plane before the fold, which the picture above leaves out), and its matrix needn't be square. A layer from \(n\) numbers to \(m\) numbers is</p>
     <p class="formula">\[ h = \operatorname{ReLU}(W x + b), \qquad W \in \mathbb{R}^{m \times n},\ b \in \mathbb{R}^{m},\ \operatorname{ReLU}(z) = \max(0, z) \text{ for each number} \]</p>
-    <p>It has \(m \cdot n + m\) adjustable numbers, the <b>parameters</b>. A digit reader that takes 784 pixels to 128 hidden numbers to 10 scores has \(784 \cdot 128 + 128 + 128 \cdot 10 + 10 = 101{,}770\) of them.</p>
+    <p>Read the middle part as "\(W\) is a table of \(m\) rows and \(n\) columns of ordinary numbers, and \(b\) a list of \(m\) of them": \(\mathbb{R}\) stands for the real numbers, any point on the number line, and \(\in\) is "is in" from the math warm-up. It has \(m \cdot n + m\) adjustable numbers, the <b>parameters</b>. A digit reader that takes 784 pixels to 128 hidden numbers to 10 scores has \(784 \cdot 128 + 128 + 128 \cdot 10 + 10 = 101{,}770\) of them.</p>
     <p>Why the bend is essential: without it, two layers collapse into one. \(W_2 (W_1 x) = (W_2 W_1) x\), a single matrix, however many you stack. With ReLU in between, that algebra no longer works, and each layer can fold space somewhere new.</p>
   </details>
   <p class="gist">A layer is a move, then a fold. Without the fold, any stack of layers is still a single move.</p>
@@ -199,6 +200,7 @@ for x in [[0, 0], [1, 0], [0, 1], [1, 1]]:
 # All four inputs at once: put them in the columns of a matrix. Same code, one matrix product per layer.
 X = np.array([[0, 1, 0, 1],
               [0, 0, 1, 1]])
+# b1[:, None] stands b1 up as a column, so it's added to every column (every input) of the batch
 print("as one batch:", W2 @ relu(W1 @ X + b1[:, None]) + b2[:, None])
 
 # Count the parameters of a 784 → 128 → 10 digit reader
