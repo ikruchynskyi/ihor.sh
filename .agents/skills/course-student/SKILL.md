@@ -12,6 +12,12 @@ your log live, answers your questions and changes the course.
 
 ## Which course
 
+**First, ask the owner** which course and which lessons to take, unless the request already says (e.g. "electronics
+17–23"). Then check `COURSE=… L path`: if a run already exists, ask whether to continue it or start over. To start
+over, move the old run aside (`mv ai/review/run-COURSE ai/review/run-COURSE-old`), then `L init --fresh` (with
+`--from N` for a part of the course). Then work at a learner's pace: a log with nothing in it but right answers
+means you went too fast.
+
 Every command takes the course from `COURSE` (default `ai`); set it once per shell and keep it for the whole run.
 Each course has its own run folder, so runs never mix:
 
