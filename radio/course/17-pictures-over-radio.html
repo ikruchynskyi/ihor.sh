@@ -23,9 +23,6 @@
 
   <!-- 1 -->
   <h2 id="pitch">Painting with pitch</h2>
-  <div class="q" data-num="1701" data-tol="2"><p>A pixel's value is 64 (dark gray). What tone, in Hz, does it become?</p>
-    <div class="why">1500 + 800 × 64/255 ≈ 1701 Hz.</div>
-  </div>
 
   <p>Take one row of a picture. Read it left to right, and for each pixel play a tone: <b>1500 Hz for black</b>, <b>2300 Hz for white</b>, anything in between for grays. The whole row becomes a little melody:</p>
 
@@ -34,20 +31,11 @@
     <p class="readout" id="r-pitch" aria-live="polite"></p>
   </div>
 
+  <div class="q" data-num="1701" data-tol="2"><p>A pixel's value is 64 (dark gray). What tone, in Hz, does it become?</p>
+    <div class="why">1500 + 800 × 64/255 ≈ 1701 Hz.</div>
+  </div>
+
   <p>That's all SSTV is, repeated for every row: about 240 to 500 rows, each taking a tenth of a second to half a second, so a picture takes from 36 seconds to three minutes. Because only the pitch matters, not the loudness, the signal survives fading, just like FM (<a class="back" href="./09-fm-listening-to-the-speed.html#demod">↩ ch. 9: only the angle matters</a>). In fact, SSTV is usually sent <em>over</em> FM: the radio's FM demodulator gives you the tones, and the SSTV decoder then measures their pitch.</p>
-  <p class="gist">SSTV turns each pixel's brightness into a tone's pitch, line by line. The decoder measures pitch with chapter 9's FM trick and straightens the picture by fitting a line through the sync pulses.</p>
-  <details class="deeper"><summary>Why does fitting a line fix a slanted picture?</summary>
-    <ol>
-      <li>If the sender's clock runs slightly fast, every line is slightly shorter than expected, by the same amount.</li>
-      <li>So the measured start of line n is a + b · n: a straight line, with b the true line length.</li>
-      <li>Each measured sync time is also off by some noise.</li>
-      <li>A straight line fitted through all the sync times averages that noise away: one bad sync barely moves it.</li>
-      <li>Predicting each line's start from the line, not from its own noisy sync, puts every line in the right place.</li>
-    </ol>
-  </details>
-  <details class="deeper"><summary>Where it breaks</summary>
-    <p>One parity bit catches one wrong bit, not two. If noise flips a single bit of the VIS header, the count of 1s turns odd and the decoder ignores the header. If it flips two, the count is even again: the header passes the check and names the wrong mode, and the decoder draws a picture with the wrong line length. Stronger checks (chapter 22's checksum) use many check bits for exactly this.</p>
-  </details>
 
   <!-- 2 -->
   <h2 id="line">Anatomy of a line</h2>
@@ -77,6 +65,9 @@
   <div class="q" data-num="1" data-tol="0"><p>Robot 36's VIS code is 8: binary 0001000. What's its even-parity bit (0 or 1)?</p>
     <div class="why">One 1-bit in the code, so the parity bit is 1, making two: an even count.</div>
   </div>
+  <details class="deeper"><summary>Where it breaks</summary>
+    <p>One parity bit catches one wrong bit, not two. If noise flips a single bit of the VIS header, the count of 1s turns odd and the decoder ignores the header. If it flips two, the count is even again: the header passes the check and names the wrong mode, and the decoder draws a picture with the wrong line length. Stronger checks (chapter 22's checksum) use many check bits for exactly this.</p>
+  </details>
 
 
   <!-- 4 -->
@@ -100,11 +91,12 @@
 
   <!-- 5 -->
   <h2 id="slant">Two clocks again: slanted pictures</h2>
+
+  <p>The sender's sound card and yours each have their own crystal, and they never agree exactly (<a class="back" href="./11-numbers-to-speakers.html#clocks">↩ ch. 11</a>). If the sender's clock runs 0.2% fast, each of its lines is 0.2% shorter than you expect, and a decoder that just counts time puts every line a little too late: the picture <b>slants</b>. Here the real encoder sends a Robot 36 picture with a clock error, and the real decoder receives it:</p>
+
   <div class="q" data-num="72" data-tol="1"><p>A Robot 36 line is 150 ms and there are 240 of them. The sender's clock runs 0.2% fast. How many milliseconds off is the last line, if the decoder just counts time?</p>
     <div class="why">Each line is 0.2% shorter: 0.3 ms, and it adds up: 240 × 0.3 = 72 ms by the bottom, about half a line's width of slant.</div>
   </div>
-
-  <p>The sender's sound card and yours each have their own crystal, and they never agree exactly (<a class="back" href="./11-numbers-to-speakers.html#clocks">↩ ch. 11</a>). If the sender's clock runs 0.2% fast, each of its lines is 0.2% shorter than you expect, and a decoder that just counts time puts every line a little too late: the picture <b>slants</b>. Here the real encoder sends a Robot 36 picture with a clock error, and the real decoder receives it:</p>
 
   <div class="scene" id="s-slant">
     <div class="controls">
@@ -115,6 +107,17 @@
   </div>
 
   <p>The cure uses the sync pulses. For each line, the decoder looks for its 1200 Hz pulse near where it expects it and notes where it actually is. Those measured times, plotted against the line number, fall on a straight line whose <b>slope</b> is the true line length. Fit that line (least squares: the line that's closest to all the points at once) and predict each line's start from it, and the picture comes out straight. A wrong clock in your own sound card is corrected the same way, which is why SSTV software rarely needs calibrating any more.</p>
+
+  <p class="gist">SSTV turns each pixel's brightness into a tone's pitch, line by line. The decoder measures pitch with chapter 9's FM trick and straightens the picture by fitting a line through the sync pulses.</p>
+  <details class="deeper"><summary>Why does fitting a line fix a slanted picture?</summary>
+    <ol>
+      <li>If the sender's clock runs slightly fast, every line is slightly shorter than expected, by the same amount.</li>
+      <li>So the measured start of line n is a + b · n: a straight line, with b the true line length.</li>
+      <li>Each measured sync time is also off by some noise.</li>
+      <li>A straight line fitted through all the sync times averages that noise away: one bad sync barely moves it.</li>
+      <li>Predicting each line's start from the line, not from its own noisy sync, puts every line in the right place.</li>
+    </ol>
+  </details>
 
   <!-- notation -->
   <h2 id="notation">Writing it down</h2>
