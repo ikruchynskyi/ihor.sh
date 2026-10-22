@@ -147,7 +147,9 @@ export function schematic(root, project, opts = {}) {
   let sim = null, memory = { capV: new Map(), indI: new Map() }, dirty = true, selected = null, hover = null, tReal = 0;
   // a part taken out is gone, or (why.remove === "short") replaced by a plain wire, for parts in series with the signal
   const live = () => parts.flatMap((p) => { const r = R.get(p.id); if (!out.has(r)) return [p]; return project.why?.[r]?.remove === "short" ? [{ id: p.id, type: "wire", a: p.a, b: p.b }] : []; });
-  const rebuild = () => { dirty = false; sim = simulation(live(), { speed: project.speed ?? 1, memory, t0: sim?.t ?? 0 }); };
+  const watched = []; // points whose highest voltage is tracked at every simulation step (a spike lasts microseconds)
+  const onSample = (time, v) => { for (const w of watched) { const n = sim?.net.nodeOf.get(w.key); if (n != null && v[n] > w.max) w.max = v[n]; } };
+  const rebuild = () => { dirty = false; sim = project.noSim ? null : simulation(live(), { speed: project.speed ?? 1, memory, t0: sim?.t ?? 0, onSample }); }; // noSim: modules only, nothing honest to simulate
   const offsets = new Map();
   function frame(now) {
     const dt = Math.min(0.05, (now - (frame.last ?? now)) / 1000); frame.last = now; tReal += dt;
@@ -172,6 +174,7 @@ export function schematic(root, project, opts = {}) {
       const name = R.get(p.id); if (!name || (p.nolabel && name !== selected)) continue;
       g.fillStyle = name === selected ? COL.sel : "#8f98a8";
       if (PARTS[p.type].two) { const [ax, ay] = p.a, [bx, by] = p.b, ang = Math.atan2(by - ay, bx - ax), o = ["battery", "source", "switch", "button", "diode", "zener", "led", "lamp", "motor", "speaker", "ldr"].includes(p.type) ? -0.75 : 0.85, dx = -o * Math.sin(ang), dy = o * Math.cos(ang); g.textAlign = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "left" : "right") : "center"; g.fillText(name, (ax + bx) / 2 + dx, (ay + by) / 2 + dy); }
+      else if (p.type === "nmos" || p.type === "bjt") { g.textAlign = "left"; g.fillText(name, p.at[0] + 3.2, p.at[1] + 0.75); } // under its model name, clear of the drain's wire
       else if (p.type === "pot") { const ps = pins(p), x = Math.max(...ps.map((q) => q[0])), y = Math.min(...ps.map((q) => q[1])); g.textAlign = "left"; g.fillText(name, x + 0.3, y + 0.7); }
       else { const ps = pins(p), x = Math.min(...ps.map((q) => q[0])), y = Math.min(...ps.map((q) => q[1])); g.textAlign = "left"; g.fillText(name, x + 0.2, y - 0.7); }
     }
@@ -216,10 +219,19 @@ export function schematic(root, project, opts = {}) {
   });
   // the part buttons and the card
   const listeners = [];
-  const refsShown = [...R.values()].filter((r) => project.why?.[r]);
+  // review mode (opts.review = { bug: [refs], says }): every named part gets a button, and a pick is checked, not explained
+  const review = opts.review, tried = new Set();
+  const refsShown = [...R.values()].filter((r) => review || project.why?.[r]);
   chips.innerHTML = refsShown.map((r) => `<button type="button" data-r="${r}" aria-pressed="false">${r}</button>`).join("");
   chips.onclick = (e) => { const b = e.target.closest("button[data-r]"); if (b) api.select(b.dataset.r, true); };
   const showCard = () => {
+    if (review) {
+      if (!selected) { card.innerHTML = `<p class="muted">${opts.hint ?? "One part here is wrong, or wired wrong. Click it, or its button."}</p>`; return; }
+      const hit = review.bug.includes(selected); if (!hit) tried.add(selected);
+      card.innerHTML = hit ? `<p><b class="ref">${selected}</b> ✓ found it.</p><p>${review.says}</p>` : `<p><b class="ref">${selected}</b>: not the problem, as far as this design goes. Look again: check each part against what its datasheet asks for.${tried.size >= 3 ? ` Hint: look closely at ${review.bug[0]}.` : ""}</p>`;
+      if (hit) opts.onFound?.(selected);
+      return;
+    }
     const w = project.why?.[selected];
     if (!w) { card.innerHTML = `<p class="muted">${opts.hint ?? "Pick a part (click it, or its button) to see what it's for. Hover or tap any point of the drawing for its voltage."}</p>`; return; }
     const p = byRef(selected), gone = out.has(selected);
@@ -238,6 +250,8 @@ export function schematic(root, project, opts = {}) {
     remove(r, gone = true) { if (gone) out.add(r); else out.delete(r); chips.querySelector(`[data-r="${r}"]`)?.classList.toggle("out", gone); dirty = true; showCard(); opts.onChange?.(); },
     set(r, prop, v) { const p = byRef(r); p[prop] = v; dirty = true; opts.onChange?.(); },
     voltAt: (pt) => sim?.voltAt(pt) ?? null,
+    /** Track the highest voltage at a point, step by step; returns { max } (set max = -Infinity to start again). */
+    watch: (pt) => { const w = { key: key(pt), max: -Infinity }; watched.push(w); return w; },
     current: (r) => sim?.cur.get(byRef(r)?.id) ?? 0,
     state: (r) => sim?.net.states.get(byRef(r)?.id),
     onSelect: (f) => listeners.push(f),

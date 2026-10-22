@@ -388,13 +388,13 @@ export const DESIGN23 = {
 export const P23 = {
   speed: 0.002,
   parts: [
-    { type: "battery", a: [12, 3], b: [12, 6], v: 12 }, flag([12, 3], "+12V"), gnd([12, 6]),
+    { type: "battery", a: [16, 3], b: [16, 6], v: 12 }, flag([16, 3], "+12V"), gnd([16, 6]),
     { type: "source", a: [0, 7], b: [0, 10], wave: "square", freq: 1000, amp: 1.65, offset: 1.65, duty: 50 }, gnd([0, 10]),
     w([0, 7], [0, 6]), w([0, 6], [2, 6]), { type: "resistor", a: [2, 6], b: [5, 6], ohms: 100 }, w([5, 6], [7, 6]),
     { type: "resistor", a: [6, 6], b: [6, 9], ohms: 100e3 }, gnd([6, 9]),
     { type: "nmos", at: [7, 6], model: "AO3400A (2.5 V gate)" }, gnd([9, 8]),
     { type: "motor", a: [9, 1], b: [9, 4], ohms: 60, henries: 1e-3 }, flag([9, 1], "+12V"),
-    { type: "diode", a: [5, 4], b: [5, 1], model: "1N5819 (Schottky)" }, w([9, 1], [5, 1]), w([9, 4], [5, 4]),
+    { type: "diode", a: [12, 4], b: [12, 1], model: "1N5819 (Schottky)" }, w([9, 1], [12, 1]), w([9, 4], [12, 4]),
   ],
   why: {
     BAT1: { name: "12 V adapter", job: "The fan's supply." },
@@ -428,7 +428,7 @@ export const REVIEWS = [
     parts: [{ type: "battery", a: [0, 2], b: [0, 5], v: 9 }, gnd([0, 5]), w([0, 2], [0, 1]), w([0, 1], [2, 1]), { type: "capacitor", a: [2, 1], b: [2, 4], farads: 1e-6 }, gnd([2, 4]), { type: "ldo1700", at: [3, 1] }, w([2, 1], [3, 1]), gnd([5, 3]), w([7, 1], [9, 1]), { type: "capacitor", a: [9, 1], b: [9, 4], farads: 1e-6 }, gnd([9, 4]), { type: "resistor", a: [11, 1], b: [11, 4], ohms: 330 }, w([9, 1], [11, 1]), gnd([11, 4])] },
   { title: "A comparator switching a lamp", bug: ["U1"], says: "The LM393's output is open collector: it can pull the gate down but nothing pulls it up (chapter 20). A 10 kΩ pull-up from the output to +12 V is missing; as drawn, the lamp never lights.",
     parts: [{ type: "battery", a: [-3, 2], b: [-3, 5], v: 12 }, flag([-3, 2], "+12V"), gnd([-3, 5]), { type: "resistor", a: [1, 1], b: [1, 4], ohms: 10e3 }, flag([1, 1], "+12V"), { type: "resistor", a: [1, 4], b: [1, 7], ohms: 4.7e3 }, gnd([1, 7]), w([1, 4], [4, 4]), w([4, 4], [4, 5]), w([4, 5], [5, 5]), { type: "lm393", at: [5, 4] }, flag([7, 2], "+12V"), gnd([7, 6]), w([5, 3], [4, 3]), w([4, 3], [4, 2]), flag([4, 2], "+12V"), w([9, 4], [11, 4]), { type: "nmos", at: [11, 4] }, gnd([13, 6]), { type: "lamp", a: [13, -1], b: [13, 2], volts: 12, watts: 5 }, flag([13, -1], "+12V")] },
-  { title: "A counter on a 555 clock", bug: ["U2"], says: "The 4017's RESET (pin 15) is connected to nothing. The simulator quietly reads an unconnected input as low, so it looks fine here; a real CMOS input floats and resets the count at random (chapters 13 and 19). Tie it to ground. A simulator is only as honest as its models.",
+  { title: "A counter on a clock", bug: ["U1"], says: "The 4017's RESET (pin 15) is connected to nothing. The simulator quietly reads an unconnected input as low, so it looks fine here; a real CMOS input floats and resets the count at random (chapters 13 and 19). Tie it to ground. A simulator is only as honest as its models.",
     parts: [{ type: "battery", a: [-3, 3], b: [-3, 6], v: 9 }, flag([-3, 3], "+9V"), gnd([-3, 6]), { type: "source", a: [0, 4], b: [0, 7], wave: "square", freq: 2, amp: 4.5, offset: 4.5 }, gnd([0, 7]), w([0, 4], [0, 3]), w([0, 3], [4, 3]), { type: "counter4017", at: [4, 2] }, flag([7, 1], "+9V"), gnd([7, 14]), w([4, 5], [3, 5]), w([3, 5], [3, 6]), gnd([3, 6]), { type: "led", a: [10, 3], b: [13, 3], color: "red" }, { type: "led", a: [10, 4], b: [13, 4], color: "green" }, w([13, 3], [13, 6]), { type: "resistor", a: [13, 6], b: [13, 9], ohms: 1e3 }, gnd([13, 9])] },
   { title: "A motor on a MOSFET", bug: ["M1", "Q1"], says: "No flyback diode across the motor. Every time the MOSFET turns off, the motor's coil current has nowhere to go and the drain spikes (chapter 4 §3, chapter 14 §2). Hover the drain while it switches. Add a diode across the motor, cathode to +12 V.",
     parts: [{ type: "battery", a: [-3, 3], b: [-3, 6], v: 12 }, flag([-3, 3], "+12V"), gnd([-3, 6]), { type: "source", a: [0, 6], b: [0, 9], wave: "square", freq: 2, amp: 2.5, offset: 2.5 }, gnd([0, 9]), w([0, 6], [0, 5]), w([0, 5], [3, 5]), { type: "nmos", at: [3, 5] }, gnd([5, 7]), { type: "motor", a: [5, 0], b: [5, 3], ohms: 6, henries: 1e-3 }, flag([5, 0], "+12V")], speed: 0.2 },

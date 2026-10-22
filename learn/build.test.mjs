@@ -83,4 +83,25 @@ const fmt = (m) => JSON.stringify(Object.fromEntries(Object.entries(m).map(([k, 
   assert.ok(Math.abs(mn.avg - 0.31) < 0.01, `ch21 without C1 ${fmt(mn)}`);
   console.log(`ch21: idle ${mi.avg.toFixed(3)} V; pot at half: ±${(mo.vpp / 2).toFixed(2)} V out, speaker ±${(ms.max * 1000).toFixed(0)} mA around ${(ms.avg * 1000).toFixed(1)} mA; full volume clips at ${mf.min.toFixed(2)}–${mf.max.toFixed(2)} V; without C1 the speaker carries ${(mn.avg * 1000).toFixed(0)} mA DC`);
 }
+// ---------- ch23: the fan driver, the whole design, the reviews ----------
+{ const P = PROJECTS.P23, on = run(P, 0.02, { point: [9, 4], part: "M1", keep: 0.01 }), mi = measure(on.i), md = measure(on.v);
+  assert.ok(Math.abs(mi.avg - 0.1) < 0.015 && md.max < 12.6 && md.min < 0.1, `ch23 fan ${fmt(mi)} drain ${fmt(md)}`);
+  const noD = run(P, 0.02, { point: [9, 4], keep: 0.01, without: ["D1"] }), mx = measure(noD.v);
+  assert.ok(mx.max > 30, `ch23 spike without D1 ${fmt(mx)}`);
+  const g = run(P, 0.02, { point: [7, 6], keep: 0.01 }), mg = measure(g.v); // the gate follows the PWM through 100 Ω
+  console.log(`ch23: fan ${(mi.avg * 1000).toFixed(0)} mA average at 50% PWM (${(mi.max * 1000).toFixed(0)} mA peak); drain ${md.min.toFixed(2)}–${md.max.toFixed(2)} V with D1, up to ${mx.max.toFixed(0)} V without; gate ${mg.min.toFixed(2)}–${mg.max.toFixed(2)} V`);
+  const D = PROJECTS.DESIGN23, R = new Set(refs(load(D.parts)).values()); for (const r of Object.keys(D.why)) assert.ok(R.has(r), `DESIGN23: why.${r} has no part`);
+  assert.ok(R.size === Object.keys(D.why).length, `DESIGN23: every part explained (${[...R].filter((r) => !D.why[r])})`);
+}
+for (const [k, rv] of PROJECTS.REVIEWS.entries()) {
+  const parts = load(rv.parts), R = new Set(refs(parts).values());
+  for (const b of rv.bug) assert.ok(R.has(b), `review ${k}: bug ${b} isn't a part (${[...R]})`);
+  if (rv.noSim) continue;
+  const sim = simulation(parts, { speed: rv.speed ?? 1 }); for (let i = 0; i < 2000; i++) sim.advance(sim.dt); assert.equal(sim.error, "", `review ${k}`);
+}
+{ const [led, ldo, , , motor] = PROJECTS.REVIEWS, sl = simulation(load(led.parts), { speed: 1 }); for (let i = 0; i < 200; i++) sl.advance(sl.dt);
+  const iLed = sl.cur.get(load(led.parts).find((p) => p.type === "led").id); assert.ok(iLed > 0.03, `review LED current ${iLed}`);
+  const so = simulation(load(ldo.parts), { speed: 1 }); for (let i = 0; i < 200; i++) so.advance(so.dt); assert.ok(so.net.states.get(load(ldo.parts).find((p) => p.type === "ldo1700").id).over, "review MCP1700 flags over 6.5 V");
+  const mp = load(motor.parts), sm = simulation(mp, { speed: motor.speed }); let peak = 0; for (let i = 0; i < 0.6 / sm.dt / motor.speed * motor.speed && sm.t < 0.6; i++) { sm.advance(sm.dt); peak = Math.max(peak, sm.voltAt([5, 3]) ?? 0); }
+  assert.ok(peak > 30, `review motor drain peak ${peak}`); console.log(`reviews: LED ${(iLed * 1000).toFixed(0)} mA; motor drain spikes to ${peak.toFixed(0)} V`); }
 console.log("build ok");

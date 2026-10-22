@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Design Your Own: a Thermostat Fan</title>
+  <meta name="description" content="Electronics from scratch, chapter 23, the last build: a design review where you find the planted mistake in six schematics, then a whole project designed by you with Part II's steps: a 12 V fan that switches on above a set temperature, from the supply and the sensor to the MOSFET a 3.3 V pin can drive, its gate resistor, pull-down and flyback diode, and the way to a printed board." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    h3 { margin: 30px 0 4px; font-size: 1.05em; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .spec { border: 2px solid var(--accent); border-radius: 12px; padding: 10px 16px; background: var(--card); }
+    .tablewrap { overflow-x: auto; }
+    table.bom { border-collapse: collapse; font-size: 15px; width: 100%; }
+    table.bom th, table.bom td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    table.bom td:first-child { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+    ol.steps li { margin: 4px 0; }
+    .review h3 small { color: var(--muted); font-weight: 400; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 23</p>
+  <h1>Design your own: a thermostat fan</h1>
+  <p class="lede">Six builds ago you were told where every leg goes. This chapter asks you to do the two things a designer does without being told. First, read someone else's schematic and find what's wrong with it, which is also how you'll catch your own mistakes. Then design a whole project from a one-paragraph spec, choosing every part yourself, with the answers folded away so you can check each decision after you've made it.</p>
+  <div class="plain card"><b>Before you start.</b> Everything here was taught in Part II: the steps and schematic reading (<a href="./17-first-build-555.html">17</a>), choosing regulators (<a href="./18-power-supply.html">18</a>), levels and floating inputs (<a href="./19-two-chips.html">19</a>), sensor to switch (<a href="./20-dusk-light.html">20</a>), signals and datasheet circuits (<a href="./21-amplifier.html">21</a>), and the microcontroller board (<a href="./22-microcontroller.html">22</a>), plus motors and flyback (<a href="./14-motors.html">chapter 14</a>) and KiCad (<a href="./15-hands-on.html">chapter 15</a>).</div>
+
+  <h2>1. The design review</h2>
+  <p>Each of these six schematics has one mistake, of the kind every chapter of Part II warned about. Some of them still simulate happily: a simulator only knows what its models tell it, which is part of the lesson. Click the part that's wrong, or its button. Hover the live ones for voltages: the evidence is often right there.</p>
+  <div id="reviews"></div>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> find all six. <span id="found">0 of 6 found.</span></p>
+  <p class="gist">A design review is the same checks you'd run on your own design: every part's job, every value against its datasheet, every input with a defined voltage, every coil with a path for its current, every address and every limit.</p>
+
+  <h2>2. The spec</h2>
+  <div class="spec"><p><b>A thermostat fan.</b> A 12 V computer fan (about 0.2 A) runs when the room is warmer than a temperature you set, and stops when it's cooler, without chattering around the threshold. The temperature can be read out (on a display or over Wi-Fi). Everything runs from one 12 V adapter.</p></div>
+  <p>From here on, every step is yours. Each question below is one decision; think it through (better: write it down), then open the answer. The answers are one good design, not the only one.</p>
+
+  <h3>Step 1: the goal, as something you could test</h3>
+  <div class="q">
+    <p>Rewrite the spec as one sentence you could check with a thermometer and a stopwatch.</p>
+    <div class="why">For example: "With the setpoint at 28 °C, the fan starts within ten seconds of the sensor reading above 28.5 °C and stops within ten seconds of it reading below 27.5 °C, powered only by the 12 V adapter." The two numbers either side of the setpoint are the hysteresis (chapter 20), now a requirement instead of a fix.</div>
+  </div>
+
+  <h3>Step 2: the blocks</h3>
+  <div class="q" data-answer="b">
+    <p>Chapter 20's dusk light did "sensor, threshold, switch" with a comparator and no code. Why would you use a microcontroller here instead?</p>
+    <ul><li data-k="a" data-says="A comparator can switch a fan at a temperature perfectly well: swap the LDR for a thermistor.">A comparator can't switch a fan</li><li data-k="b">The spec wants the temperature read out (a display or Wi-Fi), and a setpoint you can change: that's a computer's job</li><li data-k="c" data-says="A microcontroller is cheap, but it's not cheaper than one LM393. Cost isn't the reason.">A microcontroller is cheaper than a comparator</li></ul>
+    <div class="why">Without the read-out, chapter 20's circuit with an NTC thermistor in place of the LDR would do, with no code at all; that's worth knowing, and it's chapter 20's "make it yours". With it, the blocks are: 12 V in; a 5 V supply for the board; a microcontroller (chapter 22's ESP32); a temperature sensor; a switch for the fan.</div>
+  </div>
+
+  <h3>Step 3: the supply</h3>
+  <div class="q" data-answer="c">
+    <p>The ESP32 board takes 5 V on its 5V pin and bursts to about a quarter of an amp on Wi-Fi. From 12 V, which regulator?</p>
+    <ul><li data-k="a" data-says="The MCP1700's absolute maximum input is 6.5 V, and it gives 250 mA at most: both rule it out here (chapter 18).">An MCP1700</li><li data-k="b" data-says="Work out the heat: (12 − 5) V × 0.25 A, times 54 °C/W.">A 7805, no heatsink</li><li data-k="c">A buck module set to 5 V</li></ul>
+    <div class="why">A 7805 would burn \((12 - 5) \times 0.25 \approx 1.75\) W in the bursts, about 95 °C above the room in a bare TO-220 (chapter 18's chooser). A buck module (chapter 10) wastes a fraction of that. Set its output with a meter <em>before</em> connecting the board: most modules have a trim pot and leave the factory at some other voltage. And add chapter 22's bulk capacitor (470 µF) on the 5 V side against brown-outs.</div>
+  </div>
+
+  <h3>Step 4: the sensor</h3>
+  <div class="q">
+    <p>BME280 on I²C, or an NTC thermistor in a divider on an analog pin? What decides it?</p>
+    <div class="why">Both work. The BME280 (chapter 22) gives calibrated degrees over two shared wires and humidity for free; the thermistor (chapter 11) costs cents, needs one ADC1 pin and chapter 11's arithmetic. This design uses the BME280, at 0x76, powered from the board's 3V3 pin, exactly as chapter 22 wired it. Either way, mount it where it measures the room, not the fan's exhaust or the warm regulator (chapter 20's "a sensor that sees what it controls").</div>
+  </div>
+
+  <h3>Step 5: the fan switch</h3>
+  <div class="q" data-answer="b">
+    <p>The ESP32 pin gives 3.3 V. Chapter 20 switched an amp with an IRLZ44N. Will it do here?</p>
+    <ul><li data-k="a" data-says="Check its datasheet's RDS(on) rows: at what gate voltages is it promised?">Yes: it's logic-level, and the fan is only 0.2 A</li><li data-k="b">Not reliably: its datasheet only promises its on-resistance from 4 V up; pick a MOSFET specified at 2.5 V, like the AO3400A</li><li data-k="c" data-says="Any N-channel needs its gate above its source; the problem is only how far above.">No MOSFET can be switched by 3.3 V</li></ul>
+    <div class="why">"Logic level" meant 5 V logic when the IRLZ44N was designed: its table stops at 4 V (0.035 Ω). Chapter 4 §4's lesson, and chapter 5's "design with the min and max columns": below the last promised row you're on your own. The AO3400A promises under 48 mΩ at 2.5 V, so at 3.3 V it's fully on: \(0.2^2 \times 0.048 \approx 2\) mW. It's a tiny SOT-23 part; on a breadboard, solder it to a SOT-23 adapter board first.</div>
+  </div>
+  <div class="q">
+    <p>Three small parts go around the MOSFET. Name each one's job before you open this: a 100 Ω resistor in series with the gate, a 100 kΩ from gate to ground, and a diode across the fan.</p>
+    <div class="why"><b>100 Ω in series:</b> the gate is a small capacitor; each switch, the pin charges or empties it, and the resistor caps that current at 3.3 V / 100 Ω = 33 mA, under the 40 mA the ESP32's datasheet gives a pin. <b>100 kΩ to ground:</b> while the ESP32 resets and boots, its pins float (chapter 13), and a floating gate can turn the fan on at random; the pull-down holds it off until the program takes over. <b>The diode:</b> a fan is a motor, a coil (chapter 14); every time the MOSFET turns off, many thousands of times a second with PWM, the coil's current needs a path, or the drain spikes far above 12 V (chapter 4 §3). A 1N5819 Schottky is fast enough for that.</div>
+  </div>
+
+  <h3>Step 6: pins and grounds</h3>
+  <div class="q">
+    <p>Which ESP32 pin drives the fan, and what has to be true of the grounds?</p>
+    <div class="why">Any output-capable pin that isn't a strapping, flash or UART pin (chapter 22 §2): GPIO25 here, with PWM at 25 kHz so the fan's speed can follow the temperature without an audible whine (chapter 14 §3). I²C stays on GPIO21 and 22. And the grounds must be one: the 12 V adapter's −, the buck module's output −, the ESP32's GND and the MOSFET's source. The gate voltage only means something relative to the source; with separate grounds, the fan would do whatever the stray voltage between them says.</div>
+  </div>
+
+  <h2>3. The design, part by part</h2>
+  <p>Here's the result of those decisions. The boards (the buck module, the ESP32, the sensor) are drawn as boxes with labels, as in chapter 22, and the drawing isn't simulated: the lab has no microcontroller. Pick any part for the reasoning behind it.</p>
+  <div id="design"></div>
+  <p>The one analog part, the fan driver, can be simulated on its own, with a 3.3 V square wave standing in for GPIO25 (slowed to 1 kHz so you can watch). Hover the drain while it switches, then take out D1.</p>
+  <div id="fan"></div>
+  <p class="goal" id="g3">🎯 <b>Challenge:</b> take out D1 and find how high the drain goes when the MOSFET turns off.</p>
+  <details class="deeper"><summary>Where it breaks: the simulator's 611 V</summary>
+    <p>Without D1, the simulator shows the drain flying to about 611 V at each turn-off, because its MOSFET model has no breakdown voltage: it shows how hard the coil pushes, with nothing to stop it. A real AO3400A is rated for 30 V; past that its drain breaks down and absorbs the energy as heat (chapter 4 §3's avalanche), which it survives a limited number of times. Either way the number is a warning, not a prediction: the real part fails somewhere between.</p>
+  </details>
+
+  <h2>4. The fan driver on a breadboard</h2>
+  <p>Your layout, your choice; here's one. The drain lives in two strips joined across the gap by the green jumper: the MOSFET's adapter board is in the bottom half, the fan's wire and D1 in the top. This build's own breadboard check caught exactly that jumper missing while this chapter was being written: it's the easiest wire to forget.</p>
+  <div id="bb"></div>
+
+  <h2>5. The shopping list</h2>
+  <div class="tablewrap"><table class="bom">
+    <tr><th>Ref</th><th>Part</th><th>Why this one</th></tr>
+    <tr><td>U1</td><td>Buck module (adjustable or 5 V)</td><td>12 → 5 V at a fraction of a 7805's heat. Set 5.0 V before connecting.</td></tr>
+    <tr><td>C1</td><td>470 µF electrolytic, 10 V+</td><td>Bulk capacitance against Wi-Fi brown-outs.</td></tr>
+    <tr><td>U2</td><td>ESP32 dev board</td><td>The brains (chapter 22).</td></tr>
+    <tr><td>U3</td><td>BME280 breakout</td><td>The temperature, I²C at 0x76.</td></tr>
+    <tr><td>Q1</td><td>AO3400A on a SOT-23 adapter</td><td>Under 48 mΩ at a 2.5 V gate; 30 V; ±12 V gate.</td></tr>
+    <tr><td>R1, R2</td><td>100 Ω, 100 kΩ ¼ W</td><td>Gate current limit; gate pull-down for boot.</td></tr>
+    <tr><td>D1</td><td>1N5819</td><td>Flyback, fast enough for 25 kHz PWM.</td></tr>
+    <tr><td>M1</td><td>12 V fan, ~0.2 A (2-wire)</td><td>A 4-wire PWM fan takes PWM on its own wire instead: read its spec.</td></tr>
+    <tr><td>BAT1</td><td>12 V adapter, 1 A</td><td>Fan + buck input with a margin.</td></tr>
+  </table></div>
+
+  <h2>6. Your checklist</h2>
+  <div class="q">
+    <p>Write the power-up order for this build, chapter 17 style: what do you connect and measure first, second, third, and what reading must you see before going on?</p>
+    <div class="why"><ol class="steps">
+      <li>Buck module alone on 12 V, nothing on its output: adjust to <b>5.0 V</b>.</li>
+      <li>Add C1 and the ESP32 board (no sensor, no fan): its 3V3 pin reads <b>3.3 V</b>; upload the I²C scanner.</li>
+      <li>Add the BME280: the scanner finds <b>0x76</b>; the lines idle at <b>3.3 V</b>.</li>
+      <li>Add the fan driver without the fan: the gate reads <b>0 V</b> while the board resets (that's R2), and 3.3 V when the program turns GPIO25 on.</li>
+      <li>Add the fan: it runs when the program says so; the MOSFET stays cool; the drain, on a scope, stays near 12 V at turn-off (D1 working).</li>
+      <li>Last, the thermostat program, with a test: warm the sensor with your hand and time the fan against your step 1 sentence.</li>
+    </ol></div>
+  </div>
+
+  <h2>7. From breadboard to board</h2>
+  <p>A breadboard proves the design; a printed board makes it last. Chapter 15's KiCad steps apply as they are: draw the schematic you just designed, choose footprints (the AO3400A is SOT-23, so on a PCB it needs no adapter), place the parts (decoupling and bulk capacitors by the chips they serve, the fan's connector and the 12 V jack at the edge), and size the traces: the fan's 0.2 A needs only a thin trace by chapter 15's rule, but the 12 V input feeds everything, so give it more. Pour a ground plane, run the design rules check, order five boards, and solder your first one with chapter 15's "heat the joint, not the solder."</p>
+
+  <h2>8. Where to go from here</h2>
+  <p>That's Part II. You can read a schematic, pick parts from datasheets, lay them out, check them, and find what's wrong. The next projects are yours: the <a href="/learn/">build logs</a> on this site (a USB-C power bank, an ESP32 remote, a solar weather node) use exactly these steps, and the <a href="/learn/lab.html">circuit lab</a> has every part from Part II to try a design before you buy anything.</p>
+  <p class="muted">Previous: <a href="./22-microcontroller.html">A microcontroller board</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { schematic, breadboard, link } from "/learn/build.js";
+import { P23, DESIGN23, REVIEWS } from "/learn/electronics/projects.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+
+// section 1: six reviews, one planted mistake each
+const found = new Set();
+REVIEWS.forEach((rv, k) => {
+  const box = document.createElement("div"); box.className = "review";
+  box.innerHTML = `<h3>${k + 1}. ${rv.title} <small>${rv.noSim ? "(boards only, not simulated)" : "(live)"}</small></h3><div></div>`;
+  $("reviews").append(box);
+  schematic(box.lastElementChild, { ...rv, noLab: true }, { review: { bug: rv.bug, says: rv.says }, label: `Review ${k + 1}: ${rv.title}. One part is wrong.`, onFound: () => {
+    found.add(k); $("found").textContent = `${found.size} of 6 found.`;
+    if (found.size === REVIEWS.length) done("g1", "Six for six. You'd catch these in your own drawings now, before they cost a part.");
+  } });
+});
+
+schematic($("design"), DESIGN23, { label: "The thermostat fan: a 12 V adapter, a buck module to 5 V, a 470 µF capacitor, an ESP32 dev board, a BME280 on I²C, and a fan switched by an AO3400A with a gate resistor, a gate pull-down and a flyback diode.", hint: "Pick a part to see why it's there. (Not simulated: the boards aren't in the lab.)" });
+const fan = schematic($("fan"), P23, { label: "The fan driver: a 3.3 V square wave through 100 Ω to an AO3400A's gate, 100 kΩ gate to ground, the fan from +12 V to the drain with a 1N5819 across it.", note: "1 kHz here; 25 kHz in the real build." });
+const bb = breadboard($("bb"), P23);
+link(fan, bb);
+const drain = fan.watch([9, 4]);
+setInterval(() => { if (drain.max > 30) done("g3", `${drain.max.toFixed(0)} V from a 12 V supply: that's the coil. One diode keeps it at 12.3.`); }, 200);
+window.blipContext = () => ({ page: "Electronics chapter 23: design your own: a design review with six planted mistakes, then a thermostat fan (12 V, buck to 5 V, ESP32, BME280, AO3400A low-side switch with gate resistor, pull-down and flyback)", found: found.size });
+</script>
+</body>
+</html>
