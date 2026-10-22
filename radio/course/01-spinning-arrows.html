@@ -20,7 +20,7 @@
 
   <!-- 1 -->
   <h2 id="wheel">A dot on a wheel draws a wave</h2>
-  <p>Picture a wheel with a dot painted on its rim. The wheel turns at a steady speed. Now ignore everything about the dot except one thing: <b>how high it is</b>.</p>
+  <p>Picture a wheel with a dot painted on its rim. The wheel turns at a steady speed. Now ignore everything about the dot except one thing: <b>how high it is</b>. (Shine a light from the side, and the dot's shadow on a wall goes up and down by exactly that height. That's why this course calls the height a <b>shadow</b> of the wheel.)</p>
   <p>As the wheel turns, the dot rises, reaches the top, sinks, passes the middle, bottoms out, and comes back up. Let's record that height as time goes by. Every moment, we drop a mark at the dot's current height, and the older marks slide off to the right:</p>
 
   <div class="scene" id="s-wheel">
@@ -44,7 +44,7 @@
 
   <!-- 2 -->
   <h2 id="shadows">Every wheel casts two shadows</h2>
-  <p>We've been watching the dot's height. Why would a radio receiver need anything more than that single wave? Because — as you'll prove for yourself in the game right below — a single shadow has a fatal blind spot: it can't tell which way the wheel is spinning, which in a radio means it can't tell a station just above your tuned frequency from one just below it. To cure that blind spot, we also watch the dot move sideways: left, right, left, right.</p>
+  <p>We've been watching the dot's height. Why would a radio receiver need anything more than that single wave? Because — as you'll prove for yourself in the game right below — a single shadow has a blind spot: it can't tell which way the wheel is spinning. In a radio that matters a lot. A radio looks at a slice of stations around the one you pick, and slows them all down (chapter 3 shows how). After that, a station a little above your pick spins one way and a station a little below it spins the other way: the spinning direction is the only thing that tells them apart. To cure that blind spot, we also watch the dot move sideways: left, right, left, right.</p>
   <p>Below, the same arrow spins. Its height is traced to the right in <em class="y">yellow</em>, like before. Its sideways position is traced <em>downward</em>, in <em class="g">green</em>:</p>
 
   <div class="scene" id="s-shadows"></div>
@@ -70,7 +70,7 @@
   <p>Try a few rounds with one shadow. You'll find you're just guessing, and you'll stay at about 50% no matter how carefully you watch. That's not because you aren't paying attention: <b>a wheel spinning ↺ and one spinning ↻ cast exactly the same sideways shadow</b>. Both arrows sweep from the right edge to the left edge and back at the same pace. The only difference is whether they go over the top or under the bottom on the way, and the sideways shadow can't see "up" or "down".</p>
   <p>Now turn on the second shadow. Suddenly it's easy: watch the moment green hits its far right, then see whether yellow goes up next (↺) or down next (↻). You'll get it right every time.</p>
 
-  <div class="ponder"><span class="tag">Remember this game</span>It's the whole reason radios measure every signal twice. A receiver that records only one shadow can't tell a station just above the frequency it's tuned to from one just below it: they'd look identical and land on top of each other. Recording both shadows keeps them apart. Radio people call the two shadows <b>I</b> and <b>Q</b>, and every software radio, including the one on this site, receives everything as pairs of I and Q numbers. You'll meet them properly in chapter 2.</div>
+  <div class="ponder"><span class="tag">Remember this game</span>It's the whole reason radios measure every signal twice. A receiver that records only one shadow can't tell a station a little above the one you picked from one a little below it: they spin in opposite directions, so they'd look identical and land on top of each other. Recording both shadows keeps them apart. Radio people call the two shadows <b>I</b> and <b>Q</b>, and every software radio, including the one on this site, receives everything as pairs of I and Q numbers. You'll meet them properly in chapter 2.</div>
 
   <!-- 4 -->
   <h2 id="add">Arrows can be added</h2>
@@ -95,6 +95,7 @@
   <p class="gist">A wave is the shadow of an arrow spinning in a circle. Any signal is a sum of such arrows, and a radio station is one fast arrow whose speed carries the music.</p>
   <details class="deeper"><summary>Why can't one shadow tell the direction?</summary>
     <ol>
+      <li>Some names first (they're explained properly in Writing it down, below): θ, the Greek letter theta, is an angle; cos θ is the sideways shadow of an arrow at that angle and sin θ its height.</li>
       <li>A wheel turning counter-clockwise has, at some moment, its dot at angle θ: sideways cos θ, height sin θ.</li>
       <li>The same wheel turning clockwise at the same speed is, at that moment, at angle −θ.</li>
       <li>Its sideways shadow is cos(−θ), which equals cos θ: exactly the same as the other wheel's, at every moment.</li>
