@@ -56,17 +56,17 @@
     <p>The singular values themselves are always unique. Only the axes can be ambiguous, and only in these cases.</p>
   </details>
   <div class="q" data-num="1" data-tol="0.01">
-    <p>A pure rotation by 30° (chapter 1's <code>rotation(30)</code>): what are its singular values? Give the larger one.</p>
+    <p>A pure rotation by 30°: what are its singular values? Give the larger one.</p>
     <div class="why">Rotations don't stretch anything: the circle stays a circle, so \(\sigma_1 = \sigma_2 = 1\). That's also why its determinant is 1 (the area doesn't change).</div>
   </div>
 
   <h2>2. Singular values and eigenvalues</h2>
-  <p>For a symmetric matrix (a covariance, a Hessian), the two ideas meet: singular values are the eigenvalues' sizes, and \(U\) and \(V\) are the eigenvectors. For other matrices they differ, and the SVD still exists when eigenvectors don't (a shear has only one eigen-direction, but its circle still becomes an ellipse). The link that always holds: \(A^\top A\) is symmetric, its eigenvalues are \(\sigma_i^2\), and its eigenvectors are \(V\). The ratio \(\sigma_1/\sigma_2\) is linear algebra 1's <b>condition number</b>: how stretched the ellipse is, and how much rounding errors get magnified when you solve with this matrix.</p>
+  <p>For a symmetric matrix (a covariance, a Hessian), the two ideas meet: singular values are the eigenvalues' sizes, and \(U\) and \(V\) are the eigenvectors. For other matrices they differ, and the SVD still exists when eigenvectors don't (a shear has only one eigen-direction, but its circle still becomes an ellipse). The link that always holds: \(A^\top A\) is symmetric, its eigenvalues are \(\sigma_i^2\), and its eigenvectors are \(V\). The ratio \(\sigma_1/\sigma_2\) is the <b>condition number</b> (Calculus 3's \(\kappa\), now for any matrix; linear algebra 1's "nearly flat" matrices have a big one): how stretched the ellipse is, and how much rounding errors get magnified when you solve with this matrix.</p>
   <div class="code" id="svd" data-title="Run it: an SVD, checked three ways"><textarea>
 import numpy as np
 
 A = np.array([[2, 1],
-              [0.5, 1.5]])                       # chapter 1's square-stretching matrix
+              [0.5, 1.5]])                       # columns (2, 0.5) and (1, 1.5): stretches and tilts the square
 U, S, Vt = np.linalg.svd(A)
 print("singular values:", S.round(3))
 print("U Σ Vᵀ gives back A:", np.allclose(U @ np.diag(S) @ Vt, A))
@@ -195,7 +195,7 @@ pd.DataFrame(np.round(rank2, 1), columns=films).head(3)
   </details>
 
   <h2>6. Solving the unsolvable: the pseudo-inverse</h2>
-  <p>Linear algebra 1 solved square, invertible systems, and noted that <code>np.linalg.lstsq</code> "uses an SVD". Here's why: invert each stretch, \(\sigma_i \to 1/\sigma_i\), and skip the ones that are zero (or tiny). That's the <b>pseudo-inverse</b> \(A^+ = V\,\Sigma^+\,U^\top\). It exists for every matrix; for an overdetermined system it gives the least-squares answer, and when columns repeat (linear algebra 1's twin column) it still gives one sensible answer, the smallest weights that fit.</p>
+  <p>Linear algebra 1 solved square, invertible systems, and noted that libraries' <code>np.linalg.lstsq</code> works from \(X\) itself rather than \(X^\top X\). This is how: invert each stretch, \(\sigma_i \to 1/\sigma_i\), and skip the ones that are zero (or tiny). That's the <b>pseudo-inverse</b> \(A^+ = V\,\Sigma^+\,U^\top\). It exists for every matrix; for an overdetermined system it gives the least-squares answer, and when columns repeat (linear algebra 1's twin column) it still gives one sensible answer, the smallest weights that fit.</p>
   <div class="code" data-title="Run it: least squares with the pseudo-inverse"><textarea>
 import numpy as np
 from sklearn.datasets import load_diabetes

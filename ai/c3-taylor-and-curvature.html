@@ -30,6 +30,7 @@
   <h2>1. Any smooth function is a polynomial, up close</h2>
   <p>Calculus 1 replaced a curve by its tangent line near a point \(c\). Why stop at a line? Match the value, the slope, the curvature, and so on, one derivative per term:</p>
   <p class="formula">\[ f(x) \approx f(c) + f'(c)(x - c) + \frac{f''(c)}{2!}(x - c)^2 + \frac{f'''(c)}{3!}(x - c)^3 + \dots \]</p>
+  <p>Two pieces of notation: \(f''\) is the derivative of the derivative (the slope of the slope, the second derivative: how the curve bends), \(f'''\) the third, and \(f^{(k)}\) the \(k\)-th. And \(k!\), "k factorial", is \(1 \times 2 \times \dots \times k\): \(2! = 2\), \(3! = 6\), \(4! = 24\).</p>
   <canvas id="tay" width="800" height="400" aria-label="A function and its Taylor polynomial around a center point"></canvas>
   <div class="row">
     <label>f(x) = <select id="tf"><option value="exp">eˣ</option><option value="sin">sin x</option><option value="ln">ln(1 + x)</option></select></label>
@@ -121,7 +122,7 @@ pd.DataFrame(rows, columns=["step", "GD error", "Newton error"]).set_index("step
   <p>Gradient descent's error shrinks by a fixed factor each step. Newton's error is roughly squared each step: 0.04, 0.0009, \(4 \times 10^{-7}\), \(8 \times 10^{-14}\), then exact to the last digit.</p>
 
   <h2>4. Minimum, maximum or saddle</h2>
-  <p>Where the gradient is zero, the Hessian's <b>eigenvalues</b> (the curvatures along its principal directions, chapter 1's "stretch factors") decide what you're standing on:</p>
+  <p>Where the gradient is zero, the Hessian's <b>eigenvalues</b> (the curvatures along its main axes, section 3, from Linear algebra 2's eigenvectors) decide what you're standing on:</p>
   <table class="rules">
     <tr><th>eigenvalues</th><th>point</th><th>picture</th></tr>
     <tr><td>all positive</td><td>minimum</td><td>a bowl: up in every direction</td></tr>

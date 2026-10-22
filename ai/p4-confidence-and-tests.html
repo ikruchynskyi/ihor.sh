@@ -99,7 +99,7 @@
     <label>α <select id="alpha"><option>0.01</option><option selected>0.05</option><option>0.1</option></select></label>
   </div>
   <p class="readout" id="r3"></p>
-  <p>Before a test, you pick \(\alpha\), the smallest effect worth detecting, and the power you want (80% is the custom), and that fixes \(n\). For comparing two proportions at \(\alpha = 0.05\) and 80% power, a handy rule:</p>
+  <p>Before a test, you pick \(\alpha\), the smallest effect worth detecting (call it \(\delta\), delta), and the power you want (80% is the custom), and that fixes \(n\). For comparing two proportions at \(\alpha = 0.05\) and 80% power, a handy rule:</p>
   <p class="formula">\[ n \text{ per group} \approx \frac{16\, p(1 - p)}{\delta^2} \]</p>
   <p class="gist">Power is the chance of seeing an effect that's really there; it grows with the effect's size and with √n, so the sample size is planned before the test starts.</p>
   <details class="deeper"><summary>Why the 16 in the sample-size rule?</summary>
@@ -161,7 +161,7 @@ print("McNemar exact p =", round(stats.binomtest(c_only, b_only + c_only, 0.5).p
   <div class="q" data-answer="b">
     <p>Two models are scored on the same 500 test questions. Which test fits?</p>
     <ul><li data-k="a" data-says="That treats the two scores as independent samples, which throws away the pairing and its noise reduction.">A two-sample test of proportions</li><li data-k="b">A paired test on the disagreements (McNemar), or a paired bootstrap</li></ul>
-    <div class="why">The same questions are easy or hard for both models, and pairing cancels that shared difficulty, as the section 3 picture showed. Chapter 8's Blip eval compares models exactly this way.</div>
+    <div class="why">The same questions are easy or hard for both models, and pairing cancels that shared difficulty, as the section 3 picture showed. Chapter 8 (stage 5) will compare Blip's models exactly this way.</div>
   </div>
 
   <p class="gist">Online, the only honest comparison is the one you designed before you looked at the numbers.</p>

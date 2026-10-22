@@ -601,7 +601,8 @@ The owner asked for the math to be easy and logical against the course guardrail
 arithmetic, no algebra, trig or notation beyond what the path has taught): `s3-math-warm-up`, `01-matrices-are-moves`,
 `l1-systems-and-inverses`, `02-gradients`, `c1-derivatives`, `c2-many-variables`, `p1-probability-and-bayes`,
 `p2-describing-data`, `l2-eigenvectors-and-pca`, every section, box and code box; then a scan of the whole path, in
-`course.json` order, for the first lesson using each notation. `lint.py` and `--depth` were green before: the ledger
+`index.html` order (the one the linter and the lesson links use; `course.json`'s key order means nothing), for the
+first lesson using each notation. `lint.py` and `--depth` were green before: the ledger
 checks that a lesson declaring a symbol *uses* it, not that the page *explains* it, which is how l1 "teaches" the
 transpose without a word about it.
 
@@ -640,10 +641,21 @@ and s3, 02 and p1 need almost nothing.
   changed formula appears in them (checked by `build.py` and running both versions).
 - Verified by: `npm run check`, `python3 ai/notebooks/lint.py --depth`, each changed page opened at 390 and 1280 px
   with no console errors, and a cold read of each changed passage.
-- Not reviewed here: the stage-2-and-later math lessons (c3–c5, p3–p5, l3). Same method next, if wanted.
 - **Done 2026-10-22:** M1–M13 as planned. `01` defines cosine and sine with the shadow picture (and registers
   `math:trig`; `lint.py` now warns if any lesson uses sin/cos before it, tested by planting one in s3); `l1` teaches the
   transpose before the normal equations; `l2` §8 is a labeled preview box, its idea and question now in `c3` §3, and
   its duplicate "Condition number" card removed (c3 has one). `npm run check` and `lint.py --depth` stay 0/0 and 73/73;
   the nine changed pages render at 390 and 1280 px with no KaTeX or console errors. No notebook referenced the moved
   section.
+- **Later math, reviewed 2026-10-22** (`c3`, `c4`, `p3`, `c5` in stage 2; `p4`, `p5`, `l3` in stage 3), same method,
+  every number re-derived (Newton vs gradient descent, McNemar and unpaired z, the sample-size 16, 1 − 0.95²⁰, the
+  LoRA share). All seven hold up; gaps fixed in place (3a): `s3` table gains \(|x|\), the absolute value (used by c1,
+  c4, c5, p2, p3 with no word); `c3` reads out \(f''\), \(f^{(k)}\) and \(k!\), and its eigenvalues now point to
+  Linear algebra 2, not chapter 1; `c4` reads \(x \sim p\) and "standard normal"; `p3` reads \(\mathcal N\) and credits
+  "slope zero at the bottom" to chapter 2 (l1 used perpendicularity); `p4` names \(\delta\) and says chapter 8 *will*
+  compare models; `l3` drops references to things chapter 1 and l1 never said (`rotation(30)`, "square-stretching
+  matrix", "lstsq uses an SVD", l1's "condition number": defined in c3); `p5` says its \(\Vert\) isn't a length and
+  that chapter 13 is next; `c5` names the L1 norm where first used, says its \(\mu\) isn't a mean, and points to stage
+  4's "making nets train". `p3` also had a typographic minus inside a formula (a KaTeX warning) since before.
+  All 73 lessons rendered headless: no KaTeX or console errors (four 404s are the live site's own APIs, absent from
+  the static preview, and load on ihor.sh).

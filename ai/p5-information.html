@@ -78,6 +78,7 @@ print("what zlib (zip) actually achieves:", round(8 * len(zlib.compress(text.enc
   <h2>3. Cross-entropy and KL: the price of a wrong belief</h2>
   <p>Suppose the truth is \(p\), but you believe \(q\) and build your code (or your predictions) from \(q\). Each outcome costs you \(-\log_2 q_i\) bits, and it happens with frequency \(p_i\), so on average you pay the <b>cross-entropy</b>. The part above the unavoidable \(H(p)\) is the <b>KL divergence</b>, the extra bits your wrong belief costs:</p>
   <p class="formula">\[ H(p, q) = -\sum_i p_i \log_2 q_i \qquad D_{\mathrm{KL}}(p \,\Vert\, q) = H(p, q) - H(p) = \sum_i p_i \log_2 \frac{p_i}{q_i} \]</p>
+  <p>The double bar here isn't a length (chapter 1's \(\lVert v \rVert\)): it only separates the two distributions. Read \(D_{\mathrm{KL}}(p \Vert q)\) as "the KL divergence of \(q\) from \(p\)"; the order matters (section 4).</p>
   <p>Gray bars are the truth (the city's real odds); drag the blue bars, the forecaster's belief. Try to bring the extra bits to zero. Then try the forecaster who's sure a storm can't happen.</p>
   <canvas id="h2" width="800" height="360" aria-label="Gray bars for the true odds and blue bars you can drag for a belief; cross-entropy and KL divergence are shown below"></canvas>
   <p class="legend"><i style="background:#8f98a8"></i>truth \(p\) <i style="background:#58c4dd"></i>belief \(q\) (drag)</p>
@@ -162,7 +163,7 @@ plt.legend(fontsize=8); plt.show()
   <h2>5. Information gain: which question tells you most?</h2>
   <p>A question is worth the entropy it removes. Before asking, the answer you care about \(Y\) has entropy \(H(Y)\); after learning \(X\) it has \(H(Y \mid X)\), the average entropy left in each group. The difference is the <b>information gain</b> (also called mutual information):</p>
   <p class="formula">\[ I(X; Y) = H(Y) - H(Y \mid X) \]</p>
-  <p>A decision tree (chapter 13) grows by asking, at each step, the yes/no question with the biggest information gain. Here's that search on the wine data (3 kinds of wine, 13 measurements):</p>
+  <p>A decision tree (chapter 13, coming up next) grows by asking, at each step, the yes/no question with the biggest information gain. Here's that search on the wine data (3 kinds of wine, 13 measurements):</p>
   <div class="code" data-title="Run it: the tree's first question, by hand"><textarea>
 import numpy as np
 from sklearn.datasets import load_wine

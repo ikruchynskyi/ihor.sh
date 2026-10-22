@@ -88,7 +88,7 @@ print("logistic regression, smallest eigenvalue over 1,000 random w:", f"{min(sm
     <tr><th>model and loss</th><th>convex in the weights?</th></tr>
     <tr><td>linear regression, squared error</td><td>yes: a quadratic bowl, Hessian \(2X^\top X / n\) (linear algebra 1 solved it in one step)</td></tr>
     <tr><td>logistic regression, cross-entropy</td><td>yes: \(-\ln \sigma(z)\) is convex (the widget's fourth curve) and \(z = Xw\) is linear</td></tr>
-    <tr><td>either of those plus \(\lambda \lVert w \rVert^2\) or \(\lambda \lVert w \rVert_1\)</td><td>yes: sums of convex functions</td></tr>
+    <tr><td>either of those plus \(\lambda \lVert w \rVert^2\) or \(\lambda \lVert w \rVert_1\) (the L1 norm, \(|w_1| + |w_2| + \dots\), section 6)</td><td>yes: sums of convex functions</td></tr>
     <tr><td>a neural network with a hidden layer, any loss</td><td><b>no</b></td></tr>
   </table>
   <p>Why can't a network's loss be a bowl? Swap two hidden neurons, with all their incoming and outgoing weights. The network computes exactly the same thing, so the loss is the same, but the weights are a different point. Now walk in a straight line from one to the other: halfway, the two neurons are averaged into identical twins, and the network is worse. Same height at both ends, a bump in the middle, and a bowl can't have that.</p>
@@ -116,7 +116,7 @@ plt.figure(figsize=(6, 2.6)); plt.plot(ts, path, "o-"); plt.xlabel("from one net
     <ul>
       <li><b>A flat bottom.</b> Convex allows a whole line of equally low points. Linear algebra 1's twin columns give exactly that: one lowest value, endless weights reaching it. Section 4 fixes it.</li>
       <li><b>A long, thin bowl.</b> Still one valley, but if the curvatures differ by a factor of 10,000 (the condition number), gradient descent zigzags for a very long time. Convex guarantees where you end up, not how fast.</li>
-      <li><b>Networks train anyway.</b> Their losses aren't convex, yet gradient descent finds good weights reliably. The working explanation: the many valleys of a large network are mostly about equally good (the relabeled twins above are exactly equal), and in millions of dimensions most flat spots are saddles you roll off, not traps. That's an observed fact more than a proven theorem, which is why training still needs care (stage 2's "making nets train").</li>
+      <li><b>Networks train anyway.</b> Their losses aren't convex, yet gradient descent finds good weights reliably. The working explanation: the many valleys of a large network are mostly about equally good (the relabeled twins above are exactly equal), and in millions of dimensions most flat spots are saddles you roll off, not traps. That's an observed fact more than a proven theorem, which is why training still needs care (stage 4's "making nets train").</li>
     </ul>
   </details>
 
@@ -140,7 +140,7 @@ plt.figure(figsize=(6, 2.6)); plt.plot(ts, path, "o-"); plt.xlabel("from one net
   <p class="readout" id="r2"></p>
   <p>Look at the two arrows at the green dot. Whenever the best point is on the circle, downhill points straight out of it: the two arrows line up. That's the <b>Lagrange condition</b>. For a boundary \(g(w) = 0\) (here \(g = \lVert w \rVert^2 - t^2\)), the best point has</p>
   <p class="formula">\[ \nabla L(w) = \mu\, \nabla g(w) \quad \text{for some number } \mu \]</p>
-  <p>and the number \(\mu\), the <b>Lagrange multiplier</b>, says how much the best loss would improve per unit of extra budget: what the constraint costs you.</p>
+  <p>and the number \(\mu\) (here just a name for a number, not a mean), the <b>Lagrange multiplier</b>, says how much the best loss would improve per unit of extra budget: what the constraint costs you.</p>
   <details class="deeper"><summary>Why must downhill point straight out of the boundary?</summary>
     <ol>
       <li>Stand at the best allowed point on the boundary, and split the downhill arrow \(-\nabla L\) into a part along the boundary and a part straight across it.</li>

@@ -88,7 +88,7 @@
   <p class="gist">Maximum likelihood picks the knob settings under which the data you actually saw would have been least surprising.</p>
   <div class="q" data-num="0.7" data-tol="0.001">
     <p>With 7 heads in 10 flips, where is the likelihood highest?</p>
-    <div class="why">At \(p = 0.7\). Set the derivative of the log-likelihood to zero (Linear algebra 1's least squares did the same for a line) and the answer is the fraction of heads.</div>
+    <div class="why">At \(p = 0.7\). Set the derivative of the log-likelihood to zero (chapter 2: the bottom of a valley, like the top of a hill, is where the slope is zero) and the answer is the fraction of heads.</div>
   </div>
   <div class="q" data-answer="a">
     <p>Set heads to 0 and flips to 3. The MLE says \(p = 0\): this coin can <i>never</i> land heads. What's wrong?</p>
@@ -102,7 +102,7 @@
     <p><b>A bell curve.</b> Data \(x_1 \dots x_n\) from a normal with mean \(\mu\) and spread \(\sigma\). Each point's density is \(\frac{1}{\sqrt{2\pi}\sigma} e^{-(x_i - \mu)^2 / 2\sigma^2}\), so</p>
     <p class="formula">\[ -\ell(\mu, \sigma) = \sum_i \frac{(x_i - \mu)^2}{2\sigma^2} + n \ln \sigma + \text{const} \]</p>
     <p>Setting the derivatives to zero gives \(\mu = \bar x\) and \(\sigma^2 = \frac1n \sum (x_i - \bar x)^2\): the sample mean, and the variance <i>dividing by \(n\)</i>, the slightly-too-small one from section 1. MLE isn't always unbiased.</p>
-    <p><b>Linear regression.</b> Suppose each target is the line plus bell-curve noise: \(y_i = w x_i + b + \epsilon_i\), \(\epsilon_i \sim \mathcal N(0, \sigma^2)\). Then \(-\ell = \frac{1}{2\sigma^2} \sum_i (y_i - w x_i - b)^2 + \text{const}\). With \(\sigma\) fixed, the only part that depends on the knobs is the sum of squared errors. <b>Minimizing MSE is maximum likelihood under Gaussian noise.</b></p>
+    <p><b>Linear regression.</b> Suppose each target is the line plus bell-curve noise: \(y_i = w x_i + b + \epsilon_i\), \(\epsilon_i \sim \mathcal N(0, \sigma^2)\): each noise term drawn from a normal (\(\mathcal N\)) bell curve with mean 0 and variance \(\sigma^2\). Then \(-\ell = \frac{1}{2\sigma^2} \sum_i (y_i - w x_i - b)^2 + \text{const}\). With \(\sigma\) fixed, the only part that depends on the knobs is the sum of squared errors. <b>Minimizing MSE is maximum likelihood under Gaussian noise.</b></p>
     <p><b>Classification.</b> If the model says "class \(k\) with probability \(\hat p_k\)" and the truth is class \(y\), the likelihood of that example is \(\hat p_y\), so \(-\ell = -\sum_i \ln \hat p_{y_i}\). That's <b>cross-entropy</b>, chapter 5's loss. For two classes with a sigmoid, it's the coin's log-likelihood above with \(p\) coming from the model.</p>
   </details>
   <p class="gist">Every standard loss is a negative log-likelihood: choosing a loss is choosing what you believe about the noise.</p>
@@ -132,7 +132,7 @@
 
   <h2>7. L2 regularization is a prior</h2>
   <p>Do the same with a model's weights. Put a bell-curve prior on each weight, centered on 0 with spread \(\tau\): "I expect weights to be small". The log of that prior is \(-w^2 / 2\tau^2\), so maximizing the posterior means minimizing</p>
-  <p class="formula">\[ \underbrace{\frac{1}{2\sigma^2} \sum_i (y_i - \hat y_i)^2}_{\text{NLL: the MSE}} \; + \; \underbrace{\frac{1}{2\tau^2} \lVert w \rVert^2}_{\text{− log prior}} \]</p>
+  <p class="formula">\[ \underbrace{\frac{1}{2\sigma^2} \sum_i (y_i - \hat y_i)^2}_{\text{NLL: the MSE}} \; + \; \underbrace{\frac{1}{2\tau^2} \lVert w \rVert^2}_{-\log \text{prior}} \]</p>
   <p>That's chapter 11's <b>L2 regularization</b> (ridge regression), with \(\lambda = \sigma^2/\tau^2\): a strong belief in small weights (small \(\tau\)) is a big \(\lambda\). Below, five noisy points from the line \(y = 0.5x\); the <span class="g">green</span> line is the MLE (least squares through the origin), the <span class="y">yellow</span> one the MAP. Tighten the prior and watch it pull the slope toward 0:</p>
   <canvas id="ridge" width="800" height="400" aria-label="Least squares slope and MAP slope under a Gaussian prior"></canvas>
   <div class="row"><label>prior spread τ <input type="range" id="tau" min="0.02" max="2" step="0.01" value="0.3"> <b id="tauV" class="math"></b></label><button id="newPts">New noisy points</button></div>
