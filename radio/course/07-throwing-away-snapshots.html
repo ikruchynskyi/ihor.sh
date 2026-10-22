@@ -35,11 +35,11 @@
     <p class="readout" id="r-fold" aria-live="polite"></p>
   </div>
 
-  <p>The band here is the demo from chapter 5 with its FM station centered: the AM station now at −350 kHz and a tone at +150 kHz.</p>
+  <p>The band here is the demo from chapter 5 with its FM station centered: the AM station now at −350 kHz and a tone at +150 kHz. This demo is sampled at 1.024 MS/s (not the full 2.4), so it spans ±512 kHz, and keeping one in M leaves 1024 ÷ M kS/s.</p>
   <ul>
     <li><b>With the filter</b> (the default), every slice except the middle one is already empty. Stacking empty slices adds nothing, and the result is just your station, now described by M times fewer numbers.</li>
     <li><b>Untick the filter</b>: the other slices still hold the AM station and the tone. Stacked on top of the middle, they land right next to your station or on top of it. And once they're mixed in, nothing later can separate them again: they're indistinguishable from real signal.</li>
-    <li><b>Push M to 6 or more</b>: the new range (170 kHz or less) becomes narrower than the station itself (200 kHz). Now even the station's own edges fold over. The filter can't save you here: you've asked for too few samples.</li>
+    <li><b>Push M to 6 or more</b>: the new range (1024 ÷ 6 ≈ 170 kHz or less) becomes narrower than the station itself (200 kHz). Now even the station's own edges fold over. The filter can't save you here: you've asked for too few samples.</li>
   </ul>
   <p>So the rule is: <b>filter first, then decimate</b>, and choose M so the new sample rate stays comfortably above the width of what you're keeping.</p>
   <p class="gist">Keeping every M-th sample folds everything outside the new, narrower range on top of what you keep, so filter first, and compute only the outputs you keep.</p>
@@ -53,10 +53,10 @@
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>Even filtering first isn't perfect: the filter's leftovers fold in too. In this chapter's script, a neighbor at +350 kHz, filtered by 61 weights before decimating to 256 kS/s, still lands on the station at −74 dB instead of vanishing. Usually harmless; with a neighbor 80 dB stronger, it isn't. That's why the receiver leaves margin (the 1.5× rule) and steepens the filter where the folds would land.</p>
+    <p>Even filtering first isn't perfect: the filter's leftovers fold in too. In this chapter's script, a neighbor at +350 kHz, filtered by 61 weights before decimating to 256 kS/s, still lands on the station at −74 dB instead of vanishing. Usually harmless; with a neighbor 80 dB stronger, it isn't. That's why the receiver leaves a margin (the 1.5× rule, at the end of this chapter) and steepens the filter where the folds would land.</p>
   </details>
 
-  <div class="q" data-num="94" data-tol="0.5" data-unit="kHz"><p>The new rate is 256 kHz (M = 4). An unfiltered neighbor sits at +350 kHz. Where does it land? (Hint: chapter 3's sawtooth subtracts whole sample rates until it fits in −128…+128 kHz.)</p>
+  <div class="q" data-num="94" data-tol="0.5" data-unit="kHz"><p>The new rate is 256 kS/s (M = 4, from 1.024 MS/s). An unfiltered neighbor sits at +350 kHz. Where does it land? (Hint: chapter 3's sawtooth subtracts whole sample rates until it fits in −128…+128 kHz.)</p>
     <div class="why">350 − 256 = 94 kHz. Right inside the ±100 kHz you were keeping for your station.</div>
   </div>
 
