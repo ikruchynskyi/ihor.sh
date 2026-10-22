@@ -131,7 +131,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The decoder (<code>src/sstv.ts</code>) is about 150 lines. Its pitch detector is three blocks from the course, chained:</p>
 <pre><code>this.mixer = new Mixer(fs, 1900);                                   // ch. 5: slide 1900 Hz to 0
 this.lp = new FirDecimator(firLowpass(1100 / fs, 700 / fs), m, 2); // ch. 6–7: keep ±1100 Hz, thin out

@@ -143,7 +143,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average; engineers call it a "DC blocker", because the steady part is the <a class="back" href="./04-winding-machine.html#real">DC of chapter 4</a>):</p>
 <p class="note"><b>Names in this code:</b> <code>Math.hypot</code> gives an arrow's length from its two shadows (Pythagoras). <code>x1</code> and <code>y1</code> are the previous input and output; <code>0.995</code> sets how slowly the subtracted average follows, so the steady carrier is removed and the sound isn't.</p>
 <pre><code>const x = Math.hypot(iq[2 * k], iq[2 * k + 1]);          // the arrow's length (chapter 2)

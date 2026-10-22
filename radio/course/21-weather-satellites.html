@@ -106,7 +106,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The link is <code>src/lrpt.ts</code>, about 300 lines, transmitter and receiver. The receiver's front end, from this chapter, for every sample and then every symbol:</p>
 <pre><code>// matched filter: the transmitter's own pulse, used as filter weights (chapter 6)
 let a = 0, b = 0; for (let j = 0; j &lt; L; j++) { a += H[j] * m[2 * j]; b += H[j] * m[2 * j + 1]; }

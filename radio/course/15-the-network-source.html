@@ -113,7 +113,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>The server</b> (<code>server.ts</code>, Node's built-in HTTP): one dongle, many listeners, and skipping instead of storing for slow ones:</p>
 <pre><code>function fanOut(chunk) {
   for (const res of clients) {

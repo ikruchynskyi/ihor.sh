@@ -181,7 +181,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>The plain winding machine</b> is two loops, one over test speeds and one over samples. From <code>course/code/ch04.ts</code>:</p>
 <p class="note"><b>Names in this code:</b> <code>re</code> and <code>im</code> are I and Q: code often uses mathematicians' names for an arrow's two parts, "real" and "imaginary". <code>TAU</code> is 2π, a full turn in radians, so <code>-TAU * k * t / n</code> is the un-spinning angle for test speed <code>k</code> at sample <code>t</code>, and <code>c</code>, <code>s</code> are that arrow's two shadows (chapter 1). <code>n</code> is how many samples are in the block.</p>
 <pre><code>for (let k = 0; k &lt; n; k++) {                 // every test speed…

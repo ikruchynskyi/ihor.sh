@@ -136,7 +136,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The FM demodulator in this site's receiver (<code>src/dsp.ts</code>), with the previous sample remembered between chunks (<a class="back" href="./08-chunks-of-a-live-stream.html#memory">↩ ch. 8</a>):</p>
 <pre><code>export class FmDemod {
   private pi = 0;   // the previous sample (I and Q)

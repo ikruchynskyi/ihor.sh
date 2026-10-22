@@ -132,7 +132,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The PLL setup, from our tuner driver (<code>setPll()</code> in <code>src/r820t.ts</code>): find the divider, split the ratio into whole and fraction, write them, check for lock:</p>
 <pre><code>let mixDiv = 2, divNum = 0;
 for (; mixDiv &lt;= 64; mixDiv &lt;&lt;= 1) {                               // smallest power of two that puts the VCO in range

@@ -205,7 +205,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>Averaging FFTs</b> (<code>avgSpectrum</code> in <code>src/dsp.ts</code>): spread across the signal, averaged as power, back to dB at the end:</p>
 <pre><code>for (let s = 0; s + n &lt;= total &amp;&amp; count &lt; frames; s += step, count++) {
   const p = powerSpectrum(iq, s, n);                       // one FFT, in dB (chapter 4)

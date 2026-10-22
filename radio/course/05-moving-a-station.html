@@ -128,7 +128,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The whole mixer, as it runs in this site's receiver (<code>src/dsp.ts</code>):</p>
 <p class="note"><b>Names in this code:</b> <code>ph</code> is the <b>phase</b> (chapter 1's word for an arrow's angle): here, the running angle on the NCO's dial above. <code>step</code> is how far the dial turns per sample, negative because we spin backwards; <code>fs</code> is the sample rate and <code>freq</code> the shift. <code>TAU</code> is 2π, a full turn in radians. <code>(c, s)</code> is the NCO's arrow: the cos and sin of the angle. A <code>class</code> keeps the angle together with the code that uses it, and <code>process</code> handles one batch of samples (chapter 8 explains why batches).</p>
 <pre><code>export class Mixer {

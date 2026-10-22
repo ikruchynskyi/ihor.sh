@@ -214,7 +214,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>The biquad</b> (<code>Biquad</code> in <code>src/dsp.ts</code>): the cookbook's numbers, then five multiplications per sample:</p>
 <pre><code>const w = (TAU * f) / fs, c = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
 const k = type === "lowpass" ? (1 - c) / 2 : (1 + c) / 2;

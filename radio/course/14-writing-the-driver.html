@@ -105,7 +105,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>Recording a trace is a small trick worth knowing: wrap the device in a <b>proxy</b>, an object that passes every call through to the real one but writes it down first (<code>src/course/trace.ts</code>):</p>
 <pre><code>return new Proxy(dev, {
   get(t, k) {

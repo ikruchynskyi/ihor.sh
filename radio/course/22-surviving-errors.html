@@ -82,7 +82,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The rest of <code>src/lrpt.ts</code>'s receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code> (each between −1 and +1: how sure the receiver is that a bit is 0 or 1):</p>
 <pre><code>for (let ns = 0; ns &lt; 64; ns++) {                       // each state: the last 6 data bits
   const u = ns &gt;&gt; 5, p0 = (ns &amp; 31) &lt;&lt; 1, p1 = p0 | 1;    // the two states it can come from
