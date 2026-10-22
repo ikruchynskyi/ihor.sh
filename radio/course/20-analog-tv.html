@@ -33,7 +33,7 @@
     </div>
     <p class="readout" id="r-scan" aria-live="polite"></p>
   </div>
-  <p>NTSC draws 525 lines per frame, about 480 of them visible. Thirty frames a second would flicker, so each frame is sent as two <b>fields</b>: first the odd lines, then the even ones (tick "interlaced"). The screen is repainted 60 times a second for the bandwidth of 30: a clever trade from 1941.</p>
+  <p>NTSC (the analog TV standard of North America, named after the committee that wrote it) draws 525 lines per frame, about 480 of them visible. Thirty frames a second would flicker, so each frame is sent as two <b>fields</b>: first the odd lines, then the even ones (tick "interlaced"). The screen is repainted 60 times a second for the bandwidth of 30: a clever trade from 1941.</p>
   <div class="q" data-num="15734" data-tol="2">
     <p>525 lines per frame, 29.97 frames per second. How many lines does a TV draw each second?</p>
     <div class="why">\(525 \times 29.97 \approx 15\,734\). That's the whine an old TV made: a transformer driving the beam's sideways sweep at 15.7 kHz, which young ears can hear. (Black-and-white TV used exactly 30 frames and 15,750 lines; color slowed it by 0.1% for a reason in section 4.)</div>
@@ -41,7 +41,7 @@
 
   <!-- 2 -->
   <h2 id="line">One line of composite video</h2>
-  <p>The signal for one line is a voltage over 63.6 µs. It starts with a <b>sync pulse</b>, a dip <em>below</em> black ("blacker than black") that tells the receiver "start a new line now". Then a short pause with a burst of fast wiggles (the <b>color burst</b>, section 4), then 52.6 µs of picture: higher voltage, brighter spot. Levels are measured in <b>IRE</b> units: sync −40, blanking 0, black 7.5, white 100. Pick a row of the test card:</p>
+  <p>The signal for one line is a voltage over 63.6 µs. It's called <b>composite</b> video because brightness, color and sync all travel in this one signal. It starts with a <b>sync pulse</b>, a dip <em>below</em> black ("blacker than black") that tells the receiver "start a new line now". Then a short pause with a burst of fast wiggles (the <b>color burst</b>, section 4), then 52.6 µs of picture: higher voltage, brighter spot. Levels are measured in <b>IRE</b> units (a scale where black to white spans about 100; IRE is the engineers' institute that set it): sync −40, blanking 0, black 7.5, white 100. Pick a row of the test card:</p>
   <div class="scene" id="s-line">
     <div class="controls"><label for="ln-r">Row <input id="ln-r" type="range" min="0" max="479" step="1" value="150"><output id="ln-ro"></output></label></div>
     <p class="readout" id="r-line" aria-live="polite"></p>
@@ -109,7 +109,7 @@
   <div class="q" data-answer="a">
     <p>With a 2.4 MHz capture placed to keep as much picture as possible, what does the decoded picture look like?</p>
     <ul><li data-k="a">Black and white and a bit soft: the color subcarrier (3.58 MHz above the picture carrier) is outside</li><li data-k="b" data-says="The brightness signal starts at 0 Hz above the carrier: most of it fits.">Nothing at all</li><li data-k="c" data-says="Color sits higher than the capture reaches.">Full color but blurry</li></ul>
-    <div class="why">Brightness detail extends to 4.2 MHz, but most of a picture's energy is in the lower part, so 2 MHz still gives a recognizable picture, about as sharp as a VHS tape. The color killer sees no burst and turns color off, rather than showing random colors. Try it in the lab.</div>
+    <div class="why">Brightness detail extends to 4.2 MHz, but most of a picture's energy is in the lower part, so 2 MHz still gives a recognizable picture, about as sharp as a VHS tape. The <b>color killer</b> (the part of a color TV that switches color off when there's no color burst) sees no burst and turns color off, rather than showing random colors. Try it in the lab.</div>
   </div>
 
   <!-- code -->
