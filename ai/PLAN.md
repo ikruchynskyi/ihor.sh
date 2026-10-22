@@ -603,6 +603,7 @@ Other courses (`COURSE=…`, run in `ai/review/run-COURSE/`; one table each, add
 | electronics | 17 | 2026-10-22 | run 2 (Gemini): 7 min, 6/6 right first try + 1 open answer, confidence 4; one real gap (RST unexplained before its question) | 75c5b82 | — |
 | electronics | 18 | 2026-10-22 | run 2: 5 min, confidence 4; hardest: the two regulators' opposite pinouts (taught in §3, tested in §9: no change) | — | — |
 | electronics | 19 | 2026-10-22 | run 2: 5 min, 5/5 first try, confidence 4; hardest: the 4017's scattered pin numbers (that's §2's point: no change). It slid §4's supply to 5 and 12 V only, never hunting the threshold the challenge asks for | — | §4's challenge isn't checked by anything |
+| electronics | 20 | 2026-10-22 | run 2: 5 min, 4/4, but widgets used after the answers (§4-5) or not as asked (§1 sweep, §3 take R2 out): hysteresis not really tested by the student | tool: answer needs its section's widget first | rerun ch20 §1, §3, §4 at the end |
 
 
 ## 11. Guardrail review of the math (Start 3 and stage 1), 2026-10-22
