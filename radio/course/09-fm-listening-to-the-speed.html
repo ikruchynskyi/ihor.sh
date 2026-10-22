@@ -24,11 +24,12 @@
 
   <!-- 1 -->
   <h2 id="turn">How far did it turn?</h2>
-  <div class="q" data-num="-20" data-tol="0.5"><p>Predict first: "before" points at −170° and "now" at 170°. Which angle will the pink arrow (now × mirrored before) point at, in degrees?</p>
+
+  <p>We could compute each snapshot's angle and subtract. But angles wrap around (from 179° to −179° is a turn of 2°, not −358°), which makes subtraction fiddly. Chapter 2 has a cleaner trick. Multiplying arrows <em>adds</em> their angles (<a class="back" href="./02-arrows-as-numbers.html#multiply">↩</a>). So to <em>subtract</em> an angle, multiply by the arrow's <b>mirror image</b>: the same arrow flipped upside down, which has the opposite angle. Mathematicians call the mirror image the <b>complex conjugate</b>.</p>
+  <div class="q" data-num="-20" data-tol="0.5"><p>Predict before you drag: "before" points at −170° and "now" at 170°. Which angle will the pink arrow (now × mirrored before) point at, in degrees?</p>
     <div class="why">170° − (−170°) = 340°, which is the same direction as −20°. The arrow turned 20° clockwise, the short way round, and the multiplication gets that right with no wrapping code at all.</div>
   </div>
 
-  <p>We could compute each snapshot's angle and subtract. But angles wrap around (from 179° to −179° is a turn of 2°, not −358°), which makes subtraction fiddly. Chapter 2 has a cleaner trick. Multiplying arrows <em>adds</em> their angles (<a class="back" href="./02-arrows-as-numbers.html#multiply">↩</a>). So to <em>subtract</em> an angle, multiply by the arrow's <b>mirror image</b>: the same arrow flipped upside down, which has the opposite angle. Mathematicians call the mirror image the <b>complex conjugate</b>.</p>
   <p>Drag the two arrows:</p>
 
   <div class="scene" id="s-turn"><p class="readout" id="r-turn" aria-live="polite"></p></div>
@@ -74,7 +75,7 @@
 
   <!-- 3 -->
   <h2 id="mpx">What's inside a real broadcast</h2>
-  <p>Why can't we just take the demodulator's 300 kS/s output and decimate it straight down to 48 kS/s for your speakers? Because a real FM station packs several hidden signals into the arrow's speed above the 15 kHz human hearing range — and if we don't filter them off before decimating to audio speed (<a class="back" href="./07-throwing-away-snapshots.html#fold">↩ ch. 7</a>), they fold right down on top of the music as whistles and hiss. Here's the spectrum (<a class="back" href="./04-winding-machine.html#spectrum">↩ ch. 4</a>) of our demodulator's output for 98.7 FM, recorded by this site's dongle, from 0 to 64 kHz.</p>
+  <p>Why can't we just take the demodulator's 300 kS/s output and decimate it straight down to 48 kS/s for your speakers? Because a real FM station packs several hidden signals into the arrow's speed above 15 kHz, where the station's sound ends — and if we don't filter them off before decimating to audio speed (<a class="back" href="./07-throwing-away-snapshots.html#fold">↩ ch. 7</a>), they fold right down on top of the music as whistles and hiss. Here's the spectrum (<a class="back" href="./04-winding-machine.html#spectrum">↩ ch. 4</a>) of our demodulator's output for 98.7 FM, recorded by this site's dongle, from 0 to 64 kHz.</p>
 
   <div class="scene" id="s-mpx"></div>
 
