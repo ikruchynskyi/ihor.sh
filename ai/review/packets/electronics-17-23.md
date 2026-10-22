@@ -26,7 +26,7 @@ Run 1 was batch-answered and doesn't count (ai/PLAN.md §10.7). Run 2 ran with t
 - ch22, strapping pins and parallel pull-ups: misread. §2 teaches strapping pins; ch1 §3 teaches resistors in parallel, linked from "Before you start".
 - ch23, balancing a whole design: the chapter's purpose. Not a gap.
 
-The ch17 and ch18 struggles were logged mid-lesson. The other five were filed automatically by the tool, from each chapter's "hardest" note.
+Only ch17's struggle was logged mid-lesson. The other six were filed automatically by the tool, from each chapter's "hardest" note.
 
 ## Changed passages
 
