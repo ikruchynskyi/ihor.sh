@@ -57,7 +57,7 @@
 
   <!-- 3 -->
   <h2 id="weights">Weights shape what gets through</h2>
-  <p>A plain average gives every sample the same importance. A <b>weighted</b> average gives each position its own weight. That list of weights is the whole filter: engineers call them the filter's <b>taps</b> or coefficients, and the filter is called a <b>FIR filter</b> (for "finite impulse response", because it only ever looks at a finite number of samples).</p>
+  <p>The plain average has two flaws you just saw: its leftovers come back in bumps, and you can't choose what it keeps, since its length fixes that. To pick out one station we need both fixed: a cutoff we set, and far less leaking through. Here's the one change that does it. A plain average gives every sample the same importance. A <b>weighted</b> average gives each position its own weight. That list of weights is the whole filter: engineers call them the filter's <b>taps</b> or coefficients, and the filter is called a <b>FIR filter</b> (for "finite impulse response", because it only ever looks at a finite number of samples).</p>
   <p>Here's the beautiful part. To find what a set of weights does to each frequency, you run chapter 4's <b>winding machine on the weights themselves</b>: for each test speed, spin the weights around, and see how far their center of mass lands from zero. <b>The filter's response is the Fourier transform of its weights.</b> So if we know the response we want, we can work backwards to the weights.</p>
 
   <div class="scene" id="s-shape">

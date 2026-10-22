@@ -70,7 +70,7 @@
 
   <!-- 4 -->
   <h2 id="game">A game: land on the target</h2>
-  <p>The <em class="b">blue</em> arrow is fixed. Find the <em class="p">pink</em> multiplier that sends the <em class="y">yellow</em> product into the white ring. Think in turns and stretches: how far round does blue need to go, and how much longer or shorter does it need to get?</p>
+  <p>Chapters 4, 5 and 9 use "lengths multiply, angles add" so often that it needs to be automatic, not something you work out. This game is practice until it is. The <em class="b">blue</em> arrow is fixed. Find the <em class="p">pink</em> multiplier that sends the <em class="y">yellow</em> product into the white ring. Think in turns and stretches: how far round does blue need to go, and how much longer or shorter does it need to get?</p>
 
   <div class="scene" id="s-game">
     <div class="game">
@@ -100,7 +100,7 @@
 
   <!-- 5 -->
   <h2 id="spin">Multiply again and again, and it spins</h2>
-  <p>Now let's go back to the opening spiral and understand it. Start with the arrow pointing at 1. Multiply it by a small "step" arrow. Then multiply the result by the same step again. And again. Each multiplication <b>turns by the step's angle</b> and <b>stretches by the step's length</b>:</p>
+  <p>Job 1 from the list above: the receiver needs an arrow of its own, spinning at a speed we choose (chapter 5 uses it to slide the station you want to 0 Hz). Multiplication makes one, and it's the opening spiral again. Start with the arrow pointing at 1. Multiply it by a small "step" arrow. Then multiply the result by the same step again. And again. Each multiplication <b>turns by the step's angle</b> and <b>stretches by the step's length</b>:</p>
 
   <div class="q" data-num="90" data-tol="0" data-unit="°"><p>Predict: an arrow of length 1 at 30°, multiplied by itself: z × z × z. At what angle does the result point?</p>
     <div class="why">Angles add: 30° + 30° + 30° = 90°, straight up. Lengths multiply: 1 × 1 × 1 = 1.</div>
@@ -122,11 +122,19 @@
   <p>Look at the dots on the right too: the up part (Q) of each step, one after another. It's chapter 1's sine wave again, but drawn as separate dots instead of a smooth line, because a computer only ever sees the arrow at separate moments. Those moments are called <b>samples</b>, and chapter 3 is about them.</p>
 
   <!-- 6 -->
-  <h2 id="euler">The arrow at angle θ, built from tiny turns</h2>
-  <p>You already have everything you need to write arrow code — you don't need a new formula to run the receiver. We show you this last idea for one practical reason: every radio book, chip datasheet, and the compact formulas in <a href="./04-winding-machine.html">chapters 4</a>–<a href="./06-averaging-is-filtering.html">6</a> write "the arrow of length 1 at angle θ" as <b>e<sup>jθ</sup></b>. Taking two minutes to see why an exponent lands on a circle turns those formulas from intimidating symbols into a picture you already know.</p>
-  <p>Here's a strange-sounding way to build a turn. Start at 1 and take a small step <b>sideways</b>: multiply by an arrow that's 1 to the right and a tiny bit up. Because that step is perpendicular to where you're pointing, it mostly turns you and barely stretches you. Do lots of those small steps in a row, and you curl around the circle.</p>
-  <p>Below, the total amount of "sideways" is <b>θ</b> (the Greek letter theta), shared out over <b>n</b> steps: each step multiplies by 1 + j·θ/n. The ring on the circle marks the arrow at angle θ, the place we'd like to land.</p>
+  <h2 id="euler">A name for the arrow at angle θ: e<sup>jθ</sup></h2>
+  <p>This section adds no new tool: the receiver's code already makes every arrow it needs from cos and sin. It's about a <b>name</b>. From <a href="./04-winding-machine.html">chapter 4</a> on, formulas have to say "the arrow of length 1 at angle θ" again and again, and every radio book, datasheet and formula writes it the same way: <b>e<sup>jθ</sup></b>. If that looks like a power you'd never connect with a circle, this section is why it's written that way, so those formulas read as pictures you already know.</p>
+  <p>Why would anyone write an angle as an exponent? Because of what this chapter found: <b>multiplying arrows of length 1 adds their angles</b>. Powers do exactly the same with their exponents: 2<sup>3</sup> × 2<sup>2</sup> = 2<sup>5</sup>, because 3 + 2 = 5. So write the arrow at angle <em>a</em> as e<sup>ja</sup> and the arrow at angle <em>b</em> as e<sup>jb</sup>, and the familiar rule for powers says their product is e<sup>j(a+b)</sup>: the arrow at angle <em>a</em> + <em>b</em>. That's "angles add", the rule you already know, wearing the clothes of a power. The angle sits in the exponent, and the j there marks it as a turn rather than growth.</p>
+  <p class="formula">\[ e^{ja} \cdot e^{jb} = e^{j(a+b)} \]</p>
+  <p class="formula">\[ e^{j\theta} = \cos\theta + j \sin\theta \]</p>
+  <p>That's all chapters 4–6 need. When chapter 4 writes e<sup>−j2πkn/N</sup>, read it as "the arrow at angle −2πkn/N": an arrow turned backwards by that much. (Angles here are in radians, as in chapter 1: 2π ≈ 6.28 is a full turn.)</p>
+  <div class="q" data-num="180" data-tol="0" data-unit="°"><p>What is e<sup>j·π/2</sup> × e<sup>j·π/2</sup>? Give the angle of the result, in degrees.</p>
+    <div class="why">Exponents add: e<sup>j·π</sup>, the arrow at angle π, half a turn: 180°, which is −1. It's j × j = −1 again, written as powers: e<sup>j·π/2</sup> is j, the quarter turn.</div>
+  </div>
 
+  <h3 id="euler-why">Optional: why the number e, and does an exponent really land on a circle?</h3>
+  <p>If e<sup>jθ</sup> still feels like a clever pun rather than real arithmetic, here's a check, built from nothing but this chapter's multiplication. Nothing later depends on it.</p>
+  <p>The number e ≈ 2.718 comes from growing in many tiny steps: e<sup>x</sup> is where you end up if you grow by x/n, n times over, (1 + x/n)<sup>n</sup>, as n gets large (it's the compound-interest limit). The question: what if each tiny step is a <b>turn</b> instead of growth? Put jθ in place of x, and each step multiplies by 1 + j·θ/n: an arrow that's 1 to the right and a tiny bit up. A step at right angles to where you point mostly turns you and barely stretches you. If e<sup>jθ</sup> really is the arrow at angle θ, then n of those steps should land on the circle at angle θ (the ring below). Do they?</p>
   <div class="scene" id="s-euler">
     <div class="controls">
       <label for="eu-t">θ <input id="eu-t" type="range" min="0" max="6.28" step="0.01" value="1.57"><output id="eu-to"></output></label>
@@ -136,7 +144,7 @@
   </div>
 
   <p>With one big step, you overshoot badly: one big sideways jump makes the arrow much longer than 1. Now raise <b>n</b>. The steps get smaller, each one stretches less, and the path hugs the circle more and more tightly, landing almost exactly on the ring: <b>length 1, angle θ</b>.</p>
-  <p>The limit of this process, infinitely many infinitely small sideways steps, has a famous name: <b>e<sup>jθ</sup></b>. That's all e<sup>jθ</sup> means: <em>the arrow of length 1 at angle θ</em>, reached by turning smoothly. (The θ here is in radians: 6.28, i.e. 2π, is a full turn, as in chapter 1.)</p>
+  <p>They do: in the limit, infinitely many infinitely small sideways steps land exactly at length 1, angle θ. So e<sup>jθ</sup> isn't just a convenient name: the rule for powers, applied to a turn, really does walk you round the circle.</p>
 
   <div class="ponder"><span class="tag">Pause and ponder</span>Set θ to 3.14 (that's π, half a turn) and n to 60. Where do you land? You've just seen why e<sup>jπ</sup> = −1, the equation people call the most beautiful in mathematics. It says: turning half way round the circle flips you to the opposite side.</div>
 

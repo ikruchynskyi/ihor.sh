@@ -23,6 +23,7 @@
 
   <!-- 1 -->
   <h2 id="tree">What a USB device says about itself</h2>
+  <p>Before your code can ask the dongle for anything, it needs to know where to send settings and where the samples come out. The dongle tells it, in a fixed format, the moment it's plugged in. That's this section; everything after it uses the two numbers it finds.</p>
   <div class="q" data-answer="a"><p>Who speaks first on USB, the computer or the device?</p>
     <ul><li data-k="a">The computer (the host), always</li><li data-k="b" data-says="On USB, devices never start a conversation, even with data waiting.">Whichever has data</li><li data-k="c" data-says="Plugging in only changes a voltage; the host then asks.">The device, to announce itself</li></ul>
     <div class="why">Devices only answer. Even the radio samples flow because the host keeps asking for them (section 3), which is why a slow program loses samples.</div>

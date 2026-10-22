@@ -199,3 +199,22 @@ sentence.
   - **Ch. 17–22 (`17-pictures-over-radio.html` .. `22-surviving-errors.html`):** Bridge `#slant → #vis` in ch. 17 (why the receiver needs the VIS doorbell before line 1), `#avg → #floor` in ch. 18 (why automatic noise-floor estimation drives both waterfall contrast and dB squelch), `#voice → #nr` in ch. 19 (why biquads beat FIRs for audio tone shaping, and why hiss inside the voice band requires FFT + inverse FFT spectral subtraction), `#line → #vsb` in ch. 20 (why analog TV shaved one sideband to fit a 4.2 MHz video wave into a 6 MHz channel), `#pass → #symbols → #timing → #qpsk` in ch. 21 (how 1D symbols step up to 2D QPSK and meet the Doppler ring), and `#xor` + `#dct` in ch. 22 (why XOR is the reversible bit mixer for error correction and why 72 kbit/s forces 8×8 DCT compression).
 - **Needs:** Only terms already taught at or before each chapter in `course/ledger.json` (or with an explicit `"chapter N"` forward-pointer).
 - **Verified by:** `cd radio && npm run course-check && npm test && npm run build` and `npm run check`.
+
+## Track G: purpose before mechanism (planned and built 2026-10-21)
+- **User feedback (2026-10-21):** ch. 2's "The arrow at angle θ, built from tiny turns" cost about ten messages with an AI
+  helper: the step (adding tiny sideways turns lands at angle θ) was clear, but not why it was there or what it taught.
+  "Constant 'so what and why' questions."
+- **Topic:** every section says what it's for, in the receiver's terms, before it starts building; a section whose only job
+  is notation or curiosity says so and is optional.
+- **Already covered:** Track F added "why you need this" openers and bridges; a read of every section opening in ch. 1–22
+  (2026-10-21) found most now lead with their problem. Not yet: ch. 2 #euler (a limit construction for a name),
+  ch. 2 #spin and #game, ch. 3 #freeze, ch. 4 #fft (internals with no stated payoff), ch. 6 #weights (fix without the
+  problem), ch. 13 #tree, ch. 14 #source.
+- **Where it goes (3a, in place):** ch. 2 #euler becomes "a name for the arrow at angle θ": the name exists because
+  multiplying arrows adds angles the way multiplying powers adds exponents (2³ × 2² = 2⁵); the one fact ch. 4–6 use;
+  a check question. The tiny-turns scene moves under "Optional: …", opening with its question (what if each tiny growth
+  step is a turn?) and saying nothing later depends on it. The other seven sections get an opening sentence naming the
+  problem or payoff; ch. 4 #fft and ch. 14 #source say they can be skipped (nothing later depends on their internals).
+- **Needs:** powers of a number (school math, the course's stated prerequisite); everything else from ch. 1–2.
+- **Verified by:** `cd radio && npm run course-check && npm test && npm run build`; ch. 2 rendered at 390 px (no
+  horizontal scroll) and 900 px.

@@ -96,6 +96,7 @@
   <!-- 4 -->
   <h2 id="fft">The fast way: the FFT</h2>
   <p>The plain machine is slow. To test N speeds, it un-spins all N samples for each one: N × N steps. For the 1024-sample blocks behind Spectrum Lab's waterfall that's over a million steps per row, many times per second.</p>
+  <p>You won't have to write an FFT, and nothing later depends on how it works inside, only on what it gives: the same spectrum, fast enough to draw live. This section is the one idea behind the speed, so the FFT in our code isn't a black box. Happy to trust it? Skip ahead to <a href="#inverse">going back</a>.</p>
   <div class="q" data-num="1.05" data-tol="0.06"><p>Estimate first: the plain machine un-spins all N samples for each of N test speeds. For a 1024-sample block, about how many million steps is that?</p>
     <div class="why">1024 × 1024 ≈ 1.05 million, for every row of the waterfall. The FFT below does the same job in 1024 × 10 ≈ 10 thousand.</div>
   </div>

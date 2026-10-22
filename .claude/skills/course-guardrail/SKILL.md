@@ -61,6 +61,9 @@ Verified by:     the commands you ran and the cold-learner read
 ## Teaching rules (every course)
 
 - **One new idea per step.** It's a ramp, not a cliff: the first exercise is always the smallest one.
+- **Purpose before mechanism.** Every section, widget and game opens by saying what problem it solves for the learner's
+  goal (in the course's own terms), before any construction. A learner who can follow every step but can't say why the
+  section exists has hit a gap. If a section only explains notation or satisfies curiosity, say so and make it optional.
 - **Layers:** see it → say it (a one-sentence gist) → why it's true (an optional deeper box, 4–8 short steps) →
   where it breaks (a concrete counterexample with numbers) → where it's used. Nothing after an optional box may depend on it.
 - **Intuition drills:** predict, then reveal; push to extreme cases; estimate before computing; check the theory
