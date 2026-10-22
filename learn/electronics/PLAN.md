@@ -201,7 +201,7 @@ Each "Needs" was looked up in the chapter named.
   check no longer says a reversed electrolytic reads as a short; ch22 now answers ch19's promise about 3.3 V vs 5 V
   modules (all three boards at 3.3 V; bare BME280 boards max 4.25 V). ch23 needed nothing.
 - 2026-10-22: Gemini QA pass over chapters 17–23 in a real browser: 390 and 1280 px with no overflow and no console
-  errors; every question, challenge goal and review in ch23 solved; the circuit, lab and build tests and `npm run
+  errors; every question, challenge goal and review in ch23 worked (its script read the answers from the page's `data-answer` markup, so this shows the controls work, not that a learner could answer); the circuit, lab and build tests and `npm run
   check` pass. It reported no prerequisite gaps and found the ch17→ch23 ramp sound. This was a functional pass, not a
   logged student review (nothing in `ai/review/run/`, no citations or struggle notes), so "no gaps" is its judgment, not
   evidence; a logged run under `.agents/skills/course-student` rules is still the real test.
