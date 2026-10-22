@@ -594,6 +594,12 @@ start a new run and skip the lessons verified below (or rerun them after big cha
 | 01-matrices-are-moves | 2026-10-16 | 7/7 first try, notebook 11 ✓ without hints, 5 exercises cited, 8 real minutes, worked section by section | none: "how basis vectors decide where every vector lands", named hardest, is the lesson's core idea with its widget | |
 | l1-systems-and-inverses | next | | | |
 
+Other courses (`COURSE=…`, run in `ai/review/run-COURSE/`; one table each, added on a course's first run):
+
+| Course | Lesson | Verified | Result | Fixes | Open |
+|---|---|---|---|---|---|
+| electronics | 17–23 | 2026-10-22 | Gemini QA pass, not a logged review (it read answers from the markup; see learn/electronics/PLAN.md) | 43bb0b8 skill rules | a logged run: `COURSE=electronics L init --from 17` |
+
 
 ## 11. Guardrail review of the math (Start 3 and stage 1), 2026-10-22
 

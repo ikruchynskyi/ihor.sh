@@ -1,16 +1,17 @@
-"""The simulated-learner review of AI from scratch (ai/PLAN.md §10): one tool for both agents, stdlib only.
+"""The simulated-learner review of any course on ihor.sh (ai/PLAN.md §10): one tool for both agents, stdlib only.
 
 The student (.agents/skills/course-student) sees lessons the way a learner does, with answers hidden until it has
 committed to one, and everything it does lands in a shared log. The editor (.claude/skills/course-editor) waits on
 that log for struggles and questions, replies, fixes the course, and audits the student's citations.
 
-  student:  init · path · show [lesson] · answer L Q VALUE --quote "…" · run L BOX [--file F] · note (JSON on stdin)
+  student:  init [--from LESSON] · path · show [lesson] · answer L Q VALUE --quote "…" · run L BOX [--file F] · note (JSON on stdin)
             ask "question" [--wait S] · inbox · done (JSON on stdin) · nb L · hint L N · nbcheck L · clean
   editor:   watch [--timeout S] · reply ID "text" · audit · report · selftest
 
-Files live in ai/review/run/ (git-ignored): log.jsonl (student → editor), replies.jsonl (editor → student),
+COURSE picks the course (ai, electronics, radio, ham, yomu; the COURSES table below), each with its own run folder:
+ai/review/run/ for AI, ai/review/run-COURSE/ for the rest (git-ignored), holding log.jsonl (student → editor), replies.jsonl (editor → student),
 seen.txt (every lesson view shown, for citation checks), state.json, editor.json, nb/ (the student's notebooks).
-COURSE_ROOT points at another copy of ai/ (the editor's calibration run with planted gaps); REVIEW_PY is the Python
+COURSE_ROOT points at another copy of the course (the editor's calibration run with planted gaps); REVIEW_PY is the Python
 that runs notebooks (one with numpy, pandas, scikit-learn, torch).
 """
 import ast, html, json, os, re, shutil, subprocess, sys, time
@@ -18,8 +19,25 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-ROOT = Path(os.environ.get("COURSE_ROOT", REPO / "ai"))
-RUN = REPO / "ai" / "review" / "run"
+# Every course on the site, as the student meets it: where its lessons live, their order (the course's own index),
+# where each lesson is on the site, and the run folder. COURSE=… picks one (default ai); each keeps its own run.
+def _radio_order(root):  # radio/course/index.html builds its chapter list from a PARTS array in its script
+    return re.findall(r'\["(\d\d-[a-z0-9-]+)", "', (root / "index.html").read_text())
+def _numbered(root): return sorted(p.stem for p in root.glob("[0-9][0-9]-*.html"))
+COURSES = {
+    "ai":          {"root": "ai",                "url": "/ai/{}.html",                "run": "ai/review/run",             "order": lambda root: [s for s, _ in lint.path()]},
+    "electronics": {"root": "learn/electronics", "url": "/learn/electronics/{}.html", "run": "ai/review/run-electronics", "order": _numbered},
+    "radio":       {"root": "radio/course",      "url": "/radio/course/{}.html",      "run": "ai/review/run-radio",       "order": _radio_order},
+    "ham":         {"root": "radio/ham/lessons", "url": "/radio/ham/lessons/{}.html", "run": "ai/review/run-ham",         "order": _numbered},
+    "yomu":        {"root": "yomu/stories",      "url": "/yomu/story.html?u={}",      "run": "ai/review/run-yomu",
+                    "order": lambda root: [s["id"] for s in json.loads((root / "index.json").read_text())]},
+}
+COURSE = os.environ.get("COURSE", "ai")
+if COURSE not in COURSES: sys.exit(f"COURSE={COURSE}: choose one of {', '.join(COURSES)}.")
+C = COURSES[COURSE]
+ROOT = Path(os.environ.get("COURSE_ROOT", REPO / C["root"]))
+RUN = REPO / C["run"]
+def url(stem): return C["url"].format(stem)   # where the lesson is on the site
 sys.path.insert(0, str(REPO / "ai" / "notebooks"))
 import build, lint  # the notebooks' exercise numbering and the path order, shared with the course's own tools
 
@@ -53,7 +71,7 @@ def size(p): return sum(f.stat().st_size for f in Path(p).rglob("*") if f.is_fil
 
 
 # ---------- the path ----------
-LESSONS = [stem for stem, _ in lint.path()]
+LESSONS = C["order"](ROOT)
 def lesson(name=None):
     if name is None: return LESSONS[min(state()["current"], len(LESSONS) - 1)]
     name = name.removesuffix(".html")
@@ -127,7 +145,32 @@ class Lesson(HTMLParser):
         self.out.append(re.sub(r"\s+", " ", data) if not self.within("code") else data)
 
 
-def parsed(stem): return Lesson((ROOT / f"{stem}.html").read_text())
+class Story:
+    """A Yomu story as its page shows it: the scene, each line with the words' glosses (what tapping a word shows),
+    the grammar notes, and its questions (answers kept aside, like Lesson's)."""
+    def __init__(self, d):
+        L = lambda x: (x or {}).get("en", "") if isinstance(x, dict) else (x or "")
+        out = [f"# {L(d.get('title'))} ({(d.get('title') or {}).get('ja', '')})", L(d.get("scene"))]
+        for line in d.get("lines", []):
+            words = "".join(t[0] for t in line["t"])
+            gloss = "; ".join(f"{t[0]} = {t[2]}" for t in line["t"] if len(t) > 2 and t[2])
+            out.append(f"\n{line.get('who', '')}: {words}\n   [tap a word: {gloss}]")
+        def note(g):  # a grammar point: its title, explanation and examples (its practice quiz stays on the page)
+            if not isinstance(g, dict): return str(g)
+            ex = "".join(f"\n    e.g. {''.join(t[0] for t in e.get('t', []))} ({e.get('en', '')})" for e in g.get("examples", []))
+            return f"{g.get('title', '')}: {g.get('explain', '')}{ex}"
+        if d.get("grammar"): out.append("\n## Grammar in this story\n- " + "\n- ".join(note(g) for g in d["grammar"]))
+        self.qs, self.boxes = [], []
+        for n, q in enumerate(d.get("questions", []), 1):
+            opts = {chr(97 + k): c for k, c in enumerate(q["choices"])}
+            self.qs.append({"n": n, "kind": "choice", "key": chr(97 + q["answer"]), "num": None, "tol": 0.01,
+                            "stem": q["q"], "options": opts, "says": {}, "why": ""})
+            out.append(f"\n\nQ{n} [pick one letter]: {q['q']} ({q.get('en', '')})" + "".join(f"\n   {k}) {v}" for k, v in opts.items()))
+        self.text = "\n".join(out).strip()
+
+def parsed(stem):
+    if COURSE == "yomu": return Story(json.loads((ROOT / f"{stem}.json").read_text()))
+    return Lesson((ROOT / f"{stem}.html").read_text())
 
 
 # ---------- student commands ----------
@@ -135,9 +178,16 @@ def cmd_init(args):
     RUN.mkdir(parents=True, exist_ok=True)
     if (RUN / "log.jsonl").exists() and "--fresh" not in args: sys.exit(f"A run exists in {RUN}. Continue it, or `init --fresh` to start over.")
     for f in ("log.jsonl", "replies.jsonl", "seen.txt", "state.json", "editor.json"): (RUN / f).unlink(missing_ok=True)
-    jsave(RUN / "state.json", state())
-    log("start", lessons=len(LESSONS), root=str(ROOT))
-    print(f"Run started: {len(LESSONS)} lessons, first {LESSONS[0]}. Next: `show`.")
+    st = state()
+    start = flag(args, "--from")  # begin later in the path: the earlier lessons count as read (their text is quotable)
+    if start:
+        st["current"] = LESSONS.index(lesson(start))
+        for stem in LESSONS[:st["current"]]:
+            st["shown"].append(stem)
+            with open(RUN / "seen.txt", "a") as f: f.write(f"\n\n===== {stem} =====\n{parsed(stem).text}\n")
+    jsave(RUN / "state.json", st)
+    log("start", course=COURSE, lessons=len(LESSONS), root=str(ROOT), first=LESSONS[st["current"]])
+    print(f"Run started ({COURSE}): {len(LESSONS)} lessons, first {LESSONS[st['current']]}. Next: `show`.")
 
 def cmd_path(args):
     cur = state()["current"]

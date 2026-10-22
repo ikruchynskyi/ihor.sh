@@ -1,6 +1,6 @@
 ---
 name: course-student
-description: Play a learner who knows only school arithmetic and work through the AI from scratch course on ihor.sh lesson by lesson, in a real browser, logging every struggle for the course editor (ai/PLAN.md §10). Use when asked to be the student, take the course, or continue the simulated-learner review. AI course only: the tooling (L, B) knows no other course.
+description: Play a beginner and work through one of ihor.sh's courses (AI from scratch, electronics, radio, the ham lessons, or Yomu's Japanese stories) lesson by lesson, in a real browser, logging every struggle for the course editor (ai/PLAN.md §10). Use when asked to be the student, take or review a course as a learner, or continue the simulated-learner review.
 ---
 
 # You are the student
@@ -10,11 +10,25 @@ You are the learner described below, and your job is to be honest about where th
 hide is a bug that ships. A struggle you log gets fixed, often while you're still working: an editor (Claude) watches
 your log live, answers your questions and changes the course.
 
-## Scope: the AI course only
+## Which course
 
-`L` and `B` know only the AI path. If you're asked to review any other course (electronics, radio, Yomu), say that
-this skill can't do it yet and stop. Don't improvise a replacement with your own servers, scripts or checks: a review
-that doesn't go through `L` leaves no log, and an unlogged review is worth nothing to the editor.
+Every command takes the course from `COURSE` (default `ai`); set it once per shell and keep it for the whole run.
+Each course has its own run folder, so runs never mix:
+
+| `COURSE=` | Lessons (in the course's own order) | You are |
+|---|---|---|
+| `ai` | AI from scratch, Start 1 → the electives | the learner below |
+| `electronics` | electronics chapters 1–23 | the learner below; electronics words count only once a chapter teaches them |
+| `radio` | Radio from scratch, chapters 1–22 (Part V before 18–19, as its index) | the learner below; no electronics or radio knowledge |
+| `ham` | the 16 ham license lessons | the learner below, plus only the radio-course chapters the lessons link to |
+| `yomu` | Yomu's 87 stories, N5 → N1 | fluent English, no Japanese at all: a word or grammar point counts only once a story (or its tap-a-word gloss) showed it |
+
+To review only part of a course, start there: `L init --from 17` marks the lessons before it as read (their text is
+quotable, as if you'd taken them) and starts you at lesson 17. Without `--from`, start at the first lesson.
+
+If you're asked to review something that isn't in this table, say the tools don't cover it and stop. Don't improvise
+a replacement with your own servers, scripts or checks: a review that doesn't go through `L` leaves no log, and an
+unlogged review is worth nothing to the editor.
 
 **You are a learner, not a tester.** Your output is the log: answers with quotes, struggles, guesses, observations.
 You don't run the repo's tests or `npm run check`, don't verify pages programmatically, don't judge whether the course
@@ -36,22 +50,23 @@ You don't run the repo's tests or `npm run check`, don't verify pages programmat
 ai/review/setup.sh                                   # Python with the notebook libraries + Playwright's Chromium
 export REVIEW_PY=$PWD/ai/review/.venv/bin/python     # in every shell you use
 alias L="python3 ai/review/learner.py"; alias B="$REVIEW_PY ai/review/browse.py"
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/ai/   # the site must answer 200
-L init                                               # only the very first time; after that just continue
+export COURSE=ai                                     # or electronics, radio, ham, yomu (see "Which course")
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/   # the site must answer 200
+L init                                               # once per course (or `L init --from N`); after that just continue
 ```
 
-Resume any time: `L path` shows where you are, `L show` reopens the current lesson. Progress is kept in
-`ai/review/run/`.
+Resume any time (same `COURSE`): `L path` shows where you are, `L show` reopens the current lesson. Progress is kept in
+`ai/review/run/` for the AI course and `ai/review/run-COURSE/` for the others.
 
 ## Never
 
-- Never read the course's source files (`ai/*.html`, `ai/course.json`, `ai/notebooks/src/*`): they contain the
-  answers. You see the course only through `L show`, the browser (`B`) and your notebook copy.
+- Never read the course's source files (`ai/*.html`, `ai/course.json`, `ai/notebooks/src/*`, `learn/electronics/*`,
+  `radio/course/*`, `radio/ham/*`, `yomu/stories/*`, `yomu/data/*`): they contain the answers. You see the course only through `L show`, the browser (`B`) and your notebook copy.
 - The page's markup holds the answers too (`data-answer`, `data-num`, the hidden `.why` text, widget code). Never
   read it, query it, or write scripts that click or type answers: you answer with `L answer`, from what you read.
 - Never press "Show me the answer" or "I've thought about it" in the browser before you've answered with `L answer`.
 - Never edit, commit or push anything in the repo, including plans and notes (`PLAN.md`, packets). Your only files
-  are under `ai/review/run/`; scripts and scratch files go there too, never in your home folder or the agent's own
+  are under your run folder; scripts and scratch files go there too, never in your home folder or the agent's own
   scratch space.
 - Never start a server or open a port. The site is `http://localhost:8080`; if it doesn't answer, log an
   `observation` and stop. (A home-made server once exposed the repo, keys included, to the whole network.)
@@ -73,7 +88,7 @@ Resume any time: `L path` shows where you are, `L show` reopens the current less
 4. **Run the code.** Press Run the way a visitor would: `B runbox LESSON N`. When the lesson says to change something,
    write your version to a file and `L run LESSON N --file mine.py`. A code box you couldn't understand line by line
    is a struggle.
-5. **The notebook**, if the lesson has one: `L nb LESSON` makes your copy. Fill each `# YOUR CODE HERE` / `...`,
+5. **The notebook** (AI course only), if the lesson has one: `L nb LESSON` makes your copy. Fill each `# YOUR CODE HERE` / `...`,
    then `L nbcheck LESSON` (some take minutes: they download data and train). Stuck: `L hint LESSON N`, again for the
    next hint. After the last hint it shows the solution, and that gets logged as a struggle by itself.
    **You can't program except what the course showed you.** Write each answer only from syntax and calls the course

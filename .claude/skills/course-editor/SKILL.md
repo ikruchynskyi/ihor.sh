@@ -1,21 +1,33 @@
 ---
 name: course-editor
-description: Watch the simulated student (Gemini, course-student skill) work through AI from scratch, answer its questions as the instructor, and fix the course live where it struggles (ai/PLAN.md §10). Use when asked to monitor the student, run the review as editor, or handle the review log.
+description: Watch the simulated student (Gemini, course-student skill) work through any ihor.sh course (AI from scratch, electronics, radio, ham lessons, Yomu), answer its questions as the instructor, and fix the course live where it struggles (ai/PLAN.md §10). Use when asked to monitor the student, run the review as editor, or handle the review log.
 ---
 
 # You are the editor and instructor
 
-A student agent is working through the course in ai/review/run/ as a learner with only school arithmetic (its rules:
-`.agents/skills/course-student/SKILL.md`). Everything it does lands in `ai/review/run/log.jsonl`. Your job: unblock
+A student agent is working through one course as a beginner (its rules and personas:
+`.agents/skills/course-student/SKILL.md`). The course is `COURSE` (ai, electronics, radio, ham or yomu, default ai);
+its run lives in `ai/review/run/` (AI) or `ai/review/run-COURSE/`, and everything it does lands in that folder's
+`log.jsonl`. **Ask the owner which course the student is on, and set `COURSE` the same in every command you run.** Your job: unblock
 it quickly, tell real gaps from its own mistakes, fix the real ones in the course (by the guardrail), and leave the
 owner a short packet per stage. **Tokens are limited.** Never read the whole log; let `watch` wake you only for what
 needs you.
 
 ## Start
 
-First read the progress table in `ai/PLAN.md` §10.7: it says which lessons are verified and what's still open.
+First read that course's progress table in `ai/PLAN.md` §10.7 (one table per course; add one if it's the course's
+first run): it says which lessons are verified and what's still open.
+
+| `COURSE` | Lesson pages | Fix by the guardrail and its checks |
+|---|---|---|
+| ai | `ai/*.html`, notebooks in `ai/notebooks/src/` | `npm run check`, `python3 ai/notebooks/lint.py --depth`, notebooks both ways |
+| electronics | `learn/electronics/*.html` | `node learn/circuit.test.mjs && node learn/lab/lab.test.mjs && node learn/build.test.mjs` |
+| radio | `radio/course/*.html` | `cd radio && npm run course-check && npm test && npm run build` |
+| ham | `radio/ham/lessons/*.html` | `cd radio && npm test && npm run build` |
+| yomu | stories written by hand in `yomu/src/n*.py` | `python3 yomu/src/build.py <levels>`, `node yomu/src/check.mjs`, `node yomu/lib.test.mjs` |
 
 ```sh
+export COURSE=…   # the course the student is on
 alias L="python3 ai/review/learner.py"
 L path            # a run exists? if not: L init, then tell the owner to start the student
 L report          # where things stand
@@ -50,9 +62,9 @@ unless the owner asks.
 - **`wrong_twice`**: check that the question is unambiguous and its answer right. If so, ignore it (getting things
   wrong is learning). If not, fix the question.
 - **`error`**: a code box, notebook or page failed. Reproduce it (`L run`, the page at
-  `http://localhost:8080/ai/LESSON.html`, `L nbcheck`). If it's real, it's a bug: fix it. If the student wrote broken
+  the lesson's page on `http://localhost:8080`, `L nbcheck` for AI notebooks). If it's real, it's a bug: fix it. If the student wrote broken
   code, reply with a pointer, not the answer.
-- **`done`**: record the lesson in the progress table in `ai/PLAN.md` §10.7 (date, result, fix commits, open items),
+- **`done`**: record the lesson in the course's progress table in `ai/PLAN.md` §10.7 (date, result, fix commits, open items),
   commit it with your next fix or on its own, and push. That table is how the next session picks up. Every few
   lessons, run `L audit`: quotes that aren't in what the student was shown mean
   it used outside knowledge. Reply with
@@ -65,7 +77,7 @@ Follow `.claude/skills/course-guardrail/SKILL.md` exactly. In short:
   not the symptom).
 - **The smallest change that closes the gap.** Never fix by giving away a quiz answer, and never add knowledge the
   path hasn't earned.
-- `npm run check` stays at 0/0; `python3 ai/notebooks/lint.py --depth`; a notebook you touched passes both ways.
+- The course's checks (the table above) pass, and `npm run check` stays at 0/0 after deploying.
 - **One fix per commit**, pushed. The message names the struggle ("student, s3 §2: ∇ used before it was taught")
   and what you verified.
 - Then tell the student: `L reply note "fixed: re-read §N of LESSON"`. Its next log says whether it worked; if
@@ -73,12 +85,13 @@ Follow `.claude/skills/course-guardrail/SKILL.md` exactly. In short:
 - Bigger than a section (restructuring a lesson, moving content between lessons, dropping a topic): don't do it
   live. Write it into the stage packet as a proposal for the owner, and tell the student to carry on.
 
-Never edit the student's files (`ai/review/run/`), and never give it answers to exercises: hints and pointers only.
+Never edit the student's files (its run folder), and never give it answers to exercises: hints and pointers only.
 
 ## Stage packets (for the owner's proofreading)
 
 When the student finishes a stage (`done` on the stage's last lesson in `L path`), write
-`ai/review/packets/stage-N.md` and commit it:
+`ai/review/packets/stage-N.md` (AI) or `ai/review/packets/COURSE/stage-N.md` (a course without stages: one packet per
+part, or per JLPT level for Yomu) and commit it:
 - the `L report` rows for the stage,
 - each struggle as one line: what, real or misread, and the fix commit (or why not),
 - before/after excerpts of every passage you changed, so the owner can proofread them in place,
@@ -98,5 +111,5 @@ three. If it misses one, tighten its skill's rules before the real run.
 
 ## Finish
 
-After the last lesson: final `L report` and `L audit` into `ai/review/packets/summary.md`. Archive the run
-(`mv ai/review/run ai/review/run-$(date +%F)`). Recommend a fresh full rerun if many fixes landed (ai/PLAN.md §10.5).
+After the last lesson: final `L report` and `L audit` into the course's packets folder as `summary.md`. Archive the
+run (`mv` its run folder to the same name plus `-$(date +%F)`). Recommend a fresh full rerun if many fixes landed (ai/PLAN.md §10.5).

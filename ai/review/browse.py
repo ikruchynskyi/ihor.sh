@@ -7,8 +7,8 @@
 Steps for `do`, run in order: {"set": "#id", "value": "0.5"} (slider, number box, select), {"click": "selector"},
 {"drag": "selector", "from": [x, y], "to": [x, y]} (fractions of the element's box), {"key": "ArrowRight", "on": "selector"},
 {"wait": ms}, {"read": "selector"}, {"shot": "name"}.
-Every call logs a `ui` event to ai/review/run/log.jsonl; JavaScript errors, horizontal overflow and failed requests
-are also logged as `error`, so the editor sees them at once. Screenshots go to ai/review/run/shots/.
+Every call logs a `ui` event to the run's log.jsonl (ai/review/run/, or ai/review/run-COURSE/); JavaScript errors, horizontal overflow and failed requests
+are also logged as `error`, so the editor sees them at once. Screenshots go to the run's shots/.
 BASE is the site (default http://localhost:8080; https://ihor.sh also works).
 """
 import json, os, sys
@@ -37,7 +37,7 @@ def page(p, stem, width):
     issues = []
     pg.on("pageerror", lambda e: issues.append(f"JS error: {str(e)[:160]}"))
     pg.on("response", lambda r: issues.append(f"HTTP {r.status}: {r.url[-80:]}") if r.status >= 400 and BASE in r.url else None)
-    pg.goto(f"{BASE}/ai/{stem}.html", wait_until="load"); pg.wait_for_timeout(1500)
+    pg.goto(f"{BASE}{L.url(stem)}", wait_until="load"); pg.wait_for_timeout(1500)
     return b, pg, issues
 
 def finish(pg, stem, width, issues, extra):
