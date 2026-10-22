@@ -30,11 +30,11 @@
 
   <p>Some things to look for:</p>
   <ul>
-    <li><b>RTL2832U start-up</b> (the biggest phase): power on the demodulator, reset it, then write the resampler filter's 16 coefficients, packed into 20 registers (chapter 3's anti-aliasing filter), switch to SDR mode, and turn off everything that was meant for TV.</li>
+    <li><b>RTL2832U start-up</b> (the biggest phase): power on the demodulator (the chip's own name for its signal-processing half, built to decode TV; nothing to do with chapter 9's FM demodulator), reset it, then write the 16 coefficients of the resampler's filter (the resampler is the chip's decimator, chapter 7), packed into 20 registers (chapter 3's anti-aliasing filter), switch to SDR mode, and turn off everything that was meant for TV.</li>
     <li><b>Find the tuner and set up for it</b>: "start reading at register 0x00", and the answer 0x69: that's how the driver knows it's an R820T. Then the RTL2832U is told about the tuner's 3.57 MHz IF.</li>
-    <li><b>Tuner start-up</b>: four bulk writes of the 27 start-up values (7 at a time, the I2C bridge's limit), then the IF filter calibration: the PLL goes to 56 MHz, a trigger bit is pulsed, a code is read back.</li>
+    <li><b>Tuner start-up</b>: four batches of the 27 start-up values (7 at a time, the I2C bridge's limit), then the IF filter calibration: the PLL goes to 56 MHz, a trigger bit is pulsed, a code is read back.</li>
     <li><b>Tune</b>: notice registers 0x14, 0x15 and 0x16 (the PLL integer and fraction from chapter 12) and the status read that checks the lock bit.</li>
-    <li>Almost every tuner phase starts with "I2C repeater on" (demod register 0x01 = 0x18) and ends with it off (0x10).</li>
+    <li>Almost every tuner phase starts with "I2C repeater on" (the switch inside the RTL2832U that connects its I2C wires through to the tuner) (demod register 0x01 = 0x18) and ends with it off (0x10).</li>
   </ul>
   <div class="q"><p>Why does the driver write 16 filter coefficients into the RTL2832U at start-up?</p>
     <div class="why">The chip decimates the converter's samples before sending them, and decimating without filtering first lets other stations fold in on top of yours (chapters 3 and 7). Those 16 numbers (chapter 3 lists them) are that anti-aliasing filter.</div>
