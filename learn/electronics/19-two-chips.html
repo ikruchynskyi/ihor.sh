@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Two Chips Talking: a Running Light</title>
+  <meta name="description" content="Electronics from scratch, chapter 19, the third build: a 555 clocking a CD4017 decade counter that lights ten LEDs in turn. When one chip's output counts as a 1 at another chip's input (the datasheets' output-high and input-high voltages), why unused CMOS inputs must be tied, one resistor shared by ten LEDs, and laying out two chips on one breadboard." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas.plot { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .tablewrap { overflow-x: auto; }
+    table.bom { border-collapse: collapse; font-size: 15px; width: 100%; }
+    table.bom th, table.bom td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    table.bom td:first-child { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .check { list-style: none; padding: 0; }
+    .check li { margin: 8px 0; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+    .check b.v { font-family: ui-monospace, Menlo, monospace; }
+    input[type=range] { width: 200px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 19</p>
+  <h1>Two chips talking: a running light</h1>
+  <p class="lede">Real circuits are rarely one chip. A clock feeds a counter, a sensor feeds a microcontroller, a microcontroller feeds a driver, and every one of those joins is a wire from one chip's output to another chip's input. This build makes the simplest such pair, a 555 clocking a 4017 counter so ten LEDs light one after another, and asks the question every joined pair raises: does the first chip's "high" look high enough to the second?</p>
+  <div class="plain card"><b>Before you start.</b> The 555 blinker and the build steps are <a href="./17-first-build-555.html">chapter 17</a>; flip-flops counting is <a href="./12-gates-to-a-computer.html">chapter 12 §6</a>; 1s and 0s as voltages are chapter 12's opening; floating inputs are <a href="./13-microcontrollers-and-buses.html">chapter 13 §2</a>; hysteresis is <a href="./07-op-amps.html">chapter 7 §5</a>.</div>
+
+  <h2>1. The goal and the blocks</h2>
+  <p><b>The goal:</b> ten LEDs light one at a time, left to right, about four steps a second, from a 9 V battery. <b>The blocks:</b> a clock (chapter 17's 555, faster), a counter that turns each clock pulse into "the next LED", and ten LEDs. The counter is the new part.</p>
+  <p>The CD4017 is a decade counter: it counts rising edges on its clock input, and instead of showing the count in binary (chapter 12) it makes exactly one of ten outputs high, Q0 for a count of 0 through Q9 for 9. Predict before you look: what happens on the clock edge after Q9?</p>
+  <div id="sch"></div>
+  <p>Watch the LEDs on the right: one lit at a time, and after Q9 the count wraps around to Q0. Pick U2 to read what's inside it, and pick R3, the single resistor every LED shares (section 6 explains why one is enough).</p>
+
+  <h2>2. Pin 3 is Q0</h2>
+  <p>The 4017 has 16 pins, and its outputs are scattered around them: Q0 is pin 3, Q1 pin 2, Q5 pin 1. The schematic draws them in counting order because that's how you think about the circuit; the package puts them wherever its designers' layout put them, decades ago. This is normal, and it's why a schematic always carries pin numbers.</p>
+  <div id="pin"></div>
+  <div class="q" data-num="3">
+    <p>Pick pins until you've found it: which pin is Q0, the output that's high right after a reset?</p>
+    <div class="why">Pin 3. Then Q1 is pin 2 and Q2 pin 4. Wire the LEDs by pin number from the datasheet, never by guessing from the order of the outputs.</div>
+  </div>
+
+  <h2>3. Every input needs a voltage</h2>
+  <p>Two of the 4017's inputs do nothing in this build: RST (pin 15) and INH, clock inhibit (pin 13). Both are tied to ground in the schematic. Chapter 13 explained why an unconnected input is trouble: it's a CMOS gate (chapter 12) that draws almost no current, so it drifts to whatever voltage is nearby. That matters more here than on the 555's pin 4.</p>
+  <div class="q" data-answer="b">
+    <p>You forget pin 13 (INH) and leave it unconnected. What would you most likely see?</p>
+    <ul><li data-k="a" data-says="INH has nothing to do with the LEDs' brightness: it gates the clock.">All ten LEDs dim</li><li data-k="b">The running light stops and starts by itself, worse when your hand is near the board</li><li data-k="c" data-says="An input pin has no current of its own to burn anything. It's the uncertainty that hurts.">The chip burns out</li></ul>
+    <div class="why">A floating INH wanders between high (count frozen) and low (counting) with every bit of hum it picks up, including from your hand. A floating RST is worse: it sends the light back to Q0 at random. The datasheet says the count advances only while CLOCK INHIBIT is low, and that a high RESET clears it. Tie every input you don't use to VDD or VSS, whichever means "do nothing" for that pin.</div>
+  </div>
+
+  <h2>4. Does a 555's high look high to a 4017?</h2>
+  <p>Here's the new question. Chapter 12 said a voltage near the supply means 1 and near 0 V means 0, "and nothing in between counts." Datasheets put numbers on that. The 4017's datasheet promises to read any input above its <b>input-high voltage</b> V<sub>IH</sub> as a 1 (3.5 V on a 5 V supply, 7 V on 10 V, 11 V on 15 V: about 70% of the supply), and anything below V<sub>IL</sub> (1.5, 3 and 4 V) as a 0. In between, it promises nothing. The 555's datasheet promises its output high is at least V<sub>OH</sub>, 2.75 V on a 5 V supply and 12.75 V on 15 V while it pushes 100 mA (about 2.25 V below its supply), and typically 1.7 V below. Slide the supply both chips share.</p>
+  <canvas class="plot" id="lv" width="800" height="300" aria-label="The 555's output high and the 4017's input thresholds against the supply voltage"></canvas>
+  <div class="row"><label>shared supply <input type="range" id="vs" min="4.5" max="15" step="0.1" value="9"> <span id="vsv"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> find the lowest supply where the 555's <em>guaranteed</em> high still clears the 4017's V<sub>IH</sub>.</p>
+  <p>At 5 V the pair fails on paper: the 555 promises 2.75 V and the 4017 asks for 3.5 V, so even the 555's typical 3.3 V falls short. It might work on your bench, and fail with the next chip from the bag or on a cold morning (chapter 5: design with the min and max columns). At 9 V there's room: the promise is 6.75 V against the 6.3 V the 4017 needs. That's why this build runs on 9 V. In the simulator the clock reaches 7.3 V, because the 4017's input draws almost no current, far less than the datasheet's 100 mA test.</p>
+  <p class="gist">Two chips can talk only if the first one's guaranteed output-high is above the second one's input-high threshold, and its output-low below the input-low one, at the supply you'll actually use.</p>
+  <details class="deeper"><summary>Where it breaks: a microcontroller's 3.3 V into a 5 V chip</summary>
+    <p>The same check decides one of the most common questions in hobby electronics. A 3.3 V microcontroller pin (high is at least about 2.6 V) driving a 5 V CMOS chip like this one (V<sub>IH</sub> 3.5 V) fails on paper. The usual fixes: run the second chip from 3.3 V too (the 4017 runs from 3 V), pick a part whose inputs are made for it (the 74HCT family reads 2 V as a 1 on a 5 V supply), or put a level shifter between them. Going the other way, a 5 V output into a 3.3 V input, is worse: it can push current into the smaller chip and damage it, unless its datasheet says its inputs are "5 V tolerant." Chapter 22 meets this on real modules.</p>
+  </details>
+
+  <h2>5. One resistor for ten LEDs</h2>
+  <p>The <a href="/learn/lab.html">circuit lab</a>'s "Two LEDs, one resistor (why it fails)" circuit showed what goes wrong when LEDs share a resistor: the one with the lower voltage takes all the current. Yet here ten LEDs share R3. Why does it work?</p>
+  <div class="q" data-answer="a">
+    <p>Why can ten LEDs share one resistor here?</p>
+    <ul><li data-k="a">Only one output is high at a time, so only one LED is ever on, and R3 only ever sets one LED's current</li><li data-k="b" data-says="They're all red, but even identical LEDs differ a little, and the failing lab circuit used two different colors; the real reason is in the counter.">Because all ten LEDs are the same color</li><li data-k="c" data-says="The 4017's outputs are weak, but R3 still sets the current (section 6).">The 4017 limits the current itself, so R3 doesn't matter</li></ul>
+    <div class="why">Sharing fails when two LEDs are on together. The 4017 guarantees one high output, so one lit LED and one current: (9 − 1.9) V across R3 plus the output's own resistance, about 5.8 mA in the simulator. That guarantee comes from the datasheet ("exactly one output high"), and it's what makes the shortcut safe. With a chip that could turn on two outputs at once, it wouldn't be.</div>
+  </div>
+  <details class="deeper"><summary>Why are CMOS outputs "weak"?</summary>
+    <ol>
+      <li>Each output is chapter 12's CMOS inverter: a P-channel MOSFET from VDD to the pin, an N-channel from the pin to ground.</li>
+      <li>On a logic chip these transistors are tiny, built to charge the next chip's input capacitance (chapter 12's ripple-carry box), not to drive loads. Fully on, a tiny MOSFET is still a resistor of a few hundred ohms.</li>
+      <li>The datasheet says it as current: at 10 V, at least 1.3 mA (typically 2.6 mA) while holding the output within 0.5 V of VDD. That's about 0.5 V / 2.6 mA ≈ 190 Ω, close to the 220 Ω the simulator uses at 9 V.</li>
+      <li>So an LED driven from a 4017 is dimmer than one from a 555 (whose output stage is built for 200 mA), and a 4017 output can't drive a relay or a motor at all: that needs a transistor (chapter 4).</li>
+    </ol>
+  </details>
+
+  <h2>6. The breadboard</h2>
+  <p>Two chips, the same plan as chapter 17: each across the gap, power to its pins first, then each pin's strip gets its parts. Two things are new. The clock is one long blue jumper from the 555's pin 3 to the 4017's pin 14. And the bottom blue rail isn't ground here: it's the ten LEDs' shared cathode node, and R3 joins it to ground on the right. A rail is only a long strip; its color is a habit, so say so on your board with a label.</p>
+  <div id="bb"></div>
+  <p class="goal" id="g6">🎯 <b>Challenge:</b> click the bottom blue rail and count the LEDs joined to it.</p>
+
+  <h2>7. The shopping list</h2>
+  <div class="tablewrap"><table class="bom">
+    <tr><th>Ref</th><th>Part</th><th>Why this one</th></tr>
+    <tr><td>U1</td><td>NE555P</td><td>The clock (chapter 17).</td></tr>
+    <tr><td>U2</td><td>CD4017BE (16-pin DIP)</td><td>B-series CMOS: 3–18 V, so it shares the 9 V. "BE" is the DIP package.</td></tr>
+    <tr><td>R1, R2</td><td>10 kΩ, 68 kΩ, ¼ W</td><td>About 4.5 steps a second with C1.</td></tr>
+    <tr><td>C1</td><td>2.2 µF electrolytic, 16 V+</td><td>Timing.</td></tr>
+    <tr><td>R3</td><td>1 kΩ, ¼ W</td><td>The shared LED resistor: about 6 mA.</td></tr>
+    <tr><td>C2</td><td>0.1 µF ceramic (104)</td><td>Bypass. On a soldered board, one beside each chip.</td></tr>
+    <tr><td>LED1–10</td><td>red 5 mm LEDs</td><td>One color, so they look alike at the same current.</td></tr>
+  </table></div>
+
+  <h2>8. Power up and check</h2>
+  <ul class="check">
+    <li><b>1. Power pins first:</b> 555 pin 8 and 4017 pin 16 at <b class="v">9 V</b>; 555 pin 1 and 4017 pin 8 at <b class="v">0 V</b>.</li>
+    <li><b>2. The tied inputs:</b> 4017 pins 13 and 15 at <b class="v">0 V</b>. If either reads anything else, or wanders, it isn't connected.</li>
+    <li><b>3. The clock:</b> 4017 pin 14 flipping between <b class="v">0 and about 7.3 V</b>, about 4.5 times a second: slow enough to watch on a meter.</li>
+    <li><b>4. The LEDs:</b> one at a time, in order. Break the loop at R3 with the meter in series: about <b class="v">6 mA</b>.</li>
+  </ul>
+
+  <h2>9. What's wrong?</h2>
+  <div class="q" data-answer="c">
+    <p>The light runs, but in a strange order: 1, 2, 3, then the 6th LED, then back near the start.</p>
+    <ul><li data-k="a" data-says="A counter can't skip and jump around because of a slow clock: every edge moves it one step.">The clock is too slow</li><li data-k="b" data-says="A noisy reset sends it back to Q0, and the order of the ones that do light would still be 1, 2, 3…">RST is floating</li><li data-k="c">The LEDs are wired by output order instead of by pin number</li></ul>
+    <div class="why">The counter is fine; the LEDs are in the wrong strips. Q0 is pin 3, Q1 pin 2, Q2 pin 4, Q3 pin 7: placing LEDs along pins 1, 2, 3… scrambles the order. Rewire by the pinout (section 2).</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>The light freezes on one LED, then moves on when you touch near pin 13.</p>
+    <ul><li data-k="a">INH (pin 13) isn't connected to ground</li><li data-k="b" data-says="Pin 14 is the clock, and the 555 drives it; touching near pin 13 points elsewhere.">The 555 has stopped</li><li data-k="c" data-says="A missing bypass capacitor causes glitches, not a freeze that your finger releases.">C2 is missing</li></ul>
+    <div class="why">Your finger is the giveaway: its hum is enough to move a floating CMOS input (section 3). Find the jumper from pin 13's strip to the ground rail.</div>
+  </div>
+
+  <h2>10. Make it yours</h2>
+  <ul>
+    <li><b>Count to five:</b> wire Q5 (pin 1) to RST (pin 15) instead of grounding RST. The moment Q5 goes high it resets the count to Q0, so only Q0–Q4 ever light. That's "divide by N" from the datasheet's application list, and you can try it in the lab: open the circuit, and move RST's wire to Q5. (Keep the ground connection off: two things driving one input is its own bug.)</li>
+    <li><b>Back and forth:</b> give the end LEDs Q0 and Q5, and wire each middle LED to a pair of outputs through two diodes (Q1 and Q9, Q2 and Q8, Q3 and Q7, Q4 and Q6), so the light runs out and back: the classic "scanner". The diodes keep two outputs from fighting each other through the shared LED.</li>
+    <li><b>A slower crawl:</b> a 100 kΩ pot in place of R2, with a 1 kΩ in series, as in chapter 17.</li>
+  </ul>
+
+  <p>Next: <a href="./20-dusk-light.html">a dusk light</a>, where a sensor makes the decision: a light sensor, a comparator and a MOSFET switch a 12 V LED strip on when it gets dark.</p>
+  <p class="muted">Previous: <a href="./18-power-supply.html">A 5 V and 3.3 V supply</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { schematic, pinout, breadboard, link } from "/learn/build.js";
+import { P19, CHIPS } from "/learn/electronics/projects.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+
+const sch = schematic($("sch"), P19, { label: "Schematic: a 555 astable on 9 V whose output drives the clock of a CD4017; RST and INH tied to ground; ten LEDs from Q0–Q9 sharing one 1 kΩ resistor to ground." });
+pinout($("pin"), CHIPS.CD4017, { hint: "Pick a pin: what it is, and what this build does with it." });
+const bb = breadboard($("bb"), P19, { onHole: (h) => { if (/^B-/.test(h)) done("g6", "Ten LEDs, one rail, one resistor. Only one at a time, so it works."); } });
+link(sch, bb);
+
+// section 4: the 555's output high (TI SLFS022: ≥ VCC − 2.25 V at 100 mA, typically VCC − 1.7 V) against the 4017's
+// input thresholds (TI SCHS027C: VIH 3.5 / 7 / 11 V and VIL 1.5 / 3 / 4 V at 5 / 10 / 15 V; straight lines between)
+const lerp = (pts, x) => { for (let k = 1; k < pts.length; k++) if (x <= pts[k][0]) { const [x0, y0] = pts[k - 1], [x1, y1] = pts[k]; return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0); } const [x0, y0] = pts.at(-2), [x1, y1] = pts.at(-1); return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0); };
+const VIH = [[5, 3.5], [10, 7], [15, 11]], VIL = [[5, 1.5], [10, 3], [15, 4]];
+function levels() {
+  const vs = +$("vs").value, cv = $("lv"), g = cv.getContext("2d"), W = 800, H = 300, X = (v) => 60 + ((v - 4.5) / 10.5) * 720, Y = (v) => 270 - (v / 15) * 250;
+  $("vsv").textContent = `${vs.toFixed(1)} V`;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "#262b35"; g.lineWidth = 1; g.fillStyle = "#8f98a8"; g.font = "12px ui-monospace, monospace";
+  for (let v = 0; v <= 15; v += 3) { g.beginPath(); g.moveTo(60, Y(v)); g.lineTo(780, Y(v)); g.stroke(); g.fillText(`${v} V`, 14, Y(v) + 4); }
+  for (let v = 5; v <= 15; v += 2.5) g.fillText(`${v}`, X(v) - 8, 292);
+  // the 4017's "no promise" band between VIL and VIH
+  g.fillStyle = "rgba(252,98,85,.18)"; g.beginPath(); for (let v = 4.5; v <= 15.01; v += 0.1) g.lineTo(X(v), Y(lerp(VIH, v))); for (let v = 15; v >= 4.49; v -= 0.1) g.lineTo(X(v), Y(lerp(VIL, v))); g.fill();
+  const line = (f, col, dash = []) => { g.strokeStyle = col; g.lineWidth = 2.5; g.setLineDash(dash); g.beginPath(); for (let v = 4.5; v <= 15.01; v += 0.1) g.lineTo(X(v), Y(f(v))); g.stroke(); g.setLineDash([]); };
+  line((v) => lerp(VIH, v), "#fc6255"); line((v) => v - 2.25, "#f4d35e"); line((v) => v - 1.7, "#f4d35e", [6, 5]);
+  g.fillStyle = "#fc6255"; g.fillText("4017 needs above this (VIH)", X(11.2), Y(lerp(VIH, 11.2)) + 18); g.fillText("no promise", X(12.5), Y((lerp(VIH, 12.5) + lerp(VIL, 12.5)) / 2) + 4);
+  g.fillStyle = "#f4d35e"; g.fillText("555 high, guaranteed", X(5.2), Y(5.2 - 2.25) + 18); g.fillText("typical", X(6.5), Y(6.5 - 1.7) - 8);
+  g.strokeStyle = "#58c4dd"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(vs), 15); g.lineTo(X(vs), 270); g.stroke();
+  const hi = vs - 2.25, typ = vs - 1.7, need = lerp(VIH, vs), ok = hi >= need;
+  $("o4").textContent = `at ${vs.toFixed(1)} V: the 555 promises ≥ ${hi.toFixed(2)} V (typically ${typ.toFixed(2)} V); the 4017 needs ≥ ${need.toFixed(2)} V → ${ok ? `a reliable 1, with ${(hi - need).toFixed(2)} V to spare` : typ >= need ? "works typically, not guaranteed" : "not a reliable 1, even typically"}`;
+  if (ok && vs <= 7.6) done("g4", "About 7.5 V: below that the promise runs out. Margins come from datasheets, not from luck.");
+}
+$("vs").oninput = levels; levels();
+window.blipContext = () => ({ page: "Electronics chapter 19: a 555 clocking a CD4017 decade counter (running light); logic levels VOH vs VIH, tying unused CMOS inputs, one shared LED resistor", supply: $("vs").value });
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sensor to Switch: a Dusk Light</title>
+  <meta name="description" content="Electronics from scratch, chapter 20, the fourth build: a 12 V LED strip that turns on at dusk, with no microcontroller. A light sensor in a divider (and how to choose its resistor), an LM393 comparator (open-collector outputs need a pull-up; input range), hysteresis sized so it doesn't flicker, and a logic-level MOSFET switching an amp." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas.plot { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .tablewrap { overflow-x: auto; }
+    table.bom { border-collapse: collapse; font-size: 15px; width: 100%; }
+    table.bom th, table.bom td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    table.bom td:first-child { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .check { list-style: none; padding: 0; }
+    .check li { margin: 8px 0; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+    .check b.v { font-family: ui-monospace, Menlo, monospace; }
+    input[type=range] { width: 220px; }
+    select { font: inherit; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 20</p>
+  <h1>Sensor to switch: a dusk light</h1>
+  <p class="lede">So far the builds did something on their own: blink, count. Most useful circuits react to the world: a fan that starts when it's hot, a pump when the soil is dry, a light when it gets dark. Each is the same chain, a sensor, a decision, and a switch for something that needs real power. This build makes that chain with no microcontroller and no code: a 12 V LED strip that turns itself on at dusk and off at dawn, and doesn't flicker in between.</p>
+  <div class="plain card"><b>Before you start.</b> The light sensor in a divider is <a href="./01-voltage-current-resistance.html">chapter 1 §2</a>; comparators and hysteresis are <a href="./07-op-amps.html">chapter 7 §5</a>; the MOSFET switch and logic-level gates are <a href="./04-diodes-and-transistors.html">chapter 4 §3–4</a>; open-drain lines and pull-ups are <a href="./13-microcontrollers-and-buses.html">chapter 13 §5</a>; the build steps are <a href="./17-first-build-555.html">chapter 17</a>.</div>
+
+  <h2>1. The goal, the blocks, and the whole circuit</h2>
+  <p><b>The goal:</b> a 12 V LED strip (about 1 A) turns on when the light falls below dusk, about 10 lux, and off again in the morning, without flickering as the light hovers near the edge. <b>The blocks:</b> a light sensor that turns lux into volts; a comparator that decides "dark or not" against an adjustable threshold; a MOSFET that switches the strip. Here's the circuit. Drag the light down to dusk and back up, slowly, and watch where the strip turns on and where it turns off.</p>
+  <div id="sch"></div>
+  <div class="row"><label>light <input type="range" id="lux" min="0" max="3" step="0.01" value="2"> <span id="luxv"></span></label></div>
+  <p class="readout" id="o1"></p>
+  <p class="goal" id="g1">🎯 <b>Challenge:</b> find the light level where the strip turns on, then the one where it turns off. Are they the same?</p>
+
+  <h2>2. The sensor: choosing the divider resistor</h2>
+  <p>The LDR (a light-dependent resistor, chapter 1) is the bottom of a divider with R1 on top, so the sensor voltage rises as the room darkens. R1 is a choice, and a bad one makes the sensor nearly blind at dusk. The goal is that around 10 lux the voltage moves as much as possible for a small change of light, so the comparator gets a clear signal. Pick R1 and watch the curve's slope at dusk.</p>
+  <canvas class="plot" id="dv" width="800" height="280" aria-label="The sensor voltage against light for the chosen R1"></canvas>
+  <div class="row"><label>R1 <select id="r1"></select></label></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> pick the R1 that makes the voltage change the most between 8 and 12 lux.</p>
+  <p>The steepest choice is R1 equal to the LDR's own resistance at the light you care about: about 15 kΩ at 10 lux for a GL5528 (its datasheet says 10–20 kΩ, which is also why the threshold must be adjustable). Too small an R1 and the voltage sits near 12 V at every dusk-like light; too big and it sits near 0.</p>
+  <details class="deeper"><summary>Why is matching the resistances the steepest choice?</summary>
+    <ol>
+      <li>The sensor voltage is \(S = V\,\dfrac{R}{R_1 + R}\), with \(R\) the LDR.</li>
+      <li>How much it moves for a small change of \(R\): \(\dfrac{dS}{dR} = V\,\dfrac{R_1}{(R_1 + R)^2}\).</li>
+      <li>Light changes the LDR by a <em>fraction</em> (its resistance goes as lux<sup>−0.7</sup>), so what matters is the change for a given fractional change, \(R\,\dfrac{dS}{dR} = V\,\dfrac{R_1 R}{(R_1 + R)^2}\).</li>
+      <li>For a fixed \(R\), that's largest when \(R_1 = R\) (try \(R_1 = R/2\) and \(2R\): both give \(\tfrac{2}{9}V\), less than the \(\tfrac{1}{4}V\) at \(R_1 = R\)).</li>
+      <li>And at \(R_1 = R\) the voltage is exactly \(V/2\), the middle of the range: the same answer as "put the decision where the signal has room on both sides."</li>
+    </ol>
+  </details>
+
+  <h2>3. The decision: an LM393 and its open-collector output</h2>
+  <p>Chapter 7 built a comparator from an op-amp. The LM393 is a chip made only for comparing, two of them in an 8-pin package, and its datasheet holds two surprises that catch everyone once.</p>
+  <div id="pin1"></div>
+  <p><b>Surprise one: its output can't go high.</b> It's an open collector: a transistor from the output pin to ground, nothing to the supply. When IN− is above IN+ it pulls the pin low; otherwise it simply lets go, and the pin floats, unless a pull-up resistor (R2 here) lifts it. That's chapter 13's I²C line again, and the reason is the same: you choose the high voltage, and several outputs can share one line.</p>
+  <div class="q" data-answer="b">
+    <p>Predict: take out R2, the pull-up. It gets dark. What does the strip do?</p>
+    <ul><li data-k="a" data-says="The comparator still decides 'dark', but its output can only let go. What makes the gate high?">Turns on as usual</li><li data-k="b">Stays off: nothing pulls the gate high</li><li data-k="c" data-says="The output's transistor isn't damaged by having no pull-up; there's just no high.">The LM393 burns out</li></ul>
+    <div class="why">In the dark the comparator lets go of its output, and with no pull-up the MOSFET's gate just sits at whatever it last was, or wherever stray charge puts it. Pick R2 in the schematic and take it out to see. An open-collector output without a pull-up is one of the most common "my circuit does nothing" bugs.</div>
+  </div>
+  <p><b>Surprise two: its inputs don't reach the top rail.</b> The datasheet promises correct comparisons only for inputs from 0 V to VCC − 1.5 V, 10.5 V on 12 V. In deep darkness the LDR reaches 1 MΩ and the sensor voltage climbs to about 11.8 V, past that limit. It still works, because the same datasheet adds that only one input needs to be inside the range: the reference on IN− stays at 6 V. Reading that footnote is the difference between a design and a guess. (A design that never needs it would power the divider from a lower voltage.)</p>
+
+  <h2>4. Hysteresis: one threshold for on, another for off</h2>
+  <p>At dusk the light doesn't fall smoothly: clouds, a passing car, a tree moving in the wind. A comparator with one exact threshold turns the strip on and off with every wobble. Chapter 7's cure is positive feedback, and here it's R3: once the strip is on, the comparator's high output feeds a little current through R3 back into the sensor node, nudging it up, so it takes noticeably more light to turn the strip off again. While the strip is off, R3 pulls the other way. Start with no R3 at all, then choose one and see the two thresholds move apart. (Changing these also changes the circuit in section 1.)</p>
+  <div class="row"><label>R3 <select id="r3"></select></label><label>threshold (RV1) <input type="range" id="pos" min="20" max="80" step="1" value="50"> <span id="posv"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> set the thresholds so the strip turns on below about 8 lux and off above about 12 lux.</p>
+  <p class="gist">A sensor circuit is a chain: a divider turns the world into a voltage, a comparator with hysteresis turns the voltage into a clean yes or no, and a transistor turns the yes into power. Make the divider steepest at the decision, make the threshold adjustable, and give the decision two edges.</p>
+  <details class="deeper"><summary>Where do the two thresholds come from?</summary>
+    <ol>
+      <li>The comparator flips when the sensor node reaches the reference, \(V_{ref}\) (6 V with the pot centered).</li>
+      <li>At that moment, the currents into the node balance (Kirchhoff, chapter 6): from +12 V through R1, from the comparator's output side through R3, and out through the LDR: \(\frac{12 - V_{ref}}{R_1} + \frac{V_G - V_{ref}}{R_3 + R_G} = \frac{V_{ref}}{R}\).</li>
+      <li>While the strip is on, the output side is +12 V through the pull-up: \(V_G = 12\), \(R_G = R_2\) = 10 kΩ. Current flows <em>in</em> through R3, so the LDR must fall lower (brighter) to bring the node back down: the turn-off threshold.</li>
+      <li>While it's off, the output pulls to about 0 V: \(V_G \approx 0\). R3 drains current out, so the LDR must rise higher (darker): the turn-on threshold.</li>
+      <li>Solve each for \(R\) and turn \(R\) into lux with the LDR's curve, \(R = 15\text{ k}\Omega \times (\text{lux}/10)^{-0.7}\). With R3 = 100 kΩ: about 7.9 and 12.0 lux; the simulator, sweeping the light down and back up, finds 7.9 and 12.1.</li>
+    </ol>
+  </details>
+
+  <h2>5. The switch: a MOSFET on the ground side</h2>
+  <div id="pin2"></div>
+  <p>The comparator can sink a few milliamps; the strip wants an amp. Chapter 4's logic-level MOSFET does the lifting, here on the strip's ground side ("low side"): the strip's + wire goes to +12 V, its − wire to the drain, and the source to ground. The gate gets the full 12 V through the pull-up, so the IRLZ44N is far past fully on (its datasheet: 0.025 Ω at only 5 V) and burns about \(1^2 \times 0.025 = 0.025\) W: no heatsink. And 12 V is inside its ±16 V gate limit, which matters: a 24 V strip with the same circuit would put 24 V on the gate and destroy it.</p>
+
+  <h2>6. The breadboard</h2>
+  <p>One chip in the middle, the sensor and its resistors on the bottom half, the trim pot on the top, and the MOSFET at the right, beside the strip's flying leads. Two details: the LM393's unused second comparator has its inputs tied (pin 5 to ground, pin 6 to +12 V), so it sits still instead of chattering; and the strip's current flows only through the MOSFET and its own wires, never through the thin jumpers of the control side.</p>
+  <div id="bb"></div>
+  <div class="q" data-answer="c">
+    <p>The strip draws 1 A. Breadboard contacts are usually rated for about an amp at most, and jumper wires are thin. Where should the strip's current flow?</p>
+    <ul><li data-k="a" data-says="The rails carry it the whole length through many contacts: the weakest one heats.">Along the breadboard's rails, like everything else</li><li data-k="b" data-says="Thin jumpers have real resistance (chapter 5 §6): at an amp they drop volts and warm.">Through jumper wires to the MOSFET</li><li data-k="c">Through thick wires straight to the adapter and the MOSFET's legs; on a breadboard, only for testing</li></ul>
+    <div class="why">Chapter 5's wire resistance and chapter 15's trace widths, again. Control signals (microamps, milliamps) are happy on a breadboard; an amp belongs on thick wire, screw terminals or a soldered board. Prototype with a short piece of strip, then move the power path to proper wire.</div>
+  </div>
+
+  <h2>7. The shopping list</h2>
+  <div class="tablewrap"><table class="bom">
+    <tr><th>Ref</th><th>Part</th><th>Why this one</th></tr>
+    <tr><td>U1</td><td>LM393 (8-pin DIP)</td><td>Dual comparator, open collector, 2–36 V: runs from the strip's 12 V.</td></tr>
+    <tr><td>Q1</td><td>IRLZ44N (TO-220)</td><td>Logic-level, 0.025 Ω at 5 V, 55 V, ±16 V gate.</td></tr>
+    <tr><td>LDR1</td><td>GL5528 light-dependent resistor</td><td>10–20 kΩ at 10 lux, 1 MΩ dark.</td></tr>
+    <tr><td>R1</td><td>15 kΩ, ¼ W</td><td>Matches the LDR at dusk (section 2).</td></tr>
+    <tr><td>RV1</td><td>10 kΩ trim pot</td><td>The threshold: the calibration knob.</td></tr>
+    <tr><td>R2</td><td>10 kΩ, ¼ W</td><td>The pull-up the open collector needs.</td></tr>
+    <tr><td>R3</td><td>100 kΩ, ¼ W</td><td>Hysteresis: on below ~8 lux, off above ~12.</td></tr>
+    <tr><td>C1</td><td>0.1 µF ceramic</td><td>The comparator's bypass.</td></tr>
+    <tr><td>LP1</td><td>12 V LED strip, ~12 W</td><td>The load; check its watts per meter.</td></tr>
+    <tr><td>BAT1</td><td>12 V adapter, 1.5–2 A</td><td>A margin above the strip's 1 A.</td></tr>
+  </table></div>
+
+  <h2>8. Power up and check</h2>
+  <ul class="check">
+    <li><b>1. Without the strip first:</b> VCC (pin 8) <b class="v">12 V</b>; the pot's wiper (pin 2) adjustable around <b class="v">6 V</b>.</li>
+    <li><b>2. The sensor:</b> pin 3 below 6 V in a lit room, rising when you cover the LDR with your hand: past about <b class="v">6 V</b> the output should flip.</li>
+    <li><b>3. The output:</b> the MOSFET's gate near <b class="v">0 V</b> in light and near <b class="v">12 V</b> when covered (in the simulator, 11.7 V: the adapter's own resistance sags a little under the strip's amp).</li>
+    <li><b>4. Then the strip:</b> covered, it lights; uncovered, it goes out. Feel the MOSFET: cool.</li>
+    <li><b>5. Calibrate:</b> at the dusk you want, turn RV1 slowly until the strip just turns on.</li>
+  </ul>
+
+  <h2>9. What's wrong?</h2>
+  <div class="q" data-answer="a">
+    <p>Covering the LDR, the gate goes to 12 V, but the strip stays dark.</p>
+    <ul><li data-k="a">The power path: the strip's − wire isn't on the drain, or the source isn't on ground</li><li data-k="b" data-says="With 12 V on its gate, the comparator side has done its job.">The comparator is broken</li><li data-k="c" data-says="R3 changes where it switches, not whether the MOSFET conducts.">R3 is the wrong value</li></ul>
+    <div class="why">A good gate voltage means the decision chain works; the fault is after it. Measure the drain: if it stays at 12 V with the gate high, the source isn't grounded; if it's at 12 V with the strip unconnected, the strip's wire is the problem. Divide the chain, measure at the boundary, and you halve the search every time.</div>
+  </div>
+  <div class="q" data-answer="b">
+    <p>The strip turns on at dusk, then the light from the strip itself reaches the LDR, and it turns off, then on, then off…</p>
+    <ul><li data-k="a" data-says="Hysteresis helps with wobbles in the daylight, but the strip's own light is far bigger than any band you'd choose.">R3 is too big</li><li data-k="b">The sensor sees the light it controls: shield it, or point it away from the strip</li><li data-k="c" data-says="A comparator doesn't care about the strip's brightness; the sensor does.">The comparator is too fast</li></ul>
+    <div class="why">That's a feedback loop through the air, and it oscillates exactly like chapter 9's. Every sensor that controls what it senses needs thought: a thermostat measures the room, not the heater's grille.</div>
+  </div>
+
+  <h2>10. Make it yours</h2>
+  <ul>
+    <li><b>A thermostat:</b> swap the LDR for an NTC thermistor (chapter 11, 10 kΩ at 25 °C) and R1 for 10 kΩ: now it's "too hot?", and the strip can be a 12 V fan. Which input should the sensor go to, so the fan runs when it's hot?</li>
+    <li><b>An inverted light:</b> swap the LDR and R1. What changes, and what must change with them to keep "on when dark"?</li>
+    <li><b>Both comparators:</b> use comparator B on the same sensor with a second threshold, for a two-stage light.</li>
+  </ul>
+
+  <p>Next: <a href="./21-amplifier.html">a speaker amplifier</a>, the first build that handles a signal instead of a level: audio riding on half the supply, and the capacitors that keep it off the speaker.</p>
+  <p class="muted">Previous: <a href="./19-two-chips.html">Two chips talking</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { schematic, pinout, breadboard, link } from "/learn/build.js";
+import { P20, CHIPS } from "/learn/electronics/projects.js";
+import { ldrOhms } from "/learn/lab/parts.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+const fmtR = (r) => (r >= 1e6 ? `${+(r / 1e6).toFixed(2)} MΩ` : r >= 1e3 ? `${+(r / 1e3).toFixed(1)} kΩ` : `${Math.round(r)} Ω`);
+
+// section 1: the live circuit with a light slider (log scale, 1–1000 lux)
+const sch = schematic($("sch"), P20, { label: "Schematic of the dusk light: an LDR divider into an LM393's IN+, a trim pot on IN−, a pull-up and a hysteresis resistor on the output, and an IRLZ44N switching a 12 V LED strip." });
+let seen = { on: null, off: null }, was = null;
+function light() {
+  const lux = 10 ** +$("lux").value; $("luxv").textContent = `${lux < 10 ? lux.toFixed(1) : Math.round(lux)} lux`;
+  sch.set("LDR1", "lux", lux);
+}
+$("lux").oninput = light; light();
+setInterval(() => {
+  const s = sch.sim(); if (!s) return;
+  const lux = 10 ** +$("lux").value, on = sch.current("LP1") > 0.5, S = sch.voltAt([8, 5]), ref = sch.voltAt([8, 3]);
+  if (S == null) return;
+  if (was !== null && on !== was) { seen[on ? "on" : "off"] = lux; }
+  was = on;
+  $("o1").textContent = `sensor ${S.toFixed(2)} V vs threshold ${ref.toFixed(2)} V → strip ${on ? "ON" : "off"}${seen.on ? ` · turned on at ${seen.on.toFixed(1)} lux` : ""}${seen.off ? ` · turned off at ${seen.off.toFixed(1)} lux` : ""}`;
+  if (seen.on && seen.off && seen.off > seen.on * 1.2) done("g1", "On in the dark around 8 lux, off around 12: two thresholds. That gap is hysteresis.");
+}, 200);
+
+// section 2: the sensor's divider for each R1
+const E12 = [1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2], R1S = [1e3, 1e4, 1e5].flatMap((d) => E12.map((m) => Math.round(m * d))).concat([1e6]);
+$("r1").innerHTML = R1S.map((r) => `<option value="${r}"${r === 1000 ? " selected" : ""}>${fmtR(r)}</option>`).join("");
+function divider() {
+  const r1 = +$("r1").value, S = (lux) => 12 * ldrOhms(lux) / (r1 + ldrOhms(lux)), cv = $("dv"), g = cv.getContext("2d"), X = (l) => 60 + ((Math.log10(l) + 1) / 5) * 720, Y = (v) => 250 - (v / 12) * 225;
+  g.fillStyle = "#14171d"; g.fillRect(0, 0, 800, 280); g.font = "12px ui-monospace, monospace"; g.fillStyle = "#8f98a8"; g.strokeStyle = "#262b35"; g.lineWidth = 1;
+  for (const v of [0, 3, 6, 9, 12]) { g.beginPath(); g.moveTo(60, Y(v)); g.lineTo(780, Y(v)); g.stroke(); g.fillText(`${v} V`, 12, Y(v) + 4); }
+  for (const l of [0.1, 1, 10, 100, 1000, 10000]) g.fillText(l >= 1000 ? `${l / 1000}k` : `${l}`, X(l) - 8, 272);
+  g.fillText("lux →", 730, 262);
+  g.fillStyle = "rgba(244,211,94,.12)"; g.fillRect(X(8), 20, X(12) - X(8), 230); g.fillStyle = "#f4d35e"; g.fillText("dusk", X(8.5), 34);
+  g.strokeStyle = "#fc6255"; g.setLineDash([5, 5]); g.beginPath(); g.moveTo(60, Y(6)); g.lineTo(780, Y(6)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = "#58c4dd"; g.lineWidth = 2.5; g.beginPath(); for (let k = 0; k <= 200; k++) { const l = 10 ** (-1 + (k / 200) * 5); g.lineTo(X(l), Y(S(l))); } g.stroke();
+  const swing = S(8) - S(12);
+  $("o2").textContent = `at 10 lux: ${S(10).toFixed(2)} V · from 12 down to 8 lux it rises ${swing.toFixed(2)} V`;
+  const best = R1S.reduce((b, r) => { const f = (lux) => 12 * ldrOhms(lux) / (r + ldrOhms(lux)); return f(8) - f(12) > b[1] ? [r, f(8) - f(12)] : b; }, [0, 0])[0];
+  if (r1 === best) done("g2", "15 kΩ: the LDR's own resistance at dusk. Matched, the divider is steepest exactly where the decision is.");
+}
+$("r1").onchange = divider; divider();
+
+// section 4: the two thresholds (Kirchhoff at the sensor node, as in the box)
+const R3S = [22e3, 47e3, 1e5, 2.2e5, 4.7e5, 1e6, 2.2e6];
+$("r3").innerHTML = R3S.map((r) => `<option value="${r}"${r === 1e5 ? "" : ""}>${fmtR(r)}</option>`).join("") + `<option value="1e15">none</option>`;
+$("r3").value = "1e15"; // start with none: one threshold
+const luxOf = (R) => 10 * (R / 15e3) ** (-1 / 0.7);
+function hyst(user = true) {
+  const r3 = +$("r3").value, pos = +$("pos").value, vref = 12 * pos / 100; $("posv").textContent = `${vref.toFixed(1)} V`;
+  const R = (vg, rg) => vref / ((12 - vref) / 15e3 + (vg - vref) / (r3 + rg)), onLux = luxOf(R(0, 40)), offLux = luxOf(R(12, 10e3));
+  $("o4").textContent = r3 > 1e12 ? `one threshold: on and off both at ${onLux.toFixed(1)} lux: every wobble across it flickers the strip` : `turns on below ${onLux.toFixed(1)} lux, off above ${offLux.toFixed(1)} lux (a band of ${((offLux / onLux - 1) * 100).toFixed(0)}%)`;
+  if (user) { sch.set("RV1", "pos", pos); sch.set("R3", "ohms", Math.min(r3, 1e12)); } // the schematic keeps the design until you change it here
+  if (Math.abs(onLux - 8) < 0.6 && Math.abs(offLux - 12) < 0.8) done("g4", "100 kΩ, pot in the middle: on near 8 lux, off near 12. Enough of a gap to ignore a passing cloud.");
+}
+$("r3").onchange = () => hyst(); $("pos").oninput = () => hyst(); hyst(false);
+
+pinout($("pin1"), CHIPS.LM393, { hint: "Pick a pin. Comparator A does the work; B is tied off." });
+pinout($("pin2"), CHIPS.IRLZ44N, { hint: "The IRLZ44N, printed side toward you." });
+const bb = breadboard($("bb"), P20);
+link(sch, bb);
+window.blipContext = () => ({ page: "Electronics chapter 20: a dusk light (GL5528 LDR divider, LM393 open-collector comparator with pull-up and hysteresis, IRLZ44N low-side switch, 12 V LED strip)", lux: (10 ** +$("lux").value).toFixed(1), R3: $("r3").value });
+</script>
+</body>
+</html>

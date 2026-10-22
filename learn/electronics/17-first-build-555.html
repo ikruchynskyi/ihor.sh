@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reading a Schematic: a 555 Blinker</title>
+  <meta name="description" content="Electronics from scratch, chapter 17, the first build: how to read a schematic (symbols, supply labels, junction dots, R1 and U1, a chip drawn by function), find pin 7 on a real chip, choose the parts from the datasheet and the E-series, lay the circuit out on a breadboard, and power it up with a checklist of the voltages you should measure. The project: an LED blinking from an NE555." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    canvas { display: block; width: 100%; height: auto; background: #14171d; border-radius: 6px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    ol.steps li { margin: 4px 0; }
+    .tablewrap { overflow-x: auto; }
+    table.bom { border-collapse: collapse; font-size: 15px; width: 100%; }
+    table.bom th, table.bom td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    table.bom td:first-child { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .check { list-style: none; padding: 0; }
+    .check li { margin: 8px 0; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+    .check b.v { font-family: ui-monospace, Menlo, monospace; }
+    select { font: inherit; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 17</p>
+  <h1>Reading a schematic: a 555 blinker</h1>
+  <p class="lede">Part I taught one idea at a time, each inside a simulator. Part II builds real things from real chips, the ones in every parts drawer. To do that you need a few skills Part I never asked for: reading a schematic, finding pin 7 on a black plastic chip, choosing parts you can actually buy, laying them out on a breadboard, and checking your work before anything gets hot. This chapter teaches all of them on the simplest useful build: an LED that blinks by itself.</p>
+  <div class="plain card"><b>Before you start.</b> This build uses the 555's timing from <a href="./09-oscillators-and-timers.html">chapter 9 §2</a>, the E-series values from <a href="./05-real-parts.html">chapter 5 §2</a>, the LED resistor from <a href="./01-voltage-current-resistance.html">chapter 1 §4</a>, and the breadboard and multimeter from <a href="./15-hands-on.html">chapter 15</a>. The parts cost a couple of dollars on top of chapter 15's first kit.</div>
+
+  <h2>1. The same eight steps, every build</h2>
+  <p>A circuit that doesn't work on the first try is normal. What makes the difference is knowing what to do next, so every build in Part II follows the same steps. This chapter walks through all of them; each later chapter hands you more of them; the last chapter, 23, is yours alone.</p>
+  <ol class="steps">
+    <li><b>The goal</b>, in one sentence you could test: "an LED blinks about once a second from a 9 V battery."</li>
+    <li><b>The blocks:</b> what jobs need doing (a supply, a clock, a light) and which chapter taught each.</li>
+    <li><b>The parts:</b> a chip for each job, chosen from its datasheet, and the values around it.</li>
+    <li><b>The schematic:</b> the map of what connects to what, with a reason for every part on it.</li>
+    <li><b>The breadboard:</b> where each leg physically goes.</li>
+    <li><b>The bill of materials:</b> the shopping list, with ratings.</li>
+    <li><b>Power up and check:</b> the voltages you expect, measured in a fixed order.</li>
+    <li><b>What's wrong?</b> A symptom points to a cause; the schematic tells you where to look.</li>
+  </ol>
+  <p>Steps 1–3 here are short, because chapter 9 already designed this circuit: the goal above, three blocks (a 9 V battery; a 555 as the clock; an LED with its resistor as the light), and one chip, the NE555, the original and still the most common. The new skills start at step 4.</p>
+
+  <h2>2. Reading a schematic</h2>
+  <p>A schematic is the circuit's map: it shows what connects to what, and nothing about where things physically sit. Datasheets, kits, forum posts and chapter 15's KiCad all speak it, so it's the one drawing you need to read fluently. Here's this build's. It's live: the same solver as the circuit lab runs it, the yellow dots are current, and you can hover (or tap) any point to read its voltage. Pick any part, with a click or with its button, to see why it's there.</p>
+  <div id="sch"></div>
+  <p>Six conventions cover nearly every schematic you'll meet, and this one uses them all:</p>
+  <ul>
+    <li><b>Names and values.</b> Every part has a reference name, a letter for its kind and a number: R for resistors, C for capacitors, U for chips, LED, BAT. The value sits beside it. The bill of materials and the board use the same names, so "R2" means one particular part everywhere.</li>
+    <li><b>Ground</b> (⏚) is chapter 1's 0 V reference. Every ground symbol is the same wire, so the drawing doesn't need lines running to each one.</li>
+    <li><b>Supply labels</b> like <span style="color:#d33">+9V</span> work the same way: every label with the same name is one wire. This schematic has three +9V labels and they're all the battery's + terminal.</li>
+    <li><b>A dot joins; a crossing doesn't.</b> Where three or more wire ends meet, there's a dot. Two wires that simply cross have no dot and are not connected.</li>
+    <li><b>Chips are drawn by function, not by shape.</b> U1's pins are grouped by job (the timing pins on the left, power and output on the right), each with its real pin number beside it: 2, 6, 5, 7 on the left. The physical order is a different question, answered in section 3.</li>
+    <li><b>Placement means nothing physical.</b> C2 is drawn next to the battery, but it belongs right beside the chip on the board (section 5). A schematic is about connections only.</li>
+  </ul>
+  <div class="q" data-answer="b">
+    <p>Find the wire from C1 that climbs to pins 6 and 2. On its way it crosses the wire running to pin 7. Are those two wires connected?</p>
+    <ul><li data-k="a" data-says="Look closely at the crossing: is there a dot? A connection is always marked with one.">Yes, they cross, so they touch</li><li data-k="b">No: there's no dot at the crossing</li><li data-k="c" data-says="A schematic can't be ambiguous about this; that's what the dot rule is for.">You can't tell from the drawing</li></ul>
+    <div class="why">No dot, no connection. Hover the two wires and read their voltages: they differ. If they were joined, pin 7 (which shorts to ground while the output is low) would empty the capacitor instantly and the circuit would never blink at a visible rate. Some people draw a little hop where wires cross to make it extra clear; the dot rule is the standard.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>Pin 4 (RST) has no part on it, only a wire up to +9V. Why tie it anywhere, instead of leaving it unconnected?</p>
+    <ul><li data-k="a" data-says="The 555 doesn't take power through pin 4; pin 8 is its supply.">It powers the chip</li><li data-k="b" data-says="Pin 4 has nothing to do with the LED's current.">It sets the LED's brightness</li><li data-k="c">An unconnected input floats and can reset the chip at random; tied high, "never reset" is certain</li></ul>
+    <div class="why">Chapter 13's floating input, again: an input connected to nothing picks up whatever voltage is near it. Pin 4 resets the 555 whenever it's pulled low, so a floating pin 4 can freeze the blinker at random. Every input on every chip needs a defined voltage, even the ones you don't use. You'll meet this rule in every build.</div>
+  </div>
+
+  <h2>3. Finding pin 7 on the real chip</h2>
+  <p>The schematic says "pin 7", but a chip in your hand is a black block with eight identical legs and no labels. Every chip in a DIP package (dual in-line: two rows of legs 2.54 mm apart, made to fit a breadboard) follows one rule. Hold it from above with the notch (or the dot) to the left: pin 1 is the bottom-left leg, and the numbers run counter-clockwise, along the bottom to the right and back along the top. Pick a pin to see what the NE555 wants on it.</p>
+  <div class="q" data-answer="a">
+    <p>Predict first: with the notch to the left, pin 1 bottom-left and counting counter-clockwise, where is pin 8?</p>
+    <ul><li data-k="a">Top-left: counter-clockwise, the last pin ends up above pin 1</li><li data-k="b" data-says="That's pin 4: the end of the bottom row.">Bottom-right</li><li data-k="c" data-says="That's pin 5: the first one on the way back along the top.">Top-right</li></ul>
+    <div class="why">1, 2, 3, 4 along the bottom, then 5, 6, 7, 8 back along the top, so pin 8 sits directly above pin 1. That's why the supply (8) and ground (1) are at opposite corners of the same end on so many chips.</div>
+  </div>
+  <div id="pin"></div>
+  <p>Notice what each pin <em>wants</em>. Pins 8 and 1 want the supply and a bypass capacitor. Pin 4 wants to be held high. Pin 5 is fine left open. The datasheet says all of this, in its pin table and its "typical application" circuit, and reading those two pages before you draw anything is most of what it takes to use a chip you've never seen.</p>
+
+  <h2>4. Choosing the values</h2>
+  <p>A schematic needs numbers you can buy. Chapter 9 gave the 555's timing, \(t_{high} = 0.693\,(R_1 + R_2)\,C\) and \(t_{low} = 0.693\,R_2 C\); chapter 5 said resistors come only in E-series values. Choose the capacitor first: capacitors come in fewer values (often only E6: 1, 2.2, 4.7, 10…) and you'll use what's in the drawer. Then pick the resistors from E12 to hit the target. The schematic above follows your choice.</p>
+  <div class="row">
+    <label>R1 <select id="r1"></select></label>
+    <label>R2 <select id="r2"></select></label>
+    <label>C1 <select id="c1"><option value="1e-6">1 µF</option><option value="2.2e-6">2.2 µF</option><option value="4.7e-6">4.7 µF</option><option value="10e-6" selected>10 µF</option><option value="22e-6">22 µF</option><option value="47e-6">47 µF</option></select></label>
+  </div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> make it blink between 0.9 and 1.1 times a second, lit no more than 60% of the time, with every resistor between 1 kΩ and 100 kΩ.</p>
+  <p>Why the 1–100 kΩ rule? R1 is all that stands between +9 V and pin 7's switch to ground while it discharges, so a small R1 makes a big current there (9 V / 100 Ω is 90 mA, every cycle). The datasheet's timing tests use 1 kΩ to 100 kΩ for R1, and it notes that the chip's tiny input currents set an upper limit on the timing resistors too. Inside the tested range, the formula and the real chip agree.</p>
+  <p class="gist">Every part on a schematic has one job you can name, and its value comes from a formula you know, rounded to a value you can buy, then checked against the datasheet's limits.</p>
+  <details class="deeper"><summary>Why can't this circuit blink with the LED on less than half the time?</summary>
+    <ol>
+      <li>The capacitor charges through R1 and R2 together, but empties through R2 alone (pin 7 shorts the R1–R2 junction to ground).</li>
+      <li>So \(t_{high} = 0.693\,(R_1 + R_2)\,C\) is always longer than \(t_{low} = 0.693\,R_2 C\), by \(0.693\,R_1 C\).</li>
+      <li>The duty cycle \(t_{high}/(t_{high} + t_{low}) = (R_1 + R_2)/(R_1 + 2R_2)\) is above 50% for any R1 above zero. Shrinking R1 gets close to 50%, until the 1 kΩ floor of section 4.</li>
+      <li>To get a short flash, move the LED to the other side: from +9 V through R3 to pin 3. It then lights while the output is <em>low</em>, the shorter part of each cycle. The 555's output can sink current as well as source it, up to 200 mA either way.</li>
+    </ol>
+  </details>
+
+  <h2>5. From schematic to breadboard</h2>
+  <p>The schematic says what joins; the breadboard decides where. Recall chapter 15: each column of five holes is one strip, and the long rails run along the edges. The plan is always the same. The chip goes across the middle gap so each pin gets its own strip. The rails carry +9 V and ground, linked top to bottom at the left end so both edges have power. Then every pin's strip gets the parts the schematic gives that pin. Pick a part in either view; the other follows.</p>
+  <div id="bb"></div>
+  <div class="q" data-answer="b">
+    <p>In the schematic, pins 2 and 6 are one node. On the board, pin 2 sits in column 13 below the gap and pin 6 in column 14 above it. What joins them?</p>
+    <ul><li data-k="a" data-says="The chip's own body doesn't connect its pins; each leg is separate.">The chip itself</li><li data-k="b">The yellow jumper from d14 to g13, hopping over the chip</li><li data-k="c" data-says="C1 joins pin 2's strip to ground, not to pin 6.">C1</li></ul>
+    <div class="why">A jumper over the chip is the usual trick: the two pins are on opposite rows. Click hole d14 to light everything joined to it: pin 6, the jumper, and the jumper's other end in pin 2's strip. Missing this one wire is the most common reason a first 555 never blinks (section 8).</div>
+  </div>
+  <p class="goal" id="g5">🎯 <b>Challenge:</b> click a hole in the top half of column 13 and find the three things joined there.</p>
+
+  <h2>6. The shopping list</h2>
+  <p>A bill of materials (BOM) turns the schematic into an order. Each line has the reference name, the part and the ratings that matter, and the ratings come from the circuit: the most heat any resistor here makes is R3's \(I^2R = (11\text{ mA})^2 \times 470\ \Omega \approx 0.06\) W, so ordinary ¼ W resistors run at a quarter of their rating (chapter 5's "half or less").</p>
+  <div class="tablewrap"><table class="bom">
+    <tr><th>Ref</th><th>Part</th><th>Why this one</th></tr>
+    <tr><td>U1</td><td>NE555P (8-pin DIP)</td><td>The P suffix is the breadboard-friendly DIP package. 4.5–16 V supply.</td></tr>
+    <tr><td>R1</td><td>10 kΩ, ¼ W, 5% (brown black orange gold)</td><td>Charging, and limits pin 7's current to 0.9 mA.</td></tr>
+    <tr><td>R2</td><td>47 kΩ, ¼ W, 5% (yellow violet orange gold)</td><td>Sets the blink rate with C1.</td></tr>
+    <tr><td>R3</td><td>470 Ω, ¼ W, 5% (yellow violet brown gold)</td><td>About 11 mA through the LED.</td></tr>
+    <tr><td>C1</td><td>10 µF electrolytic, 16 V or more</td><td>The timing bucket. Polarized: stripe to ground.</td></tr>
+    <tr><td>C2</td><td>0.1 µF ceramic (marked 104), 25 V or more</td><td>The bypass the datasheet asks for.</td></tr>
+    <tr><td>LED1</td><td>5 mm red LED</td><td>Any color; re-size R3 for its voltage.</td></tr>
+    <tr><td>BAT1</td><td>9 V battery and snap</td><td>Or any 5–15 V supply.</td></tr>
+  </table></div>
+
+  <h2>7. Power up and check</h2>
+  <p>Check in this order, black probe on the − rail, so each step proves the next one is worth doing. These are the readings to expect; the live schematic gives the same numbers if you hover the same points.</p>
+  <ul class="check">
+    <li><b>1. Before the battery:</b> meter on Ω across the + and − rails. A reading near 0 Ω is a short (a leg in the wrong strip, chapter 15's trap): find it now. A reading that climbs is C1 and C2 charging from the meter: fine.</li>
+    <li><b>2. Pin 8, then pin 4:</b> <b class="v">≈ 9 V</b> (a fresh battery reads a little more). Pin 1: <b class="v">0 V</b>. If pin 8 reads 9 V but the chip is warm, it's in backwards: unplug it now.</li>
+    <li><b>3. Pins 2 and 6:</b> wandering between <b class="v">3 V and 6 V</b>, ⅓ and ⅔ of 9 V. A meter shows the number drifting up and down; a scope shows the curve.</li>
+    <li><b>4. Pin 3:</b> flipping between <b class="v">0 V and about 7.2 V</b>. The high is below 9 V because the output stage loses about 1.7 V (datasheet).</li>
+    <li><b>5. The LED's current:</b> break the loop at R3 and put the meter in series (chapter 15): about <b class="v">11 mA</b> while lit.</li>
+  </ul>
+
+  <h2>8. What's wrong?</h2>
+  <p>A symptom plus the schematic usually points at one part. Try these before you read the answers; the live schematic's "Take it out and watch" buttons let you test your guess.</p>
+  <div class="q" data-answer="b">
+    <p>The LED comes on and stays on. It never blinks.</p>
+    <ul><li data-k="a" data-says="A dead LED wouldn't light at all.">The LED is faulty</li><li data-k="b">The capacitor never charges: R1, R2 or the jumper to pins 2 and 6 isn't connected</li><li data-k="c" data-says="A flat battery makes it dimmer, but it still blinks: the timing doesn't depend on the supply.">The battery is flat</li></ul>
+    <div class="why">Pins 2 and 6 sitting at 0 V hold the output high forever. Measure pin 2: if it's at 0 V, follow the charging path R1 → R2 → C1 and the jumper over the chip. Take out R1 or R2 in the schematic to see the same symptom.</div>
+  </div>
+  <div class="q" data-answer="c">
+    <p>The LED glows steadily at about half brightness. Pin 3 reads about 4 V on the meter.</p>
+    <ul><li data-k="a" data-says="A broken output would read near 0 or near the supply, not halfway.">The 555's output is broken</li><li data-k="b" data-says="R3 changes the brightness, not whether it blinks.">R3 is the wrong value</li><li data-k="c">It's blinking, far too fast to see: C1 is much smaller than 10 µF (a 10 nF part, say)</li></ul>
+    <div class="why">A meter averages: 55% of the time at 7.2 V and the rest at 0 V reads about 4 V. With 10 nF instead of 10 µF the circuit blinks 1,000 times faster, about 1,400 times a second, and your eye averages it too. Capacitor codes are easy to misread: "103" is 10 nF, while 10 µF is usually printed in full on an electrolytic. Take out C1 in the schematic: the solver's output flips as fast as it can, and the LED dims.</div>
+  </div>
+  <div class="q">
+    <p>Nothing lights, and the chip is hot to the touch. What happened, and what do you do first?</p>
+    <div class="why">Disconnect the battery first. A hot chip with nothing working is almost always a chip in backwards: turned around, the supply lands on pins 4 and 5 instead of 8 and 1, and current flows through paths that were never meant to carry it. Check the notch faces the same way as in section 5. The chip may already be damaged; a spare 555 costs less than the time spent doubting it.</div>
+  </div>
+
+  <h2>9. Make it yours</h2>
+  <ul>
+    <li><b>A speed knob:</b> replace R2 with a 100 kΩ potentiometer plus a 1 kΩ resistor in series (so it can never reach 0 Ω). Which limit from section 4 does the 1 kΩ protect?</li>
+    <li><b>A short flash:</b> move the LED and R3 to run from +9 V into pin 3 (the box in section 4).</li>
+    <li><b>Two LEDs taking turns:</b> keep LED1, and add a second LED with its own resistor from +9 V into pin 3. While pin 3 is high the first is lit; while it's low, the second.</li>
+  </ul>
+  <details class="deeper"><summary>Where it breaks: a 555 on a 3.3 V board</summary>
+    <p>The NE555's datasheet gives its supply as 4.5 to 16 V. On a microcontroller's 3.3 V it's below its minimum: it may work on the bench and fail on the next chip from the bag, because "typical" isn't a design (chapter 5). CMOS versions exist for exactly this: the TLC555 runs from 2 V and draws far less current, with the same pins. Checking the supply range is the first line of every chip choice from here on.</p>
+  </details>
+
+  <p>Every later build reuses this chapter's steps. Next: <a href="./18-power-supply.html">a power supply</a> that turns a wall adapter into the 5 V and 3.3 V the rest of Part II runs on, and the first build where you pick the chip yourself.</p>
+  <p class="muted">Previous: <a href="./16-audio.html">Audio</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Circuit simulated by the <a href="/learn/lab.html">circuit lab</a>'s engine.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { schematic, pinout, breadboard, link } from "/learn/build.js";
+import { P17, CHIPS } from "/learn/electronics/projects.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+
+const sch = schematic($("sch"), P17, { label: "Schematic of the 555 blinker: a 9 V battery, R1 10 kΩ and R2 47 kΩ charging C1 10 µF, an NE555, and an LED with R3 470 Ω on its output." });
+pinout($("pin"), CHIPS.NE555, { hint: "Pick a pin: what it does, and what it wants in this build." });
+const bb = breadboard($("bb"), P17, { onHole: (h) => { if (/^[a-e]13$/.test(h)) done("g5", "R1, R2 and pin 7: one strip, one node. That's how a breadboard reads a schematic."); } });
+link(sch, bb);
+
+// section 4: E12 values for R1, R2 and the timing they give
+const E12 = [1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2], RS = [100, 1e3, 1e4, 1e5].flatMap((d) => E12.map((m) => Math.round(m * d))).concat([1e6]);
+const fmtR = (r) => (r >= 1e6 ? `${r / 1e6} MΩ` : r >= 1e3 ? `${r / 1e3} kΩ` : `${r} Ω`);
+for (const [id, v] of [["r1", 10e3], ["r2", 47e3]]) $(id).innerHTML = RS.map((r) => `<option value="${r}"${r === v ? " selected" : ""}>${fmtR(r)}</option>`).join("");
+function timing() {
+  const r1 = +$("r1").value, r2 = +$("r2").value, c = +$("c1").value, th = 0.693 * (r1 + r2) * c, tl = 0.693 * r2 * c, f = 1 / (th + tl), duty = th / (th + tl);
+  const ok = r1 >= 1e3 && r1 <= 1e5 && r2 >= 1e3 && r2 <= 1e5;
+  $("o4").textContent = `on ${th.toFixed(3)} s, off ${tl.toFixed(3)} s → ${f.toFixed(2)} blinks/s, lit ${(duty * 100).toFixed(0)}% of the time · pin 7 carries ${(9 / r1 * 1000).toFixed(1)} mA while discharging${ok ? "" : " · outside the datasheet's 1–100 kΩ test range"}`;
+  sch.set("R1", "ohms", r1); sch.set("R2", "ohms", r2); sch.set("C1", "farads", c);
+  if (ok && f >= 0.9 && f <= 1.1 && duty <= 0.6) done("g4", "About once a second, from parts you can buy. That's design.");
+}
+for (const id of ["r1", "r2", "c1"]) $(id).onchange = timing;
+timing();
+
+window.blipContext = () => ({ page: "Electronics chapter 17: reading a schematic and building a 555 LED blinker (NE555, R1, R2, C1, LED and R3, bypass C2) on a breadboard", values: { R1: $("r1").value, R2: $("r2").value, C1: $("c1").value } });
+</script>
+</body>
+</html>

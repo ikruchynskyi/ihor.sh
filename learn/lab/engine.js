@@ -29,6 +29,8 @@ export function netlist(parts, memory = { capV: new Map(), indI: new Map() }) {
   let n = 1, ground = "symbol";
   for (const p of parts) if (p.type === "ground") nodeOf.set(key(pins(p)[0]), 0);
   if (!nodeOf.size) { const s = parts.find((p) => p.type === "battery" || p.type === "source"); if (s) { nodeOf.set(key(s.b), 0); ground = "source"; } else ground = "none"; }
+  const named = new Map(); // supply labels: the same name is the same node
+  for (const p of parts) if (p.type === "flag") { if (!named.has(p.name)) named.set(p.name, n++); nodeOf.set(key(pins(p)[0]), named.get(p.name)); }
   const node = (pt) => { const k = key(pt); if (!nodeOf.has(k)) nodeOf.set(k, n++); return nodeOf.get(k); };
   // how many things touch each grid point (to tell an unwired pin)
   const touches = new Map(), bump = (pt) => touches.set(key(pt), (touches.get(key(pt)) ?? 0) + 1);
@@ -57,12 +59,13 @@ export function netlist(parts, memory = { capV: new Map(), indI: new Map() }) {
   }
   // Switching parts next to coils make trapezoidal integration ring; backward Euler damps that (and is plenty accurate here).
   const coil = parts.some((p) => p.type === "inductor" || p.type === "motor");
-  const switching = parts.some((p) => ["nmos", "timer555"].includes(p.type) || PARTS[p.type].cat === "Logic" || (p.type === "source" && p.wave !== "sine"));
+  const switching = parts.some((p) => ["nmos", "timer555", "reg7805", "ldo1700"].includes(p.type) || PARTS[p.type].cat === "Logic" || (p.type === "source" && p.wave !== "sine"));
   // The fastest thing that can happen: a source's frequency, or the ringing of the smallest L with the smallest C.
   const Ls = parts.filter((p) => p.type === "inductor" || p.type === "motor").map((p) => p.henries), Cs = parts.filter((p) => p.type === "capacitor").map((p) => p.farads);
   const ring = Ls.length && Cs.length ? 1 / (2 * Math.PI * Math.sqrt(Math.min(...Ls) * Math.min(...Cs))) : 0;
   const fmax = Math.max(0, ring, ...parts.filter((p) => p.type === "source").map((p) => p.freq));
-  return { els, owner, nodeOf, behaviors, states, segs, method: coil && switching ? "euler" : "trap", ground, fmax, nodes: n };
+  const regulator = parts.some((p) => ["reg7805", "ldo1700"].includes(p.type)); // their one-step-late control rings under trapezoidal steps
+  return { els, owner, nodeOf, behaviors, states, segs, method: (coil && switching) || regulator ? "euler" : "trap", ground, fmax, nodes: n };
 }
 
 /**

@@ -98,3 +98,39 @@ console.log("lab ok");
   assert.ok(clk.vpp > 5 && Math.abs(clk.freq - 1.52) < 0.15, `4017 clock: ${JSON.stringify(clk)}`);
   assert.ok(st && st.n >= 1, `4017 counted: ${JSON.stringify(st)}`); }
 console.log("new parts ok");
+
+// ---------- the build chapters' parts ----------
+const { PARTS } = await import("./parts.js");
+const P = (list) => list.map((p, i) => ({ ...structuredClone(PARTS[p.type].props ?? {}), id: 1000 + i, ...p })); // as the lab loads a part
+const W = (a, b) => ({ type: "wire", a, b });
+/** Settles a circuit (DC: a few ms) and returns the simulation. */
+const settle = (parts, secs = 0.005) => run(parts, secs).sim;
+// LDR: ≈15 kΩ at 10 lux, a 10× brighter light divides it by 10^0.7 ≈ 5, 1 MΩ when dark
+{ const { ldrOhms } = await import("./parts.js"); assert.ok(Math.abs(ldrOhms(10) - 15e3) < 1 && Math.abs(ldrOhms(100) / ldrOhms(10) - 10 ** -0.7) < 1e-9 && ldrOhms(0.01) === 1e6); }
+// LM393: IN− above IN+ pulls OUT low through its 10 kΩ pull-up; below, the pull-up wins
+for (const [vn, low] of [[3, true], [1, false]]) {
+  const parts = P([{ type: "battery", a: [0, 0], b: [0, 3], v: 5 }, { type: "ground", at: [0, 3] }, { type: "lm393", at: [4, 4] },
+    W([0, 0], [6, 0]), W([6, 0], [6, 2]), { type: "resistor", a: [6, 0], b: [8, 0], ohms: 10e3 }, W([8, 0], [8, 4]), W([6, 6], [6, 7]), { type: "ground", at: [6, 7] },
+    { type: "battery", a: [2, 0 + 3], b: [2, 6], v: vn }, W([2, 3], [4, 3]), { type: "ground", at: [2, 6] }, { type: "battery", a: [-2, 5], b: [-2, 8], v: 2 }, W([-2, 5], [4, 5]), { type: "ground", at: [-2, 8] }]);
+  const sim = settle(parts), out = sim.voltAt([8, 4]);
+  assert.ok(low ? out < 0.2 : out > 4.9, `LM393 IN− ${vn} V: OUT ${out}`);
+}
+// LM386: output idles at half the supply, 0.05 V on +IN moves it by 20 × 0.05 = 1 V, and it stops 0.7 V below the rail
+for (const [vin, want] of [[0, 3], [0.05, 4], [0.2, 5.3]]) {
+  const parts = P([{ type: "battery", a: [0, 0], b: [0, 3], v: 6 }, { type: "ground", at: [0, 3] }, { type: "lm386", at: [4, 4] }, W([0, 0], [6, 0]), W([6, 0], [6, 2]), W([6, 6], [6, 7]), { type: "ground", at: [6, 7] },
+    { type: "battery", a: [2, 5], b: [2, 8], v: vin || 1e-9 }, W([2, 5], [4, 5]), { type: "ground", at: [2, 8] }, W([4, 3], [3, 3]), { type: "ground", at: [3, 3] }, { type: "resistor", a: [8, 4], b: [8, 7], ohms: 1e4 }, { type: "ground", at: [8, 7] }]);
+  const out = settle(parts).voltAt([8, 4]); assert.ok(Math.abs(out - want) < 0.05, `LM386 +IN ${vin}: OUT ${out}`);
+}
+// MCP1700: 5 V in → 3.3 V out under 33 mA; 3.4 V in → only ~0.18 V less (dropout)
+for (const [vin, want] of [[5, 3.3], [3.4, 3.22]]) {
+  const parts = P([{ type: "battery", a: [0, 0], b: [0, 3], v: vin }, { type: "ground", at: [0, 3] }, { type: "ldo1700", at: [2, 0] }, W([0, 0], [2, 0]), { type: "ground", at: [4, 2] }, { type: "resistor", a: [6, 0], b: [6, 3], ohms: 100 }, W([6, 0], [6, 0]), { type: "ground", at: [6, 3] }]);
+  const out = settle(parts, 0.02).voltAt([6, 0]); assert.ok(Math.abs(out - want) < 0.03, `MCP1700 at ${vin} V: ${out}`);
+}
+// 4017 on its own supply pins: counts while CLOCK INHIBIT is low, holds while it's high
+for (const inhibit of [false, true]) {
+  const parts = P([{ type: "battery", a: [0, -1], b: [0, 2], v: 9 }, { type: "ground", at: [0, 2] }, { type: "source", a: [-3, 1], b: [-3, 4], wave: "square", freq: 50, amp: 4.5, offset: 4.5 }, { type: "ground", at: [-3, 4] },
+    { type: "counter4017", at: [4, 0] }, W([-3, 1], [4, 1]), W([4, 2], [2, 2]), { type: "ground", at: [2, 2] }, W([0, -1], [7, -1]), { type: "ground", at: [7, 12] }, inhibit ? W([4, 3], [3, 3]) : W([4, 3], [3, 4]), inhibit ? W([3, 3], [3, -1]) : { type: "ground", at: [3, 4] }]);
+  const sim = settle(parts, 0.1), st = sim.net.states.get(1004);
+  assert.ok(inhibit ? st.n === 0 : st.n >= 3, `4017 inhibit=${inhibit}: count ${st.n}`); assert.ok(Math.abs(st.vdd - 9) < 0.05, `4017 runs on its VDD pin: ${st.vdd}`);
+}
+console.log("build parts ok");

@@ -15,6 +15,8 @@ export const PROBE_COLORS = ["#f4d35e", "#58c4dd", "#fc6255", "#83c167"];
 export const LEDS = { red: [1.9, "#ff4b3e"], yellow: [2.0, "#ffd23e"], green: [2.1, "#3ddc84"], blue: [3.0, "#4d7cff"], white: [3.1, "#f5f5ff"] };
 const VT = 0.025852;
 export const ledModel = (color) => ({ is: 0.01 / Math.exp(LEDS[color][0] / (2 * VT)), n: 2 }); // 10 mA at its rated voltage
+/** GL5528-type LDR: ≈15 kΩ at 10 lux (datasheet: 10–20 kΩ), γ ≈ 0.7, at most 1 MΩ (dark). */
+export const ldrOhms = (lux) => Math.min(1e6, 15e3 * (Math.max(1e-3, lux) / 10) ** -0.7);
 export const DIODES = { "1N4148 (signal)": { is: 2.5e-9, n: 1.8 }, "1N4007 (rectifier)": { is: 7e-9, n: 1.9 }, "1N5819 (Schottky)": { is: 3e-6, n: 1.1 } };
 
 // ---------- number formatting and parsing ----------
@@ -32,11 +34,16 @@ export function parseSI(s) {
   return +m[1] * ({ G: 1e9, M: 1e6, k: 1e3, K: 1e3, m: 1e-3, u: 1e-6, "µ": 1e-6, n: 1e-9, p: 1e-12 }[m[2]] ?? 1);
 }
 
+/** Schematic reference prefixes (R1, C2, U1…), shared by the lab and the course's build pages. */
+export const REF_PREFIX = { ldr: "LDR", speaker: "LS", lm393: "U", lm386: "U", ldo1700: "U", counter4017: "U", battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", switch2: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
+
 // ---------- the part list ----------
 // fields: what the inspector lets you change: [prop, label, kind ("si" | "num" | "select" | "range"), unit or options, min, max]
 export const PARTS = {
   wire: { name: "Wire", cat: "Basic", two: true, len: 0, desc: "Joins points. A part's pin landing in the middle of a wire connects there too (a T-junction, drawn with a dot).",
     stamp() {} }, // wires are handled by the engine (split at T-junctions)
+  flag: { name: "Supply label", cat: "Basic", pins: [[0, 0]], props: { name: "+9V" }, fields: [["name", "net", "select", ["+3.3V", "+5V", "+6V", "+9V", "+12V"]]],
+    desc: "A schematic shorthand: every label with the same name is the same wire, so a supply needn't be drawn running to every chip. Ground's ⏚ symbol is the same idea.", stamp() {} },
   ground: { name: "Ground", cat: "Basic", pins: [[0, 0]], desc: "The 0 V reference. Every ground symbol is the same node; probes and meters measure against it. Without one, the first source's − terminal is 0 V.", stamp() {} },
   battery: { name: "Battery", cat: "Sources", two: true, len: 3, props: { v: 9 }, fields: [["v", "voltage", "si", "V", 0.1, 48]], desc: "A steady push. Real batteries have a little resistance inside (here 0.1 Ω), so a short circuit gives amps, not infinity. Long line = +.", chapter: "01-voltage-current-resistance.html",
     stamp(p, c) { const mid = c.node(); c.add({ type: "V", a: mid, b: c.pin(1), volts: p.v }); c.add({ type: "R", a: mid, b: c.pin(0), ohms: 0.1 }, { main: true, sign: -1 }); } },
@@ -110,13 +117,21 @@ export const PARTS = {
       c.behave((v) => { const hi = v[clk] > p.vdd / 2; if (hi && !s.clk) s.q = v[d] > p.vdd / 2; s.clk = hi; });
       c.state(p.id, s);
     } },
-  counter4017: { name: "4017 decade counter", cat: "Logic", pins: [[0, 1], [0, 2], ...Array.from({ length: 10 }, (_, k) => [6, k + 1])], pinNames: ["CLK", "RST", ...Array.from({ length: 10 }, (_, k) => `Q${k}`)], props: { vdd: 5 },
-    desc: "Counts clock pulses from 0 to 9 and lights one output at a time: Q0, Q1… Q9, then Q0 again. RST high sends it back to Q0. With a 555 on CLK and LEDs on the outputs: a running light.", chapter: "12-gates-to-a-computer.html",
+  counter4017: { name: "4017 decade counter", cat: "Logic", optional: [12, 13, 14], pins: [[0, 1], [0, 2], ...Array.from({ length: 10 }, (_, k) => [6, k + 1]), [0, 3], [3, -1], [3, 12]],
+    pinNames: ["14 CLK", "15 RST", "3 Q0", "2 Q1", "4 Q2", "7 Q3", "10 Q4", "1 Q5", "5 Q6", "6 Q7", "9 Q8", "11 Q9", "13 INH", "16 VDD", "8 VSS"], props: { vdd: 5 },
+    desc: "Counts clock pulses from 0 to 9 and lights one output at a time: Q0, Q1… Q9, then Q0 again. RST high sends it back to Q0; CLOCK INHIBIT (INH) high stops the count. The numbers are the real chip's pins. Wire VDD and VSS and it runs on that supply; leave them unwired and it runs on its own 5 V. With a 555 on CLK and LEDs on the outputs: a running light.", chapter: "12-gates-to-a-computer.html",
     stamp(p, c) {
-      const clk = c.pin(0), rst = c.pin(1), s = { n: 0, clk: false };
-      c.add({ type: "R", a: clk, b: 0, ohms: 1e6 }); c.add({ type: "R", a: rst, b: 0, ohms: 1e6 });
-      for (let k = 0; k < 10; k++) { const drv = c.node(); c.add({ type: "V", a: drv, b: 0, volts: () => (s.n === k ? p.vdd : 0) }); c.add({ type: "R", a: drv, b: c.pin(k + 2), ohms: 25 }, k === 0 ? { main: true, sign: -1 } : {}); }
-      c.behave((v) => { const hi = v[clk] > p.vdd / 2; if (v[rst] > p.vdd / 2) s.n = 0; else if (hi && !s.clk) s.n = (s.n + 1) % 10; s.clk = hi; });
+      const clk = c.pin(0), rst = c.pin(1), inh = c.pin(12), vdd = c.pin(13), vss = c.pin(14), powered = !c.free(13) && !c.free(14), s = { n: 0, clk: false, vdd: p.vdd };
+      c.add({ type: "R", a: clk, b: 0, ohms: 1e6 }); c.add({ type: "R", a: rst, b: 0, ohms: 1e6 }); c.add({ type: "R", a: inh, b: 0, ohms: 1e6 });
+      if (powered) c.add({ type: "R", a: vdd, b: vss, ohms: 1e6 });
+      // CMOS outputs are weak: about 2000/VDD Ω (its datasheet's typical: 2.6 mA at 10 V and 1 mA at 5 V, 0.4–0.5 V from the rail)
+      for (let k = 0; k < 10; k++) { const drv = c.node(); c.add({ type: "V", a: drv, b: powered ? vss : 0, volts: () => (s.n === k ? s.vdd : 0) }); c.add({ type: "R", a: drv, b: c.pin(k + 2), get ohms() { return 2000 / Math.max(3, s.vdd); } }, k === 0 ? { main: true, sign: -1 } : {}); }
+      c.behave((v) => {
+        const ref = powered ? v[vss] : 0; s.vdd = powered ? v[vdd] - v[vss] : p.vdd;
+        const hi = (n) => v[n] - ref > s.vdd / 2, up = hi(clk);
+        if (hi(rst)) s.n = 0; else if (up && !s.clk && !hi(inh)) s.n = (s.n + 1) % 10;
+        s.clk = up;
+      });
       c.state(p.id, s);
     } },
   opamp: { name: "Op-amp", cat: "ICs", optional: [3, 4], pins: [[0, -1], [0, 1], [4, 0], [2, -2], [2, 2]], pinNames: ["−in", "+in", "out", "V+", "V−"], props: {},
@@ -143,13 +158,57 @@ export const PARTS = {
       });
       c.state(p.id, s);
     } },
-  reg7805: { name: "7805 regulator", cat: "ICs", pins: [[0, 0], [4, 0], [2, 2]], pinNames: ["IN", "OUT", "GND"], props: { vout: 5 }, fields: [["vout", "output (78xx)", "select", [3.3, 5, 9, 12]]],
+  reg7805: { name: "7805 regulator", cat: "ICs", pins: [[0, 0], [4, 0], [2, 2]], pinNames: ["1 IN", "3 OUT", "2 GND"], props: { vout: 5 }, fields: [["vout", "output (78xx)", "select", [3.3, 5, 9, 12]]],
     desc: "Holds its output at 5 V (or 3.3, 9, 12) as long as the input is at least 2 V higher: the difference times the current turns into heat. Needs capacitors on both sides in real life.",
     stamp(p, c) {
       const [vin, vout, gnd] = [0, 1, 2].map((k) => c.pin(k)), drv = c.node(), s = { set: 0, iout: 0 };
       c.add({ type: "V", a: drv, b: gnd, volts: () => s.set }); c.add({ type: "R", a: drv, b: vout, ohms: 0.05 }, { main: true, sign: -1 });
       c.add({ type: "I", a: vin, b: gnd, get amps() { return Math.max(0, s.iout) + 0.005; } }); // the input supplies the output's current, plus 5 mA for itself
-      c.behave((v, r) => { s.set = Math.max(0, Math.min(p.vout, v[vin] - v[gnd] - 2)); s.iout = (s.set - (v[vout] - v[gnd])) / 0.05; });
+      c.behave((v, r) => { // current-limited at 2.1 A, its datasheet's short-circuit current
+        const vo = v[vout] - v[gnd], want = Math.max(0, Math.min(p.vout, v[vin] - v[gnd] - 2));
+        s.iout = Math.max(0, (v[drv] - v[vout]) / 0.05); s.set = Math.min(want, vo + 2.1 * 0.05);
+      });
+      c.state(p.id, s);
+    } },
+  ldr: { name: "Light sensor (LDR)", cat: "Passive", two: true, len: 3, props: { lux: 100 }, fields: [["lux", "light (lux)", "si", "lx", 0.1, 100000]],
+    desc: "A light-dependent resistor (GL5528 type): about 15 kΩ at 10 lux (its datasheet says 10–20 kΩ), falling as R ∝ lux^−0.7 in brighter light, and up to 1 MΩ in the dark. Dusk is around 10 lux, an office 300–500, daylight 10,000+.", chapter: "01-voltage-current-resistance.html",
+    stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: ldrOhms(p.lux) }, { main: true }); } },
+  speaker: { name: "Speaker", cat: "Output", two: true, len: 3, props: { ohms: 8 }, fields: [["ohms", "impedance", "select", [4, 8]]],
+    desc: "A coil on a cone in a magnet's gap (chapter 16). Modeled as its coil's resistance, 4 or 8 Ω. DC through it only heats the coil: speakers are driven through a capacitor or from a bridge.", chapter: "16-audio.html",
+    stamp(p, c) { c.add({ type: "R", a: c.pin(0), b: c.pin(1), ohms: p.ohms }, { main: true }); } },
+  lm393: { name: "LM393 comparator", cat: "ICs", pins: [[0, -1], [0, 1], [4, 0], [2, -2], [2, 2]], pinNames: ["2 IN−", "3 IN+", "1 OUT", "8 VCC", "4 GND"], props: {},
+    desc: "A comparator with an open-collector output: when IN− is above IN+ its output transistor pulls OUT to ground; otherwise it lets go, and only a pull-up resistor can make OUT high. Runs from 2–36 V; its inputs only work from 0 to VCC − 1.5 V. (One of the chip's two comparators; the numbers are its real pins.)", chapter: "07-op-amps.html",
+    stamp(p, c) {
+      // its decision survives rebuilds (a slider moved, a part changed), as a capacitor's charge does: that's hysteresis
+      const keep = (c.memory.chips ??= new Map()), s = keep.get(p.id) ?? { low: true }; keep.set(p.id, s);
+      const [n, pp, out, vcc, gnd] = [0, 1, 2, 3, 4].map((k) => c.pin(k));
+      c.add({ type: "R", a: n, b: gnd, ohms: 1e9 }); c.add({ type: "R", a: pp, b: gnd, ohms: 1e9 }); c.add({ type: "R", a: vcc, b: gnd, ohms: 6000 }); // ~0.8 mA for itself at 5 V
+      c.add({ type: "R", a: out, b: gnd, get ohms() { return s.low ? 40 : 1e9; } }, { main: true }); // ≈150 mV at 4 mA, as its datasheet's typical
+      c.behave((v) => { s.low = v[n] > v[pp]; });
+      c.state(p.id, s);
+    } },
+  lm386: { name: "LM386 audio amp", cat: "ICs", optional: [5, 6, 7], pins: [[0, -1], [0, 1], [4, 0], [2, -2], [2, 2], [1, -2], [3, 2], [1, 2]], pinNames: ["2 −IN", "3 +IN", "5 OUT", "6 VS", "4 GND", "1 GAIN", "7 BYP", "8 GAIN"], props: { gain: 20 },
+    fields: [["gain", "gain (set by pins 1–8)", "select", [20, 50, 200]]],
+    desc: "A small power amplifier for speakers. Its output sits at half the supply and swings around it by 20 × the input (open pins 1–8), 50 (1.2 kΩ + 10 µF between them) or 200 (10 µF). Each input has 50 kΩ to ground inside. Runs from 4–12 V. In this model the gain is the menu, not the parts on pins 1 and 8, and the output stops 0.7 V short of each rail (what the datasheet's 325 mW into 8 Ω at 6 V implies).", chapter: "16-audio.html",
+    stamp(p, c) {
+      // Behavioral: out = VS/2 + gain·(+IN − −IN), limited 0.7 V inside each rail (the datasheet's 325 mW into 8 Ω at 6 V
+      // is a 2.28 V peak around 3 V). Updated after each step, like the 555's output.
+      const [n, pp, out, vs, gnd] = [0, 1, 2, 3, 4].map((k) => c.pin(k)), drv = c.node(), s = { set: 0 };
+      c.add({ type: "R", a: n, b: gnd, ohms: 50e3 }); c.add({ type: "R", a: pp, b: gnd, ohms: 50e3 }); c.add({ type: "R", a: vs, b: gnd, ohms: 1500 }); // 4 mA idle at 6 V
+      c.add({ type: "V", a: drv, b: gnd, volts: () => s.set }); c.add({ type: "R", a: drv, b: out, ohms: 0.1 }, { main: true, sign: -1 });
+      c.behave((v) => { const sup = v[vs] - v[gnd]; s.set = sup < 4 ? 0 : Math.max(0.7, Math.min(sup - 0.7, sup / 2 + +p.gain * (v[pp] - v[n]))); });
+      c.state(p.id, s);
+    } },
+  ldo1700: { name: "MCP1700 3.3 V LDO", cat: "ICs", pins: [[0, 0], [4, 0], [2, 2]], pinNames: ["2 VIN", "3 VOUT", "1 GND"], props: {},
+    desc: "A tiny low-dropout regulator (TO-92 pins: 1 GND, 2 VIN, 3 VOUT): 3.3 V out from anything between about 3.5 and 6 V, up to 250 mA, needing only ~0.2 V of headroom and 1.6 µA for itself. Its absolute maximum input is 6.5 V: never feed it 9 V.", chapter: "10-power-supplies.html",
+    stamp(p, c) {
+      const [vin, vout, gnd] = [0, 1, 2].map((k) => c.pin(k)), drv = c.node(), s = { set: 0, iout: 0, over: false };
+      c.add({ type: "V", a: drv, b: gnd, volts: () => s.set }); c.add({ type: "R", a: drv, b: vout, ohms: 0.5 }, { main: true, sign: -1 });
+      c.add({ type: "I", a: vin, b: gnd, get amps() { return Math.max(0, s.iout); } });
+      c.behave((v) => { // current-limited at 550 mA, its datasheet's typical limit
+        const vi = v[vin] - v[gnd], vo = v[vout] - v[gnd]; s.over = vi > 6.5;
+        s.iout = Math.max(0, (v[drv] - v[vout]) / 0.5); s.set = Math.min(Math.max(0, Math.min(3.3, vi - 0.18)), vo + 0.55 * 0.5);
+      });
       c.state(p.id, s);
     } },
   ...Object.fromEntries([["and", "AND", (a, b) => a && b], ["nand", "NAND", (a, b) => !(a && b)], ["or", "OR", (a, b) => a || b], ["nor", "NOR", (a, b) => !(a || b)], ["xor", "XOR", (a, b) => a !== b]].map(([k, name, fn]) => [k, {
@@ -211,6 +270,7 @@ export function draw(g, p, st) {
     g.translate(ax, ay); g.rotate(ang);
     // Labels stay horizontal on screen, beside the part: left/right of a vertical one, above/below a horizontal one.
     const label = (s, y = -0.62) => {
+      if (st.nolabel) return;
       const dx = -y * Math.sin(ang), dy = y * Math.cos(ang), side = Math.abs(dx) > Math.abs(dy);
       g.save(); g.translate(m, y); g.rotate(-ang); text(s, side ? Math.sign(dx) * 0.1 : 0, 0, 0.42, undefined, side ? (dx > 0 ? "left" : "right") : "center"); g.restore();
     };
@@ -261,6 +321,16 @@ export function draw(g, p, st) {
         g.save(); g.translate(m, 0); g.rotate(st.spin ?? 0); g.fillStyle = COL.blue; for (let k = 0; k < 3; k++) { g.rotate((2 * Math.PI) / 3); g.fillRect(-0.06, 0, 0.12, 0.45); } g.restore();
         text("M", m, 0, 0.35, COL.text); label("motor", 0.95); break;
       }
+      case "ldr": {
+        L(0, 0, m - 0.8, 0); L(m + 0.8, 0, len, 0); g.strokeStyle = COL.text; g.strokeRect(m - 0.6, -0.22, 1.2, 0.44); g.beginPath(); g.arc(m, 0, 0.75, 0, 7); g.stroke();
+        g.strokeStyle = COL.yellow; g.lineWidth = 0.06; for (const dx of [-0.35, 0.05]) { L(m + dx - 0.35, -1.25, m + dx, -0.85); L(m + dx, -0.85, m + dx - 0.15, -0.88); L(m + dx, -0.85, m + dx - 0.02, -1.0); }
+        label(si(ldrOhms(p.lux), "Ω"), 1.15); break;
+      }
+      case "speaker": {
+        L(0, 0, m - 0.35, 0); L(m + 0.35, 0, len, 0); g.strokeStyle = COL.text; g.strokeRect(m - 0.35, -0.3, 0.7, 0.6);
+        g.beginPath(); g.moveTo(m - 0.35, -0.3); g.lineTo(m - 0.75, -0.75); g.lineTo(m + 0.75, -0.75); g.lineTo(m + 0.35, -0.3); g.stroke();
+        label(`${p.ohms} Ω`, 0.75); break;
+      }
       case "ammeter": {
         L(0, 0, m - 0.55, 0); L(m + 0.55, 0, len, 0); g.fillStyle = COL.body; g.strokeStyle = COL.green; g.beginPath(); g.arc(m, 0, 0.55, 0, 7); g.fill(); g.stroke();
         text("A", m, 0, 0.45, COL.green); text("+", 0.3, -0.35, 0.35); label(si(st.amps ?? 0, "A"), -0.85); break;
@@ -274,6 +344,7 @@ export function draw(g, p, st) {
   const flipText = (p.rot ?? 0) === 2; // keep IC labels readable upside down
   const T = (s, x, y, size, color, align) => { g.save(); g.translate(x, y); g.rotate(-((p.rot ?? 0) * Math.PI) / 2); text(s, 0, 0, size, color, align); g.restore(); };
   switch (p.type) {
+    case "flag": L(0, 0, 0, -0.55); L(-0.45, -0.55, 0.45, -0.55); T(p.name, 0, -0.95, 0.36, COL.red); break;
     case "ground": L(0, 0, 0, 0.5); for (const [w, y] of [[0.5, 0.5], [0.32, 0.68], [0.14, 0.86]]) L(-w, y, w, y); break;
     case "probe": { const c = PROBE_COLORS[(p.ch - 1) % 4]; g.strokeStyle = c; g.fillStyle = c; L(0, 0, 0.6, -0.6); g.beginPath(); g.arc(0, 0, 0.13, 0, 7); g.fill(); g.fillRect(0.5, -1.1, 0.75, 0.55); T(`${p.ch}`, 0.875, -0.82, 0.42, COL.stage); break; }
     case "switch2": {
@@ -303,10 +374,10 @@ export function draw(g, p, st) {
     }
     case "dff": case "counter4017": {
       const big = p.type === "counter4017", h = big ? 11 : 4, w = big ? 6 : 4;
-      for (const [x, y] of pins(p).map(([px, py]) => [px - p.at[0], py - p.at[1]])) L(x, y, x < w / 2 ? 1 : w - 1, y);
+      for (const [x, y] of PARTS[p.type].pins) { if (y < 0.3) L(x, y, x, 0.3); else if (y > h - 0.3) L(x, y, x, h - 0.3); else L(x, y, x < w / 2 ? 1 : w - 1, y); }
       g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.fillRect(1, 0.3, w - 2, h - 0.6); g.strokeRect(1, 0.3, w - 2, h - 0.6);
       const names = PARTS[p.type].pinNames;
-      pins(p).forEach(([px, py], k) => { const x = px - p.at[0], y = py - p.at[1]; T(names[k], x < w / 2 ? 1.15 : w - 1.15, y, 0.3, COL.text, x < w / 2 ? "left" : "right"); });
+      pins(p).forEach((_, k) => { const [x, y] = PARTS[p.type].pins[k]; if (y < 0.3) T(names[k], x, 0.75, 0.28, COL.text); else if (y > h - 0.3) T(names[k], x, h - 0.75, 0.28, COL.text); else T(names[k], x < w / 2 ? 1.15 : w - 1.15, y, 0.3, COL.text, x < w / 2 ? "left" : "right"); });
       if (big) T("4017", w / 2, h / 2 + 0.6, 0.5, COL.blue); else { if (!flipText) T("D FF", 2, 2, 0.4, COL.blue); if (st.q != null) T(`Q=${st.q ? 1 : 0}`, 2, 2.7, 0.3, st.q ? COL.green : COL.dim); }
       if (big && st.n != null) T(`count ${st.n}`, w / 2, h / 2 + 1.4, 0.32, COL.green);
       break;
@@ -327,12 +398,31 @@ export function draw(g, p, st) {
       for (let k = 1; k <= 4; k++) { L(0, k, 1, k); L(5, k, 6, k); }
       g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.fillRect(1, 0.3, 4, 4.4); g.strokeRect(1, 0.3, 4, 4.4);
       ["TRIG", "THR", "CTRL", "DIS"].forEach((s, k) => T(s, 1.15, k + 1, 0.32, COL.text, "left")); ["VCC", "RST", "OUT", "GND"].forEach((s, k) => T(s, 4.85, k + 1, 0.32, COL.text, "right"));
+      ["2", "6", "5", "7"].forEach((n, k) => T(n, 0.5, k + 0.72, 0.24, COL.dim)); ["8", "4", "3", "1"].forEach((n, k) => T(n, 5.5, k + 0.72, 0.24, COL.dim));
       T("555", 3, 2.5, 0.55, COL.blue); if (st.q != null) T(st.q ? "out: HIGH" : "out: low", 3, 3.3, 0.3, st.q ? COL.green : COL.dim); break;
+    }
+    case "lm393": case "lm386": {
+      const amp = p.type === "lm386";
+      L(0, -1, 0.5, -1); L(0, 1, 0.5, 1); L(3.5, 0, 4, 0); L(2, -2, 2, -0.75); L(2, 2, 2, 0.75);
+      if (amp) { L(1, -2, 1, -1.25); L(3, 2, 3, 0.5); L(1, 2, 1, 1.25); }
+      g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.beginPath(); g.moveTo(0.5, -1.5); g.lineTo(0.5, 1.5); g.lineTo(3.5, 0); g.closePath(); g.fill(); g.stroke();
+      T("−", 0.85, -1, 0.5); T("+", 0.85, 1, 0.5); T(amp ? "386" : "393", 1.6, 0, 0.32, COL.blue);
+      PARTS[p.type].pinNames.forEach((nm, k) => { const [x, y] = PARTS[p.type].pins[k]; const num = nm.split(" ")[0]; T(num, x + (x <= 0.01 ? 0.25 : x >= 3.99 ? -0.25 : 0.28), y + (y < -1.5 ? 0.25 : y > 1.5 ? -0.25 : -0.28), 0.26, COL.dim); });
+      if (!amp && st.low != null) T(st.low ? "pulls low" : "lets go", 1.75, 0.5, 0.22, st.low ? COL.green : COL.dim);
+      break;
+    }
+    case "ldo1700": {
+      L(0, 0, 1, 0); L(3, 0, 4, 0); L(2, 2, 2, 1);
+      g.fillStyle = COL.body; g.strokeStyle = st.over ? COL.red : st.sel ? COL.sel : COL.text; g.fillRect(1, -1, 2, 2); g.strokeRect(1, -1, 2, 2);
+      T("1700", 2, -0.35, 0.36, COL.blue); T("IN", 1.15, 0.4, 0.26, COL.text, "left"); T("OUT", 2.85, 0.4, 0.26, COL.text, "right"); T("GND", 2, 0.75, 0.24);
+      T("2", 0.5, -0.3, 0.24, COL.dim); T("3", 3.5, -0.3, 0.24, COL.dim); T("1", 2.3, 1.6, 0.24, COL.dim);
+      if (st.over) T("over 6.5 V!", 2, -1.45, 0.3, COL.red);
+      break;
     }
     case "reg7805": {
       L(0, 0, 1, 0); L(3, 0, 4, 0); L(2, 2, 2, 1);
       g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.fillRect(1, -1, 2, 2); g.strokeRect(1, -1, 2, 2);
-      T(`78${String(p.vout).replace(".", "")}`.replace("783.3", "LD33"), 2, -0.35, 0.36, COL.blue); T("IN", 1.15, 0.4, 0.26, COL.text, "left"); T("OUT", 2.85, 0.4, 0.26, COL.text, "right"); T("GND", 2, 0.75, 0.24); break;
+      T(p.vout === 3.3 ? "LD33" : `78${String(p.vout).padStart(2, "0")}`, 2, -0.35, 0.36, COL.blue); T("IN", 1.15, 0.4, 0.26, COL.text, "left"); T("OUT", 2.85, 0.4, 0.26, COL.text, "right"); T("GND", 2, 0.75, 0.24); T("1", 0.5, -0.3, 0.24, COL.dim); T("3", 3.5, -0.3, 0.24, COL.dim); T("2", 2.3, 1.6, 0.24, COL.dim); break;
     }
     case "and": case "nand": case "or": case "nor": case "xor": case "not": {
       const two = p.type !== "not", end = two ? 4 : 3, y = st.y;

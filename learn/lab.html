@@ -113,7 +113,7 @@
 
 <script type="module">
 if (matchMedia("(max-width: 700px)").matches) document.querySelector("details.parts").open = false; // phones: parts folded until needed
-import { PARTS, COL, PROBE_COLORS, LEDS, pins, shift, rotate, distTo, draw, si, parseSI } from "/learn/lab/parts.js";
+import { PARTS, COL, PROBE_COLORS, LEDS, REF_PREFIX, pins, shift, rotate, distTo, draw, si, parseSI } from "/learn/lab/parts.js";
 import { simulation, onWire, measure } from "/learn/lab/engine.js";
 import { TEMPLATES, instantiate } from "/learn/lab/templates.js";
 const $ = (id) => document.getElementById(id);
@@ -136,7 +136,7 @@ $("undo").onclick = () => { if (!undoStack.length) return; redoStack.push(snapsh
 $("redo").onclick = () => { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); };
 
 // ---------- the palette ----------
-const ICON = { ground: "⏚", switch: "⏻", button: "⊙", battery: "🔋", source: "∿", resistor: "⏛", pot: "⊸", capacitor: "⊣⊢", inductor: "ᘏ", diode: "▷|", zener: "▷Z", led: "💡", nmos: "⊿", lamp: "◎", motor: "Ⓜ", ammeter: "Ⓐ", probe: "⌁", opamp: "▷±", timer555: "555", reg7805: "78xx", and: "&", nand: "⊼", or: "≥1", nor: "⊽", xor: "⊕", not: "¬" };
+const ICON = { ground: "⏚", flag: "⊤", switch: "⏻", button: "⊙", battery: "🔋", source: "∿", resistor: "⏛", pot: "⊸", capacitor: "⊣⊢", inductor: "ᘏ", diode: "▷|", zener: "▷Z", led: "💡", nmos: "⊿", lamp: "◎", motor: "Ⓜ", ammeter: "Ⓐ", probe: "⌁", opamp: "▷±", timer555: "555", reg7805: "78xx", ldo1700: "LDO", lm393: "▷=", lm386: "▷))", ldr: "☀", speaker: "🔈", and: "&", nand: "⊼", or: "≥1", nor: "⊽", xor: "⊕", not: "¬" };
 const CATS = ["Basic", "Sources", "Passive", "Semiconductors", "Output", "Meters", "ICs", "Logic"];
 $("palette").innerHTML = CATS.map((c) => `<div class="grp"><span>${c}</span>${Object.entries(PARTS).filter(([k, d]) => d.cat === c && k !== "wire").map(([k, d]) => `<button data-part="${k}" title="${d.name}: ${d.desc.replace(/"/g, "&quot;")}">${ICON[k] ?? ""} ${d.name}</button>`).join("")}</div>`).join("");
 $("palette").addEventListener("click", (e) => { const b = e.target.closest("[data-part]"); if (b) startPlacing(b.dataset.part); });
@@ -418,7 +418,7 @@ function frame(now) {
     if (p.type === "resistor") { const P = amps * amps * p.ohms; st.heat = P > p.watts ? Math.min(0.6, P / p.watts / 3) : 0; }
     if (p.type === "motor") { p._spin = (p._spin ?? 0) + amps * dt * 8; st.spin = p._spin; }
     if (p.type === "nmos") st.on = Math.abs(amps) > 1e-3;
-    const s = sim?.net.states.get(p.id); if (s) { st.q = s.q; st.y = s.y; }
+    const s = sim?.net.states.get(p.id); if (s) Object.assign(st, s);
     if (colorBy && p.type === "wire") { g.strokeStyle = vColor(sim.voltAt(p.a) ?? 0, vlo, vhi); g.lineWidth = 0.15; g.lineCap = "round"; g.beginPath(); g.moveTo(...p.a); g.lineTo(...p.b); g.stroke(); if (st.sel) { g.strokeStyle = COL.sel; g.lineWidth = 0.05; g.stroke(); } }
     else draw(g, p, st);
   }
@@ -451,7 +451,7 @@ function frame(now) {
   for (const [k, c] of ends) {
     const [x, y] = k.split(",").map(Number);
     if (c >= 3) { g.fillStyle = COL.wire; g.beginPath(); g.arc(x, y, 0.17, 0, 7); g.fill(); }
-    else if (c === 1 && !optional.has(k) && !["ground", "probe"].includes(owner.get(k)?.type)) { g.strokeStyle = "rgba(252,98,85,.85)"; g.lineWidth = 0.06; g.beginPath(); g.arc(x, y, 0.17, 0, 7); g.stroke(); }
+    else if (c === 1 && !optional.has(k) && !["ground", "probe", "flag"].includes(owner.get(k)?.type)) { g.strokeStyle = "rgba(252,98,85,.85)"; g.lineWidth = 0.06; g.beginPath(); g.arc(x, y, 0.17, 0, 7); g.stroke(); }
   }
   // say why a wired-up LED stays dark, right next to it; ammeters show their reading
   if (sim) for (const p of parts) {
@@ -602,7 +602,7 @@ showPanel();
 requestAnimationFrame(frame);
 
 // ---------- reading the circuit: reference names, a netlist, and what Blip can do here ----------
-const PREFIX = { battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", switch2: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
+const PREFIX = REF_PREFIX;
 /** Schematic reference names (R1, LED2, U1…), numbered in the order parts were added. */
 function refs() {
   const count = {}, out = new Map();
@@ -618,6 +618,7 @@ const pinName = (p, k) => PARTS[p.type].pinNames?.[k] ?? PIN2[p.type]?.[k] ?? `$
 function nets() {
   const up = new Map(), find = (k) => { while (up.has(k) && up.get(k) !== k) k = up.get(k); return k; }, join = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) up.set(ra, rb); };
   for (const w of parts) if (w.type === "wire") { const stops = [w.a, ...onWire(w, parts), w.b].map(key); stops.slice(1).forEach((k, i) => join(stops[i], k)); }
+  const flags = parts.filter((p) => p.type === "flag"); flags.forEach((f) => { const g = flags.find((q) => q.name === f.name); join(key(pins(f)[0]), key(pins(g)[0])); });
   const ground = new Set(parts.filter((p) => p.type === "ground").map((p) => find(key(pins(p)[0])))), R = refs(), groups = new Map();
   for (const p of parts) if (R.has(p.id) && p.type !== "probe") pins(p).forEach((pt, k) => { const root = find(key(pt)); if (!groups.has(root)) groups.set(root, { pts: pt, pins: [] }); groups.get(root).pins.push(`${R.get(p.id)}.${pinName(p, k)}`); });
   let n = 0;
