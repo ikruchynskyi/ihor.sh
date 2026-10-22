@@ -29,7 +29,7 @@
     <div class="why">The sound is in the arrow's length, so anything that shortens the arrow, fading included, goes straight into the sound. (Chapter 11's automatic volume control tries to undo it.)</div>
   </div>
 
-  <p><b>Amplitude modulation</b> (AM) keeps the arrow's speed steady and makes its <b>length</b> follow the sound: longer when the speaker should push out, shorter when it should pull in. The demodulator is even simpler than FM's: measure each sample's length (chapter 2: the distance from the center), and remove the constant part.</p>
+  <p><b>Amplitude modulation</b> (AM) keeps the arrow's speed steady and makes its <b>length</b> follow the sound: longer when the speaker should push out, shorter when it should pull in. The demodulator is even simpler than FM's: measure each sample's length (chapter 2: the distance from the center), and remove the constant part (the carrier, explained below).</p>
 
   <div class="scene" id="s-am">
     <div class="controls">
@@ -45,11 +45,11 @@
   <!-- 2 -->
   <h2 id="sidebands">Sidebands, and why half of them are spare</h2>
   <p>At the end of the previous section we saw that AM's steady carrier eats up at least two thirds of the transmitter's power without carrying any sound. When we look at an AM station in the spectrum (chapter 4), we find it's even more wasteful — and seeing why shows how to make a transmitter reach six times farther on the same battery.</p>
+
+  <p>Look at an AM station with chapter 4's winding machine. You see the carrier in the middle, and the sound twice: once above the carrier and once below it, as exact mirror images. These are the <b>upper</b> and <b>lower sidebands</b>.</p>
   <div class="q" data-num="709" data-tol="0"><p>An AM station on 710 kHz plays a steady 1 kHz tone. Where does the lower sideband's copy of that tone sit, in kHz?</p>
     <div class="why">1 kHz below the carrier: 709 kHz (and the upper copy at 711 kHz). Each tone appears as a mirror pair around the carrier.</div>
   </div>
-
-  <p>Look at an AM station with chapter 4's winding machine. You see the carrier in the middle, and the sound twice: once above the carrier and once below it, as exact mirror images. These are the <b>upper</b> and <b>lower sidebands</b>.</p>
 
   <div class="scene" id="s-amspec">
     <div class="controls">
@@ -62,6 +62,7 @@
   <p class="gist">AM puts the sound in the arrow's length, and every tone appears twice, as mirror-image sidebands. SSB sends one sideband and no carrier, so the receiver must put it back at exactly the right frequency.</p>
   <details class="deeper"><summary>Why does AM make two sidebands?</summary>
     <ol>
+      <li>Names: m is the modulation depth (the slider above: 1 means 100%), f_a the tone's frequency, f_c the carrier's.</li>
       <li>AM's arrow has length 1 + m · cos(2π f_a t) for a tone at f_a, and spins at the carrier frequency.</li>
       <li>A cosine is half an arrow spinning forwards at f_a plus half spinning backwards (chapter 5).</li>
       <li>Multiplying by the carrier's arrow adds angles: the forward half lands at f_c + f_a, the backward half at f_c − f_a, each m/2 long.</li>
@@ -94,9 +95,6 @@
   <!-- 4 -->
   <h2 id="cw">Morse code: on and off</h2>
   <p>Single sideband squeezed a human voice into 2.8 kHz so every watt counts. What if a signal across an ocean is so weak that even a 2.8 kHz voice is buried in the noise? We give up on voice and concentrate all of the transmitter's power into a <b>single spinning arrow</b>, switched on and off.</p>
-  <div class="q" data-num="700" data-tol="0"><p>You tune 700 Hz away from a Morse signal. What pitch, in Hz, will each dot and dash beep at?</p>
-    <div class="why">The arrow lands 700 Hz from 0 and spins at that speed: a 700 Hz beat. Choose the tuning offset and you choose the pitch. Spectrum Lab's CW mode uses exactly 700 Hz.</div>
-  </div>
 
   <p>The simplest message of all: switch the arrow <b>on</b> and <b>off</b>. Short on is a dot, long on is a dash. Radio people call it <b>CW</b> ("continuous wave", because the arrow itself never changes while it's on).</p>
 
@@ -108,6 +106,9 @@
   </div>
 
   <p>There's a catch: an arrow that's on doesn't make any sound by itself. FM listens to speed changes and AM to length changes; Morse has neither. The trick is to tune the receiver slightly <em>off</em> the station, so that its arrow lands a few hundred hertz from 0 and spins at that speed: an audible tone, called the <b>beat</b>. That's exactly the SSB receiver with a deliberate tuning error. Each dot and dash becomes a beep, and you choose the pitch by choosing the error.</p>
+  <div class="q" data-num="700" data-tol="0"><p>You tune 700 Hz away from a Morse signal. What pitch, in Hz, will each dot and dash beep at?</p>
+    <div class="why">The arrow lands 700 Hz from 0 and spins at that speed: a 700 Hz beat. Choose the tuning offset and you choose the pitch. Spectrum Lab's CW mode uses exactly 700 Hz.</div>
+  </div>
   <p>Morse needs the narrowest space on the dial of any mode (well under 100 Hz) and can be read by a trained ear even when it's buried in noise. That's why it's still used today.</p>
 
   <!-- lab -->
