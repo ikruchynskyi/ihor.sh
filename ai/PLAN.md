@@ -606,6 +606,7 @@ Other courses (`COURSE=…`, run in `ai/review/run-COURSE/`; one table each, add
 | electronics | 20 | 2026-10-22 | run 2: 5 min, 4/4, but widgets used after the answers (§4-5) or not as asked (§1 sweep, §3 take R2 out): hysteresis not really tested by the student | tool: answer needs its section's widget first | rerun ch20 §1, §3, §4 at the end |
 | electronics | 21 | 2026-10-22 | run 2: 4 min (the floor), 4/4, widgets used before answers; observations only echo the text, Q3's quote doesn't support its pick. Hardest: 2.5 V bias and C1 (§2's point: no change) | — | — |
 | electronics | 22 | 2026-10-22 | run 2: 5 min, 5/5, widgets before answers; observations still echo the text after a note. Hardest: strapping pins (§2) and parallel pull-ups (ch1 §3, linked): no change | — | — |
+| electronics | 23 | 2026-10-22 | run 2: 8 min, 3/3 graded + 5 open answers; the review widget works (its counter resets per `B do`). Hardest: balancing a whole design (the chapter's aim) | b7ce712 (label overlap in review #2) | run 2 done: ai/review/packets/electronics-17-23.md |
 
 
 ## 11. Guardrail review of the math (Start 3 and stage 1), 2026-10-22
