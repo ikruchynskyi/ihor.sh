@@ -218,3 +218,20 @@ sentence.
 - **Needs:** powers of a number (school math, the course's stated prerequisite); everything else from ch. 1–2.
 - **Verified by:** `cd radio && npm run course-check && npm test && npm run build`; ch. 2 rendered at 390 px (no
   horizontal scroll) and 900 px.
+
+## Track H: a course you can learn from zero (planned 2026-10-21)
+- **User feedback (2026-10-21):** "This course is full of such errors. It's impossible to learn from zero using it. It is
+  full of these traps and hurdles." Example: ch. 2's code box used `ph` and a spinning arrow that only ch. 5 explains.
+- **The reader (owner's decision, 2026-10-21):** school math (arithmetic, powers, angles) plus the ability to read simple
+  JavaScript (variables, loops, functions). Everything radio-, signal- and math-specific beyond that is explained where
+  it's first used. Code boxes are folded away ("Show the real code"); nothing in a chapter's main read needs them.
+- **Process (owner's decision):** the whole course, chapter by chapter, then the owner reviews it.
+- **The audit, per chapter, every paragraph, widget, question and box:**
+  1. every word, symbol and name is explained here or earlier (a pointer like "chapter 5 explains" is allowed only if the
+     paragraph makes sense without it);
+  2. it says why it's there before it starts building (Track G);
+  3. no jump: each step follows from the one before, in the order the reader meets them;
+  4. questions only ask what the page has given the reader the means to answer;
+  5. numbers come from the chapter's script or a cited source.
+- **Where it goes:** in place (3a), chapter by chapter; one commit per chapter, each saying what it fixed.
+- **Verified by:** `cd radio && npm run course-check && npm test && npm run build`, and a cold read of each chapter.

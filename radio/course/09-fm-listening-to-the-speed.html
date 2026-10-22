@@ -135,6 +135,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The FM demodulator in this site's receiver (<code>src/dsp.ts</code>), with the previous sample remembered between chunks (<a class="back" href="./08-chunks-of-a-live-stream.html#memory">↩ ch. 8</a>):</p>
 <pre><code>export class FmDemod {
   private pi = 0;   // the previous sample (I and Q)
@@ -170,6 +171,7 @@ de-emphasis at 15000 Hz: -17.0 dB
 98.7 FM in the embedded samples (3.9 ms): 19 kHz pilot 24 dB above its neighbors → stereo
 all checks passed</code></pre>
   <p>Look at the clicks: none at all with noise up to 0.2, then hundreds per second at 0.4. That's the threshold effect, in numbers.</p>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why multiply by the mirrored previous sample instead of subtracting the two angles?</summary><p>Multiplying by the mirror image subtracts the angles automatically, and the result never has a wrap-around problem: a turn from 179° to −179° comes out as 2°.</p></details>

@@ -81,7 +81,8 @@
   <p>Meteor sends three such pictures at once, from different wavelengths (visible light and infrared: infrared sees clouds at night by their cold), which decoders combine into false-color images. Ours sends one.</p>
 
   <!-- code -->
-  <h2 id="incode">In code</h2>
+  <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The rest of <code>src/lrpt.ts</code>'s receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code> (each between −1 and +1: how sure the receiver is that a bit is 0 or 1):</p>
 <pre><code>for (let ns = 0; ns &lt; 64; ns++) {                       // each state: the last 6 data bits
   const u = ns &gt;&gt; 5, p0 = (ns &amp; 31) &lt;&lt; 1, p1 = p0 | 1;    // the two states it can come from
@@ -106,6 +107,7 @@ Es/N0  2 dB, Doppler  1000 Hz: measured   998 Hz, rotation -1,  0/30 frames (2 f
 16 wrong coded bits, 20 tries: scattered → 0 wrong data bits in all, in a row → 28
 all checks passed</code></pre>
   <p>The first 4 frames of each run go to measuring the frequency and finding the rotation. At 4 dB nearly everything still comes through; at 2 dB the frequency is still found (998 Hz for 1000), but the code gives up: the cliff.</p>
+  </details>
 
   <!-- lab -->
   <h2 id="lab">Lab: a pass, decoded live</h2>

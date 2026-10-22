@@ -142,6 +142,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average; engineers call it a "DC blocker", because the steady part is the <a class="back" href="./04-winding-machine.html#real">DC of chapter 4</a>):</p>
 <p class="note"><b>Names in this code:</b> <code>Math.hypot</code> gives an arrow's length from its two shadows (Pythagoras). <code>x1</code> and <code>y1</code> are the previous input and output; <code>0.995</code> sets how slowly the subtracted average follows, so the steady carrier is removed and the sound isn't.</p>
 <pre><code>const x = Math.hypot(iq[2 * k], iq[2 * k + 1]);          // the arrow's length (chapter 2)
@@ -162,6 +163,7 @@ AM at 30% modulation: 96% of the power is in the carrier, which carries no sound
 SSB: tuned right → 1000 Hz; tuned 150 Hz off → 1150 Hz (every pitch shifts by the same amount)
 Morse with a 700 Hz beat: 698 Hz beep while keyed, silence between: true
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does AM flutter under a bridge while FM stays steady?</summary><p>AM reads the sound from the arrow's length, and a weaker signal makes the arrow shorter. FM reads only the angle, which doesn't change when the signal weakens.</p></details>

@@ -104,7 +104,8 @@
     <p class="gist">Raising each symbol to the 4th power erases QPSK's data and leaves four times the frequency error, which one FFT measures; a Costas loop then tracks the drift symbol by symbol.</p>
 
   <!-- code -->
-  <h2 id="incode">In code</h2>
+  <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The link is <code>src/lrpt.ts</code>, about 300 lines, transmitter and receiver. The receiver's front end, from this chapter, for every sample and then every symbol:</p>
 <pre><code>// matched filter: the transmitter's own pulse, used as filter weights (chapter 6)
 let a = 0, b = 0; for (let j = 0; j &lt; L; j++) { a += H[j] * m[2 * j]; b += H[j] * m[2 * j + 1]; }
@@ -127,6 +128,7 @@ a -2000 Hz offset, Es/N0 8 dB: the 4th-power FFT measures -2000 Hz
 a  1000 Hz offset, Es/N0 8 dB: the 4th-power FFT measures  1002 Hz
 a  2500 Hz offset, Es/N0 8 dB: the 4th-power FFT measures  2500 Hz
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does the frequency of a satellite's signal slide during a pass?</summary><p>Doppler: approaching, the waves are compressed (higher frequency); receding, stretched (lower). The change is fastest as it flies past overhead.</p></details>

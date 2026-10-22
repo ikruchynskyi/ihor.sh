@@ -182,7 +182,8 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
-  <p>From this chapter on, every idea ends as code: the real lines that run the receiver on this site, or, where the receiver doesn't use the idea yet, the chapter's own script. The code boxes are optional: the text above has already said everything they do, so if you don't read code, skip to Check yourself. If you do, every name you haven't met is explained just above its box.</p>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
+  <p>From this chapter on, every idea ends as code: the real lines that run the receiver on this site, or, where the receiver doesn't use the idea yet, the chapter's own script. Every name you haven't met is explained just above its box.</p>
   <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes, whole numbers from 0 to 255 (chapter 3 explains why), alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1 (<code>src/iq.ts</code>):</p>
 <p class="note"><b>Names in this code:</b> <code>u</code> is the list of whole numbers (0 to 255) from the USB cable; <code>out</code> is the list of numbers it becomes, in the same order (I, Q, I, Q, …); <code>i</code> counts through them.</p>
 <pre><code>for (let i = 0; i &lt; out.length; i++) out[i] = (u[i] - 127.5) / 127.5;
@@ -210,6 +211,7 @@ n = 100000: length 1.00001, angle 90.000°
 → it settles on length 1 at exactly 90°: the arrow at angle θ, which mathematicians write e^(jθ).
 all checks passed</code></pre>
   <p>The last five lines are the tiny-turns scene in numbers: more, smaller sideways steps land ever closer to length 1 at exactly 90°.</p>
+  </details>
 
   <!-- check -->
   <h2 id="check">Check yourself</h2>

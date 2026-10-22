@@ -127,7 +127,8 @@
   </div>
 
   <!-- code -->
-  <h2>In code</h2>
+  <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The whole mixer, as it runs in this site's receiver (<code>src/dsp.ts</code>):</p>
 <p class="note"><b>Names in this code:</b> <code>ph</code> is the <b>phase</b> (chapter 1's word for an arrow's angle): here, the running angle on the NCO's dial above. <code>step</code> is how far the dial turns per sample, negative because we spin backwards; <code>fs</code> is the sample rate and <code>freq</code> the shift. <code>TAU</code> is 2π, a full turn in radians. <code>(c, s)</code> is the NCO's arrow: the cos and sin of the angle. A <code>class</code> keeps the angle together with the code that uses it, and <code>process</code> handles one batch of samples (chapter 8 explains why batches).</p>
 <pre><code>export class Mixer {
@@ -157,6 +158,7 @@ after 10 million repeated multiplications: length off by 4.6e-10 (64-bit numbers
 with a running angle, every arrow is computed fresh: its length is exactly 1 every time
 all checks passed</code></pre>
   <p>The last two lines are why the NCO keeps an angle. Multiplying by a step arrow over and over does drift: tiny with 64-bit numbers, larger with the 32-bit numbers signal code often uses, and it never stops growing. Computing each arrow fresh from the angle means errors can't pile up, at no extra cost.</p>
+  </details>
 
   <h2>Check yourself</h2>
   <details><summary>A station is at +300 kHz. You mix by 100 kHz. Where is it now?</summary><p>At +200 kHz: everything moves down by the mixing frequency.</p></details>

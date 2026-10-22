@@ -105,6 +105,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>Recording a trace is a small trick worth knowing: wrap the device in a <b>proxy</b>, an object that passes every call through to the real one but writes it down first (<code>src/course/trace.ts</code>):</p>
 <pre><code>return new Proxy(dev, {
   get(t, k) {
@@ -136,6 +137,7 @@ tune to 98.45 MHz: 23 control transfers
    …
 216 control transfers in total; 0 without a known name
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does nearly every tuner operation start with demod register 0x01 = 0x18?</summary><p>That switches on the I2C repeater, the gate between the RTL2832U and the tuner's I2C wires. It's switched off again (0x10) afterwards so stray traffic can't reach the tuner.</p></details>

@@ -114,6 +114,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The encoder and decoder are <code>src/ntsc.ts</code>, about 200 lines. The decoder's steps, in order:</p>
 <pre><code>// 1. sync: smooth, then a threshold halfway between sync (−40) and blanking (0)
 if (sm[i] &lt; -20 &amp;&amp; sm[i - 1] &gt;= -20) lowStart = fallAt(i);   // a falling edge, to a fraction of a sample
@@ -138,6 +139,7 @@ the whole 4.2 MHz of video             fields 1+2  burst 19.8 IRE  color   PSNR 
 a black-and-white transmission: burst 0.1 IRE → color killer on, brightness PSNR 29.5 dB
 all checks passed</code></pre>
   <p>Without color, the color picture's PSNR drops to 11 dB (all the color is gone), but its brightness is nearly untouched: the same picture a 1950s black-and-white set showed.</p>
+  </details>
 
   <!-- lab -->
   <h2 id="lab">Lab: be a TV station</h2>

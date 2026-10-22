@@ -113,6 +113,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>The server</b> (<code>server.ts</code>, Node's built-in HTTP): one dongle, many listeners, and skipping instead of storing for slow ones:</p>
 <pre><code>function fanOut(chunk) {
   for (const res of clients) {
@@ -138,6 +139,7 @@ Opus audio             × 10 listeners =   0.08 MB/s fits in 2.5 MB/s
 server: 120 reads, average 51.2 KiB, 2.08 MB/s (expected 2.05), 48 reads of odd length
 all checks passed</code></pre>
   <p>With pairs split, the ghost is exactly as strong as the station: there's no way to tell which one is real.</p>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does an odd-sized network piece cause ghost stations?</summary><p>The next piece starts with a Q byte. Read as an I, it swaps the two shadows, which mirrors every station to the opposite side of the center.</p></details>

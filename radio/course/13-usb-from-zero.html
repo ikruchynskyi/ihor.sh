@@ -123,6 +123,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The whole lab, as a script you can run with Node against a dongle on your computer: <code>node course/code/ch13.ts</code>. The heart of it is the setup-packet arithmetic:</p>
 <pre><code>const setup = (value, index) =&gt; ({ requestType: "vendor", recipient: "device", request: 0, value, index });
 await dev.controlTransferOut(setup(0x2000, (1 &lt;&lt; 8) | 0x10), new Uint8Array([0x09]));   // USB block (1), write
@@ -139,6 +140,7 @@ I2C repeater on
 tuner at I2C address 0x34, register 0: 0x69 → an R820T-family tuner
 all checks passed</code></pre>
   <p>A lesson from writing it: the first version skipped "power on the demodulator", and the I2C step failed with "endpoint stalled". A <b>stall</b> is a device's way of saying "I can't do that right now". The demodulator part of the chip is powered down until switched on, and our driver powers it down when it closes. Real hardware is full of rules like that, which is what the next chapter's driver is made of.</p>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>What does endpoint 0x81 mean?</summary><p>Endpoint number 1, in the "in" direction (device to computer): the top bit, 0x80, marks "in".</p></details>

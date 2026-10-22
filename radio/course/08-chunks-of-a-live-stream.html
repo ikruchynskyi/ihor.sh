@@ -97,6 +97,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>Here is where each step keeps its memory in <code>src/dsp.ts</code>. The mixer saves its angle at the end of every call:</p>
 <pre><code>let ph = this.ph;               // pick up where the last chunk left off
 // … process this chunk …
@@ -123,6 +124,7 @@ a filter that forgets: its first output is 3% of the right size, and it takes 69
 FM demodulator at a chunk edge: with memory 0.853 rad, forgetting 0.000 rad
 waiting for one 256 KiB chunk at 2.4 MS/s: 54.6 ms; plus filter delay and a 150 ms audio cushion
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does a filter that forgets its history produce a dip at each chunk edge?</summary><p>Its bracket reaches back into the previous chunk. Without that data it averages zeros for those positions, so the first outputs are too small until the bracket is filled with new samples.</p></details>

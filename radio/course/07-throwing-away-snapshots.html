@@ -116,6 +116,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The receiver's filter-and-decimate is one class, <code>FirDecimator</code> (<code>src/dsp.ts</code>). Its heart: a loop over only the outputs we keep, stepping M input positions each time, with chapter 6's weighted sum inside:</p>
 <p class="note"><b>Names in this code:</b> <code>m</code> is M, the "keep one in M"; <code>o</code> counts the outputs we keep; <code>j</code> is the input position of the output being computed, jumping <code>m</code> each time; <code>this.next</code> is where the first kept output falls in this batch (chapter 8). The inner loop is chapter 6's weighted sum, unchanged.</p>
 <pre><code>for (let o = 0, j = this.next; o &lt; count; o++, j += m) {   // j jumps m inputs per output
@@ -143,6 +144,7 @@ NFM ( 12.5 kHz wide): keep every 50 →  48 kS/s
 AM  (   10 kHz wide): keep every 50 →  48 kS/s
 USB (  2.8 kHz wide): keep every 50 →  48 kS/s
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why must you filter before decimating, not after?</summary><p>Decimating stacks every slice of the spectrum onto the middle one. Anything still in the other slices lands on your station and can never be separated again. Filtering afterwards is too late.</p></details>

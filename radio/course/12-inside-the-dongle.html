@@ -132,6 +132,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>The PLL setup, from our tuner driver (<code>setPll()</code> in <code>src/r820t.ts</code>): find the divider, split the ratio into whole and fraction, write them, check for lock:</p>
 <pre><code>let mixDiv = 2, divNum = 0;
 for (; mixDiv &lt;= 64; mixDiv &lt;&lt;= 1) {                               // smallest power of two that puts the VCO in range
@@ -156,6 +157,7 @@ below 24.08625 MHz there's no divider big enough: pll(20 MHz) = null
 image of 98.45 MHz: 105.59 MHz (oscillator + 3.57 lands on the same IF)
 measured: the amplified antenna noise is 27.4 dB above the receiver's own, which adds 0.008 dB to it
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why do radios move the signal to an intermediate frequency instead of filtering it where it is?</summary><p>A sharp filter that can be moved across a huge range is very hard to build; a sharp filter at one fixed frequency is easy. So the signal is moved to the fixed frequency instead.</p></details>

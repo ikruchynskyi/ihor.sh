@@ -205,6 +205,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>Averaging FFTs</b> (<code>avgSpectrum</code> in <code>src/dsp.ts</code>): spread across the signal, averaged as power, back to dB at the end:</p>
 <pre><code>for (let s = 0; s + n &lt;= total &amp;&amp; count &lt; frames; s += step, count++) {
   const p = powerSpectrum(iq, s, n);                       // one FFT, in dB (chapter 4)
@@ -250,6 +251,7 @@ filter shift +1.2 kHz on an 800 Hz USB tone: 59 dB quieter
 empty channel: noise floor -56.3 dB, loudest noise bin in the passband -53.3 dB (3.0 dB above the floor)
 squelch at -50.3 dB: 0 of 100 noise chunks opened it; a carrier 23 dB over the floor opens it
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>At 1.024 MS/s, how wide is one bin of a 4096-point FFT, and how long does that FFT listen?</summary><p>1 024 000 / 4096 = 250 Hz per bin, and 4096 / 1 024 000 = 4 ms of signal.</p></details>

@@ -135,6 +135,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>Scheduling sound</b> (<code>LivePlayer</code> in <code>src/course/audio.ts</code>): each chunk is scheduled to start exactly when the previous one ends, with the cushion and the two drift rules. (Spectrum Lab has since moved to one continuous stream that corrects drift smoothly instead: <a href="./19-cleaner-sound.html#stream">chapter 19</a>.)</p>
 <p class="note"><b>Names in this code:</b> <code>now</code> is the sound card's clock, in seconds; <code>this.t</code> is when the next batch of sound should start, so <code>this.t − now</code> is the cushion. <code>ctx</code> is the browser's sound system, and <code>src.start</code> asks it to play the batch at that moment.</p>
 <pre><code>if (this.t &lt; now + 0.05) this.t = now + 0.15;   // ran dry: rebuild a 150 ms cushion
@@ -161,6 +162,7 @@ straight-line resampling, 50 samples per wave: worst error 0.20%
 AGC: loud part peaks at 0.50, quiet part (10× weaker in) peaks at 0.50 once it has adjusted
 squelch: 97 chunks had a transmission, 97 were let through, 12 disagreed: at most 2 chunks (40 ms) late at each of the 6 edges, from smoothing the level
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Two clocks differ by 100 ppm. How far apart do they get in an hour?</summary><p>100 millionths of 3600 seconds: 0.36 seconds, i.e. 360 ms per hour.</p></details>

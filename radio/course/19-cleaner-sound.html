@@ -213,6 +213,7 @@
 
   <!-- code -->
   <h2 id="code">In code</h2>
+  <details class="code"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p><b>The biquad</b> (<code>Biquad</code> in <code>src/dsp.ts</code>): the cookbook's numbers, then five multiplications per sample:</p>
 <pre><code>const w = (TAU * f) / fs, c = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
 const k = type === "lowpass" ? (1 - c) / 2 : (1 + c) / 2;
@@ -276,6 +277,7 @@ limiter: in 4.0 → out 0.999 (a hard clip would give 1.000)
   one buffer per chunk: 1 gaps, 1 skips
   one stream:           0 gaps, 0 skips (cushion stayed between 26 and 380 ms)
 all checks passed</code></pre>
+  </details>
 
   <h2 id="check">Check yourself</h2>
   <details><summary>Why does a biquad need only five multiplications when chapter 6's filters needed hundreds?</summary><p>It reuses its own past outputs (the a-coefficients), so one click keeps ringing through the feedback instead of needing a weight for every past input. The price: the recipe must be chosen carefully, or the feedback can grow without end.</p></details>
