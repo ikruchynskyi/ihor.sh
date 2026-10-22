@@ -16,7 +16,8 @@ for (const [name, pr] of builds) {
 
 /** Simulates `secs`, returning the sim and [t, v] samples of a point and the current of a part over the last `keep` s. */
 function run(pr, secs, { point, part, keep = secs, without = [] } = {}) {
-  const parts = load(pr.parts), R = refs(parts), live = parts.filter((p) => !without.includes(R.get(p.id))), id = [...R].find(([, r]) => r === part)?.[0];
+  const parts = load(pr.parts), R = refs(parts), id = [...R].find(([, r]) => r === part)?.[0];
+  const live = parts.flatMap((p) => (!without.includes(R.get(p.id)) ? [p] : pr.why[R.get(p.id)]?.remove === "short" ? [{ id: p.id, type: "wire", a: p.a, b: p.b }] : [])); // as the page takes a part out
   const sim = simulation(live, { speed: pr.speed ?? 1 }), v = [], i = [];
   const steps = Math.ceil(secs / sim.dt);
   for (let k = 0; k < steps; k++) { sim.advance(sim.dt); if (sim.t > secs - keep) { if (point) v.push([sim.t, sim.voltAt(point)]); if (id) i.push([sim.t, sim.cur.get(id) ?? 0]); } }
@@ -68,5 +69,18 @@ const fmt = (m) => JSON.stringify(Object.fromEntries(Object.entries(m).map(([k, 
   assert.ok(Math.abs(iStrip - 1) < 0.02 && gate > 11.5 && Math.abs(ref - 6) < 0.05, `ch20 dark: strip ${iStrip} gate ${gate} ref ${ref}`);
   ldr.lux = 300; settle(); assert.ok((sim.cur.get(lamp.id) ?? 0) < 1e-3 && sim.voltAt([16, 4]) < 0.2, "ch20 off in daylight");
   console.log(`ch20: on below ${onAt.toFixed(1)} lux, off above ${offAt.toFixed(1)} lux; dark: strip ${iStrip.toFixed(3)} A, gate ${gate.toFixed(2)} V, reference ${ref.toFixed(2)} V; day: gate ${sim.voltAt([16, 4]).toFixed(3)} V`);
+}
+// ---------- ch21: the LM386 amplifier ----------
+{ const P = PROJECTS.P21, withPos = (pos, extra = {}) => ({ ...P, parts: P.parts.map((p) => (p.type === "pot" ? { ...p, pos } : p)), ...extra });
+  const idle = run({ ...P, parts: P.parts.map((p) => (p.type === "source" ? { ...p, amp: 0 } : p)) }, 0.05, { point: [12, 4], part: "LS1", keep: 0.01 }), mi = measure(idle.v);
+  assert.ok(Math.abs(mi.avg - 2.5) < 0.01, `ch21 idle output ${fmt(mi)}`);
+  const half = run(withPos(50), 0.2, { point: [12, 4], part: "LS1", keep: 0.02 }), mo = measure(half.v), ms = measure(half.i);
+  assert.ok(Math.abs(mo.vpp / 2 - 0.94) < 0.02 && Math.abs(mo.avg - 2.5) < 0.02, `ch21 output ${fmt(mo)}`); // the input's 50 kΩ loads the pot a little
+  assert.ok(Math.abs(ms.avg) < 0.003 && ms.max > 0.1 && ms.max < 0.125, `ch21 speaker ${fmt(ms)}`);
+  const full = run(withPos(100), 0.2, { point: [12, 4], keep: 0.02 }), mf = measure(full.v);
+  assert.ok(Math.abs(mf.max - 4.3) < 0.03 && Math.abs(mf.min - 0.7) < 0.03, `ch21 clipping ${fmt(mf)}`);
+  const noC = run(withPos(50), 0.2, { part: "LS1", keep: 0.02, without: ["C1"] }), mn = measure(noC.i);
+  assert.ok(Math.abs(mn.avg - 0.31) < 0.01, `ch21 without C1 ${fmt(mn)}`);
+  console.log(`ch21: idle ${mi.avg.toFixed(3)} V; pot at half: ±${(mo.vpp / 2).toFixed(2)} V out, speaker ±${(ms.max * 1000).toFixed(0)} mA around ${(ms.avg * 1000).toFixed(1)} mA; full volume clips at ${mf.min.toFixed(2)}–${mf.max.toFixed(2)} V; without C1 the speaker carries ${(mn.avg * 1000).toFixed(0)} mA DC`);
 }
 console.log("build ok");

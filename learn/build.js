@@ -144,7 +144,8 @@ export function schematic(root, project, opts = {}) {
   layout(); addEventListener("resize", layout);
   // simulation
   let sim = null, memory = { capV: new Map(), indI: new Map() }, dirty = true, selected = null, hover = null, tReal = 0;
-  const live = () => parts.filter((p) => !out.has(R.get(p.id)));
+  // a part taken out is gone, or (why.remove === "short") replaced by a plain wire, for parts in series with the signal
+  const live = () => parts.flatMap((p) => { const r = R.get(p.id); if (!out.has(r)) return [p]; return project.why?.[r]?.remove === "short" ? [{ id: p.id, type: "wire", a: p.a, b: p.b }] : []; });
   const rebuild = () => { dirty = false; sim = simulation(live(), { speed: project.speed ?? 1, memory, t0: sim?.t ?? 0 }); };
   const offsets = new Map();
   function frame(now) {
@@ -162,7 +163,7 @@ export function schematic(root, project, opts = {}) {
       if (p.type === "motor") { p._spin = (p._spin ?? 0) + amps * dt * 8; st.spin = p._spin; }
       if (p.type === "nmos") st.on = Math.abs(amps) > 1e-3;
       const s = gone ? null : sim?.net.states.get(p.id); if (s) Object.assign(st, s);
-      if (gone) { g.globalAlpha = 0.18; draw(g, p, st); g.globalAlpha = 1; } else draw(g, p, st);
+      if (gone) { g.globalAlpha = 0.18; draw(g, p, st); g.globalAlpha = 1; if (project.why?.[R.get(p.id)]?.remove === "short") { g.strokeStyle = COL.sel; g.lineWidth = 0.1; g.setLineDash([0.25, 0.2]); g.beginPath(); g.moveTo(...p.a); g.lineTo(...p.b); g.stroke(); g.setLineDash([]); } } else draw(g, p, st);
     }
     // names (R1, U1…) beside each part, as in the lab
     g.fillStyle = "#8f98a8"; g.font = "0.36px ui-monospace, Menlo, monospace"; g.textBaseline = "middle";
@@ -221,7 +222,7 @@ export function schematic(root, project, opts = {}) {
     const w = project.why?.[selected];
     if (!w) { card.innerHTML = `<p class="muted">${opts.hint ?? "Pick a part (click it, or its button) to see what it's for. Hover or tap any point of the drawing for its voltage."}</p>`; return; }
     const p = byRef(selected), gone = out.has(selected);
-    card.innerHTML = `<p><b class="ref">${selected}</b> ${valueText(p)} ${esc(w.name ?? PARTS[p.type].name)}</p><p><span class="k">job</span>${w.job}</p>${w.value ? `<p><span class="k">this value</span>${w.value}</p>` : ""}${w.without ? `<p><span class="k">without it</span>${w.without}</p>` : ""}${w.ch ? `<p class="muted" style="font-size:.9em">Taught in ${w.ch}</p>` : ""}${w.remove ? `<p><button type="button" class="take">${gone ? "Put it back" : "Take it out and watch"}</button></p>` : ""}`;
+    card.innerHTML = `<p><b class="ref">${selected}</b> ${valueText(p)} ${esc(w.name ?? PARTS[p.type].name)}</p><p><span class="k">job</span>${w.job}</p>${w.value ? `<p><span class="k">this value</span>${w.value}</p>` : ""}${w.without ? `<p><span class="k">without it</span>${w.without}</p>` : ""}${w.ch ? `<p class="muted" style="font-size:.9em">Taught in ${w.ch}</p>` : ""}${w.remove ? `<p><button type="button" class="take">${gone ? "Put it back" : w.remove === "short" ? "Replace it with a wire and watch" : "Take it out and watch"}</button></p>` : ""}`;
     card.querySelector(".take")?.addEventListener("click", () => api.remove(selected, !gone));
   };
   bar.innerHTML = `<a href="${labLink(project)}">Open this circuit in the lab ↗</a><span>${opts.note ?? ""}</span>`;

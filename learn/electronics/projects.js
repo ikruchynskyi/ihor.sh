@@ -257,3 +257,58 @@ export const P20 = {
     ],
   },
 };
+
+CHIPS.LM386 = { name: "LM386N-1", pkg: "dip8", pins: {
+  1: ["GAIN", "Gain setting. Open (with pin 8 open), the gain is 20. A 10 µF capacitor from here to pin 8 makes it 200; 1.2 kΩ in series with that capacitor, 50."],
+  2: ["−IN", "The inverting input, 50 kΩ to ground inside. Unused here: grounded, as the datasheet suggests when the source is low resistance."],
+  3: ["+IN", "The input, 50 kΩ to ground inside. It must stay within ±0.4 V (absolute maximum), which is one reason the volume control comes first."],
+  4: ["GND", "Ground."],
+  5: ["VOUT", "The output: it sits at half the supply with no signal, and swings around that. Never connect a speaker straight here: it goes through a big capacitor."],
+  6: ["VS", "The supply: 4–12 V for the -1 version. A capacitor to ground close to this pin."],
+  7: ["BYPASS", "An internal bias point; a 10 µF capacitor to ground here quiets supply hum (the datasheet measures its 50 dB supply rejection with one). Optional in the minimum circuit."],
+  8: ["GAIN", "The other gain-setting pin (see pin 1)."],
+} };
+
+export const P21 = {
+  speed: 0.005,
+  parts: [
+    { type: "battery", a: [-2, 8], b: [-2, 11], v: 5 }, flag([-2, 8], "+5V"), gnd([-2, 11]),
+    { type: "source", a: [0, 2], b: [0, 5], wave: "sine", freq: 440, amp: 0.1 }, gnd([0, 5]),
+    w([0, 2], [0, 1]), w([0, 1], [4, 1]),
+    { type: "pot", at: [4, 5], rot: 3, ohms: 10e3, pos: 50 }, gnd([4, 5]), // the volume: B gets the signal, A is ground
+    w([6, 3], [6, 5]), w([6, 5], [8, 5]), w([8, 3], [7, 3]), gnd([7, 3]),
+    { type: "lm386", at: [8, 4], gain: 20 }, flag([10, 2], "+5V"), gnd([10, 6]),
+    w([12, 4], [13, 4]), w([13, 4], [14, 4]),
+    { type: "capacitor", a: [14, 4], b: [17, 4], farads: 220e-6 }, w([17, 4], [19, 4]),
+    { type: "speaker", a: [19, 4], b: [19, 7], ohms: 8 }, gnd([19, 7]),
+    { type: "resistor", a: [13, 4], b: [13, 7], ohms: 10 }, { type: "capacitor", a: [13, 7], b: [13, 10], farads: 47e-9 }, gnd([13, 10]),
+    w([-2, 8], [3, 8]), w([-2, 11], [3, 11]), { type: "capacitor", a: [3, 8], b: [3, 11], farads: 100e-9 },
+  ],
+  why: {
+    BAT1: { name: "the 5 V rail", job: "The supply, from chapter 18's 5 V rail (a 9 V battery's sag and resistance would make the bass thump the supply). The LM386N-1 runs on 4–12 V; more volts give more output before clipping.", ch: `<a href="./18-power-supply.html">chapter 18</a>` },
+    V1: { name: "the audio input (a phone, say)", job: "The signal: here a 440 Hz tone, 0.1 V peak, standing in for a phone's headphone output. Its other wire is ground: the phone and the amplifier must share one." },
+    RV1: { name: "10 kΩ volume pot", job: "A divider you turn (chapter 1): the wiper passes on a fraction of the input. It's first in line on purpose: the LM386's input may not exceed ±0.4 V (absolute maximum), and with a gain of 20 anything above about 0.09 V peak clips on 5 V anyway (section 5).", value: "10 kΩ, the datasheet's own value: low enough that the input's 50 kΩ inside barely loads it, high enough not to burden the phone. A \"log\" (audio-taper) pot sounds more even than a linear one.", ch: `<a href="./01-voltage-current-resistance.html">chapter 1 §2</a>` },
+    U1: { name: "LM386N-1 power amplifier", job: "A whole small amplifier in 8 pins (chapter 16's class AB inside): gain 20 out of the box, an output that centers itself at half the supply, and enough current for a small speaker.", value: "The datasheet's typical: 325 mW into 8 Ω on 6 V, at 10% distortion. On 5 V, less (section 5).", ch: `<a href="./16-audio.html">chapter 16 §3</a>` },
+    C1: { name: "output capacitor", job: "Passes the music and blocks the DC. The output sits at 2.5 V with no sound at all; the capacitor charges to that once and then passes only the wiggle, so the speaker sees the signal centered on 0 V.", value: "220 µF electrolytic, 16 V+: the datasheet draws 250 µF, which isn't a standard value. With the 8 Ω speaker it's a high-pass (section 4): 1/(2π × 8 Ω × 220 µF) ≈ 90 Hz.", without: "2.5 V of DC sits across the 8 Ω coil: about 0.31 A flows all the time, heating the coil by about 0.75 W and holding the cone pushed off-center, while the music rides on top. Replace it with a wire and watch the speaker's current.", remove: "short", ch: `<a href="./02-capacitors-and-time.html">chapter 2 §3</a>, <a href="./08-filters.html">chapter 8 §1</a>` },
+    LS1: { name: "8 Ω speaker", job: "Chapter 16's coil on a cone. Small (0.5 W, 8 Ω) is plenty for this amp.", ch: `<a href="./16-audio.html">chapter 16 §4</a>` },
+    R1: { name: "10 Ω (half of the output network)", job: "With C2, the 10 Ω + 0.05 µF network the datasheet draws on the output in every circuit. It keeps the amplifier's load from rising at very high frequencies, where a speaker's coil (and its leads) look less and less like 8 Ω (section 6).", remove: true },
+    C2: { name: "47 nF (the other half)", job: "The datasheet's 0.05 µF; 47 nF is the nearest standard value. At audio frequencies it's nearly open (about 3.4 kΩ at 1 kHz), so it takes no music; far above audio it's nearly a short, leaving the 10 Ω as the load.", remove: true },
+    C3: { name: "supply bypass capacitor", job: "The datasheet asks for a capacitor to ground close to pin 6. A power amplifier pulls its supply current in time with the music; this covers the fast part locally. A 100 µF electrolytic beside it covers the bass.", remove: true },
+  },
+  bb: {
+    cols: 24, margin: 70,
+    parts: [
+      { ref: "BAT1", kind: "off", legs: ["T+2", "T-2"], box: [-34, 27], label: "5 V" },
+      { kind: "wire", from: "T-3", to: "B-3", color: "black" },
+      { ref: "C3", kind: "cap", legs: ["T+9", "T-9"] },
+      { ref: "U1", kind: "dip", at: 10, n: 8, label: "LM386" },
+      { kind: "wire", from: "a12", to: "T+11", color: "red" }, { kind: "wire", from: "j13", to: "B-13", color: "black" }, { kind: "wire", from: "j11", to: "B-11", color: "black" },
+      { ref: "RV1", kind: "pot", legs: ["h5", "h7", "h6"], note: "Legs A (ground), wiper, B (signal in) in columns 5, 6, 7." },
+      { kind: "wire", from: "j5", to: "B-5", color: "black" }, { kind: "wire", from: "g6", to: "g12", color: "yellow" },
+      { ref: "V1", kind: "off", legs: ["j7", "B-8"], box: [40, 330], label: "phone" },
+      { ref: "R1", kind: "res", legs: ["c13", "c15"] }, { ref: "C2", kind: "cap", legs: ["b15", "T-15"] },
+      { ref: "C1", kind: "ecap", legs: ["d13", "d18"], note: "+ leg toward the amplifier's output (it sits at 2.5 V), − toward the speaker." },
+      { ref: "LS1", kind: "off", legs: ["a18", "T-17"], box: [480, 150], label: "speaker" },
+    ],
+  },
+};
