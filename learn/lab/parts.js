@@ -35,7 +35,7 @@ export function parseSI(s) {
 }
 
 /** Schematic reference prefixes (R1, C2, U1…), shared by the lab and the course's build pages. */
-export const REF_PREFIX = { ldr: "LDR", speaker: "LS", lm393: "U", lm386: "U", ldo1700: "U", counter4017: "U", battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", switch2: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
+export const REF_PREFIX = { module: "U", ldr: "LDR", speaker: "LS", lm393: "U", lm386: "U", ldo1700: "U", counter4017: "U", battery: "BAT", source: "V", resistor: "R", pot: "RV", capacitor: "C", inductor: "L", switch: "SW", switch2: "SW", button: "SW", diode: "D", zener: "D", led: "LED", lamp: "LP", motor: "M", ammeter: "A", nmos: "Q", opamp: "U", timer555: "U", reg7805: "U", and: "U", nand: "U", or: "U", nor: "U", xor: "U", not: "U" };
 
 // ---------- the part list ----------
 // fields: what the inspector lets you change: [prop, label, kind ("si" | "num" | "select" | "range"), unit or options, min, max]
@@ -211,6 +211,8 @@ export const PARTS = {
       });
       c.state(p.id, s);
     } },
+  module: { name: "Module", cat: "Modules", props: { title: "module", w: 6, left: [], right: [] },
+    desc: "A board you buy ready-made (a microcontroller dev board, a sensor breakout, a display), drawn as a box with its labeled pins. Not simulated: the lab has no microcontroller inside.", stamp() {} },
   ...Object.fromEntries([["and", "AND", (a, b) => a && b], ["nand", "NAND", (a, b) => !(a && b)], ["or", "OR", (a, b) => a || b], ["nor", "NOR", (a, b) => !(a || b)], ["xor", "XOR", (a, b) => a !== b]].map(([k, name, fn]) => [k, {
     name: `${name} gate`, cat: "Logic", pins: [[0, -1], [0, 1], [4, 0]], pinNames: ["A", "B", "Y"], props: { vdd: 5 }, gate: k,
     desc: `Digital logic (5 V CMOS): inputs above 2.5 V are 1, below are 0. ${name}: ${{ and: "1 only if both are 1", nand: "0 only if both are 1 (you can build anything from these)", or: "1 if either is 1", nor: "0 if either is 1", xor: "1 if they differ" }[k]}. Unwired inputs read 0.`,
@@ -233,11 +235,21 @@ export function wave(kind, cycles, duty = 0.5) {
 }
 
 // ---------- geometry ----------
+/** A module's pin offsets: left pins down x = 0, right pins down x = w, one row each (a null entry is a gap). */
+export function modulePins(p) {
+  const out = [];
+  (p.left ?? []).forEach((n, k) => n != null && out.push([0, k + 1]));
+  (p.right ?? []).forEach((n, k) => n != null && out.push([p.w ?? 6, k + 1]));
+  return out;
+}
+/** Pin names, for parts whose pins are their own (modules) or their kind's. */
+export const pinNamesOf = (p) => (p.type === "module" ? [...(p.left ?? []), ...(p.right ?? [])].filter((n) => n != null) : PARTS[p.type].pinNames);
 const turn = ([x, y], rot) => { for (let k = 0; k < ((rot % 4) + 4) % 4; k++) [x, y] = [-y, x]; return [x, y]; };
 /** Grid points of a part's pins, in order. */
 export function pins(p) {
   const d = PARTS[p.type];
   if (d.two) return [p.a, p.b];
+  if (p.type === "module") return modulePins(p).map(([x, y]) => [p.at[0] + x, p.at[1] + y]);
   return d.pins.map((o) => { const [dx, dy] = turn(o, p.rot ?? 0); return [p.at[0] + dx, p.at[1] + dy]; });
 }
 /** Move a part by (dx, dy) grid squares. */
@@ -344,7 +356,15 @@ export function draw(g, p, st) {
   const flipText = (p.rot ?? 0) === 2; // keep IC labels readable upside down
   const T = (s, x, y, size, color, align) => { g.save(); g.translate(x, y); g.rotate(-((p.rot ?? 0) * Math.PI) / 2); text(s, 0, 0, size, color, align); g.restore(); };
   switch (p.type) {
-    case "flag": L(0, 0, 0, -0.55); L(-0.45, -0.55, 0.45, -0.55); T(p.name, 0, -0.95, 0.36, COL.red); break;
+    case "flag": L(0, 0, 0, -0.55); L(-0.45, -0.55, 0.45, -0.55); T(p.name, 0, -0.95, 0.36, /^[+-]/.test(p.name) ? COL.red : COL.blue); break; // supplies red, signal names blue
+    case "module": {
+      const w = p.w ?? 6, h = Math.max((p.left ?? []).length, (p.right ?? []).length) + 1;
+      g.fillStyle = COL.body; g.strokeStyle = st.sel ? COL.sel : COL.text; g.fillRect(1, 0.3, w - 2, h - 0.6); g.strokeRect(1, 0.3, w - 2, h - 0.6);
+      (p.left ?? []).forEach((n, k) => { if (n == null) return; g.strokeStyle = line; L(0, k + 1, 1, k + 1); T(n, 1.15, k + 1, 0.3, COL.text, "left"); });
+      (p.right ?? []).forEach((n, k) => { if (n == null) return; g.strokeStyle = line; L(w - 1, k + 1, w, k + 1); T(n, w - 1.15, k + 1, 0.3, COL.text, "right"); });
+      T(p.title, w / 2, h - 0.75, 0.36, COL.blue);
+      break;
+    }
     case "ground": L(0, 0, 0, 0.5); for (const [w, y] of [[0.5, 0.5], [0.32, 0.68], [0.14, 0.86]]) L(-w, y, w, y); break;
     case "probe": { const c = PROBE_COLORS[(p.ch - 1) % 4]; g.strokeStyle = c; g.fillStyle = c; L(0, 0, 0.6, -0.6); g.beginPath(); g.arc(0, 0, 0.13, 0, 7); g.fill(); g.fillRect(0.5, -1.1, 0.75, 0.55); T(`${p.ch}`, 0.875, -0.82, 0.42, COL.stage); break; }
     case "switch2": {

@@ -10,7 +10,7 @@
 // A project (learn/electronics/projects.js) is { parts, why, bb }: parts in the lab's format (their order sets the
 // names R1, C1, U1…), why[ref] = { job, value?, without?, ch? }, bb = breadboard placements. The pure helpers at the
 // top are what learn/build.test.mjs checks: the breadboard must join exactly the pins the schematic joins.
-import { PARTS, COL, LEDS, REF_PREFIX, pins, distTo, draw, si } from "./lab/parts.js";
+import { PARTS, COL, LEDS, REF_PREFIX, pins, pinNamesOf, distTo, draw, si } from "./lab/parts.js";
 import { simulation, onWire } from "./lab/engine.js";
 
 const key = ([x, y]) => `${x},${y}`;
@@ -62,7 +62,7 @@ export function bbLegs(project, parts = load(project.parts)) {
     holes.forEach((h, i) => {
       if (h == null) return;
       // DIPs and numbered packages: leg i is physical pin i + 1; others list their legs in the lab's pin order
-      const k = b.kind === "dip" || b.numbered ? pinIndex(p.type, i + 1) : i;
+      const k = b.kind === "dip" || b.numbered ? pinIndex(p.type, i + 1) : i; // modules and the rest: legs in pin order
       if (k >= 0) out.push({ ref: b.ref, pin: `${b.ref}:${k}`, hole: h });
     });
   }
@@ -136,7 +136,8 @@ export function schematic(root, project, opts = {}) {
   cv.setAttribute("aria-label", opts.label ?? "The schematic. Pick a part with the buttons below to see why it's there.");
   root.append(scroller(cv, 640), chips, card, bar);
   // the frame: every pin, with a margin
-  const pts = parts.flatMap((p) => pins(p)), xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  const corners = (p) => (p.type === "module" ? [[p.at[0] + (p.w ?? 6), p.at[1] + Math.max((p.left ?? []).length, (p.right ?? []).length) + 1]] : []); // a module's box reaches past its pins
+  const pts = parts.flatMap((p) => [...pins(p), ...corners(p)]), xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
   const box = { x0: Math.min(...xs) - 2.6, y0: Math.min(...ys) - 1.8, x1: Math.max(...xs) + 3.0, y1: Math.max(...ys) + 1.6 };
   const aspect = Math.max(1.1, Math.min(2.4, (box.x1 - box.x0) / (box.y1 - box.y0)));
   let dpr = fitCanvas(cv, aspect), view = { s: 1, x: 0, y: 0 };
@@ -225,7 +226,7 @@ export function schematic(root, project, opts = {}) {
     card.innerHTML = `<p><b class="ref">${selected}</b> ${valueText(p)} ${esc(w.name ?? PARTS[p.type].name)}</p><p><span class="k">job</span>${w.job}</p>${w.value ? `<p><span class="k">this value</span>${w.value}</p>` : ""}${w.without ? `<p><span class="k">without it</span>${w.without}</p>` : ""}${w.ch ? `<p class="muted" style="font-size:.9em">Taught in ${w.ch}</p>` : ""}${w.remove ? `<p><button type="button" class="take">${gone ? "Put it back" : w.remove === "short" ? "Replace it with a wire and watch" : "Take it out and watch"}</button></p>` : ""}`;
     card.querySelector(".take")?.addEventListener("click", () => api.remove(selected, !gone));
   };
-  bar.innerHTML = `<a href="${labLink(project)}">Open this circuit in the lab ↗</a><span>${opts.note ?? ""}</span>`;
+  bar.innerHTML = `${project.noLab ? "" : `<a href="${labLink(project)}">Open this circuit in the lab ↗</a>`}<span>${opts.note ?? ""}</span>`;
   const api = {
     parts, refs: R,
     sim: () => sim,
@@ -396,8 +397,16 @@ export function breadboard(root, project, opts = {}) {
         if (ring) { g.strokeStyle = ring; g.lineWidth = 2; g.strokeRect(x1 - 11, y1 - 2, x2 - x1 + 22, y2 - y1 + 4); }
         break;
       }
-      case "off": { // something off the board (a battery, a speaker) on two flying leads
-        const [x, y] = b.box, cs = ["#d33", "#222"];
+      case "module": { // a breakout's header in row a, the board leaning out over the top rails
+        const xs = hs.map((q) => q[0]), x0 = Math.min(...xs) - 12, x1 = Math.max(...xs) + 12, names = pinNamesOf(p);
+        g.fillStyle = b.color ?? "#5b3f8f"; g.fillRect(x0, 2, x1 - x0, hs[0][1] - 8); g.fillStyle = "#c9a227";
+        hs.forEach((q, i) => { g.fillRect(q[0] - 3, q[1] - 6, 6, 9); g.save(); g.translate(q[0] + 3, q[1] - 10); g.rotate(-Math.PI / 2); g.fillStyle = "#f4f4f4"; g.font = "7px ui-monospace, Menlo, monospace"; g.textAlign = "left"; g.fillText(names[i] ?? "", 0, 0); g.restore(); g.fillStyle = "#c9a227"; });
+        g.fillStyle = "#f4f4f4"; g.font = "bold 8px ui-monospace, Menlo, monospace"; g.textAlign = "left"; g.fillText(b.label ?? "", x0 + 3, 11);
+        if (ring) { g.strokeStyle = ring; g.lineWidth = 2; g.strokeRect(x0 - 2, 0, x1 - x0 + 4, hs[0][1] - 4); }
+        break;
+      }
+      case "off": { // something off the board (a battery, a speaker, a dev board) on flying leads
+        const [x, y] = b.box, cs = b.colors ?? ["#d33", "#222", "#2a9", "#db0", "#36c", "#a3c"];
         hs.forEach((q, i) => { if (!q) return; g.strokeStyle = cs[i] ?? "#888"; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + q[0]) / 2, Math.min(y, q[1]) - 20, q[0], q[1]); g.stroke(); });
         g.fillStyle = "#23262c"; g.fillRect(x - 24, y - 12, 48, 24); g.fillStyle = "#f4d35e"; g.font = "bold 9px ui-monospace, Menlo, monospace"; g.textAlign = "center"; g.fillText(b.label ?? b.ref, x, y + 3);
         if (ring) { g.strokeStyle = ring; g.lineWidth = 2; g.strokeRect(x - 26, y - 14, 52, 28); }
@@ -410,14 +419,14 @@ export function breadboard(root, project, opts = {}) {
   const placed = project.bb.parts.filter((b) => b.kind !== "wire").map((b) => b.ref);
   chips.innerHTML = placed.map((r) => `<button type="button" data-r="${r}" aria-pressed="false">${r}</button>`).join("");
   const describeHole = (h) => {
-    const n = net(h), here = legs.filter((l) => net(l.hole) === n).map((l) => { const p = byRef.get(l.ref), k = +l.pin.split(":")[1], nm = PARTS[p.type].pinNames?.[k]; return `${l.ref}${nm ? ` pin ${nm}` : PARTS[p.type].two ? (k ? " (leg 2)" : " (leg 1)") : ""}`; });
+    const n = net(h), here = legs.filter((l) => net(l.hole) === n).map((l) => { const p = byRef.get(l.ref), k = +l.pin.split(":")[1], nm = pinNamesOf(p)?.[k]; return `${l.ref}${nm ? ` pin ${nm}` : PARTS[p.type].two ? (k ? " (leg 2)" : " (leg 1)") : ""}`; });
     const where = /^[TB]/.test(h) ? `the ${h[0] === "T" ? "top" : "bottom"} ${h[1] === "+" ? "+" : "−"} rail` : `column ${h.slice(1)}, rows ${ROWS.indexOf(h[0]) < 5 ? "a–e" : "f–j"}`;
     return `<p><b class="ref">${h}</b>: ${where}${here.length ? `, joined to ${here.join(", ")}` : ", nothing plugged into this strip"}.</p>`;
   };
   const show = () => {
     if (hole) { card.innerHTML = describeHole(hole); return; }
     const w = project.why?.[sel], b = project.bb.parts.find((q) => q.ref === sel);
-    card.innerHTML = sel ? `<p><b class="ref">${sel}</b> ${valueText(byRef.get(sel))} ${esc(w?.name ?? PARTS[byRef.get(sel).type].name)}: ${(b.kind === "dip" ? dipHoles(b.at, b.n) : b.legs).map((h, i) => (h ? `${b.kind === "dip" || b.numbered ? `pin ${i + 1}` : PARTS[byRef.get(sel).type].pinNames?.[i] ?? `leg ${i + 1}`} in ${h}` : "")).filter(Boolean).join(", ")}.</p>${b.note ? `<p>${b.note}</p>` : ""}` : `<p class="muted">${opts.hint ?? "Pick a part to see which holes its legs go in, or click any hole to light up everything joined to it."}</p>`;
+    card.innerHTML = sel ? `<p><b class="ref">${sel}</b> ${valueText(byRef.get(sel))} ${esc(w?.name ?? PARTS[byRef.get(sel).type].name)}: ${(b.kind === "dip" ? dipHoles(b.at, b.n) : b.legs).map((h, i) => (h ? `${b.kind === "dip" || b.numbered ? `pin ${i + 1}` : pinNamesOf(byRef.get(sel))?.[i] ?? `leg ${i + 1}`} in ${h}` : "")).filter(Boolean).join(", ")}.</p>${b.note ? `<p>${b.note}</p>` : ""}` : `<p class="muted">${opts.hint ?? "Pick a part to see which holes its legs go in, or click any hole to light up everything joined to it."}</p>`;
   };
   const listeners = [];
   const api = {
@@ -430,7 +439,7 @@ export function breadboard(root, project, opts = {}) {
     const r = cv.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * Wd - ox, y = ((e.clientY - r.top) / r.height) * Hd;
     let best = null, d = 1e9; for (const h of allHoles) { const [hx, hy] = holeXY(h), dd = Math.hypot(hx - x, hy - y); if (dd < d) { d = dd; best = h; } }
     // a part's body wins over the hole under it
-    const body = project.bb.parts.filter((b) => b.kind !== "wire").find((b) => { const hs = (b.kind === "dip" ? dipHoles(b.at, b.n) : b.legs).filter(Boolean).map(holeXY), cx = hs.reduce((s, q) => s + q[0], 0) / hs.length, cy = hs.reduce((s, q) => s + q[1], 0) / hs.length; return b.kind === "dip" ? x > Math.min(...hs.map((q) => q[0])) - 9 && x < Math.max(...hs.map((q) => q[0])) + 9 && y > rowY("e") && y < rowY("f") : b.kind === "off" ? Math.abs(x - b.box[0]) < 26 && Math.abs(y - b.box[1]) < 14 : Math.hypot(cx - x, cy - y) < 9 && d > 5; });
+    const body = project.bb.parts.filter((b) => b.kind !== "wire").find((b) => { const hs = (b.kind === "dip" ? dipHoles(b.at, b.n) : b.legs).filter(Boolean).map(holeXY), cx = hs.reduce((s, q) => s + q[0], 0) / hs.length, cy = hs.reduce((s, q) => s + q[1], 0) / hs.length; return b.kind === "dip" ? x > Math.min(...hs.map((q) => q[0])) - 9 && x < Math.max(...hs.map((q) => q[0])) + 9 && y > rowY("e") && y < rowY("f") : b.kind === "off" ? Math.abs(x - b.box[0]) < 26 && Math.abs(y - b.box[1]) < 14 : b.kind === "module" ? x > Math.min(...hs.map((q) => q[0])) - 12 && x < Math.max(...hs.map((q) => q[0])) + 12 && y < hs[0][1] - 6 : Math.hypot(cx - x, cy - y) < 9 && d > 5; });
     if (body) api.select(body.ref, true); else if (d < 9) api.hole(best);
   });
   addEventListener("resize", paint);

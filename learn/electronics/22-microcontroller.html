@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A Microcontroller Board: ESP32 Weather Display</title>
+  <meta name="description" content="Electronics from scratch, chapter 22, the sixth build: an ESP32 dev board reading a BME280 sensor and drawing on an SSD1306 OLED over I²C. Modules versus chips, choosing pins (strapping, input-only, flash, ADC1), two devices at two addresses on one bus, pull-ups in parallel and the rise time they allow, supply peaks and brown-outs, and the first test." />
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 ui-sans-serif, system-ui, sans-serif; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 120px; }
+    h2 { margin: 56px 0 10px; }
+    .readout { font: 15px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); margin: 8px 0 0; min-height: 1.6em; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; align-items: center; }
+    .goal { margin: 6px 0 0; padding: 8px 12px; border-left: 4px solid var(--accent); background: var(--card); font-size: 16px; }
+    .goal.done { border-color: #2f9e44; }
+    .plain { padding: 10px 14px; margin: 14px 0; font-size: 17px; }
+    .tablewrap { overflow-x: auto; }
+    table.bom { border-collapse: collapse; font-size: 15px; width: 100%; }
+    table.bom th, table.bom td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    table.bom td:first-child { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+    .check { list-style: none; padding: 0; }
+    .check li { margin: 8px 0; padding: 8px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+    .check b.v { font-family: ui-monospace, Menlo, monospace; }
+    input[type=range] { width: 200px; }
+    select { font: inherit; }
+    .tasks { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .tasks button, .gpio button { font: calc(14px * var(--px, 1)) ui-monospace, Menlo, monospace !important; padding: 4px 9px !important; border-radius: 6px; border: 1px solid var(--line) !important; background: var(--card) !important; color: var(--fg) !important; cursor: pointer; box-shadow: none !important; text-transform: none !important; letter-spacing: 0 !important; }
+    .tasks button[aria-pressed=true] { border-color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 22%, var(--card)) !important; }
+    .gpio { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 5px; margin: 8px 0; }
+    .gpio button.flash { opacity: .45; } .gpio button.used { border-color: #2f9e44 !important; }
+    .gpio button.warn { border-color: #f59f00 !important; } .gpio button.bad { border-color: #e03131 !important; }
+    .steps li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 22</p>
+  <h1>A microcontroller board: an ESP32 weather display</h1>
+  <p class="lede">The dusk light made its decision with a comparator and one threshold. Anything cleverer, like showing the temperature, logging it, or deciding by the time of day, wants a small computer: chapter 13's microcontroller. This build puts one in charge: an ESP32 reads temperature, humidity and pressure from a sensor and draws them on a little screen, all three talking over two shared wires. The electronics is mostly wiring, so the decisions move elsewhere: which ready-made boards to buy, which pins to use, and whether the bus and the supply can keep up.</p>
+  <div class="plain card"><b>Before you start.</b> GPIO pins, pull-ups, hexadecimal and I²C are <a href="./13-microcontrollers-and-buses.html">chapter 13</a>; resistors in parallel are <a href="./01-voltage-current-resistance.html">chapter 1 §3</a>; RC charging is <a href="./02-capacitors-and-time.html">chapter 2</a>; logic levels between chips are <a href="./19-two-chips.html">chapter 19 §4</a>; the battery budget is <a href="./10-power-supplies.html">chapter 10 §4</a>.</div>
+
+  <h2>1. The goal, and boards instead of chips</h2>
+  <p><b>The goal:</b> a little screen shows the room's temperature, humidity and pressure, updated every few seconds, powered from USB. <b>The blocks:</b> a microcontroller, a sensor, a display. Here, for the first time, none of them is a bare chip. Each is a <b>module</b>, a small board someone else designed around a chip, with the parts that chip needs already on it:</p>
+  <ul>
+    <li>The <b>ESP32 dev board</b> carries the ESP32 module (the chip, its flash memory and an antenna under a metal can), a 3.3 V regulator fed from USB's 5 V, a USB-to-serial chip for programming, and two buttons.</li>
+    <li>The <b>BME280 breakout</b> carries the tiny sensor (2.5 mm square, impossible to solder by hand) on pins you can plug in, often with pull-up resistors, and on some boards a regulator.</li>
+    <li>The <b>OLED module</b> carries a 128×64 screen and its SSD1306 driver chip.</li>
+  </ul>
+  <p>Modules save a lot of work, and they hide things: the question is always what's on the little board. The answer is the seller's page, or better, the module's own schematic. Here's this build's schematic, drawn with labels instead of long wires: every SDA label is one wire, every SCL label another, just like the supply labels in chapter 17.</p>
+  <div id="sch"></div>
+  <div class="q" data-answer="a">
+    <p>The two modules both have pins called SDA and SCL. What connects them?</p>
+    <ul><li data-k="a">Nothing but the labels: every pin labeled SDA is one wire, every SCL another, shared by all three boards</li><li data-k="b" data-says="I²C shares its wires among all devices; there's no separate pair per device.">Each module has its own pair of wires to the ESP32</li><li data-k="c" data-says="The pull-ups hold the lines high; they don't route anything.">The pull-up resistors</li></ul>
+    <div class="why">A label is a wire you don't have to draw. I²C is a bus (chapter 13): all devices share the same two lines, and each answers only to its own address: the sensor at 0x76, the display at 0x3C. That's why the build needs just four wires to each module, two of them power.</div>
+  </div>
+
+  <h2>2. Choosing the pins</h2>
+  <p>A microcontroller has dozens of pins, and the code can usually put a function on almost any of them. But not every pin is free: some are wired to the module's flash memory, some decide how the chip boots, some can only listen. The ESP32's datasheet lists them all; this table is what it says, for the pins a dev board brings out. Pick a job, then a pin for it.</p>
+  <div class="tasks" id="tasks"></div>
+  <div class="gpio" id="gpio"></div>
+  <p class="readout" id="o2"></p>
+  <p class="goal" id="g2">🎯 <b>Challenge:</b> place all five jobs on pins without a single red or orange warning.</p>
+  <details class="deeper"><summary>What the colors mean, from the datasheet</summary>
+    <ul>
+      <li><b>Flash (GPIO6–11):</b> wired to the module's own flash memory, where the program lives. Using them crashes the chip.</li>
+      <li><b>Strapping pins (GPIO0, 2, 5, 12, 15):</b> read once at reset to decide how to boot, each with a weak internal pull-up or pull-down setting its default. GPIO0 held low means "wait for a new program" (it's the BOOT button); GPIO12 (MTDI) held high selects 1.8 V for the flash, and on a module with 3.3 V flash the chip then fails to boot. You can use them after boot, if whatever you connect never overrides the default at reset.</li>
+      <li><b>GPIO1 and GPIO3:</b> UART0's TX and RX, the dev board's USB serial link: programming and printing. Leave them alone.</li>
+      <li><b>Input only (GPIO34–39):</b> no output driver and no internal pull-ups. Fine for a sensor's analog voltage; a button there needs its own pull-up resistor.</li>
+      <li><b>ADC1 (GPIO32–39) and ADC2:</b> both are analog inputs, but Espressif's documentation notes that ADC2 is also used by Wi-Fi; an ADC1 pin keeps an analog sensor out of that question.</li>
+    </ul>
+  </details>
+
+  <h2>3. Two devices, one bus, two addresses</h2>
+  <p>Each I²C device answers to a 7-bit address (chapter 13). Two devices with the same address on one bus both answer at once, and nothing works. The datasheets fix these: the BME280 is 0x76 with its SDO pin to ground, 0x77 with SDO to 3.3 V; the SSD1306 is 0x3C, or 0x3D on boards with an address jumper.</p>
+  <div class="q" data-answer="b">
+    <p>You want two BME280s, one inside and one by the window, on the same two wires. How?</p>
+    <ul><li data-k="a" data-says="Two devices answering the same address at once collide; the bus can't tell them apart.">Just connect them both: the ESP32 reads them in turn</li><li data-k="b">Tie one's SDO to ground (0x76) and the other's to 3.3 V (0x77)</li><li data-k="c" data-says="A second bus works too, but the address pin is the simple answer, and it's why the pin exists.">You can't: it needs a second bus</li></ul>
+    <div class="why">That's exactly what the address pin is for. A third sensor of the same kind would need a second I²C bus (the ESP32 has two) or a multiplexer chip. Check every device's address before you buy: two parts with fixed, identical addresses can't share a bus.</div>
+  </div>
+
+  <h2>4. Pull-ups, and how fast the bus can be</h2>
+  <p>I²C lines are open drain (chapter 13, and chapter 20's comparator): devices only pull down; a resistor pulls up. Every rising edge is that resistor charging the wire's capacitance, chapter 2's RC curve. The I²C specification sets the limits: an edge must rise from 30% to 70% of the supply within 1000 ns in standard mode (100 kHz) and 300 ns in fast mode (400 kHz), and a device needs only sink 3 mA while holding the line at 0.4 V. Modules often carry their own pull-ups, and all of them end up in parallel.</p>
+  <div class="row">
+    <label>BME280 board's pull-ups <select id="pa"><option value="0">none</option><option value="10000" selected>10 kΩ</option><option value="4700">4.7 kΩ</option></select></label>
+    <label>OLED board's <select id="pb"><option value="0">none</option><option value="10000">10 kΩ</option><option value="4700" selected>4.7 kΩ</option></select></label>
+    <label>your R1/R2 <select id="pc"><option value="0" selected>none</option><option value="10000">10 kΩ</option><option value="4700">4.7 kΩ</option><option value="2200">2.2 kΩ</option><option value="1000">1 kΩ</option></select></label>
+  </div>
+  <div class="row"><label>bus capacitance <input type="range" id="cb" min="20" max="400" step="10" value="100"> <span id="cbv"></span></label></div>
+  <p class="readout" id="o4"></p>
+  <p class="goal" id="g4">🎯 <b>Challenge:</b> with both modules' own pull-ups as they are and 200 pF of wire, get the bus fast-mode ready without asking any device to sink more than 3 mA.</p>
+  <p>So the schematic's R1 and R2 are a decision, not a rule: check what the modules already carry (two small resistors near the SDA and SCL pins, marked 103 for 10 kΩ or 472 for 4.7 kΩ), add yours only if the total is too weak, and never let the total drop below about 1 kΩ on 3.3 V.</p>
+  <details class="deeper"><summary>Why is the rise time 0.85 RC?</summary>
+    <ol>
+      <li>A line pulled up through R charges like chapter 2's capacitor: \(V(t) = V_s\,(1 - e^{-t/RC})\).</li>
+      <li>It reaches 30% of the supply at \(t_{30} = RC\ln\frac{1}{0.7}\) and 70% at \(t_{70} = RC\ln\frac{1}{0.3}\).</li>
+      <li>The rise time the I²C specification measures is the difference: \(RC\,(\ln\frac{1}{0.3} - \ln\frac{1}{0.7}) = RC\ln\frac{7}{3} \approx 0.847\,RC\).</li>
+      <li>With 4.7 kΩ and 100 pF: \(0.847 \times 4.7\text{k} \times 100\text{p} \approx 400\) ns: fine at 100 kHz, too slow for 400 kHz.</li>
+    </ol>
+  </details>
+
+  <h2>5. Power: peaks, not averages</h2>
+  <p>The sensor draws 3.6 µA reading once a second (its datasheet); the display more, depending on how many pixels are lit, but still little next to the ESP32. The ESP32 is different: its datasheet gives 240 mA while transmitting Wi-Fi, in short bursts, and recommends a 3.3 V supply that can deliver 500 mA or more. That rules out chapter 18's MCP1700 (250 mA) for the ESP32 itself: let the dev board's own regulator, fed by USB, power it, and use its 3V3 pin for the two small modules.</p>
+  <div class="q" data-answer="c">
+    <p>Your board works on USB, then resets every time Wi-Fi connects when you run it from a long, thin cable and a weak supply. Why?</p>
+    <ul><li data-k="a" data-says="The program is the same either way; what changed is the supply path.">A bug in the Wi-Fi code</li><li data-k="b" data-says="The display's few milliamps are nothing next to Wi-Fi's bursts.">The display draws too much</li><li data-k="c">A brown-out: the 240 mA burst drops volts in the cable's resistance and the supply sags below what the chip needs, so it resets</li></ul>
+    <div class="why">Chapter 5's wire resistance and sagging batteries, at the moment the radio wakes. The ESP32 watches its own supply and resets when it falls too low: a brown-out. Fixes: a short, thick cable and a 500 mA+ supply, and a bulk capacitor (100–470 µF) across 3V3 and GND near the board: chapter 2's stored charge, covering the burst.</div>
+  </div>
+
+  <h2>6. The breadboard</h2>
+  <p>Wide dev boards cover most of a breadboard's holes, so here the ESP32 sits off to the side on four jumper wires. The two modules plug their headers into row a, one strip per pin, and lean over the edge. Their pin orders differ (the BME280 board starts with VCC, the OLED with GND): wire by the printed labels, never by position.</p>
+  <div id="bb"></div>
+  <p class="goal" id="g6">🎯 <b>Challenge:</b> click the SDA strip (column 20, bottom half) and check that all three boards and one pull-up meet there.</p>
+
+  <h2>7. The program, in words</h2>
+  <p>The electronics are done; the rest is code, which this course leaves to the libraries' own examples. In words, the program the ESP32 runs is short:</p>
+  <ol class="steps">
+    <li>Start the I²C bus on GPIO21 (SDA) and GPIO22 (SCL), the Arduino ESP32 core's defaults.</li>
+    <li>Start the sensor at address 0x76 and the display at 0x3C, through their libraries (Adafruit's BME280 and SSD1306 libraries are the common ones; each comes with a working example).</li>
+    <li>Forever: read temperature, humidity and pressure; clear the screen; draw three lines of text; wait two seconds.</li>
+  </ol>
+  <p>Before any of that, run the <b>I²C scanner</b>, the first program for every new bus: it tries every address and prints the ones that answer. On this build it must print exactly 0x3C and 0x76. Fewer means a wiring or power problem; a different number means a different address than you assumed. The Arduino Wire library's examples include one.</p>
+
+  <h2>8. The shopping list</h2>
+  <div class="tablewrap"><table class="bom">
+    <tr><th>Ref</th><th>Part</th><th>Why this one</th></tr>
+    <tr><td>U1</td><td>ESP32 dev board (ESP32-WROOM-32 module)</td><td>Wi-Fi, two cores, USB programming, a 3.3 V regulator for itself.</td></tr>
+    <tr><td>U2</td><td>BME280 I²C breakout</td><td>Temperature, humidity and pressure. Check: 3.3 V or 5 V-tolerant board? which pull-ups?</td></tr>
+    <tr><td>U3</td><td>0.96″ 128×64 SSD1306 OLED, I²C (4-pin)</td><td>Address 0x3C; 3.3 V supply.</td></tr>
+    <tr><td>R1, R2</td><td>4.7 kΩ ¼ W (only if needed)</td><td>Pull-ups, after counting the modules' own (section 4).</td></tr>
+    <tr><td>—</td><td>100–470 µF electrolytic, 10 V+</td><td>Bulk capacitor on 3V3 against brown-outs.</td></tr>
+    <tr><td>—</td><td>A good USB cable and a 5 V, 1 A+ supply</td><td>Wi-Fi bursts need the current.</td></tr>
+  </table></div>
+
+  <h2>9. Power up and check</h2>
+  <ul class="check">
+    <li><b>1. Before the modules:</b> USB in, the bottom + rail <b class="v">3.3 V</b> from the board's 3V3 pin.</li>
+    <li><b>2. With the modules, no program yet:</b> SDA and SCL idle at <b class="v">3.3 V</b>, held up by the pull-ups. A line at 0 V is shorted to ground or a module is in backwards; a line floating near nothing means no pull-up at all.</li>
+    <li><b>3. The scanner:</b> exactly <b class="v">0x3C</b> and <b class="v">0x76</b>.</li>
+    <li><b>4. The real program:</b> the room's temperature on the screen, within a degree or two of a thermometer (the sensor warms a little from its neighbors on a breadboard).</li>
+  </ul>
+
+  <h2>10. What's wrong?</h2>
+  <div class="q" data-answer="b">
+    <p>The scanner finds nothing at all. Both modules' power LEDs are on.</p>
+    <ul><li data-k="a" data-says="Wrong addresses would still show up in a scan, just as numbers you didn't expect.">The addresses are wrong in the program</li><li data-k="b">SDA and SCL are swapped somewhere, or the bus is on different pins than the program uses</li><li data-k="c" data-says="With power LEDs on, the modules have power.">The modules aren't powered</li></ul>
+    <div class="why">A scan that finds nothing with powered devices is almost always the two signal wires: swapped at one module (their pin orders differ!), or plugged into pins other than the ones the program starts the bus on. Measure each line: both should idle at 3.3 V; then follow each label in the schematic.</div>
+  </div>
+  <div class="q" data-answer="a">
+    <p>You moved the button to GPIO12 because it was handy. Now the board won't start when the button is held at power-up, and sometimes not at all.</p>
+    <ul><li data-k="a">GPIO12 is a strapping pin: held high at reset, it tells the chip its flash runs on 1.8 V</li><li data-k="b" data-says="The USB link is GPIO1 and GPIO3.">It's the USB serial pin</li><li data-k="c" data-says="GPIO12 can drive and read like most pins; the problem is when it's read.">GPIO12 is input only</li></ul>
+    <div class="why">Section 2's warning, live. Any button or sensor on a strapping pin can change how the chip boots. Move it to a plain pin (GPIO4, 13, 14, 16–19, 23, 25–27, 32, 33).</div>
+  </div>
+
+  <h2>11. Make it yours</h2>
+  <ul>
+    <li><b>Log it:</b> the ESP32 has Wi-Fi: post each reading to a web page or a spreadsheet.</li>
+    <li><b>Battery power:</b> chapter 10's battery budget, with the ESP32's 10 µA deep sleep from its datasheet: wake every ten minutes, read, send, sleep. Which drains the battery more, the sleeping or the sending?</li>
+    <li><b>An outdoor sensor:</b> a second BME280 at 0x77 (section 3), on long wires: then section 4's capacitance gets real, and slower bus speeds or stronger pull-ups follow.</li>
+  </ul>
+
+  <p>Next: <a href="./23-design-your-own.html">design your own</a>, the last chapter: a design review where you find the mistakes, and a whole project, a thermostat fan, done by you with the steps of Part II.</p>
+  <p class="muted">Previous: <a href="./21-amplifier.html">A speaker amplifier</a> · All chapters: <a href="/learn/">Learn &amp; build</a>.</p>
+</main>
+<script type="module" src="/learn-kit.js"></script>
+<script type="module">
+import { schematic, breadboard, link } from "/learn/build.js";
+import { P22 } from "/learn/electronics/projects.js";
+const $ = (id) => document.getElementById(id);
+const say = (text, mood = "happy") => dispatchEvent(new CustomEvent("blip:say", { detail: { text, mood } }));
+const done = (id, msg) => { const el = $(id); if (!el.classList.contains("done")) { el.classList.add("done"); el.insertAdjacentHTML("beforeend", " ✓"); say(msg, "happy"); } };
+
+const sch = schematic($("sch"), P22, { label: "Schematic: an ESP32 dev board's 3V3, GPIO21, GPIO22 and GND, labeled +3.3V, SDA, SCL; a BME280 breakout and an OLED module with the same labels; two 4.7 kΩ pull-ups from +3.3V to SDA and SCL.", hint: "Pick a board or a resistor to see what it is and why it's there. (No simulation here: the lab has no microcontroller.)" });
+const bb = breadboard($("bb"), P22, { onHole: (h) => { if (/^[f-j]20$/.test(h)) done("g6", "The ESP32's GPIO21, both modules' SDA and R1: one strip. The bus is right."); } });
+link(sch, bb);
+
+// section 2: choosing pins (ESP32 datasheet v5.3: flash pins, strapping pins and defaults, input-only GPIO34–39; ADC1 = GPIO32–39)
+const PINS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36, 39];
+const FLASH = [6, 7, 8, 9, 10, 11], STRAP = { 0: "strapping pin (boot mode; it's the BOOT button)", 2: "strapping pin (pulled down at reset; on some boards an LED)", 5: "strapping pin (pulled up at reset)", 12: "strapping pin MTDI: high at reset selects 1.8 V flash and the board won't boot", 15: "strapping pin MTDO (pulled up at reset)" }, UART = { 1: "UART0 TX: the USB serial link", 3: "UART0 RX: the USB serial link" }, INONLY = [34, 35, 36, 39], ADC1 = [32, 33, 34, 35, 36, 39];
+const TASKS = [["SDA", "I²C data"], ["SCL", "I²C clock"], ["LED", "an LED (output)"], ["button", "a button (input, to ground)"], ["light", "a light sensor (analog)"]];
+const pick = {}; let task = "SDA";
+$("tasks").innerHTML = TASKS.map(([k, d]) => `<button type="button" data-t="${k}" aria-pressed="${k === task}">${k}: ${d}</button>`).join("");
+$("tasks").onclick = (e) => { const b = e.target.closest("button[data-t]"); if (!b) return; task = b.dataset.t; $("tasks").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.t === task)); };
+function verdict(t, n) {
+  if (FLASH.includes(n)) return ["bad", `GPIO${n} is wired to the module's flash: never use it`];
+  if (UART[n]) return ["bad", `GPIO${n} is ${UART[n]}`];
+  if (INONLY.includes(n) && ["SDA", "SCL", "LED"].includes(t)) return ["bad", `GPIO${n} is input only: it can't drive ${t === "LED" ? "an LED" : `the ${t} line low`}`];
+  if (STRAP[n]) return ["warn", `GPIO${n} is a ${STRAP[n]}: whatever you connect must never override it at reset`];
+  if (t === "light" && !ADC1.includes(n)) return ["warn", `GPIO${n} isn't an ADC1 pin: pick one of GPIO32–39 for the analog sensor`];
+  if (t === "button" && INONLY.includes(n)) return ["warn", `GPIO${n} has no internal pull-up: the button needs its own 10 kΩ to 3.3 V`];
+  return ["ok", `GPIO${n}: fine for ${t}${(t === "SDA" && n === 21) || (t === "SCL" && n === 22) ? " (the Arduino core's default)" : ""}`];
+}
+function drawPins(msg = "") {
+  const used = Object.fromEntries(Object.entries(pick).map(([t, n]) => [n, t]));
+  $("gpio").innerHTML = PINS.map((n) => { const t = used[n], v = t ? verdict(t, n)[0] : ""; return `<button type="button" data-n="${n}" class="${FLASH.includes(n) ? "flash" : ""} ${t ? (v === "ok" ? "used" : v) : ""}" title="${t ?? ""}">${n}${t ? `<br>${t}` : ""}</button>`; }).join("");
+  const all = TASKS.every(([t]) => pick[t] != null), clean = all && TASKS.every(([t]) => verdict(t, pick[t])[0] === "ok");
+  $("o2").textContent = msg || (all ? (clean ? "all five placed, no warnings" : "all placed; some pins have warnings (orange or red)") : "pick a job above, then a GPIO number");
+  if (clean) done("g2", "Five jobs, five safe pins. That's the datasheet's pin table doing your debugging in advance.");
+}
+$("gpio").onclick = (e) => {
+  const b = e.target.closest("button[data-n]"); if (!b) return; const n = +b.dataset.n;
+  for (const [t, m] of Object.entries(pick)) if (m === n && t !== task) delete pick[t];
+  pick[task] = n; const [v, why] = verdict(task, n); drawPins(why); if (v === "bad") say("Not that one!", "sad");
+};
+drawPins();
+
+// section 4: pull-ups in parallel and the rise time they allow (I²C spec, NXP UM10204)
+function bus() {
+  const rs = ["pa", "pb", "pc"].map((id) => +$(id).value).filter(Boolean), C = +$("cb").value * 1e-12; $("cbv").textContent = `${$("cb").value} pF`;
+  if (!rs.length) { $("o4").textContent = "no pull-up at all: the lines never go high and nothing works"; return; }
+  const R = 1 / rs.reduce((s, r) => s + 1 / r, 0), tr = 0.847 * R * C * 1e9, sink = ((3.3 - 0.4) / R) * 1000;
+  const mode = tr <= 300 ? "fast mode (400 kHz) OK" : tr <= 1000 ? "standard mode (100 kHz) only" : "too slow even for 100 kHz";
+  $("o4").textContent = `pull-up ${R >= 1000 ? (R / 1000).toFixed(2) + " kΩ" : R.toFixed(0) + " Ω"} in total · rise time ${tr.toFixed(0)} ns: ${mode} · a device pulling low sinks ${sink.toFixed(2)} mA ${sink > 3 ? "(over the 3 mA a device needs to manage!)" : "(within 3 mA)"}`;
+  if (+$("pa").value === 10000 && +$("pb").value === 4700 && +$("cb").value === 200 && tr <= 300 && sink <= 3) done("g4", "Adding 2.2 kΩ: about 1.3 kΩ in total, fast enough at 200 pF, and still under 3 mA. A decision, not a rule.");
+}
+for (const id of ["pa", "pb", "pc", "cb"]) $(id).oninput = bus;
+bus();
+window.blipContext = () => ({ page: "Electronics chapter 22: an ESP32 dev board with a BME280 and an SSD1306 OLED on I²C (modules vs chips, choosing pins: strapping/input-only/flash/ADC1, addresses 0x76/0x3C, pull-ups in parallel and rise time, 240 mA Wi-Fi bursts and brown-outs)", pins: pick });
+</script>
+</body>
+</html>

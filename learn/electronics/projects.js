@@ -312,3 +312,40 @@ export const P21 = {
     ],
   },
 };
+
+export const P22 = {
+  noLab: true, // nothing to simulate: the lab has no microcontroller
+  parts: [
+    { type: "module", at: [0, 0], title: "ESP32 dev board", w: 7, left: [], right: ["3V3", null, "GPIO21", null, "GPIO22", null, "GND"] },
+    w([7, 1], [9, 1]), flag([9, 1], "+3.3V"), w([7, 3], [9, 3]), flag([9, 3], "SDA"), w([7, 5], [9, 5]), flag([9, 5], "SCL"), w([7, 7], [9, 7]), gnd([9, 7]),
+    { type: "module", at: [14, 0], title: "BME280", w: 6, left: ["VCC", null, "GND", null, null, "SCL", null, "SDA", null, "CSB", null, "SDO"], right: [] },
+    w([14, 1], [12, 1]), flag([12, 1], "+3.3V"), w([14, 3], [12, 3]), gnd([12, 3]), w([14, 6], [12, 6]), flag([12, 6], "SCL"), w([14, 8], [12, 8]), flag([12, 8], "SDA"),
+    w([14, 10], [12, 10]), flag([12, 10], "+3.3V"), w([14, 12], [12, 12]), gnd([12, 12]),
+    { type: "module", at: [25, 0], title: "OLED 128×64", w: 7, left: ["GND", null, null, "VCC", null, "SCL", null, "SDA"], right: [] },
+    w([25, 1], [23, 1]), gnd([23, 1]), w([25, 4], [23, 4]), flag([23, 4], "+3.3V"), w([25, 6], [23, 6]), flag([23, 6], "SCL"), w([25, 8], [23, 8]), flag([23, 8], "SDA"),
+    flag([0, 11], "+3.3V"), { type: "resistor", a: [0, 11], b: [3, 11], ohms: 4.7e3 }, flag([3, 11], "SDA"),
+    flag([0, 15], "+3.3V"), { type: "resistor", a: [0, 15], b: [3, 15], ohms: 4.7e3 }, flag([3, 15], "SCL"),
+  ],
+  why: {
+    U1: { name: "ESP32 dev board", job: "The brains: an ESP32 module (the chip, its flash memory and an antenna under a metal can) on a board that adds a USB-to-serial chip for programming, a 3.3 V regulator fed from USB's 5 V, and two buttons. You power and program it through one USB cable.", value: "Any ESP32 board works; its 3V3 pin can also feed small modules like these two." },
+    U2: { name: "BME280 breakout", job: "Temperature, humidity and air pressure in one sensor, on a small board that brings its pins out to a header. It speaks I²C (chapter 13).", value: "The bare sensor runs on 1.71–3.6 V and is destroyed above 4.25 V: power it from 3.3 V. CSB tied high selects I²C; SDO picks the address: to ground it's 0x76, to 3.3 V it's 0x77." },
+    U3: { name: "128×64 OLED display", job: "A small screen with an SSD1306 driver chip on it, also on I²C, at address 0x3C (0x3D with a jumper on some boards). Two devices, two different addresses: they share the two wires." },
+    R1: { name: "SDA pull-up", job: "I²C lines are open drain (chapter 13): every device can only pull them low, so a resistor pulls each one high. One pull-up per line for the whole bus.", value: "4.7 kΩ to 3.3 V: low enough for fast-mode edges on a short bus (section 4), high enough that a device pulling low sinks only 0.7 mA. Many breakouts carry their own: count them before adding these." },
+    R2: { name: "SCL pull-up", job: "The same for the clock line." },
+  },
+  bb: {
+    cols: 24, margin: 90,
+    parts: [
+      { ref: "U1", kind: "off", legs: ["B+1", "j20", "j22", "B-2"], box: [-44, 300], label: "ESP32", colors: ["#d33", "#36c", "#db0", "#222"], note: "The dev board sits off the breadboard on four jumper wires (3V3, GPIO21, GPIO22, GND): wide boards cover most of a breadboard's holes, so this is the easy way." },
+      { kind: "wire", from: "B-3", to: "T-3", color: "black" },
+      { ref: "U2", kind: "module", legs: ["a3", "a4", "a5", "a6", "a7", "a8"], label: "BME280", note: "Its header plugged into row a, one strip per pin; the little board leans over the top edge. Pin order is printed on it, and varies between sellers: wire by the labels." },
+      { kind: "wire", from: "b3", to: "B+3", color: "red" }, { kind: "wire", from: "c4", to: "B-4", color: "black" },
+      { kind: "wire", from: "d5", to: "g22", color: "yellow" }, { kind: "wire", from: "e6", to: "g20", color: "blue" },
+      { kind: "wire", from: "b7", to: "B+7", color: "red" }, { kind: "wire", from: "c8", to: "B-8", color: "black" },
+      { ref: "U3", kind: "module", legs: ["a14", "a15", "a16", "a17"], label: "OLED", color: "#1d3557", note: "Another pin order: GND first. Same rule: wire by the labels." },
+      { kind: "wire", from: "b14", to: "B-14", color: "black" }, { kind: "wire", from: "c15", to: "B+15", color: "red" },
+      { kind: "wire", from: "d16", to: "h22", color: "yellow" }, { kind: "wire", from: "e17", to: "h20", color: "blue" },
+      { ref: "R1", kind: "res", legs: ["B+19", "i20"] }, { ref: "R2", kind: "res", legs: ["B+21", "i22"] },
+    ],
+  },
+};
