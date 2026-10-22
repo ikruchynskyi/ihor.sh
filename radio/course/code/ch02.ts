@@ -41,7 +41,21 @@ for (let k = 0; k < 4; k++) z = mul(z, j);
 near(z.I, 1, "four quarter turns"); near(z.Q, 0, "four quarter turns");
 console.log("1 × j × j × j × j =", { I: +z.I.toFixed(12), Q: +z.Q.toFixed(12) });
 
-// 5. The arrow at angle θ, built from n tiny sideways steps: (1 + j·θ/n)^n.
+// 5. Multiplying by z = c + jd is the matrix with columns (c, d) (where 1 lands) and (−d, c) (where j lands).
+{
+  let worst = 0;
+  for (let t = 0; t < 1000; t++) {
+    const z: Arrow = { I: Math.random() * 4 - 2, Q: Math.random() * 4 - 2 }, v: Arrow = { I: Math.random() * 4 - 2, Q: Math.random() * 4 - 2 };
+    const col1 = mul(z, { I: 1, Q: 0 }), col2 = mul(z, j);          // where the two steps land: (c, d) and (−d, c)
+    const byArrow = mul(z, v), byMatrix = { I: v.I * col1.I + v.Q * col2.I, Q: v.I * col1.Q + v.Q * col2.Q }; // a·col1 + b·col2
+    near(col2.I, -z.Q, "j lands at (−d, c)"); near(col2.Q, z.I, "j lands at (−d, c)");
+    worst = Math.max(worst, Math.abs(byArrow.I - byMatrix.I), Math.abs(byArrow.Q - byMatrix.Q));
+  }
+  near(worst, 0, "arrow multiplication vs the matrix");
+  console.log("multiplying by z = c + jd vs the matrix [c −d; d c]: same answer for 1000 random arrows");
+}
+
+// 6. The arrow at angle θ, built from n tiny sideways steps: (1 + j·θ/n)^n.
 const θ = Math.PI / 2; // a quarter turn, 90°
 for (const n of [1, 4, 30, 1000, 100000]) {
   const step: Arrow = { I: 1, Q: θ / n };

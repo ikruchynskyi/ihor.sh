@@ -102,7 +102,7 @@ cos = (a @ b) / (np.linalg.norm(a) * np.linalg.norm(b))
 print("angle between a and b:", np.degrees(np.arccos(cos)).round(1), "degrees")
 </textarea></div>
 
-  <h2>3. A matrix moves the whole plane</h2>
+  <h2 id="matrix">3. A matrix moves the whole plane</h2>
   <p>Here's the big idea. Two special arrows, <span class="g">î</span> = (1, 0) and <span class="r">ĵ</span> = (0, 1), are the plane's "steps". Any vector is "x of the first step plus y of the second". Now <b>drag the tips of î and ĵ</b>. The grid follows, and so does every vector on it, because <span class="b">v</span> is still x of the new î plus y of the new ĵ.</p>
   <div class="q" data-answer="b">
     <p>Predict before you drag: the <b>Rotate 90°</b> button sends <span class="g">î</span> to (0, 1) and <span class="r">ĵ</span> to (−1, 0). Where does <span class="b">v</span> = (2, 1) land?</p>
@@ -113,6 +113,7 @@ print("angle between a and b:", np.degrees(np.arccos(cos)).round(1), "degrees")
   <div class="row"><button id="rot">Rotate 90°</button><button id="shear">Shear</button><button id="flip">Flip</button><button id="squash">Squash flat</button><button id="reset3">Reset</button></div>
   <p>That's all a 2×2 matrix is: the columns say where <span class="g">î</span> and <span class="r">ĵ</span> land. Multiplying a vector by the matrix means "find where it lands". The <b>shaded square</b> started with area 1; its new area is the <b>determinant</b>. It goes negative when space gets flipped over, and zero when the plane is squashed onto a line. Then information is lost: many vectors land on the same spot, and you can't undo the move.</p>
   <p class="gist">A matrix is a move of the whole plane. Its columns are where the two steps land, and every other arrow follows, because every arrow is made of those steps.</p>
+  <p>Where else this move shows up: a software radio works with arrows all day, and turning one arrow by another is exactly this, the matrix whose columns are (c, d) and (−d, c), a turn plus a stretch with no shear or flip. <a href="/radio/course/02-arrows-as-numbers.html#multiply">Radio from scratch, chapter 2</a> builds a receiver on it.</p>
   <details class="deeper"><summary>Why do two columns decide where everything goes?</summary>
     <ol>
       <li>Any arrow is a recipe: \(v = x\,\hat\imath + y\,\hat\jmath\).</li>

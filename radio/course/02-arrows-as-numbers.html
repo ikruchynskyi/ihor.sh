@@ -166,6 +166,17 @@
     <ul>
       <li>This is "lengths multiply, angles add", written in the sideways-and-up language. You don't need to memorize it: multiply out the brackets like ordinary algebra, and wherever <b>j·j</b> appears, replace it with <b>−1</b> (a quarter turn twice is a flip). That single substitution is where the <b>−bd</b> comes from.</li>
     </ul>
+    <details class="deeper"><summary>Optional: isn't this a matrix? (Yes.)</summary>
+      <p>If you've met matrices, the formula above may look familiar. It is one. Nothing later in this course needs it, but it's a useful second view.</p>
+      <ol>
+        <li>Fix the multiplier z = c + jd and ask where it sends the grid's two steps: the sideways step 1 and the up step j.</li>
+        <li>1 lands on z itself: (c, d). j lands on z × j, which is z turned a quarter turn: (−d, c).</li>
+        <li>Every arrow a + jb is a recipe, "a sideways steps and b up steps", and multiplying keeps the recipe: a·(c, d) + b·(−d, c) = (ac − bd, ad + bc), the formula above.</li>
+        <li>A move of the whole plane that's fixed by where the two steps land is what a <b>matrix</b> is, with those landing spots as its columns:</li>
+      </ol>
+      <p class="formula">\[ \begin{pmatrix} c & -d \\ d & c \end{pmatrix} \begin{pmatrix} a \\ b \end{pmatrix} = \begin{pmatrix} ac - bd \\ ad + bc \end{pmatrix} \]</p>
+      <p>Matrices in general can also shear, flip or squash the plane. Multiplying by an arrow only ever turns and stretches it, because its two columns are always the same length and at right angles. Turning is all a radio needs, so two numbers do the job of a matrix's four. To drag the two steps yourself and watch any matrix move the plane, see <a href="/ai/01-matrices-are-moves.html#matrix">AI from scratch, chapter 1: a matrix moves the whole plane</a>. This chapter's script checks the match: the same answer for 1000 random arrows.</p>
+    </details>
     <math display="block">
       <msup><mi>e</mi><mrow><mi>j</mi><mi>θ</mi></mrow></msup><mo>=</mo><mi style="color:var(--green)">cos</mi><mo>&#x2061;</mo><mi>θ</mi><mo>+</mo><mi>j</mi><mo>·</mo><mi style="color:var(--yellow)">sin</mi><mo>&#x2061;</mo><mi>θ</mi>
     </math>
@@ -203,6 +214,7 @@ mul({ I: 0, Q: 1 }, { I: 0, Q: 1 })              // j × j  →  { I: -1, Q: 0 }
 (length 2, 30°) × (length 1.5, 45°) = (length 3.000, 75.000°)
 (1, 2) + (3, −1) = { I: 4, Q: 1 }
 1 × j × j × j × j = { I: 1, Q: 0 }
+multiplying by z = c + jd vs the matrix [c −d; d c]: same answer for 1000 random arrows
 n =      1: length 1.86210, angle 57.518°
 n =      4: length 1.33221, angle 85.760°
 n =     30: length 1.04192, angle 89.918°
