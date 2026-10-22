@@ -20,7 +20,7 @@
     </ul>
   </div>
 
-  <p>Russia's Meteor-M weather satellites circle the Earth from pole to pole, 830 km up, and broadcast what their cameras see, unencrypted, to anyone with a $30 dongle and a homemade antenna. The signal is called <b>LRPT</b> (low rate picture transmission): around 137.1 or 137.9 MHz, 72,000 symbols a second, a strip of picture at a time as the satellite sweeps over you. Chapter 20's TV was analog: the voltage <em>was</em> the brightness. This one is digital: numbers, packed, protected and modulated. Everything that makes digital radio work is in it.</p>
+  <p>Russia's Meteor-M weather satellites circle the Earth from pole to pole, 830 km up, and broadcast what their cameras see, unencrypted, to anyone with a $30 dongle and a homemade antenna. The signal is called <b>LRPT</b> (low rate picture transmission): around 137.1 or 137.9 MHz, 72,000 symbols a second (a symbol is one piece of data sent as one arrow position: section 2), a strip of picture at a time as the satellite sweeps over you. Chapter 20's TV was analog: the voltage <em>was</em> the brightness. This one is digital: numbers, packed, protected and modulated. Everything that makes digital radio work is in it.</p>
   <p>This chapter and the next build a link with the same structure (we simplified two layers, noted where they come up). This one gets from the antenna to clean symbols: catching a signal whose frequency slides, finding where each symbol starts, and reading its arrow. <a href="./22-surviving-errors.html">Chapter 22</a> turns symbols into a picture that survives the errors. The question for this chapter: <b>how does a receiver read 72,000 arrows a second, when it doesn't know their frequency, their timing or their data?</b></p>
 
   <!-- 1 -->
@@ -94,6 +94,7 @@
   <h2 id="lock">Finding the frequency: the 4th-power trick and the Costas loop</h2>
   <p>To remove the Doppler, the receiver first has to measure it, without knowing the data. The trick: raise every symbol to the 4th power (as a complex number, chapter 2: multiply its angle by four). The four QPSK angles, 45° + 90°·k, all become 180°: the data disappears, and what's left spins at exactly <b>four times</b> the frequency error. One FFT (chapter 4) of those 4th powers shows a single spike; divide its frequency by four.</p>
   <p class="formula">\[ z = e^{j(\pi/4 + k\pi/2 + \Delta\omega\, n)} \quad\Rightarrow\quad z^4 = e^{j(\pi + 2k\pi + 4\Delta\omega\, n)} = -e^{j\,4\Delta\omega\, n} \]</p>
+  <p>In that line, n counts symbols, k (0 to 3) is which of the four positions a symbol uses, and Δω is the frequency error as an angle per symbol. Times four, the data's part becomes a whole number of turns (2kπ) and drops out.</p>
   <p>Then a <b>Costas loop</b> keeps it locked as the Doppler slides: for each symbol, compare it to the nearest of the four points, and nudge the receiver's phase (and, more slowly, its frequency) by the angle it's off. It's chapter 11's control loop, steering an angle instead of a clock.</p>
   <div class="q" data-answer="c">
     <p>A Costas loop can lock with the constellation rotated by 0°, 90°, 180° or 270°: all four look identical. How does the receiver find out which is right?</p>
