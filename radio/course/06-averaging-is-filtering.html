@@ -39,7 +39,7 @@
 
   <!-- 2 -->
   <h2 id="why">Why it works: averaging cancels spinning</h2>
-  <p>You've already seen the reason, in chapter 4's winding machine (<a class="back" href="./04-winding-machine.html#spectrum">↩ the center of mass</a>). Think of the input as spinning arrows. Averaging L samples of one arrow means averaging L of its positions: a <b>center of mass</b>.</p>
+  <p>You've already seen the reason, in chapter 4's winding machine (<a class="back" href="./04-winding-machine.html#spectrum">↩ the center of mass</a>). Think of the input as spinning arrows. Averaging L samples of one arrow means averaging L of its positions: a <b>center of mass</b>. (Speeds in this section are in turns per sample: 0.125 turns per sample is one full turn every 8 samples.)</p>
   <ul>
     <li>A <b>slow</b> arrow barely moves during those L samples, so all its positions point roughly the same way, and their average is nearly as long as the arrow. It survives.</li>
     <li>A <b>fast</b> arrow goes all the way round during those L samples, so its positions point in every direction and average out to almost nothing. It's removed.</li>
@@ -53,7 +53,7 @@
   </div>
 
   <p>On the left, the faint blue arrows are the L positions being averaged, and the yellow one is their average. On the right, the grey curve shows how much of the arrow survives for <em>every</em> speed. This curve is the filter's <b>frequency response</b>: what the filter does to each frequency.</p>
-  <p>Try speed 0.125 with an average of 8: exactly one full turn during the window, and the average is exactly zero. Every speed that makes a whole number of turns cancels completely: those are the dips in the curve. Between the dips, though, the curve bounces back up: a plain average lets fast things leak through in bumps. We can do better.</p>
+  <p>Try speed 0.125 with an average of 8: exactly one full turn during the 8 samples being averaged, and the average is exactly zero. Every speed that makes a whole number of turns cancels completely: those are the dips in the curve. Between the dips, though, the curve bounces back up: a plain average lets fast things leak through in bumps. We can do better.</p>
 
   <!-- 3 -->
   <h2 id="weights">Weights shape what gets through</h2>
@@ -79,6 +79,7 @@
   <p class="gist">A filter is a weighted average. Its effect on each speed is the winding machine run on its weights, so choosing the weights (a windowed sinc) chooses what passes.</p>
   <details class="deeper"><summary>Why is the frequency response the winding machine run on the weights?</summary>
     <ol>
+      <li>Names (Writing it down, below, uses them too): n counts samples, x[n] is input sample n and y[n] output sample n, h<sub>k</sub> is weight number k, and Σ means "add these up".</li>
       <li>Feed the filter one arrow of speed f: sample n is the arrow at angle 2πfn.</li>
       <li>Each output is a weighted sum of the last N inputs: y[n] = Σ h_k · x[n − k].</li>
       <li>The input k samples ago is today's arrow turned back by 2πfk, so y[n] = today's arrow × Σ h_k · (the arrow at angle −2πfk).</li>
