@@ -124,3 +124,4 @@ Verified by:     the commands you ran and the cold-learner read
 | `import torch` in an in-browser Pyodide code box, even though the plan said lessons can't run PyTorch | It must run where it will run: open the page and press Run |
 | An SVM primal written with slack variables but no \(C\sum\xi_i\) penalty; KKT and ⟨·,·⟩ used with nothing on the path teaching them | Formulas are checked like code; use the path's notation |
 | The "NLI in milliseconds" claim removed from a plan, then shipped anyway in a concept card | Grep cards, quizzes and commit messages for removed claims too |
+| Folded code boxes given `class="code"`, a class `learn-kit.js` owns (runnable code editors): its setup threw on them, and every radio chapter lost its formulas and pictures | Never reuse a class a shared script owns; after any markup change, open the page on the real server and check it draws, renders math and logs no errors |
