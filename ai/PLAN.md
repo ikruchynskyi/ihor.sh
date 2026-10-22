@@ -601,6 +601,7 @@ Other courses (`COURSE=…`, run in `ai/review/run-COURSE/`; one table each, add
 | electronics | 17–23 | 2026-10-22 | Gemini QA pass, not a logged review (it read answers from the markup; see learn/electronics/PLAN.md) | 43bb0b8 skill rules | a logged run: `COURSE=electronics L init --from 17` |
 | electronics | 17–23 | 2026-10-22 | Logged run, invalid: batch-answered (ch17's 7 answers in 1 s, options quoted as reasons), all done in ~3 min | 7d13507 tools refuse batching | rerun: `COURSE=electronics L init --fresh --from 17` |
 | electronics | 17 | 2026-10-22 | run 2 (Gemini): 7 min, 6/6 right first try + 1 open answer, confidence 4; one real gap (RST unexplained before its question) | 75c5b82 | — |
+| electronics | 18 | 2026-10-22 | run 2: 5 min, confidence 4; hardest: the two regulators' opposite pinouts (taught in §3, tested in §9: no change) | — | — |
 
 
 ## 11. Guardrail review of the math (Start 3 and stage 1), 2026-10-22
