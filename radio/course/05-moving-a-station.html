@@ -19,13 +19,13 @@
     </ul>
   </div>
 
-  <p>Chapter 4 gave us a picture of the whole slice of radio band the dongle captures: dozens of stations side by side. But you want to listen to <b>one</b> of them. (An old radio did this with a coil and a capacitor, a tuned circuit that only rings at one station's frequency: <a href="/learn/electronics/03-coils-and-resonance.html">try it in Electronics ch. 3</a>. We'll do it with numbers instead.) Why not build a separate filter at whatever frequency your station happens to sit on? Because — as <a href="./06-averaging-is-filtering.html">chapter 6</a> will show — a filter centered at <b>0 Hz</b> is just a simple moving average that cancels everything spinning and keeps what stands still. By sliding the station we want to <b>0 Hz</b> first, we can use that one simple 0 Hz filter and demodulator (<a href="./09-fm-listening-to-the-speed.html">chapter 9</a>) for every station on the dial.</p>
+  <p>Chapter 4 gave us a picture of the whole slice of radio band the dongle captures: dozens of stations side by side. But you want to listen to <b>one</b> of them. (An old radio did this with a coil and a capacitor, a tuned circuit that only rings at one station's frequency: <a href="/learn/electronics/03-coils-and-resonance.html">try it in Electronics ch. 3</a>. We'll do it with numbers instead.) Why not build a separate filter at whatever frequency your station happens to sit on? Because the tools that come next (a filter that keeps one station, chapter 6, and the step that turns it into sound, chapter 9) are far simpler when the station sits in one fixed place: the center, 0 Hz, where its arrow isn't spinning round at all. So instead of building new tools for every station, we slide whichever station you want to the center, and use the same tools every time.</p>
   <p>The station you want is rarely there. When you ask for 98.7 MHz, the dongle is deliberately tuned a quarter of a MHz lower (to avoid its own spike at 0 Hz, <a class="back" href="./04-winding-machine.html#real">↩ ch. 4</a>), so 98.7 shows up at +250 kHz. This chapter is about sliding it to the center.</p>
 
   <!-- 1 -->
   <h2 id="shift">Slide the whole band</h2>
   <p>You already know the trick from chapter 4: multiplying by an arrow spinning backwards <b>subtracts</b> its speed from everything (<a class="back" href="./04-winding-machine.html#unspin">↩ un-spinning</a>). There, we used it to test for one speed at a time. Here we use it to <em>move</em> things: multiply the whole signal, sample by sample, by an arrow spinning backwards at 200 kHz, and every station in the band slows down by exactly 200 kHz.</p>
-  <p>On the left, in slow motion, is the arrow of the FM station at +200 kHz. On the right is the whole band. Slide:</p>
+  <p>The demo band below has an FM station at +200 kHz. On the left, in slow motion, is its arrow. On the right is the whole band. Slide:</p>
 
   <div class="q" data-num="-150" data-tol="0" data-unit="kHz"><p>Predict: you multiply the whole band by an arrow spinning backwards at 250 kHz. Where does a station at +100 kHz end up?</p>
     <div class="why">Every frequency moves down by 250 kHz: 100 − 250 = −150 kHz.</div>
@@ -46,11 +46,11 @@
     <li><b>Push it far</b> (past ±300 kHz) and stations fall off one edge and come back on the other. That's chapter 3's sawtooth (<a class="back" href="./03-taking-snapshots.html#fold">↩ the folding graph</a>): in sampled data, frequencies live on a circle.</li>
   </ul>
   <p>This operation is called <b>mixing</b>, or more precisely <b>frequency shifting</b>, and the spinning arrow you multiply by is the <b>local oscillator</b>.</p>
-  <p class="gist">Multiplying every sample by an arrow spinning backwards at f₀ slides the whole band down by f₀. With both shadows, everything moves one way only.</p>
+  <p class="gist">Multiplying every sample by an arrow spinning backwards at some speed f₀ slides the whole band down by f₀. With both shadows, everything moves one way only.</p>
   <details class="deeper"><summary>Why does every station move by the same amount?</summary>
     <ol>
       <li>A station is an arrow spinning at its frequency f.</li>
-      <li>The NCO's arrow spins backwards at f₀.</li>
+      <li>Our own arrow (the local oscillator) spins backwards at f₀.</li>
       <li>Multiplying adds the angles (chapter 2), so after t seconds the product's angle is that of a speed f − f₀.</li>
       <li>The band is a sum of stations, and multiplying a sum multiplies each part: every station gets the same treatment.</li>
       <li>So every frequency moves down by exactly f₀, and nothing changes shape.</li>
@@ -72,7 +72,7 @@
   </div>
 
   <p>With only cos, <b>every station appears twice</b>: once shifted down by 200 kHz, as we wanted, and once shifted <em>up</em> by 200 kHz. Here's why. A cosine is what you get when you add an arrow spinning forward and an arrow spinning backward, at half length each: their sideways parts add, and their up-down parts cancel. (That's chapter 1's game in reverse: the sideways shadow can't tell the two directions apart, because it contains both.) So multiplying by cos is like multiplying by both arrows at once, which moves every station in both directions.</p>
-  <p>Multiplying by the <em>full</em> arrow (cos for I and sin for Q, chapter 2's complex multiplication) moves everything one way only. That's one more reason software radios work with I and Q.</p>
+  <p>Multiplying by the <em>full</em> arrow (cos for I and sin for Q, chapter 2's arrow multiplication) moves everything one way only. That's one more reason software radios work with I and Q.</p>
   <div class="ponder"><span class="tag">Pause and ponder</span>Each copy in the one-shadow picture is about 6 dB weaker than the original. Why? (Hint: each of the two half-length arrows inside a cosine carries a quarter of the power, and 10·log10(¼) ≈ −6.)</div>
 
   <!-- 3 -->
