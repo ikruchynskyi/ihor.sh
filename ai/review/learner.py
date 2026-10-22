@@ -116,7 +116,7 @@ class Lesson(HTMLParser):
         if tag == "div" and "q" in c:
             kind = "choice" if "data-answer" in d else "number" if "data-num" in d else "open"
             self.qs.append({"n": len(self.qs) + 1, "kind": kind, "key": d.get("data-answer"), "num": d.get("data-num"),
-                            "tol": float(d.get("data-tol") or 0.01), "stem": "", "options": {}, "says": {}, "why": ""})
+                            "tol": float(d.get("data-tol") or 0.01), "stem": "", "options": {}, "says": {}, "why": "", "sec": self.sec})
             self.out.append(f"\n\nQ{len(self.qs)} [" + {"choice": "pick one letter", "number": "type a number", "open": "think, then answer in words"}[kind] + "]: ")
         elif tag == "li" and self.q() and "data-k" in d:
             self.q()["options"][d["data-k"]] = ""
@@ -213,6 +213,16 @@ def cmd_show(args):
 def flag(args, name, default=None):
     return args[args.index(name) + 1] if name in args and args.index(name) + 1 < len(args) else default
 
+def used_secs(stem):
+    """Sections whose widget was used: a `B look --section N` followed by a `B do` before the next look."""
+    used, cur = set(), None
+    for e in lines(RUN / "log.jsonl"):
+        if e["kind"] != "ui" or e.get("lesson") != stem: continue
+        if e.get("action") == "look": cur = e.get("section")
+        elif e.get("action") == "do" and cur: used.add(cur)
+    return used
+
+
 def cmd_answer(args):
     if len(args) < 3: sys.exit('answer LESSON Q VALUE --quote "the words from the lesson you relied on"')
     stem, n, value = lesson(args[0]), int(args[1]), args[2]; allowed(stem)
@@ -222,6 +232,9 @@ def cmd_answer(args):
     norm = lambda t: re.sub(r"\W+", " ", t or "").strip().lower()   # the option itself, or barely more, justifies nothing
     if quote and q["options"] and any(norm(quote) and (norm(quote) in norm(o) or (norm(o) in norm(quote) and len(norm(quote)) <= 1.3 * len(norm(o)) + 5)) for o in q["options"].values() if norm(o)):
         sys.exit("That quote is one of the options, so it can't justify choosing it. Quote the lesson's own words that made you pick it.")
+    les = parsed(stem)
+    todo = sorted(w for w in les.widget_secs if w <= q.get("sec", 0) and w not in used_secs(stem))
+    if todo: sys.exit(f"First use the widget in section(s) {todo}: `B look {stem} --section N`, then `B do` what the text asks, and say what you saw.")
     prev = [e for e in lines(RUN / "log.jsonl") if e["kind"] == "answer" and e["lesson"] == stem]
     if prev and time.time() - time.mktime(time.strptime(prev[-1]["ts"], "%Y-%m-%dT%H:%M:%S")) < 15:
         sys.exit("Slow down: answer a question only after reading its section and doing what it asks (widgets, code).")
@@ -299,10 +312,8 @@ def cmd_done(args):
     les, evs = parsed(stem), [e for e in lines(RUN / "log.jsonl") if e.get("lesson") == stem]
     missing = [q["n"] for q in les.qs if not any(e["kind"] == "answer" and e["q"] == q["n"] for e in evs)]
     if missing: sys.exit(f"Answer every question first: Q{', Q'.join(map(str, missing))} of {stem}.")
-    dos = sum(1 for e in evs if e["kind"] == "ui" and e.get("action") == "do")
-    if dos < len(les.widget_secs):
-        sys.exit(f"{len(les.widget_secs)} sections have a widget (sections {sorted(les.widget_secs)}), and you've used `B do` {dos} times. "
-                 "Do what each section asks with its widget, then `done`.")
+    todo = sorted(les.widget_secs - used_secs(stem))
+    if todo: sys.exit(f"Section(s) {todo} have a widget you haven't used (`B look {stem} --section N`, then `B do`). Do what each asks, then `done`.")
     shown = next((e["ts"] for e in evs if e["kind"] == "show"), None)
     if shown and (time.time() - time.mktime(time.strptime(shown, "%Y-%m-%dT%H:%M:%S"))) < 60 * max(3, len(les.qs)):
         sys.exit(f"Under {max(3, len(les.qs))} minutes on a lesson with {len(les.qs)} questions: that's skimming, not learning. Work through it, then `done`.")
