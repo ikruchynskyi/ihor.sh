@@ -79,7 +79,7 @@
     <div class="why">1, 2, 3, 4 along the bottom, then 5, 6, 7, 8 back along the top, so pin 8 sits directly above pin 1. That's why the supply (8) and ground (1) are at opposite corners of the same end on so many chips.</div>
   </div>
   <div id="pin"></div>
-  <p>Notice what each pin <em>wants</em>. Pins 8 and 1 want the supply and a bypass capacitor. Pin 4 wants to be held high. Pin 5 is fine left open. The datasheet says all of this, in its pin table and its "typical application" circuit, and reading those two pages before you draw anything is most of what it takes to use a chip you've never seen.</p>
+  <p>One more pair of words before the pins: an output that pushes current out of its pin (into an LED that goes to ground) <b>sources</b> it; one that pulls current in (from an LED tied to the supply) <b>sinks</b> it. The 555's pin 3 can do both, up to 200 mA either way, and every later datasheet says how much its outputs can source and sink. Notice what each pin <em>wants</em>. Pins 8 and 1 want the supply and a bypass capacitor. Pin 4 wants to be held high. Pin 5 is fine left open. The datasheet says all of this, in its pin table and its "typical application" circuit, and reading those two pages before you draw anything is most of what it takes to use a chip you've never seen.</p>
 
   <h2>4. Choosing the values</h2>
   <p>A schematic needs numbers you can buy. Chapter 9 gave the 555's timing, \(t_{high} = 0.693\,(R_1 + R_2)\,C\) and \(t_{low} = 0.693\,R_2 C\); chapter 5 said resistors come only in E-series values. Choose the capacitor first: capacitors come in fewer values (often only E6: 1, 2.2, 4.7, 10…) and you'll use what's in the drawer. Then pick the resistors from E12 to hit the target. The schematic above follows your choice.</p>
@@ -162,7 +162,7 @@
     <p>The NE555's datasheet gives its supply as 4.5 to 16 V. On a microcontroller's 3.3 V it's below its minimum: it may work on the bench and fail on the next chip from the bag, because "typical" isn't a design (chapter 5). CMOS versions exist for exactly this: the TLC555 runs from 2 V and draws far less current, with the same pins. Checking the supply range is the first line of every chip choice from here on.</p>
   </details>
 
-  <p>Every later build reuses this chapter's steps. Next: <a href="./18-power-supply.html">a power supply</a> that turns a wall adapter into the 5 V and 3.3 V the rest of Part II runs on, and the first build where you pick the chip yourself.</p>
+  <p>Every later build reuses this chapter's steps. Next: <a href="./18-power-supply.html">a power supply</a> that turns a wall adapter into the 5 V and 3.3 V that sensors, logic and chapter 21's amplifier need, and the first build where you pick the chip yourself.</p>
   <p class="muted">Previous: <a href="./16-audio.html">Audio</a> · All chapters: <a href="/learn/">Learn &amp; build</a> · Circuit simulated by the <a href="/learn/lab.html">circuit lab</a>'s engine.</p>
 </main>
 <script type="module" src="/learn-kit.js"></script>

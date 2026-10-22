@@ -194,7 +194,13 @@ Each "Needs" was looked up in the chapter named.
 - 2026-10-22: chapter 23 built (the review game: `schematic()` review mode; `noSim` for drawings of modules; a
   per-step peak watcher for spikes), registered, tested: fan 100 mA average at 50% PWM, drain 12.32 V with D1 and
   611 V without (no breakdown in the model, said on the page), each review's planted mistake is a real part.
+- 2026-10-22: cold read of 17–23 as a learner who finished ch16. Fixed in place: "source"/"sink" defined in ch17's
+  main text (ch19, 20, 23 lean on them; Part I never said them); ch17 and ch18 no longer claim every later build runs
+  on the ch18 supply (only ch21 does); ch18 explains "polyfuse"; ch19 reads VDD/VSS in §3 and points to the right
+  section; ch20's "swap in a fan" adds the flyback diode a motor needs (ch23 marks its absence as a mistake); ch21's
+  check no longer says a reversed electrolytic reads as a short; ch22 now answers ch19's promise about 3.3 V vs 5 V
+  modules (all three boards at 3.3 V; bare BME280 boards max 4.25 V). ch23 needed nothing. A simulated-student run is
+  still worth doing for an outside view.
 - Left to do:
-  1. A cold-learner read of chapters 17–23 end to end (ideally the simulated-student review), then fix what it finds.
-  2. Optional: schematic text is small on wide drawings at 1280 px (the drawings scale to fit); a zoom or a taller
+  1. Optional: schematic text is small on wide drawings at 1280 px (the drawings scale to fit); a zoom or a taller
      layout for ch19 and ch22 would help.

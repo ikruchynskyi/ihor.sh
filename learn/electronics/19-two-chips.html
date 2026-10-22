@@ -37,7 +37,7 @@
   <p><b>The goal:</b> ten LEDs light one at a time, left to right, about four steps a second, from a 9 V battery. <b>The blocks:</b> a clock (chapter 17's 555, faster), a counter that turns each clock pulse into "the next LED", and ten LEDs. The counter is the new part.</p>
   <p>The CD4017 is a decade counter: it counts rising edges on its clock input, and instead of showing the count in binary (chapter 12) it makes exactly one of ten outputs high, Q0 for a count of 0 through Q9 for 9. Predict before you look: what happens on the clock edge after Q9?</p>
   <div id="sch"></div>
-  <p>Watch the LEDs on the right: one lit at a time, and after Q9 the count wraps around to Q0. Pick U2 to read what's inside it, and pick R3, the single resistor every LED shares (section 6 explains why one is enough).</p>
+  <p>Watch the LEDs on the right: one lit at a time, and after Q9 the count wraps around to Q0. Pick U2 to read what's inside it, and pick R3, the single resistor every LED shares (section 5 explains why one is enough).</p>
 
   <h2>2. Pin 3 is Q0</h2>
   <p>The 4017 has 16 pins, and its outputs are scattered around them: Q0 is pin 3, Q1 pin 2, Q5 pin 1. The schematic draws them in counting order because that's how you think about the circuit; the package puts them wherever its designers' layout put them, decades ago. This is normal, and it's why a schematic always carries pin numbers.</p>
@@ -52,7 +52,7 @@
   <div class="q" data-answer="b">
     <p>You forget pin 13 (INH) and leave it unconnected. What would you most likely see?</p>
     <ul><li data-k="a" data-says="INH has nothing to do with the LEDs' brightness: it gates the clock.">All ten LEDs dim</li><li data-k="b">The running light stops and starts by itself, worse when your hand is near the board</li><li data-k="c" data-says="An input pin has no current of its own to burn anything. It's the uncertainty that hurts.">The chip burns out</li></ul>
-    <div class="why">A floating INH wanders between high (count frozen) and low (counting) with every bit of hum it picks up, including from your hand. A floating RST is worse: it sends the light back to Q0 at random. The datasheet says the count advances only while CLOCK INHIBIT is low, and that a high RESET clears it. Tie every input you don't use to VDD or VSS, whichever means "do nothing" for that pin.</div>
+    <div class="why">A floating INH wanders between high (count frozen) and low (counting) with every bit of hum it picks up, including from your hand. A floating RST is worse: it sends the light back to Q0 at random. The datasheet says the count advances only while CLOCK INHIBIT is low, and that a high RESET clears it. Tie every input you don't use to VDD or VSS (a CMOS chip's names for its + supply and its ground), whichever means "do nothing" for that pin.</div>
   </div>
 
   <h2>4. Does a 555's high look high to a 4017?</h2>

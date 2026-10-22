@@ -37,7 +37,7 @@
   <p class="eyebrow"><a href="/learn/">Learn &amp; build</a> · Electronics · Part II · Chapter 18</p>
   <h1>Power for the bench: a 5 V and 3.3 V supply</h1>
   <p class="lede">The 555 didn't care about its supply: anything from 4.5 to 16 V, and the blink rate stays put. Most chips are pickier. Sensors, logic and microcontroller boards want 5 V or 3.3 V, within a few percent, and some are destroyed a volt or two above that. This build turns a 9 V battery or a 9–12 V wall adapter into both, on one breadboard, and it's the first build where you choose the chip yourself.</p>
-  <div class="plain card"><b>Before you start.</b> Linear and switching regulators, dropout and heat are <a href="./10-power-supplies.html">chapter 10</a>; thermal resistance θ is <a href="./05-real-parts.html">chapter 5 §3</a>; the diode's drop is <a href="./04-diodes-and-transistors.html">chapter 4 §1</a>; and the eight build steps, schematic reading and breadboard planning are <a href="./17-first-build-555.html">chapter 17</a>. Chapters 21, 22 and 23 run their chips from this supply.</div>
+  <div class="plain card"><b>Before you start.</b> Linear and switching regulators, dropout and heat are <a href="./10-power-supplies.html">chapter 10</a>; thermal resistance θ is <a href="./05-real-parts.html">chapter 5 §3</a>; the diode's drop is <a href="./04-diodes-and-transistors.html">chapter 4 §1</a>; and the eight build steps, schematic reading and breadboard planning are <a href="./17-first-build-555.html">chapter 17</a>. Chapter 21's amplifier runs from its 5 V rail, and chapters 22 and 23 face the same choices again (a microcontroller's bursts, a 12 V input).</div>
 
   <h2>1. The goal and the blocks</h2>
   <p><b>The goal:</b> from anything between a 9 V battery and a 12 V adapter, make 5 V for up to a few hundred milliamps and 3.3 V for up to 250 mA, both steady while the battery sags, and survive the battery clipped on backwards. <b>The blocks:</b> protection against a reversed input; a 5 V regulator; a 3.3 V regulator; a light that says it's on. The interesting step is the third one of chapter 17's eight, choosing the parts, because here there are real choices to get wrong.</p>
@@ -130,7 +130,7 @@
   <ul>
     <li><b>Run from USB:</b> a USB charger is already 5 V. Feed the top rail directly and keep only the MCP1700. What does that do to the heat in section 2?</li>
     <li><b>More current at 3.3 V:</b> past 250 mA, or from 12 V at a few hundred milliamps, swap the chain for a buck module (chapter 10) set to 3.3 V, and keep the 1 µF capacitors on its output.</li>
-    <li><b>A fuse:</b> a 500 mA polyfuse in series with the input turns a short circuit into a warm fuse instead of a hot battery.</li>
+    <li><b>A fuse:</b> a 500 mA polyfuse (a fuse that trips when it gets hot from too much current, and resets itself once it cools) in series with the input turns a short circuit into a warm fuse instead of a hot battery.</li>
   </ul>
   <details class="deeper"><summary>Where it breaks: "the 3.3 V rail is fine" while the battery dies</summary>
     <p>The 3.3 V rail can look perfect while the 5 V rail is sagging. In the simulator, a 7 V battery leaves the 5 V rail at 4.3 V, yet the MCP1700, needing only about 3.5 V, still gives 3.30 V. A 5 V chip on the top rail is now running out of its range while the 3.3 V side looks healthy. Measure the rail a chip actually uses, not the one that's convenient.</p>

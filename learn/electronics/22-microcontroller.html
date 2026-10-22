@@ -47,6 +47,7 @@
     <li>The <b>BME280 breakout</b> carries the tiny sensor (2.5 mm square, impossible to solder by hand) on pins you can plug in, often with pull-up resistors, and on some boards a regulator.</li>
     <li>The <b>OLED module</b> carries a 128×64 screen and its SSD1306 driver chip.</li>
   </ul>
+  <p>Chapter 19's question, whether one chip's high counts as a 1 at the next, is easy here: all three boards run at 3.3 V, so their highs and lows match (the ESP32's output high is at least 2.64 V, 80% of 3.3 V, its datasheet says). The trap is the breakout's supply pin. Some BME280 boards carry their own 3.3 V regulator and level shifters (small parts that translate signals between 3.3 V and 5 V) and accept 5 V; others are the bare sensor on a board, and its absolute maximum is 4.25 V. Read which kind you have before connecting VCC to anything but 3.3 V.</p>
   <p>Modules save a lot of work, and they hide things: the question is always what's on the little board. The answer is the seller's page, or better, the module's own schematic. Here's this build's schematic, drawn with labels instead of long wires: every SDA label is one wire, every SCL label another, just like the supply labels in chapter 17.</p>
   <div id="sch"></div>
   <div class="q" data-answer="a">
