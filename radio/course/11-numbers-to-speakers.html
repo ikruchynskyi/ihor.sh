@@ -23,11 +23,11 @@
 
   <!-- 1 -->
   <h2 id="clocks">Two clocks that never agree</h2>
+
+  <p>The dongle decides how fast samples arrive, using its own <b>crystal</b> (28.8 MHz): a sliver of quartz that vibrates at one extremely steady rate, the chip's metronome. The sound card decides how fast they're played, using a different crystal. No two crystals are exactly alike: they differ by some <b>parts per million</b> (ppm). 50 ppm sounds like nothing, but it means that every hour, one side gets 180 ms ahead of the other.</p>
   <div class="q" data-num="288" data-tol="1"><p>Two crystals differ by 20 ppm (20 millionths). After four hours, how far apart are the two clocks, in milliseconds?</p>
     <div class="why">4 hours = 14,400 s, and 20 × 10⁻⁶ × 14,400 s = 0.288 s = 288 ms. Small differences, given hours, become audible.</div>
   </div>
-
-  <p>The dongle decides how fast samples arrive, using its own <b>crystal</b> (28.8 MHz): a sliver of quartz that vibrates at one extremely steady rate, the chip's metronome. The sound card decides how fast they're played, using a different crystal. No two crystals are exactly alike: they differ by some <b>parts per million</b> (ppm). 50 ppm sounds like nothing, but it means that every hour, one side gets 180 ms ahead of the other.</p>
   <p>Chapter 8's audio cushion (<a class="back" href="./08-chunks-of-a-live-stream.html#delay">↩</a>) absorbs this, for a while. Here's the cushion over four hours:</p>
 
   <div class="scene" id="s-clock">
@@ -41,11 +41,11 @@
 
   <!-- 2 -->
   <h2 id="resample">Playing at a different rate</h2>
+
+  <p>Our sound comes out at whatever rate the last decimation gave (chapter 7): for FM at 2.4 MS/s, exactly 50 000 samples per second (chapter 7's 300 000, then one in 6 once chapter 9 has turned the station into sound). The sound card might run at 44 100 or 48 000. So someone has to produce new samples <b>between</b> the ones we have, at different moments: <b>resampling</b>.</p>
   <div class="q" data-num="1.042" data-tol="0.002"><p>The radio's audio is 50,000 samples per second and the sound card plays 48,000. For each sample it plays, how far does the player move through ours (in our samples, three decimals)?</p>
     <div class="why">50,000 / 48,000 ≈ 1.042 of our samples per output sample, landing between samples most of the time: that's why it has to guess values in between.</div>
   </div>
-
-  <p>Our sound comes out at whatever rate the last decimation gave (chapter 7): for FM at 2.4 MS/s, exactly 50 000 samples per second. The sound card might run at 44 100 or 48 000. So someone has to produce new samples <b>between</b> the ones we have, at different moments: <b>resampling</b>.</p>
 
   <div class="scene" id="s-resample">
     <div class="controls">
