@@ -118,7 +118,8 @@
     return typeof v === "function" ? v.bind(t) : v;
   },
 });</code></pre>
-  <p>The driver never knows it's being watched. <b>Try it yourself:</b> <code>node course/code/ch14.ts</code> prints the trace, phase by phase:</p>
+  <p>The driver never knows it's being watched.</p>
+  <p><b>Where this chapter's numbers come from.</b> The trace above was recorded by a short script in this site's source code (<code>course/code/ch14.ts</code>), which runs the real driver against a pretend dongle and prints every message, phase by phase. Its output:</p>
 <pre><code>RTL2832U start-up: 86 control transfers
    USB register 0x2000 = 0x09 · USB_SYSCTL (USB block control)
    USB register 0x2158 = 0x00 0x02 · USB_EPA_MAXPKT (packet size)

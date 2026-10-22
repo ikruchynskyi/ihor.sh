@@ -150,7 +150,7 @@
   }
 }</code></pre>
   <p>Two details matter. The step is <b>negative</b> (−2π f₀ / f<sub>s</sub>) because we spin backwards to move things down. And the angle is <b>saved on the object</b> at the end of each chunk, so the next chunk continues exactly where this one stopped. Chapter 8 explains why that matters for live radio.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch05.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch05.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>before mixing, stations at (kHz): [ 100, 250 ]
 after mixing by 250 kHz:         [ -150, 0 ]
 cos-only mixing by 100 kHz: copies at +150 kHz (-6.0 dB) and +350 kHz (-6.0 dB); the full arrow gives one copy at -0.0 dB

@@ -254,7 +254,7 @@ for (let i = 0; i &lt; out.length; i++) {
 const rec = ctx.createMediaStreamDestination();
 player.connect(vol).connect(limiter).connect(ctx.destination);
 limiter.connect(rec);                                      // new MediaRecorder(rec.stream) records what you hear</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch19.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch19.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code id="ch19-out">voice filter at   67 Hz (lowest CTCSS tone):  -26.1 dB
 voice filter at  150 Hz (a CTCSS tone):  -12.3 dB
 voice filter at  300 Hz (the low edge):   -3.0 dB

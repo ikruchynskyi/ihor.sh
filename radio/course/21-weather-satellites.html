@@ -117,7 +117,7 @@ this.t += this.rate + GAINS.g1 * e;                   // nudge where the next sy
 const err = Math.sign(zi) * zq - Math.sign(zq) * zi;
 this.w += 0.0004 * err; this.cphase += this.w + 0.03 * err;</code></pre>
   <p>Chapter 22 picks up where this ends: four rotations into four decoders, the sync word, and the picture.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch21.ts</code> (the symbols use <code>src/course/symbols.ts</code>, the same code as this page's pictures):</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch21.ts</code>), which also checks each claim and stops if one is wrong. The symbols use <code>src/course/symbols.ts</code>, the same code as this page's pictures. Its output:</p>
 <pre><code>a pass rising to 10°: 11.4 min above the horizon, Doppler 2128 → -2128 Hz, closest 2428 km
 a pass rising to 30°: 14.7 min above the horizon, Doppler 2814 → -2814 Hz, closest 1442 km
 a pass rising to 90°: 15.6 min above the horizon, Doppler 3032 → -3032 Hz, closest 830 km

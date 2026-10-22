@@ -155,7 +155,7 @@ this.down = new Mixer(fs, shift);                        // chapter 5
 this.lp = new FirDecimator(firLowpass(bw / 2 / fs, bw / 4 / fs), 1, 2);   // chapter 6
 this.up = new Mixer(fs, -shift);
 // process: back = up(lp(down(iq))); out[k] = back[2 * k]   ← the I part only</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch10.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch10.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>AM: recovered tone 599 Hz; at 30% signal strength the sound is 30% as loud
 FM: at 30% signal strength the sound is 100% as loud
 AM at 100% modulation: 67% of the power is in the carrier, which carries no sound

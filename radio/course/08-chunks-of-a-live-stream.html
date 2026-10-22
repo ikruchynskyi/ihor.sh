@@ -113,7 +113,7 @@ this.hist = buf.slice(buf.length - this.hist.length);        // keep the new tai
 const r = new Receiver(fs, 200e3, mode, bw);
 for (let s = 0; s &lt; iq.length; s += 2 * 12_345) parts.push(...r.process(iq.subarray(s, s + 2 * 12_345)).audio);
 assert.ok(parts.every((v, i) =&gt; v === whole[i]));   // identical, not just close</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch08.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch08.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>WFM: 9753 audio samples, chunked = whole, bit for bit
 NFM: 9753 audio samples, chunked = whole, bit for bit
 AM : 9753 audio samples, chunked = whole, bit for bit

@@ -135,7 +135,7 @@ this.chanFs = fs / m1;
 // anything between chanFs − half and fs/2 would fold onto the station, so that's where the filter must reject
 this.taps = firLowpass(half / fs, Math.max(this.chanFs - 2 * half, this.chanFs * 0.1) / fs);</code></pre>
   <p>The filter's edge is made exactly as wide as the margin we left: steep enough that nothing folds onto the station, no steeper (chapter 6: steepness costs weights).</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch07.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch07.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>no filter: the +350 kHz neighbor reappears at 94 kHz  (350 − 256 = 94)
 with a 61-weight filter first: what's left of it is -74 dB
 filter-everything-then-pick and compute-only-kept agree on all 16384 outputs, with 4× less work

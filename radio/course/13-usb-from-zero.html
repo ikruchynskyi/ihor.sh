@@ -124,7 +124,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The whole lab, as a script you can run with Node against a dongle on your computer: <code>node course/code/ch13.ts</code>. The heart of it is the setup-packet arithmetic:</p>
+  <p>The same four steps as the lab above, written as a script in this site's source code (<code>course/code/ch13.ts</code>). The heart of it is the setup-packet arithmetic:</p>
 <pre><code>const setup = (value, index) =&gt; ({ requestType: "vendor", recipient: "device", request: 0, value, index });
 await dev.controlTransferOut(setup(0x2000, (1 &lt;&lt; 8) | 0x10), new Uint8Array([0x09]));   // USB block (1), write
 await dev.controlTransferOut(setup(0x3000, (2 &lt;&lt; 8) | 0x10), new Uint8Array([0xe8]));   // system block (2): demod power on

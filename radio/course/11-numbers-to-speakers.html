@@ -152,7 +152,7 @@ out[i] = (x[i] * target) / this.env;</code></pre>
 this.level = 0.7 * this.level + 0.3 * db;                       // smoothing
 if (!this.open &amp;&amp; this.level &gt; this.threshold) this.open = true;
 else if (this.open &amp;&amp; this.level &lt; this.threshold - 3) this.open = false;</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch11.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch11.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>clocks  10 ppm apart: the buffer drifts  36 ms per hour → first glitch after 750 min (fast dongle) or 167 min (slow dongle)
 clocks  50 ppm apart: the buffer drifts 180 ms per hour → first glitch after 150 min (fast dongle) or 33 min (slow dongle)
 clocks 200 ppm apart: the buffer drifts 720 ms per hour → first glitch after 38 min (fast dongle) or 8 min (slow dongle)

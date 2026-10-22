@@ -166,7 +166,7 @@ for (let k = 0; k &lt; t; k++) {               // t weights
   r += buf[base - 2 * k] * h[k];            // I part
   i += buf[base - 2 * k + 1] * h[k];        // Q part
 }</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch06.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch06.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>average of 8: speed 0.000 turns/sample → 100.0% survives
 average of 8: speed 0.050 turns/sample → 76.0% survives
 average of 8: speed 0.125 turns/sample → 0.0% survives  (a whole number of turns: cancels completely)

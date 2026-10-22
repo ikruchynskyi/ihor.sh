@@ -128,7 +128,7 @@ psi = Math.atan2(-qb, -pb);
 Y[j] = (x[k] + x[k - LINE]) / 2;  C[j] = (x[k] - x[k - LINE]) / 2;
 // 6. demodulate: multiply by the subcarrier, average over a cycle, undo the burst's rotation
 U[j] = p * Math.cos(psi) + q * Math.sin(psi);  V[j] = -p * Math.sin(psi) + q * Math.cos(psi);</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch20.ts</code> sends a test card through channels of different widths and noise and compares what comes out:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch20.ts</code>), which also checks each claim and stops if one is wrong. It sends a test card through channels of different widths and noise and compares what comes out. Its output:</p>
 <pre><code>lines per second: 15734.27 (525 lines × 29.970 frames/s)
 color subcarrier: 3.579545 MHz = 227.5 × the line rate
 sampled at 4 × subcarrier = 14.318 MHz: 910 samples per line, 477750 per frame

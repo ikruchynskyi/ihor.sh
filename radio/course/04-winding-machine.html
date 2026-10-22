@@ -211,7 +211,7 @@
 re[i] = iq[2 * (start + i)] * w;  im[i] = iq[2 * (start + i) + 1] * w;
 fft(re, im);
 out[i] = 10 * Math.log10((re[j] ** 2 + im[j] ** 2) / wsum ** 2 + 1e-20);   // power in dB</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch04.ts</code> builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch04.ts</code>), which also checks each claim and stops if one is wrong. It builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples. Its output:</p>
 <pre><code>hidden arrows found: 2 turns/block (length 1.00), 7 turns/block (length 0.35), -3 turns/block (length 0.55)
 FFT vs plain machine on 1024 random samples: biggest difference 3.0e-6 (float rounding)
 inverse FFT of the FFT: back to the samples within 1.3e-7 (float rounding)

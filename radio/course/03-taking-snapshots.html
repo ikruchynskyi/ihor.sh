@@ -210,7 +210,7 @@
 <pre><code>const FIR = [-54, -36, -41, -40, -32, -14, 14, 53, 101, 156, 215, 273, 327, 372, 404, 421];</code></pre>
   <p><b>Reading the ruler.</b> Each byte becomes a number between −1 and +1. The steps between marks are 1/127.5 ≈ 0.0078 apart, which is exactly the grid you saw in the zoomed real data (<code>src/iq.ts</code>):</p>
 <pre><code>out[i] = (u[i] - 127.5) / 127.5;</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch03.ts</code> checks this chapter's claims and decodes the real samples:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch03.ts</code>), which also checks each claim and stops if one is wrong. It also decodes the real samples. Its output:</p>
 <pre><code>9 turns/s and −1 turn/s give identical photos at 10 photos/s  (9 − 10 = −1)
 +3 vs −3 turns/s: I alone identical; Q differs  → with both shadows, speeds from −5 to +5 are all distinct
  4 bits: signal is 25.7 dB above the measuring error  (rule of thumb: 6 dB per bit)

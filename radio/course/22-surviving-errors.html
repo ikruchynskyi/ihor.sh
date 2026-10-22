@@ -91,7 +91,7 @@
   if (m1 &gt; m0) { n[ns] = m1; d[ns] = 1; } else n[ns] = m0;  // keep the better path, remember which
 }</code></pre>
   <p>The whole receiver, symbol by symbol: matched filter → Gardner timing → AGC → (once) the 4th-power FFT → Costas loop (chapter 21) → four rotations into four Viterbi decoders → sync word search → descramble (XOR) → checksum → picture.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch22.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch22.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>convolutional code: 320 of 8000 coded bits flipped (4%), 0 message bits wrong after Viterbi
 XOR: 0⊕0 = 0, 0⊕1 = 1, 1⊕0 = 1, 1⊕1 = 0; and x ⊕ k ⊕ k = x for every x and k
 keeping  1 of 64 coefficients:   2% of the numbers, PSNR 23.0 dB

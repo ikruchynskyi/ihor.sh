@@ -147,7 +147,7 @@ await this.writeReg(0x16, sdm &gt;&gt; 8);
 await this.writeReg(0x15, sdm &amp; 0xff);
 // … wait 10 ms, read register 2, check bit 6 ("locked")</code></pre>
   <p><b>Testing hardware code without hardware.</b> The chapter's script runs this real driver against a <em>fake</em> tuner: an object that pretends to be the I2C bus, records every register write, and always answers "locked". Then it checks that the driver wrote exactly what the calculator above predicts. Faking the hardware like this is how drivers get tested automatically.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch12.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch12.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>   98.45 MHz: ×32, VCO 3.2646 GHz, integer 56, fraction 44419 → reg 0x14 = 0xca, off by   4.3 Hz  (driver wrote the same)
   118.45 MHz: ×16, VCO 1.9523 GHz, integer 33, fraction 58618 → reg 0x14 = 0x5, off by -17.1 Hz  (driver wrote the same)
    162.3 MHz: ×16, VCO 2.6539 GHz, integer 46, fraction  4915 → reg 0x14 = 0x48, off by -11.0 Hz  (driver wrote the same)

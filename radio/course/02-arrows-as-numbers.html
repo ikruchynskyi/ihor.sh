@@ -198,7 +198,7 @@ const mul = (a: Arrow, b: Arrow): Arrow =&gt; ({
 
 mul({ I: 0, Q: 1 }, { I: 0, Q: 1 })              // j × j  →  { I: -1, Q: 0 }: a half turn, −1</code></pre>
   <p>Every multiplication of arrows in the rest of the course is these two lines. Chapter 5 is where the receiver first uses them for real, and explains what for.</p>
-  <p><b>Try it yourself.</b> <code>course/code/ch02.ts</code> builds arrows from scratch in about 30 lines and checks every claim in this chapter. Run it with <code>node course/code/ch02.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch02.ts</code>), which also checks each claim and stops if one is wrong. It builds arrows from scratch in about 30 lines. Its output:</p>
 <pre><code>j · j = { I: -1, Q: 0 } → a half turn: −1
 (length 2, 30°) × (length 1.5, 45°) = (length 3.000, 75.000°)
 (1, 2) + (3, −1) = { I: 4, Q: 1 }

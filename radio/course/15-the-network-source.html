@@ -129,7 +129,7 @@ const even = size &amp; ~1;                                   // round down to w
 // … copy `even` bytes out, hand them on …
 pending = size - even ? [lastPiece.subarray(-1)] : [];    // the odd byte starts the next batch</code></pre>
   <p><b>The API</b> (three endpoints, documented in the <a href="../build.html#network">build guide</a>): <code>GET /api/state</code>, <code>POST /api/tune</code>, <code>GET /api/stream</code>. Browsers can't open raw network sockets, so the standard <code>rtl_tcp</code> protocol many SDR apps use isn't available to a web page, which is why our server speaks plain HTTP.</p>
-  <p><b>Try it yourself:</b> <code>node course/code/ch15.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch15.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>pairs kept together: station -2.1 dB, mirror at −200 kHz -101.2 dB
 pairs split       : station -8.1 dB, mirror at −200 kHz -8.1 dB
 whole band 1.024 MS/s  × 10 listeners =  20.48 MB/s does NOT fit in 2.5 MB/s

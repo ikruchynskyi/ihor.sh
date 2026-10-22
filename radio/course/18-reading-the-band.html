@@ -234,7 +234,7 @@ const shift = (upper ? bw / 2 : -bw / 2) + passShift;</code></pre>
 sqLevel = 0.5 * sqLevel + 0.5 * peak;
 if (!sqOpen &amp;&amp; sqLevel &gt; line) sqOpen = true;
 else if (sqOpen &amp;&amp; sqLevel &lt; line - 3) sqOpen = false;</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch18.ts</code>:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch18.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>N =  1024: bins 2344 Hz wide, one FFT = 0.43 ms of signal
 N =  4096: bins  586 Hz wide, one FFT = 1.71 ms of signal
 N = 16384: bins  146 Hz wide, one FFT = 6.83 ms of signal

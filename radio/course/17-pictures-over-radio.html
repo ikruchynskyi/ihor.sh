@@ -143,7 +143,7 @@ freq.push(1900 + (turn * rate) / (2 * Math.PI));</code></pre>
   const score = Math.abs(avg(t - sync, t) - 1200) + Math.abs(avg(t, t + porch) - 1500);
   if (score &lt; bestScore) { bestScore = score; best = t; }
 }</code></pre>
-  <p><b>Try it yourself:</b> <code>node course/code/ch17.ts</code> sends a test picture through every mode (encoder → audio → decoder) and compares it pixel by pixel:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch17.ts</code>), which also checks each claim and stops if one is wrong. It sends a test picture through every mode (encoder → audio → decoder) and compares it pixel by pixel. Its output:</p>
 <pre><code>black 1500 Hz, mid-gray 1902 Hz, white 2300 Hz
 Robot 36    36.9 s  header says Robot 36    47.6 dB
 Martin M1  115.2 s  header says Martin M1   53.7 dB
