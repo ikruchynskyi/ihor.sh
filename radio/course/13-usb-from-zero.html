@@ -40,12 +40,12 @@
       <li>On USB the host asks, the device answers: data moves only while a request is waiting.</li>
       <li>The dongle's own buffer holds only a moment's worth of samples.</li>
       <li>If no request is pending when its buffer fills, new samples have nowhere to go and are dropped.</li>
-      <li>One 256 KiB request takes 55 ms to fill at 2.4 MS/s, and the program needs time to send the next.</li>
+      <li>One 256 KiB request (about 262 000 bytes) takes 55 ms to fill at 2.4 MS/s, and the program needs time to send the next.</li>
       <li>So the driver keeps several requests queued at once: the bus's speed doesn't help if nobody is asking.</li>
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>Plug the dongle into an old USB 1.1 port, or a hub that runs at that "full speed", and the bus itself is too slow: 12 Mbit/s is 1.5 MB/s (<a href="https://en.wikipedia.org/wiki/USB#Signaling_rate">USB signaling rates</a>), while 2.4 MS/s needs 4.8 MB/s. Streaming then drops about two thirds of the samples whatever the driver does. The fixes: a USB 2.0 port, or a lower sample rate (1.024 MS/s needs 2 MB/s, still too much; 0.25 MS/s would fit).</p>
+    <p>Plug the dongle into an old USB 1.1 port, or a hub that runs at that "full speed", and the bus itself is too slow: 12 Mbit/s (megabits per second; 8 bits make a byte) is 1.5 MB/s (<a href="https://en.wikipedia.org/wiki/USB#Signaling_rate">USB signaling rates</a>), while 2.4 MS/s needs 4.8 MB/s. Streaming then drops about two thirds of the samples whatever the driver does. The fixes: a USB 2.0 port, or a lower sample rate (1.024 MS/s needs 2 MB/s, still too much; 0.25 MS/s would fit).</p>
   </details>
 
   <!-- 2 -->
@@ -103,7 +103,7 @@
   <h2 id="layers">Who's allowed to talk to the dongle?</h2>
   <p>Between your page and the cable sit two gatekeepers:</p>
   <ul>
-    <li><b>The operating system</b> decides which driver owns each device. A keyboard or USB stick gets a standard driver. Our dongle's interface is vendor-specific (class 255), so it needs a <em>generic</em> driver that just passes messages through. macOS does that automatically. Windows needs one installed (WinUSB, via a tool called Zadig). Linux helpfully grabs the dongle with its <em>TV tuner</em> driver, which must be switched off first. And only one program at a time can own the device, so an SDR app that has it open blocks everyone else.</li>
+    <li><b>The operating system</b> decides which driver owns each device. A keyboard or USB stick gets a standard driver. Our dongle's interface is vendor-specific (class 255), so it needs a <em>generic</em> driver that just passes messages through. macOS does that automatically. Windows needs one installed (WinUSB, via a tool called Zadig). Linux helpfully grabs the dongle with its <em>TV tuner</em> driver, which must be switched off first. And only one program at a time can own the device, so another radio program (an SDR app, for software-defined radio) that has it open blocks everyone else.</li>
     <li><b>The browser</b> protects you from web pages. A page can't see your USB devices at all until you pick one in the browser's own pop-up list, which only appears after a click. Pages also only get access on secure (https://) addresses or on <code>localhost</code>. After you've said yes once, the browser remembers the permission for that site.</li>
   </ul>
   <p>Once both gatekeepers agree, the page gets a <code>USBDevice</code> object, and its methods map one-to-one onto everything in this chapter: <code>open()</code>, <code>claimInterface(0)</code>, <code>controlTransferOut/In()</code> for endpoint 0, and <code>transferIn(1, length)</code> for endpoint 0x81.</p>
