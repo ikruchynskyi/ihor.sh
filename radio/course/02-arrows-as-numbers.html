@@ -44,10 +44,10 @@
 
   <!-- 3 -->
   <h2 id="multiply">Multiplying arrows: turn and stretch</h2>
-  <p>Adding arrows happens automatically in the air when stations meet on your antenna. <b>Multiplying</b> two arrows is what <em>our receiver code</em> does to almost every pair of numbers from the dongle. Why would you ever multiply two arrows in a radio? Because one operation does three jobs that build almost the whole receiver:</p>
+  <p>Adding arrows happens automatically in the air when stations meet on your antenna. <b>Multiplying</b> two arrows is what <em>our receiver code</em> does to almost every pair of numbers from the dongle. Why would you ever multiply two arrows in a radio? As you're about to see, multiplying by an arrow <b>turns</b> things, and that one operation does three jobs that build almost the whole receiver:</p>
   <ul>
     <li><b>Generate our own spinning arrow</b> (<a href="#spin">section 5</a> below): multiply an arrow by the same small turn step after step, and it spins at any speed we choose.</li>
-    <li><b>Slide a station to 0 Hz so we can isolate it</b> (<a href="./04-winding-machine.html">chapters 4</a> and <a href="./05-moving-a-station.html">5</a>): multiply an incoming signal by our own arrow spinning backward at the station's speed, and the two spins cancel.</li>
+    <li><b>Slide a station to 0 Hz (not spinning at all) so we can isolate it</b> (<a href="./04-winding-machine.html">chapters 4</a> and <a href="./05-moving-a-station.html">5</a>): multiply an incoming signal by our own arrow spinning backward at the station's speed, and the two spins cancel.</li>
     <li><b>Extract the sound from FM</b> (<a href="./09-fm-listening-to-the-speed.html">chapter 9</a>): multiply each new arrow by the previous one turned backward to measure how far the station spun since the last snapshot — which <em>is</em> the music.</li>
   </ul>
   <p>What should it mean to "multiply" two arrows? Let's think about what multiplying ordinary numbers does. Multiplying by 2 <b>stretches</b>: everything gets twice as big. Multiplying by −1 <b>flips</b>: 3 becomes −3, pointing the other way. A flip is a half turn.</p>
@@ -82,11 +82,11 @@
     </div>
   </div>
 
-  <p>After a few rounds you'll notice that you stop fiddling and start aiming: point the multiplier at the angle you need to turn by, and make it as long as the stretch you need. That instinct is the whole of complex multiplication.</p>
+  <p>After a few rounds you'll notice that you stop fiddling and start aiming: point the multiplier at the angle you need to turn by, and make it as long as the stretch you need. That instinct is the whole of multiplying arrows.</p>
   <p class="gist">An arrow is two numbers, I and Q. Adding arrows adds their parts; multiplying arrows multiplies their lengths and adds their angles, so multiplying by an arrow of length 1 just turns.</p>
   <details class="deeper"><summary>Why do lengths multiply and angles add?</summary>
     <ol>
-      <li>Write the multiplier as z = I + j·Q. Multiplying an arrow a by it means a·I + a·(j·Q), and multiplication spreads over the sum as with ordinary numbers.</li>
+      <li>Write the multiplier as z = I + j·Q, meaning "I sideways, plus Q up" (Writing it down, below, explains this way of writing it). Multiplying an arrow a by it means a·I + a·(j·Q), and multiplication spreads over the sum as with ordinary numbers.</li>
       <li>a·I is a stretched by I, in a's own direction.</li>
       <li>a·j·Q is a turned a quarter turn (that's what j does), stretched by Q.</li>
       <li>So the product is "I steps along a, then Q steps at right angles to a": the same recipe as drawing z itself, but on a grid tilted to a's direction and scaled by a's length.</li>
@@ -95,7 +95,7 @@
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>On paper an arrow of length exactly 1 stays length 1 forever, however often you multiply by it. In a computer every multiplication is rounded a tiny bit, and the errors add up: chapter 5's script measures the length drifting off by 5.6 millionths after 10 million multiplications with 32-bit numbers. That's why real code keeps an angle and computes each arrow fresh from it, instead of multiplying over and over.</p>
+    <p>On paper an arrow of length exactly 1 stays length 1 forever, however often you multiply by it. In a computer every multiplication is rounded a tiny bit, and the errors add up: chapter 5's script measures the length drifting off by 5.6 millionths after 10 million multiplications with 32-bit numbers (the compact kind signal code often uses, good to about 7 digits). That's why real code keeps an angle and computes each arrow fresh from it, instead of multiplying over and over.</p>
   </details>
 
   <!-- 5 -->
@@ -117,7 +117,7 @@
     <li>Stretch exactly <b>×1.00</b>: the arrow goes round and round a circle forever. <b>This is chapter 1's spinning arrow</b>, now made from nothing but repeated multiplication.</li>
     <li>A little less than 1: it spirals in and dies away. A little more: it spirals out and grows. Neither is what a radio wants, so the step's length must stay exactly 1.</li>
     <li>Make the turn <b>negative</b>: it spins the other way, clockwise. That's a <b>negative frequency</b>, the thing one shadow couldn't detect in chapter 1's game.</li>
-    <li>Bigger turns per step mean faster spinning: the turn per step <em>is</em> the frequency, just counted in "degrees per snapshot" instead of "turns per second".</li>
+    <li>Bigger turns per step mean faster spinning: the turn per step <em>is</em> the frequency, just counted in "degrees per step" instead of "turns per second".</li>
   </ul>
   <p>Look at the dots on the right too: the up part (Q) of each step, one after another. It's chapter 1's sine wave again, but drawn as separate dots instead of a smooth line, because a computer only ever sees the arrow at separate moments. Those moments are called <b>samples</b>, and chapter 3 is about them.</p>
 
@@ -127,8 +127,8 @@
   <p>Why would anyone write an angle as an exponent? Because of what this chapter found: <b>multiplying arrows of length 1 adds their angles</b>. Powers do exactly the same with their exponents: 2<sup>3</sup> × 2<sup>2</sup> = 2<sup>5</sup>, because 3 + 2 = 5. So write the arrow at angle <em>a</em> as e<sup>ja</sup> and the arrow at angle <em>b</em> as e<sup>jb</sup>, and the familiar rule for powers says their product is e<sup>j(a+b)</sup>: the arrow at angle <em>a</em> + <em>b</em>. That's "angles add", the rule you already know, wearing the clothes of a power. The angle sits in the exponent, and the j there marks it as a turn rather than growth.</p>
   <p class="formula">\[ e^{ja} \cdot e^{jb} = e^{j(a+b)} \]</p>
   <p class="formula">\[ e^{j\theta} = \cos\theta + j \sin\theta \]</p>
-  <p>That's all chapters 4–6 need. When chapter 4 writes e<sup>−j2πkn/N</sup>, read it as "the arrow at angle −2πkn/N": an arrow turned backwards by that much. (Angles here are in radians, as in chapter 1: 2π ≈ 6.28 is a full turn.)</p>
-  <div class="q" data-num="180" data-tol="0" data-unit="°"><p>What is e<sup>j·π/2</sup> × e<sup>j·π/2</sup>? Give the angle of the result, in degrees.</p>
+  <p>That's all chapters 4–6 need. Whatever sits in the exponent after the j is an angle: e<sup>j·(some angle)</sup> is the arrow at that angle, and a minus sign, e<sup>−j·(some angle)</sup>, means the same angle turned backwards. (Angles here are in radians, as in chapter 1: 2π ≈ 6.28 is a full turn, so π is half a turn and π/2 a quarter turn.)</p>
+  <div class="q" data-num="180" data-tol="0" data-unit="°"><p>What is e<sup>j·π/2</sup> × e<sup>j·π/2</sup>? (π/2 is a quarter turn.) Give the angle of the result, in degrees.</p>
     <div class="why">Exponents add: e<sup>j·π</sup>, the arrow at angle π, half a turn: 180°, which is −1. It's j × j = −1 again, written as powers: e<sup>j·π/2</sup> is j, the quarter turn.</div>
   </div>
 
