@@ -137,7 +137,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The FM demodulator in this site's receiver (<code>src/dsp.ts</code>), with the previous sample remembered between chunks (<a class="back" href="./08-chunks-of-a-live-stream.html#memory">↩ ch. 8</a>):</p>
+  <p>The FM demodulator in this site's receiver, with the previous sample remembered between chunks (<a class="back" href="./08-chunks-of-a-live-stream.html#memory">↩ ch. 8</a>):</p>
 <pre><code>export class FmDemod {
   private pi = 0;   // the previous sample (I and Q)
   private pq = 0;
@@ -157,7 +157,7 @@
 <p class="note"><b>Names in this code:</b> <code>y</code> is the output so far; each new output moves the fraction <code>a</code> of the way toward the input <code>x[i]</code>. <code>Math.exp</code> is e<sup>x</sup>.</p>
 <pre><code>this.a = 1 - Math.exp(-1 / (fs * tau));                     // tau = 75e-6
 for (let i = 0; i &lt; x.length; i++) out[i] = this.y += this.a * (x[i] - this.y);</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch09.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>recovered tone: 997 Hz, peak speed 5000 Hz (the deviation)
 steady vs fading (down to 10% strength): outputs differ by at most 1.2e-7
 noise 0.05 × the signal: 0 clicks per second

@@ -215,14 +215,14 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>The biquad</b> (<code>Biquad</code> in <code>src/dsp.ts</code>): the cookbook's numbers, then five multiplications per sample:</p>
+  <p><b>The biquad</b> (<code>Biquad</code>): the cookbook's numbers, then five multiplications per sample:</p>
 <pre><code>const w = (TAU * f) / fs, c = Math.cos(w), al = Math.sin(w) / (2 * Math.SQRT1_2), a0 = 1 + al;
 const k = type === "lowpass" ? (1 - c) / 2 : (1 + c) / 2;
 this.b0 = k / a0; this.b1 = (type === "lowpass" ? 2 * k : -2 * k) / a0; this.b2 = k / a0;
 this.a1 = (-2 * c) / a0; this.a2 = (1 - al) / a0;
 // per sample:
 const y = this.b0 * x[i] + this.b1 * x1 + this.b2 * x2 - this.a1 * y1 - this.a2 * y2;</code></pre>
-  <p><b>Noise reduction, one frame</b> (<code>NoiseReducer</code> in <code>src/dsp.ts</code>): window, FFT, a gain per bin, inverse FFT, window, overlap-add:</p>
+  <p><b>Noise reduction, one frame</b> (<code>NoiseReducer</code>): window, FFT, a gain per bin, inverse FFT, window, overlap-add:</p>
 <pre><code>for (let i = 0; i &lt; n; i++) re[i] = this.inp[i] * win[i];                 // √Hann in
 fft(re, im);
 for (let b = 0; b &lt;= n / 2; b++) {
@@ -235,11 +235,11 @@ for (let b = 0; b &lt;= n / 2; b++) {
 }
 for (let i = 0; i &lt; n; i++) im[i] = -im[i]; fft(re, im);                     // inverse FFT = conj, FFT, conj, ÷n
 for (let i = 0; i &lt; n; i++) this.ola[i] += (re[i] / n) * win[i];              // √Hann out, add</code></pre>
-  <p><b>AGC with hang</b> (<code>Agc</code> in <code>src/dsp.ts</code>):</p>
+  <p><b>AGC with hang</b> (<code>Agc</code>):</p>
 <pre><code>if (a &gt;= this.env) { this.env = a; this.held = this.hang; }   // a new peak: hold for `hang` samples
 else if (this.held &gt; 0) this.held--;                           // holding
 else this.env = Math.max(lo, this.env * this.decay);           // then release (lo caps the gain)</code></pre>
-  <p><b>The stream</b> (the AudioWorklet in <code>src/player.ts</code>), for every sample the sound card asks for:</p>
+  <p><b>The stream</b> (the AudioWorklet), for every sample the sound card asks for:</p>
 <pre><code>const step = (this.rate / sampleRate) * (1 + Math.max(-0.005, Math.min(0.005, (0.01 * (have - this.cushion)) / this.cushion)));
 for (let i = 0; i &lt; out.length; i++) {
   if (this.w - this.r &lt; 2) { this.on = false; this.fade = 0; break; }   // ran dry: refill the cushion first
@@ -248,13 +248,13 @@ for (let i = 0; i &lt; out.length; i++) {
   out[i] = this.fade * (this.ring[k &amp; M] * (1 - f) + this.ring[(k + 1) &amp; M] * f);
   this.r += step;
 }</code></pre>
-  <p><b>Volume, limiter, recording</b> (<code>streamOut</code> in <code>src/player.ts</code>):</p>
+  <p><b>Volume, limiter, recording</b> (<code>streamOut</code>):</p>
 <pre><code>const vol = new GainNode(ctx), limiter = new WaveShaperNode(ctx, { oversample: "2x",
   curve: Float32Array.from({ length: 1025 }, (_, i) => Math.tanh(4 * (i / 512 - 1))) });
 const rec = ctx.createMediaStreamDestination();
 player.connect(vol).connect(limiter).connect(ctx.destination);
 limiter.connect(rec);                                      // new MediaRecorder(rec.stream) records what you hear</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch19.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code id="ch19-out">voice filter at   67 Hz (lowest CTCSS tone):  -26.1 dB
 voice filter at  150 Hz (a CTCSS tone):  -12.3 dB
 voice filter at  300 Hz (the low edge):   -3.0 dB

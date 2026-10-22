@@ -88,7 +88,7 @@
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>No filter removes everything. This chapter's best shape, the windowed sinc, leaves leftovers 62 dB down (<code>course/code/ch06.ts</code>). That sounds like nothing, until the neighbor is 70 dB stronger than your station, as a powerful FM transmitter next to a weak one can be: then 70 − 62 = 8 dB of it still gets through, stronger than your station. The fixes cost arithmetic (more weights) or happen earlier: stop the strong signal before it reaches the radio (chapter 12).</p>
+    <p>No filter removes everything. This chapter's best shape, the windowed sinc, leaves leftovers 62 dB down (this chapter's checking script). That sounds like nothing, until the neighbor is 70 dB stronger than your station, as a powerful FM transmitter next to a weak one can be: then 70 − 62 = 8 dB of it still gets through, stronger than your station. The fixes cost arithmetic (more weights) or happen earlier: stop the strong signal before it reaches the radio (chapter 12).</p>
   </details>
 
   <!-- 4 -->
@@ -147,7 +147,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>Designing the filter</b> (<code>firLowpass()</code> in <code>src/dsp.ts</code>): choose how many weights from the edge width, sample the sinc, fade it with a Hamming window (a close cousin of chapter 4's Hann window: the same gentle bump, slightly raised at the ends), and scale so a signal at 0 Hz passes at exactly 1×:</p>
+  <p><b>Designing the filter</b> (<code>firLowpass()</code>): choose how many weights from the edge width, sample the sinc, fade it with a Hamming window (a close cousin of chapter 4's Hann window: the same gentle bump, slightly raised at the ends), and scale so a signal at 0 Hz passes at exactly 1×:</p>
 <p class="note"><b>Names in this code:</b> <code>cutoffNorm</code> and <code>transitionNorm</code> are the cutoff and the edge's width as fractions of the sample rate (100 kHz at 1.024 MS/s is about 0.098). <code>3.3</code> is the standard rule of thumb for a Hamming-windowed filter: the number of weights is about 3.3 divided by the edge width. <code>n | 1</code> makes <code>n</code> odd (it sets the last binary digit to 1), so there's a middle weight. <code>h</code> is the list of weights; dividing by their <code>sum</code> makes a 0 Hz signal come out the same size it went in.</p>
 <pre><code>let n = Math.ceil(3.3 / Math.max(transitionNorm, 1e-4));   // steeper edge → more weights
 n = Math.min(511, n | 1);                                  // odd, so there's a middle weight; at most 511
@@ -166,7 +166,7 @@ for (let k = 0; k &lt; t; k++) {               // t weights
   r += buf[base - 2 * k] * h[k];            // I part
   i += buf[base - 2 * k + 1] * h[k];        // Q part
 }</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch06.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>average of 8: speed 0.000 turns/sample → 100.0% survives
 average of 8: speed 0.050 turns/sample → 76.0% survives
 average of 8: speed 0.125 turns/sample → 0.0% survives  (a whole number of turns: cancels completely)

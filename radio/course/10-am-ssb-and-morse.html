@@ -144,7 +144,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>AM</b> (<code>AmDemod</code> in <code>src/dsp.ts</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average; engineers call it a "DC blocker", because the steady part is the <a class="back" href="./04-winding-machine.html#real">DC of chapter 4</a>):</p>
+  <p><b>AM</b> (<code>AmDemod</code>): the length of each sample, then a tiny filter that removes the steady carrier (it subtracts a slowly-following average; engineers call it a "DC blocker", because the steady part is the <a class="back" href="./04-winding-machine.html#real">DC of chapter 4</a>):</p>
 <p class="note"><b>Names in this code:</b> <code>Math.hypot</code> gives an arrow's length from its two shadows (Pythagoras). <code>x1</code> and <code>y1</code> are the previous input and output; <code>0.995</code> sets how slowly the subtracted average follows, so the steady carrier is removed and the sound isn't.</p>
 <pre><code>const x = Math.hypot(iq[2 * k], iq[2 * k + 1]);          // the arrow's length (chapter 2)
 out[k] = this.y1 = x - this.x1 + 0.995 * this.y1;        // remove the constant part
@@ -155,7 +155,7 @@ this.down = new Mixer(fs, shift);                        // chapter 5
 this.lp = new FirDecimator(firLowpass(bw / 2 / fs, bw / 4 / fs), 1, 2);   // chapter 6
 this.up = new Mixer(fs, -shift);
 // process: back = up(lp(down(iq))); out[k] = back[2 * k]   ← the I part only</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch10.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>AM: recovered tone 599 Hz; at 30% signal strength the sound is 30% as loud
 FM: at 30% signal strength the sound is 100% as loud
 AM at 100% modulation: 67% of the power is in the carrier, which carries no sound

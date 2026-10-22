@@ -78,7 +78,7 @@
     <p class="readout" id="r-image" aria-live="polite"></p>
   </div>
 
-  <p>The defense is a <b>tracking filter</b> in front of the mixer (green): a broad filter that follows your tuning and weakens everything far away, including the image, 7.14 MHz above you. It's not very sharp (that's the whole problem), so a strong station sitting exactly on your image can still sneak through as a faint ghost. In the driver, choosing this filter's setting for each frequency band is the job of a lookup table (<code>BANDS</code> in <code>src/r820t.ts</code>).</p>
+  <p>The defense is a <b>tracking filter</b> in front of the mixer (green): a broad filter that follows your tuning and weakens everything far away, including the image, 7.14 MHz above you. It's not very sharp (that's the whole problem), so a strong station sitting exactly on your image can still sneak through as a faint ghost. In the driver, choosing this filter's setting for each frequency band is the job of a lookup table (<code>BANDS</code>).</p>
   <div class="q" data-num="105.59" data-tol="0.02"><p>The oscillator runs at 102.02 MHz so that 98.45 MHz lands at a 3.57 MHz IF. Which other frequency, in MHz, also lands at 3.57 MHz (the image)?</p>
     <div class="why">102.02 + 3.57 = 105.59 MHz: the same distance on the other side of the oscillator. With one shadow, the mixer can't tell them apart, so the tuner's filters must remove 105.59 MHz before mixing.</div>
   </div>
@@ -133,7 +133,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The PLL setup, from our tuner driver (<code>setPll()</code> in <code>src/r820t.ts</code>): find the divider, split the ratio into whole and fraction, write them, check for lock:</p>
+  <p>The PLL setup, from our tuner driver (<code>setPll()</code>): find the divider, split the ratio into whole and fraction, write them, check for lock:</p>
 <pre><code>let mixDiv = 2, divNum = 0;
 for (; mixDiv &lt;= 64; mixDiv &lt;&lt;= 1) {                               // smallest power of two that puts the VCO in range
   if (freq * mixDiv &gt;= vcoMin &amp;&amp; freq * mixDiv &lt; vcoMax) { for (let d = mixDiv; d &gt; 2; d &gt;&gt;= 1) divNum++; break; }
@@ -147,7 +147,7 @@ await this.writeReg(0x16, sdm &gt;&gt; 8);
 await this.writeReg(0x15, sdm &amp; 0xff);
 // … wait 10 ms, read register 2, check bit 6 ("locked")</code></pre>
   <p><b>Testing hardware code without hardware.</b> The chapter's script runs this real driver against a <em>fake</em> tuner: an object that pretends to be the I2C bus, records every register write, and always answers "locked". Then it checks that the driver wrote exactly what the calculator above predicts. Faking the hardware like this is how drivers get tested automatically.</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch12.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>   98.45 MHz: ×32, VCO 3.2646 GHz, integer 56, fraction 44419 → reg 0x14 = 0xca, off by   4.3 Hz  (driver wrote the same)
   118.45 MHz: ×16, VCO 1.9523 GHz, integer 33, fraction 58618 → reg 0x14 = 0x5, off by -17.1 Hz  (driver wrote the same)
    162.3 MHz: ×16, VCO 2.6539 GHz, integer 46, fraction  4915 → reg 0x14 = 0x48, off by -11.0 Hz  (driver wrote the same)

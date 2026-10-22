@@ -129,7 +129,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The whole mixer, as it runs in this site's receiver (<code>src/dsp.ts</code>):</p>
+  <p>The whole mixer, as it runs in this site's receiver:</p>
 <p class="note"><b>Names in this code:</b> <code>ph</code> is the <b>phase</b> (chapter 1's word for an arrow's angle): here, the running angle on the NCO's dial above. <code>step</code> is how far the dial turns per sample, negative because we spin backwards; <code>fs</code> is the sample rate and <code>freq</code> the shift. <code>TAU</code> is 2π, a full turn in radians. <code>(c, s)</code> is the NCO's arrow: the cos and sin of the angle. A <code>class</code> keeps the angle together with the code that uses it, and <code>process</code> handles one batch of samples (chapter 8 explains why batches).</p>
 <pre><code>export class Mixer {
   private ph = 0;                     // the running angle, remembered between chunks
@@ -150,7 +150,7 @@
   }
 }</code></pre>
   <p>Two details matter. The step is <b>negative</b> (−2π f₀ / f<sub>s</sub>) because we spin backwards to move things down. And the angle is <b>saved on the object</b> at the end of each chunk, so the next chunk continues exactly where this one stopped. Chapter 8 explains why that matters for live radio.</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch05.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>before mixing, stations at (kHz): [ 100, 250 ]
 after mixing by 250 kHz:         [ -150, 0 ]
 cos-only mixing by 100 kHz: copies at +150 kHz (-6.0 dB) and +350 kHz (-6.0 dB); the full arrow gives one copy at -0.0 dB

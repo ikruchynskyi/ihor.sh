@@ -195,11 +195,11 @@
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
   <p>From this chapter on, every idea ends as code: the real lines that run the receiver on this site, or, where the receiver doesn't use the idea yet, the chapter's own script. Every name you haven't met is explained just above its box.</p>
-  <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes, whole numbers from 0 to 255 (chapter 3 explains why), alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1 (<code>src/iq.ts</code>):</p>
+  <p><b>The arrows arriving from the dongle.</b> The USB cable delivers bytes, whole numbers from 0 to 255 (chapter 3 explains why), alternating I, Q, I, Q. A byte of 127.5 means zero, so each one is shifted and scaled to a number between −1 and +1:</p>
 <p class="note"><b>Names in this code:</b> <code>u</code> is the list of whole numbers (0 to 255) from the USB cable; <code>out</code> is the list of numbers it becomes, in the same order (I, Q, I, Q, …); <code>i</code> counts through them.</p>
 <pre><code>for (let i = 0; i &lt; out.length; i++) out[i] = (u[i] - 127.5) / 127.5;
 // out = [I0, Q0, I1, Q1, I2, Q2, …]: one arrow per pair</code></pre>
-  <p><b>Multiplying arrows.</b> This chapter's whole rule, as code, from the chapter's own script (<code>course/code/ch02.ts</code>). An arrow is its two numbers, and multiplying is the formula above: sideways ac − bd, up ad + bc.</p>
+  <p><b>Multiplying arrows.</b> This chapter's whole rule, as code, from the chapter's own checking script. An arrow is its two numbers, and multiplying is the formula above: sideways ac − bd, up ad + bc.</p>
 <pre><code>type Arrow = { I: number; Q: number };          // I = sideways, Q = up
 
 const mul = (a: Arrow, b: Arrow): Arrow =&gt; ({
@@ -209,7 +209,7 @@ const mul = (a: Arrow, b: Arrow): Arrow =&gt; ({
 
 mul({ I: 0, Q: 1 }, { I: 0, Q: 1 })              // j × j  →  { I: -1, Q: 0 }: a half turn, −1</code></pre>
   <p>Every multiplication of arrows in the rest of the course is these two lines. Chapter 5 is where the receiver first uses them for real, and explains what for.</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch02.ts</code>), which also checks each claim and stops if one is wrong. It builds arrows from scratch in about 30 lines. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. It builds arrows from scratch in about 30 lines. Its output:</p>
 <pre><code>j · j = { I: -1, Q: 0 } → a half turn: −1
 (length 2, 30°) × (length 1.5, 45°) = (length 3.000, 75.000°)
 (1, 2) + (3, −1) = { I: 4, Q: 1 }

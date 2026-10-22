@@ -98,7 +98,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>Here is where each step keeps its memory in <code>src/dsp.ts</code>. The mixer saves its angle at the end of every call:</p>
+  <p>Here is where each step keeps its memory. The mixer saves its angle at the end of every call:</p>
 <pre><code>let ph = this.ph;               // pick up where the last chunk left off
 // … process this chunk …
 this.ph = ph;                   // remember for the next chunk</code></pre>
@@ -108,12 +108,12 @@ buf.set(this.hist); buf.set(x, this.hist.length);            // old tail + new c
 // … compute outputs at positions next, next + m, next + 2m, … …
 this.next += count * m - n;                                  // where the next kept sample falls in the next chunk
 this.hist = buf.slice(buf.length - this.hist.length);        // keep the new tail</code></pre>
-  <p>The FM demodulator (chapter 9) remembers the previous sample (<code>pi</code>, <code>pq</code>). The test that proves it all works, from <code>src/dsp.test.ts</code>:</p>
+  <p>The FM demodulator (chapter 9) remembers the previous sample (<code>pi</code>, <code>pq</code>). The test that proves it all works, from the receiver's test suite:</p>
 <pre><code>const whole = new Receiver(fs, 200e3, mode, bw).process(iq).audio;
 const r = new Receiver(fs, 200e3, mode, bw);
 for (let s = 0; s &lt; iq.length; s += 2 * 12_345) parts.push(...r.process(iq.subarray(s, s + 2 * 12_345)).audio);
 assert.ok(parts.every((v, i) =&gt; v === whole[i]));   // identical, not just close</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch08.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>WFM: 9753 audio samples, chunked = whole, bit for bit
 NFM: 9753 audio samples, chunked = whole, bit for bit
 AM : 9753 audio samples, chunked = whole, bit for bit

@@ -117,7 +117,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The receiver's filter-and-decimate is one class, <code>FirDecimator</code> (<code>src/dsp.ts</code>). Its heart: a loop over only the outputs we keep, stepping M input positions each time, with chapter 6's weighted sum inside:</p>
+  <p>The receiver's filter-and-decimate is one class, <code>FirDecimator</code>. Its heart: a loop over only the outputs we keep, stepping M input positions each time, with chapter 6's weighted sum inside:</p>
 <p class="note"><b>Names in this code:</b> <code>m</code> is M, the "keep one in M"; <code>o</code> counts the outputs we keep; <code>j</code> is the input position of the output being computed, jumping <code>m</code> each time; <code>this.next</code> is where the first kept output falls in this batch (chapter 8). The inner loop is chapter 6's weighted sum, unchanged.</p>
 <pre><code>for (let o = 0, j = this.next; o &lt; count; o++, j += m) {   // j jumps m inputs per output
   const base = (t - 1 + j) * 2;
@@ -128,14 +128,14 @@
   }
   out[2 * o] = r; out[2 * o + 1] = i;
 }</code></pre>
-  <p>And the receiver's choice of M and of the filter (<code>Receiver</code> in <code>src/dsp.ts</code>):</p>
+  <p>And the receiver's choice of M and of the filter (<code>Receiver</code>):</p>
 <p class="note"><b>Names in this code:</b> <code>fs</code> is the dongle's sample rate and <code>bw</code> the station's width; <code>m1</code> is M, so <code>chanFs</code> is the rate after keeping one in M. <code>half</code> is how far the station reaches each side of 0 Hz. <code>firLowpass(cutoff, edge)</code> is chapter 6's filter designer.</p>
 <pre><code>const m1 = Math.max(1, Math.floor(fs / Math.max(48e3, 1.5 * bw)));   // biggest M keeping ≥ 1.5 × bandwidth
 this.chanFs = fs / m1;
 // anything between chanFs − half and fs/2 would fold onto the station, so that's where the filter must reject
 this.taps = firLowpass(half / fs, Math.max(this.chanFs - 2 * half, this.chanFs * 0.1) / fs);</code></pre>
   <p>The filter's edge is made exactly as wide as the margin we left: steep enough that nothing folds onto the station, no steeper (chapter 6: steepness costs weights).</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch07.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>no filter: the +350 kHz neighbor reappears at 94 kHz  (350 − 256 = 94)
 with a 61-weight filter first: what's left of it is -74 dB
 filter-everything-then-pick and compute-only-kept agree on all 16384 outputs, with 4× less work

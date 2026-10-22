@@ -91,7 +91,7 @@
   </ul>
   <p>Real stations never spin at whole numbers of turns per block, so real spectrum displays always use a window. Ours does.</p>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>A speed halfway between two test speeds never cancels anywhere. For 3.5 turns per block (computed in <code>course/code/ch04.ts</code> for 256 samples), the plain machine shows it at −3.9 dB at test speeds 3 and 4, still −30 dB ten speeds away, and −41 dB at speed 40. A weak station anywhere near a strong one hides under that. The Hann window trades a slightly wider peak (−1.4 dB at speed 3) for leftovers of −71 dB ten speeds away and −104 dB at speed 40, which is why every real spectrum display uses a window.</p>
+    <p>A speed halfway between two test speeds never cancels anywhere. For 3.5 turns per block (computed by this chapter's checking script for 256 samples), the plain machine shows it at −3.9 dB at test speeds 3 and 4, still −30 dB ten speeds away, and −41 dB at speed 40. A weak station anywhere near a strong one hides under that. The Hann window trades a slightly wider peak (−1.4 dB at speed 3) for leftovers of −71 dB ten speeds away and −104 dB at speed 40, which is why every real spectrum display uses a window.</p>
   </details>
 
   <!-- 4 -->
@@ -182,7 +182,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>The plain winding machine</b> is two loops, one over test speeds and one over samples. From <code>course/code/ch04.ts</code>:</p>
+  <p><b>The plain winding machine</b> is two loops, one over test speeds and one over samples. From this chapter's checking script:</p>
 <p class="note"><b>Names in this code:</b> <code>re</code> and <code>im</code> are I and Q: code often uses mathematicians' names for an arrow's two parts, "real" and "imaginary". <code>TAU</code> is 2π, a full turn in radians, so <code>-TAU * k * t / n</code> is the un-spinning angle for test speed <code>k</code> at sample <code>t</code>, and <code>c</code>, <code>s</code> are that arrow's two shadows (chapter 1). <code>n</code> is how many samples are in the block.</p>
 <pre><code>for (let k = 0; k &lt; n; k++) {                 // every test speed…
   for (let t = 0; t &lt; n; t++) {               // …un-spin every sample and add it up
@@ -191,7 +191,7 @@
     outIm[k] += re[t] * s + im[t] * c;
   }
 }</code></pre>
-  <p><b>The FFT</b> that runs Spectrum Lab (<code>src/dsp.ts</code>). First it reorders the samples (so that each split into even and odd halves is already sitting side by side), then it runs the butterflies layer by layer. The heart of it:</p>
+  <p><b>The FFT</b> that runs Spectrum Lab. First it reorders the samples (so that each split into even and odd halves is already sitting side by side), then it runs the butterflies layer by layer. The heart of it:</p>
 <p class="note"><b>Names in this code:</b> <code>len</code> is the size of the blocks being combined in this layer (2, 4, 8, …); <code>a</code> and <code>b</code> are the positions of a butterfly's two inputs; <code>(cr, ci)</code> is the un-spinning arrow for this butterfly, and <code>(tr, ti)</code> the odd half's answer after it's been turned by it. <code>&lt;&lt;= 1</code> doubles <code>len</code>.</p>
 <pre><code>for (let len = 2; len &lt;= n; len &lt;&lt;= 1) {        // layers: blocks of 2, 4, 8, … samples
   for (let i = 0; i &lt; n; i += len) {
@@ -211,7 +211,7 @@
 re[i] = iq[2 * (start + i)] * w;  im[i] = iq[2 * (start + i) + 1] * w;
 fft(re, im);
 out[i] = 10 * Math.log10((re[j] ** 2 + im[j] ** 2) / wsum ** 2 + 1e-20);   // power in dB</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch04.ts</code>), which also checks each claim and stops if one is wrong. It builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. It builds the plain machine, checks the FFT against it, races them, and finds the station in the real samples. Its output:</p>
 <pre><code>hidden arrows found: 2 turns/block (length 1.00), 7 turns/block (length 0.35), -3 turns/block (length 0.55)
 FFT vs plain machine on 1024 random samples: biggest difference 3.0e-6 (float rounding)
 inverse FFT of the FFT: back to the samples within 1.3e-7 (float rounding)

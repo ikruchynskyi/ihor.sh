@@ -106,7 +106,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>Recording a trace is a small trick worth knowing: wrap the device in a <b>proxy</b>, an object that passes every call through to the real one but writes it down first (<code>src/course/trace.ts</code>):</p>
+  <p>Recording a trace is a small trick worth knowing: wrap the device in a <b>proxy</b>, an object that passes every call through to the real one but writes it down first:</p>
 <pre><code>return new Proxy(dev, {
   get(t, k) {
     const v = t[k];
@@ -119,7 +119,7 @@
   },
 });</code></pre>
   <p>The driver never knows it's being watched.</p>
-  <p><b>Where this chapter's numbers come from.</b> The trace above was recorded by a short script in this site's source code (<code>course/code/ch14.ts</code>), which runs the real driver against a pretend dongle and prints every message, phase by phase. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The trace above was recorded by a short script behind this page, which runs the real driver against a pretend dongle and prints every message, phase by phase. Its output:</p>
 <pre><code>RTL2832U start-up: 86 control transfers
    USB register 0x2000 = 0x09 · USB_SYSCTL (USB block control)
    USB register 0x2158 = 0x00 0x02 · USB_EPA_MAXPKT (packet size)

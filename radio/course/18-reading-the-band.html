@@ -206,35 +206,35 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>Averaging FFTs</b> (<code>avgSpectrum</code> in <code>src/dsp.ts</code>): spread across the signal, averaged as power, back to dB at the end:</p>
+  <p><b>Averaging FFTs</b> (<code>avgSpectrum</code>): spread across the signal, averaged as power, back to dB at the end:</p>
 <pre><code>for (let s = 0; s + n &lt;= total &amp;&amp; count &lt; frames; s += step, count++) {
   const p = powerSpectrum(iq, s, n);                       // one FFT, in dB (chapter 4)
   for (let i = 0; i &lt; n; i++) acc[i] += 10 ** (p[i] / 10); // dB → power, then add
 }
 for (let i = 0; i &lt; n; i++) acc[i] = 10 * Math.log10(acc[i] / count + 1e-20);</code></pre>
-  <p><b>The noise floor and the colors</b> (<code>src/main.ts</code>): the median bin, smoothed, and a 256-color lookup table:</p>
+  <p><b>The noise floor and the colors</b>: the median bin, smoothed, and a 256-color lookup table:</p>
 <pre><code>const median = (x: Float32Array) => x.slice().sort()[x.length >> 1];
 wf.floor = 0.9 * wf.floor + 0.1 * median(db);
 const LUT = new Uint32Array(256).map((_, i) => { const [r, g, b] = heat(i / 255); return (255 &lt;&lt; 24) | (b &lt;&lt; 16) | (g &lt;&lt; 8) | r; });
 // each bin: how far above the floor, scaled so `contrast` dB is the last color
 px[i] = LUT[Math.max(0, Math.min(255, ((db[i] - wf.floor) * 255 / contrast) | 0))];</code></pre>
-  <p><b>A click, snapped</b> (<code>src/main.ts</code>): position across the chart, then the absolute frequency rounded to the step:</p>
+  <p><b>A click, snapped</b>: position across the chart, then the absolute frequency rounded to the step:</p>
 <pre><code>const f = view.lo + fracX(e) * (view.hi - view.lo);                   // Hz from the dongle's center
 const snap = (f: number) => Math.round((centerHz() + f) / stepHz()) * stepHz() - centerHz();
 // image column whose middle is frequency f (each bin is drawn as a column from its frequency rightward)
 const u = (f: number) => (f / fs) * WF_N + WF_N / 2 + 0.5;</code></pre>
-  <p><b>Filter shift</b> (<code>Receiver</code> in <code>src/dsp.ts</code>): mix by tuning + shift, filter, mix back:</p>
+  <p><b>Filter shift</b> (<code>Receiver</code>): mix by tuning + shift, filter, mix back:</p>
 <pre><code>this.mixer = new Mixer(fs, offset + sh);                  // the filter's center moves by the shift
 this.chan = new FirDecimator(this.taps, m1, 2);
 this.back = sh ? new Mixer(this.chanFs, -sh) : null;      // and the carrier comes back to 0 Hz
 // SSB: the sideband filter slides too
 const shift = (upper ? bw / 2 : -bw / 2) + passShift;</code></pre>
-  <p><b>The squelch</b> (<code>src/main.ts</code>): the loudest bin in the passband, smoothed, with 3 dB of hysteresis:</p>
+  <p><b>The squelch</b>: the loudest bin in the passband, smoothed, with 3 dB of hysteresis:</p>
 <pre><code>for (let i = bin(a); i &lt;= bin(b); i++) peak = Math.max(peak, db[i]);
 sqLevel = 0.5 * sqLevel + 0.5 * peak;
 if (!sqOpen &amp;&amp; sqLevel &gt; line) sqOpen = true;
 else if (sqOpen &amp;&amp; sqLevel &lt; line - 3) sqOpen = false;</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch18.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>N =  1024: bins 2344 Hz wide, one FFT = 0.43 ms of signal
 N =  4096: bins  586 Hz wide, one FFT = 1.71 ms of signal
 N = 16384: bins  146 Hz wide, one FFT = 6.83 ms of signal

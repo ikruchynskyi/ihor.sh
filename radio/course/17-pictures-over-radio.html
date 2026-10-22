@@ -132,7 +132,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The decoder (<code>src/sstv.ts</code>) is about 150 lines. Its pitch detector is three blocks from the course, chained:</p>
+  <p>The decoder is about 150 lines. Its pitch detector is three blocks from the course, chained:</p>
 <pre><code>this.mixer = new Mixer(fs, 1900);                                   // ch. 5: slide 1900 Hz to 0
 this.lp = new FirDecimator(firLowpass(1100 / fs, 700 / fs), m, 2); // ch. 6–7: keep ±1100 Hz, thin out
 this.fm = new FmDemod();                                            // ch. 9: angle turned per sample
@@ -143,7 +143,7 @@ freq.push(1900 + (turn * rate) / (2 * Math.PI));</code></pre>
   const score = Math.abs(avg(t - sync, t) - 1200) + Math.abs(avg(t, t + porch) - 1500);
   if (score &lt; bestScore) { bestScore = score; best = t; }
 }</code></pre>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch17.ts</code>), which also checks each claim and stops if one is wrong. It sends a test picture through every mode (encoder → audio → decoder) and compares it pixel by pixel. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. It sends a test picture through every mode (encoder → audio → decoder) and compares it pixel by pixel. Its output:</p>
 <pre><code>black 1500 Hz, mid-gray 1902 Hz, white 2300 Hz
 Robot 36    36.9 s  header says Robot 36    47.6 dB
 Martin M1  115.2 s  header says Martin M1   53.7 dB

@@ -83,7 +83,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p>The rest of <code>src/lrpt.ts</code>'s receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code> (each between −1 and +1: how sure the receiver is that a bit is 0 or 1):</p>
+  <p>The rest of the receiver. The Viterbi decoder's heart, for each received pair of soft values <code>a, b</code> (each between −1 and +1: how sure the receiver is that a bit is 0 or 1):</p>
 <pre><code>for (let ns = 0; ns &lt; 64; ns++) {                       // each state: the last 6 data bits
   const u = ns &gt;&gt; 5, p0 = (ns &amp; 31) &lt;&lt; 1, p1 = p0 | 1;    // the two states it can come from
   const e0 = exp[(u &lt;&lt; 6) | p0], e1 = exp[(u &lt;&lt; 6) | p1];  // the bit pairs each path would have sent (±1)
@@ -91,7 +91,7 @@
   if (m1 &gt; m0) { n[ns] = m1; d[ns] = 1; } else n[ns] = m0;  // keep the better path, remember which
 }</code></pre>
   <p>The whole receiver, symbol by symbol: matched filter → Gardner timing → AGC → (once) the 4th-power FFT → Costas loop (chapter 21) → four rotations into four Viterbi decoders → sync word search → descramble (XOR) → checksum → picture.</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch22.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>convolutional code: 320 of 8000 coded bits flipped (4%), 0 message bits wrong after Viterbi
 XOR: 0⊕0 = 0, 0⊕1 = 1, 1⊕0 = 1, 1⊕1 = 0; and x ⊕ k ⊕ k = x for every x and k
 keeping  1 of 64 coefficients:   2% of the numbers, PSNR 23.0 dB

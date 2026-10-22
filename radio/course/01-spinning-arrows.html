@@ -104,7 +104,7 @@
     </ol>
   </details>
   <details class="deeper"><summary>Where it breaks</summary>
-    <p>Arrows can draw any shape, but a sharp corner never comes out exactly. With the opening animation's four arrows (lengths 1, 1/3, 1/5, 1/7), the flat top sits at 0.785 and the wave overshoots next to each jump, to 0.930: 9.2% of the jump. With 50 arrows the bump gets narrower but not lower: still 9.0% (both from <code>course/code/ch01.ts</code>). That overshoot is why a sharp edge in a signal always needs many fast arrows, and why filters (chapter 6) and pulse shapes (chapter 21) are made smooth.</p>
+    <p>Arrows can draw any shape, but a sharp corner never comes out exactly. With the opening animation's four arrows (lengths 1, 1/3, 1/5, 1/7), the flat top sits at 0.785 and the wave overshoots next to each jump, to 0.930: 9.2% of the jump. With 50 arrows the bump gets narrower but not lower: still 9.0% (both computed by this chapter's checking script). That overshoot is why a sharp edge in a signal always needs many fast arrows, and why filters (chapter 6) and pulse shapes (chapter 21) are made smooth.</p>
   </details>
   <p>Taking a signal apart into its arrows is called the <b>Fourier transform</b>, and chapter 4 builds a machine that does it.</p>
 

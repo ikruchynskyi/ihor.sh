@@ -19,7 +19,7 @@
     </ul>
   </div>
 
-  <p>One antenna on a rooftop can serve everyone. This site does exactly that: the dongle is plugged into a computer, a small server (<code>server.ts</code>) runs our driver there, and your browser receives the same bytes over the network that it would get over USB. Everything from chapter 3 on works unchanged.</p>
+  <p>One antenna on a rooftop can serve everyone. This site does exactly that: the dongle is plugged into a computer, a small server runs our driver there, and your browser receives the same bytes over the network that it would get over USB. Everything from chapter 3 on works unchanged.</p>
   <p>Almost unchanged. A network is not a USB cable, and three new problems appear: data arrives in pieces of random size, there's far less of it to go around, and many people want the same dongle at once.</p>
 
   <!-- 1 -->
@@ -89,7 +89,7 @@
   </div>
 
   <p>For each listener, the server runs its own mixer, filter and decimator: a <b>channelizer</b>. That costs computing power per listener: at 2.4 MS/s with a 70-weight filter, roughly 350 million multiply-adds per second each (<a class="back" href="./06-averaging-is-filtering.html#real">↩ ch. 6</a>), divided by the decimation (<a class="back" href="./07-throwing-away-snapshots.html#skip">↩ ch. 7</a>). Servers with many listeners use a trick: one big FFT (<a class="back" href="./04-winding-machine.html#fft">↩ ch. 4</a>) already splits the band into thousands of narrow slices at once, and each listener's slice is assembled from the pieces they need.</p>
-  <p>One more server-side rule from this site's <code>server.ts</code>: if a listener can't keep up, the server <b>skips</b> chunks for them instead of storing them. Storing would make that listener's delay grow forever; skipping costs them a click but keeps everyone else unaffected.</p>
+  <p>One more rule from this site's server: if a listener can't keep up, the server <b>skips</b> chunks for them instead of storing them. Storing would make that listener's delay grow forever; skipping costs them a click but keeps everyone else unaffected.</p>
   <div class="q"><p>Why does an FFT make a server with many listeners cheaper than one mixer, filter and decimator per listener?</p>
     <div class="why">One FFT splits the whole band into thousands of narrow slices at once, for everyone; each listener's channel is then put together from the slices around their station. The big cost is shared instead of repeated.</div>
   </div>
@@ -105,7 +105,7 @@
   <!-- lab -->
   <h2 id="lab">Lab: measure the stream</h2>
   <div class="lab">
-    <p>This reads the server's raw stream directly with <code>fetch()</code>, the way <code>src/remote.ts</code> does, and shows how the pieces arrive. Watch how many have odd lengths. (Only works when the page is served by this site's server.)</p>
+    <p>This reads the server's raw stream directly with <code>fetch()</code>, the way Spectrum Lab does, and shows how the pieces arrive. Watch how many have odd lengths. (Only works when the page is served by this site's server.)</p>
     <div class="scene" id="s-lab"></div>
     <div class="game"><button id="lb-go">Measure</button></div>
     <p class="readout" id="lb-status" aria-live="polite"></p>
@@ -114,14 +114,14 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <details class="code-fold"><summary>Show the real code (optional: everything it does is explained above)</summary>
-  <p><b>The server</b> (<code>server.ts</code>, Node's built-in HTTP): one dongle, many listeners, and skipping instead of storing for slow ones:</p>
+  <p><b>The server</b> (Node's built-in HTTP): one dongle, many listeners, and skipping instead of storing for slow ones:</p>
 <pre><code>function fanOut(chunk) {
   for (const res of clients) {
     if (congested.has(res)) continue;                      // this listener is behind: skip, don't pile up
     if (!res.write(chunk)) { congested.add(res); res.once("drain", () =&gt; congested.delete(res)); }
   }
 }</code></pre>
-  <p><b>The browser side</b> (<code>src/remote.ts</code>): read pieces, gather at least 64 KiB, hand on an even number of bytes, keep the leftover:</p>
+  <p><b>The browser side</b>: read pieces, gather at least 64 KiB, hand on an even number of bytes, keep the leftover:</p>
 <pre><code>const { value, done } = await reader.read();               // a piece of any size
 pending.push(value); size += value.length;
 if (size &lt; MIN_CHUNK) continue;
@@ -129,7 +129,7 @@ const even = size &amp; ~1;                                   // round down to w
 // … copy `even` bytes out, hand them on …
 pending = size - even ? [lastPiece.subarray(-1)] : [];    // the odd byte starts the next batch</code></pre>
   <p><b>The API</b> (three endpoints, documented in the <a href="../build.html#network">build guide</a>): <code>GET /api/state</code>, <code>POST /api/tune</code>, <code>GET /api/stream</code>. Browsers can't open raw network sockets, so the standard <code>rtl_tcp</code> protocol many SDR apps use isn't available to a web page, which is why our server speaks plain HTTP.</p>
-  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short script in this site's source code (<code>course/code/ch15.ts</code>), which also checks each claim and stops if one is wrong. Its output:</p>
+  <p><b>Where this chapter's numbers come from.</b> The numbers this chapter computes come from a short checking script behind this page, which also checks each claim and stops if one is wrong. Its output:</p>
 <pre><code>pairs kept together: station -2.1 dB, mirror at −200 kHz -101.2 dB
 pairs split       : station -8.1 dB, mirror at −200 kHz -8.1 dB
 whole band 1.024 MS/s  × 10 listeners =  20.48 MB/s does NOT fit in 2.5 MB/s
