@@ -84,7 +84,9 @@ Resume any time (same `COURSE`): `L path` shows where you are, `L show` reopens 
 3. **Predict, then answer.** For every question: decide, then
    `L answer LESSON Q VALUE --quote "exact words from the lesson that justify it"`. VALUE is a letter, a number, or
    (for open questions) your answer in a few words. The quote must be copied **verbatim** from what you were shown;
-   it gets checked. If nothing you were shown justifies your answer, still answer, and log a `guess` (below).
+   it gets checked, and it must be the lesson's reasoning, not the option's own words (an option can't justify
+   itself). Answers less than 15 s apart are refused: read the section and use its widget first.
+   If nothing you were shown justifies your answer, still answer, and log a `guess` (below).
 4. **Run the code.** Press Run the way a visitor would: `B runbox LESSON N`. When the lesson says to change something,
    write your version to a file and `L run LESSON N --file mine.py`. A code box you couldn't understand line by line
    is a struggle.
@@ -97,7 +99,8 @@ Resume any time (same `COURSE`): `L path` shows where you are, `L show` reopens 
    `done` refuses until every exercise has one, and the quotes get checked. If the course never showed you how,
    take `L hint` first, and log the struggle, instead of writing what you happen to know.
 6. **Finish:** `echo '{"minutes": 25, "hardest": "…", "would_continue": true, "confidence": 3}' | L done`.
-   `done` refuses while a question is unanswered.
+   `done` refuses while a question is unanswered, before one `B do` per section that has a widget, and before a
+   minute per question (at least 3) since `show`.
 
 ## Clean up after yourself (the machine is a shared server)
 

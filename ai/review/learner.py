@@ -90,8 +90,12 @@ class Lesson(HTMLParser):
     def __init__(self, src):
         super().__init__(convert_charrefs=True)
         self.out, self.stack, self.qs, self.boxes, self.inmain, self.skip = [], [], [], [], False, 0
+        self.sec, self.widget_secs = 0, set()   # h2 sections that hold a widget (a picture to drag, a slider, a menu)
         self.feed(src)
         self.text = re.sub(r"\n{3,}", "\n\n", "".join(self.out)).strip()
+        # widgets a script builds into an empty <div id="…"> (the schematic, pinout and breadboard views) count too
+        body = src[src.find("<main"):src.find("</main>")]
+        for m in re.finditer(r'<div[^>]*\bid="[^"]+"[^>]*>\s*</div>', body): self.widget_secs.add(body[:m.start()].count("<h2"))
 
     def cls(self, a): return (dict(a).get("class") or "").split()
     def within(self, c): return any(c in s[1] for s in self.stack)
@@ -102,6 +106,9 @@ class Lesson(HTMLParser):
         if tag == "main": self.inmain = True
         if not self.inmain: return
         if tag in ("script", "style"): self.skip += 1
+        if tag == "h2": self.sec += 1
+        if tag == "canvas" or (tag == "input" and d.get("type") in ("range", "checkbox")) or tag == "select":
+            if not self.within("q"): self.widget_secs.add(self.sec)
         if tag == "canvas": self.out.append(f"\n[interactive picture: {d.get('aria-label') or d.get('id') or 'drag or click it on the page'}]\n")
         if tag == "input" and d.get("type") == "range": self.out.append(f" [slider {d.get('min')}…{d.get('max')}, now {d.get('value')}] ")
         if tag in self.VOID: return
@@ -160,7 +167,7 @@ class Story:
             ex = "".join(f"\n    e.g. {''.join(t[0] for t in e.get('t', []))} ({e.get('en', '')})" for e in g.get("examples", []))
             return f"{g.get('title', '')}: {g.get('explain', '')}{ex}"
         if d.get("grammar"): out.append("\n## Grammar in this story\n- " + "\n- ".join(note(g) for g in d["grammar"]))
-        self.qs, self.boxes = [], []
+        self.qs, self.boxes, self.widget_secs = [], [], set()
         for n, q in enumerate(d.get("questions", []), 1):
             opts = {chr(97 + k): c for k, c in enumerate(q["choices"])}
             self.qs.append({"n": n, "kind": "choice", "key": chr(97 + q["answer"]), "num": None, "tol": 0.01,
@@ -212,6 +219,12 @@ def cmd_answer(args):
     cmd_inbox([])  # editor messages arrive between steps, not only at the next lesson
     quote = flag(args, "--quote")
     q = parsed(stem).qs[n - 1]
+    norm = lambda t: re.sub(r"\W+", " ", t or "").strip().lower()   # the option itself, or barely more, justifies nothing
+    if quote and q["options"] and any(norm(quote) and (norm(quote) in norm(o) or (norm(o) in norm(quote) and len(norm(quote)) <= 1.3 * len(norm(o)) + 5)) for o in q["options"].values() if norm(o)):
+        sys.exit("That quote is one of the options, so it can't justify choosing it. Quote the lesson's own words that made you pick it.")
+    prev = [e for e in lines(RUN / "log.jsonl") if e["kind"] == "answer" and e["lesson"] == stem]
+    if prev and time.time() - time.mktime(time.strptime(prev[-1]["ts"], "%Y-%m-%dT%H:%M:%S")) < 15:
+        sys.exit("Slow down: answer a question only after reading its section and doing what it asks (widgets, code).")
     tries = sum(1 for e in lines(RUN / "log.jsonl") if e["kind"] == "answer" and e["lesson"] == stem and e["q"] == n)
     if q["kind"] == "choice": ok = value.strip().lower() == q["key"]
     elif q["kind"] == "number":
@@ -286,6 +299,13 @@ def cmd_done(args):
     les, evs = parsed(stem), [e for e in lines(RUN / "log.jsonl") if e.get("lesson") == stem]
     missing = [q["n"] for q in les.qs if not any(e["kind"] == "answer" and e["q"] == q["n"] for e in evs)]
     if missing: sys.exit(f"Answer every question first: Q{', Q'.join(map(str, missing))} of {stem}.")
+    dos = sum(1 for e in evs if e["kind"] == "ui" and e.get("action") == "do")
+    if dos < len(les.widget_secs):
+        sys.exit(f"{len(les.widget_secs)} sections have a widget (sections {sorted(les.widget_secs)}), and you've used `B do` {dos} times. "
+                 "Do what each section asks with its widget, then `done`.")
+    shown = next((e["ts"] for e in evs if e["kind"] == "show"), None)
+    if shown and (time.time() - time.mktime(time.strptime(shown, "%Y-%m-%dT%H:%M:%S"))) < 60 * max(3, len(les.qs)):
+        sys.exit(f"Under {max(3, len(les.qs))} minutes on a lesson with {len(les.qs)} questions: that's skimming, not learning. Work through it, then `done`.")
     if any(e["kind"] == "nb_start" for e in evs):
         cited = {int(e["exercise"]) for e in evs if e["kind"] == "exercise"}
         uncited = [n for n in range(1, len(exercises(stem)) + 1) if n not in cited]
