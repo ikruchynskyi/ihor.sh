@@ -45,7 +45,7 @@
   <!-- 2 -->
   <h2 id="bandwidth">There's much less bandwidth to go around</h2>
   <div class="q" data-num="1" data-tol="0"><p>Sending the whole band takes 4.8 MB/s per listener. A home connection uploads 40 megabits per second. How many listeners can it serve?</p>
-    <div class="why">40 Mbit/s ÷ 8 = 5 MB/s: one listener at 4.8 MB/s. That's why the server sends each listener only a slice (the next rungs).</div>
+    <div class="why">40 Mbit/s ÷ 8 = 5 MB/s: one listener at 4.8 MB/s. That's why the server sends each listener only a slice (the options just below).</div>
   </div>
 
   <p>Inside a computer, 4.8 MB/s is nothing. Across the internet, it's a lot, and a server has to send it to <em>every</em> listener separately. A typical home connection uploads 10–40 megabits per second (1–5 MB/s). Slide the number of listeners:</p>
@@ -57,7 +57,7 @@
     </div>
   </div>
 
-  <p>Sending the whole band (what this site's server does today, fine inside your home) runs out after a listener or two. The rungs below it are everything you've learned, used to save bandwidth:</p>
+  <p>Sending the whole band (fine inside your home) runs out after a listener or two. The options below, from biggest to smallest, are everything you've learned, used to save bandwidth:</p>
   <ul>
     <li><b>Send a slice:</b> the server mixes each listener's station to the center, filters and decimates (chapters 5–7), and sends only that. A 48 kHz slice is 20× smaller than the whole band and still contains everything for AM, narrow FM or SSB. The listener's browser does the demodulation (chapters 9–11), so they can still see their slice's waterfall and switch modes instantly.</li>
     <li><b>Send finished audio:</b> about the same size as a narrow slice (both are 48 000 pairs or samples of numbers per second), but the listener can no longer see or retune within the signal; every change needs a round trip to the server. That's why sending the slice is usually the better deal.</li>
@@ -76,7 +76,7 @@
   <details class="deeper"><summary>Where it breaks</summary>
     <p>Slices only save bandwidth until the listeners add up. This chapter's script: ten listeners each sent the whole 1.024 MS/s band need 20 MB/s; each sent a 250 kHz slice, still 5 MB/s, too much for a 2.5 MB/s upload; a 48 kHz slice fits (0.96 MB/s), and compressed audio is tiny (0.08 MB/s). Past that, the server has to share one FFT among everyone, or limit how many people can listen.</p>
   </details>
-  <p>Public web receivers such as KiwiSDR and OpenWebRX send each listener their own slice plus a low-resolution waterfall of the whole band. That's the plan for this site's public version too.</p>
+  <p>Public web receivers such as KiwiSDR and OpenWebRX send each listener their own slice plus a low-resolution waterfall of the whole band. This site's server works the same way: the dongle captures a 2.4 MHz window, and each listener gets their own slice of it around their station (240 kHz in Spectrum Lab), mixed, filtered and decimated on the server, with a separate low-resolution picture of the whole window.</p>
 
   <!-- 3 -->
   <h2 id="channelizer">One dongle, many listeners</h2>
