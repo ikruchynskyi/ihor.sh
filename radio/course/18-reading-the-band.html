@@ -24,7 +24,7 @@
 
   <!-- 1 -->
   <h2 id="resolution">How sharp can the picture be?</h2>
-  <p>An FFT of <b>N</b> samples gives N bins, and they share the whole band the dongle hears. At 2.4 million samples a second, 1024 bins are 2.3 kHz wide each. Two carriers closer than that fall into the same bin, or into neighboring bins that blur together. Slide them apart, or give the FFT more samples:</p>
+  <p>An FFT of <b>N</b> samples gives N <b>bins</b>: its N test speeds (chapter 4), each one standing for a narrow range of frequencies, and together they share the whole band the dongle hears. At 2.4 million samples a second, 1024 bins are 2.3 kHz wide each. Two carriers closer than that fall into the same bin, or into neighboring bins that blur together. Slide them apart, or give the FFT more samples:</p>
 
   <div class="scene" id="s-res">
     <div class="controls">
@@ -148,8 +148,8 @@
   </div>
 
   <!-- 6 -->
-  <h2 id="shift">Sliding the window, not the station</h2>
-  <p>You're listening to a voice on single sideband and a carrier whistles 2.6 kHz above the voice's carrier: inside the 2.8 kHz passband. Retuning would move the voice too. What you want is to slide only the <b>window</b>, the filter, off the whistle, and leave the voice where it is. Real radios call it <b>passband tuning</b> or <b>filter shift</b>:</p>
+  <h2 id="shift">Sliding the filter, not the station</h2>
+  <p>You're listening to a voice on single sideband and a carrier whistles 2.6 kHz above the voice's carrier: inside the 2.8 kHz passband. Retuning would move the voice too. What you want is to slide only the filter (its passband, the range it lets through), off the whistle, and leave the voice where it is. Real radios call it <b>passband tuning</b> or <b>filter shift</b>:</p>
 
   <div class="scene" id="s-shift">
     <div class="controls">
@@ -167,7 +167,7 @@
     <math><mi>y</mi><mo>[</mo><mi>n</mi><mo>]</mo><mo>=</mo><mo>(</mo><mi>h</mi><mo>*</mo><mo>(</mo><mi>x</mi><mo>·</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>j</mi><mn>2</mn><mi>π</mi><mo>(</mo><msub><mi>f</mi><mn>0</mn></msub><mo>+</mo><mi>s</mi><mo>)</mo><mi>n</mi><mo>/</mo><msub><mi>f</mi><mi>s</mi></msub></mrow></msup><mo>)</mo><mo>)</mo><mo>·</mo><msup><mi>e</mi><mrow><mi>j</mi><mn>2</mn><mi>π</mi><mi>s</mi><mi>n</mi><mo>/</mo><msub><mi>f</mi><mi>s</mi></msub></mrow></msup></math>
     <ul>
       <li><b>f<sub>0</sub></b>: the tuned frequency; <b>s</b>: the shift; <b>h</b>: the low-pass filter; <b>*</b>: convolution (sliding-and-multiplying).</li>
-      <li>The script measures it: a +1.2 kHz shift makes an 800 Hz USB tone 59 dB quieter.</li>
+      <li>The script measures it: a +1.2 kHz shift makes an 800 Hz upper-sideband (USB) tone 59 dB quieter.</li>
     </ul>
   </div>
 
