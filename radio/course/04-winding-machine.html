@@ -62,6 +62,7 @@
   <p>That graph has a name: the <b>spectrum</b>. And this machine is the <b>Fourier transform</b>. It's the same picture you see in Spectrum Lab's top plot, and in every waterfall: each column is one test speed, and the brightness is how far the center of mass jumped.</p>
   <details class="deeper"><summary>Why do all the other speeds cancel?</summary>
     <ol>
+      <li>Names: N is the number of samples in the block (400 above); k is the test speed and m a hidden arrow's speed, both in turns per block.</li>
       <li>Un-spinning by test speed k turns an arrow of speed m into one of speed m − k (chapter 2: angles add).</li>
       <li>If m − k is a whole number of turns per block, other than 0, its N positions are spread evenly around the circle.</li>
       <li>Turn that whole set of positions by one step: each position lands where the next one was, so the set, and its sum, is unchanged.</li>
@@ -73,7 +74,7 @@
 
   <!-- 3 -->
   <h2 id="window">Speeds that fall between the cracks</h2>
-  <p>Before we point the winding machine at real radio, we have to fix a problem that would otherwise ruin our spectrum display: a single strong local station can splatter fake energy across the whole band and hide weak stations next to it. Why? Because a computer can't try <em>every</em> test speed; it tries a fixed list. If it looks at a block of N samples, it tries whole numbers of turns per block: 0, 1, 2, …, plus the same negative ones. Those are the yellow dots below. The grey curve shows what every speed in between would have given.</p>
+  <p>Before we point the winding machine at real radio, we have to fix a problem that would otherwise ruin our spectrum display: a single strong local station can splatter fake energy across the whole band and hide weak stations next to it. Why? Because a computer can't try <em>every</em> test speed; it tries a fixed list. If it looks at a block of N samples (a <b>block</b> is the stretch of samples it un-spins together: the 400 samples above were one second of signal, so there "turns per block" and "turns per second" were the same thing), it tries whole numbers of turns per block: 0, 1, 2, …, plus the same negative ones. Those are the yellow dots below. The grey curve shows what every speed in between would have given.</p>
   <p>The vertical scale here is in <b>decibels</b> (dB), a scale where each step of 20 dB means the arrow is 10× shorter (chapter 3: 10× shorter is 100× less power, and every 10 dB is 10× the power). It stretches the bottom of the graph so you can see tiny leftovers, which matters because a weak station may be thousands of times weaker than a strong one next to it.</p>
 
   <div class="scene" id="s-leak">
@@ -98,9 +99,9 @@
   <p>The plain machine is slow. To test N speeds, it un-spins all N samples for each one: N × N steps. For the 1024-sample blocks behind Spectrum Lab's waterfall that's over a million steps per row, many times per second.</p>
   <p>You won't have to write an FFT, and nothing later depends on how it works inside, only on what it gives: the same spectrum, fast enough to draw live. This section is the one idea behind the speed, so the FFT in our code isn't a black box. Happy to trust it? Skip ahead to <a href="#inverse">going back</a>.</p>
   <div class="q" data-num="1.05" data-tol="0.06"><p>Estimate first: the plain machine un-spins all N samples for each of N test speeds. For a 1024-sample block, about how many million steps is that?</p>
-    <div class="why">1024 × 1024 ≈ 1.05 million, for every row of the waterfall. The FFT below does the same job in 1024 × 10 ≈ 10 thousand.</div>
+    <div class="why">1024 × 1024 ≈ 1.05 million, for every row of the waterfall. The FFT below does the same job in 1024 × 10 ≈ 10 thousand (10 because 1024 can be halved 10 times before reaching 1).</div>
   </div>
-  <p>In 1965, Cooley and Tukey published a shortcut (Gauss had found it around 1805, but it was only printed after his death). The insight: <b>the work for different test speeds overlaps</b>. Split the samples into the even-numbered ones and the odd-numbered ones, and run the winding machine on each half separately. The answers for test speed k and for speed k + N/2 come out of the <em>same</em> two half-machines, combined once with a plus and once with a minus. Then split each half again, and again, until you're left with single samples.</p>
+  <p>In 1965, Cooley and Tukey published a shortcut (Gauss had found it around 1805, but it was only printed after his death). The insight: <b>the work for different test speeds overlaps</b>. Split the samples into the even-numbered ones and the odd-numbered ones, and run the winding machine on each half separately. For a block of N samples, the answers for any test speed k and for the speed half a block's worth higher, k + N/2, come out of the <em>same</em> two half-machines, combined once with a plus and once with a minus. Then split each half again, and again, until you're left with single samples.</p>
 
   <div class="scene" id="s-cost">
     <div class="controls">
@@ -109,7 +110,7 @@
     <p class="readout" id="r-cost" aria-live="polite"></p>
   </div>
 
-  <p>Each crossing in the diagram is one combine step, called a <b>butterfly</b>: one multiplication by a spinning arrow, one addition and one subtraction. There are log₂N layers of them, with N/2 butterflies per layer. That's the <b>Fast Fourier Transform (FFT)</b>: identical answers, but N × log₂N steps instead of N × N. At N = 1024 it's 100 times less work, and the gap keeps growing.</p>
+  <p>Each crossing in the diagram is one combine step, called a <b>butterfly</b>: one multiplication by a spinning arrow, one addition and one subtraction. There are log₂N layers of them (log₂N is how many times N can be halved before reaching 1: 10 for 1024), with N/2 butterflies per layer. That's the <b>Fast Fourier Transform (FFT)</b>: identical answers, but N × log₂N steps instead of N × N. At N = 1024 it's 100 times less work, and the gap keeps growing.</p>
 
   <!-- 4b -->
   <h2 id="inverse">Going back: the inverse FFT</h2>
