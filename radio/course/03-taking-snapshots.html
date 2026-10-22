@@ -60,10 +60,10 @@
   <p>Now tick <b>Only one shadow</b>. The graph folds in half: +0.3 and −0.3 now look identical, just like chapter 1's game. The honest zone shrinks to 0 to ½.</p>
   <p>This graph <em>is</em> the most famous rule in signal processing, usually stated as a formula. In plain words:</p>
   <ul>
-    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned: a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab (the scrolling picture of every frequency at once that chapter 4 builds). (Radio people write the photo rate as <b>MS/s</b>, mega-samples per second: 2.4 MS/s is 2.4 million snapshots per second; <b>kS/s</b> is thousands.)</li>
+    <li><b>With both shadows (I and Q)</b>, you can honestly see every speed between −½ and +½ turn per photo. A dongle taking 2.4 million photos per second can therefore see everything from <b>−1.2 MHz to +1.2 MHz</b> around where it's tuned (the box below explains what tuning does): a 2.4 MHz-wide slice of the radio band. That's exactly the width of the waterfall in Spectrum Lab, this site's radio app (the waterfall is the scrolling picture of every frequency at once that chapter 4 builds). (Radio people write the photo rate as <b>MS/s</b>, mega-samples per second: 2.4 MS/s is 2.4 million snapshots per second; <b>kS/s</b> is thousands.)</li>
     <li><b>With one shadow</b>, only 0 to ½, so you need <b>twice as many photos</b> for the same range. That's why a music CD stores 44 100 samples per second: to capture sounds up to 22 050 Hz, just above the highest pitch humans hear.</li>
   </ul>
-  <p>And here's the catch for radio: arrows outside the zone don't politely disappear. A station 1.5 MHz away would land <em>on top of</em> a station 0.9 MHz away in the other direction. So the dongle has to remove everything outside the zone <b>before</b> it takes its photos. Its chip contains a filter that does exactly that; you'll see its numbers in the code below, and learn how filters work in chapter 6.</p>
+  <p>And here's the catch for radio: arrows outside the zone don't politely disappear. A station 1.5 MHz away would land <em>on top of</em> a station 0.9 MHz away in the other direction (the question below works it out). So the dongle has to remove everything outside the zone <b>before</b> it takes its photos. Its chip contains a filter that does exactly that; you'll see its numbers in the code below, and learn how filters work in chapter 6.</p>
 
   <div class="ponder"><span class="tag">Wait: 98 million turns, 2.4 million photos?</span>A station at 98.7 MHz turns 98.7 million times per second, far outside an honest zone of ±1.2 MHz. So how can the dongle photograph it at all? Because, before taking any photos, its tuner chip <b>slows every arrow down</b> by the frequency you tuned to. Tune to 98.0 MHz, and a station at 98.7 MHz now spins at only 0.7 MHz, one at 97.5 MHz at −0.5 MHz, and the photos only ever see these slow, leftover speeds. That's what "around where it's tuned" means. Chapter 5 shows how slowing arrows down works (it's one multiplication), and chapter 12 how the chip does it with electronics.</div>
 
@@ -115,7 +115,7 @@
   <!-- 4b -->
   <h2 id="noise">Noise, and how big a wiggle is</h2>
   <p>Why can't we just turn the gain knob up until every weak station spans plenty of marks on the ruler? Because the station never arrives alone. Unplug the antenna and the dongle's numbers still don't sit at 127.5: they jitter. That jitter is <b>noise</b>, a small random arrow added to every sample, with a new length and a new direction every time. Some of it comes from the receiver itself (warm electronics never sit perfectly still), some arrives through the antenna: the sky, the city's electrical gadgets, distant transmitters. Every receiver has it, and it decides how weak a station can be and still be heard — and how you set the gain knob in the live lab right below. (Where it comes from, in physics: <a href="../ham/lessons/11-receivers-and-transmitters.html">ham lesson 11</a>.)</p>
-  <p>Below, a station (one steady arrow, like the FM ring above) arrives with noise on top, and goes through a gain knob and the 8-bit ruler. Left: every sample as a dot, inside the box of the whole ruler. Right: how often each byte value occurs, red at the ends where numbers clip. The readout underneath gives two numbers, the RMS and the SNR, explained just after you've played with it.</p>
+  <p>Below, a station (one steady arrow, like the FM station whose real samples you'll see at the end of this chapter) arrives with noise on top, and goes through a gain knob and the 8-bit ruler. Left: every sample as a dot, inside the box of the whole ruler. Right: how often each byte value occurs, red at the ends where numbers clip. The readout underneath gives two numbers, the RMS and the SNR, explained just after you've played with it.</p>
 
   <div class="q" data-answer="b"><p>Predict first: you turn the gain up by 20 dB. What happens to how far the station stands above the noise?</p>
     <ul><li data-k="a" data-says="The gain multiplies the noise too, by exactly as much.">It rises by 20 dB</li><li data-k="b">Nothing, as long as everything still fits on the ruler</li><li data-k="c" data-says="Gain doesn't favor the noise either: both are multiplied alike.">It falls by 20 dB</li></ul>
@@ -131,7 +131,7 @@
   </div>
 
   <ul>
-    <li><b>At the start</b> (gain 40 dB), the readout's RMS is about 17 counts (it measures everything that arrived: the station is most of it, the noise alone wiggles by about 5) and the station stands 10 dB above the noise, exactly as in the air.</li>
+    <li><b>At the start</b> (gain 40 dB), the readout's RMS is about 17 <b>counts</b> (a count is one mark of the ruler; RMS, explained just below, is the typical size of the wiggle; it measures everything that arrived: the station is most of it, the noise alone wiggles by about 5) and the station stands 10 dB above the noise, exactly as in the air.</li>
     <li><b>Raise the gain.</b> The cloud grows, station and noise together, and the station's lead doesn't move. Then the cloud reaches the box's edges, red bars appear, and the lead starts to shrink: at 66 dB it's 2.4 dB lower. Clipping chops the station's tops and turns them into extra noise.</li>
     <li><b>Lower it.</b> At 20 dB the whole cloud fits on a handful of marks, rounding adds its own error, and the lead shrinks again: 1.3 dB lower, and 4.8 dB lower at 0 dB.</li>
   </ul>
@@ -143,7 +143,7 @@
       <li>A photo records only where the arrow points: its angle.</li>
       <li>Angles that differ by a whole turn point the same way.</li>
       <li>So an arrow that turns 1.1 turns between photos lands exactly where one turning 0.1 would: the photos can't tell them apart.</li>
-      <li>Any speed is therefore indistinguishable from one shifted by a whole turn per photo, which is the formula f_seen = f − k·f_s.</li>
+      <li>Any speed is therefore indistinguishable from one shifted by a whole turn per photo, which is the formula f_seen = f − k·f_s (f_s is photos per second, k a whole number).</li>
       <li>Only within ±½ turn per photo is every speed's position sequence different from every other's: the honest zone.</li>
       <li>With one shadow, +f and −f also merge (chapter 1), so only half of that zone stays honest.</li>
     </ol>
@@ -160,7 +160,7 @@
   <div class="scene" id="s-real"><p class="readout" id="r-real"></p></div>
 
   <p>On the left, look at the shape: a <b>fuzzy ring</b>. Remember chapter 1: an FM station never changes the length of its arrow, only its speed. Here one strong station dominates everything else in this slice of the band, so its snapshots all land near one circle, at whatever angle the arrow happened to be. The fuzz is everything else (weaker stations and noise) added on top. Even in raw bytes, you can see that FM is "constant length, changing angle". These samples' RMS is 23.1 counts, with nothing clipped: a well-set gain.</p>
-  <p>On the right, zoomed into the yellow box, the dots sit on a <b>perfect grid</b>. Those are the ruler's marks: every I and Q had to be written as a whole number, so each dot snapped to the nearest crossing. You're looking at quantization in real data.</p>
+  <p>On the right, zoomed into the yellow box, the dots sit on a <b>perfect grid</b>. Those are the ruler's marks: every I and Q had to be written as a whole number, so each dot snapped to the nearest crossing. You're looking at <b>quantization</b>, the rounding to the ruler's marks, in real data.</p>
 
   <!-- lab -->
   <h2 id="lab">Lab: try it on real radio</h2>
