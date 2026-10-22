@@ -235,3 +235,5 @@ sentence.
   5. numbers come from the chapter's script or a cited source.
 - **Where it goes:** in place (3a), chapter by chapter; one commit per chapter, each saying what it fixed.
 - **Verified by:** `cd radio && npm run course-check && npm test && npm run build`, and a cold read of each chapter.
+- **Status 2026-10-21:** built, one commit per chapter (ch. 1–22), code folded in ch. 2–15 and 17–22. Waiting for the
+  owner's read; whatever still trips them up goes back through the same audit.
