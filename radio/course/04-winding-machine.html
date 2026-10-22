@@ -181,6 +181,7 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <p><b>The plain winding machine</b> is two loops, one over test speeds and one over samples. From <code>course/code/ch04.ts</code>:</p>
+<p class="note"><b>Names in this code:</b> <code>re</code> and <code>im</code> are I and Q: code often uses mathematicians' names for an arrow's two parts, "real" and "imaginary". <code>TAU</code> is 2π, a full turn in radians, so <code>-TAU * k * t / n</code> is the un-spinning angle for test speed <code>k</code> at sample <code>t</code>, and <code>c</code>, <code>s</code> are that arrow's two shadows (chapter 1). <code>n</code> is how many samples are in the block.</p>
 <pre><code>for (let k = 0; k &lt; n; k++) {                 // every test speed…
   for (let t = 0; t &lt; n; t++) {               // …un-spin every sample and add it up
     const a = (-TAU * k * t) / n, c = Math.cos(a), s = Math.sin(a);
@@ -189,6 +190,7 @@
   }
 }</code></pre>
   <p><b>The FFT</b> that runs Spectrum Lab (<code>src/dsp.ts</code>). First it reorders the samples (so that each split into even and odd halves is already sitting side by side), then it runs the butterflies layer by layer. The heart of it:</p>
+<p class="note"><b>Names in this code:</b> <code>len</code> is the size of the blocks being combined in this layer (2, 4, 8, …); <code>a</code> and <code>b</code> are the positions of a butterfly's two inputs; <code>(cr, ci)</code> is the un-spinning arrow for this butterfly, and <code>(tr, ti)</code> the odd half's answer after it's been turned by it. <code>&lt;&lt;= 1</code> doubles <code>len</code>.</p>
 <pre><code>for (let len = 2; len &lt;= n; len &lt;&lt;= 1) {        // layers: blocks of 2, 4, 8, … samples
   for (let i = 0; i &lt; n; i += len) {
     for (let k = 0; k &lt; len / 2; k++) {          // one butterfly:
@@ -202,6 +204,7 @@
   }
 }</code></pre>
   <p><b>The spectrum you see</b> adds the window, the FFT and the dB conversion (<code>powerSpectrum()</code>):</p>
+<p class="note"><b>Names in this code:</b> <code>w</code> is the Hann window's height at sample <code>i</code>; <code>start</code> is where this block begins in the samples. <code>wsum</code> is the window's total: dividing by it makes a full-strength arrow read 0 dB. The tiny <code>1e-20</code> keeps the logarithm away from zero, which has no logarithm.</p>
 <pre><code>const w = 0.5 - 0.5 * Math.cos((TAU * i) / n);       // the Hann window: fade in and out
 re[i] = iq[2 * (start + i)] * w;  im[i] = iq[2 * (start + i) + 1] * w;
 fft(re, im);

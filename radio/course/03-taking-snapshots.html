@@ -202,6 +202,7 @@
   <h2 id="code">In code</h2>
   <p><b>Choosing the photo rate.</b> The dongle's chip runs its own measuring at 28.8 million samples per second, then thins that out to the rate you ask for. Our driver programs the ratio between the two (<code>src/rtlsdr.ts</code>):</p>
 <p class="note">A number starting with <code>0x</code> is written in <b>hexadecimal</b>, base 16: the digits run 0–9 then a–f, so each hex digit holds exactly 4 bits and <code>0xff</code> is 255. Code for chips uses it everywhere.</p>
+<p class="note"><b>Names in this code:</b> <code>XTAL</code> is the chip's own clock, 28.8 MHz, and <code>rate</code> the snapshots per second you ask for. The chip has no fractions, so the ratio (28.8 ÷ 2.4 = 12) travels as a whole number multiplied by 2<sup>22</sup> (about 4.2 million), which keeps 22 binary digits after the point. <code>&amp; 0x0ffffffc</code> keeps it within 28 binary digits and sets the last two to 0: a format detail of the chip, done exactly as the open-source librtlsdr driver does it.</p>
 <pre><code>const ratio = Math.floor((XTAL * 2 ** 22) / rate) &amp; 0x0ffffffc;   // XTAL = 28.8 MHz
 // 2.4 MS/s → ratio = 12 × 2^22 exactly: keep one sample out of every 12</code></pre>
   <p><b>The filter that stops aliasing.</b> Before thinning out, the chip filters away everything outside the new honest zone. These are the filter's weights, written into the chip when it starts up. Chapter 6 explains what the numbers mean:</p>

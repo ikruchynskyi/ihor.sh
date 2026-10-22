@@ -136,11 +136,13 @@
   <!-- code -->
   <h2 id="code">In code</h2>
   <p><b>Scheduling sound</b> (<code>LivePlayer</code> in <code>src/course/audio.ts</code>): each chunk is scheduled to start exactly when the previous one ends, with the cushion and the two drift rules. (Spectrum Lab has since moved to one continuous stream that corrects drift smoothly instead: <a href="./19-cleaner-sound.html#stream">chapter 19</a>.)</p>
+<p class="note"><b>Names in this code:</b> <code>now</code> is the sound card's clock, in seconds; <code>this.t</code> is when the next batch of sound should start, so <code>this.t − now</code> is the cushion. <code>ctx</code> is the browser's sound system, and <code>src.start</code> asks it to play the batch at that moment.</p>
 <pre><code>if (this.t &lt; now + 0.05) this.t = now + 0.15;   // ran dry: rebuild a 150 ms cushion
 if (this.t &gt; now + 0.6) return;                 // too far ahead (clocks drift apart): drop this chunk
 const buf = ctx.createBuffer(1, samples.length, rate);   // we say our rate; the browser resamples
 src.start(this.t);  this.t += buf.duration;</code></pre>
   <p><b>Automatic volume</b> (<code>Agc</code> in <code>src/dsp.ts</code>): instant attack, slow release:</p>
+<p class="note"><b>Names in this code:</b> <code>env</code> is the loudest recent peak, the level being followed; <code>decay</code> is a number just below 1 that it's multiplied by every sample, which is the slow release; <code>target</code> is the loudness we want out.</p>
 <pre><code>const a = Math.abs(x[i]);
 this.env = a &gt; this.env ? a : Math.max(1e-4, this.env * this.decay);   // jump up, sink slowly
 out[i] = (x[i] * target) / this.env;</code></pre>

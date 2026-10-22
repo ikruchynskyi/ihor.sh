@@ -152,6 +152,7 @@
   }
 }</code></pre>
   <p>De-emphasis (<code>Deemphasis</code>): each output moves a fraction <code>a</code> of the way towards the input; <code>a</code> comes from the 75 µs time constant and the sample rate:</p>
+<p class="note"><b>Names in this code:</b> <code>y</code> is the output so far; each new output moves the fraction <code>a</code> of the way toward the input <code>x[i]</code>. <code>Math.exp</code> is e<sup>x</sup>.</p>
 <pre><code>this.a = 1 - Math.exp(-1 / (fs * tau));                     // tau = 75e-6
 for (let i = 0; i &lt; x.length; i++) out[i] = this.y += this.a * (x[i] - this.y);</code></pre>
   <p><b>Try it yourself:</b> <code>node course/code/ch09.ts</code>:</p>
