@@ -9,7 +9,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { geocode, inNyc, trafficCameras, camerasNow, inspectCamera } from "./nycapi.ts";
+import { geocode, inNyc, trafficCameras, camerasNow, inspectCamera, lookAtCameras } from "./nycapi.ts";
 import { aircraft, km } from "./sky.ts";
 import { OLLAMA, LOCAL_MODEL, whenIdle, inLine } from "./llm.ts";
 
@@ -548,13 +548,17 @@ function areaFacts(a: Awaited<ReturnType<typeof area>>) {
   for (const n of a.news.slice(0, 5)) add(`News (${n.outlet}, ${hhmm(n.starts)}): ${n.title}`, n);
   return F;
 }
-/** Which of an area's cameras the brief looks at: 20% of them, at least 5 (or all, when there are fewer), at most 15
- *  (each look is 5-35 s of the one local model that visitors wait for). Sharpest first, but at least 300 m apart while
- *  that's possible, so the looks cover the area instead of one highway's row of cameras. */
+/** Which of an area's cameras the brief looks at: 5 (or all, when there are fewer; the local model is slow, user
+ *  2026-10-23), spread over the area: the sharpest first, then each time the one farthest from those already picked
+ *  (HD and SD video count a little extra). "Sharpest first" alone picked four cameras along West Street. */
+export const BRIEF_CAMERAS = 5;
 export function pickCameras<C extends { lat: number; lon: number; h?: number }>(pool: C[]) {
-  const want = Math.min(pool.length, 15, Math.max(5, Math.ceil(pool.length * 0.2))), best = [...pool].sort((x, y) => (y.h ?? 0) - (x.h ?? 0)), pick: C[] = [];
-  for (const c of best) if (pick.length < want && pick.every((p) => km(p, c) >= 0.3)) pick.push(c);
-  for (const c of best) if (pick.length < want && !pick.includes(c)) pick.push(c);
+  const tier = (c: C) => ((c.h ?? 0) >= 720 ? 2 : (c.h ?? 0) >= 352 ? 1 : 0), left = [...pool].sort((x, y) => tier(y) - tier(x)), pick: C[] = [];
+  while (pick.length < BRIEF_CAMERAS && left.length) {
+    let best = 0, score = -1;
+    left.forEach((c, i) => { const d = pick.length ? Math.min(...pick.map((p) => km(p, c))) * (1 + 0.5 * tier(c)) : tier(c); if (d > score) { score = d; best = i; } });
+    pick.push(left.splice(best, 1)[0]);
+  }
   return pick;
 }
 /** A brief for one area, asked by a visitor (in the visitors' line, not the background lane): the store's facts, plus a
@@ -563,10 +567,10 @@ const LOOK = "In one sentence: is anything unusual happening, or anything that d
 export async function areaBrief(b: Box, step = (_: string) => {}) {
   const a = await area(b), F = areaFacts(a);
   const cams = pickCameras(camerasNow().filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com"));
-  for (const [i, c] of cams.entries()) {
-    step(`Looking at camera ${i + 1} of ${cams.length}: ${c.name}…`);
-    const v = await inLine(() => inspectCamera(c.id, LOOK)).catch(() => null);
-    if (v?.text) F.push({ id: `F${F.length + 1}`, text: `Camera "${c.name}", looked at just now by the local vision model: ${v.text}`, lat: c.lat, lon: c.lon });
+  if (cams.length) {
+    step(`Looking at ${cams.length} camera${cams.length > 1 ? "s" : ""} at once: ${cams.map((c) => c.name).join(", ")}…`);
+    for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id), LOOK)).catch(() => []))
+      F.push({ id: `F${F.length + 1}`, text: `Camera "${v.name}", looked at just now by the local vision model: ${v.text}`, lat: v.lat, lon: v.lon });
   }
   step("Writing the brief…");
   return { label: a.label, at: now(), cameras: cams.length, ...(await write(F, `the area around ${a.label}${a.borough ? `, ${a.borough}` : ""}`, inLine)), facts: F };
