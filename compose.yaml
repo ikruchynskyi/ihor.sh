@@ -12,6 +12,7 @@ services:
     ports: ["127.0.0.1:8080:8080"]
     environment:
       HOST: "0.0.0.0"
+      TZ: America/New_York # NYC Open Data and the MTA's outage feed give New York local times without a zone (archive.ts, city.ts)
       OLLAMA_URL: http://host.docker.internal:11434
       SDR_HOST: host.docker.internal
       HOST_BRIDGE: http://host.docker.internal:8075

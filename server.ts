@@ -38,7 +38,8 @@ import { startMeteorRecorder, meteorApi, meteorCheckApi } from "./server/meteor-
 import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc } from "./server/nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -464,7 +465,7 @@ const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -908,6 +909,30 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
     if (url.pathname === "/api/nyc/restrooms") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await publicRestrooms()));
+    // The city's live picture (server/city.ts): every feed in one store, read here by the map, the HUD and Blip.
+    const cityJson = (data: unknown, maxAge = 30) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
+    if (url.pathname === "/api/nyc/emergency") return cityJson({ alerts: recent("notify").map(view), weather: active().filter((e) => e.source === "nws").map(view) });
+    if (url.pathname === "/api/nyc/film-permits") return cityJson({ shoots: active().filter((e) => e.source === "film").map(view), newest: latest("film.newest")?.value ?? null }, 900);
+    if (url.pathname === "/api/nyc/flood-sensors") {
+      const checked = latest("floodnet.checked"), rain = latest("rain.mm");
+      return cityJson({ checkedAt: checked?.at ?? null, checked: checked?.value ?? 0, raining: !!rain && rain.value > 0, surgeFt: latest("battery.surge")?.value ?? null,
+        sensors: (await floodnetSensors().catch(() => [])).map((s) => ({ ...s, depthMm: JSON.parse(floodDepth(s.id)?.detail ?? "null")?.depthMm ?? null })) }, 120);
+    }
+    if (url.pathname === "/api/nyc/incidents") {
+      const planned = active().filter((e) => e.lat != null && /^(road:(closure|construction|event)|permit:|film)/.test(e.kind)).map(view);
+      return cityJson({ incidents: incidents().slice(0, 600).map(incidentView), planned });
+    }
+    if (url.pathname === "/api/nyc/around") {
+      const la = Number(url.searchParams.get("lat")), lo = Number(url.searchParams.get("lon")), r = Math.min(3000, Math.max(100, Number(url.searchParams.get("r")) || 400));
+      if (!inNyc(la, lo)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "a point in NYC, please" }));
+      return cityJson(around(la, lo, r / 1000));
+    }
+    if (url.pathname === "/api/nyc/brief") return cityJson(latestBrief(BOROUGHS.includes(String(url.searchParams.get("scope"))) ? String(url.searchParams.get("scope")) : "city"), 60);
+    if (url.pathname === "/api/nyc/pulse") return cityJson({ ...pulse(), brief: latestBrief("city"), unusualList: anomalies(), unusualNote: anomaliesNote() });
+    if (url.pathname === "/api/nyc/camera-inspect") { // 👁 in a camera window: the local vision model, in the same line as Blip
+      try { return cityJson(await inLine(() => inspectCamera(String(url.searchParams.get("id") ?? ""), String(url.searchParams.get("q") ?? "").slice(0, 300) || undefined)), 0); }
+      catch (e) { return res.writeHead(e instanceof LineFull ? 503 : 502, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: (e as Error).message })); }
+    }
     if (url.pathname === "/api/nyc/cameras") { // ?lat&lon outside NYC: windy.com's webcams there instead
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), away = Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(away ? await webcamsNear(la, lo).catch(() => []) : await trafficCameras()));
@@ -984,6 +1009,7 @@ if (IN_HOST_SUPERVISOR) {
   await import("./host.ts");
 } else {
   startArchive();
+  startCity().catch((e) => console.error("city:", e));
   startMeteorRecorder();
   startEvents();
   startJobs();

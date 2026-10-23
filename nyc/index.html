@@ -108,6 +108,86 @@
     .cam:fullscreen, .cam.max { position: fixed; inset: 0; width: auto !important; height: auto !important; border: 0; box-shadow: none; z-index: 2147480000; background: #000; }
     .cam:fullscreen .grip, .cam.max .grip { display: none; }
     .mlyview { flex: 1; min-height: 0; position: relative; background: #000; }
+    .cam-cv-box {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(14, 16, 22, 0.96);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #f3f4f6;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      max-height: 75%;
+      overflow-y: auto;
+      z-index: 25;
+      border-top: 2px solid var(--accent, #63e6be);
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    @media (max-width: 600px) {
+      .cam { width: calc(100vw - 20px) !important; left: 10px !important; }
+      .cam-cv-box { font-size: 13.5px; padding: 12px; max-height: 82%; }
+    }
+    .cv-hdr { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 4px; }
+    .cv-title { font-weight: 700; font-size: 12.5px; color: #fff; display: flex; align-items: center; gap: 6px; }
+    .cv-actions { display: flex; align-items: center; gap: 6px; }
+    .cv-speak-btn {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+    .cv-speak-btn:hover { background: rgba(255,255,255,0.22); }
+    .cv-speak-btn.active { background: #e03131; border-color: #ff6b6b; animation: pulseSpeak 1.2s infinite alternate; }
+    @keyframes pulseSpeak { from { opacity: 0.85; } to { opacity: 1; } }
+    .cv-close-btn { background: none; border: 0; color: #aaa; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .cv-close-btn:hover { color: #fff; }
+    .cv-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .cv-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      color: #e5e7eb;
+    }
+    .cv-badge.flow-clear { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.35); }
+    .cv-badge.flow-moderate { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid rgba(253, 224, 71, 0.35); }
+    .cv-badge.flow-heavy { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.45); }
+    .cv-badge.flow-gridlock { background: rgba(220, 38, 38, 0.4); color: #fca5a5; border: 1px solid #ef4444; }
+    .cv-badge.alert { background: rgba(220, 38, 38, 0.35); color: #fca5a5; border: 1px solid #ef4444; }
+    .cv-desc { color: #f3f4f6; line-height: 1.5; font-size: 13px; word-break: break-word; }
+    @media (max-width: 600px) { .cv-desc { font-size: 13.5px; } }
+    .cv-objects { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
+    .cv-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #cbd5e1;
+    }
+    .cv-chip b { color: #fff; font-weight: 600; }
     .cam img, .cam video, .cam iframe { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; border: 0; }
     .cam iframe { pointer-events: auto; } /* YouTube's own controls: sound, quality */
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
@@ -125,6 +205,15 @@
     .cam-open { display: grid; place-items: center; font-size: 16px; border-radius: 50%; background: var(--accent, #ffb347); box-shadow: 0 0 0 3px #fff; animation: camPulse 1.6s ease-out infinite; }
     @keyframes camPulse { 0% { box-shadow: 0 0 0 3px #fff, 0 0 0 0 color-mix(in srgb, var(--accent, #ffb347) 70%, transparent); } 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 18px transparent; } }
     @media (prefers-reduced-motion: reduce) { .cam-open { animation: none; } }
+    /* the city bar (command post HUD): the city's vital signs, each a button that shows its layer; the brief flows under it */
+    #cityHud { position: absolute; z-index: 1000; top: calc((var(--hud-h, 52px) + 10px) / var(--zoom, 1)); left: 384px; right: 64px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+    #cityHud > * { pointer-events: auto; }
+    #cityBar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; pointer-events: none; } #cityBar > * { pointer-events: auto; }
+    #cityBar button { padding: 3px 7px !important; font-size: .78rem !important; background: var(--card) !important; white-space: nowrap; }
+    #cityBar button.hot { color: #fff; background: #c92a2a !important; } #cityBar button.warm { box-shadow: inset 0 -3px 0 #ff922b !important; }
+    #cityBrief { max-width: 520px; max-height: 45vh; overflow: auto; background: var(--card); border: 1px solid var(--line); padding: 8px 10px; font-size: .85rem; }
+    #cityBrief li { margin: 0 0 6px; } #cityBrief sup { cursor: help; color: var(--muted); }
+    @media (max-width: 700px) { #cityHud { left: 8px; right: 56px; top: calc((var(--hud-h, 52px) + 6px) / var(--zoom, 1)); } #cityBar { flex-wrap: nowrap; overflow-x: auto; } }
   </style>
 </head>
 <body>
@@ -170,6 +259,7 @@
   <div class="muted pfoot"><span id="status">Loading…</span> <button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button><br>Open data, some of it estimated (train positions): it can be late or wrong.</div>
   </div>
 </div>
+<div id="cityHud"><div id="cityBar" role="status" aria-label="The city now"></div><div id="cityBrief" hidden></div></div>
 <div id="cams" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -307,8 +397,13 @@ const LAYERS = {
   speeds: { grp: "streets", label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
   photos: { grp: "streets", label: "📸 Street photos (Mapillary): zoom in, click a dot", on: false, group: L.layerGroup(), load: loadPhotos },
   c311: { grp: "streets", label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
+  incidents: { grp: "streets", label: "⚠ Live incidents (Notify NYC, 511NY, Waze, FloodNet, helicopters, camera checks)", on: false, group: L.layerGroup(), load: loadIncidents },
+  closures: { grp: "streets", label: "🚧 Closures, construction & permitted street events", on: false, group: L.layerGroup(), load: loadClosures },
+  emergency: { grp: "streets", label: "🚨 Notify NYC alerts (24 h) & weather alerts", on: false, group: L.layerGroup(), load: loadEmergency },
+  floods: { grp: "streets", label: "🌊 Street flooding now (FloodNet sensors)", on: false, group: L.layerGroup(), load: loadFloodSensors },
   city: { grp: "out", label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
+  films: { grp: "out", label: "🎬 Film & TV shoots on now (parking held)", on: false, group: L.layerGroup(), load: loadFilmShoots },
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
   restrooms: { grp: "out", label: "🚻 Public restrooms (parks, libraries, transit)", on: false, group: L.layerGroup(), load: loadRestrooms },
   radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
@@ -324,7 +419,7 @@ const LAYERS = {
 const GROUPS = { go: "🚇 Getting around", streets: "🚗 Streets & 311", out: "🎟 Out & about", sky: "☁️ Sky & weather" };
 const groupCount = (g) => { const n = Object.values(LAYERS).filter((l) => l.grp === g && l.on).length; const el = $(`gn-${g}`); if (el) el.textContent = n ? `(${n} on)` : ""; };
 const restaurantLayer = L.layerGroup().addTo(map);
-const seen = { photo: null, weather: null, aircraft: null, ships: null, trail: null, iss: null, storms: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null }; // what Blip can see
+const seen = { photo: null, weather: null, aircraft: null, ships: null, trail: null, iss: null, storms: null, ferry: [], c311: null, sales: [], speeds: null, citibike: null, trip: null, arrivals: null, outages: [], cameras: 0, city: [], popups: [], restaurants: [], here: null, openCams: [], following: null, busArrivals: null, emergency: [], films: [], floods: null, incidents: null }; // what Blip can see
 
 $("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
   const ks = Object.entries(LAYERS).filter(([, l]) => l.grp === g);
@@ -878,12 +973,17 @@ async function nearMe(at, label = "you") {
   const within = (list) => list.map((x) => ({ ...x, m: Math.round(distM(at, x)) })).filter((x) => x.m <= NEAR_M).sort((a, b) => a.m - b.m);
   // stations and bikes are already loaded; bus stops come by grid cell (the cells around the circle); cameras and restrooms once
   const cells = new Set(); for (const dl of [-0.004, 0, 0.004]) for (const dn of [-0.005, 0, 0.005]) cells.add(`${(Math.round((at.lat + dl) / BUS_GRID) * BUS_GRID).toFixed(4)},${(Math.round((at.lon + dn) / BUS_GRID) * BUS_GRID).toFixed(4)}`);
-  const [stopLists, cams, loos] = await Promise.all([
+  const [stopLists, cams, loos, city] = await Promise.all([
     Promise.all([...cells].map((c) => { const [la, lo] = c.split(","); return getJSON(`/api/nyc/bus-stops?lat=${la}&lon=${lo}`).catch(() => []); })),
     (camsCache ??= getJSON("/api/nyc/cameras")).catch(() => []), (loosCache ??= getJSON("/api/nyc/restrooms")).catch(() => []),
+    getJSON(`/api/nyc/around?lat=${at.lat}&lon=${at.lon}&r=${NEAR_M}`).catch(() => null), // the city's live picture here (city.ts)
   ]);
   if (near?.lat !== at.lat) return; // superseded
   const items = [], add = (kind, label, marker, meta = {}) => { marker.addTo(nearLayer); items.push({ kind, label, marker, ...meta }); };
+  for (const c of city?.incidents ?? []) add("incident", `<span style="color:${SEV[c.sev]}">⚠</span> ${esc(c.title)} <span class="muted">(${c.sources.map((x) => SOURCES[x] ?? x).join(" + ")}, ${hhmm(c.starts)})</span> · ${Math.round(distM(at, c))} m`,
+    L.circleMarker([c.lat, c.lon], { radius: (5 + 2 * c.sev) * DOT, color: c.confidence > 1 ? "#fff" : SEV[c.sev], weight: c.confidence > 1 ? 3 : 1, fillColor: SEV[c.sev], fillOpacity: 0.85, bubblingMouseEvents: false }).bindPopup(() => incidentPopup(c), { maxWidth: 340 }));
+  for (const e of (city?.planned ?? []).filter((e) => e.lat != null)) add("planned", `🚧 ${esc(e.title)} · ${Math.round(distM(at, e))} m`,
+    dot(e.lat, e.lon, PLAN_COLORS[e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5)] ?? "#868e96", 4.5).bindPopup(`<b>${esc(e.title)}</b>${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}`));
   for (const s of within([...stations].map(([id, x]) => ({ id, ...x })))) {
     const alerts = (byStation.get(s.id) ?? []).filter((a) => !hidden.has(a.type)), red = alerts.length > 0;
     add("subway", `🚇 ${esc(s.name)} <span class="muted">(${esc(s.routes)})</span> · ${s.m} m${red ? ` · <b style="color:var(--alert)">${alerts.length} alert${alerts.length > 1 ? "s" : ""}</b>` : ""}`,
@@ -897,10 +997,15 @@ async function nearMe(at, label = "you") {
   for (const r of within(loos)) add("restroom", `🚻 ${esc(r.name)} <span class="muted">(${esc(r.type)}${r.status !== "Operational" ? `, ${esc(r.status.toLowerCase())}` : ""}${r.hours ? `, ${esc(r.hours)}` : ""})</span> · ${r.m} m`, restroomMarker(r));
   near.items = items;
   const n = (k) => items.filter((i) => i.kind === k).length, withAlerts = items.filter((i) => i.alerts).length;
-  $("nearBox").innerHTML = `<b>Within ${NEAR_M} m of ${esc(label)}:</b> 🚇 ${n("subway")}${withAlerts ? ` (${withAlerts} with alerts)` : ""} · 🚌 ${n("bus")} · 🚲 ${n("bike")} · 📷 ${n("camera")} · 🚻 ${n("restroom")}
-    <ul>${items.map((i, k) => `<li data-near="${k}">${i.label}</li>`).join("") || "<li>None of these five within 400 m.</li>"}</ul>`;
+  const r311 = city?.reports311?.byType ?? [];
+  $("nearBox").innerHTML = `<b>Within ${NEAR_M} m of ${esc(label)}:</b> ⚠ ${n("incident")} · 🚧 ${n("planned")} · 🚇 ${n("subway")}${withAlerts ? ` (${withAlerts} with alerts)` : ""} · 🚌 ${n("bus")} · 🚲 ${n("bike")} · 📷 ${n("camera")} · 🚻 ${n("restroom")}
+    ${city?.areaWide?.length ? `<div>⛈ ${city.areaWide.map((e) => esc(e.title)).join(" · ")}</div>` : ""}${(city?.unusual ?? []).map((u) => `<div>📈 ${esc(u.text)}</div>`).join("")}
+    ${r311.length ? `<div>📞 311 here, last 7 days${city.reports311.newest ? ` (published to ${new Date(city.reports311.newest).toLocaleDateString([], { month: "short", day: "numeric" })})` : ""}: ${r311.map((t) => `${esc(t.type)} ${t.n}`).join(", ")}</div>` : ""}
+    <button class="linkish" id="watchBtn" title="Tell me when something new happens here (this browser)">👁 Watch this area</button>
+    <ul>${items.map((i, k) => `<li data-near="${k}">${i.label}</li>`).join("") || "<li>Nothing within 400 m.</li>"}</ul>`;
+  $("watchBtn").onclick = () => watchHere(at.lat, at.lon, label === "you" ? "My spot" : label === "the map center" ? `Spot at ${at.lat.toFixed(3)}, ${at.lon.toFixed(3)}` : label);
   $("nearBox").querySelectorAll("[data-near]").forEach((li) => (li.onclick = () => { const it = items[+li.dataset.near]; if (it.cam) openCam(it.cam); else { map.setView(it.marker.getLatLng(), Math.max(map.getZoom(), 17)); it.marker.openPopup(); } }));
-  seen.near = { center: at, radiusM: NEAR_M, counts: { subway: n("subway"), stationsWithAlerts: withAlerts, busStops: n("bus"), citiBike: n("bike"), cameras: n("camera"), restrooms: n("restroom") }, items: items.slice(0, 40).map((i) => i.label.replace(/<[^>]+>/g, "")) };
+  seen.near = { center: at, radiusM: NEAR_M, counts: { incidents: n("incident"), closuresAndPermits: n("planned"), reports311LastWeek: r311, unusual: city?.unusual?.map((u) => u.text), areaWideAlerts: city?.areaWide?.map((e) => e.title), subway: n("subway"), stationsWithAlerts: withAlerts, busStops: n("bus"), citiBike: n("bike"), cameras: n("camera"), restrooms: n("restroom") }, items: items.slice(0, 40).map((i) => i.label.replace(/<[^>]+>/g, "")) };
   return $("nearBox");
 }
 function whereAmI() {
@@ -980,6 +1085,144 @@ async function loadSales(g) {
   $("n-sales").textContent = `(${list.length} on the map, ${d.sampleSales.length - list.length} online)`;
 }
 
+// ---------- the city's live picture (server/city.ts): incidents, closures, alerts, flooding, the city bar ----------
+const SEV = ["#8f96b8", "#ffb347", "#ff6b35", "#e03131"], hhmm = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const SOURCES = { notify: "Notify NYC", "511ny": "511NY", waze: "Waze drivers", adsb: "aircraft tracking", floodnet: "FloodNet", noaa: "NOAA", nws: "NWS", vision: "camera check", air: "air sensors", permits: "NYC permits", film: "film permits" };
+const evLine = (e) => `<li><b>${esc(e.title)}</b> <span class="muted">${esc(SOURCES[e.source] ?? e.source)} · ${hhmm(e.starts)}${e.ends ? `–${hhmm(e.ends)}` : ""}</span>${e.text ? `<br><small>${esc(e.text.slice(0, 220))}${e.text.length > 220 ? "…" : ""}</small>` : ""}</li>`;
+function incidentPopup(c) {
+  return `<b>${esc(c.title)}</b><br><span class="muted">${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCES[s] ?? s).join(" + ")} · severity ${c.sev}/3 · since ${hhmm(c.starts)}${c.borough ? ` · ${esc(c.borough)}` : ""}</span>
+    ${c.confidence > 1 ? `<br><b style="color:#2f9e44">✔ ${c.confidence} independent sources agree</b>` : `<br><span class="muted">One source so far.</span>`}
+    <ul style="margin:6px 0;padding-left:16px;max-height:160px;overflow:auto">${c.events.map(evLine).join("")}</ul>
+    ${c.checkedBy?.length ? `<div class="muted">👁 ${c.checkedBy.map((v) => `<a href="${esc(v.url)}">${esc(v.title)}</a> (${hhmm(v.starts)})`).join("<br>👁 ")}</div>` : ""}${camBtn(c.lat, c.lon)}`;
+}
+async function loadIncidents(g) {
+  const d = await getJSON("/api/nyc/incidents");
+  g.clearLayers();
+  for (const c of d.incidents) L.circleMarker([c.lat, c.lon], { radius: (5 + 2 * c.sev) * DOT, color: c.confidence > 1 ? "#fff" : SEV[c.sev], weight: c.confidence > 1 ? 3 : 1, fillColor: SEV[c.sev], fillOpacity: 0.85, bubblingMouseEvents: false })
+    .bindTooltip(esc(c.title)).bindPopup(() => incidentPopup(c), { maxWidth: 340 }).addTo(g);
+  seen.incidents = { count: d.incidents.length, serious: d.incidents.filter((c) => c.sev >= 2).map((c) => ({ title: c.title, sources: c.sources, since: hhmm(c.starts), lat: c.lat, lon: c.lon })).slice(0, 15) };
+  $("n-incidents").textContent = `(${d.incidents.length}: ${d.incidents.filter((c) => c.sev >= 2).length} serious, ${d.incidents.filter((c) => c.confidence > 1).length} seen by 2+ sources, white ring)`;
+}
+const PLAN_COLORS = { closure: "#c92a2a", construction: "#f08c00", event: "#1c7ed6", permit: "#9c36b5", film: "#d6336c" };
+async function loadClosures(g) {
+  const d = await getJSON("/api/nyc/incidents");
+  g.clearLayers();
+  for (const e of d.planned) {
+    const k = e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5);
+    dot(e.lat, e.lon, PLAN_COLORS[k] ?? "#868e96", 4.5).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(SOURCES[e.source] ?? e.source)}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
+      ${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}<br>${camBtn(e.lat, e.lon)}`).addTo(g);
+  }
+  const n = (k) => d.planned.filter((e) => (e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5)) === k).length;
+  $("n-closures").innerHTML = `(<span style="color:${PLAN_COLORS.closure}">●</span> ${n("closure")} closures · <span style="color:${PLAN_COLORS.construction}">●</span> ${n("construction")} construction · <span style="color:${PLAN_COLORS.permit}">●</span> ${n("permit")} permitted · <span style="color:${PLAN_COLORS.event}">●</span> ${n("event")} special events)`;
+}
+async function loadEmergency(g) {
+  const d = await getJSON("/api/nyc/emergency"), now = Date.now() / 1000;
+  g.clearLayers();
+  const placed = d.alerts.filter((a) => a.lat != null);
+  for (const a of placed) { const on = !a.ends || a.ends > now; L.circleMarker([a.lat, a.lon], { radius: 8 * DOT, color: on ? "#e03131" : "#868e96", weight: 2, fillColor: on ? "#e03131" : "#868e96", fillOpacity: on ? 0.85 : 0.25, bubblingMouseEvents: false })
+    .bindPopup(`<b>🚨 ${esc(a.title)}</b><br><span class="muted">Notify NYC · ${hhmm(a.starts)}${on ? " · active" : ` · ended ${hhmm(a.ends)}`}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><p style="margin:6px 0;font-size:12px">${esc(a.text ?? "")}</p>${camBtn(a.lat, a.lon)}`).addTo(g); }
+  seen.emergency = d.alerts.slice(0, 10).map((a) => ({ what: a.title, at: hhmm(a.starts), active: !a.ends || a.ends > now, text: a.text?.slice(0, 200) }));
+  $("n-emergency").textContent = `(${d.alerts.filter((a) => !a.ends || a.ends > now).length} active, ${d.alerts.length} today${d.alerts.length > placed.length ? `, ${d.alerts.length - placed.length} citywide` : ""}${d.weather.length ? ` · weather: ${d.weather.map((w) => w.event).join(", ")}` : ""})`;
+}
+async function loadFilmShoots(g) {
+  const d = await getJSON("/api/nyc/film-permits");
+  g.clearLayers();
+  for (const s of d.shoots.filter((s) => s.lat != null)) dot(s.lat, s.lon, "#d6336c", 5.5).bindPopup(`<b>🎬 ${esc(s.title)}</b><br><span class="muted">until ${new Date(s.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><br><b>Parking held:</b><br><small style="display:block;max-height:80px;overflow:auto">${esc(s.parkingHeld)}</small>${camBtn(s.lat, s.lon)}`).addTo(g);
+  seen.films = d.shoots.slice(0, 10).map((s) => s.title);
+  const newest = d.newest && new Date(d.newest * 1000);
+  $("n-films").textContent = `(${d.shoots.length} on now${newest && newest < Date.now() - 7 * 86400_000 ? `; the city's permit data stops at ${newest.toLocaleDateString([], { month: "short", day: "numeric" })}` : ""})`;
+}
+async function loadFloodSensors(g) {
+  const d = await getJSON("/api/nyc/flood-sensors");
+  g.clearLayers();
+  for (const f of d.sensors) {
+    const mm = f.depthMm, wet = mm != null;
+    dot(f.lat, f.lon, wet ? (mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? 7 : 3.5).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
+  }
+  const wet = d.sensors.filter((f) => f.depthMm != null).length;
+  seen.floods = { sensors: d.sensors.length, flooding: wet, surgeFt: d.surgeFt };
+  $("n-floods").textContent = `(${wet} of ${d.sensors.length} flooding${d.checkedAt ? `; checked ${hhmm(d.checkedAt)}, ${d.raining ? "all sensors: it's raining" : "coastal ones only while dry"}` : ""}${d.surgeFt != null ? `; harbor ${d.surgeFt >= 0 ? "+" : ""}${d.surgeFt} ft vs tide` : ""})`;
+}
+setInterval(() => { for (const [k, f] of [["incidents", loadIncidents], ["closures", loadClosures], ["emergency", loadEmergency], ["floods", loadFloodSensors]]) if (LAYERS[k].on && !map.getContainer().querySelector(".leaflet-popup")) f(LAYERS[k].group).catch(() => {}); }, 60_000);
+
+// The city bar: the vital signs (each shows its layer), the brief, and watched places (kept in this browser only).
+let pulseNow = null;
+const WATCH = "nyc.watch", watchSeen = new Set();
+const watched = () => { try { return JSON.parse(localStorage.getItem(WATCH) ?? "[]"); } catch { return []; } };
+const saveWatched = (list) => { try { localStorage.setItem(WATCH, JSON.stringify(list.slice(0, 5))); } catch {} };
+let watchNews = [];
+async function checkWatched() {
+  watchNews = [];
+  for (const z of watched()) {
+    const a = await getJSON(`/api/nyc/around?lat=${z.lat}&lon=${z.lon}`).catch(() => null);
+    for (const c of a?.incidents ?? []) if (!watchSeen.has(c.id)) { watchSeen.add(c.id); if (z.since && c.starts > z.since) watchNews.push({ zone: z, c }); }
+  }
+  if (watchNews.length && typeof Notification !== "undefined" && Notification.permission === "granted") new Notification(`Near ${watchNews[0].zone.name}: ${watchNews[0].c.title}`, { body: watchNews.length > 1 ? `and ${watchNews.length - 1} more` : "", tag: "nyc-watch" });
+  drawBar();
+}
+function drawBar() {
+  const p = pulseNow;
+  if (!p) return;
+  const chip = (label, title, act, cls = "") => `<button class="${cls}" title="${esc(title)}" data-act="${act}">${label}</button>`;
+  const z = watched();
+  $("cityBar").innerHTML = [
+    chip(`📝 Brief ${p.brief ? hhmm(p.brief.at) : "…"}`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts", "brief"),
+    chip(`🚨 ${p.alerts}`, "Notify NYC alerts active now", "emergency", p.alerts ? "hot" : ""),
+    chip(`⚠ ${p.severe} serious · ${p.incidents}`, `${p.incidents} incidents now: ${p.severe} serious, ${p.corroborated} seen by 2+ independent sources`, "incidents", p.severe ? "warm" : ""),
+    chip(`🚧 ${p.closures}`, "Road closures, construction and permitted street events on now", "closures"),
+    chip(`🌊 ${p.flooding}${p.surgeFt != null ? ` · ${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft` : ""}`, "Street sensors flooding now (FloodNet) · harbor water at the Battery vs the predicted tide (NOAA)", "floods", p.flooding ? "warm" : ""),
+    p.helicopters ? chip(`🚁 ${p.helicopters}`, "Helicopters circling low over the city", "aircraft", "warm") : "",
+    p.aqi != null ? chip(`🌫 AQI ${p.aqi}`, "US air quality index (Open-Meteo); over 100 is unhealthy for sensitive groups", "radar", p.aqi > 100 ? "warm" : "") : "",
+    p.outages != null ? chip(`⚡ ${p.outages}`, `Con Ed outages now: ${p.customersOut ?? 0} customers out`, "", p.customersOut > 1000 ? "warm" : "") : "",
+    p.weather.length ? chip(`⛈ ${p.weather.length}`, p.weather.join("\n"), "emergency", "hot") : "",
+    p.unusual ? chip(`📈 ${p.unusual}`, "Unusual: places where a kind of report is at least 3× its usual count", "unusual", "warm") : "",
+    z.length ? chip(`👁 ${z.length}${watchNews.length ? ` · ${watchNews.length} new` : ""}`, `Watched: ${z.map((x) => x.name).join(", ")}`, "watch", watchNews.length ? "hot" : "") : "",
+  ].join("");
+}
+async function refreshPulse() { pulseNow = await getJSON("/api/nyc/pulse").catch(() => pulseNow); drawBar(); if (!$("cityBrief").hidden && $("cityBrief").dataset.what === "brief") showBrief(); }
+function showBrief() {
+  const b = pulseNow?.brief, box = $("cityBrief");
+  box.dataset.what = "brief";
+  if (!b) { box.innerHTML = "No brief yet: the first one is written a minute or two after the server starts."; return; }
+  const fact = new Map(b.facts.map((f) => [f.id, f.text]));
+  box.innerHTML = `<b>NYC now</b> <span class="muted">· ${hhmm(b.at)} · by ${esc(b.by)}${b.dropped ? ` · ${b.dropped} bullet${b.dropped > 1 ? "s" : ""} dropped for not matching the facts` : ""}</span> <button class="linkish" data-act="close" style="float:right">×</button>
+    <ul style="padding-left:16px;margin:6px 0">${b.bullets.map((x) => `<li>${esc(x.text)} ${x.facts.map((id) => `<sup title="${esc(fact.get(id) ?? "")}">${esc(id)}</sup>`).join("")}</li>`).join("")}</ul>
+    <details><summary class="muted">The facts it was given</summary><ol style="padding-left:18px;font-size:.8rem">${b.facts.map((f) => `<li value="${f.id.slice(1)}">${esc(f.text)}</li>`).join("")}</ol></details>`;
+}
+function showUnusual() {
+  const box = $("cityBrief");
+  box.dataset.what = "unusual"; box.hidden = false;
+  box.innerHTML = `<b>📈 Unusual now</b> <button class="linkish" data-act="close" style="float:right">×</button><ul style="padding-left:16px;margin:6px 0">${(pulseNow?.unusualList ?? []).map((u, i) => `<li><a href="#" data-unusual="${i}">${esc(u.text)}</a></li>`).join("")}</ul>${pulseNow?.unusualNote ? `<div class="muted">${esc(pulseNow.unusualNote)}</div>` : ""}`;
+}
+function showWatched() {
+  const box = $("cityBrief");
+  box.dataset.what = "watch"; box.hidden = false;
+  box.innerHTML = `<b>👁 Watched places</b> <span class="muted">(this browser only; new incidents show here${typeof Notification !== "undefined" ? " and as notifications" : ""})</span> <button class="linkish" data-act="close" style="float:right">×</button>
+    <ul style="padding-left:16px;margin:6px 0">${watched().map((z, i) => `<li><a href="#" data-zone="${i}">${esc(z.name)}</a> <button class="linkish" data-unwatch="${i}">remove</button>${watchNews.filter((n) => n.zone.name === z.name).map((n) => `<br>⚠ ${esc(n.c.title)} (${hhmm(n.c.starts)})`).join("")}</li>`).join("")}</ul>`;
+}
+$("cityBar").addEventListener("click", (e) => {
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (!act) return;
+  if (act === "brief") { const box = $("cityBrief"), show = box.hidden || box.dataset.what !== "brief"; box.hidden = !show; if (show) showBrief(); return; }
+  if (act === "unusual") return showUnusual();
+  if (act === "watch") return showWatched();
+  if (LAYERS[act]) toggle(act, true);
+});
+$("cityBrief").addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.dataset.act === "close") return void ($("cityBrief").hidden = true);
+  if (t.dataset.unusual) { e.preventDefault(); const u = pulseNow.unusualList[+t.dataset.unusual]; map.setView([u.lat, u.lon], 15); toggle("c311", true); }
+  if (t.dataset.zone) { e.preventDefault(); const z = watched()[+t.dataset.zone]; nearMe(L.latLng(z.lat, z.lon), z.name); }
+  if (t.dataset.unwatch) { saveWatched(watched().filter((_, i) => i !== +t.dataset.unwatch)); showWatched(); drawBar(); }
+});
+function watchHere(lat, lon, label) {
+  saveWatched([...watched().filter((z) => Math.abs(z.lat - lat) > 1e-4 || Math.abs(z.lon - lon) > 1e-4), { name: label, lat: +lat.toFixed(5), lon: +lon.toFixed(5), since: Math.floor(Date.now() / 1000) }]);
+  if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+  checkWatched(); showWatched();
+}
+refreshPulse(); setInterval(refreshPulse, 60_000);
+checkWatched(); setInterval(checkWatched, 2 * 60_000);
+
 // NYSDOT's live video is HLS: Safari plays it natively, other browsers through hls.js (cdnjs, loaded on first use).
 // Resolves to a function that stops the download.
 let hlsLib = null;
@@ -994,6 +1237,50 @@ async function playHls(v, src) {
 
 // Camera windows: several can be open at once, dragged anywhere, each refreshing its picture (or playing live video).
 let camZ = 1, camCount = 0, upscaled = 0;
+let cvSpeaking = false;
+function stopSpeaking() {
+  if ("speechSynthesis" in window) {
+    try { window.speechSynthesis.cancel(); } catch {}
+  }
+  cvSpeaking = false;
+  document.querySelectorAll(".cv-speak-btn").forEach((b) => {
+    b.textContent = "🔊 Listen";
+    b.classList.remove("active");
+  });
+}
+function speakText(text, btn) {
+  if (!("speechSynthesis" in window) || !text) return;
+  if (cvSpeaking) {
+    stopSpeaking();
+    return;
+  }
+  stopSpeaking();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 1.0;
+  u.pitch = 1.0;
+  try {
+    const voices = window.speechSynthesis.getVoices();
+    const en = voices.find((v) => v.lang.startsWith("en") && !v.name.includes("whisper") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Daniel") || v.default));
+    if (en) u.voice = en;
+  } catch {}
+  u.onstart = () => {
+    cvSpeaking = true;
+    if (btn) { btn.textContent = "⏹ Stop"; btn.classList.add("active"); }
+  };
+  u.onend = () => {
+    cvSpeaking = false;
+    if (btn) { btn.textContent = "🔊 Listen"; btn.classList.remove("active"); }
+  };
+  u.onerror = () => {
+    cvSpeaking = false;
+    if (btn) { btn.textContent = "🔊 Listen"; btn.classList.remove("active"); }
+  };
+  window.speechSynthesis.speak(u);
+}
+if ("speechSynthesis" in window) {
+  try { window.speechSynthesis.onvoiceschanged = () => {}; } catch {}
+}
 function openCam(c) {
   if (document.getElementById(`cam-${c.id}`)) return;
   if (camCount >= 8) document.querySelector(".cam")?.remove(), camCount--;
@@ -1002,7 +1289,7 @@ function openCam(c) {
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
-  w.innerHTML = `<header><b title="${esc(c.name)}${c.h ? ` (${c.w ? `${c.w}×${c.h}` : `up to ${c.h}p`})` : ""}">${c.static ? "📸" : camEmoji(c)}${camQ(c) ? ` ${camQ(c)}` : ""} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x" aria-label="Close camera">×</button></header>${c.youtube
+  w.innerHTML = `<header><b title="${esc(c.name)}${c.h ? ` (${c.w ? `${c.w}×${c.h}` : `up to ${c.h}p`})` : ""}">${c.static ? "📸" : camEmoji(c)}${camQ(c) ? ` ${camQ(c)}` : ""} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="cv" aria-label="Analyze with AI Vision" title="Analyze frame with local Qwen Vision model (2-3 s)">👁</button><button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x" aria-label="Close camera">×</button></header>${c.youtube
     ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(c.youtube)}?autoplay=1&mute=1&playsinline=1" title="Live video: ${esc(c.name)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
     : c.video ? `<video muted autoplay playsinline poster="${esc(c.image)}" aria-label="Live video: ${esc(c.name)}"></video>`
     : `<img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`}`;
@@ -1015,7 +1302,7 @@ function openCam(c) {
   const mark = c.lat != null && !c.static ? L.marker([+c.lat, +c.lon], { icon: L.divIcon({ className: "cam-open", html: "📷", iconSize: [28, 28] }), zIndexOffset: 1000, title: c.name, keyboard: false })
     .on("click", () => (w.style.zIndex = ++camZ)).addTo(map) : null;
   w.insertAdjacentHTML("beforeend", `<i class="grip" aria-hidden="true"></i>`); // the bottom-right corner: drag it to resize both ways
-  w.querySelector("button.x").onclick = () => { clearInterval(tick); stop?.then((f) => f?.()); mark?.remove(); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
+  w.querySelector("button.x").onclick = () => { stopSpeaking(); clearInterval(tick); stop?.then((f) => f?.()); mark?.remove(); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
   // ✨: the server upscales the camera's frame of this moment (SeedVR2, upscale.ts) and it opens in a window of its
   // own, as a data: URL (nothing is kept on the server), with a link to save it.
   const upBtn = w.querySelector("button.up");
@@ -1028,6 +1315,65 @@ function openCam(c) {
     const n = ++upscaled, at = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }), src = `data:image/jpeg;base64,${d.img}`;
     openCam({ id: `up${n}`, name: `✨ ${c.name} · ${at} · ×4 by AI, ${d.w}×${d.h} (fine details are AI guesses)`, image: src, static: true, upscaled: true, page: src, source: "⬇ Save", download: `${c.name.replace(/[^\w-]+/g, "_")}-${d.w}x${d.h}.jpg` });
     Object.assign(document.getElementById(`cam-up${n}`).style, { width: `${Math.min(720, innerWidth - 20)}px`, height: `${Math.min(520, innerHeight - 100)}px` });
+  };
+  const cvBtn = w.querySelector("button.cv");
+  if (cvBtn) cvBtn.onclick = async () => {
+    stopSpeaking();
+    cvBtn.disabled = true; cvBtn.textContent = "⏳";
+    if (w.offsetWidth < 400 && innerWidth >= 440) w.style.width = "400px";
+    if (w.offsetHeight < 360 && innerHeight >= 400) w.style.height = "360px";
+    const d = await getJSON(`/api/nyc/camera-inspect?id=${encodeURIComponent(c.id)}`).catch((e) => ({ error: e.message }));
+    cvBtn.disabled = false; cvBtn.textContent = "👁";
+    if (d.error) return dispatchEvent(new CustomEvent("blip:say", { detail: { text: "CV analysis failed: " + d.error } }));
+    let box = w.querySelector(".cam-cv-box");
+    if (!box) {
+      box = Object.assign(document.createElement("div"), { className: "cam-cv-box" });
+      w.append(box);
+    }
+    const flowClass = d.trafficFlow === "clear" || d.trafficFlow === "light" ? "flow-clear" : d.trafficFlow === "heavy" ? "flow-heavy" : d.trafficFlow === "gridlock" || d.trafficFlow === "stopped" ? "flow-gridlock" : "flow-moderate";
+    const flowIcon = d.trafficFlow === "clear" || d.trafficFlow === "light" ? "🟢" : d.trafficFlow === "heavy" ? "🔴" : d.trafficFlow === "gridlock" || d.trafficFlow === "stopped" ? "🛑" : "🟡";
+    const flowLabel = d.trafficFlow ? `${flowIcon} ${esc(d.trafficFlow.charAt(0).toUpperCase() + d.trafficFlow.slice(1))} Traffic` : "";
+    const weatherIcon = d.weather === "rain" ? "🌧" : d.weather === "snow" ? "❄️" : d.weather === "overcast" ? "☁️" : d.weather === "fog" ? "🌫" : "☀️";
+    const roadIcon = d.roadCondition === "flooded" ? "🌊" : d.roadCondition === "wet" ? "💦" : d.roadCondition === "snow_covered" ? "❄️" : "🛣️";
+    const conditionLabel = (d.weather || d.roadCondition) ? `${weatherIcon} ${esc(d.weather || "")}${d.weather && d.roadCondition ? " · " : ""}${roadIcon} ${esc(d.roadCondition ? d.roadCondition.replace("_", " ") : "")}` : "";
+
+    const objKindIcons = { car: "🚗", suv: "🚙", taxi: "🚕", bus: "🚌", truck: "🚚", bicycle: "🚲", motorcycle: "🏍️", pedestrian: "🚶", emergency_vehicle: "🚨", construction: "🚧", debris: "⚠️" };
+    const chips = (Array.isArray(d.objects) ? d.objects : []).map((o) => {
+      const ic = objKindIcons[o.kind] || "📍";
+      const cnt = o.count && o.count > 1 ? ` ×${o.count}` : "";
+      const act = o.action ? ` (${esc(o.action)})` : "";
+      return `<span class="cv-chip">${ic} <b>${esc(o.label || o.kind)}</b>${cnt}${act}</span>`;
+    }).join("");
+
+    const descToRead = d.description || d.text || "";
+    const hasTts = "speechSynthesis" in window;
+    box.innerHTML = `
+      <div class="cv-hdr">
+        <div class="cv-title"><span>👁</span> <b>Qwen Vision Analysis</b></div>
+        <div class="cv-actions">
+          ${hasTts ? `<button class="cv-speak-btn" title="Read description out loud">🔊 Listen</button>` : ""}
+          <button class="cv-close-btn" title="Close" aria-label="Close CV analysis">×</button>
+        </div>
+      </div>
+      <div class="cv-badges">
+        ${flowLabel ? `<span class="cv-badge ${flowClass}">${flowLabel}</span>` : ""}
+        ${conditionLabel ? `<span class="cv-badge">${conditionLabel}</span>` : ""}
+        ${d.emergencyActivity ? `<span class="cv-badge alert">🚨 Emergency Activity</span>` : ""}
+        ${d.smokeOrFire ? `<span class="cv-badge alert">🔥 Smoke / Fire</span>` : ""}
+      </div>
+      ${chips ? `<div class="cv-objects">${chips}</div>` : ""}
+      <div class="cv-desc">${esc(descToRead)}</div>
+    `;
+
+    const closeBtn = box.querySelector(".cv-close-btn");
+    if (closeBtn) closeBtn.onclick = () => { stopSpeaking(); box.remove(); };
+
+    const spkBtn = box.querySelector(".cv-speak-btn");
+    if (spkBtn) {
+      spkBtn.onclick = () => speakText(descToRead, spkBtn);
+      speakText(descToRead, spkBtn);
+    }
+    dispatchEvent(new CustomEvent("blip:say", { detail: { text: `Looking at ${c.name}: ${descToRead}`, mood: "happy" } }));
   };
   // Full screen (the browser's, when it allows it; otherwise the window just fills the page) and back.
   const fsBtn = w.querySelector("button.fs"), big = () => document.fullscreenElement === w || w.classList.contains("max");
@@ -1468,10 +1814,17 @@ window.blipActions = {
     run: async ({ lat, lon }) => { const ph = await getJSON(`/api/nyc/photo-near?lat=${Number(lat)}&lon=${Number(lon)}`).catch(() => null); if (ph) { photoById.set(ph.id, ph); openPhoto(ph); map.setView([ph.lat, ph.lon], Math.max(map.getZoom(), 17)); } } },
   nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
     run: async ({ lat, lon }) => { const c = await nearestCam(Number(lat), Number(lon)); if (c) openCam(c); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), incidents (live incidents, merged across sources), closures (road closures, construction, permitted street events), emergency (Notify NYC alerts), floods (street flooding now), films (film/TV shoots), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },
     run: ({ name }) => { $("rq").value = name ?? ""; $("rsearch").requestSubmit(); } },
+  inspect_camera: { label: "inspected camera with AI vision", description: "Analyze the live image from an open or specified traffic camera using local Qwen computer vision.", parameters: { id: { type: "string", description: "Camera ID" }, prompt: { type: "string", description: "Optional question" } },
+    run: async ({ id, prompt }) => {
+      const targetId = id || (seen.openCams[0] && (await getJSON("/api/nyc/cameras")).find((c) => c.name === seen.openCams[0])?.id);
+      if (!targetId) return "No camera specified or open.";
+      const d = await getJSON(`/api/nyc/camera-inspect?id=${encodeURIComponent(targetId)}${prompt ? `&q=${encodeURIComponent(prompt)}` : ""}`);
+      return d.text;
+    } },
 };
 
 // What Blip sees on this page when you ask it something.
@@ -1486,6 +1839,8 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
+    notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents,
+    cityNow: pulseNow && { ...pulseNow, brief: pulseNow.brief?.bullets?.map((b) => b.text), unusualList: pulseNow.unusualList?.slice(0, 5).map((u) => u.text) }, watchedPlaces: watched().map((z) => z.name),
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within400m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };

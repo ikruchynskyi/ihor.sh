@@ -24,7 +24,8 @@ export const localThink = (json: boolean, deep = false, model = LOCAL_MODEL) => 
 // past what a visitor would wait for (and past Cloudflare's 100 s for a reply that isn't streamed).
 export const MAX_WAITING = 8;
 let busy = false;
-const line: (() => void)[] = [];
+const line: (() => void)[] = [], later: (() => void)[] = [];
+const next = () => { const go = line.shift() ?? later.shift(); if (go) go(); else busy = false; }; // hands the turn straight on: busy stays true
 export class LineFull extends Error {}
 /** Runs fn when it's this request's turn. ahead(n) hears how many are before it, only when it has to wait. */
 export async function inLine<T>(fn: () => Promise<T>, ahead?: (n: number) => void): Promise<T> {
@@ -34,7 +35,14 @@ export async function inLine<T>(fn: () => Promise<T>, ahead?: (n: number) => voi
   }
   busy = true;
   try { return await fn(); }
-  finally { const next = line.shift(); if (next) next(); else busy = false; } // hands the turn straight on: busy stays true
+  finally { next(); }
+}
+/** Background work (the city's briefs, camera checks): runs only when no visitor is waiting, after all of them. */
+export async function whenIdle<T>(fn: () => Promise<T>): Promise<T> {
+  if (busy) await new Promise<void>((go) => later.push(go));
+  busy = true;
+  try { return await fn(); }
+  finally { next(); }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-check of the line
@@ -49,5 +57,10 @@ if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-chec
   const settled = await Promise.allSettled(many);
   assert.equal(settled.filter((r) => r.status === "rejected" && r.reason instanceof LineFull).length, 1); // 1 running + 8 waiting; the 10th is refused
   assert.equal(await job("after", 1), "after"); // and the line is free again
+  order.length = 0;
+  const bg = whenIdle(async () => { order.push("bg1"); await sleep(10); });
+  const v = job("v", 5), bg2 = whenIdle(async () => { order.push("bg2"); }), v2 = job("v2", 5);
+  await Promise.all([bg, v, bg2, v2]);
+  assert.deepEqual(order.filter((o) => !o.startsWith("end")), ["bg1", "start v", "start v2", "bg2"]); // visitors go before waiting background work
   console.log("llm.ts: line OK");
 }

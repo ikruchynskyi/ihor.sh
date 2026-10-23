@@ -5,6 +5,8 @@
 //   events:      NYC Events Calendar API (nyc.gov), cached 30 min
 //   restaurants: DOHMH restaurant inspections on NYC Open Data (Socrata 43nn-pn8j)
 
+import { OLLAMA, LOCAL_MODEL } from "./llm.ts";
+
 const env = (k: string) => process.env[k] ?? "";
 const json = async (url: string, headers: Record<string, string> = {}) => {
   const r = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
@@ -147,10 +149,9 @@ export async function cityEvents(from: string, to = from, { freeOnly = false } =
 }
 
 // ---------- restaurant inspections ----------
-const SODA = "https://data.cityofnewyork.us/resource/43nn-pn8j.json";
-const soda = (params: Record<string, string>) => {
+const soda = (params: Record<string, string>, resourceId = "43nn-pn8j") => {
   const auth = env("SOCRATA_KEY_ID") ? { Authorization: "Basic " + Buffer.from(`${env("SOCRATA_KEY_ID")}:${env("SOCRATA_KEY_SECRET")}`).toString("base64") } : {};
-  return json(`${SODA}?${new URLSearchParams(params)}`, auth);
+  return json(`https://data.cityofnewyork.us/resource/${resourceId}.json?${new URLSearchParams(params)}`, auth);
 };
 const soql = (s: string) => s.replace(/'/g, "''");
 
@@ -573,4 +574,101 @@ export async function webSearch(query: string) {
     return { title: strip(title), url: u.searchParams.get("uddg") ?? u.href, snippet: strip(snippet) };
   });
   return { engine: "duckduckgo", results };
+}
+
+// ---------- a camera's frame, read by the local Qwen (it sees images) ----------
+const SEEN = {
+  type: "object",
+  required: ["description", "traffic_flow", "weather", "road_condition", "emergency_activity", "objects"],
+  properties: {
+    description: {
+      type: "string",
+      description: "Detailed 3-5 sentence description detailing vehicle/pedestrian actions, traffic flow, road surface, visibility, and any hazards or notable events."
+    },
+    traffic_flow: {
+      type: "string",
+      enum: ["clear", "light", "moderate", "heavy", "gridlock", "stopped"]
+    },
+    weather: {
+      type: "string",
+      enum: ["clear", "overcast", "rain", "fog", "snow"]
+    },
+    road_condition: {
+      type: "string",
+      enum: ["dry", "wet", "flooded", "snow_covered"]
+    },
+    emergency_activity: {
+      type: "boolean"
+    },
+    smoke_or_fire: {
+      type: "boolean"
+    },
+    objects: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["kind", "label", "action", "count"],
+        properties: {
+          kind: {
+            type: "string",
+            enum: ["car", "suv", "taxi", "bus", "truck", "bicycle", "motorcycle", "pedestrian", "emergency_vehicle", "construction", "debris", "other"]
+          },
+          label: { type: "string" },
+          action: { type: "string" },
+          count: { type: "integer" }
+        }
+      }
+    }
+  }
+};
+/** What a camera shows now: structured JSON with description, traffic flow, weather, road condition, emergency activity,
+ *  and detected objects (kind, label, action, count) for programmatic analysis; or the answer to one question. Never
+ *  people, faces or plates; no time of day (the model guesses it wrong). The caller holds the model's line (inLine/whenIdle). */
+export async function inspectCamera(id: string, question?: string) {
+  const cam = (await trafficCameras()).find((c) => c.id === id);
+  if (!cam) throw new Error(`No camera "${id}".`);
+  const r = await fetch(cam.image, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  if (!r?.ok) throw new Error(`${cam.name} didn't send a picture just now.`);
+  const content = question
+    ? `A live NYC traffic camera frame. ${question.slice(0, 300)} Answer in 1-2 sentences. Only the scene: don't describe or identify people, faces or license plates, and don't guess the time.`
+    : "Analyze this live NYC traffic camera image. Provide a detailed 3-5 sentence description detailing vehicle and pedestrian movements, traffic flow, road conditions, and any hazards or emergency activity, along with the list of detected objects. Only describe the scene: don't describe or identify people, faces or license plates, and don't guess the time.";
+  const res = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(90_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false,
+    options: { num_predict: 500, temperature: 0.2 }, ...(question ? {} : { format: SEEN }), messages: [
+      { role: "system", content: "You are an expert traffic camera vision system for New York City. Analyze the camera frame and provide a detailed, accurate JSON report strictly following the schema. In the description, provide 3 to 5 clear sentences describing the scene, movement of vehicles and pedestrians, road conditions, and any hazards. Never identify individual faces, people names, or license plates." },
+      { role: "user", content, images: [Buffer.from(await r.arrayBuffer()).toString("base64")] }
+    ] }) });
+  if (!res.ok) throw new Error(`vision model: HTTP ${res.status}`);
+  const raw = String((await res.json()).message?.content ?? "").trim();
+  let seen: any = null;
+  if (!question) {
+    try {
+      const clean = raw.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+      seen = JSON.parse(clean);
+    } catch {
+      seen = { description: raw, traffic_flow: "moderate", weather: "clear", road_condition: "dry", emergency_activity: false, smoke_or_fire: false, objects: [] };
+    }
+    // Backwards compatibility aliases for server/city.ts
+    seen.traffic = seen.traffic_flow ?? "moderate";
+    seen.road = seen.road_condition === "snow_covered" ? "snow" : (seen.road_condition ?? "dry");
+    seen.emergency_vehicles = !!(seen.emergency_activity || seen.emergency_vehicles);
+    seen.smoke_or_fire = !!seen.smoke_or_fire;
+    seen.notes = seen.description ?? raw;
+  }
+  const desc = seen?.description || raw;
+  return {
+    id: cam.id,
+    name: cam.name,
+    lat: cam.lat,
+    lon: cam.lon,
+    seen,
+    model: LOCAL_MODEL,
+    text: desc,
+    description: desc,
+    trafficFlow: seen?.traffic_flow ?? null,
+    weather: seen?.weather ?? null,
+    roadCondition: seen?.road_condition ?? null,
+    emergencyActivity: !!(seen?.emergency_activity || seen?.emergency_vehicles),
+    smokeOrFire: !!seen?.smoke_or_fire,
+    objects: Array.isArray(seen?.objects) ? seen.objects : []
+  };
 }
