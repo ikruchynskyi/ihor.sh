@@ -23,6 +23,9 @@ assert.equal(more.length, 0);
 assert.deepEqual({ type: n.type, where: n.where, borough: n.borough, cap: n.cap }, { type: "Fire", where: "Wright Avenue & Tillotson Avenue", borough: "Bronx", cap: "https://cap/1.xml" });
 assert.match(n.body, /^Emergency personnel .* in The Bronx\.$/);
 
+const [g] = notifyItems(`<item><title>Notify NYC - Planned Natural Gas Work -10/24- Springfield Boulevard (QN)</title><description>Notification issued 10-23-2026 at 03:00 PM. National Grid is scheduled to conduct natural gas work near Springfield Boulevard between 115th Road and Linden Boulevard in Queens. The work is scheduled to take place between 8:00 AM and 8:00 PM on 10/24.</description><guid>3</guid><pubDate>Fri, 23 Oct 2026 19:00:00 GMT</pubDate><author>NYCEM [English]</author><link>c</link></item>`);
+assert.deepEqual({ type: g.type, where: g.where, borough: g.borough, day: g.day }, { type: "Planned Natural Gas Work", where: "Springfield Boulevard & 115th Road", borough: "Queens", day: { month: 10, date: 24 } });
+
 // A helicopter that turns a full circle in a small area is circling; one flying straight isn't.
 const circle = Array.from({ length: 10 }, (_, i) => ({ lat: 40.75 + 0.005 * Math.sin(i), lon: -73.98 + 0.005 * Math.cos(i), trk: (i * 57) % 360 }));
 assert.ok(orbit(circle) && orbit(circle)!.turn >= 360);

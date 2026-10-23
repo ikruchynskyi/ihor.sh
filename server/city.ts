@@ -61,7 +61,7 @@ export function snapshot(source: string, list: New[], at = now()) {
   return list.length;
 }
 const endOne = db.prepare("update events set ends = ? where id = ? and ends is null");
-const known = db.prepare("select 1 from events where id = ?");
+const known = db.prepare("select lat from events where id = ?");
 const putMetric = db.prepare("insert or replace into metrics values (?, ?, ?)");
 const metric = (key: string, value: unknown) => { if (value != null && Number.isFinite(Number(value))) putMetric.run(key, now(), Number(value)); };
 const getMetric = db.prepare("select at, value from metrics where key = ? order by at desc limit 1");
@@ -109,26 +109,38 @@ async function roads() {
 const NOTIFY = "https://feeds.everbridge.net/feeds/453003085617722/rss/rss.xml";
 const CAP_SEV: Record<string, number> = { Extreme: 3, Severe: 2, Moderate: 1, Minor: 0 };
 const tag = (s: string, t: string) => s.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`))?.[1] ?? "";
-/** Notify NYC's English items: each alert is sent in ~13 languages; the English one carries "<type> - <where>" in its title. */
+const BORO_CODES: Record<string, string> = { MN: "Manhattan", BK: "Brooklyn", QN: "Queens", BX: "Bronx", SI: "Staten Island" };
+/** Notify NYC's English items: each alert is sent in ~13 languages; the English one carries "<type> - <where>" in its
+ *  title, or "<type> -10/24- <where> (QN)" for planned work on a day. A lone street gets its first cross street from
+ *  "…between X and Y…" in the text, so it can be placed. */
 export function notifyItems(rss: string) {
   return [...rss.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]).filter((it) => /\[English\]/.test(tag(it, "author"))).map((it) => {
-    const [type, ...rest] = strip(tag(it, "title")).replace(/^Notify NYC\s*-\s*/i, "").split(/\s+-\s+/);
+    const title = strip(tag(it, "title")).replace(/^Notify NYC\s*-\s*/i, ""), day = title.match(/\s-(\d{1,2})\/(\d{1,2})-\s/);
+    const [type, ...rest] = title.split(/\s+-\s+|\s+-\d{1,2}\/\d{1,2}-\s+/);
     const body = strip(tag(it, "description")).replace(/\s*To view this message in .*$/i, "").replace(/^Notification issued .*?(AM|PM)\.\s*/i, "");
-    return { id: tag(it, "guid"), type: type.trim(), where: rest.join(" - ").trim(), body, cap: tag(it, "link").trim(), sent: Math.floor(Date.parse(tag(it, "pubDate")) / 1000),
-      borough: body.match(/\bin (?:the )?(Bronx|Brooklyn|Manhattan|Queens|Staten Island)\b/i)?.[1] ?? null };
+    let where = rest.join(" - ").trim();
+    const code = where.match(/\s*\((MN|BK|QN|BX|SI)\)$/);
+    if (code) where = where.slice(0, code.index).trim();
+    const cross = [...body.matchAll(/\bbetween ([^,.]+?) and ([^,.]+?)(?= in |,|\.)/g)].find((m) => !/\d:\d/.test(m[0]));
+    if (where && !/ (&|and|at) /i.test(where) && cross) where = `${where} & ${cross[1].trim()}`;
+    return { id: tag(it, "guid"), type: type.trim(), where, body, cap: tag(it, "link").trim(), sent: Math.floor(Date.parse(tag(it, "pubDate")) / 1000), day: day ? { month: +day[1], date: +day[2] } : null,
+      borough: (code && BORO_CODES[code[1]]) ?? body.match(/\bin (?:the )?(Bronx|Brooklyn|Manhattan|Queens|Staten Island)\b/i)?.[1] ?? null };
   });
 }
 /** Notify NYC, NYC Emergency Management's public alerts: fires, gas leaks, police activity, outages, weather… */
 async function notify() {
   const fresh: New[] = [];
   for (const n of notifyItems(await (await get(NOTIFY)).text())) {
-    if (!n.id || known.get(`notify:${n.id}`)) continue;
+    const had = known.get(`notify:${n.id}`) as { lat: number | null } | undefined;
+    if (!n.id || (had && (had.lat != null || !n.where))) continue; // stored, and placed or not placeable: done
     if (/missing/i.test(n.type)) continue; // people, not places: they stay on Notify NYC, out of our store
     const cap = n.cap ? await get(n.cap).then((r) => r.text()).catch(() => "") : "";
     const boro = n.borough, where = n.where && !/^(citywide|manhattan|brooklyn|queens|bronx|the bronx|staten island)$/i.test(n.where) ? n.where : "";
     const pt = where ? await place(boro ? `${where}, ${boro}` : where) : null, expires = Date.parse(tag(cap, "expires"));
-    fresh.push({ id: n.id, kind: `alert:${slug(n.type)}`, sev: CAP_SEV[tag(cap, "severity")] ?? 1, lat: pt?.lat, lon: pt?.lon, starts: n.sent,
-      ends: expires ? Math.floor(expires / 1000) : n.sent + 3 * 3600, title: `${n.type}${n.where ? ` - ${n.where}` : ""}`,
+    // planned work on a later day ("-10/24-") starts that day, not now
+    const on = n.day && new Date(new Date().getFullYear(), n.day.month - 1, n.day.date).getTime() / 1000, planned = on && on > n.sent ? on : null;
+    fresh.push({ id: n.id, kind: `alert:${slug(n.type)}`, sev: CAP_SEV[tag(cap, "severity")] ?? 1, lat: pt?.lat, lon: pt?.lon, starts: planned ?? n.sent,
+      ends: planned ? planned + 86400 : expires ? Math.floor(expires / 1000) : n.sent + 3 * 3600, title: `${n.type}${n.where ? ` - ${n.where}` : ""}`,
       detail: { type: n.type, where: n.where, borough: boro, text: n.body.slice(0, 900), severity: tag(cap, "severity") || null, urgency: tag(cap, "urgency") || null }, url: n.cap || undefined });
   }
   return tx(() => save("notify", fresh));
@@ -412,7 +424,7 @@ export function latestBrief(scope = "city") {
 
 // ---------- camera checks: a new serious or corroborated incident → its nearest cameras, read by the local Qwen ----------
 const checked = new Set<string>();
-let frames: number[] = [];
+let spent: { t: number; s: number }[] = []; // model seconds spent on camera checks in the last hour
 const cameraChecks = (incident: string) => (db.prepare("select * from events where source = 'vision' and detail like ? order by last_seen desc limit 3").all(`%"incident":"${incident.replace(/["%]/g, "")}"%`) as Ev[]).map(view);
 async function triage() {
   const cams = await trafficCameras().catch(() => [] as any[]);
@@ -421,12 +433,11 @@ async function triage() {
     checked.add(c.id);
     const near = cams.filter((k) => !k.youtube && km(c, k) <= 0.4).sort((a, b) => (b.h ?? 0) - (a.h ?? 0) || km(c, a) - km(c, b)).slice(0, 3);
     for (const cam of near) {
-      frames = frames.filter((t) => t > Date.now() - 3600_000);
-      if (frames.length >= 200) return; // ~12 min of model time an hour at most (3.6–10.7 s a frame, measured)
-      frames.push(Date.now());
-      const v = await whenIdle(() => inspectCamera(cam.id)).catch(() => null), s = v?.seen;
+      spent = spent.filter((x) => x.t > Date.now() - 3600_000);
+      if (spent.reduce((a, x) => a + x.s, 0) >= 720) return; // at most 12 min of model time an hour (a frame took 19–22 s with the full description, measured)
+      const v = await whenIdle(async () => { const t1 = Date.now(); try { return await inspectCamera(cam.id); } finally { spent.push({ t: Date.now(), s: (Date.now() - t1) / 1000 }); } }).catch(() => null), s = v?.seen;
       if (!s) continue;
-      const what = [s.smoke_or_fire && "smoke or fire", s.emergency_vehicles && "emergency vehicles", s.road === "flooded" && "a flooded road", ["heavy", "stopped"].includes(s.traffic) && `${s.traffic} traffic`].filter(Boolean) as string[];
+      const what = [s.smoke_or_fire && "smoke or fire", s.emergency_vehicles && "emergency vehicles", s.road === "flooded" && "a flooded road", ["heavy", "gridlock", "stopped"].includes(s.traffic) && `${s.traffic} traffic`].filter(Boolean) as string[];
       tx(() => save("vision", [{ id: cam.id, kind: what.length ? `vision:${slug(what[0])}` : "vision:clear", sev: what.length ? 1 : 0, lat: cam.lat, lon: cam.lon, ends: now() + 1800,
         title: `Camera ${cam.name}: ${what.length ? what.join(", ") : "nothing unusual"}`, detail: { camera: cam.id, seen: s, incident: c.id, model: v!.model }, url: `/nyc/#cam=${cam.id}` }]));
       clustered.at = 0;

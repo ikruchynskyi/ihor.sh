@@ -579,7 +579,7 @@ export async function webSearch(query: string) {
 // ---------- a camera's frame, read by the local Qwen (it sees images) ----------
 const SEEN = {
   type: "object",
-  required: ["description", "traffic_flow", "weather", "road_condition", "emergency_activity", "objects"],
+  required: ["description", "traffic_flow", "weather", "road_condition", "emergency_activity", "smoke_or_fire", "objects"],
   properties: {
     description: {
       type: "string",
@@ -641,12 +641,8 @@ export async function inspectCamera(id: string, question?: string) {
   const raw = String((await res.json()).message?.content ?? "").trim();
   let seen: any = null;
   if (!question) {
-    try {
-      const clean = raw.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-      seen = JSON.parse(clean);
-    } catch {
-      seen = { description: raw, traffic_flow: "moderate", weather: "clear", road_condition: "dry", emergency_activity: false, smoke_or_fire: false, objects: [] };
-    }
+    // an answer that doesn't parse is an error, never a made-up "moderate, clear, dry" reading (the camera checks store these)
+    try { seen = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, "").trim()); } catch { throw new Error("the vision model's answer didn't parse"); }
     // Backwards compatibility aliases for server/city.ts
     seen.traffic = seen.traffic_flow ?? "moderate";
     seen.road = seen.road_condition === "snow_covered" ? "snow" : (seen.road_condition ?? "dry");

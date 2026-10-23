@@ -212,7 +212,7 @@
     #cityBar button { padding: 3px 7px !important; font-size: .78rem !important; background: var(--card) !important; white-space: nowrap; }
     #cityBar button.hot { color: #fff; background: #c92a2a !important; } #cityBar button.warm { box-shadow: inset 0 -3px 0 #ff922b !important; }
     #cityBrief { max-width: 520px; max-height: 45vh; overflow: auto; background: var(--card); border: 1px solid var(--line); padding: 8px 10px; font-size: .85rem; }
-    #cityBrief li { margin: 0 0 6px; } #cityBrief sup { cursor: help; color: var(--muted); }
+    #cityBrief li { margin: 0 0 6px; } #cityBrief ul { padding-left: 16px; margin: 6px 0; } #cityBrief p { margin: 6px 0; } #cityBrief sup { cursor: help; color: var(--muted); }
     @media (max-width: 700px) { #cityHud { left: 8px; right: 56px; top: calc((var(--hud-h, 52px) + 6px) / var(--zoom, 1)); } #cityBar { flex-wrap: nowrap; overflow-x: auto; } }
   </style>
 </head>
@@ -1096,33 +1096,36 @@ function incidentPopup(c) {
     ${c.checkedBy?.length ? `<div class="muted">👁 ${c.checkedBy.map((v) => `<a href="${esc(v.url)}">${esc(v.title)}</a> (${hhmm(v.starts)})`).join("<br>👁 ")}</div>` : ""}${camBtn(c.lat, c.lon)}`;
 }
 async function loadIncidents(g) {
-  const d = await getJSON("/api/nyc/incidents");
+  const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
   g.clearLayers();
-  for (const c of d.incidents) L.circleMarker([c.lat, c.lon], { radius: (5 + 2 * c.sev) * DOT, color: c.confidence > 1 ? "#fff" : SEV[c.sev], weight: c.confidence > 1 ? 3 : 1, fillColor: SEV[c.sev], fillOpacity: 0.85, bubblingMouseEvents: false })
-    .bindTooltip(esc(c.title)).bindPopup(() => incidentPopup(c), { maxWidth: 340 }).addTo(g);
+  for (const c of d.incidents) mark("incidents", c.id, L.circleMarker([c.lat, c.lon], { radius: (5 + 2 * c.sev) * DOT, color: c.confidence > 1 ? "#fff" : SEV[c.sev], weight: c.confidence > 1 ? 3 : 1, fillColor: SEV[c.sev], fillOpacity: 0.85, bubblingMouseEvents: false })
+    .bindTooltip(esc(c.title)).bindPopup(() => incidentPopup(c), { maxWidth: 340 })).addTo(g);
   seen.incidents = { count: d.incidents.length, serious: d.incidents.filter((c) => c.sev >= 2).map((c) => ({ title: c.title, sources: c.sources, since: hhmm(c.starts), lat: c.lat, lon: c.lon })).slice(0, 15) };
   $("n-incidents").textContent = `(${d.incidents.length}: ${d.incidents.filter((c) => c.sev >= 2).length} serious, ${d.incidents.filter((c) => c.confidence > 1).length} seen by 2+ sources, white ring)`;
 }
+const cityMarks = new Map(), cityData = {}; // "layer|id" → marker, and each layer's last data: the city bar's lists fly to them
+const mark = (layer, id, m) => (cityMarks.set(`${layer}|${id}`, m), m);
 const PLAN_COLORS = { closure: "#c92a2a", construction: "#f08c00", event: "#1c7ed6", permit: "#9c36b5", film: "#d6336c" };
 async function loadClosures(g) {
-  const d = await getJSON("/api/nyc/incidents");
+  const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
   g.clearLayers();
   for (const e of d.planned) {
     const k = e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5);
-    dot(e.lat, e.lon, PLAN_COLORS[k] ?? "#868e96", 4.5).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(SOURCES[e.source] ?? e.source)}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
+    mark("closures", e.id, dot(e.lat, e.lon, PLAN_COLORS[k] ?? "#868e96", 4.5)).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(SOURCES[e.source] ?? e.source)}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
       ${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}<br>${camBtn(e.lat, e.lon)}`).addTo(g);
   }
   const n = (k) => d.planned.filter((e) => (e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5)) === k).length;
   $("n-closures").innerHTML = `(<span style="color:${PLAN_COLORS.closure}">●</span> ${n("closure")} closures · <span style="color:${PLAN_COLORS.construction}">●</span> ${n("construction")} construction · <span style="color:${PLAN_COLORS.permit}">●</span> ${n("permit")} permitted · <span style="color:${PLAN_COLORS.event}">●</span> ${n("event")} special events)`;
 }
 async function loadEmergency(g) {
-  const d = await getJSON("/api/nyc/emergency"), now = Date.now() / 1000;
+  const d = (cityData.emergency = await getJSON("/api/nyc/emergency")), now = Date.now() / 1000;
   g.clearLayers();
   const placed = d.alerts.filter((a) => a.lat != null);
-  for (const a of placed) { const on = !a.ends || a.ends > now; L.circleMarker([a.lat, a.lon], { radius: 8 * DOT, color: on ? "#e03131" : "#868e96", weight: 2, fillColor: on ? "#e03131" : "#868e96", fillOpacity: on ? 0.85 : 0.25, bubblingMouseEvents: false })
-    .bindPopup(`<b>🚨 ${esc(a.title)}</b><br><span class="muted">Notify NYC · ${hhmm(a.starts)}${on ? " · active" : ` · ended ${hhmm(a.ends)}`}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><p style="margin:6px 0;font-size:12px">${esc(a.text ?? "")}</p>${camBtn(a.lat, a.lon)}`).addTo(g); }
-  seen.emergency = d.alerts.slice(0, 10).map((a) => ({ what: a.title, at: hhmm(a.starts), active: !a.ends || a.ends > now, text: a.text?.slice(0, 200) }));
-  $("n-emergency").textContent = `(${d.alerts.filter((a) => !a.ends || a.ends > now).length} active, ${d.alerts.length} today${d.alerts.length > placed.length ? `, ${d.alerts.length - placed.length} citywide` : ""}${d.weather.length ? ` · weather: ${d.weather.map((w) => w.event).join(", ")}` : ""})`;
+  const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" });
+  for (const a of placed) { const on = a.starts <= now && (!a.ends || a.ends > now), later = a.starts > now; mark("emergency", a.id, L.circleMarker([a.lat, a.lon], { radius: 8 * DOT, color: on ? "#e03131" : "#868e96", weight: 2, fillColor: on ? "#e03131" : "#868e96", fillOpacity: on ? 0.85 : 0.25, bubblingMouseEvents: false })
+    .bindPopup(`<b>🚨 ${esc(a.title)}</b><br><span class="muted">Notify NYC · ${later ? `planned for ${day(a.starts)}` : `${hhmm(a.starts)}${on ? " · active" : ` · ended ${hhmm(a.ends)}`}`}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><p style="margin:6px 0;font-size:12px">${esc(a.text ?? "")}</p>${camBtn(a.lat, a.lon)}`)).addTo(g); }
+  seen.emergency = d.alerts.slice(0, 10).map((a) => ({ what: a.title, at: a.starts > now ? `planned for ${day(a.starts)}` : hhmm(a.starts), active: a.starts <= now && (!a.ends || a.ends > now), text: a.text?.slice(0, 200) }));
+  $("n-emergency").textContent = `(${d.alerts.filter((a) => a.starts <= now && (!a.ends || a.ends > now)).length} active, ${d.alerts.length} today${d.alerts.length > placed.length ? `, ${d.alerts.length - placed.length} citywide` : ""}${d.weather.length ? ` · weather: ${d.weather.map((w) => w.event).join(", ")}` : ""})`;
 }
 async function loadFilmShoots(g) {
   const d = await getJSON("/api/nyc/film-permits");
@@ -1133,11 +1136,11 @@ async function loadFilmShoots(g) {
   $("n-films").textContent = `(${d.shoots.length} on now${newest && newest < Date.now() - 7 * 86400_000 ? `; the city's permit data stops at ${newest.toLocaleDateString([], { month: "short", day: "numeric" })}` : ""})`;
 }
 async function loadFloodSensors(g) {
-  const d = await getJSON("/api/nyc/flood-sensors");
+  const d = (cityData.floods = await getJSON("/api/nyc/flood-sensors"));
   g.clearLayers();
   for (const f of d.sensors) {
     const mm = f.depthMm, wet = mm != null;
-    dot(f.lat, f.lon, wet ? (mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? 7 : 3.5).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
+    mark("floods", f.id, dot(f.lat, f.lon, wet ? (mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? 7 : 3.5).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`)).addTo(g);
   }
   const wet = d.sensors.filter((f) => f.depthMm != null).length;
   seen.floods = { sensors: d.sensors.length, flooding: wet, surgeFt: d.surgeFt };
@@ -1167,14 +1170,14 @@ function drawBar() {
   const z = watched();
   $("cityBar").innerHTML = [
     chip(`📝 Brief ${p.brief ? hhmm(p.brief.at) : "…"}`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts", "brief"),
-    chip(`🚨 ${p.alerts}`, "Notify NYC alerts active now", "emergency", p.alerts ? "hot" : ""),
+    chip(`🚨 ${p.alerts}`, "Notify NYC alerts: active now (click for today's)", "emergency", p.alerts ? "hot" : ""),
     chip(`⚠ ${p.severe} serious · ${p.incidents}`, `${p.incidents} incidents now: ${p.severe} serious, ${p.corroborated} seen by 2+ independent sources`, "incidents", p.severe ? "warm" : ""),
     chip(`🚧 ${p.closures}`, "Road closures, construction and permitted street events on now", "closures"),
     chip(`🌊 ${p.flooding}${p.surgeFt != null ? ` · ${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft` : ""}`, "Street sensors flooding now (FloodNet) · harbor water at the Battery vs the predicted tide (NOAA)", "floods", p.flooding ? "warm" : ""),
-    p.helicopters ? chip(`🚁 ${p.helicopters}`, "Helicopters circling low over the city", "aircraft", "warm") : "",
-    p.aqi != null ? chip(`🌫 AQI ${p.aqi}`, "US air quality index (Open-Meteo); over 100 is unhealthy for sensitive groups", "radar", p.aqi > 100 ? "warm" : "") : "",
-    p.outages != null ? chip(`⚡ ${p.outages}`, `Con Ed outages now: ${p.customersOut ?? 0} customers out`, "", p.customersOut > 1000 ? "warm" : "") : "",
-    p.weather.length ? chip(`⛈ ${p.weather.length}`, p.weather.join("\n"), "emergency", "hot") : "",
+    p.helicopters ? chip(`🚁 ${p.helicopters}`, "Helicopters circling low over the city", "helicopters", "warm") : "",
+    p.aqi != null ? chip(`🌫 AQI ${p.aqi}`, "US air quality index (Open-Meteo); over 100 is unhealthy for sensitive groups", "aqi", p.aqi > 100 ? "warm" : "") : "",
+    p.outages != null ? chip(`⚡ ${p.outages}`, `Con Ed outages now: ${p.customersOut ?? 0} customers out`, "outages", p.customersOut > 1000 ? "warm" : "") : "",
+    p.weather.length ? chip(`⛈ ${p.weather.length}`, p.weather.join("\n"), "weather", "hot") : "",
     p.unusual ? chip(`📈 ${p.unusual}`, "Unusual: places where a kind of report is at least 3× its usual count", "unusual", "warm") : "",
     z.length ? chip(`👁 ${z.length}${watchNews.length ? ` · ${watchNews.length} new` : ""}`, `Watched: ${z.map((x) => x.name).join(", ")}`, "watch", watchNews.length ? "hot" : "") : "",
   ].join("");
@@ -1200,17 +1203,68 @@ function showWatched() {
   box.innerHTML = `<b>👁 Watched places</b> <span class="muted">(this browser only; new incidents show here${typeof Notification !== "undefined" ? " and as notifications" : ""})</span> <button class="linkish" data-act="close" style="float:right">×</button>
     <ul style="padding-left:16px;margin:6px 0">${watched().map((z, i) => `<li><a href="#" data-zone="${i}">${esc(z.name)}</a> <button class="linkish" data-unwatch="${i}">remove</button>${watchNews.filter((n) => n.zone.name === z.name).map((n) => `<br>⚠ ${esc(n.c.title)} (${hhmm(n.c.starts)})`).join("")}</li>`).join("")}</ul>`;
 }
+// A chip opens the list of what it counts (a second click closes it), turns its layer on, and brings the map to the
+// items when none of them are in view; an item in the list flies to its marker and opens it.
+const CHIP_LAYER = { emergency: "emergency", weather: "emergency", incidents: "incidents", helicopters: "incidents", closures: "closures", floods: "floods" };
+const goLink = (layer, id, text) => `<a href="#" data-go="${esc(`${layer}|${id}`)}">${text}</a>`;
+const ago = (t) => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" }); };
+function chipList(act) {
+  const p = pulseNow ?? {}, now = Date.now() / 1000, here = map.getCenter();
+  const near = (list) => list.map((x) => ({ x, m: map.distance(here, [x.lat, x.lon]) })).sort((a, b) => a.m - b.m).map((o) => o.x);
+  if (act === "emergency" || act === "weather") {
+    const d = cityData.emergency ?? { alerts: [], weather: [] }, on = (a) => a.starts <= now && (!a.ends || a.ends > now);
+    const alerts = [...d.alerts.filter(on), ...d.alerts.filter((a) => !on(a))];
+    const state = (a) => (on(a) ? "active" : a.starts > now ? `planned for ${new Date(a.starts * 1000).toLocaleDateString([], { month: "short", day: "numeric" })}` : "ended");
+    return { title: `🚨 Notify NYC today: ${alerts.filter(on).length} active, ${alerts.length} in 24 h`, points: alerts.filter((a) => a.lat != null),
+      body: (d.weather.length ? `<p><b>⛈ Weather alerts (NWS):</b><br>${d.weather.map((w) => `${esc(w.title)}${w.instruction ? `<br><small>${esc(w.instruction.slice(0, 240))}</small>` : ""}`).join("<br>")}</p>` : "")
+        + (alerts.length ? `<ul>${alerts.map((a) => `<li>${a.lat != null ? goLink("emergency", a.id, `<b>${esc(a.title)}</b>`) : `<b>${esc(a.title)}</b> <span class="muted">(citywide)</span>`} <span class="muted">${state(a)}${a.starts <= now ? ` · ${ago(a.starts)}` : ""}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><br><small>${esc((a.text ?? "").slice(0, 200))}</small></li>`).join("")}</ul>` : "<p>No Notify NYC alerts in the last 24 hours.</p>") };
+  }
+  if (act === "incidents" || act === "helicopters") {
+    const all = cityData.incidents?.incidents ?? [], list = act === "helicopters" ? all.filter((c) => c.kind === "air:helicopter-orbit") : all;
+    return { title: act === "helicopters" ? `🚁 ${list.length} helicopter${list.length === 1 ? "" : "s"} circling low` : `⚠ ${all.length} incidents: ${all.filter((c) => c.sev >= 2).length} serious, ${all.filter((c) => c.confidence > 1).length} seen by 2+ sources`,
+      points: list.filter((c) => c.sev >= 2).length ? list.filter((c) => c.sev >= 2) : list.slice(0, 1),
+      body: `<ul>${list.slice(0, 40).map((c) => `<li><span style="color:${SEV[c.sev]}">●</span> ${act === "helicopters" ? `<a href="${esc(c.events[0]?.url ?? "#")}">${esc(c.title)}</a>` : goLink("incidents", c.id, esc(c.title))} <span class="muted">${c.sources.map((x) => SOURCES[x] ?? x).join(" + ")} · ${ago(c.starts)}${c.borough ? ` · ${esc(c.borough)}` : ""}</span></li>`).join("")}</ul>${list.length > 40 ? `<p class="muted">The 40 most serious of ${list.length}; the rest are on the map.</p>` : ""}` };
+  }
+  if (act === "closures") {
+    const list = near(cityData.incidents?.planned ?? []);
+    return { title: `🚧 ${list.length} closures, construction and permitted street events: the nearest to the map's center`, points: list.slice(0, 1),
+      body: `<ul>${list.slice(0, 30).map((e) => `<li>${goLink("closures", e.id, esc(e.title))} <span class="muted">${Math.round(map.distance(here, [e.lat, e.lon]))} m${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span></li>`).join("")}</ul>` };
+  }
+  if (act === "floods") {
+    const d = cityData.floods ?? { sensors: [] }, wet = d.sensors.filter((f) => f.depthMm != null).sort((a, b) => b.depthMm - a.depthMm);
+    return { title: `🌊 ${wet.length} of ${d.sensors.length} street sensors flooding`, points: wet,
+      body: `${wet.length ? `<ul>${wet.map((f) => `<li>${goLink("floods", f.id, esc(f.name))} <span class="muted">${(f.depthMm / 25.4).toFixed(1)} in</span></li>`).join("")}</ul>` : `<p>No sensor sees water on the street${d.checkedAt ? ` (checked ${hhmm(d.checkedAt)}; ${d.raining ? "all sensors, since it's raining" : "while it's dry only the coastal sensors are checked"})` : ""}.</p>`}
+        ${d.surgeFt != null ? `<p>Harbor water at the Battery: <b>${d.surgeFt >= 0 ? "+" : ""}${d.surgeFt} ft</b> against the predicted tide (<a href="https://tidesandcurrents.noaa.gov/stationhome.html?id=8518750" target="_blank" rel="noopener">NOAA</a>).</p>` : ""}` };
+  }
+  if (act === "aqi") return { title: `🌫 Air quality index ${p.aqi}`, body: `<p>${p.aqi <= 50 ? "Good" : p.aqi <= 100 ? "Moderate" : p.aqi <= 150 ? "Unhealthy for sensitive groups" : p.aqi <= 200 ? "Unhealthy" : "Very unhealthy or worse"} (US AQI, EPA's bands), from Open-Meteo's air quality model for NYC. <a href="https://www.airnow.gov/?city=New%20York&state=NY&country=USA" target="_blank" rel="noopener">AirNow's readings →</a></p>` };
+  if (act === "outages") return { title: `⚡ Con Ed: ${p.outages} outages`, body: `<p>${p.customersOut ?? 0} customers out right now in NYC and Westchester (Con Ed's outage map, updated every 15–30 minutes). <a href="https://outagemap.coned.com/" target="_blank" rel="noopener">Con Ed's map →</a></p>` };
+  return null;
+}
+async function openChip(act) {
+  const box = $("cityBrief");
+  if (!box.hidden && box.dataset.what === act) return void (box.hidden = true); // the same chip again: close
+  box.dataset.what = act; box.hidden = false; box.innerHTML = "Loading…";
+  if (act === "helicopters") { toggle("aircraft", true); cityData.incidents = await getJSON("/api/nyc/incidents").catch(() => cityData.incidents); }
+  else if (CHIP_LAYER[act]) { const l = LAYERS[CHIP_LAYER[act]], was = l.loaded; await toggle(CHIP_LAYER[act], true); if (was) await l.load(l.group).catch(() => {}); } // fresh numbers
+  const l = chipList(act);
+  if (!l || box.dataset.what !== act) return;
+  box.innerHTML = `<b>${l.title}</b> <button class="linkish" data-act="close" style="float:right">×</button><div class="clist">${l.body}</div>`;
+  const pts = (l.points ?? []).map((x) => L.latLng(x.lat, x.lon));
+  if (pts.length && !pts.some((pt) => map.getBounds().contains(pt))) pts.length === 1 ? map.setView(pts[0], 15) : map.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 15 });
+}
 $("cityBar").addEventListener("click", (e) => {
   const act = e.target.closest("[data-act]")?.dataset.act;
   if (!act) return;
   if (act === "brief") { const box = $("cityBrief"), show = box.hidden || box.dataset.what !== "brief"; box.hidden = !show; if (show) showBrief(); return; }
   if (act === "unusual") return showUnusual();
   if (act === "watch") return showWatched();
-  if (LAYERS[act]) toggle(act, true);
+  openChip(act);
 });
 $("cityBrief").addEventListener("click", (e) => {
   const t = e.target;
   if (t.dataset.act === "close") return void ($("cityBrief").hidden = true);
+  const go = t.closest("[data-go]")?.dataset.go;
+  if (go) { e.preventDefault(); const m = cityMarks.get(go); if (m) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 16)); m.openPopup(); } return; }
   if (t.dataset.unusual) { e.preventDefault(); const u = pulseNow.unusualList[+t.dataset.unusual]; map.setView([u.lat, u.lon], 15); toggle("c311", true); }
   if (t.dataset.zone) { e.preventDefault(); const z = watched()[+t.dataset.zone]; nearMe(L.latLng(z.lat, z.lon), z.name); }
   if (t.dataset.unwatch) { saveWatched(watched().filter((_, i) => i !== +t.dataset.unwatch)); showWatched(); drawBar(); }
