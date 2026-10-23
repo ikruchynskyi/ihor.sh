@@ -566,7 +566,7 @@ export function pickCameras<C extends { lat: number; lon: number; h?: number }>(
 const LOOK = "In one sentence: is anything unusual happening, or anything that draws attention (an accident, emergency vehicles, a blocked lane, flooding, smoke, a crowd, a stopped bus)? If not, say what the traffic looks like.";
 export async function areaBrief(b: Box, step = (_: string) => {}) {
   const a = await area(b), F = areaFacts(a);
-  const cams = pickCameras(camerasNow().filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com"));
+  const cams = pickCameras((await trafficCameras().catch(() => [] as any[])).filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com")); // a job can wait for the list
   if (cams.length) {
     step(`Looking at ${cams.length} camera${cams.length > 1 ? "s" : ""} at once: ${cams.map((c) => c.name).join(", ")}…`);
     for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id), LOOK)).catch(() => []))

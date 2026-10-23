@@ -223,6 +223,7 @@
     #cityBrief ul.rows { list-style: none; padding: 0; } #cityBrief ul.rows li { display: grid; grid-template-columns: auto 1fr; column-gap: 7px; padding: 5px 0; margin: 0; border-bottom: 1px solid var(--line); }
     #cityBrief ul.rows li > :not(i) { grid-column: 2; } #cityBrief ul.rows i { grid-row: span 3; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; }
     #cityBrief ul.rows a { color: var(--fg); text-decoration: none; } #cityBrief ul.rows a:hover { text-decoration: underline; } #cityBrief ul.rows .muted, #cityBrief ul.rows small { display: block; font-size: 12px; }
+    #cityBrief .briefbox { margin: 4px 0 8px; padding: 6px 8px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
     #cityBrief .spark { width: 96px; height: 16px; } #cityBrief .tl { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; margin: 2px 0 6px; } #cityBrief .actions button { font: 600 12.5px system-ui, sans-serif !important; text-transform: none !important; padding: 5px 10px !important; }
     .cam-icon.rough { opacity: .65; }
     .ai-mark span { display: inline-block; transform: translate(-50%, -100%); padding: 2px 7px; border-radius: 10px; background: #7048e8; color: #fff; font: 600 12px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
@@ -1229,6 +1230,7 @@ function drawBar() {
     p.unusual ? chip("unusual", `📈 ${p.unusual}`, "Unusual: places where a kind of report is at least 3× its usual count", "warm") : "",
     z.length ? chip("watch", `👁 ${z.length}${watchNews.length ? ` · ${watchNews.length} new` : ""}`, `Watched: ${z.map((x) => x.name).join(", ")}`, watchNews.length ? "hot" : "") : "",
     chip("area", "🔎 This area", "Analyze what's in the map's view: now, the last 24 hours, 311's week, news, cameras; a brief by the local AI on request"),
+    brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
     anyOn ? chip("clear", "✕ Clear", "Take the city layers and Blip's marks off the map", "plain") : "",
   ].join("");
 }
@@ -1353,6 +1355,7 @@ $("cityBar").addEventListener("click", (e) => {
   if (act === "clear") return clearCity();
   if (act === "brief") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "brief" ? closePanel() : showPanel("brief", briefHtml());
   if (act === "area") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "area" ? closePanel() : analyzeArea();
+  if (act === "briefready") { const b = L.latLngBounds([brief.box.s, brief.box.w], [brief.box.n, brief.box.e]); map.fitBounds(b, { animate: false }); return analyzeArea(b); } // the same box: its brief shows
   openList(act);
 });
 $("cityBrief").addEventListener("click", (e) => {
@@ -1368,7 +1371,7 @@ $("cityBrief").addEventListener("click", (e) => {
   if (t.dataset.zone) { e.preventDefault(); const z = watched()[+t.dataset.zone]; box.classList.add("min"); nearMe(L.latLng(z.lat, z.lon), z.name); }
   if (t.dataset.unwatch) { saveWatched(watched().filter((_, i) => i !== +t.dataset.unwatch)); showPanel("watch", listHtml("watch")); }
   if (t.dataset.cam) { e.preventDefault(); getJSON("/api/nyc/cameras").then((l) => { const c = l.find((x) => x.id === t.dataset.cam); if (c) openCam(c); }); }
-  if (t.dataset.act === "areabrief") areaBriefNow(t);
+  if (t.dataset.act === "areabrief") areaBriefNow();
   if (t.dataset.act === "askblip") dispatchEvent(new CustomEvent("blip:ask", { detail: { text: `What's going on around ${box.dataset.label ?? "here"} right now, and what stands out compared with usual?` } }));
 });
 function watchHere(lat, lon, label) {
@@ -1390,6 +1393,7 @@ async function analyzeArea(view) {
   const fam = { incidents: "#ff6b35", closures: "#c92a2a", news: "#40c057", events: "#1c7ed6" }, up = (r) => (r.usual && r.n >= 2 * r.usual ? " ↑" : r.n < r.usual / 2 ? " ↓" : "");
   seen.area = { label: a.label, incidentsNow: a.now.incidents.length, closuresNow: a.now.closures, startedLast24h: a.started.byFamily, reports311Week: a.reports311.week.slice(0, 8), news: a.news.slice(0, 6).map((n) => n.title), unusual: a.unusual.map((u) => u.text) };
   showPanel("area", { title: `🔎 ${esc(a.label)}${a.borough ? `, ${esc(a.borough)}` : ""}`, body: `
+    <p class="actions"><button data-act="areabrief">✨ Brief this area</button> <button data-act="askblip">💬 Ask Blip</button><br><span class="muted">The brief: the local AI looks at ${Math.min(a.cameras.total, 5)} of the ${a.cameras.total} cameras here, then writes from the facts below (about a minute).</span></p><div id="areaBrief"></div>
     <p><b>Now:</b> ${a.now.incidents.length} incidents · ${a.now.closures} closures and permits · ${a.now.events} special events${a.now.flooding.length ? ` · 🌊 ${a.now.flooding.length} flooding` : ""}${a.now.alertsAreaWide.length ? `<br>⛈ ${a.now.alertsAreaWide.map((e) => esc(e.title)).join(" · ")}` : ""}</p>
     <p><b>Last 24 hours</b> <span class="muted">(by hour, oldest left)</span></p>${Object.keys(a.started.byFamily).length ? `<div class="tl">${Object.entries(a.started.byFamily).map(([k, n]) => `${spark(a.started.timeline[k], fam[k] ?? "#868e96")}<span><b>${n}</b> ${esc(k)}</span>`).join("")}</div>` : "<p>Nothing new.</p>"}
     ${a.now.incidents.length ? `<ul class="rows">${a.now.incidents.slice(0, 8).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${goLink("incidents", c.id, esc(c.title))}<span class="muted">${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}</span></li>`).join("")}</ul>` : ""}
@@ -1397,27 +1401,47 @@ async function analyzeArea(view) {
     ${a.unusual.length ? `<p><b>📈 Unusual:</b><br>${a.unusual.slice(0, 3).map((u) => esc(u.text)).join("<br>")}</p>` : ""}
     ${a.news.length ? `<p><b>📰 Today's news here:</b></p><ul class="rows">${a.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="muted">${esc(n.outlet)} · ${ago(n.starts)}</span></li>`).join("")}</ul>` : ""}
     <p><b>📷 ${a.cameras.total} cameras</b>${a.cameras.video ? ` (${a.cameras.video} live video, ${a.cameras.hd} HD)` : ""}${a.cameras.best.length ? `: ${a.cameras.best.slice(0, 3).map((c) => `<a href="#" data-cam="${esc(c.id)}">${esc(c.name)}${c.h >= 720 ? " HD" : ""}</a>`).join(" · ")}` : ""}</p>
-    <p class="actions"><button data-act="areabrief">✨ Brief this area</button> <button data-act="askblip">💬 Ask Blip</button> <span class="muted">the local AI looks at ${Math.min(a.cameras.total, 5)} of its ${a.cameras.total} cameras first, all at once: about a minute</span></p><div id="areaBrief"></div>` });
+` });
+  renderBrief();
 }
-// ✨: the server runs it as a job (a look at up to 3 of the area's cameras, then the brief), and the page follows it.
-async function areaBriefNow(btn) {
-  const a = areaNow, out = document.getElementById("areaBrief");
-  if (!a || !out) return;
-  const show = (html) => { const o = document.getElementById("areaBrief"); if (o) o.innerHTML = html; };
-  btn.disabled = true; show(`<p class="muted">⏳ Starting…</p>`);
+// ✨: the server runs it as a job (one look at 5 of the area's cameras, then the brief) and the page follows it. The job
+// lives outside the panel: closing the panel or opening another list doesn't lose it; reopening the area shows it, and
+// a "✨ Brief ready" chip appears when it finishes while the area panel isn't showing.
+let brief = null; // { box, label, step, result, error, t0, running }
+const sameBox = (x, y) => x && y && ["s", "w", "n", "e"].every((k) => Math.abs(x[k] - y[k]) < 1e-6);
+const briefShowing = () => !$("cityBrief").hidden && $("cityBrief").dataset.what === "area" && sameBox(brief?.box, areaNow?.box);
+function renderBrief() {
+  const o = document.getElementById("areaBrief"), btn = document.querySelector('#cityBrief [data-act="areabrief"]');
+  if (btn) btn.disabled = !!brief?.running && sameBox(brief.box, areaNow?.box);
+  if (!o || !briefShowing()) return void drawBar();
+  const r = brief.result;
+  o.innerHTML = brief.running ? `<p class="muted">⏳ ${esc(brief.step)} <span>${Math.round((Date.now() - brief.t0) / 1000)} s</span></p>`
+    : brief.error ? `<p>${esc(brief.error)}</p>`
+    : `<div class="briefbox"><b>✨ Brief</b> <span class="muted">${hhmm(r.at)} · by ${esc(r.by)}${r.cameras ? ` after looking at ${r.cameras} camera${r.cameras > 1 ? "s" : ""}` : ""}</span><ul>${bulletsHtml(r, "area")}</ul>
+      <p class="muted">${r.dropped ? `${r.dropped} bullet(s) dropped for not matching the facts. ` : ""}Click a bullet for its places; hover a number for its fact.</p></div>`;
+  if (!brief.running) { brief.seen = true; $("cityBrief").classList.remove("min"); $("cityBrief").querySelector(".pb").scrollTop = 0; } // unfold, and show it
+  drawBar();
+}
+async function areaBriefNow() {
+  const a = areaNow;
+  if (!a || (brief?.running && sameBox(brief.box, a.box))) return;
+  brief = { box: a.box, label: a.label, step: "Starting…", t0: Date.now(), running: true };
+  const job = brief;
+  renderBrief();
   const start = await fetch("/api/nyc/area-brief", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(a.box) })
     .then(async (r) => ((r.headers.get("content-type") ?? "").includes("json") ? r.json() : { error: `The server answered ${r.status}. Try again in a minute.` })).catch((e) => ({ error: e.message }));
   let r = start.error ? start : { error: "The brief took too long. Try again in a minute." };
-  if (start.id) for (const t0 = Date.now(); Date.now() - t0 < 6 * 60_000; ) { // behind any visitors' questions
+  if (start.id) while (Date.now() - job.t0 < 6 * 60_000) { // behind any visitors' questions
     await new Promise((ok) => setTimeout(ok, 2000));
     const j = await getJSON(`/api/nyc/brief-job?id=${encodeURIComponent(start.id)}`).catch((e) => ({ error: e.message }));
     if (j.error || j.result) { r = j.error ? { error: j.error } : j.result; break; }
-    show(`<p class="muted">⏳ ${esc(j.step ?? "Working…")}</p>`);
+    job.step = j.step ?? "Working…";
+    if (brief === job) renderBrief();
   }
-  btn.disabled = false;
-  if (r.error) return show(`<p>${esc(r.error)}</p>`);
-  areaBriefData = r;
-  show(`<ul>${bulletsHtml(r, "area")}</ul><p class="muted">by ${esc(r.by)}${r.cameras ? ` after looking at ${r.cameras} camera${r.cameras > 1 ? "s" : ""}` : ""}${r.dropped ? ` · ${r.dropped} bullet(s) dropped for not matching the facts` : ""}; click a bullet for its places, hover a number for its fact.</p>`);
+  if (brief !== job) return; // a newer brief replaced this one
+  Object.assign(job, { running: false, ...(r.error ? { error: r.error } : { result: r }) });
+  if (!r.error) areaBriefData = r; // a bullet's click finds its facts here
+  renderBrief();
 }
 refreshPulse(); setInterval(refreshPulse, 60_000);
 checkWatched(); setInterval(checkWatched, 2 * 60_000);
@@ -1491,7 +1515,7 @@ function openCam(c) {
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
-  w.innerHTML = `<header><b title="${esc(c.name)}${c.h ? ` (${c.w ? `${c.w}×${c.h}` : `up to ${c.h}p`})` : ""}">${c.static ? "📸" : camEmoji(c)}${camQ(c) ? ` ${camQ(c)}` : ""} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="cv" aria-label="Analyze with AI Vision" title="Analyze frame with local Qwen Vision model (2-3 s)">👁</button><button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x" aria-label="Close camera">×</button></header>${c.youtube
+  w.innerHTML = `<header><b title="${esc(c.name)}${c.h ? ` (${c.w ? `${c.w}×${c.h}` : `up to ${c.h}p`})` : ""}">${c.static ? "📸" : camEmoji(c)}${camQ(c) ? ` ${camQ(c)}` : ""} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}${c.static && !c.of ? "" : `<button class="cv" aria-label="Analyze with AI Vision" title="${c.of ? "Analyze the camera's real frame now with the local vision model (not the upscaled picture: its fine details are AI guesses)" : "Analyze the frame with the local vision model"}">👁</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x" aria-label="Close camera">×</button></header>${c.youtube
     ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(c.youtube)}?autoplay=1&mute=1&playsinline=1" title="Live video: ${esc(c.name)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
     : c.video ? `<video muted autoplay playsinline poster="${esc(c.image)}" aria-label="Live video: ${esc(c.name)}"></video>`
     : `<img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`}`;
@@ -1516,7 +1540,7 @@ function openCam(c) {
     clearInterval(tick); upBtn.disabled = false; upBtn.textContent = "✨";
     if (d.error) return dispatchEvent(new CustomEvent("blip:say", { detail: { text: d.error } }));
     const n = ++upscaled, at = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }), src = `data:image/jpeg;base64,${d.img}`;
-    openCam({ id: `up${n}`, name: `✨ ${c.name} · ${at} · ×4 by AI, ${d.w}×${d.h} (fine details are AI guesses)`, image: src, static: true, upscaled: true, page: src, source: "⬇ Save", download: `${c.name.replace(/[^\w-]+/g, "_")}-${d.w}x${d.h}.jpg` });
+    openCam({ id: `up${n}`, of: c.id, name: `✨ ${c.name} · ${at} · ×4 by AI, ${d.w}×${d.h} (fine details are AI guesses)`, image: src, static: true, upscaled: true, page: src, source: "⬇ Save", download: `${c.name.replace(/[^\w-]+/g, "_")}-${d.w}x${d.h}.jpg` });
     Object.assign(document.getElementById(`cam-up${n}`).style, { width: `${Math.min(720, innerWidth - 20)}px`, height: `${Math.min(520, innerHeight - 100)}px` });
   };
   const cvBtn = w.querySelector("button.cv");
@@ -1525,7 +1549,7 @@ function openCam(c) {
     cvBtn.disabled = true; cvBtn.textContent = "⏳";
     if (w.offsetWidth < 400 && innerWidth >= 440) w.style.width = "400px";
     if (w.offsetHeight < 360 && innerHeight >= 400) w.style.height = "360px";
-    const d = await getJSON(`/api/nyc/camera-inspect?id=${encodeURIComponent(c.id)}`).catch((e) => ({ error: e.message }));
+    const d = await getJSON(`/api/nyc/camera-inspect?id=${encodeURIComponent(c.of ?? c.id)}`).catch((e) => ({ error: e.message })); // an upscaled window asks its camera
     cvBtn.disabled = false; cvBtn.textContent = "👁";
     if (d.error) return dispatchEvent(new CustomEvent("blip:say", { detail: { text: "CV analysis failed: " + d.error } }));
     let box = w.querySelector(".cam-cv-box");
@@ -1552,7 +1576,7 @@ function openCam(c) {
     const hasTts = "speechSynthesis" in window;
     box.innerHTML = `
       <div class="cv-hdr">
-        <div class="cv-title"><span>👁</span> <b>Qwen Vision Analysis</b></div>
+        <div class="cv-title"><span>👁</span> <b>Qwen Vision Analysis</b>${c.of ? ` <small>of the camera's real frame now, not the upscale</small>` : ""}</div>
         <div class="cv-actions">
           ${hasTts ? `<button class="cv-speak-btn" title="Read description out loud">🔊 Listen</button>` : ""}
           <button class="cv-close-btn" title="Close" aria-label="Close CV analysis">×</button>
