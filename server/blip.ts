@@ -299,7 +299,7 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ query, lat, lon }) => ({ places: (await suggest(String(query), Number(lat) && Number(lon) ? { lat: Number(lat), lon: Number(lon) } : undefined)).slice(0, 6).map((p) => ({ ...p, mapLink: mapAt(p.lat, p.lon, p.name) })) }),
   },
   traffic_cameras: {
-    description: "Live traffic cameras and webcams (NYC DOT's, and windy.com webcams anywhere): the nearest to a place or point, or the ones whose name matches words (e.g. 'FDR', 'Canal St'). Each has a mapLink that opens the map with its live picture.",
+    description: "Live traffic cameras and webcams (NYC DOT's stills, NYSDOT's live expressway video, 24/7 YouTube streams of the skyline and landmarks, and windy.com webcams anywhere): the nearest to a place or point, or the ones whose name matches words (e.g. 'FDR', 'Canal St'). Each has a mapLink that opens the map with its live picture.",
     parameters: { place: { type: "string", description: "Address or place to find cameras near" }, lat: { type: "number", description: "Or a point: latitude" }, lon: { type: "number", description: "Longitude" }, query: { type: "string", description: "Or words in the camera's name" } },
     run: async ({ place, lat, lon, query }) => {
       const pt = lat != null || place ? await pointAnywhere(lat, lon, place) : null;

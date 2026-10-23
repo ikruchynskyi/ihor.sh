@@ -199,14 +199,55 @@ export async function restaurantInspections(camis: string) {
 
 // ---------- traffic cameras ----------
 let cams: { at: number; list: any[] } | null = null;
-/** NYC DOT traffic cameras (webcams.nyctmc.org): id, name, area, lat/lon, live JPEG URL. Cached 10 min. */
+/** NYC DOT traffic cameras (webcams.nyctmc.org): id, name, area, lat/lon, live JPEG URL, plus NYSDOT's live video, the
+ *  YouTube streams and windy.com's webcams. Every one has a still `image` (✨ upscaling and the AI lessons read it). Cached 10 min. */
 export async function trafficCameras() {
   if (!cams || cams.at < Date.now() - 10 * 60_000) {
-    const [rows, windy] = await Promise.all([json("https://webcams.nyctmc.org/api/cameras") as Promise<any[]>, windyWebcams().catch(() => [])]);
+    const [rows, video, yt, windy] = await Promise.all([json("https://webcams.nyctmc.org/api/cameras") as Promise<any[]>, nysdotVideo().catch(() => []), youtubeLive(), windyWebcams().catch(() => [])]);
     cams = { at: Date.now(), list: [...rows.filter((c) => c.isOnline === "true" || c.isOnline === true)
-      .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })), ...windy] };
+      .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })), ...video, ...yt, ...windy] };
   }
   return cams.list;
+}
+/** NYSDOT's live video cameras around the city (511NY's map feed, no key): expressway HLS streams the page plays itself,
+ *  most 352×240 but ~90 at 512–1920 px wide, each with a full-size still refreshed every couple of minutes. */
+async function nysdotVideo() {
+  const d = await json("https://api-511x-nysdot.carsprogram.org/cameras/map-features");
+  const list = (d.features as any[]).flatMap((f) => {
+    const [lon, lat] = f.geometry.coordinates, v = f.properties.views?.find((v: any) => v.type !== "STILL_IMAGE" && !v.broken);
+    return v && inNyc(lat, lon) ? [{ id: `n${f.properties.id}`, name: f.properties.name, area: "", lat, lon, image: v.videoPreviewUrl, video: v.url, source: "511NY", page: "https://511ny.org/" }] : [];
+  });
+  // each stream's size, from its playlist, asked once per server start (the map badges the sharp ones)
+  await Promise.all(list.filter((c) => !streamSize.has(c.video)).map((c) => fetch(c.video, { signal: AbortSignal.timeout(5000) }).then((r) => r.text()).then((t) => {
+    const sizes = [...t.matchAll(/RESOLUTION=(\d+)x(\d+)/g)].map((m) => ({ w: +m[1], h: +m[2] })).sort((a, b) => b.h - a.h);
+    streamSize.set(c.video, sizes[0] ?? {});
+  }).catch(() => streamSize.set(c.video, {}))));
+  return list.map((c) => ({ ...c, ...streamSize.get(c.video) }));
+}
+const streamSize = new Map<string, { w?: number; h?: number }>();
+// 24/7 YouTube streams of the city, pinned at the camera ("from …") or at what it shows. An id dies when its owner
+// restarts the stream, so only the ones live now are listed (checked every 6 h); swap in the new id when one drops out.
+const YOUTUBE: [string, string, number, number][] = [
+  ["tErYxn2UM5Y", "Brooklyn Bridge (EarthCam)", 40.7061, -73.9969],
+  ["1kvGNR_A3DY", "Brooklyn Bridge, Lower Manhattan & the harbor from St. George Tower", 40.6976, -73.9937],
+  ["obqnslJKrxc", "East River & both skylines over the Navy Yard, 4K", 40.702, -73.969],
+  ["o5Ie_LpZ9uk", "Statue of Liberty (EarthCam)", 40.6892, -74.0445],
+  ["ZYQlLQHz2Mg", "9/11 Memorial & Museum (EarthCam)", 40.7115, -74.0134],
+  ["5C9oM7C2Q9k", "World Trade Center from Jersey City (EarthCam)", 40.7163, -74.0331],
+  ["sixP_dAJ8D4", "Midtown skyline from Weehawken (EarthCam)", 40.7585, -74.0257],
+];
+let ytLive: { at: number; list: any[] } | null = null;
+async function youtubeLive() {
+  if (!ytLive || ytLive.at < Date.now() - 6 * 3600_000) {
+    // live now, and its sharpest quality (the page lists them: "1080p", "2160p"…)
+    const now = await Promise.all(YOUTUBE.map(([id]) => fetch(`https://www.youtube.com/watch?v=${id}`, { headers: { "accept-language": "en" }, signal: AbortSignal.timeout(10_000) })
+      .then((r) => r.text()).then((t) => ({ live: t.includes('"isLiveNow":true'), h: Math.max(0, ...[...t.matchAll(/"qualityLabel":"(\d+)p/g)].map((m) => +m[1])) || undefined }))
+      .catch(() => ({ live: true, h: undefined })))); // couldn't tell: keep it
+    YOUTUBE.forEach(([id, name], i) => now[i].live || console.warn(`cameras: YouTube ${id} (${name}) isn't live; find its new id`));
+    ytLive = { at: Date.now(), list: YOUTUBE.flatMap(([id, name, lat, lon], i) => now[i].live ? [{ id: `y${id}`, name, area: "", lat, lon, h: now[i].h,
+      image: `https://i.ytimg.com/vi/${id}/maxresdefault_live.jpg`, youtube: id, source: "YouTube", page: `https://www.youtube.com/watch?v=${id}` }] : []) };
+  }
+  return ytLive.list;
 }
 /** Webcams elsewhere (the map looking outside NYC): windy.com's within 60 km of a point on a 0.5° grid, cached 30 min. */
 const away = new Map<string, { at: number; list: any[] }>();

@@ -786,10 +786,10 @@ const server = http.createServer(async (req, res) => {
       if (out instanceof Error) return fail(503, out.message);
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(out));
     }
-    if (url.pathname === "/api/nyc/camera-image") { // a traffic camera frame, same-origin so pages can read its pixels
-      const id = String(url.searchParams.get("id") ?? "");
-      if (!/^[0-9a-f-]{36}$/.test(id)) return res.writeHead(400).end();
-      const r = await fetch(`https://webcams.nyctmc.org/api/cameras/${id}/image`, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    if (url.pathname === "/api/nyc/camera-image") { // a camera's still, same-origin so pages can read its pixels; only from our own list
+      const src = (await trafficCameras()).find((c) => c.id === url.searchParams.get("id"))?.image;
+      if (!src) return res.writeHead(404).end();
+      const r = await fetch(src, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
       if (!r?.ok) return res.writeHead(502).end();
       return res.writeHead(200, { "content-type": r.headers.get("content-type") ?? "image/jpeg", "cache-control": "public, max-age=2" }).end(Buffer.from(await r.arrayBuffer()));
     }

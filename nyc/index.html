@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: everything within 400 m of you (subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms), next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,000 traffic cameras and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
+  <meta name="description" content="Live NYC map: everything within 400 m of you (subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms), next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,400 traffic cameras, live video feeds and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: rgba(255,255,255,.95);
@@ -108,13 +108,18 @@
     .cam:fullscreen, .cam.max { position: fixed; inset: 0; width: auto !important; height: auto !important; border: 0; box-shadow: none; z-index: 2147480000; background: #000; }
     .cam:fullscreen .grip, .cam.max .grip { display: none; }
     .mlyview { flex: 1; min-height: 0; position: relative; background: #000; }
-    .cam img { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; }
+    .cam img, .cam video, .cam iframe { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; border: 0; }
+    .cam iframe { pointer-events: auto; } /* YouTube's own controls: sound, quality */
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
     .nearbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
     #nearBox ul { margin: 4px 0 0; padding-left: 0; list-style: none; max-height: 220px; overflow: auto; }
     #nearBox li { padding: 3px 0; cursor: pointer; border-bottom: 1px dashed var(--line); } #nearBox li:hover { color: var(--fg); }
     .cam-icon { font-size: 14px; line-height: 1; filter: drop-shadow(0 0 2px #000); }
+    /* how sharp a live video is: 4K and HD gold, SD green; low-res video and stills get none. A red dot: live video. */
+    .cam-icon .q { position: absolute; left: 11px; top: -7px; padding: 1px 2px; border-radius: 2px; font: 700 8px/1 system-ui, sans-serif; color: #000; background: #63e6be; }
+    .cam-icon .q.hd { background: #ffd43b; }
+    .cam-icon .live { position: absolute; left: -2px; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: #ff4d4f; box-shadow: 0 0 0 1px #000; } /* any live video */
     .iss-live { aspect-ratio: 16 / 9; width: 100%; margin: 6px 0 2px; background: #000; } .iss-live iframe { width: 100%; height: 100%; border: 0; display: block; }
     /* an open camera's spot on the map: a pulsing ring, so you can tell which camera a window shows */
     .cam-open { display: grid; place-items: center; font-size: 16px; border-radius: 50%; background: var(--accent, #ffb347); box-shadow: 0 0 0 3px #fff; animation: camPulse 1.6s ease-out infinite; }
@@ -298,7 +303,7 @@ const LAYERS = {
   citibike: { grp: "go", label: "🚲 Citi Bike stations", on: false, group: L.layerGroup(), load: loadCitiBike },
   ferry: { grp: "go", label: "⛴ NYC Ferry: boats + next departures", on: false, group: L.layerGroup(), load: loadFerry },
   outages: { grp: "go", label: "♿ Broken elevators & escalators", on: false, group: L.layerGroup(), load: loadOutages },
-  cameras: { grp: "streets", label: "📷 Traffic cameras & webcams", on: false, group: L.layerGroup(), load: loadCameras },
+  cameras: { grp: "streets", label: "📷 Traffic cameras, live video & webcams", on: false, group: L.layerGroup(), load: loadCameras },
   speeds: { grp: "streets", label: "🚦 Traffic speeds (NYC DOT)", on: false, group: L.layerGroup(), load: loadSpeeds },
   photos: { grp: "streets", label: "📸 Street photos (Mapillary): zoom in, click a dot", on: false, group: L.layerGroup(), load: loadPhotos },
   c311: { grp: "streets", label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
@@ -539,16 +544,23 @@ async function loadAllStations(g) {
 }
 
 const camShown = new Set();
+const camEmoji = (c) => (c.video || c.youtube ? "📹" : c.source ? "🎥" : "📷"); // live video, a webcam's still, a traffic camera's still
+const camQ = (c) => (c.h >= 2160 ? "4K" : c.h >= 720 ? "HD" : c.h >= 352 ? "SD" : ""); // by the video's lines (the server reads them)
+const camIcons = {};
+const camIcon = (c) => { const q = camQ(c), html = camEmoji(c) + (c.video || c.youtube ? `<i class="live"></i>` : "") + (q ? `<b class="q${q === "SD" ? "" : " hd"}">${q}</b>` : "");
+  return (camIcons[html] ??= L.divIcon({ className: "cam-icon", html, iconSize: [18, 18] })); };
+const camMarker = (c) => L.marker([c.lat, c.lon], { icon: camIcon(c), title: c.source ? `${c.name} (${c.source}${camQ(c) ? `, ${camQ(c)}` : ""})` : c.name,
+  zIndexOffset: c.h >= 720 ? 800 : c.h >= 352 ? 600 : c.video || c.youtube ? 400 : 0 }).on("click", () => openCam(c)); // the sharpest on top
 async function loadCameras(g) {
   const here = await getJSON(`/api/nyc/cameras?${area()}`), list = here.filter((c) => !camShown.has(c.id));
   if (!here.length && area()) $("n-cameras").textContent = "(no webcams known around here)";
   if (!list.length) return; // all already on the map
   list.forEach((c) => camShown.add(c.id));
   seen.cameras += list.length;
-  const icon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [16, 16] }), webcam = L.divIcon({ className: "cam-icon", html: "🎥", iconSize: [18, 18] });
-  for (const c of list) L.marker([c.lat, c.lon], { icon: c.source ? webcam : icon, title: c.source ? `${c.name} (windy.com webcam)` : c.name }).on("click", () => openCam(c)).addTo(g);
-  const w = list.filter((c) => c.source).length;
-  $("n-cameras").innerHTML = area() ? `(${w} <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a> webcams 🎥 around here)` : `(${list.length - w} traffic 📷 + ${w} <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a> webcams 🎥; click to open, several at once)`;
+  for (const c of list) camMarker(c).addTo(g);
+  const n = (f) => list.filter(f).length, w = n((c) => c.source === "windy.com"), v = n((c) => c.video || c.youtube);
+  $("n-cameras").innerHTML = area() ? `(${w} <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a> webcams 🎥 around here)`
+    : `(${v} live video 📹 from NYSDOT and YouTube: ${n((c) => c.h >= 720)} <b>HD</b> or 4K, ${n((c) => c.h >= 352 && c.h < 720)} SD, the rest low-res · ${list.length - w - v} traffic stills 📷 · ${w} <a href="https://www.windy.com/webcams" target="_blank" rel="noopener">windy.com</a> webcams 🎥; click to open, several at once)`;
 }
 addEventListener("areachange", () => { if (LAYERS.cameras.on && area()) loadCameras(LAYERS.cameras.group).catch(() => {}); });
 
@@ -881,7 +893,7 @@ async function nearMe(at, label = "you") {
   for (const st of within([...new Map(stopLists.flat().map((x) => [x.id, x])).values()]))
     add("bus", `🚌 ${esc(st.name)} <span class="muted">(${esc(st.routes.map((r) => r.name).join(", "))})</span> · ${st.m} m`, L.circleMarker([st.lat, st.lon], { radius: 5 * DOT, color: "#fff", weight: 1.5, fillColor: "#1c7ed6", fillOpacity: 0.95, bubblingMouseEvents: false }).bindTooltip(`🚌 ${esc(st.name)}`).bindPopup("Loading…", { maxWidth: 320 }).on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))));
   for (const b of within(allBikes)) { const c = BIKE_COLORS[bikeState(b)]; add("bike", `🚲 ${esc(b.name)}: ${b.bikes} bikes (${b.ebikes} e), ${b.docks} docks · ${b.m} m`, L.circleMarker([b.lat, b.lon], { radius: 5 * DOT, color: c, fillColor: c, fillOpacity: 0.9, weight: 1, bubblingMouseEvents: false }).bindTooltip(`🚲 ${esc(b.name)}`).bindPopup(`<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}`)); }
-  for (const c of within(cams)) add("camera", `${c.source ? "🎥" : "📷"} ${esc(c.name)} · ${c.m} m`, L.marker([c.lat, c.lon], { icon: L.divIcon({ className: "cam-icon", html: c.source ? "🎥" : "📷", iconSize: [16, 16] }), title: c.name }).on("click", () => openCam(c)), { cam: c });
+  for (const c of within(cams)) add("camera", `${camEmoji(c)}${camQ(c) ? ` <b>${camQ(c)}</b>` : ""} ${esc(c.name)} · ${c.m} m`, camMarker(c), { cam: c });
   for (const r of within(loos)) add("restroom", `🚻 ${esc(r.name)} <span class="muted">(${esc(r.type)}${r.status !== "Operational" ? `, ${esc(r.status.toLowerCase())}` : ""}${r.hours ? `, ${esc(r.hours)}` : ""})</span> · ${r.m} m`, restroomMarker(r));
   near.items = items;
   const n = (k) => items.filter((i) => i.kind === k).length, withAlerts = items.filter((i) => i.alerts).length;
@@ -968,7 +980,19 @@ async function loadSales(g) {
   $("n-sales").textContent = `(${list.length} on the map, ${d.sampleSales.length - list.length} online)`;
 }
 
-// Camera windows: several can be open at once, dragged anywhere, each refreshing its picture.
+// NYSDOT's live video is HLS: Safari plays it natively, other browsers through hls.js (cdnjs, loaded on first use).
+// Resolves to a function that stops the download.
+let hlsLib = null;
+const loadHls = () => (hlsLib ??= new Promise((ok, fail) => document.head.append(Object.assign(document.createElement("script"), {
+  src: "https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.6.16/hls.min.js", integrity: "sha512-zAODd1LM+/58SazX5fct5psehCijY60y5rG0BYIzxTXot7ovEo2FhfWTV0mp4oqIef2xriyg4zlrPlmFTDcPXg==", crossOrigin: "anonymous",
+  onload: () => ok(window.Hls), onerror: () => { hlsLib = null; fail(new Error("video player didn't load")); } }))));
+async function playHls(v, src) {
+  if (v.canPlayType("application/vnd.apple.mpegurl")) { v.src = src; return () => { v.removeAttribute("src"); v.load(); }; }
+  const h = new (await loadHls())(); h.loadSource(src); h.attachMedia(v);
+  return () => h.destroy();
+}
+
+// Camera windows: several can be open at once, dragged anywhere, each refreshing its picture (or playing live video).
 let camZ = 1, camCount = 0, upscaled = 0;
 function openCam(c) {
   if (document.getElementById(`cam-${c.id}`)) return;
@@ -978,16 +1002,20 @@ function openCam(c) {
   const n = camCount++;
   Object.assign(w.style, { left: `${Math.min(innerWidth - 330, 380 + (n % 4) * 30)}px`, top: `${80 + (n % 4) * 30 + Math.floor(n / 4) * 250}px`, zIndex: ++camZ });
   const frame = () => (c.static ? c.image : `${c.image}${c.image.includes("?") ? "&" : "?"}t=${Date.now()}`); // photos: signed links, no cache-buster
-  w.innerHTML = `<header><b title="${esc(c.name)}">${c.static ? "📸" : c.source ? "🎥" : "📷"} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x aria-label="Close camera">×</button></header><img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`;
+  w.innerHTML = `<header><b title="${esc(c.name)}${c.h ? ` (${c.w ? `${c.w}×${c.h}` : `up to ${c.h}p`})` : ""}">${c.static ? "📸" : camEmoji(c)}${camQ(c) ? ` ${camQ(c)}` : ""} ${esc(c.name)}</b>${c.page ? `<a href="${esc(c.page)}" target="_blank" rel="noopener" style="font-size:.7rem"${c.download ? ` download="${esc(c.download)}"` : ""}>${esc(c.source)}</a>` : ""}${c.upscaled ? "" : `<button class="up" aria-label="Upscale this frame with AI" title="Upscale this frame ×4 with AI (SeedVR2 on the server's Mac, about 20 s)">✨</button>`}<button class="fs" aria-label="Full screen, and back" title="Full screen (and back)">⛶</button><button class="x" aria-label="Close camera">×</button></header>${c.youtube
+    ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(c.youtube)}?autoplay=1&mute=1&playsinline=1" title="Live video: ${esc(c.name)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
+    : c.video ? `<video muted autoplay playsinline poster="${esc(c.image)}" aria-label="Live video: ${esc(c.name)}"></video>`
+    : `<img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`}`;
   $("cams").append(w);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
-  const img = w.querySelector("img"), tick = c.static ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
+  const img = w.querySelector("img"), tick = c.static || !img ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
+  const stop = c.video && playHls(w.querySelector("video"), c.video).catch(() => {}); // until then (or if the stream is down), its still
   // its spot on the map, ringed and pulsing while the window is open; a click brings the window to the front
   const mark = c.lat != null && !c.static ? L.marker([+c.lat, +c.lon], { icon: L.divIcon({ className: "cam-open", html: "📷", iconSize: [28, 28] }), zIndexOffset: 1000, title: c.name, keyboard: false })
     .on("click", () => (w.style.zIndex = ++camZ)).addTo(map) : null;
   w.insertAdjacentHTML("beforeend", `<i class="grip" aria-hidden="true"></i>`); // the bottom-right corner: drag it to resize both ways
-  w.querySelector("button.x").onclick = () => { clearInterval(tick); mark?.remove(); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
+  w.querySelector("button.x").onclick = () => { clearInterval(tick); stop?.then((f) => f?.()); mark?.remove(); w.remove(); camCount--; seen.openCams = seen.openCams.filter((x) => x !== c.name); if (document.fullscreenElement === w) document.exitFullscreen().catch(() => {}); };
   // ✨: the server upscales the camera's frame of this moment (SeedVR2, upscale.ts) and it opens in a window of its
   // own, as a data: URL (nothing is kept on the server), with a link to save it.
   const upBtn = w.querySelector("button.up");
@@ -1260,8 +1288,7 @@ $("trip").addEventListener("submit", async (e) => {
   if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${d.from.label}`).addTo(tripLayer);
   if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${d.to.label}`).addTo(tripLayer);
   stopDots(d);
-  const camIcon = L.divIcon({ className: "cam-icon", html: "📷", iconSize: [18, 18] });
-  for (const c of d.cameras) L.marker([c.lat, c.lon], { icon: camIcon, title: c.name }).on("click", () => openCam(c)).addTo(tripLayer);
+  for (const c of d.cameras) camMarker(c).addTo(tripLayer);
   map.fitBounds(line.getBounds().pad(0.1));
   const tr = d.traffic, slow = tr?.onRoute.filter((l) => l.mph < 20) ?? [];
   const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</div>`
