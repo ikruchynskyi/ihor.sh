@@ -15,6 +15,7 @@ import { MeteorReceiver, WIDTH, type Channel } from "../src/meteor.ts";
 import { spectrumOfIQ } from "../src/waterfall.ts";
 import { SignalMeter, pictureQuality } from "../src/meteor-health.ts";
 import { tleFor, look, site } from "../../server/sat.ts";
+import { prunePasses } from "../../server/meteor-rec.ts";
 
 const arg = (k: string) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : undefined; };
 const SAT = arg("sat") ?? "meteor-m2-3", FREQ = Number(arg("freq") ?? 137.9), FILE = arg("file"), FS = Number(arg("fs") ?? 240000);
@@ -121,5 +122,6 @@ function finish() {
   writeFileSync(path.join(OUT, "meta.json"), JSON.stringify(meta));
   const summary = { id: ID, sat: SAT, start: START, end, maxEl: meta.maxEl, ok: quality.ok, strips: quality.strips, share: +quality.share.toFixed(3), frames: st.frames, rsBad: st.rsBad, maxSnr: meta.stats.maxSnr, acquired: rx.acquired, channels: Object.keys(channels).map(Number), rawKept: meta.raw.kept };
   writeFileSync(path.join(DIR, "index.json"), JSON.stringify([summary, ...index.filter((p) => p.id !== ID)].sort((a, b) => b.start - a.start)));
+  prunePasses(DIR);
   log(`done: ${st.frames} frames, ${rx.packets.stats.images} picture strips, picture ${quality.ok ? "shows the Earth" : "not usable"} (${quality.strips} strips, ${(100 * quality.share).toFixed(0)}% neither black nor white); raw ${meta.raw.kept ? "kept" : "deleted"}`);
 }

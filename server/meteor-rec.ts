@@ -5,7 +5,7 @@
 // site), which takes the server's dongle until the satellite sets. After a restart mid-pass it records the rest.
 // Products live in data/meteor/<id>/ (git-ignored); /api/meteor/passes lists them, /api/meteor/file serves them.
 import { spawn } from "node:child_process";
-import { existsSync, createReadStream, readFileSync, statSync } from "node:fs";
+import { existsSync, createReadStream, readFileSync, statSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type http from "node:http";
 import { tleFor, passes, look, site, type Tle } from "./sat.ts";
@@ -62,9 +62,65 @@ async function plan() {
   }
 }
 
+export const PASS_RETENTION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+/** Prunes passes older than keepMs that do not have a usable picture (ok === true),
+ *  deleting their directories and updating index.json. Also cleans up orphaned pass
+ *  directories older than 2 hours. */
+export function prunePasses(dir = DIR, now = Date.now(), keepMs = PASS_RETENTION_MS): { kept: number; pruned: number } {
+  const indexPath = path.join(dir, "index.json");
+  if (!existsSync(indexPath)) return { kept: 0, pruned: 0 };
+  let list: any[] = [];
+  try {
+    list = JSON.parse(readFileSync(indexPath, "utf8"));
+    if (!Array.isArray(list)) return { kept: 0, pruned: 0 };
+  } catch {
+    return { kept: 0, pruned: 0 };
+  }
+
+  const kept: any[] = [];
+  const prunedIds = new Set<string>();
+
+  for (const p of list) {
+    const isRecent = typeof p.start === "number" && (now - p.start) <= keepMs;
+    if (p.ok || isRecent) {
+      kept.push(p);
+    } else {
+      prunedIds.add(p.id);
+      rmSync(path.join(dir, p.id), { recursive: true, force: true });
+    }
+  }
+
+  if (prunedIds.size > 0 || kept.length !== list.length) {
+    writeFileSync(indexPath, JSON.stringify(kept));
+  }
+
+  // Remove orphaned pass directories older than 2 hours not in kept set
+  const keptIds = new Set(kept.map((p) => p.id));
+  try {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !/^\d{12}-meteor/.test(entry.name)) continue;
+      if (keptIds.has(entry.name) || prunedIds.has(entry.name)) continue;
+      const passDir = path.join(dir, entry.name);
+      try {
+        const stat = statSync(passDir);
+        if (now - stat.mtimeMs > 2 * 3600 * 1000) {
+          rmSync(passDir, { recursive: true, force: true });
+        }
+      } catch {}
+    }
+  } catch {}
+
+  return { kept: kept.length, pruned: prunedIds.size };
+}
+
 export function startMeteorRecorder() {
+  prunePasses();
   plan().catch((e) => console.log(`meteor: planning failed: ${(e as Error).message}`));
-  setInterval(() => plan().catch(() => {}), 20 * 60e3);
+  setInterval(() => {
+    try { prunePasses(); } catch {}
+    plan().catch(() => {});
+  }, 20 * 60e3);
   setInterval(() => { if (!busy()) runCheck().catch(() => {}); }, 30 * 60e3); // the station check's history: every 30 min when idle
 }
 
@@ -125,6 +181,7 @@ const rawName = (id: string) => { const m = id.match(/^(\d{4})(\d{2})(\d{2})(\d{
 /** GET /api/meteor/passes and /api/meteor/file?id=…&f=…; returns false when the URL isn't one of them. */
 export function meteorApi(url: URL, res: http.ServerResponse): boolean {
   if (url.pathname === "/api/meteor/passes") {
+    try { prunePasses(); } catch {}
     const recorded = existsSync(path.join(DIR, "index.json")) ? JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) : [];
     const now = running && Date.now() < running.until + 60_000 ? running : null;
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ window: settings().window, home: HOME, recording: now && { sat: now.sat, until: now.until }, upcoming: upcoming.filter((p) => p.set > Date.now()), recorded }));
