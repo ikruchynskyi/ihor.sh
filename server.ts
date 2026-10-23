@@ -16,7 +16,7 @@ import { mcp, a2a, serverCard, agentCard } from "./server/mcp.ts";
 import { roomStream, roomPost } from "./server/room.ts";
 import { issue, check, cookie, spend, TTL, clientIp } from "./server/session.ts";
 import { routeStops, bikeRoute, placeSearch, railStations, campsNear } from "./server/ride.ts";
-import { randomBytes, createHmac, timingSafeEqual, createHash } from "node:crypto";
+import { randomBytes, createHmac, timingSafeEqual, createHash, randomUUID } from "node:crypto";
 import { meshState, onMesh, sendText, startMesh, isPublic, traceroute, clearNodes, mesh, type MeshMsg } from "./server/mesh.ts";
 import { appendFileSync } from "node:fs";
 import { issPasses } from "./server/sat.ts";
@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -465,7 +465,9 @@ const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+type BriefJob = { at: number; step: string; result?: unknown; error?: string };
+const briefJobs = new Map<string, BriefJob>();
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
 
 const server = http.createServer(async (req, res) => {
@@ -927,11 +929,39 @@ const server = http.createServer(async (req, res) => {
       if (!inNyc(la, lo)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "a point in NYC, please" }));
       return cityJson(around(la, lo, r / 1000));
     }
+    if (url.pathname === "/api/nyc/news") return cityJson({ items: todaysNews(), outlets: NEWS_FEEDS.length }, 120);
+    // an area: the map's view as a box, at most ~50 km across, around the city
+    const boxOf = (q: { s?: unknown; w?: unknown; n?: unknown; e?: unknown }): Box | null => {
+      const b = { s: Number(q.s), w: Number(q.w), n: Number(q.n), e: Number(q.e) };
+      return Object.values(b).every(Number.isFinite) && b.s < b.n && b.w < b.e && b.n - b.s <= 0.5 && b.e - b.w <= 0.6 && inNyc((b.s + b.n) / 2, (b.w + b.e) / 2) ? b : null;
+    };
+    if (url.pathname === "/api/nyc/area") {
+      const b = boxOf(Object.fromEntries(url.searchParams));
+      return b ? cityJson(await area(b)) : res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first (the view is too big or outside the city)." }));
+    }
+    // ✨ in 🔎 This area: a job (cameras, then the brief: up to a minute or two, past Cloudflare's 100 s for one request),
+    // started here and followed with /api/nyc/brief-job?id=. Errors are 4xx JSON: Cloudflare swaps an origin's 502 for its own HTML.
+    if (url.pathname === "/api/nyc/area-brief" && req.method === "POST") {
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
+      const b = boxOf((() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })());
+      if (!b) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first." }));
+      for (const [k, j] of briefJobs) if (j.at < Date.now() - 10 * 60_000) briefJobs.delete(k);
+      if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "The local AI is writing a few briefs already. Try again in a minute." }));
+      const id = randomUUID(), job: BriefJob = { at: Date.now(), step: "Waiting for the local AI…" };
+      briefJobs.set(id, job);
+      areaBrief(b, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = e instanceof LineFull ? "The local AI is busy with visitors. Try again in a minute." : (e as Error).message));
+      return cityJson({ id }, 0);
+    }
+    if (url.pathname === "/api/nyc/brief-job") {
+      const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));
+      return job ? cityJson({ step: job.step, result: job.result ?? null, error: job.error ?? null }, 0) : res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "That brief is gone; ask again." }));
+    }
     if (url.pathname === "/api/nyc/brief") return cityJson(latestBrief(BOROUGHS.includes(String(url.searchParams.get("scope"))) ? String(url.searchParams.get("scope")) : "city"), 60);
     if (url.pathname === "/api/nyc/pulse") return cityJson({ ...pulse(), brief: latestBrief("city"), unusualList: anomalies(), unusualNote: anomaliesNote() });
     if (url.pathname === "/api/nyc/camera-inspect") { // 👁 in a camera window: the local vision model, in the same line as Blip
       try { return cityJson(await inLine(() => inspectCamera(String(url.searchParams.get("id") ?? ""), String(url.searchParams.get("q") ?? "").slice(0, 300) || undefined)), 0); }
-      catch (e) { return res.writeHead(e instanceof LineFull ? 503 : 502, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: (e as Error).message })); }
+      catch (e) { return res.writeHead(e instanceof LineFull ? 429 : 422, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: (e as Error).message })); } // 4xx: Cloudflare replaces a 502 with HTML
     }
     if (url.pathname === "/api/nyc/cameras") { // ?lat&lon outside NYC: windy.com's webcams there instead
       const la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN), away = Number.isFinite(la) && Number.isFinite(lo) && !inNyc(la, lo);

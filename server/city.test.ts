@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -48,4 +48,17 @@ assert.ok(!faithful({ text: "Air is fine.", facts: [] }, F));
 // Point in polygon (a unit square), as boroughs use it.
 const sq = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
 assert.ok(inRing(sq, 0.5, 0.5) && !inRing(sq, 1.5, 0.5));
+// News: today's stories only, CDATA unwrapped and tags stripped, Atom links too.
+const since = Date.parse("2026-10-23T04:00:00Z") / 1000;
+const feed = `<rss><channel><item><title><![CDATA[Fire in Crown Heights]]></title><link>https://x/1</link><description><![CDATA[<p>FDNY &amp; EMS on Eastern Pkwy</p>]]></description><pubDate>Fri, 23 Oct 2026 18:00:00 GMT</pubDate></item>
+<item><title>Yesterday's story</title><link>https://x/2</link><pubDate>Thu, 22 Oct 2026 18:00:00 GMT</pubDate></item></channel></rss>`;
+assert.deepEqual(newsItems(feed, since).map((x) => [x.title, x.summary]), [["Fire in Crown Heights", "FDNY & EMS on Eastern Pkwy"]]);
+assert.equal(newsItems(`<rss><item><title>Tish James&#8217; rival &amp; more</title><link>https://z/1</link><pubDate>Fri, 23 Oct 2026 18:00:00 GMT</pubDate></item></rss>`, since)[0].title, "Tish James\u2019 rival & more");
+assert.equal(newsItems(`<feed><entry><title>Atom story</title><link href="https://y/1"/><published>2026-10-23T15:00:00Z</published></entry></feed>`, since)[0].link, "https://y/1");
+
+// explore counts what matches, grouped, from the store.
+save("311", [{ id: "a", kind: "311:Noise - Residential", sev: 0, lat: 40.71, lon: -73.96, starts: t, ends: t, title: "Noise - Residential: Loud Music" }, { id: "b", kind: "311:Noise - Street", sev: 0, lat: 40.711, lon: -73.961, starts: t, ends: t, title: "Noise - Street: Loud Talking" },
+  { id: "c", kind: "311:HEAT/HOT WATER", sev: 0, lat: 40.71, lon: -73.96, starts: t, ends: t, title: "HEAT/HOT WATER: Entire Building" }], t);
+const x = explore({ query: "noise", lat: 40.71, lon: -73.96, r: 1, hours: 24 });
+assert.deepEqual([x.total, x.groups.length], [2, 2]);
 console.log("city.test.ts: OK");

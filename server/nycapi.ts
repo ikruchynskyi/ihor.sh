@@ -218,14 +218,34 @@ async function nysdotVideo() {
     const [lon, lat] = f.geometry.coordinates, v = f.properties.views?.find((v: any) => v.type !== "STILL_IMAGE" && !v.broken);
     return v && inNyc(lat, lon) ? [{ id: `n${f.properties.id}`, name: f.properties.name, area: "", lat, lon, image: v.videoPreviewUrl, video: v.url, source: "511NY", page: "https://511ny.org/" }] : [];
   });
-  // each stream's size, from its playlist, asked once per server start (the map badges the sharp ones)
-  await Promise.all(list.filter((c) => !streamSize.has(c.video)).map((c) => fetch(c.video, { signal: AbortSignal.timeout(5000) }).then((r) => r.text()).then((t) => {
-    const sizes = [...t.matchAll(/RESOLUTION=(\d+)x(\d+)/g)].map((m) => ({ w: +m[1], h: +m[2] })).sort((a, b) => b.h - a.h);
-    streamSize.set(c.video, sizes[0] ?? {});
-  }).catch(() => streamSize.set(c.video, {}))));
-  return list.map((c) => ({ ...c, ...streamSize.get(c.video) }));
+  // Each stream is checked: its size (the map badges the sharp ones) and that it's live (its segment list answers and
+  // moves on between checks). New streams are checked before they're listed; known ones again in the background.
+  await probeStreams(list.filter((c) => !streams.has(c.video)).map((c) => c.video));
+  if (Date.now() - probedAt > 9 * 60_000) { probedAt = Date.now(); probeStreams(list.map((c) => c.video)).catch(() => {}); }
+  return list.filter((c) => streamUp(c.video)).map((c) => { const { w, h } = streams.get(c.video) ?? {}; return { ...c, w, h }; });
 }
-const streamSize = new Map<string, { w?: number; h?: number }>();
+/** A stream is listed unless its last two checks failed, or it failed its only check. */
+const streams = new Map<string, { w?: number; h?: number; seq?: number; bad: number; ok: boolean }>();
+let probedAt = Date.now();
+export const streamUp = (url: string) => { const s = streams.get(url); return !s || !(s.bad >= 2 || (s.bad >= 1 && !s.ok)); };
+/** The master playlist (sizes), then its segment list: segments listed, and a media sequence that moved since last time. */
+export async function probeStreams(urls: string[]) {
+  let i = 0;
+  await Promise.all(Array.from({ length: 16 }, async () => {
+    while (i < urls.length) {
+      const url = urls[i++], prev = streams.get(url);
+      try {
+        const master = await (await fetch(url, { signal: AbortSignal.timeout(6000) })).text(), sizes = [...master.matchAll(/RESOLUTION=(\d+)x(\d+)/g)].map((m) => ({ w: +m[1], h: +m[2] })).sort((a, b) => b.h - a.h);
+        const chunk = master.split("\n").find((l) => l.trim() && !l.startsWith("#"))?.trim();
+        if (!chunk) throw new Error("no stream in the playlist");
+        const list = await (await fetch(new URL(chunk, url), { signal: AbortSignal.timeout(6000) })).text(), seq = Number(list.match(/#EXT-X-MEDIA-SEQUENCE:(\d+)/)?.[1]);
+        if (!/^[^#\s].*\.ts/m.test(list)) throw new Error("no segments");
+        if (prev?.seq != null && seq === prev.seq) throw new Error("frozen"); // the same segments as ~10 minutes ago
+        streams.set(url, { ...sizes[0], seq, bad: 0, ok: true });
+      } catch { streams.set(url, { ...prev, bad: (prev?.bad ?? 0) + 1, ok: prev?.ok ?? false }); }
+    }
+  }));
+}
 // 24/7 YouTube streams of the city, pinned at the camera ("from …") or at what it shows. An id dies when its owner
 // restarts the stream, so only the ones live now are listed (checked every 6 h); swap in the new id when one drops out.
 const YOUTUBE: [string, string, number, number][] = [
@@ -250,6 +270,8 @@ async function youtubeLive() {
   }
   return ytLive.list;
 }
+/** The camera list as last fetched, without waiting (empty right after a restart, while trafficCameras checks the streams). */
+export const camerasNow = () => { if (!cams) trafficCameras().catch(() => {}); return cams?.list ?? []; };
 /** Webcams elsewhere (the map looking outside NYC): windy.com's within 60 km of a point on a 0.5° grid, cached 30 min. */
 const away = new Map<string, { at: number; list: any[] }>();
 export async function webcamsNear(lat: number, lon: number) {

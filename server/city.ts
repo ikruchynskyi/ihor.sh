@@ -9,18 +9,21 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { geocode, inNyc, trafficCameras, inspectCamera } from "./nycapi.ts";
+import { geocode, inNyc, trafficCameras, camerasNow, inspectCamera } from "./nycapi.ts";
 import { aircraft, km } from "./sky.ts";
-import { OLLAMA, LOCAL_MODEL, whenIdle } from "./llm.ts";
+import { OLLAMA, LOCAL_MODEL, whenIdle, inLine } from "./llm.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(process.env.CITY_DB ?? path.join(dir, "city.db"));
+// WAL: the hourly 311 batch and the 2-minute snapshots don't hold readers up (SQLite runs on the server's one thread)
+db.exec("pragma journal_mode = wal; pragma synchronous = normal;");
 db.exec(`
   create table if not exists events (id text primary key, source text, kind text, sev int, lat real, lon real,
     starts int, ends int, first_seen int, last_seen int, title text, detail text, url text);
   create index if not exists events_live on events(source, ends);
   create index if not exists events_starts on events(source, starts);
+  create index if not exists events_now on events(starts) where source != '311'; -- what's on now, without wading through 311's rows
   create table if not exists metrics (key text, at int, value real, primary key (key, at));
   create table if not exists places (text text primary key, lat real, lon real);
   create table if not exists briefs (scope text, at int, body text, facts text, primary key (scope, at));
@@ -39,7 +42,8 @@ const get = async (url: string, headers: Record<string, string> = {}) => {
 };
 const json = async (url: string, headers: Record<string, string> = {}) => (await get(url, headers)).json() as Promise<any>;
 const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
-const strip = (h = "") => h.replace(/<[^>]+>/g, " ").replace(/&(\w+|#\d+);/g, (m, e) => entities[e] ?? m).replace(/\s+/g, " ").trim();
+const strip = (h = "") => h.replace(/<[^>]+>/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+  .replace(/&(\w+);/g, (m, e) => entities[e] ?? m).replace(/\s+/g, " ").trim();
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const tx = <T>(f: () => T) => { db.exec("begin"); try { const r = f(); db.exec("commit"); return r; } catch (e) { db.exec("rollback"); throw e; } };
 
@@ -260,6 +264,62 @@ async function reports311() {
   }
 }
 
+// ---------- local news: today's stories from NYC newsrooms, placed on the map when the text names a place ----------
+// Headlines, the feed's own short summary and the link (never the article). Fetched every 15 minutes; the local Qwen
+// reads each new story once (whenIdle) for whether it happens in NYC, where (the most specific place it names) and its
+// topic; the place goes through the same geocoder as the city's own feeds and must land in the borough it names.
+export const NEWS_FEEDS: [string, string][] = [["Gothamist", "https://gothamist.com/feed"], ["THE CITY", "https://www.thecity.nyc/feed/"], ["amNY", "https://www.amny.com/feed/"],
+  ["PIX11", "https://pix11.com/feed/"], ["ABC7 NY", "https://abc7ny.com/feed/"], ["NBC New York", "https://www.nbcnewyork.com/?rss=y"], ["CBS New York", "https://www.cbsnews.com/newyork/latest/rss/main"],
+  ["NY Post", "https://nypost.com/metro/feed/"], ["Brooklyn Paper", "https://www.brooklynpaper.com/feed/"], ["QNS", "https://qns.com/feed/"], ["Bronx Times", "https://www.bxtimes.com/feed/"],
+  ["SILive", "https://www.silive.com/arc/outboundfeeds/rss/?outputType=xml"], ["BK Reader", "https://www.bkreader.com/rss"], ["West Side Rag", "https://www.westsiderag.com/feed"],
+  ["Patch", "https://patch.com/feeds/aol/new-york/new-york-city"]];
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return Math.floor(d.getTime() / 1000); }; // New York's day (TZ)
+const cdata = (s: string) => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
+/** A feed's stories from today: title, link, the feed's summary (300 characters at most), when. */
+export function newsItems(xml: string, since = startOfToday()) {
+  return [...xml.matchAll(/<(item|entry)[\s>][\s\S]*?<\/\1>/g)].map((m) => {
+    const it = m[0], when = Date.parse(cdata(tag(it, "pubDate") || tag(it, "published") || tag(it, "updated") || tag(it, "dc:date")).trim());
+    const link = cdata(tag(it, "link")).trim() || it.match(/<link[^>]*href="([^"]+)"/)?.[1] || "";
+    return { title: strip(cdata(tag(it, "title"))), link, summary: strip(cdata(tag(it, "description") || tag(it, "summary"))).slice(0, 300), at: Math.floor(when / 1000) };
+  }).filter((n) => n.title && n.link.startsWith("http") && n.at >= since && n.at <= now() + 3600);
+}
+const NEWS_READ = { type: "object", required: ["nyc", "place", "borough", "precision", "topic"], properties: {
+  nyc: { type: "boolean" }, place: { type: "string" }, borough: { enum: ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island", ""] },
+  precision: { enum: ["address", "intersection", "landmark", "neighborhood", "borough", "none"] },
+  topic: { enum: ["crime", "fire", "crash", "transit", "weather", "health", "housing", "politics", "business", "culture", "sports", "other"] } } };
+const TOPIC_SEV: Record<string, number> = { crime: 1, fire: 1, crash: 1 };
+const newsKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 80); // the same story in several Schneps papers
+async function news() {
+  const since = startOfToday(), seen = new Set((db.prepare("select title from events where source = 'news' and starts >= ?").all(since) as { title: string }[]).map((r) => newsKey(r.title)));
+  const lists = await Promise.all(NEWS_FEEDS.map(([outlet, url]) => get(url).then((r) => r.text()).then((x) => newsItems(x, since).map((n) => ({ ...n, outlet }))).catch(() => [])));
+  let added = 0;
+  for (const n of lists.flat().sort((a, b) => b.at - a.at)) {
+    if (seen.has(newsKey(n.title))) continue;
+    seen.add(newsKey(n.title));
+    const read = await whenIdle(() => fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(60_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: NEWS_READ,
+      options: { num_predict: 120, temperature: 0 }, messages: [{ role: "system", content: "You read local news headlines for a New York City map. nyc: true when the story happens in New York City (the five boroughs) or is about the city; false only when it happens elsewhere (another city, state or country) or is national or world news. place: the most specific physical place in NYC the text names (an address, two cross streets as \"X and Y\", a landmark or building, a park, or a neighborhood), copied from the text, or \"\" if it names none. Teams, companies, agencies, unions and people are not places; \"NYC\" or a borough alone has precision borough. precision: what kind of place that is. Don't guess a place the text doesn't name." },
+        { role: "user", content: `${n.title}\n${n.summary}` }] }) }).then((r) => r.json())).then((r) => JSON.parse(r.message?.content ?? "null")).catch(() => null);
+    if (!read) { seen.delete(newsKey(n.title)); continue; } // the model is busy or down: read it next time
+    if (!read.nyc) { tx(() => save("news", [{ id: newsKey(n.title), kind: "news-elsewhere", sev: 0, starts: n.at, ends: since + 86400, title: n.title, detail: { outlet: n.outlet, summary: n.summary, topic: read.topic }, url: n.link }])); continue; }
+    // a one-word "landmark" is usually a team or a company ("Knicks" was pinned in Midtown): not placed
+    const precise = ["address", "intersection"].includes(read.precision) || (read.precision === "landmark" && read.place.trim().split(/\s+/).length >= 2), placeable = precise || read.precision === "neighborhood";
+    let pt = placeable && read.place ? await place(read.borough ? `${read.place}, ${read.borough}` : read.place) : null;
+    if (pt && read.borough && boros.length && borough(pt.lat, pt.lon) !== read.borough) pt = null; // landed in the wrong borough: not placed rather than misplaced
+    // only stories about something happening on the street (crime, fire, a crash) can join an incident; the rest are just news
+    tx(() => save("news", [{ id: newsKey(n.title), kind: pt && precise && TOPIC_SEV[read.topic] ? "news" : "news-area", sev: TOPIC_SEV[read.topic] ?? 0, lat: pt?.lat, lon: pt?.lon, starts: n.at, ends: since + 86400, title: n.title,
+      detail: { outlet: n.outlet, summary: n.summary, topic: read.topic, place: read.place || null, borough: read.borough || null, precision: read.precision, placedBy: pt ? "AI read the place from the text" : null }, url: n.link }]));
+    added++;
+  }
+  return added;
+}
+/** Today's NYC stories (newest first), optionally matching words or near a point. */
+export function todaysNews({ query = "", lat, lon, r = 2 }: { query?: string; lat?: number; lon?: number; r?: number } = {}) {
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  return (db.prepare("select * from events where source = 'news' and kind != 'news-elsewhere' and starts >= ? order by starts desc").all(startOfToday()) as Ev[]).map(view)
+    // words match the topic too: "crime" finds a stabbing
+    .filter((n) => (!words.length || words.some((w) => `${n.title} ${n.summary} ${n.place ?? ""} ${n.topic}`.toLowerCase().includes(w))) && (lat == null || (n.lat != null && km({ lat, lon: lon! }, n) <= r)));
+}
+
 // Helicopters circling: each one's last 10 minutes of positions (low, inside the city), checked every 30 s.
 const tracks = new Map<string, { t: number; lat: number; lon: number; trk: number | null }[]>();
 /** A track that turned through a full circle (or more) while staying within 2 km of its middle. */
@@ -282,10 +342,10 @@ async function helicopters() {
 }
 
 // ---------- incidents: reports of one thing, merged, and how many independent sources agree ----------
-const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:)/; // water: the harbor's surge is a reading, not a spot
+const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
 const AREA_WIDE = ["notify", "nws", "air"]; // alerts for a whole area; anything else without a place just couldn't be placed
 export type Incident = { id: string; title: string; kind: string; sev: number; lat: number; lon: number; starts: number; sources: string[]; confidence: number; events: Ev[] };
-const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source); // Waze drivers and NYSDOT's operators are different eyes
+const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source === "news" ? `news:${JSON.parse(e.detail || "{}").outlet ?? ""}` : e.source); // each outlet is its own witness // Waze drivers and NYSDOT's operators are different eyes
 /** Unplanned things with a place, most severe first, each joined to the first incident within 300 m. */
 export function cluster(evs: Ev[]) {
   const out: Incident[] = [];
@@ -299,14 +359,16 @@ export function cluster(evs: Ev[]) {
   return out.sort((a, b) => b.sev - a.sev || b.confidence - a.confidence || b.starts - a.starts);
 }
 let clustered = { at: 0, list: [] as Incident[] };
-export const incidents = () => (clustered.at > Date.now() - 30_000 ? clustered.list : (clustered = { at: Date.now(), list: cluster(active()) }).list);
+// 511NY keeps some Waze reports for weeks (a "minor accident" from August, still listed in October): a day old is stale
+const fresh = (e: Ev, at = now()) => !(e.kind.startsWith("road:waze") && e.starts < at - 86400);
+export const incidents = () => (clustered.at > Date.now() - 30_000 ? clustered.list : (clustered = { at: Date.now(), list: cluster(active().filter((e) => fresh(e))) }).list);
 
 /** A source's events that started in the last few hours, newest first (ended ones too: "what happened today"). */
 export const recent = (source: string, hours = 24) => (db.prepare("select * from events where source = ? and starts > ? order by starts desc limit 200").all(source, now() - hours * 3600) as Ev[]);
 /** One event as the page and Blip see it. */
 export const view = (e: Ev) => ({ id: e.id, source: e.source, kind: e.kind, sev: e.sev, title: e.title, lat: e.lat, lon: e.lon, starts: e.starts, ends: e.ends, url: e.url, ...JSON.parse(e.detail || "{}") });
 export const incidentView = (c: Incident) => ({ id: c.id, title: c.title, kind: c.kind, sev: c.sev, confidence: c.confidence, sources: c.sources, lat: c.lat, lon: c.lon, starts: c.starts,
-  borough: borough(c.lat, c.lon), events: c.events.slice(0, 12).map(view), checkedBy: cameraChecks(c.id) });
+  borough: borough(c.lat, c.lon), hood: neighborhood(c.lat, c.lon), events: c.events.slice(0, 12).map(view), checkedBy: cameraChecks(c.id) });
 
 /** What's going on within r km of a point: incidents, closures and permits, area-wide alerts, the week's 311 reports. */
 export function around(lat: number, lon: number, r = 0.4) {
@@ -315,7 +377,7 @@ export function around(lat: number, lon: number, r = 0.4) {
   const r311 = db.prepare(`select substr(kind, 5) type, count(*) n from events where source = '311' and starts > ? and lat between ? and ? and lon between ? and ? group by kind order by n desc limit 8`)
     .all(at - 7 * 86400, lat - dLat, lat + dLat, lon - dLon, lon + dLon);
   return { center: here, radiusM: Math.round(r * 1000), incidents: incidents().filter(near).map(incidentView), planned: all.filter((e) => near(e) && PLANNED.test(e.kind) && !e.kind.startsWith("vision")).map(view),
-    areaWide: all.filter((e) => e.lat == null && AREA_WIDE.includes(e.source)).map(view), reports311: { days: 7, newest: latest311(), byType: r311 }, unusual: anomalies().filter(near), pulse: pulse() };
+    areaWide: all.filter((e) => e.lat == null && AREA_WIDE.includes(e.source)).map(view), news: todaysNews({ lat, lon, r: Math.max(r, 0.8) }).slice(0, 10), reports311: { days: 7, newest: latest311(), byType: r311 }, unusual: anomalies().filter(near), pulse: pulse() };
 }
 const latest311 = () => { const t = (db.prepare("select max(starts) t from events where source = '311'").get() as { t: number | null }).t; return t && new Date(t * 1000).toISOString(); };
 
@@ -332,18 +394,28 @@ export const inRing = (ring: number[][], x: number, y: number) => {
   return c;
 };
 export const borough = (lat: number, lon: number) => boros.find((b) => b.rings.some((r) => inRing(r, lon, lat)))?.name ?? null;
+// Neighborhoods: NYC Planning's 262 Neighborhood Tabulation Areas (Open Data 9nt8-h7nd), for "in Greenpoint" labels
+let hoods: { name: string; rings: number[][][]; box: number[] }[] = [];
+async function loadHoods() {
+  const f = path.join(dir, "ntas.geojson");
+  if (!existsSync(f)) writeFileSync(f, await (await get(`${SODA}9nt8-h7nd.geojson?$limit=400`)).text());
+  hoods = JSON.parse(readFileSync(f, "utf8")).features.map((x: any) => { const rings = x.geometry.coordinates.map((p: number[][][]) => p[0]), pts = rings.flat();
+    return { name: x.properties.ntaname, rings, box: [Math.min(...pts.map((q: number[]) => q[0])), Math.min(...pts.map((q: number[]) => q[1])), Math.max(...pts.map((q: number[]) => q[0])), Math.max(...pts.map((q: number[]) => q[1]))] }; });
+}
+export const neighborhood = (lat: number, lon: number) => hoods.find((h) => lon >= h.box[0] && lat >= h.box[1] && lon <= h.box[2] && lat <= h.box[3] && h.rings.some((r) => inRing(r, lon, lat)))?.name ?? null;
 /** In the five boroughs (511NY's feed covers the whole state and New Jersey's roads around the city). */
 const inCity = (lat: number, lon: number) => inNyc(lat, lon) && (!boros.length || !!borough(lat, lon));
 export const BOROUGHS = ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
 
 // ---------- unusual: counts now against the same hours of the same weekday in the four weeks before ----------
 const CELL = 0.02; // ~2 km squares
-let unusual = { at: 0, list: [] as { kind: string; n: number; usual: number; lat: number; lon: number; place: string; text: string }[], note: "" };
+let unusual = { at: 0, list: [] as { kind: string; n: number; usual: number; lat: number; lon: number; place: string; what: string; text: string; points: { lat: number; lon: number; title: string; starts: number }[] }[], note: "" };
 const labels = new Map<string, string>();
 /** Squares where a kind of report is at least 3× its usual count (and at least 5). 311 compares its newest published day;
  *  the live feeds their last 3 hours, once they have 4 weeks of history. */
 async function refreshUnusual() {
   const out: typeof unusual.list = [], notes: string[] = [];
+  const behind = db.prepare(`select lat, lon, title, starts from events where source = ? and kind = ? and starts > ? and starts <= ? and cast(round(lat / ${CELL}) as int) = ? and cast(round(lon / ${CELL}) as int) = ? limit 60`);
   const count = (source: string, from: number, to: number) => db.prepare(`select kind, cast(round(lat / ${CELL}) as int) y, cast(round(lon / ${CELL}) as int) x, count(*) n, avg(lat) lat, avg(lon) lon
     from events where source = ? and starts > ? and starts <= ? and lat is not null group by kind, y, x`).all(source, from, to) as { kind: string; y: number; x: number; n: number; lat: number; lon: number }[];
   for (const [source, span] of [["311", 86400], ["511ny", 3 * 3600], ["notify", 3 * 3600]] as const) {
@@ -356,9 +428,10 @@ async function refreshUnusual() {
       const usual = before.get(`${r.kind}|${r.y}|${r.x}`) ?? 0;
       if (r.n < 5 || r.n < 3 * Math.max(usual, 1)) continue;
       const key = `${r.y},${r.x}`;
-      if (!labels.has(key)) labels.set(key, (await geocode(`${r.lat.toFixed(5)},${r.lon.toFixed(5)}`).catch(() => null))?.label.split(",").slice(0, 2).join(",") ?? `${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}`);
+      if (!labels.has(key)) { const street = (await geocode(`${r.lat.toFixed(5)},${r.lon.toFixed(5)}`).catch(() => null))?.label.split(",")[0], hood = neighborhood(r.lat, r.lon);
+        labels.set(key, hood ? `${hood}${street ? ` (around ${street})` : ""}` : street ?? `${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}`); }
       const what = r.kind.replace(/^311:/, "").replace(/^road:waze-/, "Waze: ").replace(/^road:/, "").replace(/^alert:/, "Notify NYC: ").replace(/-/g, " ");
-      out.push({ kind: r.kind, n: r.n, usual: +usual.toFixed(1), lat: r.lat, lon: r.lon, place: labels.get(key)!,
+      out.push({ kind: r.kind, n: r.n, usual: +usual.toFixed(1), lat: r.lat, lon: r.lon, place: labels.get(key)!, what, points: behind.all(source, r.kind, end - span, end, r.y, r.x) as { lat: number; lon: number; title: string; starts: number }[],
         text: `${r.n} ${source === "311" ? "311 reports" : "reports"} of "${what}" in ${source === "311" ? "the newest published day" : "the last 3 hours"} within ~1 km of ${labels.get(key)}, against ${usual.toFixed(1)} usually (same hours, same weekday, past 4 weeks)` });
     }
   }
@@ -367,6 +440,7 @@ async function refreshUnusual() {
 export const anomalies = () => unusual.list;
 export const anomaliesNote = () => unusual.note;
 
+const newsCount = () => db.prepare("select count(*) n, sum(lat is not null) placed from events where source = 'news' and kind != 'news-elsewhere' and starts >= ?").get(startOfToday()) as { n: number; placed: number | null };
 // ---------- the HUD's numbers ----------
 export function pulse() {
   const at = now(), all = active(at), inc = incidents(), m = (k: string) => latest(k)?.value ?? null;
@@ -374,19 +448,24 @@ export function pulse() {
     severe: inc.filter((c) => c.sev >= 2).length, corroborated: inc.filter((c) => c.confidence >= 2).length,
     closures: all.filter((e) => /^road:(closure|construction)$/.test(e.kind) || e.source === "permits").length, flooding: all.filter((e) => e.source === "floodnet").length,
     helicopters: all.filter((e) => e.source === "adsb").length, surgeFt: m("battery.surge"), aqi: m("air.aqi"), outages: m("coned.outages"), customersOut: m("coned.customers"),
-    unusual: unusual.list.length, filmNewest: m("film.newest") };
+    unusual: unusual.list.length, filmNewest: m("film.newest"), news: newsCount() };
 }
 
 // ---------- briefs: facts by code, words by the local Qwen, every bullet checked against its facts ----------
 const hhmm = (t: number) => new Date(t * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 const SOURCE_NAMES: Record<string, string> = { notify: "Notify NYC", "511ny": "511NY", waze: "Waze drivers", adsb: "aircraft tracking", floodnet: "FloodNet", noaa: "NOAA", nws: "NWS", vision: "a camera check", air: "air sensors" };
+export type Fact = { id: string; text: string; lat?: number; lon?: number };
+const factList = () => { const F: Fact[] = []; return { F, add: (text: string, at?: { lat: number | null; lon: number | null }) => void F.push({ id: `F${F.length + 1}`, text, ...(at?.lat != null ? { lat: at.lat, lon: at.lon! } : {}) }) }; };
 export function facts(scope = "city") {
   const inScope = (x: { lat: number | null; lon: number | null }) => scope === "city" || (x.lat != null && borough(x.lat, x.lon!) === scope);
-  const F: { id: string; text: string }[] = [], add = (text: string) => F.push({ id: `F${F.length + 1}`, text });
+  const { F, add } = factList();
   const inc = incidents().filter(inScope), p = pulse();
-  for (const c of inc.slice(0, 10)) add(`${c.title}${scope === "city" && borough(c.lat, c.lon) ? ` (${borough(c.lat, c.lon)})` : ""}: ${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}, severity ${c.sev} of 3, since ${hhmm(c.starts)}`);
+  const where = (c: { lat: number; lon: number }) => [neighborhood(c.lat, c.lon), scope === "city" ? borough(c.lat, c.lon) : null].filter(Boolean).join(", ");
+  for (const c of inc.slice(0, 10)) add(`${c.title}${where(c) ? ` (${where(c)})` : ""}: ${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}, severity ${c.sev} of 3, since ${hhmm(c.starts)}`, c);
   for (const e of active().filter((e) => e.lat == null && e.source !== "air" && AREA_WIDE.includes(e.source))) add(`${e.title} (${SOURCE_NAMES[e.source] ?? e.source}, citywide)`);
-  for (const a of anomalies().filter(inScope).slice(0, 5)) add(`Unusual: ${a.text}`);
+  for (const a of anomalies().filter(inScope).slice(0, 5)) add(`Unusual: ${a.text}`, a);
+  for (const n of todaysNews().filter((n) => ["crime", "fire", "crash", "transit", "weather"].includes(n.topic) && (scope === "city" || n.borough === scope || (n.lat != null && inScope(n)))).slice(0, 5))
+    add(`News (${n.outlet}, ${hhmm(n.starts)}): ${n.title}`, n);
   if (scope === "city") {
     if (p.surgeFt != null) add(`Harbor water at the Battery is ${p.surgeFt} ft ${p.surgeFt >= 0 ? "above" : "below"} the predicted tide`);
     if (p.aqi != null) add(`Air quality index ${p.aqi} (${p.aqi > 100 ? "unhealthy for sensitive groups or worse" : "good or moderate"})`);
@@ -402,24 +481,104 @@ export const faithful = (b: { text: string; facts: string[] }, F: Map<string, st
   !!b.facts?.length && b.facts.every((id) => F.has(id)) && nums(b.text).every((n) => b.facts.some((id) => nums(F.get(id)!).includes(n)));
 const BRIEF = { type: "object", required: ["bullets"], properties: { bullets: { type: "array", items: { type: "object", required: ["text", "facts"],
   properties: { text: { type: "string" }, facts: { type: "array", items: { type: "string" } } } } } } };
-export async function makeBrief(scope = "city") {
-  const F = facts(scope), byId = new Map(F.map((f) => [f.id, f.text]));
+/** The local Qwen words a brief from numbered facts; bullets that don't check out against their facts are dropped,
+ *  and with none left the brief is the facts themselves. lane: whenIdle (background) or inLine (a visitor asked). */
+async function write(F: Fact[], scope: string, lane: <T>(f: () => Promise<T>) => Promise<T>) {
+  const byId = new Map(F.map((f) => [f.id, f.text]));
   let bullets: { text: string; facts: string[] }[] = [], by = LOCAL_MODEL;
   try {
-    const r = await whenIdle(() => fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(120_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: BRIEF,
+    const r = await lane(() => fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(120_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: BRIEF,
       options: { num_predict: 500, temperature: 0.2 }, messages: [
         { role: "system", content: "You write the situation brief for a New York City command post, for people who live and travel here. Use only the numbered facts. Write 3 to 6 bullets, most urgent first, each one short plain sentence, and list the ids of the facts each bullet uses. Never add a number, place, cause or prediction that isn't in its facts. Don't repeat the same fact twice." },
-        { role: "user", content: `Scope: ${scope === "city" ? "all of New York City" : scope}. Facts:\n${F.map((f) => `${f.id}: ${f.text}`).join("\n")}` }] }) }).then((r) => r.json()));
+        { role: "user", content: `Scope: ${scope}. Facts:\n${F.map((f) => `${f.id}: ${f.text}`).join("\n")}` }] }) }).then((r) => r.json()));
     bullets = JSON.parse(r.message?.content ?? "{}").bullets ?? [];
   } catch (e) { console.warn(`city brief ${scope}:`, (e as Error).message); }
   const kept = bullets.filter((b) => faithful(b, byId)).slice(0, 6), dropped = bullets.length - kept.length;
   if (!kept.length) { by = "code (the model's answer was missing or didn't check out)"; kept.push(...F.slice(0, 5).map((f) => ({ text: f.text, facts: [f.id] }))); }
-  db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run(scope, now(), JSON.stringify({ bullets: kept, by, dropped }), JSON.stringify(F));
+  return { bullets: kept, by, dropped };
+}
+export async function makeBrief(scope = "city") {
+  const F = facts(scope), b = await write(F, scope === "city" ? "all of New York City" : scope, whenIdle);
+  db.prepare("insert or replace into briefs values (?, ?, ?, ?)").run(scope, now(), JSON.stringify(b), JSON.stringify(F));
   return latestBrief(scope);
 }
 export function latestBrief(scope = "city") {
   const r = db.prepare("select * from briefs where scope = ? order by at desc limit 1").get(scope) as { at: number; body: string; facts: string } | undefined;
-  return r ? { scope, at: r.at, ...JSON.parse(r.body), facts: JSON.parse(r.facts) as { id: string; text: string }[] } : null;
+  return r ? { scope, at: r.at, ...JSON.parse(r.body), facts: JSON.parse(r.facts) as Fact[] } : null;
+}
+
+// ---------- an area (the map's view): everything in it now and over the last hours, from the store ----------
+export type Box = { s: number; w: number; n: number; e: number };
+const inBox = (b: Box, x: { lat: number | null; lon: number | null }) => x.lat != null && x.lat >= b.s && x.lat <= b.n && x.lon! >= b.w && x.lon! <= b.e;
+const FAMILY = (k: string) => (k.startsWith("311:") ? "311" : /^(road:closure|road:construction|permit:|film)/.test(k) ? "closures" : k.startsWith("news") ? "news" : k === "road:event" ? "events" : "incidents");
+/** Counts and lists for a box: what's on now, what started in the last `hours` (by hour, for a timeline), 311's week
+ *  against the four before (it runs ~1.5 days behind), today's news, cameras, unusual counts, area-wide alerts. */
+export async function area(b: Box, hours = 24) {
+  const at = now(), from = at - hours * 3600, args = [b.s, b.n, b.w, b.e];
+  const evs = (db.prepare("select * from events where source != '311' and kind != 'news-elsewhere' and lat between ? and ? and lon between ? and ? and starts <= ? and (starts >= ? or ends is null or ends > ?)")
+    .all(...args, at, from, from) as Ev[]).filter((e) => fresh(e, at));
+  const live = evs.filter((e) => !e.ends || e.ends > at), started = evs.filter((e) => e.starts >= from);
+  const timeline: Record<string, number[]> = {};
+  for (const e of started) (timeline[FAMILY(e.kind)] ??= Array(hours).fill(0))[Math.min(hours - 1, Math.floor((e.starts - from) / 3600))]++;
+  const newest = Date.parse(latest311() ?? "") / 1000 || at, week = (k: number) => db.prepare("select substr(kind, 5) type, count(*) n from events where source = '311' and lat between ? and ? and lon between ? and ? and starts > ? and starts <= ? group by kind")
+    .all(...args, newest - (k + 1) * 7 * 86400, newest - k * 7 * 86400) as { type: string; n: number }[];
+  const before = new Map<string, number>();
+  for (let k = 1; k <= 4; k++) for (const r of week(k)) before.set(r.type, (before.get(r.type) ?? 0) + r.n / 4);
+  const r311 = week(0).map((r) => ({ type: r.type, n: r.n, usual: +(before.get(r.type) ?? 0).toFixed(1) })).sort((x, y) => y.n - x.n);
+  const cams = camerasNow().filter((c) => inBox(b, c)).sort((x, y) => (y.h ?? 0) - (x.h ?? 0)); // never waits on the stream checks
+  const mid = { lat: (b.s + b.n) / 2, lon: (b.w + b.e) / 2 }, key = `${mid.lat.toFixed(3)},${mid.lon.toFixed(3)}`;
+  if (!labels.has(key)) labels.set(key, neighborhood(mid.lat, mid.lon) ?? (await geocode(`${mid.lat.toFixed(5)},${mid.lon.toFixed(5)}`).catch(() => null))?.label.split(",")[0] ?? key);
+  return { box: b, label: labels.get(key)!, borough: borough(mid.lat, mid.lon), hours, at,
+    now: { incidents: incidents().filter((c) => inBox(b, c)).slice(0, 15).map(incidentView), closures: live.filter((e) => FAMILY(e.kind) === "closures").length, events: live.filter((e) => e.kind === "road:event").length,
+      flooding: live.filter((e) => e.source === "floodnet").map(view), alertsAreaWide: active(at).filter((e) => e.lat == null && AREA_WIDE.includes(e.source)).map(view) },
+    started: { total: started.length, byFamily: Object.fromEntries(Object.entries(timeline).map(([k, v]) => [k, v.reduce((a, x) => a + x, 0)])), timeline },
+    reports311: { week: r311.slice(0, 12), total: r311.reduce((a, r) => a + r.n, 0), usualTotal: +[...before.values()].reduce((a, x) => a + x, 0).toFixed(1), through: latest311() },
+    news: todaysNews().filter((n) => inBox(b, n)).slice(0, 12), unusual: anomalies().filter((u) => inBox(b, u)),
+    cameras: { total: cams.length, video: cams.filter((c) => c.video || c.youtube).length, hd: cams.filter((c) => (c.h ?? 0) >= 720).length, best: cams.slice(0, 5).map((c) => ({ id: c.id, name: c.name, h: c.h ?? null })) } };
+}
+function areaFacts(a: Awaited<ReturnType<typeof area>>) {
+  const { F, add } = factList();
+  for (const c of a.now.incidents.slice(0, 8)) add(`${c.title}: ${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}, severity ${c.sev} of 3, since ${hhmm(c.starts)}`, c);
+  for (const f of a.now.flooding) add(f.title, f);
+  for (const e of a.now.alertsAreaWide) add(`${e.title} (${SOURCE_NAMES[e.source] ?? e.source}, area-wide)`);
+  add(`Now in this area: ${a.now.incidents.length} incidents, ${a.now.closures} closures or permitted street events, ${a.now.events} special events`);
+  add(`Started in the last ${a.hours} hours: ${Object.entries(a.started.byFamily).map(([k, n]) => `${n} ${k}`).join(", ") || "nothing"}`);
+  for (const r of a.reports311.week.slice(0, 5)) add(`311 reports of "${r.type}" in the week through ${a.reports311.through?.slice(0, 10)}: ${r.n}, against ${r.usual} in an average week of the 4 before`);
+  for (const u of a.unusual.slice(0, 3)) add(`Unusual: ${u.text}`, u);
+  for (const n of a.news.slice(0, 5)) add(`News (${n.outlet}, ${hhmm(n.starts)}): ${n.title}`, n);
+  return F;
+}
+/** A brief for one area, asked by a visitor (in the visitors' line, not the background lane): the store's facts, plus a
+ *  one-sentence look at the area's best few traffic cameras by the local vision model, then the words. step() hears progress. */
+const LOOK = "In one sentence: is anything unusual happening, or anything that draws attention (an accident, emergency vehicles, a blocked lane, flooding, smoke, a crowd, a stopped bus)? If not, say what the traffic looks like.";
+export async function areaBrief(b: Box, step = (_: string) => {}) {
+  const a = await area(b), F = areaFacts(a);
+  const cams = camerasNow().filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com").sort((x, y) => (y.h ?? 0) - (x.h ?? 0)).slice(0, 3);
+  for (const [i, c] of cams.entries()) {
+    step(`Looking at camera ${i + 1} of ${cams.length}: ${c.name}…`);
+    const v = await inLine(() => inspectCamera(c.id, LOOK)).catch(() => null);
+    if (v?.text) F.push({ id: `F${F.length + 1}`, text: `Camera "${c.name}", looked at just now by the local vision model: ${v.text}`, lat: c.lat, lon: c.lon });
+  }
+  step("Writing the brief…");
+  return { label: a.label, at: now(), cameras: cams.length, ...(await write(F, `the area around ${a.label}${a.borough ? `, ${a.borough}` : ""}`, inLine)), facts: F };
+}
+/** Blip's window on the store: events and 311 reports matching words, in a circle or a borough, over the last hours,
+ *  counted and grouped (by kind, source, hour, day or borough), with the newest as samples. Numbers come from SQL. */
+export function explore({ query = "", lat, lon, r = 1, borough: boro = "", hours = 24, source = "", group = "kind" }: { query?: string; lat?: number; lon?: number; r?: number; borough?: string; hours?: number; source?: string; group?: string }) {
+  const at = now(), since = at - Math.min(hours, 24 * 35) * 3600, where = ["starts >= ?", "starts <= ?", "kind != 'news-elsewhere'"], args: (string | number)[] = [since, at + 86400];
+  if (source) { where.push("source = ?"); args.push(source); }
+  for (const w of query.toLowerCase().split(/\s+/).filter((w) => w.length > 1)) { where.push("(lower(title) like ? or lower(kind) like ?)"); args.push(`%${w}%`, `%${w}%`); }
+  if (lat != null && lon != null) { const dLat = r / 111, dLon = r / (111 * Math.cos((lat * Math.PI) / 180)); where.push("lat between ? and ? and lon between ? and ?"); args.push(lat - dLat, lat + dLat, lon - dLon, lon + dLon); }
+  const ring = boros.find((b) => b.name.toLowerCase() === boro.toLowerCase());
+  let rows = db.prepare(`select id, source, kind, sev, lat, lon, starts, ends, title, url from events where ${where.join(" and ")} order by starts desc limit 60000`).all(...args) as Ev[];
+  if (lat != null && lon != null) rows = rows.filter((e) => e.lat != null && km({ lat, lon }, e as { lat: number; lon: number }) <= r);
+  if (ring) rows = rows.filter((e) => e.lat != null && ring.rings.some((x) => inRing(x, e.lon!, e.lat!)));
+  const key = (e: Ev) => group === "source" ? e.source : group === "hour" ? new Date(e.starts * 1000).toISOString().slice(0, 13) : group === "day" ? new Date(e.starts * 1000).toLocaleDateString("en-CA")
+    : group === "borough" ? (e.lat != null ? borough(e.lat, e.lon!) ?? "?" : "citywide") : e.kind;
+  const groups = new Map<string, number>();
+  for (const e of rows) groups.set(key(e), (groups.get(key(e)) ?? 0) + 1);
+  return { total: rows.length, capped: rows.length === 60000, since: new Date(since * 1000).toISOString(), groupedBy: group, groups: [...groups].sort((a, b) => (group === "hour" || group === "day" ? a[0].localeCompare(b[0]) : b[1] - a[1])).slice(0, 40).map(([k, n]) => ({ [group]: k, n })),
+    newest: rows.slice(0, 12).map((e) => ({ title: e.title, source: e.source, when: new Date(e.starts * 1000).toISOString(), lat: e.lat, lon: e.lon, url: e.url })), note: rows.some((e) => e.source === "311") ? `311 is published ~1.5 days late (newest ${latest311()})` : undefined };
 }
 
 // ---------- camera checks: a new serious or corroborated incident → its nearest cameras, read by the local Qwen ----------
@@ -458,9 +617,11 @@ function every(source: string, minutes: number, f: () => Promise<unknown>) {
 }
 export async function startCity() {
   await loadBoroughs().catch((e) => console.warn("city boroughs:", e.message));
+  await loadHoods().catch((e) => console.warn("city neighborhoods:", e.message));
+  trafficCameras().catch(() => {}); // checks every NYSDOT stream once (~20 s), so the first visitor doesn't wait for it
   every("511ny", 2, roads); every("notify", 2, notify); every("nws", 5, nws); every("noaa", 6, tide); every("coned", 15, coned);
   every("air", 10, air); every("floodnet", 10, floods); every("permits", 60, permits); every("film", 60, film); every("311", 60, reports311);
-  every("adsb", 0.5, helicopters); every("unusual", 15, refreshUnusual); every("vision", 2, triage);
+  every("adsb", 0.5, helicopters); every("unusual", 15, refreshUnusual); every("vision", 2, triage); every("news", 15, news);
   every("brief", 15, async () => { // the city's every 15 minutes, a borough's when it has something going on
     await makeBrief("city");
     for (const b of BOROUGHS) if (incidents().some((c) => borough(c.lat, c.lon) === b)) await makeBrief(b);
