@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -462,6 +462,9 @@ const meshOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmesh=([\w-]+)
 // The Meteor station check (radio/meteor-check.html) uses the same owner key, with its own cookie for /api/meteor.
 const METEOR_COOKIE = createHmac("sha256", SESSION_SECRET).update(`meteor-owner:${MESH_KEY}`).digest("base64url");
 const meteorOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihmet=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", METEOR_COOKIE);
+// The incident review page (nyc/review.html) too: the owner labels incidents real or not, which measures each source.
+const REVIEW_COOKIE = createHmac("sha256", SESSION_SECRET).update(`review-owner:${MESH_KEY}`).digest("base64url");
+const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+)/.exec(req.headers.cookie ?? "")?.[1] ?? "", REVIEW_COOKIE);
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
@@ -956,6 +959,34 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/brief-job") {
       const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));
       return job ? cityJson({ step: job.step, result: job.result ?? null, error: job.error ?? null }, 0) : res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "That brief is gone; ask again." }));
+    }
+    if (url.pathname === "/api/nyc/safety") { // an area's official public-safety record (NYPD, FDNY; weeks to months late)
+      const b = boxOf(Object.fromEntries(url.searchParams));
+      if (!b) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first." }));
+      try { return cityJson(await safetyRecord(b), 3600); } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: `NYC Open Data didn't answer: ${(e as Error).message}` })); }
+    }
+    if (url.pathname === "/api/nyc/fdny") return cityJson({ through: cityLatest("fdny.newest")?.value ?? null, fires: fdnyRecent() }, 3600);
+    if (url.pathname === "/api/nyc/reliability") return cityJson([...reliability()].map(([source, r]) => ({ source, prior: PRIOR[source], ...r, r: +r.r.toFixed(3) })), 600);
+    if (url.pathname === "/api/nyc/review/owner" && req.method === "POST") { // the owner signs in (the mesh page's key)
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413).end(); }
+      const key = String((() => { try { return JSON.parse(raw || "{}").key; } catch { return ""; } })() ?? "");
+      if (key === "logout") return res.writeHead(200, { "set-cookie": "ihrev=; Path=/api/nyc/review; Max-Age=0; HttpOnly; SameSite=Strict", "content-type": "application/json" }).end("{}");
+      if (!spend(`review-login:${clientIp(req)}`, 10, 3600_000)) return json403(res, "Too many tries. Wait an hour.", 429);
+      if (!same(key, MESH_KEY)) return json403(res, "That's not the owner key.");
+      const live = /(^|\.)ihor\.sh$/.test(String(req.headers.host ?? "").split(":")[0]);
+      return res.writeHead(200, { "set-cookie": `ihrev=${REVIEW_COOKIE}; Path=/api/nyc/review; Max-Age=${90 * 86400}; HttpOnly; SameSite=Strict${live ? "; Secure" : ""}`, "content-type": "application/json" }).end("{}");
+    }
+    if (url.pathname.startsWith("/api/nyc/review/")) {
+      if (!reviewOwner(req)) return json403(res, "Owner only: sign in on the review page.");
+      if (url.pathname === "/api/nyc/review/queue") return cityJson(reviewQueue(), 0);
+      if (url.pathname === "/api/nyc/review/label" && req.method === "POST") {
+        let raw = "";
+        for await (const c of req) { raw += c; if (raw.length > 2000) return res.writeHead(413).end(); }
+        const b = (() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })();
+        if (!["true", "false", "unsure"].includes(b.verdict)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "verdict: true, false or unsure" }));
+        return label(String(b.id ?? ""), b.verdict, String(b.note ?? "").slice(0, 300)) ? cityJson({ ok: true }, 0) : res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "That incident is gone." }));
+      }
     }
     if (url.pathname === "/api/nyc/brief") return cityJson(latestBrief(BOROUGHS.includes(String(url.searchParams.get("scope"))) ? String(url.searchParams.get("scope")) : "city"), 60);
     if (url.pathname === "/api/nyc/pulse") return cityJson({ ...pulse(), brief: latestBrief("city"), unusualList: anomalies(), unusualNote: anomaliesNote() });

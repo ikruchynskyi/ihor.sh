@@ -16,8 +16,10 @@ import { OLLAMA, LOCAL_MODEL, whenIdle, inLine } from "./llm.ts";
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(process.env.CITY_DB ?? path.join(dir, "city.db"));
-// WAL: the hourly 311 batch and the 2-minute snapshots don't hold readers up (SQLite runs on the server's one thread)
-db.exec("pragma journal_mode = wal; pragma synchronous = normal;");
+// Not WAL: in WAL mode even a reader writes the shared index (-shm), and Docker Desktop's file sharing doesn't carry
+// SQLite's locks between the Mac and the container, so a sqlite3 read from the Mac corrupted the file on 2026-10-23.
+// The rollback journal survives an outside reader. Still: read data/*.db through `docker exec`, not from the Mac.
+db.exec("pragma journal_mode = delete; pragma synchronous = normal;");
 db.exec(`
   create table if not exists events (id text primary key, source text, kind text, sev int, lat real, lon real,
     starts int, ends int, first_seen int, last_seen int, title text, detail text, url text);
@@ -28,6 +30,8 @@ db.exec(`
   create table if not exists places (text text primary key, lat real, lon real);
   create table if not exists briefs (scope text, at int, body text, facts text, primary key (scope, at));
   create table if not exists polls (source text, at int, ok int, count int, error text);
+  create table if not exists labels (incident text primary key, witnesses text, verdict text, at int, note text); -- the owner's true/false on an incident
+  create table if not exists truth (event text, dataset text, matched int, at int, primary key (event, dataset)); -- our report vs the official record, once it's out
 `);
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -283,11 +287,10 @@ export function newsItems(xml: string, since = startOfToday()) {
     return { title: strip(cdata(tag(it, "title"))), link, summary: strip(cdata(tag(it, "description") || tag(it, "summary"))).slice(0, 300), at: Math.floor(when / 1000) };
   }).filter((n) => n.title && n.link.startsWith("http") && n.at >= since && n.at <= now() + 3600);
 }
-const NEWS_READ = { type: "object", required: ["nyc", "place", "borough", "precision", "topic"], properties: {
-  nyc: { type: "boolean" }, place: { type: "string" }, borough: { enum: ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island", ""] },
+const NEWS_READ = { type: "object", required: ["nyc", "place", "borough", "precision", "topic", "incident_today", "severity"], properties: {
+  nyc: { type: "boolean" }, incident_today: { type: "boolean" }, severity: { type: "integer", minimum: 0, maximum: 3 }, place: { type: "string" }, borough: { enum: ["Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island", ""] },
   precision: { enum: ["address", "intersection", "landmark", "neighborhood", "borough", "none"] },
   topic: { enum: ["crime", "fire", "crash", "transit", "weather", "health", "housing", "politics", "business", "culture", "sports", "other"] } } };
-const TOPIC_SEV: Record<string, number> = { crime: 1, fire: 1, crash: 1 };
 const newsKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 80); // the same story in several Schneps papers
 async function news() {
   const since = startOfToday(), seen = new Set((db.prepare("select title from events where source = 'news' and starts >= ?").all(since) as { title: string }[]).map((r) => newsKey(r.title)));
@@ -297,7 +300,7 @@ async function news() {
     if (seen.has(newsKey(n.title))) continue;
     seen.add(newsKey(n.title));
     const read = await whenIdle(() => fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(60_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: NEWS_READ,
-      options: { num_predict: 120, temperature: 0 }, messages: [{ role: "system", content: "You read local news headlines for a New York City map. nyc: true when the story happens in New York City (the five boroughs) or is about the city; false only when it happens elsewhere (another city, state or country) or is national or world news. place: the most specific physical place in NYC the text names (an address, two cross streets as \"X and Y\", a landmark or building, a park, or a neighborhood), copied from the text, or \"\" if it names none. Teams, companies, agencies, unions and people are not places; \"NYC\" or a borough alone has precision borough. precision: what kind of place that is. Don't guess a place the text doesn't name." },
+      options: { num_predict: 160, temperature: 0 }, messages: [{ role: "system", content: "You read local news headlines for a New York City map. nyc: true when the story happens in New York City (the five boroughs) or is about the city; false only when it happens elsewhere (another city, state or country) or is national or world news. incident_today: true only when the story reports something that happened today at a specific place in NYC (a fire, a crash, a shooting or other crime, a collapse, a rescue, a flood, a power outage); false for court cases, arrests or charges over earlier events, police appeals about earlier crimes, policy, politics, features, reviews and announcements. severity: 0 not an incident, 1 minor, 2 people hurt or serious damage, 3 people killed or a major emergency. place: the most specific physical place in NYC the text names (an address, two cross streets as \"X and Y\", a landmark or building, a park, or a neighborhood), copied from the text, or \"\" if it names none. Teams, companies, agencies, unions and people are not places; \"NYC\" or a borough alone has precision borough. precision: what kind of place that is. Don't guess anything the text doesn't say." },
         { role: "user", content: `${n.title}\n${n.summary}` }] }) }).then((r) => r.json())).then((r) => JSON.parse(r.message?.content ?? "null")).catch(() => null);
     if (!read) { seen.delete(newsKey(n.title)); continue; } // the model is busy or down: read it next time
     if (!read.nyc) { tx(() => save("news", [{ id: newsKey(n.title), kind: "news-elsewhere", sev: 0, starts: n.at, ends: since + 86400, title: n.title, detail: { outlet: n.outlet, summary: n.summary, topic: read.topic }, url: n.link }])); continue; }
@@ -305,9 +308,12 @@ async function news() {
     const precise = ["address", "intersection"].includes(read.precision) || (read.precision === "landmark" && read.place.trim().split(/\s+/).length >= 2), placeable = precise || read.precision === "neighborhood";
     let pt = placeable && read.place ? await place(read.borough ? `${read.place}, ${read.borough}` : read.place) : null;
     if (pt && read.borough && boros.length && borough(pt.lat, pt.lon) !== read.borough) pt = null; // landed in the wrong borough: not placed rather than misplaced
-    // only stories about something happening on the street (crime, fire, a crash) can join an incident; the rest are just news
-    tx(() => save("news", [{ id: newsKey(n.title), kind: pt && precise && TOPIC_SEV[read.topic] ? "news" : "news-area", sev: TOPIC_SEV[read.topic] ?? 0, lat: pt?.lat, lon: pt?.lon, starts: n.at, ends: since + 86400, title: n.title,
-      detail: { outlet: n.outlet, summary: n.summary, topic: read.topic, place: read.place || null, borough: read.borough || null, precision: read.precision, placedBy: pt ? "AI read the place from the text" : null }, url: n.link }]));
+    // only a story reporting something that happened today, at an exact place, is an incident (at the severity the text
+    // gives); a court case, an appeal about an older crime or a feature is just news (they topped the list at 75%)
+    // ...and one placed only at a neighborhood is a rough one: it joins a matching incident nearby or stands alone
+    const incident = !!(pt && read.incident_today && read.severity > 0);
+    tx(() => save("news", [{ id: newsKey(n.title), kind: incident ? (precise ? "news" : "news-rough") : "news-area", sev: incident ? Math.min(3, read.severity) : 0, lat: pt?.lat, lon: pt?.lon, starts: n.at, ends: since + 86400, title: n.title,
+      detail: { outlet: n.outlet, summary: n.summary, topic: read.topic, incidentToday: !!read.incident_today, severity: read.severity ?? 0, place: read.place || null, borough: read.borough || null, precision: read.precision, placedBy: pt ? "AI read the place from the text" : null }, url: n.link }]));
     added++;
   }
   return added;
@@ -318,6 +324,76 @@ export function todaysNews({ query = "", lat, lon, r = 2 }: { query?: string; la
   return (db.prepare("select * from events where source = 'news' and kind != 'news-elsewhere' and starts >= ? order by starts desc").all(startOfToday()) as Ev[]).map(view)
     // words match the topic too: "crime" finds a stabbing
     .filter((n) => (!words.length || words.some((w) => `${n.title} ${n.summary} ${n.place ?? ""} ${n.topic}`.toLowerCase().includes(w))) && (lat == null || (n.lat != null && km({ lat, lon: lon! }, n) <= r)));
+}
+
+// ---------- the official public-safety record (NYC Open Data: published weeks to months late, so it's the record, not "now") ----------
+// FDNY's fire dispatches (8m42-w767, ~3 weeks behind): structural and non-structural fires, placed at their alarm box
+// (cross streets, geocoded once each). Kept as past events: the 🚒 layer, area records, and the ground truth for fires.
+const ALARM_SEV: Record<string, number> = { "First Alarm": 1, "All Hands Working": 2, "Second Alarm": 3, "Third Alarm": 3, "Fourth Alarm": 3, "Fifth Alarm": 3 };
+async function fdny() {
+  const [{ newest }] = await soda("8m42-w767", { $select: "max(incident_datetime) as newest" });
+  const since = (db.prepare("select max(starts) t from events where source = 'fdny'").get() as { t: number | null }).t, from = since ? new Date(since * 1000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 19) : String(newest).slice(0, 8) + "01T00:00:00";
+  const rows: any[] = await soda("8m42-w767", { $select: "starfire_incident_id, incident_datetime, incident_close_datetime, alarm_box_location, incident_borough, incident_classification, incident_classification_group, highest_alarm_level, zipcode",
+    $where: `incident_datetime > '${from}' AND incident_classification_group in ('Structural Fires', 'NonStructural Fires')`, $order: "incident_datetime", $limit: "20000" });
+  const list: New[] = [];
+  for (const r of rows) {
+    const pt = r.alarm_box_location ? await place(`${String(r.alarm_box_location).replace(/\s+/g, " ")}, ${titleCase(r.incident_borough ?? "")}`) : null;
+    list.push({ id: r.starfire_incident_id, kind: `fdny:${slug(r.incident_classification_group)}`, sev: ALARM_SEV[r.highest_alarm_level] ?? 1, lat: pt?.lat, lon: pt?.lon, starts: local(r.incident_datetime), ends: local(r.incident_close_datetime) ?? local(r.incident_datetime),
+      title: `${r.incident_classification}: ${r.highest_alarm_level}`, detail: { box: r.alarm_box_location, zip: r.zipcode, borough: r.incident_borough }, url: "https://data.cityofnewyork.us/Public-Safety/Fire-Incident-Dispatch-Data/8m42-w767" });
+  }
+  metric("fdny.newest", local(newest));
+  return tx(() => save("fdny", list));
+}
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|\s)\w/g, (c) => c.toUpperCase());
+
+/** Ground truth, once it's published: our fire reports against FDNY's dispatches, our crash reports against NYPD's
+ *  collisions (h9gi-nx95), within 400 m and 2 hours. Only reports older than the official data's newest day are
+ *  checked; each is checked once. The results feed reliability(). */
+async function checkTruth() {
+  const fd = latest("fdny.newest")?.value, at = now(), mark = db.prepare("insert or ignore into truth values (?, ?, ?, ?)");
+  let n = 0;
+  if (fd) for (const e of db.prepare(`select * from events where lat is not null and starts < ? and starts > ? and (kind like 'alert:fire%' or kind like 'vision:smoke%' or (source = 'news' and detail like '%"topic":"fire"%'))
+      and id not in (select event from truth where dataset = 'fdny')`).all(fd - 86400, fd - 40 * 86400) as Ev[]) {
+    const hit = db.prepare("select 1 from events where source = 'fdny' and starts between ? and ? and lat between ? and ? and lon between ? and ? limit 1").get(e.starts - 7200, e.starts + 7200, e.lat! - 0.004, e.lat! + 0.004, e.lon! - 0.005, e.lon! + 0.005);
+    mark.run(e.id, "fdny", hit ? 1 : 0, at); n++;
+  }
+  const [{ newest }] = await soda("h9gi-nx95", { $select: "max(crash_date) as newest" }), cd = local(newest);
+  const crashes = cd ? db.prepare(`select * from events where lat is not null and starts < ? and (kind like 'road:waze%accident' or (kind = 'road:incident' and lower(title) like '%crash%'))
+      and id not in (select event from truth where dataset = 'collisions')`).all(cd) as Ev[] : [];
+  for (const e of crashes.slice(0, 300)) {
+    const t = (x: number) => new Date(x * 1000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+    const hit: any[] = await soda("h9gi-nx95", { $select: "count(*) as n", $where: `crash_date = '${t(e.starts).slice(0, 10)}T00:00:00' AND latitude between ${e.lat! - 0.004} and ${e.lat! + 0.004} AND longitude between ${e.lon! - 0.005} and ${e.lon! + 0.005}` }).catch(() => [{ n: null }]);
+    if (hit[0]?.n == null) break; // the API is down: try again tomorrow
+    mark.run(e.id, "collisions", Number(hit[0].n) > 0 ? 1 : 0, at); n++;
+  }
+  rel.at = 0;
+  return n;
+}
+
+/** An area's official public-safety record, newest published data (cached a day per area): NYPD 911 calls for service
+ *  by type (90 days), crime complaints by offense (90 days; counts only, none of the dataset's victim or suspect
+ *  details), shootings and injury crashes (a year), FDNY fires (35 days, from the store). Each part says through when. */
+const records = new Map<string, { at: number; data: unknown }>();
+export async function safetyRecord(b: Box) {
+  const key = [b.s, b.w, b.n, b.e].map((x) => x.toFixed(3)).join(","), hit = records.get(key);
+  if (hit && hit.at > Date.now() - 86400_000) return hit.data;
+  if (records.size > 500) records.clear();
+  const box = `latitude between ${b.s} and ${b.n} AND longitude between ${b.w} and ${b.e}`, back = (d: string, days: number) => new Date(Date.parse(d + "Z") - days * 86400_000).toISOString().slice(0, 19);
+  const newest = async (id: string, col: string) => String((await soda(id, { $select: `max(${col}) as m` }))[0]?.m ?? "").slice(0, 19);
+  const [calls, crimes, shots, crashes] = await Promise.all([["n2zq-pubd", "incident_date"], ["5uac-w243", "cmplnt_fr_dt"], ["5ucz-vwe8", "occur_date"], ["h9gi-nx95", "crash_date"]].map(([id, col]) => newest(id, col)));
+  const [c, k, sh, cr] = await Promise.all([
+    soda("n2zq-pubd", { $select: "typ_desc, count(*) as n", $where: `${box} AND incident_date > '${back(calls, 90)}'`, $group: "typ_desc", $order: "n DESC", $limit: "12" }),
+    soda("5uac-w243", { $select: "law_cat_cd, ofns_desc, count(*) as n", $where: `${box} AND cmplnt_fr_dt > '${back(crimes, 90)}'`, $group: "law_cat_cd, ofns_desc", $order: "n DESC", $limit: "12" }),
+    soda("5ucz-vwe8", { $select: "count(*) as n", $where: `${box} AND occur_date > '${back(shots, 365)}'` }),
+    soda("h9gi-nx95", { $select: "count(*) as n, sum(number_of_persons_injured) as injured, sum(number_of_persons_killed) as killed", $where: `${box} AND crash_date > '${back(crashes, 365)}'` }),
+  ]);
+  const fires = db.prepare("select title, starts from events where source = 'fdny' and lat between ? and ? and lon between ? and ? and starts > ? order by starts desc").all(b.s, b.n, b.w, b.e, now() - 35 * 86400) as { title: string; starts: number }[];
+  const data = { calls911: { through: calls.slice(0, 10), days: 90, byType: c.map((r: any) => ({ type: r.typ_desc, n: +r.n })) },
+    crimeComplaints: { through: crimes.slice(0, 10), days: 90, byOffense: k.map((r: any) => ({ category: r.law_cat_cd, offense: r.ofns_desc, n: +r.n })) },
+    shootings: { through: shots.slice(0, 10), days: 365, n: +sh[0]?.n || 0 }, crashes: { through: crashes.slice(0, 10), days: 365, n: +cr[0]?.n || 0, injured: +cr[0]?.injured || 0, killed: +cr[0]?.killed || 0 },
+    fdnyFires: { through: latest("fdny.newest") ? new Date(latest("fdny.newest")!.value * 1000).toISOString().slice(0, 10) : null, days: 35, n: fires.length, serious: fires.filter((f) => !/First Alarm/.test(f.title)).length, newest: fires.slice(0, 5) } };
+  records.set(key, { at: Date.now(), data });
+  return data;
 }
 
 // Helicopters circling: each one's last 10 minutes of positions (low, inside the city), checked every 30 s.
@@ -344,14 +420,21 @@ async function helicopters() {
 // ---------- incidents: reports of one thing, merged, and how many independent sources agree ----------
 const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
 const AREA_WIDE = ["notify", "nws", "air"]; // alerts for a whole area; anything else without a place just couldn't be placed
-export type Incident = { id: string; title: string; kind: string; sev: number; lat: number; lon: number; starts: number; sources: string[]; confidence: number; events: Ev[] };
+export type Incident = { id: string; title: string; kind: string; sev: number; lat: number; lon: number; starts: number; sources: string[]; confidence: number; events: Ev[]; probability?: number; why?: string[]; rough?: boolean };
+// What an event is about, for merging: a fire alert, smoke on a camera, FDNY and a fire story are one family
+export const family = (e: Ev) => (/fire|smoke/.test(e.kind) ? "fire" : /accident|crash|car-stopped|road:incident/.test(e.kind) ? "crash" : /flood/.test(e.kind) ? "flood"
+  : e.source === "news" ? (JSON.parse(e.detail || "{}").topic ?? "other") : "other");
 const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source === "news" ? `news:${JSON.parse(e.detail || "{}").outlet ?? ""}` : e.source); // each outlet is its own witness // Waze drivers and NYSDOT's operators are different eyes
-/** Unplanned things with a place, most severe first, each joined to the first incident within 300 m. */
+/** Unplanned things with a place, most severe first, each joined to the first incident within 300 m. A story placed only
+ *  at its neighborhood ("news-rough") joins the nearest incident of its family within 1.5 km, or stands alone: nothing
+ *  joins a rough one, since its pin is only the neighborhood's middle. */
 export function cluster(evs: Ev[]) {
   const out: Incident[] = [];
   for (const e of evs.filter((e) => e.lat != null && !PLANNED.test(e.kind)).sort((a, b) => b.sev - a.sev || a.starts - b.starts)) {
-    const c = out.find((c) => km(c, e as { lat: number; lon: number }) <= 0.3);
-    if (!c) { out.push({ id: e.id, title: e.title, kind: e.kind, sev: e.sev, lat: e.lat!, lon: e.lon!, starts: e.starts, sources: [witness(e)], confidence: 1, events: [e] }); continue; }
+    const rough = e.kind === "news-rough", fam = rough ? family(e) : "";
+    const c = rough ? out.filter((c) => !c.rough && c.events.some((x) => family(x) === fam) && km(c, e as { lat: number; lon: number }) <= 1.5).sort((a, b) => km(a, e as any) - km(b, e as any))[0]
+      : out.find((c) => !c.rough && km(c, e as { lat: number; lon: number }) <= 0.3);
+    if (!c) { out.push({ id: e.id, title: e.title, kind: e.kind, sev: e.sev, lat: e.lat!, lon: e.lon!, starts: e.starts, sources: [witness(e)], confidence: 1, events: [e], ...(rough ? { rough: true } : {}) }); continue; }
     c.events.push(e); c.starts = Math.min(c.starts, e.starts);
     if (!c.sources.includes(witness(e))) c.sources.push(witness(e));
     c.confidence = c.sources.length;
@@ -359,15 +442,72 @@ export function cluster(evs: Ev[]) {
   return out.sort((a, b) => b.sev - a.sev || b.confidence - a.confidence || b.starts - a.starts);
 }
 let clustered = { at: 0, list: [] as Incident[] };
-// 511NY keeps some Waze reports for weeks (a "minor accident" from August, still listed in October): a day old is stale
-const fresh = (e: Ev, at = now()) => !(e.kind.startsWith("road:waze") && e.starts < at - 86400);
-export const incidents = () => (clustered.at > Date.now() - 30_000 ? clustered.list : (clustered = { at: Date.now(), list: cluster(active().filter((e) => fresh(e))) }).list);
+// 511NY keeps some Waze reports for weeks (335 of 383 open "minor accidents" were over a day old on 2026-10-23, while
+// the ones that closed lived 0.9 h on average): a Waze report counts as "now" for 3 hours
+const WAZE_NOW = 3 * 3600;
+const fresh = (e: Ev, at = now()) => !(e.kind.startsWith("road:waze") && e.starts < at - WAZE_NOW);
+// Today's incidents only (owner, 2026-10-23), as a snapshot taken every 15 minutes together with the brief, so the map,
+// the counts and the brief always describe the same set; the feeds keep polling underneath.
+export function refreshIncidents() {
+  const today = startOfToday(), list = cluster(active().filter((e) => fresh(e) && e.starts >= today)), rel = reliability();
+  for (const c of list) Object.assign(c, likelihood(c, rel));
+  return (clustered = { at: Date.now(), list: list.sort((a, b) => b.sev - a.sev || b.probability! - a.probability! || b.starts - a.starts) }).list;
+}
+export const incidents = () => (clustered.at ? clustered.list : refreshIncidents());
+export const incidentsAt = () => Math.floor(clustered.at / 1000);
+
+// ---------- how likely an incident is real: each witness's reliability, combined ----------
+// Priors are our judgment (stated, not measured); each turns into a measured rate as the owner's labels (nyc/review.html)
+// and official records (FDNY dispatch, NYPD collisions, matched in checkTruth) come in: a Beta(10·p, 10·(1−p)) prior
+// updated with confirmed and refuted reports. Waze, camera and helicopter reports weigh half as much each hour/half hour.
+export const PRIOR: Record<string, number> = { notify: 0.95, nws: 0.95, noaa: 0.95, "511ny": 0.9, floodnet: 0.9, air: 0.9, news: 0.75, waze: 0.6, vision: 0.6, adsb: 0.5 };
+const HALF_LIFE: Record<string, number> = { waze: 3600, vision: 1800, adsb: 1800 };
+let rel = { at: 0, map: new Map<string, { r: number; yes: number; no: number }>() };
+export function reliability() {
+  if (rel.at > Date.now() - 10 * 60_000) return rel.map;
+  const tally = new Map<string, { yes: number; no: number }>(), count = (w: string, ok: boolean) => { const t = tally.get(w) ?? { yes: 0, no: 0 }; ok ? t.yes++ : t.no++; tally.set(w, t); };
+  for (const l of db.prepare("select witnesses, verdict from labels where verdict in ('true', 'false')").all() as { witnesses: string; verdict: string }[])
+    for (const w of JSON.parse(l.witnesses) as string[]) count(w.split(":")[0], l.verdict === "true");
+  for (const t of db.prepare("select e.source, e.kind, t.matched from truth t join events e on e.id = t.event").all() as { source: string; kind: string; matched: number }[])
+    count(t.kind.startsWith("road:waze") ? "waze" : t.source, !!t.matched);
+  const map = new Map<string, { r: number; yes: number; no: number }>();
+  for (const [w, p] of Object.entries(PRIOR)) { const t = tally.get(w) ?? { yes: 0, no: 0 }; map.set(w, { r: (10 * p + t.yes) / (10 + t.yes + t.no), ...t }); }
+  return (rel = { at: Date.now(), map }).map;
+}
+/** FDNY's fire dispatches of the last 35 published days (the 🚒 layer): an official record, ~3 weeks behind. */
+export const fdnyRecent = () => (db.prepare("select * from events where source = 'fdny' and lat is not null and starts > ? order by starts desc").all(now() - 40 * 86400) as Ev[]).map(view);
+/** For the owner's review page: incidents now that aren't labeled yet, a mix of sources, with their nearest cameras. */
+export function reviewQueue() {
+  const done = new Set((db.prepare("select incident from labels").all() as { incident: string }[]).map((r) => r.incident)), cams = camerasNow();
+  const left = incidents().filter((c) => !done.has(c.id)), bySource = new Map<string, Incident[]>();
+  for (const c of left) { const k = c.sources.join("+"); bySource.set(k, [...(bySource.get(k) ?? []), c]); }
+  const pick: Incident[] = [];
+  while (pick.length < 30 && [...bySource.values()].some((l) => l.length)) for (const l of bySource.values()) if (l.length && pick.length < 30) pick.push(l.shift()!); // round robin over source mixes
+  return { labeled: done.size, queue: pick.map((c) => ({ ...incidentView(c), cameras: cams.filter((k) => km(c, k) <= 0.4).sort((a, b) => km(c, a) - km(c, b)).slice(0, 3).map((k) => ({ id: k.id, name: k.name })) })) };
+}
+export function label(id: string, verdict: string, note = "") {
+  const c = incidents().find((x) => x.id === id);
+  if (!c) return false;
+  db.prepare("insert or replace into labels values (?, ?, ?, ?, ?)").run(id, JSON.stringify(c.sources), verdict, now(), note);
+  rel.at = 0;
+  return true;
+}
+/** P(real) = 1 − Π(1 − rᵢ) over independent witnesses (each one's strongest report, faded by its age), and why. */
+export function likelihood(c: { events: Ev[] }, map = reliability(), at = now()) {
+  const best = new Map<string, number>();
+  for (const e of c.events) {
+    const w = witness(e), base = w.split(":")[0], r0 = map.get(base)?.r ?? 0.5, hl = HALF_LIFE[base];
+    best.set(w, Math.max(best.get(w) ?? 0, hl ? r0 * 0.5 ** (Math.max(0, at - e.starts) / hl) : r0));
+  }
+  const probability = +(1 - [...best.values()].reduce((miss, r) => miss * (1 - r), 1)).toFixed(2);
+  return { probability, why: [...best].map(([w, r]) => `${SOURCE_NAMES[w.split(":")[0]] ?? w}${w.includes(":") ? ` (${w.split(":")[1]})` : ""} ${Math.round(r * 100)}%`) };
+}
 
 /** A source's events that started in the last few hours, newest first (ended ones too: "what happened today"). */
 export const recent = (source: string, hours = 24) => (db.prepare("select * from events where source = ? and starts > ? order by starts desc limit 200").all(source, now() - hours * 3600) as Ev[]);
 /** One event as the page and Blip see it. */
 export const view = (e: Ev) => ({ id: e.id, source: e.source, kind: e.kind, sev: e.sev, title: e.title, lat: e.lat, lon: e.lon, starts: e.starts, ends: e.ends, url: e.url, ...JSON.parse(e.detail || "{}") });
-export const incidentView = (c: Incident) => ({ id: c.id, title: c.title, kind: c.kind, sev: c.sev, confidence: c.confidence, sources: c.sources, lat: c.lat, lon: c.lon, starts: c.starts,
+export const incidentView = (c: Incident) => ({ id: c.id, title: c.title, kind: c.kind, sev: c.sev, confidence: c.confidence, probability: c.probability, why: c.why, rough: !!c.rough, sources: c.sources, lat: c.lat, lon: c.lon, starts: c.starts,
   borough: borough(c.lat, c.lon), hood: neighborhood(c.lat, c.lon), events: c.events.slice(0, 12).map(view), checkedBy: cameraChecks(c.id) });
 
 /** What's going on within r km of a point: incidents, closures and permits, area-wide alerts, the week's 311 reports. */
@@ -444,8 +584,8 @@ const newsCount = () => db.prepare("select count(*) n, sum(lat is not null) plac
 // ---------- the HUD's numbers ----------
 export function pulse() {
   const at = now(), all = active(at), inc = incidents(), m = (k: string) => latest(k)?.value ?? null;
-  return { at, alerts: all.filter((e) => e.source === "notify").length, weather: all.filter((e) => e.source === "nws").map((e) => e.title), incidents: inc.length,
-    severe: inc.filter((c) => c.sev >= 2).length, corroborated: inc.filter((c) => c.confidence >= 2).length,
+  return { at, incidentsAt: incidentsAt(), alerts: all.filter((e) => e.source === "notify").length, weather: all.filter((e) => e.source === "nws").map((e) => e.title), incidents: inc.length,
+    severe: inc.filter((c) => c.sev >= 2).length, corroborated: inc.filter((c) => c.confidence >= 2).length, likely: inc.filter((c) => (c.probability ?? 0) >= 0.7).length,
     closures: all.filter((e) => /^road:(closure|construction)$/.test(e.kind) || e.source === "permits").length, flooding: all.filter((e) => e.source === "floodnet").length,
     helicopters: all.filter((e) => e.source === "adsb").length, surgeFt: m("battery.surge"), aqi: m("air.aqi"), outages: m("coned.outages"), customersOut: m("coned.customers"),
     unusual: unusual.list.length, filmNewest: m("film.newest"), news: newsCount() };
@@ -461,7 +601,7 @@ export function facts(scope = "city") {
   const { F, add } = factList();
   const inc = incidents().filter(inScope), p = pulse();
   const where = (c: { lat: number; lon: number }) => [neighborhood(c.lat, c.lon), scope === "city" ? borough(c.lat, c.lon) : null].filter(Boolean).join(", ");
-  for (const c of inc.slice(0, 10)) add(`${c.title}${where(c) ? ` (${where(c)})` : ""}: ${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}, severity ${c.sev} of 3, since ${hhmm(c.starts)}`, c);
+  for (const c of inc.slice(0, 10)) add(`${c.title}${where(c) ? ` (${where(c)})` : ""}: ${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map((s) => SOURCE_NAMES[s] ?? s).join(" and ")}, severity ${c.sev} of 3, since ${hhmm(c.starts)}, likely ${Math.round((c.probability ?? 0) * 100)}%`, c);
   for (const e of active().filter((e) => e.lat == null && e.source !== "air" && AREA_WIDE.includes(e.source))) add(`${e.title} (${SOURCE_NAMES[e.source] ?? e.source}, citywide)`);
   for (const a of anomalies().filter(inScope).slice(0, 5)) add(`Unusual: ${a.text}`, a);
   for (const n of todaysNews().filter((n) => ["crime", "fire", "crash", "transit", "weather"].includes(n.topic) && (scope === "city" || n.borough === scope || (n.lat != null && inScope(n)))).slice(0, 5))
@@ -612,7 +752,6 @@ async function triage() {
       const what = [s.smoke_or_fire && "smoke or fire", s.emergency_vehicles && "emergency vehicles", s.road === "flooded" && "a flooded road", ["heavy", "gridlock", "stopped"].includes(s.traffic) && `${s.traffic} traffic`].filter(Boolean) as string[];
       tx(() => save("vision", [{ id: cam.id, kind: what.length ? `vision:${slug(what[0])}` : "vision:clear", sev: what.length ? 1 : 0, lat: cam.lat, lon: cam.lon, ends: now() + 1800,
         title: `Camera ${cam.name}: ${what.length ? what.join(", ") : "nothing unusual"}`, detail: { camera: cam.id, seen: s, incident: c.id, model: v!.model }, url: `/nyc/#cam=${cam.id}` }]));
-      clustered.at = 0;
     }
   }
 }
@@ -634,8 +773,9 @@ export async function startCity() {
   trafficCameras().catch(() => {}); // checks every NYSDOT stream once (~20 s), so the first visitor doesn't wait for it
   every("511ny", 2, roads); every("notify", 2, notify); every("nws", 5, nws); every("noaa", 6, tide); every("coned", 15, coned);
   every("air", 10, air); every("floodnet", 10, floods); every("permits", 60, permits); every("film", 60, film); every("311", 60, reports311);
-  every("adsb", 0.5, helicopters); every("unusual", 15, refreshUnusual); every("vision", 2, triage); every("news", 15, news);
-  every("brief", 15, async () => { // the city's every 15 minutes, a borough's when it has something going on
+  every("adsb", 0.5, helicopters); every("unusual", 15, refreshUnusual); every("vision", 2, triage); every("news", 15, news); every("fdny", 6 * 60, fdny); every("truth", 24 * 60, checkTruth);
+  every("brief", 15, async () => { // every 15 minutes: today's incidents again, then the city's brief, and a borough's when it has something going on
+    refreshIncidents();
     await makeBrief("city");
     for (const b of BOROUGHS) if (incidents().some((c) => borough(c.lat, c.lon) === b)) await makeBrief(b);
   });

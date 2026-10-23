@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -38,6 +38,13 @@ const inc = cluster([ev("fire", "notify", "alert:fire", 3, 40.8), ev("w1", "511n
 assert.equal(inc.length, 2);
 assert.deepEqual([inc[0].id, inc[0].events.length, inc[0].confidence, inc[0].sources], ["fire", 3, 2, ["notify", "waze"]]);
 
+// A fire story placed only at its neighborhood joins the fire 1 km away (same family), not the crash next to it.
+const story = { ...ev("s", "news", "news-rough", 2, 40.809), detail: JSON.stringify({ topic: "fire", outlet: "PIX11" }) };
+const merged = cluster([ev("fire2", "notify", "alert:fire", 3, 40.8), ev("crash", "511ny", "road:waze-minor-accident", 1, 40.8095, -73.9), story]);
+assert.deepEqual(merged.find((c) => c.id === "fire2")!.sources, ["notify", "news:PIX11"]);
+const alone = cluster([ev("crash", "511ny", "road:waze-minor-accident", 1, 40.8095), story]);
+assert.equal(alone.length, 2); assert.ok(alone.find((c) => c.id === "s")!.rough);
+
 // A brief's bullet must cite real facts, and every number in it must be in them.
 const F = new Map([["F1", "Fire - Wright Avenue: 3 reports from Notify NYC, severity 3 of 3, since 1:05 PM"], ["F2", "Air quality index 42"]]);
 assert.ok(faithful({ text: "A 3-report fire on Wright Avenue since 1:05 PM.", facts: ["F1"] }, F));
@@ -68,4 +75,11 @@ const road = Array.from({ length: 8 }, (_, i) => cam(40.70 + i * 0.002, -74.01, 
 const got = pickCameras([...road, ...grid]);
 assert.equal(got.length, 5);
 assert.ok(got.filter((c) => c.lon === -74.01).length <= 2); // at most two from the row along one road
+// Likely real: independent witnesses combine (1 − Π(1 − r)); a Waze report halves each hour.
+const pri = new Map(Object.entries(PRIOR).map(([k, p]) => [k, { r: p, yes: 0, no: 0 }])), T = 1_800_000_000;
+const at = (e: any, starts: number) => ({ ...e, starts });
+assert.equal(likelihood({ events: [at(ev("f", "notify", "alert:fire", 3, 40.8), T)] }, pri, T).probability, 0.95);
+assert.equal(likelihood({ events: [at(ev("f", "notify", "alert:fire", 3, 40.8), T), at(ev("w", "511ny", "road:waze-hazard-on-the-road", 0, 40.8), T)] }, pri, T).probability, 0.98);
+assert.equal(likelihood({ events: [at(ev("w", "511ny", "road:waze-minor-accident", 1, 40.8), T - 7200)] }, pri, T).probability, 0.15); // 0.6 × ½ × ½
+assert.equal(likelihood({ events: [at(ev("w1", "511ny", "road:waze-minor-accident", 1, 40.8), T), at(ev("w2", "511ny", "road:waze-minor-accident", 1, 40.8), T)] }, pri, T).probability, 0.6); // two drivers are one witness
 console.log("city.test.ts: OK");

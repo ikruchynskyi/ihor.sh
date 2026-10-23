@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incident Review · NYC Command Post</title>
+  <meta name="robots" content="noindex">
+  <meta name="description" content="The owner labels live incidents real or not, which measures how often each source is right.">
+  <style>
+    :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #d9480f; color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d; --card: #161b22; --accent: #f78166; } }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .muted { color: var(--muted); font-size: .85rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+    .card h3 { margin: 0 0 4px; font-size: 1rem; }
+    .card ul { margin: 6px 0; padding-left: 18px; font-size: .9rem; }
+    .votes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .votes button { padding: 6px 12px; } .done { opacity: .45; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; } td, th { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Incident review</h1>
+  <p class="muted">Is each incident real? Check its cameras and links, then answer. Your answers turn each source's guessed reliability into a measured one, and that sets the "likely %" on the <a href="./">map</a>. Owner only.</p>
+  <form id="login" hidden><label>Owner key <input id="key" type="password" autocomplete="current-password"></label> <button>Sign in</button> <span id="loginMsg" class="muted"></span></form>
+  <section id="rel"></section>
+  <section id="queue"></section>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const hm = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+async function reliability() {
+  const r = await fetch("/api/nyc/reliability").then((x) => x.json()).catch(() => []);
+  $("rel").innerHTML = `<h2>How much each source is trusted</h2><table><tr><th>Source</th><th>Now</th><th>Guess</th><th>Confirmed</th><th>Refuted</th></tr>${r.map((s) => `<tr><td>${esc(s.source)}</td><td><b>${Math.round(s.r * 100)}%</b></td><td>${Math.round(s.prior * 100)}%</td><td>${s.yes}</td><td>${s.no}</td></tr>`).join("")}</table>
+    <p class="muted">"Now" starts at the guess and moves with each confirmed or refuted report (your answers here, and official records: FDNY fires, NYPD crashes, once they're published).</p>`;
+}
+async function queue() {
+  const r = await fetch("/api/nyc/review/queue");
+  if (r.status === 403) { $("login").hidden = false; $("queue").innerHTML = ""; return; }
+  const d = await r.json();
+  $("queue").innerHTML = `<h2>To review <span class="muted">${d.queue.length} now · ${d.labeled} answered so far</span></h2>` + d.queue.map((c) => `<div class="card" data-id="${esc(c.id)}">
+    <h3>${esc(c.title)}</h3><div class="muted">${esc(c.sources.join(" + "))} · since ${hm(c.starts)} · likely ${Math.round((c.probability ?? 0) * 100)}% · ${esc(c.hood ?? c.borough ?? "")}</div>
+    <ul>${c.events.slice(0, 5).map((e) => `<li>${esc(e.title)} <span class="muted">${esc(e.source)} ${hm(e.starts)}</span>${e.url?.startsWith("http") ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">source</a>` : ""}</li>`).join("")}</ul>
+    <div class="muted"><a href="./#at=${c.lat},${c.lon},17" target="_blank">map</a>${c.cameras.map((k) => ` · <a href="./#cam=${esc(k.id)}" target="_blank">📷 ${esc(k.name)}</a>`).join("")}</div>
+    <div class="votes"><button data-v="true">✓ Real</button><button data-v="false">✗ Not real</button><button data-v="unsure">? Can't tell</button></div></div>`).join("");
+}
+$("queue").addEventListener("click", async (e) => {
+  const v = e.target.dataset?.v, card = e.target.closest(".card");
+  if (!v || !card) return;
+  const r = await fetch("/api/nyc/review/label", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: card.dataset.id, verdict: v }) });
+  card.classList.add("done"); card.querySelector(".votes").innerHTML = r.ok ? `<span class="muted">Answered: ${v}</span>` : `<span class="muted">${esc((await r.json().catch(() => ({}))).error ?? r.status)}</span>`;
+  reliability();
+});
+$("login").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/nyc/review/owner", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: $("key").value }) });
+  if (!r.ok) return void ($("loginMsg").textContent = (await r.json().catch(() => ({}))).error ?? `${r.status}`);
+  $("login").hidden = true; queue();
+});
+reliability(); queue();
+</script>
+</body>
+</html>

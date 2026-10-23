@@ -422,6 +422,7 @@ const LAYERS = {
   popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
   films: { grp: "out", label: "🎬 Film & TV shoots on now (parking held)", on: false, group: L.layerGroup(), load: loadFilmShoots },
   news: { grp: "out", label: "📰 Local news today (placed by AI from the text)", on: false, group: L.layerGroup(), load: loadNews },
+  fdny: { grp: "streets", label: "🚒 FDNY fires: the official record (~3 weeks behind)", on: false, group: L.layerGroup(), load: loadFdny },
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
   restrooms: { grp: "out", label: "🚻 Public restrooms (parks, libraries, transit)", on: false, group: L.layerGroup(), load: loadRestrooms },
   radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
@@ -1113,7 +1114,8 @@ const ago = (t) => { const m = Math.round((Date.now() / 1000 - t) / 60); return 
 const evLine = (e) => `<li><b>${esc(e.title)}</b> <span class="muted">${esc(e.outlet ?? srcName(e.source))} · ${hhmm(e.starts)}${e.ends && e.source !== "news" ? `–${hhmm(e.ends)}` : ""}</span>${e.text || e.summary ? `<br><small>${esc((e.text || e.summary).slice(0, 220))}</small>` : ""}${e.source === "news" ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">read</a>` : ""}</li>`;
 function incidentPopup(c) {
   return `<b>${esc(c.title)}</b><br><span class="muted">${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map(srcName).join(" + ")} · severity ${c.sev}/3 · since ${hhmm(c.starts)}${c.hood || c.borough ? ` · ${esc([c.hood, c.borough].filter(Boolean).join(", "))}` : ""}</span>
-    ${c.confidence > 1 ? `<br><b style="color:#2f9e44">✔ ${c.confidence} independent sources agree</b>` : `<br><span class="muted">One source so far.</span>`}
+    ${c.rough ? `<br><span class="muted">📍 Rough place: the story names only the neighborhood (dashed circle).</span>` : ""}
+    <br><b>Likely ${Math.round((c.probability ?? 0) * 100)}%</b> <span class="muted">${(c.why ?? []).map(esc).join(" + ")}${c.confidence > 1 ? ` · ${c.confidence} independent sources agree` : " · one source so far"} · <a href="./review.html" title="How each source's reliability is measured">how</a></span>
     <ul style="margin:6px 0;padding-left:16px;max-height:160px;overflow:auto">${c.events.map(evLine).join("")}</ul>
     ${c.checkedBy?.length ? `<div class="muted">👁 ${c.checkedBy.map((v) => `<a href="${esc(v.url)}">${esc(v.title)}</a> (${hhmm(v.starts)})`).join("<br>👁 ")}</div>` : ""}${camBtn(c.lat, c.lon)}`;
 }
@@ -1124,6 +1126,7 @@ const planKind = (e) => (e.kind.startsWith("permit:") ? "permit" : e.kind === "f
 async function loadIncidents(g) {
   const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
   g.clearLayers();
+  for (const c of d.incidents.filter((c) => c.rough)) L.circle([c.lat, c.lon], { radius: 700, color: SEV[c.sev], weight: 1.5, dashArray: "5 5", fillOpacity: 0.06, interactive: false }).addTo(g); // placed only at its neighborhood
   for (const c of d.incidents) mark("incidents", c.id, L.circleMarker([c.lat, c.lon], { radius: (5 + 2 * c.sev) * DOT, color: c.confidence > 1 ? "#fff" : SEV[c.sev], weight: c.confidence > 1 ? 3 : 1, fillColor: SEV[c.sev], fillOpacity: 0.85, bubblingMouseEvents: false })
     .bindTooltip(esc(c.title)).bindPopup(() => incidentPopup(c), { maxWidth: 340 })).addTo(g);
   seen.incidents = { count: d.incidents.length, serious: d.incidents.filter((c) => c.sev >= 2).map((c) => ({ title: c.title, sources: c.sources, since: hhmm(c.starts), lat: c.lat, lon: c.lon })).slice(0, 15) };
@@ -1177,7 +1180,14 @@ async function loadNews(g) {
   seen.news = d.items.slice(0, 15).map((n) => ({ title: n.title, outlet: n.outlet, at: hhmm(n.starts), place: n.place }));
   $("n-news").textContent = `(${d.items.length} stories today from ${d.outlets} newsrooms, ${d.items.filter((n) => n.lat != null).length} placed)`;
 }
-const CITY_LAYERS = ["incidents", "closures", "emergency", "floods", "films", "news"], LOADERS = { incidents: loadIncidents, closures: loadClosures, emergency: loadEmergency, floods: loadFloodSensors, news: loadNews };
+async function loadFdny(g) {
+  const d = await getJSON("/api/nyc/fdny");
+  g.clearLayers();
+  for (const f of d.fires) dot(f.lat, f.lon, f.sev >= 3 ? "#c92a2a" : f.sev === 2 ? "#f76707" : "#ffa94d", f.sev >= 2 ? 6 : 4).bindTooltip(esc(f.title))
+    .bindPopup(`<b>🚒 ${esc(f.title)}</b><br><span class="muted">FDNY dispatch · ${new Date(f.starts * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · alarm box ${esc(f.box ?? "")}</span><br><small>The official record, published ~3 weeks late: <a href="${esc(f.url)}" target="_blank" rel="noopener">FDNY dispatch data</a></small>`).addTo(g);
+  $("n-fdny").textContent = `(${d.fires.length} fires in the last 35 published days, through ${d.through ? new Date(d.through * 1000).toLocaleDateString([], { month: "short", day: "numeric" }) : "?"}; ${d.fires.filter((f) => f.sev >= 2).length} beyond a first alarm)`;
+}
+const CITY_LAYERS = ["incidents", "closures", "emergency", "floods", "films", "news", "fdny"], LOADERS = { incidents: loadIncidents, closures: loadClosures, emergency: loadEmergency, floods: loadFloodSensors, news: loadNews };
 setInterval(() => { for (const [k, f] of Object.entries(LOADERS)) if (LAYERS[k].on && !map.getContainer().querySelector(".leaflet-popup")) f(LAYERS[k].group).catch(() => {}); }, 60_000);
 
 // Marks Blip puts on the map (mark_places), cleared with the bar's ✕ Clear.
@@ -1219,7 +1229,7 @@ function drawBar() {
   $("cityBar").innerHTML = [
     chip("brief", `📝 Brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     chip("emergency", `🚨 ${p.alerts}`, "Notify NYC alerts active now (the list has today's)", p.alerts ? "hot" : ""),
-    chip("incidents", `⚠ ${p.incidents}${p.severe ? ` <small>· ${p.severe} serious</small>` : ""}`, `${p.incidents} incidents now: ${p.severe} serious, ${p.corroborated} seen by 2+ independent sources`, p.severe ? "warm" : ""),
+    chip("incidents", `⚠ ${p.incidents}${p.severe ? ` <small>· ${p.severe} serious</small>` : ""}`, `Today's incidents as of ${p.incidentsAt ? hhmm(p.incidentsAt) : "now"} (updated every 15 minutes with the brief): ${p.severe} serious, ${p.likely} likely real (70%+), ${p.corroborated} seen by 2+ independent sources`, p.severe ? "warm" : ""),
     chip("closures", `🚧 ${p.closures}`, "Road closures, construction and permitted street events on now"),
     chip("floods", `🌊 ${p.flooding ? `${p.flooding} · ` : ""}${p.surgeFt != null ? `${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft` : "0"}`, "Street flooding now (FloodNet sensors) · harbor water at the Battery against the predicted tide (NOAA)", p.flooding ? "warm" : ""),
     chip("news", `📰 ${p.news?.n ?? 0}`, `Today's local news: ${p.news?.n ?? 0} stories, ${p.news?.placed ?? 0} placed on the map`),
@@ -1272,9 +1282,9 @@ function listHtml(act) {
   }
   if (act === "incidents" || act === "helicopters") {
     const all = cityData.incidents?.incidents ?? [], list = act === "helicopters" ? all.filter((c) => c.kind === "air:helicopter-orbit") : all;
-    return { title: act === "helicopters" ? `🚁 Helicopters circling <span class="muted">${list.length}</span>` : `⚠ Incidents <span class="muted">${all.filter((c) => c.sev >= 2).length} serious · ${all.length} in all · ${all.filter((c) => c.confidence > 1).length} confirmed by 2+ sources</span>`,
+    return { title: act === "helicopters" ? `🚁 Helicopters circling <span class="muted">${list.length}</span>` : `⚠ Today's incidents <span class="muted">as of ${pulseNow?.incidentsAt ? hhmm(pulseNow.incidentsAt) : "now"} · ${all.filter((c) => c.sev >= 2).length} serious · ${all.length} in all · ${all.filter((c) => (c.probability ?? 0) >= 0.7).length} likely real</span>`,
       points: list.filter((c) => c.sev >= 2).length ? list.filter((c) => c.sev >= 2) : list.slice(0, 1),
-      body: `<ul class="rows">${list.slice(0, 40).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${act === "helicopters" ? `<a href="${esc(c.events[0]?.url ?? "#")}">${esc(c.title)}</a>` : goLink("incidents", c.id, esc(c.title))}<span class="muted">${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}${c.hood || c.borough ? ` · ${esc(c.hood ?? c.borough)}` : ""}</span></li>`).join("")}</ul>${list.length > 40 ? `<p class="muted">The 40 most serious of ${list.length}; the rest are on the map.</p>` : ""}` };
+      body: `<ul class="rows">${list.slice(0, 40).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${act === "helicopters" ? `<a href="${esc(c.events[0]?.url ?? "#")}">${esc(c.title)}</a>` : goLink("incidents", c.id, esc(c.title))}<span class="muted">likely ${Math.round((c.probability ?? 0) * 100)}% · ${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}${c.hood || c.borough ? ` · ${esc(c.hood ?? c.borough)}` : ""}</span></li>`).join("")}</ul>${list.length > 40 ? `<p class="muted">The 40 most serious of ${list.length}; the rest are on the map.</p>` : ""}` };
   }
   if (act === "closures") {
     const list = (cityData.incidents?.planned ?? []).map((e) => ({ e, m: map.distance(here, [e.lat, e.lon]) })).sort((a, b) => a.m - b.m);
@@ -1401,8 +1411,18 @@ async function analyzeArea(view) {
     ${a.unusual.length ? `<p><b>📈 Unusual:</b><br>${a.unusual.slice(0, 3).map((u) => esc(u.text)).join("<br>")}</p>` : ""}
     ${a.news.length ? `<p><b>📰 Today's news here:</b></p><ul class="rows">${a.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="muted">${esc(n.outlet)} · ${ago(n.starts)}</span></li>`).join("")}</ul>` : ""}
     <p><b>📷 ${a.cameras.total} cameras</b>${a.cameras.video ? ` (${a.cameras.video} live video, ${a.cameras.hd} HD)` : ""}${a.cameras.best.length ? `: ${a.cameras.best.slice(0, 3).map((c) => `<a href="#" data-cam="${esc(c.id)}">${esc(c.name)}${c.h >= 720 ? " HD" : ""}</a>`).join(" · ")}` : ""}</p>
-` });
+<div id="areaSafety" class="muted">🛡 Loading the official public-safety record…</div>` });
   renderBrief();
+  const r = await getJSON(`/api/nyc/safety?s=${box.s.toFixed(5)}&w=${box.w.toFixed(5)}&n=${box.n.toFixed(5)}&e=${box.e.toFixed(5)}`).catch((e) => ({ error: e.message })), out = document.getElementById("areaSafety");
+  if (!out || areaNow !== a) return;
+  const d = (x) => (x ? new Date(x).toLocaleDateString([], { month: "short", day: "numeric" }) : "?");
+  seen.areaSafety = r.error ? null : r;
+  out.className = "";
+  out.innerHTML = r.error ? `<p class="muted">${esc(r.error)}</p>` : `<details><summary><b>🛡 Official public-safety record</b> <span class="muted">NYPD & FDNY open data, weeks to months late</span></summary>
+    <p><b>911 calls (NYPD), 90 days through ${d(r.calls911.through)}:</b> ${r.calls911.byType.slice(0, 8).map((t) => `${esc(t.type.toLowerCase())} <b>${t.n}</b>`).join(" · ") || "none"}</p>
+    <p><b>Crime complaints, 90 days through ${d(r.crimeComplaints.through)}:</b> ${r.crimeComplaints.byOffense.slice(0, 8).map((t) => `${esc(t.offense.toLowerCase())} <b>${t.n}</b>`).join(" · ") || "none"}</p>
+    <p><b>A year through ${d(r.shootings.through)}:</b> ${r.shootings.n} shooting incidents · <b>through ${d(r.crashes.through)}:</b> ${r.crashes.n} crashes, ${r.crashes.injured} injured, ${r.crashes.killed} killed</p>
+    <p><b>FDNY fires, 35 days through ${d(r.fdnyFires.through)}:</b> ${r.fdnyFires.n} (${r.fdnyFires.serious} beyond a first alarm)</p></details>`;
 }
 // ✨: the server runs it as a job (one look at 5 of the area's cameras, then the brief) and the page follows it. The job
 // lives outside the panel: closing the panel or opening another list doesn't lose it; reopening the area shows it, and
