@@ -946,7 +946,7 @@ const server = http.createServer(async (req, res) => {
       for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
       const b = boxOf((() => { try { return JSON.parse(raw || "{}"); } catch { return {}; } })());
       if (!b) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Zoom in on part of NYC first." }));
-      for (const [k, j] of briefJobs) if (j.at < Date.now() - 10 * 60_000) briefJobs.delete(k);
+      for (const [k, j] of briefJobs) if (j.at < Date.now() - 30 * 60_000) briefJobs.delete(k); // up to 15 camera looks: several minutes
       if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "The local AI is writing a few briefs already. Try again in a minute." }));
       const id = randomUUID(), job: BriefJob = { at: Date.now(), step: "Waiting for the local AI…" };
       briefJobs.set(id, job);

@@ -548,12 +548,21 @@ function areaFacts(a: Awaited<ReturnType<typeof area>>) {
   for (const n of a.news.slice(0, 5)) add(`News (${n.outlet}, ${hhmm(n.starts)}): ${n.title}`, n);
   return F;
 }
+/** Which of an area's cameras the brief looks at: 20% of them, at least 5 (or all, when there are fewer), at most 15
+ *  (each look is 5-35 s of the one local model that visitors wait for). Sharpest first, but at least 300 m apart while
+ *  that's possible, so the looks cover the area instead of one highway's row of cameras. */
+export function pickCameras<C extends { lat: number; lon: number; h?: number }>(pool: C[]) {
+  const want = Math.min(pool.length, 15, Math.max(5, Math.ceil(pool.length * 0.2))), best = [...pool].sort((x, y) => (y.h ?? 0) - (x.h ?? 0)), pick: C[] = [];
+  for (const c of best) if (pick.length < want && pick.every((p) => km(p, c) >= 0.3)) pick.push(c);
+  for (const c of best) if (pick.length < want && !pick.includes(c)) pick.push(c);
+  return pick;
+}
 /** A brief for one area, asked by a visitor (in the visitors' line, not the background lane): the store's facts, plus a
  *  one-sentence look at the area's best few traffic cameras by the local vision model, then the words. step() hears progress. */
 const LOOK = "In one sentence: is anything unusual happening, or anything that draws attention (an accident, emergency vehicles, a blocked lane, flooding, smoke, a crowd, a stopped bus)? If not, say what the traffic looks like.";
 export async function areaBrief(b: Box, step = (_: string) => {}) {
   const a = await area(b), F = areaFacts(a);
-  const cams = camerasNow().filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com").sort((x, y) => (y.h ?? 0) - (x.h ?? 0)).slice(0, 3);
+  const cams = pickCameras(camerasNow().filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com"));
   for (const [i, c] of cams.entries()) {
     step(`Looking at camera ${i + 1} of ${cams.length}: ${c.name}…`);
     const v = await inLine(() => inspectCamera(c.id, LOOK)).catch(() => null);

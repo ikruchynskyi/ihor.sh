@@ -655,8 +655,9 @@ export async function inspectCamera(id: string, question?: string) {
     ? `A live NYC traffic camera frame. ${question.slice(0, 300)} Answer in 1-2 sentences. Only the scene: don't describe or identify people, faces or license plates, and don't guess the time.`
     : "Analyze this live NYC traffic camera image. Provide a detailed 3-5 sentence description detailing vehicle and pedestrian movements, traffic flow, road conditions, and any hazards or emergency activity, along with the list of detected objects. Only describe the scene: don't describe or identify people, faces or license plates, and don't guess the time.";
   const res = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(90_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false,
-    options: { num_predict: 500, temperature: 0.2 }, ...(question ? {} : { format: SEEN }), messages: [
-      { role: "system", content: "You are an expert traffic camera vision system for New York City. Analyze the camera frame and provide a detailed, accurate JSON report strictly following the schema. In the description, provide 3 to 5 clear sentences describing the scene, movement of vehicles and pedestrians, road conditions, and any hazards. Never identify individual faces, people names, or license plates." },
+    // a question gets a short answer (1-2 sentences, ~100 tokens); the full report gets the long description
+    options: { num_predict: question ? 100 : 500, temperature: 0.2 }, ...(question ? {} : { format: SEEN }), messages: [
+      ...(question ? [] : [{ role: "system", content: "You are an expert traffic camera vision system for New York City. Analyze the camera frame and provide a detailed, accurate JSON report strictly following the schema. In the description, provide 3 to 5 clear sentences describing the scene, movement of vehicles and pedestrians, road conditions, and any hazards. Never identify individual faces, people names, or license plates." }]),
       { role: "user", content, images: [Buffer.from(await r.arrayBuffer()).toString("base64")] }
     ] }) });
   if (!res.ok) throw new Error(`vision model: HTTP ${res.status}`);

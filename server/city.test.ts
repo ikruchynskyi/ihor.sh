@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -61,4 +61,12 @@ save("311", [{ id: "a", kind: "311:Noise - Residential", sev: 0, lat: 40.71, lon
   { id: "c", kind: "311:HEAT/HOT WATER", sev: 0, lat: 40.71, lon: -73.96, starts: t, ends: t, title: "HEAT/HOT WATER: Entire Building" }], t);
 const x = explore({ query: "noise", lat: 40.71, lon: -73.96, r: 1, hours: 24 });
 assert.deepEqual([x.total, x.groups.length], [2, 2]);
+// The brief's cameras: 20% of the area's, at least 5 (all if fewer), at most 15, spread out before doubling up.
+const cam = (i: number, h = 240) => ({ lat: 40.7 + i * 0.004, lon: -74, h });
+assert.equal(pickCameras([cam(0), cam(1), cam(2)]).length, 3);
+assert.equal(pickCameras(Array.from({ length: 12 }, (_, i) => cam(i))).length, 5);
+assert.equal(pickCameras(Array.from({ length: 40 }, (_, i) => cam(i))).length, 8);
+assert.equal(pickCameras(Array.from({ length: 200 }, (_, i) => cam(i))).length, 15);
+const row = [cam(0, 720), { lat: 40.7001, lon: -74, h: 720 }, cam(5), cam(9), cam(13), cam(17)]; // two HD cameras 11 m apart
+assert.deepEqual(pickCameras(row).map((c) => +c.lat.toFixed(4)), [40.7, 40.72, 40.736, 40.752, 40.768]); // the second HD one waits: too close
 console.log("city.test.ts: OK");

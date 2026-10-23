@@ -1397,7 +1397,7 @@ async function analyzeArea(view) {
     ${a.unusual.length ? `<p><b>📈 Unusual:</b><br>${a.unusual.slice(0, 3).map((u) => esc(u.text)).join("<br>")}</p>` : ""}
     ${a.news.length ? `<p><b>📰 Today's news here:</b></p><ul class="rows">${a.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="muted">${esc(n.outlet)} · ${ago(n.starts)}</span></li>`).join("")}</ul>` : ""}
     <p><b>📷 ${a.cameras.total} cameras</b>${a.cameras.video ? ` (${a.cameras.video} live video, ${a.cameras.hd} HD)` : ""}${a.cameras.best.length ? `: ${a.cameras.best.slice(0, 3).map((c) => `<a href="#" data-cam="${esc(c.id)}">${esc(c.name)}${c.h >= 720 ? " HD" : ""}</a>`).join(" · ")}` : ""}</p>
-    <p class="actions"><button data-act="areabrief">✨ Brief this area</button> <button data-act="askblip">💬 Ask Blip</button> <span class="muted">the brief takes the local AI ~20–40 s</span></p><div id="areaBrief"></div>` });
+    <p class="actions"><button data-act="areabrief">✨ Brief this area</button> <button data-act="askblip">💬 Ask Blip</button> <span class="muted">the local AI looks at ${Math.min(a.cameras.total, 15, Math.max(5, Math.ceil(a.cameras.total * 0.2)))} of its ${a.cameras.total} cameras first: a few minutes</span></p><div id="areaBrief"></div>` });
 }
 // ✨: the server runs it as a job (a look at up to 3 of the area's cameras, then the brief), and the page follows it.
 async function areaBriefNow(btn) {
@@ -1408,7 +1408,7 @@ async function areaBriefNow(btn) {
   const start = await fetch("/api/nyc/area-brief", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(a.box) })
     .then(async (r) => ((r.headers.get("content-type") ?? "").includes("json") ? r.json() : { error: `The server answered ${r.status}. Try again in a minute.` })).catch((e) => ({ error: e.message }));
   let r = start.error ? start : { error: "The brief took too long. Try again in a minute." };
-  if (start.id) for (const t0 = Date.now(); Date.now() - t0 < 300_000; ) {
+  if (start.id) for (const t0 = Date.now(); Date.now() - t0 < 15 * 60_000; ) { // up to 15 camera looks, behind any visitors
     await new Promise((ok) => setTimeout(ok, 2000));
     const j = await getJSON(`/api/nyc/brief-job?id=${encodeURIComponent(start.id)}`).catch((e) => ({ error: e.message }));
     if (j.error || j.result) { r = j.error ? { error: j.error } : j.result; break; }
