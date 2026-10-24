@@ -39,12 +39,12 @@ const now = () => Math.floor(Date.now() / 1000);
 const local = (s?: string) => (s ? Math.floor(new Date(s).getTime() / 1000) || null : null);
 const localNow = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
 const UA = { "user-agent": "ihor.sh NYC map (+https://ihor.sh/nyc/)" };
-const get = async (url: string, headers: Record<string, string> = {}) => {
-  const r = await fetch(url, { headers: { ...UA, ...headers }, signal: AbortSignal.timeout(30_000) });
+const get = async (url: string, headers: Record<string, string> = {}, ms = 30_000) => {
+  const r = await fetch(url, { headers: { ...UA, ...headers }, signal: AbortSignal.timeout(ms) });
   if (!r.ok) throw new Error(`HTTP ${r.status} from ${new URL(url).host}`);
   return r;
 };
-const json = async (url: string, headers: Record<string, string> = {}) => (await get(url, headers)).json() as Promise<any>;
+const json = async (url: string, headers: Record<string, string> = {}, ms?: number) => (await get(url, headers, ms)).json() as Promise<any>;
 const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
 const strip = (h = "") => h.replace(/<[^>]+>/g, " ").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
   .replace(/&(\w+);/g, (m, e) => entities[e] ?? m).replace(/\s+/g, " ").trim();
@@ -203,6 +203,18 @@ export async function floodnetSensors() {
     .map((d) => ({ id: d.deployment_id, name: d.name, type: d.deploy_type, status: d.sensor_status, lon: d.location.coordinates[0], lat: d.location.coordinates[1] })) };
   return sensors.list;
 }
+/** Each sensor's usual flooding, from FloodNet's published flood log (aq7i-eu5q): how many floods in the last year and
+ *  how deep the deepest 10% were. Refreshed daily; matched to live sensors by name. */
+let floodNorm = { at: 0, map: new Map<string, { n: number; p90: number }>() };
+async function floodNorms() {
+  if (floodNorm.at > Date.now() - 86400_000) return floodNorm.map;
+  const rows: any[] = await soda("aq7i-eu5q", { $select: "sensor_name, max_depth_inches", $where: `flood_start_time > '${new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 19)}'`, $limit: "50000" });
+  const by = new Map<string, number[]>();
+  for (const r of rows) by.set(r.sensor_name, [...(by.get(r.sensor_name) ?? []), Number(r.max_depth_inches) || 0]);
+  const map = new Map<string, { n: number; p90: number }>();
+  for (const [name, d] of by) { d.sort((a, b) => a - b); map.set(name, { n: d.length, p90: d[Math.min(d.length - 1, Math.floor(d.length * 0.9))] }); }
+  return (floodNorm = { at: Date.now(), map }).map;
+}
 /** Water on the street now, from each sensor's last 15 minutes. Gently, it's a research API: all working sensors while
  *  it's raining, otherwise only the coastal ones (high tides flood those on dry days). FloodNet marks 4 and 12 inches. */
 async function floods() {
@@ -213,10 +225,12 @@ async function floods() {
   await Promise.all(Array.from({ length: 6 }, async () => {
     while (i < list.length) { const s = list[i++]; const d = await json(`${FLOODNET}/${s.id}/depth?${q}`).catch(() => null); if (d) depth.set(s.id, Math.max(0, ...d.depth_data.map((x: any) => Number(x.depth_proc_mm) || 0))); }
   }));
-  const at = now(), wetNow = list.filter((s) => (depth.get(s.id) ?? 0) >= 25);
+  const at = now(), wetNow = list.filter((s) => (depth.get(s.id) ?? 0) >= 25), norms = await floodNorms().catch(() => new Map<string, { n: number; p90: number }>());
   tx(() => {
-    save("floodnet", wetNow.map((s) => { const mm = depth.get(s.id)!; return { id: s.id, kind: "flood:street", sev: mm >= 305 ? 3 : mm >= 102 ? 2 : 1, lat: s.lat, lon: s.lon,
-      title: `Street flooding: ${(mm / 25.4).toFixed(1)} in of water at ${s.name}`, detail: { depthMm: mm, sensor: s.id, type: s.type }, url: "https://dataviz.floodnet.nyc/" }; }), at);
+    // a sensor that floods at least monthly (tides, mostly), no deeper than its usual deepest 10%: that's usual there, not an incident
+    save("floodnet", wetNow.map((s) => { const mm = depth.get(s.id)!, inch = mm / 25.4, norm = norms.get(s.name), usual = !!norm && norm.n >= 12 && inch <= norm.p90;
+      return { id: s.id, kind: usual ? "flood:usual" : "flood:street", sev: usual ? 0 : mm >= 305 ? 3 : mm >= 102 ? 2 : 1, lat: s.lat, lon: s.lon,
+        title: `Street flooding: ${inch.toFixed(1)} in of water at ${s.name}${usual ? ` (usual here: ${norm!.n} floods in the last year)` : ""}`, detail: { depthMm: mm, sensor: s.id, type: s.type, usual, floodsLastYear: norm?.n ?? null, usualDeepestIn: norm?.p90 ?? null }, url: "https://dataviz.floodnet.nyc/" }; }), at);
     for (const s of list) if (depth.has(s.id) && !wetNow.includes(s)) endOne.run(at, `floodnet:${s.id}`);
   });
   metric("floodnet.flooding", wetNow.length); metric("floodnet.checked", depth.size);
@@ -225,8 +239,8 @@ async function floods() {
 export const floodDepth = (id: string) => (db.prepare("select detail from events where id = ? and ends is null").get(`floodnet:${id}`) as { detail: string } | undefined);
 
 const SODA = "https://data.cityofnewyork.us/resource/";
-const soda = (id: string, q: Record<string, string>) => json(`${SODA}${id}.json?${new URLSearchParams(q)}`,
-  process.env.SOCRATA_KEY_ID ? { Authorization: "Basic " + Buffer.from(`${process.env.SOCRATA_KEY_ID}:${process.env.SOCRATA_KEY_SECRET}`).toString("base64") } : {});
+const soda = (id: string, q: Record<string, string>, ms?: number) => json(`${SODA}${id}.json?${new URLSearchParams(q)}`,
+  process.env.SOCRATA_KEY_ID ? { Authorization: "Basic " + Buffer.from(`${process.env.SOCRATA_KEY_ID}:${process.env.SOCRATA_KEY_SECRET}`).toString("base64") } : {}, ms);
 /** Permitted street events on now that close streets, curb lanes or sidewalks (CECM's NYC Permitted Event Information). */
 async function permits() {
   const t = localNow(), rows: any[] = await soda("tvpp-9vvx", { $where: `start_date_time <= '${t}' AND end_date_time >= '${t}' AND street_closure_type != 'N/A'`, $limit: "2000" });
@@ -418,7 +432,7 @@ async function helicopters() {
 }
 
 // ---------- incidents: reports of one thing, merged, and how many independent sources agree ----------
-const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
+const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area|flood:usual)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
 const AREA_WIDE = ["notify", "nws", "air"]; // alerts for a whole area; anything else without a place just couldn't be placed
 export type Incident = { id: string; title: string; kind: string; sev: number; lat: number; lon: number; starts: number; sources: string[]; confidence: number; events: Ev[]; probability?: number; why?: string[]; rough?: boolean };
 // What an event is about, for merging: a fire alert, smoke on a camera, FDNY and a fire story are one family
@@ -558,7 +572,8 @@ async function refreshUnusual() {
   const behind = db.prepare(`select lat, lon, title, starts from events where source = ? and kind = ? and starts > ? and starts <= ? and cast(round(lat / ${CELL}) as int) = ? and cast(round(lon / ${CELL}) as int) = ? limit 60`);
   const count = (source: string, from: number, to: number) => db.prepare(`select kind, cast(round(lat / ${CELL}) as int) y, cast(round(lon / ${CELL}) as int) x, count(*) n, avg(lat) lat, avg(lon) lon
     from events where source = ? and starts > ? and starts <= ? and lat is not null group by kind, y, x`).all(source, from, to) as { kind: string; y: number; x: number; n: number; lat: number; lon: number }[];
-  for (const [source, span] of [["311", 86400], ["511ny", 3 * 3600], ["notify", 3 * 3600]] as const) {
+  out.push(...(await unusual311().catch((e) => { notes.push(`311: ${(e as Error).message}`); return []; })));
+  for (const [source, span] of [["511ny", 3 * 3600], ["notify", 3 * 3600]] as const) { // the live feeds: against their own last 4 weeks
     // since when we have it: 311 is backfilled; the live feeds only since we started listening (their own start times can be weeks old)
     const first = (db.prepare(`select min(${source === "311" ? "starts" : "first_seen"}) t from events where source = ?`).get(source) as { t: number | null }).t, end = source === "311" ? Date.parse(latest311() ?? "") / 1000 : now();
     if (!first || !end || first > end - 28 * 86400 - span) { notes.push(`${source}: needs 4 weeks of history, from ${first ? new Date((first + 28 * 86400 + span) * 1000).toISOString().slice(0, 10) : "when its data arrives"}`); continue; }
@@ -580,13 +595,63 @@ async function refreshUnusual() {
 export const anomalies = () => unusual.list;
 export const anomaliesNote = () => unusual.note;
 
+/** P(X ≥ n) for a Poisson count with mean lam (summed upward from n in log space, so big counts don't underflow). */
+export function poissonTail(n: number, lam: number) {
+  if (n <= 0) return 1;
+  if (lam <= 0) return 0;
+  let logp = -lam + n * Math.log(lam);
+  for (let k = 2; k <= n; k++) logp -= Math.log(k);
+  let term = Math.exp(logp), sum = 0;
+  for (let k = n; k < n + 100_000; k++) { sum += term; term *= lam / (k + 1); if (term < 1e-17 * sum) break; }
+  return Math.min(1, sum);
+}
+/** Benjamini–Hochberg: each test's q-value (the false discovery rate at which it would still count). */
+export function bh(ps: number[]) {
+  const order = ps.map((p, i) => [p, i] as const).sort((a, b) => a[0] - b[0]), q = Array(ps.length).fill(1);
+  let min = 1;
+  for (let r = order.length - 1; r >= 0; r--) { min = Math.min(min, (order[r][0] * ps.length) / (r + 1)); q[order[r][1]] = min; }
+  return q;
+}
+let seasonal = { day: "", map: new Map<string, number[]>() };
+/** 311's unusual counts, with seasons: the newest complete published day, per complaint type and zip code, against
+ *  expected = the zip's own rate over the 28 days before × how much that type usually changes from those 28 days to
+ *  this week of the year (citywide, the two years before; capped 0.5–3×). The zip's recent rate carries today's
+ *  categories (311 renamed and moved types: "Water Maintenance" went from 0.6 a day in Oct 2025 to 153 a day in Oct 2026);
+ *  the yearly ratio carries the season (heat complaints rise every October). Unusual: at least 5, at least twice the
+ *  expected, and surviving Benjamini–Hochberg at 5% across every (type × zip) tested that day. */
+async function unusual311() {
+  const [{ m }] = await soda("erm2-nwe9", { $select: "max(created_date) as m" }), day = new Date(Date.parse(String(m).slice(0, 10) + "T12:00:00Z") - 86400_000).toISOString().slice(0, 10);
+  const shift = (d: string, days: number) => new Date(Date.parse(d + "T12:00:00Z") + days * 86400_000).toISOString().slice(0, 10);
+  // Socrata's answer time varies (a small grouped query took 1.7 s or 25.6 s): 2 minutes each, and the seasonal part once a day
+  const q311 = (from: string, to: string, by: string, extra = "") => soda("erm2-nwe9", { $select: `${by}, count(*) as n${extra}`, $where: `created_date >= '${from}T00:00:00' AND created_date < '${to}T00:00:00'${by.includes("zip") ? " AND incident_zip IS NOT NULL" : ""}`, $group: by, $limit: "50000" }, 120_000);
+  if (seasonal.day !== day) {
+    const years = await Promise.all([1, 2].flatMap((y) => [q311(shift(day, -365 * y - 3), shift(day, -365 * y + 4), "complaint_type"), q311(shift(day, -365 * y - 31), shift(day, -365 * y - 3), "complaint_type")]));
+    const map = new Map<string, number[]>();
+    for (let y = 0; y < 2; y++) { const week = new Map((years[2 * y] as any[]).map((r) => [r.complaint_type, Number(r.n) / 7])), before = new Map((years[2 * y + 1] as any[]).map((r) => [r.complaint_type, Number(r.n) / 28]));
+      for (const [t, w] of week) { const b = before.get(t); if (b && b >= 1 && w >= 1) map.set(t, [...(map.get(t) ?? []), w / b]); } } // too rare a type to say: no seasonal change
+    seasonal = { day, map };
+  }
+  const season = seasonal.map;
+  const [now, recent] = await Promise.all([q311(day, shift(day, 1), "complaint_type, incident_zip", ", avg(latitude) as lat, avg(longitude) as lon, count(distinct latitude) as spots"), q311(shift(day, -28), day, "complaint_type, incident_zip")]);
+  const lately = new Map((recent as any[]).map((r) => [`${r.complaint_type}|${r.incident_zip}`, Number(r.n) / 28]));
+  const ratio = (t: string) => { const r = season.get(t); return r ? Math.min(3, Math.max(0.5, r.reduce((a, x) => a + x, 0) / r.length)) : 1; };
+  // reports from at least 3 different places: six complaints from one building are one tenant's problem, not the area's
+  const tests = (now as any[]).filter((r) => Number(r.n) >= 5 && r.lat && Number(r.spots) >= 3).map((r) => { const base = lately.get(`${r.complaint_type}|${r.incident_zip}`) ?? 0, f = ratio(r.complaint_type), lam = Math.max(base * f, 0.2);
+    return { r, lam, base, f, n: Number(r.n), p: poissonTail(Number(r.n), lam) }; });
+  const q = bh(tests.map((t) => t.p)), at = Date.parse(day + "T00:00:00") / 1000, dayName = new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const found = tests.map((t, i) => ({ ...t, q: q[i] })).filter((t) => t.q < 0.05 && t.n >= 2 * t.lam).sort((a, b) => a.q - b.q || b.n / b.lam - a.n / a.lam).slice(0, 25);
+  return found.map(({ r, lam, base, f, n, q }) => { const lat = Number(r.lat), lon = Number(r.lon), hood = neighborhood(lat, lon), kind = `311:${r.complaint_type}`;
+    return { kind, n, usual: +lam.toFixed(1), lat, lon, place: `${hood ?? "zip"} (${r.incident_zip})`, what: r.complaint_type, q: +q.toPrecision(2),
+      points: db.prepare("select lat, lon, title, starts from events where source = '311' and kind = ? and starts >= ? and starts < ? and lat between ? and ? and lon between ? and ? limit 60").all(kind, at, at + 86400, lat - 0.03, lat + 0.03, lon - 0.04, lon + 0.04) as { lat: number; lon: number; title: string; starts: number }[],
+      text: `${n} 311 reports (from ${r.spots} places) of "${r.complaint_type}" on ${dayName} in ${hood ? `${hood}, ` : ""}zip ${r.incident_zip}, against ${lam.toFixed(1)} expected (${base.toFixed(1)} a day there over the 28 days before${Math.abs(f - 1) >= 0.1 ? `, × ${f.toFixed(1)} for this time of year` : ""}; q = ${q.toPrecision(2)})` }; });
+}
 const newsCount = () => db.prepare("select count(*) n, sum(lat is not null) placed from events where source = 'news' and kind != 'news-elsewhere' and starts >= ?").get(startOfToday()) as { n: number; placed: number | null };
 // ---------- the HUD's numbers ----------
 export function pulse() {
   const at = now(), all = active(at), inc = incidents(), m = (k: string) => latest(k)?.value ?? null;
   return { at, incidentsAt: incidentsAt(), alerts: all.filter((e) => e.source === "notify").length, weather: all.filter((e) => e.source === "nws").map((e) => e.title), incidents: inc.length,
     severe: inc.filter((c) => c.sev >= 2).length, corroborated: inc.filter((c) => c.confidence >= 2).length, likely: inc.filter((c) => (c.probability ?? 0) >= 0.7).length,
-    closures: all.filter((e) => /^road:(closure|construction)$/.test(e.kind) || e.source === "permits").length, flooding: all.filter((e) => e.source === "floodnet").length,
+    closures: all.filter((e) => /^road:(closure|construction)$/.test(e.kind) || e.source === "permits").length, flooding: all.filter((e) => e.kind === "flood:street").length, floodingUsual: all.filter((e) => e.kind === "flood:usual").length,
     helicopters: all.filter((e) => e.source === "adsb").length, surgeFt: m("battery.surge"), aqi: m("air.aqi"), outages: m("coned.outages"), customersOut: m("coned.customers"),
     unusual: unusual.list.length, filmNewest: m("film.newest"), news: newsCount() };
 }

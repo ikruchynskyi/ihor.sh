@@ -921,7 +921,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/nyc/flood-sensors") {
       const checked = latest("floodnet.checked"), rain = latest("rain.mm");
       return cityJson({ checkedAt: checked?.at ?? null, checked: checked?.value ?? 0, raining: !!rain && rain.value > 0, surgeFt: latest("battery.surge")?.value ?? null,
-        sensors: (await floodnetSensors().catch(() => [])).map((s) => ({ ...s, depthMm: JSON.parse(floodDepth(s.id)?.detail ?? "null")?.depthMm ?? null })) }, 120);
+        sensors: (await floodnetSensors().catch(() => [])).map((s) => { const d = JSON.parse(floodDepth(s.id)?.detail ?? "null"); return { ...s, depthMm: d?.depthMm ?? null, usual: !!d?.usual, floodsLastYear: d?.floodsLastYear ?? null }; }) }, 120);
     }
     if (url.pathname === "/api/nyc/incidents") {
       const planned = active().filter((e) => e.lat != null && /^(road:(closure|construction|event)|permit:|film)/.test(e.kind)).map(view);

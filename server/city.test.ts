@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR, poissonTail, bh } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -82,4 +82,9 @@ assert.equal(likelihood({ events: [at(ev("f", "notify", "alert:fire", 3, 40.8), 
 assert.equal(likelihood({ events: [at(ev("f", "notify", "alert:fire", 3, 40.8), T), at(ev("w", "511ny", "road:waze-hazard-on-the-road", 0, 40.8), T)] }, pri, T).probability, 0.98);
 assert.equal(likelihood({ events: [at(ev("w", "511ny", "road:waze-minor-accident", 1, 40.8), T - 7200)] }, pri, T).probability, 0.15); // 0.6 × ½ × ½
 assert.equal(likelihood({ events: [at(ev("w1", "511ny", "road:waze-minor-accident", 1, 40.8), T), at(ev("w2", "511ny", "road:waze-minor-accident", 1, 40.8), T)] }, pri, T).probability, 0.6); // two drivers are one witness
+// Poisson tails and Benjamini–Hochberg, against hand values.
+assert.ok(Math.abs(poissonTail(1, 1) - (1 - Math.exp(-1))) < 1e-12);
+assert.ok(Math.abs(poissonTail(5, 1) - 0.0036598468) < 1e-9);
+assert.ok(poissonTail(400, 100) > 0 && poissonTail(400, 100) < 1e-60); // far tail, no underflow to 0 or NaN
+assert.deepEqual(bh([0.01, 0.04, 0.03, 0.5]).map((x) => +x.toFixed(4)), [0.04, 0.0533, 0.0533, 0.5]);
 console.log("city.test.ts: OK");

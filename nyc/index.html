@@ -1211,7 +1211,7 @@ async function loadFloodSensors(g) {
   g.clearLayers();
   for (const f of d.sensors) {
     const mm = f.depthMm, wet = mm != null;
-    mark("floods", f.id, dot(f.lat, f.lon, wet ? (mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? 7 : 3.5)).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
+    mark("floods", f.id, dot(f.lat, f.lon, wet ? (f.usual ? "#a5d8ff" : mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? (f.usual ? 5 : 7) : 3.5)).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>${f.usual ? ` <span class="muted">· usual here: ${f.floodsLastYear} floods in the last year</span>` : ""}` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
   }
   const wet = d.sensors.filter((f) => f.depthMm != null).length;
   seen.floods = { sensors: d.sensors.length, flooding: wet, surgeFt: d.surgeFt };
