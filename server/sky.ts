@@ -210,9 +210,11 @@ export function mapillaryGraph(path: string, query: URLSearchParams) {
   p.catch(() => graphCache.delete(k));
   return p;
 }
-/** The best Mapillary photo of a point within ~100 m (the middle of a big block is that far from a street): near, looking at it (a 360° photo always is), newer. */
+/** The best Mapillary photo of a point within ~100 m (the middle of a big block is that far from a street), or ~300 m
+ *  when there's none (a park, the waterfront): near, looking at it (a 360° photo always is), newer. */
 export async function photoNear(lat: number, lon: number) {
-  const list = await streetPhotos(lat - 0.0009, lon - 0.0012, lat + 0.0009, lon + 0.0012);
+  let list = await streetPhotos(lat - 0.0009, lon - 0.0012, lat + 0.0009, lon + 0.0012);
+  if (!list.length) list = await streetPhotos(lat - 0.0027, lon - 0.0036, lat + 0.0027, lon + 0.0036);
   const toward = (p: { lat: number; lon: number }) => (Math.atan2((lon - p.lon) * Math.cos((lat * Math.PI) / 180), lat - p.lat) * 180 / Math.PI + 360) % 360;
   const off = (p: { lat: number; lon: number; angle: number | null; pano: boolean }) => (p.pano || p.angle == null ? 0 : Math.abs(((p.angle - toward(p) + 540) % 360) - 180));
   const score = (p: { lat: number; lon: number; at: number; angle: number | null; pano: boolean }) => km(p, { lat, lon }) * 1000 + (Date.now() - p.at) / (365 * 864e5) * 5 + Math.max(0, off(p) - 30) * 0.5; // 5 m per year of age; 15 m per 30° looking away

@@ -2145,24 +2145,28 @@ async function showHere(ll, title = "") {
   const head = title ? `<b>📍 ${esc(title)}</b><br>` : "";
   const dir = `<div class="here-dir"><button data-dir="tFrom">↱ Directions from here</button> <button data-dir="tTo">to here</button></div>`;
   const at = (hereAt = { ll, label: title });
-  const p = L.popup({ maxWidth: 340 }).setLatLng(ll).setContent(`${head}Looking up…`).openOn(map);
+  // The content is an element, not HTML text: popup.update() re-renders text content from scratch, which wiped the
+  // street photo the moment it was put in; an element keeps what's added to it later (and its click handlers).
+  const body = document.createElement("div"), show = (html) => { body.innerHTML = html; p.setContent(body); };
+  const p = L.popup({ maxWidth: 340 }).setLatLng(ll).openOn(map);
+  show(`${head}Looking up…`);
   const phP = getJSON(`/api/nyc/photo-near?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null); // alongside the address
   const d = await getJSON(`/api/nyc/point?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null);
   const photoBox = `<div class="here-photo muted">📸 looking for a street photo…</div>`; // the first look in an area can take several seconds
-  if (!d?.found) p.setContent(`${head}No NYC address found here.${dir}${photoBox}`);
+  if (!d?.found) show(`${head}No NYC address found here.${dir}${photoBox}`);
   else {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
   at.label ||= d.address;
-  p.setContent(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${photoBox}
+  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
-  p.getElement()?.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
+  body.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   }
-  // the best street photo of this spot (Mapillary, within ~100 m, looking at it); a click opens it
+  // the best street photo of this spot (Mapillary, within ~100 m, or ~300 m if none, looking at it); a click opens it
   const ph = await phP;
-  const box = p.getElement()?.querySelector(".here-photo");
-  if (box && !ph) { box.textContent = "No street photo within ~100 m."; p.update(); }
+  const box = body.querySelector(".here-photo");
+  if (box && !ph) { box.textContent = "No street photo within ~300 m."; p.update(); }
   if (ph && box) {
     photoById.set(ph.id, ph);
     box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;
