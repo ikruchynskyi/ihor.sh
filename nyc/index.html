@@ -193,6 +193,8 @@
     .cam img, .cam video, .cam iframe { display: block; flex: 1; min-height: 0; width: 100%; object-fit: contain; background: #000; pointer-events: none; border: 0; }
     .cam iframe { pointer-events: auto; } /* YouTube's own controls: sound, quality */
     /* between the side panel and Blip on wide screens; under the top controls on phones, where the panel sits at the bottom */
+    [hidden] { display: none !important; } /* #cityBrief and friends set display, which otherwise beats the hidden attribute */
+    .here-photo img { width: 100%; height: 140px; object-fit: cover; display: block; } /* a fixed height: the popup's size is known before the photo loads */
     .cam-foot { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--line); font-size: .85em; }
     .nearbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 8px 0 4px; }
     #nearBox ul { margin: 4px 0 0; padding-left: 0; list-style: none; max-height: 220px; overflow: auto; }
@@ -218,7 +220,7 @@
     #cityBar button.warm { border-color: #f08c00 !important; } #cityBar button.plain { color: var(--muted) !important; }
     #cityBrief { pointer-events: auto; max-width: 480px; max-height: 50vh; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.4); font: 13px/1.45 system-ui, -apple-system, sans-serif; }
     #cityBrief .ph { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); font-weight: 600; }
-    #cityBrief .ph .muted { font-weight: 400; } #cityBrief .pbtn { margin-left: auto; display: flex; gap: 2px; } #cityBrief .pbtn button { font-size: 16px !important; padding: 0 6px !important; }
+    #cityBrief .ph .muted { font-weight: 400; } #cityBrief .pbtn { margin-left: auto; display: flex; gap: 2px; } #cityBrief .pbtn button { font-size: 16px !important; padding: 0 6px !important; } #cityBrief .pbtn .unpin { font: 600 12px/1.6 var(--body-font, system-ui, sans-serif) !important; text-transform: none !important; white-space: nowrap; }
     #cityBrief .pb { overflow: auto; padding: 4px 10px 8px; } #cityBrief.min .pb { display: none; } #cityBrief.min .pbtn [data-act="fold"] { transform: rotate(180deg); }
     #cityBrief ul { padding-left: 16px; margin: 6px 0; } #cityBrief li { margin: 0 0 6px; } #cityBrief p { margin: 6px 0; } #cityBrief sup { cursor: help; color: var(--muted); } #cityBrief ol { padding-left: 18px; font-size: 12px; }
     #cityBrief ul.rows { list-style: none; padding: 0; } #cityBrief ul.rows li { display: grid; grid-template-columns: auto 1fr; column-gap: 7px; padding: 5px 0; margin: 0; border-bottom: 1px solid var(--line); }
@@ -1007,7 +1009,7 @@ async function openPhoto(p) {
   cam.id = `m${p.id}`; // the window stays "cam-mly"; ✨ upscales the photo you're on
   const w = document.getElementById("cam-mly"), box = Object.assign(document.createElement("div"), { className: "mlyview" });
   w.querySelector("img").replaceWith(box);
-  Object.assign(w.style, { width: `${Math.min(640, innerWidth - 20)}px`, height: `${Math.min(460, innerHeight - 100)}px` });
+  Object.assign(w.style, { width: `${Math.min(640, innerWidth - 20)}px`, height: `${Math.min(460, innerHeight - 100)}px` }); camsInView();
   w.querySelector("button.x").addEventListener("click", () => { mly?.remove(); mly = null; mlyMarker?.remove(); mlyMarker = null; seen.photo = null; });
   const M = await loadMly().catch(() => null);
   if (!document.body.contains(w)) return; // closed meanwhile
@@ -1101,6 +1103,18 @@ $("nearOff").onclick = () => { near = null; nearLayer.clearLayers(); seen.near =
 
 // "Nearest traffic camera" from anything with a place: 311 reports, events, low aircraft…
 const camLists = new Map(); // per area ("" = NYC)
+// The best street photo near a point (Mapillary, server/sky.ts photoNear), asked once per ~10 m spot. Every popup on a
+// place, the incident drawer and "what's here" show it; a click opens the street viewer.
+const photos = new Map(); // "lat,lon" → { v: photo | null (none near) | undefined (still looking), p: promise }
+function photoAt(lat, lon) {
+  const k = `${(+lat).toFixed(4)},${(+lon).toFixed(4)}`;
+  let e = photos.get(k);
+  if (!e) { e = {}; e.p = getJSON(`/api/nyc/photo-near?lat=${(+lat).toFixed(6)}&lon=${(+lon).toFixed(6)}`).catch(() => null).then((ph) => (e.v = ph ?? null)); photos.set(k, e); }
+  return e;
+}
+const photoHtml = (ph) => ph === undefined ? "📸 looking for a street photo…" : !ph ? "No street photo within ~300 m."
+  : (photoById.set(ph.id, ph), `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the street view" style="display:block;width:100%;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`);
+const dirBtns = (lat, lon) => `<div class="here-dir"><button data-dir="tFrom" data-ll="${(+lat).toFixed(6)},${(+lon).toFixed(6)}">↱ Directions from here</button> <button data-dir="tTo" data-ll="${(+lat).toFixed(6)},${(+lon).toFixed(6)}">to here</button></div>`;
 const camBtn = (lat, lon) => `<button class="linkish" data-near="${(+lat).toFixed(5)},${(+lon).toFixed(5)}">📷 nearest camera</button>`;
 async function nearestCam(lat, lon) {
   const inCity = lat > 40.4 && lat < 41 && lon > -74.3 && lon < -73.6, q = inCity ? "" : `lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`;
@@ -1115,17 +1129,24 @@ document.addEventListener("click", async (e) => {
   const [la, lo] = b.dataset.near.split(",").map(Number);
   const c = await nearestCam(la, lo); if (c) openCam(c);
 });
-// Every popup on the map gets the button (a station, a bike dock, a ferry stop, an outage, a report, an address, a
-// restaurant…): hooked where Leaflet renders popup content, so it also survives a popup that fills in later.
+// Every popup about a place (a station, a bike dock, a ferry stop, an outage, a report, a news story, a restaurant…) gets
+// its street photo, directions from/to it and the nearest camera: hooked where Leaflet renders popup content, so it also
+// survives a popup that fills in later. Not on moving things (their popups don't auto-pan), cameras, or outside the city.
 {
   const render = L.Popup.prototype._updateContent;
   L.Popup.prototype._updateContent = function () {
     render.call(this);
     if (innerWidth < 700) { this.options.maxWidth = Math.min(this.options.maxWidth ?? 300, innerWidth - 70); this.options.autoPanPaddingBottomRight = L.point(10, ($("panel")?.offsetHeight ?? 0) + 16); } // phones: fit the screen, stay above the sheet
     const node = this._contentNode, ll = this.getLatLng?.();
-    if (!node || !ll || node.querySelector("[data-near], .iss-live") || this._source?.options?.icon?.options?.className === "cam-icon") return; // not on cameras, nor in space
+    if (!node || !ll || node.querySelector(".iss-live") || this._source?.options?.icon?.options?.className === "cam-icon") return; // not on cameras, nor in space
     if (/^(Loading…|Looking up…|Couldn't|That train|That bus|No NYC address)/.test(node.textContent.trim())) return;
-    node.insertAdjacentHTML("beforeend", `<div class="cam-foot">${camBtn(ll.lat, ll.lng)}</div>`);
+    const place = this.options.autoPan !== false && NYC.pad(0.2).contains(ll);
+    if (place && !node.querySelector(".here-photo")) {
+      const e = photoAt(ll.lat, ll.lng);
+      node.insertAdjacentHTML("beforeend", `<div class="here-photo muted">${photoHtml(e.v)}</div>`);
+      if (e.v === undefined) e.p.then(() => this.isOpen() && this.update()); // re-rendered with the photo in (update() re-pans too)
+    }
+    node.insertAdjacentHTML("beforeend", `<div class="cam-foot">${node.querySelector("[data-near]") ? "" : camBtn(ll.lat, ll.lng)}${place && !node.querySelector(".here-dir") ? dirBtns(ll.lat, ll.lng) : ""}</div>`);
   };
 }
 
@@ -1297,7 +1318,9 @@ function drawBar() {
   if (!p) return;
   const open = !$("cityBrief").hidden && $("cityBrief").dataset.what;
   const chip = (act, label, title, cls = "") => `<button class="${cls}" title="${esc(title)}" data-act="${act}" aria-pressed="${open === act}">${label}</button>`;
-  const z = watched(), anyOn = CITY_LAYERS.some((k) => LAYERS[k].on) || aiMarks.getLayers().length > 0;
+  const z = watched(), anyOn = CITY_LAYERS.some((k) => LAYERS[k].on) || aiMarks.getLayers().length > 0 || panelMarks.getLayers().length > 0;
+  const unpin = $("cityBrief").querySelector('[data-act="unpin"]');
+  if (unpin) unpin.hidden = !(panelMarks.getLayers().length || owned.size);
   $("cityBar").innerHTML = [
     chip("brief", `📝 Brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     chip("emergency", `🚨 ${p.alerts}`, "Notify NYC alerts active now (the list has today's)", p.alerts ? "hot" : ""),
@@ -1323,11 +1346,13 @@ const goLink = (layer, id, text) => `<a href="#" data-go="${esc(`${layer}|${id}`
 function showPanel(what, html) {
   const box = $("cityBrief");
   box.dataset.what = what; box.hidden = false; box.classList.remove("min");
-  box.innerHTML = `<div class="ph">${html.title}<span class="pbtn"><button class="linkish" data-act="fold" title="Fold or unfold the list">▾</button><button class="linkish" data-act="close" title="Close (and take its markers off)">×</button></span></div><div class="pb">${html.body}</div>`;
+  box.innerHTML = `<div class="ph">${html.title}<span class="pbtn"><button class="linkish unpin" data-act="unpin" title="Take this list's markers off the map (× only closes the list)" hidden>Clear</button><button class="linkish" data-act="fold" title="Fold or unfold the list">▾</button><button class="linkish" data-act="close" title="Close the list (its markers stay until you clear them)">×</button></span></div><div class="pb">${html.body}</div>`;
   drawBar();
 }
-function closePanel() {
-  $("cityBrief").hidden = true; panelMarks.clearLayers();
+// × closes the list and leaves its markers; "Clear markers" (in the list) or the bar's ✕ Clear take them off.
+function closePanel() { $("cityBrief").hidden = true; drawBar(); }
+function unpinPanel() {
+  panelMarks.clearLayers();
   for (const k of owned) toggle(k, false);
   owned.clear(); drawBar();
 }
@@ -1387,7 +1412,8 @@ async function openList(act) {
   const box = $("cityBrief");
   if (!box.hidden && box.dataset.what === act) return closePanel(); // the same chip again: close
   for (const k of owned) if (k !== CHIP_LAYER[act]) toggle(k, false); // the previous list's layer goes off
-  owned.clear(); panelMarks.clearLayers();
+  const mine = owned.has(CHIP_LAYER[act]); // still on from this list, closed with ×: still this list's to clear
+  owned.clear(); if (mine) owned.add(CHIP_LAYER[act]); panelMarks.clearLayers();
   showPanel(act, { title: "Loading…", body: "" });
   if (act === "helicopters") { cityData.incidents = await getJSON("/api/nyc/incidents").catch(() => cityData.incidents); if (!LAYERS.aircraft.on) { owned.add("aircraft"); toggle("aircraft", true); } }
   else if (CHIP_LAYER[act]) {
@@ -1420,7 +1446,7 @@ function showPins(points, label) {
   if (!pts.length) return;
   const mid = [pts.reduce((a, p) => a + p.lat, 0) / pts.length, pts.reduce((a, p) => a + p.lon, 0) / pts.length];
   if (label) L.marker(mid, { icon: L.divIcon({ className: "ai-mark", html: `<span>${esc(label)}</span>`, iconSize: null }), interactive: false, zIndexOffset: 1000 }).addTo(panelMarks);
-  $("cityBrief").classList.add("min");
+  $("cityBrief").classList.add("min"); drawBar();
   if (pts.length === 1) { map.setView(mid, Math.max(map.getZoom(), 16), { animate: false }); map.panBy([size.x / 2 - (f.left + f.right) / 2, size.y / 2 - (f.top + f.bottom) / 2], { animate: false }); }
   else map.fitBounds(L.latLngBounds(pts.map((p) => [p.lat, p.lon])), { paddingTopLeft: [f.left, f.top], paddingBottomRight: [size.x - f.right, size.y - f.bottom], maxZoom: 16 });
 }
@@ -1448,6 +1474,7 @@ $("cityBar").addEventListener("click", (e) => {
 $("cityBrief").addEventListener("click", (e) => {
   const t = e.target, box = $("cityBrief");
   if (t.dataset.act === "close") return closePanel();
+  if (t.dataset.act === "unpin") return unpinPanel();
   if (t.dataset.act === "fold") return box.classList.toggle("min");
   const go = t.closest("[data-go]")?.dataset.go;
   if (go) { e.preventDefault(); const [layer, id] = go.split(/\|(.*)/s), c = layer === "incidents" && cityData.incidents?.incidents.find((x) => x.id === id);
@@ -1482,6 +1509,7 @@ function openDetail(c) {
     ${reports.length ? `<h4>Reports</h4><ul>${reports.map((e) => `<li><b>${esc(srcName(e.source))}</b> ${hhmm(e.starts)}: ${esc(e.title)}${e.text ? `<br><small>${esc(e.text.slice(0, 260))}</small>` : ""}${e.url?.startsWith("http") ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">source</a>` : ""}</li>`).join("")}</ul>` : ""}
     ${news.length ? `<h4>In the news</h4><ul>${news.map((e) => `<li><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a> <span class="muted">${esc(e.outlet ?? "")} ${hhmm(e.starts)}</span></li>`).join("")}</ul>` : ""}
     ${c.checkedBy?.length ? `<h4>Camera checks (local AI)</h4><ul>${c.checkedBy.map((v) => `<li>${esc(v.title)} <span class="muted">${hhmm(v.starts)}</span></li>`).join("")}</ul>` : ""}
+    ${c.rough ? "" : `<div class="here-photo muted" id="dphoto">${photoHtml(photoAt(c.lat, c.lon).v)}</div>${dirBtns(c.lat, c.lon)}`}
     <div id="dcams"></div>
     <div class="acts"><button data-dact="ask">💬 Ask Blip</button><button data-dact="near">📍 Within 400 m</button><button data-dact="area">🔎 This area</button><button data-dact="watch">👁 Watch here</button></div></div>`;
   d.hidden = false;
@@ -1490,6 +1518,7 @@ function openDetail(c) {
   map.panBy([size.x / 2 - (f.left + f.right) / 2, size.y / 2 - (f.top + f.bottom) / 2], { animate: false });
   const ping = L.circleMarker([c.lat, c.lon], { radius: 26, color: "#fff", weight: 3, fill: false, className: "city-ping", interactive: false }).addTo(map);
   setTimeout(() => ping.remove(), 2600);
+  if (!c.rough) { const e = photoAt(c.lat, c.lon); e.p.then(() => { const b = document.getElementById("dphoto"); if (b && detailNow === c) b.innerHTML = photoHtml(e.v); }); }
   // the nearest cameras, once the camera list is in (right after a restart it waits for the stream checks)
   (camsCache ??= getJSON("/api/nyc/cameras")).catch(() => []).then((l) => {
     const cams = l.map((k) => ({ k, m: map.distance([c.lat, c.lon], [k.lat, k.lon]) })).filter((o) => o.m <= 600 && !o.k.youtube).sort((a, b) => a.m - b.m).slice(0, 4), out = document.getElementById("dcams");
@@ -1693,7 +1722,7 @@ function openCam(c) {
     ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(c.youtube)}?autoplay=1&mute=1&playsinline=1" title="Live video: ${esc(c.name)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`
     : c.video ? `<video muted autoplay playsinline poster="${esc(c.image)}" aria-label="Live video: ${esc(c.name)}"></video>`
     : `<img alt="${c.static ? "Street photo" : "Live camera"}: ${esc(c.name)}" src="${esc(frame())}">`}`;
-  $("cams").append(w);
+  $("cams").append(w); requestAnimationFrame(camsInView);
   if (camCount === 1 || Math.random() < 0.3) dispatchEvent(new CustomEvent("blip:say", { detail: { text: pick(["Live from " + c.name + "!", "Ooh, traffic TV.", "Wave at the camera!", "Checking " + c.name + "…"]), mood: "happy" } }));
   seen.openCams.push(c.name);
   const img = w.querySelector("img"), tick = c.static || !img ? 0 : setInterval(() => (img.src = frame()), c.refreshMs ?? 4000);
@@ -1810,7 +1839,7 @@ function openCam(c) {
       if (d.w) { const nw = Math.max(180, r0.width - dx); w.style.width = `${nw}px`; w.style.left = `${r0.left + r0.width - nw}px`; }
       if (d.n) { const nh = Math.max(140, r0.height - dy); w.style.height = `${nh}px`; w.style.top = `${r0.top + r0.height - nh}px`; }
     };
-    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); delete w.dataset.resizing; };
+    const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); delete w.dataset.resizing; camsInView(); };
     addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
   }, true); // capture: the border wins over the title bar's move handler
   const head = w.querySelector("header");
@@ -1818,7 +1847,8 @@ function openCam(c) {
   head.addEventListener("pointerdown", (e) => {
     if (e.target.tagName === "BUTTON" || w.dataset.resizing || big()) return;
     const sx = e.clientX - w.offsetLeft, sy = e.clientY - w.offsetTop;
-    const move = (m) => { w.style.left = `${Math.max(0, Math.min(innerWidth - 60, m.clientX - sx))}px`; w.style.top = `${Math.max(0, Math.min(innerHeight - 40, m.clientY - sy))}px`; };
+    const top = (document.querySelector(".ihor-hud")?.getBoundingClientRect().bottom ?? 0) + 4;
+    const move = (m) => { w.style.left = `${Math.max(0, Math.min(innerWidth - 60, m.clientX - sx))}px`; w.style.top = `${Math.max(top, Math.min(innerHeight - 40, m.clientY - sy))}px`; };
     const up = () => { removeEventListener("pointermove", move); removeEventListener("pointerup", up); removeEventListener("pointercancel", up); };
     addEventListener("pointermove", move); addEventListener("pointerup", up); addEventListener("pointercancel", up);
   });
@@ -2134,25 +2164,28 @@ map.on("dblclick contextmenu", (e) => { if (!picking) showHere(e.latlng); });
 let hereAt = null; // the spot the "what's here" popup is about, for its directions buttons
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-dir]");
-  if (!b || !hereAt) return;
+  if (!b) return;
+  const [la, lo] = (b.dataset.ll ?? "").split(",").map(Number), here = hereAt && Math.abs(hereAt.ll.lat - la) < 1e-5 && Math.abs(hereAt.ll.lng - lo) < 1e-5;
+  if (!Number.isFinite(la)) return;
+  const label = here ? hereAt.label : b.closest(".leaflet-popup-content, #detail")?.querySelector("b")?.textContent.trim();
   const id = b.dataset.dir, other = id === "tFrom" ? "tTo" : "tFrom";
   map.closePopup();
-  await placePin(id, hereAt.ll, hereAt.label || undefined);
+  await placePin(id, L.latLng(la, lo), label || undefined);
   if ($(other).value) $("trip").requestSubmit(); else setPicking(other);
 });
 async function showHere(ll, title = "") {
   if (title) map.setView(ll, Math.max(map.getZoom(), 17));
   const head = title ? `<b>📍 ${esc(title)}</b><br>` : "";
-  const dir = `<div class="here-dir"><button data-dir="tFrom">↱ Directions from here</button> <button data-dir="tTo">to here</button></div>`;
+  const dir = dirBtns(ll.lat, ll.lng);
   const at = (hereAt = { ll, label: title });
   // The content is an element, not HTML text: popup.update() re-renders text content from scratch, which wiped the
   // street photo the moment it was put in; an element keeps what's added to it later (and its click handlers).
   const body = document.createElement("div"), show = (html) => { body.innerHTML = html; p.setContent(body); };
   const p = L.popup({ maxWidth: 340 }).setLatLng(ll).openOn(map);
   show(`${head}Looking up…`);
-  const phP = getJSON(`/api/nyc/photo-near?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null); // alongside the address
+  const ph = photoAt(ll.lat, ll.lng); // alongside the address
   const d = await getJSON(`/api/nyc/point?lat=${ll.lat.toFixed(6)}&lon=${ll.lng.toFixed(6)}`).catch(() => null);
-  const photoBox = `<div class="here-photo muted">📸 looking for a street photo…</div>`; // the first look in an area can take several seconds
+  const photoBox = `<div class="here-photo muted">${photoHtml(ph.v)}</div>`; // the first look in an area can take several seconds
   if (!d?.found) show(`${head}No NYC address found here.${dir}${photoBox}`);
   else {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
@@ -2164,14 +2197,9 @@ async function showHere(ll, title = "") {
   body.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   }
   // the best street photo of this spot (Mapillary, within ~100 m, or ~300 m if none, looking at it); a click opens it
-  const ph = await phP;
+  await ph.p;
   const box = body.querySelector(".here-photo");
-  if (box && !ph) { box.textContent = "No street photo within ~300 m."; p.update(); }
-  if (ph && box) {
-    photoById.set(ph.id, ph);
-    box.innerHTML = `<button class="linkish" data-photo="${esc(ph.id)}" title="Open the photo" style="display:block;margin-top:6px"><img src="${esc(ph.thumb)}" alt="Street photo near here" style="width:100%;max-height:150px;object-fit:cover;display:block"></button><span class="muted">📸 ${ph.meters} m away · ${esc(photoTitle(ph))}</span>`;
-    p.update();
-  }
+  if (box) { box.innerHTML = photoHtml(ph.v); p.update(); }
 }
 
 // What Blip can do on this page when you ask it to.
@@ -2256,13 +2284,31 @@ window.blipContext = () => {
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
 };
 
-// Popups pan clear of the panel, which floats over the map's left side (on phones it's the bottom sheet, which the
-// popup patch above already keeps clear of; its right edge is the screen's, so padding by it threw the map sideways).
-map.on("popupopen", (e) => {
-  const r = $("panel").getBoundingClientRect(), m = $("map").getBoundingClientRect();
-  e.popup.options.autoPanPaddingTopLeft = [phone() ? 10 : Math.max(10, r.right - m.left + 10), 10];
-  setTimeout(() => e.popup.isOpen() && e.popup._adjustPan?.(), 300); // re-pan with the padding (after any setView animation)
-});
+// Popups pan into the part of the map nothing floats over (freeArea: under the city bar, beside the panel or above the
+// phone's sheet, clear of the drawer), so their × is always reachable: when they open, when their photo comes in
+// (update() re-pans), and after a zoom or a window resize, if the place is still in view (zoomed away from it, it's left).
+function popupInView(pop = map._popup) {
+  if (!pop?.isOpen() || pop.options.autoPan === false) return;
+  const f = freeArea(), size = map.getSize();
+  Object.assign(pop.options, { autoPanPaddingTopLeft: L.point(f.left, f.top), autoPanPaddingBottomRight: L.point(Math.max(10, size.x - f.right), Math.max(10, size.y - f.bottom)) });
+  pop._adjustPan?.(); // Leaflet's own pan-into-view, with the padding above
+}
+map.on("popupopen", (e) => { popupInView(e.popup); setTimeout(() => popupInView(e.popup), 300); }); // and again after any setView animation
+map.on("zoomend", () => { const pop = map._popup; if (pop?.isOpen() && map.getBounds().contains(pop.getLatLng())) popupInView(pop); });
+// Camera and photo windows: the title bar (with its ×) stays on screen and below the site bar, and a window is never
+// taller than the room under it; checked when one opens or is resized, and when the browser window changes size.
+function camsInView() {
+  const top = (document.querySelector(".ihor-hud")?.getBoundingClientRect().bottom ?? 0) + 4;
+  for (const w of document.querySelectorAll(".cam:not(.max)")) {
+    if (document.fullscreenElement === w) continue;
+    const h = Math.min(w.offsetHeight, innerHeight - top - 8);
+    if (h < w.offsetHeight) w.style.height = `${Math.max(140, h)}px`;
+    w.style.top = `${Math.max(top, Math.min(innerHeight - 40, w.offsetTop))}px`;
+    w.style.left = `${Math.max(60 - w.offsetWidth, Math.min(innerWidth - 60, w.offsetLeft))}px`;
+  }
+}
+addEventListener("resize", () => { camsInView(); popupInView(); });
+visualViewport?.addEventListener("resize", camsInView);
 // The panel folds away (and starts folded on phones, where it would cover the map).
 // The side panel can be dragged by its title bar (on a screen wide enough that it isn't the bottom sheet).
 {
