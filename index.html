@@ -50,40 +50,43 @@
 
   main { max-width: 1080px; margin: 0 auto; padding: 0 16px 80px; }
 
-  .title { min-height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 28px; padding: 40px 0 120px; }
-  .logo { margin: 0; font: clamp(40px, 11vw, 112px)/1 var(--pixel); color: var(--amber); letter-spacing: -.02em; text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--line); animation: flicker 6s infinite steps(1); }
+  .title { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 20px; padding: 56px 0 48px; }
+  .logo { margin: 0; font: clamp(36px, 8vw, 84px)/1 var(--pixel); color: var(--amber); letter-spacing: -.02em; text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 var(--line); animation: flicker 6s infinite steps(1); }
   .logo span { color: var(--ink); }
   @keyframes flicker { 0%, 100% { opacity: 1; } 92% { opacity: .85; } 93% { opacity: 1; } 96% { opacity: .9; } }
-  .meet { margin: 18px 0 0; max-width: 62ch; padding: 12px 16px; border: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--card, #0d1226) 85%, transparent); font-family: ui-sans-serif, system-ui, sans-serif; }
+  .meet { margin: 4px 0 0; max-width: 62ch; padding: 12px 16px; border: 3px solid var(--line, #3b4bb0); background: color-mix(in srgb, var(--card, #0d1226) 85%, transparent); font-family: ui-sans-serif, system-ui, sans-serif; }
   .meet b { display: block; font-size: 1.05rem; margin-bottom: 4px; }
   .meet p { margin: 0 0 10px; line-height: 1.55; color: var(--dim); }
   .meet button { font: calc(11px * var(--px, 1)) var(--pixel); color: var(--on-accent, #1b1020); background: var(--accent, #ffb347); border: 0; padding: 10px 14px; cursor: pointer; box-shadow: 0 4px 0 #1b2350; }
   .meet button:active { transform: translateY(2px); box-shadow: 0 2px 0 #1b2350; }
-  .tag { margin: 0; max-width: 34ch; color: var(--dim); font-size: clamp(22px, 3vw, 28px); }
+  .tag { margin: 0; max-width: 38ch; color: var(--dim); font-size: clamp(19px, 2.4vw, 24px); }
   .start { font: calc(14px * var(--px, 1)) var(--pixel); color: var(--green); text-decoration: none; padding: 14px 18px; animation: blink 1.1s steps(2) infinite; }
   .start:hover, .start:focus-visible { animation: none; color: var(--bg); background: var(--green); }
   @keyframes blink { 50% { opacity: 0; } }
   .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; color: var(--dim); font-size: 20px; }
   kbd { font: calc(9px * var(--px, 1)) var(--pixel); color: var(--bg); background: var(--ink); padding: 4px 6px; margin-right: 6px; box-shadow: 0 3px 0 var(--dim); }
 
-  h2 { font: calc(clamp(14px, 2.4vw, 20px) * var(--px, 1))/1.4 var(--pixel); color: var(--ink); text-align: center; margin: 0 0 32px; }
+  h2 { font: calc(clamp(14px, 2.4vw, 20px) * var(--px, 1))/1.4 var(--pixel); color: var(--ink); text-align: center; margin: 0 0 20px; }
   h2::before, h2::after { content: "★"; color: var(--amber); margin: 0 14px; }
 
-  .world { position: relative; background: var(--panel); border: 4px solid var(--ink); box-shadow: inset 0 0 0 4px var(--line), 10px 10px 0 rgba(0,0,0,.55); padding: 28px; margin-bottom: 36px; }
+  .world { position: relative; background: var(--panel); border: 4px solid var(--ink); box-shadow: inset 0 0 0 4px var(--line), 10px 10px 0 rgba(0,0,0,.55); padding: 22px; margin-bottom: 24px; }
+  .bonus { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-top: 8px; } .bonus .world { margin: 0; }
   .world header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .world h3 { margin: 0; font: calc(clamp(13px, 2vw, 18px) * var(--px, 1))/1.4 var(--pixel); color: var(--amber); }
   .world h3 small { display: block; font-size: calc(9px * var(--px, 1)); color: var(--dim); margin-bottom: 8px; }
   .onair { font: calc(9px * var(--px, 1)) var(--pixel); color: var(--pink); }
   .onair::before { content: "● "; animation: blink 1s steps(2) infinite; }
-  .world > p { margin: 0 0 24px; max-width: 60ch; color: color-mix(in srgb, var(--fg) 80%, var(--bg)); }
+  .world > p { margin: 0 0 16px; max-width: 60ch; color: color-mix(in srgb, var(--fg) 80%, var(--bg)); }
 
-  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
-  .level { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none; background: var(--card); border: 3px solid var(--line); transition: transform .12s steps(3), border-color .12s; }
+  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  /* a card: the icon beside the level number and title, the line about it underneath */
+  .level { display: grid; grid-template-columns: auto 1fr; align-content: start; gap: 4px 12px; padding: 12px 14px; text-decoration: none; background: var(--card); border: 3px solid var(--line); transition: transform .12s steps(3), border-color .12s; }
+  .level span.d { grid-column: 1 / -1; margin-top: 4px; }
   .level:hover, .level:focus-visible { transform: translate(-4px, -4px); border-color: var(--amber); box-shadow: 6px 6px 0 var(--amber); outline: none; }
   .level .lv { font: calc(9px * var(--px, 1)) var(--pixel); color: var(--dim); display: flex; justify-content: space-between; }
-  .level svg { width: 40px; height: 40px; image-rendering: pixelated; }
+  .level svg { grid-row: span 2; align-self: center; width: 32px; height: 32px; image-rendering: pixelated; }
   .level b { font: calc(11px * var(--px, 1))/1.5 var(--pixel); font-weight: normal; color: var(--ink); }
-  .level span.d { color: var(--muted); font-size: calc(20px - (var(--px, 1) - 1) * 8px); /* 20px pixel font, ~16px plain */ flex: 1; }
+  .level span.d { color: var(--muted); font-size: calc(20px - (var(--px, 1) - 1) * 8px); line-height: 1.15; /* 20px pixel font, ~16px plain */ }
   .level i { font: calc(9px * var(--px, 1)) var(--pixel); font-style: normal; color: var(--green); opacity: 0; }
   .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
 
@@ -129,8 +132,8 @@
   html[data-style="sleek"] .hud b { font: 700 18px/1 var(--display-font); letter-spacing: .1em; color: var(--fg); }
   html[data-style="sleek"] .hud button { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); padding: 6px 12px; transition: border-color .15s; }
   html[data-style="sleek"] .hud button:hover { border-color: var(--accent); color: var(--fg); }
-  html[data-style="sleek"] .title { gap: 26px; }
-  html[data-style="sleek"] .logo { font: 800 clamp(64px, 13vw, 150px)/1 var(--display-font); letter-spacing: -.01em; text-shadow: none; animation: none; background: linear-gradient(135deg, var(--fg) 30%, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 36px var(--glow)); }
+  html[data-style="sleek"] .title { gap: 20px; }
+  html[data-style="sleek"] .logo { font: 800 clamp(52px, 9vw, 108px)/1 var(--display-font); letter-spacing: -.01em; text-shadow: none; animation: none; background: linear-gradient(135deg, var(--fg) 30%, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 36px var(--glow)); }
   html[data-style="sleek"] .logo span { background: linear-gradient(135deg, var(--accent), var(--accent2, var(--pink))); -webkit-background-clip: text; background-clip: text; color: transparent; }
   html[data-style="sleek"] .tag { font-size: clamp(18px, 2.2vw, 22px); line-height: 1.5; max-width: 42ch; color: var(--muted); }
   html[data-style="sleek"] .start { font: 700 15px/1 var(--body-font); letter-spacing: .16em; text-transform: uppercase; color: var(--on-accent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, var(--accent2, var(--pink)))); padding: 17px 32px; border-radius: 999px; box-shadow: 0 16px 44px -14px var(--accent), inset 0 1px 0 rgba(255,255,255,.25); animation: none; transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
@@ -142,7 +145,7 @@
   html[data-style="sleek"] .meet p { font-size: 15.5px; }
   html[data-style="sleek"] .meet button { font: 700 13px var(--body-font); letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 11px 18px; box-shadow: 0 10px 28px -12px var(--accent); background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, var(--accent2, var(--pink)))); transition: transform .15s, box-shadow .15s; }
   html[data-style="sleek"] .meet button:hover { transform: translateY(-1px); box-shadow: 0 14px 32px -12px var(--accent); }
-  html[data-style="sleek"] h2 { display: flex; align-items: center; gap: 18px; font: 700 clamp(13px, 1.6vw, 15px)/1.3 var(--body-font); letter-spacing: .32em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
+  html[data-style="sleek"] h2 { display: flex; align-items: center; gap: 18px; font: 700 clamp(13px, 1.6vw, 15px)/1.3 var(--body-font); letter-spacing: .32em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
   html[data-style="sleek"] h2::before, html[data-style="sleek"] h2::after { content: ""; flex: 1; height: 1px; margin: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fg) 25%, transparent)); }
   html[data-style="sleek"] h2::after { background: linear-gradient(90deg, color-mix(in srgb, var(--fg) 25%, transparent), transparent); }
   html[data-style="sleek"] .hud-worlds { border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); padding: 5px 12px; color: var(--fg); font-size: 11px; }
@@ -158,16 +161,19 @@
   html[data-style="sleek"] .onair { font: 600 10.5px/1 var(--body-font); letter-spacing: .18em; color: var(--ok); padding: 7px 12px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
   html[data-style="sleek"] .onair::before { animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .25; } }
-  html[data-style="sleek"] .world > p { font-size: 16px; line-height: 1.6; color: var(--muted); margin-bottom: 22px; }
-  html[data-style="sleek"] .levels { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  html[data-style="sleek"] .world > p { font-size: 16px; line-height: 1.55; color: var(--muted); margin-bottom: 16px; }
+  html[data-style="sleek"] .levels { gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
   html[data-style="sleek"] .level { border-radius: 14px; border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); background: color-mix(in srgb, var(--fg) 4%, transparent); padding: 18px; transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s, box-shadow .18s, background .18s; }
   html[data-style="sleek"] .level:hover, html[data-style="sleek"] .level:focus-visible, html[data-style="sleek"] .locked .world:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: 0 0 0 1px var(--glow), 0 24px 40px -24px rgba(0,0,0,.9); }
   html[data-style="sleek"] .level .lv { font: 600 11px/1 var(--body-font); letter-spacing: .2em; color: var(--muted); }
-  html[data-style="sleek"] .level b { font: 700 19px/1.15 var(--display-font); letter-spacing: .03em; color: var(--fg); }
-  html[data-style="sleek"] .level span.d { font-size: 14.5px; line-height: 1.5; color: var(--muted); }
+  html[data-style="sleek"] .level b { font: 700 17px/1.15 var(--display-font); letter-spacing: .03em; color: var(--fg); }
+  html[data-style="sleek"] .level span.d { font-size: 14px; line-height: 1.45; color: var(--muted); }
   html[data-style="sleek"] .level i { font: 700 10px/1 var(--body-font); letter-spacing: .18em; color: var(--ok); }
+  html[data-style="sleek"] .level { padding: 14px 16px; }
+  html[data-style="sleek"] .world { padding: 26px; margin-bottom: 24px; }
+  html[data-style="sleek"] .bonus .world { margin: 0; }
   html[data-style="sleek"] .level:hover i, html[data-style="sleek"] .level:focus-visible i { animation: none; }
-  html[data-style="sleek"] .level svg { width: 34px; height: 34px; image-rendering: auto; filter: drop-shadow(0 0 8px var(--glow)); }
+  html[data-style="sleek"] .level svg { width: 30px; height: 30px; image-rendering: auto; filter: drop-shadow(0 0 8px var(--glow)); }
   html[data-style="sleek"] .level svg rect { rx: .22; }
   html[data-style="sleek"] [data-icon] svg rect[fill="#ffb347"] { fill: var(--accent); }
   html[data-style="sleek"] [data-icon] svg rect[fill="#4de1ff"] { fill: color-mix(in srgb, var(--fg) 75%, var(--accent)); }
@@ -196,18 +202,16 @@
 <main>
   <section class="title">
     <h1 class="logo">IHOR<span>.SH</span></h1>
-    <p class="tag">Hobby projects, built and learned in public. Each world is a project. Pick one and play, and Blip comes along.</p>
+    <p class="tag">Hobby projects, built and learned in public. Pick a world and play; Blip comes along.</p>
     <a class="start" href="#worlds">▶ PRESS START</a>
     <div class="controls">
-      <span><kbd>DRAG</kbd>throw Blip</span>
       <span><kbd>CLICK</kbd>poke Blip</span>
       <span><kbd>SELECT</kbd>any text to ask</span>
-      <span><kbd>← → ↑ ↓</kbd>move · <kbd>ENTER</kbd>play</span>
-      <span><kbd>B</kbd>ask Blip, on any page</span>
+      <span><kbd>B</kbd>ask Blip on any page</span>
     </div>
     <div class="meet">
-      <b>Meet Blip, your study buddy on every page.</b>
-      <p>Click the little robot (bottom corner) and ask anything about what you're looking at. Blip reads the page you're on: a lesson's math and code, the circuit you're building in the lab, the subway map, what the radio is decoding. It explains it in plain words, quizzes you, points at things and can change them for you ("make R1 330 Ω", "show me the next train at Union Sq"). Select any text on any page to ask about just that.</p>
+      <b>Meet Blip, your guide on every page.</b>
+      <p>Ask about anything you see. Blip reads the page, explains it in plain words, quizzes you and can change things for you.</p>
       <button id="askBlip">💬 Ask Blip something</button>
     </div>
   </section>
@@ -228,21 +232,21 @@
         <h3><small>WORLD 1</small>RADIO</h3>
         <span class="onair">ON AIR</span>
       </header>
-      <p>A software-defined radio that runs in your browser, written from scratch in TypeScript with no SDR libraries: just math and a cheap USB dongle. Plus courses that teach every piece of it, and prep for the ham radio license.</p>
+      <p>A software radio in your browser, written from scratch, with courses for every piece and ham license prep.</p>
       <nav class="levels" aria-label="Radio projects">
-        <a class="level" href="/radio/" data-icon="lab" data-blip="The real receiver! Play a recording, or plug in an RTL-SDR."><span class="lv">1-1 <i>▶ PLAY</i></span><b>SPECTRUM LAB</b><span class="d">A receiver you can watch stage by stage: waterfall, mixer, filter, demodulation, audio.</span></a>
-        <a class="level" href="/radio/learn.html" data-icon="wave" data-blip="Short on time? This one's the whole radio on one page."><span class="lv">1-2 <i>▶ PLAY</i></span><b>HOW A SOFTWARE RADIO WORKS</b><span class="d">The whole receiver in plain words, one stage at a time.</span></a>
-        <a class="level" href="/radio/course/" data-icon="book" data-blip="22 chapters. It's spinning arrows all the way down."><span class="lv">1-3 <i>▶ PLAY</i></span><b>RADIO FROM SCRATCH</b><span class="d">22 interactive chapters, from a dot on a wheel to a USB driver, analog TV and weather satellites.</span></a>
-        <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US amateur radio license.</span></a>
-        <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">A developer guide to WebUSB, the RTL2832U and the R820T tuner.</span></a>
-        <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook chapter by chapter, each section linked to an interactive lesson.</span></a>
-        <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC, decoded by our own 1200-baud modem. <em class="air">CHECKING…</em></span></a>
-        <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz by our own Mode S decoder. <em class="air">CHECKING…</em></span></a>
-        <a class="level" href="/radio/sstv.html" data-icon="tv" data-blip="Pictures over radio! Even from the space station."><span class="lv">1-9 <i>▶ PLAY</i></span><b>SSTV DECODER</b><span class="d">Slow-scan TV pictures from the ISS, a recording, your mic or the dongle.</span></a>
-        <a class="level" href="/radio/cw.html" data-icon="key" data-blip="Dit dah! I'll be your drill partner. Plug in a real key if you have one."><span class="lv">1-10 <i>▶ PLAY</i></span><b>CW TRAINER</b><span class="d">Learn Morse by ear (Koch method), copy at any speed, send with a real key over USB.</span></a>
-        <a class="level" href="/radio/repeaters/" data-icon="tower" data-blip="Who's that callsign? And which repeater can I hit from here?"><span class="lv">1-11 <i>▶ PLAY</i></span><b>CALLSIGNS &amp; REPEATERS</b><span class="d">22,000+ repeaters worldwide, any US callsign on the map, today's propagation, the next ham-satellite passes, and listen to a repeater through the server's SDR with live captions and a callsign detector.</span></a>
-        <a class="level" href="/radio/mesh/" data-icon="tower" data-blip="Text messages hopping roof to roof on LoRa. No towers, no internet!"><span class="lv">1-12 <i>▶ PLAY</i></span><b>MESHTASTIC MESH</b><span class="d">Every LoRa mesh node our radio hears around NYC, on a map with hops and signal, and the public chat, live.</span></a>
-        <a class="level" href="/radio/stations/" data-icon="tower" data-blip="Which stations can my antenna actually hear? I scanned the whole FM band!"><span class="lv">1-13 <i>▶ PLAY</i></span><b>NYC RADIO STATIONS</b><span class="d">Every FM station on the air (FCC), which ones our antenna really hears, and their streams.</span></a>
+        <a class="level" href="/radio/" data-icon="lab" data-blip="The real receiver! Play a recording, or plug in an RTL-SDR."><span class="lv">1-1 <i>▶ PLAY</i></span><b>SPECTRUM LAB</b><span class="d">A real receiver you watch stage by stage.</span></a>
+        <a class="level" href="/radio/learn.html" data-icon="wave" data-blip="Short on time? This one's the whole radio on one page."><span class="lv">1-2 <i>▶ PLAY</i></span><b>HOW A SOFTWARE RADIO WORKS</b><span class="d">The whole receiver on one page.</span></a>
+        <a class="level" href="/radio/course/" data-icon="book" data-blip="22 chapters. It's spinning arrows all the way down."><span class="lv">1-3 <i>▶ PLAY</i></span><b>RADIO FROM SCRATCH</b><span class="d">22 interactive chapters, from a spinning arrow to weather satellites.</span></a>
+        <a class="level" href="/radio/ham/" data-icon="tower" data-blip="Get a callsign! I'll quiz you on the hard ones."><span class="lv">1-4 <i>▶ PLAY</i></span><b>HAM LICENSE PREP</b><span class="d">Lessons and practice exams for the US license.</span></a>
+        <a class="level" href="/radio/build.html" data-icon="chip" data-blip="For hackers: talk to the dongle yourself over WebUSB."><span class="lv">1-5 <i>▶ PLAY</i></span><b>BUILD FOR YOUR DONGLE</b><span class="d">WebUSB and the RTL-SDR's chips, for developers.</span></a>
+        <a class="level" href="/radio/ham/handbook/" data-icon="book" data-blip="The ARRL Handbook, but everything moves."><span class="lv">1-6 <i>▶ PLAY</i></span><b>HANDBOOK COMPANION</b><span class="d">The ARRL Handbook, linked to interactive lessons.</span></a>
+        <a class="level live" href="/radio/aprs/" data-live="aprs" data-icon="pin" data-blip="Hams, weather stations and trackers, beaconing on 144.39 MHz."><span class="lv">1-7 <i>▶ PLAY</i></span><b>APRS MAP</b><span class="d">Live packet radio around NYC. <em class="air">CHECKING…</em></span></a>
+        <a class="level live" href="/radio/adsb/" data-live="adsb" data-icon="plane" data-blip="Planes over New York, straight from their transponders."><span class="lv">1-8 <i>▶ PLAY</i></span><b>ADS-B RADAR</b><span class="d">Aircraft over NYC, decoded from 1090 MHz. <em class="air">CHECKING…</em></span></a>
+        <a class="level" href="/radio/sstv.html" data-icon="tv" data-blip="Pictures over radio! Even from the space station."><span class="lv">1-9 <i>▶ PLAY</i></span><b>SSTV DECODER</b><span class="d">Pictures over radio, even from the ISS.</span></a>
+        <a class="level" href="/radio/cw.html" data-icon="key" data-blip="Dit dah! I'll be your drill partner. Plug in a real key if you have one."><span class="lv">1-10 <i>▶ PLAY</i></span><b>CW TRAINER</b><span class="d">Learn Morse by ear; send with a real key.</span></a>
+        <a class="level" href="/radio/repeaters/" data-icon="tower" data-blip="Who's that callsign? And which repeater can I hit from here?"><span class="lv">1-11 <i>▶ PLAY</i></span><b>CALLSIGNS &amp; REPEATERS</b><span class="d">22,000+ repeaters, callsigns, propagation and satellite passes.</span></a>
+        <a class="level" href="/radio/mesh/" data-icon="tower" data-blip="Text messages hopping roof to roof on LoRa. No towers, no internet!"><span class="lv">1-12 <i>▶ PLAY</i></span><b>MESHTASTIC MESH</b><span class="d">The LoRa mesh around NYC and its chat, live.</span></a>
+        <a class="level" href="/radio/stations/" data-icon="tower" data-blip="Which stations can my antenna actually hear? I scanned the whole FM band!"><span class="lv">1-13 <i>▶ PLAY</i></span><b>NYC RADIO STATIONS</b><span class="d">Every FM station, and the ones we really hear.</span></a>
       </nav>
     </article>
 
@@ -251,14 +255,14 @@
         <h3><small>WORLD 2</small>NYC</h3>
         <span class="onair">LIVE DATA</span>
       </header>
-      <p>Tools built on New York City's open data: a live map that merges the city's feeds into today's incidents and has a local AI read the news and look at the cameras, what's free today, and an archive of MTA alerts that nobody else keeps.</p>
+      <p>Live tools built on New York City's open data.</p>
       <nav class="levels" aria-label="NYC projects">
-        <div class="level stretch" data-icon="train" data-blip="Train stuck? I'll find you a Citi Bike. Or a traffic camera. Or a pizza grade."><span class="lv">2-1 <i>▶ PLAY</i></span><b><a class="main" href="/nyc/">NYC LIVE MAP</a></b><span class="d">Today's incidents from the city's feeds, each with how likely it is real; alerts, closures, flooding and local news on the map; live video cameras; AI briefs for the city or any area; and everything within 400 m of you: trains, buses, ferries, Citi Bike, restrooms, inspections. <a class="sub" href="/nyc/how.html">How it works: sources and processing →</a></span></div>
-        <a class="level" href="/nyc/free.html" data-icon="ticket" data-blip="Free museums, gardens and ferries. Every rule has a source."><span class="lv">2-2 <i>▶ PLAY</i></span><b>FREE NYC</b><span class="d">Free and pay-what-you-wish museums, gardens and ferries on any day.</span></a>
-        <a class="level" href="/nyc/archive.html" data-icon="box" data-blip="I'm recording every subway alert and broken elevator. Nobody else keeps these!"><span class="lv">2-3 <i>▶ PLAY</i></span><b>MTA ARCHIVE</b><span class="d">Every subway alert and elevator outage, recorded as they happen.</span></a>
-        <a class="level" href="/nyc/tonight.html" data-icon="ticket" data-blip="Dinner at seven, the show at eight, the Q home. I checked the alerts!"><span class="lv">2-4 <i>▶ PLAY</i></span><b>EVENING PLANNER</b><span class="d">Tonight, tomorrow, the weekend: Parks, street fairs, shows, free hours; plan the evening with dinner and the subway.</span></a>
-        <a class="level" href="/nyc/jobs.html" data-icon="box" data-blip="Every job here was still open an hour ago. I checked with the employer!"><span class="lv">2-5 <i>▶ PLAY</i></span><b>JOBS RADAR</b><span class="d">Open jobs in NYC, NJ and remote, read from employers' own boards hourly, with ghost, scam and agency flags.</span></a>
-        <div class="level off" data-icon="lock" data-blip="Locked: is that sale real? Price history will tell."><span class="lv">2-6</span><b>REAL-DEAL TRACKER</b><span class="d">Grocery and store prices with our own price history.</span></div>
+        <div class="level stretch" data-icon="train" data-blip="Train stuck? I'll find you a Citi Bike. Or a traffic camera. Or a pizza grade."><span class="lv">2-1 <i>▶ PLAY</i></span><b><a class="main" href="/nyc/">NYC LIVE MAP</a></b><span class="d">Today's incidents, live cameras, transit and AI briefs. <a class="sub" href="/nyc/how.html">How it works →</a></span></div>
+        <a class="level" href="/nyc/free.html" data-icon="ticket" data-blip="Free museums, gardens and ferries. Every rule has a source."><span class="lv">2-2 <i>▶ PLAY</i></span><b>FREE NYC</b><span class="d">Free museums, gardens and ferries on any day.</span></a>
+        <a class="level" href="/nyc/archive.html" data-icon="box" data-blip="I'm recording every subway alert and broken elevator. Nobody else keeps these!"><span class="lv">2-3 <i>▶ PLAY</i></span><b>MTA ARCHIVE</b><span class="d">Every subway alert and elevator outage, kept.</span></a>
+        <a class="level" href="/nyc/tonight.html" data-icon="ticket" data-blip="Dinner at seven, the show at eight, the Q home. I checked the alerts!"><span class="lv">2-4 <i>▶ PLAY</i></span><b>EVENING PLANNER</b><span class="d">Events, dinner and the subway home, planned.</span></a>
+        <a class="level" href="/nyc/jobs.html" data-icon="box" data-blip="Every job here was still open an hour ago. I checked with the employer!"><span class="lv">2-5 <i>▶ PLAY</i></span><b>JOBS RADAR</b><span class="d">Open NYC and remote jobs, checked hourly.</span></a>
+        <div class="level off" data-icon="lock" data-blip="Locked: is that sale real? Price history will tell."><span class="lv">2-6</span><b>REAL-DEAL TRACKER</b><span class="d">Store prices with our own history.</span></div>
       </nav>
     </article>
 
@@ -267,19 +271,19 @@
         <h3><small>WORLD 3</small>AI</h3>
         <span class="onair" data-ai="status">NEW</span>
       </header>
-      <p>One path from zero to junior ML engineer. Every idea three ways: a picture you drag, the math with real numbers, and Python you run right in the page, plus a practice notebook, a checkpoint and a review deck for every lesson.</p>
+      <p>One path from zero to junior ML engineer: drag the picture, check the math, run the Python, all in the page.</p>
       <nav class="levels" aria-label="AI path">
-        <a class="level" data-ai="start" href="/ai/s1-what-is-ml.html" data-icon="book" data-blip="No math or code needed to start. I promise!"><span class="lv">3-0 <i>▶ START</i></span><b>START HERE</b><span class="d">What machine learning is, just enough Python and math, and your first model on the web. 4 lessons.</span></a>
-        <a class="level" data-ai-stage="1" href="/ai/#stage-1" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>THE MATH OF LEARNING</b><span class="d">Vectors and matrices, derivatives and gradients, probability, describing data, eigenvectors and PCA. 8 lessons.</span></a>
-        <a class="level" data-ai-stage="2" href="/ai/#stage-2" data-icon="chip" data-blip="Blame, passed backwards, one box at a time."><span class="lv">3-2 <i>▶ PLAY</i></span><b>HOW A NETWORK LEARNS</b><span class="d">A neuron, backprop you can watch, losses, curvature, likelihood, and a deep network trained live. 9 lessons.</span></a>
-        <a class="level" data-ai-stage="3" href="/ai/#stage-3" data-icon="lab" data-blip="Precision or recall? Depends what a mistake costs."><span class="lv">3-3 <i>▶ PLAY</i></span><b>CLASSIC ML, JUDGED HONESTLY</b><span class="d">Overfitting, measuring a model, A/B tests, trees, features and leakage. 9 lessons.</span></a>
-        <a class="level" data-ai-stage="4" href="/ai/#stage-4" data-icon="chip" data-blip="NumPy, scikit-learn, SQL and PyTorch, the way they're used at work."><span class="lv">3-4 <i>▶ PLAY</i></span><b>THE ENGINEER'S TOOLKIT</b><span class="d">NumPy in depth, pandas, SQL, optimizers, making deep nets train, GPUs, reproducible experiments. 8 lessons.</span></a>
-        <a class="level" data-ai-stage="zoo" href="/ai/#zoo" data-icon="lab" data-blip="10 classic models, all built from scratch with an interactive bake-off."><span class="lv">3-Z <i>▶ PLAY</i></span><b>THE MODEL ZOO</b><span class="d">Linear, trees, forests, boosting, SVMs, neural nets compared head-to-head. 10 lessons.</span></a>
-        <a class="level" data-ai-stage="5" href="/ai/#stage-5" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>SEEING AND READING</b><span class="d">Convolutions, transfer learning, detectors, RNNs, tokens, word vectors, and transformers. 9 lessons.</span></a>
-        <a class="level" data-ai-stage="6" href="/ai/#stage-6" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-6 <i>▶ PLAY</i></span><b>LLM ENGINEERING</b><span class="d">Using LLMs, hybrid RAG, LoRA fine-tuning, automated evals, and autonomous agents. 5 lessons.</span></a>
-        <a class="level" data-ai-stage="7" href="/ai/#stage-7" data-icon="lock" data-blip="Shipping a model, watching it, and the live capstone."><span class="lv">3-7 <i>▶ PLAY</i></span><b>PRODUCTION</b><span class="d">FastAPI serving, MLOps drift monitoring, and the live capstone. 3 lessons.</span></a>
-        <a class="level" data-ai="review" href="/ai/review.html" data-icon="ticket" data-blip="Ten minutes of cards and it all stays in your head."><span class="lv">3-★ <i>▶ OPEN</i></span><b>REVIEW DECK</b><span class="d">Concept cards from the lessons you've finished, on a spaced-repetition schedule, and the gaps to revisit.</span></a>
-        <a class="level" href="/ai/" data-icon="book" data-blip="Every lesson, in order."><span class="lv">3-☰ <i>▶ OPEN</i></span><b>THE WHOLE PATH</b><span class="d">All 73 lessons in order, milestone notebooks, exams, games and your portfolio.</span></a>
+        <a class="level" data-ai="start" href="/ai/s1-what-is-ml.html" data-icon="book" data-blip="No math or code needed to start. I promise!"><span class="lv">3-0 <i>▶ START</i></span><b>START HERE</b><span class="d">What ML is, with just enough code and math. 4 lessons.</span></a>
+        <a class="level" data-ai-stage="1" href="/ai/#stage-1" data-icon="wave" data-blip="Drag the arrows and the whole plane moves. That's a matrix!"><span class="lv">3-1 <i>▶ PLAY</i></span><b>THE MATH OF LEARNING</b><span class="d">Vectors, gradients, probability and PCA. 8 lessons.</span></a>
+        <a class="level" data-ai-stage="2" href="/ai/#stage-2" data-icon="chip" data-blip="Blame, passed backwards, one box at a time."><span class="lv">3-2 <i>▶ PLAY</i></span><b>HOW A NETWORK LEARNS</b><span class="d">Neurons and backprop you can watch. 9 lessons.</span></a>
+        <a class="level" data-ai-stage="3" href="/ai/#stage-3" data-icon="lab" data-blip="Precision or recall? Depends what a mistake costs."><span class="lv">3-3 <i>▶ PLAY</i></span><b>CLASSIC ML, JUDGED HONESTLY</b><span class="d">Overfitting, metrics, trees and leakage. 9 lessons.</span></a>
+        <a class="level" data-ai-stage="4" href="/ai/#stage-4" data-icon="chip" data-blip="NumPy, scikit-learn, SQL and PyTorch, the way they're used at work."><span class="lv">3-4 <i>▶ PLAY</i></span><b>THE ENGINEER'S TOOLKIT</b><span class="d">NumPy, pandas, SQL, PyTorch and GPUs. 8 lessons.</span></a>
+        <a class="level" data-ai-stage="zoo" href="/ai/#zoo" data-icon="lab" data-blip="10 classic models, all built from scratch with an interactive bake-off."><span class="lv">3-Z <i>▶ PLAY</i></span><b>THE MODEL ZOO</b><span class="d">10 classic models, compared head to head. 10 lessons.</span></a>
+        <a class="level" data-ai-stage="5" href="/ai/#stage-5" data-icon="tv" data-blip="I counted 38 cars on 12 cameras. Your turn!"><span class="lv">3-5 <i>▶ PLAY</i></span><b>SEEING AND READING</b><span class="d">CNNs, detectors, word vectors and transformers. 9 lessons.</span></a>
+        <a class="level" data-ai-stage="6" href="/ai/#stage-6" data-icon="chat" data-blip="This one's about me! See every tool I call."><span class="lv">3-6 <i>▶ PLAY</i></span><b>LLM ENGINEERING</b><span class="d">RAG, fine-tuning, evals and agents. 5 lessons.</span></a>
+        <a class="level" data-ai-stage="7" href="/ai/#stage-7" data-icon="lock" data-blip="Shipping a model, watching it, and the live capstone."><span class="lv">3-7 <i>▶ PLAY</i></span><b>PRODUCTION</b><span class="d">Serving, monitoring and the capstone. 3 lessons.</span></a>
+        <a class="level" data-ai="review" href="/ai/review.html" data-icon="ticket" data-blip="Ten minutes of cards and it all stays in your head."><span class="lv">3-★ <i>▶ OPEN</i></span><b>REVIEW DECK</b><span class="d">Spaced-repetition cards from your lessons.</span></a>
+        <a class="level" href="/ai/" data-icon="book" data-blip="Every lesson, in order."><span class="lv">3-☰ <i>▶ OPEN</i></span><b>THE WHOLE PATH</b><span class="d">All 73 lessons, notebooks and exams.</span></a>
       </nav>
       <script type="module">
         // your progress on the AI path (kept in this browser by /ai/learn.js): continue where you left off, ✓ per stage, cards due
@@ -307,16 +311,16 @@
         <h3><small>WORLD 4</small>YOMU</h3>
         <span class="onair">NEW</span>
       </header>
-      <p>Japanese from zero to mastery: 87 graded stories about Yuki, Sam, and Blip across New York and Japan, 274 grammar points from JLPT N5 to N1, kanji and word decks, spoken scenes, handwriting, and AI immersion with spaced repetition. Kanji, kana or romaji, your choice.</p>
+      <p>Japanese from zero to N1: graded stories, grammar, words, kanji, speaking, and an AI to chat with.</p>
       <nav class="levels" aria-label="Yomu lessons">
-        <a class="level" href="/yomu/" data-icon="book" data-blip="よむ means 'to read'. Start from zero or take the placement test!"><span class="lv">4-1 <i>▶ PLAY</i></span><b>START HERE</b><span class="d">Your complete dashboard from kana to N1, today's reviews, and 4-pillar study hub.</span></a>
-        <a class="level" href="/yomu/stories.html" data-icon="ticket" data-blip="Browse all 87 graded stories from N5 to N1!"><span class="lv">4-2 <i>▶ PLAY</i></span><b>GRADED STORIES (87)</b><span class="d">Complete Table of Contents: 87 dialogue stories across N5–N1 with unit capstones.</span></a>
-        <a class="level" href="/yomu/grammar.html" data-icon="box" data-blip="274 grammar points across N5–N1. Each one has a quiz. No pressure."><span class="lv">4-3 <i>▶ PLAY</i></span><b>GRAMMAR COMPENDIUM</b><span class="d">274 grammar points across N5–N1 with native audio, explanations, and fill-in quizzes.</span></a>
-        <a class="level" href="/yomu/placement.html" data-icon="chip" data-blip="Already know some Japanese? Let's find your level."><span class="lv">4-4 <i>▶ PLAY</i></span><b>PLACEMENT TEST</b><span class="d">Five minutes, adaptive: pinpoint your level accurately from zero to N1.</span></a>
-        <a class="level" href="/yomu/practice.html" data-icon="box" data-blip="Type the answers or pick from four. Spaced repetition keeps them fresh!"><span class="lv">4-5 <i>▶ PLAY</i></span><b>PRACTICE 8,131 WORDS</b><span class="d">Practice every JLPT word from N5 to N1 with typed recall, SRS, and pitch accents.</span></a>
-        <a class="level" href="/yomu/draw.html" data-icon="chip" data-blip="Draw it any way you like. I'll guess which kanji it is!"><span class="lv">4-6 <i>▶ PLAY</i></span><b>KANJI &amp; HANDWRITING</b><span class="d">Draw with your finger in any stroke order: AI recognizes the glyph and tests handwriting.</span></a>
-        <a class="level" href="/yomu/talk.html" data-icon="chip" data-blip="いらっしゃいませ！ I'm the clerk today. Say it out loud!"><span class="lv">4-7 <i>▶ PLAY</i></span><b>TALK &amp; IMMERSION</b><span class="d">Spoken real-life roleplay scenes with voice grading plus custom reader for any text.</span></a>
-        <a class="level" href="/yomu/chat.html?level=N5" data-icon="chat" data-blip="Talk to me about anything, in Japanese, at your level. It all stays on this computer."><span class="lv">4-8 <i>▶ PLAY</i></span><b>CHAT WITH BLIP AI</b><span class="d">Free conversational practice at any level (N5–N1) with instant tap-to-translate.</span></a>
+        <a class="level" href="/yomu/" data-icon="book" data-blip="よむ means 'to read'. Start from zero or take the placement test!"><span class="lv">4-1 <i>▶ PLAY</i></span><b>START HERE</b><span class="d">Your dashboard, from kana to N1.</span></a>
+        <a class="level" href="/yomu/stories.html" data-icon="ticket" data-blip="Browse all 87 graded stories from N5 to N1!"><span class="lv">4-2 <i>▶ PLAY</i></span><b>GRADED STORIES (87)</b><span class="d">Dialogue stories from N5 to N1.</span></a>
+        <a class="level" href="/yomu/grammar.html" data-icon="box" data-blip="274 grammar points across N5–N1. Each one has a quiz. No pressure."><span class="lv">4-3 <i>▶ PLAY</i></span><b>GRAMMAR COMPENDIUM</b><span class="d">274 grammar points with audio and quizzes.</span></a>
+        <a class="level" href="/yomu/placement.html" data-icon="chip" data-blip="Already know some Japanese? Let's find your level."><span class="lv">4-4 <i>▶ PLAY</i></span><b>PLACEMENT TEST</b><span class="d">Find your level in five minutes.</span></a>
+        <a class="level" href="/yomu/practice.html" data-icon="box" data-blip="Type the answers or pick from four. Spaced repetition keeps them fresh!"><span class="lv">4-5 <i>▶ PLAY</i></span><b>PRACTICE 8,131 WORDS</b><span class="d">Every JLPT word, with spaced repetition.</span></a>
+        <a class="level" href="/yomu/draw.html" data-icon="chip" data-blip="Draw it any way you like. I'll guess which kanji it is!"><span class="lv">4-6 <i>▶ PLAY</i></span><b>KANJI &amp; HANDWRITING</b><span class="d">Draw a kanji and the AI reads it.</span></a>
+        <a class="level" href="/yomu/talk.html" data-icon="chip" data-blip="いらっしゃいませ！ I'm the clerk today. Say it out loud!"><span class="lv">4-7 <i>▶ PLAY</i></span><b>TALK &amp; IMMERSION</b><span class="d">Spoken role-play scenes, graded by voice.</span></a>
+        <a class="level" href="/yomu/chat.html?level=N5" data-icon="chat" data-blip="Talk to me about anything, in Japanese, at your level. It all stays on this computer."><span class="lv">4-8 <i>▶ PLAY</i></span><b>CHAT WITH BLIP AI</b><span class="d">Chat in Japanese at your level.</span></a>
       </nav>
     </article>
 
@@ -324,10 +328,10 @@
       <header>
         <h3><small>WORLD 5</small>RIDE</h3>
       </header>
-      <p>Bikepacking with a planner that knows where the water runs out: drop in a route, get days, climbing, every tap, shop, campsite and train bail-out along the way, daylight and the forecast.</p>
+      <p>Bike trips that know where the water, food, camps and trains are.</p>
       <nav class="levels" aria-label="Ride projects">
-        <a class="level" href="/ride/" data-icon="pin" data-blip="Helmet on! Drop a GPX and I'll find the water."><span class="lv">5-1 <i>▶ PLAY</i></span><b>ROUTE NOTEBOOK</b><span class="d">Days split by distance and climbing, the longest dry stretch against the water you carry, camps, stations, sunset and weather.</span></a>
-        <a class="level" href="/ride/escapes.html" data-icon="pin" data-blip="Friday 6 pm with a bike? Not on Metro-North. 8 pm, yes!"><span class="lv">5-2 <i>▶ PLAY</i></span><b>BIKE + TRAIN ESCAPES</b><span class="d">Can your bike ride this train? Rush hours and holidays for Metro-North, LIRR and NJ Transit, and seven checked overnights to campgrounds, or build your own.</span></a>
+        <a class="level" href="/ride/" data-icon="pin" data-blip="Helmet on! Drop a GPX and I'll find the water."><span class="lv">5-1 <i>▶ PLAY</i></span><b>ROUTE NOTEBOOK</b><span class="d">Days, climbing, water, camps and weather for any route.</span></a>
+        <a class="level" href="/ride/escapes.html" data-icon="pin" data-blip="Friday 6 pm with a bike? Not on Metro-North. 8 pm, yes!"><span class="lv">5-2 <i>▶ PLAY</i></span><b>BIKE + TRAIN ESCAPES</b><span class="d">Which trains take bikes, and overnight trips.</span></a>
       </nav>
     </article>
 
@@ -335,61 +339,37 @@
       <header>
         <h3><small>WORLD 6</small>LEARN &amp; BUILD</h3>
       </header>
-      <p>Electronics from scratch with circuits you can tune, solved live by our own circuit simulator, then real builds with real chips, plus the math and hardware tracks that feed every other world.</p>
+      <p>Electronics from scratch: circuits you can tune, solved live by our own simulator, then real builds.</p>
       <nav class="levels" aria-label="Learn and build">
-        <a class="level" href="/learn/electronics/01-voltage-current-resistance.html" data-icon="lab" data-blip="Don't connect that LED without a resistor! Or do, and watch."><span class="lv">6-1 <i>▶ PLAY</i></span><b>VOLTAGE, CURRENT, RESISTANCE</b><span class="d">Ohm's law with moving current, dividers reading a light sensor, parallel branches, and an LED you can burn out.</span></a>
-        <a class="level" href="/learn/electronics/02-capacitors-and-time.html" data-icon="wave" data-blip="Capacitors are tiny buckets of charge. Fill one!"><span class="lv">6-2 <i>▶ PLAY</i></span><b>CAPACITORS AND TIME</b><span class="d">Charging in real seconds, an LED running on stored charge, and the RC filter on a scope.</span></a>
-        <a class="level" href="/learn/electronics/03-coils-and-resonance.html" data-icon="tower" data-blip="Zap! Coils hate being switched off."><span class="lv">6-3 <i>▶ PLAY</i></span><b>COILS, RESONANCE, ANTENNAS</b><span class="d">The spark and the flyback diode, an LC tank you can watch ring, tuning a radio, and antenna lengths.</span></a>
-        <a class="level" href="/learn/electronics/04-diodes-and-transistors.html" data-icon="key" data-blip="A tap with a handle: tiny pin, big motor."><span class="lv">6-4 <i>▶ PLAY</i></span><b>DIODES &amp; TRANSISTORS</b><span class="d">One-way valves, AC to DC, a MOSFET running a motor with PWM, logic-level gates, and a transistor that amplifies.</span></a>
-        <a class="level" href="/learn/electronics/05-real-parts.html" data-icon="chip" data-blip="Brown, black, red: 1k! I can read them in my sleep."><span class="lv">6-5 <i>▶ PLAY</i></span><b>REAL PARTS</b><span class="d">Color codes, E-series values, power ratings, capacitor types, batteries that sag, wire gauge, datasheets.</span></a>
-        <a class="level" href="/learn/electronics/06-circuit-theory.html" data-icon="wave" data-blip="Voltage is height. Current is water. AC is spinning arrows. That's it!"><span class="lv">6-6 <i>▶ PLAY</i></span><b>CIRCUIT THEORY</b><span class="d">Kirchhoff as water and hills, any circuit as a matrix, Thevenin and maximum power, AC as spinning arrows.</span></a>
-        <a class="level" href="/learn/electronics/07-op-amps.html" data-icon="wave" data-blip="It just wants its two inputs to be equal. That's the whole personality."><span class="lv">6-7 <i>▶ PLAY</i></span><b>OP-AMPS</b><span class="d">The golden rules, amplifiers solved live, the buffer, a mixer, comparators with hysteresis, an integrator, real limits.</span></a>
-        <a class="level" href="/learn/electronics/08-filters.html" data-icon="wave" data-blip="Hum out, whistle in. Filters are just very picky doors."><span class="lv">6-8 <i>▶ PLAY</i></span><b>FILTERS</b><span class="d">A hum and a whistle separated, Bode plots, steeper orders, band-pass and Q, Sallen-Key active filters.</span></a>
-        <a class="level" href="/learn/electronics/09-oscillators-and-timers.html" data-icon="wave" data-blip="Tick, tock, 32,768 times a second."><span class="lv">6-9 <i>▶ PLAY</i></span><b>OSCILLATORS &amp; TIMERS</b><span class="d">Why feedback rings, the 555 astable and one-shot with their timing derived, crystals and ppm.</span></a>
-        <a class="level" href="/learn/electronics/10-power-supplies.html" data-icon="chip" data-blip="Chop it, smooth it, save the battery."><span class="lv">6-10 <i>▶ PLAY</i></span><b>POWER SUPPLIES</b><span class="d">Linear regulators and heat, buck and boost converters drawn live, and a battery budget.</span></a>
-        <a class="level" href="/learn/electronics/11-light-and-sensors.html" data-icon="lab" data-blip="Light, heat, weight: everything becomes a voltage, then a number."><span class="lv">6-11 <i>▶ PLAY</i></span><b>LIGHT &amp; SENSORS</b><span class="d">Photodiodes, optocouplers, a thermistor into an ADC and back to °C, ADC steps, a strain-gauge bridge.</span></a>
-        <a class="level" href="/learn/electronics/12-gates-to-a-computer.html" data-icon="chip" data-blip="Two transistors, a NOT. A few billion, a computer."><span class="lv">6-12 <i>▶ PLAY</i></span><b>GATES → COMPUTER</b><span class="d">A CMOS inverter, truth tables you predict, NAND, a 4-bit adder, a latch, a counter, a toy CPU.</span></a>
-        <a class="level" href="/learn/electronics/13-microcontrollers-and-buses.html" data-icon="chip" data-blip="Start bit, eight bits, stop bit. I can hear them!"><span class="lv">6-13 <i>▶ PLAY</i></span><b>MICROCONTROLLERS</b><span class="d">Pins as bits, pull-ups, PWM dimming, and UART, I²C, SPI on a logic analyzer you decode.</span></a>
-        <a class="level" href="/learn/electronics/14-motors.html" data-icon="wave" data-blip="Forward, reverse, brake. Never both switches on one side!"><span class="lv">6-14 <i>▶ PLAY</i></span><b>MOTORS</b><span class="d">Back-EMF, an H-bridge you flip by hand, PWM speed, servo pulses, a stepper stepping.</span></a>
-        <a class="level" href="/learn/electronics/15-hands-on.html" data-icon="lab" data-blip="Iron on the pad, then the solder. Not the other way round!"><span class="lv">6-15 <i>▶ PLAY</i></span><b>HANDS-ON</b><span class="d">Breadboard strips, meter probes, a soldering game, scope triggers, KiCad trace widths.</span></a>
-        <a class="level" href="/learn/electronics/16-audio.html" data-icon="wave" data-blip="Class B at low volume: hear that crackle? That's the dead zone."><span class="lv">6-16 <i>▶ PLAY</i></span><b>AUDIO</b><span class="d">Your mic on a scope, amp classes A/B/AB/D you can hear, crossover vs clipping, THD.</span></a>
-        <a class="level" href="/learn/electronics/17-first-build-555.html" data-icon="chip" data-blip="Notch to the left, pin 1 bottom-left. Now where's pin 7?"><span class="lv">6-17 <i>▶ BUILD</i></span><b>FIRST BUILD: A 555 BLINKER</b><span class="d">Read a schematic, find the pins on a real chip, choose parts, lay out a breadboard, check it with a meter.</span></a>
-        <a class="level" href="/learn/electronics/18-power-supply.html" data-icon="chip" data-blip="Never feed the little regulator 9 volts. Ask me how I know."><span class="lv">6-18 <i>▶ BUILD</i></span><b>A 5 V + 3.3 V SUPPLY</b><span class="d">Pick a regulator from its datasheet: dropout, heat, pinouts that differ. A 7805 and an MCP1700.</span></a>
-        <a class="level" href="/learn/electronics/19-two-chips.html" data-icon="chip" data-blip="Is 6.75 volts a one? Depends who's asking."><span class="lv">6-19 <i>▶ BUILD</i></span><b>TWO CHIPS: RUNNING LIGHT</b><span class="d">A 555 clocks a 4017: logic levels between chips, inputs that must never float, ten LEDs on one resistor.</span></a>
-        <a class="level" href="/learn/electronics/20-dusk-light.html" data-icon="lab" data-blip="On at 8 lux, off at 12. No flicker!"><span class="lv">6-20 <i>▶ BUILD</i></span><b>SENSOR TO SWITCH: DUSK LIGHT</b><span class="d">LDR, LM393 comparator with hysteresis, and a MOSFET switching a 12 V LED strip.</span></a>
-        <a class="level" href="/learn/electronics/21-amplifier.html" data-icon="wave" data-blip="2.5 volts of DC into a speaker? Not on my watch."><span class="lv">6-21 <i>▶ BUILD</i></span><b>LM386 SPEAKER AMP</b><span class="d">A phone into a speaker: signals on half the supply, the capacitor that keeps DC out, gain and bass.</span></a>
-        <a class="level" href="/learn/electronics/22-microcontroller.html" data-icon="chip" data-blip="Not GPIO12! It decides how the chip boots."><span class="lv">6-22 <i>▶ BUILD</i></span><b>ESP32 WEATHER DISPLAY</b><span class="d">A sensor and a screen on two shared wires: modules, pin choices, I²C addresses and pull-ups.</span></a>
-        <a class="level" href="/learn/electronics/23-design-your-own.html" data-icon="lab" data-blip="Six schematics, six mistakes. Then your own design!"><span class="lv">6-23 <i>▶ BUILD</i></span><b>DESIGN YOUR OWN</b><span class="d">A design review with planted mistakes, then a thermostat fan you design yourself, part by part.</span></a>
-        <a class="level" href="/learn/lab.html" data-icon="chip" data-blip="Build anything. Burn out LEDs. Short a battery. I won't tell."><span class="lv">6-LAB <i>▶ PLAY</i></span><b>CIRCUIT LAB</b><span class="d">Build circuits from the course's parts (op-amps, 555s, regulators, comparators, MOSFETs, logic), probe them with a 4-channel scope, drop in rectifiers, filters and amplifiers.</span></a>
-        <a class="level" href="/learn/" data-icon="book" data-blip="The whole skill tree."><span class="lv">6-★ <i>▶ OPEN</i></span><b>ALL TRACKS</b><span class="d">Electronics, math and ML, radio, and the build logs.</span></a>
+        <a class="level" href="/learn/electronics/01-voltage-current-resistance.html" data-icon="lab" data-blip="Don't connect that LED without a resistor! Or do, and watch."><span class="lv">6-1 <i>▶ PLAY</i></span><b>ELECTRONICS FROM SCRATCH</b><span class="d">16 chapters, from Ohm's law to microcontrollers.</span></a>
+        <a class="level" href="/learn/electronics/17-first-build-555.html" data-icon="chip" data-blip="Notch to the left, pin 1 bottom-left. Now where's pin 7?"><span class="lv">6-2 <i>▶ BUILD</i></span><b>REAL BUILDS</b><span class="d">7 builds with real chips, from a 555 blinker to an ESP32.</span></a>
+        <a class="level" href="/learn/lab.html" data-icon="chip" data-blip="Build anything. Burn out LEDs. Short a battery. I won't tell."><span class="lv">6-LAB <i>▶ PLAY</i></span><b>CIRCUIT LAB</b><span class="d">Build any circuit and probe it on a scope.</span></a>
+        <a class="level" href="/learn/" data-icon="book" data-blip="The whole skill tree."><span class="lv">6-★ <i>▶ OPEN</i></span><b>ALL TRACKS</b><span class="d">Every chapter and build, plus math and radio.</span></a>
       </nav>
     </article>
 
-    <div style="margin-top:36px">
+    <div class="bonus">
       <article class="world">
       <header>
         <h3><small>BONUS</small>IHORK.LINK</h3>
         <span class="onair">ONLINE</span>
       </header>
-      <p>My personal website, styled as a terminal: type a question and it answers about my work, projects and experience.</p>
+      <p>My personal site: a terminal that answers questions about my work.</p>
       <nav class="levels" aria-label="ihork.link">
-        <a class="level" href="https://ihork.link/" target="_blank" rel="noopener" data-icon="tv" data-blip="A terminal that knows my resume. Try typing help."><span class="lv">B-1 <i>▶ OPEN</i></span><b>ASK THE TERMINAL</b><span class="d">ihork.link: Ihor Kruchynskyi, senior software engineer in New York. Ask it anything about his work.</span></a>
+        <a class="level" href="https://ihork.link/" target="_blank" rel="noopener" data-icon="tv" data-blip="A terminal that knows my resume. Try typing help."><span class="lv">B-1 <i>▶ OPEN</i></span><b>ASK THE TERMINAL</b><span class="d">My résumé as a terminal you can question.</span></a>
       </nav>
-    </article>
-    </div>
-
-    <div style="margin-top:36px">
+      </article>
       <article class="world">
       <header>
         <h3><small>BONUS</small>ORNA</h3>
         <span class="onair">BOT ONLINE</span>
       </header>
-      <p>Orna is a GPS RPG: the map around you becomes the game world, with dungeons, towers and raids on real streets. This world collects tools and guides for it, starting with a bot that answers questions about the game.</p>
+      <p>Tools for Orna, the GPS RPG where your streets are the game map.</p>
       <nav class="levels" aria-label="ORNA projects">
-        <a class="level" href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener" data-icon="chat" data-blip="Ask the bot about items, classes and raids. It opens in Telegram."><span class="lv">B-2 <i>▶ OPEN</i></span><b>ASK THE ORNA BOT</b><span class="d">@IrishmooshBot on Telegram answers questions about the game. Opens Telegram's web client (or <span style="text-decoration:underline">t.me/IrishmooshBot</span> in the app).</span></a>
-        <a class="level" href="/orna/" data-icon="box" data-blip="Need 300 Adamantine? I'll find the guild and count the proofs."><span class="lv">B-3 <i>▶ PLAY</i></span><b>GUILD SHOP PLANNER</b><span class="d">What every guild sells today, the next date for any material, and the proofs it costs.</span></a>
+        <a class="level" href="https://web.telegram.org/k/#@IrishmooshBot" target="_blank" rel="noopener" data-icon="chat" data-blip="Ask the bot about items, classes and raids. It opens in Telegram."><span class="lv">B-2 <i>▶ OPEN</i></span><b>ASK THE ORNA BOT</b><span class="d">Answers about the game, on Telegram.</span></a>
+        <a class="level" href="/orna/" data-icon="box" data-blip="Need 300 Adamantine? I'll find the guild and count the proofs."><span class="lv">B-3 <i>▶ PLAY</i></span><b>GUILD SHOP PLANNER</b><span class="d">What each guild sells, and when.</span></a>
       </nav>
-    </article>
+      </article>
     </div>
   </section>
 </main>

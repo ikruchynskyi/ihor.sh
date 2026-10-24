@@ -70,8 +70,9 @@ function loadFont(key, table = FONTS) {
 // The page styles: reading text, colors and headings, all from the current settings.
 const style = document.createElement("style");
 document.head.append(style);
-// Reading text in articles, plus the side panels of the map pages.
-const TEXT = ":is(main, #panel, aside) :is(p, li, dd, dt, blockquote, figcaption, .lede, td, th, label, summary)";
+// Reading text in articles, plus the side panels of the map pages. A panel marked data-ui is interface with its own type
+// scale (the NYC map's): it opts out here, and the size slider still scales it, as it zooms the whole panel.
+const TEXT = ":is(main, #panel, aside):not([data-ui]) :is(p, li, dd, dt, blockquote, figcaption, .lede, td, th, label, summary)";
 // White or near-black text on accent-colored buttons, whichever reads better.
 const lum = (h) => h.match(/\w\w/g).map((x) => parseInt(x, 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
 const onAccent = (a) => (1.05 / (lum(a) + 0.05) > (lum(a) + 0.05) / (lum("#1b1020") + 0.05) ? "#ffffff" : "#1b1020");
@@ -244,6 +245,7 @@ const WAIT_LABEL = [
   [/^\/api\/ride\/route/, "Finding a bike route"], [/^\/api\/ride\/(camps|stops|places|stations)/, "Searching the map"],
   [/^\/api\/radio\/callsign/, "Looking up the callsign"], [/^\/api\/radio\/repeaters/, "Finding repeaters"], [/^\/api\/nyc\/iss/, "Computing passes"],
 ];
+const labelOf = (key) => WAIT_LABEL.find(([re]) => re.test(key))?.[1];
 const W = window.__wait;
 if (W) {
   const el = document.createElement("div");
@@ -252,16 +254,19 @@ if (W) {
   const out = el.querySelector("output");
   let timer = 0;
   const draw = () => {
-    let oldest = null;
-    for (const r of W.active.values()) if (!oldest || r.at < oldest.at) oldest = r;
+    // the pill names what someone is waiting for (a labeled request); background loads, like a map refreshing its
+    // layers, only move the thin bar, so the pill doesn't sit over the page for something nobody asked for
+    let oldest = null, named = null;
+    for (const r of W.active.values()) { if (!oldest || r.at < oldest.at) oldest = r; if (labelOf(r.key) && (!named || r.at < named.at)) named = r; }
     if (!oldest) { el.hidden = true; el.classList.remove("long"); document.documentElement.classList.remove("ihor-busy"); clearInterval(timer); timer = 0; return; }
     const sec = (performance.now() - oldest.at) / 1000;
     el.hidden = sec < 0.6;
     document.documentElement.classList.toggle("ihor-busy", sec >= 0.6);
-    el.classList.toggle("long", sec >= 2.5);
-    if (sec < 2.5) return;
-    const label = WAIT_LABEL.find(([re]) => re.test(oldest.key))?.[1] ?? "Working on it", usual = W.typical[oldest.key];
-    out.textContent = `${label}… ${Math.round(sec)} s` + (usual > 2500 ? ` · usually about ${Math.round(usual / 1000)} s` : "") + (sec > 60 ? " · still going, hang on" : "");
+    const wait = named && (performance.now() - named.at) / 1000;
+    el.classList.toggle("long", wait >= 2.5);
+    if (!(wait >= 2.5)) return;
+    const usual = W.typical[named.key];
+    out.textContent = `${labelOf(named.key)}… ${Math.round(wait)} s` + (usual > 2500 ? ` · usually about ${Math.round(usual / 1000)} s` : "") + (wait > 60 ? " · still going, hang on" : "");
   };
   W.on.add(() => { draw(); if (!timer) timer = setInterval(draw, 500); });
   if (W.active.size) { draw(); timer = setInterval(draw, 500); }

@@ -16,6 +16,19 @@
     }
     html, body, #map { height: 100%; margin: 0; }
     body { background: var(--bg); color: var(--fg); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    /* ---------- one look for the whole map ----------
+       Corners, frames and shadows come from the site theme's tokens, so a rounded theme is rounded everywhere and Arcade is
+       square everywhere: --r for panels, popups and windows, --r-sm for controls, --edge and --elev for their frames.
+       Text is the reader's body font (the pixel face stays in the site bar) in one scale: 14–15 px titles, 13.5–14 text,
+       13 controls, 12 small. Buttons come in four kinds: the theme's (actions), .linkish (accent text), icon buttons
+       (close, reload, a window's controls) and chips (the city bar, the Now filters). This block comes first so the
+       components below can refine it; the end of this sheet has the shared component rules. */
+    :root { --m-font: var(--body-font, ui-sans-serif, system-ui, -apple-system, sans-serif); --m-rule: color-mix(in srgb, var(--fg) 13%, transparent);
+      --m-hover: color-mix(in srgb, var(--fg) 9%, transparent); --m-ctl: 2px solid var(--line); --m-pill: calc(var(--r-sm, 0px) * 99); }
+    :root:root[data-style="sleek"] { --m-ctl: 1px solid color-mix(in srgb, var(--fg) 16%, transparent); }
+    :is(#panel, #cityHud, #detail, #cams, #sugg, .leaflet-container) { font-family: var(--m-font); }
+    :is(#panel, #cityHud, #detail, #cams, .leaflet-popup) button { font-family: var(--m-font) !important; font-size: 13px !important; font-weight: 600; line-height: 1.25 !important;
+      letter-spacing: 0 !important; text-transform: none !important; padding: 6px 11px; min-height: 0; }
     #panel { position: absolute; z-index: 1000; top: 12px; left: 12px; width: min(360px, calc(100% - 24px));
              max-height: calc((100vh - var(--hud-h, 52px) - 20px) / var(--zoom, 1)); overflow: auto; box-sizing: border-box; background: var(--card); border: 1px solid var(--line);
              border-radius: 10px; padding: 12px 14px; }
@@ -264,12 +277,84 @@
     .ai-mark span { display: inline-block; transform: translate(-50%, -100%); padding: 2px 7px; border-radius: 10px; background: #7048e8; color: #fff; font: 600 12px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
     .city-ping { animation: cityPing 1.3s ease-out 2; } @keyframes cityPing { from { stroke-opacity: 1; stroke-width: 6; } to { stroke-opacity: 0; stroke-width: 1; } }
     @media (max-width: 700px) { #cityHud { left: 8px; right: 56px; top: calc((var(--hud-h, 52px) + 6px) / var(--zoom, 1)); } #cityBar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } #cityBrief { max-height: 38vh; } }
+
+    /* ---------- one look: the shared component rules (see the top of this sheet) ---------- */
+    /* surfaces: the side panel's frame (the theme gives #panel --edge, --r and --elev) on every floating box */
+    #cityBrief, #detail, .cam, #sugg { background: var(--card); border: var(--edge) !important; border-radius: var(--r) !important; box-shadow: var(--elev) !important; }
+    #sugg { border-radius: var(--r-sm) !important; padding: 4px; } #sugg li { border-radius: var(--r-sm); padding: 7px 10px; }
+    .cam { overflow: hidden; }
+    .cam:fullscreen, .cam.max { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+    .leaflet-container .leaflet-popup-content-wrapper { border: var(--edge) !important; border-radius: var(--r) !important; box-shadow: var(--elev) !important; }
+    .leaflet-container .leaflet-popup-content { margin: 14px 30px 14px 16px; font: 13.5px/1.45 var(--m-font); }
+    .leaflet-container a.leaflet-popup-close-button { top: 7px; right: 7px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: 400 20px/1 var(--m-font); color: var(--muted); border-radius: var(--r-sm); }
+    .leaflet-container a.leaflet-popup-close-button:hover { background: var(--m-hover); color: var(--fg); }
+    /* text */
+    #panel { font-size: 14px; line-height: 1.45; }
+    #cityBrief { font: 13.5px/1.45 var(--m-font); }
+    #detail { font: 13.5px/1.5 var(--m-font); }
+    .pfoot { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--m-rule); font-size: 12px; line-height: 1.45; }
+    /* link-like buttons: accent text and nothing else (the theme draws a box around every <button>) */
+    :is(#panel, #cityHud, #detail, #cams, .leaflet-popup) :is(.linkish, .arr-times button) { display: inline; min-height: 0; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+      background: none !important; box-shadow: none !important; color: var(--accent) !important; transform: none !important; }
+    :is(#panel, #cityHud, #detail, #cams, .leaflet-popup) .arr-times button { color: inherit !important; font-size: inherit !important; text-decoration: underline dotted; text-underline-offset: 3px; }
+    :is(#panel, #cityHud, #detail, #cams, .leaflet-popup) .linkish:hover { text-decoration: underline; }
+    /* icon buttons: close, fold, reload, a window's controls */
+    :is(#cityBrief .pbtn button:not(.unpin), #detail .dh button, #refresh, .cam header button) { display: inline-grid; place-items: center; width: 30px; height: 30px; min-height: 0; padding: 0 !important;
+      border: 0 !important; border-radius: var(--r-sm) !important; background: transparent !important; box-shadow: none !important; color: var(--muted) !important; font-size: 16px !important; line-height: 1 !important; transform: none !important; }
+    :is(#cityBrief .pbtn button:not(.unpin), #detail .dh button, #refresh, .cam header button):hover { background: var(--m-hover) !important; color: var(--fg) !important; }
+    #refresh { width: 24px; height: 24px; vertical-align: middle; }
+    /* chips: pills in the rounded themes, squares in Arcade */
+    #cityBar button, .nowf button { border-radius: var(--m-pill) !important; font-family: var(--m-font) !important; }
+    .cam-cluster span, .ai-mark span { border-radius: var(--m-pill); }
+    /* small actions in a row: a popup's footer, the drawer's, the area panel's */
+    .cam-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--m-rule); font-size: inherit; }
+    .cam-foot .here-dir { display: contents; }
+    :is(#panel, #cityHud, #detail, .leaflet-popup) .cam-foot .linkish { padding: 5px 10px !important; border: var(--m-ctl) !important; border-radius: var(--r-sm) !important; background: var(--soft) !important;
+      color: var(--fg) !important; font-size: 12.5px !important; text-decoration: none; }
+    .here-dir { flex-wrap: wrap; margin: 8px 0 2px; }
+    :is(.cam-foot, .here-dir, #detail .acts, #cityBrief .actions, .nearbar) button:not(.linkish) { font-size: 12.5px !important; padding: 5px 10px !important; }
+    /* the street photo: the picture itself, no frame around it */
+    .here-photo { margin: 8px 0 2px; font-size: 12px; line-height: 1.4; }
+    :is(#panel, #detail, .leaflet-popup) .here-photo button { display: block; width: 100%; margin: 0 0 4px !important; padding: 0 !important; border: 0 !important; border-radius: var(--r-sm) !important;
+      background: none !important; box-shadow: none !important; overflow: hidden; transform: none !important; }
+    /* the list under the city bar: title over its summary, then the buttons */
+    #cityBrief .ph { align-items: center; gap: 6px; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--m-rule); }
+    #cityBrief .pt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; }
+    #cityBrief .pt .muted { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; }
+    #cityBrief .pbtn { align-items: center; }
+    #cityBrief .pbtn .unpin { padding: 4px 10px !important; font-size: 12px !important; margin-right: 2px; }
+    #cityBrief .pb { padding: 6px 14px 12px; }
+    #cityBrief ul.rows li { border-bottom-color: var(--m-rule); }
+    /* the incident drawer */
+    #detail .dh { align-items: center; padding: 10px 8px 10px 14px; border-bottom: 1px solid var(--m-rule); border-radius: var(--r) var(--r) 0 0; }
+    #detail .db { padding: 10px 14px 14px; }
+    #detail ul { padding-left: 18px; }
+    /* camera and photo windows */
+    .cam header { gap: 2px; padding: 4px 4px 4px 12px; border-bottom: 1px solid var(--m-rule); font: 600 13px/1.3 var(--m-font); }
+    .cam header a { font-size: 12px; margin: 0 4px; white-space: nowrap; }
+    /* the side panel's tabs, lists and forms */
+    .ptabs { border-bottom: 1px solid var(--m-rule); }
+    .ptabs button { font-size: 13.5px !important; padding: 8px 2px !important; }
+    #nearBox li { padding: 6px 0; border-bottom: 1px solid var(--m-rule); }
+    .feed li { border-bottom-color: var(--m-rule); padding: 8px 2px; }
+    .lgrp summary { font-size: 14px; padding: 6px 0; }
+    #layers label { margin: 5px 0 5px 22px !important; font-size: 13.5px; line-height: 1.4; }
+    #layers input, #trip input[type="checkbox"] { margin: 0 6px 0 0; vertical-align: -2px; accent-color: var(--accent); }
+    #trip label { margin: 6px 0; font-size: 13.5px; }
+    .modes label { border: var(--m-ctl); border-radius: var(--r-sm); padding: 8px 4px 6px; gap: 3px; }
+    .modes label span { font-size: 20px; }
+    .modes label b { font-size: 12px; font-weight: 600; }
+    .modes legend { font-size: 13px; color: var(--muted); }
+    #trip .modes label { display: grid; place-items: center; flex: 1 1 0; margin: 0 !important; }
+    #panel .grab { border: 0 !important; background: none !important; box-shadow: none !important; min-height: 0; }
+    .nearbar { gap: 8px 14px; }
+    .grade { border-radius: var(--r-sm); }
   </style>
 </head>
 <body>
 <div id="map"></div>
 <ul id="sugg" role="listbox" aria-label="Matching places" hidden></ul>
-<div id="panel" role="main">
+<div id="panel" role="main" data-ui>
   <button id="grab" class="grab" aria-label="Make the panel taller or shorter"></button>
   <h1 class="sr">NYC Live Map</h1>
   <div class="phead"><form id="search" role="search" class="pickrow"><input id="q" type="search" placeholder="🔎 Search NYC" aria-label="Find a place or address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button title="Find it on the map">Go</button></form><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
@@ -311,11 +396,11 @@
     <div id="layers"></div>
     <p class="muted" style="margin:6px 0 0">📻 NYC radio stations moved to the <a href="/radio/stations/">Radio world</a>.</p>
   </section>
-  <div class="muted pfoot"><span id="status">Loading…</span> <button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button><br>Open data, some of it estimated · <a href="how.html">How this map works</a> (train positions): it can be late or wrong.</div>
+  <div class="muted pfoot"><button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button> <span id="status">Loading…</span><br>Open data, some of it estimated · <a href="how.html">How this map works</a> (train positions): it can be late or wrong.</div>
   </div>
 </div>
 <div id="cityHud"><div id="cityBar" role="status" aria-label="The city now"></div><div id="cityBrief" hidden></div></div>
-<aside id="detail" hidden aria-label="Incident details"></aside>
+<aside id="detail" data-ui hidden aria-label="Incident details"></aside>
 <div id="cams" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -1346,7 +1431,7 @@ const goLink = (layer, id, text) => `<a href="#" data-go="${esc(`${layer}|${id}`
 function showPanel(what, html) {
   const box = $("cityBrief");
   box.dataset.what = what; box.hidden = false; box.classList.remove("min");
-  box.innerHTML = `<div class="ph">${html.title}<span class="pbtn"><button class="linkish unpin" data-act="unpin" title="Take this list's markers off the map (× only closes the list)" hidden>Clear</button><button class="linkish" data-act="fold" title="Fold or unfold the list">▾</button><button class="linkish" data-act="close" title="Close the list (its markers stay until you clear them)">×</button></span></div><div class="pb">${html.body}</div>`;
+  box.innerHTML = `<div class="ph"><div class="pt">${html.title}</div><span class="pbtn"><button class="linkish unpin" data-act="unpin" title="Take this list's markers off the map (× only closes the list)" hidden>Clear</button><button class="linkish" data-act="fold" title="Fold or unfold the list">▾</button><button class="linkish" data-act="close" title="Close the list (its markers stay until you clear them)">×</button></span></div><div class="pb">${html.body}</div>`;
   drawBar();
 }
 // × closes the list and leaves its markers; "Clear markers" (in the list) or the bar's ✕ Clear take them off.
