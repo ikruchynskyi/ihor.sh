@@ -2083,7 +2083,8 @@ Object.assign(meBtn, { href: "#", role: "button", textContent: "◎", title: "Sh
 meBtn.setAttribute("aria-label", "Show me on the map");
 meBtn.style.fontSize = "18px";
 L.DomEvent.disableClickPropagation(meBtn);
-meBtn.onclick = (e) => { e.preventDefault(); meAt ? stopMe() : locateMe(); };
+// ◎ brings you into view; pressed while you're already in the middle of it, it stops following you
+meBtn.onclick = (e) => { e.preventDefault(); meAt && map.getBounds().pad(-0.3).contains(meAt) ? stopMe() : locateMe(); };
 new (L.Control.extend({ onAdd: () => { const d = L.DomUtil.create("div", "leaflet-bar"); d.append(meBtn); return d; } }))({ position: "topright" }).addTo(map);
 const startHere = () => placePin("tFrom", meAt).then(() => { if ($("tTo").value) $("trip").requestSubmit(); else setPicking("tTo"); });
 function locateMe(asStart = false, auto = false) {
@@ -2094,14 +2095,17 @@ function locateMe(asStart = false, auto = false) {
   map.locate({ watch: true, enableHighAccuracy: true });
 }
 function stopMe() { map.stopLocate(); meLayer.clearLayers(); meAt = null; meBtn.style.color = ""; }
+let mapTouched = false; // dragged by hand before your position came in
+map.on("dragstart", () => (mapTouched = true));
 map.on("locationfound", (e) => {
   const first = !meAt;
   meAt = e.latlng; meAccuracy = e.accuracy;
   meLayer.clearLayers();
   L.circle(e.latlng, { radius: e.accuracy, color: "#1c7ed6", weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
   L.circleMarker(e.latlng, { radius: 8, color: "#fff", weight: 3, fillColor: "#1c7ed6", fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip(`You are here (±${Math.round(e.accuracy)} m)`).addTo(meLayer);
-  // on page load, only jump to you when you're in the city; elsewhere the dot just waits off-screen
-  if (first && (!meAuto || NYC.contains(e.latlng))) map.setView(e.latlng, Math.max(map.getZoom(), 16));
+  // On page load, jump to you only when you're in the city, the page wasn't opened from a link (a shared view, a
+  // place, a camera…: the link chose the view) and you haven't moved the map yourself; ◎ always comes to you.
+  if (first && (!meAuto || (NYC.contains(e.latlng) && !location.hash && !mapTouched))) map.setView(e.latlng, Math.max(map.getZoom(), 16));
   if (first && meAuto && NYC.contains(e.latlng) && !near && !location.hash) nearMe(e.latlng, "you").catch(() => {}); // opening the page in the city: what's around you
   if (meWanted) { meWanted = false; startHere(); }
 });
