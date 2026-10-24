@@ -650,17 +650,17 @@ export async function lookAtCameras(ids: string[], question: string) {
   const all = await trafficCameras(), cams = ids.map((id) => all.find((c) => c.id === id)).filter(Boolean) as any[];
   const shots = (await Promise.all(cams.map(async (c) => { const r = await fetch(c.image, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
     return r?.ok ? { c, img: Buffer.from(await r.arrayBuffer()).toString("base64") } : null; }))).filter(Boolean) as { c: any; img: string }[];
-  if (!shots.length) return [];
-  const schema = { type: "object", required: ["cameras"], properties: { cameras: { type: "array", items: { type: "object", required: ["image", "sentence"], properties: { image: { type: "integer" }, sentence: { type: "string" } } } } } };
+  if (!shots.length) return { summary: "", model: LOCAL_MODEL, looks: [] };
+  const schema = { type: "object", required: ["cameras", "summary"], properties: { summary: { type: "string" }, cameras: { type: "array", items: { type: "object", required: ["image", "sentence"], properties: { image: { type: "integer" }, sentence: { type: "string" } } } } } };
   const res = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(180_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: schema,
-    options: { num_predict: 100 * shots.length, temperature: 0.2 }, messages: [{ role: "user", images: shots.map((x) => x.img),
-      content: `${shots.length} live NYC traffic camera frames, in this order: ${shots.map((x, i) => `image ${i + 1} = "${x.c.name}"`).join("; ")}. For each image, one sentence: ${question.slice(0, 400)} Only the scene: don't describe or identify people, faces or license plates, and don't guess the time.` }] }) });
+    options: { num_predict: 100 * shots.length + 80, temperature: 0.2 }, messages: [{ role: "user", images: shots.map((x) => x.img),
+      content: `${shots.length} live NYC traffic camera frames, in this order: ${shots.map((x, i) => `image ${i + 1} = "${x.c.name}"`).join("; ")}. For each image, one sentence: ${question.slice(0, 400)} Then summary: one sentence about all of them together (what stands out, or that nothing does). Only the scene: don't describe or identify people, faces or license plates, and don't guess the time.` }] }) });
   if (!res.ok) throw new Error(`vision model: HTTP ${res.status}`);
-  let out: { image: number; sentence: string }[] = [];
-  try { out = JSON.parse(String((await res.json()).message?.content ?? "")).cameras ?? []; } catch { throw new Error("the vision model's answer didn't parse"); }
+  let out: { image: number; sentence: string }[] = [], summary = "";
+  try { const j = JSON.parse(String((await res.json()).message?.content ?? "")); out = j.cameras ?? []; summary = String(j.summary ?? "").trim(); } catch { throw new Error("the vision model's answer didn't parse"); }
   const seen = new Set<number>();
-  return out.filter((x) => Number.isInteger(x.image) && x.image >= 1 && x.image <= shots.length && !seen.has(x.image) && seen.add(x.image) && x.sentence?.trim())
-    .map((x) => { const c = shots[x.image - 1].c; return { id: c.id, name: c.name, lat: c.lat, lon: c.lon, text: x.sentence.trim() }; });
+  return { summary, model: LOCAL_MODEL, looks: out.filter((x) => Number.isInteger(x.image) && x.image >= 1 && x.image <= shots.length && !seen.has(x.image) && seen.add(x.image) && x.sentence?.trim())
+    .map((x) => { const c = shots[x.image - 1].c; return { id: c.id, name: c.name, lat: c.lat, lon: c.lon, text: x.sentence.trim() }; }) };
 }
 /** What a camera shows now: structured JSON with description, traffic flow, weather, road condition, emergency activity,
  *  and detected objects (kind, label, action, count) for programmatic analysis; or the answer to one question. Never

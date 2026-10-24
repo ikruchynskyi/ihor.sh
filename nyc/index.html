@@ -1218,14 +1218,14 @@ async function loadFloodSensors(g) {
   $("n-floods").textContent = `(${wet} of ${d.sensors.length} flooding${d.checkedAt ? `; checked ${hhmm(d.checkedAt)}, ${d.raining ? "all sensors: it's raining" : "coastal ones only while dry"}` : ""}${d.surgeFt != null ? `; harbor ${d.surgeFt >= 0 ? "+" : ""}${d.surgeFt} ft vs tide` : ""})`;
 }
 // Today's local news: a story is pinned where its text says it happened (read by the local AI), roughly when only a neighborhood is named.
-const newsPopup = (n) => `<b>📰 <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a></b><br><span class="muted">${esc(n.outlet)} · ${hhmm(n.starts)}</span>${n.summary ? `<p style="margin:6px 0;font-size:12px">${esc(n.summary)}</p>` : ""}
+const newsPopup = (n) => `<b>📰 <a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a></b><br><span class="muted">${esc(n.outlet)} · ${hhmm(n.starts)}${n.outlets?.length > 1 ? ` · also ${n.also.filter((a) => a.outlet !== n.outlet).map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.outlet)}</a>`).filter((x, i, l) => l.indexOf(x) === i).join(", ")}` : ""}</span>${n.summary ? `<p style="margin:6px 0;font-size:12px">${esc(n.summary)}</p>` : ""}
   <span class="muted">Place read from the text by AI: ${esc(n.place ?? "")}${n.precision === "neighborhood" ? " (the neighborhood, roughly)" : ""}</span><br>${camBtn(n.lat, n.lon)}`;
 async function loadNews(g) {
   const d = (cityData.news = await getJSON("/api/nyc/news"));
   g.clearLayers();
   for (const n of d.items.filter((n) => n.lat != null)) mark("news", n.id, L.marker([n.lat, n.lon], { icon: L.divIcon({ className: `cam-icon${n.precision === "neighborhood" ? " rough" : ""}`, html: "📰", iconSize: [18, 18] }), title: n.title }).bindPopup(newsPopup(n), { maxWidth: 320 })).addTo(g);
   seen.news = d.items.slice(0, 15).map((n) => ({ title: n.title, outlet: n.outlet, at: hhmm(n.starts), place: n.place }));
-  $("n-news").textContent = `(${d.items.length} stories today from ${d.outlets} newsrooms, ${d.items.filter((n) => n.lat != null).length} placed)`;
+  $("n-news").textContent = `(${d.items.length} stories today from ${d.outlets} newsrooms, ${d.items.filter((n) => n.outlets?.length > 1).length} carried by several, ${d.items.filter((n) => n.lat != null).length} placed)`;
 }
 async function loadFdny(g) {
   const d = await getJSON("/api/nyc/fdny");
@@ -1348,7 +1348,7 @@ function listHtml(act) {
   if (act === "news") {
     const d = cityData.news ?? { items: [] };
     return { title: `📰 Local news today <span class="muted">${d.items.length} stories · ${d.items.filter((n) => n.lat != null).length} placed</span>`, points: [],
-      body: `<ul class="rows">${d.items.slice(0, 60).map((n) => `<li>${n.lat != null ? goLink("news", n.id, esc(n.title)) : `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`}<span class="muted">${esc(n.outlet)} · ${ago(n.starts)}${n.place ? ` · 📍 ${esc(n.place)}` : ""}</span></li>`).join("")}</ul>
+      body: `<ul class="rows">${d.items.slice(0, 60).map((n) => `<li>${n.lat != null ? goLink("news", n.id, esc(n.title)) : `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`}<span class="muted">${esc(n.outlets?.join(", ") ?? n.outlet)} · ${ago(n.starts)}${n.place ? ` · 📍 ${esc(n.place)}` : ""}</span></li>`).join("")}</ul>
         <p class="muted">Headlines from the newsrooms' own feeds; 📍 places are read from each story's text by the local AI and can be rough.</p>` };
   }
   if (act === "aqi") return { title: `🌫 Air quality <span class="muted">${p.aqi}</span>`, body: `<p>${p.aqi <= 50 ? "Good" : p.aqi <= 100 ? "Moderate" : p.aqi <= 150 ? "Unhealthy for sensitive groups" : p.aqi <= 200 ? "Unhealthy" : "Very unhealthy or worse"} (US AQI, EPA's bands), from Open-Meteo's air quality model for NYC. <a href="https://www.airnow.gov/?city=New%20York&state=NY&country=USA" target="_blank" rel="noopener">AirNow →</a></p>` };

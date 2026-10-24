@@ -32,6 +32,7 @@ db.exec(`
   create table if not exists polls (source text, at int, ok int, count int, error text);
   create table if not exists labels (incident text primary key, witnesses text, verdict text, at int, note text); -- the owner's true/false on an incident
   create table if not exists truth (event text, dataset text, matched int, at int, primary key (event, dataset)); -- our report vs the official record, once it's out
+  create table if not exists news_vec (id text primary key, vec blob); -- each story's embedding (nomic-embed-text), to group one story across outlets
 `);
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -306,6 +307,30 @@ const NEWS_READ = { type: "object", required: ["nyc", "place", "borough", "preci
   precision: { enum: ["address", "intersection", "landmark", "neighborhood", "borough", "none"] },
   topic: { enum: ["crime", "fire", "crash", "transit", "weather", "health", "housing", "politics", "business", "culture", "sports", "other"] } } };
 const newsKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 80); // the same story in several Schneps papers
+// One story, several outlets: a story joins today's most similar one at cosine ≥ 0.85 (measured 2026-10-23: the same
+// story 0.85–0.96, unrelated 0.50; two election guides 0.85 group too, harmlessly). Its outlets are its coverage.
+const embed = async (texts: string[]) => ((await (await fetch(`${OLLAMA}/api/embed`, { method: "POST", signal: AbortSignal.timeout(60_000), body: JSON.stringify({ model: "nomic-embed-text", input: texts.map((t) => `search_document: ${t}`) }) })).json()).embeddings ?? []) as number[][];
+const unit = (v: number[]) => { const n = Math.hypot(...v) || 1; return new Float32Array(v.map((x) => x / n)); };
+const dot = (a: Float32Array, b: Float32Array) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+export const SAME_STORY = 0.85;
+async function groupStories(since: number) {
+  const left = db.prepare("select e.id, e.title, e.detail from events e left join news_vec v on v.id = e.id where e.source = 'news' and e.kind != 'news-elsewhere' and e.starts >= ? and v.id is null order by e.starts").all(since) as { id: string; title: string; detail: string }[];
+  if (!left.length) return;
+  const vecs = await embed(left.map((r) => `${r.title}. ${String(JSON.parse(r.detail).summary ?? "").slice(0, 200)}`));
+  const known = (db.prepare("select v.id, v.vec, json_extract(e.detail, '$.story') story from news_vec v join events e on e.id = v.id where e.starts >= ?").all(since) as { id: string; vec: Uint8Array; story: string }[])
+    .map((r) => ({ id: r.id, story: r.story ?? r.id, v: new Float32Array(r.vec.buffer, r.vec.byteOffset, r.vec.byteLength / 4) }));
+  tx(() => left.forEach((r, i) => {
+    if (!vecs[i]) return;
+    const v = unit(vecs[i]), best = known.reduce((b, k) => { const c = dot(v, k.v); return c > b.c ? { c, k } : b; }, { c: -1, k: null as (typeof known)[number] | null }), story = best.c >= SAME_STORY ? best.k!.story : r.id;
+    db.prepare("insert or replace into news_vec values (?, ?)").run(r.id, Buffer.from(v.buffer));
+    db.prepare("update events set detail = json_set(detail, '$.story', ?) where id = ?").run(story, r.id);
+    known.push({ id: r.id, story, v });
+  }));
+  for (const st of new Set(known.map((k) => k.story))) { // coverage: how many outlets carry each story
+    const outlets = new Set((db.prepare("select json_extract(detail, '$.outlet') o from events where source = 'news' and json_extract(detail, '$.story') = ?").all(st) as { o: string }[]).map((r) => r.o));
+    db.prepare("update events set detail = json_set(detail, '$.coverage', ?) where source = 'news' and json_extract(detail, '$.story') = ?").run(outlets.size, st);
+  }
+}
 async function news() {
   const since = startOfToday(), seen = new Set((db.prepare("select title from events where source = 'news' and starts >= ?").all(since) as { title: string }[]).map((r) => newsKey(r.title)));
   const lists = await Promise.all(NEWS_FEEDS.map(([outlet, url]) => get(url).then((r) => r.text()).then((x) => newsItems(x, since).map((n) => ({ ...n, outlet }))).catch(() => [])));
@@ -330,12 +355,20 @@ async function news() {
       detail: { outlet: n.outlet, summary: n.summary, topic: read.topic, incidentToday: !!read.incident_today, severity: read.severity ?? 0, place: read.place || null, borough: read.borough || null, precision: read.precision, placedBy: pt ? "AI read the place from the text" : null }, url: n.link }]));
     added++;
   }
+  await groupStories(since).catch((e) => console.warn("city news grouping:", (e as Error).message));
   return added;
 }
 /** Today's NYC stories (newest first), optionally matching words or near a point. */
 export function todaysNews({ query = "", lat, lon, r = 2 }: { query?: string; lat?: number; lon?: number; r?: number } = {}) {
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-  return (db.prepare("select * from events where source = 'news' and kind != 'news-elsewhere' and starts >= ? order by starts desc").all(startOfToday()) as Ev[]).map(view)
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2), stories = new Map<string, any>();
+  for (const n of (db.prepare("select * from events where source = 'news' and kind != 'news-elsewhere' and starts >= ? order by starts").all(startOfToday()) as Ev[]).map(view)) {
+    const k = n.story ?? n.id, s = stories.get(k); // one entry per story: its first report, placed if any outlet placed it, with every outlet's link
+    if (!s) { stories.set(k, { ...n, outlets: [n.outlet], also: [] }); continue; }
+    if (!s.outlets.includes(n.outlet)) s.outlets.push(n.outlet);
+    s.also.push({ outlet: n.outlet, title: n.title, url: n.url });
+    if (s.lat == null && n.lat != null) Object.assign(s, { lat: n.lat, lon: n.lon, place: n.place, precision: n.precision });
+  }
+  return [...stories.values()].sort((a, b) => b.starts - a.starts)
     // words match the topic too: "crime" finds a stabbing
     .filter((n) => (!words.length || words.some((w) => `${n.title} ${n.summary} ${n.place ?? ""} ${n.topic}`.toLowerCase().includes(w))) && (lat == null || (n.lat != null && km({ lat, lon: lon! }, n) <= r)));
 }
@@ -438,7 +471,8 @@ export type Incident = { id: string; title: string; kind: string; sev: number; l
 // What an event is about, for merging: a fire alert, smoke on a camera, FDNY and a fire story are one family
 export const family = (e: Ev) => (/fire|smoke/.test(e.kind) ? "fire" : /accident|crash|car-stopped|road:incident/.test(e.kind) ? "crash" : /flood/.test(e.kind) ? "flood"
   : e.source === "news" ? (JSON.parse(e.detail || "{}").topic ?? "other") : "other");
-const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source === "news" ? `news:${JSON.parse(e.detail || "{}").outlet ?? ""}` : e.source); // each outlet is its own witness // Waze drivers and NYSDOT's operators are different eyes
+// one news story is one witness however many outlets carry it (they often repeat the same FDNY or NYPD statement)
+const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source === "news" ? `news:${JSON.parse(e.detail || "{}").story ?? e.id}` : e.source); // Waze drivers and NYSDOT's operators are different eyes
 /** Unplanned things with a place, most severe first, each joined to the first incident within 300 m. A story placed only
  *  at its neighborhood ("news-rough") joins the nearest incident of its family within 1.5 km, or stands alone: nothing
  *  joins a rough one, since its pin is only the neighborhood's middle. */
@@ -510,11 +544,14 @@ export function label(id: string, verdict: string, note = "") {
 export function likelihood(c: { events: Ev[] }, map = reliability(), at = now()) {
   const best = new Map<string, number>();
   for (const e of c.events) {
-    const w = witness(e), base = w.split(":")[0], r0 = map.get(base)?.r ?? 0.5, hl = HALF_LIFE[base];
+    const w = witness(e), base = w.split(":")[0], hl = HALF_LIFE[base], cov = base === "news" ? Number(JSON.parse(e.detail || "{}").coverage ?? 1) : 1;
+    const r = map.get(base)?.r ?? 0.5, r0 = base === "news" ? Math.min(0.9, r + 0.05 * (cov - 1)) : r; // a story more outlets carry is a bit more sure
     best.set(w, Math.max(best.get(w) ?? 0, hl ? r0 * 0.5 ** (Math.max(0, at - e.starts) / hl) : r0));
   }
   const probability = +(1 - [...best.values()].reduce((miss, r) => miss * (1 - r), 1)).toFixed(2);
-  return { probability, why: [...best].map(([w, r]) => `${SOURCE_NAMES[w.split(":")[0]] ?? w}${w.includes(":") ? ` (${w.split(":")[1]})` : ""} ${Math.round(r * 100)}%`) };
+  const label = (w: string) => { const [base] = w.split(":"), e = c.events.find((x) => witness(x) === w), d = e && base === "news" ? JSON.parse(e.detail || "{}") : null;
+    return d ? `news (${d.outlet}${d.coverage > 1 ? ` + ${d.coverage - 1} more outlet${d.coverage > 2 ? "s" : ""}` : ""})` : SOURCE_NAMES[base] ?? w; };
+  return { probability, why: [...best].map(([w, r]) => `${label(w)} ${Math.round(r * 100)}%`) };
 }
 
 /** A source's events that started in the last few hours, newest first (ended ones too: "what happened today"). */
@@ -766,6 +803,15 @@ export function pickCameras<C extends { lat: number; lon: number; h?: number }>(
   }
   return pick;
 }
+/** Look at an area's cameras now (Blip's and the MCP's watch_area_cameras): up to 5 traffic cameras within r km, spread out,
+ *  in one call to the local vision model: a sentence each and one summary line. The caller holds the model's line. */
+export async function watchCameras(lat: number, lon: number, r = 0.6, question = LOOK) {
+  const pool = (await trafficCameras()).filter((c) => !c.youtube && c.source !== "windy.com" && km({ lat, lon }, c) <= r), cams = pickCameras(pool);
+  if (!cams.length) return { radiusM: Math.round(r * 1000), cameras: [], summary: "No traffic camera within that distance.", lookedAt: 0, of: 0 };
+  const { looks, summary, model } = await lookAtCameras(cams.map((c) => c.id), question);
+  return { radiusM: Math.round(r * 1000), lookedAt: looks.length, of: pool.length, summary, model, at: new Date().toISOString(),
+    cameras: looks.map((v) => ({ id: v.id, name: v.name, sentence: v.text, metersAway: Math.round(km({ lat, lon }, v) * 1000), mapLink: `/nyc/#cam=${v.id}` })) };
+}
 /** A brief for one area, asked by a visitor (in the visitors' line, not the background lane): the store's facts, plus a
  *  one-sentence look at the area's best few traffic cameras by the local vision model, then the words. step() hears progress. */
 const LOOK = "In one sentence: is anything unusual happening, or anything that draws attention (an accident, emergency vehicles, a blocked lane, flooding, smoke, a crowd, a stopped bus)? If not, say what the traffic looks like.";
@@ -774,7 +820,7 @@ export async function areaBrief(b: Box, step = (_: string) => {}) {
   const cams = pickCameras((await trafficCameras().catch(() => [] as any[])).filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com")); // a job can wait for the list
   if (cams.length) {
     step(`Looking at ${cams.length} camera${cams.length > 1 ? "s" : ""} at once: ${cams.map((c) => c.name).join(", ")}…`);
-    for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id), LOOK)).catch(() => []))
+    for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id), LOOK)).then((r) => r.looks).catch(() => []))
       F.push({ id: `F${F.length + 1}`, text: `Camera "${v.name}", looked at just now by the local vision model: ${v.text}`, lat: v.lat, lon: v.lon });
   }
   step("Writing the brief…");

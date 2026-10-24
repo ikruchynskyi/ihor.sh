@@ -39,9 +39,9 @@ assert.equal(inc.length, 2);
 assert.deepEqual([inc[0].id, inc[0].events.length, inc[0].confidence, inc[0].sources], ["fire", 3, 2, ["notify", "waze"]]);
 
 // A fire story placed only at its neighborhood joins the fire 1 km away (same family), not the crash next to it.
-const story = { ...ev("s", "news", "news-rough", 2, 40.809), detail: JSON.stringify({ topic: "fire", outlet: "PIX11" }) };
+const story = { ...ev("s", "news", "news-rough", 2, 40.809), detail: JSON.stringify({ topic: "fire", outlet: "PIX11", story: "s" }) };
 const merged = cluster([ev("fire2", "notify", "alert:fire", 3, 40.8), ev("crash", "511ny", "road:waze-minor-accident", 1, 40.8095, -73.9), story]);
-assert.deepEqual(merged.find((c) => c.id === "fire2")!.sources, ["notify", "news:PIX11"]);
+assert.deepEqual(merged.find((c) => c.id === "fire2")!.sources, ["notify", "news:s"]);
 const alone = cluster([ev("crash", "511ny", "road:waze-minor-accident", 1, 40.8095), story]);
 assert.equal(alone.length, 2); assert.ok(alone.find((c) => c.id === "s")!.rough);
 
@@ -87,4 +87,7 @@ assert.ok(Math.abs(poissonTail(1, 1) - (1 - Math.exp(-1))) < 1e-12);
 assert.ok(Math.abs(poissonTail(5, 1) - 0.0036598468) < 1e-9);
 assert.ok(poissonTail(400, 100) > 0 && poissonTail(400, 100) < 1e-60); // far tail, no underflow to 0 or NaN
 assert.deepEqual(bh([0.01, 0.04, 0.03, 0.5]).map((x) => +x.toFixed(4)), [0.04, 0.0533, 0.0533, 0.5]);
+// A story carried by 3 outlets: one witness, 75% + 2 × 5%.
+const covered = { ...ev("n3", "news", "news", 2, 40.8), starts: T, detail: JSON.stringify({ outlet: "PIX11", story: "st", coverage: 3 }) };
+assert.equal(likelihood({ events: [covered, { ...covered, id: "n4", detail: JSON.stringify({ outlet: "CBS", story: "st", coverage: 3 }) }] }, pri, T).probability, 0.85);
 console.log("city.test.ts: OK");

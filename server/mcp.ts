@@ -9,6 +9,9 @@
 import type http from "node:http";
 import { timingSafeEqual, createHash, randomUUID } from "node:crypto";
 import { toolDefs, runTool } from "./blip.ts";
+import { inLine } from "./llm.ts";
+// Tools that run the local model: called from the MCP they take a turn in its line (Blip's chat already holds one).
+const MODEL_TOOLS = new Set(["inspect_traffic_camera", "watch_area_cameras"]);
 
 const VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"]; // newest first
 const sha = (s: string) => createHash("sha256").update(s).digest();
@@ -36,7 +39,7 @@ async function handle(m: Rpc, ask: (q: string) => Promise<{ reply: string; tools
       if (open && !OPEN.has(String(name))) return { content: [{ type: "text", text: `${name} needs a bearer token from the site's owner (https://ihork.link/); site_search works without one.` }], isError: true };
       try {
         if (name === "ask_blip") { const a = await ask(String(args?.question ?? "")); return { content: [{ type: "text", text: a.reply }], structuredContent: { reply: a.reply, toolsUsed: a.tools } }; }
-        const out = await runTool(String(name), args ?? {});
+        const out = await (MODEL_TOOLS.has(String(name)) ? inLine(() => runTool(String(name), args ?? {})) : runTool(String(name), args ?? {}));
         return { content: [{ type: "text", text: JSON.stringify(out).slice(0, 60_000) }] };
       } catch (e) { return { content: [{ type: "text", text: `Error: ${(e as Error).message}` }], isError: true }; }
     }
