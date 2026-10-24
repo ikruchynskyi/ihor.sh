@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How the Live Map Works · NYC</title>
+  <meta name="description" content="An interactive diagram of the NYC Live Map: where its data comes from, what this server does with it (merging reports, how likely each one is real, unusual counts, camera looks, AI briefs that must cite their facts) and where it shows up, with each feed's health live.">
+  <style>
+    :root {
+      --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #ffffff; --soft: #f3f1ec; --accent: #d9480f;
+      --blue: #2f7dd1; --yellow: #b8860b; --pink: #c2255c; --green: #2b8a3e; --red: #e03131; --ok: #2b8a3e;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d; --card: #161b22; --soft: #1c2128; --accent: #f78166;
+        --blue: #58a6ff; --yellow: #e3b341; --pink: #f778ba; --green: #56d364; --red: #f85149; --ok: #56d364; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body-font, ui-sans-serif, system-ui, -apple-system, sans-serif); }
+    main { max-width: 1560px; margin: 0 auto; padding: 16px; }
+    a { color: var(--accent); }
+    h1 { font-family: var(--display, inherit); font-size: 1.5rem; margin: 8px 0 4px; }
+    .lead { max-width: 820px; margin: 0 0 10px; }
+    .muted { color: var(--muted); font-size: .85rem; }
+    #live { margin: 0 0 12px; }
+    #live b { color: var(--fg); }
+    .traces { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 14px; }
+    .traces button, .info button { font: inherit; font-size: .85rem; padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--r-sm, 999px); background: var(--card); color: var(--fg); cursor: pointer; }
+    .traces button.on { border-color: var(--accent); color: var(--accent); }
+    .wrap { display: grid; gap: 16px; }
+    @media (min-width: 1280px) { .wrap { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } }
+
+    /* the diagram: four columns, the links drawn in an SVG under the nodes */
+    .board { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 56px; }
+    .board svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .col { position: relative; z-index: 1; min-width: 0; }
+    .col h2 { font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 8px; color: var(--c); font-family: var(--ui, inherit); }
+    .col h2 span { display: block; text-transform: none; letter-spacing: 0; color: var(--muted); font-family: var(--body-font, inherit); font-weight: 400; }
+    .list { display: grid; gap: 8px; }
+    .node { position: relative; display: block; width: 100%; text-align: left; font: inherit; color: var(--fg); background: var(--card); cursor: pointer;
+      border: 1px solid var(--line); border-radius: var(--r, 8px); padding: 7px 26px 7px 12px; transition: opacity .2s, box-shadow .2s; }
+    .node::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+    /* the site theme sets buttons in its UI face (pixel capitals in Arcade); the boxes hold sentences, so their text uses the body face */
+    .node b, .node .s { font-family: var(--body-font, ui-sans-serif, system-ui, sans-serif); text-transform: none; letter-spacing: 0; }
+    .node b { display: block; font-size: .92rem; line-height: 1.3; }
+    .node .s { display: block; font-size: .78rem; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+    .node .dot { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+    .dot.ok { background: var(--ok); } .dot.warn { background: var(--yellow); } .dot.bad { background: var(--red); }
+    .node:hover, .node:focus-visible { box-shadow: 0 0 0 2px var(--c); outline: none; }
+    .board.focus .node { opacity: .28; }
+    .board.focus .node.near, .board.focus .node.sel { opacity: 1; }
+    .node.sel { box-shadow: 0 0 0 2px var(--accent); }
+    .edge { fill: none; stroke: var(--line); stroke-width: 1.4; opacity: .9; transition: opacity .2s; }
+    .edge.back { stroke-dasharray: 4 4; }
+    .board.focus .edge { opacity: .12; }
+    .board.focus .edge.hot { opacity: 1; stroke: var(--accent); stroke-width: 2.2; }
+    .edge.flow { stroke-dasharray: 6 6; animation: flow 1s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -12; } }
+    @media (prefers-reduced-motion: reduce) { .edge.flow { animation: none; } }
+
+    /* the details: a side column on wide screens, a sheet from the bottom otherwise */
+    .info { background: var(--card); border: 1px solid var(--line); border-radius: var(--r, 10px); padding: 12px 14px; }
+    .info h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .info p, .info ul { margin: 6px 0; font-size: .9rem; }
+    .info ul { padding-left: 18px; }
+    .info .links { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; }
+    .info .links button { padding: 2px 8px; font-size: .78rem; }
+    .info table { border-collapse: collapse; width: 100%; font-size: .82rem; margin: 6px 0; }
+    .info td, .info th { border-bottom: 1px solid var(--line); padding: 3px 4px; text-align: left; vertical-align: top; }
+    .info .step { background: var(--soft); border-radius: var(--r-sm, 6px); padding: 8px 10px; margin: 0 0 10px; font-size: .9rem; }
+    .info .step .nav { display: flex; gap: 6px; margin-top: 6px; }
+    .info code { font-size: .8rem; }
+    #close { display: none; float: right; }
+    @media (min-width: 1280px) { .info { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; } }
+    @media (max-width: 1279px) {
+      .info { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 50; max-height: 52vh; overflow: auto; box-shadow: 0 -6px 24px rgba(0, 0, 0, .3);
+        transform: translateY(calc(100% + 16px)); transition: transform .25s; }
+      .info.open { transform: none; }
+      #close { display: inline-block; }
+      main { padding-bottom: 40vh; }
+    }
+    @media (max-width: 899px) {
+      .board { grid-template-columns: 1fr; gap: 18px; }
+      .board svg { display: none; }
+      .list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    }
+    .notes { max-width: 820px; margin-top: 24px; }
+    .notes h2 { font-size: 1.05rem; margin: 18px 0 6px; }
+    .notes li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="muted"><a href="./">← NYC Live Map</a></p>
+  <h1>How the Live Map Works</h1>
+  <p class="lead">Where the <a href="./">NYC Live Map</a>'s data comes from, what this server does with it, and where you see it. Pick a box to see what feeds it and what it feeds; the dots show each feed's last poll, live.</p>
+  <p id="live" class="muted">Checking the feeds…</p>
+  <div class="traces" id="traces"><span class="muted">Follow one report:</span></div>
+  <div class="wrap">
+    <div class="board" id="board"><svg id="links" aria-hidden="true"></svg></div>
+    <aside class="info" id="info" aria-live="polite"><button id="close" aria-label="Close">✕</button><div id="infoBody"></div></aside>
+  </div>
+  <section class="notes">
+    <h2>What it can't see</h2>
+    <ul>
+      <li><b>No live 911 or police calls.</b> NYC publishes 911 response times only as weekly citywide totals, and NYPD's call and complaint records with locations run months behind. The map shows them in 🔎 This area as the official record, not as what's happening now.</li>
+      <li><b>FDNY's dispatch file runs about three weeks behind.</b> It's used to check, after the fact, which fire reports were real.</li>
+      <li><b>News is placed by a model.</b> A story placed only at its neighborhood is drawn as a dashed circle, and a story alone counts as one witness.</li>
+      <li><b>Each source's reliability starts as a guess.</b> It turns into a measured rate only as reports are confirmed or refuted; the table under "How likely is it real" shows how many each one has.</li>
+      <li><b>Unusual 311 counts are judged against the past.</b> 311 runs about a day and a half behind, so "unusual" means yesterday's counts, not this hour's.</li>
+    </ul>
+    <p class="muted">Everything runs on one Mac: the pollers, the database and the AI models. Keys for the feeds that need them stay on the server. Watched places live only in your browser.</p>
+  </section>
+</main>
+<script type="module">
+const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const COLS = [["Sources", "outside this server", "--blue"], ["Collect", "on this server, each on its own clock", "--yellow"], ["Analyze", "code first, the local AI where words need reading", "--pink"], ["Use", "what you see and ask", "--green"]];
+// Each box: its column, title, one line, the full story, the polls that show its health, and the code it lives in.
+const N = {
+  notify: { col: 0, t: "🚨 Notify NYC", s: "Emergency Management alerts", polls: ["notify"], d: "NYC Emergency Management's alerts: fires, outages, gas work, water main breaks, closures. Read every 2 minutes from its RSS feed; each alert comes in many languages and only the English one is kept, with its severity and expiry. Placed by its cross streets." },
+  nws: { col: 0, t: "⛈ National Weather Service", s: "watches and warnings", polls: ["nws"], d: "The National Weather Service's alerts for the five boroughs (api.weather.gov), every 5 minutes." },
+  ny511: { col: 0, t: "🚧 511NY", s: "incidents, closures, Waze reports", polls: ["511ny"], d: "New York State's traffic events: incidents, closures, construction, special events and drivers' Waze reports, every 2 minutes. Clipped to the five boroughs by their shapes, water included, so bridges and tunnels count. A Waze report is kept for 3 hours." },
+  coned: { col: 0, t: "⚡ Con Edison", s: "power outages", polls: ["coned"], d: "Con Edison's outage summary every 15 minutes: outages and customers out of power." },
+  water: { col: 0, t: "🌊 Water and air", s: "tide gauge, FloodNet, air quality, rain", polls: ["noaa", "floodnet", "air"], d: "NOAA's tide gauge at the Battery (every 6 minutes), FloodNet's street flood sensors (every 10 minutes: the coastal ones always, every one while it rains; a reading is compared with that sensor's usual depth), and air quality and rain from Open-Meteo (every 10 minutes)." },
+  opendata: { col: 0, t: "🗂 NYC Open Data", s: "311, permits, film shoots, FDNY, NYPD", polls: ["311", "permits", "film", "fdny", "truth"], d: "Socrata datasets: 311 service requests (hourly, the last 33 days kept for comparison), permitted street events and film shoots (hourly), FDNY fire dispatches (every 6 hours; the file runs weeks behind), NYPD collisions (daily, to check crash reports), and NYPD complaints, calls and shootings for 🔎 This area's official record (asked for when someone opens it). Also the borough and neighborhood shapes." },
+  news: { col: 0, t: "📰 15 local newsrooms", s: "today's stories, every 15 min", polls: ["news"], d: "RSS from Gothamist, THE CITY, amNY, PIX11, ABC7, NBC New York, CBS New York, the Post's metro desk, Brooklyn Paper, QNS, Bronx Times, SILive, BK Reader, West Side Rag and Patch, every 15 minutes. Only today's stories, and only the headline, the feed's own summary and the link: the article text is never fetched." },
+  adsb: { col: 0, t: "🚁 Aircraft", s: "adsb.lol, every 30 s", polls: ["adsb"], d: "Aircraft positions from adsb.lol's community receivers. Every 30 seconds the server follows the helicopters under 3,000 ft over the city; one that turns a full circle in a small area is marked as circling, which often means something is happening below." },
+  cams: { col: 0, t: "📷 Cameras", s: "DOT, NYSDOT video, YouTube, Windy", d: "NYC DOT's traffic cameras (stills), NYSDOT's 511 live video, 24/7 YouTube streams of the city, and Windy webcams." },
+  transit: { col: 0, t: "🚇 Transit", s: "MTA, NYC Ferry, Citi Bike", d: "The MTA's subway feeds (GTFS-realtime) and Bus Time, NYC Ferry's boats, Citi Bike's stations, and the MTA's alerts and elevator outages (recorded every 5 minutes into the MTA Archive). Fetched when someone looks." },
+  sky: { col: 0, t: "🛰 Harbor and sky", s: "ships, the ISS, storms, weather", d: "Ships from AIS (aisstream.io), the ISS (wheretheiss.at), tropical storms (NOAA's hurricane center) and the weather now (NWS)." },
+  places: { col: 0, t: "📍 Places", s: "addresses, businesses, photos, events", d: "NYC Geoclient and GeoSearch (addresses, districts, cross streets), OpenStreetMap (businesses), restaurant inspections, Mapillary street photos and the city's events calendar." },
+
+  store: { col: 1, t: "🗄 Pollers → city.db", s: "one store for every live feed", code: "server/city.ts", d: "Each feed has its own timer, staggered so a restart doesn't hit them all at once. A feed's list replaces its last one, so what a feed stops listing has ended. Every poll is logged with how it went: that's what this page's dots read. Each report gets its borough and neighborhood (the city's 2020 neighborhood map). SQLite, on this Mac." },
+  readnews: { col: 1, t: "🧠 Reading the news", s: "the local model reads each story once", polls: ["news"], code: "server/city.ts · news()", d: "The local model reads each new headline and summary once and answers in fixed fields: is it in NYC, did it happen today, is it an incident, how serious, where (an exact address or only a neighborhood) and its topic. Then embeddings (nomic-embed-text) group one story told by several outlets: two headlines at cosine similarity 0.85 or more are the same story." },
+  streams: { col: 1, t: "📡 Stream checks", s: "dead video is dropped", code: "server/nycapi.ts", d: "A NYSDOT video stream is listed only while its playlist has segments and its sequence number moves (a frozen stream is dropped). A YouTube stream is listed only while YouTube says it's live (checked every 6 hours). Each camera gets its resolution, which sets its HD/SD/4K badge." },
+  cache: { col: 1, t: "♻️ Live caches", s: "one upstream call serves everyone", code: "server/nycapi.ts, transit.ts, sky.ts, ships.ts", d: "Trains, buses, ferries, bikes, ships, aircraft and the weather are fetched when someone looks and cached for 15 seconds to 30 minutes, so one request upstream serves every visitor, and keys never reach the browser." },
+
+  cluster: { col: 2, t: "🧩 One incident, many reports", s: "reports within 300 m merge", code: "server/city.ts · cluster()", d: "Reports of the same kind of thing within 300 m of each other become one incident. A news story placed only at its neighborhood joins an incident of the same family (fire, crash, flood…) within 1.5 km. Closures and planned work stay apart. Only today's, rebuilt every 15 minutes with the brief." },
+  likely: { col: 2, t: "🎯 How likely is it real", s: "independent witnesses combine", code: "server/city.ts · likelihood()", d: "Each independent witness has a reliability, and together they make 1 − Π(1 − r): two 60% witnesses make 84%. Waze drivers count as one witness, and one story across outlets as one. A Waze report halves in weight each hour, a camera's or a helicopter's each half hour. Each reliability starts as a stated guess worth 10 reports and moves with each confirmed or refuted one: the owner's answers on the review page and the official records (FDNY fires, NYPD crashes) once they're published." },
+  unusual: { col: 2, t: "📈 Unusual counts", s: "311 against its own normal", polls: ["unusual"], code: "server/city.ts · anomalies()", d: "311 requests per type and ZIP code against what's expected there: that ZIP's rate over the last 28 days times a seasonal ratio from 2024–25 (kept between 0.5× and 3×). A Poisson tail gives each count's chance of happening by luck, and Benjamini–Hochberg keeps false alarms to 5% of what's flagged. A flag also needs 5 or more requests, at least twice the usual, from 3 or more places." },
+  vision: { col: 2, t: "👁 Cameras look", s: "the local vision model, one batched call", polls: ["vision"], code: "server/nycapi.ts · lookAtCameras()", d: "Every 2 minutes, each new serious incident (severity 2 or more, or 2 or more sources) gets up to 3 cameras within 400 m looked at by the local vision model, at most 12 minutes of model time an hour. It answers in fixed fields: traffic, road, visibility, emergency vehicles, smoke or fire, anything notable. What it sees becomes one more witness. On request: 👁 in a camera window, Blip's watch_area_cameras, and 🔎 This area's brief (5 cameras spread over the area, all in one call)." },
+  brief: { col: 2, t: "✍️ Brief writer", s: "every bullet must cite its facts", polls: ["brief"], code: "server/city.ts · makeBrief()", d: "Every 15 minutes the code lists numbered facts (incidents with their likelihood, alerts, unusual counts, tide, air, outages, news) and the local model writes 3 to 6 bullets, each listing the facts it uses. A bullet is kept only if every fact it cites exists and every number in it appears in those facts. If none survive, the brief is the facts themselves. One for the city, and one for each borough with an incident." },
+  models: { col: 2, t: "🖥 Local AI models", s: "on this Mac, through Ollama", code: "server/llm.ts", d: "One local Qwen model reads the news, writes the briefs and looks at camera frames; nomic-embed-text makes the embeddings; SeedVR2 upscales a camera frame on request (✨). They share one line: what a visitor asks for goes first, background work waits until the model is idle." },
+
+  citybar: { col: 3, t: "🏙 City bar and Now feed", s: "today's incidents, ranked", d: "The bar across the map: a chip for each kind of thing going on (each opens its list and its layer; closing it takes them off), and the city's brief. The Now tab ranks today's incidents by how serious and how likely they are, and marks what's new since your last look." },
+  layers: { col: 3, t: "🗺 Map layers", s: "incidents, closures, flooding, cameras…", d: "⚠ incidents (an emoji per kind, a ring for severity, fainter when less likely, a white halo when 2 or more sources agree, a dashed circle when the place is rough), 🚧 closures, 🚨 alerts, 🌊 flooding, 🎬 film shoots, 📰 news, 🚒 FDNY's record, 📷 cameras, and the trains, buses, ferries, ships, aircraft and bikes." },
+  area: { col: 3, t: "🔎 This area", s: "everything in the map's view", d: "What's on now in the view, the last 24 hours by hour, 311's week against its usual, today's news, the cameras, and the official public-safety record (NYPD and FDNY). ✨ Brief this area writes a brief for it on request, after one batched look at its cameras." },
+  near: { col: 3, t: "📌 Within 400 m", s: "tap any point", d: "Tap the map: the address, what's there, and everything within 400 m of that point now." },
+  watch: { col: 3, t: "🔔 Watched places", s: "a notification when something lands", d: "Save a place: your browser checks it every 2 minutes while the map is open and notifies you of a new incident there. The list stays in your browser." },
+  blip: { col: 3, t: "🤖 Blip and MCP", s: "ask in words", code: "server/blip.ts, server/mcp.ts", d: "Blip, the site's assistant, answers from the same store with its tools: whats_happening_here, area_report, city_brief, local_news, explore_city_data, public_safety_record, watch_area_cameras and the transit and weather ones. It can also mark places on the map and brief an area. The same tools are open to other AI agents over MCP." },
+  review: { col: 3, t: "✓ Owner review", s: "real or not?", d: "The owner answers whether incidents were real (<a href=\"review.html\">review page</a>). Each answer moves the reliability of every source that reported it." },
+};
+// [from, to]: data flows from → to. A link back to an earlier column is drawn dashed: a correction flowing back.
+const E = [
+  ["notify", "store"], ["nws", "store"], ["ny511", "store"], ["coned", "store"], ["water", "store"], ["opendata", "store"], ["adsb", "store"], ["places", "store"],
+  ["news", "readnews"], ["readnews", "store"], ["models", "readnews"], ["cams", "streams"], ["transit", "cache"], ["sky", "cache"], ["adsb", "cache"], ["places", "cache"],
+  ["store", "cluster"], ["store", "unusual"], ["store", "brief"], ["cluster", "likely"], ["cluster", "vision"], ["streams", "vision"], ["vision", "likely"], ["opendata", "likely"],
+  ["likely", "brief"], ["unusual", "brief"], ["models", "vision"], ["models", "brief"],
+  ["likely", "citybar"], ["brief", "citybar"], ["unusual", "citybar"], ["likely", "layers"], ["store", "layers"], ["streams", "layers"], ["cache", "layers"],
+  ["store", "area"], ["unusual", "area"], ["vision", "area"], ["brief", "area"], ["store", "near"], ["cache", "near"], ["likely", "watch"],
+  ["store", "blip"], ["brief", "blip"], ["vision", "blip"], ["cache", "blip"], ["likely", "review"], ["review", "likely"],
+];
+const TRACES = {
+  fire: ["🔥 A fire alert", [
+    ["notify", "Notify NYC posts a fire at two cross streets. Within 2 minutes the poller reads it."],
+    ["store", "It's stored, placed at the corner, and given its borough and neighborhood."],
+    ["cluster", "Waze reports and a 511NY incident within 300 m merge with it into one incident."],
+    ["vision", "It's serious, so the local vision model looks at the nearest cameras: is there smoke? Its answer is one more witness."],
+    ["likely", "Notify NYC (95%) and the drivers (60%, fading by the hour) combine into how likely it is real."],
+    ["brief", "At the next quarter hour it's a numbered fact, and a bullet about it survives only if it cites that fact."],
+    ["citybar", "It's on the city bar, at the top of Now and on the map, and Blip can tell you about it."],
+    ["review", "Weeks later FDNY's dispatch file confirms it or not, and Notify NYC's reliability moves by one report."]]],
+  news: ["📰 A news story", [
+    ["news", "PIX11 and amNY both run a story about a crash in the Bronx."],
+    ["readnews", "The local model reads each headline once: NYC, today, an incident, serious, placed only at its neighborhood. The embeddings find the two are one story."],
+    ["store", "It's stored as one story carried by 2 outlets, drawn as a dashed circle where it's rough."],
+    ["cluster", "If a 511NY crash is within 1.5 km, the story joins it as a second, independent witness."],
+    ["likely", "One story counts once however many outlets carry it (75%, a little more for each extra outlet)."],
+    ["layers", "It shows on the 📰 layer and in Now, with links to every outlet."]]],
+  spike: ["📈 A 311 spike", [
+    ["opendata", "Every hour the poller reads the newest 311 requests."],
+    ["store", "They join the last 33 days of requests in the store."],
+    ["unusual", "11 heat complaints in one ZIP, against about 3 expected there this week of the year: the Poisson tail says that's rare, and it survives Benjamini–Hochberg."],
+    ["brief", "The flag becomes a fact for the brief."],
+    ["area", "🔎 This area shows the ZIP's week against its usual, with the requests on the map."]]],
+  ask: ["🤖 You ask Blip", [
+    ["blip", "You ask Blip: \"what's going on around Times Square?\""],
+    ["store", "Its tools read the incidents, news and counts near that point from the store."],
+    ["vision", "watch_area_cameras sends the 5 best cameras there to the local vision model in one call."],
+    ["models", "The model answers in fixed fields per camera, plus a one-line summary."],
+    ["blip", "Blip answers from the tools' data and links what it used."]]],
+};
+const POLL_MIN = { "511ny": 2, notify: 2, nws: 5, noaa: 6, coned: 15, air: 10, floodnet: 10, permits: 60, film: 60, "311": 60, adsb: 0.5, unusual: 15, vision: 2, news: 15, fdny: 360, truth: 1440, brief: 15 };
+const POLL_NAME = { "511ny": "511NY", notify: "Notify NYC", nws: "NWS alerts", noaa: "Battery tide", coned: "Con Ed", air: "Air and rain", floodnet: "FloodNet", permits: "Street permits", film: "Film permits", "311": "311", adsb: "Helicopters", unusual: "Unusual counts", vision: "Camera looks", news: "News", fdny: "FDNY dispatch", truth: "Official checks", brief: "Brief" };
+
+const board = $("board"), svg = $("links");
+board.insertAdjacentHTML("beforeend", COLS.map(([h, sub, c], i) => `<div class="col" style="--c:var(${c})"><h2>${h}<span>${sub}</span></h2><div class="list">${
+  Object.entries(N).filter(([, n]) => n.col === i).map(([id, n]) => `<button class="node" data-id="${id}" style="--c:var(${c})"><b>${n.t}</b><span class="s">${n.s}</span>${n.polls ? '<i class="dot"></i>' : ""}</button>`).join("")}</div></div>`).join(""));
+const el = (id) => board.querySelector(`.node[data-id="${id}"]`);
+
+// The links: from the facing sides of two columns, or, inside one column, an arc out to its right.
+function draw() {
+  const b = board.getBoundingClientRect();
+  svg.innerHTML = E.map(([f, t]) => {
+    const a = el(f).getBoundingClientRect(), z = el(t).getBoundingClientRect(), ay = a.top + a.height / 2 - b.top, zy = z.top + z.height / 2 - b.top;
+    const back = N[t].col < N[f].col, same = N[t].col === N[f].col;
+    let d;
+    if (same) { const x = a.right - b.left, bow = 28; d = `M${x},${ay} C${x + bow},${ay} ${x + bow},${zy} ${x},${zy}`; }
+    else if (back) { const x1 = a.left - b.left, x2 = z.right - b.left, m = (x1 - x2) / 2; d = `M${x1},${ay} C${x1 - m},${ay + 30} ${x2 + m},${zy + 30} ${x2},${zy}`; }
+    else { const x1 = a.right - b.left, x2 = z.left - b.left, m = (x2 - x1) / 2; d = `M${x1},${ay} C${x1 + m},${ay} ${x2 - m},${zy} ${x2},${zy}`; }
+    return `<path class="edge${back ? " back" : ""}" data-f="${f}" data-t="${t}" d="${d}"/>`;
+  }).join("");
+  paint();
+}
+new ResizeObserver(draw).observe(board);
+
+// What's lit: the chosen box, its direct neighbors and their links (and, in a trace, the steps so far).
+let sel = null, trace = null, live = null;
+function paint() {
+  const hot = new Set(), near = new Set();
+  if (trace) {
+    const steps = TRACES[trace.k][1].slice(0, trace.i + 1).map((s) => s[0]);
+    steps.forEach((id, i) => { near.add(id); if (i) hot.add(`${steps[i - 1]}>${id}`); });
+  } else if (sel) for (const [f, t] of E) if (f === sel || t === sel) { near.add(f); near.add(t); hot.add(`${f}>${t}`); }
+  board.classList.toggle("focus", !!(sel || trace));
+  board.querySelectorAll(".node").forEach((n) => { n.classList.toggle("near", near.has(n.dataset.id)); n.classList.toggle("sel", n.dataset.id === sel); });
+  svg.querySelectorAll(".edge").forEach((p) => { const k = `${p.dataset.f}>${p.dataset.t}`, r = `${p.dataset.t}>${p.dataset.f}`; const on = hot.has(k) || (trace && hot.has(r));
+    p.classList.toggle("hot", on); p.classList.toggle("flow", !!(trace && on)); });
+}
+const ago = (t) => { const s = Math.max(0, Math.round(Date.now() / 1000 - t)); return s < 90 ? `${s} s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`; };
+const pollOf = (k) => live?.polls.find((p) => p.source === k);
+function health(k) {
+  const p = pollOf(k); if (!p) return "";
+  const stale = Date.now() / 1000 - p.lastAt > Math.max(3 * POLL_MIN[k], POLL_MIN[k] + 5) * 60;
+  return !p.lastOk || stale ? "bad" : p.fails ? "warn" : "ok";
+}
+const worst = (ks) => ks.map(health).reduce((a, h) => (["bad", "warn", "ok", ""].indexOf(h) < ["bad", "warn", "ok", ""].indexOf(a) ? h : a), "");
+function liveTable(n) {
+  if (!live) return "";
+  let h = "";
+  if (n.polls) {
+    const stored = new Map(live.stored.map((s) => [s.source, s]));
+    h += `<table><tr><th>Feed</th><th>Last good poll</th><th>Failed (24 h)</th><th>Today</th></tr>${n.polls.map((k) => { const p = pollOf(k), s = stored.get(k);
+      return `<tr><td><i class="dot ${health(k)}" style="display:inline-block;width:8px;height:8px;border-radius:50%"></i> ${POLL_NAME[k] ?? k}</td><td>${p?.okAt ? ago(p.okAt) : "—"}</td><td>${p ? `${p.fails ?? 0} of ${p.polls ?? 0}` : "—"}</td><td>${s?.today ?? "—"}</td></tr>${p?.error ? `<tr><td colspan="4" class="muted">Last error: ${esc(p.error)}</td></tr>` : ""}`; }).join("")}</table>`;
+  }
+  const id = Object.keys(N).find((k) => N[k] === n);
+  if (id === "cams") h += `<table><tr><th>Source</th><th>Cameras listed now</th></tr>${Object.entries(live.cameras).sort((a, b) => b[1] - a[1]).map(([s, c]) => `<tr><td>${esc(s)}</td><td>${c}</td></tr>`).join("")}</table>`;
+  if (id === "cluster") h += `<p class="muted">Now: <b>${live.incidentsToday}</b> incidents today, rebuilt ${live.incidentsAt ? ago(live.incidentsAt) : "—"}.</p>`;
+  if (id === "unusual") h += `<p class="muted">Flagged now: <b>${live.unusual}</b>.</p>`;
+  if (id === "brief" && live.briefAt) h += `<p class="muted">Last city brief ${ago(live.briefAt)}, written by ${esc(live.briefBy)}.</p>`;
+  if (id === "models") h += `<p class="muted">The model now: <code>${esc(live.model)}</code>.</p>`;
+  if (id === "store") { const ok = live.polls.filter((p) => POLL_MIN[p.source] && health(p.source) === "ok").length, all = live.polls.filter((p) => POLL_MIN[p.source]).length;
+    h += `<p class="muted"><b>${ok}</b> of ${all} timed jobs healthy; ${live.stored.reduce((a, s) => a + s.n, 0).toLocaleString()} reports stored.</p>`; }
+  if (id === "likely") h += `<table><tr><th>Witness</th><th>Reliability now</th><th>Reports measured</th></tr>${live.reliability.map((r) => `<tr><td>${esc(r.source)}</td><td>${Math.round(r.r * 100)}%</td><td>${r.measured}</td></tr>`).join("")}</table>`;
+  return h;
+}
+function show(id) {
+  const n = N[id], links = (dir) => E.filter((e) => e[dir ? 0 : 1] === id).map((e) => e[dir ? 1 : 0]);
+  const chips = (ids) => ids.map((k) => `<button data-go="${k}">${N[k].t}</button>`).join("");
+  let step = "";
+  if (trace) { const [name, steps] = TRACES[trace.k];
+    step = `<div class="step"><b>${name}</b> · step ${trace.i + 1} of ${steps.length}<br>${steps[trace.i][1]}<div class="nav"><button data-tr="-1"${trace.i ? "" : " disabled"}>← Back</button><button data-tr="1">${trace.i < steps.length - 1 ? "Next →" : "Done"}</button><button data-tr="0">Stop</button></div></div>`; }
+  $("infoBody").innerHTML = `${step}<h3>${n.t}</h3><p>${n.d}</p>${liveTable(n)}${n.code ? `<p class="muted">Code: <code>${esc(n.code)}</code></p>` : ""}
+    ${links(0).length ? `<div class="muted">Fed by</div><div class="links">${chips(links(0))}</div>` : ""}${links(1).length ? `<div class="muted" style="margin-top:6px">Feeds</div><div class="links">${chips(links(1))}</div>` : ""}`;
+  $("info").classList.add("open");
+}
+function pick(id) { sel = id; show(id); paint(); }
+function intro() {
+  $("infoBody").innerHTML = `<h3>Four steps</h3><p><b>Sources</b> are the city's feeds and a few others. <b>Collect</b> polls them, each on its own clock, into one store on this server. <b>Analyze</b> merges reports of one thing, works out how likely it is real, finds unusual counts, has the local AI read the news and look at cameras, and writes a brief that has to cite its facts. <b>Use</b> is where it shows up: the map, its panels, and Blip.</p><p class="muted">Pick any box, or follow one report from start to finish with the buttons above.</p>`;
+}
+board.addEventListener("click", (e) => { const n = e.target.closest(".node"); if (!n) return; trace = null; setTrace(); pick(n.dataset.id === sel ? null : n.dataset.id) ; if (!sel) { intro(); $("info").classList.remove("open"); } });
+board.addEventListener("mouseover", (e) => { const n = e.target.closest(".node"); if (n && !sel && !trace && matchMedia("(hover: hover)").matches) { sel = n.dataset.id; paint(); sel = null; } });
+board.addEventListener("mouseleave", () => paint());
+$("info").addEventListener("click", (e) => {
+  const go = e.target.dataset?.go, tr = e.target.dataset?.tr;
+  if (go) { trace = null; setTrace(); pick(go); el(go).scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  if (tr != null) { const d = +tr, steps = TRACES[trace.k][1];
+    if (!d || (d > 0 && trace.i === steps.length - 1)) { trace = null; setTrace(); sel = null; paint(); intro(); return; }
+    trace.i += d; step(); }
+});
+$("close").addEventListener("click", () => { $("info").classList.remove("open"); sel = null; trace = null; setTrace(); paint(); });
+function step() { const id = TRACES[trace.k][1][trace.i][0]; sel = id; show(id); sel = null; paint(); el(id).classList.add("sel"); el(id).scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+function setTrace() { $("traces").querySelectorAll("button").forEach((b) => b.classList.toggle("on", trace?.k === b.dataset.k)); }
+$("traces").insertAdjacentHTML("beforeend", Object.entries(TRACES).map(([k, [name]]) => `<button data-k="${k}">${name}</button>`).join(""));
+$("traces").addEventListener("click", (e) => { const k = e.target.dataset?.k; if (!k) return; trace = { k, i: 0 }; setTrace(); step(); });
+
+async function refresh() {
+  try { live = await fetch("/api/nyc/sources").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  catch { $("live").textContent = "The feeds' health isn't available right now."; return; }
+  board.querySelectorAll(".node").forEach((b) => { const n = N[b.dataset.id], d = b.querySelector(".dot"); if (d && n.polls) d.className = `dot ${worst(n.polls)}`; });
+  const timed = live.polls.filter((p) => POLL_MIN[p.source]), ok = timed.filter((p) => health(p.source) === "ok").length;
+  $("live").innerHTML = `Live: <b>${ok} of ${timed.length}</b> timed jobs healthy · <b>${live.incidentsToday}</b> incidents today · city brief ${live.briefAt ? ago(live.briefAt) : "not yet"} · <b>${Object.values(live.cameras).reduce((a, b) => a + b, 0)}</b> cameras listed. <span class="dot ok" style="display:inline-block;width:8px;height:8px;border-radius:50%"></span> fine <span class="dot warn" style="display:inline-block;width:8px;height:8px;border-radius:50%"></span> failed at times today <span class="dot bad" style="display:inline-block;width:8px;height:8px;border-radius:50%"></span> failing or late`;
+  if (sel) show(sel);
+}
+intro(); refresh(); setInterval(refresh, 60_000);
+</script>
+</body>
+</html>

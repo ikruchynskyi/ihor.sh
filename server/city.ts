@@ -683,6 +683,16 @@ async function unusual311() {
       text: `${n} 311 reports (from ${r.spots} places) of "${r.complaint_type}" on ${dayName} in ${hood ? `${hood}, ` : ""}zip ${r.incident_zip}, against ${lam.toFixed(1)} expected (${base.toFixed(1)} a day there over the 28 days before${Math.abs(f - 1) >= 0.1 ? `, × ${f.toFixed(1)} for this time of year` : ""}; q = ${q.toPrecision(2)})` }; });
 }
 const newsCount = () => db.prepare("select count(*) n, sum(lat is not null) placed from events where source = 'news' and kind != 'news-elsewhere' and starts >= ?").get(startOfToday()) as { n: number; placed: number | null };
+/** Each feed's health, for the how-it-works page: its last good poll, failures in 24 h, the last error, what it stored. */
+export function sourcesStatus() {
+  const day = now() - 86400, err = db.prepare("select error from polls where source = ? and ok = 0 order by at desc limit 1");
+  const polls = (db.prepare("select source, max(case when ok = 1 then at end) okAt, max(at) lastAt, sum(ok = 0 and at > ?) fails, sum(at > ?) polls from polls group by source").all(day, day) as any[])
+    .map((p) => ({ ...p, lastOk: p.okAt === p.lastAt, error: p.okAt === p.lastAt ? null : (err.get(p.source) as { error: string } | undefined)?.error ?? null }));
+  const stored = db.prepare("select source, count(*) n, sum(starts >= ?) today from events group by source").all(startOfToday());
+  const b = latestBrief("city");
+  const cameras: Record<string, number> = {}; for (const c of camerasNow()) cameras[c.source ?? "NYC DOT"] = (cameras[c.source ?? "NYC DOT"] ?? 0) + 1;
+  return { at: now(), model: LOCAL_MODEL, polls, stored, cameras, incidentsToday: incidents().length, incidentsAt: incidentsAt(), briefAt: b?.at ?? null, briefBy: b?.by ?? null, unusual: unusual.list.length, reliability: [...reliability()].map(([k, v]) => ({ source: k, r: +v.r.toFixed(2), measured: v.yes + v.no })) };
+}
 // ---------- the HUD's numbers ----------
 export function pulse() {
   const at = now(), all = active(at), inc = incidents(), m = (k: string) => latest(k)?.value ?? null;

@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -966,6 +966,7 @@ const server = http.createServer(async (req, res) => {
       try { return cityJson(await safetyRecord(b), 3600); } catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: `NYC Open Data didn't answer: ${(e as Error).message}` })); }
     }
     if (url.pathname === "/api/nyc/fdny") return cityJson({ through: cityLatest("fdny.newest")?.value ?? null, fires: fdnyRecent() }, 3600);
+    if (url.pathname === "/api/nyc/sources") return cityJson(sourcesStatus(), 30); // the how-it-works page's live dots
     if (url.pathname === "/api/nyc/reliability") return cityJson([...reliability()].map(([source, r]) => ({ source, prior: PRIOR[source], ...r, r: +r.r.toFixed(3) })), 600);
     if (url.pathname === "/api/nyc/review/owner" && req.method === "POST") { // the owner signs in (the mesh page's key)
       let raw = "";

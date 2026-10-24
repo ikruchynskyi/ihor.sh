@@ -649,7 +649,7 @@ function link(_, text, href) {
 const format = (s) => esc(s)
   .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
   .replace(/`([^`]+)`/g, "<code>$1</code>")
-  .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, link)
+  .replace(/\[([^\]]+)\]\(\s*([^)\s]+)\s*\)/g, link) // models sometimes write "]( /nyc/…)"
   .replace(/^\s*[-*] /gm, "• ");
 const line = (who, html, cls = "") => `<p class="msg ${who === "YOU" ? "you" : ""} ${cls}"><b class="who">${who}</b>${html}</p>`;
 const CHIPS = ["What is this page about?", "Where should I start?", "Tell me a radio fun fact"];

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NYC Live Map</title>
-  <meta name="description" content="Live NYC map: everything within 400 m of you (subway stations and their alerts, bus stops, Citi Bike, cameras, public restrooms), next trains, buses, ferries, ships in the harbor (AIS), Citi Bike, 1,400 traffic cameras, live video feeds and webcams, rain radar, lightning, aircraft and helicopters, hurricanes, the ISS, street-level photos, a windy.com forecast map, free events, restaurant grades, and what is at any address." />
+  <meta name="description" content="Live NYC map: today's incidents merged from the city's feeds (Notify NYC, 511NY, NWS, FloodNet, 311, news), each with how likely it is real; AI briefs for the city or any area, and a local vision model that looks at the cameras; alerts, closures, flooding, film shoots and local news; live video cameras; next trains, buses, ferries, Citi Bike, ships, aircraft and helicopters; rain radar, hurricanes, the ISS, street photos, restaurant grades and what is at any address." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" integrity="sha512-mQ77VzAakzdpWdgfL/lM1ksNy89uFgibRQANsNneSTMD/bj0Y/8+94XMwYhnbzx8eki2hrbPpDm0vD0CiT2lcg==" crossorigin="anonymous" />
   <style>
@@ -240,6 +240,8 @@
     .feed .new { font: 700 10px system-ui; color: #fff; background: #e03131; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
     /* incident icons: the category's emoji, ringed by severity, faded by how likely it is; a white halo when 2+ sources agree */
     .inc-icon span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 14px; background: var(--card); box-shadow: 0 0 0 3px var(--sev), 0 1px 4px rgba(0,0,0,.6); }
+    .pin span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; background: var(--card); line-height: 1; box-shadow: 0 0 0 2px var(--c), 0 1px 3px rgba(0,0,0,.6); }
+    .pin.faded span { opacity: .55; }
     .inc-icon.two span { box-shadow: 0 0 0 3px var(--sev), 0 0 0 6px #fff, 0 1px 4px rgba(0,0,0,.6); }
     .cam-cluster span { display: inline-block; transform: translate(-50%, -50%); padding: 2px 7px; border-radius: 999px; background: var(--card); color: var(--fg); border: 1px solid var(--line); font: 600 11px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
     /* the detail drawer: right side on wide screens, a sheet on phones */
@@ -307,7 +309,7 @@
     <div id="layers"></div>
     <p class="muted" style="margin:6px 0 0">📻 NYC radio stations moved to the <a href="/radio/stations/">Radio world</a>.</p>
   </section>
-  <div class="muted pfoot"><span id="status">Loading…</span> <button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button><br>Open data, some of it estimated (train positions): it can be late or wrong.</div>
+  <div class="muted pfoot"><span id="status">Loading…</span> <button id="refresh" class="linkish" title="Reload alerts and Citi Bike" aria-label="Reload alerts and Citi Bike">↻</button><br>Open data, some of it estimated · <a href="how.html">How this map works</a> (train positions): it can be late or wrong.</div>
   </div>
 </div>
 <div id="cityHud"><div id="cityBar" role="status" aria-label="The city now"></div><div id="cityBrief" hidden></div></div>
@@ -406,9 +408,7 @@ function render() {
     const s = stations.get(id);
     const shown = list.filter((a) => !hidden.has(a.type));
     if (!s || !shown.length) continue;
-    L.circleMarker([s.lat, s.lon], {
-      radius: (5 + Math.min(6, shown.length)) * DOT, color: css("--alert"), fillColor: css("--alert"), fillOpacity: 0.6, weight: 1, bubblingMouseEvents: false,
-    }).bindPopup(() => popup(s, shown), { maxWidth: 320 })
+    pin(s.lat, s.lon, "🚇", css("--alert"), 22 + 2 * Math.min(4, shown.length)).bindPopup(() => popup(s, shown), { maxWidth: 320 })
       .on("popupopen", async (ev) => { showBikes(s); const html = await arrivalsHtml(id); if (ev.popup.isOpen()) ev.popup.setContent(popup(s, shown) + html); })
       .on("popupclose", () => bikeLayer.clearLayers())
       .addTo(alertLayer);
@@ -431,8 +431,7 @@ function showBikes(s) {
   bikeLayer.clearLayers();
   for (const b of nearBikes(s)) {
     L.polyline([[s.lat, s.lon], [b.lat, b.lon]], { color: css("--bike"), weight: 2, dashArray: "4 4" }).addTo(bikeLayer);
-    L.circleMarker([b.lat, b.lon], { radius: 6 * DOT, color: css("--bike"), fillColor: css("--bike"), fillOpacity: 0.9, bubblingMouseEvents: false })
-      .bindTooltip(`${b.name}: ${b.bikes} bikes`).addTo(bikeLayer);
+    pin(b.lat, b.lon, "🚲", css("--bike")).bindTooltip(`${b.name}: ${b.bikes} bikes`).addTo(bikeLayer);
   }
 }
 
@@ -501,6 +500,10 @@ async function toggle(k, on) {
   if (!l.loaded) { l.loaded = true; await Promise.resolve(l.load(l.group)).catch((e) => ($(`n-${k}`).textContent = `(failed: ${e.message})`)); } // some loaders are synchronous
 }
 const DOT = 1.3; // every marker a bit bigger, so they read on a phone
+// A marker you can tell from the others: its layer's emoji on a disc, ringed in the color that says its state.
+// (Dense layers, Citi Bike, 311, street photos and all stations, stay canvas dots: thousands of DOM pins are slow on a phone.)
+const pin = (lat, lon, emoji, color, size = 24, faded = false) => L.marker([lat, lon], { keyboard: false, icon: L.divIcon({ className: `pin${faded ? " faded" : ""}`, iconSize: [size, size],
+  html: `<span style="--c:${color};font-size:${Math.round(size * 0.62)}px">${emoji}</span>` }) });
 const dot = (lat, lon, color, r = 6) => L.circleMarker([lat, lon], { radius: r * DOT, color, fillColor: color, fillOpacity: 0.85, weight: 1, bubblingMouseEvents: false });
 
 // Broken elevators/escalators come by station name + lines; match them to station coordinates.
@@ -517,7 +520,7 @@ async function loadOutages(g) {
     const st = cands.find((c) => lines.some((l) => String(c.routes).split(" ").includes(l))) ?? cands[0];
     if (!st) continue;
     placed++;
-    dot(st.lat + 0.0004, st.lon + 0.0004, o.kind === "EL" ? "#ff9f1c" : "#c59bff", 5)
+    pin(st.lat + 0.0004, st.lon + 0.0004, o.kind === "EL" ? "🛗" : "♿", o.kind === "EL" ? "#ff9f1c" : "#c59bff")
       .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString()}` : ""}</span>`).addTo(g);
   }
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
@@ -550,7 +553,7 @@ async function loadFerry(g) {
     .bindTooltip(`${esc(b.short)} ${esc(b.where)}`).bindPopup(`<b>⛴ ${esc(b.route)}</b><br>${esc(b.where)}<br><span class="muted">boat ${esc(b.boat)} · GPS ${new Date(b.seen * 1000).toLocaleTimeString()}</span>`).addTo(g));
   for (const s of list) {
     const c = s.next[0]?.color ?? "#7f8bc4";
-    dot(s.lat, s.lon, c, 7).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${boatMarkers.has(n.trip) ? `<button class="linkish" data-trip="${esc(n.trip)}" title="Where is this boat now?">${n.minutes ? n.minutes + " min" : "now"}</button>` : n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
+    pin(s.lat, s.lon, "⚓", c).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${boatMarkers.has(n.trip) ? `<button class="linkish" data-trip="${esc(n.trip)}" title="Where is this boat now?">${n.minutes ? n.minutes + " min" : "now"}</button>` : n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
   }
   $("n-ferry").textContent = `(${list.length} landings, ${list.filter((s) => s.next.length).length} with boats coming)`;
   seen.ferry = list.filter((s) => s.next.length).slice(0, 15).map((s) => `${s.name}: ${s.next.map((n) => `${n.short} ${n.minutes} min`).join(", ")}`);
@@ -639,7 +642,7 @@ async function loadBusStops(g) {
     busCells.add(`${i},${j}`);
     for (const st of list) {
       if (busStopMarkers.has(st.id)) continue;
-      busStopMarkers.set(st.id, L.circleMarker([st.lat, st.lon], { radius: 4 * DOT, color: "#fff", weight: 1.5, fillColor: "#1c7ed6", fillOpacity: 0.95, bubblingMouseEvents: false })
+      busStopMarkers.set(st.id, pin(st.lat, st.lon, "🚌", "#1c7ed6", 22)
         .bindTooltip(`🚌 ${esc(st.name)} (${st.routes.map((r) => r.name).join(", ")})`).bindPopup("Loading…", { maxWidth: 320 })
         .on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))).addTo(g));
     }
@@ -678,23 +681,42 @@ async function followBus(f, fit) {
   if (fit) { map.closePopup(); map.fitBounds(L.latLngBounds([[a.lat, a.lon], st?.getLatLng() ?? [a.lat, a.lon]]), { paddingTopLeft: [Math.max(60, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 40), 100], paddingBottomRight: [200, 80], maxZoom: 16 }); }
 }
 
+// One line or a few (show_line, #line=C, Blip): only their trains and stations, the map fitted to them. null: every line.
+let lineFilter = null;
+const lineKey = (r) => String(r).toUpperCase().replace(/X$/, "").replace(/^(GS|FS|H)$/, "S").replace(/^SI$/, "SIR"); // GTFS ids → the letters stations list
+const onLine = (routes) => !lineFilter || String(routes).split(/[\s,/]+/).some((r) => lineFilter.has(lineKey(r)));
+async function showLine(lines) {
+  const want = String(lines ?? "").split(/[\s,+/&]+/).map(lineKey).filter((r) => /^([1-7ABCDEFGJLMNQRWZ]|S|SIR)$/.test(r));
+  lineFilter = want.length ? new Set(want) : null;
+  seen.lines = lineFilter && [...lineFilter];
+  for (const k of ["stations", "trains"]) { LAYERS[k].group.clearLayers(); LAYERS[k].loaded = false; }
+  stationMarkers.clear();
+  await toggle("stations", true); await toggle("trains", true);
+  drawBar();
+  if (!lineFilter) return "every line";
+  const pts = [...stations.values()].filter((s) => onLine(s.routes));
+  if (pts.length) map.fitBounds(L.latLngBounds(pts.map((s) => [s.lat, s.lon])), { paddingTopLeft: [Math.max(40, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 30), 60], paddingBottomRight: [40, 40] });
+  return `${[...lineFilter].join(", ")}: ${pts.length} stations, ${LAYERS.trains.group.getLayers().length} trains running`;
+}
 // Every running train, estimated the same way.
 async function loadTrains(g) {
-  const d = await getJSON("/api/nyc/trains");
+  const d = await getJSON("/api/nyc/trains"), list = d.trains.filter((t) => onLine(t.route));
   g.clearLayers();
-  for (const t of d.trains) L.marker([t.lat, t.lon], { icon: L.divIcon({ className: "", html: bullet(t.route).replace('class="bullet"', 'class="bullet sm"'), iconSize: [18, 18] }) })
+  for (const t of list) L.marker([t.lat, t.lon], { icon: L.divIcon({ className: "", html: bullet(t.route).replace('class="bullet"', 'class="bullet sm"'), iconSize: [18, 18] }) })
     .bindTooltip(`${esc(t.route)} to ${esc(t.to)}: ${esc(t.where)}`).addTo(g);
-  $("n-trains").textContent = `(${d.trains.length} running, estimated)`;
+  $("n-trains").textContent = `(${list.length}${lineFilter ? ` on the ${[...lineFilter].join(", ")}` : ""} running, estimated)`;
 }
 setInterval(() => { if (LAYERS.trains.on) loadTrains(LAYERS.trains.group).catch(() => {}); }, 30_000);
 const stationMarkers = new Map();
 async function loadAllStations(g) {
+  const lineColor = lineFilter && (ROUTE_COLOR[[...lineFilter][0]] ?? "#808183");
   for (const [id, s] of stations) {
-    const m = dot(s.lat, s.lon, "#9aa3cf", 3).bindTooltip(`${s.name} (${s.routes})`).bindPopup("Loading…", { maxWidth: 300 })
+    if (!onLine(s.routes)) continue;
+    const m = dot(s.lat, s.lon, lineColor || "#9aa3cf", lineColor ? 5 : 3).bindTooltip(`${s.name} (${s.routes})`).bindPopup("Loading…", { maxWidth: 300 })
       .on("popupopen", async (ev) => ev.popup.setContent(`<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>${await arrivalsHtml(id)}`)).addTo(g);
     stationMarkers.set(id, m);
   }
-  $("n-stations").textContent = `(${stations.size})`;
+  $("n-stations").textContent = `(${stationMarkers.size}${lineFilter ? ` on the ${[...lineFilter].join(", ")}` : ""})`;
 }
 
 const camShown = new Set();
@@ -883,7 +905,7 @@ async function loadStorms(g) {
   L.geoJSON(d.track, { style: { color: "#ff5c8a", weight: 2.5 } }).addTo(g);
   L.geoJSON(d.points, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: "#fff", weight: 1, fillColor: "#ff5c8a", fillOpacity: 0.9 })
     .bindTooltip(`${esc(f.properties.stormname ?? "")}: ${esc(f.properties.datelbl ?? "")}${f.properties.maxwind ? ` · ${f.properties.maxwind} kt` : ""}`) }).addTo(g);
-  for (const st of d.storms) dot(st.lat, st.lon, "#ff5c8a", 9).bindPopup(`<b>🌀 ${esc(st.name)}</b>: ${esc(st.kind)}, ${st.windKt} kt, ${st.pressureMb} mb<br>moving ${esc(st.moving)} · ${st.kmFromNyc.toLocaleString()} km from NYC${st.advisory ? `<br><a href="${esc(st.advisory)}" target="_blank" rel="noopener">NHC advisory</a>` : ""}`).addTo(g);
+  for (const st of d.storms) pin(st.lat, st.lon, "🌀", "#ff5c8a", 28).bindPopup(`<b>🌀 ${esc(st.name)}</b>: ${esc(st.kind)}, ${st.windKt} kt, ${st.pressureMb} mb<br>moving ${esc(st.moving)} · ${st.kmFromNyc.toLocaleString()} km from NYC${st.advisory ? `<br><a href="${esc(st.advisory)}" target="_blank" rel="noopener">NHC advisory</a>` : ""}`).addTo(g);
   seen.storms = d.storms.map((st) => `${st.name}: ${st.kind}, ${st.windKt} kt, ${st.kmFromNyc} km from NYC, moving ${st.moving}`);
   $("n-storms").innerHTML = d.storms.length ? d.storms.map((st) => `<button class="linkish" data-fly="${st.lat},${st.lon},5">${esc(st.name)}</button>`).join(", ") : "(none active)";
 }
@@ -1009,7 +1031,7 @@ async function openPhoto(p) {
 
 // ---------- public restrooms (NYC Open Data), as a layer and in the 400 m circle ----------
 let loosCache = null, camsCache = null;
-const restroomMarker = (r) => { const ok = r.status === "Operational"; return L.circleMarker([r.lat, r.lon], { radius: 5 * DOT, color: "#fff", weight: 1, fillColor: ok ? "#2f9e44" : "#868e96", fillOpacity: 0.95, bubblingMouseEvents: false })
+const restroomMarker = (r) => { const ok = r.status === "Operational"; return pin(r.lat, r.lon, "🚻", ok ? "#2f9e44" : "#868e96", 22, !ok)
   .bindTooltip(`🚻 ${esc(r.name)}`).bindPopup(`<b>🚻 ${esc(r.name)}</b> <span class="muted">${esc(r.type)}${r.operator ? ` · ${esc(r.operator)}` : ""}</span><br>${ok ? "Open" : `<b>${esc(r.status)}</b>`}${r.open ? ` · ${esc(r.open)}` : ""}${r.hours ? ` · ${esc(r.hours)}` : ""}${r.accessibility ? `<br>${esc(r.accessibility)}` : ""}${r.kind ? ` · ${esc(r.kind)}` : ""}${r.changing ? " · 🚼 changing station" : ""}${r.website ? `<br><a href="${esc(r.website)}" target="_blank" rel="noopener">website</a>` : ""}<br><span class="muted">NYC Open Data: public restrooms</span>`, { maxWidth: 300 }); };
 async function loadRestrooms(g) {
   const list = await (loosCache ??= getJSON("/api/nyc/restrooms"));
@@ -1044,16 +1066,16 @@ async function nearMe(at, label = "you") {
   for (const n of (city?.news ?? []).filter((n) => n.lat != null && distM(at, n) <= Math.max(NEAR_M, 800))) add("news", `📰 ${esc(n.title)} <span class="muted">(${esc(n.outlet)}, ${hhmm(n.starts)})</span> · ${Math.round(distM(at, n))} m`,
     L.marker([n.lat, n.lon], { icon: L.divIcon({ className: "cam-icon", html: "📰", iconSize: [18, 18] }) }).bindPopup(newsPopup(n), { maxWidth: 320 }));
   for (const e of (city?.planned ?? []).filter((e) => e.lat != null)) add("planned", `🚧 ${esc(e.title)} · ${Math.round(distM(at, e))} m`,
-    dot(e.lat, e.lon, PLAN_COLORS[e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5)] ?? "#868e96", 4.5).bindPopup(`<b>${esc(e.title)}</b>${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}`));
+    planPin(e).bindPopup(`<b>${esc(e.title)}</b>${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}`));
   for (const s of within([...stations].map(([id, x]) => ({ id, ...x })))) {
     const alerts = (byStation.get(s.id) ?? []).filter((a) => !hidden.has(a.type)), red = alerts.length > 0;
     add("subway", `🚇 ${esc(s.name)} <span class="muted">(${esc(s.routes)})</span> · ${s.m} m${red ? ` · <b style="color:var(--alert)">${alerts.length} alert${alerts.length > 1 ? "s" : ""}</b>` : ""}`,
-      L.circleMarker([s.lat, s.lon], { radius: (red ? 9 : 6) * DOT, color: red ? css("--alert") : "#9aa3cf", fillColor: red ? css("--alert") : "#9aa3cf", fillOpacity: 0.8, weight: 1.5, bubblingMouseEvents: false }).bindTooltip(`🚇 ${esc(s.name)} (${esc(s.routes)})`).bindPopup("Loading…", { maxWidth: 320 })
+      pin(s.lat, s.lon, "🚇", red ? css("--alert") : "#9aa3cf", red ? 26 : 22).bindTooltip(`🚇 ${esc(s.name)} (${esc(s.routes)})`).bindPopup("Loading…", { maxWidth: 320 })
         .on("popupopen", async (ev) => { if (red) showBikes(s); ev.popup.setContent((red ? popup(s, alerts) : `<b>${esc(s.name)}</b> <span class="muted">${esc(s.routes)}</span>`) + await arrivalsHtml(s.id)); }).on("popupclose", () => bikeLayer.clearLayers()), { alerts: alerts.length });
   }
   for (const st of within([...new Map(stopLists.flat().map((x) => [x.id, x])).values()]))
-    add("bus", `🚌 ${esc(st.name)} <span class="muted">(${esc(st.routes.map((r) => r.name).join(", "))})</span> · ${st.m} m`, L.circleMarker([st.lat, st.lon], { radius: 5 * DOT, color: "#fff", weight: 1.5, fillColor: "#1c7ed6", fillOpacity: 0.95, bubblingMouseEvents: false }).bindTooltip(`🚌 ${esc(st.name)}`).bindPopup("Loading…", { maxWidth: 320 }).on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))));
-  for (const b of within(allBikes)) { const c = BIKE_COLORS[bikeState(b)]; add("bike", `🚲 ${esc(b.name)}: ${b.bikes} bikes (${b.ebikes} e), ${b.docks} docks · ${b.m} m`, L.circleMarker([b.lat, b.lon], { radius: 5 * DOT, color: c, fillColor: c, fillOpacity: 0.9, weight: 1, bubblingMouseEvents: false }).bindTooltip(`🚲 ${esc(b.name)}`).bindPopup(`<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}`)); }
+    add("bus", `🚌 ${esc(st.name)} <span class="muted">(${esc(st.routes.map((r) => r.name).join(", "))})</span> · ${st.m} m`, pin(st.lat, st.lon, "🚌", "#1c7ed6", 22).bindTooltip(`🚌 ${esc(st.name)}`).bindPopup("Loading…", { maxWidth: 320 }).on("popupopen", async (ev) => ev.popup.setContent(await busStopHtml(st))));
+  for (const b of within(allBikes)) { const c = BIKE_COLORS[bikeState(b)]; add("bike", `🚲 ${esc(b.name)}: ${b.bikes} bikes (${b.ebikes} e), ${b.docks} docks · ${b.m} m`, pin(b.lat, b.lon, "🚲", c, 22, bikeState(b) === "off").bindTooltip(`🚲 ${esc(b.name)}`).bindPopup(`<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}`)); }
   for (const c of within(cams)) add("camera", `${camEmoji(c)}${camQ(c) ? ` <b>${camQ(c)}</b>` : ""} ${esc(c.name)} · ${c.m} m`, camMarker(c), { cam: c });
   for (const r of within(loos)) add("restroom", `🚻 ${esc(r.name)} <span class="muted">(${esc(r.type)}${r.status !== "Operational" ? `, ${esc(r.status.toLowerCase())}` : ""}${r.hours ? `, ${esc(r.hours)}` : ""})</span> · ${r.m} m`, restroomMarker(r));
   near.items = items;
@@ -1110,7 +1132,7 @@ document.addEventListener("click", async (e) => {
 async function loadCityEvents(g) {
   const list = await getJSON(`/api/nyc/city-events?from=${today}&free=1`);
   seen.city = list.map((e) => ({ name: e.name, when: e.when, place: e.place }));
-  for (const e of list.filter((e) => e.lat)) dot(e.lat, e.lon, "#5cff9d").bindPopup(`<b>${esc(e.name)}</b><br>${esc(e.when)}<br><span class="muted">${esc(e.place)}</span><br>${esc(e.summary)}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
+  for (const e of list.filter((e) => e.lat)) pin(e.lat, e.lon, "🏛", "#5cff9d").bindPopup(`<b>${esc(e.name)}</b><br>${esc(e.when)}<br><span class="muted">${esc(e.place)}</span><br>${esc(e.summary)}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-city").textContent = `(${list.length})`;
 }
 
@@ -1119,7 +1141,7 @@ async function loadPopups(g) {
   // The same rule as Free NYC: on today's dates or weekdays, and not over yet.
   const list = events.map((e) => ({ ...e, on: onDate(e, today, new Date()) })).filter((e) => e.lat && e.on && status(e.on, new Date()) !== "over");
   seen.popups = list.map((e) => ({ title: e.title, category: e.category, time: [e.on.start, e.on.end].filter(Boolean).join("–"), address: e.address }));
-  for (const e of list) dot(e.lat, e.lon, "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.on.start, e.on.end].filter(Boolean).join("–") || "all day")}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
+  for (const e of list) pin(e.lat, e.lon, "🎁", "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.on.start, e.on.end].filter(Boolean).join("–") || "all day")}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-popups").textContent = `(${list.length})`;
 }
 
@@ -1142,7 +1164,7 @@ async function loadSales(g) {
   const d = await getJSON(`/api/nyc/deals?date=${today}`);
   const list = d.sampleSales.filter((s) => s.lat);
   seen.sales = d.sampleSales.map((s) => ({ name: s.name, where: s.lat ? s.place : "online", until: s.end.slice(0, 10) }));
-  for (const s of list) dot(s.lat, s.lon, "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a> · ${camBtn(s.lat, s.lon)}`).addTo(g);
+  for (const s of list) pin(s.lat, s.lon, "🛍", "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a> · ${camBtn(s.lat, s.lon)}`).addTo(g);
   $("n-sales").textContent = `(${list.length} on the map, ${d.sampleSales.length - list.length} online)`;
 }
 
@@ -1163,6 +1185,8 @@ const cityMarks = new Map(), cityData = {}; // "layer|id" → marker, and each l
 const mark = (layer, id, m) => (cityMarks.set(`${layer}|${id}`, m), m);
 const PLAN_COLORS = { closure: "#c92a2a", construction: "#f08c00", event: "#1c7ed6", permit: "#9c36b5", film: "#d6336c" };
 const planKind = (e) => (e.kind.startsWith("permit:") ? "permit" : e.kind === "film" ? "film" : e.kind.slice(5));
+const PLAN_ICONS = { closure: "⛔", construction: "🚧", event: "🎪", permit: "🎪", film: "🎬" };
+const planPin = (e) => pin(e.lat, e.lon, PLAN_ICONS[planKind(e)] ?? "🚧", PLAN_COLORS[planKind(e)] ?? "#868e96", 20);
 // One look for incidents everywhere: the category's emoji, ringed by severity, faded by how likely it is.
 const FAM_ICON = { fire: "🔥", crash: "🚗", flood: "🌊", alert: "🚨", air: "🚁", news: "📰", camera: "📷", crime: "🚓", other: "⚠️" };
 const famOf = (c) => { const k = c.kind, t = c.events?.find((e) => e.topic)?.topic;
@@ -1182,7 +1206,7 @@ async function loadIncidents(g) {
 async function loadClosures(g) {
   const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
   g.clearLayers();
-  for (const e of d.planned) mark("closures", e.id, dot(e.lat, e.lon, PLAN_COLORS[planKind(e)] ?? "#868e96", 4.5)).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(srcName(e.source))}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
+  for (const e of d.planned) mark("closures", e.id, planPin(e)).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(srcName(e.source))}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
       ${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}<br>${camBtn(e.lat, e.lon)}`).addTo(g);
   const n = (k) => d.planned.filter((e) => planKind(e) === k).length;
   $("n-closures").innerHTML = `(<span style="color:${PLAN_COLORS.closure}">●</span> ${n("closure")} closures · <span style="color:${PLAN_COLORS.construction}">●</span> ${n("construction")} construction · <span style="color:${PLAN_COLORS.permit}">●</span> ${n("permit")} permitted · <span style="color:${PLAN_COLORS.event}">●</span> ${n("event")} special events)`;
@@ -1193,7 +1217,7 @@ async function loadEmergency(g) {
   const d = (cityData.emergency = await getJSON("/api/nyc/emergency")), now = Date.now() / 1000;
   g.clearLayers();
   const placed = d.alerts.filter((a) => a.lat != null);
-  for (const a of placed) { const on = isOn(a, now), later = a.starts > now; mark("emergency", a.id, L.circleMarker([a.lat, a.lon], { radius: 8 * DOT, color: on ? "#e03131" : "#868e96", weight: 2, fillColor: on ? "#e03131" : "#868e96", fillOpacity: on ? 0.85 : 0.25, bubblingMouseEvents: false })
+  for (const a of placed) { const on = isOn(a, now), later = a.starts > now; mark("emergency", a.id, pin(a.lat, a.lon, "🚨", on ? "#e03131" : "#868e96", on ? 26 : 22, !on)
     .bindPopup(`<b>🚨 ${esc(a.title)}</b><br><span class="muted">Notify NYC · ${later ? `planned for ${day(a.starts)}` : `${hhmm(a.starts)}${on ? " · active" : ` · ended ${hhmm(a.ends)}`}`}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><p style="margin:6px 0;font-size:12px">${esc(a.text ?? "")}</p>${camBtn(a.lat, a.lon)}`)).addTo(g); }
   seen.emergency = d.alerts.slice(0, 10).map((a) => ({ what: a.title, at: a.starts > now ? `planned for ${day(a.starts)}` : hhmm(a.starts), active: isOn(a, now), text: a.text?.slice(0, 200) }));
   $("n-emergency").textContent = `(${d.alerts.filter((a) => isOn(a, now)).length} active, ${d.alerts.length} today${d.alerts.length > placed.length ? `, ${d.alerts.length - placed.length} citywide` : ""}${d.weather.length ? ` · weather: ${d.weather.map((w) => w.event).join(", ")}` : ""})`;
@@ -1201,7 +1225,7 @@ async function loadEmergency(g) {
 async function loadFilmShoots(g) {
   const d = await getJSON("/api/nyc/film-permits");
   g.clearLayers();
-  for (const s of d.shoots.filter((s) => s.lat != null)) dot(s.lat, s.lon, "#d6336c", 5.5).bindPopup(`<b>🎬 ${esc(s.title)}</b><br><span class="muted">until ${new Date(s.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><br><b>Parking held:</b><br><small style="display:block;max-height:80px;overflow:auto">${esc(s.parkingHeld)}</small>${camBtn(s.lat, s.lon)}`).addTo(g);
+  for (const s of d.shoots.filter((s) => s.lat != null)) pin(s.lat, s.lon, "🎬", "#d6336c").bindPopup(`<b>🎬 ${esc(s.title)}</b><br><span class="muted">until ${new Date(s.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><br><b>Parking held:</b><br><small style="display:block;max-height:80px;overflow:auto">${esc(s.parkingHeld)}</small>${camBtn(s.lat, s.lon)}`).addTo(g);
   seen.films = d.shoots.slice(0, 10).map((s) => s.title);
   const newest = d.newest && new Date(d.newest * 1000);
   $("n-films").textContent = `(${d.shoots.length} on now${newest && newest < Date.now() - 7 * 86400_000 ? `; the city's permit data stops at ${newest.toLocaleDateString([], { month: "short", day: "numeric" })}` : ""})`;
@@ -1211,7 +1235,7 @@ async function loadFloodSensors(g) {
   g.clearLayers();
   for (const f of d.sensors) {
     const mm = f.depthMm, wet = mm != null;
-    mark("floods", f.id, dot(f.lat, f.lon, wet ? (f.usual ? "#a5d8ff" : mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7") : "#adb5bd", wet ? (f.usual ? 5 : 7) : 3.5)).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>${f.usual ? ` <span class="muted">· usual here: ${f.floodsLastYear} floods in the last year</span>` : ""}` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
+    mark("floods", f.id, wet ? pin(f.lat, f.lon, "💧", f.usual ? "#a5d8ff" : mm >= 305 ? "#1864ab" : mm >= 102 ? "#1c7ed6" : "#4dabf7", f.usual ? 20 : 24, !!f.usual) : dot(f.lat, f.lon, "#adb5bd", 3.5)).bindPopup(`<b>🌊 ${esc(f.name)}</b><br>${wet ? `<b>${(mm / 25.4).toFixed(1)} in of water now</b>${f.usual ? ` <span class="muted">· usual here: ${f.floodsLastYear} floods in the last year</span>` : ""}` : "Dry at the last check"} <span class="muted">(${f.type === "coastal" ? "coastal" : "rain"} sensor, ${esc(f.status)})</span><br><a href="https://dataviz.floodnet.nyc/" target="_blank" rel="noopener">FloodNet live readings</a> · ${camBtn(f.lat, f.lon)}`).addTo(g);
   }
   const wet = d.sensors.filter((f) => f.depthMm != null).length;
   seen.floods = { sensors: d.sensors.length, flooding: wet, surgeFt: d.surgeFt };
@@ -1230,7 +1254,7 @@ async function loadNews(g) {
 async function loadFdny(g) {
   const d = await getJSON("/api/nyc/fdny");
   g.clearLayers();
-  for (const f of d.fires) dot(f.lat, f.lon, f.sev >= 3 ? "#c92a2a" : f.sev === 2 ? "#f76707" : "#ffa94d", f.sev >= 2 ? 6 : 4).bindTooltip(esc(f.title))
+  for (const f of d.fires) pin(f.lat, f.lon, "🔥", f.sev >= 3 ? "#c92a2a" : f.sev === 2 ? "#f76707" : "#ffa94d", f.sev >= 2 ? 24 : 20).bindTooltip(esc(f.title))
     .bindPopup(`<b>🚒 ${esc(f.title)}</b><br><span class="muted">FDNY dispatch · ${new Date(f.starts * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · alarm box ${esc(f.box ?? "")}</span><br><small>The official record, published ~3 weeks late: <a href="${esc(f.url)}" target="_blank" rel="noopener">FDNY dispatch data</a></small>`).addTo(g);
   $("n-fdny").textContent = `(${d.fires.length} fires in the last 35 published days, through ${d.through ? new Date(d.through * 1000).toLocaleDateString([], { month: "short", day: "numeric" }) : "?"}; ${d.fires.filter((f) => f.sev >= 2).length} beyond a first alarm)`;
 }
@@ -1240,6 +1264,7 @@ setInterval(() => { for (const [k, f] of Object.entries(LOADERS)) if (LAYERS[k].
 // Marks Blip puts on the map (mark_places), cleared with the bar's ✕ Clear.
 const aiMarks = L.layerGroup().addTo(map);
 function markPlaces(points) {
+  if (typeof points === "string") try { points = JSON.parse(points); } catch { points = []; } // a model may send the list as JSON text
   const pts = (Array.isArray(points) ? points : []).filter((p) => Number.isFinite(+p.lat) && Number.isFinite(+p.lon) && NYC.pad(0.2).contains([+p.lat, +p.lon])).slice(0, 50);
   for (const p of pts) L.marker([+p.lat, +p.lon], { icon: L.divIcon({ className: "ai-mark", html: `<span>${esc(String(p.label ?? "").slice(0, 40))}</span>`, iconSize: null }) })
     .bindPopup(`<b>${esc(String(p.label ?? ""))}</b>${p.note ? `<br>${esc(String(p.note).slice(0, 300))}` : ""}<br><span class="muted">Marked by Blip</span>`).addTo(aiMarks);
@@ -1288,6 +1313,7 @@ function drawBar() {
     z.length ? chip("watch", `👁 ${z.length}${watchNews.length ? ` · ${watchNews.length} new` : ""}`, `Watched: ${z.map((x) => x.name).join(", ")}`, watchNews.length ? "hot" : "") : "",
     chip("area", "🔎 This area", "Analyze what's in the map's view: now, the last 24 hours, 311's week, news, cameras; a brief by the local AI on request"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
+    lineFilter ? chip("line", `${[...lineFilter].map(bullet).join("")} ✕`, "Showing only these subway lines: click to show every line", "plain") : "",
     anyOn ? chip("clear", "✕ Clear", "Take the city layers and Blip's marks off the map", "plain") : "",
   ].join("");
 }
@@ -1307,7 +1333,7 @@ function closePanel() {
 }
 function clearCity() {
   for (const k of CITY_LAYERS) if (LAYERS[k].on) toggle(k, false);
-  owned.clear(); aiMarks.clearLayers(); panelMarks.clearLayers(); $("cityBrief").hidden = true; drawBar();
+  owned.clear(); aiMarks.clearLayers(); panelMarks.clearLayers(); $("cityBrief").hidden = true; if (lineFilter) showLine(""); drawBar();
 }
 function briefHtml() {
   const b = pulseNow?.brief;
@@ -1413,6 +1439,7 @@ $("cityBar").addEventListener("click", (e) => {
   const act = e.target.closest("[data-act]")?.dataset.act;
   if (!act) return;
   if (act === "clear") return clearCity();
+  if (act === "line") return showLine("");
   if (act === "brief") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "brief" ? closePanel() : showPanel("brief", briefHtml());
   if (act === "area") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "area" ? closePanel() : analyzeArea();
   if (act === "briefready") { const b = L.latLngBounds([brief.box.s, brief.box.w], [brief.box.n, brief.box.e]); map.fitBounds(b, { animate: false }); return analyzeArea(b); } // the same box: its brief shows
@@ -2074,7 +2101,7 @@ $("rsearch").addEventListener("submit", async (e) => {
     const dist = (km) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`);
     seen.restaurants = list.slice(0, 15).map((r) => `${r.name}, ${r.address}, ${dist(r.km)} from ${from.who}`);
     $("rresults").innerHTML = list.length ? `${list.length >= 40 ? "The 40 nearest" : `${list.length} found`}, nearest to ${from.who} first` + list.slice(0, 12).map((r, i) => `<button data-i="${i}">${esc(r.name)} · <span class="muted">${esc(r.address)} · ${dist(r.km)}</span></button>`).join("") : "Nothing found.";
-    const markers = list.filter((r) => r.lat).map((r) => dot(r.lat, r.lon, "#ff5c8a", 7).bindPopup("Loading…", { maxWidth: 340 }).on("popupopen", (ev) => showInspections(ev.popup, r)).addTo(restaurantLayer));
+    const markers = list.filter((r) => r.lat).map((r) => pin(r.lat, r.lon, "🍽", "#ff5c8a").bindPopup("Loading…", { maxWidth: 340 }).on("popupopen", (ev) => showInspections(ev.popup, r)).addTo(restaurantLayer));
     if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds().pad(0.2), { maxZoom: 15 });
     $("rresults").querySelectorAll("button").forEach((b) => (b.onclick = () => { const r = list[+b.dataset.i]; map.setView([r.lat, r.lon], 16); markers.find((m) => m.getLatLng().lat === r.lat)?.openPopup(); }));
   } catch (err) { $("rresults").textContent = `Search failed: ${err.message}`; }
@@ -2188,8 +2215,10 @@ window.blipActions = {
     run: async ({ lat, lon }) => { const ph = await getJSON(`/api/nyc/photo-near?lat=${Number(lat)}&lon=${Number(lon)}`).catch(() => null); if (ph) { photoById.set(ph.id, ph); openPhoto(ph); map.setView([ph.lat, ph.lon], Math.max(map.getZoom(), 17)); } } },
   nearest_camera: { label: "opened the nearest camera", description: "Open the live traffic camera nearest a point (lat/lon), e.g. where a helicopter is circling or a 311 report.", parameters: { lat: { type: "number", description: "Latitude" }, lon: { type: "number", description: "Longitude" } },
     run: async ({ lat, lon }) => { const c = await nearestCam(Number(lat), Number(lon)); if (c) openCam(c); } },
-  show_layer: { label: "switched a layer", description: "Turn a map layer on or off. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), incidents (live incidents, merged across sources), closures (road closures, construction, permitted street events), news (today's local news, placed), emergency (Notify NYC alerts), floods (street flooding now), films (film/TV shoots), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
-    run: ({ layer, on = true }) => { const cb = document.querySelector(`#layers input[data-l="${layer}"]`); if (cb) { cb.checked = !!on; toggle(layer, !!on); } } },
+  show_line: { label: "showed the line", description: "Show one subway line or a few on the map: only their live trains (estimated positions) and their stations, the map fitted to the line. lines: route letters or numbers, e.g. \"C\", \"A C E\", \"7\", \"L\", \"S\" (shuttles), \"SIR\". Empty shows every line again. Use this for \"show the C trains\", \"where are the L trains\", \"show the 7 line\".",
+    parameters: { lines: { type: "string", description: "e.g. C, or A C E; empty for every line" } }, run: ({ lines }) => showLine(lines) },
+  show_layer: { label: "switched a layer", description: "Turn map layers on or off. For one subway line use show_line instead. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), incidents (live incidents, merged across sources), closures (road closures, construction, permitted street events), news (today's local news, placed), emergency (Notify NYC alerts), floods (street flooding now), films (film/TV shoots), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key, or several separated by spaces (\"incidents news\")" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
+    run: async ({ layer, on = true }) => { for (const k of String(layer ?? "").split(/[\s,+]+/).filter((k) => LAYERS[k])) await toggle(k, on !== false && on !== "false"); } },
   mark_places: { label: "marked places on the map", description: "Put labeled pins on the map for several places at once (e.g. the incidents, news stories or 311 hot spots you found with explore_city_data), and fit the map to them. The visitor can clear them with ✕ Clear.", parameters: { points: { type: "array", description: "[{lat, lon, label, note}] up to 50; label short (≤ 40 characters)" } },
     run: ({ points }) => markPlaces(points) },
   analyze_area: { label: "analyzed the area", description: "Open the 🔎 This area panel for the map's current view (or after moving the map to lat/lon at a zoom): what's on now, what started in the last 24 hours, 311's week against usual, today's news there, cameras.", parameters: { lat: { type: "number", description: "Optional: center here first" }, lon: { type: "number", description: "Longitude" }, zoom: { type: "number", description: "Zoom (default 15)" } },
@@ -2276,10 +2305,12 @@ await loadStations().catch((e) => ($("status").textContent = `Stations failed: $
 for (const [k, l] of Object.entries(LAYERS)) if (l.on) toggle(k, true);
 
 // Links into the map (Blip uses these in answers): #station=<GTFS id>, #at=lat,lon[,zoom][|name], #place=<address>,
-// #cam=<camera id>, #trip=[mode|]from|[stop|…]to, #aircraft=<hex>, #ship=<MMSI>, and shared views #view=lat,lon,zoom,layer+layer (the 🔗 button).
+// #cam=<camera id>, #trip=[mode|]from|[stop|…]to, #aircraft=<hex>, #ship=<MMSI>, #line=C (or A+C+E), and shared views #view=lat,lon,zoom,layer+layer (the 🔗 button).
 async function focusHash() {
   const h = decodeURIComponent(location.hash.slice(1)), eq = h.indexOf("="), key = h.slice(0, eq), val = eq < 0 ? "" : h.slice(eq + 1);
+  if (key === "line") return void showLine(val);
   if (key === "station" && stations.get(val)) {
+    if (!onLine(stations.get(val).routes)) await showLine(""); // its marker isn't drawn while another line is picked
     const cb = document.querySelector('#layers input[data-l="stations"]');
     if (!LAYERS.stations.on) { cb.checked = true; await toggle("stations", true); }
     while (!stationMarkers.get(val)) await new Promise((r) => setTimeout(r, 100));
