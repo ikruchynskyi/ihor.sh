@@ -98,6 +98,7 @@ for line in sys.stdin:
     }
   });
   whisper.stderr!.on("data", (d) => { const t = String(d); if (!/it\/s|Fetching|%\|/.test(t)) console.warn("whisper:", t.trim().slice(0, 200)); });
+  whisper.on("error", (e) => { console.warn("whisper:", e.message); whisper = null; for (const [, r] of pending) r({ error: e.message }); pending.clear(); }); // a missing python must not take the site down
   whisper.on("exit", (c) => { console.warn(`whisper worker exited (${c})`); whisper = null; for (const [, r] of pending) r({ error: "worker exited" }); pending.clear(); });
   return whisper;
 }
@@ -284,7 +285,7 @@ export async function startMonitor(mhz: number, label = "", mode: "NFM" | "WFM" 
   stopMonitor("retuning", true);
   state = { ...state, on: true, mhz, label: label.slice(0, 60), mode, open: false, error: "", captions: state.mhz === mhz || scan || state.scan ? state.captions : [], scan };
   const ac = new AbortController(); abort = ac; lastViewer = Date.now();
-  worker(); // warm the model while the dongle tunes
+  if (!process.env.HOST_BRIDGE) worker(); // warm the model while the dongle tunes (in Docker the host bridge runs Whisper)
   run(mhz, mode, ac).catch((e) => { if (ac.signal.aborted) return; state.error = e.message; state.on = false; state.open = false; send("state", pub()); console.warn("monitor:", e.message); });
   return pub();
 }
