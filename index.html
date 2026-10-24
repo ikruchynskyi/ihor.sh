@@ -87,6 +87,13 @@
   .level i { font: calc(9px * var(--px, 1)) var(--pixel); font-style: normal; color: var(--green); opacity: 0; }
   .level:hover i, .level:focus-visible i { opacity: 1; animation: blink .8s steps(2) infinite; }
 
+  /* a card with a second link in it (links can't nest): the title's link covers the card, the inner link sits above it */
+  .level.stretch { position: relative; cursor: pointer; }
+  .level.stretch a.main { color: inherit; text-decoration: none; outline: none; }
+  .level.stretch a.main::after { content: ""; position: absolute; inset: 0; }
+  .level.stretch:focus-within { transform: translate(-4px, -4px); border-color: var(--amber); box-shadow: 6px 6px 0 var(--amber); }
+  .level.stretch:focus-within i { opacity: 1; }
+  .level.stretch a.sub { position: relative; z-index: 1; display: inline-block; margin-top: 6px; color: var(--amber); }
   .level.off { opacity: .45; border-style: dashed; }
   .level.dim { opacity: .65; }
   .level.off:focus-visible, .locked .world:focus-visible { opacity: 1; outline: none; border-color: var(--amber); box-shadow: 6px 6px 0 var(--amber); }
@@ -246,8 +253,7 @@
       </header>
       <p>Tools built on New York City's open data: a live map that merges the city's feeds into today's incidents and has a local AI read the news and look at the cameras, what's free today, and an archive of MTA alerts that nobody else keeps.</p>
       <nav class="levels" aria-label="NYC projects">
-        <a class="level" href="/nyc/" data-icon="train" data-blip="Train stuck? I'll find you a Citi Bike. Or a traffic camera. Or a pizza grade."><span class="lv">2-1 <i>▶ PLAY</i></span><b>NYC LIVE MAP</b><span class="d">Today's incidents from the city's feeds, each with how likely it is real; alerts, closures, flooding and local news on the map; live video cameras; AI briefs for the city or any area; and everything within 400 m of you: trains, buses, ferries, Citi Bike, restrooms, inspections.</span></a>
-        <a class="level" href="/nyc/how.html" data-icon="chip" data-blip="Where every dot on the map comes from. Click a box, I'll follow the wires!"><span class="lv">2-1+ <i>▶ OPEN</i></span><b>HOW THE LIVE MAP WORKS</b><span class="d">An interactive diagram of its sources, what the server does with them and where they show up, with each feed's health live.</span></a>
+        <div class="level stretch" data-icon="train" data-blip="Train stuck? I'll find you a Citi Bike. Or a traffic camera. Or a pizza grade."><span class="lv">2-1 <i>▶ PLAY</i></span><b><a class="main" href="/nyc/">NYC LIVE MAP</a></b><span class="d">Today's incidents from the city's feeds, each with how likely it is real; alerts, closures, flooding and local news on the map; live video cameras; AI briefs for the city or any area; and everything within 400 m of you: trains, buses, ferries, Citi Bike, restrooms, inspections. <a class="sub" href="/nyc/how.html">How it works: sources and processing →</a></span></div>
         <a class="level" href="/nyc/free.html" data-icon="ticket" data-blip="Free museums, gardens and ferries. Every rule has a source."><span class="lv">2-2 <i>▶ PLAY</i></span><b>FREE NYC</b><span class="d">Free and pay-what-you-wish museums, gardens and ferries on any day.</span></a>
         <a class="level" href="/nyc/archive.html" data-icon="box" data-blip="I'm recording every subway alert and broken elevator. Nobody else keeps these!"><span class="lv">2-3 <i>▶ PLAY</i></span><b>MTA ARCHIVE</b><span class="d">Every subway alert and elevator outage, recorded as they happen.</span></a>
         <a class="level" href="/nyc/tonight.html" data-icon="ticket" data-blip="Dinner at seven, the show at eight, the Q home. I checked the alerts!"><span class="lv">2-4 <i>▶ PLAY</i></span><b>EVENING PLANNER</b><span class="d">Tonight, tomorrow, the weekend: Parks, street fairs, shows, free hours; plan the evening with dinner and the subway.</span></a>
