@@ -643,24 +643,35 @@ const SEEN = {
     }
   }
 };
-/** Several cameras in one call to the vision model (one turn of the model's line: separate calls let background work in
- *  between them), one sentence each; answers come back by image number and only matching numbers are kept. Measured
- *  with 5 cameras: 14 s in one call, 15 s in five when the model is free, minutes when other work slipped in between. */
-export async function lookAtCameras(ids: string[], question: string) {
+/** Several cameras in ONE call to the vision model (one turn of the model's line, so nothing else runs in between;
+ *  measured with 5 cameras: 14 s in one call, 15 s in five when the model is free, minutes when other work slipped in
+ *  between). Each frame comes back as fields an LLM (Blip, an MCP agent) can reason over (traffic, road, visibility,
+ *  emergency vehicles, smoke or fire, what's notable, a two-sentence description, and the answer to an optional
+ *  question), plus one summary line. Answers are kept only for image numbers that exist. */
+const LOOK_ONE = { type: "object", required: ["image", "traffic", "road", "visibility", "emergency_vehicles", "smoke_or_fire", "notable", "description"], properties: {
+  image: { type: "integer" }, traffic: { enum: ["none", "light", "moderate", "heavy", "stopped", "unclear"] }, road: { enum: ["dry", "wet", "flooded", "snow", "unclear"] },
+  visibility: { enum: ["clear", "reduced", "obstructed"] }, emergency_vehicles: { type: "boolean" }, smoke_or_fire: { type: "boolean" },
+  notable: { type: "string" }, description: { type: "string" }, answer: { type: "string" } } };
+export type Look = { id: string; name: string; lat: number; lon: number; traffic: string; road: string; visibility: string; emergencyVehicles: boolean; smokeOrFire: boolean; notable: string; description: string; answer?: string; text: string };
+export async function lookAtCameras(ids: string[], question?: string) {
   const all = await trafficCameras(), cams = ids.map((id) => all.find((c) => c.id === id)).filter(Boolean) as any[];
   const shots = (await Promise.all(cams.map(async (c) => { const r = await fetch(c.image, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
     return r?.ok ? { c, img: Buffer.from(await r.arrayBuffer()).toString("base64") } : null; }))).filter(Boolean) as { c: any; img: string }[];
-  if (!shots.length) return { summary: "", model: LOCAL_MODEL, looks: [] };
-  const schema = { type: "object", required: ["cameras", "summary"], properties: { summary: { type: "string" }, cameras: { type: "array", items: { type: "object", required: ["image", "sentence"], properties: { image: { type: "integer" }, sentence: { type: "string" } } } } } };
-  const res = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(180_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: schema,
-    options: { num_predict: 100 * shots.length + 80, temperature: 0.2 }, messages: [{ role: "user", images: shots.map((x) => x.img),
-      content: `${shots.length} live NYC traffic camera frames, in this order: ${shots.map((x, i) => `image ${i + 1} = "${x.c.name}"`).join("; ")}. For each image, one sentence: ${question.slice(0, 400)} Then summary: one sentence about all of them together (what stands out, or that nothing does). Only the scene: don't describe or identify people, faces or license plates, and don't guess the time.` }] }) });
+  if (!shots.length) return { summary: "", model: LOCAL_MODEL, looks: [] as Look[] };
+  const one = question ? { ...LOOK_ONE, required: [...LOOK_ONE.required, "answer"] } : LOOK_ONE; // asked a question: every camera answers it
+  const schema = { type: "object", required: ["cameras", "summary"], properties: { cameras: { type: "array", items: one }, summary: { type: "string" } } };
+  const res = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: false, format: schema,
+    options: { num_predict: 160 * shots.length + 100, temperature: 0.2 }, messages: [{ role: "user", images: shots.map((x) => x.img),
+      content: `${shots.length} live NYC traffic camera frames, in this order: ${shots.map((x, i) => `image ${i + 1} = "${x.c.name}"`).join("; ")}. For each image: traffic, road surface, visibility, whether emergency vehicles or smoke/fire are visible, notable (one sentence: anything unusual or that draws attention, like an accident, a blocked lane, flooding, a crowd or a stopped bus; or "nothing unusual"), and description (two sentences about the scene: vehicles, how traffic moves, the road, the weather and light).${question ? ` answer: ${question.slice(0, 300)}` : ""} Then summary: one sentence about all of them together. Only the scene: don't describe or identify people, faces or license plates, and don't guess the time. Say "unclear" when you can't tell.` }] }) });
   if (!res.ok) throw new Error(`vision model: HTTP ${res.status}`);
-  let out: { image: number; sentence: string }[] = [], summary = "";
+  let out: any[] = [], summary = "";
   try { const j = JSON.parse(String((await res.json()).message?.content ?? "")); out = j.cameras ?? []; summary = String(j.summary ?? "").trim(); } catch { throw new Error("the vision model's answer didn't parse"); }
   const seen = new Set<number>();
-  return { summary, model: LOCAL_MODEL, looks: out.filter((x) => Number.isInteger(x.image) && x.image >= 1 && x.image <= shots.length && !seen.has(x.image) && seen.add(x.image) && x.sentence?.trim())
-    .map((x) => { const c = shots[x.image - 1].c; return { id: c.id, name: c.name, lat: c.lat, lon: c.lon, text: x.sentence.trim() }; }) };
+  return { summary, model: LOCAL_MODEL, looks: out.filter((x) => Number.isInteger(x.image) && x.image >= 1 && x.image <= shots.length && !seen.has(x.image) && seen.add(x.image)).map((x): Look => {
+    const c = shots[x.image - 1].c, notable = String(x.notable ?? "").trim(), description = String(x.description ?? "").trim();
+    return { id: c.id, name: c.name, lat: c.lat, lon: c.lon, traffic: x.traffic, road: x.road, visibility: x.visibility, emergencyVehicles: !!x.emergency_vehicles, smokeOrFire: !!x.smoke_or_fire,
+      notable, description, ...(x.answer ? { answer: String(x.answer).trim() } : {}), text: x.answer ? String(x.answer).trim() : notable || description };
+  }) };
 }
 /** What a camera shows now: structured JSON with description, traffic flow, weather, road condition, emergency activity,
  *  and detected objects (kind, label, action, count) for programmatic analysis; or the answer to one question. Never

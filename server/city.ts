@@ -9,7 +9,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { geocode, inNyc, trafficCameras, camerasNow, inspectCamera, lookAtCameras } from "./nycapi.ts";
+import { geocode, inNyc, trafficCameras, camerasNow, lookAtCameras } from "./nycapi.ts";
 import { aircraft, km } from "./sky.ts";
 import { OLLAMA, LOCAL_MODEL, whenIdle, inLine } from "./llm.ts";
 
@@ -805,23 +805,24 @@ export function pickCameras<C extends { lat: number; lon: number; h?: number }>(
 }
 /** Look at an area's cameras now (Blip's and the MCP's watch_area_cameras): up to 5 traffic cameras within r km, spread out,
  *  in one call to the local vision model: a sentence each and one summary line. The caller holds the model's line. */
-export async function watchCameras(lat: number, lon: number, r = 0.6, question = LOOK) {
+export async function watchCameras(lat: number, lon: number, r = 0.6, question?: string) {
   const pool = (await trafficCameras()).filter((c) => !c.youtube && c.source !== "windy.com" && km({ lat, lon }, c) <= r), cams = pickCameras(pool);
   if (!cams.length) return { radiusM: Math.round(r * 1000), cameras: [], summary: "No traffic camera within that distance.", lookedAt: 0, of: 0 };
   const { looks, summary, model } = await lookAtCameras(cams.map((c) => c.id), question);
   return { radiusM: Math.round(r * 1000), lookedAt: looks.length, of: pool.length, summary, model, at: new Date().toISOString(),
-    cameras: looks.map((v) => ({ id: v.id, name: v.name, sentence: v.text, metersAway: Math.round(km({ lat, lon }, v) * 1000), mapLink: `/nyc/#cam=${v.id}` })) };
+    note: "What a local vision model saw in each camera's latest still frame: a reading, not a confirmed fact; link the camera so the visitor can look.",
+    cameras: looks.map(({ text, lat: la, lon: lo, ...v }) => ({ ...v, metersAway: Math.round(km({ lat, lon }, { lat: la, lon: lo }) * 1000), mapLink: `/nyc/#cam=${v.id}` })) };
 }
 /** A brief for one area, asked by a visitor (in the visitors' line, not the background lane): the store's facts, plus a
  *  one-sentence look at the area's best few traffic cameras by the local vision model, then the words. step() hears progress. */
-const LOOK = "In one sentence: is anything unusual happening, or anything that draws attention (an accident, emergency vehicles, a blocked lane, flooding, smoke, a crowd, a stopped bus)? If not, say what the traffic looks like.";
+
 export async function areaBrief(b: Box, step = (_: string) => {}) {
   const a = await area(b), F = areaFacts(a);
   const cams = pickCameras((await trafficCameras().catch(() => [] as any[])).filter((c) => inBox(b, c) && !c.youtube && c.source !== "windy.com")); // a job can wait for the list
   if (cams.length) {
     step(`Looking at ${cams.length} camera${cams.length > 1 ? "s" : ""} at once: ${cams.map((c) => c.name).join(", ")}…`);
-    for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id), LOOK)).then((r) => r.looks).catch(() => []))
-      F.push({ id: `F${F.length + 1}`, text: `Camera "${v.name}", looked at just now by the local vision model: ${v.text}`, lat: v.lat, lon: v.lon });
+    for (const v of await inLine(() => lookAtCameras(cams.map((c) => c.id))).then((r) => r.looks).catch(() => []))
+      F.push({ id: `F${F.length + 1}`, text: `Camera "${v.name}", looked at just now by the local vision model: traffic ${v.traffic}, road ${v.road}; ${v.notable}`, lat: v.lat, lon: v.lon });
   }
   step("Writing the brief…");
   return { label: a.label, at: now(), cameras: cams.length, ...(await write(F, `the area around ${a.label}${a.borough ? `, ${a.borough}` : ""}`, inLine)), facts: F };
@@ -855,14 +856,15 @@ async function triage() {
     if (checked.has(c.id) || (c.sev < 2 && c.confidence < 2) || c.kind.startsWith("vision:")) continue;
     checked.add(c.id);
     const near = cams.filter((k) => !k.youtube && km(c, k) <= 0.4).sort((a, b) => (b.h ?? 0) - (a.h ?? 0) || km(c, a) - km(c, b)).slice(0, 3);
-    for (const cam of near) {
-      spent = spent.filter((x) => x.t > Date.now() - 3600_000);
-      if (spent.reduce((a, x) => a + x.s, 0) >= 720) return; // at most 12 min of model time an hour (a frame took 19–22 s with the full description, measured)
-      const v = await whenIdle(async () => { const t1 = Date.now(); try { return await inspectCamera(cam.id); } finally { spent.push({ t: Date.now(), s: (Date.now() - t1) / 1000 }); } }).catch(() => null), s = v?.seen;
-      if (!s) continue;
-      const what = [s.smoke_or_fire && "smoke or fire", s.emergency_vehicles && "emergency vehicles", s.road === "flooded" && "a flooded road", ["heavy", "gridlock", "stopped"].includes(s.traffic) && `${s.traffic} traffic`].filter(Boolean) as string[];
-      tx(() => save("vision", [{ id: cam.id, kind: what.length ? `vision:${slug(what[0])}` : "vision:clear", sev: what.length ? 1 : 0, lat: cam.lat, lon: cam.lon, ends: now() + 1800,
-        title: `Camera ${cam.name}: ${what.length ? what.join(", ") : "nothing unusual"}`, detail: { camera: cam.id, seen: s, incident: c.id, model: v!.model }, url: `/nyc/#cam=${cam.id}` }]));
+    if (!near.length) continue;
+    spent = spent.filter((x) => x.t > Date.now() - 3600_000);
+    if (spent.reduce((a, x) => a + x.s, 0) >= 720) return; // at most 12 min of model time an hour
+    // all of an incident's cameras in ONE call: nothing else gets the model in between
+    const r = await whenIdle(async () => { const t1 = Date.now(); try { return await lookAtCameras(near.map((k) => k.id)); } finally { spent.push({ t: Date.now(), s: (Date.now() - t1) / 1000 }); } }).catch(() => null);
+    for (const v of r?.looks ?? []) {
+      const what = [v.smokeOrFire && "smoke or fire", v.emergencyVehicles && "emergency vehicles", v.road === "flooded" && "a flooded road", ["heavy", "stopped"].includes(v.traffic) && `${v.traffic} traffic`].filter(Boolean) as string[];
+      tx(() => save("vision", [{ id: v.id, kind: what.length ? `vision:${slug(what[0])}` : "vision:clear", sev: what.length ? 1 : 0, lat: v.lat, lon: v.lon, ends: now() + 1800,
+        title: `Camera ${v.name}: ${what.length ? what.join(", ") : "nothing unusual"}`, detail: { camera: v.id, seen: { traffic: v.traffic, road: v.road, visibility: v.visibility, notable: v.notable, description: v.description }, incident: c.id, model: r!.model }, url: `/nyc/#cam=${v.id}` }]));
     }
   }
 }

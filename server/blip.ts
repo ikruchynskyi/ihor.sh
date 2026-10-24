@@ -442,7 +442,7 @@ const TOOLS: Record<string, Tool> = {
     },
   },
   watch_area_cameras: {
-    description: "Look at the live traffic cameras around a place right now with the local vision model: up to 5 cameras within the radius (default 600 m), spread over the area, all in one look (~15-60 s). Returns one sentence per camera (traffic, anything unusual: accidents, emergency vehicles, blocked lanes, flooding, smoke, crowds) and a one-line summary. It doesn't describe people or plates. Optional: your own question for every camera.",
+    description: "Look at the live traffic cameras around a place right now with the local vision model: up to 5 cameras within the radius (default 600 m), spread over the area, all in one call (~20-60 s). Returns, per camera: traffic (none/light/moderate/heavy/stopped), road (dry/wet/flooded/snow), visibility, emergency vehicles and smoke/fire seen, notable (anything unusual, or 'nothing unusual'), a two-sentence description, the answer to your question if you asked one, distance and a link; and a one-line summary. These are readings of still frames, not confirmed facts: say so, and link the cameras. It doesn't describe people or plates.",
     parameters: { place: { type: "string", description: "Place or address" }, lat: { type: "number", description: "Or a point" }, lon: { type: "number", description: "Longitude" }, radius_m: { type: "number", description: "Radius (default 600, up to 3000)" },
       question: { type: "string", description: "Optional question for each camera, e.g. 'Is the road flooded?'" } },
     run: async ({ place, lat, lon, radius_m, question }) => {
