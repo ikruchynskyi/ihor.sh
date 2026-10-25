@@ -731,7 +731,7 @@ const server = http.createServer(async (req, res) => {
     if (SKY[url.pathname]) {
       const [f, maxAge] = SKY[url.pathname], la = Number(url.searchParams.get("lat") ?? NaN), lo = Number(url.searchParams.get("lon") ?? NaN);
       const at = Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 85 && Math.abs(lo) <= 180 ? [la, lo] : []; // aircraft and weather follow the map's view
-      try { return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(await f(...at))); }
+      try { const body = JSON.stringify(await f(...at)); return res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(body); } // await before the headers, so a failure can still answer 422
       catch (e) { return res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ error: (e as Error).message })); }
     }
     // windy.com's Map Forecast API key is a browser key (windy.com restricts it to this site's domains); kept in .env, not git.

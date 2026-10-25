@@ -1,4 +1,4 @@
-// The sky over NYC, and what's on the air: aircraft (adsb.lol), the ISS (wheretheiss.at), tropical storms (NOAA NHC),
+// The sky over NYC, and what's on the air: aircraft (adsb.fi, adsb.lol), the ISS (wheretheiss.at), tropical storms (NOAA NHC),
 // the weather now (NWS), and internet radio stations near the city (Radio Browser). All keyless. Every source is
 // fetched here and cached, so one upstream request serves every visitor; the NYC map and Blip read the same data.
 import { mvtPoints } from "./mvt.ts";
@@ -38,8 +38,11 @@ export type Aircraft = { hex: string; flight: string; reg: string; type: string;
 export function aircraft(lat = NYC.lat, lon = NYC.lon): Promise<Aircraft[]> {
   const la = Math.round(lat * 4) / 4, lo = Math.round(lon * 4) / 4, home = Math.abs(lat - NYC.lat) < 0.2 && Math.abs(lon - NYC.lon) < 0.25;
   return cached(home ? "aircraft" : `aircraft:${la},${lo}`, 8_000, async () => {
-    const d = await json(`https://api.adsb.lol/v2/lat/${home ? NYC.lat : la}/lon/${home ? NYC.lon : lo}/dist/35`);
-    return (d.ac as any[]).filter((a) => typeof a.lat === "number").map((a) => ({
+    const at = `lat/${home ? NYC.lat : la}/lon/${home ? NYC.lon : lo}/dist/35`;
+    // adsb.lol allows 500 requests a day (x-ratelimit-limit), far fewer than an 8 s refresh needs: adsb.fi's open data
+    // (same readsb fields, 1 request/s, personal use) first, adsb.lol when it fails
+    const d = await json(`https://opendata.adsb.fi/api/v2/${at}`).catch(() => json(`https://api.adsb.lol/v2/${at}`));
+    return ((d.aircraft ?? d.ac) as any[]).filter((a) => typeof a.lat === "number").map((a) => ({
       hex: a.hex, flight: String(a.flight ?? "").trim(), reg: a.r ?? "", type: a.t ?? "", lat: +a.lat.toFixed(5), lon: +a.lon.toFixed(5),
       altFt: a.alt_baro === "ground" ? 0 : typeof a.alt_baro === "number" ? a.alt_baro : null, kts: a.gs ?? null, track: a.track ?? a.true_heading ?? null,
       heli: a.category === "A7" || HELI_TYPES.test(a.t ?? ""), military: ((a.dbFlags ?? 0) & 1) === 1, squawk: a.squawk ?? "",
