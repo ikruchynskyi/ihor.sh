@@ -112,10 +112,12 @@ function finish() {
     stats: { ...st, acquired: rx.acquired, images: rx.packets.stats.images, packets: rx.packets.stats.packets, maxSnr: +maxSnr.toFixed(2), clipPct: +((100 * clipped) / Math.max(1, 2 * samples)).toFixed(3) },
     quality, channels, timeline, raw: { kept: true, bytes: rawBytes },
   };
-  // keep two raw files at most: the newest pass whose picture shows the Earth, and the newest one that doesn't (for
-  // debugging the decoder on real signals). This pass keeps its raw; an older raw of the same kind is dropped.
+  // keep three raw files at most: the newest pass whose picture shows the Earth, the newest one that doesn't (for
+  // debugging the decoder on real signals), and the strongest (highest meter) so SatDump can be run on the best signal.
+  // This pass keeps its raw; an older raw of the same kind is dropped unless it is the strongest.
   const index: any[] = existsSync(path.join(DIR, "index.json")) ? JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) : [];
-  for (const p of index.filter((p) => p.rawKept && p.id !== ID && Boolean(p.ok) === quality.ok)) {
+  const strongest = index.filter((p) => p.rawKept && p.id !== ID).reduce((a, p) => ((p.maxSnr ?? 0) > (a.maxSnr ?? 0) ? p : a), { id: ID, maxSnr: meta.stats.maxSnr });
+  for (const p of index.filter((p) => p.rawKept && p.id !== ID && p.id !== strongest.id && Boolean(p.ok) === quality.ok)) {
     rmSync(path.join(DIR, p.id, "raw.cu8"), { force: true }); p.rawKept = false;
     const mf = path.join(DIR, p.id, "meta.json"); if (existsSync(mf)) { const m = JSON.parse(readFileSync(mf, "utf8")); m.raw.kept = false; writeFileSync(mf, JSON.stringify(m)); }
   }

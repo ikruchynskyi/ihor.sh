@@ -16,6 +16,7 @@ try {
     { id: "202610171200-meteor-m2-4", sat: "meteor-m2-4", start: now - 5 * day, end: now - 5 * day + 15 * 60e3, ok: false },  // old, failed -> PRUNE
     { id: "202610210000-meteor-m2-3", sat: "meteor-m2-3", start: now - 1 * day, end: now - 1 * day + 15 * 60e3, ok: false },  // recent (<3d), failed -> KEEP
     { id: "202610211200-meteor-m2-4", sat: "meteor-m2-4", start: now - 2 * day, end: now - 2 * day + 15 * 60e3, ok: true },   // recent (<3d), usable -> KEEP
+    { id: "202610160000-meteor-m2-4", sat: "meteor-m2-4", start: now - 6 * day, end: now - 6 * day + 15 * 60e3, ok: false, rawKept: true }, // old, failed, strongest raw -> KEEP
   ];
 
   for (const p of passes) {
@@ -35,7 +36,7 @@ try {
   writeFileSync(path.join(tmp, "index.json"), JSON.stringify(passes));
 
   const res = prunePasses(tmp, now, PASS_RETENTION_MS);
-  assert.equal(res.kept, 3, "should keep 3 passes");
+  assert.equal(res.kept, 4, "should keep 4 passes");
   assert.equal(res.pruned, 1, "should prune 1 pass from index");
 
   assert.ok(existsSync(path.join(tmp, "202610170000-meteor-m2-3")), "old pass with usable picture is kept");
@@ -49,6 +50,7 @@ try {
     "202610170000-meteor-m2-3",
     "202610210000-meteor-m2-3",
     "202610211200-meteor-m2-4",
+    "202610160000-meteor-m2-4",
   ]);
 
   console.log("meteor-rec: prunePasses retention test passed");

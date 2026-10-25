@@ -64,7 +64,7 @@ async function plan() {
 
 export const PASS_RETENTION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
-/** Prunes passes older than keepMs that do not have a usable picture (ok === true),
+/** Prunes passes older than keepMs that do not have a usable picture (ok === true) or a kept raw file,
  *  deleting their directories and updating index.json. Also cleans up orphaned pass
  *  directories older than 2 hours. */
 export function prunePasses(dir = DIR, now = Date.now(), keepMs = PASS_RETENTION_MS): { kept: number; pruned: number } {
@@ -83,7 +83,7 @@ export function prunePasses(dir = DIR, now = Date.now(), keepMs = PASS_RETENTION
 
   for (const p of list) {
     const isRecent = typeof p.start === "number" && (now - p.start) <= keepMs;
-    if (p.ok || isRecent) {
+    if (p.ok || p.rawKept || isRecent) {
       kept.push(p);
     } else {
       prunedIds.add(p.id);
