@@ -427,19 +427,19 @@ function renderPlan() {
     <div class="plan-result card">
       <div class="plan-info">
         <span class="plan-material-name">${esc(label(p.material))}</span>
-        ${uk ? "" : p.uk ? `<span class="muted">(${esc(p.uk)})</span>` : ""}
-        ${p.tier ? `<span class="badge">Tier ${p.tier}</span>` : ""}
+        ${uk ? (p.material !== p.uk ? `<span class="muted">(${esc(p.material)})</span>` : "") : (p.uk ? `<span class="muted">(${esc(p.uk)})</span>` : "")}
+        ${p.tier ? `<span class="badge">${uk ? `Рівень ★${p.tier}` : `Tier ${p.tier}`}</span>` : ""}
         ${p.rarity ? `<span class="badge" style="text-transform:capitalize;">${esc(p.rarity)}</span>` : ""}
-        <span class="muted" style="font-size:0.85rem;">Base rate: 100 : ${p.baseRate ?? "–"}</span>
+        <span class="muted" style="font-size:0.85rem;">${uk ? "База" : "Base rate"}: 100 : ${p.baseRate ?? "–"}</span>
       </div>
       <div class="scroll">
         <table>
           <thead>
             <tr>
-              <th>Guild</th>
-              <th>Next on Sale</th>
-              <th>Cost for ${p.count ? p.count.toLocaleString() : "?"} units</th>
-              <th>Reminder</th>
+              <th>${uk ? "Гільдія" : "Guild"}</th>
+              <th>${uk ? "Наступний продаж" : "Next on Sale"}</th>
+              <th>${uk ? `Вартість за ${p.count ? p.count.toLocaleString("uk-UA") : "?"} од.` : `Cost for ${p.count ? p.count.toLocaleString("en-US") : "?"} units`}</th>
+              <th>${uk ? "Нагадування" : "Reminder"}</th>
             </tr>
           </thead>
           <tbody>
@@ -447,11 +447,11 @@ function renderPlan() {
               <tr>
                 <td><strong>${esc(g.guild)}</strong></td>
                 <td>
-                  ${esc(new Date(g.date + "T12:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }))}
-                  <span class="in-days-pill ${g.inDays === 0 ? "today" : ""}">${g.inDays ? `in ${g.inDays}d` : "Today"}</span>
+                  ${esc(new Date(g.date + "T12:00").toLocaleDateString(uk ? "uk-UA" : "en-US", { weekday: "short", month: "short", day: "numeric" }))}
+                  <span class="in-days-pill ${g.inDays === 0 ? "today" : ""}">${g.inDays ? (uk ? `за ${g.inDays} дн.` : `in ${g.inDays}d`) : (uk ? "Сьогодні" : "Today")}</span>
                 </td>
-                <td class="cost-val">${g.proofs != null ? `${g.proofs.toLocaleString()} <span style="font-weight:normal;font-size:0.85rem;color:var(--muted);">${esc(g.currency)}</span>` : "–"}</td>
-                <td><a class="cal-link" href="${cal(p, g)}" target="_blank" rel="noopener">📅 Add to Calendar</a></td>
+                <td class="cost-val">${g.proofs != null ? `${g.proofs.toLocaleString(uk ? "uk-UA" : "en-US")} <span style="font-weight:normal;font-size:0.85rem;color:var(--muted);">${esc(g.currency)}</span>` : "–"}</td>
+                <td><a class="cal-link" href="${cal(p, g)}" target="_blank" rel="noopener">${uk ? "📅 Додати в календар" : "📅 Add to Calendar"}</a></td>
               </tr>`).join("")}
           </tbody>
         </table>
@@ -490,10 +490,15 @@ $("guilds").addEventListener("click", (e) => {
   }
 });
 
+const updateDatalist = () => {
+  $("mats").innerHTML = names.map((n) => `<option value="${esc(uk && n.uk ? n.uk : n.en)}">${esc(uk ? n.en : (n.uk ?? ""))}</option>`).join("");
+};
+
 $("lang").onclick = () => {
   uk = !uk;
   $("lang").textContent = uk ? "English" : "Українською";
   $("lang").setAttribute("aria-pressed", String(uk));
+  updateDatalist();
   renderToday();
   renderPlan();
 };
@@ -503,7 +508,7 @@ $("lang").onclick = () => {
   fetch("/api/orna/materials").then((r) => r.json())
 ]);
 
-$("mats").innerHTML = names.map((n) => `<option value="${esc(n.en)}">${esc(n.uk ?? "")}</option>`).join("");
+updateDatalist();
 renderToday();
 
 window.blipActions = {

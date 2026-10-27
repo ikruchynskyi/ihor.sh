@@ -896,7 +896,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/orna/today") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" }).end(JSON.stringify(await ornaToday()));
     if (url.pathname === "/api/orna/materials") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=3600" }).end(JSON.stringify(await materialNames()));
-    if (url.pathname === "/api/orna/plan") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=600" })
+    if (url.pathname === "/api/orna/plan") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-cache" })
       .end(JSON.stringify(await ornaPlan(String(url.searchParams.get("material") ?? "").slice(0, 60), Math.min(1e6, Math.max(0, Number(url.searchParams.get("count")) || 0)))));
     if (url.pathname === "/api/radio/repeaters") {
       const [bs, bw, bn, be] = String(url.searchParams.get("bbox") ?? "39.5,-76,42.3,-71.5").split(",").map(Number);

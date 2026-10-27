@@ -19,15 +19,21 @@ export const proofsNeeded = (count: number, guild: string, base: number) => Math
 export const MATERIALS: Record<string, { tier: number; rarity: string; uk?: string }> = JSON.parse(readFileSync(path.join(import.meta.dirname, "..", "orna", "materials.json"), "utf8"));
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-/** "October 9" → the next date on or after `today` (this year, or next if it has passed). */
+/** "October 9" → the next date on or after `today` (this year, or next if it has passed; Feb 29 jumps to the next leap year). */
 export function nextOccurrence(s: string, today: Date) {
-  const m = s.trim().match(/^([A-Z][a-z]+)\s+(\d{1,2})$/);
-  const month = m ? MONTHS.indexOf(m[1]) : -1;
+  const m = s.trim().match(/^([A-Z][a-z]+)\s+(\d{1,2})$/i);
+  if (!m) return null;
+  const monthName = m[1].toLowerCase();
+  const month = MONTHS.findIndex((mo) => mo.toLowerCase() === monthName);
   if (month < 0) return null;
+  const day = Number(m[2]);
   const t0 = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  let d = Date.UTC(today.getUTCFullYear(), month, Number(m![2]));
-  if (d < t0) d = Date.UTC(today.getUTCFullYear() + 1, month, Number(m![2]));
-  return new Date(d);
+  for (let year = today.getUTCFullYear(); year <= today.getUTCFullYear() + 8; year++) {
+    const candidate = new Date(Date.UTC(year, month, day));
+    if (candidate.getUTCMonth() !== month || candidate.getUTCDate() !== day) continue;
+    if (candidate.getTime() >= t0) return candidate;
+  }
+  return null;
 }
 
 const SHEET = `https://sheets.googleapis.com/v4/spreadsheets/${process.env.ORNA_SPREADSHEET_ID ?? "1gWTEeQnFlNePLTOLCbrzyMWljJjR01L84z2tpeaOAi8"}/values/${encodeURIComponent("Material Forecast!L6:W68")}`;
@@ -56,7 +62,9 @@ export async function today() {
 export async function plan(material: string, count = 0) {
   const rows = await forecast(), t = nyToday();
   const q = material.trim().toLowerCase();
-  const row = rows.find((r) => r.material.toLowerCase() === q) ?? rows.find((r) => r.material.toLowerCase().includes(q) || MATERIALS[r.material]?.uk?.toLowerCase().includes(q));
+  const row = rows.find((r) => r.material.toLowerCase() === q || MATERIALS[r.material]?.uk?.toLowerCase() === q)
+    ?? rows.find((r) => r.material.toLowerCase().startsWith(q) || (MATERIALS[r.material]?.uk?.toLowerCase()?.startsWith(q) ?? false))
+    ?? rows.find((r) => r.material.toLowerCase().includes(q) || (MATERIALS[r.material]?.uk?.toLowerCase()?.includes(q) ?? false));
   if (!row) return { error: `"${material}" isn't in the forecast.`, materials: rows.map((r) => r.material) };
   const meta = MATERIALS[row.material], base = meta ? baseRate(meta.tier, meta.rarity) : null;
   const guilds = GUILDS.map((g) => ({ g, d: nextOccurrence(row.dates[g], t) })).filter((x) => x.d).sort((a, b) => a.d!.getTime() - b.d!.getTime())
