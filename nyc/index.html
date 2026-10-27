@@ -1411,11 +1411,9 @@ function drawBar() {
     chip("closures", `🚧 ${p.closures}`, "Road closures, construction and permitted street events on now"),
     chip("floods", `🌊 ${p.flooding ? `${p.flooding} · ` : ""}${p.surgeFt != null ? `${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft` : "0"}`, "Street flooding now (FloodNet sensors) · harbor water at the Battery against the predicted tide (NOAA)", p.flooding ? "warm" : ""),
     chip("news", `📰 ${p.news?.n ?? 0}`, `Today's local news: ${p.news?.n ?? 0} stories, ${p.news?.placed ?? 0} placed on the map`),
-    p.helicopters ? chip("helicopters", `🚁 ${p.helicopters}`, "Helicopters circling low over the city", "warm") : "",
     p.weather.length ? chip("weather", `⛈ ${p.weather.length}`, p.weather.join("\n"), "hot") : "",
     p.aqi > 100 ? chip("aqi", `🌫 ${p.aqi}`, "US air quality index: over 100 is unhealthy for sensitive groups", "warm") : "",
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut}`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
-    p.unusual ? chip("unusual", `📈 ${p.unusual}`, "Unusual: places where a kind of report is at least 3× its usual count", "warm") : "",
     hot.length ? chip("watch", `👁 Watch <small>${esc(hot[0].place)}</small>`, `Where to watch: the neighborhoods where crime, fires and police alerts gathered over the last 72 hours (${hot.map((h) => h.place).join(", ")})`, hot[0].sev >= 2 ? "hot" : "warm") : "",
     `<button title="Everything within ${NEAR_M} m of you: incidents, closures, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
     chip("area", "🔎 This area", "Analyze what's in the map's view: now, the last 24 hours, 311's week, news, cameras; a brief by the local AI on request"),
@@ -1463,11 +1461,11 @@ function listHtml(act) {
       body: (d.weather.length ? `<p><b>⛈ Weather alerts (NWS)</b><br>${d.weather.map((w) => `${esc(w.title)}${w.instruction ? `<br><small>${esc(w.instruction.slice(0, 240))}</small>` : ""}`).join("<br>")}</p>` : "")
         + (alerts.length ? `<ul class="rows">${alerts.map((a) => `<li>${a.lat != null ? goLink("emergency", a.id, esc(a.title)) : `${esc(a.title)} <span class="muted">(citywide)</span>`}<span class="muted">${state(a)}${a.starts <= now ? ` · ${ago(a.starts)}` : ""}${a.severity ? ` · ${esc(a.severity)}` : ""}</span><small>${esc((a.text ?? "").slice(0, 180))}</small></li>`).join("")}</ul>` : "<p>No Notify NYC alerts in the last 24 hours.</p>") };
   }
-  if (act === "incidents" || act === "helicopters") {
-    const all = cityData.incidents?.incidents ?? [], list = act === "helicopters" ? all.filter((c) => c.kind === "air:helicopter-orbit") : all;
-    return { title: act === "helicopters" ? `🚁 Helicopters circling <span class="muted">${list.length}</span>` : `⚠ Today's incidents <span class="muted">as of ${pulseNow?.incidentsAt ? hhmm(pulseNow.incidentsAt) : "now"} · ${all.filter((c) => c.sev >= 2).length} serious · ${all.length} in all · ${all.filter((c) => (c.probability ?? 0) >= 0.7).length} likely real</span>`,
+  if (act === "incidents") {
+    const all = cityData.incidents?.incidents ?? [], list = all;
+    return { title: `⚠ Today's incidents <span class="muted">as of ${pulseNow?.incidentsAt ? hhmm(pulseNow.incidentsAt) : "now"} · ${all.filter((c) => c.sev >= 2).length} serious · ${all.length} in all · ${all.filter((c) => (c.probability ?? 0) >= 0.7).length} likely real</span>`,
       points: list.filter((c) => c.sev >= 2).length ? list.filter((c) => c.sev >= 2) : list.slice(0, 1),
-      body: `<ul class="rows">${list.slice(0, 40).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${act === "helicopters" ? `<a href="${esc(c.events[0]?.url ?? "#")}">${esc(c.title)}</a>` : goLink("incidents", c.id, esc(c.title))}<span class="muted">likely ${Math.round((c.probability ?? 0) * 100)}% · ${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}${c.hood || c.borough ? ` · ${esc(c.hood ?? c.borough)}` : ""}</span></li>`).join("")}</ul>${list.length > 40 ? `<p class="muted">The 40 most serious of ${list.length}; the rest are on the map.</p>` : ""}` };
+      body: `<ul class="rows">${list.slice(0, 40).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${goLink("incidents", c.id, esc(c.title))}<span class="muted">likely ${Math.round((c.probability ?? 0) * 100)}% · ${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}${c.hood || c.borough ? ` · ${esc(c.hood ?? c.borough)}` : ""}</span></li>`).join("")}</ul>${list.length > 40 ? `<p class="muted">The 40 most serious of ${list.length}; the rest are on the map.</p>` : ""}` };
   }
   if (act === "closures") {
     const list = (cityData.incidents?.planned ?? []).map((e) => ({ e, m: map.distance(here, [e.lat, e.lon]) })).sort((a, b) => a.m - b.m);
@@ -1488,7 +1486,6 @@ function listHtml(act) {
   }
   if (act === "aqi") return { title: `🌫 Air quality <span class="muted">${p.aqi}</span>`, body: `<p>${p.aqi <= 50 ? "Good" : p.aqi <= 100 ? "Moderate" : p.aqi <= 150 ? "Unhealthy for sensitive groups" : p.aqi <= 200 ? "Unhealthy" : "Very unhealthy or worse"} (US AQI, EPA's bands), from Open-Meteo's air quality model for NYC. <a href="https://www.airnow.gov/?city=New%20York&state=NY&country=USA" target="_blank" rel="noopener">AirNow →</a></p>` };
   if (act === "outages") return { title: `⚡ Con Ed outages <span class="muted">${p.outages}</span>`, body: `<p>${p.customersOut ?? 0} customers out in NYC and Westchester (Con Ed's outage map, updated every 15–30 minutes). <a href="https://outagemap.coned.com/" target="_blank" rel="noopener">Con Ed's map →</a></p>` };
-  if (act === "unusual") return { title: "📈 Unusual now <span class=\"muted\">click one for its reports on the map</span>", points: [], body: `<ul class="rows">${(pulseNow?.unusualList ?? []).map((u, i) => `<li><a href="#" data-unusual="${i}">${esc(u.text)}</a></li>`).join("")}</ul>${pulseNow?.unusualNote ? `<p class="muted">${esc(pulseNow.unusualNote)}</p>` : ""}` };
   if (act === "watch") return { title: "👁 Where to watch <span class=\"muted\">the last 72 hours</span>", body: `<ul class="rows">${(p.hotspots ?? []).map((h, i) => `<li><i style="background:${SEV[h.sev]}"></i><a href="#" data-hot="${i}">${esc(h.place)}</a><span class="muted">${h.reports} report${h.reports > 1 ? "s" : ""}: ${h.topics.map(esc).join(", ")} · latest ${ago(h.latest.starts)}</span><small>${h.latest.url ? `<a href="${esc(h.latest.url)}" target="_blank" rel="noopener">${esc(h.latest.title)}</a>` : esc(h.latest.title)}</small></li>`).join("")}</ul>
     <p class="muted">Crime and fire news and Notify NYC police and fire alerts, by neighborhood; each story counts once however many outlets carry it, follow-ups included. Places come from the stories' text (read by the local AI) and can be rough.</p>` };
   return null;
@@ -1500,8 +1497,7 @@ async function openList(act) {
   const mine = owned.has(CHIP_LAYER[act]); // still on from this list, closed with ×: still this list's to clear
   owned.clear(); if (mine) owned.add(CHIP_LAYER[act]); panelMarks.clearLayers();
   showPanel(act, { title: "Loading…", body: "" });
-  if (act === "helicopters") { cityData.incidents = await getJSON("/api/nyc/incidents").catch(() => cityData.incidents); if (!LAYERS.aircraft.on) { owned.add("aircraft"); toggle("aircraft", true); } }
-  else if (CHIP_LAYER[act]) {
+  if (CHIP_LAYER[act]) {
     const k = CHIP_LAYER[act], l = LAYERS[k], was = l.loaded;
     if (!l.on) owned.add(k);
     await toggle(k, true); if (was) await l.load(l.group).catch(() => {}); // fresh numbers
@@ -1566,7 +1562,6 @@ $("cityBrief").addEventListener("click", (e) => {
   if (go) { e.preventDefault(); const [layer, id] = go.split(/\|(.*)/s), c = layer === "incidents" && cityData.incidents?.incidents.find((x) => x.id === id);
     if (c) { $("cityBrief").classList.add("min"); return openDetail(c); }
     const m = cityMarks.get(go); if (m) focusOn(m); return; }
-  if (t.dataset.unusual) { e.preventDefault(); const u = pulseNow.unusualList[+t.dataset.unusual]; showPins(u.points?.length ? u.points : [u], `${u.n} × ${u.what} (usually ${u.usual})`); }
   const bullet = t.closest("[data-bullet]")?.dataset.bullet;
   if (bullet) { e.preventDefault(); const [from, i] = bullet.split("|"), b = from === "area" ? areaBriefData : pulseNow?.brief, x = b?.bullets[+i];
     if (x) showPins(b.facts.filter((f) => x.facts.includes(f.id) && f.lat != null).map((f) => ({ lat: f.lat, lon: f.lon, title: `${f.id}: ${f.text}` }))); }

@@ -313,19 +313,29 @@ const embed = async (texts: string[]) => ((await (await fetch(`${OLLAMA}/api/emb
 const unit = (v: number[]) => { const n = Math.hypot(...v) || 1; return new Float32Array(v.map((x) => x / n)); };
 const dot = (a: Float32Array, b: Float32Array) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
 export const SAME_STORY = 0.85;
+/** Stories: reports whose texts are near-duplicates (cosine ≥ SAME_STORY) are one story, chained (a links to b, b to c:
+ *  one story), named after its first report. Two reports pinned over 2 km apart are never linked: "woman stabbed in
+ *  the Bronx" and "woman stabbed in Queens" read alike. Joining each new report to its single best match split one
+ *  Central Park assault into four stories (2026-10-26), so the whole day is regrouped every run. */
+export function stories(reps: { id: string; v: Float32Array; lat: number | null; lon: number | null }[]) {
+  const root = reps.map((_, i) => i), find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
+  const pins = reps.map((r) => (r.lat != null ? [r as { lat: number; lon: number }] : [])); // each story's pins, kept at its root
+  for (let i = 0; i < reps.length; i++) for (let j = i + 1; j < reps.length; j++) {
+    const [x, y] = [find(i), find(j)];
+    if (x === y || dot(reps[i].v, reps[j].v) < SAME_STORY || pins[x].some((p) => pins[y].some((q) => km(p, q) > 2))) continue; // an unpinned report doesn't bridge two places
+    const [keep, gone] = [Math.min(x, y), Math.max(x, y)]; // the earlier report names the story
+    root[gone] = keep; pins[keep].push(...pins[gone]);
+  }
+  return reps.map((r, i) => ({ id: r.id, story: reps[find(i)].id }));
+}
 async function groupStories(since: number) {
   const left = db.prepare("select e.id, e.title, e.detail from events e left join news_vec v on v.id = e.id where e.source = 'news' and e.kind != 'news-elsewhere' and e.starts >= ? and v.id is null order by e.starts").all(since) as { id: string; title: string; detail: string }[];
-  if (!left.length) return;
-  const vecs = await embed(left.map((r) => `${r.title}. ${String(JSON.parse(r.detail).summary ?? "").slice(0, 200)}`));
-  const known = (db.prepare("select v.id, v.vec, json_extract(e.detail, '$.story') story from news_vec v join events e on e.id = v.id where e.starts >= ?").all(since) as { id: string; vec: Uint8Array; story: string }[])
-    .map((r) => ({ id: r.id, story: r.story ?? r.id, v: new Float32Array(r.vec.buffer, r.vec.byteOffset, r.vec.byteLength / 4) }));
-  tx(() => left.forEach((r, i) => {
-    if (!vecs[i]) return;
-    const v = unit(vecs[i]), best = known.reduce((b, k) => { const c = dot(v, k.v); return c > b.c ? { c, k } : b; }, { c: -1, k: null as (typeof known)[number] | null }), story = best.c >= SAME_STORY ? best.k!.story : r.id;
-    db.prepare("insert or replace into news_vec values (?, ?)").run(r.id, Buffer.from(v.buffer));
-    db.prepare("update events set detail = json_set(detail, '$.story', ?) where id = ?").run(story, r.id);
-    known.push({ id: r.id, story, v });
-  }));
+  const vecs = left.length ? await embed(left.map((r) => `${r.title}. ${String(JSON.parse(r.detail).summary ?? "").slice(0, 200)}`)) : [];
+  tx(() => left.forEach((r, i) => { if (vecs[i]) db.prepare("insert or replace into news_vec values (?, ?)").run(r.id, Buffer.from(unit(vecs[i]).buffer)); }));
+  const reps = (db.prepare("select v.id, v.vec, e.lat, e.lon, json_extract(e.detail, '$.story') story from news_vec v join events e on e.id = v.id where e.starts >= ? order by e.starts, e.id").all(since) as { id: string; vec: Uint8Array; lat: number | null; lon: number | null; story: string | null }[])
+    .map((r) => ({ ...r, v: new Float32Array(r.vec.buffer, r.vec.byteOffset, r.vec.byteLength / 4) }));
+  const was = new Map(reps.map((r) => [r.id, r.story])), known = stories(reps);
+  tx(() => { for (const k of known) if (was.get(k.id) !== k.story) db.prepare("update events set detail = json_set(detail, '$.story', ?) where id = ?").run(k.story, k.id); });
   for (const st of new Set(known.map((k) => k.story))) { // coverage: how many outlets carry each story
     const outlets = new Set((db.prepare("select json_extract(detail, '$.outlet') o from events where source = 'news' and json_extract(detail, '$.story') = ?").all(st) as { o: string }[]).map((r) => r.o));
     db.prepare("update events set detail = json_set(detail, '$.coverage', ?) where source = 'news' and json_extract(detail, '$.story') = ?").run(outlets.size, st);
@@ -475,13 +485,15 @@ export const family = (e: Ev) => (/fire|smoke/.test(e.kind) ? "fire" : /accident
 const witness = (e: Ev) => (e.kind.startsWith("road:waze") ? "waze" : e.source === "news" ? `news:${JSON.parse(e.detail || "{}").story ?? e.id}` : e.source); // Waze drivers and NYSDOT's operators are different eyes
 /** Unplanned things with a place, most severe first, each joined to the first incident within 300 m. A story placed only
  *  at its neighborhood ("news-rough") joins the nearest incident of its family within 1.5 km, or stands alone: nothing
- *  joins a rough one, since its pin is only the neighborhood's middle. */
+ *  joins a rough one, since its pin is only the neighborhood's middle. Reports of one news story are one incident
+ *  however far apart their pins (outlets name the same spot differently: "East 66th Street in Central Park" and
+ *  "East 66th St and Fifth Ave" landed 870 m apart on 2026-10-26). */
 export function cluster(evs: Ev[]) {
   const out: Incident[] = [];
   for (const e of evs.filter((e) => e.lat != null && !PLANNED.test(e.kind)).sort((a, b) => b.sev - a.sev || a.starts - b.starts)) {
-    const rough = e.kind === "news-rough", fam = rough ? family(e) : "";
-    const c = rough ? out.filter((c) => !c.rough && c.events.some((x) => family(x) === fam) && km(c, e as { lat: number; lon: number }) <= 1.5).sort((a, b) => km(a, e as any) - km(b, e as any))[0]
-      : out.find((c) => !c.rough && km(c, e as { lat: number; lon: number }) <= 0.3);
+    const rough = e.kind === "news-rough", fam = rough ? family(e) : "", w = witness(e);
+    const c = (e.source === "news" ? out.find((c) => c.sources.includes(w)) : undefined) ?? (rough ? out.filter((c) => !c.rough && c.events.some((x) => family(x) === fam) && km(c, e as { lat: number; lon: number }) <= 1.5).sort((a, b) => km(a, e as any) - km(b, e as any))[0]
+      : out.find((c) => !c.rough && km(c, e as { lat: number; lon: number }) <= 0.3));
     if (!c) { out.push({ id: e.id, title: e.title, kind: e.kind, sev: e.sev, lat: e.lat!, lon: e.lon!, starts: e.starts, sources: [witness(e)], confidence: 1, events: [e], ...(rough ? { rough: true } : {}) }); continue; }
     c.events.push(e); c.starts = Math.min(c.starts, e.starts);
     if (!c.sources.includes(witness(e))) c.sources.push(witness(e));
@@ -806,7 +818,8 @@ export async function area(b: Box, hours = 24) {
   const before = new Map<string, number>();
   for (let k = 1; k <= 4; k++) for (const r of week(k)) before.set(r.type, (before.get(r.type) ?? 0) + r.n / 4);
   const r311 = week(0).map((r) => ({ type: r.type, n: r.n, usual: +(before.get(r.type) ?? 0).toFixed(1) })).sort((x, y) => y.n - x.n);
-  const cams = camerasNow().filter((c) => inBox(b, c)).sort((x, y) => (y.h ?? 0) - (x.h ?? 0)); // never waits on the stream checks
+  const all = await trafficCameras().catch(() => camerasNow()); // waits for the first load after a restart: camerasNow() alone said "0 of the 0 cameras"
+  const cams = all.filter((c) => inBox(b, c)).sort((x, y) => (y.h ?? 0) - (x.h ?? 0)); // never waits on the stream checks
   const mid = { lat: (b.s + b.n) / 2, lon: (b.w + b.e) / 2 }, key = `${mid.lat.toFixed(3)},${mid.lon.toFixed(3)}`;
   if (!labels.has(key)) labels.set(key, neighborhood(mid.lat, mid.lon) ?? (await geocode(`${mid.lat.toFixed(5)},${mid.lon.toFixed(5)}`).catch(() => null))?.label.split(",")[0] ?? key);
   return { box: b, label: labels.get(key)!, borough: borough(mid.lat, mid.lon), hours, at,

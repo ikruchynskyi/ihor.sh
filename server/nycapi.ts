@@ -202,13 +202,16 @@ export async function restaurantInspections(camis: string) {
 let cams: { at: number; list: any[] } | null = null;
 /** NYC DOT traffic cameras (webcams.nyctmc.org): id, name, area, lat/lon, live JPEG URL, plus NYSDOT's live video, the
  *  YouTube streams and windy.com's webcams. Every one has a still `image` (✨ upscaling and the AI lessons read it). Cached 10 min. */
+// One load at a time (the first takes ~20 s); while a stale list reloads, callers get the stale one.
+let camsLoading: Promise<any[]> | null = null;
 export async function trafficCameras() {
-  if (!cams || cams.at < Date.now() - 10 * 60_000) {
+  if (!cams || cams.at < Date.now() - 10 * 60_000) camsLoading ??= (async () => {
     const [rows, video, yt, windy] = await Promise.all([json("https://webcams.nyctmc.org/api/cameras") as Promise<any[]>, nysdotVideo().catch(() => []), youtubeLive(), windyWebcams().catch(() => [])]);
     cams = { at: Date.now(), list: [...rows.filter((c) => c.isOnline === "true" || c.isOnline === true)
       .map((c) => ({ id: c.id, name: c.name, area: c.area, lat: c.latitude, lon: c.longitude, image: c.imageUrl })), ...video, ...yt, ...windy] };
-  }
-  return cams.list;
+    return cams.list;
+  })().finally(() => (camsLoading = null));
+  return cams?.list ?? camsLoading!;
 }
 /** NYSDOT's live video cameras around the city (511NY's map feed, no key): expressway HLS streams the page plays itself,
  *  most 352×240 but ~90 at 512–1920 px wide, each with a full-size still refreshed every couple of minutes. */

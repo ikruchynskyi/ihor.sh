@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR, poissonTail, bh } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, orbit, cluster, stories, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR, poissonTail, bh } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -44,6 +44,14 @@ const merged = cluster([ev("fire2", "notify", "alert:fire", 3, 40.8), ev("crash"
 assert.deepEqual(merged.find((c) => c.id === "fire2")!.sources, ["notify", "news:s"]);
 const alone = cluster([ev("crash", "511ny", "road:waze-minor-accident", 1, 40.8095), story]);
 assert.equal(alone.length, 2); assert.ok(alone.find((c) => c.id === "s")!.rough);
+// Two outlets' reports of one story are one incident, though their pins are 870 m apart.
+const outlet = (id: string, lat: number) => ({ ...ev(id, "news", "news", 2, lat), detail: JSON.stringify({ topic: "crime", story: "cp" }) });
+assert.equal(cluster([outlet("abc", 40.7723), outlet("bk", 40.7686, -73.9698)]).length, 1);
+
+// Stories chain near-duplicate texts (a ~ b ~ c: one story, named by the first), but never across 2 km.
+const vec = (...x: number[]) => { const n = Math.hypot(...x); return new Float32Array(x.map((v) => v / n)); };
+assert.deepEqual(stories([{ id: "a", v: vec(1, 0, 0), lat: 40.77, lon: -73.97 }, { id: "b", v: vec(1, 0.4, 0), lat: null, lon: null }, { id: "c", v: vec(1, 0.8, 0), lat: 40.768, lon: -73.97 },
+  { id: "bronx", v: vec(1, 0.05, 0), lat: 40.85, lon: -73.9 }, { id: "fire", v: vec(0, 0, 1), lat: 40.77, lon: -73.97 }]).map((r) => r.story), ["a", "a", "a", "bronx", "fire"]); // the Bronx reads like b, but a and c are pinned 9 km away
 
 // A brief's bullet must cite real facts, and every number in it must be in them.
 const F = new Map([["F1", "Fire - Wright Avenue: 3 reports from Notify NYC, severity 3 of 3, since 1:05 PM"], ["F2", "Air quality index 42"]]);
