@@ -4,6 +4,8 @@ import "./env.ts";
 // only model (its chat promises nothing leaves this machine). Default qwen3.8:27b-mlx; OLLAMA_MODEL in .env overrides it.
 export const OLLAMA = process.env.OLLAMA_URL ?? "http://localhost:11434";
 export const LOCAL_MODEL = process.env.OLLAMA_MODEL ?? "qwen3.8:27b-mlx";
+/** Ollama Cloud's model (free credits every two weeks): Blip, Jobs AI and the map's incident research try it first. */
+export const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
 
 /** Models that take a reasoning effort level in Ollama ("low" / "medium" / "high"). */
 export const supportsEffort = (model = LOCAL_MODEL) =>
@@ -63,4 +65,19 @@ if (import.meta.url === `file://${process.argv[1]}`) { // node llm.ts: self-chec
   await Promise.all([bg, v, bg2, v2]);
   assert.deepEqual(order.filter((o) => !o.startsWith("end")), ["bg1", "start v", "start v2", "bg2"]); // visitors go before waiting background work
   console.log("llm.ts: line OK");
+}
+
+/** One model call that must answer JSON in a schema: the cloud model first, the local one if it fails. _model says which answered. */
+export async function llmJson(system: string, user: string, schema: object, maxTokens = 2500): Promise<any> {
+  const messages = [{ role: "system", content: system }, { role: "user", content: user }], key = process.env.OLLAMA_CLOUD_KEY;
+  const parse = (s: string) => JSON.parse(s.replace(/^```(json)?|```$/g, "").trim());
+  if (key) {
+    try {
+      const r = await fetch("https://ollama.com/api/chat", { method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: CLOUD_MODEL, stream: false, format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
+      if (r.ok) return { ...parse((await r.json()).message.content), _model: CLOUD_MODEL };
+    } catch {}
+  }
+  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
+  if (!r.ok) throw new Error(`model ${r.status}`);
+  return { ...parse((await r.json()).message.content), _model: LOCAL_MODEL };
 }

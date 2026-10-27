@@ -3,8 +3,8 @@
 // text is used for the request only: never stored, never logged.
 import { needEmbedding, saveEmbedding, candidates, jobText, type Query } from "./jobs.ts";
 
-import { OLLAMA, LOCAL_MODEL, localThink } from "./llm.ts";
-const EMBED = "nomic-embed-text", CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
+import { OLLAMA, llmJson } from "./llm.ts";
+const EMBED = "nomic-embed-text";
 
 async function embed(texts: string[]): Promise<Float32Array[]> {
   const r = await fetch(`${OLLAMA}/api/embed`, { method: "POST", body: JSON.stringify({ model: EMBED, input: texts, truncate: true }), signal: AbortSignal.timeout(120_000) });
@@ -26,21 +26,6 @@ export async function embedJobs(max = 2000) {
   return n;
 }
 export function startEmbedding() { setTimeout(() => embedJobs(), 90_000); setInterval(() => embedJobs(), 30 * 60_000); }
-
-/** One model call that must answer JSON in a schema: the cloud model first, the local one if it fails. */
-async function llmJson(system: string, user: string, schema: object, maxTokens = 2500): Promise<any> {
-  const messages = [{ role: "system", content: system }, { role: "user", content: user }], key = process.env.OLLAMA_CLOUD_KEY;
-  const parse = (s: string) => JSON.parse(s.replace(/^```(json)?|```$/g, "").trim());
-  if (key) {
-    try {
-      const r = await fetch("https://ollama.com/api/chat", { method: "POST", signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${key}` }, body: JSON.stringify({ model: CLOUD_MODEL, stream: false, format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
-      if (r.ok) return parse((await r.json()).message.content);
-    } catch {}
-  }
-  const r = await fetch(`${OLLAMA}/api/chat`, { method: "POST", signal: AbortSignal.timeout(240_000), body: JSON.stringify({ model: LOCAL_MODEL, stream: false, think: localThink(true), format: schema, options: { num_predict: maxTokens, temperature: 0.2 }, messages }) });
-  if (!r.ok) throw new Error(`model ${r.status}`);
-  return parse((await r.json()).message.content);
-}
 
 // résumé verbs and connectives: rewording with these isn't adding facts
 const COMMON = /^(assist|collab|contrib|coordin|creat|distrib|achiev|increas|improv|reduc|grow|boost|cut|reach|result|through|support|deliver|develop|design|manag|organiz|produc|launch|implem|maintain|partner|prepar|execut|handl|overs|ensur|enabl|provid|across|including|within|resulting|weekly|monthly|daily)/;

@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -956,6 +956,19 @@ const server = http.createServer(async (req, res) => {
       areaBrief(b, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = e instanceof LineFull ? "The local AI is busy with visitors. Try again in a minute." : (e as Error).message));
       return cityJson({ id }, 0);
     }
+    // 📰 Research this, in an incident's drawer: a job like the area brief (web search, pages, the model: about a minute)
+    if (url.pathname === "/api/nyc/incident-brief" && req.method === "POST") {
+      let raw = "";
+      for await (const c of req) { raw += c; if (raw.length > 1000) return res.writeHead(413, { "content-type": "application/json" }).end(JSON.stringify({ error: "too big" })); }
+      const iid = String((() => { try { return JSON.parse(raw || "{}").id; } catch { return ""; } })() ?? "").slice(0, 300);
+      if (!iid) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "Which incident?" }));
+      if ([...briefJobs.values()].filter((j) => !j.result && !j.error).length >= 4) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "A few briefs are being written already. Try again in a minute." }));
+      const id = randomUUID(), job: BriefJob = { at: Date.now(), step: "Starting…" };
+      briefJobs.set(id, job);
+      researchIncident(iid, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = (e as Error).message));
+      return cityJson({ id }, 0);
+    }
+    if (url.pathname === "/api/nyc/security") return cityJson({ incidents: securityIncidents().slice(0, 300).map(incidentView) }, 60);
     if (url.pathname === "/api/nyc/brief-job") {
       const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));
       return job ? cityJson({ step: job.step, result: job.result ?? null, error: job.error ?? null }, 0) : res.writeHead(404, { "content-type": "application/json" }).end(JSON.stringify({ error: "That brief is gone; ask again." }));

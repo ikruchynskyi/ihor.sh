@@ -116,3 +116,13 @@ console.log("city.test.ts: OK");
   assert.deepEqual(hs.map((h) => [h.place, h.reports, h.score]), [["Central Park", 2, 4], ["Harlem", 2, 4]]);
   assert.equal(hs[0].latest.title, "Manhunt in Central Park"); // newest first
 }
+
+// Research reads the part of a page about the story, not the site's menu.
+{
+  const { pageText, aboutStory, uncite } = await import("./city.ts");
+  assert.equal(uncite("The 39-year-old victim is stable [1, 2, 3]. No arrests [4–6]."), "The 39-year-old victim is stable. No arrests.");
+  const page = pageText(`<html><nav>Home News Sports</nav><script>x=1</script><p>${"Weather today. ".repeat(60)}</p><p>A woman was sexually assaulted at knifepoint in Central Park on Saturday night.</p></html>`);
+  assert.ok(!page.includes("Home News") && !page.includes("x=1"));
+  assert.ok(aboutStory(page, "Woman sexually assaulted at knifepoint in Central Park", 400).includes("knifepoint in Central Park"));
+  assert.equal(aboutStory("no match here", "Completely different headline", 5), "no ma");
+}

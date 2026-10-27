@@ -9,9 +9,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { geocode, inNyc, trafficCameras, camerasNow, lookAtCameras } from "./nycapi.ts";
+import { geocode, inNyc, trafficCameras, camerasNow, lookAtCameras, webSearch } from "./nycapi.ts";
 import { aircraft, km } from "./sky.ts";
-import { OLLAMA, LOCAL_MODEL, whenIdle, inLine } from "./llm.ts";
+import { OLLAMA, LOCAL_MODEL, whenIdle, inLine, llmJson } from "./llm.ts";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
@@ -608,6 +608,13 @@ export function hotspotsOf(evs: Ev[], hood: (e: Ev) => string | null) {
     .map(({ place, score, sev, topics, points }) => ({ place, score, sev, topics: [...topics], reports: points.length, latest: points[0], points: points.slice(0, 12),
       lat: points.reduce((s, p) => s + p.lat, 0) / points.length, lon: points.reduce((s, p) => s + p.lon, 0) / points.length }));
 }
+/** Security incidents of the last 24 hours, newest first: the map opens on these. Not "today": at 9 AM that was empty. */
+export function securityIncidents(hours = 24) {
+  const evs = (db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[]).filter(isSecurity);
+  const rel = reliability(), list = cluster(evs);
+  for (const c of list) Object.assign(c, likelihood(c, rel));
+  return list.sort((a, b) => b.starts - a.starts);
+}
 export const hotspots = (hours = 72) => hotspotsOf(db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[],
   (e) => neighborhood(e.lat!, e.lon!)).slice(0, 6);
 
@@ -950,4 +957,52 @@ export async function startCity() {
     db.prepare("delete from polls where at < ?").run(at - 30 * 86400);
     db.prepare("delete from briefs where at < ?").run(at - 30 * 86400);
   });
+}
+
+// ---------- research one incident: what the web reports about it, read by the model ----------
+// The model decides what matters and writes it; every point names its sources, and a point whose numbers aren't in
+// them is dropped (faithful, as in the briefs). Results are kept 30 minutes per incident: searches cost credits.
+const RESEARCH = { type: "object", required: ["important", "summary", "points", "unknown"], properties: {
+  important: { type: "boolean" }, summary: { type: "string" }, unknown: { type: "array", items: { type: "string" } },
+  points: { type: "array", items: { type: "object", required: ["text", "sources"], properties: { text: { type: "string" }, sources: { type: "array", items: { type: "integer" } } } } } } };
+export const pageText = (html: string) => html.replace(/<(script|style|nav|header|footer|aside|noscript|form)\b[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ")
+  .replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#8217;|&rsquo;|&#039;/g, "'").replace(/&#8220;|&#8221;|&quot;/g, '"').replace(/\s+/g, " ").trim();
+/** The part of a page about the story: from a little before the first of the headline's longest words.
+ *  ponytail: a keyword window, not article extraction; a smarter reader if pages keep giving navigation text. */
+export function aboutStory(text: string, title: string, n = 2500) {
+  const words = title.toLowerCase().split(/\W+/).filter((w) => w.length > 5).sort((a, b) => b.length - a.length).slice(0, 3), low = text.toLowerCase();
+  const at = Math.min(Infinity, ...words.map((w) => low.indexOf(w)).filter((i) => i >= 0)), from = Number.isFinite(at) ? Math.max(0, at - 300) : 0;
+  return text.slice(from, from + n);
+}
+/** The model sometimes writes its citations into the sentence ("… stable condition [1, 2]."): the page shows them itself. */
+export const uncite = (t: unknown) => String(t ?? "").replace(/\s*\[\d+(?:\s*[,–-]\s*\d+)*\]/g, "").replace(/\.\./g, ".").trim(); // "p.m. [2]." → "p.m."
+const researched = new Map<string, { at: number; r: unknown }>();
+export async function researchIncident(id: string, step = (_: string) => {}) {
+  const hit = researched.get(id);
+  if (hit && hit.at > Date.now() - 30 * 60_000) return hit.r;
+  const c = [...incidents(), ...securityIncidents()].find((x) => x.id === id);
+  if (!c) throw new Error("That incident isn't on the map any more.");
+  const where = [neighborhood(c.lat, c.lon), borough(c.lat, c.lon)].filter(Boolean).join(", ");
+  const day = new Date(c.starts * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+  const sources: { n: number; title: string; url: string; from: string; text: string }[] = [];
+  const add = (title: string, url: string, from: string, text: string) => { if (sources.length < 9 && !(url && sources.some((s) => s.url === url))) sources.push({ n: sources.length + 1, title, url, from, text }); };
+  for (const e of c.events) { const d = JSON.parse(e.detail || "{}"); add(e.title, e.url?.startsWith("http") ? e.url : "", d.outlet ?? SOURCE_NAMES[e.source] ?? e.source, String(d.summary ?? d.text ?? "")); }
+  step("Searching the web…");
+  const found = (await Promise.all([`${c.title} ${day}`, `${c.title} ${where || "New York City"}`].map((q) => webSearch(q).then((r) => r.results).catch(() => [])))).flat();
+  for (const r of found) { try { add(r.title, r.url, new URL(r.url).hostname.replace(/^www\./, ""), r.snippet); } catch {} } // a malformed result URL
+  const pages = sources.filter((s) => s.url).slice(0, 6);
+  step(`Reading ${pages.length} page${pages.length === 1 ? "" : "s"}…`);
+  await Promise.all(pages.map((s) => fetch(s.url, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh NYC map)" }, signal: AbortSignal.timeout(12_000) })
+    .then((r) => (r.ok ? r.text() : "")).then((h) => { const t = aboutStory(pageText(h), c.title); if (t.length > s.text.length) s.text = t; }).catch(() => {})));
+  step("Reading it all and writing the summary…");
+  const out = await llmJson("You brief a New York City resident about one incident on a live city map. Below are numbered sources: the city's own reports and web pages found by search; some pages may be about other events, so ignore those. Decide what matters to someone who lives or travels nearby: what happened, where and when, who was hurt, whether it is over or still going on (a suspect at large, a road still closed, a search under way), and what to do. important: true when it affects people's safety or travel now. summary: one or two plain sentences, the most important thing first. points: up to 5 short sentences, most important first, each with the numbers of the sources it comes from. unknown: up to 3 things the sources leave open or disagree on. Use only what the sources say; never add names, numbers or details.",
+    `Incident: ${c.title}\nWhere: ${where || "NYC"}\nFirst reported: ${day}, ${hhmm(c.starts)}\n\n${sources.map((s) => `[${s.n}] ${s.title} (${s.from})\n${s.text.slice(0, 2500)}`).join("\n\n")}`, RESEARCH, 1200);
+  const F = new Map(sources.map((s) => [`S${s.n}`, `${s.title} ${s.text}`]));
+  out.summary = uncite(out.summary); out.unknown = (out.unknown ?? []).map(uncite);
+  for (const p of out.points ?? []) p.text = uncite(p.text);
+  const points = (out.points ?? []).filter((p: { text: string; sources: number[] }) => faithful({ text: p.text, facts: (p.sources ?? []).map((n) => `S${n}`) }, F)).slice(0, 5);
+  const r = { id, title: c.title, at: now(), by: out._model, important: !!out.important, summary: faithful({ text: String(out.summary ?? ""), facts: [...F.keys()] }, F) ? out.summary : "",
+    points, dropped: (out.points?.length ?? 0) - points.length, unknown: (out.unknown ?? []).slice(0, 3), sources: sources.map(({ n, title, url, from }) => ({ n, title, url, from })) };
+  researched.set(id, { at: Date.now(), r });
+  return r;
 }
