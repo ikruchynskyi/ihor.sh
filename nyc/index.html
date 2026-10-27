@@ -1709,7 +1709,8 @@ async function areaBriefNow() {
   let r = start.error ? start : { error: "The brief took too long. Try again in a minute." };
   if (start.id) while (Date.now() - job.t0 < 6 * 60_000) { // behind any visitors' questions
     await new Promise((ok) => setTimeout(ok, 2000));
-    const j = await getJSON(`/api/nyc/brief-job?id=${encodeURIComponent(start.id)}`).catch((e) => ({ error: e.message }));
+    // a 5xx or no answer is the site restarting: keep asking (a job the restart lost answers "That brief is gone")
+    const j = await getJSON(`/api/nyc/brief-job?id=${encodeURIComponent(start.id)}`).catch((e) => (e instanceof TypeError || /^5\d\d /.test(e.message) ? {} : { error: e.message }));
     if (j.error || j.result) { r = j.error ? { error: j.error } : j.result; break; }
     job.step = j.step ?? "Working…";
     if (brief === job) renderBrief();
