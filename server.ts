@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -928,7 +928,7 @@ const server = http.createServer(async (req, res) => {
       return cityJson({ incidents: incidents().slice(0, 600).map(incidentView), planned });
     }
     if (url.pathname === "/api/nyc/around") {
-      const la = Number(url.searchParams.get("lat")), lo = Number(url.searchParams.get("lon")), r = Math.min(3000, Math.max(100, Number(url.searchParams.get("r")) || 400));
+      const la = Number(url.searchParams.get("lat")), lo = Number(url.searchParams.get("lon")), r = Math.min(3000, Math.max(100, Number(url.searchParams.get("r")) || 600));
       if (!inNyc(la, lo)) return res.writeHead(400, { "content-type": "application/json" }).end(JSON.stringify({ error: "a point in NYC, please" }));
       return cityJson(around(la, lo, r / 1000));
     }
@@ -990,7 +990,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
     if (url.pathname === "/api/nyc/brief") return cityJson(latestBrief(BOROUGHS.includes(String(url.searchParams.get("scope"))) ? String(url.searchParams.get("scope")) : "city"), 60);
-    if (url.pathname === "/api/nyc/pulse") return cityJson({ ...pulse(), brief: latestBrief("city"), unusualList: anomalies(), unusualNote: anomaliesNote() });
+    if (url.pathname === "/api/nyc/pulse") return cityJson({ ...pulse(), brief: latestBrief("city"), unusualList: anomalies(), unusualNote: anomaliesNote(), hotspots: hotspots() });
     if (url.pathname === "/api/nyc/camera-inspect") { // 👁 in a camera window: the local vision model, in the same line as Blip
       try { return cityJson(await inLine(() => inspectCamera(String(url.searchParams.get("id") ?? ""), String(url.searchParams.get("q") ?? "").slice(0, 300) || undefined)), 0); }
       catch (e) { return res.writeHead(e instanceof LineFull ? 429 : 422, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error: (e as Error).message })); } // 4xx: Cloudflare replaces a 502 with HTML

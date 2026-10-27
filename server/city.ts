@@ -562,7 +562,7 @@ export const incidentView = (c: Incident) => ({ id: c.id, title: c.title, kind: 
   borough: borough(c.lat, c.lon), hood: neighborhood(c.lat, c.lon), events: c.events.slice(0, 12).map(view), checkedBy: cameraChecks(c.id) });
 
 /** What's going on within r km of a point: incidents, closures and permits, area-wide alerts, the week's 311 reports. */
-export function around(lat: number, lon: number, r = 0.4) {
+export function around(lat: number, lon: number, r = 0.6) {
   const at = now(), here = { lat, lon }, near = (e: { lat: number | null; lon: number | null }) => e.lat != null && km(here, e as { lat: number; lon: number }) <= r, all = active(at);
   const dLat = r / 111, dLon = r / (111 * Math.cos((lat * Math.PI) / 180));
   const r311 = db.prepare(`select substr(kind, 5) type, count(*) n from events where source = '311' and starts > ? and lat between ? and ? and lon between ? and ? group by kind order by n desc limit 8`)
@@ -570,6 +570,35 @@ export function around(lat: number, lon: number, r = 0.4) {
   return { center: here, radiusM: Math.round(r * 1000), incidents: incidents().filter(near).map(incidentView), planned: all.filter((e) => near(e) && PLANNED.test(e.kind) && !e.kind.startsWith("vision")).map(view),
     areaWide: all.filter((e) => e.lat == null && AREA_WIDE.includes(e.source)).map(view), news: todaysNews({ lat, lon, r: Math.max(r, 0.8) }).slice(0, 10), reports311: { days: 7, newest: latest311(), byType: r311 }, unusual: anomalies().filter(near), pulse: pulse() };
 }
+// ---------- where to watch: the places where crime, fires and police alerts gather ----------
+// A watcher shouldn't have to know where to look: the places with the most security news and alerts over the last
+// 72 hours come first. Every story counts once however many outlets carry it, and follow-ups count too (a manhunt in
+// Central Park is still a reason to watch it the day after the assault), but a place needs a real incident in the
+// window: coverage of a court case alone is not a hotspot. A landmark a story names ("Central Park") gathers every
+// story that names it, since the geocoder puts the same park on either side of a neighborhood line.
+const SECURITY_ALERT = /^alert:(police|fire|missing|silver|amber|shelter|evacuat|explosi|hazmat|suspicious|collapse|gas-leak|shooting)/;
+export const isSecurity = (e: Ev) => SECURITY_ALERT.test(e.kind) || (e.source === "news" && e.kind !== "news-elsewhere" && ["crime", "fire"].includes(JSON.parse(e.detail || "{}").topic));
+export function hotspotsOf(evs: Ev[], hood: (e: Ev) => string | null) {
+  const sec = evs.filter((e) => e.lat != null && isSecurity(e)).map((e) => ({ e, d: JSON.parse(e.detail || "{}") })).filter(({ d }) => d.precision !== "borough").sort((a, b) => b.e.starts - a.e.starts);
+  const landmarks = [...new Set(sec.filter(({ d }) => d.precision === "landmark" && d.place).map(({ d }) => String(d.place).trim()))];
+  const by = new Map<string, { place: string; score: number; sev: number; topics: Set<string>; points: { lat: number; lon: number; title: string; starts: number; url: string | null }[] }>();
+  const seen = new Set<string>(); // a story counts once, at the first place found for it
+  for (const { e, d } of sec) {
+    const text = `${d.place ?? ""} ${e.title}`.toLowerCase(), name = landmarks.find((l) => text.includes(l.toLowerCase())) ?? hood(e), story = d.story ?? e.id;
+    if (!name || seen.has(story)) continue;
+    seen.add(story);
+    const h = by.get(name.toLowerCase()) ?? { place: name, score: 0, sev: 0, topics: new Set(), points: [] };
+    by.set(name.toLowerCase(), h);
+    h.score += 1 + e.sev; h.sev = Math.max(h.sev, e.sev); h.topics.add(d.topic ?? e.kind.slice(6).split("-")[0]);
+    h.points.push({ lat: e.lat!, lon: e.lon!, title: e.title, starts: e.starts, url: e.url });
+  }
+  return [...by.values()].filter((h) => h.sev >= 2 || (h.sev >= 1 && h.points.length >= 2)).sort((a, b) => b.score - a.score || b.points[0].starts - a.points[0].starts)
+    .map(({ place, score, sev, topics, points }) => ({ place, score, sev, topics: [...topics], reports: points.length, latest: points[0], points: points.slice(0, 12),
+      lat: points.reduce((s, p) => s + p.lat, 0) / points.length, lon: points.reduce((s, p) => s + p.lon, 0) / points.length }));
+}
+export const hotspots = (hours = 72) => hotspotsOf(db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[],
+  (e) => neighborhood(e.lat!, e.lon!)).slice(0, 6);
+
 const latest311 = () => { const t = (db.prepare("select max(starts) t from events where source = '311'").get() as { t: number | null }).t; return t && new Date(t * 1000).toISOString(); };
 
 // ---------- boroughs (NYC Open Data wh2p-dxnf, with their water: bridges and the harbor count; fetched once into data/) ----------

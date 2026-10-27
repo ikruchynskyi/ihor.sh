@@ -91,3 +91,20 @@ assert.deepEqual(bh([0.01, 0.04, 0.03, 0.5]).map((x) => +x.toFixed(4)), [0.04, 0
 const covered = { ...ev("n3", "news", "news", 2, 40.8), starts: T, detail: JSON.stringify({ outlet: "PIX11", story: "st", coverage: 3 }) };
 assert.equal(likelihood({ events: [covered, { ...covered, id: "n4", detail: JSON.stringify({ outlet: "CBS", story: "st", coverage: 3 }) }] }, pri, T).probability, 0.85);
 console.log("city.test.ts: OK");
+
+// Where to watch: crime and fire stories and police alerts by place, a story once however many outlets carry it; a
+// landmark gathers the stories naming it; coverage alone (no incident), crashes and traffic alerts don't count.
+{
+  const { hotspotsOf } = await import("./city.ts");
+  const ev = (id: string, source: string, kind: string, sev: number, hood: string, detail: object, starts = 1000) => ({ id, source, kind, sev, lat: 40.78, lon: -73.97, starts, ends: null, title: id, detail: JSON.stringify({ hood, ...detail }), url: null }) as any;
+  const hs = hotspotsOf([
+    ev("Assault in Central Park", "news", "news", 2, "Upper West Side", { topic: "crime", story: "s1", place: "Central Park", precision: "landmark" }), ev("cp1b", "news", "news", 2, "Upper West Side", { topic: "crime", story: "s1" }),
+    ev("Manhunt in Central Park", "news", "news-area", 0, "Central Park", { topic: "crime", story: "s2", place: "East 66th Street and Fifth Avenue", precision: "intersection" }, 2000),
+    ev("ues", "news", "news-area", 0, "Upper East Side", { topic: "crime" }), ev("crash", "news", "news", 2, "Midtown", { topic: "crash" }),
+    ev("bail", "news", "news-area", 0, "Washington Heights", { topic: "crime", place: "George Washington Bridge", precision: "landmark" }), ev("bail2", "news", "news-area", 0, "Washington Heights", { topic: "crime", place: "George Washington Bridge", precision: "landmark" }),
+    ev("boro", "news", "news", 3, "Harlem", { topic: "crime", precision: "borough" }),
+    ev("pol", "notify", "alert:police-activity", 1, "Harlem", {}), ev("pol2", "notify", "alert:police-activity", 1, "Harlem", {}), ev("tr", "notify", "alert:traffic-delays", 3, "Harlem", {}),
+  ], (e) => JSON.parse(e.detail).hood);
+  assert.deepEqual(hs.map((h) => [h.place, h.reports, h.score]), [["Central Park", 2, 4], ["Harlem", 2, 4]]);
+  assert.equal(hs[0].latest.title, "Manhunt in Central Park"); // newest first
+}
