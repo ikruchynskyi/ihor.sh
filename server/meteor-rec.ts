@@ -28,6 +28,8 @@ export function windowMinutes(tle: Tle, rise: number, set: number) {
   for (let t = rise; t < set; t += 10_000) { const { el, az } = look(tle, t, here); if (el >= w.minEl && el <= w.maxEl && azIn(az)) n++; }
   return n / 6;
 }
+// The owner's switch: while it says why, nothing is planned or recorded and the station check doesn't run. "" records again.
+export const PAUSED = "Recording is paused: wind broke the antenna's foil reflector (Oct 27).";
 const timers = new Map<string, NodeJS.Timeout>();
 let upcoming: Planned[] = [], running: { pid: number; sat: string; until: number } | null = null;
 
@@ -115,6 +117,7 @@ export function prunePasses(dir = DIR, now = Date.now(), keepMs = PASS_RETENTION
 }
 
 export function startMeteorRecorder() {
+  if (PAUSED) return console.log(`meteor: ${PAUSED}`);
   prunePasses();
   plan().catch((e) => console.log(`meteor: planning failed: ${(e as Error).message}`));
   setInterval(() => {
@@ -184,7 +187,7 @@ export function meteorApi(url: URL, res: http.ServerResponse): boolean {
     try { prunePasses(); } catch {}
     const recorded = existsSync(path.join(DIR, "index.json")) ? JSON.parse(readFileSync(path.join(DIR, "index.json"), "utf8")) : [];
     const now = running && Date.now() < running.until + 60_000 ? running : null;
-    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ window: settings().window, home: HOME, recording: now && { sat: now.sat, until: now.until }, upcoming: upcoming.filter((p) => p.set > Date.now()), recorded }));
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ paused: PAUSED || null, window: settings().window, home: HOME, recording: now && { sat: now.sat, until: now.until }, upcoming: upcoming.filter((p) => p.set > Date.now()), recorded }));
     return true;
   }
   if (url.pathname === "/api/meteor/file") {

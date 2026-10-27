@@ -132,7 +132,7 @@ async function load() {
   const d = await fetch("/api/meteor/passes").then((r) => r.json());
   const w = d.window, rule = `${w.minutes} minute${w.minutes === 1 ? "" : "s"} or more in the north sky (azimuth ${w.azFrom}° to ${w.azTo}°) between ${w.minEl}° and ${w.maxEl}° up`;
   el("rule").textContent = rule;
-  el("now").innerHTML = d.recording ? `🔴 <b>Recording ${name(d.recording.sat)} now</b>, until ${when(d.recording.until)}. Its report card appears below when the satellite sets.`
+  el("now").innerHTML = d.paused ? `⏸ ${d.paused}` : d.recording ? `🔴 <b>Recording ${name(d.recording.sat)} now</b>, until ${when(d.recording.until)}. Its report card appears below when the satellite sets.`
     : d.upcoming.length ? `Next recording: <b>${name(d.upcoming[0].sat)}</b>, ${when(d.upcoming[0].rise)}, peak ${d.upcoming[0].maxEl.toFixed(0)}°, ${d.upcoming[0].northMin.toFixed(1)} min in the north window.` : `No pass with ${rule} in the next 48 hours.`;
   el("upcoming").innerHTML = d.upcoming.map((p: any) => `<li>${when(p.rise)}–${new Date(p.set).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · ${name(p.sat)} · peak ${p.maxEl.toFixed(0)}° · ${p.northMin.toFixed(1)} min north</li>`).join("") || "<li class=muted>None in the next 48 hours.</li>";
   if (!d.recorded.length) { el("recorded").innerHTML = '<p class="muted">Nothing recorded yet: the first pass through the north window will show up here.</p>'; return; }
