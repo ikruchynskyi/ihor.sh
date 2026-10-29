@@ -60,16 +60,32 @@ export async function pointInfo(lat: number, lon: number) {
   const info: any = await addressInfo(query).catch(() => ({}));
   const bin = info["BIN (building)"]?.replace(/\D/g, "");
   const [osm, licensed, food, rated] = await Promise.all([osmPlaces(lat, lon).catch(() => []), bin ? licensedAt(bin).catch(() => []) : [], bin ? restaurantsAt(bin).catch(() => []) : [], googleRatings(lat, lon).catch(() => [])]);
-  const seen = new Set<string>(), key = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/(inc|llc|corp)$/, "");
-  const businesses: any[] = [...food, ...osm, ...licensed].filter((b) => !seen.has(key(b.name)) && seen.add(key(b.name)));
-  // Google ratings: on the matching business ("Katz's" ↔ "Katz's Delicatessen"), or as their own entry before the license list.
-  for (const g of rated) {
-    const k = key(g.name), hit = businesses.find((b) => { const bk = key(b.name); return bk === k || (Math.min(bk.length, k.length) >= 4 && (bk.startsWith(k) || k.startsWith(bk))); });
-    const extra = { rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website, phone: g.phone, open: g.open, hoursToday: g.hoursToday };
-    if (hit) Object.assign(hit, extra);
-    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, ...extra, source: "Google" }); }
-  }
+  const businesses = mergeBusinesses([...food, ...osm, ...licensed], rated);
   return { lat, lon, found: true, place: p.label, address: p.housenumber ? `${titleCase(`${p.housenumber.replace(/\s+GARAGE$/i, "")} ${p.street}`).replace(/\bB'way\b/, "Broadway")}, ${p.borough}` : p.label.replace(/, (NY, )?USA$/, ""), neighborhood: info.neighborhood ?? p.neighbourhood ?? null, zip: info.ZIP ?? p.postalcode ?? null, businesses };
+}
+
+// "Marea Restaurant" (inspections), "Marea" (OpenStreetMap) and "Marea" (Google) are one place: names compared without
+// words like Restaurant, Corp or LLC and without "(Columbus Circle)"; one that starts the other matches too.
+const NAME_NOISE = /\b(the|and|of|restaurant|restaurants|bakery|cafe|corp|corporation|inc|llc|ltd|co|nyc|ny|new york|manhattan|brooklyn)\b/g;
+export const nameKey = (n: string) => n.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/&/g, " ").replace(/[^a-z0-9 ]/g, "").replace(NAME_NOISE, " ").replace(/\s+/g, " ").trim();
+const sameName = (a: string, b: string) => a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b + " ") || b.startsWith(a + " ")));
+/** One line per business: city records and OpenStreetMap first, Google's rating, hours, website and phone merged into the
+ *  matching one. Google-only places (offices upstairs, rental listings) need a rating and come after what's at street level. */
+export function mergeBusinesses(local: any[], google: any[]) {
+  const out: any[] = [];
+  for (const b of local) {
+    const k = nameKey(b.name), same = k && out.find((x) => sameName(x.k, k));
+    if (same) { for (const [f, v] of Object.entries(b)) if (same[f] == null || same[f] === "") same[f] = v; same.sources.add(b.source); }
+    else out.push({ ...b, k, sources: new Set([b.source]) });
+  }
+  for (const g of google) {
+    const k = nameKey(g.name), extra = { rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website, phone: g.phone, open: g.open, hoursToday: g.hoursToday };
+    const hit = k && out.find((x) => sameName(x.k, k));
+    if (hit) { Object.assign(hit, extra); hit.sources.add("Google"); }
+    else if (g.rating) out.push({ name: g.name, kind: g.kind, ...extra, k, sources: new Set(["Google"]) });
+  }
+  const score = (b: any) => ([...b.sources].some((x: string) => x === "Health inspections" || x === "OpenStreetMap") ? 3 : b.sources.has("NYC license") ? 1 : 0) + (b.ratingUrl ? 1 : 0) + (b.grade ? 1 : 0) + (b.website ? 1 : 0);
+  return out.map((b, i) => ({ b, i })).sort((x, y) => score(y.b) - score(x.b) || x.i - y.i).map(({ b }) => { const { k, sources, ...rest } = b; return { ...rest, source: [...sources].join(", ") }; });
 }
 
 // ---------- Google Places on a map click: rating, website, phone, hours, inside the free tier ----------
