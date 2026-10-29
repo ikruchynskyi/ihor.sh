@@ -137,3 +137,19 @@ console.log("city.test.ts: OK");
   assert.ok(aboutStory(page, "Woman sexually assaulted at knifepoint in Central Park", 400).includes("knifepoint in Central Park"));
   assert.equal(aboutStory("no match here", "Completely different headline", 5), "no ma");
 }
+
+// Waze: a second driver's report of the same crash (same kind, within 250 m) joins the first, under its id and start.
+{
+  const { dedupeWaze } = await import("./city.ts");
+  const w = (id: string, lat: number, starts: number) => ({ id, kind: "road:waze-minor-accident", sev: 1, lat, lon: -73.95, starts, title: "Minor accident", detail: {} });
+  const t0 = Math.floor(Date.now() / 1000) - 600;
+  snapshot("511ny", dedupeWaze([w("w1", 40.75, t0)], t0), t0);
+  const next = dedupeWaze([w("w1", 40.75, t0), w("w2", 40.7510, t0 + 300), w("w3", 40.76, t0 + 300)], t0 + 300); // w2 is ~110 m away, w3 ~1.1 km
+  assert.deepEqual(next.map((e) => e.id).sort(), ["w1", "w3"]);
+  assert.equal(next.find((e) => e.id === "w1")!.starts, t0);
+  assert.equal((next.find((e) => e.id === "w1")!.detail as any).reports, 2);
+  // the first report gone from the feed, the second still listed: the crash stays on
+  snapshot("511ny", dedupeWaze([w("w2", 40.7510, t0 + 300)], t0 + 400), t0 + 400);
+  assert.ok(active(t0 + 400).some((e) => e.id === "511ny:w1"));
+  console.log("waze dedupe ok");
+}

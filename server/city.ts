@@ -112,7 +112,34 @@ async function roads() {
     return [{ id: String(p.id), kind: cls === "waze" ? `road:waze-${slug(what)}` : `road:${cls}`, sev, lat: pt[1], lon: pt[0], starts: p.startTime?.time ? Math.floor(p.startTime.time / 1000) : null,
       title: p.title ?? what, detail: { route: p.route, by: p.agency, text: strip(p.description).replace(/ Comment: This report was generated in 511NY.*$/, "").slice(0, 500) }, url: "https://511ny.org/" }];
   })));
-  return tx(() => snapshot("511ny", lists.flat()));
+  return tx(() => snapshot("511ny", dedupeWaze(lists.flat())));
+}
+/** Several Waze drivers report one crash: a new report of the same kind within 250 m of one still on (or over less
+ *  than an hour before it) is another report of that one, saved under its id (its place and start kept, a report count
+ *  added), so it stays on while any of its reports is listed. On 2026-10-29 this made 2,285 minor accidents a day 1,630. */
+const wazeAlias = new Map<string, string>(); // a repeat report's id → the first report's id
+// ponytail: aliases live in memory; after a restart a repeat finds its first report again by place, only the count restarts
+const wazeNear = db.prepare("select id, lat, lon, starts from events where source = '511ny' and kind = ? and lat between ? and ? and lon between ? and ? and coalesce(ends, ?) > ? order by starts limit 1");
+const wazeRow = db.prepare("select lat, lon, starts from events where id = ?");
+export function dedupeWaze(list: New[], at = now()) {
+  const out = new Map<string, New>(), M = 250, dLat = M / 111_320;
+  for (const e of list) {
+    if (!e.kind.startsWith("road:waze-") || e.lat == null || e.lon == null) { out.set(e.id, e); continue; }
+    let first = wazeAlias.get(e.id);
+    if (!first && !known.get(`511ny:${e.id}`)) {
+      const dLon = dLat / Math.cos((e.lat * Math.PI) / 180), since = (e.starts ?? at) - 3600;
+      const inBatch = [...out.values()].find((x) => x.kind === e.kind && x.lat != null && Math.abs(x.lat - e.lat!) <= dLat && Math.abs(x.lon! - e.lon!) <= dLon);
+      const hit = inBatch ? null : (wazeNear.get(e.kind, e.lat - dLat, e.lat + dLat, e.lon - dLon, e.lon + dLon, at, since) as { id: string } | undefined);
+      first = inBatch?.id ?? hit?.id.slice("511ny:".length);
+      if (first) wazeAlias.set(e.id, first);
+    }
+    if (!first || first === e.id) { if (!out.has(e.id)) out.set(e.id, e); continue; }
+    const had = out.get(first), row = had ?? (wazeRow.get(`511ny:${first}`) as { lat: number; lon: number; starts: number } | undefined);
+    const reports = 1 + [...wazeAlias.values()].filter((v) => v === first).length;
+    out.set(first, { ...(had ?? e), id: first, lat: row?.lat ?? e.lat, lon: row?.lon ?? e.lon, starts: row?.starts ?? e.starts, detail: { ...((had ?? e).detail as object), reports } });
+  }
+  if (wazeAlias.size > 20_000) wazeAlias.clear();
+  return [...out.values()];
 }
 
 const NOTIFY = "https://feeds.everbridge.net/feeds/453003085617722/rss/rss.xml";
