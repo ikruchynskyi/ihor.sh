@@ -41,3 +41,16 @@ assert.equal(plainViolation("§ 27-2045(B)(1)(B) HMC, § 12-06, § 12-07, § 12-
 assert.equal(plainViolation("HMC ADM CODE: § 27-2017.4 ABATE THE INFESTATION CONSISTING OF MICE"), "Abate the infestation consisting of mice");
 assert.equal(plainViolation("§ 27-2005 ADM CODE & 309 M/D LAW ABATE THE NUISANCE"), "Abate the nuisance");
 console.log("violations ok");
+
+// Opening status in words (Blip read "open: false" as nothing and sent people to closed doctors)
+const { hoursStatus } = await import("./nycapi.ts");
+assert.equal(hoursStatus(week, false, ny("2026-10-28T10:00:00")), "open now · until 5:00 PM");      // Wednesday
+assert.equal(hoursStatus(week, false, ny("2026-10-28T19:20:00")), "closed now · opens tomorrow 9:00 AM");
+assert.equal(hoursStatus(week, false, ny("2026-10-28T07:00:00")), "closed now · opens 9:00 AM");
+assert.equal(hoursStatus(week, false, ny("2026-10-30T18:00:00")), "closed now · opens tomorrow 10:00 PM"); // Friday evening
+assert.equal(hoursStatus(week, false, ny("2026-10-31T23:00:00")), "open now · until tomorrow 2:00 AM");   // Saturday late
+assert.equal(hoursStatus(week, false, ny("2026-11-01T12:00:00")), "closed now · opens tomorrow 9:00 AM"); // Sunday
+assert.equal(hoursStatus(week.slice(0, 5), false, ny("2026-10-31T12:00:00")), "closed now · opens Monday 9:00 AM"); // weekdays only, Saturday
+assert.equal(hoursStatus(week, true), "temporarily closed");
+assert.equal(hoursStatus(undefined), "hours unknown");
+console.log("hours status ok");

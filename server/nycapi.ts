@@ -113,6 +113,23 @@ export function openNow(periods: any[] | undefined, now = new Date()) {
   const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })), t = ny.getDay() * 1440 + ny.getHours() * 60 + ny.getMinutes(), at = (x: any) => x.day * 1440 + (x.hour ?? 0) * 60 + (x.minute ?? 0);
   return periods.some((p) => { if (!p.open || !p.close) return false; const a = at(p.open), b = at(p.close); return b > a ? t >= a && t < b : t >= a || t < b; }); // b < a: open past Saturday midnight
 }
+/** Open or closed in words a model can't misread: "open now · until 5:00 PM", "closed now · opens tomorrow 9:00 AM",
+ *  "closed now · opens Monday 9:00 AM", "temporarily closed", "hours unknown". */
+export function hoursStatus(periods: any[] | undefined, closedForNow = false, now = new Date()) {
+  if (closedForNow) return "temporarily closed";
+  const open = openNow(periods, now);
+  if (open == null) return "hours unknown";
+  if (periods!.length === 1 && !periods![0].close) return "open now · 24 hours";
+  const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })), W = 7 * 1440, t = ny.getDay() * 1440 + ny.getHours() * 60 + ny.getMinutes();
+  const at = (x: any) => x.day * 1440 + (x.hour ?? 0) * 60 + (x.minute ?? 0), ahead = (m: number) => (m - t + W) % W; // minutes until that time of the week
+  const clock = (m: number) => { const h = Math.floor((m % 1440) / 60), mi = m % 60; return `${h % 12 || 12}:${String(mi).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+  const DAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const when = (m: number) => { const d = Math.floor((t % 1440 + ahead(m)) / 1440); return `${d === 0 ? "" : d === 1 ? "tomorrow " : `${DAY[Math.floor(m / 1440) % 7]} `}${clock(m)}`; };
+  const ps = periods!.filter((p) => p.open && p.close);
+  if (open) { const m = Math.min(...ps.map((p) => at(p.close)).map(ahead).filter((x) => x > 0)); return `open now · until ${when((t + m) % W)}`; }
+  const m = Math.min(...ps.map((p) => ahead(at(p.open))));
+  return `closed now · opens ${when((t + m) % W)}`;
+}
 export async function googleRatings(lat: number, lon: number) {
   const key = placesKey();
   if (!key) return [];
@@ -135,7 +152,7 @@ export async function googleRatings(lat: number, lon: number) {
     pdb.prepare("insert or replace into cache values (?, ?, ?)").run(k, Math.floor(Date.now() / 1000), JSON.stringify(places));
   }
   const dow = (new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getDay() + 6) % 7; // weekdayDescriptions start on Monday
-  return places.map(({ periods, week, ...p }) => ({ ...p, open: p.closedForNow ? false : openNow(periods), hoursToday: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }));
+  return places.map(({ periods, week, ...p }) => ({ ...p, open: p.closedForNow ? false : openNow(periods), status: hoursStatus(periods, p.closedForNow), hoursToday: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }));
 }
 
 /** Places by what and where ("ramen", "shoe store", "rooftop bar" near a point): Google's Text Search with rating, price,
@@ -166,8 +183,9 @@ export async function searchPlaces({ what, lat, lon, km = 1, minRating = 0, maxP
   }
   if (found) {
     const dow = (new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getDay() + 6) % 7;
-    let list = found.map(({ periods, week, ...p }) => ({ ...p, km: dist(p.lat, p.lon), open: p.closedForNow ? false : openNow(periods), today: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }))
-      .filter((p) => p.km <= r * 1.3 && (p.rating ?? 0) >= minRating && (p.price == null || p.price <= maxPrice) && (!onlyOpen || p.open !== false));
+    let list = found.map(({ periods, week, ...p }) => ({ ...p, km: dist(p.lat, p.lon), open: p.closedForNow ? false : openNow(periods), status: hoursStatus(periods, p.closedForNow), today: week?.[dow]?.replace(/^[A-Za-z]+:\s*/, "") ?? "" }))
+      .filter((p) => p.km <= r * 1.3 && (p.rating ?? 0) >= minRating && (p.price == null || p.price <= maxPrice) && (!onlyOpen || p.open !== false))
+      .sort((a, b) => +(a.open === false) - +(b.open === false)); // open (or hours unknown) first, Google's order within each
     // food: grade A on the city's latest inspection (one query for the area), matched by name within 150 m
     if (FOOD.test(q)) { const a = await restaurantsNear(lat, lon, r * 1300).catch(() => []), k = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
       for (const p of list) if (a.some((x: any) => k(x.name) === k(p.name) && Math.hypot((x.lat - p.lat) * 111.2, (x.lon - p.lon) * 84.3) <= 0.15)) (p as any).grade = "A"; }
