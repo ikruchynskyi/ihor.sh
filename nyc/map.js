@@ -1831,6 +1831,12 @@ const picked = {}, pinMarkers = {};
 const stopIds = () => [...$("tStops").querySelectorAll("input")].map((i) => i.id);
 const ready = () => $("tFrom").value.trim() && $("tTo").value.trim();
 const replan = () => { if (ready()) $("trip").requestSubmit(); };
+// The mode (Commute unless you picked another last time) and the options re-plan as soon as they change: no Plan press.
+try { const m = document.querySelector(`input[name="tMode"][value="${localStorage.getItem("nyc.tripMode")}"]`); if (m) m.checked = true; } catch {}
+$("trip").addEventListener("change", (e) => {
+  if (e.target.name === "tMode") try { localStorage.setItem("nyc.tripMode", e.target.value); } catch {}
+  if (e.target.name === "tMode" || e.target.id === "tNoFerry" || e.target.id === "tAccess") replan();
+});
 function pinIcon(id) {
   const n = stopIds().indexOf(id) + 1, color = id === "tFrom" ? "#5cff9d" : id === "tTo" ? "#ff5c8a" : "#ffb347";
   return L.divIcon({ className: "", html: `<div style="position:relative;font-size:26px;line-height:26px;filter:drop-shadow(0 0 2px #000);color:${color}">📍${n ? `<b class="pin-n">${n}</b>` : ""}</div>`, iconSize: [26, 26], iconAnchor: [13, 26] });
@@ -2174,8 +2180,22 @@ document.addEventListener("click", async (e) => {
   const id = b.dataset.dir, other = id === "tFrom" ? "tTo" : "tFrom";
   map.closePopup();
   await placePin(id, L.latLng(la, lo), label || undefined);
-  if ($(other).value) $("trip").requestSubmit(); else setPicking(other);
+  if ($(other).value) return $("trip").requestSubmit();
+  // the other end is where you are, when the browser knows it (and you're around the city); otherwise pick it on the map
+  const me = await myLocation();
+  if (me && NYC.pad(0.3).contains(me) && !$(other).value) { await placePin(other, me, "My location"); $("trip").requestSubmit(); }
+  else if (!$(other).value) setPicking(other);
 });
+/** Where you are: the position the map already has, or one asked for now (10 s at most; null if refused or unknown). */
+function myLocation() {
+  if (meAt) return Promise.resolve(meAt);
+  return new Promise((ok) => {
+    const done = (v) => { map.off("locationfound", found); map.off("locationerror", fail); clearTimeout(t); ok(v); };
+    const found = (e) => done(e.latlng), fail = () => done(null), t = setTimeout(() => done(null), 10_000);
+    map.on("locationfound", found); map.on("locationerror", fail);
+    locateMe(false, true); // quiet: no jump to you, no error popup
+  });
+}
 async function showHere(ll, title = "") {
   if (title) map.setView(ll, Math.max(map.getZoom(), 17));
   const head = title ? `<b>📍 ${esc(title)}</b><br>` : "";
