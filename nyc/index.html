@@ -227,6 +227,9 @@
     #cityBar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; pointer-events: none; }
     #cityBar button { pointer-events: auto; padding: 4px 9px !important; font: 600 12.5px/1.2 system-ui, -apple-system, sans-serif !important; letter-spacing: 0 !important; text-transform: none !important; color: var(--fg) !important;
       background: var(--card) !important; border: 1px solid var(--line) !important; border-radius: 999px !important; box-shadow: 0 1px 4px rgba(0,0,0,.35) !important; white-space: nowrap; }
+    #cityBrief sup.fact { font-size: 10px; color: var(--muted); margin-left: 1px; }
+    #cityBrief ul.rows li { cursor: pointer; }
+    #cityBar .clock { font-variant-numeric: tabular-nums; }
     #cityBar button small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
     #cityBar button[aria-pressed="true"] { border-color: var(--accent) !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
     #cityBar button.hot { background: #c92a2a !important; color: #fff !important; border-color: #c92a2a !important; } #cityBar button.hot small { color: #ffe3e3; }
@@ -282,7 +285,7 @@
     }
     .ai-mark span { display: inline-block; transform: translate(-50%, -100%); padding: 2px 7px; border-radius: 10px; background: #7048e8; color: #fff; font: 600 12px system-ui, sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
     .city-ping { animation: cityPing 1.3s ease-out 2; } @keyframes cityPing { from { stroke-opacity: 1; stroke-width: 6; } to { stroke-opacity: 0; stroke-width: 1; } }
-    @media (max-width: 700px) { #cityHud { left: 8px; right: 56px; top: calc((var(--hud-h, 52px) + 6px) / var(--zoom, 1)); } #cityBar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } #cityBrief { max-height: 38vh; } }
+    @media (max-width: 700px) { #cityHud { left: 8px; right: 56px; top: calc((var(--hud-h, 52px) + 6px) / var(--zoom, 1)); } #cityBar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); padding-right: 28px; } #cityBrief { max-height: 38vh; } }
 
     /* ---------- one look: the shared component rules (see the top of this sheet) ---------- */
     /* surfaces: the side panel's frame (the theme gives #panel --edge, --r and --elev) on every floating box */
@@ -363,7 +366,7 @@
 <div id="panel" role="main" data-ui>
   <button id="grab" class="grab" aria-label="Make the panel taller or shorter"></button>
   <h1 class="sr">NYC Live Map</h1>
-  <div class="phead"><form id="search" role="search" class="pickrow"><input id="q" type="search" placeholder="🔎 Search NYC" aria-label="Find a place or address" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button title="Find it on the map">Go</button></form><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
+  <div class="phead"><form id="search" role="search" class="pickrow"><input id="q" type="search" placeholder="🔎 Places, stations, incidents…" aria-label="Search the map: places, addresses, subway stations, today's incidents and news, cameras (press / to come here)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"><button title="Find it on the map">Go</button></form><button id="share" title="Copy a link to this view: where the map is and which layers are on">🔗</button><button id="fold" aria-expanded="true" aria-controls="pbody" title="Hide or show the panel">▾</button></div>
   <div id="pbody">
   <div class="ptabs" role="tablist"><button role="tab" data-tab="now">Now</button><button role="tab" data-tab="explore">Nearby</button><button role="tab" data-tab="trip">Directions</button><button role="tab" data-tab="layers">Layers</button></div>
   <section data-tab="now" role="tabpanel" hidden>
@@ -377,7 +380,7 @@
     <details><summary id="unplacedSum">Line-wide alerts</summary><ul id="unplaced"></ul></details>
     <form id="rsearch" style="margin-top:8px"><label>Restaurant inspections <input id="rq" placeholder="Name, e.g. Katz's" autocomplete="off"></label></form>
     <div id="rresults" class="muted"></div>
-    <div class="muted" style="margin-top:8px"><a href="./free.html">Free NYC today →</a> · Double-click or long-press the map for what's there.</div>
+    <div class="muted" style="margin-top:8px"><a href="./free.html">Free NYC today →</a> · Click anywhere on the map for what's there.</div>
   </section>
   <section data-tab="trip" role="tabpanel" hidden>
     <form id="trip">
@@ -413,7 +416,7 @@
   <p class="ileg"><span class="inc-icon"><span style="--sev:#e03131">🚓</span></span> crime <span class="inc-icon"><span style="--sev:#ff6b35">🔥</span></span> fire <span class="inc-icon"><span style="--sev:#ffb347">🚨</span></span> alert</p>
   <p class="muted">The ring's color is how serious it is (gray, orange, red); a faded pin is less certain. Click a pin for what's known, its sources and <b>📰 Research</b>.</p>
   <div class="iacts">
-    <button data-intro="watch"><b>👁 Where to watch</b><span>The places with the most security news in the last 3 days</span></button>
+    <button data-intro="watch"><b>👁 Hotspots</b><span>The places with the most security news in the last 3 days</span></button>
     <button data-intro="around"><b>📍 Around me</b><span>What's within 600 m of you: incidents, closures, transit, cameras</span></button>
     <button data-intro="area"><b>🔎 This area</b><span>Everything in the map's view; the AI can brief it</span></button>
   </div>
@@ -438,6 +441,8 @@ const MAX_BIKE_M = 1500; // beyond this a bike is no help (e.g. Staten Island ha
 
 const $ = (id) => document.getElementById(id);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+// times on this map are New York times, wherever the visitor is
+const NYTZ = "America/New_York";
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 // a JSON error from our server says what went wrong; anything else (a proxy's HTML page) says the status
@@ -449,8 +454,14 @@ baseMaps(map, { credit: "MTA · Citi Bike" });
 L.control.zoom({ position: "topright" }).addTo(map);
 // Looking outside NYC, the feeds that cover anywhere follow the view (aircraft, weather, webcams, search, "what's here"):
 // `area()` is the query for that ("" while the view is on the city).
-const viewInNyc = () => { const c = map.getCenter(); return c.lat > 40.4 && c.lat < 41 && c.lng > -74.3 && c.lng < -73.6; };
-const area = () => { const c = map.getCenter(); return viewInNyc() ? "" : `lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`; };
+// What you see: the panel, the city bar and the drawer cover part of the map, so "the view" is the part they don't
+// (freeArea, below). Its middle and its bounds are what "here", "this area" and "the map center" mean.
+const viewCenter = () => { const f = freeArea(); return map.containerPointToLatLng([(f.left + f.right) / 2, (f.top + f.bottom) / 2]); };
+const viewBounds = () => { const f = freeArea(); return L.latLngBounds(map.containerPointToLatLng([f.left, f.bottom]), map.containerPointToLatLng([f.right, f.top])); };
+/** Put a point in the middle of what you see, at a zoom. */
+function centerInView(ll, zoom = map.getZoom()) { const f = freeArea(), size = map.getSize(); map.setView(ll, zoom, { animate: false }); map.panBy([size.x / 2 - (f.left + f.right) / 2, size.y / 2 - (f.top + f.bottom) / 2], { animate: false }); }
+const viewInNyc = () => { const c = viewCenter(); return c.lat > 40.4 && c.lat < 41 && c.lng > -74.3 && c.lng < -73.6; };
+const area = () => { const c = viewCenter(); return viewInNyc() ? "" : `lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}`; };
 let areaTimer, lastArea = "";
 map.on("moveend", () => { clearTimeout(areaTimer); areaTimer = setTimeout(() => { if (area() === lastArea) return; lastArea = area(); dispatchEvent(new Event("areachange")); }, 600); });
 const alertLayer = L.layerGroup(); // stations with alerts: a layer you switch on (🚨), off by default
@@ -487,7 +498,7 @@ async function refresh() {
     ({ byStation, unplaced } = alertsByStation(feed, Date.now() / 1000));
     renderTypes();
     render();
-    $("status").textContent = `Updated ${new Date().toLocaleTimeString()} · ${bikes.length} Citi Bike stations with bikes`;
+    $("status").textContent = `Subway alerts and Citi Bike as of ${new Date().toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" })}`;
   } catch (e) {
     $("status").textContent = `Failed to load: ${e.message}`;
   }
@@ -498,7 +509,8 @@ function renderTypes() {
   for (const list of byStation.values()) for (const a of list) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
   $("types").innerHTML = [...counts].sort((a, b) => b[1] - a[1]).map(([t, n]) =>
     `<label><input type="checkbox" data-t="${esc(t)}" ${hidden.has(t) ? "" : "checked"}> ${esc(t)} <span class="muted">(${n})</span></label>`).join("");
-  $("typesSum").textContent = `MTA alerts by type (${[...counts.values()].reduce((a, b) => a + b, 0)}, ${counts.size - [...counts.keys()].filter((t) => hidden.has(t)).length} of ${counts.size} types shown)`;
+  const shownTypes = counts.size - [...counts.keys()].filter((t) => hidden.has(t)).length;
+  $("typesSum").textContent = `MTA alerts at stations: ${[...counts.values()].reduce((a, b) => a + b, 0)}${shownTypes < counts.size ? ` (${counts.size - shownTypes} kind${counts.size - shownTypes > 1 ? "s" : ""} hidden)` : ""}`;
   $("types").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
     el.checked ? hidden.delete(el.dataset.t) : hidden.add(el.dataset.t);
     render();
@@ -543,7 +555,7 @@ function showBikes(s) {
 
 
 // ---------- more layers: outages, cameras, events, restaurants, "what's here" ----------
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+const nyToday = () => new Date().toLocaleDateString("en-CA", { timeZone: NYTZ }); // asked each time: a page left open past midnight moves on
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
 const LAYERS = {
   alerts: { grp: "go", label: "🚨 Stations with MTA alerts: click for the nearest Citi Bikes", on: false, group: alertLayer, load: () => {} },
@@ -605,7 +617,7 @@ async function toggle(k, on) {
   l.group.addTo(map);
   if (k === "buses" && map.getZoom() < 15) map.setZoom(15); // stops only show from zoom 15; moveend then loads them
   if (k === "buses") return loadBusStops(l.group).catch(() => {});
-  if (!l.loaded) { l.loaded = true; await Promise.resolve(l.load(l.group)).catch((e) => ($(`n-${k}`).textContent = `(failed: ${e.message})`)); } // some loaders are synchronous
+  if (!l.loaded) { l.loaded = true; await Promise.resolve(l.load(l.group)).catch((e) => { l.loaded = false; $(`n-${k}`).textContent = `(failed: ${e.message}; switch it on again to retry)`; }); } // some loaders are synchronous
 }
 const DOT = 1.3; // every marker a bit bigger, so they read on a phone
 // A marker you can tell from the others: its layer's emoji on a disc, ringed in the color that says its state.
@@ -629,7 +641,7 @@ async function loadOutages(g) {
     if (!st) continue;
     placed++;
     pin(st.lat + 0.0004, st.lon + 0.0004, o.kind === "EL" ? "🛗" : "♿", o.kind === "EL" ? "#ff9f1c" : "#c59bff")
-      .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString()}` : ""}</span>`).addTo(g);
+      .bindPopup(`<b>${esc(o.station)}</b> <span class="muted">${esc(o.trains)}</span><br>${o.kind === "EL" ? "Elevator" : "Escalator"} out: ${esc(o.serving)}<br><span class="muted">${esc(o.reason)}${o.est_return ? ` · back ~${new Date(o.est_return * 1000).toLocaleDateString([], { timeZone: NYTZ })}` : ""}</span>`).addTo(g);
   }
   $("n-outages").textContent = `(${d.outagesNow.length}, ${placed} on map)`;
 }
@@ -646,7 +658,7 @@ async function loadSpeeds(g) { // each road comes in pieces: the feed has gaps (
     L.polyline(l.segments, { color: mph(l.mph), weight: 6, opacity: 1, lineCap: "round", dashArray: dash, renderer: bikeCanvas, bubblingMouseEvents: false })
       .bindTooltip(`${esc(l.name)}: ${Math.round(l.mph)} mph`).addTo(g);
   }
-  const when = new Date(d.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const when = new Date(d.asOf).toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" });
   $("n-speeds").innerHTML = `(${live.length} roads, ${d.stale ? `⚠ feed last updated ${when}, dashed` : `as of ${when}`})<br><span class="legend"><i style="background:#1db954"></i>30+ mph <i style="background:#ff974d"></i>15–30 <i style="background:#f23c32"></i>7–15 <i style="background:#a50e15"></i>under 7</span>`;
   seen.speeds = { asOf: d.asOf, stale: d.stale, slowest: d.links.filter((l) => l.ok).sort((a, b) => a.mph - b.mph).slice(0, 8).map((l) => `${l.name}: ${Math.round(l.mph)} mph`) };
 }
@@ -658,7 +670,7 @@ async function loadFerry(g) {
   g.clearLayers();
   boatMarkers.clear();
   for (const b of boats) boatMarkers.set(b.trip, L.marker([b.lat, b.lon], { icon: L.divIcon({ className: "", html: `<div class="boat" style="border-color:${b.color}">⛴</div>`, iconSize: [22, 22] }), zIndexOffset: 500 })
-    .bindTooltip(`${esc(b.short)} ${esc(b.where)}`).bindPopup(`<b>⛴ ${esc(b.route)}</b><br>${esc(b.where)}<br><span class="muted">boat ${esc(b.boat)} · GPS ${new Date(b.seen * 1000).toLocaleTimeString()}</span>`).addTo(g));
+    .bindTooltip(`${esc(b.short)} ${esc(b.where)}`).bindPopup(`<b>⛴ ${esc(b.route)}</b><br>${esc(b.where)}<br><span class="muted">boat ${esc(b.boat)} · GPS ${new Date(b.seen * 1000).toLocaleTimeString([], { timeZone: NYTZ })}</span>`).addTo(g));
   for (const s of list) {
     const c = s.next[0]?.color ?? "#7f8bc4";
     pin(s.lat, s.lon, "⚓", c).bindTooltip(`⛴ ${s.name}`).bindPopup(() => `<b>⛴ ${esc(s.name)}</b>${s.accessible ? " ♿" : ""}<br>${s.next.length ? s.next.map((n) => `<span style="color:${n.color}">■</span> ${esc(n.route)}: ${boatMarkers.has(n.trip) ? `<button class="linkish" data-trip="${esc(n.trip)}" title="Where is this boat now?">${n.minutes ? n.minutes + " min" : "now"}</button>` : n.minutes ? n.minutes + " min" : "now"}`).join("<br>") : '<span class="muted">No boats in the next while</span>'}`).addTo(g);
@@ -677,7 +689,7 @@ function loadCitiBike(g) {
   for (const b of allBikes) {
     const c = BIKE_COLORS[bikeState(b)];
     L.circleMarker([b.lat, b.lon], { renderer: bikeCanvas, radius: 4 * DOT, color: c, fillColor: c, fillOpacity: 0.85, weight: 1, bubblingMouseEvents: false })
-      .bindPopup(() => `<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}${b.returning ? "" : "<br>Not accepting returns"}<br><span class="muted">reported ${new Date(b.reported * 1000).toLocaleTimeString()}</span>`)
+      .bindPopup(() => `<b>🚲 ${esc(b.name)}</b><br>${b.renting ? `${b.bikes} bikes (${b.ebikes} electric) · ${b.docks} free docks` : "Not renting right now"}${b.returning ? "" : "<br>Not accepting returns"}<br><span class="muted">reported ${new Date(b.reported * 1000).toLocaleTimeString([], { timeZone: NYTZ })}</span>`)
       .addTo(g);
   }
   const n = (k) => allBikes.filter((b) => bikeState(b) === k).length;
@@ -710,7 +722,7 @@ async function followTrain(t, fit) {
   const d = (await getJSON(`/api/nyc/trains?trip=${encodeURIComponent(t.trip)}&stop=${encodeURIComponent(t.stop)}`).catch(() => ({ trains: [] }))).trains[0];
   if (following !== t) return; // switched to another train meanwhile
   vehicleLayer.clearLayers();
-  if (!d) { following = null; seen.following = null; return L.popup().setLatLng(map.getCenter()).setContent("That train hasn't left its first station yet, so it has no position.").openOn(map); }
+  if (!d) { following = null; seen.following = null; return L.popup().setLatLng(viewCenter()).setContent("That train hasn't left its first station yet, so it has no position.").openOn(map); }
   const color = ROUTE_COLOR[d.route.replace(/X$/, "")] ?? "#808183";
   const path = d.path?.length > 1 ? L.polyline(d.path, { color, weight: 6, opacity: 0.8, dashArray: "8 6" }).addTo(vehicleLayer) : null;
   L.marker([d.lat, d.lon], { icon: L.divIcon({ className: "", html: bullet(d.route), iconSize: [22, 22] }), zIndexOffset: 1000 })
@@ -778,7 +790,7 @@ async function followBus(f, fit) {
   if (following !== f) return;
   const a = list.find((x) => x.vehicle === f.vehicle);
   vehicleLayer.clearLayers();
-  if (!a?.lat) { following = null; seen.following = null; return L.popup().setLatLng(map.getCenter()).setContent("That bus has passed the stop or stopped reporting.").openOn(map); }
+  if (!a?.lat) { following = null; seen.following = null; return L.popup().setLatLng(viewCenter()).setContent("That bus has passed the stop or stopped reporting.").openOn(map); }
   const r = await showBusRoute(f.route, false);
   const st = busStopMarkers.get(f.stop);
   if (st) L.circleMarker(st.getLatLng(), { radius: 8, color: r.color, weight: 3, fill: false }).addTo(vehicleLayer);
@@ -888,9 +900,9 @@ async function loadWms(g, k, svc, layer, opacity, note, extra = {}) {
 }
 // The weather now: under the "Sky & weather" heading, and for Blip.
 const loadWx = () => getJSON(`/api/nyc/weather?${area()}`).then((w) => {
-  seen.weather = w;
+  seen.weather = w; drawBar();
   $("wx").innerHTML = `${esc(w.station)}: ${esc(w.sky || "")}${w.tempF != null ? `, ${w.tempF}°F (${w.tempC}°C)` : ""} · ${esc((w.forecast[0] ?? "").replace(/\.\s.*$/, "."))}` +
-    w.alerts.map((a) => `<div class="alert">⚠ ${esc(a.event)}${a.until ? ` until ${new Date(a.until).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}</div>`).join("");
+    w.alerts.map((a) => `<div class="alert">⚠ ${esc(a.event)}${a.until ? ` until ${new Date(a.until).toLocaleString([], { timeZone: NYTZ, weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}</div>`).join("");
 }).catch(() => ($("wx").textContent = ""));
 loadWx(); addEventListener("areachange", loadWx);
 
@@ -966,7 +978,7 @@ async function showTrail(hex) {
   trailLayer.clearLayers();
   if (!d?.points.length) return;
   L.polyline(d.points.map((p) => [p[0], p[1]]), { color: "#ffb347", weight: 2.5, opacity: 0.85, dashArray: "6 4" })
-    .bindTooltip(`${hex}: since ${new Date(d.points[0][3] * 1000).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}`).addTo(trailLayer);
+    .bindTooltip(`${hex}: since ${new Date(d.points[0][3] * 1000).toLocaleString([], { timeZone: NYTZ, weekday: "short", hour: "numeric", minute: "2-digit" })}`).addTo(trailLayer);
   seen.trail = { hex, points: d.points.length, since: new Date(d.points[0][3] * 1000).toISOString() };
 }
 
@@ -1073,7 +1085,7 @@ addEventListener("message", (e) => {
 // Street photos from Mapillary (© Mapillary contributors, CC BY-SA 4.0): dots for the photos in view once zoomed in
 // (newer = greener, rings = 360° photos); a click opens the photo in a window.
 const photoById = new Map();
-const photoTitle = (p) => `${new Date(p.at).toLocaleDateString([], { year: "numeric", month: "short" })}${p.pano ? " · 360°" : ""}${p.by ? ` · by ${p.by}` : ""} · © Mapillary, CC BY-SA`;
+const photoTitle = (p) => `${new Date(p.at).toLocaleDateString([], { timeZone: NYTZ, year: "numeric", month: "short" })}${p.pano ? " · 360°" : ""}${p.by ? ` · by ${p.by}` : ""} · © Mapillary, CC BY-SA`;
 async function loadPhotos(g) {
   g.clearLayers();
   if (map.getZoom() < 16) return ($("n-photos").textContent = "(zoom in closer to see them)");
@@ -1214,7 +1226,7 @@ async function nearMe(at, label = "you") {
   const r311 = city?.reports311?.byType ?? [];
   $("nearBox").innerHTML = `<b>Within ${NEAR_M} m of ${esc(label)}:</b> ⚠ ${n("incident")} · 🚧 ${n("planned")}${n("news") ? ` · 📰 ${n("news")}` : ""} · 🚇 ${n("subway")}${withAlerts ? ` (${withAlerts} with alerts)` : ""} · 🚌 ${n("bus")} · 🚲 ${n("bike")} · 📷 ${n("camera")} · 🚻 ${n("restroom")}
     ${city?.areaWide?.length ? `<div>⛈ ${city.areaWide.map((e) => esc(e.title)).join(" · ")}</div>` : ""}${(city?.unusual ?? []).map((u) => `<div>📈 ${esc(u.text)}</div>`).join("")}
-    ${r311.length ? `<div>📞 311 here, last 7 days${city.reports311.newest ? ` (published to ${new Date(city.reports311.newest).toLocaleDateString([], { month: "short", day: "numeric" })})` : ""}: ${r311.map((t) => `${esc(t.type)} ${t.n}`).join(", ")}</div>` : ""}
+    ${r311.length ? `<div>📞 311 here, last 7 days${city.reports311.newest ? ` (published to ${new Date(city.reports311.newest).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" })})` : ""}: ${r311.map((t) => `${esc(t.type)} ${t.n}`).join(", ")}</div>` : ""}
     <ul>${items.map((i, k) => `<li data-near="${k}">${i.label}</li>`).join("") || `<li>Nothing within ${NEAR_M} m.</li>`}</ul>`;
   $("nearBox").querySelectorAll("[data-near]").forEach((li) => (li.onclick = () => { const it = items[+li.dataset.near]; if (it.cam) openCam(it.cam); else if (it.inc) openDetail(it.inc); else { map.setView(it.marker.getLatLng(), Math.max(map.getZoom(), 17)); it.marker.openPopup(); } }));
   seen.near = { center: at, radiusM: NEAR_M, counts: { incidents: n("incident"), closuresAndPermits: n("planned"), reports311LastWeek: r311, unusual: city?.unusual?.map((u) => u.text), areaWideAlerts: city?.areaWide?.map((e) => e.title), subway: n("subway"), stationsWithAlerts: withAlerts, busStops: n("bus"), citiBike: n("bike"), cameras: n("camera"), restrooms: n("restroom") }, items: items.slice(0, 40).map((i) => i.label.replace(/<[^>]+>/g, "")) };
@@ -1225,7 +1237,7 @@ function whereAmI() {
   return new Promise((resolve, reject) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }), (e) => reject(new Error(e.message)), { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }) : reject(new Error("no geolocation")));
 }
 $("nearBtn").onclick = async () => { $("nearBox").hidden = false; $("nearBox").textContent = "Finding you…"; try { await nearMe(await whereAmI(), "you"); } catch (e) { $("nearBox").textContent = `Couldn't get your location (${e.message}). Allow location for this site, or use the map center.`; } };
-$("nearHere").onclick = () => nearMe(map.getCenter(), "the map center");
+$("nearHere").onclick = () => nearMe(viewCenter(), "the map center");
 $("nearOff").onclick = () => { near = null; nearLayer.clearLayers(); seen.near = null; $("nearBox").hidden = true; $("nearOff").hidden = true; drawBar(); };
 
 // "Nearest traffic camera" from anything with a place: 311 reports, events, low aircraft…
@@ -1278,7 +1290,7 @@ document.addEventListener("click", async (e) => {
 }
 
 async function loadCityEvents(g) {
-  const list = await getJSON(`/api/nyc/city-events?from=${today}&free=1`);
+  const list = await getJSON(`/api/nyc/city-events?from=${nyToday()}&free=1`);
   seen.city = list.map((e) => ({ name: e.name, when: e.when, place: e.place }));
   for (const e of list.filter((e) => e.lat)) pin(e.lat, e.lon, "🏛", "#5cff9d").bindPopup(`<b>${esc(e.name)}</b><br>${esc(e.when)}<br><span class="muted">${esc(e.place)}</span><br>${esc(e.summary)}<br><a href="${esc(e.url)}" target="_blank" rel="noopener">details</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-city").textContent = `(${list.length})`;
@@ -1287,7 +1299,7 @@ async function loadCityEvents(g) {
 async function loadPopups(g) {
   const { events } = await getJSON("/api/nyc/events");
   // The same rule as Free NYC: on today's dates or weekdays, and not over yet.
-  const list = events.map((e) => ({ ...e, on: onDate(e, today, new Date()) })).filter((e) => e.lat && e.on && status(e.on, new Date()) !== "over");
+  const list = events.map((e) => ({ ...e, on: onDate(e, nyToday(), new Date()) })).filter((e) => e.lat && e.on && status(e.on, new Date()) !== "over");
   seen.popups = list.map((e) => ({ title: e.title, category: e.category, time: [e.on.start, e.on.end].filter(Boolean).join("–"), address: e.address }));
   for (const e of list) pin(e.lat, e.lon, "🎁", "#ffd166").bindPopup(`<b>${esc(e.title)}</b><br>${esc(e.category)} · ${esc([e.on.start, e.on.end].filter(Boolean).join("–") || "all day")}<br><span class="muted">${esc(e.address)}</span><br><a href="${esc(e.url)}" target="_blank" rel="noopener">details on NYC for FREE</a> · ${camBtn(e.lat, e.lon)}`).addTo(g);
   $("n-popups").textContent = `(${list.length})`;
@@ -1301,15 +1313,15 @@ async function load311(g) {
   const d = await getJSON(`/api/nyc/311?bbox=${[b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].map((v) => v.toFixed(4)).join(",")}`);
   g.clearLayers();
   for (const r of d.items) L.circleMarker([r.lat, r.lon], { renderer: bikeCanvas, radius: 4 * DOT, color: C311(r.type), fillColor: C311(r.type), fillOpacity: 0.8, weight: 1, bubblingMouseEvents: false })
-    .bindPopup(`<b>${esc(r.type)}</b><br>${esc(r.what)}<br><span class="muted">${esc(r.address)} · ${new Date(r.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${esc(r.status)} (${esc(r.agency)})</span><br>${camBtn(r.lat, r.lon)}`).addTo(g);
+    .bindPopup(`<b>${esc(r.type)}</b><br>${esc(r.what)}<br><span class="muted">${esc(r.address)} · ${new Date(r.at).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · ${esc(r.status)} (${esc(r.agency)})</span><br>${camBtn(r.lat, r.lon)}`).addTo(g);
   const top = Object.entries(d.items.reduce((m, r) => ((m[r.type] = (m[r.type] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  $("n-c311").innerHTML = `(${d.items.length} here, data up to ${new Date(d.asOf).toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })})<br><span class="legend"><i style="background:#c59bff"></i>noise <i style="background:#ff9f1c"></i>heat/water <i style="background:#4de1ff"></i>parking <i style="background:#83c167"></i>sanitation <i style="background:#ff5c8a"></i>other</span>`;
+  $("n-c311").innerHTML = `(${d.items.length} here, data up to ${new Date(d.asOf).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric" })})<br><span class="legend"><i style="background:#c59bff"></i>noise <i style="background:#ff9f1c"></i>heat/water <i style="background:#4de1ff"></i>parking <i style="background:#83c167"></i>sanitation <i style="background:#ff5c8a"></i>other</span>`;
   seen.c311 = { inView: d.items.length, topTypes: top.map(([t, n]) => `${t}: ${n}`) };
 }
 map.on("moveend", () => { if (LAYERS.c311.on) load311(LAYERS.c311.group).catch(() => {}); });
 
 async function loadSales(g) {
-  const d = await getJSON(`/api/nyc/deals?date=${today}`);
+  const d = await getJSON(`/api/nyc/deals?date=${nyToday()}`);
   const list = d.sampleSales.filter((s) => s.lat);
   seen.sales = d.sampleSales.map((s) => ({ name: s.name, where: s.lat ? s.place : "online", until: s.end.slice(0, 10) }));
   for (const s of list) pin(s.lat, s.lon, "🛍", "#c59bff").bindPopup(`<b>🛍 ${esc(s.name)}</b><br><span class="muted">${esc(s.place)} · until ${esc(s.end.slice(0, 10))}</span><br>${esc(s.summary)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">details on Chicmi</a> · ${camBtn(s.lat, s.lon)}`).addTo(g);
@@ -1317,10 +1329,10 @@ async function loadSales(g) {
 }
 
 // ---------- the city's live picture (server/city.ts): the city bar and its lists, incidents, closures, alerts, flooding, news, areas ----------
-const SEV = ["#8f96b8", "#ffb347", "#ff6b35", "#e03131"], hhmm = (t) => new Date(t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const SEV = ["#8f96b8", "#ffb347", "#ff6b35", "#e03131"], hhmm = (t) => new Date(t * 1000).toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" });
 const SOURCES = { notify: "Notify NYC", "511ny": "511NY", waze: "Waze drivers", adsb: "aircraft tracking", floodnet: "FloodNet", noaa: "NOAA", nws: "NWS", vision: "camera check", air: "air sensors", permits: "NYC permits", film: "film permits", news: "news" };
 const srcName = (s) => SOURCES[s] ?? (s.startsWith("news:") ? "news" : s); // "news:<story id>": one story, one witness
-const ago = (t) => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? "now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" }); };
+const ago = (t) => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? "now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t * 1000).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" }); };
 const evLine = (e) => `<li><b>${esc(e.title)}</b> <span class="muted">${esc(e.outlet ?? srcName(e.source))} · ${hhmm(e.starts)}${e.ends && e.source !== "news" ? `–${hhmm(e.ends)}` : ""}</span>${e.text || e.summary ? `<br><small>${esc((e.text || e.summary).slice(0, 220))}</small>` : ""}${e.source === "news" ? ` <a href="${esc(e.url)}" target="_blank" rel="noopener">read</a>` : ""}</li>`;
 function incidentPopup(c) {
   return `<b>${esc(c.title)}</b><br><span class="muted">${c.events.length} report${c.events.length > 1 ? "s" : ""} from ${c.sources.map(srcName).join(" + ")} · severity ${c.sev}/3 · since ${hhmm(c.starts)}${c.hood || c.borough ? ` · ${esc([c.hood, c.borough].filter(Boolean).join(", "))}` : ""}</span>
@@ -1364,13 +1376,13 @@ async function loadSecurity(g) {
 async function loadClosures(g) {
   const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
   g.clearLayers();
-  for (const e of d.planned) mark("closures", e.id, planPin(e)).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(srcName(e.source))}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
+  for (const e of d.planned) mark("closures", e.id, planPin(e)).bindTooltip(esc(e.title)).bindPopup(`<b>${esc(e.title)}</b><br><span class="muted">${esc(srcName(e.source))}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span>
       ${e.where ? `<br>${esc(e.where)}` : ""}${e.text ? `<br><small>${esc(e.text.slice(0, 300))}</small>` : ""}<br>${camBtn(e.lat, e.lon)}`).addTo(g);
   const n = (k) => d.planned.filter((e) => planKind(e) === k).length;
   $("n-closures").innerHTML = `(<span style="color:${PLAN_COLORS.closure}">●</span> ${n("closure")} closures · <span style="color:${PLAN_COLORS.construction}">●</span> ${n("construction")} construction · <span style="color:${PLAN_COLORS.permit}">●</span> ${n("permit")} permitted · <span style="color:${PLAN_COLORS.event}">●</span> ${n("event")} special events)`;
 }
 const isOn = (a, now = Date.now() / 1000) => a.starts <= now && (!a.ends || a.ends > now);
-const day = (t) => new Date(t * 1000).toLocaleDateString([], { month: "short", day: "numeric" });
+const day = (t) => new Date(t * 1000).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" });
 async function loadEmergency(g) {
   const d = (cityData.emergency = await getJSON("/api/nyc/emergency")), now = Date.now() / 1000;
   g.clearLayers();
@@ -1383,10 +1395,10 @@ async function loadEmergency(g) {
 async function loadFilmShoots(g) {
   const d = await getJSON("/api/nyc/film-permits");
   g.clearLayers();
-  for (const s of d.shoots.filter((s) => s.lat != null)) pin(s.lat, s.lon, "🎬", "#d6336c").bindPopup(`<b>🎬 ${esc(s.title)}</b><br><span class="muted">until ${new Date(s.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><br><b>Parking held:</b><br><small style="display:block;max-height:80px;overflow:auto">${esc(s.parkingHeld)}</small>${camBtn(s.lat, s.lon)}`).addTo(g);
+  for (const s of d.shoots.filter((s) => s.lat != null)) pin(s.lat, s.lon, "🎬", "#d6336c").bindPopup(`<b>🎬 ${esc(s.title)}</b><br><span class="muted">until ${new Date(s.ends * 1000).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><br><b>Parking held:</b><br><small style="display:block;max-height:80px;overflow:auto">${esc(s.parkingHeld)}</small>${camBtn(s.lat, s.lon)}`).addTo(g);
   seen.films = d.shoots.slice(0, 10).map((s) => s.title);
   const newest = d.newest && new Date(d.newest * 1000);
-  $("n-films").textContent = `(${d.shoots.length} on now${newest && newest < Date.now() - 7 * 86400_000 ? `; the city's permit data stops at ${newest.toLocaleDateString([], { month: "short", day: "numeric" })}` : ""})`;
+  $("n-films").textContent = `(${d.shoots.length} on now${newest && newest < Date.now() - 7 * 86400_000 ? `; the city's permit data stops at ${newest.toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" })}` : ""})`;
 }
 async function loadFloodSensors(g) {
   const d = (cityData.floods = await getJSON("/api/nyc/flood-sensors"));
@@ -1413,8 +1425,8 @@ async function loadFdny(g) {
   const d = await getJSON("/api/nyc/fdny");
   g.clearLayers();
   for (const f of d.fires) pin(f.lat, f.lon, "🔥", f.sev >= 3 ? "#c92a2a" : f.sev === 2 ? "#f76707" : "#ffa94d", f.sev >= 2 ? 24 : 20).bindTooltip(esc(f.title))
-    .bindPopup(`<b>🚒 ${esc(f.title)}</b><br><span class="muted">FDNY dispatch · ${new Date(f.starts * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · alarm box ${esc(f.box ?? "")}</span><br><small>The official record, published ~3 weeks late: <a href="${esc(f.url)}" target="_blank" rel="noopener">FDNY dispatch data</a></small>`).addTo(g);
-  $("n-fdny").textContent = `(${d.fires.length} fires in the last 35 published days, through ${d.through ? new Date(d.through * 1000).toLocaleDateString([], { month: "short", day: "numeric" }) : "?"}; ${d.fires.filter((f) => f.sev >= 2).length} beyond a first alarm)`;
+    .bindPopup(`<b>🚒 ${esc(f.title)}</b><br><span class="muted">FDNY dispatch · ${new Date(f.starts * 1000).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · alarm box ${esc(f.box ?? "")}</span><br><small>The official record, published ~3 weeks late: <a href="${esc(f.url)}" target="_blank" rel="noopener">FDNY dispatch data</a></small>`).addTo(g);
+  $("n-fdny").textContent = `(${d.fires.length} fires in the last 35 published days, through ${d.through ? new Date(d.through * 1000).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" }) : "?"}; ${d.fires.filter((f) => f.sev >= 2).length} beyond a first alarm)`;
 }
 const CITY_LAYERS = ["incidents", "closures", "emergency", "floods", "films", "news", "fdny"], LOADERS = { security: loadSecurity, incidents: loadIncidents, closures: loadClosures, emergency: loadEmergency, floods: loadFloodSensors, news: loadNews };
 setInterval(() => { for (const [k, f] of Object.entries(LOADERS)) if (LAYERS[k].on && !map.getContainer().querySelector(".leaflet-popup")) f(LAYERS[k].group).catch(() => {}); }, 60_000);
@@ -1447,25 +1459,27 @@ function drawBar() {
   if (unpin) unpin.hidden = !(panelMarks.getLayers().length || owned.size);
   const n = (k, one, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
   $("cityBar").innerHTML = [
-    hot.length ? chip("watch", `👁 Watch: ${esc(hot[0].place)}`, `Where to watch: the places where crime, fires and police alerts gathered over the last 72 hours (${hot.map((h) => h.place).join(", ")})`, hot[0].sev >= 2 ? "hot" : "warm") : "",
-    `<button title="Everything within ${NEAR_M} m of you: incidents, closures, news, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
-    chip("area", "🔎 This area", "What's in the map's view: now, the last 24 hours, 311's week, news, cameras; the AI can brief it"),
-    chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
+    `<button class="clock" data-act="wx" aria-pressed="${open === "wx"}" title="New York time${seen.weather ? ` · ${esc(seen.weather.station)}: ${esc(seen.weather.sky ?? "")}` : ""} · the weather, radar and lightning">🕐 ${new Date().toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" })}${seen.weather?.tempF != null ? ` <small>${seen.weather.tempF}°F</small>` : ""}</button>`,
     p.alerts ? chip("emergency", `🚨 ${n(p.alerts, "alert")}`, "Notify NYC alerts active now (the list has today's)", "hot") : "",
+    p.weather.length ? chip("weather", `⛈ ${n(p.weather.length, "weather alert")}`, p.weather.join("\n"), "hot") : "",
     chip("incidents", `⚠ ${n(p.incidents, "incident")}${p.severe ? ` <small>· ${p.severe} serious</small>` : ""}`, `Today's incidents of every kind (crashes and Waze reports too) as of ${p.incidentsAt ? hhmm(p.incidentsAt) : "now"}: ${p.severe} serious, ${p.likely} likely real (70%+), ${p.corroborated} seen by 2+ independent sources`, p.severe ? "warm" : ""),
+    hot.length ? chip("watch", `👁 Hotspot: ${esc(hot[0].place)}`, `Where to watch: the places where crime, fires and police alerts gathered over the last 72 hours (${hot.map((h) => h.place).join(", ")})`, hot[0].sev >= 2 ? "hot" : "warm") : "",
     chip("closures", `🚧 ${n(p.closures, "closure")}`, "Road closures, construction and permitted street events on now"),
     chip("news", `📰 ${n(p.news?.n ?? 0, "story", "stories")}`, `Today's local news: ${p.news?.n ?? 0} stories, ${p.news?.placed ?? 0} placed on the map`),
     p.flooding || Math.abs(p.surgeFt ?? 0) >= 1 ? chip("floods", `🌊 ${p.flooding ? `${p.flooding} flooding` : "Harbor"}${p.surgeFt != null ? ` <small>${p.surgeFt >= 0 ? "+" : ""}${p.surgeFt} ft</small>` : ""}`, "Street flooding now (FloodNet sensors) · harbor water at the Battery against the predicted tide (NOAA)", "warm") : "",
-    p.weather.length ? chip("weather", `⛈ ${n(p.weather.length, "weather alert")}`, p.weather.join("\n"), "hot") : "",
     p.aqi > 100 ? chip("aqi", `🌫 Air ${p.aqi}`, "US air quality index: over 100 is unhealthy for sensitive groups", "warm") : "",
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut} without power`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
+    chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
+    chip("area", "🔎 This area", "What's in the map's view: now, the last 24 hours, 311's week, news, cameras; the AI can brief it"),
+    `<button title="Everything within ${NEAR_M} m of you: incidents, closures, news, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
     lineFilter ? chip("line", `${[...lineFilter].map(bullet).join("")} ✕`, "Showing only these subway lines: click to show every line", "plain") : "",
     anyOn ? chip("clear", "✕ Clear", "Take the city layers and Blip's marks off the map", "plain") : "",
     chip("intro", "❔", "What this map shows and how to use it", "plain"),
   ].join("");
 }
 async function refreshPulse() { pulseNow = await getJSON("/api/nyc/pulse").catch(() => pulseNow); drawBar();
+  if (openedOn && openedOn === viewKey()) { openedOn = ""; cityView(); openedOn = ""; } // the bar's height is known now
   if (!$("panel").querySelector('[data-tab="now"]').hidden) { cityData.incidents = await getJSON("/api/nyc/incidents").catch(() => cityData.incidents); renderNow(); } if (!$("cityBrief").hidden && $("cityBrief").dataset.what === "brief") showPanel("brief", briefHtml()); }
 const goLink = (layer, id, text) => `<a href="#" data-go="${esc(`${layer}|${id}`)}">${text}</a>`;
 function showPanel(what, html) {
@@ -1493,10 +1507,10 @@ function briefHtml() {
 }
 // A bullet whose facts have places is a link: it pins them (hover a fact number for the fact).
 const bulletsHtml = (b, from) => { const fact = new Map(b.facts.map((f) => [f.id, f])); return b.bullets.map((x, i) => { const placed = x.facts.some((id) => fact.get(id)?.lat != null);
-  return `<li>${placed ? `<a href="#" data-bullet="${from}|${i}" title="Show on the map">${esc(x.text)}</a>` : esc(x.text)} ${x.facts.map((id) => `<sup title="${esc(fact.get(id)?.text ?? "")}">${esc(id)}</sup>`).join("")}</li>`; }).join(""); };
+  return `<li>${placed ? `<a href="#" data-bullet="${from}|${i}" title="Show on the map">${esc(x.text)}</a>` : esc(x.text)} ${x.facts.map((id) => `<sup class="fact" title="${esc(fact.get(id)?.text ?? "")}">${esc(id)}</sup>`).join(" ")}</li>`; }).join(""); };
 let areaBriefData = null;
 function listHtml(act) {
-  const p = pulseNow ?? {}, now = Date.now() / 1000, here = map.getCenter();
+  const p = pulseNow ?? {}, now = Date.now() / 1000, here = viewCenter();
   if (act === "emergency" || act === "weather") {
     const d = cityData.emergency ?? { alerts: [], weather: [] }, alerts = [...d.alerts.filter((a) => isOn(a, now)), ...d.alerts.filter((a) => !isOn(a, now))];
     const state = (a) => (isOn(a, now) ? "active" : a.starts > now ? `planned for ${day(a.starts)}` : "ended");
@@ -1513,7 +1527,7 @@ function listHtml(act) {
   if (act === "closures") {
     const list = (cityData.incidents?.planned ?? []).map((e) => ({ e, m: map.distance(here, [e.lat, e.lon]) })).sort((a, b) => a.m - b.m);
     return { title: `🚧 Closures & permitted events <span class="muted">${list.length} · nearest the map's center first</span>`, points: list.slice(0, 1).map((o) => o.e),
-      body: `<ul class="rows">${list.slice(0, 30).map(({ e, m }) => `<li><i style="background:${PLAN_COLORS[planKind(e)] ?? "#868e96"}"></i>${goLink("closures", e.id, esc(e.title))}<span class="muted">${m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span></li>`).join("")}</ul>` };
+      body: `<ul class="rows">${list.slice(0, 30).map(({ e, m }) => `<li><i style="background:${PLAN_COLORS[planKind(e)] ?? "#868e96"}"></i>${goLink("closures", e.id, esc(e.title))}<span class="muted">${m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`}${e.ends ? ` · until ${new Date(e.ends * 1000).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}</span></li>`).join("")}</ul>` };
   }
   if (act === "floods") {
     const d = cityData.floods ?? { sensors: [] }, wet = d.sensors.filter((f) => f.depthMm != null).sort((a, b) => b.depthMm - a.depthMm);
@@ -1527,9 +1541,12 @@ function listHtml(act) {
       body: `<ul class="rows">${d.items.slice(0, 60).map((n) => `<li>${n.lat != null ? goLink("news", n.id, esc(n.title)) : `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`}<span class="muted">${esc(n.outlets?.join(", ") ?? n.outlet)} · ${ago(n.starts)}${n.place ? ` · 📍 ${esc(n.place)}` : ""}</span></li>`).join("")}</ul>
         <p class="muted">Headlines from the newsrooms' own feeds; 📍 places are read from each story's text by the local AI and can be rough.</p>` };
   }
+  if (act === "wx") { const w = seen.weather;
+    return { title: `🌤 Weather now <span class="muted">${w ? esc(w.station) : ""}</span>`, body: w ? `<p><b>${esc(w.sky || "")}${w.tempF != null ? `, ${w.tempF}°F (${w.tempC}°C)` : ""}</b></p>${w.alerts.map((a) => `<p class="warn">⚠ ${esc(a.event)}${a.until ? ` until ${new Date(a.until).toLocaleString([], { timeZone: NYTZ, weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}</p>`).join("")}
+      <ul class="rows">${w.forecast.slice(0, 4).map((f) => `<li>${esc(f)}</li>`).join("")}</ul><p class="actions"><button data-act="layer:radar">🌧 Rain radar</button> <button data-act="layer:lightning">⚡ Lightning</button> <button data-act="layer:windy">🌬 Wind & forecast map</button></p>` : "<p>The weather is still loading.</p>" }; }
   if (act === "aqi") return { title: `🌫 Air quality <span class="muted">${p.aqi}</span>`, body: `<p>${p.aqi <= 50 ? "Good" : p.aqi <= 100 ? "Moderate" : p.aqi <= 150 ? "Unhealthy for sensitive groups" : p.aqi <= 200 ? "Unhealthy" : "Very unhealthy or worse"} (US AQI, EPA's bands), from Open-Meteo's air quality model for NYC. <a href="https://www.airnow.gov/?city=New%20York&state=NY&country=USA" target="_blank" rel="noopener">AirNow →</a></p>` };
   if (act === "outages") return { title: `⚡ Con Ed outages <span class="muted">${p.outages}</span>`, body: `<p>${p.customersOut ?? 0} customers out in NYC and Westchester (Con Ed's outage map, updated every 15–30 minutes). <a href="https://outagemap.coned.com/" target="_blank" rel="noopener">Con Ed's map →</a></p>` };
-  if (act === "watch") return { title: "👁 Where to watch <span class=\"muted\">the last 72 hours</span>", body: `<ul class="rows">${(p.hotspots ?? []).map((h, i) => `<li><i style="background:${SEV[h.sev]}"></i><a href="#" data-hot="${i}">${esc(h.place)}</a><span class="muted">${h.reports} report${h.reports > 1 ? "s" : ""}: ${h.topics.map(esc).join(", ")} · latest ${ago(h.latest.starts)}</span><small>${h.latest.url ? `<a href="${esc(h.latest.url)}" target="_blank" rel="noopener">${esc(h.latest.title)}</a>` : esc(h.latest.title)}</small></li>`).join("")}</ul>
+  if (act === "watch") return { title: "👁 Hotspots <span class=\"muted\">where security news gathered, the last 72 hours</span>", body: `<ul class="rows">${(p.hotspots ?? []).map((h, i) => `<li><i style="background:${SEV[h.sev]}"></i><a href="#" data-hot="${i}">${esc(h.place)}</a><span class="muted">${h.reports} report${h.reports > 1 ? "s" : ""}: ${h.topics.map(esc).join(", ")} · latest ${ago(h.latest.starts)}</span><small>${h.latest.url ? `<a href="${esc(h.latest.url)}" target="_blank" rel="noopener">${esc(h.latest.title)}</a>` : esc(h.latest.title)}</small></li>`).join("")}</ul>
     <p class="muted">Crime and fire news and Notify NYC police and fire alerts, by neighborhood; each story counts once however many outlets carry it, follow-ups included. Places come from the stories' text (read by the local AI) and can be rough.</p>` };
   return null;
 }
@@ -1566,7 +1583,7 @@ const panelMarks = L.layerGroup().addTo(map);
 function showPins(points, label) {
   panelMarks.clearLayers();
   const pts = points.filter((p) => p.lat != null), f = freeArea(), size = map.getSize();
-  for (const p of pts) dot(p.lat, p.lon, "#7048e8", 6).bindPopup(`<b>${esc(p.title ?? p.text ?? "")}</b>${p.starts ? `<br><span class="muted">${new Date(p.starts * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>` : ""}`).addTo(panelMarks);
+  for (const p of pts) dot(p.lat, p.lon, "#7048e8", 6).bindPopup(`<b>${esc(p.title ?? p.text ?? "")}</b>${p.starts ? `<br><span class="muted">${new Date(p.starts * 1000).toLocaleString([], { timeZone: NYTZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>` : ""}`).addTo(panelMarks);
   if (!pts.length) return;
   const mid = [pts.reduce((a, p) => a + p.lat, 0) / pts.length, pts.reduce((a, p) => a + p.lon, 0) / pts.length];
   if (label) L.marker(mid, { icon: L.divIcon({ className: "ai-mark", html: `<span>${esc(label)}</span>`, iconSize: null }), interactive: false, zIndexOffset: 1000 }).addTo(panelMarks);
@@ -1605,7 +1622,7 @@ $("cityBrief").addEventListener("click", (e) => {
   if (t.dataset.act === "close") return closePanel();
   if (t.dataset.act === "unpin") return unpinPanel();
   if (t.dataset.act === "fold") return box.classList.toggle("min");
-  const go = t.closest("[data-go]")?.dataset.go;
+  const go = (t.closest("[data-go]") ?? (t.closest("a, button, details") ? null : t.closest("li")?.querySelector("[data-go]")))?.dataset.go;
   if (go) { e.preventDefault(); const [layer, id] = go.split(/\|(.*)/s), c = layer === "incidents" && cityData.incidents?.incidents.find((x) => x.id === id);
     if (c) { $("cityBrief").classList.add("min"); return openDetail(c); }
     const m = cityMarks.get(go); if (m) focusOn(m); return; }
@@ -1615,6 +1632,8 @@ $("cityBrief").addEventListener("click", (e) => {
   if (t.dataset.hot) { e.preventDefault(); const h = pulseNow.hotspots[+t.dataset.hot]; showPins(h.points, `${h.place}: ${h.reports} report${h.reports > 1 ? "s" : ""}`); }
   if (t.dataset.cam) { e.preventDefault(); getJSON("/api/nyc/cameras").then((l) => { const c = l.find((x) => x.id === t.dataset.cam); if (c) openCam(c); }); }
   if (t.dataset.act === "areabrief") areaBriefNow();
+  if (t.dataset.act?.startsWith("layer:")) { const k = t.dataset.act.slice(6); toggle(k, !LAYERS[k].on); t.setAttribute("aria-pressed", String(LAYERS[k].on)); }
+  if (t.dataset.act === "zoomarea") { centerInView(viewInNyc() ? viewCenter() : L.latLng(40.7359, -73.9911), 14); analyzeArea(); }
   if (t.dataset.act === "askblip") dispatchEvent(new CustomEvent("blip:ask", { detail: { text: `What's going on around ${box.dataset.label ?? "here"} right now, and what stands out compared with usual?` } }));
 });
 
@@ -1724,7 +1743,8 @@ $("nowList").addEventListener("keydown", (e) => { if (e.key === "Enter") e.targe
 let areaNow = null;
 const spark = (v, color) => { const max = Math.max(1, ...v); return `<svg viewBox="0 0 ${v.length * 4} 20" class="spark" aria-hidden="true">${v.map((x, i) => `<rect x="${i * 4}" y="${20 - (18 * x) / max}" width="3" height="${(18 * x) / max}" fill="${color}"/>`).join("")}</svg>`; };
 async function analyzeArea(view) {
-  const b = view ?? map.getBounds(), box = { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() };
+  const b = view ?? viewBounds(), box = { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() };
+  if (box.n - box.s > 0.5 || box.e - box.w > 0.6 || !viewInNyc()) return showPanel("area", { title: "🔎 This area", body: `<p>This works on a part of the city: the view is ${viewInNyc() ? "too big" : "outside NYC"}. Zoom in on a neighborhood, or</p><p class="actions"><button data-act="zoomarea">Zoom into the middle of the view</button></p>` });
   showPanel("area", { title: "🔎 This area", body: "Looking…" });
   const a = (areaNow = await getJSON(`/api/nyc/area?s=${box.s.toFixed(5)}&w=${box.w.toFixed(5)}&n=${box.n.toFixed(5)}&e=${box.e.toFixed(5)}`).catch((e) => ({ error: e.message })));
   if (a.error) return showPanel("area", { title: "🔎 This area", body: `<p>${esc(a.error)}</p>` });
@@ -1737,7 +1757,7 @@ async function analyzeArea(view) {
     <p><b>Now:</b> ${a.now.incidents.length} incidents · ${a.now.closures} closures and permits · ${a.now.events} special events${a.now.flooding.length ? ` · 🌊 ${a.now.flooding.length} flooding` : ""}${a.now.alertsAreaWide.length ? `<br>⛈ ${a.now.alertsAreaWide.map((e) => esc(e.title)).join(" · ")}` : ""}</p>
     <p><b>Last 24 hours</b> <span class="muted">(by hour, oldest left)</span></p>${Object.keys(a.started.byFamily).length ? `<div class="tl">${Object.entries(a.started.byFamily).map(([k, n]) => `${spark(a.started.timeline[k], fam[k] ?? "#868e96")}<span><b>${n}</b> ${esc(k)}</span>`).join("")}</div>` : "<p>Nothing new.</p>"}
     ${a.now.incidents.length ? `<ul class="rows">${a.now.incidents.slice(0, 8).map((c) => `<li><i style="background:${SEV[c.sev]}"></i>${goLink("incidents", c.id, esc(c.title))}<span class="muted">${c.sources.map(srcName).join(" + ")} · ${ago(c.starts)}</span></li>`).join("")}</ul>` : ""}
-    ${a.reports311.week.length ? `<p><b>311, the week through ${new Date(a.reports311.through).toLocaleDateString([], { month: "short", day: "numeric" })}:</b> ${a.reports311.total} reports (usually ${Math.round(a.reports311.usualTotal)})<br>${a.reports311.week.slice(0, 8).map((r) => `${esc(r.type)} <b>${r.n}</b><span class="muted">/${r.usual}${up(r)}</span>`).join(" · ")}</p>` : ""}
+    ${a.reports311.week.length ? `<p><b>311, the week through ${new Date(a.reports311.through).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" })}:</b> ${a.reports311.total} reports (usually ${Math.round(a.reports311.usualTotal)})<br>${a.reports311.week.slice(0, 8).map((r) => `${esc(r.type)} <b>${r.n}</b><span class="muted">/${r.usual}${up(r)}</span>`).join(" · ")}</p>` : ""}
     ${a.unusual.length ? `<p><b>📈 Unusual:</b><br>${a.unusual.slice(0, 3).map((u) => esc(u.text)).join("<br>")}</p>` : ""}
     ${a.news.length ? `<p><b>📰 Today's news here:</b></p><ul class="rows">${a.news.slice(0, 6).map((n) => `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="muted">${esc(n.outlet)} · ${ago(n.starts)}</span></li>`).join("")}</ul>` : ""}
     <p><b>📷 ${a.cameras.total} cameras</b>${a.cameras.video ? ` (${a.cameras.video} live video, ${a.cameras.hd} HD)` : ""}${a.cameras.best.length ? `: ${a.cameras.best.slice(0, 3).map((c) => `<a href="#" data-cam="${esc(c.id)}">${esc(c.name)}${c.h >= 720 ? " HD" : ""}</a>`).join(" · ")}` : ""}</p>
@@ -1745,7 +1765,7 @@ async function analyzeArea(view) {
   renderBrief();
   const r = await getJSON(`/api/nyc/safety?s=${box.s.toFixed(5)}&w=${box.w.toFixed(5)}&n=${box.n.toFixed(5)}&e=${box.e.toFixed(5)}`).catch((e) => ({ error: e.message })), out = document.getElementById("areaSafety");
   if (!out || areaNow !== a) return;
-  const d = (x) => (x ? new Date(x).toLocaleDateString([], { month: "short", day: "numeric" }) : "?");
+  const d = (x) => (x ? new Date(x).toLocaleDateString([], { timeZone: NYTZ, month: "short", day: "numeric" }) : "?");
   seen.areaSafety = r.error ? null : r;
   out.className = "";
   out.innerHTML = r.error ? `<p class="muted">${esc(r.error)}</p>` : `<details><summary><b>🛡 Official public-safety record</b> <span class="muted">NYPD & FDNY open data, weeks to months late</span></summary>
@@ -1889,7 +1909,7 @@ function openCam(c) {
     const d = await fetch(`/api/nyc/upscale?cam=${encodeURIComponent(c.id)}`, { method: "POST" }).then((r) => r.json()).catch((e) => ({ error: e.message }));
     clearInterval(tick); upBtn.disabled = false; upBtn.textContent = "✨";
     if (d.error) return dispatchEvent(new CustomEvent("blip:say", { detail: { text: d.error } }));
-    const n = ++upscaled, at = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }), src = `data:image/jpeg;base64,${d.img}`;
+    const n = ++upscaled, at = new Date().toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit", second: "2-digit" }), src = `data:image/jpeg;base64,${d.img}`;
     openCam({ id: `up${n}`, of: c.id, name: `✨ ${c.name} · ${at} · ×4 by AI, ${d.w}×${d.h} (fine details are AI guesses)`, image: src, static: true, upscaled: true, page: src, source: "⬇ Save", download: `${c.name.replace(/[^\w-]+/g, "_")}-${d.w}x${d.h}.jpg` });
     Object.assign(document.getElementById(`cam-up${n}`).style, { width: `${Math.min(720, innerWidth - 20)}px`, height: `${Math.min(520, innerHeight - 100)}px` });
   };
@@ -2072,15 +2092,32 @@ $("tAddStop").onclick = () => addStop();
 // Search as you type: a dropdown of matching places (OpenStreetMap names, NYC addresses). ↑/↓ and Enter pick one.
 const sugg = $("sugg"), suggCache = new Map();
 let suggFor = null, suggItems = [], suggActive = -1, suggTimer = 0;
+let camsList = null; // the camera list, once loaded, for the search box
+/** What on the map matches the search: stations, today's incidents and security news, placed news, cameras (6 at most). */
+function localMatches(q) {
+  const t = q.toLowerCase(), hit = (x) => String(x ?? "").toLowerCase().includes(t), out = [], seenIds = new Set();
+  for (const [id, st] of stations) if (hit(st.name)) out.push({ name: `🚇 ${st.name}`, detail: st.routes, lat: st.lat, lon: st.lon, station: id });
+  for (const c of [...(cityData.security?.incidents ?? []), ...(cityData.incidents?.incidents ?? [])]) if (!seenIds.has(c.id) && hit(c.title)) { seenIds.add(c.id); out.push({ name: `${FAM_ICON[famOf(c)]} ${c.title}`, detail: [c.hood ?? c.borough, ago(c.starts)].filter(Boolean).join(" · "), lat: c.lat, lon: c.lon, inc: c }); }
+  for (const n of cityData.news?.items ?? []) if (n.lat != null && hit(n.title)) out.push({ name: `📰 ${n.title}`, detail: n.outlet, lat: n.lat, lon: n.lon, news: n });
+  for (const c of camsList ?? []) if (hit(c.name)) out.push({ name: `${camEmoji(c)} ${c.name}`, detail: "camera", lat: c.lat, lon: c.lon, cam: c });
+  return out.slice(0, 6);
+}
+$("q").addEventListener("focus", () => { // what the search box looks through, fetched once on first use
+  (camsCache ??= getJSON("/api/nyc/cameras")).then((l) => (camsList = l)).catch(() => {});
+  if (!cityData.news) getJSON("/api/nyc/news").then((d) => (cityData.news ??= d)).catch(() => {});
+  if (!cityData.incidents) getJSON("/api/nyc/incidents").then((d) => (cityData.incidents ??= d)).catch(() => {});
+}, { once: true });
 function suggestFor(input) {
   clearTimeout(suggTimer);
   const q = input.value.trim();
   if (q.length < 2) return hideSugg();
+  const mine = input.id === "q" ? localMatches(q) : [];
+  if (mine.length) showSugg(input, mine);
   suggTimer = setTimeout(async () => {
-    const near = viewInNyc() ? "" : `&near=${map.getCenter().lat.toFixed(2)},${map.getCenter().lng.toFixed(2)}`, key = q + near;
+    const near = viewInNyc() ? "" : `&near=${viewCenter().lat.toFixed(2)},${viewCenter().lng.toFixed(2)}`, key = q + near;
     const list = suggCache.get(key) ?? (await getJSON(`/api/nyc/suggest?q=${encodeURIComponent(q)}${near}`).catch(() => []));
     suggCache.set(key, list);
-    if (input.value.trim() === q && document.activeElement === input) showSugg(input, list);
+    if (input.value.trim() === q && document.activeElement === input) showSugg(input, [...(input.id === "q" ? localMatches(q) : []), ...list]);
   }, 200);
 }
 function showSugg(input, list) {
@@ -2102,7 +2139,14 @@ function hideSugg() {
 async function choose(i) {
   const s = suggItems[i], id = suggFor.id;
   hideSugg();
-  if (id === "q") { $("q").value = s.name; return showHere(L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name); }
+  if (id === "q") {
+    $("q").value = s.name.replace(/^\S+ /u, (m) => (s.station || s.inc || s.news || s.cam ? "" : m));
+    if (s.station) { history.replaceState(null, "", `#station=${s.station}`); return focusHash(); }
+    if (s.inc) return openDetail(s.inc);
+    if (s.cam) { centerInView(L.latLng(s.lat, s.lon), 16); return openCam(s.cam); }
+    if (s.news) { await toggle("news", true); const m = cityMarks.get(`news|${s.news.id}`); return m ? focusOn(m) : centerInView(L.latLng(s.lat, s.lon), 16); }
+    return showHere(L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name);
+  }
   await placePin(id, L.latLng(s.lat, s.lon), s.detail ? `${s.name}, ${s.detail}` : s.name);
   if (ready()) return replan();
   map.panTo([s.lat, s.lon]);
@@ -2129,7 +2173,7 @@ $("search").addEventListener("submit", async (e) => {
   const q = $("q").value.trim();
   if (!q) return;
   hideSugg();
-  const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(q)}${viewInNyc() ? "" : `&near=${map.getCenter().lat.toFixed(2)},${map.getCenter().lng.toFixed(2)}`}`).catch(() => null);
+  const g = await getJSON(`/api/nyc/geocode?q=${encodeURIComponent(q)}${viewInNyc() ? "" : `&near=${viewCenter().lat.toFixed(2)},${viewCenter().lng.toFixed(2)}`}`).catch(() => null);
   if (!g) return ($("status").textContent = `Couldn't find "${q}" in NYC.`);
   showHere(L.latLng(g.lat, g.lon), g.label);
 });
@@ -2165,20 +2209,23 @@ map.on("locationfound", (e) => {
   meLayer.clearLayers();
   L.circle(e.latlng, { radius: e.accuracy, color: "#1c7ed6", weight: 1, fillOpacity: 0.1, interactive: false }).addTo(meLayer);
   L.circleMarker(e.latlng, { radius: 8, color: "#fff", weight: 3, fillColor: "#1c7ed6", fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip(`You are here (±${Math.round(e.accuracy)} m)`).addTo(meLayer);
-  // On page load, jump to you only when you're in the city, the page wasn't opened from a link (a shared view, a
-  // place, a camera…: the link chose the view) and you haven't moved the map yourself; ◎ always comes to you.
-  if (first && (!meAuto || (NYC.contains(e.latlng) && !location.hash && !mapTouched))) map.setView(e.latlng, Math.max(map.getZoom(), 16));
+  if (first && !meAuto) map.setView(e.latlng, Math.max(map.getZoom(), 16)); // on load you're a dot on the city view; ◎ comes to you
   if (meWanted) { meWanted = false; startHere(); }
 });
 map.on("locationerror", (e) => {
   stopMe();
   meWanted = false;
   if (meAuto) return; // denied or unavailable on load: stay quiet, the buttons still explain
-  L.popup().setLatLng(map.getCenter()).setContent(`Couldn't get your location: ${esc(e.message)}. Allow location for this site in the browser, or pick the start with 📍.`).openOn(map);
+  L.popup().setLatLng(viewCenter()).setContent(`Couldn't get your location: ${esc(e.message)}. Allow location for this site in the browser, or pick the start with 📍.`).openOn(map);
 });
 $("tHere").onclick = () => locateMe(true);
 const NYC = L.latLngBounds([40.49, -74.27], [40.92, -73.68]);
 locateMe(false, true); // show you on the map right away (no start set)
+// The map opens on the whole city, fitted into the part nothing floats over: the God's-eye view. A link chooses its own view.
+// Fitted once the page is laid out (the phone's sheet folded) and again when the city bar first fills, unless you moved it.
+let openedOn = "";
+const viewKey = () => `${map.getCenter().toString()}|${map.getZoom()}`;
+function cityView() { if (location.hash) return; const f = freeArea(), size = map.getSize(); map.fitBounds(NYC, { paddingTopLeft: [f.left, f.top], paddingBottomRight: [Math.max(0, size.x - f.right), Math.max(0, size.y - f.bottom)], animate: false }); openedOn = viewKey(); }
 
 // Clear: route, pins, both fields and the result list.
 $("tClear").onclick = () => {
@@ -2218,7 +2265,7 @@ $("trip").addEventListener("submit", async (e) => {
   for (const c of d.cameras) camMarker(c).addTo(tripLayer);
   map.fitBounds(line.getBounds().pad(0.1));
   const tr = d.traffic, slow = tr?.onRoute.filter((l) => l.mph < 20) ?? [];
-  const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.</div>`
+  const trafficHtml = !tr ? "" : tr.stale ? `<div class="muted">Live speeds unavailable: NYC DOT's feed last updated ${new Date(tr.asOf).toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" })}.</div>`
     : `<div class="muted">${tr.onRoute.length} road segments with live speeds on the way${slow.length ? `; slow: ${slow.slice(0, 4).map((l) => `${esc(l.name)} ${Math.round(l.mph)} mph`).join(", ")}` : ", all moving"}.</div>`;
   $("tripOut").innerHTML = trafficHtml + (d.usesFerry ? `<div class="muted">⛴ This route includes a ferry${d.avoidFerries ? " (there's no way around it)" : ""}.</div>` : "") + `<b>${d.distanceKm} km · ~${d.minutes} min</b> ${d.mode === "drive" ? "by car" : d.mode === "bike" ? "by bike" : "on foot"} · ${d.cameras.length} cameras on the way
     ${d.jams?.length ? `<div class="legend">${d.jams.length} traffic spot${d.jams.length > 1 ? "s" : ""} on the route: <i style="background:#ffd166"></i>slow <i style="background:#ff9f1c"></i>heavy <i style="background:#ff5c8a"></i>jammed <i style="background:#b3002d"></i>stopped</div>` : d.mode === "drive" && d.eta.delayMinutes != null ? `<div class="legend"><i style="background:#4de1ff"></i>no jams on the route</div>` : ""}
@@ -2232,7 +2279,7 @@ $("trip").addEventListener("submit", async (e) => {
 const stopDots = (d) => (d.stops ?? []).forEach((s, i) => { if (!pinMarkers[d.viaIds?.[i]]) dot(s.lat, s.lon, "#ffb347", 8).bindTooltip(`Stop ${i + 1}: ${esc(s.label)}`).addTo(tripLayer); });
 
 // Commute (subway + bus + walking): options from Transitous; pick one to see it on the map, step by step.
-const hm = (t) => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const hm = (t) => new Date(t).toLocaleTimeString([], { timeZone: NYTZ, hour: "numeric", minute: "2-digit" });
 const legBullet = (l) => (l.mode === "SUBWAY" ? bullet(l.route) : busBullet({ name: l.route, color: l.color ?? "#1c7ed6", text: l.text }));
 const fromNow = (t) => Math.max(0, Math.round((Date.parse(t) - Date.now()) / 60000));
 const legColor = (l) => (l.mode === "SUBWAY" ? ROUTE_COLOR[l.route.replace(/X$/, "")] ?? l.color : l.color) ?? "#1c7ed6";
@@ -2276,7 +2323,7 @@ $("rsearch").addEventListener("submit", async (e) => {
   restaurantLayer.clearLayers();
   try {
     // nearest first: from you when the map knows where you are, else from the middle of the map
-    const from = meAt ? { lat: meAt.lat, lon: meAt.lng, who: "you" } : { lat: map.getCenter().lat, lon: map.getCenter().lng, who: "the map's center" };
+    const from = meAt ? { lat: meAt.lat, lon: meAt.lng, who: "you" } : { lat: viewCenter().lat, lon: viewCenter().lng, who: "the map's center" };
     const list = await getJSON(`/api/nyc/restaurants?q=${encodeURIComponent(q)}&near=${from.lat.toFixed(5)},${from.lon.toFixed(5)}`);
     const dist = (km) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`);
     seen.restaurants = list.slice(0, 15).map((r) => `${r.name}, ${r.address}, ${dist(r.km)} from ${from.who}`);
@@ -2296,10 +2343,13 @@ async function showInspections(popup, r) {
     <p class="viol muted">Earlier: ${d.visits.slice(1, 5).map((x) => `${x.date} ${x.grade ?? ""} ${x.score ?? ""}`).join(" · ") || "none"}</p>`);
 }
 
-// Double-click or long-press (right-click too) an empty spot: the address and the businesses there (shops, licensed
-// businesses, restaurants with grades). A single click does nothing, so panning and missed taps don't open it.
+// A click, double-click or long-press (right-click too) on the map: the address and the businesses there (shops, licensed
+// businesses, restaurants with grades, Google's details). A drag isn't a click, and the click that closes a popup only closes it.
+let popupWasOpen = false; // the click that closes a popup only closes it
+map.on("preclick", () => (popupWasOpen = !!map._popup?.isOpen()));
 map.on("click", async (e) => {
-  if (picking) {
+  if (!picking) { if (popupWasOpen) return; if (map.getZoom() < 14) return centerInView(e.latlng, Math.min(16, map.getZoom() + 3)); showHere(e.latlng); return; }
+  {
     const id = picking;
     setPicking(null);
     await placePin(id, e.latlng);
@@ -2341,12 +2391,12 @@ async function showHere(ll, title = "") {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}${b.open != null ? `, ${b.open ? "open now" : "closed now"}${b.hoursToday ? ` (today ${b.hoursToday})` : ""}` : ""}${b.website ? `, website ${b.website}` : ""}${b.phone ? `, ${b.phone}` : ""}`) };
   const list = d.businesses.slice(0, 25);
   at.label ||= d.address;
-  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}<div class="bldg"><button type="button" class="linkish" data-bldg>🏠 Building report</button></div>${photoBox}
+  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${d.outsideNyc ? "" : `<div class="bldg"><button type="button" class="linkish" data-bldg>🏠 Building report</button></div>`}${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""}${b.open != null ? ` <span style="color:${b.open ? "#2f9e44" : "#e03131"}" title="${esc(b.hoursToday ? `Today: ${b.hoursToday}` : "")}">${b.open ? "open" : "closed"}</span>` : ""}${/^https?:\/\//.test(b.website ?? "") ? ` <a href="${esc(b.website)}" target="_blank" rel="noopener" title="${esc(b.name)}'s website">website</a>` : ""}${b.phone ? ` <a href="tel:${esc(b.phone.replace(/[^\d+]/g, ""))}" class="muted">${esc(b.phone)}</a>` : ""}${b.ratingUrl ? "" : ` <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.name} ${b.address || d.address}`)}" target="_blank" rel="noopener" class="muted" title="Find it on Google Maps">maps</a>`} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.ratingUrl) ? " · ★ ratings, hours, websites: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   body.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   // the button is replaced right away: stop the click here, or Leaflet sees it land outside any popup (a map click) and closes this one
-  body.querySelector("[data-bldg]").onclick = async (ev) => { ev.stopPropagation(); const box = ev.target.parentElement; box.innerHTML = `<span class="muted">Reading city records…</span>`; p.update();
+  if (body.querySelector("[data-bldg]")) body.querySelector("[data-bldg]").onclick = async (ev) => { ev.stopPropagation(); const box = ev.target.parentElement; box.innerHTML = `<span class="muted">Reading city records…</span>`; p.update();
     const r = await getJSON(`/api/nyc/building?q=${encodeURIComponent(d.address)}`).catch(() => null); box.innerHTML = buildingHtml(r); p.update(); seen.building = r?.found ? r : undefined; };
   }
   // the best street photo of this spot (Mapillary, within ~100 m, or ~300 m if none, looking at it); a click opens it
@@ -2423,8 +2473,8 @@ window.blipActions = {
 window.blipContext = () => {
   const b = map.getBounds();
   const visible = [...byStation].flatMap(([id, list]) => { const s = stations.get(id); return s && b.contains([s.lat, s.lon]) ? [{ stationId: id, station: s.name, lines: s.routes, alerts: [...new Set(list.filter((a) => !hidden.has(a.type)).map((a) => `${a.type}: ${a.header}`))].slice(0, 3) }] : []; }).filter((x) => x.alerts.length).slice(0, 25);
-  const c = map.getCenter();
-  return { mapView: { lat: +c.lat.toFixed(4), lon: +c.lng.toFixed(4), zoom: map.getZoom(), insideNyc: viewInNyc(), note: "The area the visitor is looking at: questions that name no place are about it." }, map: "NYC Live Map. You can act on it for the visitor: set the trip's start/destination/stops one at a time (set_route_point), let them click a point (pick_on_map), change the mode, plan (plan_route) or plan in one go (plan_trip), clear; move the map (show_place), mark points, open cameras, switch layers, show what's within 600 m, follow aircraft. Press B opens this chat.", center: map.getCenter(), zoom: map.getZoom(),
+  const c = viewCenter(), vb = viewBounds();
+  return { mapView: { lat: +c.lat.toFixed(4), lon: +c.lng.toFixed(4), zoom: map.getZoom(), insideNyc: viewInNyc(), bounds: { s: +vb.getSouth().toFixed(4), w: +vb.getWest().toFixed(4), n: +vb.getNorth().toFixed(4), e: +vb.getEast().toFixed(4) }, note: "The area the visitor is looking at: questions that name no place are about it." }, map: "NYC Live Map. You can act on it for the visitor: set the trip's start/destination/stops one at a time (set_route_point), let them click a point (pick_on_map), change the mode, plan (plan_route) or plan in one go (plan_trip), clear; move the map (show_place), mark points, open cameras, switch layers, show what's within 600 m, follow aircraft. Press B opens this chat.", center: viewCenter(), zoom: map.getZoom(),
     tripForm: { from: $("tFrom").value || null, to: $("tTo").value || null, stops: stopIds().map((id) => $(id).value).filter(Boolean), mode: document.querySelector('input[name="tMode"]:checked')?.value, avoidFerries: $("tNoFerry").checked, stepFree: $("tAccess").checked, picking: picking || null },
     // ~11 m precision is plenty for "nearest bike"; it goes to the chat model with the question
     visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
@@ -2486,10 +2536,11 @@ document.querySelector(".ptabs").addEventListener("click", (e) => { const b = e.
 try { showTab(localStorage.getItem("nyc-tab") || "now"); } catch { showTab("now"); }
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 // On phones the panel is a sheet at the bottom: Blip (companion.js) stands on top of it instead of on its buttons.
-const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${$("panel").offsetHeight + 8}px` : "0px");
-new ResizeObserver(blipFloor).observe($("panel")); addEventListener("resize", blipFloor);
+const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${Math.max($("panel").offsetHeight, $("detail").hidden ? 0 : $("detail").offsetHeight) + 8}px` : "0px");
+new ResizeObserver(blipFloor).observe($("panel")); new ResizeObserver(blipFloor).observe($("detail")); addEventListener("resize", blipFloor);
 $("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
 if (matchMedia("(max-width: 700px)").matches) fold(true);
+cityView();
 // On phones the panel is a sheet with three heights: peek (the search row), half and nearly full. Tap the grab bar to
 // step up, or drag it up or down.
 const SHEETS = ["peek", "half", "full"];
@@ -2516,7 +2567,8 @@ async function focusHash() {
     if (!onLine(stations.get(val).routes)) await showLine(""); // its marker isn't drawn while another line is picked
     const cb = document.querySelector('#layers input[data-l="stations"]');
     if (!LAYERS.stations.on) { cb.checked = true; await toggle("stations", true); }
-    while (!stationMarkers.get(val)) await new Promise((r) => setTimeout(r, 100));
+    for (let i = 0; i < 100 && !stationMarkers.get(val); i++) await new Promise((r) => setTimeout(r, 100));
+    if (!stationMarkers.get(val)) return;
     const s = stations.get(val);
     map.setView([s.lat, s.lon], Math.max(map.getZoom(), 15));
     stationMarkers.get(val).openPopup();
@@ -2548,6 +2600,8 @@ async function focusHash() {
   }
 }
 addEventListener("hashchange", focusHash);
+// "/" jumps to the search box (as on many map and search sites), unless you're typing somewhere
+addEventListener("keydown", (e) => { if (e.key === "/" && !e.target.closest?.("input, textarea, select, [contenteditable]")) { e.preventDefault(); if ($("panel").classList.contains("folded")) fold(false); $("q").focus(); } });
 // A map link clicked again (in Blip's chat, say) doesn't change the hash, so no hashchange: do it anyway.
 document.addEventListener("click", (e) => {
   const a = e.composedPath().find((el) => el.tagName === "A" && el.href);

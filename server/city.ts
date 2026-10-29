@@ -124,10 +124,11 @@ const BORO_CODES: Record<string, string> = { MN: "Manhattan", BK: "Brooklyn", QN
  *  "…between X and Y…" in the text, so it can be placed. */
 export function notifyItems(rss: string) {
   return [...rss.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]).filter((it) => /\[English\]/.test(tag(it, "author"))).map((it) => {
-    const title = strip(tag(it, "title")).replace(/^Notify NYC\s*-\s*/i, ""), day = title.match(/\s-(\d{1,2})\/(\d{1,2})-\s/);
+    // a later day comes as "-10/24-" in the middle ("Water Main Work -10/24- Main St") or as " - 11/1 (NYC)" at the end
+    const title = strip(tag(it, "title")).replace(/^Notify NYC\s*-\s*/i, ""), day = title.match(/\s-\s?(\d{1,2})\/(\d{1,2})(?:-\s|\s*\(|\s*$)/);
     const [type, ...rest] = title.split(/\s+-\s+|\s+-\d{1,2}\/\d{1,2}-\s+/);
     const body = strip(tag(it, "description")).replace(/\s*To view this message in .*$/i, "").replace(/^Notification issued .*?(AM|PM)\.\s*/i, "");
-    let where = rest.join(" - ").trim();
+    let where = rest.join(" - ").trim().replace(/^\d{1,2}\/\d{1,2}\s*/, "").replace(/^\((NYC|citywide)\)$/i, "");
     const code = where.match(/\s*\((MN|BK|QN|BX|SI)\)$/);
     if (code) where = where.slice(0, code.index).trim();
     const cross = [...body.matchAll(/\bbetween ([^,.]+?) and ([^,.]+?)(?= in |,|\.)/g)].find((m) => !/\d:\d/.test(m[0]));
@@ -148,7 +149,7 @@ async function notify() {
     const pt = where ? await place(boro ? `${where}, ${boro}` : where) : null, expires = Date.parse(tag(cap, "expires"));
     // planned work on a later day ("-10/24-") starts that day, not now
     const on = n.day && new Date(new Date().getFullYear(), n.day.month - 1, n.day.date).getTime() / 1000, planned = on && on > n.sent ? on : null;
-    fresh.push({ id: n.id, kind: `alert:${slug(n.type)}`, sev: CAP_SEV[tag(cap, "severity")] ?? 1, lat: pt?.lat, lon: pt?.lon, starts: planned ?? n.sent,
+    fresh.push({ id: n.id, kind: `${planned ? "advisory" : "alert"}:${slug(n.type)}`, sev: planned ? Math.min(1, CAP_SEV[tag(cap, "severity")] ?? 1) : CAP_SEV[tag(cap, "severity")] ?? 1, lat: pt?.lat, lon: pt?.lon, starts: planned ?? n.sent,
       ends: planned ? planned + 86400 : expires ? Math.floor(expires / 1000) : n.sent + 3 * 3600, title: `${n.type}${n.where ? ` - ${n.where}` : ""}`,
       detail: { type: n.type, where: n.where, borough: boro, text: n.body.slice(0, 900), severity: tag(cap, "severity") || null, urgency: tag(cap, "urgency") || null }, url: n.cap || undefined });
   }
@@ -475,7 +476,7 @@ async function helicopters() {
 }
 
 // ---------- incidents: reports of one thing, merged, and how many independent sources agree ----------
-const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area|flood:usual)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
+const PLANNED = /^(road:closure|road:construction|road:event|permit:|film|vision:clear|water:|news-area|flood:usual|advisory:)/; // news-area: not about a street incident, or placed too roughly to merge // water: the harbor's surge is a reading, not a spot
 const AREA_WIDE = ["notify", "nws", "air"]; // alerts for a whole area; anything else without a place just couldn't be placed
 export type Incident = { id: string; title: string; kind: string; sev: number; lat: number; lon: number; starts: number; sources: string[]; confidence: number; events: Ev[]; probability?: number; why?: string[]; rough?: boolean };
 // What an event is about, for merging: a fire alert, smoke on a camera, FDNY and a fire story are one family
@@ -609,8 +610,17 @@ export function hotspotsOf(evs: Ev[], hood: (e: Ev) => string | null) {
       lat: points.reduce((s, p) => s + p.lat, 0) / points.length, lon: points.reduce((s, p) => s + p.lon, 0) / points.length }));
 }
 /** Security incidents of the last 24 hours, newest first: the map opens on these. Not "today": at 9 AM that was empty. */
+// The local model marks few stories as "an incident today at a place" (2026-10-29: a woman killed by a garbage truck on
+// Bay Parkway that morning was not), so for the security view a crime or fire story counts when its headline reports an
+// event (shot, killed, a fire…), and not when it's about the case afterwards (charged, sentenced, a lawsuit…).
+const EVENT_WORDS = /\b(shot|shooting|shootout|stabb(ed|ing)|slash(ed|ing)|killed|kills|dies|died|dead|death|fatal(ly)?|fire|blaze|burn(ed|ing)|injured|hurt|wounded|critical|struck|hit|crash(ed|es)?|robbed|robbery|carjack\w*|assault(ed)?|attack(ed|s)?|punched|explosion|collapse[ds]?|rescued?)\b/i;
+const CASE_WORDS = /\b(charged|charges|sentenc\w*|plead\w*|plea|indict\w*|convict\w*|trial|court|judge|jury|lawsuit|sues?|suing|arraign\w*|accused|verdict|appeal|parole|cold case|years? (ago|after)|anniversary|mourn\w*|vigil|memorial|funeral|discuss\w*)\b/i;
+/** A news headline that reports a crime or fire event as it happens: its severity (3 killed, 2 hurt, 1 otherwise), or 0. */
+export const securityStory = (title: string) => !EVENT_WORDS.test(title) || CASE_WORDS.test(title) ? 0 : /\b(killed|kills|dies|died|dead|death|fatal(ly)?)\b/i.test(title) ? 3 : /\b(shot|stabb\w*|injured|hurt|wounded|critical|struck|hit)\b/i.test(title) ? 2 : 1;
 export function securityIncidents(hours = 24) {
-  const evs = (db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[]).filter(isSecurity);
+  const evs = (db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[]).filter(isSecurity)
+    .flatMap((e) => { if (e.kind !== "news-area") return [e]; const sev = securityStory(e.title), d = JSON.parse(e.detail || "{}");
+      return sev ? [{ ...e, kind: ["address", "intersection", "landmark"].includes(d.precision) ? "news" : "news-rough", sev }] : []; }); // as an incident: placed exactly, or roughly
   const rel = reliability(), list = cluster(evs);
   for (const c of list) Object.assign(c, likelihood(c, rel));
   return list.sort((a, b) => b.starts - a.starts);

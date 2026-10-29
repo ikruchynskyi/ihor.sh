@@ -1,7 +1,7 @@
 // Run: node city.test.ts
 import assert from "node:assert/strict";
 process.env.CITY_DB = ":memory:";
-const { save, snapshot, active, corner, notifyItems, orbit, cluster, stories, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR, poissonTail, bh } = await import("./city.ts");
+const { save, snapshot, active, corner, notifyItems, securityStory, orbit, cluster, stories, faithful, inRing, newsItems, explore, pickCameras, likelihood, PRIOR, poissonTail, bh } = await import("./city.ts");
 
 // A snapshot feed ends what it no longer lists; a plain save doesn't.
 const t = Math.floor(Date.now() / 1000) - 100;
@@ -98,6 +98,17 @@ assert.deepEqual(bh([0.01, 0.04, 0.03, 0.5]).map((x) => +x.toFixed(4)), [0.04, 0
 // A story carried by 3 outlets: one witness, 75% + 2 × 5%.
 const covered = { ...ev("n3", "news", "news", 2, 40.8), starts: T, detail: JSON.stringify({ outlet: "PIX11", story: "st", coverage: 3 }) };
 assert.equal(likelihood({ events: [covered, { ...covered, id: "n4", detail: JSON.stringify({ outlet: "CBS", story: "st", coverage: 3 }) }] }, pri, T).probability, 0.85);
+// A notice about a later day ends in " - 11/1 (NYC)": that's its day, and "(NYC)" is no place to pin (the Marathon
+// was a severity-3 alert "now" at Randall's Island, 2026-10-29)
+const [mara] = notifyItems(`<rss><channel><item><title>Notify NYC - 2026 TCS New York City Marathon - 11/1 (NYC)</title><description>Expect traffic disruptions and street closures on Sunday.</description><guid>m1</guid><pubDate>Thu, 29 Oct 2026 14:00:00 GMT</pubDate><author>NYCEM [English]</author><link>x</link></item></channel></rss>`);
+assert.deepEqual(mara.day, { month: 11, date: 1 }); assert.equal(mara.type, "2026 TCS New York City Marathon"); assert.equal(mara.where, "");
+
+// Security stories: the event, not the case afterwards (headlines from 2026-10-28/29)
+for (const [t, sev] of [["Brooklyn woman hit and killed by garbage truck at Bay Parkway, NYPD says", 3], ["Teen walking to school shot in Bronx; police searching for masked gunman", 2],
+  ["2 hurt during fire in Queens, FDNY says", 2], ["Multiple individuals wanted in robbery in the Bronx: NYPD", 1],
+  ["2 men charged with fentanyl distribution conspiracy in connection to FIT student's death", 0], ["Former NYPD sergeant sentenced for deadly wrong-way crash", 0],
+  ["Family, neighbors mourning after deadly Bronx apartment fire", 0], ["Mayor Mamdani, FDNY officials discuss lithium-ion battery fire that killed boy", 0]] as const)
+  assert.equal(securityStory(t), sev, t);
 console.log("city.test.ts: OK");
 
 // Where to watch: crime and fire stories and police alerts by place, a story once however many outlets carry it; a
