@@ -622,7 +622,7 @@ const latest311 = () => { const t = (db.prepare("select max(starts) t from event
 
 // ---------- boroughs (NYC Open Data wh2p-dxnf, with their water: bridges and the harbor count; fetched once into data/) ----------
 let boros: { name: string; rings: number[][][] }[] = [];
-async function loadBoroughs() {
+export async function loadBoroughs() {
   const f = path.join(dir, "boroughs.geojson");
   if (!existsSync(f)) writeFileSync(f, await (await get(`${SODA}wh2p-dxnf.geojson`)).text());
   boros = JSON.parse(readFileSync(f, "utf8")).features.map((x: any) => ({ name: x.properties.boroname, rings: x.geometry.coordinates.map((p: number[][][]) => p[0]) }));

@@ -25,6 +25,8 @@ const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
 const MAX_STEPS = 6, DEEP_STEPS = 16;
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+// "Wed 2026-10-28, Thu 2026-10-29, …": the model can't be trusted to work out which date "Sunday" is
+const week = () => Array.from({ length: 8 }, (_, i) => new Date(Date.now() + i * 864e5)).map((d) => `${d.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" })} ${d.toLocaleDateString("en-CA", { timeZone: "America/New_York" })}`).join(", ");
 
 type Tool = { description: string; parameters: Record<string, { type: string; description: string; enum?: string[] }>; required?: string[]; run: (a: any) => Promise<unknown> | unknown };
 const TOOLS: Record<string, Tool> = {
@@ -113,13 +115,17 @@ const TOOLS: Record<string, Tool> = {
     run: async () => { const d = await iss(); return { ...d, track: undefined, mapLink: `/nyc/#view=${d.lat.toFixed(2)},${d.lon.toFixed(2)},3,iss` }; },
   },
   evening_events: {
-    description: "What's on in NYC on a date and time window, any time of day (NYC Parks, the city's events calendar, permitted events in parks and streets: races, parades, street fairs, markets; Ticketmaster shows, NYC for FREE, museum free hours): title, time, venue, price, kind, outdoors with rain chance, source link. Optionally near a place. alsoOn lists what is already going on during the window: all-day and citywide events such as the marathon or a parade, which close park drives and streets and bring crowds.",
+    description: "What's on in NYC on a date and time window, any time of day (NYC Parks, the city's events calendar, permitted events in parks and streets: races, parades, street fairs, markets; Ticketmaster shows, Eventbrite, NYC for FREE, museum free hours): title, time, venue, price, kind, outdoors with rain chance, source link. Optionally near a place. alsoOn lists what is already going on during the window: all-day and citywide events such as the marathon or a parade, which close park drives and streets and bring crowds.",
     parameters: { date: { type: "string", description: "YYYY-MM-DD (default today, New York)" }, from: { type: "string", description: "HH:MM, default 17:00" }, to: { type: "string", description: "HH:MM, default 23:30" }, budget: { type: "string", description: "free, or a max ticket price in dollars like 20" }, kind: { type: "string", description: "music, theater, comedy, sports, family, outdoors, arts, food, talks, community, popups (comma-separated)" }, place: { type: "string", description: "Near this NYC place" }, km: { type: "number", description: "Within this many km of the place" } },
     run: async ({ date, from, to, budget, kind, place, km }) => {
       const at = place ? await pointOf(undefined, undefined, place) : null;
       const r = await eveningEvents({ date, from: from ?? "17:00", to: to ?? "23:30", budget, cat: kind, near: at ? `${at.lat},${at.lon}` : undefined, km: Number(km) || undefined });
       const card = (e: any) => ({ id: e.id, time: e.all_day ? "all day" : e.start.slice(11), until: e.end?.slice(11), title: e.title, venue: e.venue, price: e.free ? "free" : e.price_min != null ? `from $${Math.round(e.price_min)}` : "see listing", kind: e.category, rainChance: e.rain, kmAway: e.km, link: e.url, mapLink: e.lat ? mapAt(e.lat, e.lon, e.venue || e.title) : undefined });
-      return { date: r.date, total: r.total, page: "/nyc/tonight.html", events: r.events.filter((e: any) => !e.ongoing).slice(0, 15).map(card), alsoOn: r.events.filter((e: any) => e.ongoing).slice(0, 8).map(card) };
+      // big things that change any plan that day: races, parades, all-day and citywide events
+      const big = r.events.filter((e: any) => e.all_day || /marathon|race|\b(5|10)k\b|parade|half marathon|triathlon|street festival|open streets?/i.test(e.title)).slice(0, 5);
+      return { ...(big.length ? { headsUp: `On ${r.date}: ${big.map((e: any) => `${e.title} (${e.all_day ? "all day" : `${e.start.slice(11)}${e.end ? `–${e.end.slice(11)}` : ""}`}, ${e.venue || "citywide"})`).join("; ")}. Expect closed drives, paths and streets, crowds and busy subways nearby; tell the visitor first and plan around it.` } : {}),
+        // alsoOn before events: a long answer is cut at 8,000 characters, and the cut should take the tail of the list
+        date: r.date, total: r.total, page: "/nyc/tonight.html", alsoOn: r.events.filter((e: any) => e.ongoing).slice(0, 8).map(card), events: r.events.filter((e: any) => !e.ongoing).slice(0, 15).map(card) };
     },
   },
   evening_plan: {
@@ -585,7 +591,7 @@ export async function ask(body: any, system: string, onStep?: (s: Step) => void)
   if (!last || last.role !== "user") throw new Error("bad request");
   const page = body?.page ?? {};
   const objects = str(page.context, 5000), visited = str(page.visited, 300);
-  last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}">\n${str(page.text, 6000)}\n</page>\n`
+  last.content = `<page url="${str(page.url, 300).replace(/"/g, "")}" title="${str(page.title, 200).replace(/"/g, "")}" today="${nyDate()}" week="${week()}">\n${str(page.text, 6000)}\n</page>\n`
     + (objects ? `<page_objects>\n${objects}\n</page_objects>\n` : "") + (visited ? `<visitor_has_explored>${visited}</visitor_has_explored>\n` : "") + `\n${last.content}`;
 
   const deep = body?.deep === true, maxSteps = deep ? DEEP_STEPS : MAX_STEPS;

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tonight in NYC</title>
-  <meta name="description" content="What's on in New York City tonight, tomorrow or this weekend, from NYC Parks, the city's events calendar, street-event permits, Ticketmaster, NYC for FREE and museum free hours: filter by time, budget and kind, see what's near you, and plan the evening with dinner nearby, the subway there and back, alerts and the weather." />
+  <meta name="description" content="What's on in New York City tonight, tomorrow or this weekend, from NYC Parks, the city's events calendar, street-event permits, Ticketmaster, Eventbrite, NYC for FREE and museum free hours: filter by time, budget and kind, see what's near you, and plan the evening with dinner nearby, the subway there and back, alerts and the weather." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <style>
     :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #fff; --accent: #c2410c; --ok: #1e6b35; --warn: #b4232c; }
@@ -31,7 +31,7 @@
 <main>
   <p class="eyebrow"><a href="/nyc/">NYC</a> · Tonight</p>
   <h1>What's on, and how to get there</h1>
-  <p class="lede">Events from NYC Parks, the city's events calendar, street-event permits (fairs, parades, markets), Ticketmaster, NYC for FREE and museum free hours, in one list. Each one links to where it's listed; a cancelled or removed event drops off within the hour. Pick one and plan the evening: dinner nearby, the subway there and back, alerts on the way, and the weather.</p>
+  <p class="lede">Events from NYC Parks, the city's events calendar, street-event permits (fairs, parades, races, markets), Ticketmaster, Eventbrite, NYC for FREE and museum free hours, in one list. Each one links to where it's listed; a cancelled or removed event drops off within the hour. Pick one and plan the evening: dinner nearby, the subway there and back, alerts on the way, and the weather.</p>
 
   <div class="card" style="padding:10px 14px">
     <div class="row chips" id="days"></div>
@@ -61,7 +61,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const getJSON = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw new Error(d.error ?? `HTTP ${r.status}`); return d; });
 const CAT = { music: "🎵 Music", theater: "🎭 Theater & dance", comedy: "😂 Comedy", sports: "🏟 Sports", family: "🧸 Family", outdoors: "🌳 Outdoors", arts: "🖼 Art & film", food: "🍜 Food & markets", talks: "🎤 Talks & classes", community: "🎪 Fairs & parades", popups: "🛍 Pop-ups", other: "✨ Other" };
-const SRC = { parks: "NYC Parks", ticketmaster: "Ticketmaster", city: "NYC events calendar", permits: "street-event permit", nycforfree: "NYC for FREE", freehours: "museum free hours" };
+const SRC = { parks: "NYC Parks", ticketmaster: "Ticketmaster", eventbrite: "Eventbrite", city: "NYC events calendar", permits: "street-event permit", nycforfree: "NYC for FREE", freehours: "museum free hours" };
 const nyDate = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 const addDays = (s, n) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() + n); return nyDate(d); };
 const ampm = (t) => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "am" : "pm"}`; };
@@ -150,7 +150,7 @@ document.addEventListener("click", (ev) => { const i = ev.target.closest("[data-
 // a shared plan: #plan=<event id>&from=<place>
 const h = new URLSearchParams(location.hash.slice(1));
 if (h.get("plan")) getJSON(`/api/evening/event?id=${encodeURIComponent(h.get("plan"))}`).then((e) => { S.nearLabel = h.get("from") ?? ""; S.date = e.start.slice(0, 10); plan(e); load(); }).catch(() => load()); else load();
-$("sources").innerHTML = 'Sources: <a href="https://www.nycgovparks.org/events">NYC Parks</a> · <a href="https://www.nyc.gov/events">NYC events calendar</a> · <a href="https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx">NYC permitted events</a> · <a href="https://www.ticketmaster.com">Ticketmaster</a> · <a href="https://www.nycforfree.co">NYC for FREE</a> · museum free hours from <a href="/nyc/free.html">Free NYC</a> · rain chance from Open-Meteo · restaurant grades from the NYC Health Department.';
+$("sources").innerHTML = 'Sources: <a href="https://www.nycgovparks.org/events">NYC Parks</a> · <a href="https://www.nyc.gov/events">NYC events calendar</a> · <a href="https://data.cityofnewyork.us/City-Government/NYC-Permitted-Event-Information/tvpp-9vvx">NYC permitted events</a> · <a href="https://www.ticketmaster.com">Ticketmaster</a> · <a href="https://www.eventbrite.com/d/ny--new-york/events/">Eventbrite</a> (organizers found by web search, read through its API) · <a href="https://www.nycforfree.co">NYC for FREE</a> · museum free hours from <a href="/nyc/free.html">Free NYC</a> · rain chance from Open-Meteo · restaurant grades from the NYC Health Department.';
 window.blipContext = () => ({ page: "Tonight in NYC (events and evening planner)", filters: { date: S.date, from: S.from, to: S.to, budget: S.budget || "any", kinds: [...S.cats], near: S.nearLabel || null }, shown: data?.events.slice(0, 15).map((e) => `${e.start.slice(11)} ${e.title} @ ${e.venue}${e.free ? " (free)" : ""}`) ?? [] });
 </script>
 </body>

@@ -6,16 +6,16 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { cityEvents, restaurantsNear, tripPlan } from "./nycapi.ts";
+import { cityEvents, restaurantsNear, tripPlan, webSearch, inNyc } from "./nycapi.ts";
 import { annotateTrip } from "./transit.ts";
 import { currentEvents } from "./events.ts";
-import { corner, place } from "./city.ts";
+import { corner, place, borough, loadBoroughs } from "./city.ts";
 // @ts-ignore: plain JS shared with the Free NYC page
 import { onDay, onDate } from "../nyc/free.js";
 
 const dir = path.join(import.meta.dirname, "..", "data");
 mkdirSync(dir, { recursive: true });
-const db = new DatabaseSync(process.env.EVENING_DB ?? path.join(dir, "evening.db"));
+const db = new DatabaseSync(process.env.EVENING_DB ?? path.join(dir, "evening.db"), { timeout: 5000 }); // wait out a reader (docker exec) instead of failing a write
 db.exec(`
   create table if not exists ev (id text primary key, source text, title text, start text, "end" text, all_day int, venue text, address text, lat real, lon real,
     borough text, price_min real, price_max real, free int, category text, url text, image text, status text, outdoor int, summary text, first_seen int, last_seen int, missed int default 0, dup_of text);
@@ -114,7 +114,8 @@ export async function fromPermits() {
   const rows = await getJson(`https://data.cityofnewyork.us/resource/tvpp-9vvx.json?$limit=5000&$where=${encodeURIComponent(`start_date_time between '${today}T00:00:00' and '${to}T23:59:59' and event_type in (${TYPES.map((t) => `'${t}'`).join(",")})`)}`);
   for (const r of rows) {
     if (PRIVATE.test(String(r.event_name ?? "").trim())) continue;
-    const pt = await place(permitPlace(r.event_location, r.event_borough)), id = `permit:${r.event_id}`;
+    // a permit that spans days (the Marathon's Central Park permit runs Oct 28 – Nov 10 with setup) is one row per day under one event_id
+    const pt = await place(permitPlace(r.event_location, r.event_borough)), id = `permit:${r.event_id}:${String(r.start_date_time).slice(0, 10)}`;
     const ok = save({ id, source: "permits", title: unent(r.event_name), start: String(r.start_date_time).slice(0, 16).replace("T", " "), end: String(r.end_date_time ?? "").slice(0, 16).replace("T", " ") || null,
       venue: String(r.event_location ?? "").replace(/\s+/g, " ").slice(0, 160), borough: r.event_borough, lat: pt?.lat ?? null, lon: pt?.lon ?? null, free: true, priceMin: 0, category: category(r.event_type, r.event_name),
       url: "https://www.nyc.gov/site/cecm/permitting/permitted-event-information.page", outdoor: true, summary: `${r.event_type}${r.street_closure_type && r.street_closure_type !== "N/A" ? ` · street closure: ${r.street_closure_type}` : ""}` });
@@ -141,10 +142,72 @@ export function fromFree(days = 7) {
 }
 
 const kmTo = (a: number, b: number, c: number, d: number) => { const r = Math.PI / 180, h = Math.sin(((c - a) * r) / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(((d - b) * r) / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); };
+// ---------- Eventbrite: its search API closed in 2019, so we keep a list of NYC organizers ----------
+// Web search finds organizer pages (eventbrite.com/o/<name>-<id>); the API (EVENTBRITE_TOKEN) then lists each one's
+// events, and an organizer counts as NYC while it has events at venues in the city.
+db.exec("create table if not exists eb_orgs (id text primary key, name text, found int, checked int, nyc int default 0)");
+const EB_TOPICS = ["comedy", "live music", "jazz", "art gallery", "book talk", "tech meetup", "networking", "dance party", "food festival", "walking tour", "workshop",
+  "yoga", "film screening", "poetry", "drag show", "salsa", "kids", "market", "run club", "wine tasting", "lecture", "community", "theater", "nightlife"];
+const EB_AREAS = ["New York", "Brooklyn", "Queens", "Manhattan", "Bronx"];
+const ebQueries = EB_TOPICS.flatMap((t) => EB_AREAS.map((a) => `site:eventbrite.com/o ${t} ${a}`));
+export const ebOrgIds = (urls: string[]) => [...new Set(urls.map((u) => u.match(/eventbrite\.[a-z.]+\/o\/[a-z0-9-]*?-(\d{6,})/i)?.[1]).filter(Boolean) as string[])];
+/** A few search queries a day, taking turns through topics × boroughs (40 the first time). */
+export async function ebDiscover() {
+  const first = !(db.prepare("select count(*) c from eb_orgs").get() as any).c, n = first ? 40 : 6, turn = (db.prepare("select count(*) c from runs where what = 'eb-discover'").get() as any).c;
+  const add = db.prepare("insert or ignore into eb_orgs (id, found) values (?, ?)");
+  let added = 0;
+  for (let i = 0; i < n; i++) {
+    const r: any = await webSearch(ebQueries[(turn * n + i) % ebQueries.length]).catch(() => null);
+    for (const id of ebOrgIds((r?.results ?? []).map((x: any) => x.url))) added += Number(add.run(id, now()).changes);
+  }
+  run("eb-discover", added); return added;
+}
+// Eventbrite's own categories (/v3/categories, /v3/subcategories) where they name one of ours; Arts and Other fall back to the text
+const EB_SUB: Record<string, string> = { "4007": "comedy", "5010": "comedy", "5001": "theater", "5002": "theater", "5003": "theater", "5004": "theater", "5005": "music", "5006": "music", "5009": "talks" };
+const EB_CAT: Record<string, string> = { "103": "music", "110": "food", "108": "sports", "102": "talks", "101": "talks", "115": "family", "109": "outdoors", "113": "community", "111": "community", "104": "arts" };
+/** One Eventbrite event (expand=venue,ticket_availability) in our shape, or null when it isn't a dated NYC event. */
+export function ebEvent(e: any): E | null {
+  const v = e.venue ?? {}, lat = Number(v.latitude), lon = Number(v.longitude), start = String(e.start?.local ?? "").replace("T", " ").slice(0, 16);
+  if (e.online_event || !Number.isFinite(lat) || !Number.isFinite(lon) || !inNyc(lat, lon) || !borough(lat, lon) || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(start)) return null;
+  const min = e.ticket_availability?.minimum_ticket_price?.major_value, title = String(e.name?.text ?? "").trim(), summary = String(e.summary ?? "").trim();
+  return { id: `eb:${e.id}`, source: "eventbrite", title, start, end: String(e.end?.local ?? "").replace("T", " ").slice(0, 16) || null, venue: v.name ?? "", address: v.address?.localized_address_display ?? "",
+    lat, lon, borough: borough(lat, lon) ?? "", free: !!e.is_free, priceMin: e.is_free ? 0 : min != null ? Number(min) : null, priceMax: e.ticket_availability?.maximum_ticket_price?.major_value != null ? Number(e.ticket_availability.maximum_ticket_price.major_value) : null,
+    category: EB_SUB[e.subcategory_id] ?? EB_CAT[e.category_id] ?? category(title, summary), url: e.url, image: e.logo?.url ?? "", status: e.status === "canceled" ? "cancelled" : "ok", outdoor: /park|garden|rooftop|pier|beach|outdoor|street/i.test(`${v.name} ${title}`), summary };
+}
+export async function fromEventbrite(days = 14) {
+  const token = process.env.EVENTBRITE_TOKEN; if (!token) return 0;
+  if (!borough(40.7128, -74.006)) await loadBoroughs(); // NYC venues only: Jersey City is inside the city's bounding box
+  if (now() - ((db.prepare("select max(at) t from runs where what = 'eb-discover'").get() as any)?.t ?? 0) > 20 * 3600) await ebDiscover();
+  const today = nyDate(), to = addDays(today, days), seen = new Set<string>();
+  // organizers with NYC events every day; the others once a week, in case they post some
+  const orgs = db.prepare("select id from eb_orgs where nyc > 0 or checked is null or checked < ?").all(now() - 7 * 86400) as any[];
+  for (const { id } of orgs) {
+    let nyc = 0, name = "", cont = "";
+    try {
+      for (let page = 0; page < 4; page++) {
+        const r = await fetch(`https://www.eventbriteapi.com/v3/organizers/${id}/events/?status=live&order_by=start_asc&expand=venue,ticket_availability,organizer${cont ? `&continuation=${cont}` : ""}`,
+          { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30_000) });
+        if (r.status === 429) throw new Error("rate limited");
+        if (!r.ok) break;
+        const d: any = await r.json();
+        for (const e of d.events ?? []) {
+          name ||= e.organizer?.name ?? "";
+          const x = ebEvent(e); if (!x) continue;
+          nyc++;
+          if (x.start.slice(0, 10) >= today && x.start.slice(0, 10) <= to && save(x)) seen.add(x.id);
+        }
+        if (!d.pagination?.has_more_items) break; cont = d.pagination.continuation;
+      }
+    } catch (e) { if ((e as Error).message === "rate limited") break; }
+    db.prepare("update eb_orgs set checked = ?, nyc = ?, name = coalesce(nullif(?, ''), name) where id = ?").run(now(), nyc, name, id);
+  }
+  sweep("eventbrite", seen, today, addDays(today, 3)); run("eventbrite", seen.size, `${orgs.length} organizers`); return seen.size;
+}
+
 /** The same event from two sources (same day, nearly the same title, same place): keep one, the most specific source. */
 export function dedupe() {
   db.exec("update ev set dup_of = null");
-  const rank: Record<string, number> = { ticketmaster: 0, city: 1, parks: 1, nycforfree: 2, freehours: 2, permits: 3 };
+  const rank: Record<string, number> = { ticketmaster: 0, eventbrite: 1, city: 1, parks: 1, nycforfree: 2, freehours: 2, permits: 3 };
   const key = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 2).slice(0, 4).join(" ");
   const rows = db.prepare("select id, source, title, start, lat, lon from ev where status = 'ok' and start >= ?").all(nyDate()) as any[], best = new Map<string, any[]>();
   let n = 0;
@@ -203,13 +266,18 @@ export async function eveningTick(full = false) {
   if (busy) return; busy = true;
   try {
     const last = (db.prepare("select max(at) t from runs where what = 'permits'").get() as any)?.t ?? 0, daily = full || now() - last > 20 * 3600;
-    const tasks: [string, () => Promise<number> | number][] = daily ? [["parks", fromParks], ["ticketmaster", () => fromTicketmaster(7)], ["city", () => fromCity(7)], ["permits", fromPermits], ["free", () => fromFree(7)]]
+    const tasks: [string, () => Promise<number> | number][] = daily ? [["parks", fromParks], ["ticketmaster", () => fromTicketmaster(7)], ["city", () => fromCity(7)], ["permits", fromPermits], ["free", () => fromFree(7)], ["eventbrite", () => fromEventbrite(14)]]
       : [["ticketmaster", () => fromTicketmaster(1)], ["city", () => fromCity(1)], ["parks", fromParks]];
     for (const [name, f] of tasks) { try { await f(); } catch (e) { console.log(`evening ${name}:`, (e as Error).message); } }
     dedupe();
   } finally { busy = false; }
 }
-export function startEvening() { setTimeout(() => eveningTick(), 45_000); setInterval(() => eveningTick(), 3600_000); }
+export function startEvening() {
+  // permits were keyed by event_id alone until 2026-10-29 (one day of a multi-day permit overwrote the others): read them again
+  const old = db.prepare("delete from ev where source = 'permits' and id not glob 'permit:*:*'").run().changes;
+  const never = ["permits", "free", "eventbrite"].some((w) => !db.prepare("select 1 from runs where what = ?").get(w)); // a source added since the last daily pass
+  setTimeout(() => eveningTick(old > 0 || never), 45_000); setInterval(() => eveningTick(), 3600_000);
+}
 
 // ---------- plan my evening ----------
 const toMin = (t: string) => +t.slice(0, 2) * 60 + +t.slice(3, 5), fmt = (m: number) => `${String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, "0")}:${String(((m % 60) + 60) % 60).padStart(2, "0")}`;
