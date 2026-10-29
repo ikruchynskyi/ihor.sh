@@ -709,7 +709,29 @@ async function transitWithStops(pts: Place[], accessible = false) {
       walkMinutes: parts.reduce((t, o) => t + o.walkMinutes, 0), waitMinutes: parts.reduce((t, o) => t + o.waitMinutes, 0), legs: parts.flatMap((o) => o.legs) }] };
 }
 
-async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = false) {
+/** MTA subway and bus stops within `km` of a point, nearest first (Transitous's stop map), one per name. */
+async function stopsNear(p: Place, km = 1.5) {
+  const dLat = km / 111.32, dLon = dLat / Math.cos((p.lat * Math.PI) / 180), k = Math.PI / 180;
+  const r = await fetch(`https://api.transitous.org/api/v1/map/stops?min=${p.lat - dLat},${p.lon - dLon}&max=${p.lat + dLat},${p.lon + dLon}`,
+    { headers: { "user-agent": "ihor.sh trip planner (+https://ihor.sh/nyc/)" }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  const list: any[] = r?.ok ? await r.json() : [], seen = new Set<string>();
+  return list.filter((x) => /MTA/.test(x.stopId ?? "") && (x.modes ?? []).some((m: string) => m === "SUBWAY" || m === "BUS"))
+    .map((x) => ({ label: titleCase(String(x.name)), lat: +x.lat, lon: +x.lon, m: Math.hypot((x.lon - p.lon) * k * Math.cos(p.lat * k), (x.lat - p.lat) * k) * 6371e3 }))
+    .filter((x) => x.m <= km * 1000).sort((x, y) => x.m - y.m).filter((x) => !seen.has(x.label) && seen.add(x.label));
+}
+/** No route at all, usually because one end can't be walked to (a bridge or highway, a pier, a rail yard): the same
+ *  trip to the nearest stops that work around that end, and how far short of it they leave you. */
+async function transitNearby(a: Place, b: Place, leaveAt?: string, accessible = false) {
+  for (const end of ["to", "from"] as const) {
+    const p = end === "to" ? b : a, stops = (await stopsNear(p)).slice(0, 4);
+    const tries = await Promise.all(stops.map((s) => transitPlan(end === "to" ? a : s, end === "to" ? s : b, leaveAt, accessible, false).then((d: any) => ({ s, d }))));
+    const ok = tries.find((t) => !t.d.error); // nearest first
+    if (ok) return { ...ok.d, from: a, to: b, short: { end, stop: ok.s.label, lat: ok.s.lat, lon: ok.s.lon, meters: Math.round(ok.s.m / 10) * 10,
+      note: `No subway or bus route ${end === "to" ? "reaches" : "starts at"} ${p.label} itself (often a highway, bridge or pier with no way to walk there). This one ${end === "to" ? "gets you to" : "starts from"} ${ok.s.label}, ${ok.s.m < 1000 ? `${Math.round(ok.s.m / 10) * 10} m` : `${(ok.s.m / 1000).toFixed(1)} km`} away in a straight line.` } };
+  }
+  return { error: `No subway or bus route found, even to the stops within 1.5 km of either end.` };
+}
+async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = false, nearby = true): Promise<any> {
   const q = new URLSearchParams({ fromPlace: `${a.lat},${a.lon}`, toPlace: `${b.lat},${b.lon}`, numItineraries: "8", transitModes: "SUBWAY,BUS", directModes: "WALK" });
   if (accessible) q.set("pedestrianProfile", "WHEELCHAIR"); // step-free walking paths and stops marked wheelchair-accessible in the GTFS
   if (leaveAt) q.set("time", leaveAt);
@@ -743,7 +765,7 @@ async function transitPlan(a: Place, b: Place, leaveAt?: string, accessible = fa
       ...(l.mode === "SUBWAY" && l.tripId ? { trip: l.tripId.split("_").slice(-2).join("_"), stop: String(l.from.stopId ?? "").split("_").pop(), alight: String(l.to.stopId ?? "").split("_").pop() } : {}),
     })),
   }));
-  if (!options.length) return { error: "No subway or bus route found between those places." };
+  if (!options.length) return nearby ? transitNearby(a, b, leaveAt, accessible) : { error: "No subway or bus route found between those places." };
   return { from: a, to: b, mode: "transit", options, source: "Transitous (MTA schedules and live updates)" };
 }
 

@@ -2056,7 +2056,7 @@ $("trip").addEventListener("submit", async (e) => {
   $("tripOut").textContent = "Planning…";
   tripLayer.clearLayers();
   const d = await getJSON(`/api/nyc/trip?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${viaIds.map((id) => `&via=${encodeURIComponent(tripEnd(id))}`).join("")}&mode=${document.querySelector('input[name="tMode"]:checked').value}${$("tNoFerry").checked ? "&ferry=0" : ""}${$("tAccess").checked ? "&access=1" : ""}`).catch((err) => ({ error: err.message }));
-  if (d.error) return ($("tripOut").textContent = d.error);
+  if (d.error) return ($("tripOut").innerHTML = `${esc(d.error)}${otherModes()}`);
   d.viaIds = viaIds;
   if (d.mode === "transit") return showCommute(d, 0);
   seen.trip = { from: d.from.label, to: d.to.label, stops: d.stops?.map((x) => x.label), mode: d.mode, ferry: d.usesFerry, eta: d.eta, jams: d.jams, km: d.distanceKm, minutes: d.minutes, cameras: d.cameras.map((c) => ({ cameraId: c.id, name: c.name })) };
@@ -2085,6 +2085,11 @@ $("trip").addEventListener("submit", async (e) => {
   $("openTrip")?.addEventListener("click", () => d.cameras.slice(0, 4).forEach(openCam));
 });
 
+// When one way doesn't work (or only gets close), the others are one click away; the mode change re-plans.
+const MODE_NAMES = { drive: "🚗 By car", bike: "🚲 By bike", walk: "🚶 Walk", transit: "🚇 Commute" };
+const otherModes = () => { const cur = document.querySelector('input[name="tMode"]:checked').value;
+  return `<div class="acts" style="margin:6px 0">Try: ${Object.entries(MODE_NAMES).filter(([k]) => k !== cur).map(([k, t]) => `<button type="button" data-mode="${k}">${t}</button>`).join(" ")}</div>`; };
+$("tripOut").addEventListener("click", (e) => { const m = e.target.closest("[data-mode]")?.dataset.mode; if (!m) return; const r = document.querySelector(`input[name="tMode"][value="${m}"]`); r.checked = true; r.dispatchEvent(new Event("change", { bubbles: true })); });
 const stopDots = (d) => (d.stops ?? []).forEach((s, i) => { if (!pinMarkers[d.viaIds?.[i]]) dot(s.lat, s.lon, "#ffb347", 8).bindTooltip(`Stop ${i + 1}: ${esc(s.label)}`).addTo(tripLayer); });
 
 // Commute (subway + bus + walking): options from Transitous; pick one to see it on the map, step by step.
@@ -2102,6 +2107,10 @@ function showCommute(d, pick) {
   if (!pinMarkers.tFrom) dot(d.from.lat, d.from.lon, "#5cff9d", 8).bindTooltip(`Start: ${esc(d.from.label)}`).addTo(tripLayer);
   if (!pinMarkers.tTo) dot(d.to.lat, d.to.lon, "#ff5c8a", 8).bindTooltip(`End: ${esc(d.to.label)}`).addTo(tripLayer);
   stopDots(d);
+  const sh = d.short; // transit only gets near one end: the rest drawn as a gap
+  if (sh) lines.push(L.polyline([[sh.lat, sh.lon], sh.end === "to" ? [d.to.lat, d.to.lon] : [d.from.lat, d.from.lon]], { color: "#e03131", weight: 3, dashArray: "2 8" })
+    .bindTooltip(`No subway or bus here: ${sh.meters} m in a straight line`).addTo(tripLayer));
+  if (sh) seen.trip.note = sh.note;
   map.fitBounds(L.featureGroup(lines).getBounds().pad(0.1), { paddingTopLeft: [Math.max(20, $("panel").getBoundingClientRect().right - $("map").getBoundingClientRect().left + 20), 20] });
   // live: the MTA reported this train or bus's real position/time; otherwise the times are the timetable's
   const badges = (x) => { const t = x.legs.filter((l) => l.mode !== "WALK"), live = t.filter((l) => l.realTime).length;
@@ -2110,11 +2119,11 @@ function showCommute(d, pick) {
   // waiting at a stop: the gap between getting there and the bus or train leaving
   const wait = (l, i) => { const g = i && l.mode !== "WALK" ? Math.round((Date.parse(l.depart) - Date.parse(o.legs[i - 1].arrive)) / 60000) : 0; return g >= 2 ? `<li class="muted">⏱ Wait ${g} min for the ${esc(l.route)}</li>` : ""; };
   const step = (l, i) => wait(l, i) + (l.mode === "WALK"
-    ? `<li>🚶 Walk ${l.estimated ? "~" : ""}${l.minutes} min to ${esc(i === o.legs.length - 1 ? d.to.label : o.legs[i + 1]?.from ?? "")}</li>`
+    ? `<li>🚶 Walk ${l.estimated ? "~" : ""}${l.minutes} min to ${esc(i === o.legs.length - 1 ? (sh?.end === "to" ? sh.stop : d.to.label) : o.legs[i + 1]?.from ?? "")}</li>`
     : `<li>${legBullet(l)} <b>${esc(l.route)}</b> toward ${esc(l.headsign)}<br><span class="muted">${hm(l.depart)} ${esc(l.from)} → ${hm(l.arrive)} ${esc(l.to)} · ${l.stops} stop${l.stops > 1 ? "s" : ""}, ${l.minutes} min${l.realTime ? " · live time" : ""}</span>
        ${l.trip ? `<br><button class="linkish" data-trip="${esc(l.trip)}" data-stop="${esc(l.stop)}">Where is this train now?</button>` : ""}</li>`);
   const stepAndStop = (l, i) => step(l, i) + (l.stopAfter ? `<li>📍 <b>Stop: ${esc(l.stopAfter)}</b></li>` : "");
-  $("tripOut").innerHTML = d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>Arrive ${hm(x.arrive)}</b> · ${fromNow(x.arrive)} min from now<br><span class="muted">leave ${fromNow(x.depart) ? `in ${fromNow(x.depart)} min` : "now"} · ${x.minutes} min on the way${x.waitMinutes ? `, ${x.waitMinutes} of it waiting at stops` : ""}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}</span><br>${chips(x)}${badges(x)}</button>`).join("")
+  $("tripOut").innerHTML = (sh ? `<div class="warn">⚠ ${esc(sh.note)}</div>${otherModes()}` : "") + d.options.map((x, i) => `<button class="opt${i === pick ? " on" : ""}" data-o="${i}" aria-pressed="${i === pick}"><b>Arrive ${hm(x.arrive)}</b> · ${fromNow(x.arrive)} min from now<br><span class="muted">leave ${fromNow(x.depart) ? `in ${fromNow(x.depart)} min` : "now"} · ${x.minutes} min on the way${x.waitMinutes ? `, ${x.waitMinutes} of it waiting at stops` : ""}${x.transfers ? ` · ${x.transfers} transfer${x.transfers > 1 ? "s" : ""}` : ""}</span><br>${chips(x)}${badges(x)}</button>`).join("")
     + (o.access && !o.access.stepFree ? `<div class="warn">♿ Not step-free: ${o.access.notes.map(esc).join("; ")}</div>` : o.access ? `<div class="muted">♿ Step-free at every station on this trip, as of now.</div>` : "")
     + (o.alerts?.length ? `<details class="alerts"><summary>⚠ ${o.alerts.length} MTA alert${o.alerts.length > 1 ? "s" : ""} on these lines</summary>${o.alerts.map((a) => `<p>${a.routes.split(",").map(bullet).join("")} <b>${esc(a.type)}</b>: ${esc(a.text)}</p>`).join("")}</details>` : "")
     + `<ol class="steps">${o.legs.map(stepAndStop).join("")}</ol>${o.later.length ? `<div class="muted">Same trip later: ${o.later.map(hm).join(", ")}</div>` : ""}`
