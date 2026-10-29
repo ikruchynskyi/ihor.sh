@@ -408,6 +408,7 @@
     <button type="button" id="tWatch" class="linkish" hidden title="Get a ⭐ badge when an incident, alert or flooding lands within 300 m of this route">⭐ Watch this route</button>
   </section>
   <section data-tab="layers" role="tabpanel" hidden>
+    <div id="presets" class="acts" role="group" aria-label="Layer presets"></div>
     <div id="layers"></div>
     <p class="muted" style="margin:6px 0 0">📻 NYC radio stations moved to the <a href="/radio/stations/">Radio world</a>.</p>
   </section>
@@ -613,10 +614,27 @@ $("layers").innerHTML = Object.entries(GROUPS).map(([g, name]) => {
 }).join("");
 Object.keys(GROUPS).forEach(groupCount);
 $("layers").addEventListener("change", (e) => toggle(e.target.dataset.l, e.target.checked));
+// One click for a set of layers: the preset's layers on, every other one off (windy.com stays as it is).
+const PRESETS = {
+  safety: ["🚓 Safety", "Crime, fires, police and fire alerts, live incidents, Notify NYC and street flooding", ["security", "incidents", "emergency", "floods"]],
+  commute: ["🚆 Commute", "Live trains, stations with alerts, broken elevators, closures, traffic speeds and Citi Bike", ["trains", "alerts", "outages", "closures", "speeds", "citibike"]],
+  weather: ["🌧 Weather", "Rain radar, lightning, street flooding and weather alerts", ["radar", "lightning", "floods", "emergency"]],
+  tonight: ["🎟 Out tonight", "Free city events, pop-ups and sample sales today", ["city", "popups", "sales"]],
+};
+const presetOn = (k) => { const want = new Set(PRESETS[k][2]); return Object.entries(LAYERS).every(([n, l]) => n === "windy" || l.on === want.has(n)); };
+function drawPresets() { $("presets").innerHTML = Object.entries(PRESETS).map(([k, [label, title]]) => `<button data-preset="${k}" title="${esc(title)}" aria-pressed="${presetOn(k)}">${label}</button>`).join("") + `<a href="./tonight.html" class="muted" style="align-self:center">Tonight's events →</a>`; }
+async function applyPreset(k) {
+  const want = new Set(PRESETS[k]?.[2] ?? []);
+  if (!want.size) return;
+  await Promise.all(Object.entries(LAYERS).filter(([n, l]) => n !== "windy" && l.on !== want.has(n)).map(([n]) => toggle(n, want.has(n))));
+  drawBar();
+}
+$("presets").addEventListener("click", (e) => { const k = e.target.closest("[data-preset]")?.dataset.preset; if (k) applyPreset(k); });
+drawPresets();
 async function toggle(k, on) {
   const l = LAYERS[k];
   l.on = on;
-  groupCount(l.grp);
+  groupCount(l.grp); queueMicrotask(() => { try { drawPresets(); } catch {} }); // presets light up when their set is on, however it got there
   const cb = document.querySelector(`#layers input[data-l="${k}"]`);
   if (cb) { cb.checked = on; if (on) cb.closest("details").open = true; }
   if (k === "windy") return showWindy(on);
@@ -2671,6 +2689,8 @@ window.blipActions = {
     parameters: { lines: { type: "string", description: "e.g. C, or A C E; empty for every line" } }, run: ({ lines }) => showLine(lines) },
   show_layer: { label: "switched a layer", description: "Turn map layers on or off. For one subway line use show_line instead. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), incidents (live incidents, merged across sources), closures (road closures, construction, permitted street events), news (today's local news, placed), emergency (Notify NYC alerts), floods (street flooding now), films (film/TV shoots), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key, or several separated by spaces (\"incidents news\")" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: async ({ layer, on = true }) => { for (const k of String(layer ?? "").split(/[\s,+]+/).filter((k) => LAYERS[k])) await toggle(k, on !== false && on !== "false"); } },
+  layer_preset: { label: "switched to a preset", description: "One click for a set of layers (every other layer goes off): safety (crime, fires, alerts, incidents, flooding), commute (live trains, stations with alerts, broken elevators, closures, traffic speeds, Citi Bike), weather (radar, lightning, flooding, weather alerts), tonight (free events, pop-ups, sample sales).", parameters: { preset: { type: "string", enum: ["safety", "commute", "weather", "tonight"], description: "Which preset" } },
+    run: ({ preset }) => applyPreset(String(preset)) },
   mark_places: { label: "marked places on the map", description: "Put labeled pins on the map for several places at once (e.g. the incidents, news stories or 311 hot spots you found with explore_city_data), and fit the map to them. The visitor can clear them with ✕ Clear. Not needed for places you link with a mapLink in your answer: those are pinned already.", parameters: { points: { type: "array", description: "[{lat, lon, label, note}] up to 50; label short (≤ 40 characters)" } },
     run: ({ points, places }) => markPlaces(points ?? places) },
   analyze_area: { label: "analyzed the area", description: "Open the 🔎 This area panel for the map's current view (or after moving the map to lat/lon at a zoom): what's on now, what started in the last 24 hours, 311's week against usual, today's news there, cameras.", parameters: { lat: { type: "number", description: "Optional: center here first" }, lon: { type: "number", description: "Longitude" }, zoom: { type: "number", description: "Zoom (default 15)" } },
