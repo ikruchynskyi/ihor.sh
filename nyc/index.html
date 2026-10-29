@@ -405,6 +405,7 @@
       <button style="margin-top:6px">Plan</button> <button type="button" id="tClear" style="margin-top:6px">Clear</button>
     </form>
     <div id="tripOut" class="muted"></div>
+    <button type="button" id="tWatch" class="linkish" hidden title="Get a ⭐ badge when an incident, alert or flooding lands within 300 m of this route">⭐ Watch this route</button>
   </section>
   <section data-tab="layers" role="tabpanel" hidden>
     <div id="layers"></div>
@@ -1516,6 +1517,7 @@ function drawBar() {
     chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
     `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 hours on the map, hour by hour: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ 24 h</button>`,
+    zones.length ? chip("zones", `⭐ My places${zoneNew() ? ` <small class="new">${zoneNew()} new</small>` : ""}`, `Your watched places (${zones.map((z) => z.name).join(", ")}): what happened there in 24 hours`, zoneNew() ? "warm" : "") : "",
     chip("area", "🔎 This area", "What's in the map's view: now, the last 24 hours, 311's week, news, cameras; the AI can brief it"),
     `<button title="Everything within ${NEAR_M} m of you: incidents, closures, news, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
     lineFilter ? chip("line", `${[...lineFilter].map(bullet).join("")} ✕`, "Showing only these subway lines: click to show every line", "plain") : "",
@@ -1523,7 +1525,7 @@ function drawBar() {
     chip("intro", "❔", "What this map shows and how to use it", "plain"),
   ].join("");
 }
-async function refreshPulse() { pulseNow = await getJSON("/api/nyc/pulse").catch(() => pulseNow); drawBar();
+async function refreshPulse() { pulseNow = await getJSON("/api/nyc/pulse").catch(() => pulseNow); drawBar(); refreshZones();
   if (openedOn && openedOn === viewKey()) { openedOn = ""; cityView(); openedOn = ""; } // the bar's height is known now
   if (!$("panel").querySelector('[data-tab="now"]').hidden) { cityData.incidents = await getJSON("/api/nyc/incidents").catch(() => cityData.incidents); renderNow(); } if (!$("cityBrief").hidden && $("cityBrief").dataset.what === "brief") showPanel("brief", briefHtml()); }
 const goLink = (layer, id, text) => `<a href="#" data-go="${esc(`${layer}|${id}`)}">${text}</a>`;
@@ -1655,6 +1657,7 @@ function barAct(act) {
   if (act === "brief") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "brief" ? closePanel() : showPanel("brief", briefHtml());
   if (act === "around") { if (near) return $("nearOff").click(); showTab("explore"); return $("nearBtn").click(); } // its list is in the Nearby tab
   if (act === "replay") return replay ? closeReplay() : openReplay();
+  if (act === "zones") return openZones();
   if (act === "area") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "area" ? closePanel() : analyzeArea();
   if (act === "briefready") { const b = L.latLngBounds([brief.box.s, brief.box.w], [brief.box.n, brief.box.e]); map.fitBounds(b, { animate: false }); return analyzeArea(b); } // the same box: its brief shows
   openList(act);
@@ -1690,6 +1693,73 @@ function showAt(t) {
 function play() { if (replay.t >= replay.t1 - 60) replay.t = replay.t0; $("replay").querySelector(".rp-play").textContent = "⏸"; replay.timer = setInterval(() => { const t = Math.min(replay.t1, replay.t + 900); showAt(t); if (t >= replay.t1) stopPlay(); }, 350); }
 function stopPlay() { if (!replay?.timer) return; clearInterval(replay.timer); replay.timer = 0; $("replay").querySelector(".rp-play").textContent = "▶"; }
 function closeReplay() { stopPlay(); replay = null; replayLayer.clearLayers(); replayLayer.remove(); $("replay").hidden = true; seen.replay = null; drawBar(); }
+
+// ---------- ⭐ My places: watch zones (home, work, a commute) kept in this browser ----------
+// A zone is points with a radius: a spot (one point, 500 m) or a route (points every ~150 m along it, 300 m). What the
+// replay timeline has (incidents, alerts, flooding, helicopters, crime and fire news) that lands in one is a hit; hits
+// newer than the last look at the list are new, and the bar's ⭐ chip counts them.
+const ZONE_KEY = "nyc.zones", ZONE_SEEN = "nyc.zonesSeen";
+const loadZones = () => { try { return JSON.parse(localStorage.getItem(ZONE_KEY) ?? "[]"); } catch { return []; } };
+let zones = loadZones(), zoneHits = new Map(), zonesAt = 0; // zone id → its events in 24 h
+const zonesSeen = () => { try { return +localStorage.getItem(ZONE_SEEN) || 0; } catch { return 0; } };
+function saveZones() { try { localStorage.setItem(ZONE_KEY, JSON.stringify(zones)); } catch {} zonesAt = 0; refreshZones(); }
+function addZone(name, pts, r) {
+  zones.push({ id: Date.now().toString(36), name: String(name).slice(0, 60), pts: pts.map(([a, b]) => [+a.toFixed(5), +b.toFixed(5)]), r });
+  saveZones();
+  dispatchEvent(new CustomEvent("blip:say", { detail: { text: `Watching ${name}. The ⭐ chip lights up when something happens there.`, mood: "happy" } }));
+}
+const inZone = (z, e) => z.pts.some(([la, lo]) => distM({ lat: la, lon: lo }, e) <= z.r);
+async function refreshZones() {
+  if (!zones.length) { zoneHits = new Map(); seen.zones = null; return drawBar(); }
+  if (Date.now() - zonesAt < 110_000) return;
+  const d = await getJSON("/api/nyc/timeline").catch(() => null);
+  if (!d) return;
+  zonesAt = Date.now();
+  zoneHits = new Map(zones.map((z) => [z.id, d.events.filter((e) => inZone(z, e)).sort((a, b) => b.starts - a.starts)]));
+  seen.zones = zones.map((z) => ({ name: z.name, kind: z.pts.length > 1 ? "route" : "spot", radiusM: z.r, last24h: zoneHits.get(z.id).slice(0, 8).map((e) => `${nyWhen(e.starts)}: ${e.title} (${srcName(e.source)})`) }));
+  drawBar();
+}
+const zoneNew = () => { const t = zonesSeen(); return new Set([...zoneHits.values()].flat().filter((e) => e.starts > t).map((e) => e.id)).size; };
+function zonesHtml() {
+  const t = zonesSeen();
+  const body = zones.length ? zones.map((z) => { const hits = zoneHits.get(z.id) ?? [];
+    return `<p><a href="#" data-zone="${esc(z.id)}"><b>${z.pts.length > 1 ? "🛣" : "⭐"} ${esc(z.name)}</b></a> <span class="muted">${z.pts.length > 1 ? "route" : "spot"}, ${z.r} m · ${hits.length} in 24 h</span> <button class="linkish" data-zdel="${esc(z.id)}" title="Stop watching ${esc(z.name)}">✕</button></p>
+      ${hits.length ? `<ul class="rows">${hits.slice(0, 12).map((e) => `<li><i style="background:${SEV[e.sev] ?? SEV[1]}"></i><a href="#" data-zev="${esc(z.id)}|${esc(e.id)}">${FAM_ICON[e.fam] ?? FAM_ICON.other} ${esc(e.title)}</a>${e.starts > t ? '<span class="new">new</span>' : ""}<span class="muted">${nyWhen(e.starts)} · ${esc(srcName(e.source))}</span></li>`).join("")}</ul>` : `<p class="muted">Quiet: nothing in 24 hours.</p>`}`; }).join("")
+    : `<p>Keep an eye on the places that matter to you: click a spot on the map and press <b>⭐ Watch this spot</b>, or plan a trip and press <b>⭐ Watch this route</b>. They stay in this browser only.</p>`;
+  return { title: `⭐ My places <span class="muted">· the last 24 hours</span>`, body: `${body}<p class="actions"><button data-zadd>⭐ Watch the map's center (500 m)</button>${zones.length ? ` <button data-zask>💬 Ask Blip about them</button>` : ""}</p>
+    <p class="muted">Road incidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news. Waze's minor reports are left out.</p>` };
+}
+function drawZones(only) {
+  for (const z of zones.filter((z) => !only || z.id === only)) (z.pts.length > 1 ? L.polyline(z.pts, { color: "#fab005", weight: 14, opacity: 0.25, interactive: false }) : L.circle(z.pts[0], { radius: z.r, color: "#fab005", weight: 2, dashArray: "6 6", fillOpacity: 0.06, interactive: false })).addTo(panelMarks);
+}
+function openZones() {
+  if (!$("cityBrief").hidden && $("cityBrief").dataset.what === "zones") return closePanel();
+  panelMarks.clearLayers(); showPanel("zones", zonesHtml()); drawZones();
+  try { localStorage.setItem(ZONE_SEEN, String(Math.floor(Date.now() / 1000))); } catch {} // looked at: nothing new any more
+  if (zones.length) map.fitBounds(L.latLngBounds(zones.flatMap((z) => z.pts)).pad(0.3), { maxZoom: 15 });
+}
+$("cityBrief").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-zone], [data-zev], [data-zdel], [data-zadd], [data-zask]");
+  if (!t) return;
+  e.preventDefault();
+  if (t.dataset.zdel) { zones = zones.filter((z) => z.id !== t.dataset.zdel); saveZones(); panelMarks.clearLayers(); showPanel("zones", zonesHtml()); drawZones(); }
+  if (t.hasAttribute("data-zadd")) { const c = viewCenter();
+    getJSON(`/api/nyc/point?lat=${c.lat.toFixed(6)}&lon=${c.lng.toFixed(6)}`).catch(() => null).then((d) => { addZone(d?.found ? `Around ${d.address}` : `Around ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`, [[c.lat, c.lng]], 500); setTimeout(() => { panelMarks.clearLayers(); showPanel("zones", zonesHtml()); drawZones(); }, 1500); }); }
+  if (t.hasAttribute("data-zask")) dispatchEvent(new CustomEvent("blip:ask", { detail: { text: "What happened in my places (my watch zones) in the last 24 hours? What matters, and is anything still going on?" } }));
+  if (t.dataset.zone) { const z = zones.find((x) => x.id === t.dataset.zone); if (z) { showPins(zoneHits.get(z.id) ?? [], z.name); drawZones(z.id); if (!(zoneHits.get(z.id) ?? []).length) map.fitBounds(L.latLngBounds(z.pts).pad(0.5), { maxZoom: 16 }); } }
+  if (t.dataset.zev) { const [zid, id] = t.dataset.zev.split("|"), ev = (zoneHits.get(zid) ?? []).find((x) => x.id === id); if (ev) { showPins([ev]); drawZones(zid); } }
+});
+// ⭐ Watch this route: the drawn trip, every ~150 m
+const tripLine = () => tripLayer.getLayers().filter((l) => l instanceof L.Polyline && !(l instanceof L.Polygon)).flatMap((l) => l.getLatLngs().flat());
+function watchRoute() {
+  const pts = [], line = tripLine();
+  for (const ll of line) if (!pts.length || distM({ lat: pts.at(-1)[0], lon: pts.at(-1)[1] }, { lat: ll.lat, lon: ll.lng }) >= 150) pts.push([ll.lat, ll.lng]);
+  if (line.length) pts.push([line.at(-1).lat, line.at(-1).lng]);
+  if (pts.length > 1) addZone(`${$("tFrom").value || "Start"} → ${$("tTo").value || "end"}`.slice(0, 60), pts.slice(0, 400), 300);
+}
+setTimeout(refreshZones, 1500);
+$("tWatch").onclick = watchRoute;
+new MutationObserver(() => { $("tWatch").hidden = tripLine().length < 2; }).observe($("tripOut"), { childList: true });
 
 // The first visit (not one opened from a link) starts with what the map shows and three ways in; ❔ brings it back.
 function showIntro(on) { $("intro").hidden = !on; if (!on) try { localStorage.setItem("nyc.intro", "1"); } catch {} }
@@ -2478,11 +2548,12 @@ async function showHere(ll, title = "") {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}${b.open != null ? `, ${b.open ? "open now" : "closed now"}${b.hoursToday ? ` (today ${b.hoursToday})` : ""}` : ""}${b.website ? `, website ${b.website}` : ""}${b.phone ? `, ${b.phone}` : ""}`) };
   const list = d.businesses.slice(0, 25);
   at.label ||= d.address;
-  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${d.outsideNyc ? "" : `<div class="bldg"><button type="button" class="linkish" data-bldg>🏠 Building report</button></div>`}${photoBox}
+  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${d.outsideNyc ? "" : `<div class="bldg"><button type="button" class="linkish" data-bldg>🏠 Building report</button> · <button type="button" class="linkish" data-zwatch>⭐ Watch this spot</button></div>`}${photoBox}
     ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""}${b.open != null ? ` <span style="color:${b.open ? "#2f9e44" : "#e03131"}" title="${esc(b.hoursToday ? `Today: ${b.hoursToday}` : "")}">${b.open ? "open" : "closed"}</span>` : ""}${/^https?:\/\//.test(b.website ?? "") ? ` <a href="${esc(b.website)}" target="_blank" rel="noopener" title="${esc(b.name)}'s website">website</a>` : ""}${b.phone ? ` <a href="tel:${esc(b.phone.replace(/[^\d+]/g, ""))}" class="muted">${esc(b.phone)}</a>` : ""}${b.ratingUrl ? "" : ` <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.name} ${b.address || d.address}`)}" target="_blank" rel="noopener" class="muted" title="Find it on Google Maps">maps</a>`} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.ratingUrl) ? " · ★ ratings, hours, websites: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   body.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
   // the button is replaced right away: stop the click here, or Leaflet sees it land outside any popup (a map click) and closes this one
+  if (body.querySelector("[data-zwatch]")) body.querySelector("[data-zwatch]").onclick = (ev) => { ev.stopPropagation(); addZone(title || d.address, [[ll.lat, ll.lng]], 500); ev.target.replaceWith("⭐ watching"); };
   if (body.querySelector("[data-bldg]")) body.querySelector("[data-bldg]").onclick = async (ev) => { ev.stopPropagation(); const box = ev.target.parentElement; box.innerHTML = `<span class="muted">Reading city records…</span>`; p.update();
     const r = await getJSON(`/api/nyc/building?q=${encodeURIComponent(d.address)}`).catch(() => null); box.innerHTML = buildingHtml(r); p.update(); seen.building = r?.found ? r : undefined; };
   }
@@ -2564,11 +2635,12 @@ window.blipContext = () => {
   return { mapView: { lat: +c.lat.toFixed(4), lon: +c.lng.toFixed(4), zoom: map.getZoom(), insideNyc: viewInNyc(), bounds: { s: +vb.getSouth().toFixed(4), w: +vb.getWest().toFixed(4), n: +vb.getNorth().toFixed(4), e: +vb.getEast().toFixed(4) }, note: "The area the visitor is looking at: questions that name no place are about it." }, map: "NYC Live Map. You can act on it for the visitor: set the trip's start/destination/stops one at a time (set_route_point), let them click a point (pick_on_map), change the mode, plan (plan_route) or plan in one go (plan_trip), clear; move the map (show_place), mark points, open cameras, switch layers, show what's within 600 m, follow aircraft. Press B opens this chat.", center: viewCenter(), zoom: map.getZoom(),
     tripForm: { from: $("tFrom").value || null, to: $("tTo").value || null, stops: stopIds().map((id) => $(id).value).filter(Boolean), mode: document.querySelector('input[name="tMode"]:checked')?.value, avoidFerries: $("tNoFerry").checked, stepFree: $("tAccess").checked, picking: picking || null },
     // ~11 m precision is plenty for "nearest bike"; it goes to the chat model with the question
+    myPlaces: seen.zones ?? "none saved (the visitor can press ⭐ Watch this spot on a map click, or ⭐ Watch this route on a planned trip)",
     visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastBuildingReport: seen.building && { address: seen.building.address, building: seen.building.building, hpdOpenViolations: seen.building.hpdOpenViolations, tenantComplaintsLastYear: seen.building.tenantComplaintsLastYear, rats: seen.building.rats, whoOwnsWhat: seen.building.whoOwnsWhat }, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    openIncident: seen.incidentOpen, replayMoment: seen.replay, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
+    openIncident: seen.incidentOpen, openDrawer: seen.drawer, replayMoment: seen.replay, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
     cityNow: pulseNow && { ...pulseNow, brief: pulseNow.brief?.bullets?.map((b) => b.text), unusualList: pulseNow.unusualList?.slice(0, 5).map((u) => u.text) },
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within600m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
