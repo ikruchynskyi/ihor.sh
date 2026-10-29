@@ -565,6 +565,10 @@ function showBikes(s) {
 // ---------- more layers: outages, cameras, events, restaurants, "what's here" ----------
 const nyToday = () => new Date().toLocaleDateString("en-CA", { timeZone: NYTZ }); // asked each time: a page left open past midnight moves on
 const norm = (n) => String(n).toLowerCase().replace(/street/g, "st").replace(/avenue/g, "av").replace(/[^a-z0-9]/g, "");
+// Zoomed out, a busy layer's pins group into one count, ringed in the worst severity inside; from zoom 14 each pin shows.
+const clusterOf = (emoji) => (L.markerClusterGroup ? L.markerClusterGroup({ disableClusteringAtZoom: 14, maxClusterRadius: 40, showCoverageOnHover: false, chunkedLoading: true,
+  iconCreateFunction: (k) => { const sev = Math.max(0, ...k.getAllChildMarkers().map((m) => m.options.sev ?? 0));
+    return L.divIcon({ className: "cam-cluster", html: `<span style="border:2px solid ${SEV[sev] ?? "var(--line)"}">${emoji} ${k.getChildCount()}</span>`, iconSize: null }); } }) : L.layerGroup());
 const LAYERS = {
   alerts: { grp: "go", label: "🚨 Stations with MTA alerts: click for the nearest Citi Bikes", on: false, group: alertLayer, load: () => {} },
   stations: { grp: "go", label: "🚇 All stations: click for next trains", on: false, group: L.layerGroup(), load: loadAllStations },
@@ -580,14 +584,14 @@ const LAYERS = {
   photos: { grp: "streets", label: "📸 Street photos (Mapillary): zoom in, click a dot", on: false, group: L.layerGroup(), load: loadPhotos },
   c311: { grp: "streets", label: "📞 311 reports (last 48 h, in view)", on: false, group: L.layerGroup(), load: load311 },
   security: { grp: "streets", label: "🚓 Security, last 24 hours: crime, fires, police & fire alerts", on: true, group: L.layerGroup(), load: loadSecurity },
-  incidents: { grp: "streets", label: "⚠ Live incidents (Notify NYC, 511NY, Waze, FloodNet, helicopters, camera checks)", on: false, group: L.layerGroup(), load: loadIncidents },
-  closures: { grp: "streets", label: "🚧 Closures, construction & permitted street events", on: false, group: L.layerGroup(), load: loadClosures },
+  incidents: { grp: "streets", label: "⚠ Live incidents (Notify NYC, 511NY, Waze, FloodNet, helicopters, camera checks)", on: false, group: clusterOf("⚠"), load: loadIncidents },
+  closures: { grp: "streets", label: "🚧 Closures, construction & permitted street events", on: false, group: clusterOf("🚧"), load: loadClosures },
   emergency: { grp: "streets", label: "🚨 Notify NYC alerts (24 h) & weather alerts", on: false, group: L.layerGroup(), load: loadEmergency },
   floods: { grp: "streets", label: "🌊 Street flooding now (FloodNet sensors)", on: false, group: L.layerGroup(), load: loadFloodSensors },
   city: { grp: "out", label: "🏛 Free city events today", on: false, group: L.layerGroup(), load: loadCityEvents },
   popups: { grp: "out", label: "🎁 Free pop-ups today", on: false, group: L.layerGroup(), load: loadPopups },
   films: { grp: "out", label: "🎬 Film & TV shoots on now (parking held)", on: false, group: L.layerGroup(), load: loadFilmShoots },
-  news: { grp: "out", label: "📰 Local news today (placed by AI from the text)", on: false, group: L.layerGroup(), load: loadNews },
+  news: { grp: "out", label: "📰 Local news today (placed by AI from the text)", on: false, group: clusterOf("📰"), load: loadNews },
   fdny: { grp: "streets", label: "🚒 FDNY fires: the official record (~3 weeks behind)", on: false, group: L.layerGroup(), load: loadFdny },
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
   restrooms: { grp: "out", label: "🚻 Public restrooms (parks, libraries, transit)", on: false, group: L.layerGroup(), load: loadRestrooms },
@@ -1412,7 +1416,7 @@ const incIcon = (c) => L.divIcon({ className: `inc-icon${c.confidence > 1 ? " tw
 function drawIncidents(g, list, layer) {
   g.clearLayers();
   for (const c of list.filter((c) => c.rough)) L.circle([c.lat, c.lon], { radius: 700, color: SEV[c.sev], weight: 1.5, dashArray: "5 5", fillOpacity: 0.06, interactive: false }).addTo(g); // placed only at its neighborhood
-  for (const c of list) mark(layer, c.id, L.marker([c.lat, c.lon], { icon: incIcon(c), title: c.title, zIndexOffset: 100 * c.sev, riseOnHover: true }).on("click", () => openDetail(c))).addTo(g);
+  for (const c of list) mark(layer, c.id, L.marker([c.lat, c.lon], { icon: incIcon(c), title: c.title, zIndexOffset: 100 * c.sev, riseOnHover: true, sev: c.sev }).on("click", () => openDetail(c))).addTo(g);
 }
 async function loadIncidents(g) {
   const d = (cityData.incidents = await getJSON("/api/nyc/incidents"));
