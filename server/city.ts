@@ -625,6 +625,19 @@ export function securityIncidents(hours = 24) {
   for (const c of list) Object.assign(c, likelihood(c, rel));
   return list.sort((a, b) => b.starts - a.starts);
 }
+/** The last day of placed events worth replaying on the map's time scrubber, oldest first: road incidents and major
+ *  accidents, Notify NYC alerts, street flooding, helicopters circling and crime or fire news that reports the event (not
+ *  Waze's minor reports and hazards: 2,271 "minor accidents" in a day on 2026-10-29; nor roadwork, permits or 311). */
+const REPLAY = /^(road:incident|road:waze-major-accident|alert:|flood:street|air:)/;
+export function timeline(hours = 24) {
+  const rows = db.prepare("select id, source, kind, sev, lat, lon, starts, ends, title, url, detail from events where lat is not null and starts > ? and starts <= ? and source != '311' order by starts").all(now() - Math.min(hours, 72) * 3600, now()) as Ev[];
+  return rows.flatMap((e) => {
+    const d = JSON.parse(e.detail || "{}"), story = e.source === "news" && ["crime", "fire"].includes(d.topic) ? securityStory(e.title) : 0;
+    if (!REPLAY.test(e.kind) && !story) return [];
+    const fam = story ? (d.topic === "fire" ? "fire" : "crime") : e.kind.startsWith("alert:") ? (/fire|smoke/.test(e.kind) ? "fire" : "alert") : e.kind.startsWith("air:") ? "air" : family(e);
+    return [{ id: e.id, fam, sev: story || e.sev, lat: +e.lat!.toFixed(5), lon: +e.lon!.toFixed(5), starts: e.starts, ends: e.ends, title: e.title, source: e.source, url: e.url?.startsWith("http") ? e.url : undefined }];
+  });
+}
 export const hotspots = (hours = 72) => hotspotsOf(db.prepare("select * from events where source in ('news', 'notify') and lat is not null and starts > ?").all(now() - hours * 3600) as Ev[],
   (e) => neighborhood(e.lat!, e.lon!)).slice(0, 6);
 

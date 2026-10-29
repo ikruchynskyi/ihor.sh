@@ -230,6 +230,11 @@
     #cityBrief sup.fact { font-size: 10px; color: var(--muted); margin-left: 1px; }
     #cityBrief ul.rows li { cursor: pointer; }
     #cityBar .clock { font-variant-numeric: tabular-nums; }
+    #replay { position: absolute; z-index: 1000; left: calc(50% + 190px); transform: translateX(-50%); bottom: 26px; width: min(660px, calc(100vw - 440px)); display: flex; gap: 10px; align-items: center; padding: 8px 12px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.4); font: 13px/1.3 system-ui, -apple-system, sans-serif; }
+    #replay .rp-track { flex: 1; display: flex; flex-direction: column; gap: 2px; } #replay svg { width: 100%; height: 24px; display: block; } #replay input { width: 100%; margin: 0; accent-color: var(--accent); }
+    #replay .rp-at { min-width: 118px; font-size: 12px; font-variant-numeric: tabular-nums; } #replay .rp-play { min-width: 36px; }
+    @media (max-width: 700px) { #replay { left: 8px; right: 8px; transform: none; width: auto; bottom: calc(var(--sheet-h, 64px) + 6px); } }
     #cityBar button small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
     #cityBar button[aria-pressed="true"] { border-color: var(--accent) !important; box-shadow: inset 0 0 0 1px var(--accent) !important; }
     #cityBar button.hot { background: #c92a2a !important; color: #fff !important; border-color: #c92a2a !important; } #cityBar button.hot small { color: #ffe3e3; }
@@ -410,6 +415,7 @@
 </div>
 <div id="cityHud"><div id="cityBar" role="status" aria-label="The city now"></div><div id="cityBrief" hidden></div></div>
 <aside id="detail" data-ui hidden aria-label="Incident details"></aside>
+<div id="replay" data-ui hidden role="region" aria-label="Replay the last 24 hours"></div>
 <div id="intro" data-ui hidden role="dialog" aria-labelledby="introT">
   <h2 id="introT">NYC right now</h2>
   <p>The pins are <b>security incidents from the last 24 hours</b>: crime, fires, police and fire alerts, from the city's own alerts and local newsrooms.</p>
@@ -420,7 +426,7 @@
     <button data-intro="around"><b>📍 Around me</b><span>What's within 600 m of you: incidents, closures, transit, cameras</span></button>
     <button data-intro="area"><b>🔎 This area</b><span>Everything in the map's view; the AI can brief it</span></button>
   </div>
-  <p class="muted">Trains, buses, aircraft, cameras, events and more are in the panel's <b>Layers</b> tab. Ask Blip (bottom right) anything.</p>
+  <p class="muted">Click anywhere for what's there; <b>⏱ 24 h</b> replays the last day; the search box finds places, stations, incidents and news. Trains, buses, aircraft, cameras, events and more are in the panel's <b>Layers</b> tab. Ask Blip (bottom right) anything.</p>
   <button data-intro="close" class="igot">Got it</button>
 </div>
 <div id="cams" aria-live="polite"></div>
@@ -1471,6 +1477,7 @@ function drawBar() {
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut} without power`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
     chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
+    `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 hours on the map, hour by hour: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ 24 h</button>`,
     chip("area", "🔎 This area", "What's in the map's view: now, the last 24 hours, 311's week, news, cameras; the AI can brief it"),
     `<button title="Everything within ${NEAR_M} m of you: incidents, closures, news, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
     lineFilter ? chip("line", `${[...lineFilter].map(bullet).join("")} ✕`, "Showing only these subway lines: click to show every line", "plain") : "",
@@ -1609,10 +1616,43 @@ function barAct(act) {
   if (act === "line") return showLine("");
   if (act === "brief") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "brief" ? closePanel() : showPanel("brief", briefHtml());
   if (act === "around") { if (near) return $("nearOff").click(); showTab("explore"); return $("nearBtn").click(); } // its list is in the Nearby tab
+  if (act === "replay") return replay ? closeReplay() : openReplay();
   if (act === "area") return !$("cityBrief").hidden && $("cityBrief").dataset.what === "area" ? closePanel() : analyzeArea();
   if (act === "briefready") { const b = L.latLngBounds([brief.box.s, brief.box.w], [brief.box.n, brief.box.e]); map.fitBounds(b, { animate: false }); return analyzeArea(b); } // the same box: its brief shows
   openList(act);
 }
+// ---------- ⏱ Replay: the last 24 hours on a time scrubber (server: city.ts timeline) ----------
+// At a moment the map shows what started in the 3 hours before it, older fainter; ▶ plays the day in 15-minute steps.
+const replayLayer = L.layerGroup(), REPLAY_WINDOW = 3 * 3600;
+let replay = null; // { events, t0, t1, t, timer }
+const nyWhen = (t) => new Date(t * 1000).toLocaleString([], { timeZone: NYTZ, weekday: "short", hour: "numeric", minute: "2-digit" });
+async function openReplay() {
+  const d = await getJSON("/api/nyc/timeline").catch(() => null);
+  if (!d || replay) return;
+  const t1 = Math.floor(Date.now() / 1000), t0 = t1 - d.hours * 3600, bins = 48, step = (t1 - t0) / bins;
+  replay = { events: d.events, t0, t1, t: t1, timer: 0 };
+  replayLayer.addTo(map);
+  const counts = Array.from({ length: bins }, (_, i) => d.events.filter((e) => e.starts >= t0 + i * step && e.starts < t0 + (i + 1) * step)), most = Math.max(1, ...counts.map((c) => c.length));
+  const el = $("replay"); el.hidden = false;
+  el.innerHTML = `<button class="rp-play" title="Play the day">▶</button><div class="rp-track"><svg viewBox="0 0 ${bins * 4} 24" preserveAspectRatio="none" aria-hidden="true">${counts.map((c, i) => `<rect x="${i * 4}" y="${24 - (22 * c.length) / most}" width="3" height="${(22 * c.length) / most}" fill="${SEV[Math.max(0, ...c.map((e) => e.sev))]}"/>`).join("")}</svg><input type="range" min="${t0}" max="${t1}" step="300" value="${t1}" aria-label="Moment of the last 24 hours"></div><span class="rp-at"></span><button class="rp-x linkish" title="Close the replay" aria-label="Close the replay">×</button>`;
+  el.querySelector("input").oninput = (e) => { stopPlay(); showAt(+e.target.value); };
+  el.querySelector(".rp-play").onclick = () => (replay.timer ? stopPlay() : play());
+  el.querySelector(".rp-x").onclick = closeReplay;
+  showAt(t1); drawBar();
+}
+function showAt(t) {
+  replay.t = t; replayLayer.clearLayers();
+  const on = replay.events.filter((e) => e.starts <= t && e.starts > t - REPLAY_WINDOW);
+  for (const e of on) L.marker([e.lat, e.lon], { title: e.title, zIndexOffset: 100 * e.sev, icon: L.divIcon({ className: "inc-icon", iconSize: [26, 26], html: `<span style="--sev:${SEV[e.sev] ?? SEV[1]};opacity:${(1 - (0.65 * (t - e.starts)) / REPLAY_WINDOW).toFixed(2)}">${FAM_ICON[e.fam] ?? FAM_ICON.other}</span>` }) })
+    .bindPopup(`<b>${FAM_ICON[e.fam] ?? FAM_ICON.other} ${esc(e.title)}</b><br><span class="muted">${nyWhen(e.starts)} · ${esc(srcName(e.source))}</span>${e.url ? `<br><a href="${esc(e.url)}" target="_blank" rel="noopener">source</a>` : ""}`, { maxWidth: 300 }).addTo(replayLayer);
+  const el = $("replay"); el.querySelector("input").value = t;
+  el.querySelector(".rp-at").innerHTML = `<b>${t >= replay.t1 - 60 ? "Now" : nyWhen(t)}</b><br><span class="muted">${on.length} in the 3 hours before</span>`;
+  seen.replay = { at: nyWhen(t), shownOnMap: on.slice(-15).map((e) => `${nyWhen(e.starts)}: ${e.title}`) };
+}
+function play() { if (replay.t >= replay.t1 - 60) replay.t = replay.t0; $("replay").querySelector(".rp-play").textContent = "⏸"; replay.timer = setInterval(() => { const t = Math.min(replay.t1, replay.t + 900); showAt(t); if (t >= replay.t1) stopPlay(); }, 350); }
+function stopPlay() { if (!replay?.timer) return; clearInterval(replay.timer); replay.timer = 0; $("replay").querySelector(".rp-play").textContent = "▶"; }
+function closeReplay() { stopPlay(); replay = null; replayLayer.clearLayers(); replayLayer.remove(); $("replay").hidden = true; seen.replay = null; drawBar(); }
+
 // The first visit (not one opened from a link) starts with what the map shows and three ways in; ❔ brings it back.
 function showIntro(on) { $("intro").hidden = !on; if (!on) try { localStorage.setItem("nyc.intro", "1"); } catch {} }
 $("intro").addEventListener("click", (e) => { const a = e.target.closest("[data-intro]")?.dataset.intro; if (!a) return; showIntro(false); if (a !== "close") barAct(a); });
@@ -2225,7 +2265,8 @@ locateMe(false, true); // show you on the map right away (no start set)
 // Fitted once the page is laid out (the phone's sheet folded) and again when the city bar first fills, unless you moved it.
 let openedOn = "";
 const viewKey = () => `${map.getCenter().toString()}|${map.getZoom()}`;
-function cityView() { if (location.hash) return; const f = freeArea(), size = map.getSize(); map.fitBounds(NYC, { paddingTopLeft: [f.left, f.top], paddingBottomRight: [Math.max(0, size.x - f.right), Math.max(0, size.y - f.bottom)], animate: false }); openedOn = viewKey(); }
+// on a phone the whole city's width is a zoom level too far out: the dense middle (to SI's east shore and eastern Queens) fills it
+function cityView() { if (location.hash) return; const f = freeArea(), size = map.getSize(); map.fitBounds(phone() ? L.latLngBounds([40.56, -74.12], [40.89, -73.76]) : NYC, { paddingTopLeft: [f.left, f.top], paddingBottomRight: [Math.max(0, size.x - f.right), Math.max(0, size.y - f.bottom)], animate: false }); openedOn = viewKey(); }
 
 // Clear: route, pins, both fields and the result list.
 $("tClear").onclick = () => {
@@ -2481,7 +2522,7 @@ window.blipContext = () => {
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
     freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastBuildingReport: seen.building && { address: seen.building.address, building: seen.building.building, hpdOpenViolations: seen.building.hpdOpenViolations, tenantComplaintsLastYear: seen.building.tenantComplaintsLastYear, rats: seen.building.rats, whoOwnsWhat: seen.building.whoOwnsWhat }, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
-    openIncident: seen.incidentOpen, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
+    openIncident: seen.incidentOpen, replayMoment: seen.replay, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
     cityNow: pulseNow && { ...pulseNow, brief: pulseNow.brief?.bullets?.map((b) => b.text), unusualList: pulseNow.unusualList?.slice(0, 5).map((u) => u.text) },
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within600m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 
     windy: LAYERS.windy?.on ? `windy.com forecast map under the markers, showing ${$("windyOverlay")?.value}` : undefined };
@@ -2536,8 +2577,11 @@ document.querySelector(".ptabs").addEventListener("click", (e) => { const b = e.
 try { showTab(localStorage.getItem("nyc-tab") || "now"); } catch { showTab("now"); }
 const fold = (folded) => { $("panel").classList.toggle("folded", folded); $("fold").textContent = folded ? "▸" : "▾"; $("fold").setAttribute("aria-expanded", String(!folded)); };
 // On phones the panel is a sheet at the bottom: Blip (companion.js) stands on top of it instead of on its buttons.
-const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${Math.max($("panel").offsetHeight, $("detail").hidden ? 0 : $("detail").offsetHeight) + 8}px` : "0px");
-new ResizeObserver(blipFloor).observe($("panel")); new ResizeObserver(blipFloor).observe($("detail")); addEventListener("resize", blipFloor);
+// (and above the incident drawer, and the replay's time bar, which sits on the sheet)
+const sheetTop = () => document.documentElement.style.setProperty("--sheet-h", `${$("panel").offsetHeight}px`);
+new ResizeObserver(sheetTop).observe($("panel"));
+const blipFloor = () => document.documentElement.style.setProperty("--blip-floor", matchMedia("(max-width: 700px)").matches ? `${Math.max($("panel").offsetHeight, $("detail").hidden ? 0 : $("detail").offsetHeight) + ($("replay").hidden ? 0 : $("replay").offsetHeight + 6) + 8}px` : "0px");
+new ResizeObserver(blipFloor).observe($("panel")); new ResizeObserver(blipFloor).observe($("detail")); new ResizeObserver(blipFloor).observe($("replay")); addEventListener("resize", blipFloor);
 $("fold").addEventListener("click", () => fold(!$("panel").classList.contains("folded")));
 if (matchMedia("(max-width: 700px)").matches) fold(true);
 cityView();

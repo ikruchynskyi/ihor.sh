@@ -39,7 +39,7 @@ import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
 import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, publicSpaces, buildingReport, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
-import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
+import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, timeline, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
 
@@ -970,6 +970,7 @@ const server = http.createServer(async (req, res) => {
       researchIncident(iid, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = (e as Error).message));
       return cityJson({ id }, 0);
     }
+    if (url.pathname === "/api/nyc/timeline") return cityJson({ hours: 24, events: timeline(24) }, 120);
     if (url.pathname === "/api/nyc/security") return cityJson({ incidents: securityIncidents().slice(0, 300).map(incidentView) }, 60);
     if (url.pathname === "/api/nyc/brief-job") {
       const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));
