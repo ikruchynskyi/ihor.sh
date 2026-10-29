@@ -970,7 +970,7 @@ const server = http.createServer(async (req, res) => {
       researchIncident(iid, (s) => (job.step = s)).then((r) => (job.result = r)).catch((e) => (job.error = (e as Error).message));
       return cityJson({ id }, 0);
     }
-    if (url.pathname === "/api/nyc/timeline") return cityJson({ hours: 24, events: timeline(24) }, 120);
+    if (url.pathname === "/api/nyc/timeline") { const h = url.searchParams.get("hours") === "72" ? 72 : 24; return cityJson({ hours: h, events: timeline(h) }, 120); }
     if (url.pathname === "/api/nyc/security") return cityJson({ incidents: securityIncidents().slice(0, 300).map(incidentView) }, 60);
     if (url.pathname === "/api/nyc/brief-job") {
       const job = briefJobs.get(String(url.searchParams.get("id") ?? ""));

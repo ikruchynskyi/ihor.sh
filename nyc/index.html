@@ -1534,7 +1534,7 @@ function drawBar() {
     p.customersOut >= 1000 ? chip("outages", `⚡ ${p.customersOut} without power`, `Con Ed: ${p.outages} outages, ${p.customersOut} customers out`, "warm") : "",
     chip("brief", `📝 City brief <small>${p.brief ? hhmm(p.brief.at) : "…"}</small>`, "The situation brief: written by the local model from facts the code gathered, every bullet checked against its facts"),
     brief && !brief.running && !brief.seen ? chip("briefready", `✨ Brief ready`, `The brief for ${brief.label}: click to see it`, "hot") : "",
-    `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 hours on the map, hour by hour: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ 24 h</button>`,
+    `<button data-act="replay" aria-pressed="${!!replay}" title="Replay the last 24 or 72 hours on the map: road incidents and major accidents, Notify NYC alerts, street flooding, helicopters circling, crime and fire news">⏱ Replay</button>`,
     zones.length ? chip("zones", `⭐ My places${zoneNew() ? ` <small class="new">${zoneNew()} new</small>` : ""}`, `Your watched places (${zones.map((z) => z.name).join(", ")}): what happened there in 24 hours`, zoneNew() ? "warm" : "") : "",
     chip("area", "🔎 This area", "What's in the map's view: now, the last 24 hours, 311's week, news, cameras; the AI can brief it"),
     `<button title="Everything within ${NEAR_M} m of you: incidents, closures, news, subway, buses, Citi Bike, cameras, restrooms (click again to take it off)" data-act="around" aria-pressed="${!!near}">📍 Around me</button>`,
@@ -1685,15 +1685,16 @@ function barAct(act) {
 const replayLayer = L.layerGroup(), REPLAY_WINDOW = 3 * 3600;
 let replay = null; // { events, t0, t1, t, timer }
 const nyWhen = (t) => new Date(t * 1000).toLocaleString([], { timeZone: NYTZ, weekday: "short", hour: "numeric", minute: "2-digit" });
-async function openReplay() {
-  const d = await getJSON("/api/nyc/timeline").catch(() => null);
+async function openReplay(hours = 24) {
+  const d = await getJSON(`/api/nyc/timeline?hours=${hours}`).catch(() => null);
   if (!d || replay) return;
-  const t1 = Math.floor(Date.now() / 1000), t0 = t1 - d.hours * 3600, bins = 48, step = (t1 - t0) / bins;
-  replay = { events: d.events, t0, t1, t: t1, timer: 0 };
+  const t1 = Math.floor(Date.now() / 1000), t0 = t1 - d.hours * 3600, bins = d.hours * 2, step = (t1 - t0) / bins;
+  replay = { events: d.events, t0, t1, t: t1, timer: 0, hours: d.hours };
   replayLayer.addTo(map);
   const counts = Array.from({ length: bins }, (_, i) => d.events.filter((e) => e.starts >= t0 + i * step && e.starts < t0 + (i + 1) * step)), most = Math.max(1, ...counts.map((c) => c.length));
   const el = $("replay"); el.hidden = false;
-  el.innerHTML = `<button class="rp-play" title="Play the day">▶</button><div class="rp-track"><svg viewBox="0 0 ${bins * 4} 24" preserveAspectRatio="none" aria-hidden="true">${counts.map((c, i) => `<rect x="${i * 4}" y="${24 - (22 * c.length) / most}" width="3" height="${(22 * c.length) / most}" fill="${SEV[Math.max(0, ...c.map((e) => e.sev))]}"/>`).join("")}</svg><input type="range" min="${t0}" max="${t1}" step="300" value="${t1}" aria-label="Moment of the last 24 hours"></div><span class="rp-at"></span><button class="rp-x linkish" title="Close the replay" aria-label="Close the replay">×</button>`;
+  el.innerHTML = `<button class="rp-play" title="Play the day">▶</button><div class="rp-track"><svg viewBox="0 0 ${bins * 4} 24" preserveAspectRatio="none" aria-hidden="true">${counts.map((c, i) => `<rect x="${i * 4}" y="${24 - (22 * c.length) / most}" width="3" height="${(22 * c.length) / most}" fill="${SEV[Math.max(0, ...c.map((e) => e.sev))]}"/>`).join("")}</svg><input type="range" min="${t0}" max="${t1}" step="300" value="${t1}" aria-label="Moment of the last ${d.hours} hours"></div><span class="rp-at"></span><button class="rp-h linkish" title="Replay ${d.hours === 72 ? "the last 24 hours" : "the last 3 days"} instead">${d.hours === 72 ? "24 h" : "72 h"}</button><button class="rp-x linkish" title="Close the replay" aria-label="Close the replay">×</button>`;
+  el.querySelector(".rp-h").onclick = () => { closeReplay(); openReplay(d.hours === 72 ? 24 : 72); };
   el.querySelector("input").oninput = (e) => { stopPlay(); showAt(+e.target.value); };
   el.querySelector(".rp-play").onclick = () => (replay.timer ? stopPlay() : play());
   el.querySelector(".rp-x").onclick = closeReplay;
@@ -1708,7 +1709,7 @@ function showAt(t) {
   el.querySelector(".rp-at").innerHTML = `<b>${t >= replay.t1 - 60 ? "Now" : nyWhen(t)}</b><br><span class="muted">${on.length} in the 3 hours before</span>`;
   seen.replay = { at: nyWhen(t), shownOnMap: on.slice(-15).map((e) => `${nyWhen(e.starts)}: ${e.title}`) };
 }
-function play() { if (replay.t >= replay.t1 - 60) replay.t = replay.t0; $("replay").querySelector(".rp-play").textContent = "⏸"; replay.timer = setInterval(() => { const t = Math.min(replay.t1, replay.t + 900); showAt(t); if (t >= replay.t1) stopPlay(); }, 350); }
+function play() { if (replay.t >= replay.t1 - 60) replay.t = replay.t0; $("replay").querySelector(".rp-play").textContent = "⏸"; replay.timer = setInterval(() => { const t = Math.min(replay.t1, replay.t + 900 * (replay.hours / 24)); showAt(t); if (t >= replay.t1) stopPlay(); }, 350); }
 function stopPlay() { if (!replay?.timer) return; clearInterval(replay.timer); replay.timer = 0; $("replay").querySelector(".rp-play").textContent = "▶"; }
 function closeReplay() { stopPlay(); replay = null; replayLayer.clearLayers(); replayLayer.remove(); $("replay").hidden = true; seen.replay = null; drawBar(); }
 
