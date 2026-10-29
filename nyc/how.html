@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How the Live Map Works · NYC</title>
-  <meta name="description" content="An interactive diagram of the NYC Live Map: where its data comes from, what this server does with it (merging reports, how likely each one is real, unusual counts, camera looks, AI briefs that must cite their facts) and where it shows up, with each feed's health live.">
+  <meta name="description" content="An interactive diagram of the NYC Live Map: where its data comes from, what this server does with it (merging reports, how likely each one is real, unusual counts, camera looks, AI briefs that must cite their facts) and how the map draws and analyzes it (one pin, ranking, grouping, replay, against normal, questions about a place), with each feed's health live.">
   <style>
     :root {
       --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dddad3; --card: #ffffff; --soft: #f3f1ec; --accent: #d9480f;
@@ -85,6 +85,23 @@
       .list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     }
     .notes { max-width: 820px; margin-top: 24px; }
+    /* from data to a picture */
+    .viz { max-width: 980px; margin-top: 28px; }
+    .viz h2 { font-size: 1.2rem; margin: 0 0 4px; } .viz h3 { font-size: 1rem; margin: 22px 0 4px; }
+    .viz p, .viz li { max-width: 820px; } .viz li { margin: 4px 0; }
+    .pinlab { display: grid; grid-template-columns: 120px 1fr; gap: 14px 20px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--r, 10px); padding: 14px; margin: 10px 0; }
+    @media (max-width: 600px) { .pinlab { grid-template-columns: 1fr; } }
+    .pinlab .stage { display: grid; place-items: center; height: 110px; background: var(--soft); border-radius: var(--r-sm, 8px); }
+    .pinlab .ctl { display: grid; gap: 8px; font-size: .9rem; } .pinlab .ctl label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .pinlab .ctl label:has(> input[type="checkbox"]) { flex-wrap: nowrap; }
+    .pinlab .ctl button { font: inherit; font-size: .85rem; padding: 3px 9px; border: 1px solid var(--line); border-radius: var(--r-sm, 999px); background: var(--card); color: var(--fg); cursor: pointer; }
+    .pinlab .ctl button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+    .pinlab output { font-variant-numeric: tabular-nums; }
+    .pin { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font-size: 24px; background: var(--card); box-shadow: 0 0 0 5px var(--sev), 0 1px 6px rgba(0,0,0,.5); }
+    .pin.two { box-shadow: 0 0 0 5px var(--sev), 0 0 0 10px #fff, 0 1px 6px rgba(0,0,0,.5); }
+    .rough { position: absolute; width: 104px; height: 104px; border-radius: 50%; border: 2px dashed var(--sev); }
+    .ways { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 10px 0; padding: 0; list-style: none; }
+    .ways li { background: var(--card); border: 1px solid var(--line); border-radius: var(--r, 10px); padding: 10px 12px; margin: 0; font-size: .9rem; }
+    .ways li b { display: block; margin-bottom: 2px; }
     .notes h2 { font-size: 1.05rem; margin: 18px 0 6px; }
     .notes li { margin: 4px 0; }
   </style>
@@ -93,13 +110,65 @@
 <main>
   <p class="muted"><a href="./">← NYC Live Map</a></p>
   <h1>How the Live Map Works</h1>
-  <p class="lead">Where the <a href="./">NYC Live Map</a>'s data comes from, what this server does with it, and where you see it. Pick a box to see what feeds it and what it feeds; the dots show each feed's last poll, live.</p>
+  <p class="lead">Where the <a href="./">NYC Live Map</a>'s data comes from, what this server does with it, and where you see it. Pick a box to see what feeds it and what it feeds; the dots show each feed's last poll, live. Below it: <a href="#picture">how the map turns the data into a picture</a> you can read at a glance and question in place.</p>
   <p id="live" class="muted">Checking the feeds…</p>
   <div class="traces" id="traces"><span class="muted">Follow one report:</span></div>
   <div class="wrap">
     <div class="board" id="board"><svg id="links" aria-hidden="true"></svg></div>
     <aside class="info" id="info" aria-live="polite"><button id="close" aria-label="Close">✕</button><div id="infoBody"></div></aside>
   </div>
+  <section class="viz" id="picture">
+    <h2>From data to a picture</h2>
+    <p class="lead">The feeds above are only the foundation. Thousands of rows a day are no use to someone deciding whether to take the A train or worry about smoke on their block. The map's real job is to turn them into a few things you can take in at a glance, and to let you ask follow-up questions in place. Here is how it does that, and the exact rules it uses.</p>
+
+    <h3>1. One pin says four things</h3>
+    <p>Every incident is drawn the same way wherever it shows up (the map, the Now feed, the replay), so you learn to read it once. Try it:</p>
+    <div class="pinlab" id="pinlab">
+      <div class="stage"><span class="pin" id="pdemo"><span class="rough" id="prough" hidden></span><span id="pemo">🔥</span></span></div>
+      <div class="ctl">
+        <label>What happened (the emoji): <span id="pfam"></span></label>
+        <label>How serious (the ring's color): <span id="psev"></span></label>
+        <label>How likely it's real (how solid it looks): <input type="range" id="plike" min="0" max="100" value="84" aria-label="How likely it's real"> <output id="plikeo"></output></label>
+        <label><input type="checkbox" id="ptwo" checked> 2 or more independent sources agree (a white halo)</label>
+        <label><input type="checkbox" id="prgh"> Placed only at its neighborhood (a dashed circle)</label>
+        <p class="muted" id="prank" style="margin:0"></p>
+      </div>
+    </div>
+    <p class="muted">Opacity = 0.45 + 0.55 × likelihood, so even an unlikely report stays visible but reads as tentative. The likelihood itself comes from the witnesses (the 🎯 box above).</p>
+
+    <h3>2. What deserves your attention first</h3>
+    <p>The <b>Now</b> tab doesn't list incidents by time; it ranks them by <b>attention = (1 + severity) × likelihood × 1.5 if it started in the last hour</b>. A confirmed serious fire from ten minutes ago outranks a dozen single-driver Waze reports. Alerts that have no place (citywide) go on top, and anything newer than your last look is marked <i>new</i>.</p>
+
+    <h3>3. Less clutter as you zoom out</h3>
+    <ul>
+      <li><b>Groups.</b> Below zoom 14, incidents, closures and news pins that sit close together become one count ("⚠ 15"), ringed in the worst severity inside, so one serious incident isn't hidden in a crowd of minor ones. Zoom in and they come apart.</li>
+      <li><b>Merging before drawing.</b> Reports of one thing within 300 m become one incident; several Waze drivers reporting the same crash (same kind, within 250 m, within the hour) are one report. On 2026-10-29 that turned 2,285 "minor accident" reports in a day into 1,630.</li>
+      <li><b>Hotspots.</b> The 👁 chip names the neighborhoods where crime and fire news and police or fire alerts gathered over 72 hours: each story counts once (however many outlets ran it), weighted 1 + its severity.</li>
+      <li><b>Presets.</b> The Layers tab's Safety, Commute, Weather and Out tonight each switch on exactly the layers for that question, and everything else off.</li>
+    </ul>
+
+    <h3>4. Time</h3>
+    <ul>
+      <li><b>⏱ Replay</b> the last 24 or 72 hours. A moment shows what started in the 3 hours before it, older pins fading (opacity 1 − 0.65 × age / 3 h), so you see things appear and settle. Above the scrubber, a bar per half hour colored by its worst severity shows when the day was busy before you press ▶.</li>
+      <li><b>🔎 This area</b> draws the view's last 24 hours hour by hour, by kind.</li>
+    </ul>
+
+    <h3>5. Against what's normal</h3>
+    <p>A count means little alone: 11 heat complaints is a lot for one ZIP in October and nothing in another. The 📈 unusual counts are shown as "× usual" against that ZIP's own expected rate (its last 28 days × the season), and only after a Poisson test and Benjamini–Hochberg (the 📈 box above). 🔎 This area shows 311's week against its usual the same way.</p>
+
+    <h3>6. Questions about a place, answered in place</h3>
+    <ul class="ways">
+      <li><b>Click anywhere</b>the address, the businesses there with ratings and opening hours, a street photo, directions, and a 🏠 building report (violations in plain words, complaints, bedbugs, housing court, the landlord's other buildings).</li>
+      <li><b>▸ What's nearby</b>on every popup: today's incidents, the last 2 hours' alerts, closures and news within 500 m of that thing, with the nearest cameras.</li>
+      <li><b>🔎 This area</b>everything in the map's view: now, the last 24 hours, 311's week against usual, news, cameras, the official NYPD and FDNY record; ✨ asks the AI for a brief after it looks at the area's cameras.</li>
+      <li><b>📍 Around me</b>what's within 600 m of you: incidents and closures, subway stations with their alerts, buses, Citi Bike, cameras, restrooms.</li>
+      <li><b>⭐ My places</b>your saved spots (500 m) and routes (300 m either side): the chip counts what's new there since you last looked. Kept in your browser only.</li>
+      <li><b>📸 and 📷</b>street photos and live cameras to check with your own eyes, and the local vision model to read a camera for you.</li>
+    </ul>
+
+    <h3>7. Words, only from the facts</h3>
+    <p>The 📝 City brief and the 📰 Research of one incident are written by models, but they are held to the data: the code numbers the facts, a bullet survives only if every fact it cites exists and every number in it appears in them, and each bullet links back to its facts (click one to pin them). <b>Blip</b> answers from the same store through its tools, and the places it names in an answer are pinned on the map for you.</p>
+  </section>
   <section class="notes">
     <h2>What it can't see</h2>
     <ul>
@@ -119,7 +188,7 @@ const COLS = [["Sources", "outside this server", "--blue"], ["Collect", "on this
 const N = {
   notify: { col: 0, t: "🚨 Notify NYC", s: "Emergency Management alerts", polls: ["notify"], d: "NYC Emergency Management's alerts: fires, outages, gas work, water main breaks, closures. Read every 2 minutes from its RSS feed; each alert comes in many languages and only the English one is kept, with its severity and expiry. Placed by its cross streets." },
   nws: { col: 0, t: "⛈ National Weather Service", s: "watches and warnings", polls: ["nws"], d: "The National Weather Service's alerts for the five boroughs (api.weather.gov), every 5 minutes." },
-  ny511: { col: 0, t: "🚧 511NY", s: "incidents, closures, Waze reports", polls: ["511ny"], d: "New York State's traffic events: incidents, closures, construction, special events and drivers' Waze reports, every 2 minutes. Clipped to the five boroughs by their shapes, water included, so bridges and tunnels count. A Waze report is kept for 3 hours." },
+  ny511: { col: 0, t: "🚧 511NY", s: "incidents, closures, Waze reports", polls: ["511ny"], d: "New York State's traffic events: incidents, closures, construction, special events and drivers' Waze reports, every 2 minutes. Clipped to the five boroughs by their shapes, water included, so bridges and tunnels count. A Waze report is kept for 3 hours; another driver's report of the same kind within 250 m and the hour joins the first one instead of counting again." },
   coned: { col: 0, t: "⚡ Con Edison", s: "power outages", polls: ["coned"], d: "Con Edison's outage summary every 15 minutes: outages and customers out of power." },
   water: { col: 0, t: "🌊 Water and air", s: "tide gauge, FloodNet, air quality, rain", polls: ["noaa", "floodnet", "air"], d: "NOAA's tide gauge at the Battery (every 6 minutes), FloodNet's street flood sensors (every 10 minutes: the coastal ones always, every one while it rains; a reading is compared with that sensor's usual depth), and air quality and rain from Open-Meteo (every 10 minutes)." },
   opendata: { col: 0, t: "🗂 NYC Open Data", s: "311, permits, film shoots, FDNY, NYPD", polls: ["311", "permits", "film", "fdny", "truth"], d: "Socrata datasets: 311 service requests (hourly, the last 33 days kept for comparison), permitted street events and film shoots (hourly), FDNY fire dispatches (every 6 hours; the file runs weeks behind), NYPD collisions (daily, to check crash reports), and NYPD complaints, calls and shootings for 🔎 This area's official record (asked for when someone opens it). Also the borough and neighborhood shapes." },
@@ -145,8 +214,9 @@ const N = {
   citybar: { col: 3, t: "🏙 City bar and Now feed", s: "today's incidents, ranked", d: "The bar across the map: a chip for each kind of thing going on (each opens its list and its layer; closing it takes them off), and the city's brief. The Now tab ranks today's incidents by how serious and how likely they are, and marks what's new since your last look." },
   layers: { col: 3, t: "🗺 Map layers", s: "incidents, closures, flooding, cameras…", d: "⚠ incidents (an emoji per kind, a ring for severity, fainter when less likely, a white halo when 2 or more sources agree, a dashed circle when the place is rough), 🚧 closures, 🚨 alerts, 🌊 flooding, 🎬 film shoots, 📰 news, 🚒 FDNY's record, 📷 cameras, and the trains, buses, ferries, ships, aircraft and bikes." },
   area: { col: 3, t: "🔎 This area", s: "everything in the map's view", d: "What's on now in the view, the last 24 hours by hour, 311's week against its usual, today's news, the cameras, and the official public-safety record (NYPD and FDNY). ✨ Brief this area writes a brief for it on request, after one batched look at its cameras." },
-  near: { col: 3, t: "📌 Within 400 m", s: "tap any point", d: "Tap the map: the address, what's there, and everything within 400 m of that point now." },
-  watch: { col: 3, t: "🔔 Watched places", s: "a notification when something lands", d: "Save a place: your browser checks it every 2 minutes while the map is open and notifies you of a new incident there. The list stays in your browser." },
+  near: { col: 3, t: "📌 A place, in place", s: "click, ▸ What's nearby, Around me", d: "Click the map: the address, the businesses there, a street photo and a 🏠 building report. ▸ What's nearby on any popup: incidents, the last 2 hours' alerts, closures, news and cameras within 500 m. 📍 Around me: everything within 600 m of you, transit included." },
+  watch: { col: 3, t: "⭐ My places", s: "a badge when something lands there", d: "Save a spot (500 m) from a map click or a route (300 m either side) from a planned trip. While the map is open it checks them every 2 minutes against the timeline, and the ⭐ chip counts what's new since your last look. The list stays in your browser." },
+  replay: { col: 3, t: "⏱ Replay", s: "the last 24 or 72 hours", d: "A time scrubber over the timeline: a moment shows what started in the 3 hours before it, older fainter, with a bar per half hour colored by its worst severity. ▶ plays it." },
   blip: { col: 3, t: "🤖 Blip and MCP", s: "ask in words", code: "server/blip.ts, server/mcp.ts", d: "Blip, the site's assistant, answers from the same store with its tools: whats_happening_here, area_report, city_brief, local_news, explore_city_data, public_safety_record, watch_area_cameras and the transit and weather ones. It can also mark places on the map and brief an area. The same tools are open to other AI agents over MCP." },
   review: { col: 3, t: "✓ Owner review", s: "real or not?", d: "The owner answers whether incidents were real (<a href=\"review.html\">review page</a>). Each answer moves the reliability of every source that reported it." },
 };
@@ -158,7 +228,7 @@ const E = [
   ["likely", "brief"], ["unusual", "brief"], ["models", "vision"], ["models", "brief"],
   ["likely", "citybar"], ["brief", "citybar"], ["unusual", "citybar"], ["likely", "layers"], ["store", "layers"], ["streams", "layers"], ["cache", "layers"],
   ["store", "area"], ["unusual", "area"], ["vision", "area"], ["brief", "area"], ["store", "near"], ["cache", "near"], ["likely", "watch"],
-  ["store", "blip"], ["brief", "blip"], ["vision", "blip"], ["cache", "blip"], ["likely", "review"], ["review", "likely"],
+  ["store", "replay"], ["likely", "replay"], ["store", "blip"], ["brief", "blip"], ["vision", "blip"], ["cache", "blip"], ["likely", "review"], ["review", "likely"],
 ];
 const TRACES = {
   fire: ["🔥 A fire alert", [
@@ -193,6 +263,23 @@ const TRACES = {
 const POLL_MIN = { "511ny": 2, notify: 2, nws: 5, noaa: 6, coned: 15, air: 10, floodnet: 10, permits: 60, film: 60, "311": 60, adsb: 0.5, unusual: 15, vision: 2, news: 15, fdny: 360, truth: 1440, brief: 15 };
 const POLL_NAME = { "511ny": "511NY", notify: "Notify NYC", nws: "NWS alerts", noaa: "Battery tide", coned: "Con Ed", air: "Air and rain", floodnet: "FloodNet", permits: "Street permits", film: "Film permits", "311": "311", adsb: "Helicopters", unusual: "Unusual counts", vision: "Camera looks", news: "News", fdny: "FDNY dispatch", truth: "Official checks", brief: "Brief" };
 
+// "One pin says four things": the same drawing rules as the map (nyc/map.js incIcon, attention)
+{
+  const FAM = { fire: "🔥", crash: "🚗", flood: "🌊", alert: "🚨", air: "🚁", crime: "🚓" }, SEVC = ["#8f96b8", "#ffb347", "#ff6b35", "#e03131"], SEVN = ["minor", "moderate", "serious", "severe"];
+  let fam = "fire", sev = 2;
+  const btns = (el, list, on, set) => { el.innerHTML = list.map(([k, t]) => `<button type="button" data-k="${k}" aria-pressed="${k == on}">${t}</button>`).join(" "); el.onclick = (e) => { const k = e.target.closest("[data-k]")?.dataset.k; if (k != null) { set(k); draw(); } }; };
+  function draw() {
+    const p = +$("plike").value / 100, pin = $("pdemo");
+    btns($("pfam"), Object.entries(FAM).map(([k, e]) => [k, `${e} ${k}`]), fam, (k) => (fam = k));
+    btns($("psev"), SEVN.map((n, i) => [i, n]), sev, (k) => (sev = +k));
+    pin.style.setProperty("--sev", SEVC[sev]); pin.style.opacity = (0.45 + 0.55 * p).toFixed(2); pin.classList.toggle("two", $("ptwo").checked);
+    $("pemo").textContent = FAM[fam]; $("prough").hidden = !$("prgh").checked; $("plikeo").textContent = `${Math.round(p * 100)}%`;
+    const a = (1 + sev) * p;
+    $("prank").textContent = `Attention in the Now feed: (1 + ${sev}) × ${p.toFixed(2)} = ${a.toFixed(2)}, or ${(a * 1.5).toFixed(2)} in its first hour.`;
+  }
+  for (const id of ["plike", "ptwo", "prgh"]) $(id).addEventListener("input", draw);
+  draw();
+}
 const board = $("board"), svg = $("links");
 board.insertAdjacentHTML("beforeend", COLS.map(([h, sub, c], i) => `<div class="col" style="--c:var(${c})"><h2>${h}<span>${sub}</span></h2><div class="list">${
   Object.entries(N).filter(([, n]) => n.col === i).map(([id, n]) => `<button class="node" data-id="${id}" style="--c:var(${c})"><b>${n.t}</b><span class="s">${n.s}</span>${n.polls ? '<i class="dot"></i>' : ""}</button>`).join("")}</div></div>`).join(""));
