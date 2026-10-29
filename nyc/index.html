@@ -571,6 +571,7 @@ const LAYERS = {
   fdny: { grp: "streets", label: "🚒 FDNY fires: the official record (~3 weeks behind)", on: false, group: L.layerGroup(), load: loadFdny },
   sales: { grp: "out", label: "🛍 Sample sales today", on: false, group: L.layerGroup(), load: loadSales },
   restrooms: { grp: "out", label: "🚻 Public restrooms (parks, libraries, transit)", on: false, group: L.layerGroup(), load: loadRestrooms },
+  pops: { grp: "out", label: "🪑 Public spaces in private buildings (plazas, atriums)", on: false, group: L.layerGroup(), load: loadPops },
   radar: { grp: "sky", label: "🌧 Rain radar (NOAA, ~4 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "radar", "weather_radar", "base_reflectivity_mosaic", 0.6, "green → yellow → red: light → heavy rain") },
   lightning: { grp: "sky", label: "⚡ Lightning (last 15 min)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "lightning", "lightning_detection", "ldn_lightning_strike_density", 0.8, "strike density on an ~8 km grid") },
   clouds: { grp: "sky", label: "☁️ Clouds (GOES infrared)", on: false, group: L.layerGroup(), load: (g) => loadWms(g, "clouds", "satellite", "goes_longwave_imagery", 0.85, "whiter = colder, higher cloud tops", { clouds: true }) },
@@ -1134,6 +1135,29 @@ async function openPhoto(p) {
     seen.photo = { taken: new Date(image.capturedAt).toISOString().slice(0, 10), by: image.creatorUsername, lat: image.lngLat.lat, lon: image.lngLat.lng };
   });
   mly.on("bearing", ({ bearing }) => { const ll = mlyMarker?.getLatLng(); if (ll) mlyHere(ll.lat, ll.lng, bearing); });
+}
+
+// ---------- one building: conditions from city records, owners from Who Owns What (server/nycapi.ts buildingReport) ----------
+function buildingHtml(r) {
+  if (!r?.found) return `<p class="muted">No building record found for this address.</p>`;
+  const b = r.building, v = r.hpdOpenViolations, w = r.whoOwnsWhat, L2 = r.links, a = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : "");
+  return `<div style="margin:6px 0;padding:6px 8px;border-left:3px solid var(--line)">
+    ${b ? `<div>Built ${b.yearBuilt ?? "?"} · ${b.floors ?? "?"} floors · ${b.residentialUnits} apartments${b.totalUnits > b.residentialUnits ? ` of ${b.totalUnits} units` : ""}</div>` : ""}
+    ${v ? `<div>HPD open violations: <b>${v.total}</b>${v.total ? ` <span class="muted">(<span style="color:#e03131">${v.immediatelyHazardousC} immediately hazardous</span>, ${v.hazardousB} hazardous, ${v.nonHazardousA} other)</span>` : ""}</div>` : ""}
+    ${r.tenantComplaintsLastYear?.length ? `<div>Tenant complaints, last 12 months: ${r.tenantComplaintsLastYear.map((c) => `${esc(c.kind.toLowerCase())} ${c.n}`).join(", ")}</div>` : r.tenantComplaintsLastYear ? `<div>No tenant complaints to HPD in 12 months</div>` : ""}
+    ${r.dobActiveComplaints != null ? `<div>Active DOB complaints: ${r.dobActiveComplaints}</div>` : ""}
+    ${r.rats?.latest ? `<div>Rats: last inspection ${esc(r.rats.latest.date)}, ${esc(r.rats.latest.result.toLowerCase())}${r.rats.failedForRatsIn2Years ? ` · <b>${r.rats.failedForRatsIn2Years}</b> failed for rats in 2 years` : ""}</div>` : ""}
+    ${w ? `<div>Owner: ${esc([...w.companies, ...w.owners.slice(0, 2)].join("; ") || b?.ownerOnTaxRolls || "?")}</div>${w.portfolio?.buildings > 1 ? `<div>Same landlord: ${w.portfolio.buildings} buildings, ${w.portfolio.units} units, ${w.portfolio.openViolations} open violations, ${w.portfolio.evictions} evictions</div>` : ""}` : b?.ownerOnTaxRolls ? `<div>Owner on tax rolls: ${esc(b.ownerOnTaxRolls)}</div>` : ""}
+    <div>${[a(L2.whoOwnsWhat, "Who Owns What"), a(L2.hpdOnline, "HPD Online"), a(L2.dobBis, "DOB BIS"), a(L2.acris, "ACRIS deeds"), a(L2.council, `Council district ${esc(r.councilDistrict ?? "")}`)].filter(Boolean).join(" · ")}</div>
+    <span class="muted">${esc(r.sources)}</span></div>`;
+}
+
+// ---------- privately owned public spaces (City Planning's APOPS): plazas, atriums and arcades open to everyone ----------
+async function loadPops(g) {
+  const list = await getJSON("/api/nyc/pops");
+  for (const x of list) pin(x.lat, x.lon, "🪑", x.indoor ? "#1971c2" : "#2f9e44", 20).bindTooltip(`🪑 ${esc(x.name)}`)
+    .bindPopup(`<b>🪑 ${esc(x.name)}</b> <span class="muted">${esc(x.type)}${x.indoor ? " · indoors" : ""}</span><br>${esc(x.address)}${x.hours ? `<br>Open: ${esc(x.hours)}` : ""}${x.amenities ? `<br>${esc(x.amenities)}` : ""}<br><a href="${esc(x.url)}" target="_blank" rel="noopener">APOPS page</a><br><span class="muted">Privately owned public space: open to everyone by law. City Planning via NYC Open Data</span>`, { maxWidth: 300 }).addTo(g);
+  $("n-pops").textContent = `(${list.length}, ${list.filter((x) => x.indoor).length} indoors)`;
 }
 
 // ---------- public restrooms (NYC Open Data), as a layer and in the 600 m circle ----------
@@ -2317,10 +2341,12 @@ async function showHere(ll, title = "") {
   seen.here = { address: d.address, neighborhood: d.neighborhood, businesses: d.businesses.slice(0, 20).map((b) => `${b.name} (${b.kind})${b.rating ? ` ★${b.rating} from ${b.reviews} Google reviews` : ""}`) };
   const list = d.businesses.slice(0, 25);
   at.label ||= d.address;
-  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}${photoBox}
-    ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
+  show(`${head}<b>${esc(d.address)}</b><br><span class="muted">${esc([d.neighborhood, d.zip].filter(Boolean).join(" · "))}</span>${dir}<div class="bldg"><button type="button" class="linkish" data-bldg>🏠 Building report</button></div>${photoBox}
+    ${list.length ? `<ul class="biz">${list.map((b, i) => `<li>${b.camis ? `<a href="#" data-i="${i}">${esc(b.name)}</a>` : esc(b.name)}${b.grade ? ` <span class="grade" style="color:${GRADE_COLOR[b.grade] ?? "inherit"}">${esc(b.grade)}</span>` : ""}${b.rating ? ` <a href="${esc(b.ratingUrl)}" target="_blank" rel="noopener" title="${b.reviews} Google reviews" style="color:#fab005;white-space:nowrap">★ ${b.rating.toFixed(1)}</a><span class="muted"> (${b.reviews.toLocaleString()})</span>` : ""}${/^https?:\/\//.test(b.website ?? "") ? ` <a href="${esc(b.website)}" target="_blank" rel="noopener" title="${esc(b.name)}'s website">website</a>` : ""}${b.ratingUrl ? "" : ` <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.name} ${b.address || d.address}`)}" target="_blank" rel="noopener" class="muted" title="Find it on Google Maps">maps</a>`} <span class="muted">${esc(b.kind ?? "")}${b.address ? ` · ${esc(b.address)}` : ""}</span></li>`).join("")}</ul>
       <span class="muted">Shops: OpenStreetMap · licenses &amp; grades: NYC Open Data${list.some((b) => b.rating) ? " · ★ ratings: Google Maps" : ""}</span>` : `<p class="muted">No businesses listed here.</p>`}`);
   body.querySelectorAll("a[data-i]").forEach((a) => (a.onclick = (ev) => { ev.preventDefault(); showInspections(p, list[+a.dataset.i]); }));
+  body.querySelector("[data-bldg]").onclick = async (ev) => { const box = ev.target.parentElement; box.innerHTML = `<span class="muted">Reading city records…</span>`; p.update();
+    const r = await getJSON(`/api/nyc/building?q=${encodeURIComponent(d.address)}`).catch(() => null); box.innerHTML = buildingHtml(r); p.update(); seen.building = r?.found ? r : undefined; };
   }
   // the best street photo of this spot (Mapillary, within ~100 m, or ~300 m if none, looking at it); a click opens it
   await ph.p;
@@ -2403,7 +2429,7 @@ window.blipContext = () => {
     visitorLocation: meAt ? { lat: +meAt.lat.toFixed(4), lon: +meAt.lng.toFixed(4), accuracyMeters: Math.round(meAccuracy) } : "unknown (not shared: ask the visitor to press ◎ on the map)",
     linkFormat: "Link map things in answers with markdown so the visitor can click them: [Station name](#station=<stationId>), [label](#at=<lat>,<lon>), [address](#place=<address>), [camera name](#cam=<cameraId>), [a route](#trip=transit|Grand Central|Barclays Center) (mode first: drive, bike, walk or transit; stops between, all separated by |).", alertsInView: visible, lineWideAlerts: unplaced.slice(0, 8).map((a) => `${a.type}: ${a.header}`), hiddenAlertTypes: [...hidden],
     layersOn: Object.entries(LAYERS).filter(([, l]) => l.on).map(([k]) => k), outages: seen.outages.slice(0, 30), cameras: seen.cameras, openCameras: seen.openCams,
-    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
+    freeCityEventsToday: seen.city.slice(0, 15), freePopupsToday: seen.popups.slice(0, 15), restaurantSearch: seen.restaurants, lastClickedPlace: seen.here, lastBuildingReport: seen.building && { address: seen.building.address, building: seen.building.building, hpdOpenViolations: seen.building.hpdOpenViolations, tenantComplaintsLastYear: seen.building.tenantComplaintsLastYear, rats: seen.building.rats, whoOwnsWhat: seen.building.whoOwnsWhat }, lastArrivalBoard: seen.arrivals, lastBusStop: seen.busArrivals, following: seen.following, trip: seen.trip, citiBike: seen.citibike, trafficSpeeds: seen.speeds, sampleSalesToday: seen.sales, reports311: seen.c311, ferryNextBoats: seen.ferry,
     openIncident: seen.incidentOpen, nowFeed: seen.now, areaSafetyRecord: seen.areaSafety, newsToday: seen.news, areaAnalysis: seen.area, blipMarksOnMap: aiMarks.getLayers().length, notifyNYCToday: seen.emergency.slice(0, 10), filmShoots: seen.films.slice(0, 10), streetFlooding: seen.floods, incidentsLayer: seen.incidents, securityToday: seen.security,
     cityNow: pulseNow && { ...pulseNow, brief: pulseNow.brief?.bullets?.map((b) => b.text), unusualList: pulseNow.unusualList?.slice(0, 5).map((u) => u.text) },
     weatherNow: seen.weather && { ...seen.weather, forecast: seen.weather.forecast.slice(0, 2) }, aircraftInView: seen.aircraft, shipsInHarbor: seen.ships, within600m: seen.near, restrooms: seen.restrooms, aircraftTrail: seen.trail, streetPhotoOpen: seen.photo, iss: seen.iss, tropicalStorms: seen.storms, 

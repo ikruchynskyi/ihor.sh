@@ -63,8 +63,8 @@ export async function pointInfo(lat: number, lon: number) {
   // Google ratings: on the matching business ("Katz's" ↔ "Katz's Delicatessen"), or as their own entry before the license list.
   for (const g of rated) {
     const k = key(g.name), hit = businesses.find((b) => { const bk = key(b.name); return bk === k || (Math.min(bk.length, k.length) >= 4 && (bk.startsWith(k) || k.startsWith(bk))); });
-    if (hit) Object.assign(hit, { rating: g.rating, reviews: g.reviews, ratingUrl: g.url });
-    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, rating: g.rating, reviews: g.reviews, ratingUrl: g.url, source: "Google" }); }
+    if (hit) Object.assign(hit, { rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website });
+    else { const i = businesses.findIndex((b) => b.source === "NYC license"); businesses.splice(i < 0 ? businesses.length : i, 0, { name: g.name, kind: g.kind, rating: g.rating, reviews: g.reviews, ratingUrl: g.url, website: g.website, source: "Google" }); }
   }
   return { lat, lon, found: true, place: p.label, address: p.housenumber ? `${titleCase(`${p.housenumber.replace(/\s+GARAGE$/i, "")} ${p.street}`).replace(/\bB'way\b/, "Broadway")}, ${p.borough}` : p.label.replace(/, (NY, )?USA$/, ""), neighborhood: info.neighborhood ?? p.neighbourhood ?? null, zip: info.ZIP ?? p.postalcode ?? null, businesses };
 }
@@ -82,12 +82,12 @@ async function googleRatings(lat: number, lon: number) {
   if (++placesUsed > (Number(env("PLACES_DAILY_CAP")) || 300)) return []; // ponytail: in-memory count, a restart resets it
   const r = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
     method: "POST", signal: AbortSignal.timeout(8_000),
-    headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.primaryTypeDisplayName" },
+    headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.googleMapsUri,places.websiteUri,places.primaryTypeDisplayName" },
     body: JSON.stringify({ maxResultCount: 15, rankPreference: "DISTANCE", locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: 40 } } }),
   });
   if (!r.ok) throw new Error(`Places API ${r.status}`);
   return (((await r.json()).places ?? []) as any[]).filter((p) => p.rating && p.displayName?.text)
-    .map((p) => ({ name: p.displayName.text as string, kind: p.primaryTypeDisplayName?.text ?? "", rating: p.rating as number, reviews: (p.userRatingCount ?? 0) as number, url: p.googleMapsUri as string }));
+    .map((p) => ({ name: p.displayName.text as string, kind: p.primaryTypeDisplayName?.text ?? "", rating: p.rating as number, reviews: (p.userRatingCount ?? 0) as number, url: p.googleMapsUri as string, website: (p.websiteUri ?? "") as string }));
 }
 
 const titleCase = (s: string) => s.toLowerCase().replace(/\s+/g, " ").replace(/(^|[\s/-])[a-z]/g, (c) => c.toUpperCase());
@@ -308,6 +308,60 @@ export async function publicRestrooms() {
     })) };
   }
   return restrooms.list;
+}
+
+// ---------- privately owned public spaces (City Planning's APOPS, Open Data rvih-nhyn): plazas, atriums, arcades ----------
+let pops: { at: number; list: any[] } | null = null;
+export async function publicSpaces() {
+  if (!pops || pops.at < Date.now() - 24 * 3600_000) {
+    const rows = (await json("https://data.cityofnewyork.us/resource/rvih-nhyn.json?$limit=1000")) as any[];
+    pops = { at: Date.now(), list: rows.filter((r) => Number(r.latitude) && Number(r.longitude)).map((r) => ({
+      id: r.pops_number, name: r.building_name || `${r.address_number ?? ""} ${titleCase(r.street_name ?? "")}`.trim(), address: `${r.address_number ?? ""} ${titleCase(r.street_name ?? "")}, ${r.borough_name ?? ""}`.trim(),
+      type: r.public_space_type ?? "", indoor: /atrium|arcade|covered|indoor/i.test(r.public_space_type ?? ""), hours: r.hour_of_access_required ?? "", amenities: r.amenities_required && r.amenities_required !== "None" ? r.amenities_required : "",
+      size: r.size_required ?? "", accessible: r.physically_disabled ?? "", lat: +Number(r.latitude).toFixed(5), lon: +Number(r.longitude).toFixed(5), url: `https://apops.mas.org/pops/${String(r.pops_number ?? "").toLowerCase()}/`,
+    })) };
+  }
+  return pops.list;
+}
+
+// ---------- one building: its conditions from city records, and who owns it (JustFix's Who Owns What) ----------
+/** Who Owns What: the building's owners on the HPD registration, rent-stabilized units, evictions, and the landlord's portfolio. */
+async function whoOwns(bbl: string) {
+  const W = "https://wow-django.herokuapp.com/api/address", b = bbl[0], block = bbl.slice(1, 6), lot = bbl.slice(6);
+  const [one, all] = await Promise.all([json(`${W}?borough=${b}&block=${block}&lot=${lot}`), json(`${W}/aggregate?bbl=${bbl}`)]);
+  const me = (one.addrs ?? []).find((x: any) => x.bbl === bbl), agg = all.result?.[0];
+  if (!me && !agg) return null;
+  return { owners: (me?.ownernames ?? []).map((o: any) => `${o.value} (${o.title.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase()})`), companies: me?.corpnames ?? [],
+    rentStabilizedUnits: me?.rsunitslatest ?? null, rentStabilizedYear: me?.rsunitslatestyear ?? null, evictions: me?.evictions ?? null,
+    portfolio: agg && { buildings: agg.bldgs, units: agg.units, openViolations: agg.totalopenviolations, openViolationsPerUnit: agg.openviolationsperresunit, evictions: agg.totalevictions, rentStabilizedChange: agg.totalrsdiff, topOwners: agg.topowners?.slice(0, 4) ?? [] } };
+}
+/** One building by address: HPD's open violations by class and a year of tenant complaints, DOB's active complaints, the latest
+ *  rat inspections, PLUTO's basics, and its owner and landlord portfolio (Who Owns What), with links to each source. */
+export async function buildingReport(input: string) {
+  const a: any = await addressInfo(input);
+  const bbl = String(a["BBL (tax lot)"] ?? "").replace(/\D/g, ""), bin = String(a["BIN (building)"] ?? "").replace(/\D/g, "");
+  if (!a.found || bbl.length !== 10) return { input, found: false };
+  const yearAgo = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), q = (id: string, p: Record<string, string>) => soda(p, id).catch(() => null);
+  const [hpd, complaints, dob, rats, pluto, wow] = await Promise.all([
+    q("wvxf-dwi5", { $select: "class, count(*) as n", $where: `bbl='${bbl}' AND violationstatus='Open'`, $group: "class" }),
+    q("ygpa-z7cr", { $select: "major_category, count(*) as n", $where: `bbl='${bbl}' AND received_date > '${yearAgo}'`, $group: "major_category", $order: "n DESC", $limit: "6" }),
+    /^\d{7}$/.test(bin) && !/^\d000000$/.test(bin) ? q("eabe-havv", { $select: "count(*) as n", $where: `bin='${bin}' AND status='ACTIVE'` }) : null,
+    q("p937-wjvj", { $select: "result, inspection_date", $where: `bbl='${bbl}' AND inspection_date > '${new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10)}'`, $order: "inspection_date DESC", $limit: "50" }),
+    q("64uk-42ks", { $select: "yearbuilt, unitsres, unitstotal, numfloors, ownername, bldgclass", bbl }),
+    whoOwns(bbl).catch(() => null),
+  ]);
+  const byClass = Object.fromEntries((hpd ?? []).map((r: any) => [r.class, +r.n])), p = pluto?.[0], block = +bbl.slice(1, 6), lot = +bbl.slice(6);
+  return { found: true, address: a.address, bbl, bin, neighborhood: a.neighborhood, councilDistrict: a["council district"] ?? null,
+    building: p && { yearBuilt: +p.yearbuilt || null, floors: Math.round(+p.numfloors) || null, residentialUnits: +p.unitsres || 0, totalUnits: +p.unitstotal || 0, ownerOnTaxRolls: p.ownername ?? "" },
+    hpdOpenViolations: hpd && { total: Object.values(byClass).reduce((x: number, y: any) => x + y, 0), immediatelyHazardousC: byClass.C ?? 0, hazardousB: byClass.B ?? 0, nonHazardousA: byClass.A ?? 0 },
+    tenantComplaintsLastYear: complaints && complaints.map((r: any) => ({ kind: r.major_category, n: +r.n })),
+    dobActiveComplaints: dob ? +dob[0]?.n || 0 : null,
+    // baiting visits follow a failed inspection: the latest real inspection says more
+    rats: rats && { latest: ((r) => r && { date: String(r.inspection_date).slice(0, 10), result: r.result })(rats.find((r: any) => !/bait|clean ?up/i.test(r.result))), failedForRatsIn2Years: rats.filter((r: any) => /rat activity/i.test(r.result)).length },
+    whoOwnsWhat: wow,
+    links: { whoOwnsWhat: `https://whoownswhat.justfix.org/en/bbl/${bbl}`, hpdOnline: "https://hpdonline.nyc.gov/hpdonline/", dobBis: /^\d{7}$/.test(bin) ? `https://a810-bisweb.nyc.gov/bisweb/PropertyProfileOverviewServlet?bin=${bin}` : null,
+      acris: `https://a836-acris.nyc.gov/bblsearch/bblsearch.asp?borough=${bbl[0]}&block=${block}&lot=${lot}`, council: a["council district"] ? `https://council.nyc.gov/district-${+a["council district"]}/` : null },
+    sources: "HPD, DOB, DOHMH rodent inspections and PLUTO on NYC Open Data (updated daily); owners and portfolios from JustFix's Who Owns What (HPD registrations)" };
 }
 
 // ---------- 311 ----------

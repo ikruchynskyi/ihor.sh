@@ -38,7 +38,7 @@ import { startMeteorRecorder, meteorApi, meteorCheckApi } from "./server/meteor-
 import { propagation } from "./server/spacewx.ts";
 import { upscale } from "./server/upscale.ts";
 import { startMonitor, startScan, stopMonitor, monitorState, monitorEvents, monitorAudio } from "./server/monitor.ts";
-import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
+import { pointInfo, cityEvents, findRestaurants, restaurantInspections, trafficCameras, trafficSpeeds, tripPlan, geocode, suggest, complaints311, publicRestrooms, publicSpaces, buildingReport, webcamsNear, inNyc, inspectCamera } from "./server/nycapi.ts";
 import { startCity, active, recent, view, incidents, incidentView, around, latestBrief, pulse, hotspots, securityIncidents, researchIncident, anomalies, anomaliesNote, latest, floodnetSensors, floodDepth, BOROUGHS, todaysNews, NEWS_FEEDS, area, areaBrief, safetyRecord, reliability, PRIOR, reviewQueue, label, fdnyRecent, latest as cityLatest, sourcesStatus, type Box } from "./server/city.ts";
 
 try { process.loadEnvFile(path.join(import.meta.dirname, ".env")); } catch {} // keys: see .env (git-ignored)
@@ -468,7 +468,7 @@ const reviewOwner = (req: http.IncomingMessage) => same(/(?:^|;\s*)ihrev=([\w-]+
 let meshSentAt = 0, meshTraceAt = 0;
 
 // Endpoints that call keyed or rate-limited services. (Bus stops by area are cached for a day, so they're free.)
-const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
+const METERED = ["/api/yomu/kanji", "/api/yomu/search", "/api/evening/plan", "/api/jobs/match", "/api/jobs/suggest", "/api/ride/route", "/api/ride/camps", "/api/ride/places", "/api/ride/stops", "/api/nyc/camera-image", "/api/nyc/camera-inspect", "/api/nyc/area-brief", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/point", "/api/nyc/restaurant", "/api/nyc/building", "/api/nyc/city-events", "/api/nyc/311", "/api/nyc/bus-arrivals", "/api/nyc/bus-route", "/api/nyc/trace", "/api/nyc/photos", "/api/nyc/photo-near", "/api/radio/callsign"];
 type BriefJob = { at: number; step: string; result?: unknown; error?: string };
 const briefJobs = new Map<string, BriefJob>();
 const json403 = (res: http.ServerResponse, error: string, code = 403) => res.writeHead(code, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ error }));
@@ -689,7 +689,7 @@ const server = http.createServer(async (req, res) => {
       return proxySdr(req, res);
     }
     if (url.pathname === "/api/radio/status") return res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(await radioStatus()));
-    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/311"].includes(url.pathname)) {
+    if (url.pathname.startsWith("/api/nyc/") && ["/api/nyc/point", "/api/nyc/building", "/api/nyc/restaurants", "/api/nyc/restaurant", "/api/nyc/city-events", "/api/nyc/trip", "/api/nyc/geocode", "/api/nyc/suggest", "/api/nyc/311"].includes(url.pathname)) {
       const ip = clientIp(req);
       if (!dataAllowed(ip)) return res.writeHead(429, { "content-type": "application/json" }).end(JSON.stringify({ error: "Too many requests, try again in a few minutes." }));
       const q = url.searchParams, send = (data: unknown, maxAge = 300) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
@@ -699,6 +699,7 @@ const server = http.createServer(async (req, res) => {
         if (!(Math.abs(lat) <= 85 && Math.abs(lon) <= 180)) return res.writeHead(400).end(); // outside NYC: OpenStreetMap only
         return send(await pointInfo(lat, lon), 3600);
       }
+      if (url.pathname === "/api/nyc/building") return send(await buildingReport(String(q.get("q") ?? "").slice(0, 160)).catch((e) => ({ found: false, error: e.message })), 3600);
       if (url.pathname === "/api/nyc/restaurants") {
         const [la, lo] = String(q.get("near") ?? "").split(",").map(Number), near = la > 40.4 && la < 41 && lo > -74.3 && lo < -73.6 ? { lat: la, lon: lo } : undefined;
         return send(await findRestaurants(String(q.get("q") ?? "").slice(0, 60), String(q.get("boro") ?? "").slice(0, 20), near).catch(() => []), 3600);
@@ -913,6 +914,7 @@ const server = http.createServer(async (req, res) => {
       return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=900" }).end(JSON.stringify(await deals(/^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined)));
     }
     if (url.pathname === "/api/nyc/speeds") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=120" }).end(JSON.stringify(await trafficSpeeds()));
+    if (url.pathname === "/api/nyc/pops") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await publicSpaces()));
     if (url.pathname === "/api/nyc/restrooms") return res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=86400" }).end(JSON.stringify(await publicRestrooms()));
     // The city's live picture (server/city.ts): every feed in one store, read here by the map, the HUD and Blip.
     const cityJson = (data: unknown, maxAge = 30) => res.writeHead(200, { "content-type": "application/json", "cache-control": `public, max-age=${maxAge}` }).end(JSON.stringify(data));
