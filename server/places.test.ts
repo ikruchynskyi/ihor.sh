@@ -33,3 +33,11 @@ const off = mergeBusinesses([{ name: "Rookie USA", kind: "shoes shop", source: "
 assert.equal(off.length, 2); assert.ok(off.every((b: any) => !b.ratingUrl));
 console.log("merge ok");
 
+
+// HPD violation text without the code sections it cites (building report details)
+const { plainViolation } = await import("./nycapi.ts");
+assert.equal(plainViolation("§ 27-2031 ADM CODE PROVIDE HOT WATER AT ALL HOT WATER FIXTURES IN THE ENTIRE APARTMENT LOCATED AT APT 21B, 21st STORY"), "Provide hot water at all hot water fixtures");
+assert.equal(plainViolation("§ 27-2045(B)(1)(B) HMC, § 12-06, § 12-07, § 12-09 RCNY REPAIR, REPLACE OR PROVIDE A SMOKE DETECTOR"), "Repair, replace or provide a smoke detector");
+assert.equal(plainViolation("HMC ADM CODE: § 27-2017.4 ABATE THE INFESTATION CONSISTING OF MICE"), "Abate the infestation consisting of mice");
+assert.equal(plainViolation("§ 27-2005 ADM CODE & 309 M/D LAW ABATE THE NUISANCE"), "Abate the nuisance");
+console.log("violations ok");

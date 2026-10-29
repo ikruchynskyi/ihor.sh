@@ -22,7 +22,7 @@ import { generateMeme, searchTemplates } from "./memes.ts";
 
 import { OLLAMA, LOCAL_MODEL as MODEL, localThink } from "./llm.ts";
 const CLOUD_MODEL = process.env.BLIP_CLOUD_MODEL ?? "gemma4:31b";
-const MAX_STEPS = 6, DEEP_STEPS = 16;
+const MAX_STEPS = 6, DEEP_STEPS = 16, DEADLINE_MS = 50_000; // past the deadline (not "think hard") Blip answers with what it has
 
 const nyDate = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 // "Wed 2026-10-28, Thu 2026-10-29, …": the model can't be trusted to work out which date "Sunday" is
@@ -335,9 +335,9 @@ const TOOLS: Record<string, Tool> = {
     run: async ({ from, to, mode, avoid_ferries, stops, accessible }) => { let t: any = await tripPlan(String(from), String(to), mode ?? "drive", { avoidFerries: !!avoid_ferries, accessible: !!accessible, via: String(stops ?? "").split("|").map((x) => x.trim()).filter(Boolean).slice(0, 6) }); if (t.mode === "transit") t = await annotateTrip(t, !!accessible); delete t.line; t.cameras = t.cameras?.slice(0, 12).map((c: any) => ({ name: c.name, kmAlong: c.kmAlong, mapLink: `/nyc/#cam=${c.id}` })); t.mapLink = `/nyc/#trip=${[mode ?? "drive", from, ...String(stops ?? "").split("|"), to].map((x) => encodeURIComponent(String(x).trim())).filter(Boolean).join("|")}`; return t; },
   },
   building_report: {
-    description: "One NYC building by address, for renters and the curious: year built, floors, apartments; HPD's open violations by class (C = immediately hazardous) and the last year of tenant complaints by kind (heat, leaks, pests…); active DOB complaints; the latest rat inspection; who owns it (HPD registration via JustFix's Who Owns What) and the landlord's other buildings, units, violations and evictions; links to Who Owns What, HPD Online, DOB BIS, ACRIS deeds and the council member.",
+    description: "One NYC building by address, for renters and the curious: year built, floors, apartments; HPD's open violations by class (C = immediately hazardous) with what each orders fixed and where, and the last year of tenant complaints (heat, leaks, pests…) with what the inspector found; the owner's yearly bedbug filing; HPD housing court cases; whether it is in HPD's worst-buildings program (AEP); active DOB complaints; the latest rat inspection; who owns it (HPD registration via JustFix's Who Owns What) and the landlord's other buildings, units, violations and evictions; links to Who Owns What, HPD Online, DOB BIS, ACRIS deeds and the council member.",
     parameters: { address: { type: "string", description: "Street address, e.g. '1 Bennett Ave Manhattan'" } }, required: ["address"],
-    run: async ({ address }) => { const r: any = await buildingReport(String(address)); return r.found ? { ...r, mapLink: `/nyc/#place=${encodeURIComponent(r.address)}` } : { error: "No NYC building found at that address." }; },
+    run: async ({ address }) => { const r: any = await buildingReport(String(address)); return r.found ? { ...r, openViolations: r.openViolations?.slice(0, 12), complaints: r.complaints?.slice(0, 10).map(({ found, ...c }: any) => c), litigation: r.litigation?.slice(0, 6), mapLink: `/nyc/#place=${encodeURIComponent(r.address)}` } : { error: "No NYC building found at that address." }; },
   },
   find_places: {
     description: "Find businesses and places of any kind by what, where and how good: dinner (\"ramen\", \"date-night Italian\", \"vegan brunch\"), shopping (\"running shoes\", \"bookstore\", \"vintage clothing\"), services (\"barber\", \"pharmacy\", \"bike repair\"), anything. Filters: near a place or point within km, minimum Google rating, maximum price level (1 cheap … 4 very expensive), open now. Each result: rating and review count, price level, open now and today's hours, distance, address, website, phone, Google Maps link, and for food the city's grade A when it has one. Call it again with other words or a wider radius if the first results are thin. Uses a small monthly quota: one or two searches per request.",
@@ -579,6 +579,8 @@ ${siteMap}
 
 Some pages also give you actions on the visitor's page (moving the map, opening cameras, tuning the radio, playing Morse): use them when the visitor asks you to show or do something there, then say what you did. On the NYC map, do it with an action instead of sending a link to the map: show_line for one subway line ("show the C trains"), show_layer for layers, mark_places for several places, show_point or show_place for one, analyze_area for an area. From other pages, link the map: [the C line](/nyc/#line=C), [a view](/nyc/#view=lat,lon,zoom,layer+layer). How it all works (sources, processing, live feed health): [How the Live Map Works](/nyc/how.html).
 Tools: use them when the answer needs live or outside data (subway status, Citi Bikes, events, restaurant inspections, addresses, the web). Don't call a tool for things the page excerpt already answers.
+- Each round of tool calls costs the visitor seconds, so plan first: in your first turn call every tool the whole question needs, all at once (they run in parallel), with the words most likely to hit; call again only if a result shows a real gap. Example: "nearest doctor for gout who takes Aetna" → find_places("rheumatologist", the visitor's lat/lon) and web_search("rheumatologist gout Aetna <their neighborhood> NYC") in the same turn, then answer: who is near, and which of them a source says takes Aetna (or that they should call to check).
+- On the NYC map, places you link with their mapLink (/nyc/#at=…) are pinned on the map for the visitor automatically: don't spend a turn on mark_places for them.
 - Where something is on this site, which page or chapter covers a topic, "is there a tool for…": site_search, then link the page.
 - Questions about the world (facts, news, people, prices, opening hours, how-tos, anything not on this site): call web_search first, even when you think you know, then answer from the results and link the best source. Search again with better words if the first results miss.
 - Evenings out: evening_events then evening_plan (link [Tonight in NYC](/nyc/tonight.html)).
@@ -647,9 +649,9 @@ export type Step = { kind: "think" | "tool"; tool?: string; args?: unknown; n: n
 
 /** One visitor turn: returns Blip's reply and the tools it used along the way. onStep hears each step as it starts. */
 export async function ask(body: any, system: string, onStep?: (s: Step) => void) {
-  const history: Msg[] = (Array.isArray(body?.messages) ? body.messages : []).slice(-12)
+  const history: Msg[] = (Array.isArray(body?.messages) ? body.messages : []).slice(-8)
     .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m.content === "string" && m.content.trim())
-    .map((m: any) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    .map((m: any) => ({ role: m.role, content: m.content.slice(0, 1500) }));
   while (history[0]?.role === "assistant") history.shift();
   const last = history.at(-1);
   if (!last || last.role !== "user") throw new Error("bad request");
@@ -666,7 +668,8 @@ export async function ask(body: any, system: string, onStep?: (s: Step) => void)
   // With body.trace, every step comes back too (the AI world's agents chapter replays them).
   const trace: { step: number; tool: string; args: unknown; result: string; data: string }[] | undefined = body?.trace ? [] : undefined;
   const done = (reply: string) => ({ reply: reply.trim() || "…static. Try again?", tools: used, actions, ...(trace ? { trace, maxSteps } : {}) });
-  for (let step = 0; step < maxSteps; step++) {
+  const t0 = Date.now();
+  for (let step = 0; step < maxSteps && (deep || Date.now() - t0 < DEADLINE_MS); step++) {
     onStep?.({ kind: "think", n: step });
     const msg = await chat(messages, true, extra, deep);
     if (!msg.tool_calls?.length) return done(msg.content ?? "");
@@ -688,6 +691,7 @@ export async function ask(body: any, system: string, onStep?: (s: Step) => void)
     }
   }
   onStep?.({ kind: "think", n: maxSteps });
+  messages.push({ role: "user", content: "Time's up for tools: answer now from what you found, and say plainly what you couldn't check." });
   const final = await chat(messages, false, [], deep); // out of steps: answer with what we have
   return done(final.content ?? "");
 }

@@ -277,7 +277,7 @@
     #detail { position: absolute; z-index: 1001; right: 64px; top: calc((var(--hud-h, 52px) + 54px) / var(--zoom, 1)); width: min(380px, 38vw); max-height: calc((100vh - var(--hud-h, 52px) - 80px) / var(--zoom, 1)); overflow: auto;
       background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.45); font: 13.5px/1.45 system-ui, -apple-system, sans-serif; }
     #detail .dh { position: sticky; top: 0; display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; background: var(--card); border-bottom: 1px solid var(--line); }
-    #detail .dh b { flex: 1; font-size: 15px; } #detail .db { padding: 8px 12px 12px; } #detail h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    #detail .dh b { flex: 1; font-size: 15px; } #detail .db { padding: 8px 12px 12px; } #detail h4 { scroll-margin-top: 56px; margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
     #detail ul { margin: 0; padding-left: 16px; } #detail li { margin: 0 0 6px; } #detail .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     #detail .acts button { font: 600 12px system-ui, sans-serif !important; text-transform: none !important; letter-spacing: 0 !important; padding: 5px 9px !important; }
     #detail .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 4px 0; } #detail .meter i { display: block; height: 100%; background: var(--accent); }
@@ -1156,19 +1156,49 @@ async function openPhoto(p) {
 }
 
 // ---------- one building: conditions from city records, owners from Who Owns What (server/nycapi.ts buildingReport) ----------
+// The popup keeps the counts; "details" opens the drawer with what's behind them (each violation, complaint, filing, case).
+const CLS = { C: ["immediately hazardous", "#e03131"], B: ["hazardous", "#f08c00"], A: ["non-hazardous", "#868e96"], I: ["order", "#7048e8"] };
+const bbYear = (y) => y?.[0] && `${y[0].from.slice(0, 7)} – ${y[0].to.slice(0, 7)}`, bbSum = (y, k) => (y ?? []).reduce((n, x) => n + x[k], 0);
+let bldgNow = null;
 function buildingHtml(r) {
   if (!r?.found) return `<p class="muted">No building record found for this address.</p>`;
-  const b = r.building, v = r.hpdOpenViolations, w = r.whoOwnsWhat, L2 = r.links, a = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : "");
+  bldgNow = r;
+  const b = r.building, v = r.hpdOpenViolations, w = r.whoOwnsWhat, L2 = r.links, a = (u, t) => (u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : ""), more = (sec, t) => `<button type="button" class="linkish" data-bopen="${sec}">${t}</button>`;
+  const y = r.bedbugs?.latestYear, pending = (r.litigation ?? []).filter((c) => c.status === "Pending").length, aep = r.worstBuildingsProgram;
   return `<div style="margin:6px 0;padding:6px 8px;border-left:3px solid var(--line)">
+    ${aep?.status === "AEP Active" ? `<div style="color:#e03131"><b>On HPD's worst-buildings list</b> since ${esc(aep.since)}</div>` : ""}
     ${b ? `<div>Built ${b.yearBuilt ?? "?"} · ${b.floors ?? "?"} floors · ${b.residentialUnits} apartments${b.totalUnits > b.residentialUnits ? ` of ${b.totalUnits} units` : ""}</div>` : ""}
-    ${v ? `<div>HPD open violations: <b>${v.total}</b>${v.total ? ` <span class="muted">(<span style="color:#e03131">${v.immediatelyHazardousC} immediately hazardous</span>, ${v.hazardousB} hazardous, ${v.nonHazardousA} other)</span>` : ""}</div>` : ""}
-    ${r.tenantComplaintsLastYear?.length ? `<div>Tenant complaints, last 12 months: ${r.tenantComplaintsLastYear.map((c) => `${esc(c.kind.toLowerCase())} ${c.n}`).join(", ")}</div>` : r.tenantComplaintsLastYear ? `<div>No tenant complaints to HPD in 12 months</div>` : ""}
+    ${v ? `<div>HPD open violations: <b>${v.total}</b>${v.total ? ` <span class="muted">(<span style="color:#e03131">${v.immediatelyHazardousC} immediately hazardous</span>, ${v.hazardousB} hazardous, ${v.nonHazardousA + (v.ordersI ?? 0)} other)</span> ${more("v", "what are they?")}` : ""}</div>` : ""}
+    ${r.tenantComplaintsLastYear?.length ? `<div>Tenant complaints, last 12 months: ${r.tenantComplaintsLastYear.map((c) => `${esc(c.kind.toLowerCase())} ${c.n}`).join(", ")} ${more("c", "details")}</div>` : r.tenantComplaintsLastYear ? `<div>No tenant complaints to HPD in 12 months</div>` : ""}
+    ${y?.length ? `<div>Bedbugs, owner's filing for ${esc(bbYear(y))}: ${bbSum(y, "infested") ? `<b style="color:#e03131">${bbSum(y, "infested")} of ${bbSum(y, "units")} apartments</b>` : "none"} ${more("b", "history")}</div>` : ""}
+    ${pending ? `<div>Housing court (HPD): <b>${pending} pending case${pending > 1 ? "s" : ""}</b> ${more("l", "details")}</div>` : ""}
     ${r.dobActiveComplaints != null ? `<div>Active DOB complaints: ${r.dobActiveComplaints}</div>` : ""}
     ${r.rats?.latest ? `<div>Rats: last inspection ${esc(r.rats.latest.date)}, ${esc(r.rats.latest.result.toLowerCase())}${r.rats.failedForRatsIn2Years ? ` · <b>${r.rats.failedForRatsIn2Years}</b> failed for rats in 2 years` : ""}</div>` : ""}
     ${w ? `<div>Owner: ${esc([...w.companies, ...w.owners.slice(0, 2)].join("; ") || b?.ownerOnTaxRolls || "?")}</div>${w.portfolio?.buildings > 1 ? `<div>Same landlord: ${w.portfolio.buildings} buildings, ${w.portfolio.units} units, ${w.portfolio.openViolations} open violations, ${w.portfolio.evictions} evictions</div>` : ""}` : b?.ownerOnTaxRolls ? `<div>Owner on tax rolls: ${esc(b.ownerOnTaxRolls)}</div>` : ""}
-    <div>${[a(L2.whoOwnsWhat, "Who Owns What"), a(L2.hpdOnline, "HPD Online"), a(L2.dobBis, "DOB BIS"), a(L2.acris, "ACRIS deeds"), a(L2.council, `Council district ${esc(r.councilDistrict ?? "")}`)].filter(Boolean).join(" · ")}</div>
-    <span class="muted">${esc(r.sources)}</span></div>`;
+    <div>${more("v", "🏠 All the details")} · ${[a(L2.whoOwnsWhat, "Who Owns What"), a(L2.hpdOnline, "HPD Online"), a(L2.dobBis, "DOB BIS"), a(L2.acris, "ACRIS deeds"), a(L2.council, `Council district ${esc(r.councilDistrict ?? "")}`)].filter(Boolean).join(" · ")}</div>
+    </div>`;
 }
+/** The drawer for one building: every open violation (what it orders fixed, where, by when), the year's complaints and what
+ *  the inspector found, the bedbug filings, HPD's court cases. */
+function openBuilding(r, sec = "v") {
+  const ov = r.openViolations ?? [], cs = r.complaints ?? [], bb = r.bedbugs?.latestYear ?? [], lit = r.litigation ?? [], aep = r.worstBuildingsProgram, v = r.hpdOpenViolations;
+  const tag = (c) => `<b style="color:${CLS[c]?.[1] ?? "inherit"}" title="Class ${esc(c)}: ${esc(CLS[c]?.[0] ?? "")}">${esc(c)}</b>`;
+  showDrawer("🏠", r.address, `<div class="muted">${esc([r.neighborhood, r.building?.yearBuilt && `built ${r.building.yearBuilt}`, r.building && `${r.building.residentialUnits} apartments`].filter(Boolean).join(" · "))}</div>
+    ${aep ? `<p${aep.status === "AEP Active" ? ' style="color:#e03131"' : ""}><b>HPD's Alternative Enforcement Program</b> (the city's worst-maintained buildings): ${aep.status === "AEP Active" ? `in it since ${esc(aep.since)}` : `was in it from ${esc(aep.since)} to ${esc(aep.discharged ?? "?")}`}, with ${aep.bcViolationsAtStart} B and C violations when it went in.</p>` : ""}
+    <h4 id="bsec-v">Open HPD violations: ${v?.total ?? 0}</h4>
+    <p class="muted">A violation is HPD's order to fix something an inspector saw. ${tag("C")} immediately hazardous (24 hours: no heat or hot water, lead paint, mold, vermin), ${tag("B")} hazardous (30 days), ${tag("A")} non-hazardous (90 days), ${tag("I")} an order (a vacate order, a program). "Open" means the owner hasn't certified the fix yet; some are years old.</p>
+    ${ov.length ? `<ul>${ov.map((x) => `<li>${tag(x.cls)} ${esc(x.what)}${x.apt ? ` <span class="muted">· apt ${esc(x.apt)}</span>` : x.story ? ` <span class="muted">· floor ${esc(x.story)}</span>` : ""}<br><span class="muted">seen ${esc(x.inspected ?? "?")}${x.correctBy ? `, fix by ${esc(x.correctBy)}` : ""} · ${esc(x.status)}</span></li>`).join("")}</ul>${(v?.total ?? 0) > ov.length ? `<p class="muted">The first ${ov.length} of ${v.total}: the rest on HPD Online.</p>` : ""}` : `<p class="muted">None.</p>`}
+    <h4 id="bsec-c">Tenant complaints to HPD, 12 months: ${cs.length}${cs.length === 40 ? "+" : ""}</h4>
+    ${cs.length ? `<ul>${cs.map((x) => `<li>${esc(x.at)} <b>${esc(x.kind)}</b> ${esc(x.what)}${x.apt && x.apt !== "BLDG" ? ` <span class="muted">· apt ${esc(x.apt)}</span>` : ""} <span class="muted">· ${esc(x.urgency)} · ${esc(x.status)}</span>${x.found ? `<br><small class="muted">${esc(x.found)}</small>` : ""}</li>`).join("")}</ul>` : `<p class="muted">None.</p>`}
+    <h4 id="bsec-b">Bedbugs</h4>
+    <p class="muted">Every November owners must file how many apartments had bedbugs in the year before, how many were treated and how many came back (one filing per building on the lot). The owner reports it; HPD doesn't inspect for it.</p>
+    ${bb.length ? `<p>${esc(bbYear(bb))}: <b>${bbSum(bb, "infested")}</b> of ${bbSum(bb, "units")} apartments infested, ${bbSum(bb, "eradicated")} treated, ${bbSum(bb, "reinfested")} came back <span class="muted">(filed ${esc(bb[0].filed)})</span>; ${r.bedbugs.filings} filings on record.</p>` : `<p class="muted">No filing on record.</p>`}
+    <h4 id="bsec-l">Housing court: HPD's cases against the owner</h4>
+    ${lit.length ? `<ul>${lit.map((x) => `<li>${esc(x.opened)} <b>${esc(x.type)}</b> <span class="muted">· ${esc(x.status)}${x.judgement ? " · judgment against the owner" : ""}</span></li>`).join("")}</ul>` : `<p class="muted">None on record.</p>`}
+    <p class="muted">${esc(r.sources)}. <a href="${esc(r.links.whoOwnsWhat)}" target="_blank" rel="noopener">Who Owns What</a> · <a href="${esc(r.links.hpdOnline)}" target="_blank" rel="noopener">HPD Online</a></p>`);
+  if (sec !== "v") document.getElementById(`bsec-${sec}`)?.scrollIntoView({ block: "start" });
+}
+document.addEventListener("click", (e) => { const t = e.target.closest("[data-bopen]"); if (t && bldgNow) { e.stopPropagation(); openBuilding(bldgNow, t.dataset.bopen); } }, true);
 
 // ---------- privately owned public spaces (City Planning's APOPS): plazas, atriums and arcades open to everyone ----------
 async function loadPops(g) {
@@ -1441,6 +1471,8 @@ setInterval(() => { for (const [k, f] of Object.entries(LOADERS)) if (LAYERS[k].
 const aiMarks = L.layerGroup().addTo(map);
 function markPlaces(points) {
   if (typeof points === "string") try { points = JSON.parse(points); } catch { points = []; } // a model may send the list as JSON text
+  // or as {label, mapLink: "/nyc/#at=lat,lon,zoom|name"} (seen 10-29)
+  points = (Array.isArray(points) ? points : []).map((p) => { const m = !Number.isFinite(+p?.lat) && String(p?.mapLink ?? "").match(/#at=(-?[\d.]+),(-?[\d.]+)/); return m ? { ...p, lat: m[1], lon: m[2] } : p; });
   const pts = (Array.isArray(points) ? points : []).filter((p) => Number.isFinite(+p.lat) && Number.isFinite(+p.lon) && NYC.pad(0.2).contains([+p.lat, +p.lon])).slice(0, 50);
   for (const p of pts) L.marker([+p.lat, +p.lon], { icon: L.divIcon({ className: "ai-mark", html: `<span>${esc(String(p.label ?? "").slice(0, 40))}</span>`, iconSize: null }) })
     .bindPopup(`<b>${esc(String(p.label ?? ""))}</b>${p.note ? `<br>${esc(String(p.note).slice(0, 300))}` : ""}<br><span class="muted">Marked by Blip</span>`).addTo(aiMarks);
@@ -1448,6 +1480,12 @@ function markPlaces(points) {
   drawBar();
   return `${pts.length} marked`;
 }
+
+// Places Blip links in an answer (/nyc/#at=lat,lon,zoom|label) are pinned too: no model round spent on mark_places.
+addEventListener("blip:reply", (e) => {
+  const pts = [...String(e.detail?.text ?? "").matchAll(/\/nyc\/#at=(-?[\d.]+),(-?[\d.]+)(?:,\d+)?(?:\|([^)\s]*))?/g)].map(([, lat, lon, label]) => ({ lat, lon, label: decodeURIComponent(label ?? "").replace(/\+/g, " ") }));
+  if (pts.length > 1) markPlaces(pts);
+});
 
 // ---------- the city bar ----------
 // Chips show the city's vital signs. A chip opens its list and its layer; closing the list (× or the chip again) takes
@@ -1694,7 +1732,7 @@ function openDetail(c) {
     <div id="dcams"></div>
     <div id="dresearch"></div>
     <div class="acts"><button data-dact="research" title="Search the web for this incident; the AI reads what it finds and writes what matters, every point with its sources">📰 Research this</button><button data-dact="ask">💬 Ask Blip</button><button data-dact="near">📍 Within ${NEAR_M} m</button><button data-dact="area">🔎 This area</button></div></div>`;
-  d.hidden = false;
+  d.setAttribute("aria-label", "Incident details"); d.hidden = false;
   const f = freeArea(), size = map.getSize();
   map.setView([c.lat, c.lon], Math.max(map.getZoom(), c.rough ? 14 : 16), { animate: false });
   map.panBy([size.x / 2 - (f.left + f.right) / 2, size.y / 2 - (f.top + f.bottom) / 2], { animate: false });
@@ -1732,13 +1770,21 @@ async function researchNow(c) {
   if (!r.error) { research.set(c.id, r); if (detailNow === c && seen.incidentOpen) seen.incidentOpen.research = { summary: r.summary, points: r.points.map((p) => p.text), unclear: r.unknown, sources: r.sources.map((s) => s.url || s.title) }; }
   show(r.error ? `<p>${esc(r.error)}</p>` : researchHtml(r));
 }
-const closeDetail = () => { $("detail").hidden = true; detailNow = null; seen.incidentOpen = null; };
+const closeDetail = () => { $("detail").hidden = true; detailNow = null; seen.incidentOpen = null; seen.drawer = null; };
+/** The drawer for anything else (a building's records…): a title and its body, the map stays where it is. */
+function showDrawer(icon, title, body) {
+  detailNow = null; seen.incidentOpen = null;
+  const d = $("detail");
+  d.innerHTML = `<div class="dh"><span style="font-size:20px">${icon}</span><b>${esc(title)}</b><button class="linkish" data-dact="close" aria-label="Close">×</button></div><div class="db">${body}</div>`;
+  d.setAttribute("aria-label", title); d.hidden = false; d.scrollTop = 0;
+  seen.drawer = { title, text: d.querySelector(".db").innerText.slice(0, 3000) };
+}
 $("detail").addEventListener("click", (e) => {
   const t = e.target.closest("[data-dact], [data-dcam]"), c = detailNow;
+  if (t?.dataset.dact === "close") return closeDetail();
   if (!t || !c) return;
   if (t.dataset.dcam) return void (camsCache ?? Promise.resolve([])).then((l) => { const k = l.find((x) => x.id === t.dataset.dcam); if (k) openCam(k); });
   const a = t.dataset.dact;
-  if (a === "close") closeDetail();
   if (a === "ask") dispatchEvent(new CustomEvent("blip:ask", { detail: { text: `What do we know about "${c.title}"${c.hood ? ` in ${c.hood}` : ""}? Is it confirmed, and what else is going on around it?` } }));
   if (a === "near") { closeDetail(); nearMe(L.latLng(c.lat, c.lon), c.hood ?? c.title); }
   if (a === "area") { closeDetail(); map.setView([c.lat, c.lon], 15, { animate: false }); analyzeArea(); }
@@ -2495,8 +2541,8 @@ window.blipActions = {
     parameters: { lines: { type: "string", description: "e.g. C, or A C E; empty for every line" } }, run: ({ lines }) => showLine(lines) },
   show_layer: { label: "switched a layer", description: "Turn map layers on or off. For one subway line use show_line instead. Layers: stations (next trains), trains (every train's position now, estimated), buses (bus stops with next buses, needs zoom ≥ 15), citibike, ferry (boats + next departures), outages (elevators), cameras, speeds (traffic), c311 (311 reports in view), incidents (live incidents, merged across sources), closures (road closures, construction, permitted street events), news (today's local news, placed), emergency (Notify NYC alerts), floods (street flooding now), films (film/TV shoots), photos (street-level photos, zoom ≥ 16), city (free city events), popups (free pop-ups), sales (sample sales), radar (rain radar), lightning, clouds (satellite), aircraft (planes and helicopters, live), storms (hurricanes), iss (the space station), windy (windy.com forecast map: wind, rain, temperature…, drawn under the other layers instead of the street map).", parameters: { layer: { type: "string", description: "Layer key, or several separated by spaces (\"incidents news\")" }, on: { type: "boolean", description: "true to show (default), false to hide" } },
     run: async ({ layer, on = true }) => { for (const k of String(layer ?? "").split(/[\s,+]+/).filter((k) => LAYERS[k])) await toggle(k, on !== false && on !== "false"); } },
-  mark_places: { label: "marked places on the map", description: "Put labeled pins on the map for several places at once (e.g. the incidents, news stories or 311 hot spots you found with explore_city_data), and fit the map to them. The visitor can clear them with ✕ Clear.", parameters: { points: { type: "array", description: "[{lat, lon, label, note}] up to 50; label short (≤ 40 characters)" } },
-    run: ({ points }) => markPlaces(points) },
+  mark_places: { label: "marked places on the map", description: "Put labeled pins on the map for several places at once (e.g. the incidents, news stories or 311 hot spots you found with explore_city_data), and fit the map to them. The visitor can clear them with ✕ Clear. Not needed for places you link with a mapLink in your answer: those are pinned already.", parameters: { points: { type: "array", description: "[{lat, lon, label, note}] up to 50; label short (≤ 40 characters)" } },
+    run: ({ points, places }) => markPlaces(points ?? places) },
   analyze_area: { label: "analyzed the area", description: "Open the 🔎 This area panel for the map's current view (or after moving the map to lat/lon at a zoom): what's on now, what started in the last 24 hours, 311's week against usual, today's news there, cameras.", parameters: { lat: { type: "number", description: "Optional: center here first" }, lon: { type: "number", description: "Longitude" }, zoom: { type: "number", description: "Zoom (default 15)" } },
     run: async ({ lat, lon, zoom }) => { if (Number.isFinite(+lat) && Number.isFinite(+lon) && +lat) map.setView([+lat, +lon], +zoom || 15); await analyzeArea(); return seen.area; } },
   find_restaurant: { label: "searched restaurants", description: "Search NYC restaurant health inspections by name and show them on the map.", parameters: { name: { type: "string", description: "Restaurant name" } },

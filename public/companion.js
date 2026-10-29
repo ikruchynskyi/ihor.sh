@@ -756,9 +756,9 @@ async function send(q) {
   let doing = deep ? "thinking hard" : "thinking";
   const tick = setInterval(() => { const sec = Math.round((performance.now() - t0) / 1000); status.innerHTML = `<span class="dots"></span> ${esc(doing)}${sec >= 4 ? ` · ${sec} s` : ""}${sec >= 40 && !deep ? " · the model is slow right now, hang on" : ""}`; }, 500);
   try {
-    // Only what the server reads (blip.ts ask: the last 12 messages, 2000 characters each): a whole long chat, or a few
+    // Only what the server reads (blip.ts ask: the last 8 messages, 1500 characters each): a whole long chat, or a few
     // long "think hard" answers, would outgrow its 64 KB request cap and every question after that would fail.
-    const messages = history.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    const messages = history.slice(-8).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));
     const r = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages, page: pageInfo(), stream: true, deep }) })
       .catch(() => { throw new Error("Blip lost the signal. Try again?"); });
     let data = {};
@@ -789,6 +789,7 @@ async function send(q) {
     const did = [...new Set([...(data.tools ?? []).map((t) => TOOL_LABEL[t] ?? t), ...(data.actions ?? []).map((a) => allActions()[a.name]?.label ?? a.name.replace(/_/g, " "))])];
     if (did.length) out.insertAdjacentHTML("afterend", `<span class="used">⚙ ${did.join(" · ")}</span>`);
     perform(data.actions);
+    dispatchEvent(new CustomEvent("blip:reply", { detail: { text: data.reply } })); // the map pins the places it links
     setMood("happy", 1500);
   } catch (err) {
     history.pop(); save(); input.value = q;

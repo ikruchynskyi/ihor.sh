@@ -432,6 +432,16 @@ async function whoOwns(bbl: string) {
     rentStabilizedUnits: me?.rsunitslatest ?? null, rentStabilizedYear: me?.rsunitslatestyear ?? null, evictions: me?.evictions ?? null,
     portfolio: agg && { buildings: agg.bldgs, units: agg.units, openViolations: agg.totalopenviolations, openViolationsPerUnit: agg.openviolationsperresunit, evictions: agg.totalevictions, rentStabilizedChange: agg.totalrsdiff, topOwners: agg.topowners?.slice(0, 4) ?? [] } };
 }
+/** What an HPD violation orders fixed, without the code sections it cites: "§ 27-2031 ADM CODE PROVIDE HOT WATER … LOCATED AT APT 21B, …"
+ *  → "Provide hot water …" (the apartment is its own field). */
+const VIOLATION_REF = /^(§.*|[\d(][\w.\-(),/;:§]*|SECTION|SEC\.?|HMC-?[,:;.]?|ADM(IN)?\.?|CODE[,:;.]?|RCNY[,:;.]?|MDL[,:;.]?|M\/D|LAW[,:;.]?|NYC|FIRE|AND|&|-|[A-Z]\)[,:;]?|D\.C\.?|RULES?)$/i;
+export function plainViolation(s: string) {
+  const w = s.trim().split(/\s+/);
+  let i = 0;
+  while (i < w.length - 1 && VIOLATION_REF.test(w[i])) i++;
+  const t = w.slice(i).join(" ").replace(/^[-:\s]+/, "").split(/\s+(?:IN THE [A-Z ]+? )?LOCATED AT\s/i)[0];
+  return t.charAt(0) + t.slice(1).toLowerCase();
+}
 /** One building by address: HPD's open violations by class and a year of tenant complaints, DOB's active complaints, the latest
  *  rat inspections, PLUTO's basics, and its owner and landlord portfolio (Who Owns What), with links to each source. */
 export async function buildingReport(input: string) {
@@ -439,26 +449,41 @@ export async function buildingReport(input: string) {
   const bbl = String(a["BBL (tax lot)"] ?? "").replace(/\D/g, ""), bin = String(a["BIN (building)"] ?? "").replace(/\D/g, "");
   if (!a.found || bbl.length !== 10) return { input, found: false };
   const yearAgo = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10), q = (id: string, p: Record<string, string>) => soda(p, id).catch(() => null);
-  const [hpd, complaints, dob, rats, pluto, wow] = await Promise.all([
+  const [hpd, complaints, dob, rats, pluto, wow, openList, complaintList, bedbugs, cases, aep] = await Promise.all([
     q("wvxf-dwi5", { $select: "class, count(*) as n", $where: `bbl='${bbl}' AND violationstatus='Open'`, $group: "class" }),
     q("ygpa-z7cr", { $select: "major_category, count(*) as n", $where: `bbl='${bbl}' AND received_date > '${yearAgo}'`, $group: "major_category", $order: "n DESC", $limit: "6" }),
     /^\d{7}$/.test(bin) && !/^\d000000$/.test(bin) ? q("eabe-havv", { $select: "count(*) as n", $where: `bin='${bin}' AND status='ACTIVE'` }) : null,
     q("p937-wjvj", { $select: "result, inspection_date", $where: `bbl='${bbl}' AND inspection_date > '${new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10)}'`, $order: "inspection_date DESC", $limit: "50" }),
     q("64uk-42ks", { $select: "yearbuilt, unitsres, unitstotal, numfloors, ownername, bldgclass", bbl }),
     whoOwns(bbl).catch(() => null),
+    // the details behind the counts: what each open violation orders fixed, each complaint and what HPD found
+    q("wvxf-dwi5", { $select: "class, novdescription, apartment, story, inspectiondate, originalcorrectbydate, currentstatus", $where: `bbl='${bbl}' AND violationstatus='Open'`, $order: "inspectiondate DESC", $limit: "200" }),
+    q("ygpa-z7cr", { $select: "received_date, apartment, type, major_category, minor_category, problem_code, complaint_status, status_description", $where: `bbl='${bbl}' AND received_date > '${yearAgo}'`, $order: "received_date DESC", $limit: "40" }),
+    q("wz6d-d3jb", { $select: "filing_date, filing_period_start_date, filling_period_end_date, of_dwelling_units, infested_dwelling_unit_count, eradicated_unit_count, re_infested_dwelling_unit", bbl, $order: "filing_date DESC", $limit: "6" }),
+    q("59kj-x8nc", { $select: "casetype, caseopendate, casestatus, casejudgement", bbl, $order: "caseopendate DESC", $limit: "20" }),
+    q("hcir-3275", { $select: "aep_start_date, current_status, discharge_date, of_b_c_violations_at_start", bbl, $order: "aep_start_date DESC", $limit: "1" }),
   ]);
+  const day = (t: any) => (t ? String(t).slice(0, 10) : null), lower = (t: any) => (t ? String(t).charAt(0) + String(t).slice(1).toLowerCase() : "");
+  // bedbug filings: owners report each year (Nov–Oct) how many units had bedbugs; one filing per building, so a lot with several buildings has several a year
+  const bb = (bedbugs ?? []).map((r: any) => ({ filed: day(r.filing_date), from: day(r.filing_period_start_date), to: day(r.filling_period_end_date), units: +r.of_dwelling_units || 0, infested: +r.infested_dwelling_unit_count || 0, eradicated: +r.eradicated_unit_count || 0, reinfested: +r.re_infested_dwelling_unit || 0 }));
   const byClass = Object.fromEntries((hpd ?? []).map((r: any) => [r.class, +r.n])), p = pluto?.[0], block = +bbl.slice(1, 6), lot = +bbl.slice(6);
   return { found: true, address: a.address, bbl, bin, neighborhood: a.neighborhood, councilDistrict: a["council district"] ?? null,
     building: p && { yearBuilt: +p.yearbuilt || null, floors: Math.round(+p.numfloors) || null, residentialUnits: +p.unitsres || 0, totalUnits: +p.unitstotal || 0, ownerOnTaxRolls: p.ownername ?? "" },
-    hpdOpenViolations: hpd && { total: Object.values(byClass).reduce((x: number, y: any) => x + y, 0), immediatelyHazardousC: byClass.C ?? 0, hazardousB: byClass.B ?? 0, nonHazardousA: byClass.A ?? 0 },
+    hpdOpenViolations: hpd && { total: Object.values(byClass).reduce((x: number, y: any) => x + y, 0), immediatelyHazardousC: byClass.C ?? 0, hazardousB: byClass.B ?? 0, nonHazardousA: byClass.A ?? 0, ordersI: byClass.I ?? 0 },
     tenantComplaintsLastYear: complaints && complaints.map((r: any) => ({ kind: r.major_category, n: +r.n })),
     dobActiveComplaints: dob ? +dob[0]?.n || 0 : null,
     // baiting visits follow a failed inspection: the latest real inspection says more
     rats: rats && { latest: ((r) => r && { date: String(r.inspection_date).slice(0, 10), result: r.result })(rats.find((r: any) => !/bait|clean ?up/i.test(r.result))), failedForRatsIn2Years: rats.filter((r: any) => /rat activity/i.test(r.result)).length },
+    // C (immediately hazardous) first, then B, the orders (I: vacate orders, programs), A; newest first within each; 40 at most
+    openViolations: openList && openList.sort((x: any, y: any) => "CBIA".indexOf(x.class) - "CBIA".indexOf(y.class)).slice(0, 40).map((r: any) => ({ cls: r.class, what: plainViolation(r.novdescription ?? ""), apt: r.apartment || null, story: r.story || null, inspected: day(r.inspectiondate), correctBy: day(r.originalcorrectbydate), status: /^NOV SENT/.test(r.currentstatus ?? "") ? "notice sent to the owner" : lower(r.currentstatus) })),
+    complaints: complaintList && complaintList.map((r: any) => ({ at: day(r.received_date), apt: r.apartment || null, urgency: lower(r.type), kind: lower(r.major_category), what: lower([r.minor_category, r.problem_code].filter(Boolean).join(": ")), status: r.complaint_status === "CLOSE" ? "closed" : lower(r.complaint_status), found: r.status_description ?? "" })),
+    bedbugs: bedbugs && { latestYear: bb.filter((x) => x.to === bb[0]?.to), filings: bb.length },
+    litigation: cases && cases.map((r: any) => ({ type: r.casetype, opened: day(r.caseopendate), status: lower(r.casestatus), judgement: r.casejudgement === "YES" })),
+    worstBuildingsProgram: aep?.[0] ? { since: day(aep[0].aep_start_date), status: aep[0].current_status, discharged: day(aep[0].discharge_date), bcViolationsAtStart: +aep[0].of_b_c_violations_at_start || 0 } : null,
     whoOwnsWhat: wow,
     links: { whoOwnsWhat: `https://whoownswhat.justfix.org/en/bbl/${bbl}`, hpdOnline: "https://hpdonline.nyc.gov/hpdonline/", dobBis: /^\d{7}$/.test(bin) ? `https://a810-bisweb.nyc.gov/bisweb/PropertyProfileOverviewServlet?bin=${bin}` : null,
       acris: `https://a836-acris.nyc.gov/bblsearch/bblsearch.asp?borough=${bbl[0]}&block=${block}&lot=${lot}`, council: a["council district"] ? `https://council.nyc.gov/district-${+a["council district"]}/` : null },
-    sources: "HPD, DOB, DOHMH rodent inspections and PLUTO on NYC Open Data (updated daily); owners and portfolios from JustFix's Who Owns What (HPD registrations)" };
+    sources: "HPD violations, complaints, bedbug filings and housing court cases, DOB, DOHMH rodent inspections and PLUTO on NYC Open Data (updated daily); owners and portfolios from JustFix's Who Owns What (HPD registrations)" };
 }
 
 // ---------- 311 ----------
@@ -728,7 +753,7 @@ export async function webSearch(query: string) {
   const key = env("TAVILY_API_KEY");
   if (key) {
     try {
-      const r = await fetch("https://api.tavily.com/search", { method: "POST", signal: AbortSignal.timeout(20_000),
+      const r = await fetch("https://api.tavily.com/search", { method: "POST", signal: AbortSignal.timeout(8_000),
         headers: { "content-type": "application/json", Authorization: `Bearer ${key}` }, body: JSON.stringify({ query, max_results: 5 }) });
       const results = r.ok ? ((await r.json()).results ?? []) : [];
       if (results.length) return { engine: "tavily", results: results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").slice(0, 400) })) };
@@ -737,13 +762,13 @@ export async function webSearch(query: string) {
   const okey = env("OLLAMA_CLOUD_KEY");
   if (okey) {
     try {
-      const r = await fetch("https://ollama.com/api/web_search", { method: "POST", signal: AbortSignal.timeout(20_000),
+      const r = await fetch("https://ollama.com/api/web_search", { method: "POST", signal: AbortSignal.timeout(8_000),
         headers: { "content-type": "application/json", Authorization: `Bearer ${okey}` }, body: JSON.stringify({ query, max_results: 5 }) });
       const results = r.ok ? ((await r.json()).results ?? []) : [];
       if (results.length) return { engine: "ollama", results: results.map((x: any) => ({ title: x.title, url: x.url, snippet: String(x.content ?? "").replace(/\s+/g, " ").slice(0, 400) })) };
     } catch {}
   }
-  const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh Blip)" }, signal: AbortSignal.timeout(15_000) });
+  const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { "user-agent": "Mozilla/5.0 (ihor.sh Blip)" }, signal: AbortSignal.timeout(8_000) });
   const html = await r.text();
   const results = [...html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)].slice(0, 5).map(([, href, title, snippet]) => {
     const u = new URL(href.replace(/&amp;/g, "&"), "https://duckduckgo.com");
